@@ -6,7 +6,7 @@ Run from the repo root:
     python marketing/build.py og deck    # build only some pieces
 
 Every piece is written to marketing/output/<piece>/ as an editable .vixl master plus its exports.
-The Digital Shift logo is placed as a live link to the masters in assets/brand/digital-shift/Editable-Vixl,
+The Ripple logo is placed as a live link to the masters in assets/brand/ripple/Editable-Vixl,
 so a logo update flows into every piece on the next build.
 """
 
@@ -26,7 +26,7 @@ from vixl import Project  # noqa: E402
 from vixl.render import resolve_layout  # noqa: E402
 from vixl.typefaces import install_font  # noqa: E402
 
-# Brand (assets/brand/digital-shift/START-HERE.md) ----------------------------------------------
+# Brand (assets/brand/ripple/START-HERE.md) -----------------------------------------------------
 CHARCOAL = "#252B39"
 DEEP = "#1A1F2B"
 PANEL = "#2F3647"
@@ -42,7 +42,7 @@ CODE_KEY = "#8FB4FF"
 CODE_STR = "#9FE3B4"
 CODE_NUM = "#FFC37A"
 
-LOGOS = "assets/brand/digital-shift/Editable-Vixl"
+LOGOS = "assets/brand/ripple/Editable-Vixl"
 HEAD, BODY, SEMI, MONO = "inter-tight-800", "inter-400", "inter-600", "jetbrains-mono-500"
 
 # Facts used in the copy (counted from the 0.21.0 source; see README.md in this folder).
@@ -99,7 +99,7 @@ def logo(name, variant, x, y, width=None, height=None):
 
 
 def pixels(prefix, seed, area, count, size_range, colors, opacity=(0.25, 1.0)):
-    """Scattered square 'pixels', the motif taken from the logo's detached pixels."""
+    """Scattered square 'pixels', the raster motif behind the vector logo."""
     rng = random.Random(seed)
     x0, y0, w, h = area
     ops = []
@@ -213,7 +213,7 @@ SNIPPET = [
 def save_and_export(p, folder, stem, exports, check=True, **check_options):
     folder = OUT / folder
     folder.mkdir(parents=True, exist_ok=True)
-    p.save(str(folder / f"{stem}.vixl"))
+    p.save(str(folder / f"{stem}.vixl"), overwrite=True)
     report = {}
     if check:
         result = p.check(**check_options)
@@ -854,7 +854,7 @@ def build_teaser():
     p.apply(ops, detail="brief")
     folder = OUT / "motion"
     folder.mkdir(parents=True, exist_ok=True)
-    p.save(str(folder / "teaser.vixl"))
+    p.save(str(folder / "teaser.vixl"), overwrite=True)
     from vixl.timeline import contact_sheet, export_timeline
     export_timeline(p, str(folder / "teaser.mp4"), fps=24, overwrite=True)
     export_timeline(p, str(folder / "teaser.gif"), fps=12, scale=0.5, colors=96, overwrite=True)
@@ -879,7 +879,7 @@ def build_stickers():
     (x0, y0), (x1, y1), (x2, y2), (x3, y3), (x4, y4), (x5, y5) = cells
     p.apply([
         logo("s0-mark", "mark-reverse", x0 + 90, y0 + 90, width=D - 180),
-        logo("s1-logo", "stacked-white", x1 + 85, y1 + 70, width=D - 170),
+        logo("s1-logo", "horizontal-white", x1 + 85, y1 + 175, width=D - 170),
         text("s2-t", "MADE WITH", 0, y2 + 150, 38, INK, MONO),
         logo("s2-logo", "horizontal-color", x2 + 50, y2 + 200, width=D - 100),
         headline("s3-t", "No GUI.\nNo\nproblem.", x3, y3 + 110, 80, "problem.", align="center", width=D),

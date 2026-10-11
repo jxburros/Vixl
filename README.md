@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/brand/digital-shift/SVG/horizontal-reverse.svg">
-  <img src="assets/brand/digital-shift/SVG/horizontal-color.svg" alt="Vixl" width="320">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/brand/ripple/SVG/horizontal-reverse.svg">
+  <img src="assets/brand/ripple/SVG/horizontal-color.svg" alt="Vixl" width="320">
 </picture>
 
 # Vixl
@@ -156,8 +156,8 @@ CMYK is an export setting. RAW development, spot-color editing, PSD/XCF import
 [coverage and limitations](docs/coverage.md), [export behavior](docs/exporting.md) and
 [architecture](docs/architecture.md) before choosing it for a workflow.
 The [original product specification](docs/product-spec.md) is retained as design context.
-The [Digital Shift identity kit](assets/brand/digital-shift/START-HERE.md) includes logos,
-icons, usage guidance and editable masters.
+The [Ripple identity kit](assets/brand/ripple/START-HERE.md) includes logos,
+icons, an animated wordmark, usage guidance and editable masters.
 
 ## Licence
 

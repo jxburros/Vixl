@@ -1,5 +1,8 @@
 # Vixl — Digital Shift logo kit
 
+> Retired. This was the previous Vixl identity, kept for reference. The current logo is the
+> [Ripple kit](../ripple/START-HERE.md).
+
 The selected paired-V logo, prepared in multiple layouts and color treatments. All versions retain the opposite-facing, slightly offset V shapes and pixelated edges.
 
 ## Choose a layout

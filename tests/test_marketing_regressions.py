@@ -41,10 +41,10 @@ def test_actual_brand_svg_roundtrips_editably_with_nested_viewports():
     import resvg_py
     from vixl.imports import import_document
 
-    data = (Path(__file__).parents[1] / "assets/brand/digital-shift/SVG/horizontal-reverse.svg").read_bytes()
+    data = (Path(__file__).parents[1] / "assets/brand/ripple/SVG/horizontal-reverse.svg").read_bytes()
     p = Project(1200, 500)
     import_document(p, data, "svg")
-    assert len(p.state["layers"]) == 12 and all(layer["type"] == "shape" for layer in p.state["layers"])
+    assert len(p.state["layers"]) == 19 and all(layer["type"] == "shape" for layer in p.state["layers"])
     expected = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=data.decode()))).convert("RGBA")
     difference = np.abs(np.asarray(expected, dtype=int) - np.asarray(p.render(), dtype=int))
     assert difference.mean() < 0.1

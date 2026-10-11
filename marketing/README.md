@@ -39,10 +39,11 @@ so the logo links resolve.
 
 ## How it's built
 
-- **Brand.** Colours and type come from the [Digital Shift kit](../assets/brand/digital-shift/START-HERE.md):
+- **Brand.** Colours and type come from the [Ripple kit](../assets/brand/ripple/START-HERE.md):
   charcoal `#252B39`, blue `#3575EE`, `#6A9AFF` on dark, Inter Tight 800. The logo is a live `link`
-  layer to the masters in `assets/brand/digital-shift/Editable-Vixl/`, so a logo change flows into
-  every piece on the next build. The scattered and stepped squares pick up the mark's detached pixels.
+  layer to the masters in `assets/brand/ripple/Editable-Vixl/`, so a logo change flows into
+  every piece on the next build. The scattered and stepped squares are a raster motif set against
+  the vector logo.
 - **Showcase images** (the gallery tiles in the GitHub card, story, carousel and deck) are real
   outputs from [`explorations/`](../explorations/) and [`docs/assets/generated/`](../docs/assets/generated/),
   all made with Vixl, placed with `frame` and clipped to rounded `shape`s.
