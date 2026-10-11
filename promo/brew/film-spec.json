@@ -1,0 +1,67 @@
+{
+  "output": "brew.mp4",
+  "spec": {
+    "version": 1,
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "shots": [
+      {
+        "source": "scenes/01-ingredients.vixl",
+        "duration": 8000
+      },
+      {
+        "source": "scenes/02-moon.vixl",
+        "duration": 7000
+      },
+      {
+        "source": "scenes/03-ready.vixl",
+        "duration": 7000
+      },
+      {
+        "source": "scenes/04-adjust.vixl",
+        "duration": 8000
+      },
+      {
+        "source": "scenes/05-eight.vixl",
+        "duration": 8000
+      },
+      {
+        "source": "scenes/06-rounds.vixl",
+        "duration": 9000
+      },
+      {
+        "source": "scenes/07-direction.vixl",
+        "duration": 8000
+      },
+      {
+        "source": "scenes/08-bottles.vixl",
+        "duration": 8000
+      },
+      {
+        "source": "scenes/09-self.vixl",
+        "duration": 7000
+      },
+      {
+        "source": "scenes/10-fun.vixl",
+        "duration": 6000
+      },
+      {
+        "source": "scenes/11-end.vixl",
+        "duration": 5000
+      }
+    ],
+    "audio": [
+      {
+        "source": "audio/music.wav",
+        "start": 0,
+        "volume": 0.7
+      },
+      {
+        "source": "audio/effects.wav",
+        "start": 0,
+        "volume": 0.4
+      }
+    ]
+  }
+}

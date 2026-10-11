@@ -23,6 +23,10 @@ movie/audio/
 !promo/build/
 !promo/scenes/*.vixl
 promo/audio/
+!promo/brew/build/
+!promo/brew/scenes/*.vixl
+promo/brew/audio/
+promo/brew/.film-*/
 movie/.film-*/
 .env
 

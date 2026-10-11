@@ -30,6 +30,7 @@ The voice guide for this pack and the rest of Vixl's copy is in [Brand voice](..
 | Data storytelling | [Chart PPTX](output/showcase/editable-chart.pptx) · [PNG](output/showcase/editable-chart.png) · [SVG](output/showcase/editable-chart.svg) | Data-bound chart; PPTX's Edit Data opens its native workbook |
 | Agent workflow | [Workflow PDF](output/showcase/agent-workflow.pdf) · [SVG](output/showcase/agent-workflow.svg) | Automatically routed diagram, editable shapes, paths and labels |
 | Product video | [60-second promo MP4](../promo/vixl-in-60-seconds.mp4) · [How it is made](../promo/README.md) | Eleven editable timelines, a synthesised score and `film-export` |
+| Story video | [*Brew*, 81-second MP4](../promo/brew/brew.mp4) · [How it is made](../promo/brew/README.md) | Why Vixl is fun, in its developer's words: one poster recipe, sixty variations, seven sizes, a measured check |
 | Motion post | [6.6-second MP4](output/motion/teaser.mp4) · [GIF](output/motion/teaser.gif) · [Still alternative](output/motion/teaser-frame.png) | Editable keyframes and a sampled motion suite; silent, play once |
 | App integration | [Animation family](output/app/package/index.html) · [Manifest](output/app/package/manifest.json) | Three states, light/dark themes, transitions, editable masters and reduced-motion PNGs |
 | Publishing copy | [Plain text](output/copy/marketing-copy.txt) · [JSON](output/copy/marketing-copy.json) | Descriptions, captions, alt text, licensing and a three-minute demo script |
