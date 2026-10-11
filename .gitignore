@@ -19,6 +19,9 @@ build/
 !movie/build/
 !movie/scenes/*.vixl
 movie/audio/
+!promo/build/
+!promo/scenes/*.vixl
+promo/audio/
 movie/.film-*/
 .env
 
@@ -30,3 +33,4 @@ tests/visual/_failures/
 
 # Preserve editable artwork references.
 !art/heyoka-mirrors-paradox/items/*.vixl
+.vixl-cache.seen
