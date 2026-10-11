@@ -27,6 +27,7 @@ an editable `.vixl` master with embedded fonts and content.
 | Feature overview | [Capability map PDF](output/showcase/capability-map.pdf) · [PNG](output/showcase/capability-map.png) · [SVG](output/showcase/capability-map.svg) | A vector infographic you can edit and reuse |
 | Data storytelling | [Chart PPTX](output/showcase/editable-chart.pptx) · [PNG](output/showcase/editable-chart.png) · [SVG](output/showcase/editable-chart.svg) | Data-bound chart; PPTX's Edit Data opens its native workbook |
 | Agent workflow | [Workflow PDF](output/showcase/agent-workflow.pdf) · [SVG](output/showcase/agent-workflow.svg) | Automatically routed diagram, editable shapes, paths and labels |
+| Product video | [60-second promo MP4](../promo/vixl-in-60-seconds.mp4) · [How it is made](../promo/README.md) | Eleven editable timelines, a synthesised score and `film-export` |
 | Motion post | [6.6-second MP4](output/motion/teaser.mp4) · [GIF](output/motion/teaser.gif) · [Still alternative](output/motion/teaser-frame.png) | Editable keyframes and a sampled motion suite; silent, play once |
 | App integration | [Animation family](output/app/package/index.html) · [Manifest](output/app/package/manifest.json) | Three states, light/dark themes, transitions, editable masters and reduced-motion PNGs |
 | Publishing copy | [Plain text](output/copy/marketing-copy.txt) · [JSON](output/copy/marketing-copy.json) | Descriptions, captions, alt text, licensing and a three-minute demo script |

@@ -1,0 +1,67 @@
+{
+  "output": "vixl-in-60-seconds.mp4",
+  "spec": {
+    "version": 1,
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "shots": [
+      {
+        "source": "scenes/01-hook.vixl",
+        "duration": 6000
+      },
+      {
+        "source": "scenes/02-logo.vixl",
+        "duration": 4000
+      },
+      {
+        "source": "scenes/03-build.vixl",
+        "duration": 10000
+      },
+      {
+        "source": "scenes/04-edit.vixl",
+        "duration": 6000
+      },
+      {
+        "source": "scenes/05-check.vixl",
+        "duration": 6000
+      },
+      {
+        "source": "scenes/06-graphics.vixl",
+        "duration": 4000
+      },
+      {
+        "source": "scenes/07-data.vixl",
+        "duration": 4000
+      },
+      {
+        "source": "scenes/08-art.vixl",
+        "duration": 4000
+      },
+      {
+        "source": "scenes/09-deliver.vixl",
+        "duration": 6000
+      },
+      {
+        "source": "scenes/10-why.vixl",
+        "duration": 6000
+      },
+      {
+        "source": "scenes/11-end.vixl",
+        "duration": 4000
+      }
+    ],
+    "audio": [
+      {
+        "source": "audio/music.wav",
+        "start": 0,
+        "volume": 0.7
+      },
+      {
+        "source": "audio/effects.wav",
+        "start": 0,
+        "volume": 0.35
+      }
+    ]
+  }
+}
