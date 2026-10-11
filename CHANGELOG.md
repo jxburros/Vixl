@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.25.1
+
+Persistence and MCP boundary fixes, with the Ripple identity and SVG/overlap corrections from main.
+
+### Fixed
+
+- Failed saves leave the document state, history, assets, path and disk revision unchanged, including link rebasing on Save As, byte-limit failures and write conflicts (#627).
+- Malformed archive metadata reports `invalid_project`; operation indexing, attribute and division errors report `invalid_operation` with the operation index while preserving batch atomicity (#626).
+- MCP startup detects unsupported SDK versions and names the installed version and the `pip install 'mcp>=1.12,<2'` fix (#638).
+
+### Behaviour changes
+
+- MCP desktop capture is disabled by default. Enable it per server with `vixl mcp --allow-screen-capture` or `VIXL_ALLOW_SCREEN_CAPTURE=1`; Python server builders also accept `allow_screen_capture=True`. Capture results use workspace-relative paths (#622). Direct CLI/Python capture still requires an explicit workflow call.
+
 ## 0.25.0
 
 Checks that cover a whole workspace, outcome states agents can trust, repairs, waivers and profiles; objects and accessibility; tables, Markdown decks and mockups; brand stages and presets; lyric-video production fixes; and faster rendering. Every speed shortcut draws the same pixels as a full render; `tests/test_render_speed.py` compares them.

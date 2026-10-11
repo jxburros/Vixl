@@ -42,5 +42,5 @@ def capture(session, request):
                         'grant screen-recording permission if required by your operating system.', reason=str(exc)) from exc
     session.limits.size(*image.size)
     write_bytes(path, png_bytes(image.convert('RGBA')), replace=request.get('overwrite', False))
-    return {'output': str(path), 'width': image.width, 'height': image.height,
+    return {'output': Path(path).relative_to(session.workspace).as_posix(), 'width': image.width, 'height': image.height,
             'source': 'window' if 'window' in request else 'screen'}

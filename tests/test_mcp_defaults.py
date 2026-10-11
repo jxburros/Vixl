@@ -35,3 +35,8 @@ def test_vixl_mcp_env_and_flags_override_defaults(tmp_path, captured, monkeypatc
     assert (captured["tools"], captured["schema"]) == ("all", "full")
     cli.dispatch(["mcp", "--workspace", str(tmp_path), "--tools", "compact", "--schema", "slim"])
     assert (captured["tools"], captured["schema"]) == ("compact", "slim")
+
+
+def test_screen_capture_flag_reaches_server(tmp_path, captured):
+    cli.dispatch(["mcp", "--workspace", str(tmp_path), "--allow-screen-capture"])
+    assert captured["allow_screen_capture"] is True

@@ -660,6 +660,8 @@ def dispatch(argv):
             help="slim (default) advertises operation names only; fields come from vixl_operation_schema; "
             "full inlines every operation schema",
         )
+        p.add_argument("--allow-screen-capture", action="store_true", default=None,
+                       help="Allow MCP tools to capture the local desktop; also VIXL_ALLOW_SCREEN_CAPTURE=1")
         p.add_argument("--planner", action="store_true", help="Expose the provider-backed vixl_ai_plan tool")
         p.add_argument(
             "--tools",
@@ -686,7 +688,8 @@ def dispatch(argv):
         # Explicit workspaces can start empty. Existing --project configurations still work.
         path = current_path(options.project) if options.project or not a.workspace else None
         server = mcp_server(path, limits, workspace=a.workspace, schema=a.schema, planner=a.planner, tools=a.tools,
-                            require_document=a.require_document, call_limits=from_arguments(a))
+                            require_document=a.require_document, call_limits=from_arguments(a),
+                            allow_screen_capture=a.allow_screen_capture)
         if a.http:
             from .interfaces import serve_mcp
             serve_mcp(server, a.host, a.port, os.environ.get(a.token_env))

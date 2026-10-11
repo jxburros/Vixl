@@ -437,3 +437,9 @@ REST workflow route, scoped to its one document, does not serve them.
 ### Consolidated studio workflows
 
 `vixl mcp --tools compact --schema slim` exposes 13 document/operation/workflow/compose/preview/import/export tools. Workflow actions include resource-list/get/save, shape-save, suite-use, palette-check, effect-run, group-list/define/show/apply/recover, branch-list/fork/status/merge and plugin-list/install/remove. REST allows the resource/test/effect actions while retaining fixed-project scope. `vixl_export_file` and REST export support HTML. Full contracts and examples: [studio.md](studio.md).
+
+### MCP startup requirements
+
+Vixl needs the MCP Python SDK `>=1.12,<2`. Startup reports `missing_dependency` with the installed version when the SDK is incompatible; install it with `pip install 'mcp>=1.12,<2'`.
+
+MCP desktop capture is disabled by default. Start the server with `--allow-screen-capture` or `VIXL_ALLOW_SCREEN_CAPTURE=1` to enable it for that server; this grants connected agents access to the interactive desktop. Capture output paths are relative to the workspace. The Python `mcp_server` and `build_server` functions accept `allow_screen_capture=True` (or `False` to override the environment).

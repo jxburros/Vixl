@@ -162,3 +162,7 @@ vixl -p trust.vixl reproduce --lock trust.lock.json
 
 Not yet covered: export settings (colour profile, video encoder) are not part of the lockfile, and a
 mismatching lock does not say which pixels moved (pass a reference image for that).
+
+## Desktop capture permission
+
+MCP desktop capture is disabled by default. Start the server with `--allow-screen-capture` or `VIXL_ALLOW_SCREEN_CAPTURE=1` to enable it for that server; this grants connected agents access to the interactive desktop. Capture output paths are relative to the workspace.
