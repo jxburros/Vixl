@@ -592,7 +592,7 @@ class Project:
             except VixlError as exc:
                 index = swatch_user(exc, operations, index)
                 raise located(exc, index, operations[index], len(operations)) from exc
-            except (KeyError, TypeError, ValueError, OverflowError) as exc:
+            except (KeyError, TypeError, ValueError, OverflowError, IndexError, AttributeError, ZeroDivisionError) as exc:
                 error = VixlError("invalid_operation", f"Malformed operation: {exc}")
                 raise located(error, index, operation, len(operations)) from exc
         calls.progress(len(operations), len(operations), "checking")
@@ -1039,7 +1039,6 @@ class Project:
         require(overwrite or path == self.path or not path.exists(),
                 f"Project file already exists: {path.name}; pass overwrite=True to replace it", "output_exists",
                 field="path")
-        self._rebase_links(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with file_lock(str(path)):
             if self.path == path and self._revision and path.exists():
@@ -1048,16 +1047,19 @@ class Project:
                     "Project changed on disk; reload before saving",
                     "write_conflict",
                 )
-            manifest = self.manifest()
+            # Rebase on a candidate so a refused or failed save leaves this document intact.
+            candidate = self.clone() if path != self.path else copy(self)
+            candidate._rebase_links(path)
+            manifest = candidate.manifest()
             manifest.pop("asset_hashes")
             body = json.dumps(manifest, allow_nan=False, separators=(",", ":")).encode()
             # Drop assets no revision references any more (for example after history pruning).
             referenced = {name.decode() for name in ASSET_REFERENCE.findall(body)}
-            self.assets = {k: v for k, v in self.assets.items() if k in referenced}
-            manifest["asset_hashes"] = {k: hashlib.sha256(v).hexdigest() for k, v in self.assets.items()}
+            candidate.assets = {k: v for k, v in candidate.assets.items() if k in referenced}
+            manifest["asset_hashes"] = {k: hashlib.sha256(v).hexdigest() for k, v in candidate.assets.items()}
             encoded = json.dumps(manifest, allow_nan=False, separators=(",", ":")).encode()
             require(
-                len(encoded) + sum(map(len, self.assets.values())) <= self.limits.max_project_bytes,
+                len(encoded) + sum(map(len, candidate.assets.values())) <= self.limits.max_project_bytes,
                 "Project exceeds byte limit",
                 "resource_limit",
             )
@@ -1068,7 +1070,7 @@ class Project:
                         archive.writestr("project.json", encoded, zipfile.ZIP_DEFLATED)
                         # Image assets are already compressed; recompressing them on every
                         # autosave cost far more time than it saved space.
-                        for name, data in sorted(self.assets.items()):
+                        for name, data in sorted(candidate.assets.items()):
                             archive.writestr(
                                 name,
                                 data,
@@ -1080,8 +1082,9 @@ class Project:
             finally:
                 if os.path.exists(temporary_path):
                     os.unlink(temporary_path)
-            self.path = path
-            self._revision = hashlib.sha256(path.read_bytes()).hexdigest()
+            candidate.path = path
+            candidate._revision = hashlib.sha256(path.read_bytes()).hexdigest()
+            self.__dict__.update(candidate.__dict__)
         return str(path)
 
     @classmethod
@@ -1123,6 +1126,13 @@ class Project:
                     "invalid_project",
                 )
                 metadata = json.loads(archive.read("project.json"))
+                require(isinstance(metadata, dict), "project.json must be an object", "invalid_project")
+                for key in ("state", "nodes", "branches", "checkpoints", "asset_hashes"):
+                    require(isinstance(metadata.get(key), dict), f"{key} must be an object", "invalid_project")
+                require(isinstance(metadata.get("redo_stack"), list),
+                        "redo_stack must be an array", "invalid_project")
+                require(metadata.get("transaction") is None or isinstance(metadata["transaction"], dict),
+                        "transaction must be an object or null", "invalid_project")
                 require(
                     metadata.get("format_version") in (1, FORMAT_VERSION),
                     "Unsupported project format",
@@ -1185,5 +1195,5 @@ class Project:
                             "field") from exc
         except zipfile.BadZipFile as exc:
             raise VixlError("invalid_project", "Not a Vixl document: the file is not a ZIP archive") from exc
-        except (TypeError, ValueError, RecursionError) as exc:
+        except (TypeError, ValueError, RecursionError, AttributeError, IndexError, ZeroDivisionError) as exc:
             raise VixlError("invalid_project", f"Malformed Vixl archive: {exc}") from exc

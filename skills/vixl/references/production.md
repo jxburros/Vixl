@@ -127,3 +127,5 @@ material visual changes and unresolved/unsupported measurements.
 ### Field-report corrections
 
 Production without suites still checks bounds and flow; clipping returns needs_review and a clean output is completed but `unvalidated`. With spec `profile` ("final"), every variant must pass that check profile (its checks, suites and fail_on), which also counts as validation. For variable reflow, define an action that reapplies the layout with replace=true and stable seed/prefix, then include it in recipe/actions. Generated layer IDs and manual edits can change. Unchanged, checksum-verified output can bypass repeated checks. See docs/production.md.
+
+MCP desktop capture is disabled by default. Start the server with `--allow-screen-capture` or `VIXL_ALLOW_SCREEN_CAPTURE=1` to enable it for that server; this grants connected agents access to the interactive desktop. Capture output paths are relative to the workspace.

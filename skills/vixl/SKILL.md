@@ -187,7 +187,7 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
 - **App delivery** — `vixl_workflow("app-animation-package", {states, default_state, output, themes?, transitions?, format?})`
   writes named states, light/dark variables, transitions, reduced-motion PNGs, editable masters, a manifest and an HTML
   consumer. `screen-capture` (`{output, bbox? | window?, all_screens?}`) is an explicit local desktop capture, not
-  rendering. See [production](references/production.md).
+  rendering. MCP requires the server owner to enable `--allow-screen-capture` or `VIXL_ALLOW_SCREEN_CAPTURE=1`; paths are workspace-relative. See [production](references/production.md).
 - **Motion** — `character-pose` with `time` (and `easing`) keys joint angles and solves the rig every frame; don't add
   separate limb x/y/rotation keys. In house-style-3 documents a new timeline of 10 s or less is a seamless loop: pass
   `loop_mode: "off"` or `loop: 1` for play-once. `animate` `intent` (entrance, exit, loop, emphasis) picks the house

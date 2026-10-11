@@ -1072,9 +1072,10 @@ def require_document_default():
 
 
 def mcp_server(path=None, limits=None, *, workspace=None, schema="full", planner=False, tools="all",
-               require_document=None, call_limits=None):
+               require_document=None, call_limits=None, allow_screen_capture=None):
     try:
-        from .mcp_tools import build_server
+        from .mcp_tools import build_server, check_sdk
+        check_sdk()
         import mcp.server.fastmcp  # noqa: F401
     except ImportError as exc:
         raise VixlError("missing_dependency", "Install vixl-engine[mcp]") from exc
@@ -1087,7 +1088,8 @@ def mcp_server(path=None, limits=None, *, workspace=None, schema="full", planner
     session = Session(path, call_limits.apply_to(limits or Limits()), workspace=workspace,
                       require_document=require_document)
     session.call_limits = call_limits
-    return build_server(session, schema=schema, planner=planner, tools=tools)
+    return build_server(session, schema=schema, planner=planner, tools=tools,
+                        allow_screen_capture=allow_screen_capture)
 
 
 def mcp_http_app(server, *, token=None):

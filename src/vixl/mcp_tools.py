@@ -371,12 +371,29 @@ def unknown_tool_message(name, tools, defined):
     return f"Unknown tool: {name}." + (f" Did you mean {', '.join(close)}?" if close else "")
 
 
-def build_server(session, *, schema="full", planner=False, tools="all"):
+def check_sdk():
+    """Fail before importing the version-specific SDK API, including source checkouts."""
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        installed = version("mcp")
+    except PackageNotFoundError as exc:
+        raise VixlError("missing_dependency", "Vixl needs the mcp SDK 1.x: pip install 'mcp>=1.12,<2'") from exc
+    parts = installed.split(".")
+    require(parts[0] == "1" and len(parts) > 1 and parts[1].isdigit() and int(parts[1]) >= 12,
+            f"Vixl needs the mcp SDK >=1.12,<2 (found {installed}): pip install 'mcp>=1.12,<2'",
+            "missing_dependency")
+
+
+def build_server(session, *, schema="full", planner=False, tools="all", allow_screen_capture=None):
     """Create the FastMCP server. ``schema='slim'`` advertises only operation type names (fetch
     fields with vixl_operation_schema); ``planner`` exposes the provider-backed planning tool,
     which is redundant when the calling agent plans its own operations. ``tools`` selects a split:
     ``core`` (editing, rendering, export and catalogs), ``ai`` (provider-backed tools plus the
     shared document tools), or ``all``."""
+    check_sdk()
+    if allow_screen_capture is None:
+        allow_screen_capture = os.environ.get("VIXL_ALLOW_SCREEN_CAPTURE", "").strip().lower() in ("1", "true", "yes", "on")
     from mcp.server.fastmcp import FastMCP, Image
     from mcp.server.fastmcp.exceptions import ToolError
 
@@ -499,6 +516,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             # A call that became a job (see vixl_job); the compact tool set polls it here.
             return runtime.job("result" if action == "status" else action, request["id"],
                                min(float(request.get("wait", 0)), 25))
+        if action == "screen-capture":
+            require(allow_screen_capture, "Desktop capture is disabled; start vixl mcp with "
+                    "--allow-screen-capture or VIXL_ALLOW_SCREEN_CAPTURE=1", "permission_denied")
         result = dispatch(session, action, request, document)
         if action in ("film-preview", "video-sample", "audio-analyze"):
             paths = result.get("images", []) if isinstance(result, dict) else []
