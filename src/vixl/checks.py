@@ -657,7 +657,13 @@ def check_design(
 
             def decoration_over_text(decor, text):
                 """Decoration may sit under or around text (a panel, a frame, a rule), but its painted pixels
-                should not run through the text's glyph area: a review warning, not a fix."""
+                should not run through the text's glyph area: a review warning, not a fix. Only layers marked
+                decoration count (a glow inferred from its fade sits behind text by design), and chart internals
+                (gridlines under value labels) are skipped."""
+                if not any(x.get("role") == "decoration" for x in (decor, *ancestors(decor))):
+                    return
+                if any(x.get("chart") for x in (*ancestors(decor), *ancestors(text))):
+                    return
                 if _contains(outward(geometry[decor["id"]]), outward(geometry[text["id"]])):
                     return  # A panel or frame around the text.
                 dx, dy, _, _ = ink(decor)
