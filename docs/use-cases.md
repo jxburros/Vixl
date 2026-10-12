@@ -744,3 +744,11 @@ Add new ideas here when you are unsure of the tier, then move them into a table.
 - Tarot or playing-card deck from a CSV
 - Album lyric booklet
 - Sign-up sheet or attendance form as a fillable PDF
+
+## Interface and path authoring additions (0.26)
+
+| Task | Interface | Calls | Status | Notes |
+| --- | --- | --- | --- | --- |
+| Place native-coordinate path art in a display box | `shape` with `path_view` | 1 | E | Preserves path data; shared render/export mapping (#610). |
+| Choose an integration interface | [Capability matrix](interfaces.md#capability-matrix) | 0 | E | Generated workflow registry and REST allow-list (#640). |
+| Render final campaign outputs under a severity profile | workflow `run` | 1 | E | Explicit final quality selects final checks; profile override supported (#563). |

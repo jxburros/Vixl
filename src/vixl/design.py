@@ -64,6 +64,8 @@ def execute_design(project, op):
             k: deepcopy(v) for k, v in op.items() if k not in ("type", "target", "name", "width", "height")
         }
         width, height = op.get("width", c["width"]), op.get("height", c["height"])
+        require("path_view" not in op or op["shape"] == "path",
+                "path_view is a source size for path shapes only", field="path_view")
         if op["shape"] == "path":
             require(isinstance(op.get("path"), str), "A path shape needs a path", field="path")
             from .geometry import path_box
@@ -71,7 +73,7 @@ def execute_design(project, op):
             # A missing size reaches the path's farthest point (see path_box), never the whole canvas.
             reach = path_box(op["path"])
             width, height = op.get("width", reach[0]), op.get("height", reach[1])
-            fields["path_view"] = [width, height]
+            fields["path_view"] = list(op.get("path_view", [width, height]))
         from .craft import shape_defaults
 
         name = op["name"] if "name" in op else default_name(project, "shape")

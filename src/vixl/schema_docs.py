@@ -486,7 +486,7 @@ OVERRIDES = {
                       "pixels: a point (px, py) draws at (x + px, y + py). Without width/height the box reaches the "
                       "path's farthest point (never the whole canvas); with them, that is the box it is drawn in. "
                       "Negative coordinates draw outside the box. Later resizes scale the path; path-fit scales "
-                      "geometry into a box.",
+                      "geometry into a box. Set path_view to a source [width, height] to scale unchanged data on creation or update.",
               "radius": "Corner radius in pixels (rounded-rectangle; default from the document corner style, soft "
                         "when that is sharp).", "sides": "Polygon side count.",
               "inner_radius": "Star inner radius as a fraction of the outer radius.",

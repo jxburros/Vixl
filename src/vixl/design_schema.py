@@ -54,6 +54,10 @@ def schemas(add):
             "target": target_schema("shape"),
             "shape": enum(*SHAPES),
             "path": S,
+            "path_view": {"type": "array", "items": {"type": "number", "exclusiveMinimum": 0},
+                          "minItems": 2, "maxItems": 2,
+                          "description": "Path source size [width, height], with origin (0, 0). Scales the unchanged "
+                          "path data into width × height. Only valid for path shapes; omit for literal local pixels."},
             "fill": S,
             "stroke": S,
             "stroke_width": N,

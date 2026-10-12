@@ -564,3 +564,10 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 When unsure of a field, get the authoritative schema: MCP embeds it in `vixl_operations_apply`'s
 input schema (also resource `vixl://operations`); CLI `vixl schema` (`vixl schema OPERATION` for one); REST `GET /schema`; per-command
 syntax via `vixl COMMAND --help`.
+
+## Interface and output contracts
+
+Use `--out`/`-o` for CLI destinations and command-specific help for options; `help --full` retains the detailed
+index. For native path artwork, set `shape.path_view: [source_width, source_height]` to scale unchanged data
+into a display box. Explicit campaign `quality: "final"` also selects final checks unless `profile` overrides it.
+Consult the capability matrix in `docs/interfaces.md` before choosing REST versus a workspace MCP session.

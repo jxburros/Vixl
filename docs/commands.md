@@ -454,3 +454,13 @@ vixl -p doc.vixl emoji install PACK | emoji reset [--emoji EMOJI]
 ## Local desktop capture
 
 `vixl workflow screen-capture --request '{"output":"screen.png"}' --workspace .` captures the interactive local desktop explicitly. Optional `bbox` is `[left, top, right, bottom]`; negative monitor coordinates are allowed. On Windows, `window` is an HWND (for example a process's MainWindowHandle) and `all_screens` includes other monitors. Use `bbox` or `window`, not both. PNG output refuses replacement unless `overwrite: true`. MCP desktop capture is disabled by default. Start the server with `--allow-screen-capture` or `VIXL_ALLOW_SCREEN_CAPTURE=1` to enable it for that server; this grants connected agents access to the interactive desktop. Capture output paths are relative to the workspace. Headless sessions or denied OS screen permissions return an actionable capture error; normal rendering never captures the desktop.
+
+## Output destinations and help
+
+Use `--out FILE` or `-o FILE` for render, export, save, pack/unpack, batch, comparisons, timeline/animation
+exports and other commands with a primary output option. `batch --output DIR` remains accepted and reports
+its canonical spelling under `normalized`; positional destinations for export, save and pack/unpack remain
+accepted. Supplying both a positional destination and `--out` is an error.
+
+`vixl --help` lists command groups. Use `vixl COMMAND --help` for options, `vixl commands --json` for the
+machine-readable inventory, or `vixl help --full` for the detailed overview.

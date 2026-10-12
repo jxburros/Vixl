@@ -271,3 +271,8 @@ except VixlError as e:
 
 Python is a trusted local API: `path`, `font` and `linked` fields work. Enable plugins with
 `vixl.plugins.enable_plugins()`.
+
+See `docs/interfaces.md#capability-matrix` for the generated interface comparison. REST permits only its
+fixed-document workflow allow-list; CLI, MCP and Python Session workflows expose the workspace registry.
+MCP screen capture is opt-in. Service timeouts detach work, not kill it. Archive opening defaults to at most
+160 million cumulative image pixels and 64 font assets, configurable through Python `Limits`.

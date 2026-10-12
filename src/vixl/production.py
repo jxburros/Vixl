@@ -213,6 +213,11 @@ def capture_recipe(project, recipe, bindings):
     return candidate
 
 
+def check_profile(spec):
+    """An explicit final-quality request selects final checks unless a profile overrides it."""
+    return spec.get("profile") or ("final" if spec.get("quality") == "final" else None)
+
+
 def render_variant(project, spec, variant, directory, prior=None, cancelled=lambda: False):
     from .assurance import effective
     from .render_cache import enable, environment, user_cache_dir
@@ -244,14 +249,14 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
             output = directory / name
             if output.is_file() and file_digest(output) == prior.get("sha256"):
                 return {**prior, "status": "reused", "outcome": prior.get("outcome") or variant_outcome(
-                    prior.get("checks", {}), spec.get("suites", [] if spec.get("profile") else list(
-                        effective(candidate))), "completed", spec.get("profile"))}
+                    prior.get("checks", {}), spec.get("suites", [] if check_profile(spec) else list(
+                        effective(candidate))), "completed", check_profile(spec))}
     leftovers = placeholder_report(candidate, variant)
     if not leftovers["passed"]:
         # An undefined variable or leftover template copy in this row: report it naming the variant, before rendering.
         return {**variant, "status": "needs_review", "checks": {"placeholders": leftovers}, "repairs": [],
                 "outcome": leftovers["outcome"]}
-    profile = spec.get("profile")
+    profile = check_profile(spec)
     # A profile chooses the design checks and its own suites unless the spec names suites; without one every
     # attached and inherited suite runs.
     suites = spec.get("suites", [] if profile else list(effective(candidate)))
@@ -417,7 +422,7 @@ def run(project, spec, directory, *, cancelled=lambda: False, progress=lambda va
         report = {
             "version": 1,
             "quality": planned["quality"],
-            **({"profile": spec["profile"]} if spec.get("profile") else {}),
+            **({"profile": check_profile(spec)} if check_profile(spec) else {}),
             "count": planned["count"],
             "status": "running",
             "results": [],

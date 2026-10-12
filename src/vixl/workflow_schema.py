@@ -278,7 +278,7 @@ PRODUCTION_SPEC = {
         "format": {"type": "string", "enum": ["png", "jpg", "webp", "svg", "gif", "mp4", "webm", "zip"],
                    "description": "image: png/jpg/webp/svg; timeline: gif/webp/mp4/webm/zip."},
         "quality": {"type": "string", "enum": ["draft", "final"], "default": "final",
-                    "description": "draft renders a 640 px proxy."},
+                    "description": "draft renders a 640 px proxy; explicit final also selects the final check profile unless profile overrides it."},
         "suites": {"type": "array", "items": STR, "description": "Suites to check (default all attached, or the "
                                                                  "profile's suites when profile is set)."},
         "profile": {"type": "string", "description": "Check profile (draft, review, final or a workspace profile) "

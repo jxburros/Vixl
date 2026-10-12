@@ -376,8 +376,9 @@ There are at most 10,000 outputs, ten variation axes and four concurrent workers
 Row fields cannot also occur in the matrix. Explicit row values override artboard defaults.
 All attached suites run unless an explicit `suites` list selects others. With `profile` (for example `"final"`),
 every variant must also pass that [check profile](#waivers-and-check-profiles): it picks the design checks, the
-suites (unless `suites` is given) and `fail_on`, and `production.json` names it. Without a profile, `quality` does
-not change which checks run.
+suites (unless `suites` is given) and `fail_on`, and `production.json` names it. An explicit `quality: "final"` selects the `final` check profile unless `profile` overrides it.
+Omitting both fields keeps the existing checks (render quality still defaults to final). To request final-resolution
+output with draft blocking rules, set `quality: "final", profile: "draft"`.
 
 Optional `actions` run before checks; `motion` applies a saved sequence.
 At most three named `repair_actions` are tried in order, stopping when checks pass. The name `auto` runs the

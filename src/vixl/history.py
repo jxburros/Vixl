@@ -14,6 +14,16 @@ from .errors import VixlError
 KEY_FIELDS = ("id", "name")
 
 
+def _ordered_equal(before, after):
+    if type(before) is not type(after):
+        return False
+    if isinstance(before, dict):
+        return list(before) == list(after) and all(_ordered_equal(v, after[k]) for k, v in before.items())
+    if isinstance(before, list):
+        return len(before) == len(after) and all(_ordered_equal(a, b) for a, b in zip(before, after))
+    return before == after
+
+
 def _keyed(items):
     if not isinstance(items, list) or not items:
         return None
@@ -27,7 +37,7 @@ def _keyed(items):
 
 def diff(before, after):
     """Return a delta turning ``before`` into ``after``; None means unchanged."""
-    if before == after and type(before) is type(after):
+    if _ordered_equal(before, after):
         return None
     if isinstance(before, dict) and isinstance(after, dict):
         changes = {}
@@ -42,6 +52,9 @@ def diff(before, after):
         result = {"$": "o", "s": changes}
         if removed:
             result["x"] = removed
+        natural_order = [key for key in before if key in after] + [key for key in after if key not in before]
+        if natural_order != list(after):
+            result["o"] = list(after)
         return result
     if isinstance(before, list) and isinstance(after, list):
         field = _keyed(before)
@@ -85,6 +98,11 @@ def _patch(value, delta):
         result = {k: deepcopy(v) for k, v in value.items() if k not in removed}
         for key, child in delta["s"].items():
             result[key] = _patch(value[key], child) if key in value and child["$"] != "v" else _patch(None, child)
+        if "o" in delta:
+            order = delta["o"]
+            if not isinstance(order, list) or len(order) != len(result) or set(order) != set(result):
+                raise ValueError("object key order must name each key exactly once")
+            result = {key: result[key] for key in order}
         return result
     if tag == "l":
         field, order, changes = delta["k"], delta["o"], delta["s"]

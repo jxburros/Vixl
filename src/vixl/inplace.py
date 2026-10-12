@@ -82,12 +82,16 @@ def execute(project, op):
         raise wrong_target(kind, layer)
     ident = layer["id"]
     if kind == "shape":
+        require("path_view" not in op or op.get("shape", layer["shape"]) == "path",
+                "path_view is a source size for path shapes only", field="path_view")
         for key in SHAPE_FIELDS:
             if key in op:
                 layer[key] = deepcopy(op[key])
         width, height = op.get("width", layer["width"]), op.get("height", layer["height"])
         if "path" in op:
             layer["path_view"] = [width, height]
+        if "path_view" in op:
+            layer["path_view"] = list(op["path_view"])
         require(layer["shape"] != "path" or layer.get("path"), "A path shape needs a path", field="path")
     elif kind == "solid":
         if "color" in op:
