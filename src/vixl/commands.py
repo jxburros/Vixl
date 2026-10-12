@@ -11,6 +11,20 @@ from .constants import ARTISTIC_DEFAULTS, EFFECTS
 
 
 class Parser(argparse.ArgumentParser):
+    def add_argument(self, *args, **kwargs):
+        if "--out" in args or "--output" in args:
+            # Keep destinations stable for existing command implementations.
+            kwargs.setdefault("dest", "out" if "--out" in args else "output")
+            args = tuple(dict.fromkeys(("--out", "-o", *args)))
+        return super().add_argument(*args, **kwargs)
+
+    def parse_known_args(self, args=None, namespace=None):
+        if args is not None and "--output" in self._option_string_actions:
+            from .normalize import note_cli_output
+
+            note_cli_output(args)
+        return super().parse_known_args(args, namespace)
+
     def error(self, message):
         raise VixlError("usage_error", message)
 

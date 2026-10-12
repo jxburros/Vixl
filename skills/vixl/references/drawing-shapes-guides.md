@@ -142,3 +142,7 @@ by `margin`; `text` with `within` centres new text there.
 Edit pen target=NAME in place. marker_size is local pixels; choose at least twice the shaft width for a visible head. Radial gradients accept fractional center=[x,y]. Layouts emit layout-columns and layout-baseline guide grids. Path boxes are coordinate frames, not clips.
 
 Irregular frames: `frame_shape` selects rectangle/ellipse/star/hexagon/heart; `outline` supplies a closed SVG path in frame-local pixels. Both produce an embedded mask that survives `replace-contents`. Keep the canvas transparent for shaped image output; file dimensions remain rectangular.
+
+Path source sizes: `shape` accepts `path_view: [width, height]` at source origin `(0, 0)` on creation or update.
+The path data stays unchanged and scales into the layer box; `resize` keeps this mapping. Omit it for literal
+local pixels or use `path-fit` to rewrite geometry to its measured bounds. CLI: `--path-view WIDTH HEIGHT`.

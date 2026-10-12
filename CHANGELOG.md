@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.26.0
+
+### Fixed and added
+
+- Path shapes accept `path_view: [source_width, source_height]` on creation and update (CLI `--path-view`), scaling unchanged native path data into the display box across raster and vector output (#610).
+- Nested, rotated text contrast measures glyph coverage without counting the surrounding stroke or shadow (#609).
+- Archive loading checks cumulative decoded pixels and font count before expensive parsing. History deltas preserve dictionary key order across undo/redo (#635).
+- CLI output commands accept `--out` and `-o`, including batch, save and pack/unpack. Top-level help is a compact command index; `help --full` retains the detailed reference (#639).
+- A generated interface capability matrix shares the REST workflow allow-list with enforcement (#640).
+- Opaque multiply, screen, darken, lighten, difference, add and subtract blending uses native Pillow loops instead of float arrays (#585).
+- Explicit campaign `quality: "final"` selects the final check profile unless an explicit `profile` overrides it; reports name the effective profile (#563).
+
+### Behaviour changes
+
+- Archives default to a cumulative 160 million decoded image pixels and 64 parsed font assets. Trusted Python callers can raise `Limits.max_load_pixels` and `Limits.max_load_fonts`. Existing per-asset checks still apply.
+- Explicit final-quality campaigns may now hold outputs for review. Set `profile: "draft"` to use draft blocking rules with full-resolution rendering. Omitting quality and profile keeps the previous check selection.
+- Opaque multiply/screen can differ by one 8-bit channel step from the prior float result; translucent compositing is unchanged.
+
 ## 0.25.1
 
 Persistence and MCP boundary fixes, with the Ripple identity and SVG/overlap corrections from main.

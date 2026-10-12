@@ -23,6 +23,8 @@ class Limits:
     max_project_bytes: int = 256 * 1024 * 1024
     max_operations: int = 10000
     max_history: int = 2000
+    max_load_pixels: int = 160_000_000
+    max_load_fonts: int = 64
 
     def size(self, width, height, *, vector=False):
         if vector:

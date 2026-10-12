@@ -364,3 +364,6 @@ Emoji: `vixl emoji list|get|template|replace|install|settings|reset|requirements
 `screen-capture` is a shared workflow action with output PNG, optional desktop bbox, Windows window HWND/all_screens and overwrite. It needs an interactive desktop and any OS-required permission. `app-animation-package` takes named source states, a default state, themes, transitions and a new output directory; see production guidance.
 
 MCP desktop capture is disabled by default. Start the server with `--allow-screen-capture` or `VIXL_ALLOW_SCREEN_CAPTURE=1` to enable it for that server; this grants connected agents access to the interactive desktop. Capture output paths are relative to the workspace.
+
+Output commands accept `--out FILE` and `-o FILE`; batch's legacy `--output` is reported under `normalized`.
+Top-level help is a compact index; `vixl help --full` retains the detailed overview.

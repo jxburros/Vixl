@@ -8,6 +8,23 @@ See [spacing checks and pixel animation](pixel-animation-spacing.md) for the 0.9
 
 See [design tools and template production](design-tools.md) for groups, clipping, shapes, styles, artboards, CSV rendering, measurements, and the other design operations.
 
+## Capability matrix
+
+<!-- interface-capabilities:start -->
+| Capability | REST | MCP | CLI | Python |
+| --- | --- | --- | --- | --- |
+| Documents per session | One fixed document | Multiple, inside the workspace | One active document; workspace workflows | Multiple Project instances; Session for workflows |
+| Workflows | `act`, `check`, `drawing-report`, `effect-run`, `film-plan`, `form-fill`, `links`, `lyric-video-plan`, `organic-catalog`, `palette-check`, `plan`, `protected-edit`, `repair-layout`, `resource-get`, `resource-list`, `resource-save`, `shape-save`, `suite-use` | All 80 registered actions | All 80 registered actions | All 80 registered actions via workflows.dispatch(Session, ...) |
+| AI tools | Configured local providers via /ai | Configured local providers; tool profile controls exposure | Configured local providers | Configured local providers |
+| Linked files outside workspace | Forbidden | Forbidden | Explicit --allow-linked | Explicit allow_linked=True |
+| Screen capture | Unavailable | Disabled by default; --allow-screen-capture or VIXL_ALLOW_SCREEN_CAPTURE=1 | Explicit screen-capture workflow | Explicit screen-capture workflow |
+| Jobs | Detached timed-out calls via /jobs; no durable workflow queue | Durable workflow queue and detached calls | Durable workflow queue | Durable queue via Session/workflows |
+| Authentication | Optional bearer token; required beyond loopback | stdio: OS process access; HTTP: bearer token required beyond loopback | OS process access | Caller controls access |
+| Per-call limits | Configurable timeout, megapixels, pages, concurrency | Configurable timeout, megapixels, pages, concurrency | Resource Limits; service flags for serve/view/mcp | Resource Limits; CallLimits for service builders |
+<!-- interface-capabilities:end -->
+
+The workflow row is generated from the same allow-list enforced by REST and the shared workflow registry. MCP tool profiles can hide tools, and screen capture requires its own opt-in. Service timeouts detach work into a job; they do not terminate the computation. Limits are opt-in unless configured in the environment.
+
 ## Python
 
 ```python
@@ -443,3 +460,11 @@ REST workflow route, scoped to its one document, does not serve them.
 Vixl needs the MCP Python SDK `>=1.12,<2`. Startup reports `missing_dependency` with the installed version when the SDK is incompatible; install it with `pip install 'mcp>=1.12,<2'`.
 
 MCP desktop capture is disabled by default. Start the server with `--allow-screen-capture` or `VIXL_ALLOW_SCREEN_CAPTURE=1` to enable it for that server; this grants connected agents access to the interactive desktop. Capture output paths are relative to the workspace. The Python `mcp_server` and `build_server` functions accept `allow_screen_capture=True` (or `False` to override the environment).
+
+### Archive parsing budgets
+
+`Limits(max_load_pixels=160_000_000, max_load_fonts=64)` bounds the aggregate image pixels decoded and
+font assets parsed when opening a `.vixl`. Image headers and counts are checked before any image decode
+or FreeType call; individual asset, dimension, archive-byte and checksum checks still apply. Trusted Python
+callers can raise these limits explicitly. Documents exceeding a budget fail with `resource_limit` and the
+limit field. Undo/redo deltas preserve object key order, avoiding serialization-only diffs.

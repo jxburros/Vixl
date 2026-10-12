@@ -18,7 +18,7 @@ from .commands import Parser, compile_command, compile_script, dimensions, norma
 from .errors import VixlError, for_surface, friendly, require
 from .model import Limits
 
-HELP = """Vixl — a headless design engine for AI agents. Ideas become editable.
+DETAILED_HELP = """Vixl — a headless design engine for AI agents. Ideas become editable.
 
 Usage: vixl [--project FILE] [--json] COMMAND ...
        vixl                         Interactive editing shell
@@ -101,7 +101,7 @@ Layout:    canvas resize SIZE, canvas size NAME [--landscape] [--bleed], canvas 
            variable set NAME VALUE
 History:   undo [N], redo [N], history, checkpoint NAME, branch NAME,
            checkout REF, branches, compare REF REF --out FILE [--isolate LAYER…], diff A B [--out D.png] (two documents or images)
-Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG [--isolate LAYER…]], run SCRIPT, batch GLOB --run SCRIPT --output DIR,
+Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG [--isolate LAYER…]], run SCRIPT, batch GLOB --run SCRIPT --out DIR,
            workflow ACTION --request FILE [--workspace DIR] (workflow schema lists actions; proof, logo-package, brand-board …),
            compose --request FILE [--preview P.png] (create → layout → look → operations → check → exports, atomic),
            each layer --name PATTERN -- COMMAND, preset save|apply|show NAME,
@@ -160,6 +160,36 @@ Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--p
 
 Options: --project/-p FILE, --json, --allow-linked, --plugins, --max-pixels N, --detail brief|compact|full, --version
 Use vixl commands --json for a complete inventory; vixl COMMAND --help works without a document. See docs/commands.md.
+"""
+
+
+HELP = """Vixl — a headless design engine for AI agents.
+
+Usage: vixl [--project FILE] [--json] COMMAND ...
+       vixl                         Interactive editing shell
+
+Documents: new, open, save, pack, unpack, upgrade
+Inspect:   status, inspect, layers, manifest, schema [OPERATION…], dependencies
+Create:    add, shape, text, gradient, organic, diagram, chart, table
+Edit:      move, resize, rotate, group, ungroup, mask, effect
+Design:    compose, layout, template, roll, brand, palette, font, look
+Objects:   objects, object, object-save, object-place
+Pages:     page, master, pages, text-flow, field, form
+Motion:    timeline, keyframe, animate, export-timeline, export-animation
+Checks:    check, validate, assert, reproduce, diff, compare
+History:   undo, redo, history, checkpoint, branch, checkout
+Automate:  apply, run, batch, workflow, each, transaction
+Output:    render, export, export-icons, export-screens, catalog export
+Resources: guide, capabilities, commands, shapes, sizes, styles, emoji
+AI:        ask, generate, detect, ocr, ai, providers, models
+Services:  serve, view, mcp
+Manage:    update, updates, cache
+
+Use --out FILE (or -o FILE) for output destinations.
+Use vixl COMMAND --help for options, vixl commands --json for the inventory,
+or vixl help --full for the detailed command reference.
+Global options: --project/-p FILE, --json, --allow-linked, --plugins,
+                --max-pixels N, --detail brief|compact|full, --version
 """
 
 
@@ -324,6 +354,23 @@ def print_options(a, limits):
 
 
 def dispatch(argv):
+    from .normalize import CLI_NOTES
+
+    notes = []
+    token = CLI_NOTES.set(notes)
+    try:
+        result, machine = _dispatch(argv)
+        if notes:
+            records = result if isinstance(result, list) else [result]
+            for record in records:
+                if isinstance(record, dict):
+                    record.setdefault("normalized", []).extend(notes)
+        return result, machine
+    finally:
+        CLI_NOTES.reset(token)
+
+
+def _dispatch(argv):
     global_parser = Parser(add_help=False, allow_abbrev=False)
     global_parser.add_argument("--project", "-p")
     global_parser.add_argument("--json", action="store_true")
@@ -343,7 +390,7 @@ def dispatch(argv):
         shell(options)
         return None, options.json
     if tokens[0] in ("--help", "-h", "help"):
-        return HELP, options.json
+        return DETAILED_HELP if "--full" in tokens else HELP, options.json
     from . import Project
 
     if options.plugins:
@@ -375,10 +422,14 @@ def dispatch(argv):
         from .project_folder import pack, unpack
         parser = Parser(prog="vixl " + cmd)
         parser.add_argument("source")
-        parser.add_argument("output")
+        parser.add_argument("output", nargs="?")
+        parser.add_argument("--out")
         if cmd == "pack":
             parser.add_argument("--overwrite", action="store_true")
         args = parser.parse_args(args)
+        require(not (args.output and args.out), "Choose a positional output or --out, not both", "usage_error")
+        args.output = args.out or args.output
+        require(args.output, "Provide --out FILE", "usage_error")
         return (pack(args.source, args.output, limits=limits, overwrite=args.overwrite) if cmd == "pack"
                 else unpack(args.source, args.output, limits=limits)), options.json
     if cmd == "emoji":
@@ -891,14 +942,19 @@ def project_command(project, cmd, args, *, detail="compact"):
                 raise VixlError("reproduction_failed", "; ".join(result["outcome"]["review_reasons"]), report=result)
         return result, False
     if cmd == "save":
-        require(len(args) <= 1, "Use save [FILE]")
-        if args:
+        parser = Parser(prog="vixl save")
+        parser.add_argument("path", nargs="?")
+        parser.add_argument("--out")
+        a = parser.parse_args(args)
+        require(not (a.path and a.out), "Choose a positional output or --out, not both", "usage_error")
+        destination = a.out or a.path
+        if destination:
             require(
-                not Path(args[0]).exists() or Path(args[0]).resolve() == project.path,
+                not Path(destination).exists() or Path(destination).resolve() == project.path,
                 "Destination already exists",
             )
-            project.save(args[0])
-            remember(args[0])
+            project.save(destination)
+            remember(destination)
         else:
             project.save()
         return {"saved": str(project.path)}, False
@@ -910,6 +966,8 @@ def project_command(project, cmd, args, *, detail="compact"):
 
             enable(project, user_cache_dir())
         destination = a.out or a.path
+        require(not (cmd == "export" and a.out and a.path),
+                "Choose a positional output or --out, not both", "usage_error")
         require(destination, "Provide output filename or --out FILE")
         require(destination == "-" or a.data or a.overwrite or not Path(destination).exists(),
                 "Export output already exists; use --overwrite to replace it", "output_exists")

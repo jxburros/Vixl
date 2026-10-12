@@ -7,10 +7,25 @@ reports what changed so the caller can learn the canonical form.
 """
 
 import re
+from contextvars import ContextVar
 
 from .errors import VixlError, require
 
 PERCENT = re.compile(r"^(-?\d+(?:\.\d+)?)%$")
+CLI_NOTES = ContextVar("vixl_cli_normalized", default=None)
+
+
+def note_cli_output(args):
+    notes = CLI_NOTES.get()
+    if notes is None:
+        return
+    for arg in args:
+        if arg == "--":
+            break
+        if arg.split("=", 1)[0] == "--output":
+            note = {"field": "output", "from": "--output", "to": "--out", "reason": "legacy output spelling"}
+            if note not in notes:
+                notes.append(note)
 
 TYPE_ALIASES = {
     "image": "add",

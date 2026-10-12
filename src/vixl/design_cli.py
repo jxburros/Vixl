@@ -14,6 +14,8 @@ def compile_design(cmd, args):
         p.add_argument("shape", nargs="?", help="rectangle, ellipse, …; optional with --target")
         p.add_argument("--target", help="edit this existing shape layer in place instead of adding one")
         p.add_argument("--path")
+        p.add_argument("--path-view", type=float, nargs=2, metavar=("WIDTH", "HEIGHT"),
+                       help="Path source size at origin (0, 0); scale into --width and --height")
         for key in ("fill", "stroke"):
             p.add_argument("--" + key)
         for key in ("stroke-width", "radius", "inner-radius", "start-angle", "end-angle", "trim-start", "trim-end"):

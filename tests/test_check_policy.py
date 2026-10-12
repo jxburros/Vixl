@@ -386,3 +386,16 @@ def test_placeholder_findings_can_be_waived_and_profiles_cover_every_page(tmp_pa
     report = p.check(profile="draft", artboards="all", checks=["bounds", "placeholders"])
     assert report["profile"]["name"] == "draft" and len(report["variants"]) == 2 and report["passed"]
     assert report["waivers"]["active"][0]["matched"] >= 2
+
+
+def test_explicit_final_quality_selects_final_profile_unless_overridden(tmp_path):
+    session_with(tmp_path, ['a.vixl'])
+    session = Session(workspace=tmp_path)
+    session.open('a.vixl')
+    result = dispatch(session, 'run', {'spec': {'rows': [{}], 'quality': 'final'}, 'output': 'quality-final'})
+    assert result['profile'] == 'final'
+    assert result['results'][0]['status'] == 'needs_review'
+    override = dispatch(session, 'run', {'spec': {'rows': [{}], 'quality': 'final', 'profile': 'draft'},
+                                         'output': 'quality-override'})
+    assert override['profile'] == 'draft'
+    assert override['results'][0]['status'] in ('completed', 'reused')

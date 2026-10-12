@@ -14,7 +14,7 @@ out at the print shop.
 
 Works through MCP, CLI, Python or REST. No windows required.
 
-Current tagged release: **0.25.1**. See the [changelog](CHANGELOG.md#0251) for release notes.
+Current tagged release: **0.26.0**. See the [changelog](CHANGELOG.md#0260) for release notes.
 Run `vixl --version` to check your runtime;
 record the Git commit when using a source checkout.
 
@@ -111,7 +111,7 @@ vixl mcp --workspace . --tools core --schema slim
 For a pinned tagged runtime with uv:
 
 ```bash
-uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.25.1.tar.gz vixl mcp --workspace . --tools core --schema slim
+uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.26.0.tar.gz vixl mcp --workspace . --tools core --schema slim
 ```
 
 The workspace must exist. Use `--tools compact --schema slim` for consolidated workflow

@@ -351,8 +351,14 @@ class Project:
             layer["coordinate_space"] = "parent" if layer.get("parent") else "canvas"
             if layer["type"] == "shape" and layer.get("shape") == "path":
                 from .vector_paths import inspect_nodes
+                from .geometry import path_extents
 
                 layer["path_nodes"] = inspect_nodes(layer)
+                x0, y0, x1, y1 = path_extents(layer["path"])
+                layer["source_bounds"] = [x0, y0, x1 - x0, y1 - y0]
+                vw, vh = layer.get("path_view", [layer["width"], layer["height"]])
+                sx, sy = layer["width"] / vw, layer["height"] / vh
+                layer["path_local_bounds"] = [x0 * sx, y0 * sy, (x1 - x0) * sx, (y1 - y0) * sy]
             if layer["type"] == "text":
                 from .text_metrics import inspect_text
 
@@ -1158,12 +1164,24 @@ class Project:
                 project.assets = {n: archive.read(n) for n in names if n != "project.json"}
                 hashes = metadata["asset_hashes"]
                 require(set(hashes) == set(project.assets), "Asset manifest mismatch", "invalid_project")
+                # Bound aggregate parsing work before decoding any pixels or invoking FreeType.
+                from .assets import image_size
+
+                font_count = sum(name.startswith("fonts/") for name in project.assets)
+                require(font_count <= limits.max_load_fonts,
+                        "Archive exceeds font parsing limit", "resource_limit", field="max_load_fonts")
+                pixels = 0
+                for name, asset_data in project.assets.items():
+                    require(len(asset_data) <= limits.max_asset_bytes, "Asset exceeds byte limit", "resource_limit")
+                    require(hashlib.sha256(asset_data).hexdigest() == hashes[name],
+                            "Asset checksum mismatch", "invalid_project")
+                    if name.startswith(("assets/", "masks/")) and not name.endswith(".wav"):
+                        width, height = image_size(asset_data, limits)
+                        limits.size(width, height)
+                        pixels += width * height
+                        require(pixels <= limits.max_load_pixels,
+                                "Archive exceeds total decoded pixel limit", "resource_limit", field="max_load_pixels")
                 for name, data in project.assets.items():
-                    require(
-                        hashlib.sha256(data).hexdigest() == hashes[name],
-                        "Asset checksum mismatch",
-                        "invalid_project",
-                    )
                     if name.startswith("emoji-sources/"):
                         require(name.endswith((".vixl", ".png")) and len(data) <= limits.max_asset_bytes,
                                 "Invalid embedded emoji master", "invalid_project")

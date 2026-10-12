@@ -1332,6 +1332,17 @@ def pixel_group(project, group):
 def composite(bottom, top, blend):
     if blend == "normal":
         return Image.alpha_composite(bottom, top)
+    from PIL import ImageChops
+
+    opaque_modes = {"multiply": ImageChops.multiply, "screen": ImageChops.screen,
+                    "darken": ImageChops.darker, "lighten": ImageChops.lighter,
+                    "difference": ImageChops.difference, "add": ImageChops.add,
+                    "subtract": ImageChops.subtract}
+    if (blend in opaque_modes and bottom.getchannel("A").getextrema() == (255, 255)
+            and top.getchannel("A").getextrema() == (255, 255)):
+        # Opaque inputs need no alpha equation. Pillow uses bounded C loops; multiply/screen
+        # round at most one channel step differently from the float implementation below.
+        return opaque_modes[blend](bottom.convert("RGB"), top.convert("RGB")).convert("RGBA")
     b, s = np.asarray(bottom, dtype=np.float32) / 255, np.asarray(top, dtype=np.float32) / 255
     cb, cs, ab, ass = b[:, :, :3], s[:, :, :3], b[:, :, 3:], s[:, :, 3:]
     if blend == "multiply":

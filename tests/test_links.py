@@ -498,7 +498,8 @@ def test_preview_exports_and_production_follow_linked_sources(tmp_path):
     pptx = tmp_path / "out.pptx"
     host.export(pptx, format="PPTX")
     assert any(name.startswith("ppt/media/") for name in zipfile.ZipFile(pptx).namelist())
-    spec = {"rows": [{}], "format": "png", "quality": "final"}
+    # This exercises link refresh/reuse, accepting the stale-link review finding.
+    spec = {"rows": [{}], "format": "png", "quality": "final", "profile": "draft"}
     first = run(host, spec, tmp_path / "campaign")
     assert first["results"][0]["status"] == "completed"
     again = run(host, spec, tmp_path / "campaign")

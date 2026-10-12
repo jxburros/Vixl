@@ -89,3 +89,14 @@ def test_rendering_styled_layers_on_a_large_canvas_after_a_move():
     # styled pixels are cached and only the moved layer's neighbourhood is composited again).
     elapsed, _ = timed(p.render)
     assert elapsed < 1
+
+
+def test_full_canvas_opaque_multiply():
+    from PIL import Image
+    from vixl.render import composite
+
+    bottom = Image.new('RGBA', (2048, 2048), (210, 130, 20, 255))
+    top = Image.new('RGBA', bottom.size, (130, 200, 240, 255))
+    elapsed, results = timed(lambda: [composite(bottom, top, 'multiply') for _ in range(4)])
+    assert all(result.getpixel((0, 0))[3] == 255 for result in results)
+    assert elapsed < 1.5

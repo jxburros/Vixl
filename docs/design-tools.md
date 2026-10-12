@@ -352,3 +352,25 @@ Endpoint lines (`shape: line`, `from: [x,y]`, `to: [x,y]`) are stored as tightly
 `frame` accepts `frame_shape` (rectangle, ellipse, star, hexagon or heart), or an `outline` containing a closed SVG path in frame-local pixels. The silhouette becomes an embedded raster mask; replacing image contents retains it. Use a transparent canvas for die-cut or irregularly framed artwork. Files still have rectangular pixel dimensions, with transparency outside the silhouette; PNG/WebP and alpha-capable exports preserve it. SVG strict mode reports the mask fallback.
 
 Paint supports independent `settings.drip` (0–4, maximum trail length in brush sizes), `settings.relief` (0–1), and `settings.light_angle` (degrees, default -45). Use jitter/size_jitter for irregular lines and wet_edges for pooling. These are deterministic visual simulations, not a fluid solver, and can be enabled separately. Drips run downward in local paint-layer coordinates.
+
+### Place paths with an explicit source size
+
+A path shape accepts `path_view: [source_width, source_height]` (CLI `--path-view WIDTH HEIGHT`).
+Its source origin is `(0, 0)`; positive source dimensions scale the unchanged SVG path data into the
+layer's `width` and `height`. For example, a 220×380 path can be displayed at 30×52 without editing stored state:
+
+```json
+{"type":"shape","shape":"path","name":"native-mark","path":"M0 0 H220 V380 H0 Z","path_view":[220,380],"width":30,"height":52,"fill":"#d4241c"}
+```
+
+The same field works on `shape` with `target` to update an existing path. Later `resize` operations keep
+the source size. Without `path_view`, creation and path replacement keep the literal-local-pixel contract;
+`path-fit` remains the option for rewriting geometry to fit its measured bounds. Non-path shapes and
+zero, negative or malformed source sizes are rejected atomically. `inspect` reports `path_view`,
+`source_bounds`, scaled `path_local_bounds` (before transforms/strokes/effects), and the frame's `canvas_bounds`; raster previews and vector exports use the same mapping.
+
+Contrast diagnostics for grouped text measure the glyph ink through ancestor transforms. Stroke and
+shadow pixels do not become glyph coverage; the separately reported outline contrast remains available.
+Opaque multiply, screen, darken, lighten, difference, add and subtract compositing uses Pillow's native
+loops. Multiply and screen may differ by one 8-bit channel step from older float calculations; translucent
+layers retain the existing alpha calculation.

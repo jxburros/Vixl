@@ -184,7 +184,9 @@ def measure(
                 ancestor = mask_view.layer(ancestor["parent"])
                 ancestor["styles"] = {}
                 ancestor["effects"] = []
-            coverage = layer_canvas_surface(mask_view, effective).getchannel("A")
+            # Coverage measures glyph ink, not the stroke/shadow painted around it. Keep the
+            # original layer in the layout index so ancestor overflow tiles retain their geometry.
+            coverage = layer_canvas_surface(mask_view, {**effective, "styles": {}}).getchannel("A")
             box = coverage.getbbox()
             require(box is not None, "Target has no visible content")
             region = [box[0], box[1], box[2] - box[0], box[3] - box[1]]
