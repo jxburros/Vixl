@@ -63,4 +63,6 @@ delightful. Technical terms are fine where they are exact, such as a seamless lo
   check with `python marketing/verify.py`.
 - The promo videos' on-screen text: `promo/build/scenes.py` (rebuild with `python promo/build/make_video.py`) and
   `promo/brew/build/shots.py` (rebuild with `python promo/brew/build/make_video.py`).
+  *Brew* deliberately uses a looser, more playful voice and look than the rest of the brand; see
+  [its README](../promo/brew/README.md). Do not copy its tone into other material.
 - The one-line introduction at the top of docs pages, `skills/vixl/SKILL.md` and its references.

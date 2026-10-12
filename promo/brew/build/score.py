@@ -101,6 +101,15 @@ def effects(total, starts):
         while t < until:
             fx.add(at(scene, t), pop(rng.choice((60, 63, 65, 67, 70))), 0.28, pan=rng.uniform(-0.5, 0.5))
             t += rng.randint(180, 520)
+    for i, t in enumerate((150, 240, 800, 940, 1080, 1220)):  # the opening question pops in word by word
+        fx.add(at("00-hook", t), pop(72 + 3 * i), 0.55, pan=-0.3 + 0.12 * i)
+    for i in range(5):
+        fx.add(at("00-hook", 1300 + i * 120), bell(96 + (i % 3) * 3, 0.6), 0.35, pan=-0.5 + 0.25 * i)
+    for scene, ms in starts.items():  # the fun meter ticks up in every shot
+        if scene not in ("10-fun", "11-end"):
+            fx.add(at(scene, 3000 if scene == "00-hook" else 1400), tick(100), 0.45, pan=0.7)
+    fx.add(at("10-fun", 2600), impact(), 0.35)
+    fx.add(at("10-fun", 2600), chime((91, 96, 100)), 0.6, pan=0.6)
     for i in range(7):
         land = 2200 + i * 560 + 760
         fx.add(at("01-ingredients", land - 700), whoosh(0.55), 0.35, pan=-0.4 if i % 2 else 0.4)

@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[2] / "build"))
-from kit import HEAD, SEMI, BODY, ellipse, glow, group, rect, rich  # noqa: E402
+from kit import HEAD, SEMI, ellipse, glow, group, rect, rich  # noqa: E402
 
 # Palettes: sky stops top to bottom, moon, far hills, near hills, title, info line, badge, badge text.
 PALETTES = {

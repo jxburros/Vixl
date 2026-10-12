@@ -1,7 +1,8 @@
 """The shots of "Brew": a potion-making film about why Vixl is fun. Times are milliseconds.
 
 Two voices share the screen. Jeffrey, Vixl's developer, speaks in Fraunces italic and every one of his
-lines carries his name; Vixl's own copy stays in Inter Tight, like the rest of the brand.
+lines carries his name. The narrator is deliberately looser than the rest of the brand: Fredoka headlines,
+potion pink, bouncy entrances and a fun meter that fills up shot by shot until it breaks.
 Beat grid: the score runs at 120 BPM, so a beat is 500 ms.
 """
 from __future__ import annotations
@@ -26,6 +27,8 @@ QUOTE = "fraunces-600-italic"
 NIGHT = "#141127"
 VIOLET = "#7B5CE0"
 GOLD = "#FFD98A"
+PINK = "#FF9BD2"
+FUN = "fredoka-700"
 JEFFREY = "Jeffrey, Vixl's developer"
 
 
@@ -34,7 +37,7 @@ class BrewScene(Scene):
         super().__init__(name, duration, NIGHT)
 
     def project(self):
-        # Same as Scene.project, plus Fraunces for Jeffrey's lines; fonts must exist before the text ops.
+        # Same as Scene.project, plus Fraunces (Jeffrey) and Fredoka (headlines); fonts must exist before the text ops.
         p = Project(W, H, self.background)
         p._workspace = str(ROOT)
         install_font(p, "Inter Tight", 800, role="heading")
@@ -42,6 +45,7 @@ class BrewScene(Scene):
         install_font(p, "Inter", 600)
         install_font(p, "JetBrains Mono", 500)
         install_font(p, "Fraunces", 600, italic=True)
+        install_font(p, "Fredoka", 700)
         batch = [{"type": "timeline-set", "duration": self.duration, "fps": FPS, "loop_mode": "off"}] + self.ops
         for i in range(0, len(batch), 9000):
             p.apply(batch[i:i + 9000], detail="brief")
@@ -79,10 +83,11 @@ def night(sc, glow_at=(1450, 260), glow2_at=(300, 900), stars=True, seed=3):
 CREATES = ("shape", "text", "rich-text", "gradient", "pen", "frame", "group")
 
 
-def finish(sc, keep=(), dur=380):
+def finish(sc, keep=(), dur=380, meter=True):
     """Fade the foreground out at the end of the shot, leaving the sky for the next one.
 
-    ``keep`` names layers the next shot picks up where this one leaves them (the cauldron, the poster).
+    ``keep`` names layers the next shot picks up where this one leaves them (the cauldron, the poster);
+    the fun meter carries over too unless ``meter`` is False.
     """
     grouped, created = set(), []
     for op in sc.ops:
@@ -90,7 +95,8 @@ def finish(sc, keep=(), dur=380):
             grouped.update(op["targets"])
         if op.get("type") in CREATES and "name" in op:
             created.append(op["name"])
-    top = [n for n in created if n not in grouped and n not in keep and not n.startswith(("bg-", "star"))]
+    skip = ("bg-", "star") + (("meter",) if meter else ())
+    top = [n for n in created if n not in grouped and n not in keep and not n.startswith(skip)]
     sc.add(group("fg", top))
     sc.keys("fg", "opacity", [(0, 1), (sc.duration - dur, 1), (sc.duration - 20, 0)], "ease-in-cubic")
     return sc
@@ -109,9 +115,37 @@ def quote(sc, name, line, y, size, t, attribution=JEFFREY, width=1600, x=None, t
         sc.fade(f"{name}-by", t_attr if t_attr is not None else t + 900, dur=400, rise=10)
 
 
-def headline(sc, spans, t=150, y=96, size=72):
-    sc.add(rich("headline", spans, 120, y, size, 1680, WHITE, HEAD))
-    sc.words("headline", t, "fade-up", "word", 500, 70)
+def headline(sc, spans, t=150, y=92, size=76, center=False):
+    if center:
+        sc.add(centered("headline", spans, y, size, WHITE, FUN))
+    else:
+        sc.add(rich("headline", spans, 120, y, size, 1680, WHITE, FUN))
+    sc.words("headline", t, "pop", "word", 450, 90, "ease-out-back")
+
+
+METER_X, METER_Y, TRACK = 1530, 30, 156
+
+
+def fun_meter(sc, level0, level1, t0=400, t1=1400, appear=None):
+    """The running joke: a FUN meter in the corner that fills a little more every shot."""
+    x, y = METER_X, METER_Y
+    sc.add(rect("meter-bg", x, y, 270, 60, DEEP, 30, LINE),
+           rich("meter-label", "FUN", x + 14, y + 13, 28, 84, GOLD, FUN, "left", 1.1),
+           rect("meter-track", x + 92, y + 22, TRACK, 16, "#2F2752", 8),
+           rect("meter-fill", x + 92, y + 22, max(1, round(TRACK * level0)), 16, PINK, 8),
+           group("meter", ["meter-bg", "meter-label", "meter-track", "meter-fill"]))
+    sc.keys("meter-fill", "width", [(0, max(1, round(TRACK * level0))), (t0, max(1, round(TRACK * level0))),
+                                    (t1, round(TRACK * level1))], "ease-out-back")
+    if appear is not None:
+        sc.pop("meter", appear, 450, 0.5)
+
+
+def sparkle(sc, name, cx, cy, size, t, color=GOLD, spin=True):
+    sc.add({"type": "shape", "shape": "star", "name": name, "x": round(cx - size / 2), "y": round(cy - size / 2),
+            "width": round(size), "height": round(size), "sides": 4, "inner_radius": 0.32, "fill": color})
+    sc.pop(name, t, 420, 0.1)
+    if spin:
+        sc.keys(name, "rotation", [(0, -30), (t, -30), (sc.duration, 60)], "linear")
 
 
 def bubbles(sc, cx, rim_y, scale=1.0, until=None, seed=5):
@@ -134,6 +168,24 @@ def bubbles(sc, cx, rim_y, scale=1.0, until=None, seed=5):
         sc.keys(name, "scale", sx, "ease-out-quad")
 
 
+# ----------------------------------------------------------------------------------------------- 0
+def s00_hook():
+    sc = BrewScene("00-hook", 3500)
+    night(sc)
+    sc.add(centered("ask", "Okay, real question:", 350, 48, MUTED, FUN))
+    sc.words("ask", 150, "pop", "word", 400, 90, "ease-out-back")
+    sc.add(centered("why", [("Why is this ", None), ("so fun?!", PINK)], 440, 150, WHITE, FUN))
+    sc.words("why", 800, "pop", "word", 480, 140, "ease-out-back")
+    sc.keys("why", "rotation", [(0, 0), (1700, 0), (1850, -2), (2000, 2), (2150, 0)], "ease-in-out")
+    for i, (cx, cy, size) in enumerate(((330, 430, 70), (1610, 400, 90), (1500, 650, 50), (430, 660, 46),
+                                        (960, 300, 40))):
+        sparkle(sc, f"spark{i}", cx, cy, size, 1300 + i * 120, PINK if i % 2 else GOLD)
+    sc.add(centered("sub", "a short investigation, with potions", 700, 30, GOLD, MONO))
+    sc.fade("sub", 2000, dur=400, rise=10)
+    fun_meter(sc, 0.02, 0.08, 2200, 3000, appear=1900)
+    return finish(sc)
+
+
 # ----------------------------------------------------------------------------------------------- 1
 INGREDIENTS = [("an idea", -380, -16), ("autumn vibes", 300, 12), ("bold type", -240, 18), ("1080 × 1350", 420, -10),
                ("moodboard.jpg", -460, 8), ("brand colours", 260, -14), ("a vague feeling", -120, 20)]
@@ -145,6 +197,7 @@ POT_PARTS = ["pot-leg1", "pot-leg2", "pot-body", "pot-hi", "pot-rim", "pot-brew"
 def s01_ingredients():
     sc = BrewScene("01-ingredients", 8000)
     night(sc)
+    fun_meter(sc, 0.08, 0.2)
     sc.add(P.cauldron(POT_X, RIM_Y, 0.85))
     sc.keys("pot-glow", "opacity", [(0, 0.5), (2000, 0.8), (8000, 1)], "ease-in-out")
     bubbles(sc, POT_X, RIM_Y, 0.85)
@@ -180,6 +233,7 @@ HERO_LEFT = (120, 260, 480, 600)  # the poster's place in shots 3 and 4
 def s02_moon():
     sc = BrewScene("02-moon", 7000)
     night(sc)
+    fun_meter(sc, 0.2, 0.32)
     sc.add(glow("moon-halo", 1600, 300, 520, GOLD, "50"), ellipse("moon", 1600, 300, 190, 190, "#FFF1C9"),
            ellipse("moon-c1", 1570, 280, 34, 34, "#00000012"), ellipse("moon-c2", 1630, 330, 22, 22, "#00000010"),
            group("sky-moon", ["moon-halo", "moon", "moon-c1", "moon-c2"]))
@@ -208,7 +262,7 @@ def s02_moon():
     sc.keys("hero", "translate-y", [(0, 380), (3400, 380), (4500, -40)], "ease-out-back")
     sc.keys("hero", "scale", [(0, 0.12), (3400, 0.12), (4500, 1.0)], "ease-out-back")
     sc.keys("hero", "opacity", [(0, 0), (3400, 0), (3700, 1)])
-    sc.add(centered("hero-file", "harvest-moon.vixl  ·  1080 × 1350", 870, 28, MUTED, MONO))
+    sc.add(centered("hero-file", [("ta-da!  ", PINK), ("harvest-moon.vixl  ·  1080 × 1350", None)], 870, 28, MUTED, MONO))
     sc.fade("hero-file", 5000, dur=400, rise=10)
     return finish(sc, ("pot", "hero", "burst"))
 
@@ -217,8 +271,9 @@ def s02_moon():
 def s03_ready(report):
     """``report`` is what the real ``check`` said about the hero poster (see make_video.measured_checks)."""
     sc = BrewScene("03-ready", 7000)
-    night(sc, glow_at=(600, 500), stars=False)
-    headline(sc, [("What comes out is ", None), ("ready to use.", SKY)])
+    night(sc)
+    fun_meter(sc, 0.32, 0.42)
+    headline(sc, [("Wait, it's actually ", None), ("print-ready?", PINK)])
     px, py, pw, ph = HERO_LEFT
     sc.add(P.poster_group("hero", px, py, pw, ph), shadow("hero", 50, 24, 0.5))
     # Shot 2 ends with the poster at HERO scaled 1:1 and raised 40 px; start there and settle into place.
@@ -270,8 +325,9 @@ ASKS = [("Warmer sky, please.", 1000), ("Bigger moon.", 3000), ("Make the badge 
 
 def s04_adjust():
     sc = BrewScene("04-adjust", 8000)
-    night(sc, glow_at=(500, 600), stars=False)
-    headline(sc, [("Close? ", None), ("Don't re-roll. Just ask.", SKY)])
+    night(sc)
+    fun_meter(sc, 0.42, 0.52)
+    headline(sc, [("Almost perfect? ", None), ("Just ask nicely.", PINK)])
     px, py, pw, ph = HERO_LEFT
     sheets = P.harvest("hero", px, py, pw, ph)
     warm = P.PALETTES["ember"]
@@ -287,7 +343,7 @@ def s04_adjust():
                                  (a + 700, warm["far"])], "ease-in-out")
     sc.keys("hero-near", "fill", [(0, P.PALETTES["harvest"]["near"]), (a, P.PALETTES["harvest"]["near"]),
                                   (a + 700, warm["near"])], "ease-in-out")
-    md, mcx, mcy = 0.5 * pw, px + pw / 2, py + ph * 0.64
+    md = 0.5 * pw
     grow = 1.22
     for name, (ox, oy) in (("hero-moon", (0, 0)), ("hero-halo", (0, 0)), ("hero-crater1", (-0.18 * md, -0.1 * md)),
                            ("hero-crater2", (0.16 * md, 0.14 * md))):
@@ -302,7 +358,7 @@ def s04_adjust():
 
     cx, cw = 700, 1100
     sc.add(rect("chat", cx, 260, cw, 600, DEEP, 24, LINE))
-    sc.add(text("chat-title", "same document, three requests", cx + 36, 284, 22, MUTED, MONO))
+    sc.add(text("chat-title", "you, being picky (allowed)", cx + 36, 284, 22, MUTED, MONO))
     sc.fade("chat", 200, dur=400)
     sc.fade("chat-title", 300, dur=400)
     for i, (ask, t) in enumerate(ASKS):
@@ -314,7 +370,7 @@ def s04_adjust():
                group(name, [f"{name}-bg", f"{name}-text"]))
         sc.pop(name, t, 420, 0.7)
         reply = f"reply{i}"
-        sc.add(rich(reply, [("✓ ", GOOD), ("one edit, same poster", MUTED)], cx + 40, y + 92, 24, 600, WHITE, MONO))
+        sc.add(rich(reply, [("✓ ", GOOD), ("done! same poster", MUTED)], cx + 40, y + 92, 24, 600, WHITE, MONO))
         sc.fade(reply, t + 800, dur=300, rise=8)
     sc.add(rich("tally", "edits 0    re-rolls 0", cx, 880, 34, cw, WHITE, MONO, "right"))
     sc.key("tally", "text", 0, "edits 0    re-rolls 0")
@@ -337,9 +393,9 @@ PICK5 = 0
 
 def s05_eight():
     sc = BrewScene("05-eight", 8000)
-    night(sc, glow_at=(960, 600), stars=False)
-    sc.add(centered("headline", [("Eight ideas for one problem? ", None), ("See them all.", SKY)], 96, 72))
-    sc.words("headline", 150, "fade-up", "word", 500, 70)
+    night(sc)
+    fun_meter(sc, 0.52, 0.62)
+    headline(sc, [("Can't decide? ", None), ("Make all eight.", PINK)], center=True)
     sc.add(centered("problem", [("the problem: ", MUTED), ("the title feels lost", GOLD)], 190, 26, WHITE, MONO))
     sc.fade("problem", 500, dur=300)
     w, h, gap = 250, 312, 30
@@ -359,7 +415,7 @@ def s05_eight():
     px, py = x0 + (PICK5 % 4) * (w + gap), 260 + (PICK5 // 4) * (h + gap)
     sc.add(rect("pick", px - 8, py - 8, w + 16, h + 16, "#00000000", 14, GOOD, 6))
     sc.pop("pick", 5300, 400, 1.15)
-    sc.add(chip("pick-chip", "✓ this one", px + w - 150, py - 30, size=22, fg=DEEP, bg=GOOD, font=SEMI, width=150))
+    sc.add(chip("pick-chip", "ooh, this one!", px + w - 190, py - 30, size=22, fg=DEEP, bg=GOOD, font=FUN, width=210))
     sc.pop("pick-chip", 5500, 380, 0.5)
     quote(sc, "q", "If I have 8 ideas on how to fix one design problem, I can see them all made at once.",
           945, 32, 2600, width=1680, attr_size=22, attribution="Jeffrey")
@@ -397,8 +453,9 @@ def rounds(seed=11):
 
 def s06_rounds():
     sc = BrewScene("06-rounds", 9000)
-    night(sc, glow_at=(960, 500), stars=False)
-    headline(sc, [("Pick one. ", None), ("Brew twenty more.", SKY)])
+    night(sc)
+    fun_meter(sc, 0.62, 0.75)
+    headline(sc, [("Ooh, that one. ", None), ("Twenty more like it!", PINK)])
     all_rounds, picks = rounds()
     w, h, gx, gy = 150, 188, 20, 22
     x0, y0 = (W - (10 * w + 9 * gx)) / 2, 250
@@ -440,9 +497,9 @@ def s06_rounds():
             sc.fade(arrow, t_out + 300, dur=300)
     sc.add(text("rail-label", "your picks", x0, 890, 22, MUTED, MONO))
     sc.fade("rail-label", starts[0] + 2400, dur=300)
-    sc.add(rich("tally", [("60", GOLD), (" designs seen.  ", WHITE), ("3", GOLD), (" decisions made.", WHITE)],
-                640, 760, 48, 1160, WHITE, HEAD, "right"))
-    sc.words("tally", 8200, "fade-up", "word", 400, 60)
+    sc.add(rich("tally", [("60", GOLD), (" designs seen.  ", WHITE), ("3", GOLD), (" happy picks.", WHITE)],
+                640, 760, 52, 1160, WHITE, FUN, "right"))
+    sc.words("tally", 8200, "pop", "word", 380, 60, "ease-out-back")
     quote(sc, "q", "Make 20 variations, pick one, make 20 variations of that, pick one, and so on.", 950, 32,
           600, width=1680, x=x0, align="left", attr_size=22, attribution="Jeffrey", t_attr=1600)
     return finish(sc)
@@ -459,8 +516,9 @@ BRIEFS = [("A PINCH", "a poster for a night market",
 
 def s07_direction():
     sc = BrewScene("07-direction", 8000)
-    night(sc, glow_at=(1500, 500), stars=False)
-    headline(sc, [("A pinch of direction, ", None), ("or a handful.", SKY)])
+    night(sc)
+    fun_meter(sc, 0.75, 0.82)
+    headline(sc, [("Say a little. ", None), ("Say a lot.", PINK)])
     w, h = 300, 375
     for i, (amount, brief, kw) in enumerate(BRIEFS):
         cx = 370 + i * 590
@@ -476,7 +534,7 @@ def s07_direction():
         sc.add(P.poster_group(poster, cx - w / 2, 450, w, h, **kw), shadow(poster, 40, 18, 0.5))
         sc.pop(poster, t + 900, 500, 0.7)
     sc.add(rich("note", [("Small models make something tidy, if a little plain. ", MUTED),
-                         ("More direction, better results.", WHITE)], 120, 850, 28, 1680, WHITE, BODY, "center"))
+                         ("Tell it more, get more.", WHITE)], 120, 850, 28, 1680, WHITE, BODY, "center"))
     sc.fade("note", 3800, dur=400, rise=10)
     quote(sc, "q", "You can give it as little or as much information as you want, and you'll still pretty much get "
           "something close to what you were thinking.", 910, 32, 4600, width=1500, attr_size=22,
@@ -495,10 +553,10 @@ SIZES = [("Story", "1080 × 1920", 120, 250, 320, 569), ("Poster", "1080 × 1350
 
 def s08_bottles():
     sc = BrewScene("08-bottles", 8000)
-    night(sc, glow_at=(960, 600), stars=False)
-    sc.add(rich("headline", [("One potion. ", None), ("A hundred bottles.", SKY)], 120, 70, 64, 1680, WHITE, HEAD))
-    sc.words("headline", 100, "fade-up", "word", 500, 70)
-    sc.add(rich("sub", "Same recipe, tailored to every size, format and platform. Similar, never the same.",
+    night(sc)
+    fun_meter(sc, 0.82, 0.9)
+    headline(sc, [("One potion. ", None), ("A hundred bottles.", PINK)], t=100, y=66, size=68)
+    sc.add(rich("sub", "Every size, every platform, all matching. Like a family photo where nobody blinked.",
                 120, 160, 28, 1680, MUTED, BODY))
     sc.fade("sub", 900, dur=400)
     palettes = ["harvest", "harvest", "harvest", "harvest", "harvest", "harvest", "harvest"]
@@ -511,7 +569,7 @@ def s08_bottles():
         sc.pop(name, t, 480, 0.7)
         sc.fade(tag, t + 300, dur=250)
     # The same set in a second colourway, to show "similar, never the same".
-    sc.add(chip("swap", "→  same set, plum colourway", 120, 900, size=24, fg=DEEP, bg=GOLD, font=SEMI))
+    sc.add(chip("swap", "→  now in plum!", 120, 900, size=26, fg=DEEP, bg=GOLD, font=FUN, width=230))
     sc.pop("swap", 5200, 400, 0.6)
     for i, (label, size, x, y, w, h) in enumerate(SIZES):
         name = f"c{i}"
@@ -534,8 +592,9 @@ WALL = [("kit", OUT + "kit-overview.png", 120, 250, 600, 435), ("campaign", OUT 
 
 def s09_self():
     sc = BrewScene("09-self", 7000)
-    night(sc, glow_at=(960, 540), stars=False)
-    headline(sc, [("It even makes ", None), ("its own marketing.", SKY)])
+    night(sc)
+    fun_meter(sc, 0.9, 1.0)
+    headline(sc, [("Yes, it made ", None), ("its own marketing.", PINK)])
     names = []
     for i, (key, path, x, y, w, h) in enumerate(WALL):
         sc.add(image(key, path, x, y, w, h, 14), shadow(f"{key}-base", 30, 14, 0.5))
@@ -546,7 +605,7 @@ def s09_self():
     sc.add(rect("band", 0, 470, W, 260, "#0E0B1CE6"))
     sc.fade("band", 3800, dur=400)
     quote(sc, "q", "I think that's so funny.", 520, 84, 4000, attr_size=28, t_attr=4600)
-    sc.add(chip("this", "Including this video.", 1340, 760, size=30, fg=DEEP, bg=GOLD, font=SEMI, width=400))
+    sc.add(chip("this", "Including this video. Hi!", 1300, 760, size=32, fg=DEEP, bg=GOLD, font=FUN, width=440))
     sc.pop("this", 5500, 450, 0.5)
     sc.keys("this", "rotation", [(5500, -8), (5950, -4)], "ease-out-back")
     return finish(sc)
@@ -555,32 +614,42 @@ def s09_self():
 # ----------------------------------------------------------------------------------------------- 10
 def s10_fun():
     sc = BrewScene("10-fun", 6000)
-    night(sc, glow_at=(960, 460), glow2_at=(960, 1000), seed=9)
+    night(sc)
     quote(sc, "q", "I am actually having way too much fun with this app.", 380, 100, 300, width=1500, t_attr=2600,
           attr_size=34)
-    return finish(sc)
+    # The meter was full at the end of shot 9; here it bursts off the edge of the frame.
+    fun_meter(sc, 1.0, 3.2, 1600, 2600)
+    sc.keys("meter", "rotation", [(0, 0), (2500, 0), (2600, -6), (2700, 5), (2800, -4), (2900, 3), (3000, 0)],
+            "ease-in-out")
+    sc.key("meter-label", "text", 0, "FUN")
+    sc.key("meter-label", "text", 2600, "FUN?!")
+    sc.add(rich("broke", "(meter broke)", METER_X, METER_Y + 74, 24, 270, MUTED, MONO, "center"))
+    sc.fade("broke", 3000, dur=300)
+    sc.keys("broke", "rotation", [(3000, -6), (3300, -3)], "ease-out-back")
+    for i, (cx, cy) in enumerate(((1500, 40), (1820, 120), (1700, 20))):
+        sparkle(sc, f"spark{i}", cx, cy, 34, 2650 + i * 90, PINK if i % 2 else GOLD)
+    return finish(sc, meter=False)
 
 
 # ----------------------------------------------------------------------------------------------- 11
 def s11_end():
     sc = BrewScene("11-end", 5000)
-    night(sc, glow_at=(960, 420), glow2_at=(960, 1000), seed=4)
+    night(sc)
     ops, names = wordmark("m", 760, 120, 400)
     sc.add(ops, group("logo", names))
     sc.pop("logo", 0, 600, 0.5)
-    sc.add(centered("line", [("Every potion comes with ", None), ("its recipe.", SKY)], 400, 86))
-    sc.words("line", 300, "fade-up", "word", 500, 100)
-    sc.add(centered("recipe", "The .vixl master: layers, live text and history, ready for the next brew.", 530, 32,
-                    MUTED, BODY))
-    sc.fade("recipe", 1200, dur=400, rise=12)
+    sc.add(centered("line", [("Every potion comes with ", None), ("its recipe.", PINK)], 380, 86, WHITE, FUN))
+    sc.words("line", 300, "pop", "word", 450, 100, "ease-out-back")
+    sc.add(centered("recipe", "Go brew something fun.", 510, 48, GOLD, FUN))
+    sc.pop("recipe", 1200, 450, 0.6)
     sc.add(centered("tagline", [("Ideas become ", None), ("editable.", SKY)], 680, 48, WHITE, HEAD))
     sc.fade("tagline", 1700, dur=400, rise=12)
     sc.add(centered("url", "github.com/jxburros/Vixl", 770, 40, WHITE, MONO))
     sc.fade("url", 2000, dur=400, rise=12)
-    sc.add(centered("made", "Every frame of this video is an editable Vixl document.", 970, 26, MUTED, BODY))
+    sc.add(centered("made", "Every frame of this video is an editable Vixl document. Yes, even the cauldron.", 970, 26, MUTED, BODY))
     sc.fade("made", 2500, dur=500)
     return finish(sc)
 
 
-SCENES = [s01_ingredients, s02_moon, s03_ready, s04_adjust, s05_eight, s06_rounds, s07_direction, s08_bottles,
+SCENES = [s00_hook, s01_ingredients, s02_moon, s03_ready, s04_adjust, s05_eight, s06_rounds, s07_direction, s08_bottles,
           s09_self, s10_fun, s11_end]
