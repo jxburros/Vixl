@@ -8,6 +8,8 @@ comes from an editable Vixl document, and the soundtrack is synthesised in code.
 ![Contact sheet, one frame every two seconds](contact-sheet.jpg)
 
 A companion film, [*It does that?*](it-does-that/README.md), shows nine of Vixl's less obvious features.
+[*The Stack*](the-stack/README.md) is about four sibling projects, AI Server Studio, JX Runtime, Onyx Engine and
+Mock-LLM. Vixl made it the same way.
 
 ## The cut
 

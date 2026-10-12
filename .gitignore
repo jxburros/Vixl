@@ -28,6 +28,12 @@ promo/audio/
 !promo/it-does-that/score.vixl
 promo/it-does-that/audio/
 promo/it-does-that/work/
+!promo/the-stack/build/
+!promo/the-stack/scenes/*.vixl
+!promo/the-stack/score.vixl
+promo/the-stack/audio/
+promo/the-stack/work/
+promo/the-stack/.film-*/
 promo/it-does-that/.film-*/
 movie/.film-*/
 .env

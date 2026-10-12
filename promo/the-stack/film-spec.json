@@ -1,0 +1,74 @@
+{
+  "output": "the-stack.mp4",
+  "spec": {
+    "version": 1,
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "shots": [
+      {
+        "source": "scenes/01-open.vixl",
+        "duration": 7200
+      },
+      {
+        "source": "scenes/02-title.vixl",
+        "duration": 4800
+      },
+      {
+        "source": "scenes/03-studio.vixl",
+        "duration": 12000
+      },
+      {
+        "source": "scenes/04-runtime.vixl",
+        "duration": 12000
+      },
+      {
+        "source": "scenes/05-onyx.vixl",
+        "duration": 9600
+      },
+      {
+        "source": "scenes/06-mock.vixl",
+        "duration": 9600
+      },
+      {
+        "source": "scenes/07-stack.vixl",
+        "duration": 12000
+      },
+      {
+        "source": "scenes/08-control.vixl",
+        "duration": 9600
+      },
+      {
+        "source": "scenes/09-journal.vixl",
+        "duration": 12000
+      },
+      {
+        "source": "scenes/10-loops.vixl",
+        "duration": 12000
+      },
+      {
+        "source": "scenes/11-lessons.vixl",
+        "duration": 12000
+      },
+      {
+        "source": "scenes/12-numbers.vixl",
+        "duration": 7200
+      },
+      {
+        "source": "scenes/13-vixl.vixl",
+        "duration": 7200
+      },
+      {
+        "source": "scenes/14-end.vixl",
+        "duration": 7200
+      }
+    ],
+    "audio": [
+      {
+        "source": "audio/score.wav",
+        "start": 0,
+        "volume": 1.0
+      }
+    ]
+  }
+}

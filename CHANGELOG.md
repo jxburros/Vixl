@@ -12,6 +12,10 @@
 - Opaque multiply, screen, darken, lighten, difference, add and subtract blending uses native Pillow loops instead of float arrays (#585).
 - Explicit campaign `quality: "final"` selects the final check profile unless an explicit `profile` overrides it; reports name the effective profile (#563).
 
+### Marketing
+
+- A third promo film, [*The Stack*](promo/the-stack/README.md), is a 2:14 explainer and developer's journal about four sibling projects: AI Server Studio, JX Runtime, Onyx Engine and Mock-LLM. It covers what each one is, how they fit together, how they give the user control, and how each one tests the others. Every fact on screen is cited in its README. The scenes and the score are editable `.vixl` masters.
+
 ### Behaviour changes
 
 - Archives default to a cumulative 160 million decoded image pixels and 64 parsed font assets. Trusted Python callers can raise `Limits.max_load_pixels` and `Limits.max_load_fonts`. Existing per-asset checks still apply.
