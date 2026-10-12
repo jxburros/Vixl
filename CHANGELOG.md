@@ -14,7 +14,7 @@
 
 ### Marketing
 
-- A third promo film, [*The Stack*](promo/the-stack/README.md), is a 2:14 explainer and developer's journal about four sibling projects: AI Server Studio, JX Runtime, Onyx Engine and Mock-LLM. It covers what each one is, how they fit together, how they give the user control, and how each one tests the others. Every fact on screen is cited in its README. The scenes and the score are editable `.vixl` masters.
+- A third promo film, [*The Stack*](promo/the-stack/README.md), is a 2:36 explainer and developer's journal about four sibling projects: AI Server Studio, JX Runtime, Onyx Engine and Mock-LLM. It covers what each one is, how they fit together, how they give the user control, and how each one tests the others. Two shots show that every layer is a choice: the clients, runtimes, engines, cloud providers and test backends each project works with, and how each project stands on its own without the others. Every fact on screen is cited in its README. The scenes and the score are editable `.vixl` masters.
 
 ### Behaviour changes
 

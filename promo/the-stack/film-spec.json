@@ -35,31 +35,39 @@
         "duration": 12000
       },
       {
-        "source": "scenes/08-control.vixl",
+        "source": "scenes/08-choice.vixl",
+        "duration": 12000
+      },
+      {
+        "source": "scenes/09-standalone.vixl",
         "duration": 9600
       },
       {
-        "source": "scenes/09-journal.vixl",
+        "source": "scenes/10-control.vixl",
+        "duration": 9600
+      },
+      {
+        "source": "scenes/11-journal.vixl",
         "duration": 12000
       },
       {
-        "source": "scenes/10-loops.vixl",
+        "source": "scenes/12-loops.vixl",
         "duration": 12000
       },
       {
-        "source": "scenes/11-lessons.vixl",
+        "source": "scenes/13-lessons.vixl",
         "duration": 12000
       },
       {
-        "source": "scenes/12-numbers.vixl",
+        "source": "scenes/14-numbers.vixl",
         "duration": 7200
       },
       {
-        "source": "scenes/13-vixl.vixl",
+        "source": "scenes/15-vixl.vixl",
         "duration": 7200
       },
       {
-        "source": "scenes/14-end.vixl",
+        "source": "scenes/16-end.vixl",
         "duration": 7200
       }
     ],

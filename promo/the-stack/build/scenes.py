@@ -1,4 +1,4 @@
-"""The fourteen shots of "The Stack". Each function returns a ``Scene``; times are milliseconds.
+"""The sixteen shots of "The Stack". Each function returns a ``Scene``; times are milliseconds.
 
 The score runs at 100 BPM (a beat is 600 ms, a bar 2.4 s) and every shot is a whole number of bars.
 Every fact on screen comes from the four repositories' own READMEs, changelogs, docs and tests; the
@@ -14,11 +14,12 @@ from film import (BODY, CODE_KEY, CODE_NUM, CODE_STR, DEEP, GOOD, HEAD, HERE, IN
 BAD = "#FF6B6B"
 BAR = 2400
 DURATIONS = {"01-open": 3 * BAR, "02-title": 2 * BAR, "03-studio": 5 * BAR, "04-runtime": 5 * BAR,
-             "05-onyx": 4 * BAR, "06-mock": 4 * BAR, "07-stack": 5 * BAR, "08-control": 4 * BAR,
-             "09-journal": 5 * BAR, "10-loops": 5 * BAR, "11-lessons": 5 * BAR, "12-numbers": 3 * BAR,
-             "13-vixl": 3 * BAR, "14-end": 3 * BAR}
+             "05-onyx": 4 * BAR, "06-mock": 4 * BAR, "07-stack": 5 * BAR, "08-choice": 5 * BAR,
+             "09-standalone": 4 * BAR, "10-control": 4 * BAR,
+             "11-journal": 5 * BAR, "12-loops": 5 * BAR, "13-lessons": 5 * BAR, "14-numbers": 3 * BAR,
+             "15-vixl": 3 * BAR, "16-end": 3 * BAR}
 # The journal pages, where the drums drop out and the keys hold whole bars.
-QUIET = ("09-journal", "11-lessons")
+QUIET = ("11-journal", "13-lessons")
 REPOS = [("AI Server Studio", STUDIO), ("JX Runtime", RUNTIME), ("Onyx Engine", ONYX), ("Mock-LLM", MOCK)]
 ASSETS = HERE / "assets"
 
@@ -382,8 +383,119 @@ def s07_stack():
 
 
 # ----------------------------------------------------------------------------------------------- 8
-def s08_control():
-    sc = Scene("08-control", DURATIONS["08-control"])
+# Each row is one layer of the stack and the choices it offers; the projects in this film are only some of them.
+CHOICE_ROWS = [
+    ("YOU TALK TO IT WITH", ["AI Server Studio", "any OpenAI SDK", "any chat app with a base URL", "your own script"]),
+    ("RUNTIME", ["JX Runtime", "Ollama", "LM Studio", "vLLM", "SGLang", "llama.cpp", "KoboldCpp", "any OpenAI /v1"]),
+    ("ENGINE, UNDER JX", ["llama.cpp", "Onyx Engine", "MLX", "vLLM", "your own llama-server"]),
+    ("CLOUD, OPT-IN", ["off", "OpenAI", "Anthropic", "Google", "Mistral", "Groq", "OpenRouter", "+ 6 more"]),
+    ("TESTS RUN ON", ["Mock-LLM", "a real local model"]),
+]
+MINE = {"AI Server Studio": STUDIO, "JX Runtime": RUNTIME, "Onyx Engine": ONYX, "Mock-LLM": MOCK}
+# (caption, option index per row; None leaves a row unpicked)
+COMBOS = [
+    ("All four projects, top to bottom.", [0, 0, 1, 0, 0]),
+    ("Studio on the Ollama you already run.", [0, 1, None, 0, 1]),
+    ("Your own app on JX Runtime. No Studio at all.", [1, 0, 0, 0, 0]),
+    ("Studio, LM Studio, and a cloud model when you allow it.", [0, 2, None, 6, 0]),
+]
+
+
+def s08_choice():
+    sc = Scene("08-choice", DURATIONS["08-choice"])
+    sc.add(backdrop(glow_at=(1300, 500), glow2_at=(300, 300)))
+    kicker(sc, "YOUR CHOICE")
+    headline(sc, [("Mix and match. ", None), ("Every layer is a choice.", SKY)])
+    names, size, pad, x0 = [], 22, 44, 470
+    pos = {}
+    for r, (label, options) in enumerate(CHOICE_ROWS):
+        y = 300 + r * 104
+        sc.add(text(f"row{r}", label, 120, y + 12, 21, MUTED, MONO))
+        sc.fade(f"row{r}", 500 + r * 150, dur=300)
+        names.append(f"row{r}")
+        x = x0
+        for k, option in enumerate(options):
+            w = round(len(option) * size * 0.58 + pad)
+            name = f"o{r}-{k}"
+            color = MINE.get(option)
+            sc.add(chip(name, option, x, y, size=size, fg=color or WHITE, bg=PANEL, font=SEMI,
+                        stroke=color or LINE, width=w))
+            sc.pop(name, 600 + r * 150 + k * 50, 300, 0.7)
+            pos[(r, k)] = (x, y, w)
+            names.append(name)
+            x += w + 12
+    # A bright ring lands on one choice per row; four combinations, one after another.
+    h = round(size * 1.9)
+    for c, (caption_text, picks) in enumerate(COMBOS):
+        t0, t1 = 2400 + c * 2300, 2400 + (c + 1) * 2300
+        last = c == len(COMBOS) - 1
+        for r, k in enumerate(picks):
+            if k is None:
+                continue
+            x, y, w = pos[(r, k)]
+            name = f"pick{c}-{r}"
+            sc.add(rect(name, x - 5, y - 5, w + 10, h + 10, f"{SKY}33", (h + 10) / 2, SKY, 4))
+            frames = [(0, 0), (t0 + r * 90, 0), (t0 + r * 90 + 250, 1)]
+            if not last:
+                frames += [(t1 - 200, 1), (t1, 0)]
+            sc.keys(name, "opacity", frames, "ease-out-cubic")
+            sc.keys(name, "scale", [(0, 1.15), (t0 + r * 90, 1.15), (t0 + r * 90 + 300, 1)], "ease-out-back")
+            if last:
+                names.append(name)
+        cap = f"combo{c}"
+        sc.add(rich(cap, [(f"{c + 1}.  ", SKY), (caption_text, None)], 120, 850, 40, 1680, WHITE, HEAD))
+        frames = [(0, 0), (t0, 0), (t0 + 300, 1)]
+        if not last:
+            frames += [(t1 - 200, 1), (t1, 0)]
+        sc.keys(cap, "opacity", frames, "ease-out-cubic")
+        sc.keys(cap, "translate-y", [(0, 14), (t0, 14), (t0 + 400, 0)], "ease-out-cubic")
+        if last:
+            names.append(cap)
+    caption(sc, "note", "Coloured chips are the projects in this film. Every other chip works too.", 120, 940, 1200, 24)
+    exit_all(sc, ["kicker", "headline", "note"] + names, 11400)
+    return sc
+
+
+# ----------------------------------------------------------------------------------------------- 9
+STANDALONE = [
+    ("AI Server Studio", STUDIO, "Without JX Runtime",
+     "Adapters for Ollama, llama.cpp, vLLM, SGLang, LM Studio, KoboldCpp, any OpenAI /v1 server, another "
+     "Studio, and JX Runtime."),
+    ("JX Runtime", RUNTIME, "Without Studio",
+     "Any full OpenAI SDK works unmodified. Point any chat app with a custom base URL at :8712/v1."),
+    ("Onyx Engine", ONYX, "Optional, by design",
+     "Runs on its own, or stands in for llama-server under JX. JX never picks it for you."),
+    ("Mock-LLM", MOCK, "Without any of them",
+     "App-agnostic. Point any app's LLM_BASE_URL at it. The engine has no JX-specific behaviour."),
+]
+
+
+def s09_standalone():
+    sc = Scene("09-standalone", DURATIONS["09-standalone"])
+    sc.add(backdrop(glow_at=(960, 550)))
+    kicker(sc, "NO LOCK-IN")
+    headline(sc, [("Use one. Use all four. ", None), ("Each one stands on its own.", SKY)])
+    names = []
+    for i, (title, color, sub, body) in enumerate(STANDALONE):
+        x, y, w, h = 120 + (i % 2) * 850, 290 + (i // 2) * 260, 830, 236
+        name = f"c{i}"
+        parts = [rect(f"{name}-bg", x, y, w, h, PANEL, 22, LINE, 2), rect(f"{name}-bar", x, y + 24, 8, h - 48, color, 4),
+                 text(f"{name}-title", title, x + 40, y + 26, 38, WHITE, HEAD),
+                 text(f"{name}-sub", sub, x + 40, y + 80, 22, color, MONO),
+                 rich(f"{name}-body", body, x + 40, y + 120, 26, w - 80, MUTED, BODY, line_height=1.3)]
+        sc.add(parts, shadow(f"{name}-bg", 40, 18, 0.35), group(name, [p["name"] for p in parts]))
+        sc.fade(name, 700 + i * 400, dur=400)
+        sc.slide(name, 700 + i * 400, dy=40)
+        names.append(name)
+    q = quote(sc, "q", "Choosing between them automatically could only be a preference invented by the runtime.",
+              "JX Runtime · README.md, on why 'auto' never selects Onyx", 120, 845, 3600, accent=ONYX, size=30)
+    exit_all(sc, ["kicker", "headline"] + names + q, 9000)
+    return sc
+
+
+# ----------------------------------------------------------------------------------------------- 10
+def s10_control():
+    sc = Scene("10-control", DURATIONS["10-control"])
     sc.add(backdrop(glow_at=(960, 300), glow2_at=(960, 1000)))
     kicker(sc, "MORE CONTROL")
     headline(sc, [("Your machine. Your models. ", None), ("Your rules.", SKY)])
@@ -418,7 +530,7 @@ def s08_control():
     return sc
 
 
-# ----------------------------------------------------------------------------------------------- 9
+# ----------------------------------------------------------------------------------------------- 11
 JOURNAL = [
     ("2026-05-07", STUDIO, "AI Server Studio's changelog begins: one gateway in front of local models."),
     ("2026-08-09", RUNTIME, "JX Runtime 1.0, \"the first complete runtime\", shaped by what Studio needs."),
@@ -430,8 +542,8 @@ JOURNAL = [
 ]
 
 
-def s09_journal():
-    sc = Scene("09-journal", DURATIONS["09-journal"])
+def s11_journal():
+    sc = Scene("11-journal", DURATIONS["11-journal"])
     sc.add(rect("bg", 0, 0, 1920, 1080, DEEP))
     names = journal_page(sc, "How they built each other")
     for i, (date, color, entry) in enumerate(JOURNAL):
@@ -448,9 +560,9 @@ def s09_journal():
     return sc
 
 
-# ---------------------------------------------------------------------------------------------- 10
-def s10_loops():
-    sc = Scene("10-loops", DURATIONS["10-loops"])
+# ---------------------------------------------------------------------------------------------- 12
+def s12_loops():
+    sc = Scene("12-loops", DURATIONS["12-loops"])
     sc.add(backdrop(glow_at=(560, 600), glow2_at=(1500, 300)))
     kicker(sc, "EACH ONE TESTS THE OTHERS")
     headline(sc, [("They keep each other ", None), ("honest.", SKY)])
@@ -512,7 +624,7 @@ def _ends(nodes, edge):
     return nodes[a][2], nodes[a][3], nodes[b][2], nodes[b][3]
 
 
-# ---------------------------------------------------------------------------------------------- 11
+# ---------------------------------------------------------------------------------------------- 13
 LESSONS = [
     (ONYX, "ONYX ENGINE", "A bare make -j started ~170 compilers on a 16 GB box. The OOM killer took the build, "
                           "and the JX Runtime running next to it.", "Now: one job per CPU."),
@@ -523,8 +635,8 @@ LESSONS = [
 ]
 
 
-def s11_lessons():
-    sc = Scene("11-lessons", DURATIONS["11-lessons"])
+def s13_lessons():
+    sc = Scene("13-lessons", DURATIONS["13-lessons"])
     sc.add(rect("bg", 0, 0, 1920, 1080, DEEP))
     names = journal_page(sc, "Lessons, written down")
     for i, (color, repo, lesson, after) in enumerate(LESSONS):
@@ -543,14 +655,14 @@ def s11_lessons():
     return sc
 
 
-# ---------------------------------------------------------------------------------------------- 12
+# ---------------------------------------------------------------------------------------------- 14
 STATS = [("2,279", "JX Runtime tests", RUNTIME), ("844", "Studio test files", STUDIO),
          ("205", "Mock-LLM tests", MOCK), ("17", "Studio audit reports", STUDIO),
          ("5", "engines JX can run", RUNTIME), ("3,105", "lines of C++ in Onyx Engine", ONYX)]
 
 
-def s12_numbers():
-    sc = Scene("12-numbers", DURATIONS["12-numbers"])
+def s14_numbers():
+    sc = Scene("14-numbers", DURATIONS["14-numbers"])
     sc.add(backdrop(glow_at=(960, 500)))
     kicker(sc, "BY THE NUMBERS")
     headline(sc, [("May to October 2026. ", None), ("Written down as it happened.", SKY)])
@@ -570,9 +682,9 @@ def s12_numbers():
     return sc
 
 
-# ---------------------------------------------------------------------------------------------- 13
-def s13_vixl():
-    sc = Scene("13-vixl", DURATIONS["13-vixl"])
+# ---------------------------------------------------------------------------------------------- 15
+def s15_vixl():
+    sc = Scene("15-vixl", DURATIONS["15-vixl"])
     sc.add(backdrop(glow_at=(1400, 500)))
     kicker(sc, "ONE MORE THING")
     headline(sc, [("And this film? ", None), ("Vixl made it.", SKY)])
@@ -591,13 +703,13 @@ def s13_vixl():
     return sc
 
 
-# ---------------------------------------------------------------------------------------------- 14
+# ---------------------------------------------------------------------------------------------- 16
 URLS = [("github.com/jxburros/AI-Server-Studio", STUDIO), ("github.com/jxburros/JX-Runtime", RUNTIME),
         ("github.com/JX-Holdings-LLC/Onyx-Engine", ONYX), ("github.com/JX-Holdings-LLC/Mock-LLM", MOCK)]
 
 
-def s14_end():
-    sc = Scene("14-end", DURATIONS["14-end"])
+def s16_end():
+    sc = Scene("16-end", DURATIONS["16-end"])
     sc.add(backdrop(glow_at=(960, 400), glow2_at=(960, 1000)))
     for i, (_, color) in enumerate(REPOS):
         name = f"bar{i}"
@@ -607,8 +719,10 @@ def s14_end():
     sc.words("line", 500, "fade-up", "word", 500, 140)
     sc.add(centered("sub", "Your machine. Your models. Your rules.", 410, 40, MUTED, BODY))
     sc.words("sub", 1100, "fade-up", "word", 400, 70)
+    sc.add(centered("choice", "Use one, use all four, or swap any of them out.", 478, 30, SKY, SEMI))
+    sc.words("choice", 1500, "fade-up", "word", 400, 60)
     for i, (url, color) in enumerate(URLS):
-        x, y = 620, 530 + i * 64
+        x, y = 620, 560 + i * 64
         sc.add(rect(f"u{i}-dot", x - 28, y + 14, 14, 14, color, 7), text(f"u{i}", url, x, y, 30, WHITE, MONO))
         sc.fade(f"u{i}-dot", 1700 + i * 180, dur=300)
         sc.fade(f"u{i}", 1700 + i * 180, dur=350, rise=10)
@@ -618,5 +732,5 @@ def s14_end():
 
 
 def all_scenes():
-    return [s01_open(), s02_title(), s03_studio(), s04_runtime(), s05_onyx(), s06_mock(), s07_stack(),
-            s08_control(), s09_journal(), s10_loops(), s11_lessons(), s12_numbers(), s13_vixl(), s14_end()]
+    return [s01_open(), s02_title(), s03_studio(), s04_runtime(), s05_onyx(), s06_mock(), s07_stack(), s08_choice(),
+            s09_standalone(), s10_control(), s11_journal(), s12_loops(), s13_lessons(), s14_numbers(), s15_vixl(), s16_end()]
