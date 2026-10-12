@@ -1,0 +1,1 @@
+Create guitar.vixl at 800x400 with a white background and draw an acoustic guitar lying horizontally: body with a sound hole, neck, headstock, strings and bridge. Declare it as one guitar object with its parts named, then export just the guitar to guitar.svg.

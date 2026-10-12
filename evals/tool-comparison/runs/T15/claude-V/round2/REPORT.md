@@ -1,61 +1,51 @@
-# T15 · Seamless pattern, round 2 (lane V, Vixl)
+# T15 round 2: all shells amber, about a third fewer motifs (Lane V, Vixl)
 
-Requested changes: make every shell amber, and cut the number of motifs by about a third. All six
-deliverables were regenerated into this folder under the same names. Nothing outside `round2/` was changed.
+All the visual work was done with the Vixl MCP tools (`vixl_document_open`, `vixl_operations_apply`, `vixl_export_file`). I didn't draw any pixels or write SVG or HTML myself. My scripts only copied the three round-1 `.vixl` sources into `round2/` as a starting point and read the exported files to check them. I changed nothing outside `round2/`.
 
-## How
+## What changed
 
-All edits were made with Vixl MCP tools (`vixl_operations_apply`, `vixl_export_batch`,
-`vixl_render_preview`, `vixl_check`). I didn't draw any pixels, SVG or HTML by hand.
-1. I copied the three round-1 `.vixl` sources into `round2/` with `cp` and opened `round2/tile.vixl` in Vixl.
-2. I made one atomic batch of 29 operations on the tile. A dry run came first.
-   - **Shells to amber:** a `shape` fill edit to amber `#f2a541` on the shell body of every coral shell left
-     in the tile (i12, i13, the i13 wrap copy and i18). I also recoloured the hidden coral master. The navy
-     chamber and spiral lines are unchanged. These groups were renamed `*_shell_amber`. Their child layers
-     still carry their old `i13_shell_coral/...` names, which is cosmetic only. All 5 shells in the tile are now amber.
-   - **About a third fewer motifs:** `remove` on 7 of the 20 main motifs (20 → 13), keeping the mix of motif types:
-     - kelp 6 → 4 (removed navy i03 and its wrap copy, and sea-foam i05 and its wrap copy; this also eases
-       the round-1 left-heavy navy kelp)
-     - waves 6 → 4 (removed sea-foam i06 and navy i19)
-     - shells 8 → 5 (removed i15, i16, i17)
-   - **Dots:** I also removed every third filler dot, 34 → 23 (dot02, 05, 08 … 32). The brief didn't ask for
-     this. I did it so the filler density drops in step with the motifs. If you count only the 20 main
-     motifs, the reduction is 35 %.
-   - Remaining motifs, positions, sizes and rotations are untouched. No new layout was generated.
-3. I exported `tile.png` and `tile.svg` (strict SVG policy, no embedded raster).
-4. In `round2/preview-3x3.vixl` (9 links) and `round2/mug-wrap.vixl` (6 links), I repointed each `link` layer
-   with a `link` operation, from `../tile.vixl` to `round2/tile.vixl`. Then I exported `preview-3x3.png` and
-   `mug-wrap.png`. The mug label, wordmark, 850 px tile scale and 300 dpi are unchanged.
+1. **All shells are amber now.**
+   - The round-1 tile had two shell motifs: coral `#e2725b` (90 px) and amber `#f2a541` (70 px).
+   - In `tile.vixl` I changed the fill of the hidden coral shell source (`shape` with `target` set to that shell's layer ID and `fill: "#f2a541"`).
+   - I renamed that group `shell-amber-l` (with its children `shell-amber-l/shell` and `shell-amber-l/shell-chambers`) so no layer is still called coral. It stays as the large size variant.
+   - The navy outline and chamber lines are unchanged.
+   - Coral is still in the pattern, but only on some of the small scattered dots. The shells no longer use it.
+2. **About a third fewer motifs.**
+   - I re-ran the two existing `pattern-scatter` groups in place (`target: motifs` and `target: dots`). The sources, seeds, scale, jitter and rotation are the same as round 1. Only the target count is lower.
+   - **Large motifs** (kelp, shells, waves): the count went from 18 to 12. 16 copies were placed before and 12 are placed now, which is 25 % fewer.
+     - I also tried a count of 11. It placed only 10 copies (37.5 % fewer) and dropped both navy waves, leaving one wave in the tile, so I kept 12.
+     - The 12 copies are 7 shells, 2 kelp fronds (1 navy, 1 sea-foam) and 3 waves (2 navy, 1 amber).
+   - **Dots**: the count went from 48 to 32, so 45 dots became 30. That is exactly a third fewer.
+   - **Altogether**, 61 scattered elements became 42, which is 31 % fewer.
+   - Because the seeds are unchanged, the dots keep a similar feel to round 1. The layout is not identical, because Poisson-disc spacing widens when the count drops.
+3. **Preview and mug wrap.**
+   - Their `link` layers point at `tile.vixl` relative to the document, so the copies in `round2/` already read `round2/tile.vixl`.
+   - I ran `link-refresh` on all 9 + 6 links and re-exported. The label, wordmark, offsets and 300 dpi are unchanged.
 
-## Files
+## Files (same names as round 1)
 
 | File | Notes |
 | --- | --- |
-| `tile.vixl` | Editable tile, 1024 × 1024. It has 13 motifs and 23 dots, plus 5 wrap copies (i00, i01, i10, i13, dot01). |
-| `tile.png` | 1024 × 1024 RGB |
-| `tile.svg` | Vector, valid XML, 0 `<image>` elements |
-| `preview-3x3.vixl` / `.png` | 3072 × 3072, 9 live links to `round2/tile.vixl` |
-| `mug-wrap.vixl` / `.png` | 2550 × 1050 at 300 dpi, 6 live links to `round2/tile.vixl` |
+| `tile.vixl` | Editable source. The motif sources are hidden and editable. Re-run `pattern-scatter` on `motifs` or `dots` to rebuild a group. |
+| `tile.png` | 1024 × 1024, RGB |
+| `tile.svg` | 1024 × 1024, exported with `svg_policy: strict` (no embedded rasters, 0 `<image>` elements) |
+| `preview-3x3.vixl` / `.png` | 3072 × 3072, nine live links to `round2/tile.vixl` |
+| `mug-wrap.vixl` / `.png` | 2550 × 1050 at 300 dpi, six links plus the cream label with the navy "Tidewick" wordmark |
 
-## Checks (scripts read the exported files only)
+## Checks
+- **Seam:** Vixl reported `seamless: true` for both scatter groups (motifs: edge 0.83 vs interior 1.16; dots: 0.014 vs 0.074). My own pixel check of `tile.png` gave these mean differences:
 
-- **Preview:** each of the 9 cells is pixel-identical to `tile.png` (max difference 0).
-- **Tile seams:** mean edge difference is 1.87 left/right and 1.43 top/bottom. An ordinary interior column
-  step is about 1.3, so the seams look like any other step. The wrap copies of the removed motifs were removed
-  with them, so no orphaned half-motifs remain at the edges.
-- **Mug:** the mean difference between its left and right ends is 0.28, so it wraps seamlessly. In the
-  downscaled preview the tile joins looked like faint lines. In the full-size PNG they aren't there: the
-  columns at the joins match their neighbours.
-- **Colour:** pixels close to coral fell from 5975 to 866. What's left is the coral wave i10 and the coral
-  dots, which aren't shells. Cream background now covers about 95 % of the tile, up from 92 %.
-- **`vixl_check`:** links are current in both derived documents. The mug check has no fix or review
-  findings. Only its intentional `allow_crop` bleeds are listed.
+  | Comparison | Mean difference |
+  | --- | --- |
+  | Wrap, left/right | 0.68 |
+  | Wrap, top/bottom | 0.91 |
+  | Neighbouring columns/rows inside the tile | 1.11 / 1.17 |
+
+  The edges differ no more than the inside does, so the wrap doesn't show.
+- **Preview:** `preview-3x3.png` equals `tile.png` tiled 3 × 3 pixel for pixel (largest difference 0).
+- **Colours:** in order of pixel count, the main colours are cream `#f7f1e5`, amber `#f2a541`, navy `#14263b`, sea-foam `#a8d5c8` and coral `#e2725b`. Only about 1,200 coral pixels remain, all from the small dots.
+- **Mug wrap:** `vixl_check` found no `fix` findings. The two `review` items are the expected overlap of the wordmark with the pattern links underneath the label.
 
 ## Notes
-
-- With the shells now amber, coral survives only in one wave and a few dots, so the palette leans
-  navy, amber and sea-foam.
-- Removing motifs left some airier spots: bottom-centre, and the gap between the top-left kelp and the
-  centre. I didn't move the remaining motifs, so the rest of the layout matches round 1.
-- The `.vixl` links are workspace-relative paths to `round2/tile.vixl`. If the folder is moved, the links
-  need refreshing. The PNGs are unaffected.
+- **Layer names:** the regenerated scatter copies got names with a " 2" suffix (for example `motifs/3 2`), because Vixl keeps names unique while it rebuilds a group. This doesn't affect any output.
+- **Shell-heavy mix:** shells are now 7 of the 12 large motifs because `pattern-scatter` picks sources at random. If a more even mix is wanted, try another `seed` on the `motifs` group.

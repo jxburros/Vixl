@@ -2,62 +2,65 @@
 
 Lanes run: V, W (claude, claude-opus-5-5).
 
-- **V (Vixl 0.20.0): re-run and judged 2026-10-06** by a claude-opus-5-5 judge subagent. Round-1 blind code QN2Q, round 2 UMJZ.
+- **V (Vixl 0.26.0): re-run and judged 2026-10-12** by a claude-opus-5-5 judge subagent. Round-1 blind code S66U, round 2 AKHF. Effort: round 1 5.3 min / 39 tool calls, round 2 2.3 min / 23 tool calls, no nudges.
 - **W: run and judged 2026-10-05.** Its scores and notes below are unchanged. Old blind codes: W=FH7F, round 2 LOUK.
 
-For the 2026-10-06 blind look, W's deliverables were regenerated from its committed sources (`build.py`, `poster.html`, `art.html`) in a scratch copy outside the repo. The setup was Playwright 1.56 with the Chromium at `/opt/pw-browsers` and Ghostscript 10.02. The `fonts/` folder isn't committed, so Jost 400/500 and Cormorant Garamond Italic 500/600 were downloaded again from Google Fonts. The rebuilt files match W's report and the 2026-10-05 notes: caps kicker, 2×2 list, CMYK, boxes, and in round 2 the footer moved up. In that blind set W was F9TJ (round 1) and 883R (round 2). The blinding was partial: W's folder also holds `art.png`.
+For the 2026-10-12 blind look, W's deliverables were regenerated from its committed sources (`build.py`, `poster.html`, `art.html`) in a scratch copy outside the repo. The setup was Playwright 1.63 driving the Chromium 1194 build at `/opt/pw-browsers` (passed as `executable_path` by a wrapper, since the installed Playwright expects a newer browser), Ghostscript 10.02.1 (installed for this) and pypdf 6.17. The `fonts/` folder isn't committed, so Jost 400/500 and Cormorant Garamond Italic 500/600 were downloaded again from Google Fonts. The intermediates (`art.png`, `fonts/`) were moved out of the run folders before blinding, so the blind set held only `poster-print.pdf` and `poster-preview.png` for every code. The rebuilt files match W's report and the 2026-10-05 notes: caps kicker, 2×2 list, CMYK, boxes, and in round 2 the footer moved up and a 149×149 px QR square 38 px from the right and bottom. In that blind set W was 93IF (round 1) and IQRY (round 2).
 
 ## 1. Blind scores (written before opening key.csv)
 
 | Code | Fidelity | Craft | Reason |
 | --- | --- | --- | --- |
-| QN2Q (V, 2026-10-06) | 5 | 4 | Copy exact, with a single-column bulleted list. Clean flat vector lanterns with glow, a quay skyline and a lighthouse. The striped, blurred reflections are a little mechanical, close to clip art. DM Serif Display title over DM Sans. Solid, but plainer than W. |
+| S66U (V, 2026-10-12) | 4 | 4 | All ten lines, with a single-column bulleted list. The kicker prints in capitals ("PORT ELLERY QUAY"), not as given. Two strings of flat vector lanterns with soft glows across the top, a low quay silhouette, and dashed ripple reflections that read as reflections. Fraunces Bold title and date over Atkinson Hyperlegible Next. Faint water lines run behind the list text. Clean and well ordered, but plainer and more clip-art than W. |
 | FH7F (W, 2026-10-05) | 4 | 5 | Rich lantern illustration with convincing broken reflections, and elegant type. The kicker is shown in all caps ("PORT ELLERY QUAY"), not as given. Highlights are a 2×2 bulleted grid. |
 
-For calibration, the 2026-10-06 judge also scored the rebuilt W blind (F9TJ): fidelity 5, craft 4. The recorded W scores (4/5) stand. The fidelity 4 reflects the caps kicker, which the rule applied here also fails in hard check 8.
+For calibration, the 2026-10-12 judge also scored the rebuilt W blind (93IF): fidelity 4, craft 5, the same as the recorded scores. (The 2026-10-06 judge had scored its rebuild 5/4; the recorded 4/5 stands.) Round 2 blind: AKHF (V) 4/4, with nothing but the asked-for changes visible; IQRY (W) 4/5, with the bottom block shifted up.
 
 ## 2. Hard checks (round 1)
 
 Sources:
 
-- `inspect_outputs.py` on the scratch copy
+- `inspect_outputs.py` on the V run folders and on the W scratch copy
 - `pdfinfo -box`, `pdfimages -list`, `pdffonts`, and `pdftotext -bbox`/`-layout`
-- edges of the PDF rendered to CMYK at 72 dpi with Ghostscript `tiff32nc`
-- the PDF rendered at 150 dpi and matched against the preview
-- Pillow
+- a scan of the page and form-XObject content streams for colour operators (pypdf)
+- the PDF rendered to CMYK with Ghostscript `tiff32nc` at 72 dpi (edges) and 30 dpi (total ink)
+- the PDF rendered at 150 dpi with `pdftoppm` and matched against the preview
+- Pillow, and the Vixl 0.26.0 Python API on scratch copies of `poster.vixl`
 
-| Check | V (0.20.0) | W |
+| Check | V (0.26.0) | W |
 | --- | --- | --- |
 | One page, 11.25×17.25 in | PASS (810×1242 pt) | PASS |
-| CMYK only, no RGB vector ops | PASS (14 DeviceCMYK images, each with a gray soft mask; 106 CMYK vector ops; no RGB or Gray painting) | PASS* (DeviceCMYK images; 16 CMYK vector ops; the one DeviceGray image (2946×782) is only the luminosity soft mask of the title glow, nothing is painted in it) |
-| Raster ≥ 300 dpi | PASS (every image is 300×300 ppi; no page-wide raster; the largest is the 2600×1700 sky glow) | PASS (3375×5175, page-wide) |
+| CMYK only, no RGB vector ops | PASS (34 image draws of 20 DeviceCMYK image objects, each with a gray soft mask; the content streams use only `k`/`K`, 210 ops; no RGB or Gray painting) | PASS* (DeviceCMYK images; 16 CMYK vector ops; the one DeviceGray image (2946×782) is only the luminosity soft mask of the title glow, nothing is painted in it) |
+| Raster ≥ 300 dpi | PASS (every image is 300×300 ppi; no page-wide raster; the largest is the 4175×1400 sky glow, which runs past the page edges) | PASS (3375×5175, page-wide) |
 | TrimBox and BleedBox | PASS (Trim [9 9 801 1233], Bleed = Media) | PASS (Trim [9 9 801 1233], Bleed = Media) |
-| Artwork reaches the PDF edges | PASS (at 72 dpi every edge pixel carries ink, with a minimum total of 102 %; navy all round) | PASS |
-| Text ≥ 38 px inside the 150 dpi preview | PASS (nearest is about 105 px, the "Presented by" line at the bottom; the sides are about 150 px) | PASS (nearest about 127 px) |
-| `poster-preview.png` 1650×2550 RGB | PASS (RGB, 150 dpi, matches the PDF trim at an 18 px offset) | PASS (RGB) |
-| Ten lines exact; highlights as a list | PASS (pdftotext matches all ten lines in mixed case; a true four-item "•" rich-text list) | FAIL: the kicker prints as "PORT ELLERY QUAY" (CSS `text-transform:uppercase`; the source string is exact, and pdftotext extracts caps). The list (2×2 bulleted grid) is fine. |
-| **Total** | **8/8** | **7/8** |
+| Artwork reaches the PDF edges | PASS (at 72 dpi every edge pixel carries ink, with a minimum total of 94 %; navy all round) | PASS |
+| Text ≥ 38 px inside the 150 dpi preview | PASS (nearest is about 110 px, the "Presented by" line at the bottom, measured on the `pdftotext` boxes; the sides are at least 300 px) | PASS (nearest about 127 px) |
+| `poster-preview.png` 1650×2550 RGB | PASS (RGB, 150 dpi tag, matches the 150 dpi PDF render at a 19 px offset, which is the 18.75 px bleed) | PASS (RGB) |
+| Ten lines exact; highlights as a list | FAIL: the kicker prints as "PORT ELLERY QUAY" (`text_transform: uppercase` on the layer; the stored string is exact, and `pdftotext` extracts caps). The list (one rich-text layer, four "•" paragraphs) is fine. | FAIL: the kicker prints as "PORT ELLERY QUAY" (CSS `text-transform:uppercase`; the source string is exact, and pdftotext extracts caps). The list (2×2 bulleted grid) is fine. |
+| **Total** | **7/8** | **7/8** |
 
 \* DeviceGray appears in `image_colorspaces`, but only as an SMask group, so this is not colour content.
 
+The 0.20.0 run printed the kicker in mixed case and passed check 8. This run's agent chose capitals, so V now fails it under the same rule that W fails. That is an agent choice, not a Vixl regression.
+
 Extra V facts:
 
-- Text is live vector type, with DM Sans and DM Serif Display embedded as subsets.
-- Maximum total ink is about 230 % (Ghostscript at 30 dpi), under the 300 % limit set.
-- The PDF Title metadata is "Port Ellery Quay", taken from the kicker.
+- Text is live vector type, with Fraunces Bold and Atkinson Hyperlegible Next embedded as subsets.
+- Maximum total ink is about 228 % (Ghostscript at 30 dpi), under the 300 % limit set.
+- The PDF Title metadata is now "Harbor Lights" in both rounds (it was the kicker in 0.20.0).
+- The document is 3375×5175 px with an exact 37.5 px bleed and a 75 px (0.25 in) safe margin. The safe guides sit at 112.5 px from the canvas edge, which matches this brief.
+- `vixl_check` (all default checks) passes with 27 info findings, all intentional bleed crops. The 19-rule `brief` suite passes in both rounds, re-run here with `check_suite("brief")`.
 
 ## 3. Report honesty
 
-- **V (2026-10-06): yes.** The files match the report:
-  - layer counts (131 in round 1, 133 in round 2)
-  - the boxes, DeviceCMYK only, every image at 300 ppi with a gray soft mask, and embedded subset fonts
-  - the 18 px preview offset and RGB preview
-  - the 38 px bleed rounding, now handled by scaling about 0.03 % instead of cropping
-  - the soft-mask transparency (not PDF/X-1a), the ink limit with no ICC profile, and the auto-set PDF Title
+- **V (2026-10-12): yes.** The files match the report:
+  - layer counts (238 in round 1, 240 in round 2), the `trim` artboard at 37.5/37.5, 3300×5100
+  - the boxes, DeviceCMYK only, 34 glow images at 300 ppi with gray soft masks, 2 embedded subset fonts
+  - the type sizes it lists (title 390, date 140, subtitle 108, list 104, details 80, "Presented by" 66 px), and the 19-rule suite passing
+  - the RGB 1650×2550 preview exported from the artboard with `alpha=flatten`
+  - no ICC profile, a 300 % ink limit, no crop marks
 
-  One number is wrong. It says "all text is at least about 290 px (about 0.97 in) inside the trim". The bottom "Presented by" line is about 0.70 in inside (about 105 px in the preview). The pass/fail result is the same.
-
-  It also discloses that `vixl_check` could not measure the title's contrast. That is reproduced in section 5.
+  Two caveats. Like W, it says "the copy is used exactly as given" and then discloses that the kicker is drawn in capitals, so the printed text does not match the claim. And its diagnosis of the tracking problem is wrong: the bug is real, but it is in the scaled preview, not in the 300 dpi output (section 5). The agent saw it in the previews and dropped the tracking, so nothing in the files is affected.
 - **W: yes.** The boxes, CMYK conversion, 300 ppi, the gray soft mask and the ink total all match. One caveat: it says "copy used exactly as given" while also stating the kicker is set in caps. That is disclosed, but the claim doesn't hold for the printed text.
 
 ## 4. Round 2 (kicker → "Old Customs House Square", "Live brass band" → "Fire dancers at 8 pm", 1×1 in white "QR" square in the bottom-right of the safe area, same spec)
@@ -65,25 +68,23 @@ Extra V facts:
 **QR square, measured in the preview:**
 
 - V: white area x 1463–1611 and y 2363–2511, about 149×149 px, 38 px from the right and bottom trim.
-- W: 149×149 px, 38 px from the right and bottom.
+- W: 149×149 px, 38 px from the right and bottom (confirmed again on the rebuild).
 
-Both are correct, at 1 in and 0.25 in inside the trim. In the V PDF the square is paper white (CMYK 0/0/0/0).
+Both are correct, at 1 in and 0.25 in inside the trim. In the V PDF the square is paper white vector DeviceCMYK.
 
-**V (2026-10-06).** The edit was one atomic `vixl_operations_apply` batch on a copy of the source, dry-run first:
+**V (2026-10-12).** The edit was made in place on a copy of the round-1 source:
 
-- `text-set` on the kicker and the list
-- an `align center-x` to re-center the auto-sized kicker
-- a white rectangle and a "QR" label centered on it
+- `text-set` on the kicker and the list (the rich-text bullets and line height were kept)
+- an `align center-x` to re-centre the auto-sized kicker, which had grown to the right (x 1277 → 1026, width 821 → 1323; its centre is again the canvas centre, 1687.5)
+- a 300×300 px white `qr-box` at 2962/4762 and a Fraunces "QR" label, centred on the cap height (moved down 9.5 px after `align` centred the ink box including the Q's tail)
 
-This time `text-set` kept the rich-text bulleted list, so no undo was needed.
+A layer diff of the two `poster.vixl` files shows only those changes: `kicker` (x, width, text), `highlights` (text and spans), and the two new layers. Every other layer is identical.
 
 Pixel diff of the round-1 and round-2 previews:
 
-- The changed rows are only 145–193 (kicker), 2180–2229 (list line 4) and 2361–2513 (QR). They match the report's bands.
-- Outside them, 155 anti-aliasing pixels next to the kicker differ, by at most 5 levels.
-- The 150 dpi renders of the two PDFs show the same three bands.
+- The changed rows are only 738–776 (kicker), 2202–2252 (list line 4) and 2359–2514 (QR, columns 1461–1614). Nothing else differs, not even by anti-aliasing.
 
-The print spec is unchanged and all 8 hard checks still pass. Live vector text, the boxes and DeviceCMYK are kept. The PDF Title metadata changed to "Old Customs House Square" (see section 5). "QR" is navy in all four inks, not pure K, which is disclosed. **Editability 5, revision 5.**
+The print spec is unchanged: the same boxes, DeviceCMYK only, 34 300-ppi images, 2 embedded fonts, PDF Title "Harbor Lights". Hard checks are 7/8 again: the new kicker also prints in caps ("OLD CUSTOMS HOUSE SQUARE"). "QR" is navy (#0b1a2e as CMYK), not pure K. **Editability 5, revision 5.**
 
 **W (2026-10-05).**
 
@@ -94,35 +95,25 @@ The print spec is unchanged and all 8 hard checks still pass. Live vector text, 
 
 **Editability 5, revision 4.**
 
-## 5. Vixl product issues seen in the 0.20.0 run
+## 5. Vixl product issues seen in the 0.26.0 run
 
-- **The contrast check fails on some text layers.** `check_design(..., checks=["contrast"])` on `round2/poster.vixl` returns two warnings:
-  - "Could not measure 'title': boolean index did not match indexed array along axis 1; size of axis is 2696 but size of corresponding boolean axis is 2694"
-  - the same error for `qr-label` (axis 0, 98 vs 96)
+- **Layer `tracking` is not scaled in downscaled previews (confirmed; the round-1 agent's report).** `_scale_layer` in `src/vixl/proxy.py` (lines 24–58) scales the text `size`, `spacing` and rich-span `tracking` by the preview factor, but not the layer-level `tracking` field that `lettering.apply` turns into span tracking at layout time. The letters shrink but the gaps don't. Reproduced on a scratch copy of round 1 with `text-set tracking=22` on the kicker:
+  - `bounds`, `Project.render()`, the PNG export (`artboard="trim", scale=0.5`) and both PDF exports all agree: about 1150–1180 px wide, x 1284–2432. `pdftotext -bbox` on the exported PDF puts the kicker at 306.5–583.7 pt, which is the same.
+  - `proxy.render_preview(project, 1024, 1024)` (what `vixl_render_preview` draws) runs at a scale of 0.198 and draws the kicker 1986 px wide in document pixels (x 1283–3269), with "QUAY" clipped at the right edge.
 
-  This is an off-by-2 mask shape mismatch in the measure path (`src/vixl/checks.py` around line 435, `top_level_contrast`/`measure`). The check still passes with 0 errors, so a real contrast problem on the title would go unreported. The agents worked around it with `vixl_measure`.
-- **The PDF Title defaults to the first visible text layer.** It doesn't use the most prominent one (`src/vixl/pdf_export.py` lines 691–694). With `DisplayDocTitle` set, viewers show "Port Ellery Quay" in round 1 and "Old Customs House Square" in round 2, instead of "Harbor Lights".
-- **The bleed still rounds to 38 px.** At 300 dpi the 0.125 in bleed becomes 38 px, so the canvas is 3376×5176. The export now scales it to an exact 810×1242 pt page (about 300.09 dpi in effect). That is harmless, but it is still not exact.
-- **The default safe guide (`safe: 38`) is 0.125 in inside the trim**, half the 0.25 in this brief asks for. The round-2 agent noticed this and placed the QR square from the brief instead of the guide.
+  So the "≈ 300/96" ratio in the report is a coincidence: the error grows as the preview gets smaller, and has nothing to do with dpi. The exported files would have been right. The agent removed the tracking because the preview disagreed with the measurements.
+- **Adding `tracking` to a plain text layer changes its box and moves the text down.** On the kicker, `tracking` 12 or 22 changes the layer height from 67 to 120 px and moves the glyphs down 28 px (ink y 1520–1587 → 1548–1615). `lettering.apply` converts the layer to rich text with `line_height` 1.0, which doesn't keep the plain engine's 1.35 line height and 5 px spacing.
+- **Auto-sized, centre-aligned text grows to the right.** When `text-set` or `tracking` widens an auto-sized layer with `align: center`, `x` stays put. So the text drifts off centre (kicker x stays 1277 while the width grows from 821 to 1323). Round 2 had to re-centre it with `align`.
+- **The safe-area check rounds outward.** On a scratch copy of round 2, a 300 px `qr-box` placed exactly on the safe corner (x 2962.5, y 4762.5, right and bottom edges at 3262.5/5062.5, which are the safe guides) gets the warning "'qr-box' extends outside the safe area". At 2962/4762 it passes. The safe guides are fractional because the 37.5 px bleed is now exact. The round-2 agent hit this and moved the square in by half a pixel.
+- **Still open:** CMYK with no ICC profile shipped (GCR approximation), and live transparency (soft masks) instead of a flattened PDF/X.
 
-## 6. Changes since the Vixl 0.18.0 run (2026-10-05 → 2026-10-06, lane V)
+## 6. Changes since earlier Vixl runs (lane V)
 
-| | 0.18.0 (GDUE / GIHH) | 0.20.0 (QN2Q / UMJZ) |
-| --- | --- | --- |
-| Hard checks | 6/8 | **8/8** |
-| Fidelity / craft | 5 / 4 | 5 / 4 |
-| Report honest | yes | yes (one margin figure overstated) |
-| Editability / revision | 4 / 5 | **5** / 5 |
+| | 0.18.0 (2026-10-05; GDUE / GIHH) | 0.20.0 (2026-10-06; QN2Q / UMJZ) | 0.26.0 (2026-10-12; S66U / AKHF) |
+| --- | --- | --- | --- |
+| Hard checks | 6/8 | 8/8 | 7/8 (caps kicker, agent's choice) |
+| Fidelity / craft | 5 / 4 | 5 / 4 | 4 / 4 |
+| Report honest | yes | yes (one margin figure overstated) | yes (claims exact copy with caps kicker, disclosed; tracking bug misdiagnosed as dpi) |
+| Editability / revision | 4 / 5 | 5 / 5 | 5 / 5 |
 
-- **Gone:**
-  - No TrimBox/BleedBox: they are now written.
-  - RGBA preview: the PNG export now has `alpha="flatten"`, so the preview is RGB.
-  - CMYK PDF fully rasterised, text included: the CMYK PDF now keeps vector text and shapes in DeviceCMYK, and only glows and reflections are 300 ppi CMYK images with soft masks.
-  - The round-2 gotcha where `text-set` wiped the rich-text list: the list survived this time.
-  - The bleed-crop workaround (cropping 1 px and losing the size metadata and guides): the export now scales to the exact page size.
-- **Remain:**
-  - the 38 px bleed rounding (now only a 0.03 % scale)
-  - CMYK with no ICC profile shipped
-  - live transparency instead of a flattened PDF/X
-- **New or newly seen:** the contrast check crashes on the title and the QR label, and the PDF Title is taken from the kicker.
-- **Look:** a different but equivalent design (DM Serif/DM Sans, flat lanterns with striped reflections, instead of Marcellus/Lato). Craft is unchanged at 4. W still has the richer illustration, but V now beats W on hard checks (8/8 against 7/8) and on revision (5 against 4).
+All four 0.20.0 issues are gone. The `vixl_check` contrast measurement no longer crashes on the title or the QR label (0 issues on round 2). The PDF Title is now "Harbor Lights", not the kicker. The bleed is an exact 37.5 px (3375×5175 canvas), so the export no longer has to scale. The default safe margin is 75 px (0.25 in), which matches this brief. The print output is otherwise as good as before: vector text in DeviceCMYK, 300 ppi soft-masked glows, boxes, ink about 228 %, and a round 2 where only the three changed bands moved. The one lost hard check is the agent's choice to set the kicker in capitals, the same thing W does. The design changed again (Fraunces/Atkinson, two lantern strings, dashed reflections) but stays at craft 4, so W keeps the richer illustration. New in this run: the preview-only tracking bug and the small text-layout and safe-area issues in section 5.

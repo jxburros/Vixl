@@ -1,42 +1,55 @@
-# T12 · Animated intro (Tidewick Café): lane V (Vixl)
+# T12 · Animated intro (lane V, Vixl)
 
-All visual work was done with the Vixl MCP tools (`vixl_document_create`, `vixl_font_pair`,
-`vixl_operations_apply`, `vixl_timeline_preview`, `vixl_render_preview`, `vixl_check`,
-`vixl_export_timeline`, `vixl_export_file`). I only used scripts to compute wave point coordinates
-(a sine function written as numbers) and to check the exported files with ffprobe/PIL.
+All visual work was done with the Vixl MCP tools (`mcp__vixl__*`). Python, ffprobe and ffmpeg were used only to read and check the outputs.
 
 ## Files
 
-| File | What it is | How it was made | Verified |
-| --- | --- | --- | --- |
-| `intro.vixl` | Editable source: layers, keyframe timeline (6 s, 30 fps, loop 0), embedded fonts | `vixl_document_create` 1080×1080, background `#14263b`, then `vixl_operations_apply` batches | opens and previews in Vixl; `vixl_check` passes (0 errors) |
-| `intro.mp4` | Main video | `vixl_export_timeline` (mp4, fps 30, scale 1) | ffprobe: h264, yuv420p, 1080×1080, 30/1 fps, 180 frames, 6.000 s; 139,936 bytes |
-| `intro.gif` | Half-size loop | `vixl_export_timeline` (gif, scale 0.5, fps 15, colors 64) | 540×540, loop=0 (forever), frame durations add up to 6000 ms; 269,936 bytes (under 5 MB). PIL reads 88 frames, though Vixl reported writing 90. The encoder probably merged two identical frames. |
-| `intro-last-frame.png` | Final frame | `vixl_export_file` with `time=5966.667` ms (frame 179/179, the last frame of the MP4) | 1080×1080 RGB; mean per-channel difference from the MP4's decoded last frame is about 1.6/255, from H.264 compression |
+| File | What it is | How it was made |
+| --- | --- | --- |
+| `intro.vixl` | Editable source: 21 layers (two groups) plus the keyframe timeline (6000 ms, 30 fps) | `vixl_document_create` (1080×1080, background `#14263b`), `vixl_font_pair` (`fraunces-work-sans`), then two `vixl_operations_apply` batches (artwork, then motion) and one fix batch for the wave boxes |
+| `intro.mp4` | 1080×1080, H.264 (High), yuv420p, 30 fps, 180 frames, 6.000 s, 130,346 bytes | `vixl_export_timeline` (fps 30, quality 90) |
+| `intro.gif` | 540×540, loops forever (loop=0), 176 frames, 1,085,274 bytes (about 1.09 MB, under the 5 MB limit) | `vixl_export_timeline` (scale 0.5, fps 30, 256 colours, no dither) |
+| `intro-last-frame.png` | 1080×1080 RGB, the frame at t = 5966.667 ms (frame 180 of 180) | `vixl_export_file` with `time=5966.667` |
+| `REPORT.md` | This file | |
 
-## What's in the animation
+Checked with ffprobe and PIL: the MP4 specs are as listed above. The PNG matches the MP4's decoded last frame (mean absolute difference 1.24/255, which is H.264 compression noise).
 
-- **Fonts:** pairing `fraunces-work-sans` (Fraunces 700 for the wordmark, Work Sans 400 for the tagline), installed and embedded with `vixl_font_pair`.
-- **Waves (0.0–1.5 s):** three sine-wave pen strokes, 14 px wide with round caps, in the bottom third (y ≈ 790–980). Their colours are sea-foam at 100 %, 65 % and 38 %. Each is drawn on left to right by animating `trim_end` from 0 to 100 with ease-in-out, staggered: wave 1 runs 0–1.1 s, wave 2 runs 0.2–1.3 s and wave 3 runs 0.4–1.5 s.
-- **Lighthouse (1.0–3.0 s):** built from pen and shape layers. The tower is cream with sea-foam stripes, a navy door, a sea-foam gallery, an amber lantern room with a glow look and navy mullions, and a cream roof and finial. All of it, including the beam, sits in the group `lighthouse`. The group animates `translate-y` from 520 to 0 with `ease-in-out-cubic`. A navy rectangle (`water-mask`, the same colour as the background) sits under the waves, so the lighthouse rises out from behind the water instead of sliding in from the frame edge.
-- **Beam (from 2.0 s to the end):** a translucent amber wedge (`alpha(#f2a541,0.55)`, blurred by 6). Its pivot is at the lantern. It fades in over 2.0–2.4 s and sweeps by animating `scale-x` through 1 → −1 → 1 → −1 → 1, with keys at 2, 3, 4, 5 and 6 s and `ease-in-out-sine`. So it swings from right to left and back through the lantern, and is still moving during the hold.
-- **Wordmark (2.0–3.5 s):** "Tidewick Café", 112 px, cream, centred near the top. It uses the `slide-in-up` preset: it rises 90 px and fades from 0 to 1 opacity, with ease-in-out-cubic.
-- **Tagline (3.0–4.5 s):** "Coffee by the harbor", 46 px, sea-foam, under the wordmark. It uses the `typewriter` preset, which keys one character at a time (21 text keys). The tagline is placed at a fixed left x, so the text grows rightward and doesn't re-centre as letters appear.
-- **Hold (4.5–6.0 s):** everything stays visible and the beam keeps sweeping.
+## The design
 
-## Choices and differences from the brief
+- **Background:** a flat navy `#14263b` canvas.
+- **Waves:** three stroked sine-wave paths in sea-foam `#a8d5c8` at opacity 0.4, 0.7 and 1.0 (back to front), with round caps, across the bottom third (y ≈ 790–1000). They run past both canvas edges on purpose.
+- **Lighthouse:** built from vector shapes (paths, rectangles, a triangle and an ellipse) and grouped as `lighthouse`. It has a cream `#f7f1e5` tapered tower with two sea-foam bands, a navy door, a cream gallery, roof and finial, and an amber `#f2a541` lantern with navy mullions. It stands on a sea-foam "island" bar.
+- **Beam:** two blurred amber cones (outer at opacity 0.28, inner at 0.45), grouped as `beam` with the pivot at the lamp.
+- **Text:** the wordmark "Tidewick Café" is set in Fraunces 700 at 104 px, cream. The tagline "Coffee by the harbor" is set in Work Sans 400 at 40 px, sea-foam, with 2 px tracking.
 
-- **Layout:** the brief says the wordmark is "above the waves". I put the wordmark and tagline at the top of the frame, above the lighthouse, and the lighthouse stands in the water in the centre. The text never overlaps the lighthouse or the waves.
-- **Beam:** the sweep is a 2D swing, a horizontal mirror of a light wedge about the lantern. It is not a 3D rotating beam. It passes edge-on (invisible) at the midpoint of each swing, about every second.
-- **Beam fade:** the beam fades in over 0.4 s at 2.0 s so it doesn't pop on. That fade is the only addition to the timing.
-- **Typewriter timing:** I assume the typewriter preset is linear, with the same time per character; I didn't change its easing. Letters appear in steps, as typing should. The other movements use ease-in-out curves.
-- **GIF:** I chose 15 fps and a 64-colour palette to keep the file small (270 KB). The brief sets no frame rate for the GIF.
-- **Last frame:** the PNG is rendered at the time of the MP4's last frame (5.967 s) rather than 6.000 s, so it matches the video exactly. The beam is at nearly the same position at both times.
-- **`vixl_check`:** it flagged the waves as cut off at the canvas edges. That is deliberate (they bleed off both sides), so I marked them `layer-intent allow_crop`. After that, no fix findings remain.
+## Timing as built
+
+| Time | Brief | What the file does |
+| --- | --- | --- |
+| 0.0–1.5 s | Three waves draw in, left to right | `trim_end` goes from 0 to 100 on each wave path (ease-in-out-sine). Each draw takes 1.1 s, and they start 0.2 s apart (at 0, 0.2 and 0.4 s), so the last finishes at 1.5 s. |
+| 1.0–3.0 s | Lighthouse rises into view | The `lighthouse` group's `translate-y` goes from 180 to 0 over 1.0–3.0 s (ease-in-out-cubic). Its opacity goes from 0 to 1 over 1.0–2.0 s, and the island bar fades in over 1.0–1.6 s. A navy rectangle the colour of the background sits above the lighthouse in the layer stack, below the island line. The tower therefore emerges from behind a "horizon" instead of sliding over the text area. |
+| 2.0 s → end | Amber beam sweeps back and forth, keeps going | The beam's opacity goes from 0 to 1 over 2.0–2.4 s. Its `scale-x` follows a sine wave sampled every 33 ms from 2.0 s to 6.0 s (period 2.4 s, amplitude 1). The cone grows out of the lamp, swings across to the other side through zero width and back. This gives a rotating-lantern sweep from right to left and back that never stops. |
+| 2.0–3.5 s | Wordmark slides up and fades in, above the waves | `translate-y` goes from 50 to 0 over 2.0–3.5 s (ease-in-out-cubic), and opacity from 0 to 1 over 2.0–3.2 s. |
+| 3.0–4.5 s | Tagline types on, one letter at a time | `text-animate` with the `typewriter` preset, `unit: char`, starting at 3.0 s and lasting 1.5 s. The text stays a single editable text layer. |
+| 4.5–6.0 s | Hold, beam still moving | Everything else is static. The beam keeps sweeping until the last frame, where it points left at scale-x ≈ −0.87. |
+
+## Differences from the brief, and choices I made
+
+- **Beam motion:** the sweep is a 3D-style rotation: the cone flips through zero width via `scale-x`. It is not a 2D rotation of the cone around the lamp. I chose this because it reads as a lighthouse lantern turning. If "back and forth" was meant as a pendulum swing in the picture plane, this is a different reading. Near each crossing the beam is briefly very narrow, about every 1.2 s.
+- **Typewriter:** the letters appear one at a time with no movement, as typing does. That is the one deliberately "stepped" element. Everything that moves is eased.
+- **The GIF loops** (loop count 0, as the brief asks). The animation is a play-once intro, so the loop restarts from the empty first frame. Vixl's motion check reports this as "loop seam" review warnings. I left them, because closing the loop would mean un-drawing the logo before the end, which the timing table doesn't call for.
+- **First frame is empty navy:** at 0.0 s nothing has drawn in yet, so apps that show only the first frame will show a blank card. This follows the brief's timing. Vixl flags it as `motion.empty-poster` for review.
+- **GIF frame timing:** GIF delays are stored in hundredths of a second. Vixl writes alternating 30/30/40 ms delays to average 30 fps, and merged the four identical blank opening frames into one 170 ms frame. That gives 176 frames instead of 180, with the same 6.0 s total.
+- **Fonts:** the brief names none. I chose Fraunces (a warm old-style serif) for the wordmark and Work Sans for the tagline. The fonts from the document's first roll (Atkinson Hyperlegible Next and Source Serif 4) stay embedded but unused in `intro.vixl`, kept by undo history; `vixl_check` reports this as informational.
+- **No audio.** None was requested.
+
+## Checks
+
+- **`vixl_check`** (bounds, overlap, contrast, legibility, fonts, motion) passed with no `fix` findings. The review items are the loop-seam and empty-poster warnings explained above. There is also one note that the tagline is hidden for 52% of a looped playback, which is expected for a type-on that starts at 3 s.
+- **Previews:** I reviewed a contact sheet at 0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5.2 and 5.97 s, plus a decoded MP4 frame at 0.5 s.
+- **Wave fix:** the first preview showed the wave troughs cut flat by the path's box. I fixed it by giving each wave an explicit box (`path_view`) and re-exported everything.
 
 ## Unsure about
 
-- **GIF frame count:** PIL counts 88 GIF frames, while Vixl reported 90. The total duration is still exactly 6.0 s.
-- **Lantern glow:** the glow look is subtle at this size.
-- **Beam end:** the wedge has a fairly hard straight far end, which is softened only by the blur.
-- **Beam colour:** the translucent amber over navy reads as a warm brownish-amber rather than bright amber.
+- Whether the flip-style beam counts as "sweeps back and forth" (see above).
+- The beam cones are semi-transparent and blurred, so in the 540 px GIF (256 colours, no dither) the beam edges may show slight banding; I did not inspect the GIF frames themselves. The MP4 is smooth.

@@ -1,0 +1,1 @@
+Create player.vixl at 600x700 with a white background showing a person playing a guitar. The person is one object named player and the guitar (body, neck, headstock, strings) is a sub-object inside it. Preview just the guitar, then export player.png.

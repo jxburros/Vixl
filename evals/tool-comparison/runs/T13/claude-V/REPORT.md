@@ -1,59 +1,37 @@
-# T13 Pixel-art sprite: Vixl lane (claude-V)
+# T13 Pixel-art sprite: report (lane V, Vixl)
 
-Character: a lighthouse keeper in a yellow hooded raincoat with navy trousers and dark brown boots,
-holding a lit lantern in the front hand. Side view, facing right.
+All artwork was made with the Vixl MCP tools (`vixl_document_create`, `vixl_operations_apply`, `vixl_export_animation`). I used no image generator, no SVG/HTML and no hand-written pixels outside Vixl. I wrote one small Pillow script, and it only read the exported files to check them.
 
 ## Files
 
 | File | How it was made |
 | --- | --- |
-| `keeper.vixl` | The editable source. Made with the Vixl MCP tools: `vixl_document_create` (32x32, transparent), then one `vixl_operations_apply` batch of `pixel-art` layers written as character rows plus a palette. There are 9 pixel layers: `body` (hood, face, coat, arm and hand), `legs-stand`, `legs-w1` to `legs-w4`, and `lantern-a`/`-b`/`-c` (hanging straight, swung forward, swung back). A second batch builds each frame with `show`/`hide` and integer `move` (body bob, lantern position), saves it with `frame-save` (idle1, idle2, walk1 to walk4), and defines the named animations `idle` and `walk` with `animation-set` (loop 0, which means forever). |
-| `keeper-sheet.png` | `vixl_export_animation` with format=sheet, columns=6, scale 1, nearest. The file is 192x32 RGBA, unscaled, with frames in the order idle1, idle2, walk1, walk2, walk3, walk4 from left to right. |
-| `keeper-sheet.json` | Written by Vixl next to the sheet in the same export. Each frame has `name`, `x`, `y`, `width`, `height` and `duration` (ms). It also has top-level `width`, `height` and `loop`, and an `animations` object that lists the frames and total duration of `idle` and `walk`. |
-| `keeper-idle.gif` | `vixl_export_animation` with animation=idle, scale 8, sampling=nearest. 256x256, 2 frames of 400 ms, loops forever. |
-| `keeper-walk.gif` | `vixl_export_animation` with animation=walk, scale 8, sampling=nearest. 256x256, 4 frames of 120 ms, loops forever. |
-| `REPORT.md` | This file. |
+| `keeper.vixl` | The editable source. It is a 32×32 document with a transparent canvas and seven `pixel-art` layers: `upper` (hood, face, beard, coat and arm), `lantern`, `legs-stand` and `legs-walk1`–`legs-walk4`. It holds six saved frames (`idle1`, `idle2`, `walk1`–`walk4`, made with `frame-save`) and two named animations (`idle` and `walk`, made with `animation-set`, both `loop: 0`). |
+| `keeper-sheet.png` | `vixl_export_animation(format="sheet", columns=6, scale=1, sampling="nearest")`. It is 192×32 with frames in the order idle1, idle2, walk1, walk2, walk3, walk4, unscaled. |
+| `keeper-sheet.json` | Written by the same sheet export. Each entry in `frames` has `name`, `x`, `y`, `width`, `height` and `duration` (ms): 400 for each idle frame, 120 for each walk frame. Vixl also adds the top-level `width`, `height` and `loop` and an `animations` map, which are extra to what the brief asked for. |
+| `keeper-idle.gif` | `vixl_export_animation(animation="idle", scale=8, sampling="nearest", dither="none")`. 256×256, 2 frames of 400 ms, loops forever. |
+| `keeper-walk.gif` | `vixl_export_animation(animation="walk", scale=8, sampling="nearest", dither="none")`. 256×256, 4 frames of 120 ms, loops forever. |
 
-## Animation design
+## How the character was built
+- **Look:** A side view facing right. He has a yellow raincoat with a hood (with a lighter top and a darker back edge), a skin-toned face with a white beard and a dark eye, navy trousers (the far leg is a darker navy), dark brown boots, and a grey metal lantern with an orange glass and a pale flame. Every part has a dark outline (`#1e1a2a`).
+- **Palette:** 13 opaque colours plus transparency. The check script counted 13 unique opaque colours in the sheet.
+- **Idle:** In `idle2` the upper body drops 1 px (the breath) and the lantern moves 1 px left and 1 px down (the sway). The legs stay put.
+- **Walk:** The walk is contact, passing, contact (legs swapped), passing. On the contact frames the body drops 1 px, and the lantern swings by 1 px in time with the steps.
+- **Making the frames:** Between `frame-save` calls I used `hide`/`show` to pick the leg layer and `move` to place the body and lantern.
 
-- **idle:** In frame 2 the body layer (head, coat, arm) moves down 1 px for the breath. The lantern
-  moves down with the hand and swings 1 px forward. The legs do not move.
-- **walk:** contact, passing, contact, passing. Each leg is drawn in a near colour (#34467a) or a
-  far colour (#222c52), and the two contact frames swap which leg is in front. In the passing frames
-  the body rises 1 px and the back boot is lifted. The lantern swings forward in walk1, hangs
-  straight in walk2 and walk4, and swings back in walk3.
-- **Baseline:** the boot soles are on row 30 in all six frames (row 31 is empty).
+## Checks run on the exported files
+- **Sheet:** It is 192×32 RGBA. The only alpha values are 0 and 255, so there are no partly transparent pixels.
+- **Colours:** 13 opaque colours, within the limit of 16.
+- **Baseline:** The lowest opaque row is y = 30 in all six frames, so the baseline is the same everywhere. The rows from the top of the head down sit at y = 4 or 5 depending on the bob.
+- **GIFs:** Every frame of both GIFs matches its sheet frame scaled up 8× with nearest-neighbour, with no differing pixels. This means the GIFs are crisp and have no smoothing or dithering. Their alpha is also only 0 and 255.
+- **GIF timing:** The frame durations are 400/400 for idle and 120×4 for walk, and the loop value is 0 (forever).
 
-## Checks I ran (small Pillow scripts that only read the files)
-
-- The sheet is 192x32 RGBA, and every alpha value is 0 or 255.
-- The sheet uses 13 opaque colours. The palette is outline #1b1525, raincoat #f4c430/#c98e16/#fff09a,
-  skin #f2b48c/#c8805e, trousers #34467a/#222c52, boots #4a2f2a/#6b4a3a, and lantern
-  #6b7280/#f08a24/#fff3b0.
-- In every frame the lowest opaque row is row 30.
-- I checked both GIFs. They are 256x256 with loop=0, and the frame durations are [400, 400] and
-  [120x4]. Every 8x8 block in every frame is a single colour, so there is no smoothing. When I
-  downsample each GIF frame it matches the matching sheet frame exactly (both colour and
-  transparency).
-- I looked at an 8x nearest-neighbour preview of the sheet.
-
-## Deviations and choices
-
-- I used the frame names `idle1`, `idle2` and `walk1` to `walk4`. The brief did not set a naming
-  scheme.
-- `keeper-sheet.json` has more fields than the brief asks for (`loop`, `animations`, and the sheet
-  size). These come from Vixl's sheet exporter. I left them in.
-- I typed the pixel rows by hand into the `pixel-art` operations. To check row lengths before
-  sending them, I ran a small Python script that reads the text and checks it. A second small Python
-  script printed the JSON for the repetitive show/hide/move/frame-save batch. It did not make any
-  pixel data.
-- The export result for the sheet reported `"size":[32,32]` (the frame size), but the file itself
-  is 192x32.
+## Choices and deviations
+- The 32×32 frame leaves a margin: the character fills x 10–23 and y 4–30.
+- The lantern hangs in front of the near leg, so it partly hides that leg's shin in some walk frames. The feet are still visible in every frame.
+- The working scene in `keeper.vixl` is left in the `walk4` pose. Use `frame-apply` to restore any other frame.
+- I did not run `vixl_check` or a check suite. Those checks cover layout and text, which this piece doesn't have, so I checked the pixel rules on the exported files with a script instead.
 
 ## Unsure about
-
-- At 32 px the walk is readable but simple. Because only the leg colours change, the two contact
-  frames have the same outline.
-- The GIF transparency comes from Vixl's GIF encoder (disposal 2). I checked that the transparent
-  pixels stay transparent when Pillow decodes the frames, but I did not test the GIFs in other
-  viewers.
+- The walk cycle is only 4 frames at 32 px, with 1 px steps for the bob and the lantern swing. It reads as a walk when scaled up, but it is simple.
+- The lighthouse-keeper idea is carried only by the raincoat, the beard and the lantern. There is no other prop, such as a cap badge.

@@ -1,0 +1,1 @@
+Create cactus.vixl at 500x600 on a sand (#f4e4c1) background and draw a potted cactus: a ribbed cactus body with two arms standing in a terracotta pot. Make the cactus one object of kind cactus with the pot as a sub-object, every part touching, then export cactus.png.

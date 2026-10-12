@@ -1,45 +1,43 @@
-# T05 · Slide deck — lane V (Vixl)
-
-All visual work was done with the Vixl MCP tools (`vixl_document_create`, `vixl_font_pair`, `vixl_font_install`, `vixl_operations_apply`, `vixl_check`, `vixl_render_preview`, `vixl_export_batch`). I did not draw pixels, write SVG/HTML or use an image generator. Small Python scripts (python-pptx, poppler, LibreOffice, PIL) were used only to read and check the exported files.
+# T05 slide deck: Vixl lane (claude-V)
 
 ## Files
 
 | File | What it is | How it was made |
 | --- | --- | --- |
-| `deck.vixl` | Editable Vixl source: 6 pages, 2 masters (`feature`, `content`), swatches, embedded fonts, speaker notes | Built with `vixl_operations_apply` (master / page / text / rich-text / shape / chart operations) |
-| `deck.pptx` | 6 slides, 13.333 × 7.5 in (16:9), editable text boxes, slide title placeholders, a native column chart with its data table, speaker notes on all 6 slides, no raster fallbacks | `vixl_export_batch` from `deck.vixl` |
-| `deck.pdf` | 6 pages, 960 × 540 pt (16:9), vector with real selectable text; fonts embedded as subsets (Fraunces Bold, Work Sans Regular, Noto Sans Symbols 2) | `vixl_export_batch` from `deck.vixl` |
-| `REPORT.md` | This report | Written by hand |
+| `deck.vixl` | Editable Vixl source: 6 pages, 2 masters (`deck` for content slides, `cover` for the title and closing slides), brand swatches, speaker notes, embedded fonts | Vixl MCP: `vixl_workflow("deck-from-markdown")` built the first version from `deck.md`. I then restyled it with `vixl_operations_apply` batches (`build-ops.json`, `polish-ops.json`, plus one inline batch) |
+| `deck.pptx` | 6 slides at 16:9 (13.333 x 7.5 in), with editable text, a native PowerPoint bar chart on slide 3, real bullet paragraphs on slides 4-5, and speaker notes on all 6 slides. No raster images | `vixl_export_file(path="deck.pptx")` |
+| `deck.pdf` | The same 6 slides, one per page, 13.333 x 7.5 in. Vector, with selectable text and fonts embedded | `vixl_export_file(path="deck.pdf")` |
+| `deck.md` | Markdown source: slide text plus speaker notes (the `Notes:` sections) | Written by hand. This was the input to `deck-from-markdown` |
+| `build-ops.json`, `polish-ops.json` | The Vixl operation batches I applied (brand swatches, masters and footer, per-slide layouts) | Written as JSON with a small Python script and applied with `vixl_operations_apply(operations_path=...)` |
 
 ## Design
 
-- Canvas: Vixl named size `slide` (1920 × 1080).
-- Brand colours only: navy `#14263b`, amber `#f2a541`, sea-foam `#a8d5c8`, coral `#e2725b` and cream `#f7f1e5`. The stat cards are also filled white (`#ffffff`).
-- Type: Fraunces 700 for headings and numbers, Work Sans 400 for body text (Vixl pairing `fraunces-work-sans`). The ★ is set in Noto Sans Symbols 2, because Fraunces has no ★ glyph and Vixl's font check flagged it.
-- Masters:
-  - `feature` (slides 1 and 6): navy background, an amber "lamp" circle cropped at the top right, two sea-foam wave lines, and a sea-foam footer.
-  - `content` (slides 2–5): cream background, a short amber bar above the title, a sea-foam rule, and a navy footer.
-- Footer on every slide: "Tidewick Café" at the left and `${page} / ${pages}` at the right (renders as "1 / 6" … "6 / 6"), 26 px, at the same position on all slides.
-- Content slides 2–5 all put the title (layer named `title`) at x=120, y=130, 88 px. The type sizes are 26 (footer), 44 (labels, chart text, subtitle), 60 (bullets), 88 (content titles) and 120 (cover and closing titles, statistics).
-- Slide 3 uses Vixl's `chart` operation (bar chart): amber bars, with every bar labelled with its value (`#,##0`). The value axis runs from 0 to 10,000. In the PPTX it is a native, editable chart (data labels on, number format `#,##0`).
-- Final `vixl_check(checks=["deck"])`: 0 errors and 0 warnings. One informational note remains: the lamp circle is cropped on purpose (marked `allow_crop`).
+- **Brand colours.** All five are used as swatches: navy `#14263b` (text, cover background, bars), lamp amber `#f2a541` (lamp disc, 2026 panel, footer dot, star, card tab), sea-foam `#a8d5c8` (waves, footer rule, 2025 panel, card tab, cover subtitle), coral `#e2725b` (title accent bars, card tab) and cream `#f7f1e5` (content background, cover text).
+- **Type.** Young Serif for headings and Rubik for body text (the Vixl pairing `young-serif-rubik`).
+- **Consistent look.** On every content slide (2-5) the title is in the same place, Young Serif 90 px at x 120, y 128, with a coral bar above it. The type sizes are the same across those slides, and they all use the `deck` master, which carries the footer: an amber dot, "Tidewick Café" on the left, a sea-foam rule, and `N / 6` on the right.
+- **Title and closing slides.** Slides 1 and 6 use the `cover` master. It has a navy background and the same footer in light colours. Its decoration is an amber "lamp" disc with a halo, plus three sea-foam wave lines.
+- **Slide 3 chart.** A native bar chart, with each bar labelled with its value (8,560 / 8,830 / 8,990 / 8,900). The axis starts at 0.
+- **Speaker notes.** Each slide has 3 sentences.
 
-## Speaker notes
+## Checks
 
-Each slide has 2–3 sentences of speaker notes. They are stored on the pages in `deck.vixl` and exported as slide notes in `deck.pptx`. The PDF has no notes, as expected.
+`vixl_check(checks=["deck"])` on the final document reports **passed** with 0 fix findings. It found one review-level warning: the chart's label size (46 px) is not on the document's type scale. That size is needed to keep the chart's value labels at or above the 18 pt projected minimum. All 11 informational findings are on the cover decorations (lamp, halo and waves), which bleed off the edge on purpose and are marked `allow_crop`.
 
-## Differences from the brief and choices I made
+I also checked the output files outside Vixl:
+- **PPTX** (python-pptx): 6 slides, each with notes, and all slide text present as text.
+- **PDF** (pypdf): 6 pages with extractable text.
+- **Visual check:** I rendered the PDF pages with pdftoppm and looked at them.
 
-- **Footer on the title and closing slides.** The brief asks for the footer on content slides. I also put it, in sea-foam, on slides 1 and 6 so that every slide shows its number.
-- **Line breaks.** The cover and closing titles wrap across two lines because the text box is 1300 px wide. The text itself has no line break, so it stays exactly "Tidewick Café — 2025 in Review" and "Thank you — see you on the quay.".
-- **The 4.8★ statistic** is one rich-text box with two runs, "4.8" (Fraunces, navy) and "★" (Noto Sans Symbols 2, coral).
-- **The chart axis starts at 0.** This is honest, but the four quarters look similar because the values differ by only about 5%.
+## Differences from the brief
 
-## Issues found and what I'm unsure about
+1. **Title line breaks.** The two long titles have a hard line break: "Tidewick Café —" / "2025 in Review" and "Thank you —" / "see you on the quay." Without it, automatic wrapping put the em dash at the start of the second line. In the PPTX and PDF text, the space before the second line is therefore a line break.
+2. **The ★ in "4.8★".** The star is drawn as a vector star shape next to the text "4.8", not as a text character. With the ★ character, Vixl's font check reported fallback glyphs in the chosen fonts. The shape has alt text ("star (4.8 out of 5 stars)"). As a result, the editable text on that slide reads "4.8" and "average review", and the star is a separate shape.
+3. **Footer on title and closing slides.** The brief asks for the footer on every content slide. Slides 1 and 6 also have it, in light colours on navy.
+4. **Year panels.** Slides 4 and 5 have a decorative coloured panel showing "2025" and "2026". This is not in the brief.
 
-- **I fixed a Vixl export bug.** Vixl's `wave` shapes had no fill set. They rendered unfilled in Vixl and in the PDF, but the PPTX export gave them a white fill (LibreOffice showed white bands). Setting `fill: "transparent"` explicitly fixed it: the PPTX now writes `<a:noFill/>`, which I checked by re-rendering the PPTX in LibreOffice.
-- **Heading weight in the PPTX.** Heading runs reference the family "Fraunces" with no bold flag (`b="1"` is missing). In PowerPoint, Keynote or Google Slides with Fraunces installed, the headings may appear at regular weight instead of the 700 used in the PDF. I did not work around this: adding synthetic bold would have made the Vixl/PDF render too heavy.
-- **Fonts are not embedded in the PPTX** (a stated Vixl limitation). Fraunces, Work Sans and Noto Sans Symbols 2 must be installed where the deck is shown, or the app will substitute other fonts. The LibreOffice check render used fallback fonts, so the layout held but the typography changed. All three are Google Fonts, so Google Slides should find them. The PDF embeds all fonts.
-- **I could not open the PPTX in PowerPoint, Keynote or Google Slides here.** I checked it with python-pptx (6 slides, a title placeholder on each, notes on each, 1 native chart, 0 pictures) and by converting it with LibreOffice.
-- **Wave phase may differ.** In Vixl's own preview the two wave lines crossed each other, but in the PDF export they run parallel (the second wave's `phase` seems to be handled differently). Both look fine; I'm noting it only as a mismatch between preview and export.
-- **Footer size.** The footer text is 26 px, which is about 13 pt on the projected slide and below Vixl's 18 pt minimum. Vixl's deck check exempts footers and page numbers from that minimum.
+## Unsure about / known issues
+
+- **Fonts in the PPTX.** Young Serif and Rubik are **not embedded in the PPTX** because Vixl cannot embed fonts in PowerPoint files. Both are OFL Google Fonts. Machines without them will substitute another font, so line wrapping may change in PowerPoint and Keynote, and Google Slides may substitute too. The PDF does embed both fonts.
+- **PowerPoint, Keynote and Google Slides.** I did not open the deck in any of them. I only checked it structurally with python-pptx.
+- **Vixl bug found.** PPTX export failed with `unsupported operand type(s) for -: 'list' and 'int'` when a `rounded-rectangle` had per-corner `radius` (a 4-item list). The cause is in `src/vixl/pptx_export.py` around line 272, which assumes `radius` is a number. I worked around it by giving the card accent tabs a single radius value. I did not fix Vixl itself.
+- **Old-style figures.** Young Serif uses old-style numerals, so "312" sits visually higher than "35,280" on slide 2. That comes from the typeface; I chose to keep it.

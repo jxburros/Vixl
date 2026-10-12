@@ -1,0 +1,1 @@
+Make a three-slide presentation deck.vixl at 1280x720 on a dark navy background with white text. Slide 1 says 'Quarterly Review', slide 2 'Revenue up 12%' and slide 3 'Next steps'. Add the speaker note 'Thank the team' to slide 3. Export it as deck.pptx for PowerPoint and as deck.pdf.

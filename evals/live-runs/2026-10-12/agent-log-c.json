@@ -1,0 +1,76 @@
+{
+  "chart-fix-value": {
+    "tool_calls": 7,
+    "tool_errors": 0,
+    "errors": [],
+    "notes": "operation_schema(chart, chart-data) -> create 800x500 white -> chart (name sales, bar, title 'Units sold') -> chart target=sales padding=32 -> chart-data set [{category: Q3, value: 130}] with check+preview -> export PNG -> close. chart-data is exactly the right tool: Q3 bar and its value label updated in place, layer IDs kept, chart record shows values [120,150,130,180]. Friction: a default chart fills the whole canvas with 16 px padding, so on a document with a 25 px safe area the very first chart fails vixl_check with 6 safe_area 'fix' errors (title, tick label, category labels); the chart's default padding should respect the document's safe area. Chart labels also trigger an informational thumbnail-legibility note at the default font size. Export result reports bytes but not pixel size.",
+    "agent_answer": "Created report.vixl with the editable 'sales' bar chart (Units sold), corrected Q3 from 90 to 130 with chart-data, and exported report.png."
+  },
+  "drawing-vectorize": {
+    "tool_calls": 9,
+    "tool_errors": 1,
+    "errors": [
+      "transform requires 'matrix'; I guessed x/y/width/height on transform (used resize + move instead)"
+    ],
+    "notes": "guide + drawing schema; sketch is 640x480 so created house.vixl at 640x480 white. MCP needs two steps: vixl_import_image to get an asset ID, then drawing import with that asset (the schema says only 'Embedded scan or photo asset', no path field; docs/drawing.md explains the two-step). Removed the temporary raster layer, vectorize, then straighten. Surprise: drawing import placed the 'house' group at [32,24,576,432], i.e. scaled to 90% with a margin, not 1:1 with the photo, even though the canvas is exactly the photo size; I had to resize+move the group back to [0,0,640,480] so the lines register with the photo. Straighten made the lines clean (6 strokes: outline, roof line, door, window, two eave ticks). Exported house.svg with svg_policy=strict (3.2 KB, so the hidden original/ink rasters in the group are not embedded). check drawing passed.",
+    "agent_answer": "Vectorized the sketch into an editable, straightened line drawing 'house' in house.vixl (640x480) and exported house.svg."
+  },
+  "font-pairing": {
+    "tool_calls": 4,
+    "tool_errors": 0,
+    "errors": [],
+    "notes": "document_create(font_pairing='source-serif-sans') installed Source Serif 4 600 + Source Sans 3 400 from the cache; layouts_list(hero-statement); layout-apply title 'Editorial', unfilled 'omit'; check passed. Smooth. Confusing: the create result's design_defaults.direction.pairing says 'public-sans-single' while typography.pairing is source-serif-sans, so the result reports two different pairings. The rolled direction also adds a 'direction-motif' 8 px dot placed outside the safe area (reported as intentional/informational) and a dark warm-graphite palette that nobody asked for. No export requested, so none made.",
+    "agent_answer": "Created design.vixl (800x800) with the source-serif-sans pairing installed and a hero-statement layout titled 'Editorial', other slots omitted."
+  },
+  "layout-filled": {
+    "tool_calls": 3,
+    "tool_errors": 0,
+    "errors": [],
+    "notes": "create 800x800 seed 4 -> layout-apply hero-statement seed 4 with title/subtitle/cta, unfilled 'omit' (label omitted) -> check passed with no blanks -> close. Very smooth. Minor inconsistency: document seed 4 rolled palette 'accessible-blue' in design_defaults, but layout-apply with seed 4 rolled 'cloud-blue', so the same seed gives two different palettes depending on where it is used. CTA text gets an informational thumbnail-legibility note.",
+    "agent_answer": "Created design.vixl with hero-statement (seed 4): 'Launch', 'A new beginning' and a 'Learn more' button, all editable with no blanks."
+  },
+  "object-dog": {
+    "tool_calls": 13,
+    "tool_errors": 0,
+    "errors": [],
+    "notes": "guide('dog') gave the part list (head, body, eye, ear, leg x4, tail, snout, nose), layering and the workflow. Built the parts with shape ellipses and rounded rectangles plus stroked path shapes for tail and mouth, grouped them as 'dog', set object kind dog, and named every part with object action=part (sides on legs, ears, eyes). check connected passed; inspect(object=dog) shows no missing parts; reviewed with render_preview isolate+views=parts+exploded, then exported. Friction: (1) a path shape created at x=0,y=0 with absolute coordinates gets a box from the origin to the path's far point (0,0,468,470), which bloats the group so the isolated 'assembled' thumbnail showed the dog crammed in a corner. (2) Moving that path with target+x/y+new path kept the stale 468x470 box; then setting width/height to fix it SCALED the path data down (468->105), so the tail shrank to a dot; I had to re-send the path to restore it (3 extra applies). (3) The connected check still passed while the tail was a tiny dot. (4) The group box stays [0,0,468,520] after the parts move; it does not shrink to its contents. (5) Two legs on each side both get the path dog/leg[left], so the object paths are ambiguous (no front/back or index). 'chest' and 'mouth' warn as free-text parts, which is fine.",
+    "agent_answer": "Drew a friendly sitting dog in dog.vixl as one 'dog' object with named head, body, four legs, ears, tail, snout, nose and eyes (all connected), reviewed it isolated, and exported dog.png."
+  },
+  "organic-flower": {
+    "tool_calls": 9,
+    "tool_errors": 1,
+    "errors": [
+      "reparent needs 'into', not 'parent' (dry run)"
+    ],
+    "notes": "organic preset flower, params {petals: 6}, 400x400 at (100,100), seed 7, naturalness 0.4. First pass with fill='#f48fb1' also coloured the centre stamens pink; regrew with colors {petals, center} (part names guessed right, but the schema does not list each preset's part names). Regrowing replaces the child layers with new IDs. The centre is only scattered seeds with background showing through, so I added an organic-shape blob disc and reparented it into the bloom group below the seeds. organic-shape added a default 1 px dark outline nobody asked for (reported under defaults), so I restyled it. Exported garden.png.",
+    "agent_answer": "Grew a six-petal pink organic flower 'bloom' (~400 px, centred) on a pale green canvas in garden.vixl and exported garden.png."
+  },
+  "print-cmyk": {
+    "tool_calls": 5,
+    "tool_errors": 0,
+    "errors": [],
+    "notes": "create 300x300 dpi=300 -> solid name background color teal (no normalisation note even though I passed 'color' instead of 'fill'; result shows fill teal) -> check bounds+print passed -> proof preview -> export print.tiff color_space=cmyk -> close. Easy. The export result reports only bytes and format; it does not confirm the colour space, dpi or ink coverage written, so I could not verify CMYK from the result. Without background= the canvas defaults to a palette colour (#f6efe6), not white, which is hidden here by the full solid.",
+    "agent_answer": "Created design.vixl (300x300 at 300 dpi) with a full-canvas teal 'background' solid and exported print.tiff in CMYK."
+  },
+  "seamless-spinner": {
+    "tool_calls": 7,
+    "tool_errors": 0,
+    "errors": [],
+    "notes": "guide(animation) -> schema(motion, timeline-set) -> star shape 100x100 centred, orange -> timeline-set 2000 ms, 12 fps, loop 0, loop_mode seamless -> motion spin turns 1, linear. Timeline preview at 0/167/1000/1833/2000 ms confirms the 2000 ms frame equals frame 0. export_timeline wrote 24 frames (not 25, so no duplicate frame at the seam). Notes: the 5-point star drawn in a 100 px box is only about 76 px wide visually; GIF frame durations alternate 80/90 ms (centisecond rounding of 83.3 ms), fine but uneven; the export result does not echo the loop count.",
+    "agent_answer": "Created spinner.vixl with an orange star spinning one full turn every 2 s at 12 fps, looping forever with no seam, and exported spinner.gif (24 frames)."
+  },
+  "targets-fanout": {
+    "tool_calls": 6,
+    "tool_errors": 0,
+    "errors": [],
+    "notes": "One apply with two operations: shape targets [dot2, dot4, dot6] fill #ff8800 opacity 0.5, and hide targets [dot1, dot3]; dot5 untouched. Atomic, and the compact detail confirmed exactly those five changes. Smooth: 'targets' on shape fans out as documented. edit-layers was the alternative but overkill here.",
+    "agent_answer": "In one atomic edit, set dot2, dot4 and dot6 to #ff8800 at 50% opacity and hid dot1 and dot3; dot5 is unchanged."
+  },
+  "variable-variants": {
+    "tool_calls": 8,
+    "tool_errors": 0,
+    "errors": [],
+    "notes": "variable city=Paris + text 'Hello, ${city}!' (heading font, 120 px, #1a1a2e, centred) in one batch; preview with variables={city: Tokyo}; exported banner-paris.png (stored value) and banner-tokyo.png with variables={city: Tokyo} on vixl_export_file, which overrides only that export. Minor: the text box is auto-sized from the stored value and x='center' is resolved once at creation, so the Tokyo variant is a few px off-centre (the box grows to the right). inspect(target=headline) does not show the resolved text or the stored variables, so I could not confirm 'still Paris' after the export except from the apply result.",
+    "agent_answer": "Created banner.vixl with variable city=Paris and a 'headline' text 'Hello, ${city}!', and exported banner-paris.png and banner-tokyo.png (Tokyo only for that export)."
+  }
+}

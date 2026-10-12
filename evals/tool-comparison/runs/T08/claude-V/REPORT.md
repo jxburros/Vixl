@@ -1,45 +1,44 @@
-# T08 Infographic: Vixl lane (claude-V)
-
-All visual work was done through the Vixl MCP tools. A small Python script only read the CSV to
-check the numbers and checked the exported PNG's size.
+# T08 infographic, lane V (Vixl)
 
 ## Files
 
-| File | How it was made |
-| --- | --- |
-| `infographic.vixl` | Editable Vixl source. Made with `vixl_document_create` (1200x1800, cream `#f7f1e5` background), `vixl_font_pair` (Inter Tight 800 for headings, Inter 400 for body), and one atomic `vixl_operations_apply` batch: the header band, title and subtitle, three callout cards, two `chart` operations, and the footnote. |
-| `infographic.png` | `vixl_export_batch`. Confirmed as 1200 x 1800 px, RGB. |
-| `infographic.svg` | `vixl_export_batch`. Vector with no embedded `<image>` rasters. Text is drawn as outlined paths, not `<text>` elements. |
-| `infographic.pdf` | `vixl_export_batch`. Vector PDF with real, selectable text, two embedded fonts and no raster fallbacks. Page size is 16.667 x 25 in, which is 1200 x 1800 px at 72 dpi. |
-| `REPORT.md` | This file. |
+| File | What it is | How it was made |
+| --- | --- | --- |
+| `infographic.vixl` | Editable source: layer stack with two data-bound `chart` groups (`monthly`, `share`), the callout cards and the text layers | `vixl_document_create` (1200 × 1800, background `#f7f1e5`, purpose poster, seed 8; the rolled font pairing installed was Zilla Slab 700 for headings and Fira Sans 400 for body), then `vixl_operations_apply` |
+| `infographic.png` | 1200 × 1800 px, RGB | `vixl_export_file` |
+| `infographic.svg` | Vector version: no embedded `<image>` elements | `vixl_export_file` |
+| `infographic.pdf` | Vector version too: 1 page, `content: vector`, no raster fallbacks | `vixl_export_file` |
+| `build-ops.json` | The first operation batch (title, cards, both charts, footnote) | A short Python script wrote it from the CSV. It read the CSV, put the twelve rows into the chart's `table` and summed the drink totals for the donut. Vixl applied the file through `operations_path`. The script did not draw anything. |
 
-## Content
-1. **Title and subtitle:** the text is exactly as the brief gives it.
-2. **Stacked bar chart:** Vixl's `chart` operation with `kind: stacked-bar` and `min: 0`. It has one bar per month,
-   stacked from bottom to top as Flat white, Drip, Cold brew, Tea. It has a legend at the top, a value axis from 0 to 4,000
-   titled "Cups", and the month's total above each bar. Vixl's chart engine sets the segment heights from the data. I
-   spot-checked one: Jan Flat white 1,200 is 135 px tall on a 448 px plot for 0–4,000, and 1200/4000*448 = 134.4.
-   I turned off the value labels on each segment to keep the chart readable; the monthly totals are shown.
-3. **Share of the year:** a donut chart with a percent label on each slice (44.6%, 33.7%, 7.1%, 14.7%). The legend
-   also shows each drink's yearly total (15,720 / 11,880 / 2,500 / 5,180), and the centre shows "35,280 cups".
-4. **Callouts:** I computed these from the CSV and they match the chart's own totals.
-   - Total cups in 2025: **35,280**
-   - Busiest month: **August**, 3,030 cups
-   - Cold brew peak: **August**, 420 cups
-5. **Footnote:** "Fictional data, made for testing."
+After the first batch I made these edits with further `vixl_operations_apply` calls. They are not in `build-ops.json`, so `infographic.vixl` is the only source that holds the final design:
+- The cards became `rounded-rectangle`, 180 px tall.
+- Every label and note was raised to 27 px.
+- The footnote moved to y 1700 to sit inside the safe area.
+- The bar chart is now 720 px tall with font_size 27 and bar_gap 0.18.
+- The donut got font_size 27 and number_format `#,##0`.
 
-The same colour is used for each drink in both charts and both legends: Flat white navy `#14263b`, Drip amber `#f2a541`,
-Cold brew sea-foam `#a8d5c8`, Tea coral `#e2725b`.
+## Content and numbers
+
+The numbers come from `fixtures/coffee-2025.csv`. I checked them in Python, and Vixl's `chart.summary` for the donut matched.
+
+- Title "A Year of Coffee at Tidewick"; subtitle "Cups sold per month, 2025".
+- **Stacked bar chart** (`kind: stacked-bar`, `min: 0`): one bar per month, stacked flat white (bottom), drip, cold brew, tea (top). It has a legend at the top, a value axis titled "Cups" from 0 to 3,500 at 500-step ticks, and a total label over each bar. The bars are drawn to scale by the chart engine. As a spot check, the August stack measures about 417 px against a 3,030-cup total at roughly 0.138 px per cup.
+- **Share of the year** as a donut with percentage labels to one decimal place: Flat white 44.6 %, Drip 33.7 %, Cold brew 7.1 %, Tea 14.7 %. The legend gives each drink's yearly total (15,720 / 11,880 / 2,500 / 5,180), and the centre reads "35,280 cups".
+- **Callouts:**
+  - Total cups in 2025: 35,280.
+  - Busiest month: August, 3,030 cups.
+  - Cold brew peaked in August with 420 cold brews.
+- Footnote "Fictional data, made for testing."
+- **Colours** are the same for each drink everywhere: flat white navy `#14263b`, drip amber `#f2a541`, cold brew sea-foam `#a8d5c8`, tea coral `#e2725b`. The cream `#f7f1e5` is the background.
 
 ## Choices and deviations
-- The data was entered into the chart operation inline (categories and series), not linked to the CSV.
-  I did this so the series could have readable names ("Flat white" rather than `flat_white`). The values are the CSV's values exactly.
-- The busiest month and the cold-brew peak are both in August, so two callouts say "August". That is what the data says.
-- `vixl_check` found no errors and no problems with overlap, contrast or bounds. It gave 53 legibility warnings. These mean
-  most text would be smaller than 10 px if the whole 1200 px image were shrunk to a 320 px thumbnail. I left these as they are:
-  this is a tall infographic meant to be read at full size, where the smallest text is 20 px. Clearing the warnings
-  would need text of 38 px or more everywhere.
 
-## Uncertainties
-- The SVG draws its text as paths, so the words in the SVG can't be selected or searched. The PDF does keep real text.
-- In the stacked bars, cold-brew segments for winter months are small (about 6–12 px), but they are drawn to scale.
+- I renamed the series to "Flat white", "Drip", "Cold brew" and "Tea" for display instead of the CSV column names.
+- I added a chart title above each chart: "Cups sold by month and drink" and "Share of the year's cups".
+- The busiest month and the cold-brew peak are both August, so two callouts say "August".
+- The percentages are rounded independently and add up to 100.1 %. I left them that way so that each one is correct to one decimal place.
+
+## Open items and uncertainty
+
+- **One check finding is still open.** The final `vixl_check` reports a legibility warning on the twelve stack-total labels above the bars. The chart draws them at about 23 px; the threshold is 26.4 px at full width. Every other check passes, including bounds, overlap, contrast and safe area.
+- **SVG and PDF were not inspected visually.** They come from the same document, but I looked only at the PNG.

@@ -1,0 +1,1 @@
+Create design.vixl at 800x800. Install the source-serif-sans font pairing and use hero-statement with title Editorial. Omit other unfilled slots. The workspace font cache provides offline fixtures.

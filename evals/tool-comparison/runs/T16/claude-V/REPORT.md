@@ -1,31 +1,46 @@
-# T16 · Café menu (lane V, Vixl)
+# T16 Café menu: report (lane V, Vixl)
+
+All visual work was done through the Vixl MCP tools (`vixl_document_create`, `vixl_operations_apply`, `vixl_check`, `vixl_render_preview`, `vixl_export_file`). I wrote no SVG, HTML or pixels. I ran one small Python one-liner to work out dot-leader start and end points from the text bounds Vixl had reported. I also used `PIL`, `pdfinfo`, `pdffonts` and `pdftotext` to check the outputs.
 
 ## Files
+
 | File | How it was made |
 | --- | --- |
-| `menu.vixl` | Editable Vixl source. Made through the Vixl MCP tools: `vixl_document_create(size="legal")` (2550 × 4200 px, 300 dpi, no bleed), `vixl_font_pair` (dm-serif-dm-sans), `vixl_font_install` (DM Sans 700, DM Sans 400 italic, plus DM Mono 400, which is registered but no longer used), and then `vixl_operations_apply` batches (`solid`, `shape`, `text`, `text-set`, `text-style`, `move`, `constrain`, `edit-layers`). Every text layer is still live text. |
-| `menu.pdf` | `vixl_export_batch` → vector PDF, one page of 612 × 1008 pt (8.5 × 14 in), RGB. The text is real, selectable text: `pdffonts` lists 4 embedded subset fonts (DM Serif Display, DM Sans Regular, Bold and Italic). `pdftotext` gets every item and price back out in reading order. `raster_fallbacks` is empty. |
-| `menu-preview.png` | The same export batch at scale 0.5 and dpi 150 → 1275 × 2100 px RGB. I checked the size with PIL. |
-| `REPORT.md` | This file, written with a shell heredoc. |
+| `menu.vixl` | The editable Vixl source. I created it with `vixl_document_create(size="legal", dpi=150, background="#f7f1e5", font_pairing="dm-serif-dm-sans")`, so the canvas is 1275 × 2100 px (8.5 × 14 in at 150 dpi, no bleed). I then built the page in five `vixl_operations_apply` batches. |
+| `menu.pdf` | `vixl_export_file` to PDF. It is one page, 612 × 1008 pt (US Legal), with vector content and real, selectable text. DM Serif Display and DM Sans are embedded as subsets. `pdftotext` returns every item, price, description, the key and the footer. |
+| `menu-preview.png` | `vixl_export_file` to PNG at 150 dpi: 1275 × 2100 px, RGB. |
+| `REPORT.md` | This file. |
 
-## Design and typesetting
-- **Page:** the page background is white. A cream (`#f7f1e5`) panel is inset 0.5 in (150 px) from every edge, so nothing prints to the paper edge. A navy hairline frame sits at 0.6 in and a navy footer band runs along the bottom of the frame. All text starts 0.85 in (255 px) from the left and right edges. Nothing sits closer than 0.5 in to the trim.
-- **Type and colors:** the title is DM Serif Display at 200 px (48 pt). The subtitle is DM Sans Italic at 64 px. Section heads are DM Sans Bold at 54 px with +8 tracking and a short amber (`#f2a541`) bar under each. Item names and prices are DM Sans at 50 px (12 pt). Navy `#14263b` is used for text. Amber appears only in rules, never in text, because it has too little contrast on cream.
-- **Smallest text:** the seasonal descriptions are 42 px = 10.1 pt in muted navy `#3f4b5c`, which has 7.87:1 contrast on cream. The key is 44 px (10.6 pt) and the footer is 46 px (11 pt). Nothing is under 9 pt.
-- **Decimal alignment:** each price is two text layers. `p-*` holds the dollars ("$3") and is pinned by its right edge at x = 2215 (`constrain right: canvas.left+2215`). `c-*` holds the decimal point and cents (".00") and starts at x = 2215. Every decimal point therefore sits at the same x. Because DM Sans figures are proportional, the right edge of the price column is ragged by up to about 12 px. I chose this over a monospaced font: DM Mono, my first try, draws slashed zeros that look wrong on a menu.
-- **Baselines:** names, dollars and cents in each row share one exact baseline (e.g. 916, 998, 1080 …, checked in the apply results). Vixl places text by the top of the ink, so I moved each layer by the reported baseline offset to line them up.
-- **Dot leaders:** each row has a dotted `line` shape (`dash [0.5, 17.5]`, round caps, grey `#6e7682`). It starts 24 px after the measured right edge of the item name and ends about 34 px before the price. The lengths are set by hand from the measured name widths, so a leader will not follow its name if the name text changes.
-- **Content:** all sections, names, prices, tags, descriptions, the key text and the footer text are exactly as given in the brief, including é, û, en dashes and middle dots. Every glyph is present in the fonts; I checked this with fontTools.
+## Design
+
+- **Palette.** I used the brand colors from the brief. The page is cream (`#f7f1e5`). Text is navy (`#14263b`). Amber (`#f2a541`) is used only for decoration: the inner frame, the rules under section headings and the short rule above the key. Amber on cream does not have enough contrast for text.
+- **Type.** DM Serif Display is used for the title (124 px, about 59.5 pt) and the section headings (44 px, about 21 pt). DM Sans is used for:
+  - item names and prices: 30 px, 14.4 pt
+  - the subtitle: 36 px
+  - the seasonal descriptions: 24 px, 11.5 pt, muted navy `#4a5668`
+  - the key: 26 px, 12.5 pt
+  - the footer: 28 px, 13.4 pt
+
+  The smallest text on the page is 11.5 pt, which meets the 9 pt minimum.
+- **Margins.** There is a navy frame inset 0.6 in from each edge and an amber frame at 0.68 in. All text sits inside both frames, at least 1.2 in from the side edges. Nothing is placed within 0.5 in of the edge.
+- **Item lists.** Each section is a Vixl `table` (`coffee`, `tea`, `bakery`, `seasonal`). It has a header row for the section name, a `1fr` name column and a price column with `align: "decimal"`, so the decimal points line up. You can see this on "$1.00": it sits a little to the right so that its point lines up with the others. All four tables share the same x position, width and column widths, so the price column lines up across sections too. A `stack` group (`sections`, 58 px gap) spaces the four tables.
+- **Dot leaders.** Vixl has no tab-leader feature (`docs/use-cases.md` lists this as BLK-07). I drew each leader as a dotted path shape: `dash: [0.01, 12]`, round caps, 3.5 px stroke, `#7d8794`, about 6 px above the text baseline. There are 22 of them, grouped as `leaders`. Each leader starts and ends on a 12 px grid, so the dots line up vertically from row to row. Every leader ends at x = 972, 26 px before the price column.
+- **Seasonal descriptions.** The table wrapped each description onto two lines at 30 px, so I put each one back on a single line with `text-set` at 24 px. I then used `move baseline_y` to place the description baselines and the rows that follow, so each description sits directly under its item.
 
 ## Checks
-- `vixl_check` (bounds, overlap, contrast, safe_area=150 px, legibility, fonts, print) passed with 0 errors.
-- It gave 3 "review" warnings. The checker could not measure contrast for the centered layers subtitle, key and footer: it reports an internal array-size mismatch, apparently from their half-pixel x positions. I checked those colors by hand with `vixl_color`: navy on cream is 13.63:1, and the footer is cream on navy, the same pair.
-- I looked at the full-page preview and zoomed renders to check alignment.
 
-## Deviations, choices and doubts
-- The brief does not name a layout. I typeset by hand instead of using a Vixl `layout-apply` layout, because a price list needs exact rows.
-- The tags (N), (V) and (GF) are set in the same style as the item names.
-- There is extra space between the key and the footer band (about 0.5 in). The layout is a single column and fits on one page with room to spare.
-- The PDF is RGB, not CMYK, because it is for a desktop printer.
-- DM Mono 400 is still registered in `menu.vixl` but is not used by any layer and is not in the PDF.
-- I have not test-printed the page. Printers that cannot print within about 0.5 in of the edge will still print everything, because the cream panel starts at exactly 0.5 in.
+The last `vixl_check` passed with no findings. It ran these checks: bounds, overlap, contrast, print (which includes minimum type size in points), legibility, fonts and placeholders, with a 75 px (0.5 in) safe area. The checks also passed after every build batch. I looked at the full page and zoomed-in previews before exporting.
+
+## Differences from the brief and choices I made
+
+- **Copy.** All sections, names, prices, descriptions, tags, the key and the footer are exactly as given.
+- **Layout.** I used a single column, with section headings in capitals as the brief lists them.
+- **Leaders.** They are drawn dots (vector shapes), not period characters. In the PDF text layer, names and prices are therefore separated by spaces rather than by "....".
+- **Background.** The cream fill covers the whole page. A desktop printer will leave its usual unprinted white border, which only trims the cream at the very edge. All content and both frames stay well inside the printable area.
+- **Rules.** The short amber rule above the key is a path shape. I also used it to replace an earlier `line` shape.
+
+## Things I'm unsure about
+
+- I checked decimal alignment in the preview only, by eye. It looks right, including the "$1.00" offset, but I did not measure the position of each decimal point.
+- The gap between where the name ends and where the leader starts varies from 16 to 28 px, because the leaders snap to the 12 px grid.
+- I did not attach a custom check suite (`suite-set`). I relied on the built-in checks, including the print check for type size.

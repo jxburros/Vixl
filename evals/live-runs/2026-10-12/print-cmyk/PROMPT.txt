@@ -1,0 +1,1 @@
+Create design.vixl at 300x300, set 300 dpi and add a full canvas teal solid layer named background. Export print.tiff in CMYK.

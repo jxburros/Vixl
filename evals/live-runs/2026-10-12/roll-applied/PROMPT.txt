@@ -1,0 +1,1 @@
+Create design.vixl at 800x800, then roll and apply a direction with seed 12, locking layout hero-statement, pairing source-serif-sans, palette ocean. Fill title Launch, subtitle A new beginning and CTA Learn more. The workspace font cache provides offline fixtures.

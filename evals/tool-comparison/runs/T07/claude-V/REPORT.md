@@ -1,39 +1,46 @@
-# T07 · Name badges — lane V (Vixl)
+# T07 · Name badges: Vixl lane (claude-V)
 
-All the visual work was done with the Vixl MCP tools: document create, font pair/install, operations_apply, check, render_preview, workflow `merge-impose`, and export_batch. I did not draw pixels or write SVG/HTML myself. The only script, `prepare_data.py`, adds columns to the CSV; I explain why below. I used Python/Poppler only to check outputs (PNG sizes, `pdfinfo`, `pdftotext`, `pdffonts`, and a contact sheet for viewing).
+Everything was made with the Vixl MCP tools (`mcp__vixl__*`). I drew no pixels, wrote no SVG or HTML and used no image generator. The only scripts read the outputs to check them: PIL for sizes and a contact sheet, plus `pdfinfo`/`pdftotext`/`pdffonts`/`pdftoppm`, and one contrast-ratio calculation.
 
 ## Files
 
 | File | What it is | How it was made |
 | --- | --- | --- |
-| `badge-template.vixl` | Editable source: one 1200 × 900 px badge at 300 dpi (4 × 3 in) with `${first_name}`, `${last_name}`, `${company}`, `${role_label}`, `${bar_color}` and `${bar_ink}` variables | `vixl_document_create` (1200×900, dpi 300, background `#fbf8f2`), `vixl_font_pair montserrat-open-sans`, `vixl_font_install` (Montserrat 500, Noto Sans JP 500 and 700), then one `vixl_operations_apply` batch (variables, shapes, text, `text-layout` fit boxes, `font-fallbacks`) and a few small edits to move or resize layers |
-| `badges-data.csv` | The fixture plus three columns the template needs: `role_label`, `bar_color` and `bar_ink` | `python3 prepare_data.py ../../../fixtures/badges.csv badges-data.csv` |
-| `prepare_data.py` | Script that maps each role to its bar colour, bar text colour and capitalised label. It copies the name, role and company cells unchanged | Written by hand |
-| `badges/badge-01.png` … `badge-10.png` | One badge per CSV row, in file order, 1200 × 900 RGB PNG | `vixl_export_batch` on the template, with each target's `variables` set to that row's values |
-| `badges-print.pdf` | US Letter portrait, 2 pages, 2 columns × 3 rows, actual size (4 × 3 in per badge), grid centred (0.25 in left/right, 1 in top/bottom), crop marks at every cut line. Page 2 holds badges 7–10 in the same grid positions | `vixl_workflow merge-impose` with template + `badges-data.csv`, `sheet {size: letter, orientation: portrait, cols: 2, rows: 3, align: center, crop_marks: true}`, `check: design`. The PDF is vector, its text is selectable, and its 4 fonts are embedded subsets |
-| `badges-sheet.vixl` | Editable imposition sheet written by the same merge: one page per sheet, one live link per badge. Re-running is `{"rerun": "…/badges-sheet.vixl"}` | `merge-impose` `sheet_document` |
+| `badge.vixl` | Editable template: 1200 × 900 px at 300 dpi (4 × 3 in), with `${first_name}`, `${last_name}`, `${role}` and `${company}` variables | `vixl_document_create`, `vixl_font_pair` (inter-tight-inter: Inter Tight 800 for headings, Inter 400 for body), `vixl_font_install` (Noto Sans JP 700, registered as a `font-fallbacks` entry for the Japanese row), then `vixl_operations_apply` batches |
+| `badges/badge-01.png` … `badge-10.png` | One per CSV row in file order, 1200 × 900 RGB PNG | `vixl_export_batch` on the template, each target with that row's values as `variables`. I typed the values from the CSV into the call by hand |
+| `badges-print.pdf` | US Letter portrait, 2 pages; 2 columns × 3 rows of 4 × 3 in badges at actual size (scale 1.0), grid centred, crop marks at every cut line. Vector, with selectable text (embedded subsets of Inter Tight, Inter and Noto Sans JP) | `vixl_workflow("merge-impose")` with the template and `evals/tool-comparison/fixtures/badges.csv`, `sheet: {size: letter, orientation: portrait, cols: 2, rows: 3}`, `check: "design"`. It was dry-run first and then rerun after the last template fix |
+| `badges-sheet.vixl` | Editable imposition sheet: one page per sheet, and each badge is a live `link` layer to `badge.vixl` with its row's variables. It records the merge, so `{"rerun": "badges-sheet.vixl"}` rebuilds the PDF | Written by the same merge-impose call |
+| `REPORT.md` | This file | |
 
 ## Design
 
-- **Type:** Montserrat Bold for the first name (170 px) and the role, Montserrat Medium for the last name (84 px), Open Sans Regular for the company (42 px) and the dates (32 px). The event name is Montserrat Bold 38 px in capitals.
-- **Layout:** The event name and dates sit at the top left under a short rule in the role colour. Then come first name, last name and company. A full-width bar 180 px tall runs along the bottom with the role in capitals, centred.
-- **Fitting:** Each of the four variable text layers has a fixed `text-layout` box, 1040 px wide (80 px margins), with `fit: true`. Long text shrinks to fit the box instead of being clipped. The merge's validation reported no overflow on any row.
-- **Empty company:** The company layer has `hide_if_empty`, so Sam Okafor's badge (row 6) leaves the line out entirely.
-- **Bar colours:** Speaker `#f2a541`, Attendee `#a8d5c8`, Staff `#14263b`, Sponsor `#e2725b`. Volunteer (row 7) uses the Attendee colour and prints "VOLUNTEER".
-- **Bar text and contrast (WCAG, from `vixl_color contrast`):** Bar text is navy `#14263b` on amber (7.47:1), sea-foam (9.5:1) and coral (4.96:1), and white on navy (15.33:1).
-- **Names:** Every name prints exactly as written in the file, accents included. The PDF text extraction (`pdftotext`) matches the CSV for all 10 rows, including Zoë, Ångström-Okonkwo, O'Brien, Ana Lucía, Gómez, 花子 and 山田.
+- **Top of the badge:** the event name "Harbor Makers Summit 2026" (Inter Tight 46 px, navy `#14263b`) with "November 20–21, 2026 · Port Ellery" under it (Inter 32 px, grey). A thin rule sits below them.
+- **Name block:** a vertical `stack` group (1080 × 500, centred) holding three lines:
+  - first name: Inter Tight 190 px, navy;
+  - last name: Inter Tight 96 px, slate `#34475b`;
+  - company: Inter 50 px, grey.
 
-## Departures, choices and uncertainties
+  Each line is a fixed-width text box (1080 px) with `text-layout fit: true`, so a long value shrinks to one line instead of being cut off or overflowing. In row 4, "Bartholomew", "Featherstonehaugh-Villanueva" and the 48-character company all shrank to fit.
+- **Empty company:** the company layer has `hide_if_empty`. Row 6 (Sam Okafor, Staff) has no company, so the line disappears and the stack re-centres the name block, leaving no hole.
+- **Role bar:** a full-width bar, 180 px high, at the bottom of the badge. Its fill is `${role|map:barcolor}`: Speaker `#f2a541`, Attendee `#a8d5c8`, Staff `#14263b`, Sponsor `#e2725b`, and any other role (`*`) the Attendee colour. The role is printed from `${role}` with `text_transform: uppercase`, so "Volunteer" prints VOLUNTEER on sea-foam.
+- **Text on the bar:** the colour is `${role|map:barink}`, white on navy (Staff) and navy `#14263b` on the others. WCAG contrast is 7.47:1 on amber, 9.5:1 on sea-foam, 4.96:1 on coral and 15.33:1 for white on navy.
+- **Names exactly as written:** Zoë, Ångström-Okonkwo, O'Brien, Ana Lucía and Gómez are printed exactly as in the CSV. 花子 山田 draws through the Noto Sans JP fallback. `pdftotext` on the PDF returns these strings exactly.
 
-1. **I added columns to the CSV with a script.** Vixl's merge maps CSV columns to template variables directly. It has no lookup from role to colour and no upper-casing, so I generated `badges-data.csv` with the derived columns. It is data preparation, not drawing, but it is outside Vixl.
-   - To add a role or change a colour, edit the mapping in `prepare_data.py`, regenerate the CSV and rerun the merge.
-   - The original `role` column is kept but unused; the merge was run with `unknown: ignore`.
-2. **Japanese glyphs share one fallback weight.** Montserrat and Open Sans have no CJK glyphs, so Noto Sans JP is set as a fallback font.
-   - In Vixl, `font-fallbacks` is a single setting for the whole document. My second call (Noto Sans JP 500) replaced the first (700).
-   - As a result, both 花子 and 山田 render in Noto Sans JP Medium. 花子 is therefore lighter than the Latin first names, though it is still the largest line.
-   - Noto Sans JP 700 is still embedded in the template but unused, which is most of the template's 6.9 MB size.
-   - The merge logged "uses fallback glyphs" warnings for row 5. That is expected: no character prints as tofu.
-3. **One check warning left on purpose.** The last `vixl_check` passed with one legibility warning: `event-dates` is small at a 320 px thumbnail width. That check targets screen thumbnails. At print size the dates are 32 px = about 7.7 pt, which fits "small" in the brief. I accepted it.
-4. **No bleed and no gutter.** The badges are flat colour with no bleed, so the six badges butt together and share cut lines. Crop marks are in the margins only, with none inside the sheet. Background areas meet exactly at the shared trim lines.
-5. **Badge background.** The badge background is a warm off-white `#fbf8f2`, not pure white, so the PNGs and the PDF cells show it up to the trim.
-6. **PDF colour.** The PDF is RGB, which is the merge-impose default. I did not make a CMYK version, since the brief didn't ask for one.
+## Checks
+
+- **Template:** `vixl_check` passes, with 0 fix and 0 review findings after the two waivers described below.
+- **merge-impose:** 10 of 10 rows valid, with no overflow, missing-glyph or missing-column errors. Row 5 reports "uses fallback glyphs", which is expected: the Japanese text is drawn by the Noto Sans JP fallback, not by Inter.
+- **Outputs:** I checked that all 10 PNGs are 1200 × 900 and viewed a contact sheet of them. The PDF has 2 Letter pages (612 × 792 pt), and I rendered and viewed it.
+
+## Deviations and choices
+
+- **The 10 badges fill two pages.** Page 1 holds badges 1–6. Page 2 holds badges 7–10 in the top two rows of the same centred grid, so the cut lines line up with page 1, and its bottom row is empty.
+- **No gutter between badges.** Neighbouring badges share cut lines (gutter 0); with a 0.25 in side margin, two 4 in columns take the full 8.5 in width. The crop marks sit in the margins. Badges have no bleed, so the role bar's colour stops at the trim line; a slightly off cut could leave a hairline of white or of the neighbouring badge.
+- **I typed the per-badge PNG values into the export call by hand.** Merge-impose reads the CSV directly, but the single-badge PNGs were exported with variables I copied from the CSV into the call. I compared them against the file on the contact sheet.
+- **Fonts:** Inter Tight / Inter came from the font cache and Noto Sans JP was downloaded from Google Fonts. All three are embedded in `badge.vixl`, which is why it is about 3.6 MB.
+
+## Unsure / known issues
+
+- **Contrast waivers on two layers.** Inside the stack group, Vixl's contrast check reports 1.00:1 for the `first` and `last` text layers. I believe this is a false positive in the checker: the same check passes when the stack is removed (I ran a dry run), and the text is navy or slate on white, over 10:1. I waived `contrast` on those two layers with that reason recorded in the document. Merge-impose's `check: "design"` does not apply layer waivers, so its report still lists these as warnings for every row. The PNGs show the text clearly legible.
+- **Role-bar text extraction.** In the PDF, the role names are set with letter-spacing (tracking 10 px), so `pdftotext` extracts them as spaced letters (e.g. "AT T E N D E E"). The drawn text is correct.
+- **Bar marked as an intentional crop.** The bar runs to the canvas edges, so I marked it `allow_crop`. The role text was moved up 8 px to sit inside the 45 px safe area.
