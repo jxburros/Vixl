@@ -169,7 +169,7 @@ Usage: vixl [--project FILE] [--json] COMMAND ...
        vixl                         Interactive editing shell
 
 Documents: new, open, save, pack, unpack, upgrade
-Inspect:   status, inspect, layers, manifest, schema, dependencies
+Inspect:   status, inspect, layers, manifest, schema [OPERATION…], dependencies
 Create:    add, shape, text, gradient, organic, diagram, chart, table
 Edit:      move, resize, rotate, group, ungroup, mask, effect
 Design:    compose, layout, template, roll, brand, palette, font, look
