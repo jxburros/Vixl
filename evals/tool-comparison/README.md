@@ -18,7 +18,8 @@ Every tool here is free or comes with Claude and ChatGPT/Codex. Nothing needs a 
 ## Results
 
 - [2026-10-12](../../eval-results/2026-10-12-vixl-0.26-evaluation.md): the Vixl lane re-run on
-  Vixl 0.26.0 (the current scores in `scoresheet.csv` and `runs/`).
+  Vixl 0.26.0 (the current scores in `scoresheet.csv` and `runs/`), with a
+  [gallery](../../eval-results/2026-10-12-gallery.md) of every lane's deliverables side by side.
 - [2026-10-06](../../eval-results/2026-10-06-vixl-0.20-tool-comparison.md): the Vixl lane re-run on
   Vixl 0.20.0.
 - [2026-10-05](../../eval-results/2026-10-05-full-evaluation.md#2-tool-comparison): the first full
