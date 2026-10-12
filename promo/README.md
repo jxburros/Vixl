@@ -9,6 +9,9 @@ comes from an editable Vixl document, and the soundtrack is synthesised in code.
 
 A companion film, [*It does that?*](it-does-that/README.md), shows nine of Vixl's less obvious features.
 
+A [promo variety pack](variety/README.md) adds six distinct treatments with editable masters and a
+36-second preview reel. Built-in templates also offer portrait and widescreen versions.
+
 ## The cut
 
 The middle of the video walks through the three pillars from [the brand voice guide](../docs/brand-voice.md):

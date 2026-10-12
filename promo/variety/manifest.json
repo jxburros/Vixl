@@ -1,0 +1,86 @@
+[
+  {
+    "template": "video-promo-kinetic",
+    "master": "kinetic.vixl",
+    "seed": 42,
+    "variables": {
+      "title": "Ideas become editable.",
+      "subtitle": "Your agent makes it. You keep the layers.",
+      "cta": "Make it with Vixl",
+      "background": "#152c3d",
+      "foreground": "#ffffff",
+      "accent": "#74ded5",
+      "on_accent": "#152c3d"
+    }
+  },
+  {
+    "template": "video-promo-editorial",
+    "master": "editorial.vixl",
+    "seed": 42,
+    "variables": {
+      "title": "Keep the real thing.",
+      "subtitle": "Live text. Editable layers. A master you can change.",
+      "cta": "Ideas become editable.",
+      "background": "#fff6e7",
+      "foreground": "#30281f",
+      "accent": "#a34b26",
+      "on_accent": "#ffffff"
+    }
+  },
+  {
+    "template": "video-promo-neon",
+    "master": "neon.vixl",
+    "seed": 42,
+    "variables": {
+      "title": "Make your next move.",
+      "subtitle": "Build motion with editable shapes and keyframes.",
+      "cta": "Bring it to life",
+      "background": "#100d24",
+      "foreground": "#faf5ff",
+      "accent": "#d5ff42",
+      "on_accent": "#100d24"
+    }
+  },
+  {
+    "template": "video-promo-spotlight",
+    "master": "spotlight.vixl",
+    "seed": 42,
+    "variables": {
+      "title": "One design. Every size.",
+      "subtitle": "Create a master. Adapt it for your next channel.",
+      "cta": "Start with Vixl",
+      "background": "#152c3d",
+      "foreground": "#ffffff",
+      "accent": "#367e8b",
+      "on_accent": "#ffffff"
+    }
+  },
+  {
+    "template": "video-promo-split",
+    "master": "split.vixl",
+    "seed": 42,
+    "variables": {
+      "title": "Ask. Build. Edit.",
+      "subtitle": "From a brief to a document you can keep changing.",
+      "cta": "Keep the layers",
+      "background": "#f0f7f6",
+      "foreground": "#152c3d",
+      "accent": "#287681",
+      "on_accent": "#ffffff"
+    }
+  },
+  {
+    "template": "video-promo-stat",
+    "master": "stat.vixl",
+    "seed": 42,
+    "variables": {
+      "title": "3 pillars.",
+      "subtitle": "Programmable. Editable. Checked.",
+      "cta": "Meet Vixl",
+      "background": "#152c3d",
+      "foreground": "#ffffff",
+      "accent": "#74ded5",
+      "on_accent": "#152c3d"
+    }
+  }
+]

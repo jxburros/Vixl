@@ -139,3 +139,10 @@ Named sizes (`vixl sizes`, `vixl_sizes_list`) and principled layouts (`vixl layo
 ### Field-report corrections
 
 Use one workspace brand.json with pinned fonts/pairing and all seven palette roles across independently rolled documents. A shared seed alone does not establish a shared brand. Workspace guidance resolves through the same resource catalog as palettes/templates.
+
+Promo video templates: `video-promo-kinetic`, `video-promo-editorial`, `video-promo-neon`,
+`video-promo-spotlight`, `video-promo-split`, `video-promo-stat`. Base names are square; suffix
+`-story` (1080×1920) or `-wide` (1920×1080) selects a native layout. Six-second editable loops
+accept `title`, `subtitle`, `cta`, and optional `background`, `foreground`, `accent`, `on_accent`
+color variables; otherwise colors use seeded palette roles. Check bounds, contrast and a contact
+sheet with supplied copy; use a visible poster near 2.5s (the loop begins on the background).
