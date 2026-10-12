@@ -23,6 +23,12 @@ movie/audio/
 !promo/build/
 !promo/scenes/*.vixl
 promo/audio/
+!promo/it-does-that/build/
+!promo/it-does-that/scenes/*.vixl
+!promo/it-does-that/score.vixl
+promo/it-does-that/audio/
+promo/it-does-that/work/
+promo/it-does-that/.film-*/
 movie/.film-*/
 .env
 

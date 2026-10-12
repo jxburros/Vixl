@@ -7,6 +7,8 @@ comes from an editable Vixl document, and the soundtrack is synthesised in code.
 
 ![Contact sheet, one frame every two seconds](contact-sheet.jpg)
 
+A companion film, [*It does that?*](it-does-that/README.md), shows nine of Vixl's less obvious features.
+
 ## The cut
 
 The middle of the video walks through the three pillars from [the brand voice guide](../docs/brand-voice.md):
