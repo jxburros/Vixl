@@ -71,3 +71,10 @@ Rig origins are character-local pixels; child origins come from the parent tip. 
 `character-pose` keys joint angles with `time`/`easing` (`{"type":"character-pose","target":"hero","angles":{"right-upper-arm":-60},"time":"0.5s"}`); unspecified joints keep their rest angles and the rig is solved on every frame, so limbs stay attached. Without `time` it is a static pose. Move the whole character with its group's tracks; avoid baking separate limb x/y/rotation keys alongside pose tracks. Six-second `video-tip`, `video-launch` and `video-event` templates (`vixl template new video-tip -o tip.vixl --set title=… --set subtitle=… --set cta=…`) are editable square loops with slide, zoom and fade emphasis; check a contact sheet and pick a visible poster time.
 
 Paint settings `drip` (0–4 brush sizes), `relief` (0–1) and `light_angle` (degrees, default -45) are independently optional. Existing jitter, size_jitter, wet_edges and texture controls remain independent. Drips follow gravity in local layer coordinates; rotate the paint layer to rotate the result.
+
+Promo video templates: `video-promo-kinetic`, `video-promo-editorial`, `video-promo-neon`,
+`video-promo-spotlight`, `video-promo-split`, `video-promo-stat`. Base names are square; suffix
+`-story` (1080×1920) or `-wide` (1920×1080) selects a native layout. Six-second editable loops
+accept `title`, `subtitle`, `cta`, and optional `background`, `foreground`, `accent`, `on_accent`
+color variables; otherwise colors use seeded palette roles. Check bounds, contrast and a contact
+sheet with supplied copy; use a visible poster near 2.5s (the loop begins on the background).

@@ -352,6 +352,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PIX-03 | Export saved frames as GIF/APNG/sprite sheet at whole-number scale | `vixl_export_animation` | 1–2 · <1 | E | |
 | BLK-12 | Per-character, per-word or per-line text animation | `text-animate` | 2–4 · 1 | E | Since 0.22; text stays one editable layer. |
 | MOT-09 | Six-second square loop for a tip, launch or event | `vixl_template_create` video-tip/video-launch/video-event, `vixl_export_timeline` | 3–5 · 1 | E | Since 0.24 (#179); fill title, subtitle and cta, then check a contact sheet and pick the poster time. |
+| MOT-14 | Promo variations in square, portrait and widescreen | `vixl_template_create` video-promo-{kinetic,editorial,neon,spotlight,split,stat}, `vixl_export_timeline` | 3–5 · 1 | E | Six distinct compositions, 18 templates; editable copy and palette roles, six-second loops. [Preview pack](../promo/variety/README.md). |
 | MOT-13 | Pose a character over time with its joints kept attached | `character-pose` with `time` | 3–6 · 1 | E | Since 0.24 (#472); the rig is solved on every frame; do not also key position/rotation on the same limbs. |
 
 ### Production, forms and review

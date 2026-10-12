@@ -108,6 +108,30 @@ Documents whose `design_defaults` record house style 3 (new design documents sin
 
 The `video-tip`, `video-launch` and `video-event` templates build editable six-second 1080×1080 seamless loops at 30 fps that scale to the canvas. Supply `title`, `subtitle` and `cta` variables (unfilled ones stay `[...]` blanks); the title enters with `slide-in-left`, `zoom-in` and `fade-in` respectively, followed by subtitle and call-to-action fades. Check a contact sheet and choose a visible poster time before sharing.
 
+### Promo treatments and formats
+
+Six additional promo compositions use distinct layouts and motion: `video-promo-kinetic`
+(opposing slides and oversized type), `video-promo-editorial` (drawn rule and restrained fades),
+`video-promo-neon` (floating outlined orbit and pop entrance), `video-promo-spotlight` (pulsing halo),
+`video-promo-split` (comparison with opposing entrances), and `video-promo-stat` (large accent card
+and rising statistic). Each is a six-second seamless loop with a shared closing fade.
+
+Base names create 1080×1080 squares; append `-story` for 1080×1920 or `-wide` for 1920×1080.
+These layouts are drawn for their native aspect ratio; the wide split puts copy in two columns.
+They also scale proportionally when applied to an existing canvas. Text fits within bounded boxes
+and stays editable. Supply `title`, `subtitle`, `cta`; missing copy stays marked as blanks.
+Colors follow seeded palette roles, or override `background`, `foreground`, `accent`, `on_accent`
+through variables. Existing `palette`/`look` template options work as usual.
+
+```bash
+vixl template new video-promo-kinetic-wide -o promo.vixl --set 'title=Ideas become editable.' --set 'subtitle=Your agent makes it.' --set 'cta=Make it with Vixl'
+vixl -p promo.vixl render --time 2.5s --out promo-poster.png
+```
+
+Inspect bounds, contrast and sampled frames with your copy. Use a visible poster around 2.5 seconds;
+the loop starts and ends on its background. The [promo variety pack](../promo/variety/README.md)
+includes editable masters, a contact gallery and a reproducible preview reel builder.
+
 ## App animation packages
 
 Run `vixl workflow app-animation-package --request package.json --workspace .`. The request contains `states`, `default_state`, `output`, optional `themes`, `transitions` and `format` (webp, gif or apng). A state supplies `source` and may set `loop`, `interruptible`, `on_complete`, `poster`, `variables` and per-theme variable overrides. Bind colours in the source to variables, such as `${ink}`. The package includes each editable master, theme animation, reduced-motion PNG, `manifest.json` and `index.html`.

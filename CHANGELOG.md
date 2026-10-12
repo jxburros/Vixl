@@ -4,6 +4,8 @@
 
 ### Fixed and added
 
+- Eighteen editable promo video templates: kinetic, editorial, neon, spotlight, split comparison and statistic treatments in square, portrait and widescreen. Six-second loops use editable copy and seeded palette roles; a reproducible promo variety pack includes masters, proofs and a preview reel. Proportional templates now scale `fit-text` size limits with their canvas.
+
 - Path shapes accept `path_view: [source_width, source_height]` on creation and update (CLI `--path-view`), scaling unchanged native path data into the display box across raster and vector output (#610).
 - Nested, rotated text contrast measures glyph coverage without counting the surrounding stroke or shadow (#609).
 - Archive loading checks cumulative decoded pixels and font count before expensive parsing. History deltas preserve dictionary key order across undo/redo (#635).

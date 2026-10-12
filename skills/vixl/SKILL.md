@@ -571,3 +571,10 @@ Use `--out`/`-o` for CLI destinations and command-specific help for options; `he
 index. For native path artwork, set `shape.path_view: [source_width, source_height]` to scale unchanged data
 into a display box. Explicit campaign `quality: "final"` also selects final checks unless `profile` overrides it.
 Consult the capability matrix in `docs/interfaces.md` before choosing REST versus a workspace MCP session.
+
+Promo video templates: `video-promo-kinetic`, `video-promo-editorial`, `video-promo-neon`,
+`video-promo-spotlight`, `video-promo-split`, `video-promo-stat`. Base names are square; suffix
+`-story` (1080×1920) or `-wide` (1920×1080) selects a native layout. Six-second editable loops
+accept `title`, `subtitle`, `cta`, and optional `background`, `foreground`, `accent`, `on_accent`
+color variables; otherwise colors use seeded palette roles. Check bounds, contrast and a contact
+sheet with supplied copy; use a visible poster near 2.5s (the loop begins on the background).
