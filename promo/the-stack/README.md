@@ -5,9 +5,9 @@ Onyx Engine and Mock-LLM. It covers what each one is, how they fit together, how
 them more control, and how each project helps develop and test the others. It is half explainer and half
 developer's journal. Every frame comes from an editable Vixl document, and so does the soundtrack.
 
-**[`the-stack.mp4`](the-stack.mp4)** · 2:14 · 1920×1080 · 30 fps · AAC stereo 48 kHz
+**[`the-stack.mp4`](the-stack.mp4)** · 2:14 · 1920×1080 · 30 fps · AAC stereo 48 kHz · 7.5 MB
 
-![Contact sheet, one frame from the middle of each shot](contact-sheet.jpg)
+![Contact sheet, one frame three-quarters through each shot](contact-sheet.jpg)
 
 ## The cut
 
