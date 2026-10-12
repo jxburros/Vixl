@@ -52,6 +52,10 @@ output from three different models.
 | `build/make_video.py` | Builds the scenes, runs the check for shot 3, writes `audio/*.wav` (not committed) and runs `film-export` |
 | `build/preview.py` | Writes contact sheets of sampled frames for quick review |
 
+Every shot shares one night sky, so a cut never moves the background. Each shot clears its foreground over
+the last beat (`finish()` in `build/shots.py`), except for what the next shot picks up: the cauldron carries
+from shot 1 into shot 2, and the poster glides from the centre of shot 2 into its place in shots 3 and 4.
+
 The film reuses the brand constants and operation helpers in [`../build/kit.py`](../build/kit.py), which also
 builds [Vixl in 60 seconds](../README.md).
 

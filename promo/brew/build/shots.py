@@ -56,6 +56,7 @@ class BrewScene(Scene):
 
 # ------------------------------------------------------------------------------------------ shared
 def night(sc, glow_at=(1450, 260), glow2_at=(300, 900), stars=True, seed=3):
+    """The shared night sky. Every shot uses the same glows and stars, so a cut never moves the background."""
     sc.add(rect("bg-base", 0, 0, W, 1080, NIGHT),
            glow("bg-glow1", *glow_at, 1500, VIOLET, "38"),
            glow("bg-glow2", *glow2_at, 1200, P.BREW, "1C"))
@@ -73,6 +74,26 @@ def night(sc, glow_at=(1450, 260), glow2_at=(300, 900), stars=True, seed=3):
             frames += [(t, 0.25), (t + 500, 0.9), (t + 1000, 0.25)]
             t += rng.randint(1600, 2600)
         sc.keys(name, "opacity", frames, "ease-in-out")
+
+
+CREATES = ("shape", "text", "rich-text", "gradient", "pen", "frame", "group")
+
+
+def finish(sc, keep=(), dur=380):
+    """Fade the foreground out at the end of the shot, leaving the sky for the next one.
+
+    ``keep`` names layers the next shot picks up where this one leaves them (the cauldron, the poster).
+    """
+    grouped, created = set(), []
+    for op in sc.ops:
+        if op.get("type") == "group":
+            grouped.update(op["targets"])
+        if op.get("type") in CREATES and "name" in op:
+            created.append(op["name"])
+    top = [n for n in created if n not in grouped and n not in keep and not n.startswith(("bg-", "star"))]
+    sc.add(group("fg", top))
+    sc.keys("fg", "opacity", [(0, 1), (sc.duration - dur, 1), (sc.duration - 20, 0)], "ease-in-cubic")
+    return sc
 
 
 def quote(sc, name, line, y, size, t, attribution=JEFFREY, width=1600, x=None, t_attr=None, align="center",
@@ -118,6 +139,7 @@ INGREDIENTS = [("an idea", -380, -16), ("autumn vibes", 300, 12), ("bold type", 
                ("moodboard.jpg", -460, 8), ("brand colours", 260, -14), ("a vague feeling", -120, 20)]
 BREW_COLOURS = ["#3FE0B0", "#F4A259", "#7B5CE0", "#E79AC3", "#5FD3E0", "#FFD166", "#C77DFF", "#3FE0B0"]
 POT_X, RIM_Y = 960, 720
+POT_PARTS = ["pot-leg1", "pot-leg2", "pot-body", "pot-hi", "pot-rim", "pot-brew", "pot-glow"]
 
 
 def s01_ingredients():
@@ -146,11 +168,13 @@ def s01_ingredients():
         sc.keys(ring, "opacity", [(0, 0), (land, 0), (land + 60, 0.9), (land + 500, 0)], "linear")
         brew += [(land, BREW_COLOURS[i]), (land + 300, BREW_COLOURS[i + 1])]
     sc.keys("pot-brew", "fill", brew, "ease-in-out")
-    return sc
+    keep = POT_PARTS + [f"bubble{i}" for i in range(7)] + [f"splash{i}" for i in range(len(INGREDIENTS))]
+    return finish(sc, keep)
 
 
 # ----------------------------------------------------------------------------------------------- 2
 HERO = dict(x=744, y=300, w=432, h=540)
+HERO_LEFT = (120, 260, 480, 600)  # the poster's place in shots 3 and 4
 
 
 def s02_moon():
@@ -159,10 +183,12 @@ def s02_moon():
     sc.add(glow("moon-halo", 1600, 300, 520, GOLD, "50"), ellipse("moon", 1600, 300, 190, 190, "#FFF1C9"),
            ellipse("moon-c1", 1570, 280, 34, 34, "#00000012"), ellipse("moon-c2", 1630, 330, 22, 22, "#00000010"),
            group("sky-moon", ["moon-halo", "moon", "moon-c1", "moon-c2"]))
-    sc.keys("sky-moon", "translate-y", [(0, 560), (900, 560), (2900, 0)], "ease-out-cubic")
+    sc.keys("sky-moon", "translate-y", [(0, 1150), (700, 1150), (2900, 0)], "ease-out-cubic")
     sc.add(rect("spoon", POT_X + 120, RIM_Y - 330, 30, 380, "#7A5A3A", 15))
     sc.keys("spoon", "rotation", [(0, 14), (600, -16), (1200, 14), (1800, -16), (2400, 14), (3000, -12)],
             "ease-in-out-sine")
+    sc.fade("spoon", 0, dur=500)
+    sc.slide("spoon", 0, dy=-120, dur=600, easing="ease-out-cubic")
     sc.add(P.cauldron(POT_X, RIM_Y, 0.85))
     sc.keys("pot-glow", "opacity", [(0, 1), (3100, 1), (3500, 1.0)])
     sc.keys("pot-glow", "scale", [(0, 1), (3100, 1), (3600, 1.8), (4400, 1.1)], "ease-out-cubic")
@@ -184,7 +210,7 @@ def s02_moon():
     sc.keys("hero", "opacity", [(0, 0), (3400, 0), (3700, 1)])
     sc.add(centered("hero-file", "harvest-moon.vixl  ·  1080 × 1350", 870, 28, MUTED, MONO))
     sc.fade("hero-file", 5000, dur=400, rise=10)
-    return sc
+    return finish(sc, ("pot", "hero", "burst"))
 
 
 # ----------------------------------------------------------------------------------------------- 3
@@ -193,8 +219,15 @@ def s03_ready(report):
     sc = BrewScene("03-ready", 7000)
     night(sc, glow_at=(600, 500), stars=False)
     headline(sc, [("What comes out is ", None), ("ready to use.", SKY)])
-    px, py, pw, ph = 230, 260, 480, 600
+    px, py, pw, ph = HERO_LEFT
     sc.add(P.poster_group("hero", px, py, pw, ph), shadow("hero", 50, 24, 0.5))
+    # Shot 2 ends with the poster at HERO scaled 1:1 and raised 40 px; start there and settle into place.
+    k = HERO["w"] / pw
+    dx = (HERO["x"] + HERO["w"] / 2) - (px + pw / 2)
+    dy = (HERO["y"] - 40 + HERO["h"] / 2) - (py + ph / 2)
+    for prop, v in (("translate-x", dx), ("translate-y", dy), ("scale", k)):
+        sc.keys("hero", prop, [(0, round(v, 2)), (150, round(v, 2)), (950, 0 if prop != "scale" else 1)],
+                "ease-in-out-cubic")
     marks = []
     for i, (mx, my) in enumerate(((px, py), (px + pw, py), (px, py + ph), (px + pw, py + ph))):
         sx, sy = (-1 if mx == px else 1), (-1 if my == py else 1)
@@ -214,21 +247,21 @@ def s03_ready(report):
             ("Fonts embedded", "Inter Tight and Inter travel with the file"),
             ("Checked", f"{report['checks']} checks, {report['fixes']} things to fix"),
             ("Print", "CMYK PDF with trim and bleed, when you ask")]
-    fx, fy = 820, 270
+    fx, fy = 700, 270
     for i, (title, detail) in enumerate(rows):
         y = fy + i * 112
         name = f"r{i}"
-        sc.add(rect(f"{name}-bg", fx, y, 1000, 92, PANEL, 18),
+        sc.add(rect(f"{name}-bg", fx, y, 1100, 92, PANEL, 18),
                ellipse(f"{name}-dot", fx + 52, y + 46, 40, 40, GOOD),
                rich(f"{name}-mark", "✓", fx + 32, y + 28, 26, 40, DEEP, HEAD, "center", 1.2),
                text(f"{name}-title", title, fx + 96, y + 26, 32, WHITE, SEMI),
                text(f"{name}-detail", detail, fx + 400, y + 31, 26, MUTED, BODY),
                group(name, [f"{name}-bg", f"{name}-dot", f"{name}-mark", f"{name}-title", f"{name}-detail"]))
-        sc.fade(name, 900 + i * 380, dur=300)
-        sc.slide(name, 900 + i * 380, dx=50, dur=450)
-    quote(sc, "q", "Everything is already almost ready for print.", 880, 40, 3600, width=1000, x=fx, align="left",
+        sc.fade(name, 1000 + i * 380, dur=300)
+        sc.slide(name, 1000 + i * 380, dx=50, dur=450)
+    quote(sc, "q", "Everything is already almost ready for print.", 880, 40, 3600, width=1100, x=fx, align="left",
           attr_size=24)
-    return sc
+    return finish(sc, ("hero",))
 
 
 # ----------------------------------------------------------------------------------------------- 4
@@ -239,7 +272,7 @@ def s04_adjust():
     sc = BrewScene("04-adjust", 8000)
     night(sc, glow_at=(500, 600), stars=False)
     headline(sc, [("Close? ", None), ("Don't re-roll. Just ask.", SKY)])
-    px, py, pw, ph = 230, 250, 480, 600
+    px, py, pw, ph = HERO_LEFT
     sheets = P.harvest("hero", px, py, pw, ph)
     warm = P.PALETTES["ember"]
     sheets["sky"].append({"type": "gradient", "name": "hero-sky2", "direction": "vertical", "x": px, "y": py,
@@ -267,11 +300,13 @@ def s04_adjust():
     sc.keys("hero-badge", "scale", [(0, 1), (c, 1), (c + 150, 1.25), (c + 500, 1)], "ease-out-back")
     sc.keys("hero-badge", "rotation", [(0, 0), (c, 0), (c + 500, 360)], "ease-in-out-cubic")
 
-    cx, cw = 900, 900
-    sc.add(rect("chat", cx, 250, cw, 600, DEEP, 24, LINE))
-    sc.add(text("chat-title", "same document, three requests", cx + 36, 274, 22, MUTED, MONO))
+    cx, cw = 700, 1100
+    sc.add(rect("chat", cx, 260, cw, 600, DEEP, 24, LINE))
+    sc.add(text("chat-title", "same document, three requests", cx + 36, 284, 22, MUTED, MONO))
+    sc.fade("chat", 200, dur=400)
+    sc.fade("chat-title", 300, dur=400)
     for i, (ask, t) in enumerate(ASKS):
-        y = 340 + i * 168
+        y = 350 + i * 168
         w = round(len(ask) * 32 * 0.52 + 64)
         name = f"ask{i}"
         sc.add(rect(f"{name}-bg", cx + cw - 40 - w, y, w, 70, VIOLET, 35),
@@ -283,11 +318,12 @@ def s04_adjust():
         sc.fade(reply, t + 800, dur=300, rise=8)
     sc.add(rich("tally", "edits 0    re-rolls 0", cx, 880, 34, cw, WHITE, MONO, "right"))
     sc.key("tally", "text", 0, "edits 0    re-rolls 0")
+    sc.fade("tally", 500, dur=400)
     for i, (_, t) in enumerate(ASKS):
         sc.key("tally", "text", t + 600, f"edits {i + 1}    re-rolls 0")
     quote(sc, "q", "I can be really close, and I can just ask for adjustments to my liking.", 930, 34, 6300,
-          width=1700, x=120, align="left", attr_size=22, attribution="Jeffrey")
-    return sc
+          width=1680, x=120, align="left", attr_size=22, attribution="Jeffrey")
+    return finish(sc)
 
 
 # ----------------------------------------------------------------------------------------------- 5
@@ -302,8 +338,9 @@ PICK5 = 0
 def s05_eight():
     sc = BrewScene("05-eight", 8000)
     night(sc, glow_at=(960, 600), stars=False)
-    headline(sc, [("Eight ideas for one problem? ", None), ("See them all.", SKY)])
-    sc.add(rich("problem", [("the problem: ", MUTED), ("the title feels lost", GOLD)], 120, 190, 26, 1200, WHITE, MONO))
+    sc.add(centered("headline", [("Eight ideas for one problem? ", None), ("See them all.", SKY)], 96, 72))
+    sc.words("headline", 150, "fade-up", "word", 500, 70)
+    sc.add(centered("problem", [("the problem: ", MUTED), ("the title feels lost", GOLD)], 190, 26, WHITE, MONO))
     sc.fade("problem", 500, dur=300)
     w, h, gap = 250, 312, 30
     x0 = (W - (4 * w + 3 * gap)) / 2
@@ -325,8 +362,8 @@ def s05_eight():
     sc.add(chip("pick-chip", "✓ this one", px + w - 150, py - 30, size=22, fg=DEEP, bg=GOOD, font=SEMI, width=150))
     sc.pop("pick-chip", 5500, 380, 0.5)
     quote(sc, "q", "If I have 8 ideas on how to fix one design problem, I can see them all made at once.",
-          940, 32, 2600, width=1700, x=120, align="left", attr_size=22, attribution="Jeffrey")
-    return sc
+          945, 32, 2600, width=1680, attr_size=22, attribution="Jeffrey")
+    return finish(sc)
 
 
 # ----------------------------------------------------------------------------------------------- 6
@@ -363,11 +400,12 @@ def s06_rounds():
     night(sc, glow_at=(960, 500), stars=False)
     headline(sc, [("Pick one. ", None), ("Brew twenty more.", SKY)])
     all_rounds, picks = rounds()
-    w, h, gx, gy = 148, 185, 18, 22
+    w, h, gx, gy = 150, 188, 20, 22
     x0, y0 = (W - (10 * w + 9 * gx)) / 2, 250
     starts = (300, 3000, 5700)
     sc.add(text("round", "ROUND 1  ·  20 variations", x0, 200, 26, GOLD, MONO))
     sc.key("round", "text", 0, "ROUND 1  ·  20 variations")
+    sc.fade("round", 250, dur=300)
     rail_x = x0
     for r, tiles in enumerate(all_rounds):
         t0 = starts[r]
@@ -403,11 +441,11 @@ def s06_rounds():
     sc.add(text("rail-label", "your picks", x0, 890, 22, MUTED, MONO))
     sc.fade("rail-label", starts[0] + 2400, dur=300)
     sc.add(rich("tally", [("60", GOLD), (" designs seen.  ", WHITE), ("3", GOLD), (" decisions made.", WHITE)],
-                640, 760, 48, 1180, WHITE, HEAD, "right"))
+                640, 760, 48, 1160, WHITE, HEAD, "right"))
     sc.words("tally", 8200, "fade-up", "word", 400, 60)
     quote(sc, "q", "Make 20 variations, pick one, make 20 variations of that, pick one, and so on.", 950, 32,
-          600, width=1700, x=x0, align="left", attr_size=22, attribution="Jeffrey", t_attr=1600)
-    return sc
+          600, width=1680, x=x0, align="left", attr_size=22, attribution="Jeffrey", t_attr=1600)
+    return finish(sc)
 
 
 # ----------------------------------------------------------------------------------------------- 7
@@ -425,7 +463,7 @@ def s07_direction():
     headline(sc, [("A pinch of direction, ", None), ("or a handful.", SKY)])
     w, h = 300, 375
     for i, (amount, brief, kw) in enumerate(BRIEFS):
-        cx = 380 + i * 580
+        cx = 370 + i * 590
         x = cx - 250
         name = f"brief{i}"
         sc.add(rect(f"{name}-bg", x, 220, 500, 190, DEEP, 20, LINE),
@@ -443,8 +481,9 @@ def s07_direction():
     quote(sc, "q", "You can give it as little or as much information as you want, and you'll still pretty much get "
           "something close to what you were thinking.", 910, 32, 4600, width=1500, attr_size=22,
           attribution="Jeffrey")
-    sc.add(text("illus", "illustration: one recipe, three briefs", 1500, 1040, 18, "#6E6990", MONO))
-    return sc
+    sc.add(rich("illus", "illustration: one recipe, three briefs", 1000, 1040, 18, 800, "#6E6990", MONO, "right"))
+    sc.fade("illus", 1400, dur=400)
+    return finish(sc)
 
 
 # ----------------------------------------------------------------------------------------------- 8
@@ -478,7 +517,7 @@ def s08_bottles():
         name = f"c{i}"
         sc.add(P.poster_group(name, x, y, w, h, palette="plum", info_on=h > 120))
         sc.keys(name, "opacity", [(0, 0), (5400 + i * 90, 0), (5800 + i * 90, 1)], "ease-in-out")
-    return sc
+    return finish(sc)
 
 
 # ----------------------------------------------------------------------------------------------- 9
@@ -510,7 +549,7 @@ def s09_self():
     sc.add(chip("this", "Including this video.", 1340, 760, size=30, fg=DEEP, bg=GOLD, font=SEMI, width=400))
     sc.pop("this", 5500, 450, 0.5)
     sc.keys("this", "rotation", [(5500, -8), (5950, -4)], "ease-out-back")
-    return sc
+    return finish(sc)
 
 
 # ----------------------------------------------------------------------------------------------- 10
@@ -519,7 +558,7 @@ def s10_fun():
     night(sc, glow_at=(960, 460), glow2_at=(960, 1000), seed=9)
     quote(sc, "q", "I am actually having way too much fun with this app.", 380, 100, 300, width=1500, t_attr=2600,
           attr_size=34)
-    return sc
+    return finish(sc)
 
 
 # ----------------------------------------------------------------------------------------------- 11
@@ -540,7 +579,7 @@ def s11_end():
     sc.fade("url", 2000, dur=400, rise=12)
     sc.add(centered("made", "Every frame of this video is an editable Vixl document.", 970, 26, MUTED, BODY))
     sc.fade("made", 2500, dur=500)
-    return sc
+    return finish(sc)
 
 
 SCENES = [s01_ingredients, s02_moon, s03_ready, s04_adjust, s05_eight, s06_rounds, s07_direction, s08_bottles,
