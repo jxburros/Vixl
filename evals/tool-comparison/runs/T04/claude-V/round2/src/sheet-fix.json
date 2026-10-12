@@ -1,0 +1,221 @@
+[
+ {
+  "type": "remove",
+  "targets": [
+   "cream-horizontal",
+   "navy-horizontal",
+   "cream-stacked",
+   "navy-stacked"
+  ]
+ },
+ {
+  "type": "move",
+  "target": "img-h-cream",
+  "x": 60,
+  "y": 40
+ },
+ {
+  "type": "move",
+  "target": "img-s-cream",
+  "x": 1080,
+  "y": 40
+ },
+ {
+  "type": "move",
+  "target": "cream-label-horizontal",
+  "x": 60,
+  "y": 292
+ },
+ {
+  "type": "move",
+  "target": "cream-label-stacked",
+  "x": 1080,
+  "y": 385
+ },
+ {
+  "type": "resize",
+  "target": "cream-mark",
+  "width": 180,
+  "height": 180
+ },
+ {
+  "type": "move",
+  "target": "cream-mark",
+  "x": 60,
+  "y": 326
+ },
+ {
+  "type": "resize",
+  "target": "cream-mono",
+  "width": 180,
+  "height": 180
+ },
+ {
+  "type": "move",
+  "target": "cream-mono",
+  "x": 280,
+  "y": 326
+ },
+ {
+  "type": "move",
+  "target": "cream-label-mark",
+  "x": 60,
+  "y": 516
+ },
+ {
+  "type": "move",
+  "target": "cream-label-mono",
+  "x": 280,
+  "y": 516
+ },
+ {
+  "type": "move",
+  "target": "cream-mark-64",
+  "x": 540,
+  "y": 442
+ },
+ {
+  "type": "move",
+  "target": "cream-mark-32",
+  "x": 624,
+  "y": 474
+ },
+ {
+  "type": "move",
+  "target": "cream-mark-16",
+  "x": 676,
+  "y": 490
+ },
+ {
+  "type": "move",
+  "target": "cream-label-sizes",
+  "x": 540,
+  "y": 516
+ },
+ {
+  "type": "text-set",
+  "target": "cream-label-mono",
+  "text": "One-colour mark"
+ },
+ {
+  "type": "text-set",
+  "target": "cream-label-sizes",
+  "text": "Actual size: 64, 32, 16 px"
+ },
+ {
+  "type": "move",
+  "target": "img-h-navy",
+  "x": 60,
+  "y": 640
+ },
+ {
+  "type": "move",
+  "target": "img-s-navy",
+  "x": 1080,
+  "y": 640
+ },
+ {
+  "type": "move",
+  "target": "navy-label-horizontal",
+  "x": 60,
+  "y": 892
+ },
+ {
+  "type": "move",
+  "target": "navy-label-stacked",
+  "x": 1080,
+  "y": 985
+ },
+ {
+  "type": "resize",
+  "target": "navy-mark",
+  "width": 180,
+  "height": 180
+ },
+ {
+  "type": "move",
+  "target": "navy-mark",
+  "x": 60,
+  "y": 926
+ },
+ {
+  "type": "resize",
+  "target": "navy-mono",
+  "width": 180,
+  "height": 180
+ },
+ {
+  "type": "move",
+  "target": "navy-mono",
+  "x": 280,
+  "y": 926
+ },
+ {
+  "type": "move",
+  "target": "navy-label-mark",
+  "x": 60,
+  "y": 1116
+ },
+ {
+  "type": "move",
+  "target": "navy-label-mono",
+  "x": 280,
+  "y": 1116
+ },
+ {
+  "type": "move",
+  "target": "navy-mark-64",
+  "x": 540,
+  "y": 1042
+ },
+ {
+  "type": "move",
+  "target": "navy-mark-32",
+  "x": 624,
+  "y": 1074
+ },
+ {
+  "type": "move",
+  "target": "navy-mark-16",
+  "x": 676,
+  "y": 1090
+ },
+ {
+  "type": "move",
+  "target": "navy-label-sizes",
+  "x": 540,
+  "y": 1116
+ },
+ {
+  "type": "text-set",
+  "target": "navy-label-mono",
+  "text": "One-colour mark"
+ },
+ {
+  "type": "text-set",
+  "target": "navy-label-sizes",
+  "text": "Actual size: 64, 32, 16 px"
+ },
+ {
+  "type": "resize",
+  "target": "cream-app-icon",
+  "width": 96,
+  "height": 96
+ },
+ {
+  "type": "move",
+  "target": "cream-app-icon",
+  "x": 1080,
+  "y": 410
+ },
+ {
+  "type": "move",
+  "target": "cream-label-app-icon",
+  "x": 1080,
+  "y": 516
+ },
+ {
+  "type": "bottom",
+  "target": "navy-half"
+ }
+]

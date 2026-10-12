@@ -1,51 +1,52 @@
-# T14 Lyric video, round 2: Vixl lane (claude-V)
+# T14 Lyric video, round 2: Lane V (Vixl)
 
 ## What changed
 
-1. **Every lyric is 0.25 s earlier.** Each line, the section labels, the backgrounds, the "Lighthouse" beam cue and the instrumental-break clear now start 250 ms sooner:
-   - lines at 1.75, 5.25, 8.75, 12.25, 17.75, 21.25, 24.75 and 28.25 s;
-   - the break clears the screen from 15.75 to 17.75 s.
+1. **Every lyric is 0.25 s earlier.** I passed `offset: 250` to `lyric-video-export`. In Vixl, as in the LRC convention, a positive offset shows lyrics earlier. The fixture `lighthouse.lrc` is unchanged.
+   - The title card still starts at 0 s. It now stays up until the first lyric at 1.75 s (before: 2.00 s).
+   - Section markers move with their lines. The chorus background, the "Chorus"/"Verse 2" label and the lighthouse beam all start 0.25 s earlier too.
+   - The instrumental break now clears the screen at 15.75 s.
+2. **Chorus lines are 25 % larger.** I passed `section_styles: {"chorus": {"size": 80}}`, so chorus lines go from 64 px to 80 px.
+   - The build writes hold keyframes on the `size` of the `lyric` layer: 64 at 0 s, 80 at 8.75 s, 64 at 17.75 s and 80 at 24.75 s.
+   - Verse lines stay at 64 px. Font, colour and position are unchanged.
 
-   The title card still starts at 0 s. It now runs to 1.75 s, where the first line appears. The video is still 32.000 s long, with the song unchanged.
-2. **Chorus lines are 25 % larger.** The current-line text (`lyric`) is 80 px during the four chorus lines (8.75–15.75 s and 24.75–32 s), up from 64 px. Verse lines stay at 64 px. The small next-line preview, the section labels and the title card are unchanged.
+All other settings are the same as round 1: 30 fps, `quality final`, `lead 0`, 250 ms line fades and `next_line true`. The beam settings are also the same: 400 ms fade, `motion: sweep` ±10°, 3.5 s period. I copied these from the settings saved in round 1's `lighthouse.vixl`; none are guessed.
 
-## How
+## New line times (video clock)
 
-All of this was done through the Vixl MCP tools. No pixels were drawn by hand.
+| Line | Round 1 | Round 2 | Size |
+| --- | --- | --- | --- |
+| Out past the harbor where the cold waves break | 2.00 | 1.75 | 64 px |
+| A single light is burning for my sake | 5.50 | 5.25 | 64 px |
+| Lighthouse, lighthouse, sweep across the sea | 9.00 | 8.75 | 80 px |
+| Turn your golden eye and bring the ships to me | 12.50 (break 16.00) | 12.25 (break 15.75) | 80 px |
+| The gulls are sleeping on the silver stone | 18.00 | 17.75 | 64 px |
+| The keeper sings the tide a song alone | 21.50 | 21.25 | 64 px |
+| Lighthouse, lighthouse, sweep across the sea (sung twice, stays on screen) | 25.00 / 28.50 | 24.75 / 28.25 | 80 px |
 
-- `round2/lighthouse-template.vixl` is a byte copy of the round-1 template. The size change depends on time, so it belongs in the timeline, not the template.
-- `round2/request.json` is the round-1 request with two changes: the paths point into `round2/`, and it adds `"offset": 250`. In Vixl, as in the LRC convention, a positive offset shows lyrics earlier.
-- `round2/lighthouse-lyrics.vixl` was produced in two steps:
-  - `vixl_workflow lyric-video-build` built it from that request. The plan reports the shifted times and no warnings.
-  - `vixl_operations_apply` then added four hold keyframes on `lyric.size`: 64 at 0 s, 80 at 8.75 s, 64 at 17.75 s and 80 at 24.75 s. Each size switch lands while the lyric is fully transparent (between lines, or during the break), so a size jump never shows on screen.
-- `round2/lighthouse.mp4` was rendered by `vixl_workflow lyric-video-export` as a job. It reused the edited build (`build_reused: true`).
-
-The round-1 build had no hand edits that needed redoing: the build itself clears both the lyric and the next-line preview at the empty timestamp.
-
-## Checks
-
-- **ffprobe:** h264 1280x720 at 24 fps, plus AAC. Video, audio and container are each 32.000 s. volumedetect gives mean -18.8 dB and max -9.6 dB, the same as round 1.
-- **Timing (frame-difference pass on both MP4s):**
-  - Every scene change is exactly 6 frames (0.250 s) earlier: 2.0/9.0/18.0/25.0 s became 1.75/8.75/17.75/24.75 s.
-  - Round-2 verse frames match round-1 frames from 6 frames later (mean grey difference 0.00–0.03).
-  - The title frame at 1.0 s is identical in both rounds.
-  - The fade at the very end (31.83 s) is unchanged, because the last line hides when the song ends.
-- **Size:** I measured rendered frames.
-  - "Turn your golden eye and bring the ships to me": the glyph height from ascender to descender went from 60 px to 75 px (1.25x), and the line pitch from 89 to 110 px.
-  - The two wrapped lines (descenders reaching y=427) still fit inside the 1000x190 fitted box at y=240. The box's fit-to-box therefore did not shrink the text back down, and the next-line preview below is not overlapped.
-  - Verse frames (20.0 s) are pixel-identical to round 1 at 20.25 s.
-- **Visual check:** a 16-frame contact sheet. At 80 px the chorus lines wrap into balanced pairs, with no orphaned word:
-  - "Lighthouse, lighthouse, / sweep across the sea"
-  - "Turn your golden eye and / bring the ships to me"
+The lighthouse beam now shows over 8.75–12.25 s and 24.75–32.00 s.
 
 ## Files
 
-| File | |
+| File | How it was made |
 | --- | --- |
-| `lighthouse.mp4` | The updated video |
-| `lighthouse-lyrics.vixl` | The updated editable timeline (offset build plus the chorus size keys) |
-| `lighthouse-template.vixl` | Unchanged copy of the template |
-| `request.json` | Round-1 request plus `offset: 250`, with paths pointing into `round2/` |
-| `REPORT.md` | This file |
+| `lighthouse-template.vixl` | A byte-for-byte copy of round 1's template. Both changes are settings on the export, so the design did not need to change. |
+| `lighthouse.vixl` | The editable keyframed timeline (96 keyframes, 11 markers), written by `lyric-video-export` with the new settings. |
+| `lighthouse.mp4` | Rendered by `vixl_workflow` `lyric-video-export` (run as an MCP job) from the template above, `fixtures/lighthouse.wav` and `fixtures/lighthouse.lrc`. |
 
-Nothing outside `round2/` was modified.
+## Verification
+
+- **Plan first:** I ran `lyric-video-plan` with the new settings before the export. It returned the times above with no warnings.
+- **Export's own check:** `verification: passed`. Video is h264 1280 × 720 at 30 fps, 960 frames, 32,000 ms. Audio is AAC at 22,050 Hz mono, 32,000 ms. The difference from the song's length is 0 ms.
+- **Separate ffprobe:** h264 yuv420p 1280 × 720, AAC 22,050 Hz mono, duration 32.000000 s.
+- **Keyframes:** `vixl_timeline_inspect` on `lyric` shows fade-ins starting at 1.75, 5.25, 8.75, 12.25, 17.75, 21.25 and 24.75 s, and the `size` keys listed above.
+- **Frames:** I pulled frames from the old and new MP4s with ffmpeg at 1.7, 1.95, 10.5, 14, 20 and 27 s and compared them side by side.
+  - At 1.95 s the new video already shows the first lyric, while the old one still shows the title card.
+  - Chorus lines are visibly larger. They still wrap to two lines inside the 1040 × 190 box, and the box's shrink-to-fit did not visibly shrink them.
+  - Verse frames match round 1.
+
+## Notes
+
+- Only the current line (`lyric`) is resized. The small next-line preview below it (`lyric-next`, 30 px) stays the same size, even when it previews a chorus line. I read "chorus lines" as the line being sung.
+- At 80 px, the two-line chorus lyric sits closer to the preview line below it. They do not overlap.
+- Nothing outside `round2/` was changed. The fixtures are untouched.

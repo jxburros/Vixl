@@ -1,0 +1,1 @@
+Create badge.vixl at 400x400 with a transparent background. Make a gold badge named badge: a 300 px circle centred on the canvas with a 100 px square hole punched through its middle, so the background shows through the hole. It must be one combined vector shape, not a black square drawn on top. Export badge.svg with real vector geometry.

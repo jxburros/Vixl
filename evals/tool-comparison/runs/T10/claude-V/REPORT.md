@@ -1,63 +1,51 @@
-# T10 Photo correction: Vixl lane (claude-V)
+# T10 photo correction: report (lane V, Vixl via MCP)
 
-I did all the editing in Vixl through its MCP tools. Python was used only to measure the input and check the exports: horizon angle, wedge edges, channel statistics and noise. The original `evals/tool-comparison/fixtures/coast-raw.jpg` was only imported and never written to. Its mtime is unchanged and git shows no change.
+I did all of the editing in Vixl through its MCP tools. I used small Python/PIL scripts only to read pixel statistics from the input and from test exports: horizon slope, empty corners and noise. The original `evals/tool-comparison/fixtures/coast-raw.jpg` was never written to. Its sha256 is still `86ec0e7c…cc7a4c`, the same hash Vixl recorded when it imported the file.
 
 ## Files
 
-| File | What it is |
-| --- | --- |
-| `coast-edited.jpg` | 1556 x 1002, JPEG q95. The corrected, levelled photo. |
-| `coast-instagram.jpg` | 1080 x 1350, JPEG q92. A portrait crop of the corrected photo. |
-| `coast-caption.png` | 1600 x 900, PNG (RGB). The corrected photo with the caption, on a subtle dark gradient. |
-| `coast-edit.vixl` | Editable master. The raw photo is embedded unchanged, with a non-destructive rotation, a LUT lookup and an effect stack. |
-| `coast-instagram.vixl` | Editable. A live `link` layer to `coast-edit.vixl`, with crop {x 620, y 0, w 802, h 1002}. |
-| `coast-caption.vixl` | Editable. A live link to `coast-edit.vixl` with crop {x 0, y 63, w 1556, h 875}, plus a gradient layer and a text layer. |
+| File | Size | How it was made |
+| --- | --- | --- |
+| `coast.vixl` | 1512 × 1008 canvas | Editable master. It holds one `photo` layer (the embedded raw JPEG) with a rotation and four non-destructive effects (listed below). The canvas is the leveling crop. |
+| `coast-edited.jpg` | 1512 × 1008, JPEG q95 | Exported from `coast.vixl`. |
+| `coast-instagram.vixl` | 1080 × 1350 | A live `link` layer pointing at `coast.vixl`. It shows the source crop x=690, y=0, w=806, h=1008 (whole corrected height), with `fit: fill`. |
+| `coast-instagram.jpg` | 1080 × 1350, JPEG q95 | Exported from `coast-instagram.vixl`. |
+| `coast-caption.vixl` | 1600 × 900 | A live `link` layer to `coast.vixl` showing the crop x=0, y=80, w=1512, h=850 with `fit: fill`. On top are a radial `scrim` gradient and a `caption` text layer. |
+| `coast-caption.png` | 1600 × 900, RGB PNG | Exported from `coast-caption.vixl`. |
 
-Because the crops are link layers, any change to the master's corrections shows up in both derived documents.
+The two derived documents link to the master, so a change to the corrections in `coast.vixl` carries through to both when they are re-exported.
 
-## Problems found (measured on the raw file)
+## Corrections (all on layer `photo` in `coast.vixl`, in stack order)
 
-- **Tilt.** I fitted a line to the sky-to-sea edge at 19 columns. The horizon falls left to right by 2.22° (slope 0.0388), dropping from y≈633 at x=620 to y≈670 at x=1570. The frame also shows dark corner wedges from that rotation: up to about 29 px at the top right and about 16 px on the left.
-- **Exposure.** The image is underexposed. Mean luminance is about 51, the 99th percentile is about 153, and the brightest values reach only about 180–199 out of 255.
-- **Colour.** There is a green cast. The sun core measures RGB (179, 199, 175), so green is about 20 above red and blue. The lighthouse lamp is (179, 185, 121), and the glow at the horizon looks yellow-green.
-- **Noise.** There is visible grain: the high-pass standard deviation in a flat patch of sky is about 4.0 per channel, at roughly the same level in every channel.
+1. **Tilt.** I fitted a line to the sky/sea edge in the raw image between x≈620 and x≈1580. It slopes **+2.20°** (the right side is lower). I rotated the layer by **−2.2°** (counter-clockwise) about its centre. Re-measuring the exported `coast-edited.jpg` gives a slope of 0.03°, with the horizon at y≈612.
+2. **Crop for leveling.** The rotation leaves empty corners. I cropped to the largest centred rectangle with the original aspect ratio that contains no empty corner: canvas **1512 × 1008**, starting at x=44, y=28.5 of the 1600 × 1067 frame (about 94.5 % of each side). The aspect ratio is 1.500 against the original 1.4995. The exported image has no empty (0,0,0) pixels at its edges. The only pure-black pixels left are inside the figure's silhouette. The one corner pixel at the top left is slightly darker from anti-aliasing (10,11,62 against the sky's ~11,13,73).
+3. **Noise.** Effect `denoise` with luminance 60 and chroma 60 (search radius left at its default of 5). On a high-pass measure (pixel minus a 2 px Gaussian blur), noise in the sky fell from 3.84 to 1.22. In the open water it fell from 3.93 to 1.54. This held even though the image is now brighter.
+4. **Color cast.** Effect `white-balance` with gains **[1.06, 0.94, 1.04]**. The raw sun core read (179, 200, 177) and the glow at the horizon was lime-green, which points to a green cast in the highlights. After the edit the sun reads (237, 228, 210), a warm white, and the horizon glow is orange-yellow.
+5. **Exposure, first step.** Effect `levels` with black 2 and white 205. The raw image was underexposed: its 99.5th percentile was only 186 (red), 196 (green) and 113 (blue), and its mean was (62, 42, 50).
+6. **Exposure, second step.** Effect `curves` with points [[0,0],[64,78],[128,146],[255,255]], to lift the mid-tones and open up the water and sky. The mean afterwards is (92, 56, 74). The deep shadows (rock, figure) stay near black.
 
-## Corrections applied (in `coast-edit.vixl`, layer `photo`)
+Nothing in the scene was moved, added, removed or repainted.
 
-1. **Rotation: -2.22°**, which is 2.22° counter-clockwise, about the layer centre. Vixl stores this as rotation 357.78. I then centred the layer on the canvas.
-   - Check: after the edit, the horizon edge sits at y=608 in all 17 columns I sampled between x=600 and x=1510, a fitted slope of 0.0°.
-2. **Crop to 1556 x 1002, centred.** This is the largest axis-aligned rectangle that fits inside the rotated frame (1562 x 1007), with about 3 px of safety margin on each side so no rotation wedge or blurred edge remains.
-   - Check: the corners and edges of the output hold image content, not black fill.
-   - I did not keep the 3:2 aspect ratio. Keeping it would have meant cutting down to 1513 x 1009, and the brief says to crop only as much as levelling requires.
-3. **Denoise:** Vixl's edge-preserving (non-local means) `denoise` with luminance 90, chroma 90 and search 5 (the default).
-   - Result: high-pass sky noise went from 4.03 to 1.70, after adjusting for the tonal stretch (about 70% less).
-   - Birds, the figure's outline and the lighthouse edges stay sharp; I checked this in a zoomed preview.
-4. **White balance: a per-channel gain** of R ×1.00, G ×0.90, B ×1.00. This is applied as a 2x2x2 Vixl LUT named `wb-green-cast`, through the `lookup` operation.
-   - Result: the sun core goes from (179, 199, 175) to about (180, 178, 170), which is neutral to slightly warm. The horizon glow is now yellow-orange instead of green-yellow.
-   - I tried and rejected `tint` (an additive shift that turned the blacks magenta) and `auto-color` (it stretched each channel separately, killed the sunset palette and clipped 7% of pixels).
-5. **Exposure: `levels`** with black 3 and white 195 (about ×1.33 gain, roughly +0.4 EV), then **`gamma` 1.1**.
-   - Result: mean RGB went from (62, 42, 50) to (88, 53, 70). The sun core is now about (236, 229, 220). Under 0.001% of pixels clip.
-   - The silhouettes stay near black and the scene still reads as dusk, not daylight.
+## Instagram crop
 
-I did not paint, clone, add, remove or move anything in the scene.
+The 4:5 crop takes the full corrected height, x 690–1496 of the 1512 px width. It frames the sun, the glitter path and the figure on the rock, keeps the horizon at roughly the 45 % line, and includes one bird. The lighthouse falls outside the crop, because it is ~1000 px from the figure and a 4:5 crop can't hold both.
 
-## Derived images
+**Difference from the brief:** the corrected photo is only 1008 px tall, so a 1350 px tall crop has to be **enlarged about 1.34×**. No crop of this photo can reach 1080 × 1350 at native resolution.
 
-- **Instagram (1080 x 1350).**
-  - Source region: x 620–1422, full height (802 x 1002, which is 4:5), scaled ×1.347.
-  - Composition: the sun sits at the centre, the waving figure on the rock is right of centre, and the horizon is a little below the middle, with the glint path leading up to the sun.
-  - The lighthouse is outside this crop. It is 1400 px from the figure, so there is no 4:5 crop that keeps both at this size.
-  - Note: the corrected photo is only 1002 px tall, so this crop is **upscaled about 1.35x**. That is unavoidable for a 1350 px-tall output that stays the same photograph.
-- **Caption (1600 x 900).**
-  - Source region: x 0–1556, y 63–938, scaled ×1.028. Only sky above and dark water below are trimmed.
-  - Gradient layer `caption-shade`: covers y 500–900, running from transparent to black at 30% (offset 0.6) and black at 55% at the bottom edge.
-  - Caption: "Port Ellery at golden hour" in DM Serif Display 400, 64 px, colour #fbf3e6. It is placed bottom-left, 80 px from the left and 72 px from the bottom (bounds 80, 767, 731 x 61), with a soft drop shadow (blur 10, dy 2, opacity 0.45).
-  - `vixl_check` passed with no issues. `vixl_measure` reports text contrast of at least 13.8:1.
+## Caption card
+
+- **Crop and scale.** A 16:9 crop of the corrected photo (x=0, y=80, 1512 × 850), scaled 1.058× to 1600 × 900. It keeps the lighthouse, all the birds, the sun and the figure. It trims 80 px of sky at the top and 78 px of rock at the bottom.
+- **Scrim.** `scrim` is a radial gradient centred on the bottom-left corner (layer box x −500, y 420, 1800 × 960). It is colour rgba(8,5,14), with alpha 0.62 at the centre, 0.40 at 45 % and 0 at the edge, using `smooth` falloff. It darkens only the bottom-left area.
+- **Caption text.** "Port Ellery at golden hour" in Libre Baskerville 400, 50 px, colour #fbf3e6. It sits at x=72, y=778, with the baseline at 819.5. Its box measures 665 × 55. I installed the font with `vixl_font_pair` (pairing libre-franklin-libre-baskerville, mood "editorial", seed 3) and used the body face for the caption.
+- **Checks.**
+  - `vixl_check` reported no fix or review findings, only two informational notes that the scrim intentionally bleeds off the edge.
+  - An attached suite named `caption` passed all three rules: contrast ≥ 4.5, at least 48 px inside the canvas, and the exact caption text.
+  - `vixl_measure` gives the caption a contrast of 14.7:1 at minimum and 17.0:1 on average.
 
 ## Choices and uncertainties
 
-- **Colour correction.** I read the cast as green because the sun and the lamp, the most nearly neutral highlights, have green above red and blue. I kept the warm and purple sunset palette and did not neutralise the whole frame.
-- **Tilt.** The angle (2.22°) is measured from the horizon edge. The true tilt could be a few hundredths of a degree different.
-- **Output size.** `coast-edited.jpg` is 1556 x 1002 rather than 1600 x 1067, because of the crop that levelling requires.
-- **Denoise strength.** This is a judgement call: a faint residual grain remains, which I left on purpose to avoid a plastic look.
-- **Link paths.** The `.vixl` link layers point to the master with a workspace-relative path (`evals/tool-comparison/runs/T10/claude-V/coast-edit.vixl`).
+- **Amount of color correction.** The cast correction is a judgment call. I neutralised the green in the highlights using the sun as a near-white reference. The water and the upper sky still read purple or magenta, which I took to be the real colour of the sunset light rather than a cast. If the cast was meant to be magenta overall, I would want somewhat more green in the shadows: the rock now reads about (5, 2, 8).
+- **Highlights.** No channel clips at 255. Red peaks around 239 in the brightest glow, so the highlights are compressed but not blown.
+- **Re-encoding.** Both JPEGs are JPEG-encoded a second time from a JPEG source at quality 95. That adds a small amount of generation loss.
+- **What I didn't read.** I did not open `fixtures/make_fixtures.py`, which apparently generates this photo, so the corrections are estimated from the image alone. I did not open TESTS.md or any other run folder.
+- **Sharpening.** I applied none, which leaves the slight softness from denoising.

@@ -1,68 +1,88 @@
 # T09 · One campaign, six sizes: judging
 
-- **V lane:** re-run on Vixl 0.20.0, judged 2026-10-06 (claude-code-subagent judge, claude-opus-5-5).
+- **V lane:** re-run on Vixl 0.26.0, judged 2026-10-12 (claude-code-subagent judge, claude-opus-5-5).
+  Effort: round 1 took 3.9 min and 32 tool calls; round 2 took 1.9 min and 30 tool calls.
 - **W lane:** run and judged 2026-10-05. Its scores and notes are unchanged.
 
 Runs: `claude-V` (Vixl MCP) and `claude-W` (web code + Chromium), each with `round2/`.
 
-## 0. Regeneration (2026-10-06)
+## 0. Regeneration (2026-10-12)
 
 Only W's sources are committed, so its PNGs were rebuilt in a scratch copy outside the repo by
-running `render.py` (Playwright Chromium from `/opt/pw-browsers`) in `claude-W/` and
-`claude-W/round2/`.
+running `render.py` in `claude-W/` and `claude-W/round2/`. Playwright's Chromium was pointed at
+`/opt/pw-browsers/chromium-1194` (scratch copy only).
 
-- The `fonts/` folder that `campaign.html` loads was not committed. I re-downloaded the same two
+- The `fonts/` folder that `campaign.html` loads was not committed. I downloaded the same two
   Google Fonts latin subsets (Fraunces variable, DM Sans variable) as woff2 into the scratch copy.
 - After that, `render.py`'s own font-loaded assertion passed. Its text-extent printout (story text
-  y 741–1549) matches the 2026-10-05 numbers.
+  y 741–1549; square 105–760) matches the 2026-10-05 and 2026-10-06 numbers.
 
-V's deliverables are committed and were judged as they are.
+V's deliverables (six PNGs and six `.vixl` per round) are in the run folders. They are git-ignored
+like all run outputs; only the reports are tracked. They were judged as they are. I re-exported
+every `.vixl` from a scratch copy with the `vixl` 0.26.0 CLI, and all 12 PNGs came out
+pixel-identical to the delivered ones (max channel difference 0). The sources really are the
+sources.
 
 ## 1. Blind scores
 
-New blind pass on 2026-10-06, written before opening `key.csv`. All four runs were in the blind set.
+New blind pass on 2026-10-12, written before opening `key.csv`. All four runs were in the blind set.
 
 | Code | Fidelity | Craft | Reason |
 | --- | --- | --- | --- |
-| 9UC2 | 5 | 3 | All copy in every size. Amber lamp with soft halo, three thin wavy tide lines, bold serif headline + geometric sans. Clean and consistent, but generic. The story has a large empty band between the text and the waves, and the lamp is crammed into the top-right corner of the square |
-| X5IW | 5 | 3 | Round 2 of the 9UC2 look. New copy reflows cleanly; nothing else visibly changed |
-| EVVX | 5 | 4 | Steaming-cup lamp in halo rings, layered filled waves, amber accent word, coral pill URL. More distinctive. Stray star dots touch the copy on the square and story |
-| I8XP | 5 | 4 | Round 2 of the EVVX look, with the new copy |
+| FW1G | 5 | 4 | All copy in every size. Tracked amber "TIDEWICK CAFÉ" label, bold serif headline, short coral rule, then sea-foam / cream / amber detail lines. Glowing amber disc, and layered soft waves (translucent slate, sea-foam, coral line, cream). Clean hierarchy, and each size is properly composed: the story has a centred column, and the banners have waves rising from the bottom-right. Minuses: the disc reads as a sun or moon rather than a lamp; the story date wraps as "…December 1 at / Tidewick Café"; the square's items line is small; an extra brand label goes beyond the four copy lines |
+| IKY5 | 5 | 4 | Round 2 of the FW1G look. The new copy sets as a two-line headline everywhere, and the square's disc sits a little higher and further right. Nothing else visibly changed |
+| BRPP | 5 | 4 | Steaming-cup lamp in halo rings, layered filled waves, amber accent words, coral pill URL. Richer than FW1G. Stray star dots touch the copy on the square and story |
+| 5ME0 | 5 | 4 | Round 2 of the BRPP look, with the new copy. The colon of "Winter Menu:" touches the outer halo ring on the square |
 
-Key: 9UC2 = claude-V, X5IW = claude-V/round2, EVVX = claude-W, I8XP = claude-W/round2.
+Key: FW1G = claude-V, IKY5 = claude-V/round2, BRPP = claude-W, 5ME0 = claude-W/round2.
 
 These W blind scores agree with the 2026-10-05 W scores (fidelity 5, craft 4). The earlier W blind
-codes were ILEV (round 1) and TT4F (round 2).
+codes were ILEV and EVVX (round 1) and TT4F and I8XP (round 2).
 
 ## 2. Hard checks (round 1)
 
 Sources:
 
-- **V:** `inspect_outputs.py`, the text layers in the `.vixl` files, the embedded font names, and
-  pixel measurements of the lamp discs.
-- **W:** the 2026-10-05 results.
+- **V:** `inspect_outputs.py`, the layers in the `.vixl` files (stored and via `vixl layers`), the
+  embedded font names, a `vixl check` rerun on scratch copies, and pixel measurements.
+- **W:** the 2026-10-05 results, confirmed on the rebuilt PNGs.
 
-| Check | claude-V (Vixl 0.20.0) | claude-W (2026-10-05) |
+| Check | claude-V (Vixl 0.26.0) | claude-W (2026-10-05) |
 | --- | --- | --- |
 | Six files at exact sizes | PASS: 1080², 1080×1920, 1600×900, 1920×1005, 728×90, 600×200. All opaque RGB, with `.vixl` sources | PASS: same |
-| Copy exact on 4 large; small two carry headline + line 3 | PASS: all four lines verbatim, including "·" and "Café". The menu line is one stored string that wraps in its box on the square, story and X post. Leaderboard and email: headline + line 3. No added copy | PASS: verbatim. Line 2 wraps with "·" at the line end (disclosed) |
-| Story: no text in top/bottom 250 px | PASS: text layers span y 680–1288. Only the lamp halo (from y=50) and tide lines 3–5 (y 1660–1890) are in the zones | PASS: text y≈741–1549 |
-| Nothing stretched/letterboxed | PASS: lamp discs measure 160×160 (story) and 48×48 (leaderboard). Every lamp layer has width = height. Tide lines are redrawn per size | PASS |
-| One family (palette, type, motif) | PASS: the five brand swatches only; Fraunces Bold + Work Sans 400/600 (embedded) in all six; lamp + halo + tide lines in all six (coral rule left out of the leaderboard) | PASS |
-| Leaderboard readable at 100 % | PASS: 32 px headline, 18 px date, cream/amber on navy | PASS: 29 px headline, 14 px date |
+| Copy exact on 4 large; small two carry headline + line 3 | PASS: all four lines verbatim, including "·" and "Café", each stored as one string. Leaderboard and email: headline + line 3. It adds a "Tidewick Café" brand label (drawn uppercase) on five sizes, beyond the four lines. This is disclosed, and was also passed on the 0.18.0 run | PASS: verbatim. Line 2 wraps with "·" at the line end (disclosed) |
+| Story: no text in top/bottom 250 px | PASS: the text layers span y 540–1400. Measured ink outside the lamp is at y 541–1399. Left of x=600 the top 250 px are pure background. Only the lamp and its glow (disc y 110–349) and the waves (from y 1520) are in the zones. `vixl check --avoid` on both bands passes, and the same check fails as expected when the zone is moved onto the headline | PASS: text y≈741–1549 |
+| Nothing stretched/letterboxed | PASS: the measured lamp discs are 170², 240², 230², 220², 66², and 34×32 on the leaderboard, where the bottom 2 px pass behind the translucent back wave; the layer is 34×34. Every lamp layer has width = height. Wave paths are drawn separately for each size | PASS |
+| One family (palette, type, motif) | PASS: the five brand colours, plus a 35 % sea-foam tint (#48636c) and the glow blends. Fraunces Bold + Work Sans Regular (both embedded) in all six. Lamp + four-layer waves + coral rule in all six (the rule becomes a vertical tick on the two small sizes) | PASS |
+| Leaderboard readable at 100 % | PASS: 34 px Fraunces Bold cream headline and a 17 px sea-foam date on navy, clear of the waves | PASS: 29 px headline, 14 px date |
 | **Total** | **6/6** | **6/6** |
 
-## 3. Report honesty (round 1)
+## 3. Report honesty (round 1 and round 2)
 
 - **claude-V: yes.** These claims all match the files:
-  - the tool list and the fonts (Fraunces 700, Work Sans 400/600);
-  - the per-size menu wrapping (one line on Facebook only) and the headline break after "Winter";
-  - the story text range (680–1288), the halo at y=50 and tide lines 3–5 at y 1660–1890;
-  - the leaderboard rule left out and the email date raised to 19 px;
-  - the leaderboard date at 18 px, the thumbnail warnings it kept, and the RGB sizes.
+  - the fonts (Fraunces 700, Work Sans 400), the colour roles, and the sea-foam date on the two
+    small sizes;
+  - the story text range (y 540–1400) and the passing avoid-zone check;
+  - the leaderboard date at 17 px and the email date at 16 px;
+  - the rule turning into a vertical tick, and `allow_crop` on the waves;
+  - the glow blur scaled to each size (14 / 24 / 60 / 80 px);
+  - the extra brand label;
+  - "no fix or review findings": a `vixl check` rerun on all 12 documents gives 0 fix and
+    0 review, and only the bleed and thumbnail-size notes it lists.
 
-  It also says adapt-layout made the first version of the other five sizes and that every layer
-  was then moved, resized or reset by hand. The document history confirms this (see section 6).
+  It says each size was composed by hand, not with `vixl_adapt_layout`. The document history
+  confirms this: each file has one build batch (15–21 ops) and at most one fix batch (6–9 ops),
+  with no `adapt-layout`.
+
+  Small slips, with the deliverables unaffected:
+  - Round 1 says the headline wraps "on every size". The leaderboard headline is one line with no
+    text box.
+  - It says "only the five brand colours" are saved as swatches. Each document also carries seven
+    auto-generated swatches from `vixl_document_create` (`ink` #fee440, `accent` #f15bb5, …), which
+    no layer uses.
+  - The round-2 report gives the old headline sizes as story 136 px and Facebook 163 px. The
+    round-1 files have 140 and 168, confirmed by the stored size and by cap height in the PNGs
+    (100 px and 120 px). The new sizes (128, 156) and the square's 124 → 112 are right.
 - **claude-W: yes** (2026-10-05). Sizes, text extents, the extra dark-navy band, the trailing "·"
   wraps and the hard-edged leaderboard waves are all disclosed and accurate.
 
@@ -70,83 +90,102 @@ Sources:
 
 - **claude-V (editability 5, revision 5).**
   - **Method:** copied the six `.vixl` files, then ran `text-set` on the existing `headline` and
-    `menu` layers. Layer IDs, fonts, colors and positions were kept.
-  - **Size changes:** only two, both disclosed.
-    - Email headline 36→32 px, moved down 4 px so the baseline stays put.
-    - Leaderboard headline 32→29 px, moved down 3 px, so it clears the lamp and the tide lines.
-  - **Pixel diff r1→r2** (per channel > 8): every change is inside the headline rows and the
-    first menu row. Bounding boxes:
-    - square x 90–930, y 280–662
-    - story y 680–1087
-    - X post y 92–481
-    - Facebook y 120–555
-    - leaderboard x 92–480, y 15–45
-    - email x 36–473, y 30–64
+    `items` layers. The history shows one 1–2 op text batch per file plus the fixes below. Layer
+    IDs, fonts, colours, text boxes and all other positions are unchanged.
+  - **Fixes (all disclosed):** the new headline wrapped to three lines on three sizes, and
+    `vixl_check` flagged it. The agent shrank the headline so it sets in two lines:
+    - square 124 → 112 px;
+    - story 140 → 128 px;
+    - Facebook 168 → 156 px.
 
-    The lamp, halo, rule, tide lines, date and URL did not change.
-  - **Result:** the copy is correct in all six. Story text still spans y 680–1288. The round-2
-    report matches the files.
+    It also moved the square's lamp from (800, 90) to (840, 60), clear of the colon. The disc is
+    still 170². The X post, leaderboard and email needed no change.
+  - **Pixel diff r1→r2** (per channel > 8): the changes are only in the headline and items rows,
+    plus the square's lamp. Bounding boxes:
+    - square y 0–331 (headline + lamp), 342–463 and 584–625 (items);
+    - story y 624–891 and 1034–1143;
+    - X post y 154–447 and 504–551;
+    - Facebook y 184–506 and 586–638;
+    - leaderboard x 18–486, y 6–51;
+    - email x 30–354, y 46–149.
+
+    The rule, date, URL, label and waves did not change.
+  - **Result:** the copy is correct in all six. Story text still spans y 540–1400. `vixl check`
+    gives 0 fix and 0 review on all six round-2 files.
 - **claude-W (editability 5, revision 4)** (2026-10-05).
   - **Method:** a two-constant `sed` edit of `campaign.html` plus the email headline, then a
     re-render. It added a nowrap span after seeing a bad wrap.
   - **Result:** correct copy in all six, and the layout numbers did not change.
   - **Collateral:** the wider "Winter Menu:" line now collides with the lamp's halo rings on the
     square (the colon overlaps the outer rings at x≈720–760, y≈130–190). It still crosses a ring
-    in the story. The report does not mention this.
+    in the story. The report does not mention this. My 2026-10-12 rebuild shows the same.
 
-## 5. Changes since the Vixl 0.18.0 run
+## 5. Changes since earlier Vixl runs
 
-| | Hard | Fid | Craft | Honest | Edit | Rev |
-| --- | --- | --- | --- | --- | --- | --- |
-| V on 0.18.0 (2026-10-05, AVLB) | 6/6 | 5 | 4 | yes | 5 | 5 |
-| V on 0.20.0 (2026-10-06, 9UC2) | 6/6 | 5 | 3 | yes | 5 | 5 |
+| | 0.18.0 (2026-10-05) | 0.20.0 (2026-10-06) | 0.26.0 (2026-10-12) |
+| --- | --- | --- | --- |
+| Blind code | AVLB | 9UC2 | FW1G |
+| Hard checks | 6/6 | 6/6 | 6/6 |
+| Fidelity / craft | 5 / 4 | 5 / 3 | 5 / 4 |
+| Report honest | yes | yes | yes (three small numeric/wording slips) |
+| Editability / revision | 5 / 5 | 5 / 5 | 5 / 5 |
+| How the sizes were made | composed per size | `adapt-layout`, then every layer re-laid by hand | composed per size (build batch + small fix batch) |
+| Effort r1 / r2 | not recorded | not recorded | 3.9 min, 32 calls / 1.9 min, 30 calls |
 
-- **Same as before:** the hard checks, honesty and round-2 scores. Round 2 is again a clean
-  in-place text edit with only disclosed font-size tweaks.
-- **Look:** the new run is a different design.
-  - Fraunces + Work Sans, line-drawn tide waves and a glowing lamp, instead of Young Serif +
-    Rubik with filled wave bands.
-  - It no longer adds the "TIDEWICK CAFÉ" label, so the copy is now strictly the brief's.
-  - It scored one point lower on craft: tidy but plainer, with dead space in the story.
-- **Exports** are now opaque RGB (RGBA before).
-- **Workflow:** this run used `vixl_adapt_layout` to make the other five sizes from the square. Its
-  output needed a manual re-layout of every layer in every size (section 6).
+- **Craft is back to 4.** The 0.26.0 run is a tidier, editorial version of the 0.18.0 approach:
+  - Fraunces + Work Sans;
+  - a brand label, headline, rule and detail stack;
+  - a glowing disc over layered soft waves.
 
-## 6. Vixl product notes (adapt-layout, from the `.vixl` history)
+  The story is properly composed this time, with no dead band. The motif is plainer than W's, so
+  it stays at 4.
+- **Unchanged:** the hard checks, honesty and round-2 scores. Round 2 is again a clean in-place
+  text edit, with only disclosed fit fixes.
+- **Workflow:** the agent skipped `adapt-layout`, which was the costly path on 0.20.0. It built
+  each size directly, then made one small fix batch. That and the clean `vixl_check` results make
+  this the cheapest V run so far.
+- **Not a product signal:** the agent chose to avoid `adapt-layout`. My scratch test (section 6)
+  shows it is still not good enough to start from for a re-layout of this design.
 
-Each adapted document records the `adapt-layout` revision followed by the agent's manual fixes.
+## 6. Vixl product notes (0.26.0)
 
-**What adapt-layout produced:**
+The run itself hit no tool failures. Two gaps reproduced in scratch copies:
 
-- **Leaderboard (728×90):** the headline at 10 px. The menu, date and URL at 3 px. The lamp at
-  12 px. Tide lines squashed from 1120×50 to 731×4.
-- **Email (600×200):** the headline at 23 px. The other lines at 6–7 px. Tide lines squashed to
-  607×9.
-- **X post and Facebook:**
-  - The headline and body were re-centered (headline at x=389 and x=494), but the coral rule was
-    left at the left margin (x=78 and x=87), so the text group split apart.
-  - Tide lines were scaled unevenly (1120×50 → 1633×42, i.e. ×1.46 wide but ×0.84 tall), so the
-    waves were stretched.
-- **Story (1080×1920):** the layers were spread down the canvas. The date and URL landed at
-  y 1592–1682, inside the bottom 250 px safe zone, with a 400 px gap after the menu line.
+**1. `adapt-layout` is still not a usable start.** I applied `adapt-layout` to a copy of the
+delivered square `.vixl`, then ran `vixl check` on each result.
 
-**Manual work after adapt-layout:**
+- **Leaderboard (width/height 728×90):**
+  - Every text layer shrinks to 12 px, and the lamp to 14 px.
+  - The headline gets a 68×19 box and is cut off at "The Winter / Menu is". Check: "does not fit
+    its 68×19 text box … needs 68×35".
+  - The items, date and URL lines stack 6 px apart and overlap.
+  - The waves are scaled to fill the banner, so all the text sits on the pale waves, at contrast
+    1.0–1.8:1.
+  - `vixl check` catches all of this: 8 fix findings.
+- **X post (1600×900):**
+  - The headline, rule and detail lines move to x≈418–430, while the brand label stays at x=75, so
+    the text group splits. On 0.20.0 it was the rule that was left behind.
+  - The waves grow to 356 px tall and run under the URL line.
+  - The lamp's disc sits right against the end of the headline's "Winter", and its glow overlaps
+    the word.
+  - `vixl check` reports nothing (0 fix, 0 review).
+- **Story, given as raw 1080×1920:**
+  - The label and headline stay at y 110–455, inside the top 250 px. The rule and details drop to
+    y 1032–1264, leaving a ~580 px gap.
+  - `vixl check` passes, because the canvas keeps its 54 px safe margin.
+  - With `size: "instagram-story"`, the 250 px top/bottom safe zones are applied, and the label
+    moves to y=250. So the story rule only works when the agent names the size.
 
-| Size | Operations | Layers touched |
-| --- | --- | --- |
-| Email | 13 | 10 |
-| Facebook | 15 | 10 |
-| Leaderboard | 16 | 10 |
-| Story | 21 | 12 |
-| X post | 44 | 10 |
-
-That is every layer in every size. Removing lines and redrawing the tide shapes was expected for
-the two small sizes. But the uneven wave stretching and the rule left behind happened in all four
-landscape and banner sizes, and adapt-layout put story text into the safe zone.
+**2. `vixl_document_create` seeds an off-brand palette.** Each document starts with a random
+house-style direction (`palette: neon`, `style: brutalist`, `pairing: bricolage-figtree`). It also
+starts with seven swatches unrelated to the navy background given: `ink` #fee440, `accent` #f15bb5,
+`muted` #b9ae50, and others. The agent overrode every colour, so nothing leaked into the
+artwork. But any default-coloured text or shape would have come out yellow or pink, and the extra
+swatches stay in the saved files next to the five brand swatches.
 
 ## Summary
 
 | Lane | Date | Hard | Fid | Craft | Honest | Edit | Rev |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| V (Vixl 0.20.0) | 2026-10-06 | 6/6 | 5 | 3 | yes | 5 | 5 |
+| V (Vixl 0.26.0) | 2026-10-12 | 6/6 | 5 | 4 | yes | 5 | 5 |
 | W | 2026-10-05 | 6/6 | 5 | 4 | yes | 5 | 4 |

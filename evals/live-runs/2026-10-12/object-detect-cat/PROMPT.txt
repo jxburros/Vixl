@@ -1,0 +1,1 @@
+pile.vixl holds a pile of loose shapes that together draw a cat. Turn them into one cat object named cat with its head, body, ears, legs and tail named as parts, and fix any part that floats free of the body. Do not delete shapes.

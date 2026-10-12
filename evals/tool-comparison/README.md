@@ -17,8 +17,11 @@ Every tool here is free or comes with Claude and ChatGPT/Codex. Nothing needs a 
 
 ## Results
 
+- [2026-10-12](../../eval-results/2026-10-12-vixl-0.26-evaluation.md): the Vixl lane re-run on
+  Vixl 0.26.0 (the current scores in `scoresheet.csv` and `runs/`), with a
+  [gallery](../../eval-results/2026-10-12-gallery.md) of every lane's deliverables side by side.
 - [2026-10-06](../../eval-results/2026-10-06-vixl-0.20-tool-comparison.md): the Vixl lane re-run on
-  Vixl 0.20.0 (the current scores in `scoresheet.csv` and `runs/`).
+  Vixl 0.20.0.
 - [2026-10-05](../../eval-results/2026-10-05-full-evaluation.md#2-tool-comparison): the first full
   run, every agent lane, with the Vixl lane on 0.18.0.
 
@@ -97,8 +100,8 @@ Paste the rule for the lane into the kickoff prompt (below).
 
 ## Setup (once)
 
-1. **Vixl.** The project's `.mcp.json` runs the current released server (v0.23.0) with the repository root
-   as the workspace (the briefs use paths from there), the latest recorded results used v0.20.0. To
+1. **Vixl.** The project's `.mcp.json` runs the current released server (v0.26.0) with the repository root
+   as the workspace (the briefs use paths from there); the latest recorded results used v0.26.0. To
    test unreleased changes instead, point both agents at the checkout:
 
    ```bash

@@ -1,0 +1,119 @@
+[
+ {
+  "type": "page",
+  "action": "select",
+  "page": "by-the-numbers"
+ },
+ {
+  "type": "text-set",
+  "target": "stat-1",
+  "text": "35,630"
+ },
+ {
+  "type": "page",
+  "action": "set",
+  "page": "by-the-numbers",
+  "notes": "Here is our year in three numbers. We poured 35,630 cups, welcomed 312 performers to the open-mic stage, and held a 4.8-star average across our reviews. Every one of those numbers is the work of the people in this room."
+ },
+ {
+  "type": "page",
+  "action": "select",
+  "page": "cups-by-quarter"
+ },
+ {
+  "type": "chart-data",
+  "target": "cups-chart",
+  "set": [
+   {
+    "category": "Q4",
+    "value": 9250
+   }
+  ]
+ },
+ {
+  "type": "layer-intent",
+  "target": "cups-chart",
+  "alt": "Bar chart of cups poured per quarter in 2025: Q1 8,560; Q2 8,830; Q3 8,990; Q4 9,250."
+ },
+ {
+  "type": "page",
+  "action": "set",
+  "page": "cups-by-quarter",
+  "notes": "Cups grew every quarter this year, from 8,560 in the first quarter to 8,990 in the summer. The fourth quarter was our best yet at 9,250, even with fewer cold-brew sales. Steady growth like this lets us plan staffing with confidence."
+ },
+ {
+  "type": "page",
+  "action": "add",
+  "name": "our-regulars",
+  "duplicate": "by-the-numbers",
+  "after": "by-the-numbers",
+  "master": "deck",
+  "select": true,
+  "notes": "Numbers only tell part of the story, so here is what one of our regulars says. Jo has been coming in since 2019 and sums up the year in one line: best flat white on the coast. That is down to the care you put into every cup, so thank you."
+ },
+ {
+  "type": "remove",
+  "targets": [
+   "card-2",
+   "card-band-2",
+   "stat-2",
+   "stat-label-2",
+   "card-3",
+   "card-band-3",
+   "stat-3",
+   "stat-label-3",
+   "stat-star",
+   "stat-1",
+   "stat-label-1"
+  ]
+ },
+ {
+  "type": "text-set",
+  "target": "title",
+  "text": "Our regulars"
+ },
+ {
+  "type": "rename",
+  "target": "card-1",
+  "name": "quote-card"
+ },
+ {
+  "type": "rename",
+  "target": "card-band-1",
+  "name": "quote-band"
+ },
+ {
+  "type": "shape",
+  "target": "quote-card",
+  "x": 120,
+  "y": 320,
+  "width": 1680,
+  "height": 540
+ },
+ {
+  "type": "text",
+  "name": "quote",
+  "text": "“Best flat white on the coast.”",
+  "font": "heading",
+  "size": 90,
+  "color": "@navy",
+  "x": 176,
+  "y": 450,
+  "line_height": 1.15
+ },
+ {
+  "type": "text",
+  "name": "quote-attribution",
+  "text": "— Jo, regular since 2019",
+  "font": "body",
+  "size": 40,
+  "color": "@muted",
+  "x": 176,
+  "y": 700
+ },
+ {
+  "type": "layer-intent",
+  "target": "quote",
+  "role": "content"
+ }
+]

@@ -1,67 +1,34 @@
-# T06 round 2 · Fillable PDF form (lane V, Vixl)
+# T06 round 2: Vixl run (lane V)
 
-I made every change through the Vixl MCP tools. The source was a copy of `../signup-form.vixl`, opened with `vixl_document_open`. I then used `vixl_operations_apply` for two atomic batches, `vixl_check` with `sample="worst"`, and `vixl_export_batch` for both PDFs. I didn't write any SVG, HTML or pixels myself. Afterwards I used pypdf, pdftotext and a 60 dpi pdftoppm render to read the outputs back. Nothing outside `round2/` was changed.
-
-## Files
-
-| File | How it was made |
-| --- | --- |
-| `signup-form.vixl` | The round-1 source copied here, then edited with two operation batches (see below). |
-| `signup-form.pdf` | Made with `vixl_export_file` (through `vixl_export_batch`) with `fillable=true`. It is one page, vector, with 15 field keys and 18 widgets. |
-| `signup-sample.pdf` | Made with `values={…}` and `fill_mode="flatten"`. It has no AcroForm and no annotations. |
-| `REPORT.md` | This file. |
+All visual work used the Vixl MCP tools (`vixl_document_open`, `vixl_operations_apply`, `vixl_render_preview`, `vixl_export_file`). Python (pypdf) and `pdftoppm` were used only to read the old sample's values and to check the new PDFs.
 
 ## What changed
 
-1. **New field `instagram`.** It is a text field, required, labelled "Instagram handle *" (the " *" follows the round-1 convention for required fields).
-   - The label is a duplicate of the Email label with its text changed. The field copies the Email box style: Bitter at 44 px, a `#f6f7f9` fill, a `#6b7a8c` stroke and radius 10.
-   - I added two rules the brief didn't ask for:
-     - `max_length` 31, which is "@" plus Instagram's 30-character limit.
-     - `pattern` `@?[A-Za-z0-9._]{1,30}`, with a message. In the PDF this becomes a validate action that viewers which run JavaScript enforce.
-2. **Layout change, to give the handle room.**
-   - My first try put Instagram in Phone's old 700 px slot next to Email. `vixl_check` (worst case) failed it: 31 "W" characters need 980 px even at the smallest shrink size, and the box only holds 660 px.
-   - So the layout is now:
-     - **Email:** its own full-width row (2100 px, the same width as Performer name).
-     - **The next row:** Instagram (1300 px) on the left and Phone (700 px) on the right.
-   - Everything from "Type of act" to Signature/Date moved down 240 px.
-   - The footer rule and footer text moved down 170 px. The footer text now ends at y=3251, inside the 38 px safe margin (3262).
-   - Nothing was resized except Email, which was widened.
-3. **Slot options.** I changed them with `field-set` to `7:00–7:30`, `7:30–8:00`, `8:00–8:30`, `8:30–9:00`, `9:00–9:30`, `9:30–10:00`, all with real en dashes (U+2013). The field is still a required combo box.
-4. **Tab order.** It still comes from reading order (`form.tab_order = reading`, page `/Tabs /S`). Read back from the PDF, the widgets are annotated in this order:
-   1. performer_name
-   2. email
-   3. instagram
-   4. phone
-   5. act_type (×4)
-   6. performers
-   7. needs_mic, needs_amp, needs_keyboard, needs_projector
-   8. pieces
-   9. slot
-   10. photo_consent
-   11. signature
-   12. date
+1. **New field `instagram`** ("Instagram handle *"): required text field, placed right after Email in the same row (Email left, Instagram handle right). PDF tooltip "Instagram handle". Max length 31 (an optional `@` plus Instagram's 30-character limit), with a pattern check `@?[A-Za-z0-9._]{1,30}` and the message "Enter an Instagram handle such as @yourname (letters, digits, . and _, up to 30)". Like the round 1 email check, the pattern only runs in viewers that run PDF JavaScript.
+2. **Phone** moved to its own row under Email, left-aligned with it. The row had no room for three fields.
+3. **Slot dropdown options** are now `7:00–7:30`, `7:30–8:00`, `8:00–8:30`, `8:30–9:00`, `9:00–9:30`, `9:30–10:00` (en dashes, as before). `slot` is still a required combo box.
+4. **Room for the new row.** Everything from "Type of act" to the pieces box moved down 255 px (one row). To keep the footer where it was, the gaps around the photo-consent row were tightened (90/110 px to 65 px), and the signature and date boxes were made 150 px tall instead of 170 px. Header and footer are unchanged.
+5. **Widths.** The first try (Email 1225 px, Instagram 800 px) failed the worst-case form check: 31 W's need 854 px at the 28 px minimum, and the box had 764 px. I changed the layout instead of the rule: Email is now 1125 px wide, Instagram handle is 900 px wide (from x 1425), and Phone is 1125 px wide to match Email.
+6. **Tab order** stays `reading`: 1 performer_name, 2 email, 3 instagram, 4 phone, 5 act_type, 6 performers, 7 slot, 8–11 needs_*, 12 pieces, 13 photo_consent, 14 signature, 15 date. I checked this in `vixl_render_preview(show_fields=true)` and in the PDF's `/Annots` order (page `/Tabs /S`).
+7. **Check suite `brief`** updated: field count is now 18. New rules: the Instagram label text; `instagram` to the right of `email` with tops aligned; Phone's label below Email and left-aligned; pieces above photo consent; signature above the footer rule. The suite still extends `fillable-form`, which includes the worst-case form check.
 
-   Instagram comes right after Email and before Phone.
-5. **Sample.** I re-exported the sample with the brief's values, plus `instagram: @driftwoodquartet` and `slot: 8:30–9:00`. pdftotext and the render show every value in full: the long performer name at full size, the three pieces on three lines, Phone empty, Music, mic, amp and photo consent ticked, and keyboard and projector not ticked.
+## Files (same names as round 1)
+
+| File | How it was made |
+| --- | --- |
+| `signup-form.vixl` | A copy of the round 1 source, edited with one atomic batch (`build-ops.json`). |
+| `build-ops.json` | The round 2 change batch: 12 operations applied to the round 1 document. It does not rebuild the form from scratch; the round 1 `build-ops.json` is still the base. |
+| `signup-form.pdf` | `vixl_export_file(fillable=true)`. It has 15 AcroForm fields, including `instagram`, and the slot has 6 options. |
+| `signup-sample.pdf` | `vixl_export_file(values=…, fill_mode="flatten")` with the round 1 sample values, except `slot` = `8:30–9:00` and `instagram` = `@driftwoodquartet`. It has no form fields (no AcroForm and no annotations). |
 
 ## Checks
 
-- **`vixl_check(sample="worst")`:** 0 errors, 0 warnings. This is after the re-layout; before it, the check failed on Instagram's overflow.
-- **pypdf read of the form:**
-  - `instagram` is `/Tx`, with Ff 2 (required), MaxLen 31, a `/AA /V` pattern script, and the tooltip "Instagram handle *".
-  - `slot` is `/Ch` with the 6 options above.
-  - Every other field keeps its round-1 type, flags and actions.
+- `vixl_check` (default checks, including `form`): passed. The only findings are the two waived full-bleed header shapes from round 1, which are informational.
+- Suite `brief`: all 12 rules pass, including the worst-case sample overflow check.
+- pypdf on the fillable PDF: 15 fields; `instagram` is `/Tx`, required (Ff 2), with tooltip "Instagram handle"; the slot `/Opt` lists exactly the six new options.
+- I rendered the sample at 60 dpi and looked at it. "@driftwoodquartet" and "8:30–9:00" are fully visible, and every other value matches round 1. Microphone, guitar amp and photo consent are checked, and Music is selected.
 
-## Unchanged from round 1 / still true
+## Notes
 
-Everything listed under "Choices and deviations" in `../REPORT.md` still applies. That includes:
-
-- The signature is a text field.
-- The length limits I chose.
-- Values typed in a viewer are drawn in Helvetica.
-- I haven't tested the form by hand in Acrobat, Preview or a browser.
-
-## Unsure about
-
-- The handle pattern accepts a handle with or without the leading "@". It does not check Instagram's other rules, such as no trailing dot.
-- Making Email a full-width row was a layout choice so the required handle fits worst-case input. A narrower Instagram box with a lower `max_length` (20, as the check suggested) would have kept the old row shape, but it would have rejected some valid 21–30 character handles.
+- Phone now sits alone on a row with empty space to its right. I chose this so that Email and Instagram handle stay next to each other in reading order.
+- The sample's text extraction lists the Instagram value last, because of how text runs are ordered in the content stream. The visual position and the tab order are correct.

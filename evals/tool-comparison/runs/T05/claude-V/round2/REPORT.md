@@ -1,49 +1,58 @@
-# T05 round 2 · Slide deck revisions — lane V (Vixl)
+# T05 round 2: Vixl lane (claude-V)
 
-All edits were made with the Vixl MCP tools (`vixl_document_open`, `vixl_operations_apply`, `vixl_check`, `vixl_render_preview`, `vixl_export_batch`). I drew no pixels and wrote no SVG/HTML. I copied `../deck.vixl` to `round2/deck.vixl` with `cp` and edited only the copy. Short Python/poppler scripts were used only to read the original notes and to check the exports. Nothing outside `round2/` was changed.
+## What changed
 
-## Files
+1. **Q4 corrected to 9,250.** The year's total is now **35,630** cups (8,560 + 8,830 + 8,990 + 9,250).
+   - **Slide 4, "Cups by quarter":**
+     - The Q4 bar and its value label now show 9,250. It is still a native PowerPoint chart, with data 8,560 / 8,830 / 8,990 / 9,250.
+     - The chart's alt text now says Q4 9,250.
+     - The speaker notes used to say Q4 "dipped only slightly, to 8,900", which is no longer true. They now say cups grew every quarter and Q4 was the best quarter, at 9,250.
+   - **Slide 2, "By the numbers":** the stat card and the speaker notes now say 35,630.
+   - **Source files:** `deck.md` and `build-ops.json` now say 35,630 and 9,250, so they match the deck. `deck.md` also has the new slide and its notes.
+2. **New slide 3, "Our regulars"** comes after "By the numbers". It shows the quote “Best flat white on the coast.” with the attribution "— Jo, regular since 2019".
+   - **Same style as the rest of the deck.** I built it by duplicating the "By the numbers" page. It keeps:
+     - the `deck` master (cream background and footer);
+     - the title style: a coral bar, then the title in Young Serif 90 px at x 120, y 128;
+     - the card style: a cream-white rounded card with a beige stroke and an amber tab.
+   - **Layout.** The card is widened to the full content width (1680 x 540). The quote is Young Serif 90 px in navy. The attribution is Rubik 40 px in muted grey, in the same place as the stat labels on slide 2.
+   - **Speaker notes:** 3 sentences, like the other slides.
+   - **Page numbers** now read `N / 7`. They come from the master's `${page} / ${pages}` variable, so they updated automatically.
+3. **Re-exported** `deck.pptx` and `deck.pdf`. Both have 7 slides at 13.333 x 7.5 in, with notes on every slide.
 
-| File | What it is |
-| --- | --- |
-| `deck.vixl` | Editable source, now 7 pages (history kept: round-1 edits plus these) |
-| `deck.pptx` | 7 slides, 16:9, native editable chart, speaker notes on all 7, no raster fallbacks |
-| `deck.pdf` | 7 vector pages with selectable text and embedded fonts |
-| `REPORT.md` | This report |
+## How
 
-## 1. Q4 correction: 8,900 → 9,250; total 35,280 → 35,630
+I used only Vixl MCP tools for the deck. I copied the round-1 files into `round2/` and opened `round2/deck.vixl`.
 
-Check: 8,560 + 8,830 + 8,990 + 9,250 = 35,630.
+I made the changes in one atomic `vixl_operations_apply` batch. A second, small batch then set the quote size to 90 px. The first batch used:
+- `text-set` on `stat-1`
+- `chart-data` with Q4 set to 9250, which changes the chart in place and keeps its layer IDs
+- `layer-intent` for the alt text
+- `page set notes` for the speaker notes
+- `page add` with `duplicate: "by-the-numbers"` and `after: "by-the-numbers"`
+- `remove`, `rename`, `shape`, `text` and `text-set` to turn the copied page into the quote slide
 
-| Place | Before | After | How |
-| --- | --- | --- | --- |
-| Slide "Cups by quarter" chart (Q4 bar and its value label) | 8,900 | 9,250 | `chart-data` with `set: [{category: "Q4", value: 9250}]` on the existing chart group, so the bars, labels and layer IDs are redrawn in place. The axis still runs 0–10,000, so 9,250 fits. The chart's stored total is now 35,630. |
-| Chart in the PPTX | 8,900 | 9,250 | Re-exported; the native chart's data table reads 8560, 8830, 8990, 9250 (checked with python-pptx). |
-| Slide "By the numbers", first stat card | 35,280 | 35,630 | `text-set` on `stat-1` (same font, size, position). |
-| Speaker notes, "By the numbers" | "We poured 35,280 cups" | "We poured 35,630 cups" | `page set notes`. |
-| Speaker notes, "Cups by quarter" | said Q3 (8,990) was the peak and Q4 "held almost level at 8,900" | Q4 is now the strongest quarter at 9,250 | `page set notes`. The old wording would have been wrong, not just out of date, so I rewrote that sentence: "The fourth quarter was our strongest at 9,250, even as the weather turned." |
-
-I searched the whole document (layers, notes, chart data) for 35,280 / 35280 / 8,900 / 8900; those were the only places. The total does not appear on the title, closing or other slides. The round-1 notes did not mention the total elsewhere.
-
-## 2. New slide 3, "Our regulars"
-
-Inserted with `page add ... after: "numbers"`, so it is slide 3 of 7; the later slides moved down one and the `${page} / ${pages}` footers now read 1 / 7 … 7 / 7 automatically.
-
-- **Same style:** `content` master (cream background, amber bar above the title, sea-foam rule, footer). Title layer named `title` at x=120, y=130, Fraunces 700, 88 px, navy, matching slides 2 and 4–6, so it becomes the slide title placeholder in the PPTX.
-- **Quote:** “Best flat white on the coast.” in Fraunces 700, 120 px, navy (the same size as the stats), in a 1100 px wrapping box so it breaks as "Best flat white / on the coast." The text itself has no manual line break and uses typographic curly quotes.
-- **Attribution:** "— Jo, regular since 2019" in Work Sans 400, 60 px, navy (the bullet size used on other slides).
-- **Accent:** a 14 px amber vertical rule at the left of the quote and attribution, a pull-quote mark built from the brand amber.
-- **Speaker notes:** "Numbers only tell part of the story, so here is one of our regulars in her own words. Jo has been coming in since 2019, and this is what she wrote about us. Moments like this come from the care you put into every cup."
+Both batches are recorded together in `round2-ops.json`, which is a new file; the other file names are unchanged. I exported the PPTX and PDF with `vixl_export_batch`. I edited `deck.md` and `build-ops.json` with a small Python text-replacement script.
 
 ## Checks
 
-- `vixl_check(checks=["deck"])` on all 7 pages: 0 errors, 0 warnings, 1 informational note (the intentionally cropped lamp circle on slides 1 and 7, as in round 1).
-- Previewed every page (`page="all"`) and the new slide at full size.
-- PPTX (python-pptx): 7 slides, titles correct, notes on 7/7, one native chart with Q4 = 9250, stat reads 35,630. PDF (pdftotext): contains 35,630, 9,250 and the new slide text; no 35,280 or 8,900.
+- **Deck check.** `vixl_check(checks=["deck"])` passes on all 7 pages with 0 fix findings.
+  - One review warning is left, the same as in round 1: the chart labels' 46 px size is not on the type scale.
+  - My first quote size, 96 px, added a second type-scale warning, so I set the quote to 90 px, which is on the scale.
+  - The 10 informational findings are the cover decorations, which bleed off the edge on purpose.
+- **PPTX** (python-pptx):
+  - 7 slides, each with notes.
+  - Slide 3's text is "Our regulars", “Best flat white on the coast.” and "— Jo, regular since 2019".
+  - Slide 4's native chart series is [8560, 8830, 8990, 9250].
+- **PDF** (pypdf): 7 pages. Page 2 reads 35,630, and page 3 has the quote text.
+- **No old numbers left.** A grep of `round2/` finds no "35,280", "8,900" or "8900".
+- **Visual check.** I looked at Vixl previews of slide 3, slide 4 and all 7 pages together.
 
-## Notes and caveats
+## Notes and known issues
 
-- **Pronoun in the notes.** The notes call Jo "her". The brief gives no gender; change it to "their" if that is wrong.
-- **Inferred story in the cups notes.** Saying Q4 was the strongest quarter is just what the corrected numbers show; the phrase "the winter menu helped us finish the year on a high" is my wording, replacing round 1's "should help us hold that line", which no longer fit.
-- Round-1 caveats still apply: fonts are not embedded in the PPTX (install Fraunces, Work Sans and Noto Sans Symbols 2, or use the PDF), and PPTX heading runs carry no bold flag.
-- **Repository state I found and left alone.** Before I started, `git status` already showed `../REPORT.md` modified and a tracked `round2/REPORT.md` deleted in the working tree (the round-1 files were not changed by me; their timestamps are before this run). This file replaces the deleted `round2/REPORT.md` path with this round's report.
+- **Characters in the quote.** It keeps the curly quotes and the em dash exactly as given. The fonts check reported no fallback glyphs.
+- **The quote and the title are both 90 px.** The quote reads as a quote because it sits inside the card, but it is not larger than the title.
+- **Unchanged from round 1:**
+  - Fonts are not embedded in the PPTX, because Vixl cannot embed fonts in PowerPoint files. Young Serif and Rubik are OFL Google Fonts, and the PDF embeds them.
+  - I did not open the deck in PowerPoint, Keynote or Google Slides.
+- **`polish-ops.json`** is copied unchanged, because it holds no data values.
+- **Nothing written outside `round2/`.**

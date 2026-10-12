@@ -1,0 +1,1 @@
+Create dog.vixl at 600x600 on a cream (#fdf6e3) background and draw a friendly dog sitting: head, body, four legs, ears and a tail. Make it one object of kind dog with every part named, no part floating free, and review it on its own before exporting dog.png.

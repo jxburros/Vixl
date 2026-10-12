@@ -1,0 +1,1 @@
+Create design.vixl at 100x100. Import logo.svg as editable geometry, move the shape named mark to x=5, and export logo.svg.png.

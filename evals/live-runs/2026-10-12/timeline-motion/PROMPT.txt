@@ -1,0 +1,1 @@
+Create design.vixl at 200x100 with a red 20x20 ellipse named ball at x=0,y=40. Animate x from 0 to 180 linearly over a one-second timeline at 10 fps. Export start.png at 0ms, end.png at 1000ms, and motion.gif.

@@ -1,0 +1,222 @@
+[
+ {
+  "type": "move",
+  "targets": [
+   "photo_consent-label",
+   "photo_consent"
+  ],
+  "y": 230,
+  "relative": true
+ },
+ {
+  "type": "move",
+  "targets": [
+   "signature-label",
+   "date-label",
+   "signature",
+   "date"
+  ],
+  "y": 185,
+  "relative": true
+ },
+ {
+  "type": "resize",
+  "targets": [
+   "signature",
+   "date"
+  ],
+  "height": 150
+ },
+ {
+  "type": "move",
+  "targets": [
+   "act_type-label",
+   "act-music-label",
+   "act_type-music",
+   "act-poetry-label",
+   "act_type-poetry",
+   "act-comedy-label",
+   "act_type-comedy",
+   "act-other-label",
+   "act_type-other",
+   "performers-label",
+   "performers",
+   "slot-label",
+   "slot",
+   "needs-label",
+   "needs_mic-label",
+   "needs_mic",
+   "needs_amp-label",
+   "needs_amp",
+   "needs_keyboard-label",
+   "needs_keyboard",
+   "needs_projector-label",
+   "needs_projector",
+   "pieces-label",
+   "pieces"
+  ],
+  "y": 255,
+  "relative": true
+ },
+ {
+  "type": "move",
+  "target": "phone-label",
+  "x": 225,
+  "y": 1230
+ },
+ {
+  "type": "move",
+  "target": "phone",
+  "x": 225,
+  "y": 1295
+ },
+ {
+  "type": "resize",
+  "target": "phone",
+  "width": 1125,
+  "height": 125
+ },
+ {
+  "type": "resize",
+  "target": "email",
+  "width": 1125,
+  "height": 125
+ },
+ {
+  "type": "text",
+  "name": "instagram-label",
+  "text": "Instagram handle *",
+  "x": 1425,
+  "y": 975,
+  "size": 42,
+  "font": "heading",
+  "color": "#14263b"
+ },
+ {
+  "type": "field",
+  "name": "instagram",
+  "key": "instagram",
+  "kind": "text",
+  "label_layer": "instagram-label",
+  "required": true,
+  "max_length": 31,
+  "pattern": "@?[A-Za-z0-9._]{1,30}",
+  "message": "Enter an Instagram handle such as @yourname (letters, digits, . and _, up to 30)",
+  "x": 1425,
+  "y": 1040,
+  "width": 900,
+  "height": 125,
+  "size": 44,
+  "min_size": 28
+ },
+ {
+  "type": "field-set",
+  "target": "slot",
+  "options": [
+   "7:00–7:30",
+   "7:30–8:00",
+   "8:00–8:30",
+   "8:30–9:00",
+   "9:00–9:30",
+   "9:30–10:00"
+  ]
+ },
+ {
+  "type": "suite-set",
+  "name": "brief",
+  "suite": {
+   "version": 1,
+   "extends": "fillable-form",
+   "rules": [
+    {
+     "id": "header-title",
+     "kind": "text",
+     "target": "title",
+     "contains": "Open Mic Sign-up"
+    },
+    {
+     "id": "header-sub",
+     "kind": "text",
+     "target": "subtitle",
+     "contains": "Tidewick Café · Thursdays 7–10 pm"
+    },
+    {
+     "id": "footer-copy",
+     "kind": "text",
+     "target": "footer",
+     "contains": "Return this form at the counter or email it to openmic@tidewick.example"
+    },
+    {
+     "id": "footer-inside",
+     "kind": "relation",
+     "target": "footer",
+     "to": "canvas",
+     "position": "inside",
+     "minimum": 150
+    },
+    {
+     "id": "title-over-labels",
+     "kind": "hierarchy",
+     "targets": [
+      "title",
+      "subtitle",
+      "email-label"
+     ],
+     "ratio": 1.2
+    },
+    {
+     "id": "field-count",
+     "kind": "count",
+     "target": "*",
+     "layer_type": "field",
+     "minimum": 18,
+     "maximum": 18
+    },
+    {
+     "id": "instagram-label-copy",
+     "kind": "text",
+     "target": "instagram-label",
+     "contains": "Instagram handle"
+    },
+    {
+     "id": "instagram-beside-email",
+     "kind": "relation",
+     "target": "instagram",
+     "to": "email",
+     "position": "right-of",
+     "align": [
+      "top"
+     ],
+     "minimum": 50
+    },
+    {
+     "id": "phone-below-email",
+     "kind": "relation",
+     "target": "phone-label",
+     "to": "email",
+     "position": "below",
+     "align": [
+      "left"
+     ],
+     "minimum": 40
+    },
+    {
+     "id": "signature-above-footer",
+     "kind": "relation",
+     "target": "signature",
+     "to": "footer-rule",
+     "position": "above",
+     "minimum": 50
+    },
+    {
+     "id": "pieces-above-consent",
+     "kind": "relation",
+     "target": "pieces",
+     "to": "photo_consent",
+     "position": "above",
+     "minimum": 50
+    }
+   ]
+  }
+ }
+]

@@ -1,0 +1,341 @@
+[
+ {
+  "type": "master",
+  "action": "select",
+  "name": "deck"
+ },
+ {
+  "type": "move",
+  "target": "footer-rule",
+  "x": 120,
+  "y": 920
+ },
+ {
+  "type": "move",
+  "target": "footer-dot",
+  "x": 120,
+  "y": 950
+ },
+ {
+  "type": "text",
+  "target": "footer",
+  "size": 27,
+  "x": 146,
+  "y": 940
+ },
+ {
+  "type": "text",
+  "target": "page-number",
+  "size": 27,
+  "y": 940
+ },
+ {
+  "type": "master",
+  "action": "select",
+  "name": "cover"
+ },
+ {
+  "type": "move",
+  "target": "footer-rule",
+  "x": 120,
+  "y": 920
+ },
+ {
+  "type": "move",
+  "target": "footer-dot",
+  "x": 120,
+  "y": 950
+ },
+ {
+  "type": "text",
+  "target": "footer",
+  "size": 27,
+  "x": 146,
+  "y": 940
+ },
+ {
+  "type": "text",
+  "target": "page-number",
+  "size": 27,
+  "y": 940
+ },
+ {
+  "type": "page",
+  "action": "select",
+  "page": "tidewick-caf-2025-in-review"
+ },
+ {
+  "type": "shape",
+  "target": "lamp-glow",
+  "fill": "@seafoam",
+  "opacity": 0.12
+ },
+ {
+  "type": "move",
+  "target": "wave-1",
+  "x": 0,
+  "y": 700
+ },
+ {
+  "type": "move",
+  "target": "wave-2",
+  "x": 0,
+  "y": 760
+ },
+ {
+  "type": "move",
+  "target": "wave-3",
+  "x": 0,
+  "y": 820
+ },
+ {
+  "type": "move",
+  "target": "accent-bar",
+  "x": 120,
+  "y": 210
+ },
+ {
+  "type": "text",
+  "target": "title",
+  "size": 135,
+  "x": 120,
+  "y": 250
+ },
+ {
+  "type": "page",
+  "action": "select",
+  "page": "thank-you-see-you-on-the-quay"
+ },
+ {
+  "type": "shape",
+  "target": "lamp-glow",
+  "fill": "@seafoam",
+  "opacity": 0.12
+ },
+ {
+  "type": "move",
+  "target": "wave-1",
+  "x": 0,
+  "y": 700
+ },
+ {
+  "type": "move",
+  "target": "wave-2",
+  "x": 0,
+  "y": 760
+ },
+ {
+  "type": "move",
+  "target": "wave-3",
+  "x": 0,
+  "y": 820
+ },
+ {
+  "type": "move",
+  "target": "accent-bar",
+  "x": 120,
+  "y": 210
+ },
+ {
+  "type": "text",
+  "target": "title",
+  "size": 135,
+  "x": 120,
+  "y": 250
+ },
+ {
+  "type": "page",
+  "action": "select",
+  "page": "tidewick-caf-2025-in-review"
+ },
+ {
+  "type": "text",
+  "target": "subtitle",
+  "size": 60,
+  "x": 120,
+  "y": 580
+ },
+ {
+  "type": "page",
+  "action": "select",
+  "page": "by-the-numbers"
+ },
+ {
+  "type": "move",
+  "target": "accent-bar",
+  "x": 120,
+  "y": 100
+ },
+ {
+  "type": "text",
+  "target": "title",
+  "size": 90,
+  "x": 120,
+  "y": 128
+ },
+ {
+  "type": "page",
+  "action": "select",
+  "page": "cups-by-quarter"
+ },
+ {
+  "type": "move",
+  "target": "accent-bar",
+  "x": 120,
+  "y": 100
+ },
+ {
+  "type": "text",
+  "target": "title",
+  "size": 90,
+  "x": 120,
+  "y": 128
+ },
+ {
+  "type": "page",
+  "action": "select",
+  "page": "what-worked"
+ },
+ {
+  "type": "move",
+  "target": "accent-bar",
+  "x": 120,
+  "y": 100
+ },
+ {
+  "type": "text",
+  "target": "title",
+  "size": 90,
+  "x": 120,
+  "y": 128
+ },
+ {
+  "type": "page",
+  "action": "select",
+  "page": "2026-priorities"
+ },
+ {
+  "type": "move",
+  "target": "accent-bar",
+  "x": 120,
+  "y": 100
+ },
+ {
+  "type": "text",
+  "target": "title",
+  "size": 90,
+  "x": 120,
+  "y": 128
+ },
+ {
+  "type": "page",
+  "action": "select",
+  "page": "by-the-numbers"
+ },
+ {
+  "type": "text",
+  "target": "stat-1",
+  "size": 135
+ },
+ {
+  "type": "text",
+  "target": "stat-label-1",
+  "size": 40
+ },
+ {
+  "type": "text",
+  "target": "stat-2",
+  "size": 135
+ },
+ {
+  "type": "text",
+  "target": "stat-label-2",
+  "size": 40
+ },
+ {
+  "type": "text",
+  "target": "stat-3",
+  "size": 135
+ },
+ {
+  "type": "text",
+  "target": "stat-label-3",
+  "size": 40
+ },
+ {
+  "type": "page",
+  "action": "select",
+  "page": "cups-by-quarter"
+ },
+ {
+  "type": "chart",
+  "target": "cups-chart",
+  "y": 280,
+  "height": 600,
+  "font_size": 46
+ },
+ {
+  "type": "page",
+  "action": "select",
+  "page": "what-worked"
+ },
+ {
+  "type": "shape",
+  "target": "panel",
+  "x": 1440,
+  "y": 128,
+  "width": 360,
+  "height": 752
+ },
+ {
+  "type": "text",
+  "target": "panel-year",
+  "size": 135,
+  "within": "panel"
+ },
+ {
+  "type": "rich-text",
+  "target": "body",
+  "size": 60,
+  "width": 1220,
+  "x": 120,
+  "y": 330,
+  "line_height": 1.2,
+  "paragraph_spacing": 44,
+  "markdown": "- Thursday open mics doubled evening sales\n- Cold brew on tap from April to September\n- A pre-order pickup shelf shortened morning queues",
+  "font": "body",
+  "color": "@navy"
+ },
+ {
+  "type": "page",
+  "action": "select",
+  "page": "2026-priorities"
+ },
+ {
+  "type": "shape",
+  "target": "panel",
+  "x": 1440,
+  "y": 128,
+  "width": 360,
+  "height": 752
+ },
+ {
+  "type": "text",
+  "target": "panel-year",
+  "size": 135,
+  "within": "panel"
+ },
+ {
+  "type": "rich-text",
+  "target": "body",
+  "size": 60,
+  "width": 1220,
+  "x": 120,
+  "y": 330,
+  "line_height": 1.2,
+  "paragraph_spacing": 44,
+  "markdown": "- A second espresso machine for the weekend rush\n- A monthly makers' market on the quay\n- Launch the winter menu on December 1",
+  "font": "body",
+  "color": "@navy"
+ }
+]

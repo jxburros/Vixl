@@ -1,38 +1,53 @@
-# T01 · round 2 — lane V (Vixl)
+# T01 round 2: report (lane V, Vixl)
 
 ## Files
 
 | File | What it is | How it was made |
 | --- | --- | --- |
-| `picture.png` | 2400 × 1600 px, 8-bit RGB PNG | Exported from `round2/lighthouse.vixl` with `vixl_export_file` (`alpha=flatten`). |
-| `lighthouse.vixl` | Editable source, 2400 × 1600, 59 layers (55 from round 1 + 4 new) | A byte copy of the round-1 `lighthouse.vixl`, then edited in place through Vixl MCP calls: `vixl_operations_apply` (one 38-operation batch, one blend/opacity batch, one layer-intent batch), checked with `vixl_check` and `vixl_render_preview`. |
-| `REPORT.md` | This file | Written by hand. |
+| `picture.png` | 2400 × 1600 px, RGB, 137 KB | `vixl_export_file` from `round2/picture.vixl` with `alpha="flatten"`. Checked with PIL: size (2400, 1600), mode RGB. |
+| `picture.vixl` | Editable source, 60 layers (54 from round 1 plus the 6 layers of the new boat group) | A copy of round 1's `picture.vixl`, edited with `vixl_operations_apply`. Its history continues from round 1. |
+| `REPORT.md` | This report | |
 
-I did not draw pixels or write SVG/HTML. The only shell work was `cp` of the round-1 `.vixl` into `round2/` and a Pillow script that read pixel values from the old and new PNGs to compare them. Nothing outside `round2/` was changed.
+Nothing outside `round2/` was changed. The round 1 files are untouched.
 
 ## What changed
 
-1. **Night sky, still a gradient.** I changed the stops of the existing `sky` gradient layer in place. It is still a vertical 5-stop gradient, now running from near-black navy `#03061a` at the top through `#081030`, `#121a44` and `#1f2456` to a dim indigo `#2c2c62` at the horizon. The amber/mauve dusk stops are gone. Sampled at x=1200 (old → new): y=5 (11,22,55) → (3,6,26); y=300 (31,42,92) → (7,14,45); y=600 (97,66,113) → (16,24,64); y=900 (221,138,86) → (32,37,87); y=995 (243,171,79) → (42,43,97).
-2. **Brighter beam.** On `beam-outer` the fill went `#ffd98a` → `#ffe6a6`, opacity 0.20 → 0.45 and blend normal → screen. On `beam-inner` the fill went `#ffe9b0` → `#fff5d6`, opacity 0.30 → 0.70 and blend normal → screen. A pixel in the beam core reads (143,128,128) in round 1 and (214,209,196) now.
-3. **Lighthouse and rocks moved to the right half, beam sweeping left.** I mirrored the whole lighthouse group across the canvas centre line (x → 2400 − x):
-   - The full-canvas path layers were flipped horizontally with one `edit-layers` + `flip` operation (`expect: 13`): `rock-back`, `rock-lit`, `rock-front`, `rock-front-lit`, `tower`, `band-1`, `band-2`, `tower-shade`, `roof`, `house-roof`, `beam-outer`, `beam-inner`, `far-headland`. They keep their path data and get `flip_x: true`.
-   - The box layers were moved with `move` to `x = 2400 − x − width`: `house`, `house-window`, `door`, `window`, `lamp-halo`, `lamp-room`, `mullion-1/2`, `gallery`, `finial`, and the foam marks at the foot of the rocks (`foam-1`, `foam-2`).
-   - The tower is now centred at x=1840 and the lamp at x≈1815. All rock geometry is at x ≥ 1220. The beam wedge runs from the lamp to the left edge (x=0).
-4. **Third sailboat.** I added `boat3-hull`, `boat3-main`, `boat3-jib` and `boat3-wake`. It is boat 2's geometry scaled ×1.25 and uses the same fills and the same wake opacity (0.45). It sits closest to the viewer: centred at x≈1000, waterline y=1440.
+1. **Night sky.** I re-stopped the `sky` gradient and kept it vertical with five stops: `#03061a` at the top, then `#0a1236`, `#16204a` and `#222d5c`, down to `#2e3a6a` at the horizon. The amber and mauve sunset stops are gone. The `horizon-glow` was a warm amber radial glow, so it belongs to the sunset. I changed it to a faint cool blue (`#8a9ad0` at 30% alpha, fading out) so the sky stays dark. In the PNG, pixel (1200,5) = rgb(3,6,26) and (1200,1045) = rgb(45,58,106), so the sky still runs from near-black down to a lighter blue.
+2. **Brighter beam.** `beam-outer` went from opacity 0.16 to 0.30 and `beam-inner` from 0.20 to 0.42. Both fills went from `#ffe9b0` to a paler, whiter `#fff4d0`.
+3. **Lighthouse and rocks moved to the right half.** I mirrored the headland around the canvas centre line:
+   - `rock-main`, `rock-light-1` to `rock-light-4`, `rock-front` and `rock-islet` got a horizontal `flip` and were moved to x' = 2400 − x − width. The rocky point now enters from the right edge and reaches to x = 1320.
+   - The `lighthouse` group was **moved, not flipped**, to x = 1885 (y unchanged), so the tower looks exactly as it did. It now spans x 1885 to 2055. The `lantern-glow` moved with it.
+   - `beam-outer` and `beam-inner` were flipped and re-anchored. They now start at the lantern (about x 1960, y 400) and sweep left to the left edge, angled down toward the sea, with the same geometry as before in mirror image.
+4. **Third sailboat.** I made `sailboat-3` by duplicating `sailboat-1`. It is scaled to 0.7 so it reads as farther away and placed at x 1080 to 1171, y 1000 to 1129, out on open water between the other boats and the rocky point. Its parts are named `hull-3`, `mast-3`, `sail-3`, `jib-3` and `wake-3`.
 
-## Things I moved that the brief did not name, and why
+## Consequential moves (needed for the brief, not new design)
 
-The brief says to keep everything else exactly as it was. Moving the headland to the right would have buried several existing elements under the rocks, so I moved those elements to the matching spot on the left. I changed their positions only, not their shape, colour, size or opacity:
+The rocky point now covers the right side of the sea, where the boats and some details used to be. To keep the scene's layout, I mirrored those elements as well:
 
-- **Boats 1 and 2** were at x≈1550 and x≈2000, where the rocks are now. I moved them sideways to the positions mirrored across the centre line (boat 1 centre x≈850, boat 2 x≈400), using `move` with `relative: true` (−700 and −1600 px). They keep their waterlines, their shapes and the way they face. I did not flip them.
-- **Water glints 1–7** were mirrored to `x = 2400 − x − width` so they stay on open water rather than under the rock.
-- **Far headland** on the right horizon would have been fully hidden behind `rock-back`, so I flipped it to the left horizon.
+- `sailboat-1` moved to x 790 and `sailboat-2` to x 264. They kept their y, size and orientation; they were moved, not flipped. Left where they were, both would have sat on the rocks.
+- `far-headland` was flipped and moved to the left horizon (x 0 to 760), because the lighthouse rocks would have hidden it.
+- The four shimmer strokes moved to their mirrored x positions (480, 500, 1020 and 70). Their y, size, colour and opacity are unchanged.
 
-These elements are unchanged: the stars (all 13, same positions), the `sea` gradient, every fill colour other than the sky and beam, and all layer names and order. The glints and the boat-2-style wakes are still amber `#f6b04e`. I left them alone because they were not part of the request, even though the amber dusk horizon they reflected is gone.
+Nothing else was changed: the stars, the sea gradient, every colour except the sky, the glow and the beam, the lighthouse parts and the boat parts.
 
-## Checks and caveats
+## Checks
 
-- `vixl_check` reports 0 errors and 0 warnings. Moving the full-canvas boat path layers shifted their layer boxes partly off canvas (for example `[-700, 0, 2400, 1600]`), although the drawn boats are fully inside the canvas. The check flagged this, so I marked those six layers `allow_crop` with `layer-intent`, and they now show as informational only.
-- One batch was rejected and changed nothing: `opacity` is not a field of the `shape` operation. I resent it with a separate `opacity` operation.
-- The beam sits in the sky band (y 150–600 at the left edge), as it did in round 1. It points left over the sea instead of right. Even with screen blending, the outer wedge reads as a warm pale grey rather than golden on the dark sky.
-- `vixl_check` reports `layers: 43` while the document has 59 layers. The same mismatch appeared in round 1.
+- **Suite.** I updated the document's `brief` suite to match this round. It has 10 rules, and all of them pass:
+  - no text layers;
+  - exactly 3 `sailboat-?` groups;
+  - at least 5 stars;
+  - the sky top is `#03061a`;
+  - the sky near the horizon is `#2d3969` ± 20, which shows it is still a gradient;
+  - the lighthouse is at x = 1885 and `rock-main` is at x = 1320, both in the right half;
+  - the lighthouse is to the right of `sailboat-3`;
+  - the beam's ink reaches the left edge;
+  - `beam-inner` opacity is 0.42.
+- **Old rules.** Three round 1 rules now contradict the brief, so I replaced them: "lighthouse left of sailboat-1", "sailboat-2 right of lighthouse" and "beam reaches right edge". I also updated the sky-top colour and the boat count.
+- **Design check.** `vixl_check` has no fix or review findings. The only notices are informational ones for intentional full-bleed crops.
+- **Visual.** I looked at the full preview and at a zoom of the waterline. No boat touches the rocks.
+
+## Judgement calls and caveats
+
+- **Amber band on the sea.** The `sea` gradient's thin amber band at the horizon (`#d08f5c`) is unchanged, because you asked to keep everything else as it was. Under a night sky it reads as a faint last-light line. If you want a full night palette, recolouring that one stop is the obvious next edit.
+- **Two position rules pin exact values.** The suite's `property` rule did not honour a tolerance for `x`, so "right half" is checked by pinning the exact positions rather than a range.
+- **Rock facets are mirrored.** The rocks' light facets are mirror images of the originals, while the lighthouse's shaded half stays on its right side, because I did not flip the tower.

@@ -1,0 +1,1 @@
+Create spinner.vixl at 240x240 with a white background and an orange five-pointed star named star (about 100 px) in the middle. Animate it as a 2-second loading spinner at 12 fps that loops forever with no visible jump at the loop point. Export spinner.gif.

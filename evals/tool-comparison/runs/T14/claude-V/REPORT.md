@@ -1,43 +1,38 @@
-# T14 Lyric video: Vixl lane (claude-V)
+# T14 Lyric video: Lane V (Vixl)
 
 ## Files
 
 | File | What it is | How it was made |
 | --- | --- | --- |
-| `lighthouse.mp4` | The lyric video. 1280x720 H.264 (yuv420p, 24 fps, 768 frames) with AAC audio (24 kHz). The container, video and audio each last 32.000 s, the same as `lighthouse.wav`. | Rendered by Vixl's `lyric-video-export` workflow (MCP `vixl_workflow`, run as a job). The song was muxed in as the audio track. |
-| `lighthouse-template.vixl` | The editable design template. It holds the backgrounds, the lighthouse, the beam cue, the text layers and the fonts. | Built with Vixl MCP operations (`gradient`, `shape`, `group`, `text`, `text-layout`, `constrain`, `pivot`, `effect`, `look`, `variable`) plus `vixl_font_install`. |
-| `lighthouse-lyrics.vixl` | The editable keyframed timeline document the video was rendered from (91 keyframes, with markers per section and per line). | `lyric-video-build`, run from the template and the LRC. Export reused it as is (`build_reused: true`). |
-| `request.json` | The workflow request used for plan, build and export. | Written by hand. It points at the fixtures in `evals/tool-comparison/fixtures/`, which were not copied. |
-| `REPORT.md` | This file. | |
+| `lighthouse.mp4` | The final video: 1280 × 720, H.264 (yuv420p) at 30 fps with AAC audio (22,050 Hz mono, the song's own rate and channels). It runs 32.000 s, exactly the song's length. | Made with `vixl_workflow` `lyric-video-export` (MCP, run as a job). It used the template below, `fixtures/lighthouse.wav` and `fixtures/lighthouse.lrc`. |
+| `lighthouse-template.vixl` | The editable template that holds the design. | Made with `vixl_document_create` (1280 × 720, Marcellus + Lato font pairing) plus `vixl_operations_apply` batches. |
+| `lighthouse.vixl` | The editable keyframed timeline that the export rendered: 91 keyframes, with markers per section and per line. | Written by the `lyric-video-build` step inside the export (`rebuild: true`). It can be reopened and exported again. |
+| `REPORT.md` | This report. | |
 
-## How the brief maps onto the build
+Export settings: `fps 30`, `quality final`, `lead 0`, a 250 ms fade in and out for each line, `next_line true`. The cue settings were a 400 ms fade in and out plus `motion: sweep` (±10°, a 3.5 s period).
 
-- **Title card from 0 to 2 s:** the `intro` group shows `${title}` ("Lighthouse", Playfair Display 700) over `${artist}` ("The Vixl Examples", Lato), with a short amber rule between them. The variables come from the LRC `[ti:]` and `[ar:]` tags. The intro is visible until the first line shows at 2.000 s.
-- **Line timing:** `lead: 0`, so each line appears exactly at its timestamp and stays until the next timestamp. Lines fade in and out over 250 ms. The current line (`lyric`) is Playfair Display 64 px, centred in a fitted 1000x190 box. The next line (`lyric-next`) is Lato 30 px, centred beneath it.
-- **Section labels:** `[Chorus]` and `[Verse 2]` were treated as section markers, not lyrics. `section-label` sits small in the top-left corner (Lato 24 px, amber). It is blank from 0 to 9 s, because the first section marker is at 9 s. After that it reads Chorus, Verse 2, then Chorus.
-- **Instrumental break:** the empty timestamp at 16 s clears the lyric and the next-line preview until 18 s. The section stays "Chorus" until Verse 2 begins.
-- **Line sung at two times:** `[00:25.00][00:28.50]` became two lines. Because the line repeats straight after itself, Vixl holds it on screen without fading it out and back in. From 25 to 28.5 s the "next" line shows that same text, which is correct for this LRC.
-- **Backgrounds:**
-  - Verses (`bg-verse`, and `bg-default` for the unlabelled opening lines from 2 to 9 s) are a cool blue-navy night sky. Verse 2 also has a moon.
-  - Choruses (`bg-chorus`) are a warm plum-to-orange dusk with a sun glow on the horizon.
-  - A silhouetted sea and the lighthouse are on screen throughout.
-- **"Lighthouse" glow:** the `cue-lighthouse` group holds a warm radial glow, a soft blurred beam and a bright lamp flare. It is visible only while the current line contains "Lighthouse": 9.0 to 12.5 s and 25.0 to 32.0 s. It fades in and out over 300 ms. While it is up, the beam sweeps ±10 degrees about the lamp (pivot at the lamp, 3.5 s period). Outside those times the lamp is dark.
+## How the brief maps to the template
 
-## Choices and deviations
+- **Title card, 0–2 s:** the `intro` group shows `${title}` ("Lighthouse", Marcellus 110 px) and `${artist}` ("The Vixl Examples"), centred. Both values are filled from the LRC `[ti:]` and `[ar:]` tags. The card stays on screen until the first lyric shows at 2.00 s.
+- **Current and next line:** the current line is in `lyric` (Marcellus 64 px, centred). It sits in a 1040 × 190 box that wraps and fits the text. The next line is in `lyric-next` (Lato 30 px, slightly muted), below it. Each line shows at its own timestamp (`lead: 0`) and stays until the next timestamp. The empty `[00:16.00]` timestamp clears both lines until 18.00 s. The line with two timestamps, at 25.0 s and 28.5 s, is shown at both times. Because the same line is sung again right after itself, it stays on screen as one continuous display instead of fading out and back in. During 25–28.5 s the next-line slot shows the repeat.
+- **Section label:** `section-label` sits top-left in small type. It reads "Chorus" from 9 s, "Verse 2" from 18 s and "Chorus" from 25 s. It is empty before 9 s, because the first section only starts there.
+- **Backgrounds:** the verse look is a navy night sky with a crescent moon. It is used by `bg-default`, for the two opening lines that have no section marker, and by `bg-verse`, for Verse 2. The chorus look (`bg-chorus`) is a purple-to-orange dusk gradient with a low sun glow, so it is clearly different. The sea and the striped lighthouse stay on screen throughout.
+- **"Lighthouse" glow:** the `cue-lighthouse` group is a blurred warm beam plus a radial glow around the lamp. It pivots at the lamp. It fades in, sweeps back and forth, and fades out while the current line contains "Lighthouse". That happens at 9.0–12.5 s and 25.0–32.0 s. I checked frames at 10.5 s, 14 s, 17 s, 27 s and 30.5 s.
 
-- **No section label from 0 to 9 s.** The LRC has no section marker before `[Chorus]` at 9 s, so I read "once the first section begins" literally and invented no "Verse 1" label. Those lines use the `bg-default` night background, which is styled like the verses.
-- **Audio sample rate.** The AAC track is 24 kHz mono, while the source WAV is 22.05 kHz. Vixl's exporter resampled it. The duration is unchanged.
-- **Last frame.** At 32.00 s (the very end) the lyric has faded out, because the last line hides at the end of the song.
-- **Wrapping.** At 64 px, "A single light is burning for my sake" wraps with "sake" alone on the second line. I left it, because widening the text box would collide with the lighthouse on the right.
+## Things done differently, or worth knowing
 
-## Checks done
+- **Chorus background during the break:** it stays on through the instrumental break (16–18 s). The break sits inside the first Chorus section, which runs until the `[Verse 2]` marker, so the section has not changed. Only the lyrics clear.
+- **Fades instead of hard cuts:** each line fades in over its first 250 ms and out over its last 250 ms. The screen still changes at each timestamp. The last line fades out over the final 250 ms of the song (31.75–32.0 s), because the video ends with the song. There is no outro card.
+- **Fit-to-box text:** the lyric box shrinks text to fit. With 64 px type, every line fits on at most two lines, and none shrank visibly.
+- **Contrast check on the template:** the design check measured the template with every layer visible at once, including the chorus sky and the beam behind the text. On that stack it flagged the muted next line and the artist line as low contrast. I made both more opaque (the artist line now uses the full `@ink` colour). In the rendered frames all text sits on dark navy or dark purple. I did not re-run the check on the built timeline frames.
 
-- **Container and streams (ffprobe):** h264 1280x720 and aac, both 32.000 s.
-- **Audio level (volumedetect):** mean -18.8 dB, max -9.6 dB, so the track is not silent.
-- **Visual review:**
-  - A 16-frame contact sheet (`vixl_timeline_preview`) shows: the title card; the verse and chorus backgrounds; the beam on the "Lighthouse" lines only; the cleared break at 16 to 18 s; the section labels.
-  - A frame grabbed from the MP4 at 10 s matched.
+## Verification
+
+- **Export self-check:** `lyric-video-export` reported `verification: passed`. Video: h264, 1280 × 720, 30 fps, 960 frames, 32,000 ms. Audio: AAC, 32,000 ms. Difference from the song's length: 0 ms.
+- **Independent ffprobe:** h264 1280 × 720 yuv420p, AAC audio, file duration 32.000000 s. The song (`lighthouse.wav`) is also 32.000000 s.
+- **Visual checks:** a contact sheet of the build at 1, 3, 7, 10.5, 14, 17, 19.5, 27 and 30.5 s, plus frames pulled from the final MP4 at 1, 4, 10.5, 17 and 30 s.
 
 ## Unsure about
 
-- **Chorus contrast.** The lighter lower part of the chorus background, plus the beam, sits behind the small next-line text. It looked readable to me (I added a soft shadow), but I did not run a formal contrast measurement on every frame.
+- I did not watch the video with sound, so the audio sync is checked only by timestamps. The LRC timings were used as given, with no offset.
+- The section label is small (22 px), as the brief asked. It may be hard to read on phone-sized screens.

@@ -1,34 +1,46 @@
-# T01 · A picture — lane V (Vixl)
+# T01 · A picture: report (lane V, Vixl)
 
 ## Files
 
 | File | What it is | How it was made |
 | --- | --- | --- |
-| `picture.png` | 2400 × 1600 px, 8-bit RGB PNG (no alpha) | Exported from `lighthouse.vixl` with the Vixl MCP tool `vixl_export_file` (`alpha=flatten`). |
-| `lighthouse.vixl` | Editable Vixl source document, 2400 × 1600, 55 named layers | Built through Vixl MCP calls: `vixl_document_create`, three `vixl_operations_apply` batches (plus one rejected batch, see below), checked with `vixl_check` and `vixl_render_preview`. |
-| `REPORT.md` | This file | Written by hand. |
+| `picture.png` | 2400 × 1600 px, RGB (no alpha), 161 KB | `vixl_export_file` from `picture.vixl` with `alpha="flatten"`. Checked with PIL: size (2400, 1600), mode RGB. |
+| `picture.vixl` | Editable Vixl source: 54 layers, all vector shapes and gradients, no raster images | Built with the Vixl MCP tools (`vixl_document_create`, then `vixl_operations_apply` batches) |
+| `REPORT.md` | This report | |
 
-All the artwork is Vixl layers: `gradient` layers (sky, sea, lamp halo) and `shape` layers (stars, ellipses, capsules, rectangles, and `path` shapes with straight-line `M/L/Z` geometry for the rocks, tower, roofs, beam and boats). I wrote no SVG, HTML or pixels myself. The only script I ran was a small Pillow check that read the exported PNG's size, mode and a few sky pixel values.
+## How it was built
 
-## How it matches the brief
+- **Sky** (`sky`): a vertical gradient from 0 to 1060 px. It runs from navy `#0b1638` at the top through `#36386a` and `#a15f63` to amber `#e48c4a` / `#f6b14a` at the horizon. A soft radial `horizon-glow` (amber, Gaussian falloff) warms the horizon on the right. Sampled in the PNG: (1200,5) = rgb(11,22,57) and (1200,1045) = rgb(244,174,76).
+- **Stars**: ten small 5-point star shapes, `star-1` to `star-10`, 14 to 30 px, in the top ~320 px of the sky.
+- **Sea** (`sea`): a vertical gradient from y=1050 down. It has a thin amber reflection at the horizon and darkens toward the bottom. Four faint amber shimmer strokes sit on the water, and a low purple `far-headland` silhouette lies on the right horizon.
+- **Rocky point**: on the left, out to about x=1080. It is flat faceted path shapes: `rock-main`, lighter facets `rock-light-1` to `rock-light-4`, a dark foreground `rock-front` and a small `rock-islet`.
+- **Lighthouse** (group `lighthouse`, declared as object kind `tower`): x 345 to 515, in the left half. It has a tapered cream tower with three red bands, a flat shade on its right half, a door, a window, a gallery, a glowing lantern with mullions, a roof and a finial. A radial `lantern-glow` sits behind it.
+- **Beam**: two translucent cream wedges, `beam-outer` (opacity 0.16) and `beam-inner` (opacity 0.2). They run from the lantern (about x 440, y 400) to the right edge, angled down toward the sea.
+- **Sailboats**: exactly two groups. `sailboat-1` spans x 1480 to 1610. `sailboat-2` spans x 1960 to 2136 and is larger, so it reads as nearer. Each has a hull, a mast, a mainsail, a jib and a faint wake.
+- **Style**: flat fills only. There are no outlines or strokes, no texture, grain or photos, and no text layers.
 
-- **Sky:** one vertical gradient layer (`sky`, y 0–1010) with five stops that go from deep navy `#0b1636` at the top, through indigo and mauve, to warm amber `#f6b04e` at the horizon (y ≈ 1000). Sampled from the PNG at x=1200: y=5 → (11,22,55), y=300 → (31,42,92), y=600 → (97,66,113), y=900 → (221,138,86), y=995 → (243,171,79).
-- **Lighthouse on the left:** the tower is centred at x=560 (base 470–650, lamp room 518–602) on a layered rocky headland (`rock-back`, `rock-lit`, `rock-front`, `rock-front-lit`). It is a white tower with red bands, a lit lamp room, a red roof and a small keeper's house. All rock geometry lies within x ≤ 1180, the left half of the 2400 px canvas.
-- **Beam to the right:** two translucent wedge shapes (`beam-outer` at 20 % opacity, `beam-inner` at 30 %) start at the lamp (x=585) and widen to the right edge of the canvas (x=2400), passing over the sea.
-- **Exactly two sailboats:** `boat1-*` (centred ~x 1550, waterline y 1110, smaller and further away) and `boat2-*` (centred ~x 2000, waterline y 1270). Each has a hull, a mainsail, a jib and a faint wake line. There are no other boat-like shapes.
-- **Stars:** 8 five-point star shapes (`star-1`…`star-8`) and 5 small dot stars (`dot-star-1`…`5`), all between y 30 and y 340, so they sit in the upper sky and above the beam.
-- **Style:** flat, layered shapes with solid fills and no strokes or outlines. I applied no grain, paper or other texture look. The lamp halo is a soft radial gradient. The other soft-looking parts are only translucent flat fills: the beam, the amber water glints and the foam.
-- **No text:** the document has no text layers (`vixl_check` reports `text_layers: 0`).
+## Checks
 
-## Choices and deviations
+A check suite named `brief` is attached to the document with these rules:
+- no text layers;
+- exactly 2 layers named `sailboat-*`;
+- at least 5 layers named `star-*`;
+- the top of the sky is navy;
+- the lighthouse is drawn to the left of `sailboat-1`;
+- `sailboat-2` is drawn to the right of the lighthouse;
+- the beam reaches the right edge.
 
-- I added things the brief did not ask for, to fit the travel-poster look: a far headland silhouette on the right horizon, amber glints on the water, two foam marks at the foot of the rocks, a keeper's house beside the tower, and a soft halo around the lamp.
-- I did not draw a sun. At dusk it has just set, and the amber horizon of the gradient stands in for it.
-- I chose the canvas size and all the coordinates myself. No layout template was used, because the brief has no text.
+All 7 rules pass. `vixl_check` has no fix or review findings. The safe-area notices on full-bleed layers are marked as intentional crops (`layer-intent allow_crop`), so they are informational only. I also checked the preview by eye.
+
+## Deviations and choices
+
+- **Beam position**: the beam crosses the sky above the sea, angled down toward the water, and ends just above the horizon at the right edge. It does not lie on the water itself. I read "sweeps out to the right, across the sea" as the direction it points.
+- **Beam shape**: it is two flat translucent wedges rather than a smooth fade, to keep the flat poster look.
+- **Sky colours**: the gradient passes through a muted mauve between navy and amber. I chose that so the blend stays smooth instead of going grey-green.
+- **Star count**: there are 10 stars, more than the minimum of five.
 
 ## Process notes and things I'm unsure about
 
-- One `vixl_operations_apply` batch was rejected and changed nothing. I had written the `edit-layers` sub-operation under the key `operation` instead of `do`. I fixed the key and sent the batch again.
-- When I edited the `path` of the existing `rock-front` and `rock-front-lit` layers in place (by `target`), Vixl warned "path is only drawn for shape 'path', not None". The re-render shows that the new paths were applied, so the warning looks spurious.
-- `vixl_check` passed with no issues, but it reported `layers: 36`, while the document has 55 layers (3 from the first batch and 52 from the second). I don't know why the counts differ.
-- At full size the beam reads as a pale, warm, translucent light. On the navy sky it can look slightly greyish rather than golden. That is a matter of taste, not a missing requirement.
+- **Group bounds**: I first drew the path layers with absolute coordinates at x=0, y=0. That gave them boxes starting at the canvas origin, and the groups kept a stale [0,0,…] box. I re-based each path into a tight box, then ungrouped and regrouped the lighthouse and the boats so the position rules could measure them. The rendering did not change. The temporary ops file I used for this was deleted.
+- **Beam visibility**: at low opacity the beam may look subtle on some screens. That was a judgement call.
+- **No text**: Vixl adds no text or watermark and there are no text layers, but I did not inspect every pixel for text.

@@ -1,0 +1,1 @@
+promo.vixl is a finished 1080x1080 promo. Make two more versions of it without changing the original: promo-story.vixl at 1080x1920 and promo-banner.vixl at 1200x628, with the title, button and logo still on the canvas in each. Export promo-story.png and promo-banner.png.

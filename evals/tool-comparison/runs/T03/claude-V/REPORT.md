@@ -1,48 +1,41 @@
-# T03 · Print poster — Lane V (Vixl)
+# T03 Print poster: Harbor Lights (lane V, Vixl)
 
-All visual work was done with the Vixl MCP tools: document create, font pair, operations_apply, check, measure, render_preview and export_file. I drew no pixels and wrote no SVG or HTML. I used Python, pdfinfo, pdfimages, pdffonts, pdftotext and pdftoppm only to check the outputs.
+All visual work was done with the Vixl MCP tools (`vixl_document_create`, `vixl_font_pair`, `vixl_operations_apply`, `vixl_check`, `vixl_render_preview`, `vixl_export_file`). No pixels, SVG or HTML were written by hand. A small Python script wrote Vixl operation JSON (positions along the lantern strings, seeded ripple placement), and Vixl drew it. Other small scripts only read and checked the outputs (PIL, `pdfinfo`, `pdfimages`, `pdftotext`, `pdftoppm`).
 
 ## Files
 
 | File | What it is | How it was made |
 | --- | --- | --- |
-| `poster.vixl` | Editable source. It has 131 layers, all text is live, and the fonts DM Serif Display and DM Sans are embedded. It also holds an artboard called `trim`, used for the preview. | `vixl_document_create(size="tabloid", bleed=0.125, background="#0b1a2e")`, then `vixl_font_pair("dm-serif-dm-sans")`, then batches through `vixl_operations_apply` |
-| `poster-print.pdf` | One CMYK page. MediaBox and BleedBox are 810 × 1242 pt (11.25 × 17.25 in). TrimBox is 9 9 801 1233 (11 × 17 in). | `vixl_export_file(color_space="cmyk", ink_limit=300, dpi=300)` |
-| `poster-preview.png` | 1650 × 2550 px, RGB, tagged 150 dpi. It shows the trimmed area only. | `vixl_export_file(artboard="trim", scale=0.5, alpha="flatten")`. The `trim` artboard is x 38, y 38, 3300 × 5100 px on the 3376 × 5176 canvas. |
-| `REPORT.md` | This report. | |
+| `poster-print.pdf` | 1 page, 810 × 1242 pt = **11.25 × 17.25 in** (MediaBox = BleedBox), **TrimBox 9 9 801 1233** (11 × 17 in). CMYK. | `vixl_export_file(color_space="cmyk", ink_limit=300)`. Text is live, with 2 embedded fonts. Shapes are vector in DeviceCMYK. The 34 translucent glow gradients are CMYK images at 300 ppi with gray soft masks. `pdfimages` lists no RGB images, and the file has no DeviceRGB. |
+| `poster-preview.png` | **1650 × 2550 px, RGB**, dpi tag 150. The trimmed poster without bleed. | I added a `trim` artboard over the trim box (x/y 37.5, 3300 × 5100 px), then exported it with `scale=0.5, dpi=150, alpha=flatten`. |
+| `poster.vixl` | Editable Vixl source: 238 layers, live text, a `brief` check suite and the `trim` artboard. | Made with `vixl_document_create(size="tabloid", bleed=true)`. That gives 3375 × 5175 px at 300 dpi with 37.5 px of bleed. |
+| `build_scene_ops.py` | A generator for the artwork operations. | Python. It writes only JSON operations. |
+| `scene-ops.json` | The artwork operations: sky, water, quay, lantern strings, lanterns and reflections. | Output of the script. The document was built from an earlier draft of this file, then corrected with `reflection-ops.json`, so applying the current file to a new document gives the same picture but not the same layer IDs. |
+| `reflection-ops.json` | The second-pass batch. It removes the first-draft reflections, which read like a lit skyline, lightens the string colour and adds the final reflections. | Output of the script. Applied with `operations_path`. |
 
 ## Design
 
-- **Colors:** a navy night sky that gets lighter toward the horizon, and a darker navy gradient for the water. The lanterns are amber `#f5a13a`, vermilion `#e2533b` and pale gold `#f7cf6a`. Text is cream `#fbf1dc` with gold `#f2c46d` accents.
-- **Order down the page:**
-  - Kicker "Port Ellery Quay" in gold DM Sans.
-  - Title "Harbor Lights" in DM Serif Display at 440 px (about 106 pt).
-  - Tagline, then the date line in gold.
-  - Two drooping strings of paper lanterns (8 and 7). Each lantern has a body, an inner glow, a cap and a base, plus an outer glow, with a soft warm glow in the sky behind them.
-  - A dark quay skyline with lit windows and a lighthouse.
-  - The water, with a blurred, striped reflection under each lantern and faint ripple lines.
-- **Highlights:** the four lines are a real bulleted list (rich-text Markdown list). Below them are a short gold rule, the "Free entry…" line and the "Presented by…" line.
-- **Copy:** exactly as given, including "·", the en dash in "4–10 pm" and "Café". Checked with `pdftotext` on the PDF.
+- The scene is a night sky shading into a gradient harbor. Two strings of paper lanterns sag across the top: a back row of 6 and a front row of 7, in amber, orange, red and pale gold. Each lantern has a cap, a body, a rib, a lit core, a base, a tassel and a soft gaussian glow. A low dark quay silhouette with a few lit windows sits on the horizon. Below it the water holds broken ripple-dash reflections under each front lantern, fading with depth, plus faint surface lines.
+- Type is Fraunces 700 for the title and date and Atkinson Hyperlegible Next for the rest (the `fraunces-atkinson` pairing). Text colours are cream (#fbf1dc) and gold (#f4c56a) on the dark navy.
+- The copy is used exactly as given; `pdftotext` returns every line. "Port Ellery Quay" is the kicker above the title. The stored text is mixed case and is drawn in capitals with `text_transform: uppercase`, so PDF text extraction returns "PORT ELLERY QUAY". The four highlights are a bulleted Markdown list in one `rich-text` layer. The bullets are drawn list markers, not characters in the copy.
 
-## Checks done
+## Checks run
 
-- **`vixl_check`:** passed with 0 errors. It ran bounds, overlap, contrast, safe_area, legibility, blanks, fonts and print checks, with a 113 px safe area and a 300 ppi minimum.
-  - The remaining warnings were artwork that runs off the edge on purpose: sky, water, horizon line, lantern strings and the end buildings. I marked these with `layer-intent allow_crop`.
-  - The contrast check could not measure the title because of an internal error. `vixl_measure` gives the title a 10th-percentile contrast of 15.9:1.
-- **Text margin:** all text is at least about 290 px (about 0.97 in) inside the trim; the brief asks for at least 0.25 in.
-- **Bleed:** the sky and water gradients fill the whole canvas, including the bleed. In a render of the PDF, every outer edge is dark.
-- **Resolution and color:** every raster part of the PDF is CMYK at 300 × 300 ppi with a gray soft mask (`pdfimages`). Those parts are the glows, the blurred reflections and the see-through sky glow. Text, shapes and gradients are vector in DeviceCMYK. There is no DeviceRGB in the PDF.
-- **Fonts:** both fonts are embedded as subsets (`pdffonts`).
-- **Preview position:** I rendered the PDF at 150 dpi and compared it with the preview. The best match is at an offset of 18 px, against an expected bleed of 18.75 px, so the preview is the trimmed area.
+- `vixl_check` with bounds, overlap, contrast, safe_area (113 px, which is 0.25 in inside the trim plus the 37.5 px bleed), legibility, placeholders, fonts and print (`min_ppi=300`): **passed**, with no fix or review findings. Intentional bleed layers are marked `allow_crop` and are listed only as informational.
+- The suite `brief` has 19 rules and **passed**. It covers:
+  - contrast of at least 4.5:1 for every text layer;
+  - every text layer at least 113 px from the canvas edge (0.25 in inside trim);
+  - the kicker above the title;
+  - the title dominating at 1.25×: 390 px against date 140, list 104 and details 80, and against the subtitle at 108;
+  - at most 2 fonts, and images at 300 ppi or more.
+- The smallest text is "Presented by…" at 66 px, about 16 pt.
+- The outputs were checked with scripts: the PNG size and mode, the PDF boxes, the image colour spaces and ppi, and the extracted text. I also rasterized the PDF and looked at it; it matches the PNG.
 
-## Deviations and uncertainties
+## Deviations, choices and uncertainties
 
-- **Bleed rounding:** Vixl rounded the 0.125 in bleed to 38 px at 300 dpi, so the canvas is 3376 × 5176 px instead of 3375 × 5175.
-  - The PDF page is still exactly 11.25 × 17.25 in, with the TrimBox exactly 9 pt in from each edge.
-  - So the artwork is scaled by about 0.03 % (about 300.09 dpi in effect).
-  - The preview crop starts at pixel 38 instead of 37.5, a shift of 0.25 px at 150 dpi.
-- **CMYK conversion:** no ICC profile was supplied and Vixl ships none. The CMYK is Vixl's general-purpose conversion with a 300 % total ink limit, not a press-profile conversion (GRACoL/SWOP). Colors may shift on press, especially the saturated vermilion lanterns. If the printer supplies a profile, re-export with `icc_profile=`.
-- **Transparency:** the PDF keeps live transparency (the glow and reflection images use soft masks). It is not a flattened PDF/X-1a. If the printer requires that, re-export with `pdf_content="raster"` to write each page as one CMYK image.
-- **Marks:** no crop marks or slug, since the brief did not ask for them. The TrimBox and BleedBox are set.
-- **Dark background:** no text is black. The dark navy background is made from all four inks, under the 300 % limit.
-- **PDF title:** Vixl automatically set the PDF's Title metadata to "Port Ellery Quay".
+- **No ICC profile.** The printer named none, so the CMYK conversion is Vixl's GCR approximation with a 300 % ink limit, and Vixl warns that colours may shift. For an exact press match, re-export with the printer's profile (`icc_profile=`). This is the main open point for the printer.
+- **The PDF has no crop marks.** It is sized to trim plus bleed exactly, with TrimBox and BleedBox set, as the brief asked.
+- **The suite's hierarchy rule was rewritten once.** The first version chained title, date, subtitle, list and details at 1.25× each. That was not what I meant, because the subtitle and the date are peers. I redefined it before the final layout as title > date > list > details, plus title > subtitle, at the same 1.25 ratio, and resized the text to pass. I did not loosen any tolerance.
+- **Kicker letter spacing was dropped (a possible Vixl bug).** With `tracking` 22 or 12 at 300 dpi, the rendered kicker was about 3× wider than its reported `bounds`: at tracking 22, `bounds` gave 1142 px wide but it drew about 1900 px and ran off-centre toward the right edge. The ratio is close to 300/96. To keep the measurements and the output consistent, I set tracking to 0. This is worth reporting to the Vixl maintainers.
+- The preview PNG uses Vixl's raster renderer, and the PDF uses its vector and CMYK path. The colours in the PDF are a CMYK conversion, so they will look slightly duller on screen than the RGB preview.
+- The lanterns, water and reflections are stylized vector illustration, not a photo or an AI-generated image. I chose this to fit the "festive but calm" mood and so the PDF stays mostly vector.
