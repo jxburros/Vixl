@@ -12,10 +12,11 @@ from vixl import Project
 from vixl.emojis import export_pack
 from vixl.imports import svg_operations
 
-from yorkie_art import EMOJIS, svg
+from yorkie_art import svg
+from yorkie_extra import ALL as EMOJIS
 
 HERE = Path(__file__).resolve().parent
-NAVY, INK, PAPER, CARD = "#23364D", "#4C5968", "#F7F5EF", "#FFFCF5"
+NAVY, INK, PAPER, CARD = "#23364D", "#3E4A58", "#F7F5EF", "#FFFCF5"
 
 
 def masters():
@@ -33,31 +34,31 @@ def masters():
 
 
 def pack_document():
-    cols = 6
+    cols = 10
     rows = -(-len(EMOJIS) // cols)
-    width, cell = 1080, 150
-    p = Project(width, 190 + rows * (cell + 16) + 190, background=PAPER)
+    width, cell = 1200, 100
+    p = Project(width, 200 + rows * (cell + 16) + 200, background=PAPER)
     ops = [{"type": "emoji-mode", "mode": "vixl"}]
     for name, (title, _) in EMOJIS.items():
         data = base64.b64encode((HERE / "masters" / f"{name}.vixl").read_bytes()).decode()
         ops.append({"type": "emoji-set", "emoji": f":{name}:", "format": "vixl", "data": data, "name": name})
     ops += [
-        {"type": "text", "name": "title", "text": "Yorkie emojis", "size": 56, "color": NAVY, "x": 60, "y": 48},
-        {"type": "text", "name": "title-emoji", "text": ":yorkie_blep:", "size": 64, "x": 440, "y": 46},
+        {"type": "text", "name": "title", "text": f"{len(EMOJIS)} Yorkie emojis", "size": 56, "color": NAVY, "x": 64, "y": 64},
+        {"type": "text", "name": "title-emoji", "text": ":yorkie_blep:", "size": 64, "x": 594, "y": 62},
         {"type": "text", "name": "subtitle", "text": f"{len(EMOJIS)} custom shortcodes, editable VIXL masters, Discord and Slack ready",
-         "size": 20, "color": INK, "x": 62, "y": 128},
+         "size": 20, "color": INK, "x": 66, "y": 140},
     ]
     gap = (width - 120 - cols * cell) / (cols - 1)
     for i, (name, (title, _)) in enumerate(EMOJIS.items()):
-        x, y = 60 + (i % cols) * (cell + gap), 190 + (i // cols) * (cell + 16)
+        x, y = 60 + (i % cols) * (cell + gap), 200 + (i // cols) * (cell + 16)
         ops += [
-            {"type": "shape", "shape": "rounded-rectangle", "radius": 16, "name": f"card-{name}", "width": cell, "height": cell,
+            {"type": "shape", "shape": "rounded-rectangle", "radius": 12, "name": f"card-{name}", "width": cell, "height": cell,
              "fill": CARD, "x": x, "y": y},
-            {"type": "text", "name": f"emoji-{name}", "text": f":{name}:", "size": 100, "x": x + 25, "y": y + 4},
-            {"type": "text", "name": f"label-{name}", "text": name.replace("_", " "), "size": 14, "color": INK, "x": x + 14, "y": y + 120},
+            {"type": "text", "name": f"emoji-{name}", "text": f":{name}:", "size": 68, "x": x + 16, "y": y + 2},
+            {"type": "text", "name": f"label-{name}", "text": name.removeprefix("yorkie_").replace("_", " ") or "yorkie", "size": 11, "color": INK, "x": x + 9, "y": y + 82},
         ]
-    y = 190 + rows * (cell + 16) + 20
-    small = " ".join(f":{n}:" for n in list(EMOJIS)[:8])
+    y = 200 + rows * (cell + 16) + 20
+    small = " ".join(f":{n}:" for n in list(EMOJIS)[::12][:8])
     ops += [
         {"type": "text", "name": "small-label", "text": "At chat size:", "size": 16, "color": NAVY, "x": 62, "y": y + 6},
         {"type": "text", "name": "small-light-label", "text": "good boy", "size": 24, "color": NAVY, "x": 200, "y": y},
