@@ -2,11 +2,12 @@
 
     python evals/craft-check/prepare.py evals/craft-check/2026-10-13 OUT
 
-For every piece folder (C01 …) with an exported PNG or JPEG, writes OUT/<piece>/ with brief.md, the
+For every piece folder (C01 …) holding the file its brief names, writes OUT/<piece>/ with brief.md, the
 deliverable, views/ and VIEWS.md. The thumbnail size comes from THUMBNAILS: the small size each brief
 says the piece must work at.
 """
 
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -22,14 +23,16 @@ THUMBNAILS = {"C01": 400, "C02": 360, "C03": 160, "C04": 480, "C05": 400, "C06":
 
 def prepare(runs, out):
     for piece in sorted(p for p in runs.iterdir() if p.is_dir()):
-        images = sorted(f for f in piece.iterdir() if f.suffix.lower() in (".png", ".jpg", ".jpeg"))
+        brief = next(KIT.glob(f"briefs/{piece.name}-*.md"))
+        wanted = re.search(r"\*\*File:\*\* `([^`]+)`", brief.read_text(encoding="utf-8")).group(1)
+        images = [piece / wanted] if (piece / wanted).exists() else []
         if not images:
             print(piece.name, "no deliverable")
             continue
         dest = out / piece.name
         shutil.rmtree(dest, ignore_errors=True)
         (dest / "views").mkdir(parents=True)
-        shutil.copy(next(KIT.glob(f"briefs/{piece.name}-*.md")), dest / "brief.md")
+        shutil.copy(brief, dest / "brief.md")
         note = []
         for image in images:
             shutil.copy(image, dest / image.name)
