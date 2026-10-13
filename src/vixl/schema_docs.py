@@ -28,7 +28,7 @@ SUMMARIES = {
     "brush-define": "Save a custom brush as overrides on a built-in brush.",
     "pixel-art": "Add a pixel-art layer from character rows and a palette.",
     "pixel-draw": "Draw a pixel, line, rectangle or flood fill on a pixel layer.",
-    "pixel-palette": "Replace the palette of a pixel layer.",
+    "pixel-palette": "Replace colours of a pixel layer's palette, or turn its shading ramp and outline on or off.",
     "rich-text": "Create or replace a text layer from Markdown or spans, with paragraphs, lists and mixed styles.",
     "text-style": "Style part of a text layer: a matched phrase, a character range or paragraphs. To change the layer's content or overall color, size or font use text-set.",
     "text-layout": "Set a text layer's wrapping box, fit-to-box, warp (arc, flag, bulge) or path.",
