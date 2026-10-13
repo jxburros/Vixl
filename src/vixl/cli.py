@@ -14,6 +14,7 @@ from .fileio import file_lock
 
 from . import __version__
 from .assets import read_bounded
+from .cli_summary import command_of, human_output, wants_json
 from .commands import Parser, compile_command, compile_script, dimensions, normalize, pairs
 from .errors import VixlError, for_surface, friendly, require
 from .model import Limits
@@ -208,15 +209,29 @@ def listing_layer(layer):
     return result
 
 
-def emit(value, machine=False):
+def emit(value, machine=False, command=None, human=False):
+    """Print a result: a short summary when ``human`` (a terminal without --json), otherwise the JSON."""
     if value is None:
         return
-    if machine or isinstance(value, (dict, list)):
+    if human and isinstance(value, (dict, list)):
+        from .cli_summary import summarize
+
+        print(summarize(value, command))
+    elif machine or isinstance(value, (dict, list)):
         # ASCII JSON is also valid UTF-8 and survives redirected legacy Windows
         # streams. Never turn a successfully saved edit into an encoding error.
         print(json.dumps(value, indent=2, ensure_ascii=True, allow_nan=False))
     else:
         print(value)
+
+
+def error_line(payload, human):
+    """The one-line error; in a terminal it ends with the suggestions the JSON error carries."""
+    line = f"ERROR: {payload['message']}"
+    hints = [str(item) for item in payload.get("suggestions") or [] if isinstance(item, (str, int))][:4]
+    if human and hints and not any(hint in payload["message"] for hint in hints):
+        line += f" (try: {', '.join(hints)})"
+    return line
 
 
 def session_path():
@@ -1460,8 +1475,9 @@ def shell(options):
             prefix = ["--project", options.project] if options.project else []
             if options.allow_linked:
                 prefix.append("--allow-linked")
-            result, machine = dispatch([*prefix, *shlex.split(line)])
-            emit(result, machine)
+            words = [*prefix, *shlex.split(line)]
+            result, machine = dispatch(words)
+            emit(result, machine, command_of(words), human_output(words, sys.stdout))
         except EOFError:
             break
         except KeyboardInterrupt:
@@ -1493,7 +1509,7 @@ def main(argv=None):
         if run is not None and not profiling.attach(result, run):
             # A result that is not a JSON object (an image on stdout, plain text) keeps stdout as it was.
             print(json.dumps({"render_profile": run.report()}), file=sys.stderr)
-        emit(result, machine)
+        emit(result, machine, command_of(argv), human_output(argv, sys.stdout))
         if getattr(result, "passed", None) is False:  # a formatted vixl check --all report
             return 1
         if ("workflow" in argv or ("check" in argv and ("--all" in argv or "--group" in argv)) or "emoji" in argv) and isinstance(result, dict):
@@ -1509,7 +1525,8 @@ def main(argv=None):
         return 0
     except (VixlError, OSError, ValueError, TimeoutError, MemoryError) as exc:
         payload = for_surface(friendly(exc).as_dict(), "cli")
-        print(json.dumps(payload) if "--json" in argv else f"ERROR: {payload['message']}", file=sys.stderr)
+        print(json.dumps(payload) if wants_json(argv) else error_line(payload, human_output(argv, sys.stderr)),
+              file=sys.stderr)
         return 1
     except KeyboardInterrupt:
         print("Interrupted", file=sys.stderr)
