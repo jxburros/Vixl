@@ -1,0 +1,1835 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/jxburros/Vixl/blob/main/src/vixl/data/vixl-document.schema.json",
+ "title": "Vixl document (project.json)",
+ "description": "The JSON member project.json of a .vixl archive (a ZIP file). Other members are the binary assets it references: assets/<sha256>.<ext>, masks/<sha256>.<ext>, fonts/<sha256>.<ext>, sources/<sha256>.<ext>, emoji-sources/<sha256>.<ext>. See docs/file-format.md.",
+ "type": "object",
+ "properties": {
+  "format_version": {
+   "enum": [
+    1,
+    2
+   ],
+   "description": "Archive format version; Vixl writes 2 and reads 1 and 2."
+  },
+  "vixl_version": {
+   "type": "string",
+   "description": "Vixl release that saved the file."
+  },
+  "upgraded_from": {
+   "type": "string",
+   "description": "Older Vixl release whose rendering the document kept until the upgrade is accepted (vixl upgrade)."
+  },
+  "state": {
+   "$ref": "#/$defs/state",
+   "description": "The current document state (the history head)."
+  },
+  "nodes": {
+   "type": "object",
+   "additionalProperties": {
+    "$ref": "#/$defs/node"
+   },
+   "description": "History revisions by ID (a DAG; branches share ancestors)."
+  },
+  "head": {
+   "type": "string",
+   "description": "ID of the current revision."
+  },
+  "branches": {
+   "type": "object",
+   "additionalProperties": {
+    "type": "string"
+   },
+   "description": "Branch name → revision ID."
+  },
+  "checkpoints": {
+   "type": "object",
+   "additionalProperties": {
+    "type": "string"
+   },
+   "description": "Checkpoint name → revision ID."
+  },
+  "current_branch": {
+   "type": [
+    "string",
+    "null"
+   ],
+   "description": "The checked-out branch, or null."
+  },
+  "redo_stack": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   },
+   "description": "Revision IDs undo stepped back over, newest last."
+  },
+  "transaction": {
+   "type": [
+    "object",
+    "null"
+   ],
+   "description": "An open transaction {state, operations} or null."
+  },
+  "asset_hashes": {
+   "type": "object",
+   "propertyNames": {
+    "pattern": "^(assets|masks|fonts|sources|emoji-sources)/[0-9a-f]{64}\\.[a-z0-9]{2,5}$"
+   },
+   "additionalProperties": {
+    "type": "string",
+    "pattern": "^[0-9a-f]{64}$"
+   },
+   "description": "SHA-256 of every other archive member; the archive holds exactly these members."
+  }
+ },
+ "required": [
+  "format_version",
+  "state",
+  "nodes",
+  "head",
+  "branches",
+  "checkpoints",
+  "current_branch",
+  "redo_stack",
+  "transaction",
+  "asset_hashes"
+ ],
+ "additionalProperties": false,
+ "$defs": {
+  "state": {
+   "type": "object",
+   "description": "A document state: the canvas, its layers and every document-level resource.",
+   "properties": {
+    "canvas": {
+     "type": "object",
+     "description": "Canvas size, background and print settings.",
+     "properties": {
+      "width": {
+       "type": "number",
+       "exclusiveMinimum": 0,
+       "description": "Canvas width in pixels."
+      },
+      "height": {
+       "type": "number",
+       "exclusiveMinimum": 0,
+       "description": "Canvas height in pixels."
+      },
+      "background": {
+       "type": "string",
+       "description": "Background colour; transparent for none."
+      },
+      "color_mode": {
+       "const": "rgba8",
+       "description": "Pixel format; always rgba8."
+      },
+      "size": {
+       "type": "string",
+       "description": "Named size the canvas was made from (vixl sizes)."
+      },
+      "dpi": {
+       "type": "number",
+       "minimum": 36,
+       "maximum": 2400,
+       "description": "Print resolution."
+      },
+      "bleed": {
+       "type": "number",
+       "minimum": 0,
+       "description": "Bleed in (whole or half) pixels on each side."
+      },
+      "safe": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "minimum": 0
+        },
+        {
+         "type": "object",
+         "propertyNames": {
+          "enum": [
+           "left",
+           "top",
+           "right",
+           "bottom"
+          ]
+         },
+         "additionalProperties": {
+          "type": "integer",
+          "minimum": 0
+         }
+        }
+       ],
+       "description": "Safe-area inset in pixels (one number or per side)."
+      },
+      "physical": {
+       "type": "object",
+       "description": "Physical trim size {width, height, unit, bleed}.",
+       "properties": {
+        "width": {
+         "type": "number"
+        },
+        "height": {
+         "type": "number"
+        },
+        "unit": {
+         "enum": [
+          "in",
+          "mm",
+          "cm",
+          "pt"
+         ]
+        },
+        "bleed": {
+         "type": "number"
+        }
+       },
+       "additionalProperties": false
+      }
+     },
+     "required": [
+      "width",
+      "height",
+      "background",
+      "color_mode"
+     ],
+     "additionalProperties": false
+    },
+    "layers": {
+     "type": "array",
+     "description": "Layers bottom to top (of the active page in a paged document).",
+     "items": {
+      "$ref": "#/$defs/layer"
+     }
+    },
+    "active_layer": {
+     "type": [
+      "null",
+      "string"
+     ],
+     "description": "ID of the active layer, or null."
+    },
+    "selection": {
+     "type": [
+      "null",
+      "string"
+     ],
+     "description": "The pixel selection mask (masks/<sha256>.png), or null."
+    },
+    "variables": {
+     "type": "object",
+     "description": "Document variables (${name} substitution)."
+    },
+    "presets": {
+     "type": "object",
+     "description": "Saved operation presets."
+    },
+    "pages": {
+     "type": "array",
+     "description": "Pages of a multi-page document; the active page's content lives at the top level.",
+     "items": {
+      "$ref": "#/$defs/page"
+     }
+    },
+    "page": {
+     "type": [
+      "null",
+      "string"
+     ],
+     "description": "ID of the active page."
+    },
+    "masters": {
+     "type": "object",
+     "description": "Master pages by name: {background, content}.",
+     "additionalProperties": {
+      "$ref": "#/$defs/master"
+     }
+    },
+    "fonts": {
+     "type": "object",
+     "description": "Registered fonts: name → fonts/<sha256>.<ext> archive member."
+    },
+    "font_fallbacks": {
+     "type": "array",
+     "description": "Fallback font members tried for missing glyphs."
+    },
+    "typography": {
+     "type": "object",
+     "description": "Typography: heading/body roles, type scale."
+    },
+    "type_stages": {
+     "type": "object",
+     "description": "Type stage overrides (display, h1 … caption)."
+    },
+    "swatches": {
+     "type": "object",
+     "description": "Named colours (@name references)."
+    },
+    "palettes": {
+     "type": "object",
+     "description": "Named palettes: name → list of colours."
+    },
+    "active_palette": {
+     "type": "string",
+     "description": "Name of the palette applied last."
+    },
+    "palette_roles": {
+     "type": "object",
+     "description": "Colour roles assigned from the active palette."
+    },
+    "character_styles": {
+     "type": "object",
+     "description": "Named character styles."
+    },
+    "paragraph_styles": {
+     "type": "object",
+     "description": "Named paragraph styles."
+    },
+    "brushes": {
+     "type": "object",
+     "description": "Custom brushes by name."
+    },
+    "patterns": {
+     "type": "object",
+     "description": "Named fill patterns."
+    },
+    "luts": {
+     "type": "object",
+     "description": "Colour lookup tables by name."
+    },
+    "maps": {
+     "type": "object",
+     "description": "Variable maps (value lookups)."
+    },
+    "symbols": {
+     "type": "object",
+     "description": "Symbol masters: name → master layer ID."
+    },
+    "object_library": {
+     "type": "object",
+     "description": "Saved objects (object-save) for object-place."
+    },
+    "character_library": {
+     "type": "object",
+     "description": "Saved characters."
+    },
+    "emojis": {
+     "type": "object",
+     "description": "Custom emoji artwork registry."
+    },
+    "emoji_template": {
+     "type": "object",
+     "description": "Emoji template settings."
+    },
+    "emoji_artwork": {
+     "type": "object",
+     "description": "Emoji artwork record of an emoji document."
+    },
+    "design_defaults": {
+     "type": "object",
+     "description": "Design defaults the document was created with (rolled house style)."
+    },
+    "design_guidance": {
+     "type": "object",
+     "description": "Named design guidance texts."
+    },
+    "brand_preset": {
+     "type": "string",
+     "description": "Brand preset applied."
+    },
+    "style": {
+     "type": [
+      "object",
+      "string"
+     ],
+     "description": "Design style tag and its check options."
+    },
+    "guides": {
+     "type": "object",
+     "description": "Ruler guides by name: {axis, position, grid or generated}."
+    },
+    "grids": {
+     "type": "object",
+     "description": "Layout grids by name."
+    },
+    "active_grid": {
+     "type": "string",
+     "description": "Name of the active grid."
+    },
+    "layout": {
+     "type": "object",
+     "description": "The layout template applied and its slots."
+    },
+    "template": {
+     "type": "object",
+     "description": "Template record of a document made from a template."
+    },
+    "artboards": {
+     "type": "object",
+     "description": "Artboards: name → {x, y, width, height, background, variables, targets}."
+    },
+    "comps": {
+     "type": "object",
+     "description": "Layer comps: saved visibility and position states."
+    },
+    "containers": {
+     "type": "object",
+     "description": "Container records of template slots."
+    },
+    "blanks": {
+     "type": "object",
+     "description": "Blank placeholders awaiting content."
+    },
+    "flows": {
+     "type": "array",
+     "description": "Text flows threading text through several layers."
+    },
+    "diagrams": {
+     "type": "object",
+     "description": "Diagram records (nodes, edges, layout)."
+    },
+    "roles": {
+     "type": "object",
+     "description": "Named layer roles bound for actions and recipes."
+    },
+    "snap_to_pixel": {
+     "type": "boolean",
+     "description": "Round every layer's drawn position to whole pixels."
+    },
+    "suites": {
+     "type": "object",
+     "description": "Check suites: named sets of rules (suite-set)."
+    },
+    "waivers": {
+     "type": "array",
+     "description": "Waived check findings."
+    },
+    "actions": {
+     "type": "object",
+     "description": "Recorded actions (operation lists) by name."
+    },
+    "recipe": {
+     "type": "object",
+     "description": "Automation recipe."
+    },
+    "accessibility": {
+     "type": "object",
+     "description": "Document language and title."
+    },
+    "page_accessibility": {
+     "type": "object",
+     "description": "Page language and reading order."
+    },
+    "form": {
+     "type": "object",
+     "description": "Form settings (title, language, submit)."
+    },
+    "merged_branches": {
+     "type": "array",
+     "description": "Branches merged into this document."
+    },
+    "merge": {
+     "type": "object",
+     "description": "Merge-impose record of a generated sheet."
+    },
+    "placeholders": {
+     "type": "array",
+     "description": "Placeholder listing (inspect output only)."
+    },
+    "timeline": {
+     "type": "object",
+     "description": "Keyframe timeline: duration, fps, tracks, markers."
+    },
+    "animation": {
+     "type": "object",
+     "description": "Frame animation settings and frames."
+    },
+    "motions": {
+     "type": "object",
+     "description": "Motion recipes applied."
+    },
+    "stop_motion": {
+     "type": "object",
+     "description": "Stop-motion settings."
+    },
+    "audio_tracks": {
+     "type": "array",
+     "description": "Audio tracks (assets/<sha256>.wav)."
+    },
+    "particles": {
+     "type": "object",
+     "description": "Particle system settings."
+    },
+    "lighting": {
+     "type": "object",
+     "description": "Scene lighting and colour grading."
+    },
+    "camera": {
+     "type": "object",
+     "description": "Scene camera."
+    },
+    "comic": {
+     "type": "object",
+     "description": "Comic page record (panels, reading order)."
+    },
+    "lyric_build": {
+     "type": "object",
+     "description": "Options and sources a lyric video document was built from."
+    },
+    "mockup": {
+     "type": "object",
+     "description": "Mockup record (template, design, slots)."
+    },
+    "deck_markdown": {
+     "type": "object",
+     "description": "Markdown source a deck was built from."
+    }
+   },
+   "required": [
+    "canvas",
+    "layers",
+    "active_layer",
+    "selection",
+    "variables",
+    "presets"
+   ],
+   "additionalProperties": false
+  },
+  "layer": {
+   "type": "object",
+   "description": "One layer. Fields beyond the common ones depend on the type and on the features used.",
+   "properties": {
+    "id": {
+     "type": "string",
+     "description": "Stable layer ID (lyr_ + 16 hex digits); unique in the document and never reused."
+    },
+    "name": {
+     "type": "string",
+     "description": "Unique, non-empty layer name; operations address a layer by ID or name."
+    },
+    "type": {
+     "type": "string",
+     "description": "Layer type; see the type list.",
+     "enum": [
+      "raster",
+      "text",
+      "solid",
+      "gradient",
+      "shape",
+      "group",
+      "frame",
+      "adjustment",
+      "pathfinder",
+      "symbol",
+      "pixel",
+      "paint",
+      "field",
+      "link"
+     ]
+    },
+    "width": {
+     "type": "number",
+     "description": "Width in pixels (in the parent group's content pixels for a child layer)."
+    },
+    "height": {
+     "type": "number",
+     "description": "Height in pixels."
+    },
+    "x": {
+     "type": "number",
+     "description": "Left edge of the unrotated box, in canvas pixels (parent content pixels for a child layer)."
+    },
+    "y": {
+     "type": "number",
+     "description": "Top edge of the unrotated box."
+    },
+    "rotation": {
+     "type": "number",
+     "description": "Clockwise rotation in degrees around the pivot (default the box centre)."
+    },
+    "flip_x": {
+     "type": "boolean",
+     "description": "Mirror horizontally."
+    },
+    "flip_y": {
+     "type": "boolean",
+     "description": "Mirror vertically."
+    },
+    "opacity": {
+     "type": "number",
+     "description": "Layer opacity, 0 (clear) to 1 (opaque).",
+     "minimum": 0,
+     "maximum": 1
+    },
+    "blend": {
+     "type": "string",
+     "description": "Blend mode with what is beneath.",
+     "enum": [
+      "normal",
+      "multiply",
+      "screen",
+      "overlay",
+      "darken",
+      "lighten",
+      "difference",
+      "add",
+      "subtract"
+     ]
+    },
+    "visible": {
+     "type": "boolean",
+     "description": "Whether the layer draws."
+    },
+    "effects": {
+     "type": "array",
+     "description": "Effect stack, applied in order in the layer's own frame before flip, rotation and skew.",
+     "items": {
+      "$ref": "#/$defs/effect"
+     }
+    },
+    "mask": {
+     "anyOf": [
+      {
+       "type": "null"
+      },
+      {
+       "$ref": "#/$defs/mask"
+      }
+     ],
+     "description": "Raster mask {asset: masks/<sha256>.png, enabled} or null."
+    },
+    "constraints": {
+     "type": "object",
+     "description": "Layout constraints: anchor → pixels or an expression over other layers."
+    },
+    "parent": {
+     "type": [
+      "null",
+      "string"
+     ],
+     "description": "ID of the group (or other container) that holds this layer; absent or null at the top level."
+    },
+    "content_width": {
+     "type": "number",
+     "description": "group: width of the coordinate space its children are laid out in."
+    },
+    "content_height": {
+     "type": "number",
+     "description": "group: height of the coordinate space its children are laid out in."
+    },
+    "pivot": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 2,
+     "maxItems": 2,
+     "description": "Rotation and scale origin as [x, y] fractions of the box (default [0.5, 0.5])."
+    },
+    "skew_x": {
+     "type": "number",
+     "description": "Horizontal skew in degrees (-90 to 90 exclusive)."
+    },
+    "skew_y": {
+     "type": "number",
+     "description": "Vertical skew in degrees (-90 to 90 exclusive)."
+    },
+    "affine": {
+     "type": "array",
+     "description": "An exact 2×3 placement matrix for free transforms that x/y/rotation/skew cannot express."
+    },
+    "snap_to_pixel": {
+     "type": "boolean",
+     "description": "Round the drawn position to whole pixels."
+    },
+    "clip": {
+     "type": "string",
+     "description": "ID of the layer whose alpha clips this one."
+    },
+    "auto_size": {
+     "type": "boolean",
+     "description": "text: the box follows the text (true) or the text wraps in a fixed box (false)."
+    },
+    "text_layout": {
+     "type": "object",
+     "description": "text: the fixed box {width, height} text wraps in, and how it fits."
+    },
+    "role": {
+     "type": "string",
+     "description": "Layout role: content, decoration, background or title.",
+     "enum": [
+      "content",
+      "decoration",
+      "background",
+      "title"
+     ]
+    },
+    "tags": {
+     "type": "array",
+     "description": "Free-form tags (selectors, adapt rules such as optional)."
+    },
+    "stack": {
+     "type": "object",
+     "description": "Auto-layout stack settings of a group: direction, gap, alignment, padding."
+    },
+    "hide_if_empty": {
+     "type": "boolean",
+     "description": "Skip the layer (and its stack slot) while its text is empty after variables."
+    },
+    "repeat": {
+     "type": "object",
+     "description": "Repeat settings: count and per-copy offsets (dx, dy, dw, dh, rotation, colour ramp)."
+    },
+    "symbol": {
+     "type": "string",
+     "description": "symbol: name of the symbol master in state.symbols it instances."
+    },
+    "linked": {
+     "type": "boolean",
+     "description": "raster: the asset is a link to a file outside the archive (allow_linked)."
+    },
+    "asset_variable": {
+     "type": "string",
+     "description": "Variable naming the image asset to draw (variable data merge)."
+    },
+    "container": {
+     "type": "object",
+     "description": "Container record of a template slot group."
+    },
+    "container_layout": {
+     "type": "object",
+     "description": "Layout a container computed for its contents."
+    },
+    "container_variable": {
+     "type": "string",
+     "description": "Variable a container slot is bound to."
+    },
+    "container_font_size": {
+     "type": "number",
+     "description": "Font size a container fitted its text to."
+    },
+    "container_local": {
+     "type": "object",
+     "description": "Container-local placement before fitting."
+    },
+    "image_slot": {
+     "type": "object",
+     "description": "An image slot of a container: fit and focus of the image it holds."
+    },
+    "provenance": {
+     "type": "object",
+     "description": "Where the layer came from (import, AI provider, SVG appearance source …)."
+    },
+    "pen_origin": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 2,
+     "maxItems": 2,
+     "description": "Pen-tool origin of a drawn path, in canvas pixels."
+    },
+    "part_of": {
+     "type": "string",
+     "description": "ID of the layer this decoration belongs to (irregular edges, labels …)."
+    },
+    "source_id": {
+     "type": "string",
+     "description": "ID of the layer a scattered or repeated copy was made from."
+    },
+    "recolor": {
+     "type": "object",
+     "description": "Colour substitutions applied to a placed copy."
+    },
+    "fill": {
+     "type": "string",
+     "description": "Fill colour (shape, solid, pathfinder)."
+    },
+    "color": {
+     "type": "string",
+     "description": "Text or field text colour."
+    },
+    "stroke": {
+     "type": "string",
+     "description": "Stroke colour; transparent for none."
+    },
+    "stroke_width": {
+     "type": "number",
+     "description": "Stroke width in pixels (text: outline width)."
+    },
+    "stroke_color": {
+     "type": "string",
+     "description": "text: outline colour."
+    },
+    "shape": {
+     "type": "string",
+     "description": "shape: rectangle, rounded-rectangle, capsule, ellipse, line, polygon, star, path or a catalog shape (arrow, speech bubble, heart …)."
+    },
+    "path": {
+     "type": "string",
+     "description": "shape path: SVG path data (M L H V C S Q T A Z) in path_view coordinates."
+    },
+    "path_view": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 2,
+     "maxItems": 2,
+     "description": "shape path: [width, height] of the coordinate box path is written in."
+    },
+    "radius": {
+     "type": "number",
+     "description": "Corner radius in pixels (rounded rectangles; catalog shapes use it as a fraction)."
+    },
+    "sides": {
+     "type": "integer",
+     "description": "polygon and star: number of sides or points."
+    },
+    "inner_radius": {
+     "type": "number",
+     "description": "star: inner radius as a fraction of the outer."
+    },
+    "start_angle": {
+     "type": "number",
+     "description": "wedge and arc: start angle in degrees."
+    },
+    "end_angle": {
+     "type": "number",
+     "description": "wedge and arc: end angle in degrees."
+    },
+    "closed": {
+     "type": "boolean",
+     "description": "path: close the outline."
+    },
+    "trim_start": {
+     "type": "number",
+     "description": "Stroke trim start, 0–1 of the outline length."
+    },
+    "trim_end": {
+     "type": "number",
+     "description": "Stroke trim end, 0–1 of the outline length."
+    },
+    "dash": {
+     "type": "array",
+     "description": "Dash pattern lengths in pixels."
+    },
+    "dash_offset": {
+     "type": "number",
+     "description": "Dash pattern offset in pixels."
+    },
+    "line_cap": {
+     "type": "string",
+     "description": "Stroke cap: butt, round or square."
+    },
+    "line_join": {
+     "type": "string",
+     "description": "Stroke join: miter, round or bevel."
+    },
+    "miter_limit": {
+     "type": "number",
+     "description": "Miter limit for mitred joins."
+    },
+    "stroke_align": {
+     "type": "string",
+     "description": "Stroke position: center, inside or outside."
+    },
+    "strokes": {
+     "type": "array",
+     "description": "paint: brush strokes {brush, points, …}; shape: extra strokes drawn over the outline."
+    },
+    "width_profile": {
+     "type": "array",
+     "description": "Variable stroke width profile along the path."
+    },
+    "taper_start": {
+     "type": "number",
+     "description": "Stroke taper at the start, 0–1."
+    },
+    "taper_end": {
+     "type": "number",
+     "description": "Stroke taper at the end, 0–1."
+    },
+    "marker_start": {
+     "type": "string",
+     "description": "Marker at the path start (arrow, dot …)."
+    },
+    "marker_end": {
+     "type": "string",
+     "description": "Marker at the path end."
+    },
+    "marker_size": {
+     "type": "number",
+     "description": "Marker size as a multiple of the stroke width."
+    },
+    "marker_style": {
+     "type": "string",
+     "description": "Marker drawing style."
+    },
+    "distort": {
+     "type": "object",
+     "description": "Envelope distortion of the geometry (arc, wave, perspective …)."
+    },
+    "vector_geometry": {
+     "type": "object",
+     "description": "Cached outline geometry of a vector stroke."
+    },
+    "organic": {
+     "type": "object",
+     "description": "Organic shape recipe {preset, seed, naturalness}."
+    },
+    "irregular": {
+     "type": "object",
+     "description": "Irregular (torn, rough) edge recipe and its source geometry."
+    },
+    "die_cut": {
+     "type": "object",
+     "description": "A die-cut outline record: the layers it surrounds and the offset distance."
+    },
+    "reflection": {
+     "type": "object",
+     "description": "A reflection layer's settings (horizon, sources), kept so it can be re-rendered."
+    },
+    "cut_paper": {
+     "type": "object",
+     "description": "Cut-paper look settings (grain, edge texture)."
+    },
+    "export_fallback": {
+     "type": "string",
+     "description": "Reason vector exports draw this layer as an image."
+    },
+    "corner_style": {
+     "type": "string",
+     "description": "Catalog shape: corner style."
+    },
+    "point_radius": {
+     "type": "number",
+     "description": "Catalog shape: radius of star points."
+    },
+    "valley_radius": {
+     "type": "number",
+     "description": "Catalog shape: radius of star valleys."
+    },
+    "rotation_offset": {
+     "type": "number",
+     "description": "Catalog shape: rotation of the generated outline in degrees."
+    },
+    "head_length": {
+     "type": "number",
+     "description": "Arrow: head length."
+    },
+    "head_width": {
+     "type": "number",
+     "description": "Arrow: head width."
+    },
+    "shaft_width": {
+     "type": "number",
+     "description": "Arrow: shaft width."
+    },
+    "heads": {
+     "type": "string",
+     "description": "Arrow: which ends carry heads."
+    },
+    "head_style": {
+     "type": "string",
+     "description": "Arrow: head style."
+    },
+    "curve": {
+     "type": "number",
+     "description": "Catalog shape: curvature."
+    },
+    "from": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 2,
+     "maxItems": 2,
+     "description": "Connector or arrow start point."
+    },
+    "to": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 2,
+     "maxItems": 2,
+     "description": "Connector or arrow end point."
+    },
+    "control": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 2,
+     "maxItems": 2,
+     "description": "Connector or arrow control point."
+    },
+    "thickness": {
+     "type": "number",
+     "description": "Catalog shape: band thickness."
+    },
+    "count": {
+     "type": "integer",
+     "description": "Catalog shape: number of repeated elements (rays, teeth, petals …)."
+    },
+    "depth": {
+     "type": "number",
+     "description": "Catalog shape: depth; scene layers: depth for parallax and lighting."
+    },
+    "hole": {
+     "type": "number",
+     "description": "Catalog shape: hole size."
+    },
+    "fold": {
+     "type": "number",
+     "description": "Catalog shape: folded corner size."
+    },
+    "pointer_size": {
+     "type": "number",
+     "description": "Callout: pointer size."
+    },
+    "pointer_position": {
+     "type": "number",
+     "description": "Callout: pointer position along its side, 0–1."
+    },
+    "pointer_side": {
+     "type": "string",
+     "description": "Callout: side the pointer is on."
+    },
+    "exponent": {
+     "type": "number",
+     "description": "Superellipse exponent."
+    },
+    "apex": {
+     "type": "number",
+     "description": "Catalog shape: apex position."
+    },
+    "step": {
+     "type": "number",
+     "description": "Catalog shape: step size."
+    },
+    "arms": {
+     "type": "integer",
+     "description": "Catalog shape: number of arms."
+    },
+    "teeth": {
+     "type": "integer",
+     "description": "Gear: number of teeth."
+    },
+    "amplitude": {
+     "type": "number",
+     "description": "Wave: amplitude."
+    },
+    "wavelength": {
+     "type": "number",
+     "description": "Wave: wavelength."
+    },
+    "phase": {
+     "type": "number",
+     "description": "Wave: phase."
+    },
+    "ray_length": {
+     "type": "number",
+     "description": "Burst: ray length."
+    },
+    "rating": {
+     "type": "number",
+     "description": "Rating shape: filled amount."
+    },
+    "notch": {
+     "type": "number",
+     "description": "Catalog shape: notch size."
+    },
+    "peel": {
+     "type": "number",
+     "description": "Catalog shape: peeled corner size."
+    },
+    "frame_shape": {
+     "type": "string",
+     "description": "Frame shape of a framed catalog shape."
+    },
+    "angle": {
+     "type": "number",
+     "description": "gradient: angle in degrees for angled gradients; catalog shapes: an angle parameter."
+    },
+    "petals": {
+     "type": "integer",
+     "description": "Flower: number of petals."
+    },
+    "taper": {
+     "type": "number",
+     "description": "Catalog shape: taper."
+    },
+    "smooth": {
+     "type": "number",
+     "description": "Catalog shape: smoothing."
+    },
+    "seed": {
+     "type": [
+      "integer",
+      "string"
+     ],
+     "description": "Random seed of a generated shape."
+    },
+    "cleft": {
+     "type": "number",
+     "description": "Heart: cleft depth."
+    },
+    "tip": {
+     "type": "number",
+     "description": "Catalog shape: tip sharpness."
+    },
+    "body": {
+     "type": "number",
+     "description": "Catalog shape: body proportion."
+    },
+    "slant": {
+     "type": "number",
+     "description": "Catalog shape: slant."
+    },
+    "start": {
+     "type": "string",
+     "description": "gradient: start colour."
+    },
+    "end": {
+     "type": "string",
+     "description": "gradient: end colour."
+    },
+    "stops": {
+     "type": "array",
+     "description": "gradient: colour stops [{offset 0–1, color}] (2–32)."
+    },
+    "direction": {
+     "type": "string",
+     "description": "gradient: horizontal, vertical, radial or angled."
+    },
+    "center": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 2,
+     "maxItems": 2,
+     "description": "Radial gradient centre as [x, y] fractions of the layer."
+    },
+    "falloff": {
+     "type": "string",
+     "description": "gradient: interpolation (linear, smooth, ease, quadratic, gaussian)."
+    },
+    "text": {
+     "type": "string",
+     "description": "text: the plain text (also the text of rich text); ${variables} are substituted."
+    },
+    "size": {
+     "type": "number",
+     "description": "text and field: font size in pixels."
+    },
+    "font": {
+     "type": "string",
+     "description": "Font: a registered font name (state.fonts), a bundled font file name or a role."
+    },
+    "font_role": {
+     "type": "string",
+     "description": "Typography role the font follows (heading, body …)."
+    },
+    "align": {
+     "type": "string",
+     "description": "Text alignment: left, center or right (fields too)."
+    },
+    "spacing": {
+     "type": "number",
+     "description": "text: extra line spacing in pixels; catalog shapes: spacing parameter."
+    },
+    "line_height": {
+     "type": "number",
+     "description": "text: distance between baselines as a multiple of the size."
+    },
+    "tracking": {
+     "type": "number",
+     "description": "text: letter spacing in pixels."
+    },
+    "text_transform": {
+     "type": "string",
+     "description": "text: none, uppercase, lowercase or capitalize, applied when drawing."
+    },
+    "tabs": {
+     "type": "array",
+     "description": "text: tab stops [{at, align, leader}]."
+    },
+    "stage": {
+     "type": "string",
+     "description": "text: type stage (display, h1 … caption) it was set with."
+    },
+    "rich": {
+     "type": "object",
+     "description": "Rich text: spans, paragraphs and their styles (see docs/rich-text.md)."
+    },
+    "character_style": {
+     "type": "string",
+     "description": "text: named character style applied (state.character_styles)."
+    },
+    "paragraph_style": {
+     "type": "string",
+     "description": "text: named paragraph style applied (state.paragraph_styles)."
+    },
+    "literal_text": {
+     "type": "boolean",
+     "description": "Intent: the text is literal (not copy to check or rewrite)."
+    },
+    "asset": {
+     "type": "string",
+     "pattern": "^(assets|masks|fonts|sources|emoji-sources)/[0-9a-f]{64}\\.[a-z0-9]{2,5}$",
+     "description": "raster and frame: the image member of the archive."
+    },
+    "crop": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 4,
+     "maxItems": 4,
+     "description": "Crop box [x0, y0, x1, y1] in source pixels (link and frame layers)."
+    },
+    "fit": {
+     "type": "string",
+     "description": "How an image or linked document fills the box (fill, fit, stretch …)."
+    },
+    "position": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 2,
+     "maxItems": 2,
+     "description": "Focus [x, y] fractions used when fit crops."
+    },
+    "styles": {
+     "type": "object",
+     "description": "Layer styles by name (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay), each with its settings and enabled."
+    },
+    "looks": {
+     "type": "object",
+     "description": "Applied looks (finishes) by name, listing the styles and effects each added."
+    },
+    "appearance": {
+     "type": "object",
+     "description": "field: widget appearance (style, fill, stroke, radius …)."
+    },
+    "mode": {
+     "type": "string",
+     "description": "pathfinder: union, subtract, intersect, exclude, divide, minus-back, trim or merge."
+    },
+    "operands": {
+     "type": "array",
+     "description": "pathfinder: the layers it combines (embedded copies)."
+    },
+    "pixels": {
+     "type": "array",
+     "description": "pixel: rows of palette keys."
+    },
+    "palette": {
+     "type": "object",
+     "description": "pixel: palette key → colour."
+    },
+    "outline": {
+     "type": [
+      "boolean",
+      "object",
+      "string"
+     ],
+     "description": "pixel: generated outline: true, a colour or settings."
+    },
+    "shading": {
+     "type": [
+      "boolean",
+      "object"
+     ],
+     "description": "pixel: generated shading: true or {light, colors, highlight}."
+    },
+    "surface": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 2,
+     "maxItems": 2,
+     "description": "paint: [width, height] of the surface strokes are recorded on."
+    },
+    "field": {
+     "type": "object",
+     "description": "field: the form field record {key, kind, label, options, required …}."
+    },
+    "padding": {
+     "type": "number",
+     "description": "field: inner padding in pixels."
+    },
+    "value": {
+     "type": [
+      "array",
+      "null",
+      "string"
+     ],
+     "description": "field: value drawn in a filled export (render copies only)."
+    },
+    "source": {
+     "type": [
+      "object",
+      "string"
+     ],
+     "description": "link: path of the linked document, relative to the document's folder."
+    },
+    "source_page": {
+     "type": [
+      "integer",
+      "string"
+     ],
+     "description": "link: page of the linked document to show."
+    },
+    "source_hash": {
+     "type": "string",
+     "description": "link: SHA-256 of the linked file when it was last placed or updated."
+    },
+    "source_size": {
+     "type": "array",
+     "description": "link: [width, height] of the linked page."
+    },
+    "artboard": {
+     "type": "string",
+     "description": "link: artboard of the linked document to show."
+    },
+    "variables": {
+     "type": "object",
+     "description": "link: variable values passed to the linked document."
+    },
+    "corner_pin": {
+     "type": "array",
+     "description": "link: four corner points for a perspective placement."
+    },
+    "chart": {
+     "type": "object",
+     "description": "group: the chart record (kind, data, options) its parts are drawn from."
+    },
+    "chart_part": {
+     "type": "string",
+     "description": "Which part of a chart this layer is."
+    },
+    "table": {
+     "type": "object",
+     "description": "group: the table record (rows, columns, styles)."
+    },
+    "table_part": {
+     "type": "string",
+     "description": "Which part of a table this layer is."
+    },
+    "key_values": {
+     "type": "object",
+     "description": "group: a key-value list record."
+    },
+    "kv_part": {
+     "type": "string",
+     "description": "Which part of a key-value list this layer is."
+    },
+    "code": {
+     "type": [
+      "null",
+      "object"
+     ],
+     "description": "shape: QR code or barcode record {kind, data …}."
+    },
+    "drawing": {
+     "type": "object",
+     "description": "A hand-drawing pipeline record (source, cleanup, vectorize settings)."
+    },
+    "drawing_strokes": {
+     "type": "array",
+     "description": "Vectorized strokes of a drawing."
+    },
+    "drawing_role": {
+     "type": "string",
+     "description": "Role of this layer in a drawing (line, fill …)."
+    },
+    "object": {
+     "type": "object",
+     "description": "group: object declaration {kind, label, notes, references, version}."
+    },
+    "object_part": {
+     "type": "object",
+     "description": "This layer's part name {name, side} inside its object."
+    },
+    "character": {
+     "type": "object",
+     "description": "group: character rig (parts, bones, poses)."
+    },
+    "character_part": {
+     "type": "string",
+     "description": "Which part of a character this layer is."
+    },
+    "character_color": {
+     "type": "string",
+     "description": "Character colour role of this part."
+    },
+    "particle": {
+     "type": "object",
+     "description": "Particle emitter settings."
+    },
+    "bubble": {
+     "type": "object",
+     "description": "Speech bubble geometry and tail."
+    },
+    "caption": {
+     "type": "object",
+     "description": "Caption metadata (timing, text layer)."
+    },
+    "alt": {
+     "type": "string",
+     "description": "Alternative text (exports carry it to SVG title, PDF /Alt and PPTX descr)."
+    },
+    "decorative": {
+     "type": "boolean",
+     "description": "Accessibility: the layer is decoration (exports mark it as an artifact)."
+    },
+    "allow_overlap": {
+     "type": "array",
+     "description": "IDs of layers this one may overlap without a check finding."
+    },
+    "allow_crop": {
+     "type": "boolean",
+     "description": "Intent: the canvas edge may crop the layer."
+    },
+    "color_vision_safe": {
+     "type": "boolean",
+     "description": "Intent: colour is not the only cue."
+    },
+    "detached_ok": {
+     "type": "boolean",
+     "description": "Intent: the layer may sit apart from the composition."
+    },
+    "waive": {
+     "type": "array",
+     "description": "Check findings waived on this layer."
+    }
+   },
+   "required": [
+    "id",
+    "name",
+    "type",
+    "width",
+    "height",
+    "x",
+    "y",
+    "rotation",
+    "flip_x",
+    "flip_y",
+    "opacity",
+    "blend",
+    "visible",
+    "effects",
+    "mask",
+    "constraints"
+   ],
+   "additionalProperties": false,
+   "allOf": [
+    {
+     "if": {
+      "properties": {
+       "type": {
+        "enum": [
+         "raster",
+         "frame"
+        ]
+       }
+      }
+     },
+     "then": {
+      "required": [
+       "asset"
+      ]
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "type": {
+        "const": "text"
+       }
+      }
+     },
+     "then": {
+      "required": [
+       "text",
+       "size"
+      ]
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "type": {
+        "const": "group"
+       }
+      }
+     },
+     "then": {
+      "required": [
+       "content_width",
+       "content_height"
+      ]
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "type": {
+        "const": "link"
+       }
+      }
+     },
+     "then": {
+      "required": [
+       "source"
+      ]
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "type": {
+        "const": "symbol"
+       }
+      }
+     },
+     "then": {
+      "required": [
+       "symbol"
+      ]
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "type": {
+        "const": "pathfinder"
+       }
+      }
+     },
+     "then": {
+      "required": [
+       "mode",
+       "operands"
+      ]
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "type": {
+        "const": "pixel"
+       }
+      }
+     },
+     "then": {
+      "required": [
+       "pixels",
+       "palette"
+      ]
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "type": {
+        "const": "field"
+       }
+      }
+     },
+     "then": {
+      "required": [
+       "field"
+      ]
+     }
+    }
+   ]
+  },
+  "page": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string",
+     "description": "Stable page ID."
+    },
+    "name": {
+     "type": "string",
+     "description": "Unique page name."
+    },
+    "notes": {
+     "type": "string",
+     "description": "Speaker notes."
+    },
+    "master": {
+     "type": [
+      "null",
+      "string"
+     ],
+     "description": "Master page drawn underneath."
+    },
+    "background": {
+     "type": "string",
+     "description": "Page background colour (else the canvas or master background)."
+    },
+    "variables": {
+     "type": "object",
+     "description": "Page variables."
+    },
+    "hidden": {
+     "type": "boolean",
+     "description": "Left out of exports unless named."
+    },
+    "transition": {
+     "type": [
+      "object",
+      "string"
+     ],
+     "description": "Presentation transition."
+    },
+    "content": {
+     "anyOf": [
+      {
+       "type": "null"
+      },
+      {
+       "$ref": "#/$defs/page_content"
+      }
+     ],
+     "description": "The page's own state (layers, active_layer, selection, timeline …) while another page is active; absent on the active page, whose content is at the top level."
+    }
+   },
+   "required": [
+    "id",
+    "name"
+   ],
+   "additionalProperties": false,
+   "description": "One page of a multi-page document."
+  },
+  "page_content": {
+   "type": "object",
+   "properties": {
+    "comic": {
+     "type": "object",
+     "description": "Comic page record (panels, reading order)."
+    },
+    "template": {
+     "type": "object",
+     "description": "Template record of a document made from a template."
+    },
+    "audio_tracks": {
+     "type": "array",
+     "description": "Audio tracks (assets/<sha256>.wav)."
+    },
+    "lighting": {
+     "type": "object",
+     "description": "Scene lighting and colour grading."
+    },
+    "camera": {
+     "type": "object",
+     "description": "Scene camera."
+    },
+    "particles": {
+     "type": "object",
+     "description": "Particle system settings."
+    },
+    "stop_motion": {
+     "type": "object",
+     "description": "Stop-motion settings."
+    },
+    "layers": {
+     "type": "array",
+     "description": "Layers bottom to top (of the active page in a paged document).",
+     "items": {
+      "$ref": "#/$defs/layer"
+     }
+    },
+    "active_layer": {
+     "type": [
+      "null",
+      "string"
+     ],
+     "description": "ID of the active layer, or null."
+    },
+    "selection": {
+     "type": [
+      "null",
+      "string"
+     ],
+     "description": "The pixel selection mask (masks/<sha256>.png), or null."
+    },
+    "timeline": {
+     "type": "object",
+     "description": "Keyframe timeline: duration, fps, tracks, markers."
+    },
+    "blanks": {
+     "type": "object",
+     "description": "Blank placeholders awaiting content."
+    },
+    "layout": {
+     "type": "object",
+     "description": "The layout template applied and its slots."
+    },
+    "comps": {
+     "type": "object",
+     "description": "Layer comps: saved visibility and position states."
+    },
+    "symbols": {
+     "type": "object",
+     "description": "Symbol masters: name → master layer ID."
+    },
+    "artboards": {
+     "type": "object",
+     "description": "Artboards: name → {x, y, width, height, background, variables, targets}."
+    },
+    "roles": {
+     "type": "object",
+     "description": "Named layer roles bound for actions and recipes."
+    },
+    "containers": {
+     "type": "object",
+     "description": "Container records of template slots."
+    },
+    "animation": {
+     "type": "object",
+     "description": "Frame animation settings and frames."
+    },
+    "page_accessibility": {
+     "type": "object",
+     "description": "Page language and reading order."
+    }
+   },
+   "additionalProperties": false,
+   "description": "Page-scoped state of an inactive page or master: comic, template, audio_tracks, lighting, camera, particles, stop_motion, layers, active_layer, selection, timeline, blanks, layout, comps, symbols, artboards, roles, containers, animation, page_accessibility."
+  },
+  "master": {
+   "type": "object",
+   "description": "A master page drawn under the pages that name it.",
+   "properties": {
+    "background": {
+     "type": "string",
+     "description": "Master background colour."
+    },
+    "content": {
+     "anyOf": [
+      {
+       "type": "null"
+      },
+      {
+       "$ref": "#/$defs/page_content"
+      }
+     ],
+     "description": "The master's layers and scoped state."
+    }
+   },
+   "additionalProperties": false
+  },
+  "effect": {
+   "type": "object",
+   "description": "One effect of a stack: name, amount and its settings.",
+   "properties": {
+    "id": {
+     "type": "string",
+     "description": "Effect ID (fx_…)."
+    },
+    "name": {
+     "type": "string",
+     "description": "Effect name (blur, grain, lookup …; vixl_operation_schema lists them)."
+    },
+    "enabled": {
+     "type": "boolean",
+     "description": "Whether it applies."
+    },
+    "selection": {
+     "type": [
+      "string",
+      "null"
+     ],
+     "description": "A selection mask member it is limited to."
+    },
+    "amount": {
+     "type": "number",
+     "description": "Strength."
+    }
+   },
+   "required": [
+    "name"
+   ]
+  },
+  "mask": {
+   "type": "object",
+   "properties": {
+    "asset": {
+     "type": "string",
+     "pattern": "^(assets|masks|fonts|sources|emoji-sources)/[0-9a-f]{64}\\.[a-z0-9]{2,5}$",
+     "description": "masks/<sha256>.png member."
+    },
+    "enabled": {
+     "type": "boolean",
+     "description": "Whether the mask applies."
+    }
+   },
+   "required": [
+    "asset"
+   ],
+   "description": "A raster mask."
+  },
+  "node": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string",
+     "description": "Revision ID (the key it is stored under)."
+    },
+    "parent": {
+     "type": [
+      "null",
+      "string"
+     ],
+     "description": "Parent revision ID; null for the root."
+    },
+    "operations": {
+     "type": "array",
+     "description": "The operations this revision applied to its parent."
+    },
+    "label": {
+     "type": [
+      "null",
+      "string"
+     ],
+     "description": "History label."
+    },
+    "state": {
+     "$ref": "#/$defs/state",
+     "description": "A full state snapshot (every 32nd revision on a chain, and the root)."
+    },
+    "delta": {
+     "type": [
+      "array",
+      "object"
+     ],
+     "description": "A delta from the parent's state (history.diff), instead of state."
+    },
+    "squashed": {
+     "type": [
+      "array",
+      "boolean",
+      "integer"
+     ],
+     "description": "Revisions folded into this one by history compaction."
+    }
+   },
+   "required": [
+    "id",
+    "parent",
+    "operations"
+   ],
+   "additionalProperties": false,
+   "description": "One history revision."
+  }
+ }
+}

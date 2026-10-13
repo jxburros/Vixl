@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 
 from .errors import VixlError, require
-from .model import finite
+from .model import LAYER_ROLES, LAYER_TYPES, finite
 from .render import BLENDS, color, resolve_layout
 
 
@@ -56,7 +56,7 @@ def check_state(project, state):
         )
         require(layer["id"] not in ids, f"Duplicate layer id {layer['id']!r}", "invalid_project")
         require(layer["name"] not in names, f"Duplicate layer name {layer['name']!r}", "invalid_project")
-        require(layer.get("role", "content") in ("content", "decoration", "background", "title"), "Invalid layer role", "invalid_project")
+        require(layer.get("role", "content") in LAYER_ROLES, "Invalid layer role", "invalid_project")
         if "pen_origin" in layer:
             origin = layer["pen_origin"]
             require(isinstance(origin, list) and len(origin) == 2, "Invalid pen origin", "invalid_project")
@@ -71,23 +71,7 @@ def check_state(project, state):
         ids.add(layer["id"])
         names.add(layer["name"])
         require(
-            layer["type"]
-            in (
-                "raster",
-                "text",
-                "solid",
-                "gradient",
-                "shape",
-                "group",
-                "frame",
-                "adjustment",
-                "pathfinder",
-                "symbol",
-                "pixel",
-                "paint",
-                "field",
-                "link",
-            ),
+            layer["type"] in LAYER_TYPES,
             "Invalid layer type",
             "invalid_project",
         )

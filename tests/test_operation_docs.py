@@ -116,7 +116,8 @@ def test_docs_and_skills_name_only_real_mcp_tools():  # #252
     for folder in ("docs", "skills"):
         for path in (root / folder).rglob("*.md"):
             for name in re.findall(r"\bvixl_\w+", path.read_text(encoding="utf-8")):
-                if name not in real and name != "vixl_ai_":  # `vixl_ai_*` is the provider tool family
+                # `vixl_ai_*` is the provider tool family; `vixl_version` is a project.json key (file-format.md).
+                if name not in real and name not in ("vixl_ai_", "vixl_version"):
                     unknown.setdefault(name, set()).add(path.name)
     assert not unknown, f"docs name MCP tools that do not exist: {unknown}"
 
