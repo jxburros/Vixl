@@ -872,7 +872,16 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("--dpi", type=int, default=144)
         p.add_argument("--credit", help="attribution kept with an image, e.g. 'Photo: Ana Ruiz / Unsplash'")
         p.add_argument("--license", help="license or usage terms of an image, e.g. 'CC BY 4.0'")
+        p.add_argument("--format", choices=["figma"], help="figma: PATH is a Figma file URL or key (or exported file "
+                       "JSON); reads FIGMA_TOKEN, see docs/figma.md")
+        p.add_argument("--node", help="figma: import this node id (1:2) instead of the first page")
+        p.add_argument("--rasterize-unsupported", action="store_true", help="figma: import a PNG render of nodes "
+                       "that have no editable equivalent")
         a = p.parse_args(args)
+        if a.format == "figma" or re.match(r"(?i)https://(www\.)?figma\.com/", a.path):
+            source = Path(a.path).read_bytes() if Path(a.path).is_file() else a.path.encode()
+            return import_document(project, source, "figma", a.name or "import", a.page, a.dpi, a.svg_mode,
+                                   node_id=a.node, rasterize_unsupported=a.rasterize_unsupported), True
         is_url = re.match(r"(?i)[a-z][a-z0-9+.-]*://", a.path)
         if is_url or Path(a.path).suffix.lower() not in (".svg", ".pdf"):
             from .image_import import import_image_from

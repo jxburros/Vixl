@@ -379,7 +379,14 @@ def length(value):
     return number
 
 
-def import_document(project, data, format, name="import", page=1, dpi=144, svg_mode="editable"):
+def import_document(project, data, format, name="import", page=1, dpi=144, svg_mode="editable", **options):
+    if format.lower() == "figma":
+        # data: a Figma file URL or key, or exported file JSON; options: node_id, rasterize_unsupported, install_fonts.
+        # page is the Figma page (1-based number or name) here.
+        from .figma_import import import_source
+
+        return import_source(project, data, page=page, **options)
+    require(not options, f"Unknown import option(s): {', '.join(sorted(options))}")
     require(len(data) <= project.limits.max_asset_bytes, "Import exceeds byte limit", "resource_limit")
     if format.lower() == "svg":
         require(svg_mode in ("editable", "appearance", "auto"), "SVG mode must be editable, appearance or auto")

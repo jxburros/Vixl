@@ -1010,13 +1010,20 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
                                fonts=bool(body.get("fonts", True)))
 
     @app.post("/import")
-    async def import_document(request: Request, format: str, name: str = "import", page: int = 1, dpi: int = 144, svg_mode: str = "editable"):
+    async def import_document(request: Request, format: str, name: str = "import", page: str = "1", dpi: int = 144,
+                              svg_mode: str = "editable", node_id: str | None = None,
+                              rasterize_unsupported: bool = False):
         from .imports import import_document as execute_import
         from starlette.concurrency import run_in_threadpool
         data = await request.body()
+        # A figma import's body is a file URL or key; the server's FIGMA_TOKEN reads the file.
+        figma = format.lower() == "figma"
+        require(figma or page.isdigit(), "page must be a number", field="page")
+        options = {"node_id": node_id, "rasterize_unsupported": rasterize_unsupported} if figma else {}
         def apply_import():
             with session.project(write=True) as project:
-                return execute_import(project, data, format, name, page, dpi, svg_mode)
+                return execute_import(project, data, format, name, int(page) if page.isdigit() else page, dpi,
+                                      svg_mode, **options)
         return await run_in_threadpool(apply_import)
 
     @app.post("/assets")

@@ -420,7 +420,8 @@ vixl -p poster.vixl import https://images.example.com/cat.jpg --name cat --credi
 ```
 
 MCP: `vixl_import_document(format="svg", path="logo.svg")`, or `data_base64` instead of `path`.
-REST: `POST /import?format=svg` with raw bytes. PDF additionally accepts a one-based `page` and
+REST: `POST /import?format=svg` with raw bytes.
+Figma files import with `format=figma` (CLI `import URL --format figma`, Python `import_document(project, b"URL", "figma")`, REST `POST /import?format=figma` with the URL or file key as the body) using `FIGMA_TOKEN` from the environment; see [Import from Figma](figma.md). PDF additionally accepts a one-based `page` and
 `dpi` (36–600); it imports a raster reference layer, not editable PDF text or paths.
 
 Any other file, or an `https://` URL, is imported as an image layer, the same as

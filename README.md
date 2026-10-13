@@ -37,6 +37,7 @@ record the Git commit when using a source checkout.
 
 | Goal | Examples and guides |
 | --- | --- |
+| Designs from Figma | [Import a Figma file or frame as editable layers and live text](docs/figma.md) with your own read-only token |
 | Posters, social graphics and branded variants | [Campaign tutorial](docs/tutorials/campaign.md), [sizes/layouts](docs/sizes-and-layouts.md), [brands](docs/brands.md), [design styles](docs/styles.md), [finishing looks](docs/looks.md), [CSV merge to print sheets](docs/imposition.md), [linked documents](docs/linked-documents.md) |
 | Charts, diagrams and infographics | [Editable chart tutorial](docs/tutorials/charts.md), [data-bound charts](docs/charts.md), [flowcharts and diagrams](docs/diagrams.md), [design tools](docs/design-tools.md) |
 | Photo edits, drawings and painted artwork | [Filters](docs/artistic-filters.md), [drawing cleanup](docs/drawing.md), [brushes](docs/brushes-and-animation.md), [organic shapes](docs/organic.md), [irregularity and torn edges](docs/irregular.md), [irregular image frames and paint drips](docs/design-tools.md#irregular-image-frames-and-paint-simulation) |
