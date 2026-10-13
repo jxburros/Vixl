@@ -49,8 +49,8 @@ print(result["figma"]["root"], len(result["report"]))
 ```
 
 `POST /import?format=figma&node_id=1-2&rasterize_unsupported=false` takes the URL or key as the request body; the
-server reads the token from its own environment. The MCP `vixl_import_document` tool will accept `format="figma"` once
-its schema is extended.
+server reads the token from its own environment. In MCP, an `import-document` step in `vixl_apply` takes `format="figma"` with `source` set
+to the URL or key (and `node_id`, `rasterize_unsupported`).
 
 Options (Python keyword arguments, `--node`/`--rasterize-unsupported` and the query parameters above):
 

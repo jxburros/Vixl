@@ -59,13 +59,14 @@ def import_document(session, project, *, path: str | None = None, data_base64: s
                     page: Annotated[int | str, Field(description="PDF page number, or the Figma page number or name")] = 1,
                     dpi: int = 144,
                     svg_mode: Annotated[Literal["editable", "appearance", "auto"], Field(
-                        description="editable paths, or appearance/auto for complex static SVG rendered with its "
-                                    "source kept")] = "editable",
+                        description="editable layers (default), auto (draw unsupported elements as images) or "
+                                    "appearance (one image; SVG source kept)")] = "editable",
                     node_id: Annotated[str | None, Field(description="figma: the frame or node to import (1:2 or 1-2)")] = None,
                     rasterize_unsupported: Annotated[bool, Field(
                         description="figma: draw nodes Vixl cannot keep editable as pixels instead of failing")] = False):
-    """Import editable SVG paths, one PDF page as a raster layer, or a Figma file, frame or node as editable layers
-    (from a URL or key with the server's Figma token, or an exported file JSON); external or active SVG is rejected."""
+    """Import an SVG (Vixl's own round-trips losslessly), one PDF page as editable text, paths and images, or a Figma
+    file, frame or node as editable layers (from a URL or key with the server's Figma token, or an exported file
+    JSON); svg_mode=appearance imports one image instead. External or active SVG is rejected."""
     from .imports import import_document as read
 
     require(sum(value is not None for value in (path, data_base64, source)) == 1,

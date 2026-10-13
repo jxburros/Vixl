@@ -200,7 +200,7 @@ vixl -p copy.vixl import poster.svg
 
 ## Importing SVG and PDF
 
-`vixl import FILE.svg` / `FILE.pdf` (MCP `vixl_import_document`, REST `POST /import`, Python
+`vixl import FILE.svg` / `FILE.pdf` (MCP `import-document` step, REST `POST /import`, Python
 `vixl.imports.import_document`) adds the file's content to the current document as one revision. `svg_mode` chooses
 how, for SVG and PDF alike:
 

@@ -321,3 +321,19 @@ def test_import_document_step_routes_figma_sources_with_their_options(tmp_path, 
     with pytest.raises(Exception, match="Figma import options"):
         asyncio.run(server.call_tool("vixl_apply", {"operations": [{
             "type": "import-document", "path": "a.svg", "node_id": "1:2"}]}))
+
+
+def test_import_document_step_imports_exported_figma_json_offline(tmp_path):
+    import shutil
+    from pathlib import Path
+
+    from vixl.mcp_tools import build_server
+
+    shutil.copy(Path(__file__).parent / "fixtures" / "figma" / "poster.json", tmp_path / "poster.json")
+    session = Session(workspace=tmp_path)
+    session.create("a.vixl", 16, 16)
+    server = build_server(session)
+    asyncio.run(server.call_tool("vixl_apply", {"operations": [{"type": "import-document", "path": "poster.json"}]}))
+    layers = session.inspect()["layers"]
+    assert any(layer["type"] == "text" for layer in layers)
+    assert len(layers) > 1
