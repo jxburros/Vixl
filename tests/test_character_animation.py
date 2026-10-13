@@ -145,14 +145,14 @@ def test_svg_export_honours_pivot():
     p = character()
     p.apply({"type": "rotate", "target": "arm", "value": -70})
     svg = p.export(format="SVG").decode()
-    match = re.search(r'data-layer="arm"><g transform="translate\(([-\d.]+) ([-\d.]+)\) rotate\(([-\d.]+)\) scale\(1 1\) translate\(([-\d.]+) ([-\d.]+)\)"', svg)
+    match = re.search(r'data-layer="arm" data-vixl-id="lyr_[0-9a-f]+"><g transform="translate\(([-\d.]+) ([-\d.]+)\) rotate\(([-\d.]+)\) scale\(1 1\) translate\(([-\d.]+) ([-\d.]+)\)"', svg)
     assert match, svg[:400]
     tx, ty, angle, ox, oy = map(float, match.groups())
     a = math.radians(angle)
     px, py = 8 + ox, 0 + oy  # the pivot in the arm's local box, relative to its center
     canvas = (tx + px * math.cos(a) - py * math.sin(a), ty + px * math.sin(a) + py * math.cos(a))
     assert math.dist(canvas, (134, 64)) <= 1
-    assert "raster_fallbacks" not in svg
+    assert '"raster_fallbacks":[]' in svg
 
 
 def test_timeline_export_renders_at_target_resolution(tmp_path):

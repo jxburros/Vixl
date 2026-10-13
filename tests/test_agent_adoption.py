@@ -260,7 +260,7 @@ def test_svg_editable_transform_holes_and_undo(tmp_path):
         b'<!DOCTYPE svg [<!ENTITY x "bad">]><svg/>',
         b'<svg><rect width="10" height="10"/><image href="file:///etc/passwd"/></svg>',
         b'<svg><path d="M0 0L10 10" fill="url(https://example.com/a)"/></svg>',
-        b'<svg><g opacity="0.5"><rect width="10" height="10"/></g></svg>',
+        b'<svg><rect width="10" height="10" mask="url(#m)"/></svg>',
         b'<svg><rect width="10" height="10" style="filter:blur(2px)"/></svg>',
     ],
 )
@@ -276,7 +276,7 @@ def test_pdf_page_import_and_bounds():
     p = Project(100, 100, "red")
     data = p.export(format="PDF")
     target = Project(200, 200)
-    result = import_document(target, data, "pdf", dpi=72)
+    result = import_document(target, data, "pdf", dpi=72, svg_mode="appearance")
     assert result["warnings"] and target.state["layers"][0]["type"] == "raster"
     assert target.render().getpixel((10, 10))[0] > 240
     head = target.head

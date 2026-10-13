@@ -2102,6 +2102,7 @@ def export(
     max_bytes=None,
     isolate=None,
     padding=None,
+    svg_document=True,
 ):
     """Render and encode. ``color_space='cmyk'`` separates JPEG/TIFF/PDF output (ICC profile
     bytes in ``icc_profile`` for press-accurate separation, else device-naive GCR with
@@ -2118,7 +2119,9 @@ def export(
     (default: the page's title layer, then the file name). ``max_bytes`` is a size budget: when the
     encoded file is larger, ``report['warnings']`` says so (the export still succeeds). ``isolate`` (layer
     names, object paths such as ``dog/head`` or ``object:KIND``) exports only those layers, cropped to their ink
-    plus ``padding`` pixels on a transparent canvas, in any format."""
+    plus ``padding`` pixels on a transparent canvas, in any format. SVG output embeds the document it shows (its layers,
+    and the images and fonts they use) so that importing the SVG gives back the same editable layers;
+    ``svg_document=False`` leaves it out."""
     require(isinstance(overwrite, bool), "overwrite must be true or false", field="overwrite")
     require(path is None or overwrite or not Path(path).exists(),
             "Export output already exists; pass overwrite=True to replace it", "output_exists", field="path")
@@ -2274,7 +2277,8 @@ def export(
         if requested_format in ("HTML", "HTM"):
             from .html_export import export_html
             export_svg = export_html
-        data = export_svg(project, scale=scale, variables=variables, artboard=artboard, comp=comp, svg_policy=svg_policy)
+        data = export_svg(project, scale=scale, variables=variables, artboard=artboard, comp=comp, svg_policy=svg_policy,
+                          **({"document": svg_document} if requested_format == "SVG" else {}))
         if path:
             Path(path).write_bytes(data)
         return data
