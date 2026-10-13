@@ -17,23 +17,12 @@ build/
 !docs/assets/generated/*.vixl
 !assets/brand/digital-shift/Editable-Vixl/*.vixl
 !assets/brand/ripple/Editable-Vixl/*.vixl
-!movie/build/
-!movie/scenes/*.vixl
-movie/audio/
-!promo/build/
-!promo/scenes/*.vixl
-promo/audio/
-!promo/it-does-that/build/
-!promo/it-does-that/scenes/*.vixl
-!promo/it-does-that/score.vixl
-promo/it-does-that/audio/
-promo/it-does-that/work/
-promo/it-does-that/.film-*/
-movie/.film-*/
 .env
 
 examples/output/
-!marketing/output/**/*.vixl
+# agent-eval output (python -m evals.run); keep published results in VixlExamples
+/eval-results/
+/reference-results/
 
 tests/visual/_failures/
 !tests/fixtures/*.vixl

@@ -20,7 +20,7 @@ record the Git commit when using a source checkout.
 
 **[Documentation home](docs/README.md)** · [Getting started](docs/getting-started.md) ·
 [Visual gallery](docs/gallery.md) · [Command reference](docs/commands.md) ·
-[Downloads](https://github.com/jxburros/Vixl/releases/latest) · [Marketing pack](marketing/README.md)
+[Downloads](https://github.com/jxburros/Vixl/releases/latest) · [Examples and showcases](https://github.com/jxburros/VixlExamples)
 
 ![A diagram created entirely with editable Vixl layers](docs/assets/generated/workflow.png)
 
@@ -163,7 +163,8 @@ python -m pytest -q
 The documentation builder creates diagrams, charts, artwork, forms, slides and motion
 without AI credentials or network access. Every new visual has an editable master and
 operation recipe; see [documentation maintenance](docs/documentation-maintenance.md).
-[Explorations](explorations/README.md) showcase longer creative projects, and
+Showcases, explorations, the marketing pack, promo films and evaluation results live in
+[VixlExamples](https://github.com/jxburros/VixlExamples), and
 [agent evaluations](evals/README.md) measure design tasks.
 
 Vixl edits in RGBA8 sRGB and exports supported vectors or documented raster fallbacks.

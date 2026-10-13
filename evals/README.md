@@ -69,7 +69,7 @@ or message, which is a product bug.
 
 This suite measures agents using Vixl. To compare Vixl with the other ways an agent can make the
 same thing (HTML and SVG, Python libraries, free desktop tools, image generation, Claude Design),
-use the hand-run [tool comparison kit](tool-comparison/README.md): 16 briefs, judging notes with
+use the hand-run [tool comparison kit](https://github.com/jxburros/VixlExamples/blob/main/evals/tool-comparison/README.md): 16 briefs, judging notes with
 answer keys, fixtures and an output inspector.
 
 ## Adding tasks

@@ -2,6 +2,8 @@
 
 Vixl is a layered-image engine (CLI, Python API, MCP server, REST) in `src/vixl`. Tests are in `tests/`,
 user docs in `docs/`, the agent skill in `skills/vixl/`. `CONTRIBUTING.md` has the full rules.
+Showcases, explorations, films, marketing media and published eval results live in the separate VixlExamples
+repository (https://github.com/jxburros/VixlExamples); add new ones there and link to them.
 
 ## Running tests
 - `pytest -n auto` runs the whole suite (about 3,800 tests). Iterate on one file first: `pytest -q tests/test_x.py`.
