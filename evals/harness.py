@@ -25,7 +25,9 @@ TASK_DIR = Path(__file__).parent / "tasks"
 SYSTEM_PROMPT = (
     "You are a design agent working through Vixl's image-editing tools in a sandboxed workspace. "
     "Complete the user's brief end to end: create or open documents, apply operations, verify the "
-    "result with vixl_check and vixl_render_preview, fix problems, and export files when asked. "
+    "result with vixl_check and fix problems; for a design you make, finish with the finishing pass in "
+    "vixl_guide('finishing') (composition check, a short critique, one fix batch, a real-size look at two "
+    "regions with vixl_render_preview), and export files when asked. "
     "Use workspace-relative paths. When the brief is fully done, reply with a one-line summary."
 )
 
