@@ -125,29 +125,6 @@ def test_tampered_history_delta_is_rejected_when_used(tmp_path):
     assert error.value.code == "invalid_project"
 
 
-def test_format_1_projects_with_full_snapshots_still_load(tmp_path):
-    p = Project(16, 16)
-    p.apply({"type": "solid", "name": "box", "color": "red"})
-    moves(p, 2)
-    manifest = p.manifest()
-    manifest["format_version"] = 1
-    manifest["nodes"] = {
-        ident: {
-            "id": ident,
-            "parent": node["parent"],
-            "operations": node["operations"],
-            "label": node["label"],
-            "state": p._state_at(ident),
-        }
-        for ident, node in p.nodes.items()
-    }
-    with zipfile.ZipFile(tmp_path / "old.vixl", "w") as archive:
-        archive.writestr("project.json", json.dumps(manifest))
-    q = Project.load(tmp_path / "old.vixl")
-    q.undo(2)
-    assert q.layer("box")["x"] == 0
-
-
 def test_imported_jpeg_keeps_original_bytes(tmp_path):
     source = tmp_path / "photo.jpg"
     Image.new("RGB", (64, 48), "orange").save(source, quality=80)

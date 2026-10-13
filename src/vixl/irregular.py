@@ -361,7 +361,7 @@ def size_of(w, h):
 def resolve(recipe, w, h):
     """The numbers one layer is perturbed with: preset values scaled to its size and to the
     recipe's ``amount``, then any explicit fields the recipe sets."""
-    preset = STRENGTHS[recipe.get("strength", "natural")]
+    preset = STRENGTHS[recipe.get("strength", IRREGULAR_STRENGTH)]
     amount = recipe.get("amount", 1.0)
     on = set(EFFECTS if recipe.get("only") is None else recipe["only"])
     size = size_of(w, h)
@@ -530,8 +530,7 @@ def execute_irregular(project, op):
     for index, layer in enumerate(layers):
         before = (layer.get("irregular") or {}).get("recipe")
         recipe = {**(before or {}), **{k: deepcopy(op[k]) for k in RECIPE_KEYS if k in op}}
-        # A new recipe records the strength it starts at; one made before that default keeps "natural".
-        recipe.setdefault("strength", "natural" if before else IRREGULAR_STRENGTH)
+        recipe.setdefault("strength", IRREGULAR_STRENGTH)
         restore(project, layer)
         layer["irregular"] = make_irregular(project, layer, recipe, index)
 
@@ -654,7 +653,7 @@ def mask_image(points, layer, size):
 
 
 def tear_numbers(recipe, w, h):
-    preset = TEAR_STRENGTHS[recipe.get("strength", "natural")]
+    preset = TEAR_STRENGTHS[recipe.get("strength", IRREGULAR_STRENGTH)]
     short = min(w, h)
     edges = recipe.get("edges", ["bottom"])
     edges = EDGES if "all" in edges else tuple(e for e in EDGES if e in edges)
@@ -704,7 +703,7 @@ def execute_tear(project, op):
         return
     require("seed" in op, "tear needs a seed: the same seed always gives the same edge", field="seed")
     recipe = {**(previous or {}).get("recipe", {}), **{k: deepcopy(op[k]) for k in TEAR_KEYS if k in op}}
-    recipe.setdefault("strength", "natural" if previous else IRREGULAR_STRENGTH)
+    recipe.setdefault("strength", IRREGULAR_STRENGTH)
     mode = previous["mode"] if previous else recipe.get("as") or ("mask" if layer else "path")
     require(not previous or op.get("as", mode) == mode, f"This tear is a {mode}; remove it before switching",
             field="as")
@@ -806,8 +805,7 @@ def schemas(add):
     seed = {"type": "integer", "minimum": 0,
             "description": "Required. The same seed always gives the same result; a new seed regrows it."}
     strength = {**enum("subtle", "natural", "rough"),
-                "description": "Preset magnitudes, scaled to each layer's size. Default subtle (layers irregular "
-                               "or torn before 0.23 keep natural)."}
+                "description": "Preset magnitudes, scaled to each layer's size. Default subtle."}
     unit = {"type": "number", "minimum": 0, "maximum": 1}
     add("irregular", {
         "targets": {"type": "array", "items": S, "minItems": 1, "maxItems": MAX_LAYERS,

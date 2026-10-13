@@ -2,10 +2,9 @@
 
 from . import house_style
 
-# Version 1 safe palettes (name: (mood, colors)): the pool that layout-apply without a palette, templates
-# and house-style version 1 rolls draw from. Version 2 rolls draw from the tiered pools in the house style.
+# Safe palettes (name: (mood, colors)): the pool that layout-apply without a palette and templates draw from.
 SAFE_PALETTES = {name: (house_style.entries("palettes")[name]["mood"][0], house_style.palette_colors()[name])
-                 for name in house_style.legacy(1)["palettes"]}
+                 for name in house_style.safe_palettes()}
 SAFE_STYLES = set(house_style.names("styles", "safe"))
 SAFE_LOOKS = set(house_style.names("looks", "safe"))
 SAFE_PAIRINGS = set(house_style.names("pairings", "safe"))

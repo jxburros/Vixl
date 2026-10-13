@@ -440,7 +440,7 @@ class Style:
         self.scale = sorted({float(s["size"]) for s in state.get("character_styles", {}).values() if "size" in s})
         self.fs = int(round(recipe["font_size"])) if recipe.get("font_size") else self.snap(max(10, min(40, min(width, height) / 30)))
         self.pad = int(round(recipe["padding"] if "padding" in recipe else self.fs * 0.8))
-        if "padding" not in recipe and state.get("design_defaults", {}).get("house_style_version", 2) >= 3:
+        if "padding" not in recipe:
             from .craft import space
             self.pad = int(space(2, self.fs))
         override = recipe.get("background")

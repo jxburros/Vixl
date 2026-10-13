@@ -228,9 +228,8 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
   `loop_mode: "off"` or `loop: 1` for play-once. `animate` `intent` (entrance, exit, loop, emphasis) picks the house
   easing. Templates `video-tip`, `video-launch`, `video-event` build editable six-second loops (title/subtitle/cta).
   See [brushes and timeline](references/brushes-timeline.md).
-- **House style 3** — 16 more font pairings (76), weighted alignment, saturated backgrounds kept. Documents keep the
-  version they were created with; replay 0.23 rolls with `vixl roll --house-style 2` or `{"house_style": 2}` in
-  `.vixl/variety.json`. Explicit fields and saved geometry win. Minor social/poster text must be at least 2.2 % of
+- **House style** — 76 font pairings, weighted alignment, saturated backgrounds kept. Explicit fields and saved
+  geometry win. Minor social/poster text must be at least 2.2 % of
   the short side; bold text counts as large from 18.66 px (regular from 24 px).
 - **Spacing units** — `stack` and `layout-apply` `gap` accept `"2u"` (CLI `--gap 2u`; 1u = half the body size); new house-style
   stacks default to 2u.
@@ -386,7 +385,7 @@ AI-provider features (generate, inpaint, segmentation, OCR, plan) are in
 [references/ai.md](references/ai.md).
 
 Check availability first: `vixl --version` (CLI) or call `vixl_workspace_list` (MCP). Install from
-source with `pip install -e ".[server,mcp]"` (Python ≥ 3.11); Windows users use the installer.
+source with `pip install -e ".[server]"` (Python ≥ 3.11); Windows users use the installer.
 Set `VIXL_NO_UPDATE=1` in automation so the Windows auto-updater never runs mid-task.
 A slow render? `check --checks cost` names the costly layer; `VIXL_PROFILE=1` adds a `render_profile`
 (per-layer times, cache hits) to every result. `vixl cache info|clear` manages the disk render cache

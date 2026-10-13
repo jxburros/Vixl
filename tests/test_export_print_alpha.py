@@ -37,14 +37,6 @@ def test_single_page_print_pdf_is_exact_trim_plus_bleed_with_boxes(options):
     assert "/TrimBox" in page and "/BleedBox" in page
 
 
-def test_documents_with_the_old_rounded_up_bleed_still_export_at_the_physical_size():
-    p = _poster()
-    assert (p.state["canvas"]["width"], p.state["canvas"]["height"]) == (3375, 5175)
-    p.state["canvas"].update(width=3376, height=5176, bleed=38)  # as stored before 0.23
-    boxes, _ = _boxes(p.export(format="PDF"))
-    assert boxes["mediabox"] == [0, 0, 810, 1242] and boxes["trimbox"] == [9, 9, 801, 1233]
-
-
 def test_multi_page_and_metric_print_pdfs_are_exact():
     p = Project.sized("a4", "white", bleed=True)
     p.apply([{"type": "text", "name": "front", "text": "Front", "size": 60},

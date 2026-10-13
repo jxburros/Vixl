@@ -75,8 +75,7 @@ operation changes nothing (batches are atomic, like every operation).
 A chart's group is placed where `x`, `y`, `width` and `height` say. Fields left out start inside the
 document's safe area, inset by two spacing units (about one body size): a chart drawn with no geometry
 fills the safe area with that padding, so it passes the `safe_area` check as created. Pass
-`"x": 0, "y": 0` with the canvas `width` and `height` for the full canvas (earlier versions started a chart without geometry
-at the top-left corner at the canvas size). A canvas without a safe area keeps the whole canvas.
+`"x": 0, "y": 0` with the canvas `width` and `height` for the full canvas. A canvas without a safe area keeps the whole canvas.
 
 ## What is kept in sync
 

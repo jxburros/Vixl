@@ -347,7 +347,7 @@ vixl -p promo.vixl export-timeline --out banner.gif --colors 64 --fps 12   # sma
 
 Times: ms, `1.5s`, `250ms`, `50%`, or a marker (`vixl marker reveal 1.2s`).
 
-`vixl new` documents roll house style 3, so a new timeline of 10 s or less loops seamlessly (and warns about loop
+A new timeline of 10 s or less loops seamlessly (and warns about loop
 seams); for a play-once sequence use `timeline set --duration 3s --loop 1`, or `timeline set --loop-mode off` once the
 timeline exists. Since 0.24.1 the other 0.24 fields have flags too: `animate --intent entrance|exit|loop|emphasis`,
 `timeline set --loop-mode seamless|off [--close]`, `frame --frame-shape heart` or `--outline 'M… Z'`,
@@ -360,7 +360,7 @@ Use `schema text shape` for focused schemas, inline JSON or stdin for workflow r
 
 For Git review, `unpack design.vixl design-source` writes current state as stable JSON (`project.json`, with asset hashes) plus asset files into a new folder; `pack design-source reviewed.vixl [--overwrite]` validates paths, sizes and hashes and writes a portable archive. History and history-only assets are intentionally omitted; registered fonts are kept. Keep the original for undo and commit external linked sources too.
 
-Emoji: `vixl emoji list|get|template|replace|install|settings|reset|requirements|destinations|export` (`vixl -p F.vixl emoji settings --mode font` prefers the font; bundled art is the default). House style: `vixl roll --house-style 2` replays a 0.23 roll (`1`: 0.20–0.22); documents keep the version they were created with.
+Emoji: `vixl emoji list|get|template|replace|install|settings|reset|requirements|destinations|export` (`vixl -p F.vixl emoji settings --mode font` prefers the font; bundled art is the default). House style: `vixl roll` rolls from the current house style.
 
 `screen-capture` is a shared workflow action with output PNG, optional desktop bbox, Windows window HWND/all_screens and overwrite. It needs an interactive desktop and any OS-required permission. `app-animation-package` takes named source states, a default state, themes, transitions and a new output directory; see production guidance.
 

@@ -1014,8 +1014,7 @@ def execute_pattern_scatter(project, op):
     spacing = finite(float(spacing), "spacing", 1, 100000)
     distribution = recipe.get("distribution")
     if distribution is None:
-        version = project.state.get("design_defaults", {}).get("house_style_version", 2)
-        distribution = recipe["distribution"] = "progressive" if version >= 4 else "poisson"
+        distribution = recipe["distribution"] = "progressive"
     require(distribution in DISTRIBUTIONS, "distribution is progressive or poisson", field="distribution")
     if distribution == "progressive":
         explicit = recipe.get("spacing") is not None or not count

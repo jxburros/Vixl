@@ -102,7 +102,7 @@ def animated():
         [
             {"type": "shape", "name": "ball", "shape": "ellipse", "fill": "red", "width": 20, "height": 20, "x": 0, "y": 40},
             {"type": "text", "name": "label", "text": "Hi", "size": 20, "color": "black", "x": 150, "y": 10},
-            {"type": "timeline-set", "duration": "1s", "fps": 10},
+            {"type": "timeline-set", "duration": "1s", "fps": 10, "loop_mode": "off"},
             {"type": "animate", "target": "ball", "property": "x", "from": 0, "to": 180, "easing": "linear"},
             {"type": "animate", "target": "ball", "property": "fill", "to": "blue", "start": 0, "end": "1s"},
             {"type": "animate-preset", "target": "label", "preset": "fade-in", "duration": "0.5s"},

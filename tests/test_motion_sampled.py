@@ -36,7 +36,7 @@ def test_text_hidden_for_most_of_a_loop_is_reported():
                        {"time": 2000, "value": 0}]}])
     item = codes(p)["text-mostly-hidden"]
     assert "75%" in item["message"]
-    p.apply({"type": "timeline-set", "loop": 1})
+    p.apply({"type": "timeline-set", "loop": 1, "loop_mode": "off"})
     assert "text-mostly-hidden" not in codes(p)
 
 

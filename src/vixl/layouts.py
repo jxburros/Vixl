@@ -134,11 +134,7 @@ class Builder:
         self.corner = direction.get("corner") if direction.get("corner") in CORNERS else corner_style(project)
         # A bold or expressive roll sets headlines large (#285); quiet rolls keep the measured headline.
         self.large = direction.get("headline") == "large"
-        defaults = project.state.get("design_defaults", {})
-        self.version = op.get("_house_style_version", direction.get("house_style_version",
-                                                                    defaults.get("house_style_version", 2)))
-        # Details the rolled direction asks for (house style 4): the call to action as a pill, a date line on
-        # a highlight. Version 3 documents and directions without them keep the plain button and date.
+        # Details the rolled direction asks for: the call to action as a pill, a date line on a highlight.
         self.cta_style = direction.get("cta", "button")
         self.date_style = direction.get("date", "plain")
         require(self.cta_style in CTA_STYLES, f"direction.cta must be one of {', '.join(CTA_STYLES)}", field="direction")
@@ -489,9 +485,9 @@ class Builder:
         return (round(x), round(y), round(w), round(h))
 
     def clearance(self, device):
-        """Room a footer rule keeps above the copy (house style 4): one spacing unit above the rule, so the last row
+        """Room a footer rule keeps above the copy: one spacing unit above the rule, so the last row
         never sits on it. One unit is the smallest step of the spacing scale and twice the crowding threshold."""
-        if device != "footer" or self.version < 4:
+        if device != "footer" or not self.op.get("_clearance", True):
             return 0
         clear = self.unit * 1.25  # the rule sits a quarter unit above the bottom margin
         # Copy too tall to leave the room is set smaller (execute_layout's fit loop), not onto the rule.
@@ -647,25 +643,19 @@ def assign_roles(op, rng):
         # order, so it is derived from the background hue.
         ink = mix(background, extreme, 0.9)
     else:
-        version = op.get("_house_style_version", op.get("direction", {}).get("house_style_version", 2))
-        if version >= 3:
-            # Preserve saturated fields when the strongest available ink can meet the target.
-            # Binary search only the necessary wash, bounded by the house-style data.
-            target = house_style.rule("contrast")["ink_target"]
-            if contrast_ratio(extreme[:3], background[:3]) < target:
-                low, high = 0.0, house_style.rule("background_mix_max")[mode]
-                wash = white if mode == "light" else black
-                for _ in range(20):
-                    middle = (low + high) / 2
-                    if contrast_ratio(extreme[:3], mix(background, wash, middle)[:3]) >= target:
-                        high = middle
-                    else:
-                        low = middle
-                background = mix(background, wash, high)
-        elif mode == "light" and relative_luminance(background[:3]) < 0.6:
-            background = mix(background, white, 0.82)
-        elif mode == "dark" and relative_luminance(background[:3]) > 0.08:
-            background = mix(background, black, 0.75)
+        # Preserve saturated fields when the strongest available ink can meet the target.
+        # Binary search only the necessary wash, bounded by the house-style data.
+        target = house_style.rule("contrast")["ink_target"]
+        if contrast_ratio(extreme[:3], background[:3]) < target:
+            low, high = 0.0, house_style.rule("background_mix_max")[mode]
+            wash = white if mode == "light" else black
+            for _ in range(20):
+                middle = (low + high) / 2
+                if contrast_ratio(extreme[:3], mix(background, wash, middle)[:3]) >= target:
+                    high = middle
+                else:
+                    low = middle
+            background = mix(background, wash, high)
     if given_background is not None and parse(given_background)[3] > 0:
         background = parse(given_background)[:3] + (1.0,)
     for step in range(12):
@@ -2005,16 +1995,25 @@ def execute_layout(project, op):
             state.get("blanks", {}).pop(ident, None)
     seed = _seed(op, state["canvas"])
     snapshot = project.clone()
-    fit = 1.0
-    for attempt in range(6):
-        # Build on a copy; if text would leave the canvas, rebuild with a smaller type scale so the
-        # same composition fits small formats (business cards, banners) instead of overflowing.
-        trial = snapshot.clone()
-        trial._resource_budget = getattr(project, "_resource_budget", project.limits.max_operations)
-        builder = _build(trial, layout, op, seed, fit)
-        if "base_size" in op or attempt == 5 or not _overflows(trial, builder):
-            break
-        fit *= 0.84
+
+    def attempt_fits(options):
+        fit = 1.0
+        for attempt in range(6):
+            # Build on a copy; if text would leave the canvas, rebuild with a smaller type scale so the
+            # same composition fits small formats (business cards, banners) instead of overflowing.
+            trial = snapshot.clone()
+            trial._resource_budget = getattr(project, "_resource_budget", project.limits.max_operations)
+            builder = _build(trial, layout, options, seed, fit)
+            if "base_size" in op or not _overflows(trial, builder):
+                return trial, builder, False, fit
+            if attempt < 5:
+                fit *= 0.84
+        return trial, builder, True, fit
+
+    trial, builder, overflowing, fit = attempt_fits(op)
+    if overflowing and builder.floor is not None:
+        # The footer-rule clearance cannot be met even at the smallest type: drop it rather than overflow.
+        trial, builder, _, fit = attempt_fits({**op, "_clearance": False})
     supplied = [k for k in CONTENT_KEYS if k in op]
     unused = [k for k in supplied if k not in builder.read]
     if unused:

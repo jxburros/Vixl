@@ -28,8 +28,8 @@ def keeper():
     p = Project(8, 8, "transparent")
     p.apply(
         [
-            {"type": "pixel-art", "name": "coat", "palette": PALETTE, "rows": COAT},
-            {"type": "pixel-art", "name": "legs", "palette": PALETTE, "rows": ["L"], "x": 0, "y": 7},
+            {"type": "pixel-art", "name": "coat", "palette": PALETTE, "rows": COAT, "shading": False, "outline": False},
+            {"type": "pixel-art", "name": "legs", "palette": PALETTE, "rows": ["L"], "x": 0, "y": 7, "shading": False, "outline": False},
         ]
     )
     for name, (duration, x) in POSES.items():

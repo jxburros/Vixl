@@ -98,8 +98,7 @@ def design(project, *, size=None, size_from="argument", purpose=None, background
 
     direction = defaults.get("direction", {})
     if direction.get("palette"):
-        settings = {"palette": direction["palette"], "mode": direction.get("mode", "light"),
-                    "_house_style_version": defaults.get("house_style_version", 2)}
+        settings = {"palette": direction["palette"], "mode": direction.get("mode", "light")}
         if canvas["background"] != "transparent":
             settings["colors"] = {"background": canvas["background"]}
         roles = assign_roles(settings, random.Random(defaults["seed"]))
@@ -128,8 +127,7 @@ def palette_background(project, defaults):
     palette = direction.get("palette")
     if palette is None:
         return "transparent"
-    roles = assign_roles({"palette": palette, "mode": direction.get("mode", "light"),
-                          "_house_style_version": defaults.get("house_style_version", 2)}, random.Random(defaults["seed"]))
+    roles = assign_roles({"palette": palette, "mode": direction.get("mode", "light")}, random.Random(defaults["seed"]))
     return roles["background"]
 
 

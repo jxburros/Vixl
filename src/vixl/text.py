@@ -505,13 +505,12 @@ def is_heading(project, layer):
 
 
 def document_wrap(project, heading):
-    """The wrap a new boxed text layer takes when none is given: the house style's heading wrap for headings in
-    documents made with house style 4 or later (``wrap.since``), else greedy. Older documents keep greedy."""
+    """The wrap a new boxed text layer takes when none is given: the house style's heading wrap for headings,
+    else greedy."""
     from . import house_style
 
     rule = house_style.rule("wrap")
-    version = project.state.get("design_defaults", {}).get("house_style_version", 2)
-    return rule["heading"] if heading and version >= rule["since"] else "greedy"
+    return rule["heading"] if heading else "greedy"
 
 
 def validate_tabs(tabs, field="tabs"):

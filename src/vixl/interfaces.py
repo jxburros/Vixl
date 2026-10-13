@@ -1088,7 +1088,7 @@ def mcp_server(path=None, limits=None, *, workspace=None, schema="full", planner
         check_sdk()
         import mcp.server.fastmcp  # noqa: F401
     except ImportError as exc:
-        raise VixlError("missing_dependency", "Install vixl-engine[mcp]") from exc
+        raise VixlError("missing_dependency", "The mcp package is missing; reinstall vixl-engine") from exc
 
     if require_document is None:
         require_document = require_document_default()

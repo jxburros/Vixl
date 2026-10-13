@@ -148,20 +148,20 @@ paid agent run (`python -m evals.craft_rerun`, 1c) and judges, so no craft gain 
 | 2c | Built: the `final` profile runs `composition` | `src/vixl/policy.py` |
 | 3a | Built: the finishing pass ends the loop in SKILL.md, `START_HERE` and the MCP instructions; the checklist lives once, as guidance `finishing` | `src/vixl/guidance.py` |
 | 3b | Built: `check=true` returns every composition finding and the two weakest regions, with real-size crops when `preview` is also asked for | `src/vixl/critique.py` |
-| 4a | Built: `wrap: "balance"` and `"pretty"`; headings balance by default in house style 4 | [typography](typography.md#line-breaking) |
+| 4a | Built: `wrap: "balance"` and `"pretty"`; headings balance by default | [typography](typography.md#line-breaking) |
 | 4b | Built: tab stops with leaders on text, `leader` on table columns | [typography](typography.md) |
 | 4c | Built: `accent_words` on `layout-apply` | [sizes and layouts](sizes-and-layouts.md) |
 | 5a | Built: `key-value-list`, which chart `legend_values` also draws | [charts](charts.md), [containers](containers-and-templates.md) |
-| 5b | Built: one spacing unit of rule clearance in house style 4 (footer rules, `section-header`). T16's own crowding came from a table's header rule, which this does not change | [house style](house-style.md#house-style-4) |
-| 5c | Built: rolled `cta` pills and `date` highlights in house style 4 | [safe variety](safe-variety.md) |
+| 5b | Built: one spacing unit of rule clearance (footer rules, `section-header`). T16's own crowding came from a table's header rule, which this does not change | [house style](house-style.md#house-style-4) |
+| 5c | Built: rolled `cta` pills and `date` highlights | [safe variety](safe-variety.md) |
 | 6a | Built: `reflection`, `haze`, `star-field`, `string-lights`, `bokeh` | [atmosphere](atmosphere.md) |
 | 6b | Built: `vixl_guide` returns `motifs` from one registry, with new catalog shapes (cup, steam, lighthouse, lantern) | `src/vixl/data/motifs.json` |
 | 6c | Built: organic preset `water` | [organic](organic.md) |
-| 7a | Built: progressive `pattern-scatter` (40 → 32 copies keeps all 32 in place) and `thin`, in house style 4 | `src/vixl/scatter.py` |
+| 7a | Built: progressive `pattern-scatter` (40 → 32 copies keeps all 32 in place) and `thin` | `src/vixl/scatter.py` |
 | 7b | Built: fills register to rendered strokes; `edge_closes` carries short lines to the edge (`edge_reach`) | [drawing](drawing.md) |
 | 7c | Built: an enlarged photo runs its leading `denoise` at its own pixels, so linked crops show the cleaned master | `src/vixl/render.py` |
 | 7d | Built: a new chart fills the safe area, inset by two spacing units | [charts](charts.md) |
-| 7e | Built: shading ramp and outline on new `pixel-art` in house style 4 | [pixel art](pixel-animation-spacing.md) |
+| 7e | Built: shading ramp and outline on new `pixel-art` | [pixel art](pixel-animation-spacing.md) |
 
 Known gaps from the backtest: dead bands crossed by thin lines (T12 waves, T03 ripples), space beside a lone footnote
 (T08) and clumping that is about similar motifs lining up rather than density (T15) are not caught yet.
