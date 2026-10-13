@@ -15,7 +15,7 @@ the result and export. Text, geometry, masks, effects and history stay in the `.
 4. [Choose an export format](exporting.md): images, vectors, print, decks, forms and motion.
 5. [Resolve common problems](troubleshooting.md): installation, text, checks, imports and providers.
 
-Current tagged release: **0.26.0**. See the [release notes](../CHANGELOG.md#0260)
+Current tagged release: **0.27.0**. See the [release notes](../CHANGELOG.md#0270)
 for the features and behavior changes in this version.
 See [installation and updating](releases.md) for Windows, source and agent bundles.
 

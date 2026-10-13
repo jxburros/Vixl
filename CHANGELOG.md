@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.27.0
+
+A breaking release: a seven-tool MCP server, the compatibility machinery for older releases removed (use the [conversion kit](docs/converting.md) for documents and saved batches from 0.26 and earlier), a published `.vixl` format with SVG round trip and editable SVG, PDF and Figma import, flush-inside strokes on closed shapes, render-parity fixes and terminal summaries in the CLI.
 
 Work from the [craft plan](docs/craft-plan.md). Craft claims here wait for a blind re-judging; nothing below claims a craft gain on its own.
 

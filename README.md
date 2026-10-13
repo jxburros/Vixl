@@ -14,7 +14,7 @@ out at the print shop.
 
 Works through MCP, CLI, Python or REST. No windows required.
 
-Current tagged release: **0.26.0**. See the [changelog](CHANGELOG.md#0260) for release notes.
+Current tagged release: **0.27.0**. See the [changelog](CHANGELOG.md#0270) for release notes.
 Run `vixl --version` to check your runtime;
 record the Git commit when using a source checkout.
 
@@ -113,7 +113,7 @@ vixl mcp --workspace .
 For a pinned tagged runtime with uv:
 
 ```bash
-uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.26.0.tar.gz vixl mcp --workspace .
+uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.27.0.tar.gz vixl mcp --workspace .
 ```
 
 The workspace must exist. The server offers seven tools (`vixl_document`, `vixl_apply`, `vixl_check`,
