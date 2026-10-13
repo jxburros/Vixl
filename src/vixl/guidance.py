@@ -3,9 +3,21 @@
 ``vixl_guide(brief=NAME)``, ``vixl_resource_get(kind="guidance", name=NAME)``, ``vixl_resources_list``,
 the guidance names a ``vixl_guide`` kind points at and the ``guidance`` that ``vixl_capabilities`` lists
 all read ``GUIDANCE``; user additions (``vixl_resource_add``) join it through ``resources.catalog``.
+
+Motif knowledge (the concrete things a brief implies and what draws them) is data in ``data/motifs.json``,
+read only here: ``motifs(brief)`` gives the themes a brief matches, which ``vixl_guide`` returns as ``motifs``.
 """
 
+from functools import lru_cache
+import json
+from pathlib import Path
+import re
+import unicodedata
+
+MOTIFS_FILE = Path(__file__).resolve().parent / "data" / "motifs.json"
+
 GUIDANCE = {
+    "motifs": "Draw the specific thing the brief names, not a placeholder: a cup with steam rather than a disc, a lighthouse standing in filled layered water rather than on a bar, strung lanterns with glows rather than dots on a line, an irregular lit skyline rather than equal boxes, reflections that mirror the scene rather than dashes. vixl_guide(brief) lists the motifs a brief implies with the catalog shapes, organic presets, object kinds and operations (string-lights, star-field, haze, reflection, bokeh, organic preset water) that draw them; vixl_guide('motifs') lists every theme. Give the motif one focal place, keep decoration clear of the copy, and check the preview at delivery size: if a shape could be anything, add the detail that names it.",
     "overall": "Choose a clear hierarchy, align related elements, use consistent spacing, preserve readable contrast, inspect at delivery size, and measure before exporting.",
     "minimal": "Use generous negative space, a small palette, few type sizes, and a single focal point. Prefer simple geometry and deliberate alignment.",
     "editorial": "Establish headline, body and caption hierarchy. Use a coherent grid, restrained accents, and consistent margins. Keep body text readable.",
@@ -104,3 +116,27 @@ Passing checks proves a design is correct, not that it reads as designed. A fini
 4) Look at real size: vixl_render_preview(region=[x, y, w, h], max_width=w, max_height=h) on two regions, the focal point and the densest text or detail. With max_width and max_height equal to the region size the preview is 1:1; the default preview is reduced, and halos, blur, crowding, runts and ragged edges only show at real size.
 5) Export with vixl_export_file; before shipping, vixl_check(profile='final') also fails on unresolved review findings.""",
 }
+
+
+@lru_cache(maxsize=1)
+def motif_registry():
+    """Every motif theme: ``{name: {title, keywords, elements}}``."""
+    return json.loads(MOTIFS_FILE.read_text(encoding="utf-8"))["themes"]
+
+
+def _plain(text):
+    folded = unicodedata.normalize("NFKD", str(text)).encode("ascii", "ignore").decode("ascii")
+    return " " + " ".join(re.findall(r"[a-z0-9]+", folded.lower())) + " "
+
+
+def motifs(brief):
+    """The motif themes a free-text brief implies, best match first, each with the keywords it matched."""
+    text = _plain(brief)
+    found = []
+    for index, (name, theme) in enumerate(motif_registry().items()):
+        hits = [word for word in theme["keywords"] if _plain(word) in text]
+        if hits:
+            found.append((-sum(len(_plain(w).split()) for w in hits), index, name, hits))
+    return [{"theme": name, "title": motif_registry()[name]["title"], "matched": hits,
+             "elements": json.loads(json.dumps(motif_registry()[name]["elements"]))}
+            for _, _, name, hits in sorted(found)]

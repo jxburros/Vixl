@@ -1509,7 +1509,9 @@ def build_server(session, *, schema="full", planner=False, tools="all", allow_sc
     ) -> dict:
         """What to make and how. No brief: the start-here recipe, every kind of work and every guidance name. A kind or
         free-text brief: the approach, the operations, layouts, looks and styles that suit it, the guidance to read and a
-        working example. A guidance name returns that guidance text. brief=operations lists every operation by purpose;
+        working example; a brief that implies a setting (a café, a harbor, a night market) also gets motifs: the concrete
+        things to draw and the shapes, presets and operations that draw them (brief=motifs lists every theme). A guidance
+        name returns that guidance text. brief=operations lists every operation by purpose;
         brief=looks lists the finishing looks. Use it before improvising: layouts are text compositions, so non-poster
         work starts here. Field-level detail: vixl_capabilities."""
         from .briefs import guide

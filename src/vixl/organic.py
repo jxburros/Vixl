@@ -1069,6 +1069,33 @@ def gen_path(p, ctx):
     return Shape({"shape": items})
 
 
+def gen_band(p, ctx):
+    """A filled band under a wavy top edge, spanning x -1...1 down to a flat bottom: layered water, dunes, hills.
+
+    The frame is not normalized, so bands of one preset keep their places relative to each other. With
+    ``crest`` above 0 it also outputs a ``crest`` sliver along the same edge, thicker on the rising faces."""
+    top = p.number("top", 0.0, -1, 1)
+    bottom = p.number("bottom", 1.0, -1, 2)
+    amplitude = p.number("amplitude", 0.06, 0, 1)
+    waves = p.number("waves", 2.5, 0, 40)
+    phase = p.number("phase", 0.0, -100, 100)
+    chop = p.number("chop", 0.35, 0, 1)
+    noise = p.number("noise", 0.15, 0, 1)
+    crest = p.number("crest", 0.0, 0, 2)
+    count = 241
+    x = np.linspace(-1, 1, count)
+    s = (x + 1) / 2
+    edge = top + amplitude * (np.sin(math.tau * (waves * s + phase))
+                              + chop * np.sin(math.tau * (waves * 2.3 * s + phase * 1.7 + 0.21))) / (1 + chop)
+    if noise:
+        edge = edge + amplitude * noise * loop_noise(count, ctx["rng"], 2, max(1.0, waves * 1.5), False)
+    upper = np.column_stack([x, edge])
+    tags = {"shape": [element(np.vstack([upper, [[1.0, bottom], [-1.0, bottom]]]), True, False)]}
+    if crest:
+        swell = crest * (0.3 + 0.7 * (0.5 + 0.5 * np.sin(math.tau * (waves * s + phase) + 0.9)))
+        tags["crest"] = [element(np.vstack([upper, np.column_stack([x, edge + swell])[::-1]]), True, False)]
+    return Shape(tags)
+
 GENERATORS = {
     "superformula": (gen_superformula, "Gielis superformula outline: starfish, flowers, cells, diatoms, cactus sections"),
     "blob": (gen_blob, "Irregular rounded loop with smooth noise and optional lobes: cells, pebbles, amoebae"),
@@ -1088,6 +1115,7 @@ GENERATORS = {
     "ellipse": (gen_ellipse, "Ellipse, egg, teardrop or crescent"),
     "rings": (gen_rings, "Concentric growth rings with noise"),
     "path": (gen_path, "Any SVG path as the starting form"),
+    "band": (gen_band, "Filled band under a wavy top edge (or a crest sliver): layered water, dunes, hills"),
 }
 
 
@@ -1878,6 +1906,43 @@ def preset_lily_pad(v):
              "fill": "transparent", "stroke": "#8fca7a", "stroke_width": 1.2}]
 
 
+def _tone(value, toward, amount):
+    from .colors import parse
+
+    a, b = parse(value)[:3], parse(toward)[:3]
+    return "#" + "".join(f"{round((x + (y - x) * amount) * 255):02x}" for x, y in zip(a, b))
+
+
+def preset_water(v):
+    """Filled bands of layered water, light at the horizon and darker toward the viewer, with crest highlights."""
+    bands = max(2, min(8, int(_p(v, "bands", 4))))
+    amplitude = float(_p(v, "amplitude", 0.07))
+    waves = float(_p(v, "waves", 2.5))
+    phase = float(_p(v, "phase", 0.0))
+    crest = bool(_p(v, "crest", True))
+    tones = _p(v, "tones", None)
+    if tones:
+        require(isinstance(tones, list) and all(isinstance(t, str) for t in tones) and tones,
+                "params.tones is a list of colours, back (horizon) to front", field="params.tones")
+        palette = [tones[min(len(tones) - 1, round(i * (len(tones) - 1) / max(1, bands - 1)))] for i in range(bands)]
+    else:
+        base = _p(v, "color", "#2a6f8f")
+        palette = [_tone(base, "#ffffff", 0.32 * (1 - i / (bands - 1))) if i < (bands - 1) / 2 else
+                   _tone(base, "#000000", 0.45 * (i / (bands - 1) - 0.5)) for i in range(bands)]
+    parts = []
+    for i in range(bands):
+        near = i / (bands - 1)
+        band = {"top": round(-1 + amplitude + i * 1.75 / bands, 4), "amplitude": round(amplitude * (0.6 + 0.6 * near), 4),
+                "waves": round(waves * (1.3 - 0.45 * near), 4), "phase": round(phase + i * 0.37, 4)}
+        part = {"name": f"band-{i + 1}", "generator": "band", "params": band, "fill": palette[i]}
+        if crest:
+            band["crest"] = round(max(0.006, amplitude * 0.7), 4)
+            part["styles"] = {"crest": {"fill": _tone(palette[i], "#ffffff", 0.45), "stroke": "transparent",
+                                        "opacity": 0.9}}
+        parts.append(part)
+    return parts
+
+
 PRESETS = {
     "flower": (preset_flower, "Petals in alternating whorls around a phyllotaxis centre", {"petals": 5, "rings": 1, "tip": "round"}),
     "daisy": (preset_daisy, "Many notched white rays around a golden disc", {"petals": 21}),
@@ -1912,7 +1977,12 @@ PRESETS = {
     "dandelion": (preset_dandelion, "Seed head of radiating fine stalks", {"seeds": 60}),
     "pinecone": (preset_pinecone, "Golden-angle cone scales with overlap", {"scales": 89}),
     "lily-pad": (preset_lily_pad, "Notched round pad with radiating veins", {}),
+    "water": (preset_water, "Filled layered water bands, light at the horizon and darker in front, with crests "
+              "(fills its box: stretch and no padding by default)",
+              {"bands": 4, "color": "#2a6f8f", "amplitude": 0.07, "waves": 2.5, "crest": True}),
 }
+# Scenery presets fill the layer's box edge to edge instead of keeping their aspect inside a padded box.
+BOX_PRESETS = ("water",)
 
 
 def catalog():
@@ -2285,8 +2355,9 @@ def execute(project, op):
     widest = max([spec.get("stroke_width", 0) for spec, _ in built if spec.get("stroke", "transparent") != "transparent"]
                  + [recipe.get("stroke_width", style.get("stroke_width", 1))
                     for spec, _ in built for style in (spec.get("styles") or {}).values()] + [0])
-    padding = finite(recipe.get("padding", 2 + widest / 2), "padding", 0, min(width, height) / 2 - 1)
-    paths = render_paths(built, width, height, padding, not recipe.get("stretch", False))
+    boxed = recipe.get("preset") in BOX_PRESETS and "parts" not in recipe
+    padding = finite(recipe.get("padding", 0 if boxed else 2 + widest / 2), "padding", 0, min(width, height) / 2 - 1)
+    paths = render_paths(built, width, height, padding, not recipe.get("stretch", boxed))
     styles = {spec["name"]: spec for spec, _ in built}
     layers = []
     for name, tag, d in paths:

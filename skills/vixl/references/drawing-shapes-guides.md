@@ -64,12 +64,28 @@ Full reference: `docs/drawing.md`.
 
 For living things (flowers, trees, leaves, shells, creatures, coral, markings) use `organic`
 rather than hand-placing ellipses: `{"type": "organic", "preset": "sunflower", "name": "bloom",
-"seed": 7}`. `vixl organics` / workflow `organic-catalog` lists 18 generators, 19 rules and 33
+"seed": 7}`. `vixl organics` / workflow `organic-catalog` lists 19 generators, 19 rules and 34
 presets; `parts` compose your own. Regrow with a new `seed` and the same `target`. To keep a
 form inside a brand palette pass `fill` (every filled part), `stroke` and `stroke_width` (every
 line, extra outputs such as shell chambers and leaf veins included); `colors` names single
 parts and wins over `fill`. A regrow with `stroke`/`fill` restyles the same way as creating
 with them. Full reference: `docs/organic.md`.
+
+Water is the scene preset `water`: filled bands lighter at the horizon and darker in front, with crests, filling its
+box edge to edge (`{"type": "organic", "preset": "water", "name": "sea", "x": 0, "y": 700, "width": 1080, "height":
+380, "params": {"tones": ["#a8d5c8", "#3f7f95", "#14263b"]}}`). Use it instead of stroked wave lines; stand a
+lighthouse or pier in it by ordering it below the front band.
+
+## Scene atmosphere and motifs
+
+One operation each, deterministic for `seed`: `haze` (a glow band behind a light, `target` the light), `star-field`
+(stars and sparkles in a `region`, clear of every text layer), `string-lights` (bulbs or `bulb: lantern` evenly along
+`from`/`to`/`sag` or a `target` path, with glows), `bokeh` (soft light discs) and `reflection` (the layers above a
+`horizon` mirrored, rippled and faded below it; one raster layer that `{type: reflection, target: reflection}`
+re-renders after the scene changes). The first four make editable groups of vector shapes and gradients.
+`vixl_guide(brief)` returns `motifs` for a brief that implies a setting: the concrete things to draw (a cup with
+steam, a lighthouse in filled water, strung lanterns, an irregular skyline) and the catalog shapes (`cup`, `steam`,
+`lighthouse`, `lantern`), presets and operations that draw them. Full reference: `docs/atmosphere.md`.
 
 ## Imperfection: irregular and tear
 

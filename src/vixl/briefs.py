@@ -174,17 +174,22 @@ KINDS = {
     },
     "scene": {
         "title": "Scene or illustration",
-        "keywords": ["scene", "illustration", "landscape", "sunset", "mountains", "forest", "sky", "city", "poster art", "background", "nature"],
+        "keywords": ["scene", "illustration", "landscape", "sunset", "mountains", "forest", "sky", "city", "poster art", "background", "nature",
+                     "seascape", "skyline"],
         "summary": "Depth from layered flat shapes: sky gradient, sun, hills and foreground, with organic forms for plants.",
         "approach": ["Fill the canvas with a sky gradient.", "Stack hills and buildings back to front, darker toward the foreground.",
                      "Add a sun or moon with a glow; plant organic trees, flowers or ferns.",
+                     "Water is filled layered bands (organic preset water), not stroked wave lines; draw the specific motif "
+                     "the brief names (the result's motifs lists them) and finish the atmosphere with single operations: "
+                     "haze behind lights, star-field (clear of the copy), string-lights along a sag, bokeh, and reflection "
+                     "below the waterline.",
                      "For an illustrated rather than computed feel, irregular (subtle) the drawn shapes and tear any paper; keep "
                      "the sky and frame clean.", "Finish with grain; check the preview."],
         "operations": ["gradient", "shape", "pen", "organic", "organic-shape", "irregular", "tear", "look", "layer-style", "paint",
-                       "radial-repeat"],
+                       "radial-repeat", "haze", "star-field", "string-lights", "bokeh", "reflection"],
         "layouts": ["photo-caption", "rule-of-thirds"], "looks": ["glow", "grain", "paper", "watercolor", "gradient"],
         "styles": ["retro-futurism", "mid-century-modern", "hand-drawn", "risograph"], "sizes": ["instagram-post", "web-hero", "poster-18x24"],
-        "guidance": ["natural-color-light", "illustration-perspective", "imperfection", "finishing"],
+        "guidance": ["natural-color-light", "illustration-perspective", "imperfection", "motifs", "finishing"],
         "example": [
             {"type": "gradient", "name": "sky", "direction": "vertical", "start": "#1e3a8a", "end": "#fdba74"},
             {"type": "shape", "shape": "ellipse", "name": "sun", "x": 520, "y": 220, "width": 160, "height": 160, "fill": "#fde68a"},
@@ -372,6 +377,8 @@ OPERATION_GROUPS = {
     "Repeat and symmetry": ["repeat", "repeat-blend", "radial-repeat", "scatter", "pattern-scatter", "place", "snap", "guide", "grid", "pathfinder", "path-fit"],
     "Finish and style": ["look", "layer-style", "effect", "style-set", "style-define", "style-apply", "type-scale", "swatch", "palette-apply",
                          "palette-generate", "palette-define", "opacity", "blend", "mask", "lookup", "lut"],
+    "Scene and atmosphere": ["haze", "star-field", "string-lights", "bokeh", "reflection", "particles", "lighting",
+                             "layer-depth", "camera"],
     "Compose from layouts": ["layout-apply", "template-apply", "container-place", "container-swap", "container-reflow", "container-variant", "container-fill", "image-slot", "shape-place"],
     "Time and pages": ["timeline-set", "keyframe", "animate", "animate-preset", "marker", "page", "master", "frame-save", "frame-apply",
                        "animation-set"],
@@ -547,6 +554,10 @@ def guidance(name, *, workspace=None):
     if name not in texts:
         return None
     result = {"guidance": name, "text": texts[name]}
+    if name == "motifs":
+        from .guidance import motif_registry
+
+        result["themes"] = motif_registry()
     kinds = [kind for kind, item in KINDS.items() if name in item.get("guidance", [])]
     if kinds:
         result["kinds"] = kinds
@@ -601,11 +612,17 @@ def guide(brief=None, *, seed=None, variety=None, workspace=None):
         return found
     from .objects import find as find_kind, kind_in_text, registry
 
+    from .guidance import motifs
+
     kinds = registry(workspace)
     ranked = match(brief)
+    implied = motifs(brief)
     subject = find_kind(brief, kinds) or kind_in_text(brief, kinds)
-    if not ranked and subject:
+    if not ranked and subject and not implied:
         return object_guide(subject, workspace)
+    if not ranked and implied:
+        # A brief that names a setting but no kind of work ("a lighthouse at dusk") is a scene.
+        ranked = ["scene"]
     if not ranked:
         raise VixlError("no_match", f"No kind of work matches {brief!r}; kinds: {', '.join(KINDS)}. Call vixl_guide() for the start-here "
                                     "recipe and the guidance names.", field="brief", suggestions=list(KINDS)[:6], allowed=list(KINDS))
@@ -614,6 +631,8 @@ def guide(brief=None, *, seed=None, variety=None, workspace=None):
                        best, seed, variety, workspace)
     if subject:
         result["object"] = object_summary(subject, workspace)
+    if implied:
+        result["motifs"] = implied
     return result
 
 

@@ -86,6 +86,7 @@ export writes native paths.
 | `pinecone` | pointed scales clipped to an egg, occluded | `rows`, `color` |
 | `lily-pad` | notched pad with radiating veins | `color` |
 | `fur-blob` | an ellipse body with lanceolate tufts `along` its outline pointing out, and darker inner flicks | `tufts`, `aspect`, `length`, `color`, `flick_color` |
+| `water` | filled layered water: `band` parts lighter at the horizon and darker in front, each with a crest sliver (a scene preset that fills its box) | `bands` 4, `color`, `tones` (back to front), `amplitude` 0.07, `waves` 2.5, `phase`, `crest` true |
 
 ### Presets and their kinds
 
@@ -129,6 +130,25 @@ kinds: apply them to an object's parts rather than declaring them as objects.
 | `dandelion` | `dandelion` | organic › botanical › flower › dandelion |
 | `pinecone` | `pinecone` | organic › botanical › pinecone |
 | `lily-pad` | `lily-pad` | organic › botanical › lily-pad |
+| `water` | `water` | natural › water |
+
+### Scene preset: layered water
+
+Water reads as finished when it is filled: three or four bands of sea in related tones, lighter at the horizon
+and darker toward the viewer, each with a lighter crest along its edge. Thin stroked wave lines next to filled
+shapes read as a sketch. `water` is a scene preset: unlike the creature presets it fills its box edge to edge
+(`stretch` and no `padding` by default), so give it the canvas width and the height of the sea.
+
+```json
+{"type": "organic", "preset": "water", "name": "sea", "x": 0, "y": 700, "width": 1080, "height": 380, "seed": 2,
+ "params": {"tones": ["#a8d5c8", "#3f7f95", "#14263b"], "bands": 3, "waves": 2}}
+```
+
+The parts are `sea/band-1` (the back band) to `sea/band-N`, each followed by `sea/band-N-crest`. `colors` recolors
+one band (`{"band-2": "#3f7f95"}`), `params.color` derives all the tones from one blue, and `crest: false` leaves
+the crests out. A lighthouse or pier "stands in" the water when its base sits between two bands: draw it, then
+`reorder` it below the front band. Calm water (a lake) takes a low `amplitude` such as 0.02; add `reflection`
+([scene atmosphere](atmosphere.md)) to mirror the shore into it.
 
 ## Custom forms
 
@@ -180,6 +200,7 @@ tentacles all orient the same way. `transform` scales, then rotates, then moves;
 | `ellipse` | ellipse, egg, teardrop or crescent | `form`, `aspect` 1, `point` 2 |
 | `rings` | concentric growth rings | `count` 10, `noise` 0.04, `spacing` (even, growth) |
 | `path` | any SVG path, normalized | `d` |
+| `band` | a filled band under a wavy top edge down to a flat bottom, not normalized (so bands keep their places); `crest` adds a `crest` output sliver along the edge | `top` 0, `bottom` 1, `amplitude` 0.06, `waves` 2.5, `phase`, `chop` 0.35, `noise` 0.15, `crest` 0 |
 
 ### Rules
 
