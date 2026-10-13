@@ -78,7 +78,7 @@ def members(session, request, *, default_all=False, allow_empty=False):
     if group_name is not None:
         path = session.resolve(f".vixl-groups/{named(group_name)}.json")
         require(path.is_file(), f"Unknown project group {group_name!r}", "not_found", field="group",
-                suggestions=["vixl_workflow group-list"])
+                suggestions=["vixl_apply(workflow='group-list')"])
         group = read_json(path)
         paths += [session.resolve(p) for p in group["documents"]]
     documents = request.get("documents")

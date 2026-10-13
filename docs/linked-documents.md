@@ -43,7 +43,7 @@ source's `source_hash` (SHA-256) and `source_size` as of the last `link`, change
 Rendering always uses the source as it is on disk now, with no refresh needed. The recorded hash exists
 so you can tell what changed behind your back:
 
-- **`links`** (CLI), the `links` workflow action (MCP `vixl_workflow("links", {})`, REST
+- **`links`** (CLI), the `links` workflow action (MCP `vixl_apply(workflow='links', request={})`, REST
   `POST /workflow/links`) and `inspect` (`links` list) report every link with a `state`:
   `ok`, `stale` (the source changed since it was last recorded; the layer already draws the new version),
   `missing` (the error names the path it looked for), `cycle`, `forbidden` or `error` (an unreadable
@@ -56,7 +56,7 @@ so you can tell what changed behind your back:
   document's folder is an `info` finding (copying the folder elsewhere would break it).
 - Each listed link carries `path` (the resolved absolute file) and `resolved_from` (`document`,
   `workspace` or `absolute`: which folder it was found in).
-- Production runs (`vixl_workflow("run", …)`) include the revisions of linked sources in their
+- Production runs (`vixl_apply(workflow='run', request=…)`) include the revisions of linked sources in their
   fingerprints, so a changed source re-renders the variants that use it.
 
 ## Freezing a link
@@ -123,7 +123,7 @@ vixl links-relink FROM TO        # rewrite a source prefix in every link
 vixl links                       # every link with its state
 ```
 
-Through MCP and REST the same operations go through `vixl_operations_apply` / `POST /operations`
+Through MCP and REST the same operations go through `vixl_apply` / `POST /operations`
 (`link`, `link-refresh`, `link-embed`, `links-relink`).
 
 ## Mockups
@@ -144,7 +144,7 @@ them out). Because the design is linked, editing it updates every mockup on its 
 `link-refresh` records the new version. `fit` (`fill`, the default, `fit` or `stretch`), `source_page` and
 `artboard` choose how and what of the design is shown. With several templates, `output` is a folder that
 receives `TEMPLATE.vixl` each; `export` writes images next to them through the same path as
-`vixl_export_batch`. Existing files are never replaced unless `overwrite: true`.
+`vixl_export(kind='batch')`. Existing files are never replaced unless `overwrite: true`.
 
 | Template | Scene | Slots |
 | --- | --- | --- |

@@ -5,11 +5,11 @@
 Never guess pixel dimensions for a known medium. Ask for the catalog, then create from a name:
 
 ```text
-vixl_sizes_list(category="print")                       # or social, stationery, icons, logos, ads, email, video, slides …
-vixl_document_create(path="flyer.vixl", size="letter", bleed=true)
-vixl_document_create(path="card.vixl", size="business-card", bleed=true)
-vixl_document_create(path="post.vixl", size="instagram-portrait")
-vixl_document_create(path="icon.vixl", size="favicon")
+vixl_reference('sizes')                       # or social, stationery, icons, logos, ads, email, video, slides …
+vixl_document(action='create', path="flyer.vixl", size="letter", bleed=true)
+vixl_document(action='create', path="card.vixl", size="business-card", bleed=true)
+vixl_document(action='create', path="post.vixl", size="instagram-portrait")
+vixl_document(action='create', path="icon.vixl", size="favicon")
 ```
 
 ```bash
@@ -25,14 +25,14 @@ Print sizes record `dpi`, `bleed` and `safe` (pixels) on the canvas and create g
 When asked for "a poster", "a post for X", "a logo for Y" with free rein, apply a layout first and refine it. Layouts encode principles (focal point, grid, thirds, golden section, reading pattern) and choose among sound variations by seed, so results are structured without all looking alike.
 
 ```text
-vixl_layouts_list()                                     # names, principles, best_for, content keys
-vixl_operations_apply(operations=[{"type":"layout-apply","name":"event-poster",
+vixl_reference('layouts')                                     # names, principles, best_for, content keys
+vixl_apply(operations=[{"type":"layout-apply","name":"event-poster",
   "title":"Night Market","label":"Sat · June 21","body":"6 pm – 11 pm\nRiverside Park","cta":"RSVP",
   "palette":"sunset","seed":4}])
-vixl_check() ; vixl_render_preview()
+vixl_check() ; vixl_render()
 ```
 
-- Pick by medium: `hero-statement`, `split-screen`, `rule-of-thirds`, `asymmetric-balance` (social, posters); `editorial-grid`, `f-pattern`, `letterhead`, `framed` (documents); `banner`, `z-pattern` (wide ads); `story-vertical` (9:16); `thumbnail-bold` (YouTube); `slide-title`, `slide-content`; `logo-horizontal`, `logo-stacked`, `emblem`, `monogram`, `app-icon` (identity); `price-list`, `event-poster`, `product-card`, `big-number`, `quote-card`, `bento-grid`, `typographic-poster`, `minimal-mark`, `photo-caption`, `diagonal-band`, `golden-section`, `centered-axis`; `meme-top-bottom`, `meme-caption-above`, `meme-comparison`, `meme-labelled`, `meme-reaction`, `meme-four-panel` (memes: `image` or `images`, one asset per panel; bring your own pictures); quieter compositions `calm-cover`, `quiet-editorial`, `inset-editorial`, `offset-column`, `right-margin`, `open-letter`, `centered-note`, `centered-rule`, `asymmetric-note`, `balanced-announcement`, `modern-bulletin`, `quiet-invitation`, `soft-panel`, `wide-statement`, `gallery-label`, `business-card` (53 in all; `vixl_layouts_list` has each one's `best_for`).
+- Pick by medium: `hero-statement`, `split-screen`, `rule-of-thirds`, `asymmetric-balance` (social, posters); `editorial-grid`, `f-pattern`, `letterhead`, `framed` (documents); `banner`, `z-pattern` (wide ads); `story-vertical` (9:16); `thumbnail-bold` (YouTube); `slide-title`, `slide-content`; `logo-horizontal`, `logo-stacked`, `emblem`, `monogram`, `app-icon` (identity); `price-list`, `event-poster`, `product-card`, `big-number`, `quote-card`, `bento-grid`, `typographic-poster`, `minimal-mark`, `photo-caption`, `diagonal-band`, `golden-section`, `centered-axis`; `meme-top-bottom`, `meme-caption-above`, `meme-comparison`, `meme-labelled`, `meme-reaction`, `meme-four-panel` (memes: `image` or `images`, one asset per panel; bring your own pictures); quieter compositions `calm-cover`, `quiet-editorial`, `inset-editorial`, `offset-column`, `right-margin`, `open-letter`, `centered-note`, `centered-rule`, `asymmetric-note`, `balanced-announcement`, `modern-bulletin`, `quiet-invitation`, `soft-panel`, `wide-statement`, `gallery-label`, `business-card` (53 in all; `vixl_reference('layouts')` has each one's `best_for`).
 - Content keys: `title`, `subtitle`, `body`, `label`, `cta`, `caption`, `items` (newline-separated; `Name | $9` rows for price lists; `Heading: text` for f-pattern; bullets for slides), `image` (an embedded asset ID; otherwise a placeholder frame named `image` you fill with `replace-contents`).
 - Variation: change `seed` to explore; pin `palette`, `mode` (light/dark), `type_scale` (`minor-third` … `golden` or a number), `density` (airy/balanced/dense), `align`, `accent` (rule/bar/dot/block/outline/none), `gap` (pixels or spacing units such as `"2u"`, 1u = half the body size). The chosen system is in the result's `changes.layout` and in `state.layout`; a `notes` entry means type was shrunk to fit.
 - Layouts create swatches `@background @surface @ink @muted @accent @accent-text @on-accent` (contrast-checked) and character styles `caption body lead subhead title headline display`. Edit a swatch to retint everything; use `@accent-text` (not `@accent`) for small accent-colored text.
@@ -43,7 +43,7 @@ vixl_check() ; vixl_render_preview()
 
 A layout with an image slot (`product-card`, `split-screen`, `photo-caption`, `story-vertical` …) draws a
 placeholder frame when `image` is not given and returns `next_steps` with the slot's bounds and the four
-ways to fill it: **import** (`vixl_import_image` → `replace-contents` or re-apply with `image=`),
+ways to fill it: **import** (`import-image` → `replace-contents` or re-apply with `image=`),
 **resource** (a saved shape or container), **draw** (shape/pen/organic/paint inside the bounds), or **AI**
 (`vixl_ai_generate`, needs a provider). `check` reports the placeholder as a blank until it is replaced.
 
@@ -62,26 +62,26 @@ indexes or colors; `layout-apply colors: {…}`). `palette-generate` only adds n
 
 `look` applies a named finish in one operation (clean-flat, subtle-grain, light-paper, glow, neon, soft-shadow, hard-shadow, outline, gradient, soft-halo, grain,
 paper, film, duotone, risograph, sketch, watercolor, halftone, hand-made, plush); `radial-repeat` makes rosettes and mandalas;
-`vixl_styles` serves 28 design styles with premade checks. See [looks](../../../docs/looks.md) and
+`vixl_reference('styles')` serves 28 design styles with premade checks. See [looks](../../../docs/looks.md) and
 [styles](../../../docs/styles.md).
 
 ## Color language
 
 Every color field accepts names (CSS + survey names like `dusty rose`), hex, `rgb()`, `hsl()`, `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()`, `color(display-p3 …)`, `cmyk(c m y k)`, `gray()`, `kelvin(2700)`, `color-mix(in oklab, a 30%, b)`, `@swatch`, and modifiers `lighten/darken(c, 10%)`, `saturate/desaturate`, `mix(a, b, 25%)`, `tint/shade/tone`, `alpha(c, 0.5)`, `rotate(c, 30deg)`, `complement`, `invert`, `grayscale`, `readable(bg)`. Swatches may reference swatches: `{"type":"swatch","name":"brand-soft","color":"mix(@brand, white, 70%)"}`.
 
-Tools: `vixl_color(action="info"|"convert"|"harmony"|"scale"|"mix"|"contrast"|"names", colors=[…])`; CLI `vixl color …`. Palettes from one color: `{"type":"palette-generate","name":"brand","color":"#2563eb","scheme":"scale"}` (→ `@brand-50` … `@brand-950`) or a harmony scheme (`triadic`, `split-complementary` …).
+Tools: `vixl_reference('color')`; CLI `vixl color …`. Palettes from one color: `{"type":"palette-generate","name":"brand","color":"#2563eb","scheme":"scale"}` (→ `@brand-50` … `@brand-950`) or a harmony scheme (`triadic`, `split-complementary` …).
 
 Contrast rules the checks enforce: body text ≥ 4.5:1; large text (24 px, or 18.66 px bold) ≥ 3:1. Prefer OKLCH lightness differences over hue differences; `simulate` previews color blindness and `vixl_check(checks=["color_vision"])` finds text that fails for color-blind readers.
 
 ## Print and file formats
 
 ```text
-vixl_export_file(path="flyer.pdf", color_space="cmyk", ink_limit=300)                 # GCR separation
-vixl_export_file(path="flyer.pdf", color_space="cmyk", icc_profile="profiles/press.icc")  # printer profile
-vixl_render_preview(proof=true)                                                       # soft proof
+vixl_export(path="flyer.pdf", color_space="cmyk", ink_limit=300)                 # GCR separation
+vixl_export(path="flyer.pdf", color_space="cmyk", icc_profile="profiles/press.icc")  # printer profile
+vixl_render(proof=true)                                                       # soft proof
 vixl_check(checks=["print"])                # ink coverage, low ppi images, < 6 pt type, live area, bleed
-vixl_export_file(path="favicon.ico", icon_sizes=[16, 32, 48])
-vixl_export_icons(directory="icons", icon_set="all")   # web/apple/android/windows sets + manifest
+vixl_export(path="favicon.ico", icon_sizes=[16, 32, 48])
+vixl_export(kind='icons', path="icons", icon_set="all")   # web/apple/android/windows sets + manifest
 ```
 
 A CMYK PDF is vector like an RGB one (real text, paths and shadings with DeviceCMYK colours; effects and images become CMYK images, listed in `raster_fallbacks`); `pdf_content="raster"` flattens each page into one image, and every PDF export reports `content` and `content_reason`.

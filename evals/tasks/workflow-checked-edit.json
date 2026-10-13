@@ -1,5 +1,5 @@
 {
-  "prompt": "Create design.vixl at 160x100. Add a 20x20 red rectangle named logo at x=10,y=10. Save a suite named quality asserting layer.logo.bounds within canvas. Use vixl_workflow act with that suite to move logo to x=80, then export preview.png using workflow preview at final quality.",
+  "prompt": "Create design.vixl at 160x100. Add a 20x20 red rectangle named logo at x=10,y=10. Save a suite named quality asserting layer.logo.bounds within canvas. Use vixl_apply(workflow='act') with that suite to move logo to x=80, then export preview.png using workflow preview at final quality.",
   "document": "design.vixl",
   "checks": [
     {
@@ -30,15 +30,16 @@
   ],
   "reference": [
     {
-      "tool": "vixl_document_create",
+      "tool": "vixl_document",
       "arguments": {
+        "action": "create",
         "path": "design.vixl",
         "width": 160,
         "height": 100
       }
     },
     {
-      "tool": "vixl_operations_apply",
+      "tool": "vixl_apply",
       "arguments": {
         "operations": [
           {
@@ -69,9 +70,9 @@
       }
     },
     {
-      "tool": "vixl_workflow",
+      "tool": "vixl_apply",
       "arguments": {
-        "action": "act",
+        "workflow": "act",
         "request": {
           "operations": [
             {
@@ -87,9 +88,9 @@
       }
     },
     {
-      "tool": "vixl_workflow",
+      "tool": "vixl_apply",
       "arguments": {
-        "action": "preview",
+        "workflow": "preview",
         "request": {
           "output": "preview.png",
           "quality": "final"

@@ -86,7 +86,7 @@ def test_mcp_export_file_writes_rgb_png_for_opaque_documents(tmp_path):
     server = build_server(session)
 
     def call(**arguments):
-        return asyncio.run(server.call_tool("vixl_export_file", arguments))
+        return asyncio.run(server.call_tool("vixl_export", arguments))
 
     call(path="icon.png", document="icon.vixl")
     call(path="sticker.png", document="sticker.vixl")

@@ -1,6 +1,6 @@
 # Editable vector shapes, strokes and paths
 
-All examples are operations for `Project.apply`, the CLI edit command, or `vixl_operations_apply`.
+All examples are operations for `Project.apply`, the CLI edit command, or `vixl_apply`.
 Changes participate in the same validation, atomic batches, save/load and undo history as
 other edits. `shape` with `target` updates a recipe without changing the layer ID.
 
@@ -75,7 +75,7 @@ a fraction up to 1 (of the dimension named) or a percentage.
 `tail_side`, `tail_position`, `tail_size`/`tail_width`, `body_ratio`, `lobe_balance` (heart
 `apex`), `points` (star `sides`) and `arm_width` (`thickness`) are accepted spellings, reported
 under `normalized`. A parameter a shape does not read (`cleft` on a rectangle) is reported under
-`warnings`. `vixl_capabilities("shapes")` lists every shape's parameters.
+`warnings`. `vixl_reference('capabilities', name="shapes")` lists every shape's parameters.
 
 ## Content boxes
 
@@ -153,7 +153,7 @@ This layer's box is `0, 0, 352, 210`: the strokes draw at their literal coordina
 ## Indexed path editing
 
 `shape-to-path` converts parametric and organic shapes to editable Bézier paths while
-keeping identity, fill and stroke. `vixl_document_inspect` exposes `path_nodes`, an array of
+keeping identity, fill and stroke. `vixl_document(action='inspect')` exposes `path_nodes`, an array of
 contours with `closed`, and nodes containing `index`, `point`, and optional `in`/`out` handles.
 Coordinates are in the layer's local pixel space. Compound paths keep their separate contours.
 

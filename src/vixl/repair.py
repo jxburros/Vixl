@@ -355,7 +355,7 @@ def auto_repair(project, *, checks=None, suites=(), kinds=True, max_repairs=MAX_
     remaining = [{"rule": item["rule"], "layers": item.get("layers", [])} for item in fixes]
     return {"applied": applied, "held": held, "unrepaired": unrepaired, "operations": operations,
             "dry_run": dry_run, "passed": not fixes and not failing, "remaining": remaining[:20],
-            **({"undo": "one history entry: vixl_history undo (or vixl undo) reverts every repair"}
+            **({"undo": "one history entry: vixl_document(action='history') undo (or vixl undo) reverts every repair"}
                if operations and not dry_run else {})}
 
 

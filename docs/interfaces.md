@@ -14,8 +14,8 @@ See [design tools and template production](design-tools.md) for groups, clipping
 | Capability | REST | MCP | CLI | Python |
 | --- | --- | --- | --- | --- |
 | Documents per session | One fixed document | Multiple, inside the workspace | One active document; workspace workflows | Multiple Project instances; Session for workflows |
-| Workflows | `act`, `check`, `drawing-report`, `effect-run`, `film-plan`, `form-fill`, `links`, `lyric-video-plan`, `organic-catalog`, `palette-check`, `plan`, `protected-edit`, `repair-layout`, `resource-get`, `resource-list`, `resource-save`, `shape-save`, `suite-use` | All 80 registered actions | All 80 registered actions | All 80 registered actions via workflows.dispatch(Session, ...) |
-| AI tools | Configured local providers via /ai | Configured local providers; tool profile controls exposure | Configured local providers | Configured local providers |
+| Workflows | `act`, `check`, `drawing-report`, `effect-run`, `film-plan`, `form-fill`, `links`, `lyric-video-plan`, `organic-catalog`, `palette-check`, `plan`, `protected-edit`, `repair-layout`, `resource-get`, `resource-list`, `resource-save`, `shape-save`, `suite-use` | All 81 registered actions | All 81 registered actions | All 81 registered actions via workflows.dispatch(Session, ...) |
+| AI tools | Configured local providers via /ai | Configured local providers; a second server, vixl mcp --tools ai | Configured local providers | Configured local providers |
 | Linked files outside workspace | Forbidden | Forbidden | Explicit --allow-linked | Explicit allow_linked=True |
 | Screen capture | Unavailable | Disabled by default; --allow-screen-capture or VIXL_ALLOW_SCREEN_CAPTURE=1 | Explicit screen-capture workflow | Explicit screen-capture workflow |
 | Jobs | Detached timed-out calls via /jobs; no durable workflow queue | Durable workflow queue and detached calls | Durable workflow queue | Durable queue via Session/workflows |
@@ -64,7 +64,7 @@ Default binding is `127.0.0.1:8765`. OpenAPI is at `/docs`. To bind beyond loopb
 | `GET /document` | Inspected state |
 | `GET /layers` | Layer list |
 | `GET /schema` | Canonical operation batch JSON Schema |
-| `POST /operations` | `{operations: [...] or operations_path: "ops.jsonl", dry_run: false, detail: "compact", check?, suites?, preview?}` → change summary (use `full` for snapshots); `check`/`suites`/`preview` as for `vixl_operations_apply`, the preview as `preview_base64` (and each region crop as its own `preview_base64`) |
+| `POST /operations` | `{operations: [...] or operations_path: "ops.jsonl", dry_run: false, detail: "compact", check?, suites?, preview?}` → change summary (use `full` for snapshots); `check`/`suites`/`preview` as for `vixl_apply`, the preview as `preview_base64` (and each region crop as its own `preview_base64`) |
 | `GET /render` | PNG bytes |
 | `POST /render` | `{variables: {title: "Hello"}}` → PNG bytes |
 | `POST /validate` | `{profile: "instagram-post", rules: [...]}` → checks |
@@ -72,7 +72,7 @@ Default binding is `127.0.0.1:8765`. OpenAPI is at `/docs`. To bind beyond loopb
 | `POST /history/{action}` | `{ref: "name", count: 1}`; undo/redo/branch/checkpoint/checkout/begin/commit/rollback |
 | `POST /assets?name=photo` | Raw image bytes → imported layer; or an empty body with `url=https://…` to download one. `credit` and `license` are recorded in provenance |
 | `POST /ai/{command}` | `{args: ["--prompt", "forest", "--provider", "local"]}`; uses locally configured providers |
-| `POST /compose` | `vixl_compose` fields without `path`, `exports` or `operations_path` → a dry run: steps, findings, `preview_base64` |
+| `POST /compose` | `vixl_apply(create=…)` fields without `path`, `exports` or `operations_path` → a dry run: steps, findings, `preview_base64` |
 
 ```bash
 curl http://127.0.0.1:8765/document
@@ -109,27 +109,26 @@ Several agents sharing one server (common with subagents of one session) are the
 
 If the client cannot find `vixl` on PATH, use the absolute executable path, normally `C:\Users\jeffr\AppData\Local\Programs\Vixl\bin\vixl.exe` for the Windows installer. Restart the client after installing/updating or changing its configuration. On macOS/Linux, use your installed `vixl` executable and a workspace such as `/home/you/Pictures/Vixl`.
 
-### Recommended starting configuration
+### The tool surface
 
-`vixl mcp` defaults to `--tools core --schema slim` (`VIXL_MCP_TOOLS` and `VIXL_MCP_SCHEMA` override it). Its tool list is about 60k JSON characters, against about 151k for `--tools all --schema full`,
-the default in 0.21 and earlier; pass those flags to get the old behaviour. The offline reference suite passes with
-both. With slim schemas, call `vixl_operation_schema` for the fields of unfamiliar operations.
-`--tools compact --schema slim` (13 tools, about 24k characters) is the smallest surface; see
-[MCP toolsets](mcp-toolsets.md) for the measurements.
+`vixl mcp` serves seven tools in about 7,300 characters of tool list (51 tools and 67k characters before 0.27):
+`vixl_document`, `vixl_apply`, `vixl_check`, `vixl_render`, `vixl_export`, `vixl_reference` and `vixl_job`. Each
+advertises a few typed fields plus `options`; the exact fields of every operation, every action's options and the
+long explanations come from `vixl_reference`, and a validation error returns the schema it failed. See
+[MCP tool surface](mcp-toolsets.md) for the design, the measurements and the ratchet that keeps it from growing.
 
-### Two servers: core and AI
+### Two servers: design and AI
 
-`vixl mcp` can serve its tools as two servers, so an agent loads only the tools it uses:
-
-- `--tools core`: documents, operations, rendering, checks, export, sizes, layouts, fonts, color, brushes, animation, workflows, batch export, layout adaptation, jobs, and the guidance tools `vixl_guide` and `vixl_styles` (51 tools).
-- `--tools ai`: the provider-backed tools (`vixl_ai_*`, `vixl_models_list`) plus `vixl_workspace_list`, `vixl_document_open`, `vixl_document_inspect` and `vixl_render_preview`, so the AI server can find layers and check its results, plus `vixl_job` (16 tools).
+`vixl mcp` serves the design tools; `vixl mcp --tools ai` serves the provider-backed tools (`vixl_ai_*`,
+`vixl_models_list`) plus `vixl_document`, `vixl_render` and `vixl_job`, so the AI server can find layers and check its
+results (`--planner` adds `vixl_ai_plan`).
 
 ```json
 {
   "mcpServers": {
     "vixl": {
       "command": "vixl",
-      "args": ["mcp", "--workspace", "C:\\Users\\jeffr\\Pictures\\Vixl", "--tools", "core"]
+      "args": ["mcp", "--workspace", "C:\\Users\\jeffr\\Pictures\\Vixl"]
     },
     "vixl-ai": {
       "command": "vixl",
@@ -139,51 +138,25 @@ both. With slim schemas, call `vixl_operation_schema` for the fields of unfamili
 }
 ```
 
-Give both the same workspace. Every edit is saved immediately and each server reloads a document that changed on disk (writes are serialized with file locks), so an image generated through `vixl-ai` appears in `vixl` on its next call. AI tools take `document=` or use the document opened with `vixl_document_open`. Leave out `vixl-ai` when no AI provider is configured. `--tools all` serves core and AI tools from one server.
+Give both the same workspace. Every edit is saved immediately and each server reloads a document that changed on disk (writes are serialized with file locks), so an image generated through `vixl-ai` appears in `vixl` on its next call. AI tools take `document=` or use the document opened with `vixl_document(action='open')`. Leave out `vixl-ai` when no AI provider is configured.
 
 Existing `vixl --project /absolute/path/poster.vixl mcp` configurations still work: they open that document and use its parent directory as the workspace. You can also pass `--workspace` explicitly; the starting project must be within it.
 
 ### Tools and workflow
 
-Vixl is designed to be driven mainly by agents. The intended loop is: create or open a document → `vixl_operations_apply` in atomic batches (use `dry_run` to test) → `vixl_check` to find problems without looking → `vixl_render_preview` (with `region` to zoom) → fix → `vixl_export_file`. For a new piece whose content is known, `vixl_compose` runs that whole chain in one atomic call.
+Vixl is designed to be driven mainly by agents. The intended loop is: create or open a document → `vixl_apply` in atomic batches (use `dry_run` to test) → `vixl_check` to find problems without looking → `vixl_render` (with `region` to zoom) → fix → `vixl_export`. For a new piece whose content is known, `vixl_apply(create={…})` runs that whole chain in one atomic call. `vixl_reference()` returns this loop step by step.
 
-| Tool | Purpose |
-| --- | --- |
-| `vixl_workspace_list(directory, offset, limit)` | Discover workspace paths and the open documents |
-| `vixl_document_create(path, width?, height?, background?, purpose?, size?, dpi?, orientation?, bleed?, seed?, variety?, font_pairing?, workspace_fonts?)` | Create and activate a new `.vixl` from pixels, a named size or a `purpose` (else 1080×1080); creates missing directories; refuses overwrites. Like every surface it rolls and stores `design_defaults`, uses the palette background unless `background` is given (transparent for logos, icons and favicons), and embeds the workspace default fonts from `brand.json` (`workspace_fonts`) or else the rolled pairing from the font cache or network; `creation` reports the size, background and fonts chosen and why (see [Safe variety](safe-variety.md#new-documents)). `font_pairing` installs that pairing instead (same as `vixl_font_pair`); `workspace_fonts: false` embeds no fonts |
-| `vixl_document_open(path, upgrade?)` / `vixl_document_close(document)` | Activate an existing document / drop one from the session; edits are already saved. A document saved before 0.21 lists the layers that render differently under `upgrade`; `upgrade="accept"` stops the notice and `"pin-fills"` also restores the white fill of open stroked shapes (CLI: `vixl upgrade`) |
-| `vixl_document_inspect(target?, detail)` | `compact` (default): canvas plus one line per layer with resolved `[x, y, w, h]` bounds; `full`: every stored field |
-| `vixl_import_image(path? \| data_base64? \| url?, name, credit?, license?)` | Embed a workspace file, base64/data-URL bytes or a public `https://` image as a layer; returns id, size, bounds and `source` (final `url`, `bytes`, `sha256`, `fetched_at`). `credit`/`license` are kept in the layer's provenance and shown by inspect |
-| `vixl_operations_apply(operations or operations_path, dry_run, detail, check?, suites?, preview?, repair?, request_id?, as_job?)` | Every result has an `outcome` (execution, validation, review; [outcome states](agent-trust.md#outcome-states)); `repair` applies the built-in repair map after the batch and `preview` takes `overlay` (finding boxes labelled with rule and layer ID) and `focus` (a detail crop of one finding). Atomic edits; `operations_path` is a workspace-relative `.json` array or `.jsonl` file (one operation per line, errors cite the line) used instead of inline `operations`; schemas are included directly in tools/list (or on demand in slim mode). `detail` is `brief` (default), `compact` or `full`; results carry `warnings`. `check` (true or check names) adds a `check` block shaped like `vixl_check`'s, listing every `fix` finding, every composition finding and the findings on the layers the batch touched (at most 20; `omitted` counts the rest), and `regions`, the two weakest regions of the design (the places carrying the most and most severe findings, composition first; with fewer findings, the densest text and the largest empty area) with the indexes of their `findings`; `suites` (true or suite names) runs the document's check suites and lists the rules that did not pass; `preview` (true or `{page, region, max_width, max_height, time, isolate, regions}`, 512 px by default) adds a PNG after the JSON and, with `check`, real-size crops of the regions after it: one canvas pixel per image pixel, reduced only past 512 px a side, at most 256 KiB each (`regions: 1` keeps one, `0` none). Each region's `preview` says which image it is; REST returns them as `preview_base64` on each region, the CLI writes `NAME-region1.png` and `NAME-region2.png` beside `--preview NAME.png`, and Python leaves the PNG bytes under `preview`. All three also work with `dry_run`, and are skipped with a `review_skipped` note when the edit itself took more than half of `VIXL_MCP_INLINE_SECONDS`. A call that became a job keeps the JSON only. |
-| `vixl_operation_schema(types)` | Exact JSON Schema for named operation types |
-| `vixl_check(checks, targets, safe_area, avoid, thumbnail_width, ..., ink_limit, min_ppi, style, connect_tolerance, repair, offset, limit, profile, waivers)` | Findings carry a stable `rule`, `layer_ids`, `measured` actual versus expected and a suggested `repair` (canonical operations, never applied unless `repair=true`); `offset`/`limit` page them; `outcome` separates validation from review ([diagnostics](agent-trust.md#actionable-findings)). Design problems: bounds, text overlap, WCAG contrast, safe area/reserved zones, thumbnail legibility, `composition` (review findings for dead bands, margin drift, uneven rhythm, crowding and clumped scatter; [composition](guides.md#composition)), `diagram` (overlapping nodes, edges through nodes or on top of each other, unreadable labels) and `flow` (text-flow overflow); `codes` (QR/barcode module size, contrast and quiet zone); opt-in `print`, `color_vision`, `style`, `connected` (parts of a group that float free of its main body, gaps above `connect_tolerance` px, default 2) and `cost` (layers that take over 10× the median layer to draw, a `review` finding naming the blur radius, effects or stroke points behind it). Every issue has a `severity` (error, warning, info) and an `action` (fix, review, informational); `by_action` lists the issue indexes under each. A layer marked `allow_crop` (`layer-intent`) reports its edge crop as informational; waived findings (`layer-intent waive`, the `waiver` operation) are informational with `waived` (and listed under `outcome.accepted`), and `waivers` lists active and expired waivers (`waivers: false` ignores them); `profile` (draft, review, final or a workspace profile) picks the checks and suites and its `fail_on` decides `passed` and `outcome`; `thumbnail_width: null` turns the thumbnail test off, the canvas safe area is checked by default, and the summary reports `layers_checked` and `layers_total` |
-| `vixl_guide(brief?)` | What to make: the start-here recipe and every kind of work, or the approach, operations, layouts, looks, styles and a working example for a kind or free-text brief; `brief=operations` and `brief=looks` list those catalogs |
-| `vixl_styles(action, name?, query?, palette?)` | 28 design styles: list/search, get (principles, palettes, type, layout, imagery, do/don't, checks), apply (tag the document, store the brief, optionally the palette), check (same as `vixl_check` `style`) |
-| `vixl_render_preview(variables, max_width, max_height, max_bytes, region, time, proof, simulate, isolate, overlay)` | `overlay` runs `vixl_check` and outlines each fix finding with its rule and layer ID, returning the boxes too. Fast preview-resolution PNG; `region` zooms in (up to 8×); `time` shows a timeline frame; `proof` soft-proofs CMYK; `simulate` shows color-vision deficiency; `isolate` (layer IDs or names, a group with all its parts) shows only that object on the canvas background, zoomed to its ink with a small margin unless `region` is given |
-| `vixl_render_compare(before, after, mode, isolate)` | Side-by-side or red-highlight diff of two revisions (`previous`, `head~N`, branch, checkpoint, ID) plus the changed region; `isolate` compares one object alone, both sides cropped to its ink (`region` in the summary) |
-| `vixl_export_file(path, quality, title, max_bytes, scale, profile, variables, background, overwrite, color_space, icc_profile, intent, black_generation, ink_limit, proof, simulate, dpi, icon_sizes, time)` | Save full-resolution PNG/JPEG/WEBP/TIFF/AVIF/SVG/PDF/ICO, CMYK for print; return only file metadata |
-| `vixl_export_batch(targets, defaults?, overwrite, stop_on_error)` | Several files in one call: sizes, formats or artboards of a document, or several documents |
-| `vixl_compose(path, size? \| width/height \| purpose?, background?, seed?, variety?, font_pairing?, layout?, style?, look?, operations? \| operations_path?, check, strict, preview?, exports?, overwrite, dry_run)` | A new piece in one atomic call: create → fonts → layout → style → look → operations → check → preview → save → exports; see [below](#build-a-piece-in-one-call) |
-| `vixl_adapt_layout(sizes, directory?, name?, options?, formats?, overwrite?, report?)` | Adapt one document to several sizes in one call: each size is a saved (optionally exported) copy re-laid out by the `adapt-layout` operation (proportional by default; `options: {"recompose": true}` rebuilds a stored generated layout for each size, replacing edits to its layers), with per-size canvas, scale, moved layers and warnings ([operations](operations.md#bulk-edits-and-resizing-a-whole-layout-unreleased)) |
-| `vixl_job(action, id?, wait?)` | Follow a long call: `status` (optionally waiting), `result`, `cancel`, `list`; see [long calls](#long-calls-retries-and-progress). The `--tools compact` set has no `vixl_job`; it polls through `vixl_workflow` (`action: "status"`, `request: {id}`) |
-| `vixl_sizes_list`, `vixl_layouts_list`, `vixl_brushes_list` | Named sizes, principled layouts, brushes (no document needed) |
-| `vixl_color(action, colors, …)` | Color info, conversion, harmonies, scales, mixing, contrast and name search |
-| `vixl_timeline_inspect`, `vixl_timeline_preview(time \| count)`, `vixl_export_timeline(path, format, fps, scale, …)` | Keyframe timelines: inspect, preview a frame or contact sheet, export GIF/APNG/WebP/sheet/PNG ZIP/MP4/WebM |
-| `vixl_export_icons(directory, icon_set)` | Standard icon sets (web favicons and manifest, Apple, Android, Windows) |
-| `vixl_measure`, `vixl_measure_spacing`, `vixl_validate` | Samples, channel statistics, contrast; spacing intent; assertions and profiles |
-| `vixl_spatial(target?, targets?, mode, …)` | Canvas-space relationships, gaps, alignment, margins, guide offsets, hit tests, empty regions and snap operations; box or ink bounds |
-| `vixl_capabilities(topic, fields?)` | Field-level reference for a topic (text, drawing, animation, film, layout, color, export or free words): matching operations (`fields=true` adds their fields), workflows, gotchas, limits and guidance names |
-| `vixl_workflow(action, request, document?)`, `vixl_workflow_schema()` | Production actions (proof, logo-package, brand-board, merge-impose, emoji-*, app-animation-package, screen-capture …) and their request fields; see [production](production.md) |
-| `vixl_pixels_inspect`, `vixl_animation_inspect`, `vixl_animation_preview`, `vixl_export_animation` | Frame-by-frame animation (saved frames, sprites, pixel art): pixel rows and palette, frames and named animations, one frame, GIF/APNG/WebP/MP4/WebM/sprite sheet |
-| `vixl_export_audio(path, sample_rate?)`, `vixl_export_character(target, output)` | Mix the audio tracks to a new WAV; save one character and its assets to a `.vixl` library |
-| `vixl_history(action, ref, count, offset, limit, dry_run, fonts)` | Undo/redo/transactions/branches/checkpoints; newest-first summaries; `compact` discards undo history and drops embedded files the design does not use (`dry_run` reports first; see [commands](commands.md#scripts-presets-history)) |
+| Tool | Actions | Purpose |
+| --- | --- | --- |
+| `vixl_document` | `inspect` (default), `create`, `open`, `close`, `list`, `history`, `undo`, `redo`, `checkpoint`, `checkout`, `branch`, `begin`, `commit`, `rollback`, `compact`, `notes` | `create` makes and activates a `.vixl` from a named `size`, `width`/`height`, a `purpose` (else 1080×1080) or a `template` (with `variables`); creates missing directories; refuses overwrites. Like every surface it rolls and stores `design_defaults`, uses the palette background unless `background` is given (transparent for logos, icons and favicons), and embeds the workspace default fonts from `brand.json` (`workspace_fonts`) or else the rolled pairing from the font cache or network; the result names the size, background and fonts chosen and why (see [Safe variety](safe-variety.md#new-documents)), and `verbose: true` adds the whole rolled direction. `open` reports what an older document renders differently under `upgrade` (`upgrade: "accept"` or `"pin-fills"`). `inspect` gives the canvas and one line per layer with resolved `[x, y, w, h]` bounds (`verbose`: every stored field; `object`: one object's tree). `list` shows workspace paths and the open documents. `history` lists revisions newest first; `compact` discards undo history and drops unused embedded files (`dry_run` first). `notes` lists, adds (`text`) or resolves (`resolve`) human review notes. |
+| `vixl_apply` | a batch, `create={…}`, `workflow=ACTION` | Atomic edits: `operations` inline or `operations_path` (a workspace `.json` array or `.jsonl` file, errors cite the line). Items are operations or session steps (`import-image` from a workspace file, base64 bytes or a public `https://` URL with `credit`/`license`; `import-document` for SVG or a PDF page; `import-font`; `font-pair`; `font-install`; `style-use` for a catalog style; `roll`), all applied to one candidate that is saved only when every item succeeded. Every result has an `outcome` ([outcome states](agent-trust.md#outcome-states)) and `warnings`; `detail` is `brief` (default), `compact` (or `verbose`) or `full`. `check` (true or check names) adds a `check` block listing every `fix` finding, every composition finding and the findings on the touched layers (at most 20; `omitted` counts the rest) and `regions`, the two weakest regions; `suites` runs the document's check suites; `repair` applies the built-in repair map; `preview` (true or `{page, region, max_width, max_height, time, isolate, overlay, focus, regions}`) adds a PNG and, with `check`, real-size crops of the regions. All of them also work with `dry_run`, and are skipped with a `review_skipped` note when the edit took more than half of `VIXL_MCP_INLINE_SECONDS`. `create` builds a new piece ([below](#build-a-piece-in-one-call)); `workflow` runs a production action with its `request` ([production](production.md)). |
+| `vixl_check` | `design` (default), `validate`, `measure`, `spacing`, `spatial`, `pixels` | `design` finds problems without looking: findings carry a stable `rule`, `layer_ids`, `measured` actual versus expected, a `severity`, an `action` (fix, review, informational) and for fix findings a suggested `repair` (canonical operations, applied only with `repair=true`); `offset`/`limit` page them; `profile` picks checks and suites; waivers are reported as informational ([diagnostics](agent-trust.md#actionable-findings), every check in `vixl_reference('checks')`). `validate` runs rules and saved suites against a profile; `measure` samples rendered colour, channel statistics and contrast; `spacing` is a pass/fail equal-gap check; `spatial` answers relations, gaps, alignment, margins, guide offsets, hit tests, free regions and snap operations; `pixels` shows a pixel layer as character rows. |
+| `vixl_render` | `preview` (default), `compare`, `timeline`, `timeline-inspect`, `animation`, `animation-inspect` | A bounded preview-resolution PNG: `region` zooms (up to 8×), `page`, `time` (a timeline frame), `proof` (CMYK soft proof), `simulate` (colour-vision deficiency), `isolate` (one object on the canvas background, zoomed to its ink), `overlay` (runs `vixl_check` and outlines each fix finding). `compare` shows two revisions side by side or as a red diff, plus the changed region. `timeline` gives one frame or a contact sheet of keyframed motion and `timeline-inspect` its tracks; `animation` and `animation-inspect` do the same for saved frames (sprites, pixel art). |
+| `vixl_export` | `file` (default), `batch`, `animation`, `timeline`, `audio`, `icons`, `character` | Full-resolution PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF, ICO, HTML, PPTX or PSD (format from the extension), CMYK for print; returns file metadata only ([formats](exporting.md), `vixl_reference('exports')`). `batch` writes several files (`targets`, `defaults`); `timeline` and `animation` write GIF, APNG, WebP, MP4/WebM, sprite sheets or PNG ZIPs; `audio` mixes the audio tracks to WAV; `icons` writes a favicon/Apple/Android/Windows set into a folder; `character` saves one character library. The kind follows the extension and the document unless given. |
+| `vixl_reference` | `start` (default), `operations`, `workflows`, `capabilities`, `sizes`, `layouts`, `fonts`, `brushes`, `styles`, `looks`, `color`, `roll`, `palettes`, `templates`, `guidance`, `objects`, `house-style`, a tool name, a guidance name or a brief | The start-here recipe; what to make for a kind of work or free-text brief (approach, operations, layouts, looks, styles, an example, motifs); exact operation schemas (`name=[types]`); a tool's actions and options; catalogs of sizes, layouts, typefaces and pairings, brushes, styles, looks, palettes, templates and object kinds; colour tools; a rolled direction; every guidance text. |
+| `vixl_job` | `status`, `result`, `cancel`, `list` | Follow a long call; see [long calls](#long-calls-retries-and-progress). |
 
-The server instructions carry the start-here recipe: `vixl_guide` for the kind of work, then `vixl_sizes_list` → `vixl_document_create(size=…)`,
-`vixl_layouts_list` → `layout-apply` (all slots filled; art with no text frame is built from `shape`/`organic`/`pathfinder`/`radial-repeat`),
-`vixl_fonts` → `vixl_font_pair`, a `look` or `vixl_styles` to finish, then `vixl_check` (fix the `fix` findings) → `vixl_render_preview` → `vixl_export_file`.
-Open-ended briefs default to that path instead of freehand shapes.
-
-`vixl_operation_schema(types=[…])` returns each operation's one-line `description`, every field with a JSON type and a description,
+`vixl_reference('operations', name=[…])` returns each operation's one-line `description`, every field with a JSON type and a description,
 and `examples` for the common ones (gradients, glows, shadows, radial repeats, layouts, palettes …). `tools/list` stays lean: it carries
 types and constraints only.
 
@@ -191,11 +164,11 @@ Every document tool accepts an optional `document` path. Up to 8 documents stay 
 
 For example, create `poster.vixl` at 4000×3000, import `photo.jpg` as `photo`, apply `[{"type":"move","target":"photo","x":20}]`, run `vixl_check`, request a preview, then export `poster.png`. File paths refer to the machine running Vixl; a client without access to that file system can send image bytes with `data_base64` instead.
 
-Relative and absolute paths are accepted within the workspace. Paths escaping it, including symlinks to outside directories, are rejected. Export refuses existing files unless `overwrite: true` is supplied, and cannot overwrite `.vixl` documents. `vixl_document_create`, `vixl_template_create` and the export tools create missing directories inside the workspace (nothing outside it is ever created). Operation `path` and `linked` fields remain unavailable (checked after alias normalization); use the import tool. `font` (and `display_font`, rich-text span fonts and `font=` in rich-text Markdown) is accepted in `vixl_operations_apply` batches: a font registered in the document (`vixl_font_pair`, `vixl_font_install`, `vixl_import_font`, or a `font-register` earlier in the same batch) or a role. A file path or an unregistered name is refused with `forbidden`/`missing_font`, listing the registered names and the install tools. Services do not enable third-party plugins or linked-file reads.
+Relative and absolute paths are accepted within the workspace. Paths escaping it, including symlinks to outside directories, are rejected. Export refuses existing files unless `overwrite: true` is supplied, and cannot overwrite `.vixl` documents. `vixl_document(action='create')` (also with a template) and the export tools create missing directories inside the workspace (nothing outside it is ever created). Operation `path` and `linked` fields remain unavailable (checked after alias normalization); use the import tool. `font` (and `display_font`, rich-text span fonts and `font=` in rich-text Markdown) is accepted in `vixl_apply` batches: a font registered in the document (`font-pair`, `font-install`, `import-font`, or a `font-register` earlier in the same batch) or a role. A file path or an unregistered name is refused with `forbidden`/`missing_font`, listing the registered names and the install tools. Services do not enable third-party plugins or linked-file reads.
 
 ### Build a piece in one call
 
-When the agent already knows the size, the layout and its copy, the look and the operations, `vixl_compose` replaces
+When the agent already knows the size, the layout and its copy, the look and the operations, `vixl_apply(create=…)` replaces
 the create → apply → check → preview → export round trips:
 
 ```json
@@ -208,7 +181,7 @@ the create → apply → check → preview → export round trips:
 
 The `layout`'s `image` and `images` slots take a workspace path or an `https://` URL as well as an asset id, so a
 meme or photo card is one call (`{"name": "meme-top-bottom", "image": "memes/cat.jpg", "title": "…"}`). Paths stay
-inside the workspace and URLs go through the same fetch policy and byte and pixel limits as `vixl_import_image`; the
+inside the workspace and URLs go through the same fetch policy and byte and pixel limits as `import-image`; the
 layout step lists what it embedded under `imported` (path or url, sha256). A `background` is kept when a layout runs:
 it becomes the layout's background role, with the text and accents chosen to read on it (`transparent` keeps the
 layout from painting one); a layout's own `colors.background` or `transparent` wins. A `style` shapes what the call
@@ -219,15 +192,15 @@ reports these under `from_style`, so `check` with the style's rules passes on th
 
 The steps run in that order on an unsaved document. The `.vixl` is written only when every step succeeded and the
 exports only after it; a failed export removes the document and the files the call wrote. Export targets (the
-`vixl_export_batch` options) are validated before anything is built, so an existing file fails at once. An error keeps
+`vixl_export(kind='batch')` options) are validated before anything is built, so an existing file fails at once. An error keeps
 the normal schema (`error`, `message`, `field`, `operation_index` …) and adds `step`: `request`, `create`, `fonts`,
 `layout`, `style`, `look`, `operations`, `check`, `preview`, `save` or `export`. `strict: true` turns `fix` findings into
 a `check` failure (nothing saved); `dry_run: true` builds, checks and previews without writing (`path` optional). The
 result lists `steps`, the layout's seed, blanks and notes, the check findings, the saved `document` and the `exports`,
-followed by the preview image. Like `vixl_document_create`, a saved compose makes the new document the active one
+followed by the preview image. Like `vixl_document(action='create')`, a saved compose makes the new document the active one
 (`active_document: true`); when another document was active, a warning names it, since later calls without
 `document=` now edit and export the composed piece. Like other heavy tools it becomes a job after ~40 s (or at once with `as_job`) and takes
-`request_id`. It is in the core and compact toolsets.
+`request_id`.
 
 The same request works as `vixl compose --request req.json [--preview p.png]`, as `vixl.compose.run(workspace, **request)`
 in Python, and as `POST /compose` on REST, where it is a dry run (no `path`, `exports` or `operations_path`: that server
@@ -242,16 +215,16 @@ Model-written operations are normalized before validation, the same way in every
 - geometry: `x`/`y` accept `"center"` and `"N%"`, `width`/`height` accept `"N%"` (of the canvas, or of the parent group);
 - layers: `targets` with one entry on a single-layer operation → `target`; a lone `target` on `group`/`distribute`/`pathfinder` → `targets`.
 
-Errors are JSON: `{"error", "message", "field", "operation_index", "operation_type", "allowed"?, "suggestions"?, "fields"?, "schema"?, "expected"?}`. Unknown layers suggest close (including case-insensitive) names and list available ones; unknown fields, enum values and operation types get did-you-mean suggestions; a failing batch names the operation that failed. The whole batch is validated before anything runs, and every invalid operation is reported in one error: the top-level fields describe the first, `errors` lists each (`operation_index`, `operation_type`, `field`, `message`, `suggestions`, at most 50), `error_count` counts them, and `message` lists them all (MCP, REST and the CLI's `ERROR:` line show the same list; `dry_run` too). Errors raised while the batch runs stop at the first. A schema error ends with `(see vixl_operation_schema(types=['shape']))`, the same hint is in `schema`, `fields` lists the accepted field names and, for a wrong type, `expected` holds the field's schema. Unknown fields are rejected, never silently accepted.
+Errors are JSON: `{"error", "message", "field", "operation_index", "operation_type", "allowed"?, "suggestions"?, "fields"?, "schema"?, "expected"?}`. Unknown layers suggest close (including case-insensitive) names and list available ones; unknown fields, enum values and operation types get did-you-mean suggestions; a failing batch names the operation that failed. The whole batch is validated before anything runs, and every invalid operation is reported in one error: the top-level fields describe the first, `errors` lists each (`operation_index`, `operation_type`, `field`, `message`, `suggestions`, at most 50), `error_count` counts them, and `message` lists them all (MCP, REST and the CLI's `ERROR:` line show the same list; `dry_run` too). Errors raised while the batch runs stop at the first. A schema error ends with `(see vixl_reference('operations', name=['shape']))`, the same hint is in `schema`, `fields` lists the accepted field names and, for a wrong type, `expected` holds the field's schema. Unknown fields are rejected, never silently accepted.
 
 A call that succeeds can still carry `warnings` (a list of strings) about the layers it changed: text or artwork cut off by the canvas edge (a small bleed is ignored), text that does not fit its `text-layout` box or spills out of its group, and valid fields that change nothing for that operation (`radius` on a plain rectangle, `angle` on a non-angled gradient, `start`/`end` next to `stops`, `stroke_width` without `stroke`). Unknown fields and invalid values are errors, never warnings. Warnings only concern the layers of that call; `vixl_check` is the complete audit. A tool call that passes an argument the tool does not take (`detial="full"`) is not silently dropped: its result gets a warning naming the argument and the closest parameter (image tools add a text line after the picture).
 
 ### Small responses and previews
 
-Tool results are minified JSON text with no duplicated structured copy. Advertised schemas omit pydantic titles and collapse optional fields. `vixl mcp --schema slim` advertises only the operation type names (about half the tool-list size) and the agent fetches fields with `vixl_operation_schema`. The provider-backed planner (`vixl_ai_plan`) is hidden unless `--planner` is passed, because the calling agent already plans its own edits.
+Tool results are minified JSON text with no duplicated structured copy, and terse by default: a new document reports its path, canvas, seed and the fonts chosen rather than the whole rolled direction (`verbose: true` returns the full result). Advertised schemas omit pydantic titles and collapse optional fields; operation fields and rarer options come from `vixl_reference`. The provider-backed planner (`vixl_ai_plan`) is served only by `vixl mcp --tools ai --planner`, because the calling agent already plans its own edits.
 
 The default `detail: "brief"` apply response over MCP returns, per stable layer ID, only what the caller cannot already know: new layers as `added`/`name`/`type`/`bounds` (plus a shape's `content_bounds`, and a text layer's metrics
-(`ink_bounds`, `line_bounds`, `baseline`, `baselines`, `ascent`, `descent`, `cap_height`, `x_height`, `metrics_space`) so text can be aligned without another call), changed layers as the list of changed field names plus their resolved `bounds`, removals, `warnings` and `normalized`; state other than layers is listed by name under `also_changed`. `detail: "compact"` (the REST/CLI default) returns the **new** values of changed fields and the main content of new layers; `detail: "full"` returns before/after snapshots. Python's `Project.apply` accepts all three. `vixl_measure` summarizes channels as percentiles unless `histogram: "full"`.
+(`ink_bounds`, `line_bounds`, `baseline`, `baselines`, `ascent`, `descent`, `cap_height`, `x_height`, `metrics_space`) so text can be aligned without another call), changed layers as the list of changed field names plus their resolved `bounds`, removals, `warnings` and `normalized`; state other than layers is listed by name under `also_changed`. `detail: "compact"` (the REST/CLI default) returns the **new** values of changed fields and the main content of new layers; `detail: "full"` returns before/after snapshots. Python's `Project.apply` accepts all three. `vixl_check(action='measure')` summarizes channels as percentiles unless `histogram: "full"`.
 
 Preview defaults: **1024×1024 maximum and 1 MiB of encoded PNG data**, preserving transparency and aspect ratio. Previews render a geometrically scaled copy of the document (JPEG sources decode at reduced scale), so a 24-megapixel document previews in a fraction of a second. Every layer edge (and every copy of a `repeat`) lands on a whole preview pixel, so layers or tiles that meet in the full render still meet in the preview and no seam appears between them; documents with canvas-sized effect selections fall back to a full render. `region: [x, y, w, h]` (pixels or percentages) zooms into part of the canvas. File export always uses full resolution unless a scale/profile is requested.
 
@@ -261,9 +234,9 @@ An MCP client typically gives up on a call after about 60 s, while the server st
 
 - **Automatic jobs.** A call that is still running after `VIXL_MCP_INLINE_SECONDS` (default 40, `0` disables; `--call-timeout` or `VIXL_CALL_TIMEOUT` replaces it, see [per-call limits](#per-call-limits)) returns `{"status": "running", "job": "job_…", …}` while it carries on. Poll with `vixl_job`.
 - **Under load.** Calls run on `VIXL_MCP_WORKERS` threads (default 32). When more calls are in flight than there are workers, a new call waits proportionally less (inline seconds × workers ÷ calls in flight, at least 2 s) before it becomes a job, so a call stuck behind others is not lost to a client timeout. Job pointers and `vixl_job` report `queued` (still waiting for a worker), `wait_ms` (time spent waiting for a worker) and, in pointers, `queue_depth` (calls waiting).
-- **`as_job: true`** on the heavy tools (`vixl_operations_apply`, `vixl_import_image`, `vixl_import_document`, the export tools, `vixl_compose`, `vixl_adapt_layout`, `vixl_font_pair`, `vixl_font_install`, `vixl_workflow`, `vixl_roll`, `vixl_check`, the `vixl_ai_*` tools) starts the call as a job and returns its id at once.
-- **`vixl_job(action, id, wait)`:** `status` reports `queued`/`running`/`completed`/`failed`/`cancelled` with `progress` (`wait=20` blocks up to that many seconds, at most 50, so one call replaces a polling loop); `result` returns the call's normal result under `result` (or `error`); `cancel` stops a queued job, or a running one at its next checkpoint (a batch of operations is atomic, so a cancelled batch changes nothing; timeline exports stop between frames); `list` shows recent jobs, including calls that timed out on your side. The server remembers the last 100 jobs in memory; durable workspace jobs from `vixl_workflow submit` use the same tool with their 32-character ids.
-- **Retries: `request_id`.** The mutating tools (`vixl_operations_apply`, imports, exports, `vixl_compose`, `vixl_adapt_layout`, `vixl_document_create`/`close`, `vixl_template_create`, fonts, `vixl_history`, `vixl_workflow`, `vixl_roll`, the AI tools) accept an optional `request_id` (1–64 characters). Repeating a call with the same id returns the first call's recorded result with `"replayed": true` instead of applying twice; if the first call is still running, the repeat waits briefly and then points at its job. An id reused with different arguments is an error (`request_id_conflict`), and a call that failed is not remembered, so its retry runs. The store keeps the last 64 ids per document (512 overall), in memory.
+- **`as_job: true`** on the heavy tools (`vixl_apply` with its batches, steps, `create` and workflows, `vixl_check`, `vixl_export`, the `vixl_ai_*` tools) starts the call as a job and returns its id at once.
+- **`vixl_job(action, id, wait)`:** `status` reports `queued`/`running`/`completed`/`failed`/`cancelled` with `progress` (`wait=20` blocks up to that many seconds, at most 50, so one call replaces a polling loop); `result` returns the call's normal result under `result` (or `error`); `cancel` stops a queued job, or a running one at its next checkpoint (a batch of operations is atomic, so a cancelled batch changes nothing; timeline exports stop between frames); `list` shows recent jobs, including calls that timed out on your side. The server remembers the last 100 jobs in memory; durable workspace jobs from `vixl_apply(workflow='submit')` use the same tool with their 32-character ids.
+- **Retries: `request_id`.** The mutating tools (`vixl_document`, `vixl_apply`, `vixl_export`, the AI tools) accept an optional `request_id` (1–64 characters). Repeating a call with the same id returns the first call's recorded result with `"replayed": true` instead of applying twice; if the first call is still running, the repeat waits briefly and then points at its job. An id reused with different arguments is an error (`request_id_conflict`), and a call that failed is not remembered, so its retry runs. The store keeps the last 64 ids per document (512 overall), in memory.
 - **Progress.** A client that sends a progress token receives `notifications/progress` while operation batches (one tick per operation), timeline exports (one per frame) and batch exports (one per file) run. Once a call has become a job, read its `progress` with `vixl_job`; a timeline export's progress also has `timing`: `elapsed_s`, `eta_s` (estimated seconds left) and the last frame's `setup_ms` (sampling the timeline) and `raster_ms`.
 - **Profiling.** With `VIXL_PROFILE=1` in the server's environment every JSON result carries a `render_profile` (per-layer draw times, cache hits, misses and writes, incremental renders; see [troubleshooting](troubleshooting.md#find-out-why-a-render-is-slow)); an image result gets it in the text note after the picture. The REST server adds it to JSON bodies and, summarised, to the `X-Vixl-Profile` header of every response. Both servers keep a document's render caches when they reload it after it changed on disk.
 
@@ -290,7 +263,7 @@ vixl serve --call-timeout 30 --max-megapixels 50 --max-pages 40 --max-concurrent
 
 The server keeps documents loaded in one shared cache, but the **active document is per MCP client session**: with Streamable HTTP each connected client opens, creates and closes documents without moving anyone else's active document, and a client that has opened nothing gets the document the server was started with (or none). A stdio server has exactly one client connection, so subagents of one parent agent still share one active document there. Three safeguards help in that case:
 
-- `vixl mcp --require-document` (or `VIXL_REQUIRE_DOCUMENT=1`) makes `document=` mandatory on every document tool: there is no active document to fall back to, and a call without it fails with `document_required`. `vixl_document_create`/`open` still work and name the document in their result.
+- `vixl mcp --require-document` (or `VIXL_REQUIRE_DOCUMENT=1`) makes `document=` mandatory on every document tool: there is no active document to fall back to, and a call without it fails with `document_required`. `vixl_document(action='create')`/`open` still work and name the document in their result.
 - Every result names the document it acted on (`document`), so a mistake shows up in the first response.
 - Pass `document=` on every call, with `request_id` on mutating ones.
 
@@ -333,13 +306,13 @@ Enable plugins explicitly with `vixl --plugins ...` or `vixl.plugins.enable_plug
 
 ## New agent resources (0.11)
 
-MCP adds `vixl_resources_list`, `vixl_resource_get`, `vixl_resource_add`, `vixl_template_create`, `vixl_import_font` (a workspace `path` or an `https://` `url`), and `vixl_models_list` (in `--tools ai` and `all`). Resource discovery needs no open document. Font paths and document destinations remain workspace scoped. `vixl_export_file` accepts `.svg`; operations accept registered font names while service operations continue to reject filesystem font paths.
+MCP reads resources with `vixl_reference` (`palettes`, `templates`, `guidance`, `objects`), saves them with `vixl_apply(workflow='resource-save')`, creates from a template with `vixl_document(action='create', template=NAME)`, imports fonts with an `import-font` step (a workspace `path` or an `https://` `url`), and lists provider models with `vixl_models_list` (in `--tools ai`). Resource discovery needs no open document. Font paths and document destinations remain workspace scoped. `vixl_export` accepts `.svg`; operations accept registered font names while service operations continue to reject filesystem font paths.
 
 REST adds GET `/resources/{kind}`, GET/POST `/resources/{kind}/{name}` (POST body `{"value":...}`), POST `/fonts?name=brand` with raw TTF/OTF bytes (16 MiB maximum), and POST `/export` with options such as `{"format":"SVG"}`. Export returns bytes and accepts no destination path. Python exposes the matching `vixl.resources` and `vixl.fonts` helpers. [Detailed examples and boundaries](agent-resources.md).
 
 ## Sizes, layouts, color, brushes and timelines (0.13)
 
-All new editing features are ordinary operations, so `vixl_operations_apply`, `POST /operations`, `Project.apply` and scripts use them directly. MCP adds the discovery, timeline and icon tools listed above; `vixl_render_preview` and `vixl_export_file` gain `time`, `proof`, `simulate` and print options. `icc_profile` is a workspace path in MCP.
+All new editing features are ordinary operations, so `vixl_apply`, `POST /operations`, `Project.apply` and scripts use them directly. MCP adds the discovery (`vixl_reference`), timeline and icon actions listed above; `vixl_render` and `vixl_export` gain `time`, `proof`, `simulate` and print options. `icc_profile` is a workspace path in MCP.
 
 REST adds `GET /sizes?category=`, `GET /layouts`, `GET /brushes`, `GET /guide?brief=`, `GET /styles?query=|name=`, `GET /looks`, `POST /color` (`{"action", "colors", "to"?, "scheme"?, "count"?, "amount"?, "space"?}`), `GET /timeline`, `GET /timeline/frame?time=1.5s` (PNG), and `POST /timeline/export` (`{"format", "fps", "scale", "start", "end", "background", "columns", "quality"}`; returns bytes). `POST /export` accepts `color_space`, `icc_profile_base64`, `intent`, `black_generation`, `ink_limit`, `proof`, `simulate`, `dpi`, `icon_sizes` and `time`, and formats `PDF` and `ICO`. `POST /preview` accepts `time`, `proof` and `simulate`.
 
@@ -349,12 +322,12 @@ Python: `Project.sized("letter", bleed=True)`, `project.export("flyer.pdf", colo
 
 ## Pages, forms, drawings and lyric videos (0.19)
 
-All editing is ordinary operations. MCP: `vixl_render_preview` gains `page` (`"all"` for a contact
-sheet), `values` and `show_fields`; `vixl_export_file` gains `page`, `pages`, `pdf_content`,
+All editing is ordinary operations. MCP: `vixl_render` gains `page` (`"all"` for a contact
+sheet), `values` and `show_fields`; `vixl_export` gains `page`, `pages`, `pdf_content`,
 `fillable`, `values`, `fill_mode` and `presenter` and writes `.pptx` and `.html` presentations
 (see [presenter](presenter.md)); `vixl_check` gains `page`, `deck`
-settings, `sample`, and the `deck`, `form` and `drawing` families; `vixl_document_inspect` lists
-pages and fields. `vixl_workflow` adds `lyric-video-plan/build/export`, `organic-catalog`,
+settings, `sample`, and the `deck`, `form` and `drawing` families; `vixl_document(action='inspect')` lists
+pages and fields. `vixl_apply(workflow=…)` adds `lyric-video-plan/build/export`, `organic-catalog`,
 `form-fill`, `drawing-report` and `drawing-compare`; jobs add the `lyric-video` and `form-fill`
 kinds.
 
@@ -373,8 +346,8 @@ Python: `project.export("deck.pptx")`, `project.export("form.pdf", fillable=True
 (`parse_lrc`, `plan`, `build`, `export`).
 
 Linked documents and print merge are ordinary operations and one workflow action each: `link` (create, or change with a `target`),
-`link-refresh` and `link-embed` go through `vixl_operations_apply` / `POST /operations`; `vixl_workflow("links", {})` (also `POST /workflow/links`) lists
-each link's state; `vixl_workflow("merge-impose", request, document=template)` merges a CSV into print sheets (MCP and CLI only:
+`link-refresh` and `link-embed` go through `vixl_apply` / `POST /operations`; `vixl_apply(workflow='links', request={})` (also `POST /workflow/links`) lists
+each link's state; `vixl_apply(workflow='merge-impose', request=request, document=template)` merges a CSV into print sheets (MCP and CLI only:
 it writes files). Link sources and merge paths stay inside the workspace. See [linked documents](linked-documents.md) and
 [imposition](imposition.md).
 
@@ -382,7 +355,7 @@ it writes files). Link sources and merge paths stay inside the workspace. See [l
 
 ```bash
 # MCP over HTTP, for clients supporting a static Authorization header:
-vixl mcp --workspace . --http --port 8766 --tools core --schema slim
+vixl mcp --workspace . --http --port 8766
 # For a remote bind, set VIXL_API_TOKEN, then add --host 0.0.0.0.
 # Connect to https://YOUR-HOST/mcp through your TLS reverse proxy.
 
@@ -406,7 +379,7 @@ The viewer polls once per second, showing the current PNG, layers, history, and 
 Only its empty HTML shell is public; document APIs require the token when configured. Enter
 that token in the viewer; it is kept in memory, never placed in a URL or browser storage.
 Notes persist in `DOCUMENT.vixl.notes.json`, separately from undo history. Agents read/add/resolve
-them with `vixl_review_notes`; CLI users use `notes list|add|resolve`. REST provides `GET /review`,
+them with `vixl_document(action='notes')`; CLI users use `notes list|add|resolve`. REST provides `GET /review`,
 `GET /notes`, `POST /notes` (`{"text":"..."}`), and `POST /notes/{id}/resolve`.
 
 ### Import existing artwork
@@ -419,15 +392,15 @@ vixl -p poster.vixl import photo.jpg --name hero --credit "Photo: Ana Ruiz" --li
 vixl -p poster.vixl import https://images.example.com/cat.jpg --name cat --credit "Photo: Ana Ruiz / Unsplash" --license "Unsplash License"
 ```
 
-MCP: `vixl_import_document(format="svg", path="logo.svg")`, or `data_base64` instead of `path`.
+MCP: an `import-document` step in `vixl_apply` (`format="svg"`, `path="logo.svg"`), with `data_base64` instead of `path` when there is no file.
 REST: `POST /import?format=svg` with raw bytes. PDF additionally accepts a one-based `page`; it imports the page
 as editable layers (text, paths, images), or with `svg_mode=appearance` as one image at `dpi` (36–600).
-Figma files import with `format=figma` (CLI `import URL --format figma`, Python `import_document(project, b"URL", "figma")`,
+Figma files import with `format=figma` (an `import-document` step with `source` set to the URL or file key, CLI `import URL --format figma`, Python `import_document(project, b"URL", "figma")`,
 REST `POST /import?format=figma` with the URL or file key as the body) using `FIGMA_TOKEN` from the environment; see
 [Import from Figma](figma.md).
 
 Any other file, or an `https://` URL, is imported as an image layer, the same as
-`vixl_import_image(url=…)`, `POST /assets?url=…` and `Project.import_image(url=…)` in Python. A URL
+an `import-image` step with `url`, `POST /assets?url=…` and `Project.import_image(url=…)` in Python. A URL
 download is HTTPS only, follows at most 5 redirects, refuses private, loopback and link-local hosts
 and is size-capped; the bytes must decode as an image whatever the server's `Content-Type` says (see
 [architecture](architecture.md#trust-and-security)). The layer's `provenance` records
@@ -454,12 +427,12 @@ become layer names.
 `emoji-list`, `emoji-get`, `emoji-template`, `emoji-settings`, `emoji-replace`, `emoji-pack-install`, `emoji-reset`,
 `emoji-destinations`, `emoji-requirements` and `emoji-export` back the `vixl emoji` command ([emojis](emojis.md));
 `app-animation-package` writes an app animation package ([animation authoring](animation-authoring.md)), and
-`screen-capture` captures the local desktop to PNG. They run through `vixl_workflow` and `vixl workflow ACTION`; the
+`screen-capture` captures the local desktop to PNG. They run through `vixl_apply(workflow=…)` and `vixl workflow ACTION`; the
 REST workflow route, scoped to its one document, does not serve them.
 
 ### Consolidated studio workflows
 
-`vixl mcp --tools compact --schema slim` exposes 13 document/operation/workflow/compose/preview/import/export tools. Workflow actions include resource-list/get/save, shape-save, suite-use, palette-check, effect-run, group-list/define/show/apply/recover, branch-list/fork/status/merge and plugin-list/install/remove. REST allows the resource/test/effect actions while retaining fixed-project scope. `vixl_export_file` and REST export support HTML. Full contracts and examples: [studio.md](studio.md).
+`vixl_apply(workflow=…)` runs them over MCP. Workflow actions include resource-list/get/save, shape-save, suite-use, palette-check, effect-run, group-list/define/show/apply/recover, branch-list/fork/status/merge and plugin-list/install/remove. REST allows the resource/test/effect actions while retaining fixed-project scope. `vixl_export` and REST export support HTML. Full contracts and examples: [studio.md](studio.md).
 
 ### MCP startup requirements
 

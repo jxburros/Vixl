@@ -48,7 +48,7 @@ def resolve(name):
     close = difflib.get_close_matches(key, STYLES, 3, 0.5)
     matches = [s for s, entry in STYLES.items() if key in " ".join(entry["keywords"])]
     raise VixlError("unknown_style", f"Unknown style {name!r}"
-                    + (f"; did you mean {' or '.join(map(repr, close))}?" if close else "; see vixl_styles")
+                    + (f"; did you mean {' or '.join(map(repr, close))}?" if close else "; see vixl_reference('styles')")
                     + (f" Styles tagged {key!r}: {', '.join(matches)}." if matches else ""),
                     field="style", suggestions=close or matches[:3], allowed=names())
 
@@ -66,7 +66,7 @@ def listing(query=None):
                          "keywords": entry["keywords"], "best_for": entry["best_for"],
                          "checks": [rule["id"] for rule in entry["checks"]]})
     return {"count": len(rows), "styles": rows,
-            "next": "vixl_styles(action='get', name=…) for the full guidance; action='apply' tags the document; "
+            "next": "vixl_reference('styles', name=…) for the full guidance; action='apply' tags the document; "
                     "vixl_check(checks=['style']) evaluates its rules"}
 
 
@@ -452,7 +452,7 @@ def rule_type_categories(f, p):
     known = [(item, f.category(item)) for item in texts]
     known = [(item, cat) for item, cat in known if cat]
     if not known:
-        return skipped("typefaces are not in the catalog (install them with vixl_font_pair / vixl_font_install)")
+        return skipped("typefaces are not in the catalog (install them with font-pair / font-install)")
     found = sorted({cat for _, cat in known})
     measured = {"categories": found}
     if p.get("allowed"):
@@ -644,7 +644,7 @@ def _weight_rule(f, p, bad, wanted):
     known = [(item, visual_weight(*f.font(item)[:2])) for item in pool]
     known = [(item, weight) for item, weight in known if weight]
     if not known:
-        return skipped("font weights are unknown (register fonts with weights, e.g. vixl_font_install weight=700)")
+        return skipped("font weights are unknown (register fonts with weights, e.g. font-install weight=700)")
     off = [item for item, weight in known if bad(weight)]
     measured = {"weights": sorted({weight for _, weight in known})}
     if off:
@@ -938,7 +938,7 @@ def check_style(candidate, resolved, projection, layers, content, issue, style=N
     """Add one finding per failed rule of the document's style (or ``style``); returns the rule report."""
     keys, options = selected(style, candidate.state)
     if not keys:
-        issue("style", "warning", "No style is set: tag the document with style-set (vixl_styles lists the styles) or "
+        issue("style", "warning", "No style is set: tag the document with style-set (vixl_reference('styles') lists the styles) or "
               "pass style=…", [])
         return {"styles": [], "rules": []}
     facts = Facts(candidate, resolved, projection, layers, content)

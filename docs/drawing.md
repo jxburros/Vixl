@@ -29,7 +29,7 @@ vixl ai drawing-color house --prompt "soft watercolour, late afternoon light"   
 {"type": "drawing", "action": "vectorize", "target": "house", "settings": {"width": "uniform"}}
 ```
 
-Through MCP, import the photo with `vixl_import_image` and pass its `asset`; `vixl_workflow`
+Through MCP, import the photo with `import-image` and pass its `asset`; `vixl_apply(workflow=…)`
 actions `drawing-report` and `drawing-compare` return the report and write the comparison image.
 
 ## What a drawing is

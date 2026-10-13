@@ -34,10 +34,11 @@
   ],
   "reference": [
     {
-      "tool": "vixl_template_create",
+      "tool": "vixl_document",
       "arguments": {
+        "action": "create",
         "path": "design.vixl",
-        "name": "social-square",
+        "template": "social-square",
         "variables": {
           "title": "Spring",
           "subtitle": "Out Friday"
@@ -45,7 +46,7 @@
       }
     },
     {
-      "tool": "vixl_export_file",
+      "tool": "vixl_export",
       "arguments": {
         "path": "preview.png"
       }

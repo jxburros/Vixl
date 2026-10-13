@@ -17,13 +17,13 @@ default brand. Precedence, highest first:
 4. the document's stored `design_defaults`;
 5. a fresh seeded roll.
 
-The purpose comes from an explicit `purpose` (`vixl roll --for slides`, `vixl_roll(purpose=…)`), else
-the brief kind (`vixl_guide("social-card")`), else the purpose stored in the document, else its
+The purpose comes from an explicit `purpose` (`vixl roll --for slides`, `vixl_reference('roll')`), else
+the brief kind (`vixl_reference("social-card")`), else the purpose stored in the document, else its
 named size (`instagram-post` is social, `letter` is document, `favicon` is logo). Roll and creation
 results report `purpose` and `purpose_source` (`explicit`, `brief kind`, `document` or `size`).
 
-Creation (`vixl new --purpose`, `vixl_document_create(purpose=…)`, `Project(purpose=…)`) and rolls
-(`vixl roll --for`, `vixl_roll(purpose=…)`) accept the same names: the eight purposes and their aliases
+Creation (`vixl new --purpose`, `vixl_document(action='create', purpose=…)`, `Project(purpose=…)`) and rolls
+(`vixl roll --for`, `vixl_reference('roll')`) accept the same names: the eight purposes and their aliases
 (`story`, `web`, `email`, `flyer`, `print`, `invitation`, `deck`, `video`, `icon`, `mark`, `emblem`,
 `favicon` …), as well as brief kinds, named sizes and size categories. Each name maps to one purpose
 profile; creation refuses an unknown name with suggestions, while a roll treats one as a free-text hint.
@@ -43,7 +43,7 @@ Each purpose weights the taste:
 Density follows the purpose seven rolls in ten and deviates the rest of the time (decision E4); without
 a purpose the roll picks balanced twice as often as airy or dense.
 
-`vixl house show PURPOSE` (MCP `vixl_resource_get(kind="house-style", name=PURPOSE)`) prints a
+`vixl house show PURPOSE` (MCP `vixl_reference('house-style', name=PURPOSE)`) prints a
 profile; `vixl house` prints the craft rules, the tiers and the levels.
 
 ## Tiers and variety levels
@@ -69,12 +69,12 @@ minimal, corporate …) shifts them toward safe.
 The safe palette pool holds light, dark, saturated, duotone and earthy palettes, each checked with
 the role-assignment contrast pass in every mode it rolls in (ink 7:1, muted and accent text 4.5:1).
 Dark palettes roll only in dark mode. The curated legacy palettes (midnight, nordic, sunset, neon
-…) joined the tiers and keep their names. `vixl_guide(brief="safe-pools")` lists every entry with
+…) joined the tiers and keep their names. `vixl_reference("safe-pools")` lists every entry with
 its tier, moods and modes.
 
 ## What a roll chooses
 
-`vixl_roll(variety="low"|"medium"|"high"|"fixed")` chooses the font pairing, palette, light or dark
+`vixl_reference('roll')` chooses the font pairing, palette, light or dark
 mode, layout, type scale, density, margin, accent motif, background treatment, style, finishing look
 and its amount, a headline treatment, and a recommended container/variant. Corners follow the house
 craft (sharp) unless the rolled style has its own (material and glassmorphism round, kawaii and y2k
@@ -96,7 +96,7 @@ whose image slot nobody fills.
 ## New documents
 
 Every surface creates documents the same way: `vixl new`, Python `Project()`, `Project.sized()` and
-`Project.new()`, `vixl_document_create`, `vixl_compose` and REST compose. Each new document:
+`Project.new()`, `vixl_document(action='create')`, `vixl_apply(create=…)` and REST compose. Each new document:
 
 - **Size.** Uses the given size. Without one, it uses the purpose's size, from the purpose profile's `size`
   and its aliases' `sizes` in the house-style data (social 1080×1350, story 1080×1920, poster 18×24 in,
@@ -120,7 +120,7 @@ transparent canvas with no `design_defaults`; pass `seed`, `variety` or `purpose
 design document, and `Project.sized(size, design=False)` for a plain named-size canvas.
 
 A `layout-apply` without `seed` on such a document uses the whole stored direction, as
-`vixl_roll(apply=true)` does: the layout seed, palette, mode, type scale, density and accent, and the
+`the roll operation` does: the layout seed, palette, mode, type scale, density and accent, and the
 margin, corner, look, style, motif and background treatment. Fields you pass win one by one. Passing
 `seed` asks for a fresh choice instead of the stored direction.
 
@@ -131,7 +131,7 @@ their own device. An outline frame insets the content two spacing units inside i
 and the direction motif are placed clear of the text (another margin, a shorter column, or left out), and
 the overlap check reports decoration that runs through text as `overlap.decoration-text`.
 
-`vixl_roll(apply=True, slots={"title": "Launch"})` installs its selected fonts,
+`vixl_reference('roll')` installs its selected fonts,
 builds the editable design in one undo step, and returns contrast/legibility checks.
 Ordinary layout/template calls do not download fonts: their `font_choice` result
 names the selected pairing and the explicit installation command. Existing fonts
@@ -152,7 +152,7 @@ Without a component lock, the roll's component is a recommendation for subsequen
 `container-place` calls; a text composition does not gain unrelated placeholder
 content. Document defaults also supply compatible variants when placing containers.
 
-`vixl_guide` attaches a roll to a brief kind. That roll favours the kind's recommended layouts,
+`vixl_reference` attaches a roll to a brief kind. That roll favours the kind's recommended layouts,
 looks and styles where the variety level allows their tier, and the answer's `recommendations`
 says, for each list, what was rolled, whether it is one of the recommendations and which
 recommendations are opt-in alternatives (with their tiers).

@@ -8,11 +8,7 @@
         "vixl",
         "mcp",
         "--workspace",
-        ".",
-        "--tools",
-        "core",
-        "--schema",
-        "slim"
+        "."
       ]
     }
   }

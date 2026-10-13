@@ -599,23 +599,23 @@ def test_mcp_tools_apply_describe_and_check_diagrams(tmp_path):
 
         return asyncio.run(run())
 
-    call("vixl_document_create", {"path": "d.vixl", "width": 900, "height": 600, "background": "white"})
-    result = call("vixl_operations_apply", {"operations": [
+    call("vixl_document", {"action": "create", "path": "d.vixl", "width": 900, "height": 600, "background": "white"})
+    result = call("vixl_apply", {"operations": [
         {"type": "diagram-from-text", "name": "flow", "text": "A -> B{Ok?}\nB -> C: yes\nB -> A: no", "direction": "LR"}]})
     assert result["diagram"]["flow"]["nodes"] == 3 and result["diagram"]["flow"]["crossings"] == 0
     report = call("vixl_check", {"checks": ["diagram"]})
     assert report["passed"] and report["checked"]["checks"] == ["diagram"]
-    schema = call("vixl_operation_schema", {"types": ["diagram", "text-flow"]})
+    schema = call("vixl_reference", {"topic": "operations", "name": ["diagram", "text-flow"]})
     assert schema["diagram"]["properties"]["nodes"]["items"]["anyOf"][1]["properties"]["kind"]["enum"][0] == "process"
     assert "keep_together" in schema["text-flow"]["properties"]
 
     async def font_file():  # services take a registered font name or a role, never a font file
         try:
-            await server.call_tool("vixl_operations_apply", {"operations": [{"type": "diagram", "name": "x", "nodes": ["A"], "font": "some.ttf"}]})
+            await server.call_tool("vixl_apply", {"operations": [{"type": "diagram", "name": "x", "nodes": ["A"], "font": "some.ttf"}]})
         except Exception as exc:  # noqa: BLE001
             return str(exc)
 
     assert "missing_font" in asyncio.run(font_file())
-    flow = call("vixl_operations_apply", {"operations": [
+    flow = call("vixl_apply", {"operations": [
         {"type": "text-flow", "name": "s", "text": "word " * 400, "x": 10, "y": 10, "width": 200, "height": 100}]})
     assert flow["text_flow"]["s"]["overflow"] is True and flow["warnings"]

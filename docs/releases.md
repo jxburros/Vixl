@@ -146,7 +146,7 @@ other development assets out of it so each Python distribution stays below PyPI'
 After the first successful PyPI release:
 
 ```bash
-uvx --from vixl-engine vixl mcp --workspace . --tools core --schema slim
+uvx --from vixl-engine vixl mcp --workspace .
 pip install 'vixl-engine[server,pdf]'
 ```
 

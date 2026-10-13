@@ -8,15 +8,15 @@ effects, plugin packs, project groups and agent branches use **one workflow disp
 ```bash
 vixl workflow schema
 vixl -p campaign.vixl workflow ACTION --request request.json --workspace .
-vixl mcp --workspace . --tools compact --schema slim
+vixl mcp --workspace .
 ```
 
-MCP: `vixl_workflow(action, request, document?)`; Python:
+MCP: `vixl_apply(workflow=ACTION, request={…}, document?)`; Python:
 `dispatch(Session("campaign.vixl", workspace="."), action, request)` from
-`vixl.workflows`. `vixl_workflow_schema` discovers action names and allowed/required fields.
-The compact profile exposes 13 tools for documents, operations, one-call builds (`vixl_compose`), workflow discovery/execution,
-preview, import and export. Use `core` for the full typography/catalog convenience tools,
-and `ai` for provider-backed tools. Existing tool names remain available in the original profiles.
+`vixl.workflows`. `vixl_reference('workflows')` discovers action names and allowed/required fields.
+The MCP server's seven tools cover documents, operation batches, one-call builds (`vixl_apply(create={…})`),
+workflows, checks, previews, exports and the catalogs (`vixl_reference`); `vixl mcp --tools ai` serves the
+provider-backed tools.
 REST exposes the document/resource actions at `/workflow/{action}`; branch, group and plugin
 pack management need a workspace CLI/MCP/Python session.
 
@@ -121,7 +121,7 @@ Fifteen ready-to-use suites are discoverable through workflow `resource-list`, k
 `delivery`, `palette`, `opaque`, `print-ready`, `accessible`, `no-placeholders`, `containers`, and per
 document type `social-card`, `composition` (balance, breathing room, overlap, contrast), `slide-deck`,
 `logo`, `motion-loop` (sampled over the timeline), `character`, `fillable-form` and `diagram`.
-`vixl_guide(kind)` names the one that suits a kind of work under `tests`.
+`vixl_reference(kind)` names the one that suits a kind of work under `tests`.
 Read one with `resource-get`, then attach it with `suite-use`, e.g. `{"name":"palette"}`.
 Run `check` with `{"suite":"palette"}`. Warnings and unmeasurable rules count as needs-review.
 `suite-use` copies the suite; `{"name":"delivery","reference":true}` attaches it by reference instead
@@ -144,7 +144,7 @@ text, `hierarchy` for type that steps down, `relation` for placement, alignment 
 `ink`, `balance` and `focal` for composition, `color` and `palette` for rendered colors, `count`
 for how many of something, `container` for modular rules, and `suite-capture` for intentional
 structural/pixel baselines. Run the suite with every batch (`suites=true` on apply) and before
-every preview: `vixl_guide("testing")` explains why and how. Rules, animation sampling and checked production are described in
+every preview: `vixl_reference("testing")` explains why and how. Rules, animation sampling and checked production are described in
 [production.md](production.md). Never weaken expectations to repair a failing picture.
 An existing check is a starting point, not a substitute for the brief or visual inspection.
 

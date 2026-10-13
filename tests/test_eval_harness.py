@@ -74,15 +74,15 @@ def test_claude_agent_loop_runs_tools_and_keeps_history_append_only():
         (
             [
                 block(type="thinking", thinking="", signature="sig"),
-                block(type="tool_use", id="t1", name="vixl_document_create", input=create),
+                block(type="tool_use", id="t1", name="vixl_document", action="create", input=create),
             ],
             "tool_use",
         ),
         (
             [
-                block(type="tool_use", id="t2", name="vixl_operations_apply", input=apply),
-                block(type="tool_use", id="t3", name="vixl_render_preview", input={"max_width": 256}),
-                block(type="tool_use", id="t4", name="vixl_operations_apply", input={"operations": [{"type": "mvoe"}]}),
+                block(type="tool_use", id="t2", name="vixl_apply", input=apply),
+                block(type="tool_use", id="t3", name="vixl_render", input={"max_width": 256}),
+                block(type="tool_use", id="t4", name="vixl_apply", input={"operations": [{"type": "mvoe"}]}),
             ],
             "tool_use",
         ),
@@ -157,6 +157,6 @@ def test_new_checks_reject_the_shortcut(name):
         operations[1:] = [{"type": "timeline-set", "duration": "2s", "fps": 12},
                           {"type": "animate", "target": "star", "property": "rotation", "from": 0, "to": 180}]
     else:
-        shortcut.append({"tool": "vixl_operations_apply", "arguments": {"operations": [{"type": "show", "target": "dot5"}]}})
+        shortcut.append({"tool": "vixl_apply", "arguments": {"operations": [{"type": "show", "target": "dot5"}]}})
     result = run([{**task, "reference": shortcut}], ReferenceAgent())[0][0]
     assert not result["passed"]

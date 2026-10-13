@@ -28,8 +28,9 @@
   ],
   "reference": [
     {
-      "tool": "vixl_document_create",
+      "tool": "vixl_document",
       "arguments": {
+        "action": "create",
         "path": "cactus.vixl",
         "width": 500,
         "height": 600,
@@ -37,7 +38,7 @@
       }
     },
     {
-      "tool": "vixl_operations_apply",
+      "tool": "vixl_apply",
       "arguments": {
         "operations": [
           {
@@ -160,7 +161,7 @@
       }
     },
     {
-      "tool": "vixl_export_file",
+      "tool": "vixl_export",
       "arguments": {
         "path": "cactus.png"
       }

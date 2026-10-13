@@ -471,13 +471,10 @@ def test_mcp_design_schema_measurement_and_typed_tools(tmp_path):
     async def run():
         server = mcp_server(tmp_path / "p.vixl")
         tools = {tool.name: tool for tool in await server.list_tools()}
-        assert {
-            "vixl_measure",
-            "vixl_ai_remove",
-            "vixl_ai_content_aware_fill",
-            "vixl_ai_select_subject",
-        } <= tools.keys()
-        schema = tools["vixl_operations_apply"].inputSchema
+        ai = {tool.name for tool in await mcp_server(tmp_path / "p.vixl", tools="ai").list_tools()}
+        assert {"vixl_ai_remove", "vixl_ai_content_aware_fill", "vixl_ai_select_subject"} <= ai
+        assert "measure" in tools["vixl_check"].inputSchema["properties"]["action"]["enum"]
+        schema = tools["vixl_apply"].inputSchema
         for op in [
             {"type": "shape", "shape": "ellipse", "name": "sun"},
             {"type": "group", "targets": ["sun"], "name": "g"},
@@ -494,9 +491,10 @@ def test_mcp_design_schema_measurement_and_typed_tools(tmp_path):
             {"type": "move", "x": "hello"},
             {"type": "text-layout", "path": "/etc/passwd"},
         ]:
-            with pytest.raises(jsonschema.ValidationError):
-                jsonschema.validate({"operations": [op]}, schema)
-        result = await server.call_tool("vixl_measure", {"point": [1, 1], "foreground": "black"})
+            # The advertised schema only types the item; the operation's own schema is checked when applied.
+            with pytest.raises(Exception):
+                await server.call_tool("vixl_apply", {"operations": [op], "dry_run": True})
+        result = await server.call_tool("vixl_check", {"action": "measure", "point": [1, 1], "foreground": "black"})
         assert result
 
     asyncio.run(run())

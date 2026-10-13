@@ -22,8 +22,9 @@
   ],
   "reference": [
     {
-      "tool": "vixl_document_create",
+      "tool": "vixl_document",
       "arguments": {
+        "action": "create",
         "path": "design.vixl",
         "width": 300,
         "height": 300,
@@ -31,7 +32,7 @@
       }
     },
     {
-      "tool": "vixl_operations_apply",
+      "tool": "vixl_apply",
       "arguments": {
         "operations": [
           {
@@ -43,7 +44,7 @@
       }
     },
     {
-      "tool": "vixl_export_file",
+      "tool": "vixl_export",
       "arguments": {
         "path": "print.tiff",
         "color_space": "cmyk"

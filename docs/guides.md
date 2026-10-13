@@ -113,7 +113,7 @@ vixl check --checks guides alignment
 ```
 
 MCP: `vixl_check(checks=["guides", "alignment"])`; previews draw the guides with
-`vixl_render_preview(guides=true)` (or a list of guide or grid names). Python:
+`vixl_render(guides=true)` (or a list of guide or grid names). Python:
 `vixl.proxy.render_preview(project, w, h, guides=True)` and `vixl.guides.draw_overlay(image, project)`.
 
 ## Composition
@@ -146,7 +146,7 @@ vixl check --checks composition
 vixl check --profile final --strict
 ```
 
-MCP: `vixl_check(checks=["composition"])`, or `vixl_check(profile="final")`. `vixl_operations_apply` with
+MCP: `vixl_check(checks=["composition"])`, or `vixl_check(profile="final")`. `vixl_apply` with
 `check=true` lists every composition finding with the batch, wherever it is, and `check.regions`: the two weakest
 regions; add `preview=true` and their real-size crops follow the preview ([interfaces](interfaces.md)). Workflow
 `repair-layout` repairs most findings (snap the drift, re-space the stack, open the gap, spread the band, thin the

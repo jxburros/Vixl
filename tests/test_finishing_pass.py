@@ -1,5 +1,6 @@
 """The finishing pass at the end of the agent loop (craft plan 3a): one craft checklist in the guidance registry,
-reachable from vixl_guide, vixl_resource_get and vixl_capabilities, and the loop text that points at it."""
+reachable from vixl_reference (by name, as a guidance resource and through capabilities), and the loop text
+that points at it."""
 
 import asyncio
 import json
@@ -26,8 +27,8 @@ def test_the_craft_checklist_lives_in_the_finishing_guidance():
     for item in CHECKLIST:
         assert item in text, item
     # The loop after the checks pass, in order.
-    order = ['checks=["composition"]', "Critique", "one vixl_operations_apply batch", "region=[x, y, w, h]",
-             "vixl_export_file"]
+    order = ['checks=["composition"]', "Critique", "one vixl_apply batch", "region=[x, y, w, h]",
+             "vixl_export"]
     assert [text.index(step) for step in order] == sorted(text.index(step) for step in order)
     assert "max_width=w, max_height=h" in text
     # No other guidance entry carries a second copy of the checklist.
@@ -45,9 +46,9 @@ def test_finishing_guidance_resolves_by_name_alias_resource_and_capabilities(tmp
     assert {"poster", "social-card", "slides"} <= set(briefs.guide("finishing")["kinds"])
     assert "finishing" in briefs.guide("poster")["guidance"]
     server = mcp_server(workspace=tmp_path)
-    assert call(server, "vixl_guide", {"brief": "craft"})["text"] == GUIDANCE["finishing"]
-    assert call(server, "vixl_resource_get", {"kind": "guidance", "name": "finishing"})["value"] == GUIDANCE["finishing"]
-    assert "finishing" in call(server, "vixl_capabilities", {"topic": "testing"})["guidance"]
+    assert call(server, "vixl_reference", {"topic": "craft"})["text"] == GUIDANCE["finishing"]
+    assert call(server, "vixl_reference", {"topic": "guidance", "name": "finishing"})["value"] == GUIDANCE["finishing"]
+    assert "finishing" in call(server, "vixl_reference", {"topic": "capabilities", "name": "testing"})["guidance"]
 
 
 def test_start_here_ends_with_the_finishing_pass_and_keeps_finish_as_a_look():
@@ -55,22 +56,22 @@ def test_start_here_ends_with_the_finishing_pass_and_keeps_finish_as_a_look():
     finish = next(step for step in steps if step.startswith("Finish:"))
     assert "look" in finish and "not the finishing pass" in finish
     last = steps[-1]
-    assert last.startswith("Finishing pass after tests pass") and "vixl_guide('finishing')" in last
+    assert last.startswith("Finishing pass after tests pass") and "vixl_reference('finishing')" in last
     order = ["vixl_check and the suites", 'checks=["composition"]', "critique", "one fix batch", "real-size look",
-             "vixl_render_preview(region=", "vixl_export_file"]
+             "vixl_render(region=", "vixl_export"]
     assert [last.index(step) for step in order] == sorted(last.index(step) for step in order)
     assert briefs.guide("poster")["start_here"][-1] == last
 
 
 def test_mcp_instructions_and_skill_describe_the_finishing_pass(tmp_path):
-    text = mcp_server(workspace=tmp_path).instructions
-    start = text.index("6) finishing pass")
-    assert text.index('vixl_check(checks=["composition"])', start) < text.index("a short critique", start) \
-        < text.index("one fix batch", start) < text.index("vixl_render_preview", start) < text.index("vixl_export_file", start)
+    # The short server instructions send agents to the start-here loop, which ends with the finishing pass.
+    assert "vixl_reference()" in mcp_server(workspace=tmp_path).instructions
+    loop = call(mcp_server(workspace=tmp_path), "vixl_reference", {})["start_here"]
+    assert loop[-1].startswith("Finishing pass after tests pass")
     skill = (ROOT / "skills/vixl/SKILL.md").read_text(encoding="utf-8")
     start = skill.index("6. **Finishing pass, then export**")
     section = skill[start:skill.index("## Tests: why, when and how")]
-    assert 'vixl_guide("finishing")' in section and "max_width=w, max_height=h" in section
+    assert 'vixl_reference("finishing")' in section and "max_width=w, max_height=h" in section
     assert section.index("Check composition") < section.index("Critique") < section.index("Fix") \
         < section.index("Look at real size") < section.index("Export")
     # SKILL.md names the checklist; its items are the ones the registry holds.

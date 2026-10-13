@@ -1,6 +1,6 @@
 """Typed, described request fields for every workflow action, and the check-suite object.
 
-``vixl_workflow_schema`` publishes these so an agent can build a request from the tool surface
+``vixl_reference('workflows')`` publishes these so an agent can build a request from the tool surface
 alone. They are descriptive: ``workflows.dispatch`` and the owning modules still validate.
 """
 
@@ -192,7 +192,7 @@ COMMON = {
     "spec": {"type": "object", "description": "Specification object; see the action's docs."},
     "job": {"type": "object", "description": "Job description; see submit."},
     "operations": {"type": "array", "items": {"type": "object"}, "minItems": 1, "maxItems": 1000,
-                   "description": "Operation objects, as for vixl_operations_apply."},
+                   "description": "Operation objects, as for vixl_apply."},
     "id": {"type": "string", "description": "Job or library item ID returned by an earlier call."},
     "name": {"type": "string", "description": "Resource name: 1–100 letters, numbers, _ or -."},
     "suites": {"type": "array", "items": STR, "description": "Names of attached suites to enforce; omitted "
@@ -623,6 +623,19 @@ ACTION_FIELDS = {
                                    for key in ("json", "markdown", "junit", "sarif", "github", "proof")}},
         "overwrite": {"type": "boolean", "default": False, "description": "Replace existing output files."},
     },
+    "adapt-sizes": {
+        "sizes": {"type": "array", "minItems": 1, "maxItems": 16, "items": {"type": ["string", "object"]},
+                  "description": "Target sizes: a named size ('story', 'a4'), 'WIDTHxHEIGHT', or {size | width+height, "
+                                 "orientation?, dpi?, bleed?, name?}."},
+        "directory": {**PATH, "description": "Folder for the adapted copies (default: the workspace root)."},
+        "name": {"type": "string", "default": "{name}-{size}",
+                 "description": "File name template for each copy: {name} {size} {index}."},
+        "options": {"type": "object", "description": "adapt-layout settings for every size: scale, anchors, where, text."},
+        "formats": {**STRINGS, "description": "Also export each copy, e.g. ['png']."},
+        "overwrite": {"type": "boolean", "default": False, "description": "Replace existing copies and exports."},
+        "report": {"type": "string", "enum": ["summary", "layers"], "default": "summary",
+                   "description": "layers also lists where each layer went."},
+    },
     "replace-across": {
         "name": {"type": "string", "description": "Project group whose members to edit (or give documents)."},
         "documents": DOCUMENTS,
@@ -785,6 +798,8 @@ SUMMARIES = {
     "replace-across": "Find and replace text, colors, fonts and images across a group or glob: a dry run lists every "
                       "match, apply publishes through the group journal (group-recover undoes an interrupted run).",
     "group-recover": "Roll back an interrupted group edit from its journal.",
+    "adapt-sizes": "Adapt the open document to several sizes (a campaign: square, story, banner, print): each size is a "
+                   "saved copy re-laid out by adapt-layout and optionally exported; the source is not changed.",
     "repair-layout": "Bounded layout repair: try several candidates per overflow, overlap, spacing, contrast or "
                      "safe-area failure, then per composition finding (drift, rhythm, crowding, dead band, clumped "
                      "tile), keep the least disruptive that adds no finding; infeasible leaves the document "

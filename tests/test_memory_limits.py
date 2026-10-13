@@ -103,10 +103,10 @@ def test_mcp_tools_report_running_out_of_memory_as_a_resource_limit(monkeypatch,
     from vixl.interfaces import mcp_server
 
     server = mcp_server(workspace=tmp_path)
-    call(server, "vixl_document_create", {"path": "a.vixl", "width": 67, "height": 61, "background": "#0a0b0c"})
-    failed, text, _ = call(server, "vixl_operations_apply", {"operations": [
+    call(server, "vixl_document", {"action": "create", "path": "a.vixl", "width": 67, "height": 61, "background": "#0a0b0c"})
+    failed, text, _ = call(server, "vixl_apply", {"operations": [
         {"type": "gradient", "name": "g", "start": "#0d0e0f", "end": "#101112"}]})
     assert not failed, text
     monkeypatch.setattr(design_render, "gradient_image", out_of_memory)
-    failed, text, _ = call(server, "vixl_render_preview", {})
+    failed, text, _ = call(server, "vixl_render", {})
     assert failed and "resource_limit" in text and "memory" in text

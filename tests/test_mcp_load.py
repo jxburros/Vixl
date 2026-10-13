@@ -14,11 +14,11 @@ def runtime(monkeypatch, workers, inline_seconds):
 
 
 def blocking_tool(release):
-    def vixl_export_file(document: str | None = None) -> dict:
+    def vixl_export(document: str | None = None) -> dict:
         release.wait(10)
         return {"ok": True}
 
-    return vixl_export_file
+    return vixl_export
 
 
 def test_inline_budget_shrinks_only_when_calls_exceed_workers(monkeypatch):

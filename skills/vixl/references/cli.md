@@ -253,7 +253,7 @@ vixl apply ops.json [--dry-run]          # or: cat ops.json | vixl apply -
 vixl apply ops.json --check --preview p.png   # also check the result and write a 512 px preview
 vixl apply ops.json --check --suites         # also run every attached check suite (or name them)
 vixl run script.vixlscript               # one editing command per line, # comments; atomic
-vixl compose --request req.json [--preview p.png] [--workspace DIR]   # vixl_compose: create → … → exports, atomic
+vixl compose --request req.json [--preview p.png] [--workspace DIR]   # vixl_apply(create=…): create → … → exports, atomic
 vixl batch './photos/*.jpg' --run cleanup.vixlscript --output ./processed [--format png]
 vixl each layer --type raster --name 'card-*' -- saturation -10
 vixl transaction begin ; …edits… ; vixl transaction commit   # or rollback; one undo step
@@ -308,7 +308,7 @@ vixl ai remove --as removed ; vixl ai content-aware-fill --prompt '…' ; vixl a
 
 ```bash
 vixl -p F.vixl serve [--host 127.0.0.1] [--port 8765] [--token-env VIXL_API_TOKEN]
-vixl mcp --workspace DIR [--tools core|ai|compact|all] [--schema slim|full] [--require-document]   # MCP over stdio; default core + slim; core + ai run as two servers; --require-document (or VIXL_REQUIRE_DOCUMENT=1) makes document= mandatory
+vixl mcp --workspace DIR [--tools default|ai] [--require-document]   # MCP over stdio: seven design tools; --tools ai runs the provider tools as a second server; --require-document (or VIXL_REQUIRE_DOCUMENT=1) makes document= mandatory
 vixl update --check | vixl update | vixl update --rollback ; vixl updates status|on|off   # Windows installer only
 vixl cache info | vixl cache clear   # disk render cache (VIXL_RENDER_CACHE=off, VIXL_CACHE_MAX_MB=256); VIXL_PROFILE=1 adds render_profile to results
 vixl upgrade old.vixl [--report] [--pin-fills]   # document saved before 0.21: list layers that render differently; --pin-fills restores white open-shape fills

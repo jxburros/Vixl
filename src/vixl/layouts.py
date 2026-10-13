@@ -1460,7 +1460,7 @@ def _bento_grid(b):
 
 # Memes: image slots and caption rules only (no stock images). Captions are white with a black stroke and set
 # uppercase (uppercase=false keeps the case); they shrink to fit their box. Fonts follow the document typography
-# or display_font: an Impact-style OFL face such as Anton (vixl_font_install) suits them.
+# or display_font: an Impact-style OFL face such as Anton (font-install) suits them.
 
 
 def _meme_text(b, text, x, y, width, max_height, name, anchor="top", stroked=True, color="#ffffff"):
@@ -1594,10 +1594,10 @@ SLOT_TEXT = {
     "cta": ("Action", "A two- or three-word call to action, shown as a button"),
     "caption": ("Caption", "A small supporting note"),
     "items": ("Items", "One item per line"),
-    "images": ("Images", "A list of embedded image asset ids, one per panel in reading order (vixl_import_image returns "
-               "them; vixl_compose also takes workspace paths and https URLs). Panels left empty get placeholder frames "
+    "images": ("Images", "A list of embedded image asset ids, one per panel in reading order (import-image returns "
+               "them; vixl_apply(create=…) also takes workspace paths and https URLs). Panels left empty get placeholder frames "
                "to fill later"),
-    "image": ("Image", "An embedded image asset id (vixl_import_image returns one; vixl_compose also takes a workspace "
+    "image": ("Image", "An embedded image asset id (import-image returns one; vixl_apply(create=…) also takes a workspace "
               "path or https URL). Left empty, a placeholder frame is drawn; "
               "fill it later by importing a file, placing a saved resource, drawing it with shape/organic/paint operations, "
               "or generating it with an AI tool: see next_steps in the layout-apply result"),
@@ -1829,10 +1829,10 @@ for _name, _layout_entry in LAYOUTS.items():
 
 
 IMAGE_OPTIONS = [
-    {"option": "import", "how": "vixl_import_image(path='photo.png') returns an asset id; then re-apply this layout with "
+    {"option": "import", "how": "an import-image step ({type: import-image, path: 'photo.png'} in vixl_apply) returns an asset id; then re-apply this layout with "
      "image=<asset>, replace=true and the same seed, or run {type: replace-contents, target: <image layer>, asset: <asset>} "
      "and remove the temporary layer"},
-    {"option": "resource", "how": "A saved shape or container: vixl_workflow(action='resource-list', request={kind: 'shapes'}) "
+    {"option": "resource", "how": "A saved shape or container: vixl_apply(workflow='resource-list', request={kind: 'shapes'}) "
      "then {type: shape-place, resource: NAME, x, y, width, height} inside the slot"},
     {"option": "draw", "how": "Build it from shape, pen, pathfinder, organic (flowers, trees, shells …) and paint operations "
      "inside the slot's bounds, group them, and remove the placeholder; {type: rasterize} on the group gives an asset for replace-contents"},
@@ -1900,12 +1900,12 @@ def catalog():
             }
             for name, item in LAYOUTS.items()
         },
-        "detail": "vixl layout show NAME (vixl_layouts_list name=…) gives principles and each slot's meaning",
+        "detail": "vixl layout show NAME (vixl_reference('layouts', name=…)) gives principles and each slot's meaning",
         "options": {
             "seed": "Integer or 'random'; omitted seeds are fresh unless document/workspace variety is fixed. "
             "Unspecified palette, mode, type scale, density, alignment and accent are rolled from the seed",
             "unfilled": "blank (default): unfilled slots render as visible [Label] placeholders recorded as blanks that "
-            "check reports as errors; omit: leave unfilled slots out (vixl_roll apply omits them when given "
+            "check reports as errors; omit: leave unfilled slots out (the roll operation omits them when given "
             "slots); the layout record's omitted lists what was left out",
             "font": "Registered body font; defaults to the document typography (font pair), else the proofing fallback",
             "display_font": "Registered heading font; defaults to the document typography heading, else font",
@@ -1956,7 +1956,7 @@ def execute_layout(project, op):
 
     defaults = state.get("design_defaults", {})
     if "seed" not in op:
-        # A sparse apply takes the document's whole stored direction, as vixl_roll(apply=true) does;
+        # A sparse apply takes the document's whole stored direction, as the roll operation does;
         # explicit fields win key by key, and an explicit seed asks for a fresh choice instead.
         direction = defaults.get("direction", {})
         op["seed"], _ = seed_for(project, direction.get("layout_seed", defaults.get("seed")), op.get("variety"))

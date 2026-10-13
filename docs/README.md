@@ -52,8 +52,8 @@ offline with `python examples/build_documentation.py`.
 
 ## Work with an agent
 
-Use `vixl mcp --workspace . --tools core --schema slim` for a small editing toolset, or
-`--tools compact --schema slim` for consolidated workflow tools. Give the agent a brief with
+Use `vixl mcp --workspace .`: seven tools, with operation fields and rarer options looked up through
+`vixl_reference` ([MCP tool surface](mcp-toolsets.md)). Give the agent a brief with
 dimensions, audience, copy, assets, brand rules and required outputs. Ask it to inspect and
 preview before handing off the editable master and exports. [Interface setup](interfaces.md)
 includes client JSON, authentication and HTTP transport; [studio](studio.md) covers review,

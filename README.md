@@ -107,17 +107,20 @@ checkpoints, JSON batches and Python. Use the bundled font for proofing; choose 
 Point your agent at a workspace folder and let it work:
 
 ```bash
-vixl mcp --workspace . --tools core --schema slim
+vixl mcp --workspace .
 ```
 
 For a pinned tagged runtime with uv:
 
 ```bash
-uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.26.0.tar.gz vixl mcp --workspace . --tools core --schema slim
+uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.26.0.tar.gz vixl mcp --workspace .
 ```
 
-The workspace must exist. Use `--tools compact --schema slim` for consolidated workflow
-tools, `--tools ai` for provider-backed tools, or `--http` for Streamable HTTP.
+The workspace must exist. The server offers seven tools (`vixl_document`, `vixl_apply`, `vixl_check`,
+`vixl_render`, `vixl_export`, `vixl_reference`, `vixl_job`) in about 7,000 characters of tool list; agents
+look up operation fields and rarer options on demand with `vixl_reference`
+([MCP tool surface](docs/mcp-toolsets.md)). Use `--tools ai` for a second server with the provider-backed
+tools, or `--http` for Streamable HTTP.
 [Interface setup](docs/interfaces.md) includes client JSON, multi-document sessions,
 REST authentication, imports and live human review (`vixl -p hello.vixl view`).
 

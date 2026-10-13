@@ -29,15 +29,16 @@
   ],
   "reference": [
     {
-      "tool": "vixl_document_create",
+      "tool": "vixl_document",
       "arguments": {
+        "action": "create",
         "path": "design.vixl",
         "width": 800,
         "height": 800
       }
     },
     {
-      "tool": "vixl_operations_apply",
+      "tool": "vixl_apply",
       "arguments": {
         "operations": [
           {

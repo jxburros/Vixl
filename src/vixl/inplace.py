@@ -63,7 +63,7 @@ def wrong_target(kind, layer):
             field="target",
             suggestions=["replace-contents" if kind in ("add", "frame") else "effect-set"],
         )
-    fallback = (None, "see vixl_operation_schema for the operations that edit it")
+    fallback = (None, "see vixl_reference('operations') for the operations that edit it")
     operation, advice = USE_INSTEAD.get(layer["type"], fallback)
     return VixlError(
         "invalid_operation",

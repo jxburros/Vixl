@@ -370,13 +370,13 @@ def test_mcp_strict_svg_and_new_filters_preserve_existing_file(tmp_path):
     server = mcp_server(path, workspace=tmp_path)
 
     async def run():
-        await server.call_tool("vixl_operations_apply", {"operations": [{"type": "sepia"}]})
-        await server.call_tool("vixl_export_file", {"path": "art.svg", "svg_policy": "strict"})
+        await server.call_tool("vixl_apply", {"operations": [{"type": "sepia"}]})
+        await server.call_tool("vixl_export", {"path": "art.svg", "svg_policy": "strict"})
         before = (tmp_path / "art.svg").read_bytes()
         assert not ET.fromstring(before).findall(".//{*}image")
-        await server.call_tool("vixl_operations_apply", {"operations": [{"type": "ink-blot"}]})
+        await server.call_tool("vixl_apply", {"operations": [{"type": "ink-blot"}]})
         with pytest.raises(ToolError, match="svg_raster_required"):
-            await server.call_tool("vixl_export_file", {"path": "art.svg", "svg_policy": "strict", "overwrite": True})
+            await server.call_tool("vixl_export", {"path": "art.svg", "svg_policy": "strict", "overwrite": True})
         assert (tmp_path / "art.svg").read_bytes() == before
 
     asyncio.run(run())

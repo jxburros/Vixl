@@ -98,7 +98,7 @@ def test_mcp_export_file_reports_the_mode(tmp_path):
                   document="info.vixl")
     result = export_file(session, "info.pdf", document="info.vixl")
     assert result["content"] == "vector" and "default" in result["content_reason"] and result["fonts"] == 1
-    result = asyncio.run(build_server(session).call_tool("vixl_export_file", {"path": "raster.pdf", "document": "info.vixl",
+    result = asyncio.run(build_server(session).call_tool("vixl_export", {"path": "raster.pdf", "document": "info.vixl",
                                                                               "pdf_content": "raster"}))
     assert json.loads(result[0].text)["content"] == "raster"
 

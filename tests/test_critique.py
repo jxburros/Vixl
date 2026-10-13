@@ -92,7 +92,7 @@ def test_mcp_rest_and_cli_return_the_region_crops(tmp_path):
     server = mcp_server(workspace=tmp_path)
 
     async def run():
-        result = await server.call_tool("vixl_operations_apply", {"operations": NUDGE, "check": True, "preview": True,
+        result = await server.call_tool("vixl_apply", {"operations": NUDGE, "check": True, "preview": True,
                                                                   "document": "a.vixl"})
         return result[0] if isinstance(result, tuple) else result
 

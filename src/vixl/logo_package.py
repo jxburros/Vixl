@@ -5,7 +5,7 @@ and a wordmark layer (mark, horizontal, stacked), and the files a brand hand-off
 RGB (and optionally CMYK) PDF, PNG at 1x/2x/3x, an icon set with favicon, a social avatar and an Open
 Graph image, a usage sheet (the proof page) and optionally a zip. Every variant is also saved as an
 editable .vixl in ``source/``, and the files are written through the same export path as
-``vixl_export_batch``. Nothing is overwritten unless ``overwrite`` is true, and a failure removes the
+``vixl_export(kind='batch')``. Nothing is overwritten unless ``overwrite`` is true, and a failure removes the
 files this call wrote.
 
 Recolouring is a heuristic: every visible fill, stroke, text and gradient colour becomes the one ink;

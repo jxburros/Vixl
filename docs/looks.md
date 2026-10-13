@@ -14,7 +14,7 @@ the non-destructive effect stack), so they stay editable, undo cleanly and expor
 ```
 
 CLI: `vixl look LAYER NAME [--color C] [--amount A] [--remove]`, `vixl looks` for the catalog. MCP: the `look` operation and
-`vixl_guide(brief="looks")`.
+`vixl_reference("looks")`.
 
 | Look | What it adds | SVG export |
 | --- | --- | --- |

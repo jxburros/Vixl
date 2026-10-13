@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "about": "Concrete motifs a brief implies and what draws them. Each theme has keywords (whole words or phrases, accents ignored) and elements: the specific thing to draw, the placeholder it replaces, how to build it, and the catalog shapes, organic presets, object kinds and operations that do it. vixl_guide(brief) returns the matching themes as motifs; vixl_guide('motifs') returns them all.",
+  "about": "Concrete motifs a brief implies and what draws them. Each theme has keywords (whole words or phrases, accents ignored) and elements: the specific thing to draw, the placeholder it replaces, how to build it, and the catalog shapes, organic presets, object kinds and operations that do it. vixl_reference(brief) returns the matching themes as motifs; vixl_reference('motifs') returns them all.",
   "themes": {
     "coffee": {
       "title": "Coffee, café or tea",

@@ -4,7 +4,7 @@
 
 Vixl is a headless design engine for AI agents; people can drive the same interfaces.
 
-All edits below are canonical operations, available through Python `Project.apply`, CLI commands/scripts, REST `/operations`, and MCP `vixl_operations_apply`. `vixl schema` describes their fields. Successful edits participate in atomic batches, dry runs, undo/redo, transactions, and `.vixl` persistence. Existing documents remain readable. New design documents require this version of the engine.
+All edits below are canonical operations, available through Python `Project.apply`, CLI commands/scripts, REST `/operations`, and MCP `vixl_apply`. `vixl schema` describes their fields. Successful edits participate in atomic batches, dry runs, undo/redo, transactions, and `.vixl` persistence. Existing documents remain readable. New design documents require this version of the engine.
 
 ## Groups, clipping, shapes, and repeats
 
@@ -73,7 +73,7 @@ scaled parent are refused with the tracks named. The whole call is one undoable 
 ## Examples: gradients, glows, shadows and radial repeats
 
 Shapes take a flat `fill`. Gradients, glows and shadows are layer styles or looks on the same layer, so one shape stays one
-editable layer. `vixl_operation_schema(types=[...])` returns these (and more) as `examples` next to each operation's fields.
+editable layer. `vixl_reference('operations', name=[...])` returns these (and more) as `examples` next to each operation's fields.
 
 ```json
 {"type":"gradient","name":"sky","start":"#1e3a8a","end":"#7dd3fc","direction":"vertical"}
@@ -286,7 +286,7 @@ vixl info --target title
 
 Measurements return JSON: RGBA/hex point sample, alpha-weighted average RGB, mean alpha, four 256-bin histograms (excluding fully transparent pixels), and optional WCAG luminance contrast minimum/mean/maximum. `--foreground` compares the specified RGBA color against every pixel in the region; transparency composites over `--background white` by default. `--target` uses the actual rendered layer (including nested group children) against the stack below it, including opacity, styles and blending, with antialiased fringe pixels excluded. The target must be visible and drawable. Top-level bounds must be within the canvas; grouped targets measure their visible canvas coverage. A target outlined with a `stroke` style at least 3 px wide (and 2% of its font size) also reports `outline`: the outline ring against the backdrop. Contrast thresholds are 4.5 for normal text and 3 for large text, met by the fill or, for outlined text, by its outline; font size eligibility remains the caller's responsibility.
 
-Use `project.measure(...)`, REST POST `/measure`, or MCP `vixl_measure` for the same read-only results. These are measurements, not a GUI info panel.
+Use `project.measure(...)`, REST POST `/measure`, or MCP `vixl_check(action='measure')` for the same read-only results. These are measurements, not a GUI info panel.
 
 ## Gradients, adjustments, automatic corrections, and LUTs
 

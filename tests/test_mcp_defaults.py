@@ -1,6 +1,7 @@
 import pytest
 
 from vixl import cli, interfaces
+from vixl.errors import VixlError
 
 
 class _Server:
@@ -17,24 +18,20 @@ def captured(monkeypatch):
         return _Server()
 
     monkeypatch.setattr(interfaces, "mcp_server", fake)
-    monkeypatch.delenv("VIXL_MCP_TOOLS", raising=False)
-    monkeypatch.delenv("VIXL_MCP_SCHEMA", raising=False)
     return seen
 
 
-def test_vixl_mcp_defaults_to_core_slim(tmp_path, captured):
+def test_vixl_mcp_serves_the_design_tools_by_default(tmp_path, captured):
     cli.dispatch(["mcp", "--workspace", str(tmp_path)])
-    assert captured["tools"] == "core"
-    assert captured["schema"] == "slim"
+    assert captured["tools"] == "default" and "schema" not in captured
 
 
-def test_vixl_mcp_env_and_flags_override_defaults(tmp_path, captured, monkeypatch):
-    monkeypatch.setenv("VIXL_MCP_TOOLS", "all")
-    monkeypatch.setenv("VIXL_MCP_SCHEMA", "full")
-    cli.dispatch(["mcp", "--workspace", str(tmp_path)])
-    assert (captured["tools"], captured["schema"]) == ("all", "full")
-    cli.dispatch(["mcp", "--workspace", str(tmp_path), "--tools", "compact", "--schema", "slim"])
-    assert (captured["tools"], captured["schema"]) == ("compact", "slim")
+def test_vixl_mcp_ai_flag_and_retired_modes(tmp_path, captured):
+    cli.dispatch(["mcp", "--workspace", str(tmp_path), "--tools", "ai"])
+    assert captured["tools"] == "ai"
+    for retired in (["--tools", "core"], ["--schema", "slim"]):
+        with pytest.raises(VixlError, match="usage|unrecognized|invalid"):
+            cli.dispatch(["mcp", "--workspace", str(tmp_path), *retired])
 
 
 def test_screen_capture_flag_reaches_server(tmp_path, captured):

@@ -441,7 +441,7 @@ def apply_workspace_fonts(project, workspace=None):
         report["applied"] = register_fonts(candidate, kit)
     except VixlError as exc:
         report["error"] = str(exc)
-        report["hint"] = "Run vixl_font_pair (or vixl font pair) once the font cache or network is available"
+        report["hint"] = "Run font-pair (or vixl font pair) once the font cache or network is available"
         return report
     project.__dict__.update(candidate.__dict__)
     from .variety import record_as_creation

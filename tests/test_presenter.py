@@ -266,7 +266,7 @@ def test_mcp_and_rest_exports(tmp_path):
     deck().save(tmp_path / "deck.vixl")
     session = Session(workspace=tmp_path)
     server = build_server(session)
-    result = asyncio.run(server.call_tool("vixl_export_file", {
+    result = asyncio.run(server.call_tool("vixl_export", {
         "path": "deck.html", "document": "deck.vixl", "pages": "1-2", "presenter": {"theme": "auto", "notes": False}}))
     info = json.loads(result[0][0].text) if isinstance(result, tuple) else json.loads(result[0].text)
     assert info["slides"] == 2 and info["format"] == "HTML" and info["notes"] == 0

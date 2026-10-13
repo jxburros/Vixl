@@ -1,6 +1,6 @@
 """One call, several files: sizes, formats or artboards of a document, or several documents.
 
-The same options as ``vixl_export_file`` apply per target. Every target is validated before the
+The same options as ``vixl_export`` apply per target. Every target is validated before the
 first file is written, so a typo in the seventh entry does not leave six files behind.
 """
 
@@ -18,7 +18,7 @@ MAX_TARGETS = 64
 
 
 class Target(BaseModel):
-    """The options of vixl_export_file, plus the document to export and its own overwrite flag."""
+    """The options of vixl_export, plus the document to export and its own overwrite flag."""
 
     model_config = ConfigDict(extra="forbid")
 

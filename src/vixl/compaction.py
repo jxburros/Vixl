@@ -109,7 +109,7 @@ def check_note(project, report):
     report["issues"].append({
         "check": "fonts", "severity": "info", "layers": [],
         "message": f"{len(found['assets'])} embedded file(s), {found['bytes']:,} bytes, are not used by the current "
-                   f"design{fonts}; the rest are kept so undo can restore them. Compacting (vixl_history "
+                   f"design{fonts}; the rest are kept so undo can restore them. Compacting (vixl_document(action='history') "
                    "action='compact', CLI vixl compact) drops them together with the undo history.",
         "unused_assets": found["assets"], "bytes": found["bytes"]})
     report.update(tally(report["issues"]))

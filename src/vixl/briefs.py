@@ -15,24 +15,24 @@ from .errors import VixlError
 START_HERE = [
     "Sparse briefs use fresh seeds and curated safe choices. Keep the returned seed to reproduce a direction, "
     "pass explicit palette/font/style choices to lock them, or set .vixl/variety.json to {variety: fixed, seed: 0}.",
-    "Size: pick a named size (vixl_sizes_list) and vixl_document_create(size=…).",
-    "Structure: for anything with text, vixl_layouts_list then layout-apply, filling every slot it lists (seed makes it repeatable). "
+    "Size: pick a named size (vixl_reference('sizes')) and vixl_document(action='create', size=…).",
+    "Structure: for anything with text, vixl_reference('layouts') then layout-apply, filling every slot it lists (seed makes it repeatable). "
     "For art without a text frame (icons, characters, scenes, patterns), build from shape, pen, pathfinder, organic and radial-repeat.",
-    "Type: vixl_fonts then vixl_font_pair (the bundled font is a proofing fallback).",
+    "Type: vixl_reference('fonts') then font-pair (the bundled font is a proofing fallback).",
     "Finish: apply a look (glow, soft-shadow, hard-shadow, gradient, grain, paper …) so flat shapes read as finished; "
-    "tag a style (vixl_styles) when the brief names a look. A look is part of building, not the finishing pass below.",
+    "tag a style (vixl_reference('styles')) when the brief names a look. A look is part of building, not the finishing pass below.",
     "Tests: before building, write the brief's requirements as a check suite (suite-set; the kind's 'tests' lists a "
-    "starter suite and rules to adapt; vixl_guide('testing') explains why and how) and keep it attached.",
-    "Check while building: vixl_operations_apply(check=true, suites=true) reports findings and failing rules with each "
+    "starter suite and rules to adapt; vixl_reference('testing') explains why and how) and keep it attached.",
+    "Check while building: vixl_apply(check=true, suites=true) reports findings and failing rules with each "
     "batch; fix them as you go.",
-    "Finishing pass after tests pass (vixl_guide('finishing')): vixl_check and the suites clean (fix the 'fix' "
+    "Finishing pass after tests pass (vixl_reference('finishing')): vixl_check and the suites clean (fix the 'fix' "
     "findings, glance at 'review'), then vixl_check(checks=[\"composition\"]) for dead bands, margin drift, uneven "
-    "rhythm and crowding (vixl_workflow('repair-layout') repairs most), a short critique against the craft checklist, "
+    "rhythm and crowding (vixl_apply(workflow='repair-layout') repairs most), a short critique against the craft checklist, "
     "one fix batch with check=true and preview=true (it returns real-size crops of the two weakest regions), a "
-    "real-size look at two regions (those crops, or vixl_render_preview(region=[x, y, w, h], max_width=w, "
-    "max_height=h)), then vixl_export_file.",
+    "real-size look at two regions (those crops, or vixl_render(region=[x, y, w, h], max_width=w, "
+    "max_height=h)), then vixl_export.",
 ]
-# Other names an agent may ask vixl_guide for the finishing pass by.
+# Other names an agent may ask vixl_reference for the finishing pass by.
 GUIDANCE_ALIASES = {"craft": "finishing", "craft-checklist": "finishing", "critique": "finishing",
                     "finishing-pass": "finishing", "polish": "finishing"}
 # Art without a text frame: a rolled direction (palette, layout-apply steps) would steer these toward a poster.
@@ -134,7 +134,7 @@ KINDS = {
         "keywords": ["icon", "app icon", "favicon", "glyph", "ios", "android", "pictogram", "symbol"],
         "summary": "One recognizable glyph on a rounded tile, designed for 16-1024 px.",
         "approach": ["Create the icon size.", "layout-apply app-icon for a keyline-correct tile, or build the glyph from shapes and pathfinder.",
-                     "Preview small, then vixl_export_icons for the full set."],
+                     "Preview small, then vixl_export(kind='icons') for the full set."],
         "operations": ["layout-apply", "shape", "pathfinder", "gradient", "layer-style", "look", "pixel-art"],
         "layouts": ["app-icon", "monogram", "minimal-mark"], "looks": ["gradient", "soft-shadow", "glow"],
         "styles": ["minimalist", "material", "glassmorphism", "pixel-art"], "sizes": ["app-icon", "favicon", "ios-app-icon"],
@@ -151,7 +151,7 @@ KINDS = {
                      "Group parts into joints (the head with its features, an arm with its hand) and set a pivot at each joint.",
                      "Give it character: irregular strength subtle on the body parts (not the eyes), texture with drawn-texture "
                      "or cut-paper, then a look.",
-                     "character-save keeps a reusable rig; to animate it, vixl_guide('animation')."],
+                     "character-save keeps a reusable rig; to animate it, vixl_reference('animation')."],
         "operations": ["character", "character-rig", "character-pose", "character-save", "character-load", "shape", "organic",
                        "pen", "pathfinder", "group", "pivot", "irregular", "drawn-texture", "cut-paper", "look", "layer-style"],
         "layouts": ["emblem", "centered-axis"], "looks": ["outline", "soft-shadow", "hard-shadow"],
@@ -308,8 +308,8 @@ KINDS = {
                      "Loops and staggered motion are one motion operation (hover, breathing, blink, wiggle, orbit, bounce) with "
                      "period, several targets and stagger; character-cycle for walk/idle/react on a rig; keyframes for custom "
                      "moves; animate-preset for entrances.",
-                     "Check: vixl_check(checks=[motion, character]), vixl_timeline_preview at the first, middle and last frames "
-                     "(the last should flow into the first), vixl_timeline_inspect for the tracks; then vixl_export_timeline."],
+                     "Check: vixl_check(checks=[motion, character]), vixl_render(action='timeline') at the first, middle and last frames "
+                     "(the last should flow into the first), vixl_render(action='timeline-inspect') for the tracks; then vixl_export(kind='timeline')."],
         "operations": ["timeline-set", "motion", "character-cycle", "pivot", "group", "keyframes", "keyframe", "animate-preset",
                        "animate", "marker", "character", "character-rig"],
         "layouts": [], "looks": ["glow"], "styles": ["pixel-art", "retro-futurism"], "sizes": ["video-1080p", "video-square", "story"],
@@ -360,7 +360,7 @@ KINDS = {
         "title": "Photo with caption or overlay",
         "keywords": ["photo", "image", "picture", "caption", "overlay", "cover", "portrait", "product", "magazine"],
         "summary": "A photograph as the hero, with a scrim or panel keeping text legible.",
-        "approach": ["vixl_import_image for the photo.", "layout-apply photo-caption, split-screen or product-card with image=<asset>.",
+        "approach": ["import-image for the photo.", "layout-apply photo-caption, split-screen or product-card with image=<asset>.",
                      "Adjust with effects (duotone, contrast); check contrast over the image."],
         "operations": ["layout-apply", "replace-contents", "frame", "effect", "mask", "clip"],
         "layouts": ["photo-caption", "split-screen", "product-card", "rule-of-thirds", "editorial-grid"],
@@ -429,7 +429,7 @@ def match(text):
 
 
 # Per kind: the starter suite to attach (workflow suite-use) and requirement rules to adapt to the brief's
-# layer names. vixl_guide('testing') is the full method.
+# layer names. vixl_reference('testing') is the full method.
 TESTS = {
     "document": ("print-ready", [{"id": "body-readable", "kind": "contrast", "target": "body", "minimum": 4.5}]),
     "comic": ("composition", [{"id": "panels", "kind": "count", "target": "panel-*", "minimum": 2},
@@ -481,7 +481,7 @@ TESTS = {
 
 
 def tests(kind):
-    """The test plan vixl_guide returns with a kind: why, the starter suite and rules to adapt (rename their
+    """The test plan vixl_reference returns with a kind: why, the starter suite and rules to adapt (rename their
     targets to the document's layers before attaching them)."""
     starter, rules = TESTS[kind]
     return {"why": "Tests measure what a small preview hides and keep holding as edits pile up; write them from the "
@@ -490,9 +490,9 @@ def tests(kind):
             "attach": {"workflow": "suite-use", "request": {"name": starter}},
             "rules_to_adapt": rules,
             "add_with": {"type": "suite-set", "name": "brief", "suite": {"rules": rules}},
-            "run": "vixl_operations_apply(check=true, suites=true) while building; vixl_workflow('check', "
-                   "{suite: NAME}) before vixl_render_preview",
-            "read": "vixl_guide('testing')"}
+            "run": "vixl_apply(check=true, suites=true) while building; vixl_apply(workflow='check', "
+                   "request={suite: NAME}) before vixl_render",
+            "read": "vixl_reference('testing')"}
 
 
 def entry(kind):
@@ -507,7 +507,7 @@ def entry(kind):
 
         result["principles"] = GUIDANCE[kind]
     if item.get("guidance"):
-        result["read_guidance"] = "vixl_guide(brief=NAME) returns each guidance text"
+        result["read_guidance"] = "vixl_reference(NAME) returns each guidance text"
     result["tests"] = tests(kind)
     return result
 
@@ -573,9 +573,9 @@ def guide(brief=None, *, seed=None, variety=None, workspace=None):
         return {"start_here": START_HERE,
                 "kinds": {kind: {"title": e["title"], "summary": e["summary"]} for kind, e in KINDS.items()},
                 "guidance": sorted(catalog("guidance", workspace=workspace)),
-                "also": "vixl_guide(brief=<kind or guidance name>) returns it; vixl_capabilities(topic) returns task-specific "
-                        "fields and gotchas; vixl_guide(brief='operations') lists every operation by purpose; vixl_styles lists "
-                        "design styles; vixl_layouts_list lists text layouts. A brief such as 'a mascot for a coffee brand' picks "
+                "also": "vixl_reference(<kind or guidance name>) returns it; vixl_reference('capabilities', name=TOPIC) returns task-specific "
+                        "fields and gotchas; vixl_reference('operations') lists every operation by purpose; vixl_reference('styles') lists "
+                        "design styles; vixl_reference('layouts') lists text layouts. A brief such as 'a mascot for a coffee brand' picks "
                         "the closest kind.",
                 "tip": "Open-ended brief with no text frame (icon, character, scene, pattern)? Start from shape, organic and radial-repeat, "
                        "then look: do not default to a poster layout."}
@@ -586,15 +586,9 @@ def guide(brief=None, *, seed=None, variety=None, workspace=None):
         return catalog()
     if key in ("operations", "ops", "operation", "operations-index"):
         return {"operations": operations_index(),
-                "next": "vixl_operation_schema(types=[…]) gives each operation's fields, a summary and examples"}
+                "next": "vixl_reference('operations', name=[…]) gives each operation's fields, a summary and examples"}
     if key in ("start-here", "start", "recipe"):
         return {"start_here": START_HERE}
-    if key == "capabilities" or key.startswith("capabilities-"):
-        topic = brief.strip()[len("capabilities"):].strip(" :")
-        call = f"vixl_capabilities(topic={topic!r})" if topic else "vixl_capabilities()"
-        raise VixlError("moved", f"vixl_guide('capabilities …') was removed in 0.21.0: call {call} (CLI: vixl "
-                                 f"capabilities {topic or 'TOPIC'}) for fields and gotchas; vixl_guide takes a kind of work "
-                                 "or a brief.", field="brief", suggestions=[call])
     if key == "looks":
         from .looks import catalog
 
@@ -625,7 +619,7 @@ def guide(brief=None, *, seed=None, variety=None, workspace=None):
         # A brief that names a setting but no kind of work ("a lighthouse at dusk") is a scene.
         ranked = ["scene"]
     if not ranked:
-        raise VixlError("no_match", f"No kind of work matches {brief!r}; kinds: {', '.join(KINDS)}. Call vixl_guide() for the start-here "
+        raise VixlError("no_match", f"No kind of work matches {brief!r}; kinds: {', '.join(KINDS)}. Call vixl_reference() for the start-here "
                                     "recipe and the guidance names.", field="brief", suggestions=list(KINDS)[:6], allowed=list(KINDS))
     best = ranked[0]
     result = _directed({"matched": best, **entry(best), "alternatives": ranked[1:4], "start_here": START_HERE},
@@ -646,11 +640,11 @@ def object_summary(kind, workspace=None):
             "required_parts": item["required_parts"], "connections": item["connections"],
             "layering": item["layering"],
             "declare": {"type": "object", "target": "GROUP", "kind": item["kind"]},
-            "more": f"vixl_resource_get(kind='objects', name={item['kind']!r})"}
+            "more": f"vixl_reference('objects', name={item['kind']!r})"}
 
 
 def object_guide(kind, workspace=None):
-    """vixl_guide for a subject (dog, guitar, cactus …): the object's parts and the build and review loop."""
+    """vixl_reference for a subject (dog, guitar, cactus …): the object's parts and the build and review loop."""
     from .objects import describe
 
     item = describe(kind, workspace)
@@ -663,16 +657,16 @@ def object_guide(kind, workspace=None):
             "back to front as layering says; parts that meet overlap by a few pixels.",
             f"Group the parts and declare the object: {{type: object, target: GROUP, kind: {item['kind']!r}}}; name "
             "each part with {type: object, action: part, target: LAYER, part: NAME, side: left|right}.",
-            "Read vixl_document_inspect(object=GROUP): it lists the parts and the required parts still missing; "
+            "Read vixl_document(action='inspect', object=GROUP): it lists the parts and the required parts still missing; "
             "paths such as GROUP/head work wherever a layer name does.",
             "Test, then look: vixl_check(checks=[connected]) for parts that float free, then "
-            "vixl_render_preview(isolate=[GROUP], views=['parts'], exploded=true) to judge each part alone.",
-            "Reuse and hand off: object-save / object-place, vixl_export_file(isolate=[GROUP]) to SVG, PNG, PDF, PSD or "
+            "vixl_render(isolate=[GROUP], views=['parts'], exploded=true) to judge each part alone.",
+            "Reuse and hand off: object-save / object-place, vixl_export(isolate=[GROUP]) to SVG, PNG, PDF, PSD or "
             "a portable .vixl object.",
         ],
         "operations": ["object", "group", "shape", "pen", "organic", "pathfinder", "reparent", "object-save",
                        "object-place"],
         "guidance": ["multi-part-objects", "anatomy-proportions", "imperfection"],
-        "read_guidance": "vixl_guide(brief=NAME) returns each guidance text",
+        "read_guidance": "vixl_reference(NAME) returns each guidance text",
         "start_here": START_HERE,
     }

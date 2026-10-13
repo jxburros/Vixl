@@ -1,5 +1,5 @@
 """One creation path for new documents: CLI ``vixl new``, Python ``Project()``/``Project.sized()``/``Project.new()``,
-MCP ``vixl_document_create``, compose and the REST session all come here.
+MCP ``vixl_document(action='create')``, compose and the REST session all come here.
 
 A new document gets, in this order:
 1. its size: the given width/height or named size, else the purpose's size (the house-style profile's ``size``),
@@ -144,7 +144,7 @@ def install_rolled_pairing(project, defaults):
     if not pairing or pairing == "workspace-brand" or (typography.get("heading") and typography.get("body")):
         return {"installed": False, "reason": "the workspace fonts apply"} if typography else {"installed": False}
     mode = os.environ.get("VIXL_AUTO_FONTS", "on").strip().lower()
-    hint = (f"Install them with vixl_font_pair(pairing='{pairing}') or vixl font pair {pairing}; until then text uses "
+    hint = (f"Install them with a font-pair step ({{type: font-pair, pairing: '{pairing}'}} in vixl_apply) or vixl font pair {pairing}; until then text uses "
             "the proofing fallback.")
     if mode == "off":
         return {"pairing": pairing, "installed": False, "reason": "VIXL_AUTO_FONTS=off", "next_step": hint}

@@ -5,8 +5,8 @@
 Strokes live on paint layers as data (points, pressure, brush, size, color, seed), so they stay editable, undoable and resolution-independent.
 
 ```text
-vixl_brushes_list()
-vixl_operations_apply(operations=[
+vixl_reference('brushes')
+vixl_apply(operations=[
   {"type":"paint-layer","name":"sketch"},
   {"type":"paint","target":"sketch","brush":"ink","points":[[80,400],[240,300,0.5],[420,380,1],[600,320]],"size":10,"color":"@ink"},
   {"type":"paint","target":"sketch","brush":"watercolor","path":"M60 700 C300 560 700 820 1000 660","size":90,"color":"alpha(@accent, 0.8)","seed":3},
@@ -24,7 +24,7 @@ vixl_operations_apply(operations=[
 ## Timelines
 
 ```text
-vixl_operations_apply(operations=[
+vixl_apply(operations=[
   {"type":"timeline-set","duration":"4s","fps":30,"loop":0},
   {"type":"animate-preset","target":"headline","preset":"slide-in-up","duration":"0.8s"},
   {"type":"animate-preset","target":"cta","preset":"pop-in","start":"0.7s","duration":"0.5s"},
@@ -33,10 +33,10 @@ vixl_operations_apply(operations=[
   {"type":"animate-preset","target":"canvas","preset":"color-shift","to":"#1e1b4b","duration":"4s"},
   {"type":"marker","name":"reveal","time":"1.5s"}
 ])
-vixl_timeline_preview(count=8)          # contact sheet: check motion before exporting
-vixl_timeline_preview(time="reveal")
-vixl_export_timeline(path="promo.webp", scale=0.5)     # .gif .png(APNG) .webp .zip(frames) .mp4/.webm (ffmpeg)
-vixl_export_timeline(path="sprites.png", format="sheet", columns=6)
+vixl_render(action='timeline', count=8)          # contact sheet: check motion before exporting
+vixl_render(action='timeline', time="reveal")
+vixl_export(kind='timeline', path="promo.webp", scale=0.5)     # .gif .png(APNG) .webp .zip(frames) .mp4/.webm (ffmpeg)
+vixl_export(kind='timeline', path="sprites.png", format="sheet", columns=6)
 ```
 
 - Properties: `x`, `y`, `translate-x`, `translate-y`, `opacity`, `rotation`, `scale`, `scale-x`, `scale-y`, `width`, `height`, `size`, `spacing`, `color`, `fill`, `start`, `end`, `stroke_color`, `stroke`, `trim_start`, `trim_end`, `skew_x`, `skew_y`, `dash_offset`, `stroke_width`, `distort:amount` (and `distort:angle|phase|frequency|size`), `text`, `visible`, `effect:ID` (or `effect:1`), `joint:BONE` (written by `character-pose`), and canvas `background` (`target: "canvas"`).
@@ -58,10 +58,10 @@ vixl_export_timeline(path="sprites.png", format="sheet", columns=6)
 - `animate`/`animate-preset` take `repeat` or `until`, `period`, and with `targets` a `stagger` (ms between targets): one operation for a typing-dots loop. In a seamless loop, staggered keys that would pass the loop end wrap around it instead of lengthening the timeline. Hold keys: `easing:"hold"`.
 - Generated motion (no expression language): `keyframes` with `sample: {fn: sin|cos|triangle|saw|square|noise, period, amplitude, offset, phase, step_ms or samples, duration, start}` writes a wave as keys (value = offset + amplitude × fn(phase + t/period)); `motion recipe:"wiggle"` oscillates a `property` by `amount` at `frequency` with `samples` keys; `recipe:"line-boil"` (`fps` 8-12, `variants` 3, `seed`, `strength`) makes wobbled copies of vector targets and cycles their visibility for hand-drawn line boil (animate the `NAME-boil` group for other motion).
 - `vixl_check` adds the `motion` check when a timeline exists: `loop-seam`, `empty-poster`, `text-hidden-at-poster`, plus legibility of frame 0, and from frames sampled every 100 ms: `moving-over-text`, `text-mostly-hidden`, `parts-drift`, and a rendered `loop-seam-render`. GIF/WebP/APNG timeline exports warn about loop seams too. Findings name layers; the `character` check adds `front-view-leg-swing` (a side-view gait on the front-facing standard character, whose own walk lifts the feet; `character-cycle view:"side"` swings limbs in the plane).
-- Poster frame: `vixl_export_timeline(poster="end")` puts that frame first in GIF/WebP/APNG (loop stays seamless) and warns when it is empty. `vixl_timeline_preview(thumbnail=360)` shows poster/middle/last at phone width; `times=[...]` picks frames; frame 0 is labelled "poster".
+- Poster frame: `vixl_export(kind='timeline', poster="end")` puts that frame first in GIF/WebP/APNG (loop stays seamless) and warns when it is empty. `vixl_render(action='timeline', thumbnail=360)` shows poster/middle/last at phone width; `times=[...]` picks frames; frame 0 is labelled "poster".
 - Export results report the written file: sheet `size`, and GIF/WebP/APNG `frames` after identical frames merged (`rendered_frames` = rendered).
 - GIF: `dither` auto/none/ordered/floyd (shared palette; ordered never shimmers), `max_bytes` soft target. Results include `bytes` and a `warnings` entry above 1 MB (not when `target_bytes`/`preset` set the size) or max_bytes that suggests MP4/WebP with a measured WebP size (gradient GIFs get it at any size). `target_bytes` fits timeline GIF/WebP/APNG to a size (colors or WebP quality, then fps, then scale; reports `chosen`), and `preset` `chat`/`web`/`email` sets fps, width, colors and target_bytes. `colors=64` (2–256) plus lower `fps` shrink GIFs a lot (728×90, 4 s banner: 190 KB default → 41 KB with `colors=32, fps=10`); prefer WebP/MP4 where accepted.
-- Frame snapshots (`frame-save`, `vixl_export_animation`) work at any canvas size within the pixel budget; `sampling="smooth"` allows scales like 0.5 or 1.5 for illustrated (non-pixel-art) frames.
+- Frame snapshots (`frame-save`, `vixl_export(kind='animation')`) work at any canvas size within the pixel budget; `sampling="smooth"` allows scales like 0.5 or 1.5 for illustrated (non-pixel-art) frames.
 
 
 ### Field-report corrections

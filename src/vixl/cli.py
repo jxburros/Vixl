@@ -154,7 +154,7 @@ AI:        ask PROMPT [--apply], generate --prompt TEXT --provider NAME,
 Updates:   update [--check | --rollback], updates [on | off | status]
 Cache:     cache info | cache clear (the disk render cache; VIXL_RENDER_CACHE=off, VIXL_CACHE_MAX_MB=256)
 Services:  serve | view [--host 127.0.0.1] [--port 8765], notes list|add|resolve
-           mcp [--workspace DIR] [--http] [--tools core|ai|compact|all] [--schema slim|full] [--planner] [--require-document]
+           mcp [--workspace DIR] [--http] [--tools default|ai] [--planner] [--require-document]
            per-call limits (serve, view, mcp): [--call-timeout S] [--max-megapixels N] [--max-pages N] [--max-concurrent N]
 Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144]
            import PHOTO.jpg | https://HOST/photo.jpg [--name N] [--credit TEXT] [--license TEXT]
@@ -722,23 +722,11 @@ def _dispatch(argv):
 
         p = Parser(prog="vixl mcp")
         p.add_argument("--workspace", help="Directory containing documents, imports and exports")
-        p.add_argument(
-            "--schema",
-            choices=["full", "slim"],
-            default=os.environ.get("VIXL_MCP_SCHEMA", "slim"),
-            help="slim (default) advertises operation names only; fields come from vixl_operation_schema; "
-            "full inlines every operation schema",
-        )
         p.add_argument("--allow-screen-capture", action="store_true", default=None,
                        help="Allow MCP tools to capture the local desktop; also VIXL_ALLOW_SCREEN_CAPTURE=1")
-        p.add_argument("--planner", action="store_true", help="Expose the provider-backed vixl_ai_plan tool")
-        p.add_argument(
-            "--tools",
-            choices=["all", "core", "ai", "compact"],
-            default=os.environ.get("VIXL_MCP_TOOLS", "core"),
-            help="core (default): all editing tools; compact: 13 document/workflow tools; ai: provider-backed tools; "
-            "all: core and ai from one server",
-        )
+        p.add_argument("--planner", action="store_true", help="With --tools ai: expose the vixl_ai_plan tool")
+        p.add_argument("--tools", choices=["default", "ai"], default="default",
+                       help="default: the design tools; ai: the provider-backed tools (run as a second server)")
         p.add_argument(
             "--require-document",
             action="store_true",
@@ -756,7 +744,7 @@ def _dispatch(argv):
         a = p.parse_args(args)
         # Explicit workspaces can start empty. Existing --project configurations still work.
         path = current_path(options.project) if options.project or not a.workspace else None
-        server = mcp_server(path, limits, workspace=a.workspace, schema=a.schema, planner=a.planner, tools=a.tools,
+        server = mcp_server(path, limits, workspace=a.workspace, planner=a.planner, tools=a.tools,
                             require_document=a.require_document, call_limits=from_arguments(a),
                             allow_screen_capture=a.allow_screen_capture)
         if a.http:

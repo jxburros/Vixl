@@ -234,7 +234,7 @@ def test_mcp_video_sample_and_film_preview_deliver_image_blocks(tmp_path):
     film.export(spec, tmp_path, tmp_path / "sample.mp4")
     server = build_server(Session(workspace=tmp_path))
     async def invoke(action, request):
-        result = await server.call_tool("vixl_workflow", {"action": action, "request": request})
+        result = await server.call_tool("vixl_apply", {"workflow": action, "request": request})
         return result[0] if isinstance(result, tuple) else result
     blocks = asyncio.run(invoke("video-sample", {"source": "sample.mp4", "output": "contact.png", "times": [0, 700]}))
     assert any(block.type == "image" for block in blocks)

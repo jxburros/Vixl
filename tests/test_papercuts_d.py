@@ -58,7 +58,7 @@ def test_document_create_applies_a_font_pairing(tmp_path, monkeypatch):  # #248
 
     async def scenario():
         async with create_connected_server_and_client_session(server._mcp_server) as client:
-            made = await client.call_tool("vixl_document_create", {
+            made = await client.call_tool("vixl_document", {"action": "create", 
                 "path": "a.vixl", "width": 64, "height": 64, "font_pairing": "editorial"})
             return json.loads(made.content[0].text)
 
@@ -177,11 +177,11 @@ def test_operations_path_over_mcp_json_and_jsonl(tmp_path):  # #184
     async def scenario():
         async with create_connected_server_and_client_session(server._mcp_server) as client:
             async def call(**args):
-                result = await client.call_tool("vixl_operations_apply", args)
+                result = await client.call_tool("vixl_apply", args)
                 text = "".join(c.text for c in result.content)
                 return (True, text) if result.isError else json.loads(text)
 
-            await client.call_tool("vixl_document_create", {"path": "a.vixl", "width": 64, "height": 64})
+            await client.call_tool("vixl_document", {"action": "create", "path": "a.vixl", "width": 64, "height": 64})
             assert (await call(operations_path="ops.json"))["success"]
             assert (await call(operations_path="ops.jsonl"))["success"]
             failed, text = await call(operations_path="bad.jsonl")
@@ -190,7 +190,7 @@ def test_operations_path_over_mcp_json_and_jsonl(tmp_path):  # #184
             assert failed
             failed, text = await call()
             assert failed and "operations_path" in text
-            layers = (await client.call_tool("vixl_document_inspect", {})).content[0].text
+            layers = (await client.call_tool("vixl_document", {})).content[0].text
             assert '"a"' in layers and '"b"' in layers
 
     asyncio.run(scenario())

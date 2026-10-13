@@ -428,8 +428,10 @@ def test_mcp_has_production_tools(tmp_path):
     from vixl.interfaces import mcp_server
 
     server = mcp_server(workspace=tmp_path)
-    tools = asyncio.run(server.list_tools())
-    assert {"vixl_workflow", "vixl_workflow_schema"} <= {t.name for t in tools}
+    tools = {t.name: t for t in asyncio.run(server.list_tools())}
+    assert "workflow" in tools["vixl_apply"].inputSchema["properties"] and "vixl_reference" in tools
+    result = asyncio.run(server.call_tool("vixl_reference", {"topic": "workflows", "name": "merge-impose"}))
+    assert "merge-impose" in str(result)
 
 
 def test_new_layers_in_actions_still_reuse_identical_outputs(tmp_path):
@@ -514,7 +516,7 @@ def test_mcp_executes_contract_workflow(tmp_path):
     server = mcp_server(tmp_path / "p.vixl")
 
     async def invoke():
-        return await server.call_tool("vixl_workflow", {"action": "check", "request": {"suite": suite()}})
+        return await server.call_tool("vixl_apply", {"workflow": "check", "request": {"suite": suite()}})
 
     blocks = asyncio.run(invoke())
     if isinstance(blocks, tuple):

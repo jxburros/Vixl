@@ -50,7 +50,7 @@ A document becomes multi-page with the first `page add`; each page has its own l
 
 - Any operation takes `"page"` (name or number) to edit that page; `page select` switches.
 - `${page}` / `${pages}` count shown pages only; `hidden` pages are skipped in the numbering.
-- Preview every page at once: `vixl_render_preview(page="all")` / `render --page all`.
+- Preview every page at once: `vixl_render(page="all")` / `render --page all`.
 - `vixl_check(checks=["deck"])` checks every page plus title placement, type scale, words per
   page, projected type size (points) and speaker notes.
 - Export `deck.pdf` (vector, selectable text), `deck.pptx` (editable slides, notes; a `chart` becomes a native chart with its data table, see [charts](charts.md)) or `deck.html`
@@ -68,7 +68,7 @@ A document becomes multi-page with the first `page add`; each page has its own l
   1920×1080 is 13.33 × 7.5 in); `dpi` sets both. The result's `page_size` shows it.
 - Name each slide's title layer `title` so it becomes the PowerPoint title placeholder.
 
-- Notes to a deck in one call: `vixl_workflow("deck-from-markdown", {"markdown": "notes.md", "output": "deck.vixl", "export": ["pptx"]})`. `#`/`##` headings start slides; title, section, quote and content layouts are chosen per slide; fenced `csv` → table, fenced `chart` → chart, `![](img.png)` → frame; `<!-- -->` or `Notes:` → speaker notes; deck checks are reported. Re-run after edits: only changed slides are rebuilt.
+- Notes to a deck in one call: `vixl_apply(workflow='deck-from-markdown', request={"markdown": "notes.md", "output": "deck.vixl", "export": ["pptx"]})`. `#`/`##` headings start slides; title, section, quote and content layouts are chosen per slide; fenced `csv` → table, fenced `chart` → chart, `![](img.png)` → frame; `<!-- -->` or `Notes:` → speaker notes; deck checks are reported. Re-run after edits: only changed slides are rebuilt.
 
 Full reference: `docs/slides.md` (HTML presentations: `docs/presenter.md`).
 
@@ -100,12 +100,12 @@ Rules agents trip over:
   `message` for the text a viewer shows. Pages with fields get `/Tabs /S`.
 - Check with `vixl_check(checks=["form"], sample="worst")`; each overflow says what it measured
   (`measured`: sample, font, sizes, box and rendered width) and the `max_length_that_fits` to set.
-  Preview with `vixl_render_preview(show_fields=true, values={...})`; it draws values exactly as
+  Preview with `vixl_render(show_fields=true, values={...})`; it draws values exactly as
   the filled export does.
-- Export the fillable PDF with `vixl_export_file(path="form.pdf", fillable=true)`; fill one copy
+- Export the fillable PDF with `vixl_export(path="form.pdf", fillable=true)`; fill one copy
   with `values={...}` (flatten draws them in; `fill_mode="editable"` prefills fields) or many with
-  `vixl_workflow("form-fill", {"data": "rows.csv", "combine": "all.pdf"})` (`combine: true` writes
-  `rows-filled.pdf`; `dry_run`, `skip_invalid`; field types in `vixl_workflow_schema`).
+  `vixl_apply(workflow='form-fill', request={"data": "rows.csv", "combine": "all.pdf"})` (`combine: true` writes
+  `rows-filled.pdf`; `dry_run`, `skip_invalid`; field types in `vixl_reference('workflows')`).
 - Filled values never touch the document; errors name rows and keys, never values.
 
 Full reference: `docs/forms.md`.
