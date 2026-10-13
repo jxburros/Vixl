@@ -7,7 +7,7 @@ symbols. Search groups `VIXL Faces`, `VIXL Reactions` and `VIXL Everyday`;
 built-in shortcodes such as `:approved:`, `:support:` and
 `:in_progress:` render immediately in either preference mode.
 
-Use `vixl_workflow_schema` to discover the `emoji-*` actions. `emoji-list` pages the
+Use `vixl_reference('workflows')` to discover the `emoji-*` actions. `emoji-list` pages the
 catalog with query, group, offset and limit. `emoji-get` accepts emoji and optional
 output/format (vixl, svg, png). `emoji-template` creates blank, face, symbol or sheet
 masters at output. `emoji-replace` embeds source in the open document for emoji

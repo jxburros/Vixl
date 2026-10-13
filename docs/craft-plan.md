@@ -84,8 +84,8 @@ In order. Each item names the evidence it answers.
 
 | Item | What | C | P |
 | --- | --- | --- | --- |
-| 3a | **Rewrite the end of the loop** in SKILL.md, `briefs.START_HERE` and the guidance registry: checks pass → `check composition` → a short critique against a craft checklist → one fix batch → a real-size look at two regions with `vixl_render_preview` `region` → export. The checklist lives once in `guidance.py` (one focal point; accent color used once or twice; no dead band; one left edge per column; the motif names the subject; nothing reads as a placeholder) | 2 | 5 |
-| 3b | **Make the critique cheap:** `vixl_operations_apply` with `check=true` already returns findings and a preview, so return the composition findings with it, plus the two lowest-scoring regions as crops | 2 | 4 |
+| 3a | **Rewrite the end of the loop** in SKILL.md, `briefs.START_HERE` and the guidance registry: checks pass → `check composition` → a short critique against a craft checklist → one fix batch → a real-size look at two regions with `vixl_render` `region` → export. The checklist lives once in `guidance.py` (one focal point; accent color used once or twice; no dead band; one left edge per column; the motif names the subject; nothing reads as a placeholder) | 2 | 5 |
+| 3b | **Make the critique cheap:** `vixl_apply` with `check=true` already returns findings and a preview, so return the composition findings with it, plus the two lowest-scoring regions as crops | 2 | 4 |
 
 ### 4. Typography
 
@@ -108,7 +108,7 @@ In order. Each item names the evidence it answers.
 | Item | What | C | P |
 | --- | --- | --- | --- |
 | 6a | **Scene effects as single operations:** <br>• `reflection`: mirror, ripple and fade below a horizon (T03); <br>• `haze`: a soft glow band behind a light source; <br>• `star-field`: seeded particles that keep clear of text; <br>• `string-lights`: bulbs repeated along a path with glow (T02, T03); <br>• `bokeh` | 3 each | 4 |
-| 6b | **Specific motifs from the brief:** `vixl_guide` names the concrete elements a brief implies (a cup with steam, not a disc; a lighthouse in the sea, not on a bar) and the shape catalog or object kinds that draw them. Ties to #427 illustration defaults and the object work (#374–#381) | 3 | 4 |
+| 6b | **Specific motifs from the brief:** `vixl_reference` names the concrete elements a brief implies (a cup with steam, not a disc; a lighthouse in the sea, not on a bar) and the shape catalog or object kinds that draw them. Ties to #427 illustration defaults and the object work (#374–#381) | 3 | 4 |
 | 6c | **Filled layered water** as a scene preset, because line waves read as unfinished next to filled bands (T09, T12) | 2 | 3 |
 
 ### 7. Tool finish
@@ -155,7 +155,7 @@ paid agent run (`python -m evals.craft_rerun`, 1c) and judges, so no craft gain 
 | 5b | Built: one spacing unit of rule clearance in house style 4 (footer rules, `section-header`). T16's own crowding came from a table's header rule, which this does not change | [house style](house-style.md#house-style-4) |
 | 5c | Built: rolled `cta` pills and `date` highlights in house style 4 | [safe variety](safe-variety.md) |
 | 6a | Built: `reflection`, `haze`, `star-field`, `string-lights`, `bokeh` | [atmosphere](atmosphere.md) |
-| 6b | Built: `vixl_guide` returns `motifs` from one registry, with new catalog shapes (cup, steam, lighthouse, lantern) | `src/vixl/data/motifs.json` |
+| 6b | Built: `vixl_reference` returns `motifs` from one registry, with new catalog shapes (cup, steam, lighthouse, lantern) | `src/vixl/data/motifs.json` |
 | 6c | Built: organic preset `water` | [organic](organic.md) |
 | 7a | Built: progressive `pattern-scatter` (40 → 32 copies keeps all 32 in place) and `thin`, in house style 4 | `src/vixl/scatter.py` |
 | 7b | Built: fills register to rendered strokes; `edge_closes` carries short lines to the edge (`edge_reach`) | [drawing](drawing.md) |

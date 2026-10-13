@@ -28,7 +28,7 @@ vixl canvas size instagram-story       # change an open document
 vixl canvas dpi 300
 ```
 
-Operations: `{"type": "canvas", "size": "a4", "orientation": "landscape", "bleed": true, "dpi": 300}`; `canvas.preset` and `artboard.preset` accept the same names (older preset names still work). MCP: `vixl_document_create(path, size="letter", bleed=true)` and `vixl_sizes_list`.
+Operations: `{"type": "canvas", "size": "a4", "orientation": "landscape", "bleed": true, "dpi": 300}`; `canvas.preset` and `artboard.preset` accept the same names (older preset names still work). MCP: `vixl_document(action='create', path, size="letter", bleed=true)` and `vixl_reference('sizes')`.
 
 A sized canvas records `size`, `dpi`, `physical`, `bleed` and `safe` (pixels; print sizes default to a quarter inch, story sizes to 250 px at the top and bottom and 60 px at the sides, as a `{left, top, right, bottom}` object when the sides differ), and generated guides `trim-*` and `safe-*`, so layers can be anchored with constraints such as `{"left": "guide:safe-left.left"}`. A document made at a custom size (`vixl new --width/--height`, `Project(w, h)`) or resized to one gets the craft default
 safe area, 5% of the short side (50 px on 1000×1000); a named size keeps its own, including an explicit none (favicons,
@@ -98,12 +98,12 @@ vixl check
 
 ### Slots: fill in the blanks
 
-Each layout is a form. `vixl layout show NAME` (or `vixl_layouts_list`) lists its slots, with a label and a hint for what each one means in that layout. In `event-poster`, for example, `label` is the date and `body` is one detail per line. Slot keys are `title`, `subtitle`, `body`, `label`, `cta`, `caption`, `items` (newline-separated; `Name | Price` rows for price lists, `Heading: text` for F-pattern) and `image` (an embedded asset ID); multi-panel layouts take `images`, a list of asset IDs in reading order.
+Each layout is a form. `vixl layout show NAME` (or `vixl_reference('layouts')`) lists its slots, with a label and a hint for what each one means in that layout. In `event-poster`, for example, `label` is the date and `body` is one detail per line. Slot keys are `title`, `subtitle`, `body`, `label`, `cta`, `caption`, `items` (newline-separated; `Name | Price` rows for price lists, `Heading: text` for F-pattern) and `image` (an embedded asset ID); multi-panel layouts take `images`, a list of asset IDs in reading order.
 
 - **Unfilled slots are blanks, not sample copy.** A slot the composition needs renders as a visible `[Label]` placeholder (`[Date]`, `[Time]`, `[Action]`) and is recorded in `state.blanks` and in the layout's `blanks` list. `check` reports every unfilled blank as an error, so placeholder text can never ship silently. An image slot without an asset draws a placeholder frame that is also a blank until you pass `image` or use `replace-contents`. Pass `unfilled: "omit"` to leave unfilled slots out instead: the layout is composed around the copy it has, passes `check`, and the layout record's `omitted` lists what was left out (supplying one later re-lays the layout out; text added by hand does not).
 - **Unfilled image slots say how to fill them.** `vixl layout show NAME` gives the `image` slot a `fill_with` list, and the
   `layout-apply` result carries `next_steps` for every unfilled slot. For an image it names the frame layer, its
-  `bounds` and `aspect_ratio`, and four options: **import** (`vixl_import_image` returns an asset; re-apply with `image=`
+  `bounds` and `aspect_ratio`, and four options: **import** (`import-image` returns an asset; re-apply with `image=`
   and the same seed, or `replace-contents` on the frame), **resource** (`shape-place` a saved shape or container),
   **draw** (build it from `shape`, `pen`, `pathfinder`, `organic` and `paint` inside the bounds, group it, remove the
   placeholder; `rasterize` the group to get an asset for `replace-contents`) and **AI** (`vixl_ai_generate`, which needs a
@@ -117,8 +117,8 @@ Each layout is a form. `vixl layout show NAME` (or `vixl_layouts_list`) lists it
 
   GIF recipe: apply `meme-reaction` on `instagram-post`, then
   `{type: animate-preset, target: caption, preset: pop-in, duration: 400}` (or a looping `motion`), set the timeline
-  (`timeline-set` 2–4 s, `loop: 0`), check a frame with `vixl_timeline_preview` and export with
-  `vixl_export_timeline(path="reaction.gif", fps=15)`. Keep GIFs short and small: 480–600 px wide and few colours.
+  (`timeline-set` 2–4 s, `loop: 0`), check a frame with `vixl_render(action='timeline')` and export with
+  `vixl_export(kind='timeline', path="reaction.gif", fps=15)`. Keep GIFs short and small: 480–600 px wide and few colours.
 - **Unused slots are errors.** Copy for a slot the layout does not read on this canvas, such as `subtitle` on `event-poster`, fails with `unused_slot` and lists the slots it does use, instead of being dropped.
 - **Fill blanks by re-applying.** Re-apply with the copy, `replace: true` and the `seed` the first pass reported. The composition stays the same and type is sized for the real copy. Editing a blank layer's text directly also clears it.
 
@@ -161,7 +161,7 @@ mapping as `palette_roles` in the apply result. `palette-generate` never assigns
 
 ### Rolling the dice
 
-`seed` accepts `"random"`. Choices you do not make (palette, mode, type scale, density, alignment, accent) are rolled from the seed and listed in the layout record's `rolled`. When most of them were rolled, the result says so and suggests exploring: apply with `seed: "random"` a few times, preview, and keep the seed you like. `vixl roll` (`vixl_roll`) rolls a whole direction at once: a font pairing, a palette whose mood fits it, a layout suited to the purpose and canvas, and its parameters, returned as a ready `layout-apply` operation. Use `--lock` to keep any choice fixed while re-rolling the rest. Applying a roll (`roll --apply`, `vixl_roll apply=true`) honours `unfilled` (`omit` or `blank`, CLI `--unfilled`): when you pass `slots` the default is `omit`, so slots you did not fill are left out and the applied direction passes `check` without a second layout pass; with no slots every slot would be left out, so the default is `blank` and the `[Label]` placeholders show what to fill. The result lists `unfilled_slots` (blanks) or the layout's `omitted` slots.
+`seed` accepts `"random"`. Choices you do not make (palette, mode, type scale, density, alignment, accent) are rolled from the seed and listed in the layout record's `rolled`. When most of them were rolled, the result says so and suggests exploring: apply with `seed: "random"` a few times, preview, and keep the seed you like. `vixl roll` (`vixl_reference('roll')`) rolls a whole direction at once: a font pairing, a palette whose mood fits it, a layout suited to the purpose and canvas, and its parameters, returned as a ready `layout-apply` operation. Use `--lock` to keep any choice fixed while re-rolling the rest. Applying a roll (`roll --apply`, `vixl_reference('roll') apply=true`) honours `unfilled` (`omit` or `blank`, CLI `--unfilled`): when you pass `slots` the default is `omit`, so slots you did not fill are left out and the applied direction passes `check` without a second layout pass; with no slots every slot would be left out, so the default is `blank` and the `[Label]` placeholders show what to fill. The result lists `unfilled_slots` (blanks) or the layout's `omitted` slots.
 
 Standalone design-system pieces:
 
@@ -173,7 +173,7 @@ Standalone design-system pieces:
 Built-in guidance now covers `overall`, `minimal`, `editorial`, `playful`, `logo`, `pixel-art`, `typography`, `color`, `layout`, `accessibility`, `print`, `icon`, `motion`, `brush` and `image-rights`.
 
 Layouts are text compositions, which is why open requests drift toward posters. For icons, characters, scenes, patterns,
-mandalas and diagrams, `vixl_guide(brief)` (CLI `vixl guide BRIEF`) names the approach, operations, layouts, looks and
+mandalas and diagrams, `vixl_reference(brief)` (CLI `vixl guide BRIEF`) names the approach, operations, layouts, looks and
 styles for the kind of work and gives a runnable example; see [looks](looks.md) and [styles](styles.md).
 
 Layouts are a starting structure, not a finished design: inspect, check and refine them. For open-ended briefs, applying a layout first prevents the common failure modes of unconstrained generation (no hierarchy, crowded edges, low contrast, arbitrary sizes).

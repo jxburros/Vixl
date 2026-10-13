@@ -21,15 +21,15 @@ Where it appears:
 
 - **`vixl_check` / `vixl check` / `Project.check`**: validation fails on any `fix` finding; `review` findings
   (and unmeasured coverage) need review. A clean check is `validated`.
-- **`vixl_operations_apply` / `POST /operations`**: `completed` + `not_run` (`unvalidated`) unless `check` or
+- **`vixl_apply` / `POST /operations`**: `completed` + `not_run` (`unvalidated`) unless `check` or
   `suites` ran; then it merges their outcomes.
-- **Suites** (`vixl_workflow check`, `act`, `group-apply`): a failed error rule fails validation, a rule that
+- **Suites** (`vixl_apply(workflow='check')`, `act`, `group-apply`): a failed error rule fails validation, a rule that
   cannot be measured makes it `incomplete`, a failed warning rule needs review.
 - **Production** (`run`): each output has its own `outcome`; with no suites a clean output is `unvalidated`
   (only bounds and flow ran). The report's `outcome` is the worst state with a count per state.
 - **Jobs** (`status`): execution follows the job status; a production job's validation comes from its
   outputs. A job left `needs_review` by an uncertain remote request did not complete.
-- **Exports** (`vixl_export_file`, `vixl_export_batch`): always `unvalidated` (exports run no checks); export
+- **Exports** (`vixl_export`, `vixl_export(kind='batch')`): always `unvalidated` (exports run no checks); export
   warnings are review reasons; a batch reports each file and an overall summary.
 - **Proof pages**: each checked document shows its state next to the check badge, and the result lists it.
 
@@ -45,7 +45,7 @@ Each design-check finding carries:
   check measured one; `page` in a multi-page document.
 - `measured`: `{actual, expected, unit}` where the rule has a measurement.
 - `repair` on `fix` findings: `{kind, available, operations, reason}`. The operations are canonical, validate
-  against the operation schema and can be dry-run (`vixl_operations_apply(..., dry_run=true)`). Nothing is
+  against the operation schema and can be dry-run (`vixl_apply(..., dry_run=true)`). Nothing is
   applied. `available: false` explains the next step instead.
 
 | Rule | Measured | Suggested repair |
@@ -69,7 +69,7 @@ findings get a suggestion per check. `offset` and `limit` page the findings; `pa
 
 ## Visual feedback
 
-`vixl_operations_apply(check=..., preview={...})` takes two more preview options:
+`vixl_apply(check=..., preview={...})` takes two more preview options:
 
 - `overlay: true` outlines each fix finding on the returned PNG, labelled `index rule · layer ID`;
   `feedback.overlay` lists the same boxes in document pixels (`region`) and preview pixels (`box`), with
@@ -77,7 +77,7 @@ findings get a suggestion per check. `offset` and `limit` page the findings; `pa
 - `focus: N` zooms the preview to listed finding `N` with a margin (a detail crop); without `overlay` it is a
   clean view of that spot.
 
-`vixl_render_preview(overlay=true)` runs `vixl_check` and returns the same boxes beside the picture. The
+`vixl_render(overlay=true)` runs `vixl_check` and returns the same boxes beside the picture. The
 proof workflow takes `overlay: true` to mark the thumbnails of checked documents. Overlays are drawn on a
 copy of the preview: the document and its exports never change. The change summary is the apply result's
 `changes.layers`, keyed by layer ID.
@@ -88,10 +88,10 @@ copy of the preview: the document and its exports never change. The change summa
 repair for each fix finding, one candidate at a time, and keeps a repair only when its finding is gone and
 no other fix finding or suite failure appeared. Unfilled blanks are held. At most ten repairs run.
 
-- `vixl_operations_apply(repair=true)`: after the batch; kept repairs are one more undoable history entry.
+- `vixl_apply(repair=true)`: after the batch; kept repairs are one more undoable history entry.
 - `vixl_check(repair=true)` / `vixl check --repair` / `Project.check(repair=True)` / `Project.repair()`: the
   document is repaired and saved as one undoable step, then checked.
-- `vixl_workflow act {repair: true}`: when a suite fails, repairs the candidate (its `text-fit` and
+- `vixl_apply(workflow='act') {repair: true}`: when a suite fails, repairs the candidate (its `text-fit` and
   `contrast` rules and the bounds, contrast and safe-area findings) and commits only if every suite passes.
 - `group-apply {repair: true}`: repairs each member before its suites run; each document reports `repairs`.
 - Campaign `repair_actions: ["auto"]` runs the same map (named actions still work).
@@ -101,7 +101,7 @@ The report lists `applied` (rule, kind, operations, reason), `held`, `unrepaired
 
 ## Layout repair
 
-`vixl_workflow repair-layout` is a bounded search for failures with no single fix: text overflow, overlap,
+`vixl_apply(workflow='repair-layout')` is a bounded search for failures with no single fix: text overflow, overlap,
 spacing (suite `spacing` rules), safe area and contrast. For each failure it tries the built-in repair first,
 then other candidates (a taller or wider text box, moves clear of the other layer, equal gaps), applies each
 to a copy and accepts it only if the failure is gone, nothing new fails, no `protected` layer changes and no
@@ -146,7 +146,7 @@ half (T04) and chart titles that would leave the safe area to meet the margin (T
 
 ## Protected edits
 
-`vixl_workflow protected-edit {operations, protect, regions, tolerance}` applies the operations to a copy and
+`vixl_apply(workflow='protected-edit') {operations, protect, regions, tolerance}` applies the operations to a copy and
 commits only when:
 
 - every protected layer (and everything in a protected group) keeps all its fields (`structural`), so a
@@ -162,7 +162,7 @@ report holds no layer contents or provider settings.
 
 ## Reproduction
 
-`vixl reproduce` (and `vixl_workflow reproduce`) reports how far reproduction is verified:
+`vixl reproduce` (and `vixl_apply(workflow='reproduce')`) reports how far reproduction is verified:
 
 | `reproduction` | Meaning |
 | --- | --- |

@@ -22,8 +22,8 @@ its identity in SVG, PowerPoint and PSD files.
 
 `vixl objects` searches the kinds, `vixl objects show dog` prints one with everything it inherits, and
 `vixl objects tree` prints the tree. Over MCP the same data comes from
-`vixl_resource_get(kind="objects", name="dog")`, `vixl_capabilities(topic="objects")` (which includes the tree),
-and `vixl_guide(brief="dog")`, which resolves a kind from a brief such as "a friendly dog sitting".
+`vixl_reference('objects', name="dog")`, `vixl_reference('capabilities', name="objects")` (which includes the tree),
+and `vixl_reference("dog")`, which resolves a kind from a brief such as "a friendly dog sitting".
 
 ```bash
 vixl objects show puppy        # aliases resolve: puppy → dog, acoustic guitar → guitar
@@ -50,7 +50,7 @@ no alias that another kind already uses):
  "parts+": [{"name": "antenna", "count": 2, "side": true}], "connections+": [["antenna", "head"]]}
 ```
 
-That value goes to `vixl_resource_add(kind="objects", name="coffee-bean", value=…)`.
+That value goes to `vixl_apply(workflow='resource-save', request={kind: "objects", name: "coffee-bean", value: …})`.
 
 ## Build an object
 
@@ -100,20 +100,20 @@ or below it, with their subtrees) and `where.part`:
 
 ## Inspect, review and measure one object
 
-- `vixl_document_inspect(object="dog")` (CLI `vixl inspect --object dog`) returns the kind chain, bounds in
+- `vixl_document(action='inspect', object="dog")` (CLI `vixl inspect --object dog`) returns the kind chain, bounds in
   canvas and group space, each part with its side, path, bounds and layer count, the **required parts still
   missing**, layers that are not named as parts, notes, references and sub-objects. `object="*"` lists every
   object on the page. The compact inspect shows `object`, `object_part` and `object_path` on each layer and an
   `objects` list; `vixl manifest` lists the objects too.
-- `vixl_render_preview(isolate=["person/guitar"])` shows one object or part alone. With
+- `vixl_render(isolate=["person/guitar"])` shows one object or part alone. With
   `views=["parts"]` it returns a labelled contact sheet: the assembled object, every part and sub-object alone;
   `exploded=true` adds a view with the parts pulled apart so overlaps and seams show.
-- `vixl_spatial` and `vixl_measure` accept paths (`dog/head`), and `vixl_check(checks=["connected"])` finds
+- `vixl_check(action='spatial')` and `vixl_check(action='measure')` accept paths (`dog/head`), and `vixl_check(checks=["connected"])` finds
   parts that float free of the object's body.
 
 ## Export one object
 
-`vixl_export_file(path, isolate=["guitar"], padding=8)` writes only that object, cropped to its ink plus
+`vixl_export(path, isolate=["guitar"], padding=8)` writes only that object, cropped to its ink plus
 `padding` on a transparent canvas, in any format (PNG, SVG, PDF, PSD, PPTX …). A `.vixl` path writes a
 **portable object document**: the object made top-level at its size on the page, with the fonts, images,
 swatches and timeline tracks it uses.

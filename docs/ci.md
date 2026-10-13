@@ -5,7 +5,7 @@
 Design files change like code, so they can be reviewed like code. The repository root holds a composite
 GitHub Action (`action.yml`) that checks every matching `.vixl` document on a pull request with
 [`vixl check --all`](production.md#checking-many-documents), the same workspace report the CLI, MCP
-(`vixl_workflow` `check-all`) and Python use:
+(`vixl_apply(workflow='check-all')`) and Python use:
 
 1. installs Vixl (the version at the action's ref, or `vixl-version` from PyPI);
 2. checks each document (design checks plus the suites attached to it, and a shared check suite when given), in

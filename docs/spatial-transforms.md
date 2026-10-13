@@ -55,7 +55,7 @@ rejected. Form fields cannot skew or take a matrix. SVG/PDF export native transf
 
 ## Spatial API
 
-Use `Project.spatial(...)` or `vixl_spatial`. All returned geometry is in canvas space. Select
+Use `Project.spatial(...)` or `vixl_check(action='spatial')`. All returned geometry is in canvas space. Select
 by `target` name/ID/glob, `targets` list, `group:name` descendants, or selector objects in a
 `targets` list. `page` and `artboard` scope the query; `bounds` is `box` (default) or `ink`.
 The ink mode uses glyph outline bounds for text and rich-text, transformed into canvas

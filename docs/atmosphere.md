@@ -87,9 +87,9 @@ side), `opacity` (default `[0.2, 0.55]`), `colors`, `softness` (0-1, default 0.3
 
 ## Motifs: drawing the thing the brief names
 
-`vixl_guide(brief)` returns `motifs` when a brief implies a setting: the concrete elements to draw, the placeholder
+`vixl_reference(brief)` returns `motifs` when a brief implies a setting: the concrete elements to draw, the placeholder
 each one replaces, and the catalog shapes, organic presets, object kinds and operations that draw them.
-`vixl_guide('motifs')` lists every theme (coffee and cafés, sea and coast, lakes, markets and festivals, night city,
+`vixl_reference('motifs')` lists every theme (coffee and cafés, sea and coast, lakes, markets and festivals, night city,
 night sky, concerts). The knowledge lives in one data file read by the guidance registry, so the guide, the
 resources and the capabilities agree.
 

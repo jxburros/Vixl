@@ -92,7 +92,7 @@ Today the levels are `low`, `medium` (default), `high` and `fixed`. Low and medi
 Decision:
 
 ### A6. The same defaults on every surface
-Today MCP `vixl_document_create` and REST/session creation roll and store `design_defaults`, while CLI `vixl new`,
+Today MCP `vixl_document(action='create')` and REST/session creation roll and store `design_defaults`, while CLI `vixl new`,
 `Project()` and `Project.sized()` do not. The CLI has no `--seed` or `--variety`
 (`src/vixl/interfaces.py:205-207`, `src/vixl/cli.py:423-468`).
 - [X] Unify: one creation path for every surface
@@ -680,7 +680,7 @@ Read it, never copy it. The API:
 | `house_style.VERSION`, `versions()`, `legacy(version)` | the current and earlier house-style versions |
 
 People and agents read it with `vixl house [show PURPOSE]` or
-`vixl_resource_get(kind="house-style", name="all"|PURPOSE)`.
+`vixl_reference('house-style', name="all"|PURPOSE)`.
 
 ### The craft signature (A1)
 

@@ -3,7 +3,7 @@
   "servers": {
     "default": {
       "tools": {
-        "vixl_apply": 1815,
+        "vixl_apply": 1832,
         "vixl_check": 899,
         "vixl_document": 1195,
         "vixl_export": 999,
@@ -11,8 +11,8 @@
         "vixl_reference": 812,
         "vixl_render": 1117
       },
-      "total_chars": 7313,
-      "total_tokens": 1828,
+      "total_chars": 7330,
+      "total_tokens": 1832,
       "instructions_chars": 735,
       "instructions_tokens": 184
     },

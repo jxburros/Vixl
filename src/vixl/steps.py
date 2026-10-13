@@ -51,18 +51,38 @@ def import_image(session, project, *, path: str | None = None,
 
 
 def import_document(session, project, *, path: str | None = None, data_base64: str | None = None,
-                    format: Annotated[Literal["svg", "pdf"] | None, Field(description="Default: from the path")] = None,
-                    name: str = "import", page: int = 1, dpi: int = 144,
+                    source: Annotated[str | None, Field(description="figma: a Figma file URL or file key (the token "
+                                                                    "comes from FIGMA_TOKEN or VIXL_FIGMA_TOKEN)")] = None,
+                    format: Annotated[Literal["svg", "pdf", "figma"] | None, Field(
+                        description="Default: from the path (.svg, .pdf; a .json path or source is figma)")] = None,
+                    name: str = "import",
+                    page: Annotated[int | str, Field(description="PDF page number, or the Figma page number or name")] = 1,
+                    dpi: int = 144,
                     svg_mode: Annotated[Literal["editable", "appearance", "auto"], Field(
                         description="editable paths, or appearance/auto for complex static SVG rendered with its "
-                                    "source kept")] = "editable"):
-    """Import editable SVG paths, or one PDF page as a raster layer; external or active SVG is rejected."""
+                                    "source kept")] = "editable",
+                    node_id: Annotated[str | None, Field(description="figma: the frame or node to import (1:2 or 1-2)")] = None,
+                    rasterize_unsupported: Annotated[bool, Field(
+                        description="figma: draw nodes Vixl cannot keep editable as pixels instead of failing")] = False):
+    """Import editable SVG paths, one PDF page as a raster layer, or a Figma file, frame or node as editable layers
+    (from a URL or key with the server's Figma token, or an exported file JSON); external or active SVG is rejected."""
     from .imports import import_document as read
 
-    require((path is None) != (data_base64 is None), "Provide exactly one of path or data_base64", field="path")
+    require(sum(value is not None for value in (path, data_base64, source)) == 1,
+            "Provide exactly one of path, data_base64 or source", field="path")
     if format is None:
-        require(path and path.lower().endswith((".svg", ".pdf")), "Give format: svg or pdf", field="format")
-        format = path.lower().rsplit(".", 1)[1]
+        if source is not None or (path and path.lower().endswith(".json")):
+            format = "figma"
+        else:
+            require(path and path.lower().endswith((".svg", ".pdf")), "Give format: svg, pdf or figma", field="format")
+            format = path.lower().rsplit(".", 1)[1]
+    if format == "figma":
+        data = source if source is not None else _upload(session, path, data_base64)
+        return read(project, data, format, name, page, dpi, svg_mode, node_id=node_id,
+                    rasterize_unsupported=rasterize_unsupported)
+    require(source is None and node_id is None and not rasterize_unsupported,
+            "source, node_id and rasterize_unsupported are Figma import options", field="source")
+    require(isinstance(page, int), "A PDF page is a number", field="page")
     return read(project, _upload(session, path, data_base64), format, name, page, dpi, svg_mode)
 
 

@@ -62,7 +62,7 @@ Detections from every provider come back as `objects[{label, box:[x,y,w,h]}]` in
 | Outpaint / extend canvas | `vixl_ai_extend(prompt, right=500)` | `vixl ai extend --right 500 --prompt '…' --as extension` |
 | Upscale a layer | `vixl_ai_upscale(layer, scale=2)` | `vixl ai upscale LAYER --2x` / `--scale 4` |
 | Re-roll a generated layer | `vixl_ai_regenerate(layer, prompt?, seed?)` | `vixl ai regenerate LAYER [--seed 42]` |
-| Provenance of a layer | `vixl_document_inspect(target)` → `provenance` | `vixl ai info LAYER` |
+| Provenance of a layer | `vixl_document(action='inspect', target)` → `provenance` | `vixl ai info LAYER` |
 | Remove background | `vixl_ai_remove_background(layer)` | `vixl ai background-remove LAYER` |
 | Select an object by label | `vixl_ai_select_object(label)` | `vixl select object 'the red car' --provider vision` |
 | Select main subject | `vixl_ai_select_subject()` | `vixl ai select-subject` |

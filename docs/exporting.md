@@ -105,7 +105,7 @@ animations use `export-animation` instead. See [motion tutorial](tutorials/motio
 vixl -p poster.vixl export poster.psd
 ```
 
-`vixl_export_file(path="poster.psd")`, `Project.export("poster.psd")` and the REST export
+`vixl_export(path="poster.psd")`, `Project.export("poster.psd")` and the REST export
 (`format: "PSD"`) write an 8-bit RGB Photoshop file (version 1 PSD, PackBits-compressed
 channels) that opens in Photoshop, Photopea, GIMP, Affinity and Krita:
 

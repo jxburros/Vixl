@@ -92,7 +92,7 @@ master pages. A document holds up to 500 fields.
 ## The fillable PDF
 
 `export form.pdf --fillable` (Python `project.export("form.pdf", fillable=True)`, MCP
-`vixl_export_file(fillable=true)`) writes Vixl's page artwork — vector, with selectable text —
+`vixl_export(fillable=true)`) writes Vixl's page artwork — vector, with selectable text —
 with a transparent PDF field over each field layer, so the PDF looks exactly like the preview.
 
 - Text kinds are text fields, checkboxes and radio groups are buttons, dropdowns are combo boxes
@@ -164,7 +164,7 @@ as `(a+)+` (it can freeze a viewer). Worst-case samples need not match the patte
 ## Filling
 
 `form fill` (Python `vixl.forms.fill(project, values, path)` and `fill_data(project, csv,
-directory, …)`, MCP `vixl_export_file(values=…)` or the `form-fill` workflow) never changes the
+directory, …)`, MCP `vixl_export(values=…)` or the `form-fill` workflow) never changes the
 document: each copy renders from a throwaway copy, and **filled values never reach the render
 cache**, the document, its history or error messages (which name rows and keys, never values).
 
@@ -189,17 +189,17 @@ cache**, the document, its history or error messages (which name rows and keys, 
 
 ### Signature samples
 
-A flattened fill, a preview or `vixl_export_file(values=…)` can draw a sample into a signature
+A flattened fill, a preview or `vixl_export(values=…)` can draw a sample into a signature
 field: text such as `"Ada Lovelace"` (one line, up to 200 characters) or an image as a
 `data:image/png;base64,…` URI (PNG, JPEG or WebP, up to 4 MB). Text is drawn in the field's
 `font` when one was set on the field, otherwise in a registered handwriting font if the document
 has one (a catalog `handwriting` family such as Dancing Script or Caveat, installed with
-`vixl_font_install`, or a family named script, hand or signature), otherwise in the field's
+`font-install`, or a family named script, hand or signature), otherwise in the field's
 default font; it is sized to the box. An image is scaled to fit inside the padding, following
 `align`. A sample is never written as a PDF field value: a fillable export (`fillable: true`) or
 an editable fill with a signature value is refused, because a signature field is for the viewer to sign.
 
-Previews show values too: `render --set KEY=VALUE` and `vixl_render_preview(values=…)` draw the
+Previews show values too: `render --set KEY=VALUE` and `vixl_render(values=…)` draw the
 values you pass without requiring the rest. A preview, a filled PNG and a flattened PDF draw a
 value the same way (size, padding, shrinking and clipping), at any preview size.
 
@@ -238,5 +238,5 @@ the bundled proofing fallback or with fallback glyphs. Rows from a CSV and fills
 numbers but never the value. The measurement uses the field's own font, as filled copies do;
 people typing into a fillable PDF get Helvetica unless the form embeds entry fonts.
 
-`inspect`, `field list` and `vixl_document_inspect` list each field's key, kind, required flag,
+`inspect`, `field list` and `vixl_document(action='inspect')` list each field's key, kind, required flag,
 tab stop and rectangle in PDF points.

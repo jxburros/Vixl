@@ -21,7 +21,7 @@ vixl workflow lyric-video-build  --request request.json --workspace .   # write 
 vixl workflow lyric-video-export --request request.json --workspace .   # build (or reuse the build), then render the video
 ```
 
-Python: `vixl.lyrics.parse_lrc`, `plan`, `build` and `export`. MCP: `vixl_workflow` with the same
+Python: `vixl.lyrics.parse_lrc`, `plan`, `build` and `export`. MCP: `vixl_apply(workflow=…)` with the same
 actions. REST: `POST /workflow/lyric-video-plan` (build and export stay CLI/MCP/jobs only). A full
 song is a multi-minute render, so long exports usually go through a durable job:
 
@@ -74,7 +74,7 @@ python examples/lyric-video/build_lyric_video.py --draft
 ```
 
 Typical agent loop: `lyric-video-plan` (read the warnings and the section list) → design or adjust
-the template → `lyric-video-build` → `vixl_timeline_preview` at markers such as `chorus-1` or
+the template → `lyric-video-build` → `vixl_render(action='timeline')` at markers such as `chorus-1` or
 `line-007` → `lyric-video-export` with `quality: "draft"` and a short `start`/`end` window →
 the final export.
 

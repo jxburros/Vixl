@@ -217,7 +217,7 @@ export_pack("wave.zip", ["👋🏽"], destination="discord", project=project)
 ```
 
 All catalog, template, requirements and pack actions are also exposed through
-`vixl_workflow` (MCP) and `vixl workflow` (CLI); the REST service accepts only the emoji
+`vixl_apply(workflow=…)` (MCP) and `vixl workflow` (CLI); the REST service accepts only the emoji
 operations above through `POST /operations`, not these workflows. Discover typed request fields with
 `vixl workflow schema`: `emoji-list`, `emoji-get`, `emoji-destinations`,
 `emoji-requirements`, `emoji-export`, `emoji-template`, `emoji-replace`,

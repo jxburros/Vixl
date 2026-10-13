@@ -45,7 +45,7 @@ python -m evals.run
 # Claude through the official Anthropic SDK (spends API credits)
 export ANTHROPIC_API_KEY=...        # or `ant auth login`
 python -m evals.run --agent claude
-python -m evals.run --agent claude --model claude-sonnet-5-5 --effort low --schema slim --tasks "photo-*"
+python -m evals.run --agent claude --model claude-sonnet-5-5 --effort low --tasks "photo-*"
 ```
 
 Results go to `eval-results/results.json` (full traces) and `eval-results/report.md`; `--keep`
@@ -60,8 +60,7 @@ and server-side refusal fallbacks (`fallbacks: "default"`) are enabled unless `-
 ## Using it
 
 Run the suite before and after changing tool descriptions, schemas, error messages, response
-formats or normalization rules, and compare success rate, round trips and tokens. Run it with
-`--schema full` and `--schema slim` to decide which mode suits a given model. When agents fail a
+formats or normalization rules, and compare success rate, round trips and tokens. When agents fail a
 task, read the trace in `results.json`: repeated tool errors usually point at a confusing schema
 or message, which is a product bug.
 
@@ -90,8 +89,8 @@ VixlExamples beside this repository. For each brief the script:
 1. makes a fresh workspace that mirrors the repository paths the brief uses: the brief, its fixtures (the song for
    T14 and the photo for T10 are generated or copied here, never in the kit) and `skills/vixl/`;
 2. runs round 1 with the kit's own kickoff prompt and lane rule V, plus "Save your .vixl document(s) in the
-   workspace.", through the agent harness (`ClaudeAgent`, the in-process MCP server with `--schema slim --tools
-   core`); the run has no shell, so two text-file tools (`read_text_file`, `write_text_file`, text formats only)
+   workspace.", through the agent harness (`ClaudeAgent`, the in-process MCP
+   server); the run has no shell, so two text-file tools (`read_text_file`, `write_text_file`, text formats only)
    stand in for "small scripts for reading inputs" and for writing `REPORT.md`;
 3. runs round 2 in a fresh session on the same workspace with the change request from `TESTS.md`;
 4. copies the run folder to `<kit>/runs-<date>-<version>/<test>/claude-V/` (round 2 in `round2/`), with the lane's
@@ -130,8 +129,7 @@ cache names. This tests pairing installation/registration and agent tool usage o
 appearance or availability of Google Fonts. Live runs use the same fixtures for comparability.
 
 ```bash
-python -m evals.run --schema full --tools core --baseline evals/baseline.json
-python -m evals.run --schema slim --tools core --baseline evals/baseline.json
+python -m evals.run --baseline evals/baseline.json
 ```
 
 `baseline.json` stores required task passes, derived from working reference solutions. A missing
@@ -143,22 +141,13 @@ of Claude success rate. `state_field` checks inspect nested persisted document f
 checks can also require an image mode (for example CMYK).
 
 The Agent eval workflow runs every Monday at 15:00 UTC, checking the offline baseline and then
-running full/core and slim/core live evaluations if `ANTHROPIC_API_KEY` is configured. Missing
+running a live evaluation if `ANTHROPIC_API_KEY` is configured. Missing
 credentials are reported explicitly; no live score is claimed. Results and traces are retained
 as workflow artifacts. Set `model`/`effort` with a manual run to compare a specific model.
 
-Current deterministic tool-context measurements (compact JSON characters divided by four):
-
-| Schema / tool set | Tools | Estimated schema tokens |
-| --- | ---: | ---: |
-| full / all | 53 | 12,789 |
-| full / core | 42 | 11,644 |
-| slim / all | 53 | 8,043 |
-| slim / core | 42 | 6,898 |
-
-Both schema modes pass every reference task. `vixl mcp` and `python -m evals.run` default to
-`--tools core --schema slim`; pass `--tools all --schema full` to measure the old default.
-Reference replay cannot measure whether a model discovers the right operation fields.
+The agent sees the seven-tool server (about 1,800 estimated tokens of tool list; see
+[MCP tool surface](../docs/mcp-toolsets.md), whose ratchet keeps it from growing). Reference replay cannot measure
+whether a model discovers the right operation fields and options through `vixl_reference`; live runs can.
 
 ## House-style eval
 

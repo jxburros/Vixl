@@ -20,7 +20,7 @@ project.export("short-deck.html", presenter={"theme": "auto", "notes": False}, p
 
 HTML export of a document with pages is the presenter. A single-page document, `--page N`
 (one page) or `presenter=False` keep the plain artwork page described in [studio](studio.md);
-`presenter=True` presents any document, even one canvas. Through MCP, `vixl_export_file(path="deck.html",
+`presenter=True` presents any document, even one canvas. Through MCP, `vixl_export(path="deck.html",
 pages="1-3", presenter={"theme": "light"})`; through REST, `POST /export` with `{"format": "HTML",
 "presenter": {…}}`.
 

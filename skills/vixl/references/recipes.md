@@ -2,7 +2,7 @@
 
 Vixl is a headless design engine for AI agents; people can drive the same interfaces. See [new resources and SVG](resources.md) for 0.11 additions.
 
-Each recipe is a single atomic batch where possible. Use them with MCP `vixl_operations_apply`,
+Each recipe is a single atomic batch where possible. Use them with MCP `vixl_apply`,
 `vixl apply ops.json`, REST `POST /operations`, or `Project.apply`. Always preview afterwards.
 
 ## Poster / social graphic with responsive layout
@@ -26,7 +26,7 @@ export each via `artboard=` / `vixl export-screens`.
 
 QA: `vixl_check(safe_area="5%")` (overlap, contrast, cut-off content, thumbnail legibility; for
 YouTube add `avoid=[["85%","85%","15%","15%"]]` for the timestamp), then
-`vixl_validate(profile="instagram-post")`. `vixl_measure(target="title")` gives the exact contrast.
+`vixl_check(action='validate', profile="instagram-post")`. `vixl_check(action='measure', target="title")` gives the exact contrast.
 
 ## Photo cleanup (non-destructive)
 
@@ -86,11 +86,11 @@ Or with a provider: `vixl_ai_remove_background(layer="product")`.
 ]
 ```
 
-Variants: `vixl_render_preview(variables={"headline":"Winter Sale"})`,
-`vixl_export_file(path="winter.png", variables={...})`, or CSV in the CLI:
+Variants: `vixl_render(variables={"headline":"Winter Sale"})`,
+`vixl_export(path="winter.png", variables={...})`, or CSV in the CLI:
 `vixl render --data rows.csv --out campaign` (headers = variable names; image columns may hold asset
 IDs or file paths relative to the CSV). Get embedded asset IDs from
-`vixl_document_inspect(detail="full")` / `vixl manifest`.
+`vixl_document(action='inspect', verbose=true)` / `vixl manifest`.
 
 ## Evenly spaced row of cards
 
@@ -105,7 +105,7 @@ IDs or file paths relative to the CSV). Get embedded asset IDs from
 ]
 ```
 
-Verify: `vixl_measure_spacing(targets=["card","card2","card3"], axis="horizontal", expected=40, tolerance=0)`.
+Verify: `vixl_check(action='spacing', targets=["card","card2","card3"], axis="horizontal", expected=40, tolerance=0)`.
 (Spacing targets must be siblings — they still are, inside the group.)
 
 ## Pattern: stripes clipped to a shape
@@ -136,8 +136,8 @@ Verify: `vixl_measure_spacing(targets=["card","card2","card3"], axis="horizontal
 ]
 ```
 
-Inspect as text with `vixl_pixels_inspect("coin")`; preview `vixl_animation_preview("glint", scale=8)`;
-export `vixl_export_animation(path="coin.gif", format="gif", scale=8)` or `format="sheet"` for a game
+Inspect as text with `vixl_check(action='pixels', "coin")`; preview `vixl_render(action='animation', "glint", scale=8)`;
+export `vixl_export(kind='animation', path="coin.gif", format="gif", scale=8)` or `format="sheet"` for a game
 engine (writes `coin.png` + `coin.json`). Static enlargements: `sampling="nearest"`.
 
 Several animations in one document: save every pose with `frame-save`, then give each cycle its own
@@ -153,19 +153,19 @@ subset, order and timing, and export them separately. Recolour all poses at once
 ]
 ```
 
-`vixl_export_animation(path="keeper-walk.gif", animation="walk", scale=8)` (likewise `.webp`/`.mp4`), and
+`vixl_export(kind='animation', path="keeper-walk.gif", animation="walk", scale=8)` (likewise `.webp`/`.mp4`), and
 `format="sheet"` once for a sprite sheet whose JSON lists every frame rectangle plus the animations.
 
 ## Explore alternatives safely
 
 ```text
-vixl_history(action="checkpoint", ref="base")
-… edits …                     → vixl_history(action="branch", ref="warm")
-vixl_history(action="checkout", ref="base")
-… other edits …               → vixl_history(action="branch", ref="cool")
+vixl_document(action='checkpoint'ref="base")
+… edits …                     → vixl_document(action='branch'ref="warm")
+vixl_document(action='checkout'ref="base")
+… other edits …               → vixl_document(action='branch'ref="cool")
 ```
 
-MCP: `vixl_render_compare(before="warm", after="cool")` returns both side by side (or
+MCP: `vixl_render(action='compare', before="warm", after="cool")` returns both side by side (or
 `mode="diff"` to highlight changes). CLI: `vixl compare warm cool --out compare.png`. Use a transaction
 (`begin` … `commit`/`rollback`) when a multi-call change should be a single undo step.
 
@@ -188,16 +188,16 @@ Redefining `brand` or `Heading` later updates every linked layer; editing `logo`
 ## Open brief → structured design (layouts)
 
 ```text
-vixl_document_create(path="talk.vixl", size="slide")
-vixl_layouts_list()                                              # pick by medium and intent
-vixl_operations_apply(operations=[{"type":"layout-apply","name":"slide-title",
+vixl_document(action='create', path="talk.vixl", size="slide")
+vixl_reference('layouts')                                              # pick by medium and intent
+vixl_apply(operations=[{"type":"layout-apply","name":"slide-title",
   "title":"Designing for agents","subtitle":"Jordan Lee · Product Design","caption":"Conf 2026","seed":2}])
-vixl_check() ; vixl_render_preview()
+vixl_check() ; vixl_render()
 # Not right? Try another seed or pin choices, replacing the previous layout:
-vixl_operations_apply(operations=[{"type":"layout-apply","name":"slide-title","replace":true,"seed":9,
+vixl_apply(operations=[{"type":"layout-apply","name":"slide-title","replace":true,"seed":9,
   "title":"Designing for agents","subtitle":"Jordan Lee · Product Design","mode":"dark","type_scale":"golden"}])
 # Retint everything by editing one role swatch:
-vixl_operations_apply(operations=[{"type":"swatch","name":"accent","color":"oklch(0.68 0.17 35)"}])
+vixl_apply(operations=[{"type":"swatch","name":"accent","color":"oklch(0.68 0.17 35)"}])
 ```
 
 ## Print-ready flyer
@@ -225,7 +225,7 @@ vixl -p icon.vixl export-icons --out icons --set all
 ## Hand-drawn accent
 
 ```text
-vixl_operations_apply(operations=[
+vixl_apply(operations=[
   {"type":"paint-layer","name":"marks"},
   {"type":"paint","target":"marks","brush":"marker","points":[[120,610],[420,600],[700,615]],"size":26,"color":"alpha(@accent, 0.7)"},
   {"type":"paint","target":"marks","brush":"brush-pen","path":"M760 540 C820 470 900 520 860 600","size":10,"color":"@ink"}])
@@ -234,14 +234,14 @@ vixl_operations_apply(operations=[
 ## Animated social post
 
 ```text
-vixl_operations_apply(operations=[
+vixl_apply(operations=[
   {"type":"timeline-set","duration":"3s","fps":24},
   {"type":"animate-preset","target":"label","preset":"fade-in","duration":"0.4s"},
   {"type":"animate-preset","target":"headline","preset":"slide-in-up","start":"0.2s","duration":"0.7s"},
   {"type":"animate-preset","target":"cta","preset":"pop-in","start":"0.9s","duration":"0.5s"},
   {"type":"animate-preset","target":"cta","preset":"pulse","start":"2s","duration":"0.6s"}])
-vixl_timeline_preview(count=8)
-vixl_export_timeline(path="post.mp4")          # needs ffmpeg; otherwise post.webp or post.gif
+vixl_render(action='timeline', count=8)
+vixl_export(kind='timeline', path="post.mp4")          # needs ffmpeg; otherwise post.webp or post.gif
 ```
 
 In a house-style-3 document a new timeline of 10 s or less is a seamless loop, so entrances play back before the
@@ -250,7 +250,7 @@ loop restarts; add `"loop_mode":"off"` (or `"loop":1`) to `timeline-set` for a p
 
 ## Character, scene and mandala (no text layout)
 
-Open brief, no copy to set: ask `vixl_guide(brief="a mascot for a coffee brand")` first. It returns the approach,
+Open brief, no copy to set: ask `vixl_reference("a mascot for a coffee brand")` first. It returns the approach,
 operations, looks and a runnable example for the kind of work (character, scene, pattern, mandala, icon, logo …).
 
 ```json
@@ -275,5 +275,5 @@ A mandala is one petal and `radial-repeat`, then a glow:
 
 A scene stacks a gradient sky, a glowing sun, hills (`allow_crop` for the bleed) and an `organic` tree, then
 `look grain`. Water is `organic` preset `water` (filled bands, not line waves); night scenes add `star-field`, `haze`
-behind lights, `string-lights` and a `reflection` below the waterline, and `vixl_guide(brief)` lists the brief's
-`motifs` (a cup with steam, a lighthouse in the sea) with the shapes that draw them. Tag a style with `vixl_styles(action="apply", name="retro-futurism")` and run `check --checks style`.
+behind lights, `string-lights` and a `reflection` below the waterline, and `vixl_reference(brief)` lists the brief's
+`motifs` (a cup with steam, a lighthouse in the sea) with the shapes that draw them. Tag a style with `vixl_reference('styles')` and run `check --checks style`.

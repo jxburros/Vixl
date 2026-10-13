@@ -54,7 +54,7 @@ assets, while assets referenced by retained history stay available for undo.
 
 **Sources above the pixel limit.** With `max_pixels` or `downsample`, the source may be up to four times the pixel
 limit (160 MP under the default 40 MP `--max-pixels`, so a 108 MP camera file imports); it is shrunk while it is
-decoded. Without a `width` and `height` such a layer takes the embedded size. `vixl import`, `vixl_import_image` and
+decoded. Without a `width` and `height` such a layer takes the embedded size. `vixl import`, `import-image` and
 the REST import downsample a source above the limit to fit it on their own and report `downsampled` and a warning.
 A plain `add` of such a file fails with `resource_limit`, naming the size and both remedies (`max_pixels`, or a higher
 `--max-pixels`).

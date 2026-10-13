@@ -297,3 +297,27 @@ def test_mcp_splits_into_design_and_ai_servers(tmp_path, monkeypatch):
     asyncio.run(core_server.call_tool("vixl_apply", {"operations": [{"type": "hide", "target": "sun"}]}))
     ai_session.open("a.vixl")
     assert not ai_session.inspect()["layers"][0]["visible"]
+
+
+def test_import_document_step_routes_figma_sources_with_their_options(tmp_path, monkeypatch):
+    import vixl.imports
+    from vixl.mcp_tools import build_server
+
+    seen = []
+
+    def fake(project, data, format, name="import", page=1, dpi=144, svg_mode="editable", **options):
+        seen.append((data, format, page, options))
+        return {"imported": format}
+
+    monkeypatch.setattr(vixl.imports, "import_document", fake)
+    session = Session(workspace=tmp_path)
+    session.create("a.vixl", 16, 16)
+    server = build_server(session)
+    asyncio.run(server.call_tool("vixl_apply", {"operations": [{
+        "type": "import-document", "source": "https://www.figma.com/design/KEY/name", "node_id": "1-2",
+        "page": "Cover", "rasterize_unsupported": True}]}))
+    assert seen == [("https://www.figma.com/design/KEY/name", "figma", "Cover",
+                     {"node_id": "1-2", "rasterize_unsupported": True})]
+    with pytest.raises(Exception, match="Figma import options"):
+        asyncio.run(server.call_tool("vixl_apply", {"operations": [{
+            "type": "import-document", "path": "a.svg", "node_id": "1:2"}]}))

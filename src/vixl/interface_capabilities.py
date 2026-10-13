@@ -16,7 +16,7 @@ def markdown_table():
     rows = [
         ("Documents per session", "One fixed document", "Multiple, inside the workspace", "One active document; workspace workflows", "Multiple Project instances; Session for workflows"),
         ("Workflows", rest, all_actions, all_actions, all_actions + " via workflows.dispatch(Session, ...)"),
-        ("AI tools", "Configured local providers via /ai", "Configured local providers; tool profile controls exposure", "Configured local providers", "Configured local providers"),
+        ("AI tools", "Configured local providers via /ai", "Configured local providers; a second server, vixl mcp --tools ai", "Configured local providers", "Configured local providers"),
         ("Linked files outside workspace", "Forbidden", "Forbidden", "Explicit --allow-linked", "Explicit allow_linked=True"),
         ("Screen capture", "Unavailable", "Disabled by default; --allow-screen-capture or VIXL_ALLOW_SCREEN_CAPTURE=1", "Explicit screen-capture workflow", "Explicit screen-capture workflow"),
         ("Jobs", "Detached timed-out calls via /jobs; no durable workflow queue", "Durable workflow queue and detached calls", "Durable workflow queue", "Durable queue via Session/workflows"),

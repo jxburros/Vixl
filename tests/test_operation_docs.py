@@ -119,6 +119,19 @@ def test_docs_and_skills_name_only_real_mcp_tools():  # #252
                 if name not in real and name != "vixl_ai_":  # `vixl_ai_*` is the provider tool family
                     unknown.setdefault(name, set()).add(path.name)
     assert not unknown, f"docs name MCP tools that do not exist: {unknown}"
+    # Code, evals and tests name only real tools too (identifiers that merely start with vixl_ are listed here).
+    identifiers = {"vixl_version", "vixl_runtime", "vixl_vector_overflow", "vixl_unknown_arguments", "vixl_profile",
+                   "vixl_link_chain", "vixl_ids", "vixl_gamut", "vixl_error", "vixl_cli_normalized", "vixl_call",
+                   "vixl_ai_", "vixl_ai"}
+    deliberate = {"vixl_text_add", "vixl_aply"}  # unknown names the tool-error tests call on purpose
+    files = [root / "README.md", *(root / "src" / "vixl").rglob("*.py"), *(root / "src" / "vixl" / "data").glob("*.json"),
+             *(root / "evals").rglob("*.py"), *(root / "evals").rglob("*.json"), *(root / "evals").rglob("*.md"),
+             *(root / "tests").glob("*.py")]
+    for path in files:
+        for name in re.findall(r"\bvixl_\w+", path.read_text(encoding="utf-8")):
+            if name not in real | identifiers | deliberate and not name.startswith("vixl_launcher"):
+                unknown.setdefault(name, set()).add(path.name)
+    assert not unknown, f"code, evals or tests name MCP tools that do not exist: {unknown}"
 
 
 def test_operation_schema_tool_serves_summaries_and_examples_but_tools_list_stays_lean(tmp_path):
