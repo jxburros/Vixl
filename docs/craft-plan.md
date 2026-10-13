@@ -30,6 +30,8 @@ The judges' reasons for picking another lane over Vixl fall into four groups, in
 
 ## Why it happens
 
+This is the state before 0.27.0; the [Status](#status) table below records what has landed since.
+
 - **The agent loop ends when the checks pass.** SKILL.md step 5 and `briefs.START_HERE` go from passing checks to a
   preview to export. No step asks for a critique or a polish pass, and the "Finish" step means "apply a look".
 - **The checks don't see composition.** The default `vixl_check` families cover bounds, overlap, contrast, safe area,
@@ -123,6 +125,8 @@ In order. Each item names the evidence it answers.
 
 ## Order
 
+This was the planned order; every item has landed in 0.27.0 (see [Status](#status)).
+
 - **Next release:** 1a, 1b, 2a, 2c, 3a, 7a and 7d. Measurement, the new checks, the finishing pass and the two cheap
   tool fixes. Then run 1c and judge the Vixl lane again: this tells us how much the loop and checks alone recover.
 - **After that:** 2b, 3b, 4a, 5a and 5b. Repair, cheaper critique, balanced wrap and the data list.
@@ -152,7 +156,7 @@ paid agent run (`python -m evals.craft_rerun`, 1c) and judges, so no craft gain 
 | 4b | Built: tab stops with leaders on text, `leader` on table columns | [typography](typography.md) |
 | 4c | Built: `accent_words` on `layout-apply` | [sizes and layouts](sizes-and-layouts.md) |
 | 5a | Built: `key-value-list`, which chart `legend_values` also draws | [charts](charts.md), [containers](containers-and-templates.md) |
-| 5b | Built: one spacing unit of rule clearance (footer rules, `section-header`). T16's own crowding came from a table's header rule, which this does not change | [house style](house-style.md#house-style-4) |
+| 5b | Built: one spacing unit of rule clearance (footer rules, `section-header`). T16's own crowding came from a table's header rule, which this does not change | [house style](house-style.md#current-defaults) |
 | 5c | Built: rolled `cta` pills and `date` highlights | [safe variety](safe-variety.md) |
 | 6a | Built: `reflection`, `haze`, `star-field`, `string-lights`, `bokeh` | [atmosphere](atmosphere.md) |
 | 6b | Built: `vixl_reference` returns `motifs` from one registry, with new catalog shapes (cup, steam, lighthouse, lantern) | `src/vixl/data/motifs.json` |

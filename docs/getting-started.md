@@ -138,4 +138,6 @@ The [interface reference](interfaces.md) documents loading, history, errors and 
 Choose a [campaign](tutorials/campaign.md), [chart](tutorials/charts.md),
 [form or deck](tutorials/forms-and-decks.md), or [animation](tutorials/motion.md).
 For an existing image, start with `vixl -p hello.vixl add photo.jpg --name photo`, then use
-[design tools](design-tools.md) for positioning, masks and effects.
+[design tools](design-tools.md) for positioning, masks and effects. An SVG, a PDF page or a Figma
+frame comes in as editable layers with `vixl import` ([importing SVG and PDF](exporting.md#importing-svg-and-pdf),
+[Figma](figma.md)), and the `.vixl` format itself is documented in [file format](file-format.md).
