@@ -82,4 +82,4 @@ def test_meme_brief_guidance_and_catalog():
     found = guide("make a meme with top text and bottom text")
     assert found["matched"] == "meme" and {item["name"] for item in found["layouts"]} == set(MEMES)
     text = guide("meme")["principles"]
-    assert "Anton" in text and "OFL" in text and "vixl_export_timeline" in text
+    assert "Anton" in text and "OFL" in text and "vixl_export(kind='timeline')" in text

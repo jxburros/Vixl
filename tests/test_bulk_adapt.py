@@ -152,7 +152,7 @@ def test_edit_layers_works_through_mcp_and_names_the_matches(tmp_path):
 
     async def scenario():
         async with create_connected_server_and_client_session(server._mcp_server) as client:
-            result = await client.call_tool("vixl_operations_apply", {"document": "menu.vixl", "operations": [
+            result = await client.call_tool("vixl_apply", {"document": "menu.vixl", "operations": [
                 {"type": "edit-layers", "where": {"name": "price-*"}, "do": {"type": "text-set", "color": "#c00"}}]})
             assert not result.isError, result.content
             return json.loads(result.content[0].text)
@@ -321,7 +321,7 @@ def test_adapt_copies_recompose_reports_each_size(tmp_path):
     assert Image.open(tmp_path / "out/card-youtube-thumbnail.png").size == (1280, 720)
 
 
-def test_adapt_layout_tool_over_mcp(tmp_path):
+def test_adapt_sizes_workflow_over_mcp(tmp_path):
     server = mcp_server(workspace=tmp_path)
     session = server.vixl_runtime.session
     session.create("p.vixl", 400, 400)
@@ -329,11 +329,11 @@ def test_adapt_layout_tool_over_mcp(tmp_path):
 
     async def scenario():
         async with create_connected_server_and_client_session(server._mcp_server) as client:
-            result = await client.call_tool("vixl_adapt_layout", {"document": "p.vixl", "sizes": ["story", "800x200"],
-                                                                  "directory": "out", "request_id": "adapt-1"})
+            arguments = {"workflow": "adapt-sizes", "document": "p.vixl", "request_id": "adapt-1",
+                         "request": {"sizes": ["story", "800x200"], "directory": "out"}}
+            result = await client.call_tool("vixl_apply", arguments)
             assert not result.isError, result.content
-            again = await client.call_tool("vixl_adapt_layout", {"document": "p.vixl", "sizes": ["story", "800x200"],
-                                                                 "directory": "out", "request_id": "adapt-1"})
+            again = await client.call_tool("vixl_apply", arguments)
             return json.loads(result.content[0].text), json.loads(again.content[0].text)
 
     first, again = asyncio.run(scenario())
@@ -345,7 +345,7 @@ def test_new_operations_are_advertised_and_described(tmp_path):
     async def scenario():
         server = mcp_server(workspace=tmp_path)
         async with create_connected_server_and_client_session(server._mcp_server) as client:
-            result = await client.call_tool("vixl_operation_schema", {"types": ["edit-layers", "adapt-layout"]})
+            result = await client.call_tool("vixl_reference", {"topic": "operations", "name": ["edit-layers", "adapt-layout"]})
             return json.loads(result.content[0].text)
 
     schemas = asyncio.run(scenario())
@@ -386,15 +386,15 @@ def test_mcp_apply_defaults_to_brief_and_text_add_too(tmp_path):
                 assert not result.isError, result.content
                 return json.loads(result.content[0].text)
 
-            await call("vixl_document_create", path="a.vixl", width=300, height=200)
-            default = await call("vixl_operations_apply", operations=[
+            await call("vixl_document", action="create", path="a.vixl", width=300, height=200)
+            default = await call("vixl_apply", operations=[
                 {"type": "shape", "shape": "rectangle", "name": "box", "width": 50, "height": 50, "fill": "red"}])
             (layer,) = default["changes"]["layers"].values()
             assert set(layer) == {"added", "name", "type", "bounds"}
-            full = await call("vixl_operations_apply", detail="compact", operations=[
+            full = await call("vixl_apply", detail="compact", operations=[
                 {"type": "move", "target": "box", "x": 9}])
             assert next(iter(full["changes"]["layers"].values()))["x"] == 9
-            added = await call("vixl_operations_apply", operations=[{"type": "text", "text": "Hi", "name": "hi"}])
+            added = await call("vixl_apply", operations=[{"type": "text", "text": "Hi", "name": "hi"}])
             assert next(iter(added["changes"]["layers"].values()))["name"] == "hi"
 
     asyncio.run(scenario())

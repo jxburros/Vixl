@@ -67,15 +67,16 @@
   ],
   "reference": [
     {
-      "tool": "vixl_document_open",
+      "tool": "vixl_document",
       "arguments": {
+        "action": "open",
         "path": "form.vixl"
       }
     },
     {
-      "tool": "vixl_workflow",
+      "tool": "vixl_apply",
       "arguments": {
-        "action": "form-fill",
+        "workflow": "form-fill",
         "request": {
           "data": "attendees.csv",
           "dry_run": true
@@ -83,9 +84,9 @@
       }
     },
     {
-      "tool": "vixl_workflow",
+      "tool": "vixl_apply",
       "arguments": {
-        "action": "form-fill",
+        "workflow": "form-fill",
         "request": {
           "data": "attendees.csv",
           "combine": "badges.pdf",

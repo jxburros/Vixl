@@ -21,6 +21,8 @@ def mcp(workspace):
     server = build_server(Session(workspace=workspace))
 
     def call(name, **arguments):
+        if name in ("font-pair", "font-install"):  # a session step: run it in a batch and return its result
+            return call("vixl_apply", operations=[{"type": name, **arguments}])["steps"][0]["result"]
         result = asyncio.run(server.call_tool(name, arguments))
         content = result[0] if isinstance(result, tuple) else result
         return json.loads(content[0].text)
@@ -73,7 +75,7 @@ def test_explicit_pairing_or_opt_out_skips_workspace_fonts(tmp_path, offline_fon
 def test_mcp_create_with_font_pairing_ignores_workspace_default(tmp_path, offline_fonts):
     (tmp_path / "brand.json").write_text(json.dumps({"pairing": "source-serif-sans"}))
     call = mcp(tmp_path)
-    created = call("vixl_document_create", path="c.vixl", width=300, height=300, font_pairing="inter-single-ui")
+    created = call("vixl_document", action="create", path="c.vixl", width=300, height=300, font_pairing="inter-single-ui")
     assert "workspace_fonts" not in created and created["typography"]["pairing"] == "inter-single-ui"
 
 
@@ -92,21 +94,21 @@ def test_offline_workspace_pairing_still_creates_the_document(tmp_path, monkeypa
 
 def test_font_tools_write_workspace_defaults(tmp_path, offline_fonts):
     call = mcp(tmp_path)
-    paired = call("vixl_font_pair", pairing="source-serif-sans", scope="workspace")
+    paired = call("font-pair", pairing="source-serif-sans", scope="workspace")
     assert paired["workspace"]["path"] == "brand.json"
     assert json.loads((tmp_path / "brand.json").read_text())["pairing"] == "source-serif-sans"
-    defaulted = call("vixl_font_install", family="Inter", scope="workspace")
+    defaulted = call("font-install", family="Inter", scope="workspace")
     assert defaulted["role"] == "heading" and defaulted["normalized"]
-    installed = call("vixl_font_install", family="Inter", weight=700, role="heading", scope="workspace")
+    installed = call("font-install", family="Inter", weight=700, role="heading", scope="workspace")
     assert installed["workspace"]["role"] == "heading"
     kit = json.loads((tmp_path / "brand.json").read_text())
     assert kit["pairing"] == "source-serif-sans" and kit["fonts"]["heading"]["name"] == "inter-700"
-    created = call("vixl_document_create", path="e.vixl", width=300, height=300)
+    created = call("vixl_document", action="create", path="e.vixl", width=300, height=300)
     applied = created["workspace_fonts"]["applied"]
     assert applied["heading"] == {"name": "inter-700", "from": "fonts"}
     assert applied["body"]["from"] == "pairing"
     # A later pairing replaces the embedded role fonts and says so.
-    again = call("vixl_font_pair", pairing="inter-single-ui", scope="workspace")
+    again = call("font-pair", pairing="inter-single-ui", scope="workspace")
     assert again["workspace"]["replaced"] == ["fonts.heading"]
     assert "fonts" not in json.loads((tmp_path / "brand.json").read_text())
 

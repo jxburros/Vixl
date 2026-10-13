@@ -59,7 +59,7 @@ PARAMETERS = (
     "pointer_side",
     "slant",
 )
-# Parameters each shape reads, for discovery (vixl_capabilities) and the ignored-field advisory. The shared
+# Parameters each shape reads, for discovery (vixl_reference('capabilities')) and the ignored-field advisory. The shared
 # lengths (thickness, depth ...) mean the same thing everywhere; the per-shape defaults are in path().
 SHAPE_PARAMETERS = {
     "heart": ("apex", "cleft", "tip"),

@@ -20,7 +20,7 @@ def font_next_step(project, seed):
     pairing = project.state.get("design_defaults", {}).get("direction", {}).get("pairing")
     pairing = pairing if pairing and pairing != "workspace-brand" else roll_pairing(seed)[0]["name"]
     return {"pairing": pairing, "installed": False,
-            "next_step": f"Install the selected fonts with vixl_font_pair(pairing='{pairing}') or vixl font pair {pairing}; "
+            "next_step": f"Install the selected fonts with a font-pair step ({{type: font-pair, pairing: '{pairing}'}} in vixl_apply) or vixl font pair {pairing}; "
                          "layout/template operations use the proofing fallback until fonts are explicitly installed."}
 
 

@@ -112,11 +112,14 @@ def test_cli_and_mcp_return_the_source(tmp_path, monkeypatch):
         content = content[0] if isinstance(content, tuple) else content
         return json.loads("".join(getattr(item, "text", "") for item in content))
 
-    asyncio.run(call("vixl_document_open", {"path": "doc.vixl"}))
-    installed = asyncio.run(call("vixl_font_install", {"family": "Inter", "weight": 700, "name": "inter-bold"}))
+    asyncio.run(call("vixl_document", {"action": "open", "path": "doc.vixl"}))
+    def step(**fields):
+        return asyncio.run(call("vixl_apply", {"operations": [fields]}))["steps"][0]["result"]
+
+    installed = step(type="font-install", family="Inter", weight=700, name="inter-bold")
     assert installed["source"]["origin"] == "cache" and installed["source"]["cache_file"].endswith("inter-700.ttf")
-    paired = asyncio.run(call("vixl_font_pair", {"pairing": typefaces.pairings()[0]["name"]}))
+    paired = step(type="font-pair", pairing=typefaces.pairings()[0]["name"])
     assert paired["origin"] in ("cache", "download", "mixed") and paired["heading"]["source"]["cache_dir_from"] == "VIXL_FONT_CACHE"
-    tools = {t.name: t for t in asyncio.run(server.list_tools())}
-    for name in ("vixl_font_install", "vixl_font_pair"):
-        assert "cache" in tools[name].description and "download" in tools[name].description
+    steps = asyncio.run(call("vixl_reference", {"topic": "operations", "name": ["font-install", "font-pair"]}))
+    for name in ("font-install", "font-pair"):
+        assert "cache" in steps[name]["description"] or "Download" in steps[name]["description"]

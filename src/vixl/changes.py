@@ -104,7 +104,7 @@ def compact_changes(before, after):
 def brief_changes(before, after):
     """The leanest summary: which layers were added, removed or changed and where they ended up
     (``bounds``), without new field values. The caller knows what it asked for; read a layer
-    with vixl_document_inspect, or use detail=compact for the new values."""
+    with vixl_document(action='inspect'), or use detail=compact for the new values."""
     changes, other = {}, []
     current = {layer["id"]: layer for layer in after["layers"]}
     for key, value in compact_changes(before, after).items():

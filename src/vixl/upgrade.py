@@ -79,7 +79,7 @@ def report(state, saved_version):
         return None
     return {
         "from_version": saved_version, "to_version": __version__, "changes": changes,
-        "hint": "Run `vixl upgrade DOC --pin-fills` (MCP: vixl_document_open(path, upgrade='pin-fills')) to "
+        "hint": "Run `vixl upgrade DOC --pin-fills` (MCP: vixl_document(action='open', path, upgrade='pin-fills')) to "
                 "restore white fills, or `vixl upgrade DOC` (upgrade='accept') to accept the new rendering "
                 "and stop this notice.",
     }

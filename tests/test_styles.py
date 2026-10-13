@@ -424,30 +424,30 @@ def call(server, tool, **arguments):
     return asyncio.run(run())
 
 
-def test_mcp_vixl_styles_and_vixl_check(tmp_path, fonts):
+def test_mcp_style_reference_style_use_and_vixl_check(tmp_path, fonts):
     from vixl.interfaces import Session
     from vixl.mcp_tools import build_server
 
     server = build_server(Session(workspace=tmp_path))
-    call(server, "vixl_document_create", path="d.vixl", width=800, height=600)
-    listing = call(server, "vixl_styles", query="neon")
+    call(server, "vixl_document", action="create", path="d.vixl", width=800, height=600)
+    listing = call(server, "vixl_reference", topic="styles", query="neon")
     assert "cyberpunk" in {row["name"] for row in listing["styles"]}
-    full = call(server, "vixl_styles", action="get", name="swiss")
+    full = call(server, "vixl_reference", topic="styles", name="swiss")
     assert full["checks"] and full["palettes"] and full["type"]["families"]
-    applied = call(server, "vixl_styles", action="apply", name="swiss", palette=True)
-    assert applied["success"]
-    call(server, "vixl_operations_apply", operations=[
+    applied = call(server, "vixl_apply", operations=[{"type": "style-use", "name": "swiss", "palette": True}])
+    assert applied["success"] and applied["steps"][0]["type"] == "style-use"
+    call(server, "vixl_apply", operations=[
         {"type": "text", "text": "Hello", "name": "t", "size": 60, "color": "#111111", "x": 50, "y": 50, "align": "center"}])
     checked = call(server, "vixl_check", checks=["style"])
     assert checked["style"]["styles"] == ["swiss"]
-    again = call(server, "vixl_styles", action="check")
+    again = call(server, "vixl_check", style="swiss")
     assert again["style"]["summary"] == checked["style"]["summary"]
     other = call(server, "vixl_check", checks=["style"], style="brutalist")
     assert other["style"]["styles"] == ["brutalist"]
     with pytest.raises(Exception) as caught:
-        call(server, "vixl_styles", action="get", name="swis")
+        call(server, "vixl_reference", topic="styles", name="swis")
     assert "unknown_style" in str(caught.value)
-    schema = call(server, "vixl_operation_schema", types=["style-set"])["style-set"]
+    schema = call(server, "vixl_reference", topic="operations", name=["style-set"])["style-set"]
     assert schema["description"] and schema["properties"]["style"]["description"]
 
 

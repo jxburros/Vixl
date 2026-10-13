@@ -1,4 +1,4 @@
-"""Motifs a brief implies (vixl_guide's motifs field) and the catalog shapes that draw them."""
+"""Motifs a brief implies (vixl_reference's motifs field) and the catalog shapes that draw them."""
 
 import asyncio
 import io
@@ -101,12 +101,12 @@ def test_every_motif_names_real_shapes_presets_kinds_and_operations():
                 assert p.apply(element["example"])["success"]
 
 
-def test_vixl_guide_tool_returns_motifs(tmp_path):
+def test_vixl_reference_returns_motifs_for_a_brief(tmp_path):
     from vixl.interfaces import Session
     from vixl.mcp_tools import build_server
 
     server = build_server(Session(workspace=tmp_path))
-    result = asyncio.run(server.call_tool("vixl_guide", {"brief": "a coffee shop poster"}))
+    result = asyncio.run(server.call_tool("vixl_reference", {"topic": "a coffee shop poster"}))
     content = result[0] if isinstance(result, tuple) else result
     data = json.loads(content[0].text)
     assert data["motifs"][0]["theme"] == "coffee"

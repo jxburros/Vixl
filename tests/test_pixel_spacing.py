@@ -249,7 +249,7 @@ def test_mcp_and_rest_pixel_animation_and_spacing(tmp_path):
     async def run():
         server = mcp_server(tmp_path / "sprite.vixl")
         tools = {t.name: t for t in await server.list_tools()}
-        schema = tools["vixl_operations_apply"].inputSchema
+        schema = tools["vixl_apply"].inputSchema
         jsonschema.validate(
             {
                 "operations": [
@@ -259,23 +259,19 @@ def test_mcp_and_rest_pixel_animation_and_spacing(tmp_path):
             },
             schema,
         )
-        assert {
-            "vixl_measure_spacing",
-            "vixl_pixels_inspect",
-            "vixl_animation_inspect",
-            "vixl_export_animation",
-            "vixl_animation_preview",
-        } <= tools.keys()
+        assert {"spacing", "pixels"} <= set(tools["vixl_check"].inputSchema["properties"]["action"]["enum"])
+        assert {"animation", "animation-inspect"} <= set(tools["vixl_render"].inputSchema["properties"]["action"]["enum"])
+        assert "animation" in tools["vixl_export"].inputSchema["properties"]["kind"]["enum"]
         await server.call_tool(
-            "vixl_operations_apply", {"operations": [{"type": "frame-save", "name": "idle"}]}
+            "vixl_apply", {"operations": [{"type": "frame-save", "name": "idle"}]}
         )
-        assert await server.call_tool("vixl_pixels_inspect", {"target": "sprite"})
-        assert await server.call_tool("vixl_animation_preview", {"name": "idle"})
-        await server.call_tool("vixl_export_animation", {"path": "sprite.gif"})
+        assert await server.call_tool("vixl_check", {"action": "pixels", "target": "sprite"})
+        assert await server.call_tool("vixl_render", {"action": "animation", "name": "idle"})
+        await server.call_tool("vixl_export", {"kind": "animation", "path": "sprite.gif"})
         from mcp.server.fastmcp.exceptions import ToolError
 
         with pytest.raises(ToolError, match="outside the workspace"):
-            await server.call_tool("vixl_export_animation", {"path": "../outside.gif"})
+            await server.call_tool("vixl_export", {"kind": "animation", "path": "../outside.gif"})
 
     asyncio.run(run())
     assert (tmp_path / "sprite.gif").exists()

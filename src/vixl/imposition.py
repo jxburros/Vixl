@@ -723,7 +723,7 @@ def dispatch(session, request, document=None):
         return run(session, template, request)
     except (KeyError, TypeError, ValueError, OverflowError) as exc:
         raise VixlError("invalid_request", f"Invalid merge-impose request: {exc!r}",
-                        suggestions=["See vixl_workflow_schema actions['merge-impose'].properties"]) from exc
+                        suggestions=["See vixl_reference('workflows') actions['merge-impose'].properties"]) from exc
 
 
 def _rerun(session, request):

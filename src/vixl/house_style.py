@@ -279,7 +279,7 @@ def versions():
 
 
 def show(purpose=None):
-    """A readable summary for ``vixl house show`` and ``vixl_resource_get(kind='house-style')``."""
+    """A readable summary for ``vixl house show`` and ``vixl_reference('house-style')``."""
     item = _data()
     if purpose:
         found = purpose_for(purpose)
@@ -296,4 +296,4 @@ def show(purpose=None):
             "pools": pools,
             "purposes": {name: item["purposes"][name]["summary"] for name in PURPOSES},
             "versions": versions(),
-            "detail": "vixl house show PURPOSE (vixl_resource_get kind=house-style name=PURPOSE) gives one purpose profile"}
+            "detail": "vixl house show PURPOSE (vixl_reference('house-style', name=PURPOSE)) gives one purpose profile"}

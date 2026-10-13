@@ -2,7 +2,7 @@
 
 Either side can be a ``.vixl`` document (rendered at full size), a raster image, an SVG (rendered with
 resvg) or a PDF (first page, needs pypdfium2). The comparison is ``checks.pixel_diff``, the same one
-``vixl_render_compare`` uses.
+``vixl_render(action='compare')`` uses.
 """
 
 import io

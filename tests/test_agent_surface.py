@@ -1,5 +1,5 @@
 """The agent-facing surface: check findings and a preview from one apply call (#180), one guidance registry that
-vixl_guide, vixl_resource_get and vixl_capabilities share (#236), starting points that lead to rigs, loops and
+vixl_reference serves for guides, resources and capabilities (#236), starting points that lead to rigs, loops and
 irregular placement (#236, #185, #216, #256), and a tool list without duplicates (#255)."""
 
 import asyncio
@@ -12,7 +12,6 @@ from fastapi.testclient import TestClient
 from vixl import Project, briefs
 from vixl.capabilities import TOPICS, lookup
 from vixl.checks import apply_reviewed
-from vixl.errors import VixlError
 from vixl.guidance import GUIDANCE
 from vixl.interfaces import create_app, mcp_server
 
@@ -34,8 +33,8 @@ def call(server, name, arguments):
 @pytest.fixture
 def server(tmp_path):
     server = mcp_server(workspace=tmp_path)
-    call(server, "vixl_document_create", {"path": "a.vixl", "width": 400, "height": 300, "background": "white"})
-    call(server, "vixl_operations_apply", {"operations": [
+    call(server, "vixl_document", {"action": "create", "path": "a.vixl", "width": 400, "height": 300, "background": "white"})
+    call(server, "vixl_apply", {"operations": [
         {**TEXT, "text": "Title", "name": "a", "x": 10, "y": 20},
         {"type": "shape", "shape": "rectangle", "name": "deco", "x": 380, "y": 250, "width": 60, "height": 60, "fill": "#123456"}]})
     return server
@@ -45,14 +44,14 @@ def server(tmp_path):
 
 
 def test_apply_with_check_and_preview_matches_the_separate_calls(server, tmp_path):
-    content = contents(server, "vixl_operations_apply", {
+    content = contents(server, "vixl_apply", {
         "operations": [{**TEXT, "text": "Cut off by the edge", "name": "new", "x": 300, "y": 200}],
         "check": True, "preview": True})
     result = json.loads(content[0].text)
     assert result["success"] and result["document"] == "a.vixl"
     image = content[1]
     assert image.mimeType == "image/png"
-    separate = contents(server, "vixl_render_preview", {"max_width": 512, "max_height": 512, "max_bytes": 524288})
+    separate = contents(server, "vixl_render", {"max_width": 512, "max_height": 512, "max_bytes": 524288})
     assert base64.b64decode(image.data) == base64.b64decode(separate[0].data)
 
     full = call(server, "vixl_check", {})
@@ -70,7 +69,7 @@ def test_apply_with_check_and_preview_matches_the_separate_calls(server, tmp_pat
 
 def test_apply_check_names_dry_run_and_bad_options(server, tmp_path):
     before = (tmp_path / "a.vixl").read_bytes()
-    content = contents(server, "vixl_operations_apply", {
+    content = contents(server, "vixl_apply", {
         "operations": [{**TEXT, "text": "Off", "name": "new", "x": 380, "y": 10}], "dry_run": True,
         "check": ["bounds"], "preview": {"max_width": 200}})
     result = json.loads(content[0].text)
@@ -80,9 +79,9 @@ def test_apply_check_names_dry_run_and_bad_options(server, tmp_path):
     assert len(content) == 4 and (tmp_path / "a.vixl").read_bytes() == before
     for options in ({"check": ["nonsense"]}, {"preview": {"zoom": 2}}):
         with pytest.raises(Exception, match="check|preview"):
-            contents(server, "vixl_operations_apply", {"operations": [{**TEXT, "text": "x", "name": "z"}], **options})
+            contents(server, "vixl_apply", {"operations": [{**TEXT, "text": "x", "name": "z"}], **options})
     assert "z" not in {x["name"] for x in Project.load(tmp_path / "a.vixl").state["layers"]}
-    plain = contents(server, "vixl_operations_apply", {"operations": [{**TEXT, "text": "y", "name": "y"}]})
+    plain = contents(server, "vixl_apply", {"operations": [{**TEXT, "text": "y", "name": "y"}]})
     assert len(plain) == 1 and "check" not in json.loads(plain[0].text)
 
 
@@ -95,8 +94,8 @@ def test_apply_review_is_skipped_when_the_edit_used_up_the_budget():
 
 def test_apply_preview_replays_without_applying_twice(server, tmp_path):
     arguments = {"operations": [{**TEXT, "text": "Once", "name": "once"}], "preview": True, "request_id": "r-1"}
-    assert len(contents(server, "vixl_operations_apply", arguments)) == 2
-    again = json.loads(contents(server, "vixl_operations_apply", arguments)[0].text)
+    assert len(contents(server, "vixl_apply", arguments)) == 2
+    again = json.loads(contents(server, "vixl_apply", arguments)[0].text)
     assert again["replayed"]
     assert [x["name"] for x in Project.load(tmp_path / "a.vixl").state["layers"]].count("once") == 1
 
@@ -125,12 +124,12 @@ def test_a_slow_apply_with_preview_becomes_a_job_whose_result_says_where_the_ima
                 result = await client.call_tool(name, arguments)
                 return json.loads(result.content[0].text)
 
-            pointer = await ask("vixl_operations_apply", operations=[{**TEXT, "text": "Hi", "name": "hi"}], preview=True)
+            pointer = await ask("vixl_apply", operations=[{**TEXT, "text": "Hi", "name": "hi"}], preview=True)
             assert pointer["status"] == "running"
             return await ask("vixl_job", action="result", id=pointer["job"], wait=10)
 
     done = asyncio.run(main())
-    assert done["result"]["success"] and "vixl_render_preview" in done["note"]
+    assert done["result"]["success"] and "vixl_render" in done["note"]
 
 
 def test_rest_and_cli_apply_return_findings_and_a_preview(tmp_path):
@@ -173,28 +172,27 @@ def test_every_guidance_name_resolves_through_guide_resources_and_capabilities(t
     assert briefs.guide("house-style", workspace=tmp_path)["text"] == "Two colors and wide margins."
 
 
-def test_mcp_guide_returns_guidance_and_capabilities_is_its_own_tool(server):
-    assert "anticipation" in call(server, "vixl_guide", {"brief": "natural-motion"})["text"]
-    assert call(server, "vixl_resource_get", {"kind": "guidance", "name": "imperfection"})["value"] == GUIDANCE["imperfection"]
-    # The old vixl_guide('capabilities …') alias duplicated vixl_capabilities; it is gone and points there.
-    with pytest.raises(VixlError, match=r"vixl_capabilities\(topic='animation'\)"):
-        briefs.guide("capabilities animation")
+def test_mcp_reference_returns_guidance_and_capabilities(server):
+    assert "anticipation" in call(server, "vixl_reference", {"topic": "natural-motion"})["text"]
+    assert call(server, "vixl_reference", {"topic": "guidance", "name": "imperfection"})["value"] == GUIDANCE["imperfection"]
     from vixl.finishing_cli import standalone
 
     cli = standalone("capabilities", ["animation"])  # vixl capabilities animation: the CLI's own command now
     assert "fields" in cli["operations"]["motion"] and "looping-motion" in cli["guidance"]
     assert standalone("guide", ["looping-motion"])["guidance"] == "looping-motion"
-    assert "loop" in " ".join(call(server, "vixl_capabilities", {"topic": "loop"})["topics"] + ["loop"])
-    assert call(server, "vixl_capabilities", {"topic": "loop"})["topics"] == ["animation"]
+    assert "loop" in " ".join(call(server, "vixl_reference", {"topic": "capabilities", "name": "loop"})["topics"] + ["loop"])
+    assert call(server, "vixl_reference", {"topic": "capabilities", "name": "loop"})["topics"] == ["animation"]
 
 
-def test_tool_list_has_no_duplicate_text_tool_and_names_the_split_tools(server):
+def test_tool_list_is_seven_verb_tools(server):
+    from vixl.mcp_tools import TOOLS
+
     tools = {tool.name: tool for tool in asyncio.run(server.list_tools())}
-    assert "vixl_text_add" not in tools
-    assert "Keyframed motion: vixl_timeline_inspect" in tools["vixl_animation_inspect"].description
-    assert "Saved frames" in tools["vixl_timeline_inspect"].description
-    assert "vixl_check" in tools["vixl_validate"].description
-    assert {"check", "preview"} <= set(tools["vixl_operations_apply"].inputSchema["properties"])
+    assert set(tools) == set(TOOLS)
+    render = tools["vixl_render"].inputSchema["properties"]["action"]["enum"]
+    assert {"timeline", "timeline-inspect", "animation", "animation-inspect"} <= set(render)
+    assert {"design", "validate", "spacing", "spatial"} <= set(tools["vixl_check"].inputSchema["properties"]["action"]["enum"])
+    assert {"check", "preview"} <= set(tools["vixl_apply"].inputSchema["properties"])
 
 
 # #236, #185, #216, #256: the starting points
@@ -204,7 +202,7 @@ def test_animation_and_character_guides_lead_to_rigs_loops_and_checks():
     animation = briefs.guide("animation")
     text = json.dumps(animation)
     assert "direction" not in animation  # No poster palette/layout-apply block for art briefs.
-    for term in ("motion", "pivot", "stagger", "period", "frame 0", "vixl_check", "vixl_timeline_preview", "character-cycle",
+    for term in ("motion", "pivot", "stagger", "period", "frame 0", "vixl_check", "vixl_render(action='timeline')", "character-cycle",
                  "middle and last"):
         assert term in text, term
     assert {"motion", "pivot", "character-cycle", "keyframes"} <= set(animation["operations"])

@@ -77,9 +77,9 @@ def test_mcp_results_carry_the_profile(monkeypatch, tmp_path):
 
     async def scenario():
         async with create_connected_server_and_client_session(server._mcp_server) as client:
-            await client.call_tool("vixl_document_open", {"path": "doc.vixl"})
+            await client.call_tool("vixl_document", {"action": "open", "path": "doc.vixl"})
             checked = await client.call_tool("vixl_check", {"checks": ["overlap"]})
-            preview = await client.call_tool("vixl_render_preview", {"max_width": 200, "max_height": 200})
+            preview = await client.call_tool("vixl_render", {"max_width": 200, "max_height": 200})
             return checked, preview
 
     checked, preview = asyncio.run(scenario())

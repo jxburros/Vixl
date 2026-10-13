@@ -469,13 +469,13 @@ def test_workflow_schema_and_mcp(tmp_path):
         content = result[0] if isinstance(result, tuple) else result
         return json.loads("".join(getattr(item, "text", "") for item in content))
 
-    answer = asyncio.run(call("vixl_workflow", {"action": "merge-impose", "document": "badge.vixl",
+    answer = asyncio.run(call("vixl_apply", {"workflow": "merge-impose", "document": "badge.vixl",
                                                  "request": {"data": "badges.csv", "output": "print.pdf"}}))
     assert answer["valid"] == 7 and answer["output"] == "print.pdf" and (tmp_path / "print.pdf").exists()
-    failed = asyncio.run(call("vixl_workflow", {"action": "merge-impose", "document": "badge.vixl",
+    failed = asyncio.run(call("vixl_apply", {"workflow": "merge-impose", "document": "badge.vixl",
                                                  "request": {"data": "badges.csv", "output": "../x.pdf"}}))
     assert "forbidden" in failed["failed"]
-    typo = asyncio.run(call("vixl_workflow", {"action": "merge-impose", "document": "badge.vixl",
+    typo = asyncio.run(call("vixl_apply", {"workflow": "merge-impose", "document": "badge.vixl",
                                                "request": {"data": "badges.csv", "ouput": "x.pdf"}}))
     assert "Unknown workflow request field" in typo["failed"]
     assert session.workspace == tmp_path

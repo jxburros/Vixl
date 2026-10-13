@@ -128,7 +128,7 @@ def list_pairings(mood=None, best_for=None, family=None, relationship=None, *, f
     ]
     result = {"pairings": rows, "count": len(rows)}
     if not full:
-        result["detail"] = "vixl font pairing NAME (vixl_fonts view=pairing) explains why a pairing works"
+        result["detail"] = "vixl font pairing NAME (vixl_reference('fonts') view=pairing) explains why a pairing works"
     return result
 
 

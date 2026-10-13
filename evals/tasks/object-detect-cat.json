@@ -115,13 +115,14 @@
   ],
   "reference": [
     {
-      "tool": "vixl_document_open",
+      "tool": "vixl_document",
       "arguments": {
+        "action": "open",
         "path": "pile.vixl"
       }
     },
     {
-      "tool": "vixl_operations_apply",
+      "tool": "vixl_apply",
       "arguments": {
         "operations": [
           {
@@ -208,7 +209,7 @@
       }
     },
     {
-      "tool": "vixl_document_inspect",
+      "tool": "vixl_document",
       "arguments": {
         "object": "cat"
       }

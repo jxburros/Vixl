@@ -382,7 +382,7 @@ def test_mcp_and_rest_reach_named_animations_and_frames_edit(tmp_path):
     async def run():
         server = mcp_server(tmp_path / "keeper.vixl")
         tools = {t.name: t for t in await server.list_tools()}
-        schema = tools["vixl_operations_apply"].inputSchema
+        schema = tools["vixl_apply"].inputSchema
         jsonschema.validate(
             {
                 "operations": [
@@ -392,20 +392,22 @@ def test_mcp_and_rest_reach_named_animations_and_frames_edit(tmp_path):
             },
             schema,
         )
-        export = tools["vixl_export_animation"].inputSchema["properties"]
+        reference = await server.call_tool("vixl_reference", {"topic": "vixl_export", "name": "animation"})
+        reference = reference[0] if isinstance(reference, tuple) else reference
+        export = json.loads(reference[0].text)["properties"]
         assert {"animation", "quality"} <= export.keys() and "mp4" in export["format"]["enum"]
         await server.call_tool(
-            "vixl_operations_apply",
+            "vixl_apply",
             {
                 "operations": [
                     {"type": "frames-edit", "operations": [{"type": "pixel-palette", "target": "coat", "colors": {"Y": "#ff0000"}}]}
                 ]
             },
         )
-        await server.call_tool("vixl_export_animation", {"path": "keeper-walk.gif", "animation": "walk", "scale": 4})
-        await server.call_tool("vixl_export_animation", {"path": "keeper-idle.webp", "animation": "idle"})
-        await server.call_tool("vixl_export_animation", {"path": "sheet.png", "format": "sheet"})
-        inspected = await server.call_tool("vixl_animation_inspect", {})
+        await server.call_tool("vixl_export", {"kind": "animation", "path": "keeper-walk.gif", "animation": "walk", "scale": 4})
+        await server.call_tool("vixl_export", {"kind": "animation", "path": "keeper-idle.webp", "animation": "idle"})
+        await server.call_tool("vixl_export", {"kind": "animation", "path": "sheet.png", "format": "sheet"})
+        inspected = await server.call_tool("vixl_render", {"action": "animation-inspect"})
         assert "animations" in json.dumps(inspected, default=str)
 
     asyncio.run(run())

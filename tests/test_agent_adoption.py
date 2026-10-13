@@ -172,7 +172,7 @@ def test_viewer_refresh_and_notes_are_shared_with_mcp(tmp_path):
     server = mcp_server(path, workspace=tmp_path)
 
     async def read():
-        content = await server.call_tool("vixl_review_notes", {})
+        content = await server.call_tool("vixl_document", {"action": "notes"})
         if isinstance(content, tuple):
             content = content[0]
         return json.loads(content[0].text)
@@ -190,7 +190,7 @@ def rpc(response):
 
 
 def test_streamable_http_initialization_and_tool_call(tmp_path):
-    server = mcp_server(workspace=tmp_path, schema="slim", tools="core")
+    server = mcp_server(workspace=tmp_path)
     with TestClient(mcp_http_app(server, token="secret")) as client:
         assert client.post("/mcp").status_code == 401
         client.headers.update(
@@ -224,8 +224,8 @@ def test_streamable_http_initialization_and_tool_call(tmp_path):
                     "id": 2,
                     "method": "tools/call",
                     "params": {
-                        "name": "vixl_document_create",
-                        "arguments": {"path": "http.vixl", "width": 50, "height": 40},
+                        "name": "vixl_document",
+                        "arguments": {"action": "create", "path": "http.vixl", "width": 50, "height": 40},
                     },
                 },
             )

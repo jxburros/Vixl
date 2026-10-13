@@ -261,6 +261,6 @@ def test_new_options_reach_cli_mcp_and_rest(tmp_path, monkeypatch, capsys):
     exported = client.post("/animation/export", json={"format": "gif", "scale": 2, "colors": 4})
     assert Image.open(io.BytesIO(exported.content)).size == (240, 120)
 
-    from vixl.mcp_tools import service_operation_schema
+    from vixl.mcp_actions import operation_variant
 
-    assert any("pivot" in v["properties"]["type"]["enum"] for v in service_operation_schema()["oneOf"])
+    assert operation_variant("pivot")["properties"]["type"]["const"] == "pivot"

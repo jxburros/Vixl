@@ -143,11 +143,10 @@ def test_a_style_shapes_the_layout_and_fonts_so_its_own_check_passes(tmp_path, m
 def test_compose_through_mcp_cli_rest_and_python(tmp_path):
     from vixl.mcp_tools import build_server
 
-    server = build_server(Session(workspace=tmp_path), tools="compact")
-    assert "vixl_compose" in {tool.name for tool in asyncio.run(server.list_tools())}
-    answer = asyncio.run(server.call_tool("vixl_compose", {"path": "m.vixl", "width": 120, "height": 80,
-                                                           "operations": [{"type": "solid", "color": "navy"}],
-                                                           "exports": ["m.png"], "preview": True}))
+    server = build_server(Session(workspace=tmp_path))
+    answer = asyncio.run(server.call_tool("vixl_apply", {"create": {"path": "m.vixl", "width": 120, "height": 80},
+                                                         "operations": [{"type": "solid", "color": "navy"}],
+                                                         "exports": ["m.png"], "preview": True}))
     blocks = answer[0] if isinstance(answer, tuple) else answer
     assert json.loads(blocks[0].text)["document"] == "m.vixl" and blocks[1].type == "image"
     assert (tmp_path / "m.png").is_file()

@@ -462,17 +462,17 @@ def test_rest_html_svg_and_studio_checks(session):
     assert client.post("/workflow/branch-fork", json={"branch": "no", "output": "no.vixl"}).status_code != 200
 
 
-def test_compact_mcp_has_small_complete_workflow_surface(session):
+def test_mcp_has_small_complete_workflow_surface(session):
     import asyncio
     from vixl.mcp_tools import build_server
 
-    server = build_server(session, tools="compact", schema="slim")
+    server = build_server(session)
     tools = asyncio.run(server.list_tools())
     names = {tool.name for tool in tools}
-    assert len(names) <= 13
-    assert {"vixl_operations_apply", "vixl_workflow", "vixl_workflow_schema", "vixl_export_file", "vixl_compose"} <= names
+    assert len(names) <= 7
+    assert {"vixl_apply", "vixl_reference", "vixl_export"} <= names
     result = asyncio.run(
-        server.call_tool("vixl_workflow", {"action": "resource-list", "request": {"kind": "workflows"}})
+        server.call_tool("vixl_apply", {"workflow": "resource-list", "request": {"kind": "workflows"}})
     )
     assert "neon-sign" in str(result)
 
@@ -598,7 +598,7 @@ def test_mcp_exact_schemas_retain_geometric_paths(session):
     from vixl.mcp_tools import build_server
 
     result = asyncio.run(
-        build_server(session).call_tool("vixl_operation_schema", {"types": ["shape", "select", "pen"]})
+        build_server(session).call_tool("vixl_reference", {"topic": "operations", "name": ["shape", "select", "pen"]})
     )
     text = str(result)
     assert '"path"' in text and '"nodes"' in text

@@ -116,14 +116,14 @@ def test_errors_locate_the_operation_and_suggest_fixes():
 
 def test_mcp_errors_are_structured_json(tmp_path):
     server = mcp_server(workspace=tmp_path)
-    call(server, "vixl_document_create", {"path": "a.vixl", "width": 64, "height": 64})
-    call(server, "vixl_operations_apply", {"operations": [{"type": "solid", "name": "title"}]})
-    failed, text, _ = call(server, "vixl_operations_apply", {"operations": [{"type": "move", "target": "TITLE", "x": 2}]})
+    call(server, "vixl_document", {"action": "create", "path": "a.vixl", "width": 64, "height": 64})
+    call(server, "vixl_apply", {"operations": [{"type": "solid", "name": "title"}]})
+    failed, text, _ = call(server, "vixl_apply", {"operations": [{"type": "move", "target": "TITLE", "x": 2}]})
     assert failed
     payload = error_payload(text)
     assert payload["error"] == "layer_not_found" and payload["suggestions"] == ["title"]
     assert payload["field"] == "target" and payload["operation_index"] == 0
-    failed, text, _ = call(server, "vixl_operations_apply", {"operations": [{"type": "text", "text": "a", "font_family": "/etc/passwd"}]})
+    failed, text, _ = call(server, "vixl_apply", {"operations": [{"type": "text", "text": "a", "font_family": "/etc/passwd"}]})
     assert failed and error_payload(text)["error"] == "forbidden"  # aliases cannot bypass service limits
 
 
@@ -132,37 +132,34 @@ def test_mcp_errors_are_structured_json(tmp_path):
 
 def test_mcp_responses_are_minified_and_compact(tmp_path):
     server = mcp_server(workspace=tmp_path)
-    call(server, "vixl_document_create", {"path": "a.vixl", "width": 200, "height": 100})
-    _, text, _ = call(server, "vixl_operations_apply", {"operations": [{"type": "text", "name": "t", "text": "Hello"}]})
+    call(server, "vixl_document", {"action": "create", "path": "a.vixl", "width": 200, "height": 100})
+    _, text, _ = call(server, "vixl_apply", {"operations": [{"type": "text", "name": "t", "text": "Hello"}]})
     assert ": " not in text and "\n" not in text
     result = json.loads(text)
     (added,) = result["changes"]["layers"].values()
     assert added["added"] and added["name"] == "t" and len(added["bounds"]) == 4
     assert "effects" not in added and "constraints" not in added
-    _, text, _ = call(server, "vixl_document_inspect", {})
+    _, text, _ = call(server, "vixl_document", {})
     summary = json.loads(text)
     assert summary["layers"][0]["text"] == "Hello" and "flip_x" not in summary["layers"][0]
-    _, text, _ = call(server, "vixl_measure", {})
+    _, text, _ = call(server, "vixl_check", {"action": "measure"})
     assert "histogram" not in json.loads(text) and "median" in json.loads(text)["channels"]["red"]
-    _, text, _ = call(server, "vixl_measure", {"histogram": "full"})
+    _, text, _ = call(server, "vixl_check", {"action": "measure", "histogram": "full"})
     assert len(json.loads(text)["histogram"]["red"]) == 256
 
 
-def test_slim_schema_mode_and_schema_lookup(tmp_path):
+def test_lean_schema_and_schema_lookup(tmp_path):
     async def sizes(server):
         return {t.name: t for t in await server.list_tools()}
 
     full = asyncio.run(sizes(mcp_server(workspace=tmp_path)))
-    slim = asyncio.run(sizes(mcp_server(workspace=tmp_path, schema="slim")))
-    assert len(json.dumps(slim["vixl_operations_apply"].inputSchema)) < len(
-        json.dumps(full["vixl_operations_apply"].inputSchema)
-    ) / 4
+    assert len(json.dumps(full["vixl_apply"].inputSchema)) < 2000
     assert "vixl_ai_plan" not in full
-    assert "vixl_ai_plan" in asyncio.run(sizes(mcp_server(workspace=tmp_path, planner=True)))
+    assert "vixl_ai_plan" in asyncio.run(sizes(mcp_server(workspace=tmp_path, tools="ai", planner=True)))
     for tool in full.values():
         # No pydantic-generated titles (string annotations); a content field named "title" is fine.
         assert not re.search(r'"title": "', json.dumps(tool.inputSchema))
-    _, text, _ = call(mcp_server(workspace=tmp_path, schema="slim"), "vixl_operation_schema", {"types": ["shape", "rect_angle"]})
+    _, text, _ = call(mcp_server(workspace=tmp_path), "vixl_reference", {"topic": "operations", "name": ["shape", "rect_angle"]})
     result = json.loads(text)
     assert "rectangle" in result["shape"]["properties"]["shape"]["enum"]
     assert result["rect_angle"]["error"] == "unknown operation type"
@@ -279,33 +276,36 @@ def test_several_documents_can_be_open(tmp_path):
 
 def test_import_image_from_base64_bytes(tmp_path):
     server = mcp_server(workspace=tmp_path)
-    call(server, "vixl_document_create", {"path": "a.vixl", "width": 64, "height": 64})
+    call(server, "vixl_document", {"action": "create", "path": "a.vixl", "width": 64, "height": 64})
     stream = io.BytesIO()
     Image.new("RGB", (16, 8), "green").save(stream, format="JPEG")
     encoded = base64.b64encode(stream.getvalue()).decode()
-    failed, text, _ = call(server, "vixl_import_image", {"data_base64": "data:image/jpeg;base64," + encoded, "name": "pasted"})
+    def import_image(**fields):
+        return call(server, "vixl_apply", {"operations": [{"type": "import-image", **fields}]})
+
+    failed, text, _ = import_image(data_base64="data:image/jpeg;base64," + encoded, name="pasted")
     assert not failed
-    result = json.loads(text)
+    result = json.loads(text)["steps"][0]["result"]
     assert result["name"] == "pasted" and (result["width"], result["height"]) == (16, 8)
     assert result["asset"].endswith(".jpg")
-    failed, text, _ = call(server, "vixl_import_image", {"data_base64": "not base64!!"})
+    failed, text, _ = import_image(data_base64="not base64!!")
     assert failed and error_payload(text)["field"] == "data_base64"
-    failed, _, _ = call(server, "vixl_import_image", {})
+    failed, _, _ = import_image()
     assert failed
 
 
 def test_mcp_check_preview_and_compare_tools(tmp_path):
     server = mcp_server(workspace=tmp_path)
-    call(server, "vixl_document_create", {"path": "a.vixl", "width": 800, "height": 400, "background": "white"})
-    call(server, "vixl_operations_apply", {"operations": [{"type": "text", "name": "t", "text": "Grey", "color": "#eeeeee", "size": 30}]})
+    call(server, "vixl_document", {"action": "create", "path": "a.vixl", "width": 800, "height": 400, "background": "white"})
+    call(server, "vixl_apply", {"operations": [{"type": "text", "name": "t", "text": "Grey", "color": "#eeeeee", "size": 30}]})
     _, text, _ = call(server, "vixl_check", {"checks": ["contrast"]})
     assert not json.loads(text)["passed"]
-    failed, _, images = call(server, "vixl_render_preview", {"region": ["0%", "0%", "25%", "25%"], "max_width": 400})
+    failed, _, images = call(server, "vixl_render", {"region": ["0%", "0%", "25%", "25%"], "max_width": 400})
     assert not failed and images
-    call(server, "vixl_operations_apply", {"operations": [{"type": "move", "target": "t", "x": 300, "y": 100}]})
-    failed, text, images = call(server, "vixl_render_compare", {"mode": "diff"})
+    call(server, "vixl_apply", {"operations": [{"type": "move", "target": "t", "x": 300, "y": 100}]})
+    failed, text, images = call(server, "vixl_render", {"action": "compare", "mode": "diff"})
     assert not failed and images and json.loads(text)["changed_fraction"] > 0
-    _, text, _ = call(server, "vixl_history", {"limit": 1})
+    _, text, _ = call(server, "vixl_document", {"action": "history", "limit": 1})
     history = json.loads(text)
     assert history["total"] == 3 and history["nodes"][0]["operations"] == ["move"]
 

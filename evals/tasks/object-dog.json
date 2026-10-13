@@ -28,8 +28,9 @@
   ],
   "reference": [
     {
-      "tool": "vixl_document_create",
+      "tool": "vixl_document",
       "arguments": {
+        "action": "create",
         "path": "dog.vixl",
         "width": 600,
         "height": 600,
@@ -37,7 +38,7 @@
       }
     },
     {
-      "tool": "vixl_operations_apply",
+      "tool": "vixl_apply",
       "arguments": {
         "operations": [
           {
@@ -201,7 +202,7 @@
       }
     },
     {
-      "tool": "vixl_render_preview",
+      "tool": "vixl_render",
       "arguments": {
         "isolate": [
           "dog"
@@ -213,7 +214,7 @@
       }
     },
     {
-      "tool": "vixl_export_file",
+      "tool": "vixl_export",
       "arguments": {
         "path": "dog.png"
       }

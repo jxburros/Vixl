@@ -26,8 +26,9 @@
   ],
   "reference": [
     {
-      "tool": "vixl_document_create",
+      "tool": "vixl_document",
       "arguments": {
+        "action": "create",
         "path": "guitar.vixl",
         "width": 800,
         "height": 400,
@@ -35,7 +36,7 @@
       }
     },
     {
-      "tool": "vixl_operations_apply",
+      "tool": "vixl_apply",
       "arguments": {
         "operations": [
           {
@@ -156,13 +157,13 @@
       }
     },
     {
-      "tool": "vixl_document_inspect",
+      "tool": "vixl_document",
       "arguments": {
         "object": "guitar"
       }
     },
     {
-      "tool": "vixl_export_file",
+      "tool": "vixl_export",
       "arguments": {
         "path": "guitar.svg",
         "isolate": [

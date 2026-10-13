@@ -72,8 +72,8 @@ def test_unknown_fields_fail_instead_of_warning():
 
 def test_mcp_rest_and_cli_surface_the_full_list(tmp_path):
     server = mcp_server(workspace=tmp_path)
-    call(server, "vixl_document_create", {"path": "a.vixl", "width": 64, "height": 64})
-    failed, text, _ = call(server, "vixl_operations_apply", {"operations": THREE_BAD, "dry_run": True})
+    call(server, "vixl_document", {"action": "create", "path": "a.vixl", "width": 64, "height": 64})
+    failed, text, _ = call(server, "vixl_apply", {"operations": THREE_BAD, "dry_run": True})
     assert failed and [e["operation_index"] for e in error_payload(text)["errors"]] == [0, 2, 3]
     path = tmp_path / "b.vixl"
     Project(64, 64).save(path)

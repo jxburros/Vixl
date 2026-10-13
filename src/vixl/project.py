@@ -96,7 +96,7 @@ class Project:
 
         ``Project(width, height)`` alone is a plain transparent canvas, as before. Leaving out the size, or
         passing ``purpose``, ``seed`` or ``variety``, creates a design document exactly as ``vixl new`` and
-        ``vixl_document_create`` do (``creation.py``): the purpose's size (else 1080×1080), rolled
+        ``vixl_document(action='create')`` do (``creation.py``): the purpose's size (else 1080×1080), rolled
         ``design_defaults``, the palette background (transparent for marks) and the rolled font pairing
         (``workspace_fonts=False`` skips fonts). An unseeded roll is recorded in the workspace history
         only when ``workspace`` is given."""
@@ -174,7 +174,7 @@ class Project:
     @classmethod
     def new(cls, size=None, *, width=None, height=None, purpose=None, background=None, dpi=None, orientation=None,
             bleed=False, seed=None, variety=None, workspace=None, workspace_fonts=True, limits=None, report=None):
-        """The one creation path with every option ``vixl new`` and ``vixl_document_create`` take; ``report``
+        """The one creation path with every option ``vixl new`` and ``vixl_document(action='create')`` take; ``report``
         receives what creation chose (``creation``, ``workspace_fonts``)."""
         from .creation import create
 

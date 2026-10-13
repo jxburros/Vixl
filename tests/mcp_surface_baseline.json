@@ -1,0 +1,42 @@
+{
+  "per_tool_cap": 2000,
+  "servers": {
+    "default": {
+      "tools": {
+        "vixl_apply": 1815,
+        "vixl_check": 899,
+        "vixl_document": 1195,
+        "vixl_export": 999,
+        "vixl_job": 476,
+        "vixl_reference": 812,
+        "vixl_render": 1117
+      },
+      "total_chars": 7313,
+      "total_tokens": 1828,
+      "instructions_chars": 735,
+      "instructions_tokens": 184
+    },
+    "ai": {
+      "tools": {
+        "vixl_ai_analyze": 631,
+        "vixl_ai_content_aware_fill": 585,
+        "vixl_ai_extend": 818,
+        "vixl_ai_generate": 1004,
+        "vixl_ai_regenerate": 594,
+        "vixl_ai_remove": 539,
+        "vixl_ai_remove_background": 558,
+        "vixl_ai_select_object": 542,
+        "vixl_ai_select_subject": 487,
+        "vixl_ai_upscale": 593,
+        "vixl_document": 1195,
+        "vixl_job": 476,
+        "vixl_models_list": 299,
+        "vixl_render": 1117
+      },
+      "total_chars": 9438,
+      "total_tokens": 2360,
+      "instructions_chars": 716,
+      "instructions_tokens": 179
+    }
+  }
+}

@@ -125,7 +125,7 @@ def resolve_font(project, name):
             from .notices import warn
 
             warn(project, f"font role {role!r} has no typeface in this document, so text uses the bundled proofing "
-                          "font (DejaVu Sans); choose type with vixl_fonts then vixl_font_pair (or vixl_font_install)")
+                          "font (DejaVu Sans); choose type with vixl_reference('fonts') then font-pair (or font-install)")
     font = fonts.get(name, name)
     if font not in project.assets and Path(font).is_file():
         from .assets import read_bounded
@@ -2326,7 +2326,7 @@ def export(
     )
     require(fmt in ("PNG", "JPEG", "WEBP", "TIFF", "AVIF", "PDF", "ICO"),
             f"Unsupported export format {(Path(path).suffix if path and not format else format) or '(none)'!r}; use png, "
-            "jpg, webp, tiff, avif, pdf, ico, svg, pptx, psd or html (audio: vixl_export_audio, or a .wav path on the "
+            "jpg, webp, tiff, avif, pdf, ico, svg, pptx, psd or html (audio: vixl_export (.wav), or a .wav path on the "
             "CLI; animation: export-timeline)",
             field="format")
     from . import colors

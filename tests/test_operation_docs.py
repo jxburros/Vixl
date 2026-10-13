@@ -111,7 +111,7 @@ def test_docs_and_skills_name_only_real_mcp_tools():  # #252
     root = Path(__file__).resolve().parent.parent
     real = {name for path in (root / "src" / "vixl").glob("*.py")
             for name in re.findall(r"def (vixl_\w+)\(", path.read_text(encoding="utf-8"))}
-    assert "vixl_resource_get" in real and "vixl_operations_apply" in real
+    assert "vixl_reference" in real and "vixl_apply" in real
     unknown = {}
     for folder in ("docs", "skills"):
         for path in (root / folder).rglob("*.md"):
@@ -123,19 +123,19 @@ def test_docs_and_skills_name_only_real_mcp_tools():  # #252
 
 def test_operation_schema_tool_serves_summaries_and_examples_but_tools_list_stays_lean(tmp_path):
     from vixl.interfaces import Session
-    from vixl.mcp_tools import build_server, service_operation_schema
+    from vixl.mcp_tools import build_server
 
-    served = json.dumps(service_operation_schema())
+    server = build_server(Session(workspace=tmp_path))
+    served = json.dumps([tool.model_dump() for tool in asyncio.run(server.list_tools())])
     assert "flat-color rectangle" not in served  # summaries stay out of tools/list
     assert '"examples": [' not in served
-    server = build_server(Session(workspace=tmp_path))
 
-    async def call(name, **arguments):
-        result = await server.call_tool(name, arguments)
+    async def call(tool, **arguments):
+        result = await server.call_tool(tool, arguments)
         content = result[0] if isinstance(result, tuple) else result
         return json.loads(content[0].text)
 
-    schema = asyncio.run(call("vixl_operation_schema", types=["gradient", "layer-style", "blur"]))
+    schema = asyncio.run(call("vixl_reference", topic="operations", name=["gradient", "layer-style", "blur"]))
     assert schema["gradient"]["description"].startswith("Add a")
     assert schema["gradient"]["properties"]["stops"]["description"]
     assert any(example["direction"] == "radial" for example in schema["gradient"]["examples"])

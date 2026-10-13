@@ -12,7 +12,7 @@ worker thread through ``Runtime.wrap``:
   not time out while their call is still queued; job pointers report ``queued``, ``wait_ms`` and
   ``queue_depth``.
 * ``vixl_job`` reports a job's progress, waits for it, returns its result or cancels it. Ids of
-  durable workspace jobs (``vixl_workflow submit``) are served from ``jobs.py``.
+  durable workspace jobs (``vixl_apply(workflow='submit')``) are served from ``jobs.py``.
 * A client that sent a progress token receives ``notifications/progress`` while the call runs
   (operation batches, timeline frames, export targets).
 * ``request_id`` on the mutating tools makes a retry safe: the second call with the same id
@@ -52,20 +52,11 @@ MAX_PER_DOCUMENT = 64
 MAX_REMEMBERED_BYTES = 262_144
 
 # Tools that change documents or files, or spend provider calls: safe to retry with request_id.
-RETRYABLE = {
-    "vixl_operations_apply", "vixl_import_image", "vixl_import_document", "vixl_import_font",
-    "vixl_document_create", "vixl_document_close", "vixl_template_create", "vixl_export_file",
-    "vixl_export_batch", "vixl_export_timeline", "vixl_export_animation", "vixl_export_icons",
-    "vixl_font_pair", "vixl_font_install", "vixl_history", "vixl_workflow", "vixl_roll", "vixl_adapt_layout",
-    "vixl_compose",
-}
-# Tools worth running as a job: heavy renders, exports, imports, large batches and provider calls.
-JOB_TOOLS = {
-    "vixl_operations_apply", "vixl_import_image", "vixl_import_document", "vixl_export_file",
-    "vixl_export_batch", "vixl_export_timeline", "vixl_export_animation", "vixl_export_icons",
-    "vixl_font_pair", "vixl_font_install", "vixl_workflow", "vixl_roll", "vixl_check", "vixl_adapt_layout",
-    "vixl_compose",
-}
+RETRYABLE = {"vixl_document", "vixl_apply", "vixl_export"}
+# Tools worth running as a job: heavy batches, checks, exports and provider calls.
+JOB_TOOLS = {"vixl_apply", "vixl_check", "vixl_export"}
+# Tools whose results are pictures: they are never detached into a job, which keeps JSON only.
+PICTURES = {"vixl_render"}
 NO_EXTRAS = {"vixl_job"}
 
 RequestId = Annotated[str | None, Field(max_length=64, description="Retry key: a repeat returns the first result")]
@@ -216,9 +207,8 @@ class _Box:
 
 
 class Runtime:
-    def __init__(self, session, compact_json, tool_error, inline_seconds=None, poll_with_workflow=False):
+    def __init__(self, session, compact_json, tool_error, inline_seconds=None):
         self.session = session
-        self.poll_with_workflow = poll_with_workflow  # The compact tool set has no vixl_job.
         self.compact_json = compact_json
         self.tool_error = tool_error
         if inline_seconds is None:
@@ -318,7 +308,7 @@ class Runtime:
             warning = self.ignored(fn.__name__, state)
             profiled = profiling.attach(result, run)
             if isinstance(result, list) and result and isinstance(result[0], dict):
-                # A JSON result with images after it (vixl_operations_apply preview=…): shape the JSON part.
+                # A JSON result with images after it (vixl_apply preview=…): shape the JSON part.
                 self.label(result[0], state)
                 if warning:
                     result[0]["warnings"] = [*result[0].get("warnings", []), warning]
@@ -328,8 +318,8 @@ class Runtime:
                 if warning:
                     result["warnings"] = [*result.get("warnings", []), warning]
                 return self.compact_json(result)
-            if getattr(returns, "__name__", "") == "Image" and (state.document is not None or warning
-                                                                or (run is not None and not profiled)):
+            if type(result).__name__ == "Image" and (state.document is not None or warning
+                                                     or (run is not None and not profiled)):
                 # Image tools: the picture cannot carry the name or a warning, so a text line follows it.
                 note = {**({"document": self.session.relative(state.document)} if state.document is not None else {}),
                         **({"warnings": [warning]} if warning else {}),
@@ -412,8 +402,7 @@ class Runtime:
         text = job.summary()
         text["job"] = text.pop("id")
         text["queue_depth"] = self.queue_depth()
-        poll = (f"vixl_workflow(action='status', request={{'id': '{job.id}', 'wait': 20}})" if self.poll_with_workflow
-                else f"vixl_job(action='status', id='{job.id}', wait=20), then action='result'")
+        poll = f"vixl_job(action='status', id='{job.id}', wait=20), then action='result'"
         text["message"] = why + f" Poll {poll}. Do not send the call again unless the job fails."
         return self.compact_json(text)
 
@@ -476,7 +465,7 @@ class Runtime:
             return self.pointer(job, "Started in the background.")
         waiter = asyncio.wrap_future(future)
         waiter.add_done_callback(lambda f: f.cancelled() or f.exception())  # Retrieved even if nobody waits.
-        if returns is not dict or not self.inline_seconds or name in NO_EXTRAS:
+        if name in PICTURES or not self.inline_seconds or name in NO_EXTRAS:
             return await waiter
         budget = self.budget(in_flight)
         try:
@@ -566,11 +555,13 @@ class Runtime:
             images = sum(1 for part in value if not isinstance(part, str))
             value = next((part for part in value if isinstance(part, str)), "{}")
             if images:
-                summary["note"] = f"{images} image(s) are not kept with a job result; call vixl_render_preview."
+                summary["note"] = f"{images} image(s) are not kept with a job result; call vixl_render."
         try:
             summary["result"] = json.loads(value)
         except (TypeError, ValueError):
-            summary["result"] = value
+            summary["result"] = value if isinstance(value, str) else None
+            if not isinstance(value, str):
+                summary["note"] = "An image is not kept with a job result; call vixl_render."
         return summary
 
     def durable(self, action, ident):
