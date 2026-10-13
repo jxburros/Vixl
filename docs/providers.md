@@ -111,6 +111,10 @@ Vixl uploads source/mask PNGs via `/upload/image`, substitutes the returned serv
 
 For multiple modes, configure `workflows` mapping `generate`, `inpaint`, `outpaint`, `upscale`, `segment`, and `background-remove` to API workflow files. `workflow` is the fallback. If a job times out, the server may still be running it; Vixl does not claim to cancel remote work.
 
+## Figma import (not an AI provider)
+
+[Importing a Figma file](figma.md) follows the same credential rule: the personal access token comes only from `FIGMA_TOKEN` (or `VIXL_FIGMA_TOKEN`) in the environment and is never stored in a document, job or this configuration file. It reads files only; it is not a generation provider and does not appear in `vixl providers`.
+
 ## Commands
 
 ```bash

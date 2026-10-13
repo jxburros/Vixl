@@ -365,6 +365,10 @@ Use `vixl_roll(apply=true, slots={...})` or `roll --apply --set title=...` to ap
 `vixl_import_document` imports editable SVG paths or a raster PDF page. With the default
 `svg_mode="editable"` unsupported SVG features return an error; `"appearance"` keeps the look as a raster layer
 (with the SVG source stored) and `"auto"` falls back to it.
+A Figma file or frame imports as editable layers, live text, stacks and gradients with `vixl import URL --format figma`
+(Python `import_document(project, b"URL", "figma")`, REST `POST /import?format=figma`); the user's read-only token is
+the `FIGMA_TOKEN` environment variable, and the result's `report` lists what could not map. See
+[Import from Figma](../../docs/figma.md).
 
 ## 1. Pick the interface
 

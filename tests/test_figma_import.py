@@ -357,6 +357,21 @@ def test_rotation_keeps_the_figma_centre(poster):
     assert abs(x + w / 2 - cx) < 1.5 and abs(y + h / 2 - cy) < 1.5
 
 
+def test_group_children_relative_to_the_frame_land_in_the_same_place(poster):
+    project, _, _ = poster
+    data = load("poster")
+    frame = data["document"]["children"][0]["children"][0]
+    icons = next(c for c in frame["children"] if c["name"] == "Icons")
+    gx, gy = icons["relativeTransform"][0][2], icons["relativeTransform"][1][2]
+    for child in icons["children"]:
+        child["relativeTransform"][0][2] += gx
+        child["relativeTransform"][1][2] += gy
+    other = Project(100, 100)
+    import_figma_document(other, data, images=IMAGES)
+    for name in ("Tile", "Tile 2", "Spark", "Hidden guide"):
+        assert other.bounds(name) == pytest.approx(project.bounds(name), abs=0.01)
+
+
 def test_line_becomes_a_stroked_path(poster):
     _, _, by_name = poster
     divider = by_name["Divider"]

@@ -39,7 +39,7 @@ many clients share one server. Minutes are typical agent wall time on a shared c
 ### Requirement tags
 
 `[AI]` needs a configured provider ([providers](providers.md)). `[ffmpeg]` needs ffmpeg on `PATH`
-for MP4/WebM/audio mux. `[server]` needs the `server` extra (REST, live view). `[pdf]` needs the
+for MP4/WebM/audio mux. `[server]` needs the `server` extra (REST, live view). `[Figma]` needs the user's own read-only Figma token in `FIGMA_TOKEN` and network access. `[pdf]` needs the
 `pdf` extra for PDF page import. No tag means the core install, offline.
 
 ### Domain prefixes
@@ -88,6 +88,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DOC-35 | Edit a document of thousands of layers one operation at a time, or send a 10,000-operation batch | `vixl_operations_apply` | 1 · <1 | E | Since 0.23 an edit lays out only the layers it depends on; was seconds per edit and minutes per batch (#284, #300). |
 | DOC-36 | Unpack a `.vixl` into a readable source folder for Git review, and pack it back | `vixl unpack`, `vixl pack`, `vixl.project_folder` | 1–2 · <1 | E | Since 0.24 (#511); current state and registered fonts only, no undo history; packing validates paths, sizes and hashes. |
 | DOC-37 | Capture the desktop, a rectangle or a Windows window to PNG | `vixl_workflow` screen-capture | 1 · <1 | E | Since 0.24 (#259); interactive local desktop only; OS screen permission may be needed. |
+| DOC-38 | Import a Figma frame or page as editable layers, live text and stacks `[Figma]` | `vixl import URL --format figma`, `import_document(format="figma")`, REST `POST /import?format=figma` | 1 · <1 | E | [Mapping and known losses](figma.md); the `report` lists every unmapped feature; MCP follows once its import tool schema takes `format=figma`. Export back to Figma: #662. |
 
 ### Text and typography
 

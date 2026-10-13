@@ -361,6 +361,7 @@ class Builder:
         self.layers_made = 0
         self.boards = set()
         self.root_taken = None
+        self.frame_abs = IDENTITY      # transform of the nearest ancestor that is not a group
 
     # report ------------------------------------------------------------------------------------------------
     def lost(self, node, what):
@@ -669,8 +670,26 @@ class Builder:
 
     # node dispatch -----------------------------------------------------------------------------------------
     def emit(self, node, parent_abs, parent_box):
-        """Create the layer(s) for a child of a parent at ``parent_abs``; returns the Vixl layer name or None."""
-        return self.emit_at(node, multiply(parent_abs, self.relative(node, parent_box)))
+        """Create the layer(s) for a child of a parent at ``parent_abs``; returns the Vixl layer name or None.
+
+        A group's children are normally relative to the group, but some exports place them relative to the group's
+        frame; the node's absoluteBoundingBox says which reading puts it where Figma drew it."""
+        relative = self.relative(node, parent_box)
+        absolute = multiply(parent_abs, relative)
+        if parent_abs is not self.frame_abs and not self.fits(node, absolute):
+            alternative = multiply(self.frame_abs, relative)
+            if self.fits(node, alternative):
+                absolute = alternative
+        return self.emit_at(node, absolute)
+
+    def fits(self, node, absolute):
+        """Whether ``absolute`` puts the node's box where its absoluteBoundingBox says (within a pixel)."""
+        box = node.get("absoluteBoundingBox")
+        if not box or not node.get("size"):
+            return True
+        w, h = self.geometry_box(node)
+        corners = [transform_point(absolute, x, y) for x, y in ((0, 0), (w, 0), (w, h), (0, h))]
+        return (abs(min(c[0] for c in corners) - box["x"]) < 1.0 and abs(min(c[1] for c in corners) - box["y"]) < 1.0)
 
     def emit_at(self, node, absolute):
         """Create the layer(s) for ``node`` whose absolute transform is known; returns its Vixl layer name or None."""
@@ -764,7 +783,8 @@ class Builder:
         elif style.get("textCase") in ("SMALL_CAPS", "SMALL_CAPS_FORCED"):
             self.lost(node, "small caps drawn as normal text")
         self.ops.append(op)
-        auto = style.get("textAutoResize", "WIDTH_AND_HEIGHT")
+        # The REST API leaves textAutoResize out for a fixed box (NONE).
+        auto = style.get("textAutoResize", "NONE")
         box_x = place["x"]
         if auto != "WIDTH_AND_HEIGHT" or (align != "left" and w > 0):
             width = max(w, 1.0)
@@ -775,7 +795,8 @@ class Builder:
                 box_x = place["x"] - (extra / 2 if align == "center" else extra)
                 self.ops[-1]["x"] = number(box_x)
             layout = {"type": "text-layout", "width": number(width), "fit": False}
-            if auto == "NONE":
+            if auto == "NONE" and substituted is None:
+                # With a substitute font the text may need more room than the Figma box gave it.
                 layout["height"] = number(max(h, 1))
             self.ops.append(layout)
         self.text_overrides(node, characters, style, font, family, weight, italic)
@@ -918,11 +939,14 @@ class Builder:
             place = self.place(absolute, (0.0, 0.0, w, h))
             members.extend(self.fill_layers(node, self.unique(f"{base_name} background"), geom, place))
         child_names, child_nodes = [], []
+        outer_frame = self.frame_abs
+        self.frame_abs = outer_frame if kind == "GROUP" else absolute
         for child in children:
             made = self.emit(child, absolute, node.get("absoluteBoundingBox"))
             if made:
                 child_names.append(made)
                 child_nodes.append(child)
+        self.frame_abs = outer_frame
         if kind in FRAME_LIKE and node.get("clipsContent") and not is_root:
             self.check_clipping(node, children)
         if not members and not child_names:
