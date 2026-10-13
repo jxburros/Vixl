@@ -127,24 +127,27 @@ def import_document(project, data, format, name="import", page=1, dpi=None, svg_
     ``svg_mode='auto'`` draws the elements Vixl cannot edit as image layers (and the whole SVG as one image when its
     stylesheet or structure cannot be read); ``'appearance'`` imports the whole SVG as one image with its source kept.
     PDF: see ``pdf_import``. Figma: ``data`` is a file URL or key, or exported file JSON; ``page`` is the Figma
-    page (number or name) and ``options`` are ``node_id``, ``rasterize_unsupported`` and ``install_fonts``."""
+    page (number or name) and ``options`` are ``node_id``, ``rasterize_unsupported`` and ``install_fonts``. For SVG,
+    ``install_fonts`` (default true) lets the fonts of Vixl's own SVG, which it names instead of storing, be
+    downloaded from Google Fonts when the font cache does not have them."""
     if format.lower() == "figma":
         from .figma_import import import_source
 
         return import_source(project, data, page=page, **options)
+    install_fonts = options.pop("install_fonts", True) if format.lower() == "svg" else True
     require(not options, f"Unknown import option(s): {', '.join(sorted(options))}")
     require(len(data) <= project.limits.max_asset_bytes, "Import exceeds byte limit", "resource_limit")
     require(svg_mode in ("editable", "appearance", "auto"), "SVG mode must be editable, appearance or auto",
             field="svg_mode")
     if format.lower() == "svg":
-        return _import_svg(project, data, name, svg_mode)
+        return _import_svg(project, data, name, svg_mode, install_fonts)
     require(format.lower() == "pdf", "Import format must be svg, pdf or figma")
     from .pdf_import import import_pdf
 
     return import_pdf(project, data, name=name, page=page, dpi=dpi, mode=svg_mode)
 
 
-def _import_svg(project, data, name, svg_mode):
+def _import_svg(project, data, name, svg_mode, install_fonts=True):
     if svg_mode == "appearance":
         return svg_appearance(project, data, name)
     from .svg_import import embedded_payload, embedded_project, import_embedded, svg_operations as convert
@@ -153,12 +156,12 @@ def _import_svg(project, data, name, svg_mode):
     warnings = [warning] if warning else []
     if payload is not None:
         try:
-            document = embedded_project(payload, project)
+            document, report = embedded_project(payload, project, data, install_fonts=install_fonts)
         except VixlError as exc:
             warnings.append(f"The Vixl document this SVG carries could not be read ({exc}); imported its visible "
                             "elements instead")
         else:
-            return import_embedded(project, document, name)
+            return import_embedded(project, document, name, report["warnings"], report["fonts"])
     candidate = project.clone()
     report = {}
     try:
