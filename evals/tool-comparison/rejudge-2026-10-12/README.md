@@ -9,8 +9,9 @@ in the sealed archive.
 | `packages/<test>.zip` | One blind package per test, made by [`../rejudge.py`](../rejudge.py). Each holds the brief, the round-2 request, the judging prompt, a score form, and every lane's deliverables under a random code |
 | [`../JUDGING.md`](../JUDGING.md) | The judging prompt and rubric (also inside every zip) |
 | [`JUDGE-PROMPT.md`](JUDGE-PROMPT.md) | The prompt for an outside judge that works from this branch |
-| `scores/` | Filled score forms, one per judge per test: `<test>.<judge>.json` |
-| `sealed.tar.gz.enc` | Encrypted: `key.csv` (code to lane), `excluded.txt`, the rebuild notes and the Claude judge's forms. The owner holds the passphrase; unseal only after every judge and the calibration are done: `openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in sealed.tar.gz.enc \| tar xz` |
+| `scores/` | Filled score forms: judges `1` (Claude), `2` and `3` (outside models), and `human` for the calibration set |
+| `sealed/` | Unsealed after judging: `key.csv` (code to lane), `excluded.txt`, the rebuild notes and judge 1's forms as written |
+| `analyze.py`, `analysis.json` | Medians of the three judges, pairwise calls, disagreements and calibration against the human scores |
 
 ## Protocol
 

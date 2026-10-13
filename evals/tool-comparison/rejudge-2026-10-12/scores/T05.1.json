@@ -1,0 +1,109 @@
+{
+ "test": "T05",
+ "judge": "1",
+ "lanes": {
+  "BHPS": {
+   "fidelity": 4,
+   "fidelity_misses": [
+    "Slide 2 stat '4.8★': the star is a drawn shape, not part of the text (the PPTX text reads '4.8'). It looks right but is not the copy as given.",
+    "deck.pptx names Young Serif and Rubik but does not embed them, so PowerPoint/Keynote without those fonts (and the LibreOffice render) show a different sans fallback, and the PPTX no longer matches the PDF."
+   ],
+   "craft": 4,
+   "craft_sub": {
+    "hierarchy": 4,
+    "spacing": 3,
+    "type": 4,
+    "colour": 5,
+    "finish": 4,
+    "motif": 4
+   },
+   "defects": [
+    {
+     "where": "deck.pdf.page-4 / page-5 (What worked, 2026 priorities), bullet column",
+     "what": "The text column is narrowed by the year panel, so bullets wrap into one- or two-word orphans ('sales', 'September', 'weekend rush'). The brief's lines would fit on one line each.",
+     "severity": "minor"
+    },
+    {
+     "where": "deck.pdf.page-2 stat cards",
+     "what": "Young Serif old-style figures make '35,280' and '4.8' drop below the baseline while '312' sits higher, so the three big numbers don't share a visual baseline. The star floats beside 4.8 rather than sitting with it.",
+     "severity": "minor"
+    },
+    {
+     "where": "footer, all content slides vs title/closing slides",
+     "what": "The page number's right edge sits about 20 px in from the end of the footer rule on content slides (1225 vs 1250) but meets it on slides 1 and 6, so the footer is inconsistent.",
+     "severity": "minor"
+    },
+    {
+     "where": "deck.pdf.page-1 and page-6 titles",
+     "what": "Young Serif's em dash is drawn very short and reads as an en dash in 'Café —' and 'Thank you —'. The Rubik middle dot in the subtitle reads as a heavy bullet.",
+     "severity": "minor"
+    },
+    {
+     "where": "deck.pdf.page-3 chart",
+     "what": "The chart is plain: gray axis labels are as large as the data labels, no bar is emphasized, and the gridlines add little. It is serviceable but the most generic slide in the deck.",
+     "severity": "minor"
+    },
+    {
+     "where": "deck.pptx.page-4/5 (LibreOffice render)",
+     "what": "With fallback fonts the panel year '2025'/'2026' runs to the edges of its rounded panel and the titles lose their serif character. This is caused by the unembedded fonts.",
+     "severity": "major"
+    }
+   ],
+   "craft_notes": "A distinctive, cohesive harbor look: a navy title and closing slide with a sun and waves, cream content slides, soft rounded stat cards, coral title ticks, and a serif/sans pairing that suits a café. The palette is used with restraint. It is held back by orphaned bullet wraps beside the year panels, uneven old-style stat figures, a slightly inconsistent footer, and a PPTX that loses its typefaces wherever they aren't installed.",
+   "revision": 5,
+   "revision_notes": "Q4 is updated to 9,250 in the chart and its notes. The total is updated to 35,630 on slide 2 and in its notes. A new 'Our regulars' slide comes after 'By the numbers', in the same card style, with the exact quote, attribution and speaker notes. A pixel diff of the other slides against round 1 shows only the page-number change (x / 7). There is a minor dead band between the quote and the attribution inside the card."
+  },
+  "YYIO": {
+   "fidelity": 5,
+   "fidelity_misses": [],
+   "craft": 3,
+   "craft_sub": {
+    "hierarchy": 4,
+    "spacing": 3,
+    "type": 3,
+    "colour": 4,
+    "finish": 3,
+    "motif": 2
+   },
+   "defects": [
+    {
+     "where": "deck.pptx all slides (pptx.page-1..6 and crops, e.g. pptx.page-2 crop-1-1, crop-2-1)",
+     "what": "Every shape picks up the default theme drop shadow (effectRef idx=2): the accent rules, footer line, stat cards and title-slide circles all carry gray shadows. This looks dated and differs from the PDF.",
+     "severity": "major"
+    },
+    {
+     "where": "deck.pdf.page-4 / page-5",
+     "what": "Bullet slides leave the lower ~40% of the slide empty and the right side bare, so the content floats high with a dead band above the footer.",
+     "severity": "minor"
+    },
+    {
+     "where": "deck.pdf.page-6",
+     "what": "The closing line breaks as 'Thank you — see you on / the quay.', a ragged break that splits the phrase awkwardly.",
+     "severity": "minor"
+    },
+    {
+     "where": "deck.pdf.page-1 / page-6",
+     "what": "The decoration (a stacked-rule motif and a cropped amber circle) is generic and has nothing specific to a harbor café.",
+     "severity": "minor"
+    },
+    {
+     "where": "deck.pdf fonts",
+     "what": "Helvetica is referenced but not embedded, and the star glyph falls back to DejaVu, so the star doesn't match Liberation Sans Bold.",
+     "severity": "minor"
+    }
+   ],
+   "craft_notes": "Clean, correct and consistent: the same title position, amber rule, footer rule and page number on every content slide. The stat cards with colored top bars and the chart with the Q3 highlight, bold labels and a zero baseline are solid. But it is generic Arial-bold corporate styling with little café character, the bullet slides are underfilled, and the PPTX carries unwanted theme shadows on every shape.",
+   "revision": 5,
+   "revision_notes": "Q4 is updated to 9,250 in the chart, notes and subtitle. The highlight moves to Q4 and the subtitle now reads 'finishing strongest in Q4', consequential updates the corrected data needed. The total 35,630 is updated on slide 2 and in its notes. The new 'Our regulars' slide comes after 'By the numbers', in house style, with the exact quote, attribution and notes. The other slides are pixel-identical apart from the page numbers. The quote wraps with 'coast.' alone on line 2 (minor)."
+  }
+ },
+ "pairwise_round1": [
+  {
+   "a": "BHPS",
+   "b": "YYIO",
+   "publish": "a",
+   "margin": "clear",
+   "why": "BHPS has a deliberate, subject-specific look (harbor sun and waves, serif/sans pairing, soft cards) where YYIO is generic Arial styling with theme drop shadows on every PPTX shape, though BHPS's unembedded fonts and orphaned bullet wraps keep it from being decisive."
+  }
+ ]
+}

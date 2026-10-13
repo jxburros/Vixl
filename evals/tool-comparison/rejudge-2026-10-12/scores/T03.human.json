@@ -1,0 +1,47 @@
+{
+ "judge": "human",
+ "lanes": {
+  "OJPW": {
+   "craft": 5,
+   "craft_sub": {
+    "colour": 5,
+    "finish": 4,
+    "hierarchy": 5,
+    "motif": 5,
+    "spacing": 4,
+    "type": 4
+   },
+   "defects": "",
+   "fidelity": 5,
+   "fidelity_misses": "",
+   "revision": 5,
+   "revision_notes": ""
+  },
+  "WLRN": {
+   "craft": 4,
+   "craft_sub": {
+    "colour": 5,
+    "finish": 5,
+    "hierarchy": 5,
+    "motif": 5,
+    "spacing": 5,
+    "type": 4
+   },
+   "defects": "",
+   "fidelity": 5,
+   "fidelity_misses": "",
+   "revision": 5,
+   "revision_notes": ""
+  }
+ },
+ "pairwise_round1": [
+  {
+   "a": "OJPW",
+   "b": "WLRN",
+   "margin": null,
+   "publish": "a",
+   "why": ""
+  }
+ ],
+ "test": "T03"
+}

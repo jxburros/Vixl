@@ -1,0 +1,142 @@
+{
+ "test": "T11",
+ "judge": "1",
+ "lanes": {
+  "GNQS": {
+   "fidelity": 4,
+   "fidelity_misses": [
+    "Ground line extended with added straight segments to both canvas edges (sketch-lines.svg layers 'ground-left'/'ground-right'), going beyond 'keep everything else as drawn'"
+   ],
+   "craft": 3,
+   "craft_sub": {
+    "hierarchy": 4,
+    "spacing": 4,
+    "type": null,
+    "colour": 5,
+    "finish": 2,
+    "motif": 3
+   },
+   "defects": [
+    {
+     "where": "sketch-color.png, tree canopy left edge (crop-1-2, ~x1250 y860)",
+     "what": "Pale/white sliver between canopy outline and green fill: fill misregistered to the stroke",
+     "severity": "minor"
+    },
+    {
+     "where": "sketch-color.png, left eave (crop-1-1, ~x560 y700)",
+     "what": "Coral roof fill bulges as a rounded blob past the wall corner where roof line and wall do not meet",
+     "severity": "minor"
+    },
+    {
+     "where": "sketch-color.png / sketch-clean.png, ground line at x~150 and x~1850",
+     "what": "Ruler-straight extensions joined to the wobbly ground line with a visible kink",
+     "severity": "minor"
+    },
+    {
+     "where": "sketch-lines.svg / all line art",
+     "what": "Stroke weights vary from 3.7 to 6.6 px: roof and sun read noticeably thinner than walls and canopy; canopy outline is jittery",
+     "severity": "minor"
+    },
+    {
+     "where": "sketch-color.png, right column and bottom row",
+     "what": "1 px near-white edge line on the right and bottom edges of the image",
+     "severity": "minor"
+    }
+   ],
+   "craft_notes": "All palette colours are exact and the drawing's tilt is corrected. Execution is the roughest of the three: the canopy has a fill halo, the eave has a fill blob, line weights are uneven and the ground line has added extensions with a kink. It keeps the apex cross and the window skew, so the hand-drawn character survives.",
+   "revision": 4,
+   "revision_notes": "Roof is exactly #c0392b with no coral left. A chimney was added on the right slope, open-bottomed behind the roof line. Changes stay within the roof/chimney region and the rest is identical in all files. The chimney is a crisp rectangle with a 3.7 px stroke, thinner than the walls, and it shows a faint reddish fringe on its left edge. Its character is acceptable but the stroke is lighter than most of the drawing."
+  },
+  "IRCG": {
+   "fidelity": 4,
+   "fidelity_misses": [
+    "Small cross-stroke at the roof apex in the sketch was removed (apex is now a clean point), so not everything is kept as drawn"
+   ],
+   "craft": 4,
+   "craft_sub": {
+    "hierarchy": 4,
+    "spacing": 4,
+    "type": null,
+    "colour": 5,
+    "finish": 4,
+    "motif": 3
+   },
+   "defects": [
+    {
+     "where": "sketch-color.png / sketch-clean.png, both eaves (crop-1-1 ~x520 y405; crop-1-2 ~x75 y405)",
+     "what": "Wall-top line runs past the walls into small hooked stubs under the roof ends: an awkward join",
+     "severity": "minor"
+    },
+    {
+     "where": "all outputs, windows/door/walls",
+     "what": "Every straight element snapped to exact horizontals and verticals; the result reads more mechanical than the sketch and loses some of its hand-drawn character",
+     "severity": "minor"
+    },
+    {
+     "where": "sketch-lines.svg vs sketch-clean.png, ground line",
+     "what": "The SVG ground line is a coarser polyline than the smooth curve in the PNG, with slight angular breaks",
+     "severity": "minor"
+    }
+   ],
+   "craft_notes": "Very clean, with even line weight and exact flat fills. The fills register tightly to the lines with no halos. The sun is round and the canopy gap is closed. The cost is character: the axis-snapped geometry is closer to clip-art than to the pen sketch, the apex tick is gone and the eave joins have odd stubs.",
+   "revision": 5,
+   "revision_notes": "Roof is exactly #c0392b and a chimney sits on the right slope. The chimney uses the same 6 px stroke as the rest, filled red and tucked behind the roof line. The pixel diff is confined to the roof/chimney area in all files, and nothing else moved."
+  },
+  "WPOZ": {
+   "fidelity": 5,
+   "fidelity_misses": [],
+   "craft": 4,
+   "craft_sub": {
+    "hierarchy": 4,
+    "spacing": 4,
+    "type": null,
+    "colour": 5,
+    "finish": 4,
+    "motif": 4
+   },
+   "defects": [
+    {
+     "where": "sketch-color.png / sketch-clean.png, window corners (crop-1-1 ~x610-720 y475-585)",
+     "what": "Round-capped segments overshoot slightly at window corners, leaving small nubs",
+     "severity": "minor"
+    },
+    {
+     "where": "compare.png",
+     "what": "The side-by-side is only 2000x750, so each half is small; the RGBA file has about 130 partially transparent edge pixels",
+     "severity": "minor"
+    },
+    {
+     "where": "sketch-color.png, walls",
+     "what": "The walls keep the sketch's slight splay rather than being made vertical, so the house leans a little",
+     "severity": "minor"
+    }
+   ],
+   "craft_notes": "Best balance of clean-up and character. The lines are straightened but keep their drawn angles, and the apex cross is kept. Windows keep their hand skew, the sun is a true circle and the canopy is closed. Line weight is consistent (5.5 px), and fills are exact and register cleanly with no halos. The sky/ground split follows the ground line. Only small nubs at the joins.",
+   "revision": 5,
+   "revision_notes": "Roof is exactly #c0392b. The chimney is integrated by breaking the right roof line, which reads as properly in front of the slope. It uses the same stroke weight, and its overhanging, slightly uneven cap matches the sketch's character. Changes are confined to the roof/chimney area in every file, with no drift."
+  }
+ },
+ "pairwise_round1": [
+  {
+   "a": "GNQS",
+   "b": "IRCG",
+   "publish": "b",
+   "margin": "clear",
+   "why": "IRCG's fills and lines are clean, while GNQS has a canopy fill halo, a fill blob at the eave, uneven stroke weights and kinked ground-line extensions."
+  },
+  {
+   "a": "GNQS",
+   "b": "WPOZ",
+   "publish": "b",
+   "margin": "clear",
+   "why": "WPOZ keeps the same hand character with consistent line weight and clean fill registration, which GNQS lacks."
+  },
+  {
+   "a": "IRCG",
+   "b": "WPOZ",
+   "publish": "b",
+   "margin": "slight",
+   "why": "Both are clean, but WPOZ keeps the sketch's apex mark and hand-drawn angles, while IRCG's axis-snapped geometry and eave stubs read more mechanical."
+  }
+ ]
+}

@@ -1,0 +1,64 @@
+{
+ "test": "T10",
+ "judge": "claude",
+ "lanes": {
+  "NPTJ": {
+   "fidelity": 4,
+   "fidelity_misses": [
+    "Caption copy exact, but the caption runs from the bottom-left across into the rock silhouette rather than staying in the bottom-left corner",
+    "Editable source and REPORT.md not in the package, so they could not be checked; original resolution unknown, so 'crop only as much as leveling requires' could not be verified (1558x1004 is the largest of the three edits)"
+   ],
+   "craft": 4,
+   "craft_sub": {"hierarchy": 4, "spacing": 3, "type": 3, "colour": 4, "finish": 4, "motif": 4},
+   "defects": [
+    {"where": "coast-caption.png, bottom-left caption", "what": "Heavy DejaVu Sans Bold at large size reads as a default system font; the line ends on top of the rock silhouette ('hour' sits over the rock edge)", "severity": "minor"},
+    {"where": "coast-edited.jpg, sky around the sun (sun crop)", "what": "Orange band pushed quite saturated; slightly heavy-handed for a correction", "severity": "minor"},
+    {"where": "coast-instagram.jpg, overall", "what": "Upscaled from a ~1000 px-tall source, so it is softer than native; unavoidable but noticeable on edges", "severity": "minor"}
+   ],
+   "craft_notes": "Horizon measured level (about 1 px drop across the width). Denoising is clean: silhouettes, sky and water have no visible speckle and no smear artefacts. Warm sunset kept and blacks not crushed. The phone crop puts the figure right of centre with the sun and glitter path, which works well. The weak point is the caption: generic bold sans, too big, and it runs into the rock.",
+   "revision": 4,
+   "revision_notes": "All three files are warmer (R-B up about 5 levels) and the caption reads exactly 'Port Ellery, October evening'. Geometry is unchanged. The contrast reduction is barely measurable (luminance std 50.0 to 48.9), so 'slightly less contrast' is only just met. The longer caption now runs further over the rock."
+  },
+  "RYIF": {
+   "fidelity": 4,
+   "fidelity_misses": [
+    "Colour correction pushes the scene cool: blue sky and grey-blue water undercut the 'golden hour' the caption names",
+    "Noise not fully removed: speckle remains in the silhouettes",
+    "Editable source and REPORT.md not in the package, so they could not be checked; whether the crop is minimal could not be verified (1509x1005)"
+   ],
+   "craft": 3,
+   "craft_sub": {"hierarchy": 4, "spacing": 3, "type": 3, "colour": 3, "finish": 2, "motif": 3},
+   "defects": [
+    {"where": "coast-edited.jpg, sky above and around the sun (sun crop, overview)", "what": "Swirly, painterly smear artefacts from heavy denoising or smoothing; visible in the overview as wavy streaks in the orange band", "severity": "major"},
+    {"where": "coast-edited.jpg, lighthouse and figure crops; coast-instagram.jpg rock", "what": "Residual noise speckle inside the black silhouettes and in the dark water", "severity": "major"},
+    {"where": "coast-edited.jpg, overall colour", "what": "Cool blue cast in the upper sky and blue-grey water; the sun area drifts green-yellow; the sunset warmth is lost", "severity": "minor"},
+    {"where": "coast-caption.png, caption", "what": "DejaVu Serif with a drop shadow, large; the line ends against the rock edge", "severity": "minor"}
+   ],
+   "craft_notes": "Level horizon (about 1 px over the width) and the scene is intact. The exposure is bright and open, but the denoise leaves both residual grain and smeared artefacts, and the white balance overcorrects towards blue. The phone crop is composed well, and the caption is readable thanks to a clear dark gradient.",
+   "revision": 4,
+   "revision_notes": "This is the clearest correct revision: noticeably warmer (R-B +9 levels), contrast reduced (std 56.8 to 51.3) and the caption text is exact, all in three files with no geometric drift. The new, longer caption now collides with the rock silhouette ('evening' runs onto it)."
+  },
+  "XMNM": {
+   "fidelity": 4,
+   "fidelity_misses": [
+    "Instagram crop is visibly grainy, so the noise is not fixed in that deliverable",
+    "Editable source and REPORT.md not in the package, so they could not be checked; whether the crop is minimal could not be verified (1512x1008)"
+   ],
+   "craft": 4,
+   "craft_sub": {"hierarchy": 4, "spacing": 4, "type": 4, "colour": 4, "finish": 3, "motif": 4},
+   "defects": [
+    {"where": "coast-instagram.jpg, whole sky (igsky crop)", "what": "Strong grain across the frame (high-pass noise about 4x the other entries), plus crushed blacks in the rock (about 4.6% of pixels at or near 0)", "severity": "major"},
+    {"where": "coast-caption.png, sky", "what": "Mild grain still visible in the gradients", "severity": "minor"},
+    {"where": "coast-edited.jpg, sun", "what": "Sun disc slightly dull and soft compared with the glow around it", "severity": "minor"}
+   ],
+   "craft_notes": "Horizon level, silhouettes clean in the main edit, and a balanced warm sunset palette that is not overdone. The caption is the best of the three: a refined book serif at a sensible size, sitting in the bottom-left over a subtle gradient and clear of the rock. The phone crop is composed well but noticeably noisy, which runs against the brief's request to fix noise.",
+   "revision": 4,
+   "revision_notes": "All three files are warmer (blue reduced) with lower contrast (std 51.1 to 45.2), and the caption is exact and still clear of the rock. Geometry is unchanged. Collateral change: the image also got slightly darker overall (red channel down too), and the instagram grain remains."
+  }
+ },
+ "pairwise_round1": [
+  {"a": "NPTJ", "b": "RYIF", "publish": "a", "margin": "clear", "why": "NPTJ is cleanly denoised with a warm sunset; RYIF has smear artefacts, leftover speckle and a cool cast."},
+  {"a": "NPTJ", "b": "XMNM", "publish": "a", "margin": "slight", "why": "XMNM has the better caption typography, but its Instagram crop is visibly grainy, while all three of NPTJ's files are clean."},
+  {"a": "RYIF", "b": "XMNM", "publish": "b", "margin": "clear", "why": "XMNM's main edit and caption are clean and warm, while RYIF shows denoise smears and residual speckle."}
+ ]
+}
