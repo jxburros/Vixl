@@ -19,14 +19,13 @@ def schemas(add):
             "highlight": B}, "additionalProperties": False}],
         "description": "Shade each colour area as it draws: a darker, cooler band on the side away from the light and "
         "a lighter one facing it, while the sprite stays within colors (default 16) opaque colours. true, false, or "
-        "{light: auto|top-left|top|top-right, colors, highlight}. Stored rows are not changed. Default true for new "
-        "documents (house style 4).",
+        "{light: auto|top-left|top|top-right, colors, highlight}. Stored rows are not changed. Default true for a new "
+        "layer.",
     }
     outline = {
         "anyOf": [B, S],
         "description": "Ring the silhouette with a 1 px outline on the transparent cells around it: true (the darkest "
-        "palette colour), a colour, or false. Skipped when the edge is already dark. Default true for new documents "
-        "(house style 4).",
+        "palette colour), a colour, or false. Skipped when the edge is already dark. Default true for a new layer.",
     }
     add(
         "pixel-art",

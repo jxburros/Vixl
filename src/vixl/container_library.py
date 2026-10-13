@@ -147,7 +147,7 @@ def expand(containers, templates):
             [
                 text("eyebrow", [0.07, 0.14, 0.86, 0.14], 18, "@muted"),
                 text("title", [0.07, 0.38, 0.86, 0.34], 40),
-                # One spacing unit under the rule at any height (house style 4): the crowding threshold is half.
+                # One spacing unit under the rule at any height: the crowding threshold is half.
                 shape("rule", [0.07, 0.87, 0.86, 0.012], clear_below=1),
             ],
         ),
