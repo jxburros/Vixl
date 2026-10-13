@@ -63,6 +63,9 @@ Vixl is pre-release with no users to protect, so code that existed only to repro
 - Footer-rule clearance no longer pushes the cta button out of the safe area on small banners.
 - Dark-mode ink reaches the 7:1 target on saturated palettes (candy came out at 6.99:1): when the ink steps run out, it snaps to pure white or black, which the background wash was sized for.
 - Strokes land in the same place in PNG, SVG, PDF and PowerPoint: the SVG export stroked rectangles, ellipses and polygons a stroke width away from the other renderers (where strokes now go: see Rendering parity). PNG no longer cuts the outer half of a path's stroke at the layer box. Render parity finding 15.
+- `paint` with an SVG `path` (instead of `points`) works through MCP and REST, like `path` on `shape` and `text-layout`; services refused it as a filesystem path.
+- `vixl commands --json` lists `compact` and `link-set`; `vixl help --full` shows the Figma import flags and `vixl canvas --help` all five forms (`resize`, `size`, `preset`, `dpi`, `background`).
+- Field descriptions that still named house-style versions, a chart's whole-canvas default, the diagram theme default or the old `marker_size` multiplier now describe the current behaviour.
 
 ### Finishing pass in the agent loop
 
