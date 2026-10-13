@@ -161,8 +161,12 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | ILL-01 | Add a finishing look: glow, neon, soft/hard shadow, outline, grain, paper, film, duotone, risograph, halftone, watercolor, sketch | `look` | 1 · <1 | E | 20 looks; some export to SVG as raster. |
 | ILL-02 | Apply one of 19 artistic filters (oil paint, mosaic …) | `filter` | 1 · <1 | E | Seeded and deterministic. |
 | ILL-03 | Make an edge look torn, or make vector art look hand-made | `tear`, `irregular` | 1 · <1 | E | `--remove` undoes. |
-| ILL-04 | Grow an organic form (flower, tree, fern, shell, coral, mushroom …) | `organic PRESET` | 1 · <1 | E | 33 presets, editable paths, reseedable. |
+| ILL-04 | Grow an organic form (flower, tree, fern, shell, coral, mushroom …) | `organic PRESET` | 1 · <1 | E | 34 presets, editable paths, reseedable. |
 | ILL-05 | Add paint drips and relief, each controlled on its own | `paint` with `settings.drip`, `relief`, `light_angle` | 1 · <1 | E | Since 0.24 (#258); deterministic visual simulation, not a fluid solver. |
+| ILL-54 | Atmosphere in a scene: a glow behind a light, stars clear of the copy, string lights or lanterns along a sagging wire, out-of-focus discs | `haze`, `star-field`, `string-lights`, `bokeh` | 1 · <1 | E | Craft plan 6a. Editable seeded groups, vector in every export. Was a generator script writing hundreds of shapes (M:T03). |
+| ILL-55 | Reflection of a scene in water below a horizon, with ripples and a fade | `reflection` | 1 · <1 | E | Craft plan 6a. One raster layer; `reflection --target` re-renders it after the scene changes. Was hand-placed dashes (M:T03). |
+| ILL-56 | Filled layered water: sea, harbor or lake bands with crests | `organic` preset `water` | 1 · <1 | E | Craft plan 6c. Replaces stroked wave lines (M:T09, T12). |
+| ILL-57 | The concrete motif a brief implies (a cup with steam, a lighthouse in the sea, strung lanterns) | `vixl_guide` motifs; shapes `cup`, `steam`, `lighthouse`, `lantern` | 1–3 · <1 | E | Craft plan 6b. |
 
 ### Data and diagrams
 

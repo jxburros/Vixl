@@ -35,6 +35,10 @@ def test_new_operations_are_classified():
     assert mode("reflection") == "joint"
     for kind in ("haze", "star-field", "string-lights", "bokeh"):
         assert mode(kind) == "one"
+    p = Project(300, 200, "#000000")
+    result = p.apply([{"type": "starfield", "count": 5}, {"type": "fairy_lights", "from": [0, 20], "to": [300, 20]}])
+    assert p.layer("stars") and p.layer("string-lights")
+    assert any("'starfield' → 'star-field'" in text for text in result["normalized"])
 
 
 def test_star_field_keeps_clear_of_every_text_box_and_is_seeded():
@@ -65,6 +69,17 @@ def test_star_field_sits_on_the_backdrop_under_the_copy():
     stars = children(p, "stars")
     assert len(stars) == 40
     assert {layer["type"] for layer in stars} == {"shape"}
+
+
+def test_star_field_and_bokeh_take_a_layer_as_their_region():
+    p = Project(600, 600, "#000000")
+    p.apply([{"type": "solid", "name": "sky", "x": 0, "y": 0, "width": 600, "height": 200, "color": "#0b1730"},
+             {"type": "star-field", "target": "sky", "count": 50, "seed": 3},
+             {"type": "bokeh", "target": "sky", "count": 5, "seed": 3}])
+    for name in ("stars", "bokeh"):
+        for box in _boxes(p, children(p, name)):
+            centre = (box[1] + box[3]) / 2
+            assert 0 <= centre <= 200, (name, box)
 
 
 def test_star_field_thins_toward_the_bottom_of_the_region():
@@ -228,6 +243,14 @@ def test_reflection_needs_a_horizon_and_something_above_it():
         empty.apply({"type": "reflection", "horizon": 100})
     with pytest.raises(VixlError, match="not made by reflection"):
         p.apply({"type": "reflection", "target": "tower", "horizon": 200})
+
+
+def test_capabilities_topic_lists_the_atmosphere_operations():
+    from vixl.capabilities import lookup
+
+    found = lookup("atmosphere")
+    assert set(found["operations"]) >= {"reflection", "haze", "star-field", "string-lights", "bokeh"}
+    assert "motifs" in found["guidance"]
 
 
 def test_atmosphere_exports_stay_vector_except_the_reflection():

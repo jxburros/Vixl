@@ -186,7 +186,7 @@
     "snail": "snail", "caterpillar": "caterpillar", "worm": "worm", "mushroom": "mushroom", "feather": "feather",
     "coral": "coral", "brain-coral": "brain-coral", "cactus": "cactus", "cell": "cell", "cells": "cells",
     "giraffe": "patches", "spots": "spots", "scales": "scales", "dandelion": "dandelion", "pinecone": "pinecone",
-    "lily-pad": "lily-pad"
+    "lily-pad": "lily-pad", "water": "water"
   },
   "character_parts": {
     "torso": ["torso", null], "head": ["head", null], "left-eye": ["eye", "left"], "right-eye": ["eye", "right"],

@@ -39,7 +39,8 @@ instead of improvising freehand shapes:
    with a `pivot` at each joint, patterns scatter motifs rather than tile a grid, and animation loops
    are `motion` recipes (`period`, several `targets`, `stagger`). A kind names the guidance to read:
    `vixl_guide(brief="looping-motion")` (or `natural-motion`, `character-rigging`, `imperfection` …)
-   returns the text.
+   returns the text. A brief that implies a setting also returns `motifs`: draw those specific things
+   (a cup with steam, a lighthouse standing in filled water), not a disc or a box standing in for them.
 2. **Layout** — `vixl_sizes_list` → `vixl_document_create(size=…)` (or `purpose="social"|"slides"|"logo"…`, which
    picks the size; with neither it is 1080×1080). For anything with text,
    `vixl_layouts_list` → `layout-apply`, filling every slot it lists. An unfilled image slot comes back
@@ -235,7 +236,10 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
 - **Text flow** — `text-flow` threads a long text through linked frames (columns, pages, shapes); results report `overflow`.
 - **Diagrams** — `diagram-from-text` / `diagram` / `diagram-set` draw flowcharts, dependency graphs, org charts and mind maps
   as editable layers (swimlanes, auto-fit, `check diagram`).
-- **Organic shapes** — `organic` presets and composable generators for living things.
+- **Organic shapes** — `organic` presets and composable generators for living things; preset `water` draws filled
+  layered sea or lake bands.
+- **Scene atmosphere** — `haze`, `star-field` (keeps clear of text), `string-lights`, `bokeh` and `reflection`, one
+  operation each and seeded; catalog shapes `cup`, `steam`, `lighthouse`, `lantern` for common motifs.
 - **Scatter and seamless tiles** — `scatter` (Poisson-disc copies inside or along a layer's outline, seeded jitter,
   `merge` for one path per tone, `preset: fur`), `pattern-scatter` (wrap-around tile with a seam score), per-step
   and jittered `repeat`/`radial-repeat` (`vixl_guide("scatter")`).

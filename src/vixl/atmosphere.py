@@ -12,7 +12,7 @@ import math
 
 import numpy as np
 
-from .errors import require
+from .errors import VixlError, require
 from .geometry import compact_number
 from .model import finite
 from .notices import note
@@ -28,7 +28,7 @@ REFLECTION_KEYS = ("horizon", "targets", "squash", "ripple", "breakup", "fade", 
 
 
 def schemas(add):
-    from .schema import B, N, S, field
+    from .schema import N, S, field
 
     point = {"type": "array", "items": N, "minItems": 2, "maxItems": 2}
     region = {"type": "array", "items": N, "minItems": 4, "maxItems": 4,
@@ -79,7 +79,7 @@ def schemas(add):
         "below": below,
     })
     add("star-field", {
-        "target": field(S, "Unused; star-field draws in region."),
+        "target": field(S, "A layer whose box is the region (the sky, say), instead of region."),
         "name": field(S, "Name of the star group (default stars)."),
         "region": region,
         "count": field({"type": "integer", "minimum": 1, "maximum": MAX_STARS},
@@ -127,7 +127,7 @@ def schemas(add):
         "below": below,
     })
     add("bokeh", {
-        "target": field(S, "Unused; bokeh draws in region."),
+        "target": field(S, "A layer whose box is the region, instead of region."),
         "name": field(S, "Name of the group (default bokeh)."),
         "region": region,
         "count": field({"type": "integer", "minimum": 1, "maximum": MAX_DISCS}, "Number of discs (default 14)."),
@@ -162,6 +162,9 @@ def _canvas(project):
 
 def _region(project, op):
     w, h = _canvas(project)
+    if op.get("target") and "region" not in op:
+        x0, y0, x1, y1 = _boxes(project, [project.layer(op["target"])])[0]
+        return x0, y0, max(1.0, x1 - x0), max(1.0, y1 - y0)
     value = op.get("region", [0, 0, w, h])
     require(isinstance(value, list) and len(value) == 4, "region is [x, y, width, height]", field="region")
     x, y = finite(value[0], "region x"), finite(value[1], "region y")
@@ -287,7 +290,7 @@ def _fill_of(project, layer, default):
         try:
             if color(resolve_color(fill, project.state))[3] > 0:
                 return fill
-        except Exception:
+        except VixlError:
             pass
     return default
 

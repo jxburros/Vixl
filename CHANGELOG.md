@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased
+
+### Scene atmosphere and motifs
+
+- **Scene effects as single operations** (craft plan 6a): `haze` (a soft glow band or halo behind a light, placed
+  directly below it), `star-field` (seeded stars and sparkles that keep clear of every text layer and thin toward the
+  horizon), `string-lights` (bulbs, pears or paper lanterns hung evenly along a sagging wire or an existing path, each
+  with a lit core and a glow) and `bokeh` (soft out-of-focus discs) build editable groups of vector shapes and radial
+  gradients that every exporter draws natively. `reflection` mirrors the layers above a `horizon` into the water below,
+  with seeded ripples, ripple bands, a vertical smear and a fade; it is one raster layer that keeps its settings, so
+  `{type: reflection, target: reflection}` re-renders it after the scene changes. All five are deterministic for a
+  `seed`. See [scene atmosphere and motifs](docs/atmosphere.md).
+- **Motifs from the brief** (6b): `vixl_guide(brief)` returns `motifs` when a brief implies a setting (coffee and cafés,
+  sea and coast, lakes, markets and festivals, night city, night sky, concerts): the concrete things to draw (a cup with
+  steam rather than a disc, a lighthouse standing in the sea rather than on a bar), the placeholder each replaces, and
+  the shapes, organic presets, object kinds and operations that draw them. `vixl_guide('motifs')` lists every theme;
+  the knowledge lives in one data file (`data/motifs.json`) read by the guidance registry. A brief that names only a
+  setting ("a lighthouse at dusk") now matches the `scene` kind with its motifs instead of the bare object guide.
+- **Motif shapes**: catalog shapes `cup` (a mug on its saucer, with a handle hole), `steam`, `lighthouse` (with a
+  lantern window and a door) and `lantern`.
+- **Filled layered water** (6c): organic preset `water` draws bands of sea in related tones, lighter at the horizon and
+  darker in front, each with a crest, filling its box edge to edge (`params.tones` back to front, or `params.color`).
+  The new organic generator `band` (a filled band under a wavy edge) builds it. Sea, coast and lake motifs point to it.
+
 ## 0.26.0
 
 ### Fixed and added

@@ -3,9 +3,21 @@
 ``vixl_guide(brief=NAME)``, ``vixl_resource_get(kind="guidance", name=NAME)``, ``vixl_resources_list``,
 the guidance names a ``vixl_guide`` kind points at and the ``guidance`` that ``vixl_capabilities`` lists
 all read ``GUIDANCE``; user additions (``vixl_resource_add``) join it through ``resources.catalog``.
+
+Motif knowledge (the concrete things a brief implies and what draws them) is data in ``data/motifs.json``,
+read only here: ``motifs(brief)`` gives the themes a brief matches, which ``vixl_guide`` returns as ``motifs``.
 """
 
+from functools import lru_cache
+import json
+from pathlib import Path
+import re
+import unicodedata
+
+MOTIFS_FILE = Path(__file__).resolve().parent / "data" / "motifs.json"
+
 GUIDANCE = {
+    "motifs": "Draw the specific thing the brief names, not a placeholder: a cup with steam rather than a disc, a lighthouse standing in filled layered water rather than on a bar, strung lanterns with glows rather than dots on a line, an irregular lit skyline rather than equal boxes, reflections that mirror the scene rather than dashes. vixl_guide(brief) lists the motifs a brief implies with the catalog shapes, organic presets, object kinds and operations (string-lights, star-field, haze, reflection, bokeh, organic preset water) that draw them; vixl_guide('motifs') lists every theme. Give the motif one focal place, keep decoration clear of the copy, and check the preview at delivery size: if a shape could be anything, add the detail that names it.",
     "overall": "Choose a clear hierarchy, align related elements, use consistent spacing, preserve readable contrast, inspect at delivery size, and measure before exporting.",
     "minimal": "Use generous negative space, a small palette, few type sizes, and a single focal point. Prefer simple geometry and deliberate alignment.",
     "editorial": "Establish headline, body and caption hierarchy. Use a coherent grid, restrained accents, and consistent margins. Keep body text readable.",
@@ -91,3 +103,27 @@ Choose: vixl_check covers general defects (bounds, overlap, contrast, safe_area,
 Make your own: one rule per requirement, named for the requirement. Requirement to rule kind: 'title reads at thumbnail size' -> contrast {target, minimum 4.5} and text-fit {target, minimum}; 'headline clearly dominates' -> hierarchy {targets [title, subtitle, body], ratio 1.25}; 'cards evenly spaced' -> spacing {targets, axis, expected?}; 'logo 48 px from the edges' -> relation {target logo, to canvas, position inside, minimum 48}; 'caption under the photo, left-aligned' -> relation {target caption, to photo, position below, align [left], maximum 24}; 'price never overlaps the product' -> relation {position apart}; 'keep the top third quiet for the headline' -> ink {region, maximum 0.02}; 'balanced' -> balance {tolerance 0.1} or focal {target, grid thirds}; 'brand red stays brand red' -> color {point or region, expected @brand} or palette; 'exactly three bullets' -> count {target 'bullet-*', minimum 3, maximum 3}; 'headline at most 40 characters', 'must say Terms apply', 'never say free' -> text {target, max_characters 40} / {contains 'Terms apply'} / {forbid '(?i)\\bfree\\b'}; 'at most 3 fonts, images 240 ppi' -> budget {max_fonts 3, min_ppi 240}; 'transparent logo' -> alpha; any fixed value -> property or assert; a finished part that must not change -> suite-capture (unchanged and pixels rules). Use severity warning for preferences (balance, breathing room) so they need review instead of failing. Animation: add sampling {mode: sampled, count: 8} so rules hold at every sampled time; several formats: sampling {artboards: 'all', pages: 'all', comps: [...]} so rules hold on every variant. An approved design: vixl_workflow('suite-infer', {name}) proposes a tolerant suite with what each rule measured; review it before use.
 Run: vixl_workflow('check', {suite: NAME or an inline suite}) returns each rule's status and measurements (failed, needs_review, passed); a rule that cannot be measured is needs_review, never a pass. vixl_workflow('act', {operations, suites}) applies a batch only if the suites still pass (repair: true first tries the built-in repairs: fit-text, contrast ink, safe-area nudge). Every result has an outcome: validated means required checks ran and passed with nothing left to review; unvalidated means nothing required was checked. Save a suite you will reuse with resource-save kind suites. Read the failing rule's numbers, fix the design, rerun, then preview. A passing suite proves only its own rules: keep them specific to the brief.""",
 }
+
+
+@lru_cache(maxsize=1)
+def motif_registry():
+    """Every motif theme: ``{name: {title, keywords, elements}}``."""
+    return json.loads(MOTIFS_FILE.read_text(encoding="utf-8"))["themes"]
+
+
+def _plain(text):
+    folded = unicodedata.normalize("NFKD", str(text)).encode("ascii", "ignore").decode("ascii")
+    return " " + " ".join(re.findall(r"[a-z0-9]+", folded.lower())) + " "
+
+
+def motifs(brief):
+    """The motif themes a free-text brief implies, best match first, each with the keywords it matched."""
+    text = _plain(brief)
+    found = []
+    for index, (name, theme) in enumerate(motif_registry().items()):
+        hits = [word for word in theme["keywords"] if _plain(word) in text]
+        if hits:
+            found.append((-sum(len(_plain(w).split()) for w in hits), index, name, hits))
+    return [{"theme": name, "title": motif_registry()[name]["title"], "matched": hits,
+             "elements": json.loads(json.dumps(motif_registry()[name]["elements"]))}
+            for _, _, name, hits in sorted(found)]
