@@ -12,6 +12,7 @@
 - CLI output commands accept `--out` and `-o`, including batch, save and pack/unpack. Top-level help is a compact command index; `help --full` retains the detailed reference (#639).
 - A generated interface capability matrix shares the REST workflow allow-list with enforcement (#640).
 - Opaque multiply, screen, darken, lighten, difference, add and subtract blending uses native Pillow loops instead of float arrays (#585).
+- Multi-size `adapt-layout --sizes` / `vixl_adapt_layout` with `options: {"recompose": true}` no longer fails with `KeyError: 'canvas'` after writing the first copy; each recomposed size reports its canvas, `scale: null`, `moved: "recomposed"` and the layout name.
 - Explicit campaign `quality: "final"` selects the final check profile unless an explicit `profile` overrides it; reports name the effective profile (#563).
 
 ### Behaviour changes

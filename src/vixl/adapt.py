@@ -482,10 +482,14 @@ def adapt_copies(session, export_file, sizes, directory=".", name="{name}-{size}
         report_row = outcome["adapt_layout"][0]
         session.make_parent(destination)
         candidate.save(destination, overwrite=overwrite)
-        item = {"size": label, "path": session.relative(destination), "canvas": report_row["canvas"]["to"],
-                "scale": report_row["scale"], "moved": report_row["moved"]}
-        if report == "layers":
-            item["layers"] = report_row["layers"]
+        item = {"size": label, "path": session.relative(destination)}
+        if report_row.get("mode") == "recompose":
+            # Recomposition rebuilds the layers from the recipe: there is no uniform scale or per-layer move.
+            item.update(canvas=report_row["to"], scale=None, moved="recomposed", layout=report_row["layout"])
+        else:
+            item.update(canvas=report_row["canvas"]["to"], scale=report_row["scale"], moved=report_row["moved"])
+            if report == "layers":
+                item["layers"] = report_row["layers"]
         if outcome.get("warnings"):
             item["warnings"] = outcome["warnings"]
         if formats:
