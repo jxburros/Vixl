@@ -237,7 +237,8 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
   as editable layers (swimlanes, auto-fit, `check diagram`).
 - **Organic shapes** — `organic` presets and composable generators for living things.
 - **Scatter and seamless tiles** — `scatter` (Poisson-disc copies inside or along a layer's outline, seeded jitter,
-  `merge` for one path per tone, `preset: fur`), `pattern-scatter` (wrap-around tile with a seam score), per-step
+  `merge` for one path per tone, `preset: fur`), `pattern-scatter` (wrap-around tile with a seam score; a lower
+  `count` or `thin` keeps the surviving copies in place), per-step
   and jittered `repeat`/`radial-repeat` (`vixl_guide("scatter")`).
 - **Imperfection** — opt-in `irregular` (seeded wobble, stroke weight, color drift, micro placement)
   and `tear` (torn edges) for characters, stickers, scenes, scattered patterns, hand-made looks and

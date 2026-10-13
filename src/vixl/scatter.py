@@ -1024,6 +1024,8 @@ def execute_pattern_scatter(project, op):
     else:
         points = toroidal_poisson(stream(seed, 1), width, height, spacing, count or MAX_ITEMS)
     entries = build(project, variation, [(x, y, None) for x, y in points], "center")
+    if group is not None and round(spacing, 3) != prior.get("spacing_used", round(spacing, 3)):
+        recipe.pop("keep", None)  # a spacing taken from the motifs' size moved every point
     # Every point is drawn (so each copy keeps its own seeded look), then only the kept ones placed.
     kept = [i for i in recipe.get("keep") or range(len(points)) if i < len(points)]
     if op.get("thin") is not None:

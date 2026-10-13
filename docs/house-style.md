@@ -734,3 +734,15 @@ Version 3 adds sixteen pairings (4 safe, 8 bold, 4 avant-garde). The new fonts a
 Background mixing uses only the amount needed to make the ink contrast target (7.1:1) possible, bounded by `craft.background_mix_max` (0.82 light, 0.75 dark); secondary roles are verified against background/surface. Saturated palettes can remain visibly saturated. New stacks default to two spacing units, chart padding to two label-size units and text-flow gutters to three text-size units. Explicit geometry wins. Stack/layout gaps accept a unit expression such as `2u`; a unit is half the body size, rounded, at least 2 px. These geometry defaults apply only to documents that record version 3, as does the seamless default for new short timelines. In every document, social and poster minor text is at least 2.2% of the short side, and bold text (700+) counts as large for contrast from 18.66 px; regular text from 24 px.
 
 Pin `house_style_version: 2` / `vixl roll --house-style 2` to replay 0.23 rolls. Version 1 remains available. Existing stored geometry is not recomposed implicitly. The version-2 regression fixture covers multiple seeds, purposes and variety levels.
+
+## House style 4
+
+Version 4 rolls exactly as version 3; it changes two craft defaults for new documents (craft plan 7a and 7e).
+
+- `pattern-scatter` lays tiles out progressively (`distribution: "progressive"`), so the same seed with a lower
+  `count` keeps the first copies in place and `count` places exactly that many. Documents before version 4, and
+  `distribution: "poisson"`, keep the layout that re-rolls on every count change.
+- `pixel-art` sprites draw with a shading ramp and an outline (`shading`, `outline`). `shading: false`,
+  `outline: false` or `house_style_version: 3` keep the flat sprite.
+
+Pin `house_style_version: 3` to keep both earlier behaviours in a new document.

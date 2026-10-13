@@ -334,6 +334,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PHO-14 | Select by color, wand or lasso and adjust only that area | `select`, effect | 3–4 · 1 | E | |
 | PHO-15 | Clone-stamp a blemish | clone stamp | 2–4 · <1 | E | |
 | BLK-11 | Seamless random scatter for patterns | `pattern-scatter`, `pattern-fill` | 2–4 · 1 | E | Since 0.22; reports a seam score. |
+| ILL-06 | Fewer motifs in a scattered pattern without re-rolling it | `pattern-scatter` `target` with a lower `count`, or `thin` | 1–2 · <1 | E | House style 4: the surviving copies stay in place (T15 R2 kept 7 % of the ink on 0.26). |
 | ILL-51 | Scatter motifs inside or along a shape, or fur on a mascot | `scatter` (`preset: fur`), `plush` look | 1–3 · 1 | E | Since 0.22. |
 
 ### Motion and pixels
@@ -400,7 +401,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SOC-30 | Social post with exact copy and layout | layout, fonts, check, preview | 29 · 2.4 | M:T02 | |
 | DAT-20 | Infographic from a small data table | `chart`, text, check | 18 · 1.4 | M:T08 | Totals and callouts are still typed by hand. |
 | FRM-10 | Fillable PDF form with validation (email, range, date) | `field`, `form settings`, `export --fillable` | 25 · 3.4 | M:T06 | |
-| PIX-10 | Pixel-art sprite with named animations | `pixel-art`, `frame-save`, `animation-set` | 23 · 3.7 | M:T13 | One `frames-edit` recolors every frame. |
+| PIX-10 | Pixel-art sprite with named animations | `pixel-art`, `frame-save`, `animation-set` | 23 · 3.7 | M:T13 | One `frames-edit` recolors every frame. House style 4 shades and outlines new sprites. |
 | MOT-10 | Animated intro (logo/title reveal) | timeline, presets, stroke draw-on | 38 · 4.0 | M:T12 | |
 | PRN-10 | Print poster with bleed, CMYK PDF, TrimBox/BleedBox | print size, layout, `export --cmyk` | 38 · 6.3 | M:T03 | Fewer calls than T3 but slower: print checks. |
 | SOC-31 | YouTube thumbnail with large headline and subtitle | size, `text`, shapes, check | 13 · 3 | M:eval:youtube-thumbnail | |
@@ -422,7 +423,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | MOT-11 | Revise an animated intro | 23 · 2.5 | M:T12 R2 | |
 | PIX-11 | Recolor or retime a sprite | 28 · 2.8 | M:T13 R2 | |
 | MOT-12 | Shift lyric timing in a lyric video | 30 · 5.4 | M:T14 R2 | One `offset` field; time is the re-render. |
-| ILL-22 | Revise a seamless pattern | 27 · 2.5 | M:T15 R2 | Keeps 87 % of the original ink. |
+| ILL-22 | Revise a seamless pattern | 27 · 2.5 | M:T15 R2 | Keeps 87 % of the original ink on 0.20 and 7 % on 0.26 (re-rolled scatter); house style 4 keeps the surviving copies in place (ILL-06). |
 | PRN-12 | Change prices on a café menu | 17 · 1.6 | M:T16 R2 | Per-price layers make it a direct edit; in a `table` a price is one `table-data` set (#169). |
 
 ### Social, web and ads
@@ -552,8 +553,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PRD-30 | Name badges from a spreadsheet, imposed on print sheets | `vixl_workflow` merge-impose | 48 · 3.3 | M:T07 | Empty fields don't re-centre unless `stack --hide-if-empty`. |
 | ILL-40 | Seamless repeating pattern | motifs, pattern-check, repeat | 61 · 7.5 | M:T15 | Scatter positions computed outside Vixl; no seamless scatter. |
 | SOC-60 | One campaign in six sizes | `vixl_adapt_layout`, per-size fixes | 63 · 4.4 | M:T09 | Measured before #210 (safe zones, uniform decoration, grouped content, `min_text`); re-measure. Revision: 44 calls, 1.8 min. |
-| PHO-40 | Photo correction (tilt, cast, exposure, noise) | effects, denoise, white balance, links | 63 · 5.0 | M:T10 | |
-| DRW-30 | Hand drawing → clean vector art with fills | `drawing import/clean/vectorize/straighten/fill` | 64 · 5.7 | M:T11 | Gap closing bridges curves with straight lines. Sky and ground bounded by the drawing's edge fill with `settings.edge_closes` (was BLK-22); `clean` keeps the paper's extent. |
+| PHO-40 | Photo correction (tilt, cast, exposure, noise) | effects, denoise, white balance, links | 63 · 5.0 | M:T10 | Linked crops of the corrected master (Instagram, caption) show its denoised pixels even when enlarged. |
+| DRW-30 | Hand drawing → clean vector art with fills | `drawing import/clean/vectorize/straighten/fill` | 64 · 5.7 | M:T11 | Gap closing bridges curves with straight lines. Sky and ground bounded by the drawing's edge fill with `settings.edge_closes` (was BLK-22), also when the ground line stops short of the edge (no extension strokes); fills register to their lines (no halo, no bulge at an open corner); `clean` keeps the paper's extent. |
 | MOT-30 | Lyric video from a song, an LRC file and a template | `lyric-video-build/export` | 40 · 6.4 | M:T14 | [ffmpeg] Audio resampled to 24 kHz. |
 
 ### Social and marketing

@@ -281,6 +281,7 @@ vixl pixel-draw sprite line 6 5 --x2 9 --y2 5 --color w
 vixl pixel-draw sprite rect 4 4 --width 8 --height 8 --color s
 vixl pixel-draw sprite fill 0 0 --color .
 vixl pixel-palette sprite --colors '{"g":"#ffdd66"}'
+vixl pixel-palette sprite --shading false --outline false   # flat sprite (new documents shade and outline)
 vixl frame-save idle [--duration 150] ; vixl frame-apply idle ; vixl frame-delete idle
 vixl animation-set --order idle blink --loop 0       # default animation: lists every saved frame
 vixl animation-set --name walk --order w1 w2 w3 w2 [--duration 100 | --durations 100 100 100 100] [--loop 0]
