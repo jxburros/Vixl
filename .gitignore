@@ -17,6 +17,7 @@ build/
 !docs/assets/generated/*.vixl
 !assets/brand/digital-shift/Editable-Vixl/*.vixl
 !assets/brand/ripple/Editable-Vixl/*.vixl
+!tests/fixtures/convert/*/*.vixl
 .env
 
 examples/output/
