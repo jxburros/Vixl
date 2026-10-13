@@ -662,6 +662,9 @@ def assign_roles(op, rng):
         if contrast_ratio(ink[:3], background[:3]) >= house_style.craft("contrast")["ink_target"]:
             break
         ink = mix(ink, extreme, 0.25)
+    else:
+        # The geometric steps never reach the extreme; the background wash was sized for it.
+        ink = extreme
 
     def chroma(c):
         return to_polar(srgb_to_oklab(c[:3]))[1]

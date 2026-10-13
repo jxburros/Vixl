@@ -167,7 +167,7 @@ def test_every_rollable_palette_passes_the_role_contrast_pass(name):
 
     for mode in house_style.palette_modes(name):
         roles = assign_roles({"palette": name, "mode": mode}, random.Random(0))
-        assert ratio(roles["ink"], roles["background"]) >= 6.95, (name, mode)  # hex rounding of the role colors
+        assert ratio(roles["ink"], roles["background"]) >= 7, (name, mode)
         for role in ("muted", "accent-text"):
             assert min(ratio(roles[role], roles["background"]), ratio(roles[role], roles["surface"])) >= 4.5, (name, mode, role)
 
