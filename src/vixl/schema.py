@@ -449,6 +449,9 @@ def _operation_schema():
     from .scene import schemas as scene_schemas
 
     scene_schemas(add)
+    from .atmosphere import schemas as atmosphere_schemas
+
+    atmosphere_schemas(add)
     from .captions import schemas as caption_schemas
 
     caption_schemas(add)
