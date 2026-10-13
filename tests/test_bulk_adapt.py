@@ -305,6 +305,22 @@ def test_adapt_copies_one_call_several_sizes(tmp_path):
     assert not (tmp_path / "x").exists()  # Validation failed before anything was written.
 
 
+def test_adapt_copies_recompose_reports_each_size(tmp_path):
+    from vixl.adapt import adapt_copies
+    from vixl.mcp_tools import export_file
+
+    session = Session(workspace=tmp_path)
+    session.create("card.vixl", 1080, 1080, "white")
+    session.apply([{"type": "layout-apply", "name": "hero-statement", "unfilled": "omit", "title": "Launch day"}])
+    result = adapt_copies(session, export_file, ["story", "youtube-thumbnail"], directory="out",
+                          options={"recompose": True}, document="card.vixl", formats=["png"], report="layers")
+    assert result["count"] == 2
+    assert [d["canvas"] for d in result["documents"]] == [[1080, 1920], [1280, 720]]
+    assert all(d["moved"] == "recomposed" and d["scale"] is None and d["layout"] == "hero-statement"
+               for d in result["documents"])
+    assert Image.open(tmp_path / "out/card-youtube-thumbnail.png").size == (1280, 720)
+
+
 def test_adapt_layout_tool_over_mcp(tmp_path):
     server = mcp_server(workspace=tmp_path)
     session = server.vixl_runtime.session
