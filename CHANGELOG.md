@@ -10,6 +10,7 @@
 - CLI output commands accept `--out` and `-o`, including batch, save and pack/unpack. Top-level help is a compact command index; `help --full` retains the detailed reference (#639).
 - A generated interface capability matrix shares the REST workflow allow-list with enforcement (#640).
 - Opaque multiply, screen, darken, lighten, difference, add and subtract blending uses native Pillow loops instead of float arrays (#585).
+- Ten vertical promo shorts ([`promo/shorts`](promo/shorts/README.md)), about 20 seconds each at 1080 × 1920: real layers, checks, every size, spreadsheet to print run, sketch to vectors, text to diagram, data-bound charts, pixel sprites, fillable forms, and motion with sound. Each runs its feature in the build and is one editable `.vixl` master with a `.vixl` score.
 - Explicit campaign `quality: "final"` selects the final check profile unless an explicit `profile` overrides it; reports name the effective profile (#563).
 
 ### Behaviour changes

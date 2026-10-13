@@ -1,0 +1,22 @@
+{
+  "output": "vixl-short-05-sketch.mp4",
+  "spec": {
+    "version": 1,
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "shots": [
+      {
+        "source": "scenes/05-sketch.vixl",
+        "duration": 19400
+      }
+    ],
+    "audio": [
+      {
+        "source": "audio/05-sketch.wav",
+        "start": 0,
+        "volume": 1.0
+      }
+    ]
+  }
+}

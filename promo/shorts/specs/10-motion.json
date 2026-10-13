@@ -1,0 +1,22 @@
+{
+  "output": "vixl-short-10-motion.mp4",
+  "spec": {
+    "version": 1,
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "shots": [
+      {
+        "source": "scenes/10-motion.vixl",
+        "duration": 19400
+      }
+    ],
+    "audio": [
+      {
+        "source": "audio/10-motion.wav",
+        "start": 0,
+        "volume": 1.0
+      }
+    ]
+  }
+}

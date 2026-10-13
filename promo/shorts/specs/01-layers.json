@@ -1,0 +1,22 @@
+{
+  "output": "vixl-short-01-layers.mp4",
+  "spec": {
+    "version": 1,
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "shots": [
+      {
+        "source": "scenes/01-layers.vixl",
+        "duration": 20200
+      }
+    ],
+    "audio": [
+      {
+        "source": "audio/01-layers.wav",
+        "start": 0,
+        "volume": 1.0
+      }
+    ]
+  }
+}

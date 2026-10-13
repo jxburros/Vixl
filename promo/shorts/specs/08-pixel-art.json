@@ -1,0 +1,22 @@
+{
+  "output": "vixl-short-08-pixel-art.mp4",
+  "spec": {
+    "version": 1,
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "shots": [
+      {
+        "source": "scenes/08-pixel-art.vixl",
+        "duration": 19000
+      }
+    ],
+    "audio": [
+      {
+        "source": "audio/08-pixel-art.wav",
+        "start": 0,
+        "volume": 1.0
+      }
+    ]
+  }
+}

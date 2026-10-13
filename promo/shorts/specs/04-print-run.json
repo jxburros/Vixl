@@ -1,0 +1,22 @@
+{
+  "output": "vixl-short-04-print-run.mp4",
+  "spec": {
+    "version": 1,
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "shots": [
+      {
+        "source": "scenes/04-print-run.vixl",
+        "duration": 19400
+      }
+    ],
+    "audio": [
+      {
+        "source": "audio/04-print-run.wav",
+        "start": 0,
+        "volume": 1.0
+      }
+    ]
+  }
+}

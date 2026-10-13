@@ -1,0 +1,22 @@
+{
+  "output": "vixl-short-06-diagram.mp4",
+  "spec": {
+    "version": 1,
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "shots": [
+      {
+        "source": "scenes/06-diagram.vixl",
+        "duration": 19000
+      }
+    ],
+    "audio": [
+      {
+        "source": "audio/06-diagram.wav",
+        "start": 0,
+        "volume": 1.0
+      }
+    ]
+  }
+}

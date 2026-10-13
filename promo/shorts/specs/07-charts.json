@@ -1,0 +1,22 @@
+{
+  "output": "vixl-short-07-charts.mp4",
+  "spec": {
+    "version": 1,
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "shots": [
+      {
+        "source": "scenes/07-charts.vixl",
+        "duration": 19200
+      }
+    ],
+    "audio": [
+      {
+        "source": "audio/07-charts.wav",
+        "start": 0,
+        "volume": 1.0
+      }
+    ]
+  }
+}

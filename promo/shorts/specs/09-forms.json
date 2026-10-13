@@ -1,0 +1,22 @@
+{
+  "output": "vixl-short-09-forms.mp4",
+  "spec": {
+    "version": 1,
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "shots": [
+      {
+        "source": "scenes/09-forms.vixl",
+        "duration": 19200
+      }
+    ],
+    "audio": [
+      {
+        "source": "audio/09-forms.wav",
+        "start": 0,
+        "volume": 1.0
+      }
+    ]
+  }
+}

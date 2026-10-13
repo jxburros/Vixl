@@ -1,0 +1,22 @@
+{
+  "output": "vixl-short-03-every-size.mp4",
+  "spec": {
+    "version": 1,
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "shots": [
+      {
+        "source": "scenes/03-every-size.vixl",
+        "duration": 19800
+      }
+    ],
+    "audio": [
+      {
+        "source": "audio/03-every-size.wav",
+        "start": 0,
+        "volume": 1.0
+      }
+    ]
+  }
+}

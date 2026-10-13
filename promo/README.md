@@ -7,7 +7,8 @@ comes from an editable Vixl document, and the soundtrack is synthesised in code.
 
 ![Contact sheet, one frame every two seconds](contact-sheet.jpg)
 
-A companion film, [*It does that?*](it-does-that/README.md), shows nine of Vixl's less obvious features.
+A companion film, [*It does that?*](it-does-that/README.md), shows nine of Vixl's less obvious features, and
+[ten vertical shorts](shorts/README.md) each show one feature in about 20 seconds.
 
 ## The cut
 
