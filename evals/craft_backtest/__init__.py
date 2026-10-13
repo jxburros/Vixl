@@ -105,3 +105,66 @@ def table(result):
         for f in flagged:
             lines.append(f"- {f['verdict']}: {f['document']} {f['code']} at {f['region']}: {f['message'][:110]}")
     return "\n".join(lines) + "\n"
+
+
+def _keys(report):
+    """The fix and review findings of a check report, by rule and layers."""
+    return {(item["rule"], tuple(item.get("layer_ids") or item.get("layers") or ()))
+            for item in report["issues"] if item.get("action") in ("fix", "review")}
+
+
+def repair(checks=None, max_iterations=20, max_candidates=200, time_budget=300):
+    """Run ``repair-layout`` on every backtest document that has composition findings and count the findings it
+    resolves while adding no fix or review finding of any check. ``checks`` defaults to vixl_check's default set,
+    so bounds, overlap, safe area and the rest guard every repair."""
+    from vixl.layout_repair import repair_layout
+
+    verdicts = {(f["document"], f["code"], tuple(f["layers"])): f["verdict"] for f in run()["findings"]}
+    rows, totals = [], {"findings": 0, "resolved": 0, "caught": 0, "caught_resolved": 0, "new": 0}
+    for name, project in documents().items():
+        before = project.check(checks=checks, waivers=False)
+        targets = [item for item in before["issues"] if item["check"] == "composition"]
+        if not targets:
+            continue
+        result = repair_layout(project, checks=checks, max_iterations=max_iterations, max_candidates=max_candidates,
+                               time_budget=time_budget, dry_run=True)
+        # The reconstructions keep failures repair cannot fix (text in the safe-area margin as the originals set
+        # it), which leave the whole plan uncommitted; its composition repairs are applied here, in plan order.
+        planned = [op for item in result["selected"] for op in item["operations"]]
+        if planned:
+            project.apply(planned)
+        after = project.check(checks=checks, waivers=False)
+        new = sorted(_keys(after) - _keys(before))
+        gone = _keys(before) - _keys(after)
+        for item in targets:
+            key = (item["rule"], tuple(item.get("layer_ids") or ()))
+            caught = verdicts.get((name, item["code"], tuple(item["layers"]))) == "true"
+            resolved = key in gone and not new
+            rows.append({"document": name, "code": item["code"], "layers": item["layers"][:4], "caught": caught,
+                         "resolved": resolved,
+                         "candidate": next((s["candidate"] for s in result["selected"] if s["rule"] == item["rule"]
+                                            and s["layers"] == item["layers"]), None),
+                         "reason": next((r["reason"] for r in result.get("reviews_remaining", [])
+                                         if r["rule"] == item["rule"] and r["layers"] == item["layers"]), None)})
+            totals["findings"] += 1
+            totals["resolved"] += resolved
+            totals["caught"] += caught
+            totals["caught_resolved"] += caught and resolved
+        totals["new"] += len(new)
+    by_code = {code: {"findings": sum(1 for r in rows if r["code"] == code),
+                      "resolved": sum(1 for r in rows if r["code"] == code and r["resolved"])} for code in CODES}
+    return {"totals": totals, "by_code": by_code, "findings": rows}
+
+
+def repair_table(result):
+    t = result["totals"]
+    lines = [f"repair-layout on the backtest: {t['resolved']} of {t['findings']} composition findings resolved "
+             f"({t['caught_resolved']} of the {t['caught']} that catch a judged defect), {t['new']} new findings", "",
+             "| Kind | findings | resolved |", "|---|---:|---:|"]
+    for code, row in result["by_code"].items():
+        lines.append(f"| {code} | {row['findings']} | {row['resolved']} |")
+    lines += ["", "Findings:"]
+    for r in result["findings"]:
+        how = r["candidate"] or r["reason"] or "-"
+        lines.append(f"- [{'x' if r['resolved'] else ' '}] {r['document']} {r['code']} {', '.join(r['layers'])}: {how}")
+    return "\n".join(lines) + "\n"

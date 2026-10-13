@@ -40,3 +40,16 @@ def test_manifest_is_complete_and_honest():
             assert defect["document"] in entry["documents"] and len(defect["region"]) == 4
         for defect in entry["out_of_scope"]:
             assert defect["kind"] and defect["what"] and defect["judges"]
+
+
+def test_repair_layout_resolves_composition_findings_on_the_backtest():
+    """Craft plan 2b: repair-layout on every backtest document with composition findings (default checks)."""
+    from evals.craft_backtest import repair, repair_table
+
+    result = repair()
+    totals = result["totals"]
+    assert (totals["findings"], totals["resolved"], totals["caught"], totals["caught_resolved"]) == (22, 19, 20, 17)
+    assert totals["new"] == 0
+    assert {code: row["resolved"] for code, row in result["by_code"].items()} == {
+        "dead_band": 3, "margin_drift": 9, "uneven_rhythm": 2, "crowding": 5, "clumped_scatter": 0}
+    assert "19 of 22 composition findings resolved" in repair_table(result)

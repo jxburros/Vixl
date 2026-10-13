@@ -209,12 +209,8 @@ def collect(candidate, resolved, geometry, content, role, ancestors, width, heig
     for block in blocks:
         if block.kind != "text":
             continue
-        x, y, w, h = block.box
-        pad = max(h, 8.0)
         for chip in blocks:
-            if (chip.kind == "shape" and id(chip) not in chips and _inside(block.box, chip.box)
-                    and chip.box[2] <= w + 3 * pad and chip.box[3] <= h + 2 * pad
-                    and chip.box[2] >= 1.5 * chip.box[3]):  # A badge or seal around initials is a mark, not a chip.
+            if chip.kind == "shape" and id(chip) not in chips and hugs(block.box, chip.box):
                 block.box = chip.box
                 chips.add(id(chip))
                 break
@@ -234,6 +230,24 @@ def collect(candidate, resolved, geometry, content, role, ancestors, width, heig
     grounds = [b for b in containers if b.box[2] * b.box[3] >= GROUND_SHARE * width * height
                and any(other.container is b for other in blocks)]
     return blocks, grounds, scatters
+
+
+def hugs(text_box, chip_box):
+    """Whether a shape is a chip around a line of text (a highlight, pill or button that hugs it, wider than tall)."""
+    w, h = text_box[2], text_box[3]
+    pad = max(h, 8.0)
+    return (_inside(text_box, chip_box) and chip_box[2] <= w + 3 * pad and chip_box[3] <= h + 2 * pad
+            and chip_box[2] >= 1.5 * chip_box[3])  # A badge or seal around initials is a mark, not a chip.
+
+
+def geometry_boxes(project):
+    """Canvas boxes of what every layer draws, as the family measures them (``checks.canvas_projection``)."""
+    from .checks import canvas_projection
+    from .render import resolve_layout, resolved_layers
+
+    resolved = {item["id"]: item for item in resolved_layers(project)}
+    local = resolve_layout(project, layers=list(resolved.values()))
+    return resolved, canvas_projection(resolved, local)["geometry_bounds"]
 
 
 def frame_of(block, grounds):
@@ -493,7 +507,7 @@ def margin_drift(blocks, unit, emit, area):
                      "them to one edge (align), or move them a clear step apart",
                      strays + anchors, _union([x.box for x in involved]), actual=round(abs(offset), 1), expected=0,
                      values={"axis": axis, "edge": round(stray_at, 1), "margin": round(margin_at, 1),
-                             "offset": round(offset, 1)},
+                             "offset": round(offset, 1), "stray_ids": [x.item["id"] for x in strays]},
                      threshold={"tolerance_px": tolerance, "window_px": round(window, 1)})
 
 
