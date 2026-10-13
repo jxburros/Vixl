@@ -106,7 +106,11 @@ Shapes, lines and pen paths support:
 
 - `dash`: positive dash/gap lengths, or `dashed`/`dotted`; `dash_offset` moves the pattern.
 - `line_cap`: `butt`, `round`, `square`; `line_join`: `miter`, `round`, `bevel`; `miter_limit`.
-- `stroke_align`: `center`, `inside`, `outside`. Alignment is meaningful for closed contours.
+- `stroke_align`: `center`, `inside`, `outside`, relative to the outline. Alignment is meaningful for closed contours.
+  Without any of these stroke fields a plain shape keeps its stroke inside its box, in every renderer
+  and export: rectangles, rounded rectangles, capsules and ellipses are drawn in the box inset by half the
+  stroke, with the stroke inward from there; polygons, stars and lines put the stroke's centre line half
+  a stroke in. Paths are stroked on their outline, so half the stroke can reach past the box.
 - `strokes`: additional ordered `{color,width,stroke_align,...}` records, painted after the base stroke.
 - `width_profile`: increasing `[fraction,width_multiplier]` points from fraction 0 to 1.
   `taper_start` and `taper_end` are endpoint multipliers, interpolated to full width at the midpoint.

@@ -186,27 +186,48 @@ class Exporter:
             return
         if trim_range(layer):
             return self.trimmed(parent, layer, attrs)
+        from .geometry import PATH_SHAPES, ROUNDED_BOXES, placed_path, stroke_inset
+
         sw, sh = layer["width"], layer["height"]
         shape = layer.get("shape", "rectangle")
-        if shape in ("rectangle", "rounded-rectangle", "capsule"):
+        # The raster renderer's stroke rule (geometry.stroke_inset), so the stroke lands where PNG,
+        # PDF and PowerPoint draw it.
+        inset, pad = stroke_inset(layer, attrs["stroke_opacity"] > 0)
+        if pad and shape not in (*PATH_SHAPES, "line") and 2 * pad >= min(sw, sh) - 1:
+            return  # No room inside the box for the stroke: the raster renderer draws nothing.
+        if shape in ROUNDED_BOXES and (sw - 2 * inset <= 0 or sh - 2 * inset <= 0):
+            # The inward stroke covers the whole inset box.
+            box = {"x": pad, "y": pad, "width": sw - 2 * pad, "height": sh - 2 * pad}
+            if shape == "ellipse":
+                node(parent, "ellipse", cx=sw / 2, cy=sh / 2, rx=sw / 2 - pad, ry=sh / 2 - pad, fill=attrs["stroke"],
+                     fill_opacity=attrs["stroke_opacity"])
+            else:
+                node(parent, "rect", **box, fill=attrs["stroke"], fill_opacity=attrs["stroke_opacity"])
+        elif shape in ("rectangle", "rounded-rectangle", "capsule"):
+            radius = layer.get("radius", min(sw, sh) / (2 if shape == "capsule" else 5)) if shape != "rectangle" else 0
             node(
                 parent,
                 "rect",
-                width=sw,
-                height=sh,
-                rx=layer.get("radius", min(sw, sh) / (2 if shape == "capsule" else 5))
-                if shape != "rectangle"
-                else 0,
+                **({"x": inset, "y": inset} if inset else {}),
+                width=sw - 2 * inset,
+                height=sh - 2 * inset,
+                rx=max(0, radius - pad) if radius else 0,
                 **attrs,
             )
         elif shape == "ellipse":
-            node(parent, "ellipse", cx=sw / 2, cy=sh / 2, rx=sw / 2, ry=sh / 2, **attrs)
+            node(parent, "ellipse", cx=sw / 2, cy=sh / 2, rx=sw / 2 - inset, ry=sh / 2 - inset, **attrs)
         elif shape == "line":
             attrs.update(
                 stroke=attrs["stroke"] if attrs["stroke_opacity"] else attrs["fill"],
                 stroke_opacity=attrs["stroke_opacity"] or attrs["fill_opacity"],
             )
-            node(parent, "line", x1=0, y1=0, x2=sw, y2=sh, **attrs)
+            node(parent, "line", x1=inset, y1=inset, x2=sw - inset, y2=sh - inset, **attrs)
+        elif shape not in PATH_SHAPES:
+            # Polygons, stars and shortcuts: outline in pixels (the stroke keeps its pixel width in any
+            # box) with round joins, as the raster renderer draws them.
+            path, view = shape_path(layer)
+            node(parent, "path", d=placed_path(path, view, (inset, inset, sw - 2 * inset, sh - 2 * inset)),
+                 **({"stroke_linejoin": "round", "stroke_linecap": "round"} if pad else {}), **attrs)
         else:
             from .geometry import path_overflows
 

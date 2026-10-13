@@ -7,7 +7,7 @@ Widths and dash distances are measured in local pixels, independent of path view
 import math
 
 from .errors import require
-from .geometry import OPEN_SHAPES
+from .geometry import OPEN_SHAPES, PATH_SHAPES
 from .geometry import default_fill
 
 FIELDS = (
@@ -414,6 +414,9 @@ def primitives(layer, project=None):
     """Ordered (filled path, paint) primitives in the layer's pixel coordinate space."""
     from .vector_paths import pixel_path
 
+    plain = plain_inset(layer, project)
+    if plain is not None:
+        return plain
     path = pixel_path(layer)
     if project is not None and layer.get("_distort_groups"):
         from .vector_paths import group_warp
@@ -431,6 +434,53 @@ def primitives(layer, project=None):
 
             stroke_path = group_warp(stroke_path, layer, project)
     return result + expanded(layer, stroke_path)
+
+
+def plain_inset(layer, project=None):
+    """The primitives of a plain rectangle, ellipse, polygon or line with a visible stroke (one drawn
+    here only for its fractional size), placed by the stroke rule every renderer shares
+    (``geometry.stroke_inset``); None for other layers."""
+    from .shape_catalog import active as catalog_active
+    from .geometry import PATH_SHAPES, ROUNDED_BOXES, placed_path, shape_path, stroke_inset
+    from .vector_paths import pixel_path
+
+    shape = layer.get("shape")
+    if (shape in PATH_SHAPES or active(layer) or catalog_active(layer) or layer.get("distort")
+            or layer.get("_distort_groups")):
+        return None
+    stroke = layer.get("stroke", "transparent")
+    if project is not None:
+        from .design import resolve_color
+        from .render import color
+
+        visible = color(resolve_color(stroke, project.state))[3] > 0
+    else:
+        visible = stroke != "transparent"
+    inset, pad = stroke_inset(layer, visible)
+    if not pad:
+        return None
+    w, h = layer["width"], layer["height"]
+    if shape != "line" and 2 * pad >= min(w, h) - 1:
+        return []  # No room inside the box for the stroke: nothing is drawn.
+    box = (inset, inset, w - 2 * inset, h - 2 * inset)
+    if shape in ROUNDED_BOXES:
+        if box[2] <= 0 or box[3] <= 0:
+            # The inward stroke covers the whole box inset by half the stroke.
+            band = {**layer, "width": w - 2 * pad, "height": h - 2 * pad}
+            return [(placed_path(pixel_path(band), (1, 1), (pad, pad, 1, 1)), stroke)]
+        inner = {**layer, "width": box[2], "height": box[3]}
+        if shape in ("rounded-rectangle", "capsule"):
+            inner["radius"] = max(0, layer.get("radius", min(w, h) / (2 if shape == "capsule" else 5)) - pad)
+        path = placed_path(pixel_path(inner), (1, 1), (inset, inset, 1, 1))
+        styled = layer
+    elif shape == "line":
+        path = f"M {inset} {inset} L {w - inset} {h - inset}"
+        styled = layer
+    else:
+        outline, view = shape_path(layer)
+        path = placed_path(outline, view, box)
+        styled = {**layer, "line_join": "round", "line_cap": "round"}
+    return ([] if shape in OPEN_SHAPES else [(path, default_fill(layer))]) + expanded(styled, path)
 
 
 def render(project, layer, size=None, matrix=None):
@@ -495,6 +545,9 @@ def margin(layer):
     from .geometry import path_overflows
 
     if not (path_overflows(layer) or active(layer) or catalog_active(layer) or layer.get("distort") or layer.get("_distort_groups")):
+        visible = layer.get("stroke", "transparent") != "transparent" and layer.get("stroke_width", 1) > 0
+        if visible and layer.get("shape") in PATH_SHAPES:
+            return native_stroke_margin(layer)
         width = layer.get("stroke_width", 0) if layer.get("stroke", "transparent") != "transparent" else 0
         return math.ceil(width / 2), math.ceil(width / 2)
     mx, my = path_margin(primitives(layer), layer["width"], layer["height"])
@@ -505,6 +558,23 @@ def margin(layer):
         mx += math.ceil(extra)
         my += math.ceil(extra)
     return mx, my
+
+
+def native_stroke_margin(layer):
+    """Whole pixels ``(mx, my)`` by which a path or arc drawn with a native SVG stroke (stroke width in
+    its view units, miter limit 4) reaches past its box: the raster image holds all of it, as the SVG
+    and PDF exports draw it."""
+    from .geometry import path_extents, shape_path
+
+    path, view = shape_path(layer)
+    w, h = layer["width"], layer["height"]
+    sx, sy = w / view[0], h / view[1]
+    cap = layer.get("line_cap")
+    # A miter join reaches up to the miter limit (4) times half the stroke; a square cap sqrt(2) times.
+    reach = layer.get("stroke_width", 1) / 2 * (1 if cap == "round" else 4)
+    x0, y0, x1, y1 = path_extents(path)
+    return (math.ceil(max(0, reach * sx - x0 * sx, x1 * sx + reach * sx - w)),
+            math.ceil(max(0, reach * sy - y0 * sy, y1 * sy + reach * sy - h)))
 
 
 def clip_run(points, fractions, start, end):

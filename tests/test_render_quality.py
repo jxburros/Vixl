@@ -94,12 +94,13 @@ def test_rotated_text_is_drawn_from_its_outlines():
     {"type": "shape", "shape": "rounded-rectangle", "width": 30, "height": 20, "radius": 6, "fill": "#a00"},
 ])
 def test_vector_redraw_in_place_reproduces_the_drawn_layer(op):
-    from vixl.render import layer_image
+    from vixl.render import layer_ink
 
     p = Project(100, 60, "#ffffff")
     p.apply([{**op, "name": "v", "x": 5, "y": 5}])
     layer = next(item for item in resolved_layers(p) if item["name"] == "v")
-    drawn = layer_image(p, layer, (5, 5, math.ceil(layer["width"]), math.ceil(layer["height"])))
+    # The drawn image includes what reaches past the box (a path's stroke); the redraw maps its pixels.
+    drawn = layer_ink(p, layer, (5, 5, math.ceil(layer["width"]), math.ceil(layer["height"])))
     again = vector_drawing(p, layer)(drawn.size, (1, 0, 0, 1, 0, 0))
     assert np.array_equal(np.asarray(drawn), np.asarray(again))
 

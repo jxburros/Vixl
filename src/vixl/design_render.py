@@ -174,8 +174,9 @@ def shape_image(project, layer):
 
 
 def svg_shape_image(project, layer, size=None, matrix=None):
-    """A path shape (``svg_shape``) as an RGBA image of its box; ``size`` and ``matrix`` draw it into an
-    image of ``size``, mapped by the affine ``matrix`` from box pixels (see ``text.render_text``)."""
+    """A path shape (``svg_shape``) as an RGBA image of its box, plus the margin its stroke reaches past
+    it (centred on the box); ``size`` and ``matrix`` draw it into an image of ``size``, mapped by the
+    affine ``matrix`` from that image's pixels (see ``text.render_text``)."""
     # SVG's nonzero winding preserves holes in compound imported logo paths (and donut rings).
     import xml.etree.ElementTree as ET
     from .colors import parse, hex_of
@@ -185,13 +186,36 @@ def svg_shape_image(project, layer, size=None, matrix=None):
     w, h = layer["width"], layer["height"]
     path, view = shape_path(layer)
     box = {"width": str(w), "height": str(h), "viewBox": f"0 0 {view[0]} {view[1]}", "preserveAspectRatio": "none"}
+    stroked = layer.get("stroke_width", 1) > 0 and parse(resolve_color(layer.get("stroke", "transparent"), project.state))[3] > 0
+    margin = (0, 0)
+    if stroked:
+        from .vector_strokes import native_stroke_margin
+
+        margin = native_stroke_margin(layer)
+    frame = None
+    if any(margin):
+        # The stroke is centred on the path, so it reaches past the box: the image is the box plus that
+        # margin (centred, as vector_strokes.render draws it) rather than cutting the stroke's outer half.
+        mx, my = margin
+        own = (max(1, math.ceil(w)) + 2 * mx, max(1, math.ceil(h)) + 2 * my)
+        frame = {"width": str(own[0]), "height": str(own[1]),
+                 "viewBox": f"{-mx - (math.ceil(w) - w) / 2} {-my - (math.ceil(h) - h) / 2} {own[0]} {own[1]}"}
     if matrix is None:
-        root = parent = ET.Element("svg", xmlns="http://www.w3.org/2000/svg", **box)
+        if frame:
+            project.limits.size(int(frame["width"]), int(frame["height"]))
+            root = ET.Element("svg", xmlns="http://www.w3.org/2000/svg", **frame)
+            parent = ET.SubElement(root, "svg", overflow="visible", **box)
+        else:
+            root = parent = ET.Element("svg", xmlns="http://www.w3.org/2000/svg", **box)
     else:
         from .vector_raster import placed
 
         root = ET.Element("svg", xmlns="http://www.w3.org/2000/svg", width=str(size[0]), height=str(size[1]))
-        parent = ET.SubElement(placed(root, matrix, ns=""), "svg", overflow="visible", **box)
+        parent = placed(root, matrix, ns="")
+        if frame:
+            # ``matrix`` maps from the pixels of the image drawn above, margin included.
+            parent = ET.SubElement(parent, "svg", overflow="visible", **frame)
+        parent = ET.SubElement(parent, "svg", overflow="visible", **box)
     attrs = {"d": path}
     for field, value in (("fill", default_fill(layer)), ("stroke", layer.get("stroke", "transparent"))):
         rgba = parse(resolve_color(value, project.state))
@@ -212,7 +236,10 @@ def svg_shape_image(project, layer, size=None, matrix=None):
         return painted(ET.tostring(root, encoding="unicode"),
                        tuple(round(min(max(c, 0.0), 1.0) * 255) for c in paint))
     ET.SubElement(parent, "path", attrs)
-    return rasterize(ET.tostring(root, encoding="unicode"))
+    image = rasterize(ET.tostring(root, encoding="unicode"))
+    if frame and matrix is None:
+        image.info["vixl_vector_overflow"] = True
+    return image
 
 
 OUTLINES = ("rounded-rectangle", "capsule", "ellipse")

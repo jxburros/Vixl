@@ -51,6 +51,7 @@ Vixl is pre-release with no users to protect, so code that existed only to repro
 
 - Footer-rule clearance no longer pushes the cta button out of the safe area on small banners.
 - Dark-mode ink reaches the 7:1 target on saturated palettes (candy came out at 6.99:1): when the ink steps run out, it snaps to pure white or black, which the background wash was sized for.
+- Strokes land in the same place in PNG, SVG, PDF and PowerPoint. The SVG export stroked rectangles, ellipses and polygons on the box edge, a stroke width away from the other renderers; it now insets them as PNG, PDF and PowerPoint do (and keeps polygon strokes their pixel width in any box). Plain shapes at fractional sizes follow the same rule in PNG, and PDF rectangles keep square corners. PNG no longer cuts the outer half of a path's stroke at the layer box. Render parity finding 15.
 
 ### Finishing pass in the agent loop
 

@@ -394,7 +394,8 @@ class PageBuilder:
                     geometry += [f"{_fmt(px)} {_fmt(py)} l" for px, py in points[1:]]
                     geometry.append("h")
         self.fill_ops(geometry, fill, opacity)
-        self.stroke_ops(geometry, stroke, width, opacity, 1, 1)
+        # Rectangles keep square corners (as the raster renderer draws them); polygons join round.
+        self.stroke_ops(geometry, stroke, width, opacity, 1, 0 if shape == "rectangle" else 1)
 
     def text(self, layer, opacity):
         """Draw a text layer's glyphs as embedded-font text (or outlines when a font cannot be

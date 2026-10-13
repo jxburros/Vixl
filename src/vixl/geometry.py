@@ -68,6 +68,37 @@ PATH_SHAPES = ("path", "arc")
 OPEN_SHAPES = ("line", "wave", "zigzag", "sawtooth", "square-wave", "dashed-line", "scribble", "squiggle", "swash-underline")
 
 
+ROUNDED_BOXES = ("rectangle", "rounded-rectangle", "capsule", "ellipse")
+
+
+def stroke_inset(layer, stroke_visible):
+    """``(inset, pad)``: how far every renderer pulls a plain shape's outline into its box before
+    stroking it on the centre of that outline, and half the stroke width.
+
+    A plain shape (no styled-stroke fields, catalog geometry or distortion; those stroke the box edge)
+    keeps its stroke inside the box. Rectangles, rounded rectangles, capsules and ellipses draw the
+    whole shape in the box inset by half the stroke and the stroke inward from that edge, so the
+    outline sits a full stroke width in (a rounded corner's radius shrinks by ``pad``). Polygons,
+    stars and lines put the outline half a stroke in. Paths and arcs use their own coordinates (an arc
+    builds the inset into its path), so their outline is not moved."""
+    width = layer.get("stroke_width", 1)
+    pad = width / 2 if stroke_visible and width > 0 else 0
+    shape = layer.get("shape", "rectangle")
+    if shape in PATH_SHAPES:
+        return 0, pad
+    return (2 * pad if shape in ROUNDED_BOXES else pad), pad
+
+
+def placed_path(path, view, box):
+    """``path`` (in a ``view`` of ``(w, h)``) as absolute path data stretched onto ``box`` ``(x, y, w, h)``."""
+    from .pathfinder_geometry import path_data
+
+    x, y, w, h = box
+    sx, sy = w / view[0], h / view[1]
+    return path_data([(cmd, [x + v * sx if i % 2 == 0 else y + v * sy for i, v in enumerate(values)])
+                      for cmd, values in parse_path(path)])
+
+
 def is_open_shape(layer):
     if layer.get("shape") in OPEN_SHAPES:
         return True

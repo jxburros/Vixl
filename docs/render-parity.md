@@ -40,7 +40,7 @@ Numbers below are 0-255 levels unless marked; "exact" is the supersampled refere
 | 12 | Image downscaling | Lanczos with the anti-ring clamp removes detail past the output's Nyquist limit: 3 px stripes shown at 1/4 keep 6.1 levels of aliasing vs 52 in Chromium and in a plain area average. Vixl is the better of the two here. | None | No defect |
 | 13 | Gradient endpoints | Vixl puts the end colours on the first and last pixel centres, CSS on the box edges: at most half a level. Radial gradients agree within 2 levels. | None | Legitimate difference |
 | 14 | Hairlines | 0.5-2 px strokes on and off the grid match exact coverage (1.35 rms; Chromium 0.79); the remainder is finding 5. | None | No defect |
-| 15 | Export consistency | Found in passing: the SVG export strokes rectangles, ellipses and polygons on the box edge, while PNG and PDF stroke a box inset by half the stroke, so the stroke lands one stroke width apart. PNG also cuts the outer half of a path's stroke where it meets the layer box; SVG and PDF draw it. | Medium | Open (SVG export) |
+| 15 | Export consistency | Found in passing: the SVG export strokes rectangles, ellipses and polygons on the box edge, while PNG and PDF stroke a box inset by half the stroke, so the stroke lands one stroke width apart. PNG also cuts the outer half of a path's stroke where it meets the layer box; SVG and PDF draw it. | Medium | Fixed |
 
 ## What was fixed
 
@@ -59,10 +59,30 @@ Numbers below are 0-255 levels unless marked; "exact" is the supersampled refere
   exact. Banding 0.23 -> 0.012, longest flat run 43 -> 13 px. Linear gradients now compute every pixel:
   a 2400 x 2400 ramp takes about 0.1 s instead of 3 ms. Tests: `tests/test_render_quality.py`.
 
+- **One stroke rule in every export** (15). PNG, PDF and PowerPoint already shared a rule
+  (`geometry.stroke_inset`): a plain shape keeps its stroke inside its box. Rectangles, rounded
+  rectangles, capsules and ellipses are drawn in the box inset by half the stroke with the stroke inward
+  from there (the stroke covers half a stroke to one and a half strokes in from the box edge); polygons,
+  stars and lines put the stroke's centre line half a stroke in; paths and arcs are stroked on their
+  own outline (an arc builds the inset into its path). Keeping that rule, rather than moving three
+  renderers to centred strokes, leaves existing documents unchanged. The SVG export now writes the same
+  inset geometry, with polygon outlines in pixels so a stroke keeps its width in any box; plain shapes at
+  fractional sizes (drawn from filled stroke outlines in PNG) use the rule too; PDF rectangles keep square
+  corners. Shapes with styled strokes (`stroke_align`, dashes, profiles, markers), catalog shapes and
+  distortion stroke their outline as `stroke_align` says (centred by default) in every renderer, as
+  before. PNG draws a path's or arc's whole stroke: the image holds the box plus the margin the stroke
+  reaches past it (miter joins and caps included), instead of cutting the stroke at the box. Measured on
+  a 10 px stroke: ink boxes and stroke edges in PNG, SVG (resvg) and PDF (pdfium) within 1 px for
+  rectangles, rounded rectangles, ellipses, polygons, stars, lines and open and closed paths, at whole
+  and fractional sizes (before: SVG 10 px out on rectangles and ellipses, PNG paths cut by 3-5 px).
+  Tests: `tests/test_stroke_placement.py`.
+
 Golden images regenerated for the intended changes: `blend_modes`, `chart_line`, `groups`,
 `shapes_and_strokes`, `effect_blur_shadow_glow` (ellipses and rounded shapes drawn from the outline),
 `irregular_torn` (a turned path drawn in place), `gradients`, `gradient_to_transparent`,
-`effect_lookup_lut` (dither, at most 2 levels).
+`effect_lookup_lut` (dither, at most 2 levels); for finding 15, `path_stroke_only` and
+`path_open_default_fill` (whole path strokes), `path_stroke_only.pdf` and `shapes_and_strokes.pdf`
+(square rectangle corners) and the `shapes_and_strokes`, `path_stroke_only` and `groups` SVG snapshots.
 
 ## What remains
 
@@ -72,9 +92,6 @@ Golden images regenerated for the intended changes: `blend_modes`, `chart_line`,
   keep resvg and revisit only if print-resolution exports show it.
 - **Text contrast (6).** A luminance-dependent text gamma, as Skia applies, would make small light-on-dark
   text heavier. It is a look, not a correctness fix; it would need a design decision and new goldens.
-- **Export stroke geometry (15).** Make the SVG export inset rectangle, ellipse and polygon strokes as PNG
-  and PDF do (or move all three to centred strokes, with a migration note), and stop the PNG renderer
-  from cutting path strokes at the layer box. Owned by the SVG export work in progress.
 - Mirrored groups: a turned layer inside a mirrored group is rasterized in the mirrored frame, and
   resvg's anti-aliasing is not mirror-symmetric, so edge pixels can differ by up to 16 levels from the
   same layer outside the group.
