@@ -382,7 +382,7 @@ AI-provider features (generate, inpaint, segmentation, OCR, plan) are in
 [references/ai.md](references/ai.md).
 
 Check availability first: `vixl --version` (CLI) or call `vixl_workspace_list` (MCP). Install from
-source with `pip install -e ".[server,mcp]"` (Python ≥ 3.11); Windows users use the installer.
+source with `pip install -e ".[server]"` (Python ≥ 3.11); Windows users use the installer.
 Set `VIXL_NO_UPDATE=1` in automation so the Windows auto-updater never runs mid-task.
 A slow render? `check --checks cost` names the costly layer; `VIXL_PROFILE=1` adds a `render_profile`
 (per-layer times, cache hits) to every result. `vixl cache info|clear` manages the disk render cache
