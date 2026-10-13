@@ -348,8 +348,6 @@ See [resources](references/resources.md) for the new MCP tools and CLI/operation
 and a tool's rarer options with `vixl_reference('vixl_export')` (any tool name). Unadvertised arguments go into
 `options`, and an error returns the schema it expected. HTTP clients can use `--http` at `/mcp` with the configured bearer token.
 Read `vixl_document(action='notes')` before revising a document and resolve notes after addressing them.
-When `vixl_document(action='open')` returns `upgrade`, the document predates 0.21: review the listed layers and
-open it again with `upgrade="pin-fills"` (old white fills) or `"accept"`.
 Humans can follow progress with `vixl -p DOCUMENT view`.
 
 Workspace `brand.json` provides default palette roles (plus `palette.extra` approved colours), pairing/embedded

@@ -28,8 +28,7 @@ repository (https://github.com/jxburros/VixlExamples); add new ones there and li
 - **Geometry.** One anchor table (`geometry.ANCHORS`, `canonical_anchor`), one Bezier evaluator (`geometry.bezier_points`),
   one number formatter (`geometry.compact_number`). Open shapes and paths with a stroke and no fill stay unfilled in
   every renderer: use `geometry.OPEN_SHAPES` and `default_fill(layer)`, do not re-derive it.
-- **Guidance.** Craft guidance texts live in one registry, `guidance.py`; `vixl_guide`, `vixl_resource_get` and
-  `vixl_capabilities` all read it. Do not add a second copy. Tool descriptions must not mention unknown `vixl_*` names
+- **Guidance.** Craft guidance texts live in one registry, `guidance.py`; `vixl_reference` reads it. Do not add a second copy. Tool descriptions must not mention unknown `vixl_*` names
   (a test checks docs and skills).
 - **Effects.** Effects run in the layer's own frame before flip/rotate/skew (`render.layer_effects`); LUT lookups are
   ordinary stack effects.

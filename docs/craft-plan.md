@@ -91,7 +91,7 @@ In order. Each item names the evidence it answers.
 
 | Item | What | C | P |
 | --- | --- | --- | --- |
-| 4a | **Balanced wrap** (`wrap: "balance"`) for headings and short text, and a runt rule (no one-word last line) for body text on single layers. Default for headings in the next house style version, following the #430 policy (T09 story breaks, T14 "waves break / stone / alone") | 3 | 4 |
+| 4a | **Balanced wrap** (`wrap: "balance"`) for headings and short text, and a runt rule (no one-word last line) for body text on single layers. Default for headings in the house style, following the #430 policy (T09 story breaks, T14 "waves break / stone / alone") | 3 | 4 |
 | 4b | **Tab stops and dot leaders** (BLK-07): tab stops on text and a `leader` option on table columns, so menus and price lists stop drawing leaders by hand (T16) | 3 | 3 |
 | 4c | **Accent words in layouts:** a headline slot takes `accent: ["Winter"]` and styles the match with the accent swatch through the existing span styling (the two-tone headlines that won T09 and T03) | 2 | 3 |
 

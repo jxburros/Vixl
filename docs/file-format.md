@@ -72,7 +72,6 @@ are stored uncompressed (they are already compressed); `project.json` and fonts 
 | --- | --- |
 | `format_version` | Archive format version. Vixl writes 2 and reads 1 and 2; any other value is refused. |
 | `vixl_version` | The Vixl release that saved the file (informational). |
-| `upgraded_from` | Present while a document made by an older release keeps that release's rendering until `vixl upgrade` accepts the new one. |
 | `state` | The current document: the canvas, layers and every document-level resource. It is always equal to the state of the `head` revision. |
 | `nodes`, `head`, `branches`, `checkpoints`, `current_branch`, `redo_stack`, `transaction` | The [history](#history). |
 | `asset_hashes` | `member name → SHA-256` for every other archive member. |

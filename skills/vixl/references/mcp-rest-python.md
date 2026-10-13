@@ -60,7 +60,7 @@ pages), `max_pages` (export a page range, then the next) or `max_concurrent` (wa
 | --- | --- | --- |
 | `inspect` (default) | `target`, `object`, `verbose` | Canvas + one entry per layer with `bounds`; `verbose`: every field (with `resolved_bounds`); `object`: one object's tree (`"*"` all) |
 | `create` | **`path`**, `size` or `width`+`height` or `purpose` (none: 1080×1080), `background`, `dpi`, `orientation`, `bleed`, `seed`, `variety`, `font_pairing`, `workspace_fonts=true`, `template` (+ `variables`) | Creates + activates (and creates missing directories); refuses existing files. Rolls `design_defaults`; without `background` the canvas is the palette background (transparent for logo/icon/favicon sizes and mark purposes); installs the rolled font pairing (cache, then network). `creation` reports the choices (`verbose` adds the whole rolled direction) |
-| `open` | **`path`**, `upgrade` | Activates an existing `.vixl`; other open documents stay open (up to 8). A document saved before 0.21 lists affected layers under `upgrade`; pass `upgrade="pin-fills"` to restore the white fills or `"accept"` to keep the new look |
+| `open` | **`path`** | Activates an existing `.vixl`; other open documents stay open (up to 8). |
 | `close` | `document` | Drops a document from the session (edits are already saved) |
 | `list` | `path="."`, `offset=0`, `limit=100` (≤200) | `entries[{path,directory?}]`, `active`, `open`, `next_offset` |
 | `history` | `offset`, `limit=20` | Newest-first revision summaries, head, branches, checkpoints |

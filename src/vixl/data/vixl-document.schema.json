@@ -16,10 +16,6 @@
    "type": "string",
    "description": "Vixl release that saved the file."
   },
-  "upgraded_from": {
-   "type": "string",
-   "description": "Older Vixl release whose rendering the document kept until the upgrade is accepted (vixl upgrade)."
-  },
   "state": {
    "$ref": "#/$defs/state",
    "description": "The current document state (the history head)."
@@ -1738,7 +1734,7 @@
     },
     "name": {
      "type": "string",
-     "description": "Effect name (blur, grain, lookup …; vixl_operation_schema lists them)."
+     "description": "Effect name (blur, grain, lookup …; vixl_reference('operations') lists them)."
     },
     "enabled": {
      "type": "boolean",

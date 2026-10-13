@@ -73,9 +73,6 @@ def batch_error(errors):
 
 
 class Project:
-    # The older Vixl version that saved this document, kept across saves until the upgrade is accepted
-    # (vixl upgrade); see upgrade.py.
-    upgraded_from = None
 
     def __init__(self, width=None, height=None, background=None, *, purpose=None, seed=None, variety=None,
                  workspace_fonts=True, limits=None, workspace=None):
@@ -990,7 +987,6 @@ class Project:
         return {
             "format_version": FORMAT_VERSION,
             "vixl_version": __version__,
-            **({"upgraded_from": self.upgraded_from} if self.upgraded_from else {}),
             "state": self.state,
             "nodes": self.nodes,
             "head": self.head,
@@ -1142,11 +1138,6 @@ class Project:
                     "transaction",
                 ):
                     setattr(project, key, metadata[key])
-                from .upgrade import predates_render_changes
-
-                saved = metadata.get("vixl_version")
-                project.upgraded_from = metadata.get("upgraded_from") or (
-                    (saved or "unknown") if predates_render_changes(saved) else None)
                 project.assets = {n: archive.read(n) for n in names if n != "project.json"}
                 hashes = metadata["asset_hashes"]
                 require(set(hashes) == set(project.assets), "Asset manifest mismatch", "invalid_project")

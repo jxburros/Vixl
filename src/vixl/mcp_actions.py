@@ -183,7 +183,7 @@ def terse_document(summary):
                                  if k in creation},
                               **({"fonts": {k: fonts[k] for k in ("pairing", "heading", "body", "installed")
                                             if k in fonts}} if fonts else {})}
-    for key in ("template", "upgrade", "typography", "font_pairing_error", "workspace_fonts"):
+    for key in ("template", "typography", "font_pairing_error", "workspace_fonts"):
         if summary.get(key):
             result[key] = summary[key]
     if isinstance(result.get("typography"), dict):
@@ -277,13 +277,10 @@ def document_create(
 @action("vixl_document", "open")
 def document_open(
     ctx, path: str,
-    upgrade: Annotated[Literal["accept", "pin-fills"] | None, Field(
-        description="For a document saved by an older Vixl that lists layers under 'upgrade': 'accept' keeps the new "
-                    "rendering; 'pin-fills' also restores the white fill of open stroked shapes")] = None,
     verbose: Verbose = False,
 ):
     """Open and activate an existing .vixl file; other open documents stay available."""
-    opened = ctx.session.open(path, upgrade=upgrade)
+    opened = ctx.session.open(path)
     return opened if verbose else terse_document(opened)
 
 

@@ -27,7 +27,6 @@ Usage: vixl [--project FILE] [--json] COMMAND ...
 Documents: pack SOURCE_FOLDER OUTPUT.vixl, unpack PROJECT.vixl SOURCE_FOLDER,
            new SIZE|NAME [-o FILE] [--background COLOR] [--dpi N] [--landscape] [--bleed],
            open FILE, save [FILE]   (NAME: letter, a4, business-card, instagram-portrait, favicon …)
-           upgrade FILE [--report] [--pin-fills]   (a document saved before 0.21: what renders differently)
 Inspect:   status, inspect [LAYER], describe, layers, effects [LAYER], manifest,
            dependencies, reproduce --check, schema [OPERATION…] (one operation's fields, e.g. schema particles)
 Layers:    add FILE --name NAME, solid --color COLOR, gradient --start A --end B,
@@ -128,7 +127,7 @@ Finish:    look LAYER NAME [--color C] [--amount 0-1] [--remove]  (clean-flat, s
 Styles:    styles [list [QUERY] | show NAME | apply NAME [--palette] | check [NAME]], style-set NAME… [--options JSON],
            check --checks style [--style NAME…] (premade rules for swiss, brutalist, minimalist, art-deco …)
 Dice:      roll [--apply] [--set title=…] [--for poster] [--mood M] [--size NAME] [--seed N|random] [--lock palette=sage]
-           [--variety low|medium|high] [--unfilled omit|blank] [--house-style 1|2|3], house [show PURPOSE] (the house style)
+           [--variety low|medium|high] [--unfilled omit|blank], house [show PURPOSE] (the house style)
 Brand:     brand validate [--preset NAME] (missing roles, fonts, logos), brand show [--preset NAME]; workflow brand-board
 Color:     color [info] COLOR…, color convert COLOR --to oklch|cmyk|…, color harmony COLOR --scheme triadic,
            color scale COLOR | A B [--count N], color mix A B, color contrast FG BG, color names QUERY,
@@ -169,7 +168,7 @@ HELP = """Vixl — a headless design engine for AI agents.
 Usage: vixl [--project FILE] [--json] COMMAND ...
        vixl                         Interactive editing shell
 
-Documents: new, open, save, pack, unpack, upgrade
+Documents: new, open, save, pack, unpack
 Inspect:   status, inspect, layers, manifest, schema [OPERATION…], dependencies
 Create:    add, shape, text, gradient, organic, diagram, chart, table
 Edit:      move, resize, rotate, group, ungroup, mask, effect
@@ -471,7 +470,7 @@ def _dispatch(argv):
     if cmd == "catalog":
         from .catalog import cli as catalog_cli
         return catalog_cli(args), options.json
-    if cmd in ("open", "schema", "upgrade") and any(arg in ("--help", "-h") for arg in args):
+    if cmd in ("open", "schema") and any(arg in ("--help", "-h") for arg in args):
         return command_help(cmd, args), options.json
     if cmd in ("commands", "shapes"):
         from .operations import OPERATION_TYPES
@@ -502,7 +501,7 @@ def _dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "pack unpack new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates cache commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house brand emoji capabilities catalog objects".split()
+                        "pack unpack new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates cache commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house brand emoji capabilities catalog objects".split()
                     )
                 )
             }
@@ -643,11 +642,8 @@ def _dispatch(argv):
         ), options.json
     if cmd == "open":
         require(len(args) == 1, "Use open FILE")
-        from .upgrade import report
-
         project = Project.load(args[0], limits=limits, allow_linked=options.allow_linked)
         remember(args[0])
-        notice = report(project.state, project.upgraded_from) if project.upgraded_from else None
         return (
             project.inspect()
             if options.detail == "full"
@@ -656,26 +652,8 @@ def _dispatch(argv):
                 "canvas": project.state["canvas"],
                 "layers": len(project.state["layers"]),
                 "head": project.head,
-                **({"upgrade": notice} if notice else {}),
             }
         ), options.json
-    if cmd == "upgrade":
-        from .upgrade import upgrade
-
-        p = Parser(prog="vixl upgrade")
-        p.add_argument("file", nargs="?", help="Document (default: the current one)")
-        p.add_argument("--report", action="store_true", help="Only list what renders differently; change nothing")
-        p.add_argument("--pin-fills", action="store_true",
-                       help="Give open stroked shapes the explicit white fill they rendered with before 0.21")
-        a = p.parse_args(args)
-        require(not (a.report and a.pin_fills), "--report changes nothing; leave out --pin-fills")
-        path = current_path(a.file or options.project)
-        with file_lock(str(path)):
-            project = Project.load(path, limits=limits, allow_linked=options.allow_linked)
-            result = upgrade(project, pin_fills=a.pin_fills, accept=not a.report)
-            if not a.report and result["upgraded_from"]:
-                project.save()
-        return {"path": str(project.path), **result}, options.json
     if cmd == "schema":
         from .schema import operation_schema
         if args == ["document"]:
@@ -789,7 +767,6 @@ def command_help(cmd, args):
 
     manual = {
         "open": "open FILE",
-        "upgrade": "upgrade [FILE] [--report] [--pin-fills]",
         "schema": "schema [OPERATION…]  (no argument: the whole operation-batch schema; "
                   "schema particles pivot: just those operations' fields, types and descriptions; aliases accepted; "
                   "schema document: the JSON Schema of a .vixl file's project.json)",
@@ -822,7 +799,7 @@ def command_help(cmd, args):
         "preset": "preset save|apply|show NAME [--set KEY=VALUE]",
         "fonts": "fonts [--category serif] [--role heading] [--mood elegant] [--query TEXT]",
         "view": "view [--host HOST] [--port PORT] [--token-env ENV] (serve and open live review)",
-        "roll": "roll [--apply] [--set title=TEXT] [--for poster] [--mood playful] [--size NAME|WxH] [--seed N|random] [--variety low|medium|high|fixed] [--lock palette=sage] [--unfilled omit|blank] [--house-style 1|2|3]",
+        "roll": "roll [--apply] [--set title=TEXT] [--for poster] [--mood playful] [--size NAME|WxH] [--seed N|random] [--variety low|medium|high|fixed] [--lock palette=sage] [--unfilled omit|blank]",
         "layout": "layout list | show NAME | preview NAME | apply NAME [--seed N|random] [--set title=TEXT] [--unfilled blank|omit] [--palette NAME] "
         "[--mode inherit|light|dark] [--predictable] [--type-scale golden] [--density airy|balanced|dense] [--align left|center|right] "
         "[--accent rule|bar|dot|block|outline|none] [--gap N|2u] [--prefix P] [--replace]",

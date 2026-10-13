@@ -168,29 +168,15 @@ class Session:
         self.path = path
         note_document(path)
 
-    def open(self, path, upgrade=None):
-        """Open a document. A document saved before the 0.21 rendering changes reports the affected
-        layers under ``upgrade``; ``upgrade="accept"`` records the new rendering as accepted and
-        ``"pin-fills"`` also restores the white fill of open shapes (see upgrade.py)."""
-        from .upgrade import report, upgrade as run_upgrade
-
-        require(upgrade in (None, "accept", "pin-fills"), "upgrade must be 'accept' or 'pin-fills'",
-                field="upgrade")
+    def open(self, path):
+        """Open a document and return its summary."""
         with self._mutex:
             resolved = self.resolve(path)
             require(resolved.is_file(), f"Document does not exist: {path}", "not_found", field="path")
             with file_lock(str(resolved)):
                 project = self.load(resolved)
-                done = None
-                if upgrade and project.upgraded_from:
-                    done = run_upgrade(project, pin_fills=upgrade == "pin-fills")
-                    project.save()
                 self._remember(resolved, project, self.stamp(resolved))
             summary = self.summary(project)
-            if done:
-                summary["upgrade"] = done
-            elif project.upgraded_from and (notice := report(project.state, project.upgraded_from)):
-                summary["upgrade"] = notice
             return summary
 
     def create(self, path, width=None, height=None, background=None, *, size=None, purpose=None, dpi=None,

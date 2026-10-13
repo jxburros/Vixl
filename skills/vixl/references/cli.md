@@ -311,7 +311,6 @@ vixl -p F.vixl serve [--host 127.0.0.1] [--port 8765] [--token-env VIXL_API_TOKE
 vixl mcp --workspace DIR [--tools default|ai] [--require-document]   # MCP over stdio: seven design tools; --tools ai runs the provider tools as a second server; --require-document (or VIXL_REQUIRE_DOCUMENT=1) makes document= mandatory
 vixl update --check | vixl update | vixl update --rollback ; vixl updates status|on|off   # Windows installer only
 vixl cache info | vixl cache clear   # disk render cache (VIXL_RENDER_CACHE=off, VIXL_CACHE_MAX_MB=256); VIXL_PROFILE=1 adds render_profile to results
-vixl upgrade old.vixl [--report] [--pin-fills]   # document saved before 0.21: list layers that render differently; --pin-fills restores white open-shape fills
 ```
 
 ## Sizes, layouts, color, print, brushes and motion (0.13)

@@ -96,8 +96,7 @@ next export of the unchanged document, in a new process, reads the frame back in
 | Command | Behavior |
 | --- | --- |
 | `new 1920x1080 -o poster.vixl --background '#111111'` | Create a project; refuses existing files unless `--overwrite` |
-| `open poster.vixl` | Select an existing project for this directory. A document saved before 0.21 reports, under `upgrade`, the layers that render differently now (effects on rotated/flipped/skewed layers, `temperature`/`tint`, open stroked shapes that were filled white) |
-| `upgrade [poster.vixl] [--report] [--pin-fills]` | Accept the 0.21 rendering for an older document and stop the notice; `--pin-fills` first gives open stroked shapes the explicit white fill they used to render with (one undoable revision); `--report` only lists the affected layers |
+| `open poster.vixl` | Select an existing project for this directory |
 | `save [copy.vixl]` | Save, or save as a new selected project |
 | `status`, `inspect [LAYER]`, `describe`, `layers [--full]` | JSON state, including resolved bounds; `layers` abbreviates long path data and point lists (`--full` or `inspect LAYER` shows them) |
 | `manifest`, `dependencies`, `reproduce --check` | List assets/fonts/providers; check current renderability |

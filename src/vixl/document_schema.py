@@ -461,8 +461,6 @@ def document_schema():
             "format_version": {"enum": [1, FORMAT_VERSION], "description": "Archive format version; Vixl writes "
                                f"{FORMAT_VERSION} and reads 1 and {FORMAT_VERSION}."},
             "vixl_version": {"type": "string", "description": "Vixl release that saved the file."},
-            "upgraded_from": {"type": "string", "description": "Older Vixl release whose rendering the document "
-                              "kept until the upgrade is accepted (vixl upgrade)."},
             "state": {"$ref": "#/$defs/state", "description": "The current document state (the history head)."},
             "nodes": {"type": "object", "additionalProperties": {"$ref": "#/$defs/node"},
                       "description": "History revisions by ID (a DAG; branches share ancestors)."},
@@ -500,7 +498,7 @@ def document_schema():
             "effect": {"type": "object", "description": "One effect of a stack: name, amount and its settings.",
                        "properties": {"id": {"type": "string", "description": "Effect ID (fx_…)."},
                                       "name": {"type": "string", "description": "Effect name (blur, grain, "
-                                               "lookup …; vixl_operation_schema lists them)."},
+                                               "lookup …; vixl_reference('operations') lists them)."},
                                       "enabled": {"type": "boolean", "description": "Whether it applies."},
                                       "selection": {"type": ["string", "null"],
                                                     "description": "A selection mask member it is limited to."},

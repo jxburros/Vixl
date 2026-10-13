@@ -65,12 +65,11 @@ def test_adapt_layout_recompose_from_the_command_line(tmp_path, monkeypatch, cap
     assert result["adapt_layout"][0]["mode"] == "recompose"
 
 
-def test_detailed_help_lists_every_look_and_house_style_versions(capsys):
+def test_detailed_help_lists_every_look(capsys):
     main(["help", "--full"])
     text = capsys.readouterr().out
     for name in LOOKS:
         assert name in text, name
-    assert "--house-style 1|2" in text
 
 
 def test_command_inventory_includes_emoji_and_capabilities(capsys):
