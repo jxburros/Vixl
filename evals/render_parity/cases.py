@@ -230,20 +230,20 @@ def paragraph_html(size, box):
 def paragraph_metrics(ctx):
     out = text_metrics(ctx, color="#222222")
     placed, _ = glyphs(ctx.project, "t")
-    vixl_lines = {}
+    engine_lines = {}
     for i, _, y, line, _ in placed:
-        vixl_lines.setdefault(line, []).append(i)
+        engine_lines.setdefault(line, []).append(i)
     chrome_lines = {}
     for c in ctx.measured.get("t", []):
         if c["c"].strip():
             chrome_lines.setdefault(round(c["y"]), []).append(c["i"])
-    starts_v = [min(v) for _, v in sorted(vixl_lines.items())]
+    starts_v = [min(v) for _, v in sorted(engine_lines.items())]
     starts_c = [min(v) for _, v in sorted(chrome_lines.items())]
     def words(starts):
         return [PARAGRAPH[s:e].strip() for s, e in zip(starts, starts[1:] + [len(PARAGRAPH)])]
 
     out["lines"] = {"vixl": len(starts_v), "chrome": len(starts_c), "same_breaks": starts_v == starts_c,
-                    "vixl_first_words": [w.split(" ")[0] for w in words(starts_v)],
+                    "engine_first_words": [w.split(" ")[0] for w in words(starts_v)],
                     "chrome_first_words": [w.split(" ")[0] for w in words(starts_c)]}
     ys = sorted({round(y, 3) for _, _, y, _, _ in placed})
     out["line_pitch"] = round(ys[1] - ys[0], 3) if len(ys) > 1 else None
