@@ -1278,7 +1278,7 @@
    },
    "fidelity": 5,
    "craft": 4,
-   "revision": 4,
+   "revision": 4.5,
    "sub": {
     "hierarchy": 4,
     "spacing": 4,
@@ -2911,7 +2911,9 @@
     "1": 5,
     "2": 4,
     "3": 3
-   }
+   },
+   "resolved": true,
+   "score": 4
   },
   {
    "test": "T04",
@@ -2922,7 +2924,9 @@
     "1": 5,
     "2": 4,
     "3": 3
-   }
+   },
+   "resolved": true,
+   "score": 4
   },
   {
    "test": "T04",
@@ -2933,7 +2937,9 @@
     "1": 5,
     "2": 4,
     "3": 3
-   }
+   },
+   "resolved": true,
+   "score": 4
   },
   {
    "test": "T10",
@@ -2944,7 +2950,9 @@
     "1": 4,
     "2": 5,
     "3": 3
-   }
+   },
+   "resolved": true,
+   "score": 4.5
   },
   {
    "test": "T16",
@@ -2955,25 +2963,17 @@
     "1": 5,
     "2": 5,
     "3": 3
-   }
+   },
+   "resolved": true,
+   "score": 5
   }
  ],
  "calibration": [
   {
    "judge": "1",
-   "fidelity": {
-    "bias": -0.56,
-    "mean_abs": 0.56,
-    "n": 9
-   },
    "craft": {
     "bias": -0.78,
     "mean_abs": 0.78,
-    "n": 9
-   },
-   "revision": {
-    "bias": -0.56,
-    "mean_abs": 0.56,
     "n": 9
    },
    "sub": {
@@ -2985,19 +2985,9 @@
   },
   {
    "judge": "2",
-   "fidelity": {
-    "bias": -0.78,
-    "mean_abs": 0.78,
-    "n": 9
-   },
    "craft": {
     "bias": -0.22,
     "mean_abs": 0.44,
-    "n": 9
-   },
-   "revision": {
-    "bias": -0.56,
-    "mean_abs": 0.56,
     "n": 9
    },
    "sub": {
@@ -3009,19 +2999,9 @@
   },
   {
    "judge": "3",
-   "fidelity": {
-    "bias": -0.89,
-    "mean_abs": 0.89,
-    "n": 9
-   },
    "craft": {
     "bias": 0,
     "mean_abs": 0.67,
-    "n": 9
-   },
-   "revision": {
-    "bias": -1.44,
-    "mean_abs": 1.44,
     "n": 9
    },
    "sub": {
@@ -3033,19 +3013,9 @@
   },
   {
    "judge": "median",
-   "fidelity": {
-    "bias": -0.78,
-    "mean_abs": 0.78,
-    "n": 9
-   },
    "craft": {
     "bias": -0.22,
     "mean_abs": 0.44,
-    "n": 9
-   },
-   "revision": {
-    "bias": -0.89,
-    "mean_abs": 0.89,
     "n": 9
    },
    "sub": {

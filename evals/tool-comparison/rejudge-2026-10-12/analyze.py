@@ -2,8 +2,11 @@
 
     python evals/tool-comparison/rejudge-2026-10-12/analyze.py > analysis.json
 
-Reads scores/<test>.<judge>.json (judges 1, 2 and 3; "human" for the calibration set) and
-sealed/key.csv. The score of record for each code is the median of the three judges.
+Reads scores/<test>.<judge>.json (judges 1, 2 and 3; "human" for the calibration set),
+sealed/key.csv and resolutions.json (how each flagged disagreement was settled). The score of record for each code is the median of the three judges.
+
+The human calibration set is used for craft, its sub-scores and the pairwise calls only: fidelity and
+revision are checkable facts, and the person scoring did not review them closely.
 """
 
 import csv
@@ -13,6 +16,7 @@ from statistics import mean, median
 
 HERE = Path(__file__).resolve().parent
 JUDGES = ("1", "2", "3")
+CALIBRATED = ("craft",)
 MAIN = ("fidelity", "craft", "revision")
 SUBS = ("hierarchy", "spacing", "type", "colour", "finish", "motif")
 
@@ -35,6 +39,8 @@ def load():
 
 def analyse():
     key, forms = load()
+    drops = {(r["test"], r["code"], r["field"]): set(r["drop"])
+             for r in json.loads((HERE / "resolutions.json").read_text(encoding="utf-8"))}
     tests = sorted({t for t, _ in key})
     lanes, pairs, flags, calibration = [], [], [], []
     for test in tests:
@@ -51,10 +57,13 @@ def analyse():
             judged = [row["by_judge"][j] for j in JUDGES if j in row["by_judge"]]
             for k in MAIN:
                 values = [j[k] for j in judged if j[k] is not None]
-                row[k] = median(values) if values else None
+                kept = [row["by_judge"][j][k] for j in JUDGES if j in row["by_judge"]
+                        and j not in drops.get((test, code, k), set()) and row["by_judge"][j][k] is not None]
+                row[k] = median(kept) if kept else None
                 if values and max(values) - min(values) >= 2:
                     flags.append({"test": test, "code": code, "lane": row["lane"], "field": k,
-                                  "values": {j: row["by_judge"][j][k] for j in JUDGES if j in row["by_judge"]}})
+                                  "values": {j: row["by_judge"][j][k] for j in JUDGES if j in row["by_judge"]},
+                                  "resolved": (test, code, k) in drops, "score": row[k]})
             row["sub"] = {}
             for k in SUBS:
                 values = [j["sub"][k] for j in judged if j["sub"][k] is not None]
@@ -68,14 +77,14 @@ def analyse():
                               "winner": key[(test, pick)] if pick != "tie" else "tie", "margin": pair.get("margin")})
     # Calibration: each judge against the human on the tests the human scored.
     for judge in JUDGES + ("median",):
-        diffs = {k: [] for k in MAIN}
+        diffs = {k: [] for k in CALIBRATED}
         sub_diffs = []
         for row in lanes:
             human = row["by_judge"].get("human")
             if not human:
                 continue
             other = row if judge == "median" else row["by_judge"].get(judge)
-            for k in MAIN:
+            for k in CALIBRATED:
                 if human[k] is not None and other.get(k) is not None:
                     diffs[k].append(other[k] - human[k])
             for k in SUBS:
