@@ -203,6 +203,22 @@ def collect(candidate, resolved, geometry, content, role, ancestors, width, heig
                 kid.get("scatter") for kid in children.get(item["id"], []))):
             if all(x["visible"] and x["opacity"] > 0 for x in (item, *ancestors(item))):
                 scatters.append(item)
+    # Text set in a chip (a highlight, pill or button that hugs it, wider than tall) aligns and spaces by the chip's edges: the
+    # inset of the text inside it is padding, not a second margin.
+    chips = set()
+    for block in blocks:
+        if block.kind != "text":
+            continue
+        x, y, w, h = block.box
+        pad = max(h, 8.0)
+        for chip in blocks:
+            if (chip.kind == "shape" and id(chip) not in chips and _inside(block.box, chip.box)
+                    and chip.box[2] <= w + 3 * pad and chip.box[3] <= h + 2 * pad
+                    and chip.box[2] >= 1.5 * chip.box[3]):  # A badge or seal around initials is a mark, not a chip.
+                block.box = chip.box
+                chips.add(id(chip))
+                break
+    blocks = [b for b in blocks if id(b) not in chips]
     # Grounds: large panels that hold other blocks frame their own composition (a navy lower half, a card).
     # Panels and cards: a filled shape or image large enough to hold a block (not a dot or an icon).
     containers = [b for b in blocks if b.kind in ("shape", "band", "image")

@@ -134,7 +134,7 @@ the document's body size (`craft.spacing.unit` in the [house style](house-style.
 What is not judged: backgrounds and canvas-covering layers, layers marked `role: decoration` (they still fill
 space, so a band they close off is not dead), art that bleeds off the canvas, glows that fade to transparent, and
 the insides of charts, scatters and repeats (each is one block). Text inside a panel or card is aligned and spaced
-against that panel, a panel that covers a fifth of the canvas frames its own bands, a list hangs its markers, and a
+against that panel; text in a chip that hugs it (a highlight, pill or button) aligns by the chip's edge; a panel that covers a fifth of the canvas frames its own bands, a list hangs its markers, and a
 label after an icon follows the icon. A capitalised kicker may sit tight to the line it labels.
 
 Each finding carries `code` (rule `composition.dead_band` …), `layer_ids` and `layers`, the `region` it concerns,
