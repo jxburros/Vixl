@@ -6,12 +6,15 @@ present."""
 import json
 import os
 from pathlib import Path
+import sys
 import types
 import zipfile
 
 import pytest
 
-from evals import craft_rerun
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from evals import craft_rerun  # noqa: E402
 
 README = """# Tool comparison
 

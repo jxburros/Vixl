@@ -4,8 +4,12 @@ The numbers are pinned: a change that catches fewer of the judges' defects, or a
 judged defect, fails here. When a change improves them, update the pins, the README table and the changelog."""
 
 import json
+from pathlib import Path
+import sys
 
-from evals.craft_backtest import CODES, manifest, run, table
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from evals.craft_backtest import CODES, manifest, run, table  # noqa: E402
 
 PINNED = {
     # code: (expected, caught, false findings)
