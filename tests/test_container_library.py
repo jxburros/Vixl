@@ -100,6 +100,7 @@ def test_hug_background_remeasures_variable_content_and_nested_stacks():
             "photo-caption",
             "product-card",
             "section-header",
+            "key-value-list",
         )
     ],
 )

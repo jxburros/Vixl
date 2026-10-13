@@ -147,6 +147,10 @@ def compile_command(tokens):
     tabled = compile_tables(cmd, args)
     if tabled is not None:
         return tabled
+    from .key_values import compile_command as compile_key_values
+    listed = compile_key_values(cmd, args)
+    if listed is not None:
+        return listed
     from .charts import compile_command as compile_charts
     charted = compile_charts(cmd, args)
     if charted is not None:

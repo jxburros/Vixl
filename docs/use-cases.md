@@ -168,10 +168,11 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 
 | ID | Use case | Main route | Calls · min | Ev. | Notes |
 | --- | --- | --- | --- | --- | --- |
-| DAT-01 | Bar, stacked, 100 %, horizontal, line, area, pie or donut chart from inline data | `chart` | 1 · <1 | E | One editable vector group with axes and legend. |
+| DAT-01 | Bar, stacked, 100 %, horizontal, line, area, pie or donut chart from inline data | `chart` | 1 · <1 | E | One editable vector group with axes and legend. A chart given no geometry fills the safe area with spacing-scale padding, so it passes `safe_area` as created (craft plan 7d). |
 | DAT-02 | Chart straight from a CSV in the workspace | `chart --csv` | 1 · <1 | E | |
 | DAT-03 | Change one value, add a row or reload the CSV | `chart-data` | 1 · <1 | M:T08 R2 | Same layer IDs survive. |
 | DAT-51 | Table from rows or a workspace CSV: menu, price list, pricing table, schedule, spec sheet | `table` | 1 · <1 | E | Since #169: aligned columns (decimal for prices), header, zebra, rules; native PPTX table. |
+| DAT-53 | Names, numbers and percentages paired in one aligned, ruled list: a share list, stats, a summary beside a chart | `key-value-list` (or the `key-value-list` container, or a chart's `legend_values`) | 1 · <1 | E | Craft plan 5a (T08): labels left, figures right-aligned on shared edges, rules between rows, spacing from the spacing scale; `shares: "auto"` computes the percentages. |
 | DAT-52 | Change a price, add or remove a row or column, or reload the CSV of a table | `table-data` | 1 · <1 | E | Since #169; cells keep their positions and layer IDs. |
 | DAT-04 | Flowchart from a line of text (`A -> B -> C`) | `diagram-from-text` | 1 · <1 | E | Layered, tree, radial, mindmap and grid layouts. Since 0.23 it follows the document palette and dark mode. |
 
@@ -256,6 +257,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PHO-10 | Photo on top, caption panel below, for a 1080×1350 post | import, `scale`, `shape`, `text` | 7 · 2 | M:eval:photo-caption | |
 | COL-01 | Restore a mistakenly deleted layer without losing later edits | `vixl_history` | 5 · 1–2 | M:eval:restore-deleted | |
 | SOC-02 | Roll a design direction with locks and apply it | `vixl_roll` | 5 · 1–2 | M:eval:roll-applied | Use `unfilled=omit` for empty slots. The roll is weighted by purpose (`purpose`, else the document size) and gated by `variety`; `locks={tier: "bold"}` explores one tier. |
+| SOC-05 | Event or promo post with a pill call to action and the date on a highlight | `layout-apply` with `direction: {cta: "pill", date: "highlight"}`, or a house-style-4 roll | 3 · 1 | E | Craft plan 5c (T02, T09): a roll sets them per seed; `house_style_version: 3` or `direction: {cta: "button", date: "plain"}` for the plain result. |
 | SOC-03 | Story with gradient and an evenly spaced three-item list | `gradient`, `text` ×3, distribute | 5 · 1–2 | M:eval:story-list | |
 | BRD-01 | Import an SVG logo as editable geometry, edit and re-export | `vixl_import_document` svg editable | 4 · 1 | M:eval:svg-logo-import | |
 | SOC-04 | Start from a built-in template with title and subtitle | `vixl_template_create` | 4 · 1 | M:eval:template-creation | 43 templates. |

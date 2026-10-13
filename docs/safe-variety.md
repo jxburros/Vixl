@@ -85,7 +85,9 @@ headline holds about 8 characters a line instead of 14, so it fills the canvas; 
 alignment is weighted by purpose: design purposes roll left three times in four and right otherwise, diagram
 and form purposes left or centre 75/25, and marks stay centred; an
 explicit `align` wins. Saturated palette backgrounds are washed only as far as the ink contrast
-target needs. The rolled
+target needs. From house style 4 a roll also sets `cta` (`pill` or `button`) and `date` (`highlight` or
+`plain`): how a layout's call to action and date line look (see [layouts](sizes-and-layouts.md)); they come
+from a separate stream of the seed, so the other choices for a seed are the same as in version 3. The rolled
 look lands where it shows: texture looks on the background, the house offset shadow and other
 shadow, outline and glow looks on the solid shapes (buttons, panels, blocks), never on hairline
 rules. Weight contrast describes the actual heading/body weights in the chosen pairing. A roll

@@ -265,6 +265,9 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
   a value on stable layer IDs, native PPTX charts; see [charts](references/charts.md) before drawing any chart by hand.
 - **Tables** — `table` (rows or a workspace CSV; aligned columns including `decimal` for prices, header, zebra,
   rules) and `table-data` for cell and row edits; native PPTX tables; see [charts](references/charts.md#tables).
+- **Key-value lists** — `key-value-list` pairs labels with right-aligned values and shares in ruled columns
+  (`shares: "auto"` computes percentages); a chart's `legend_values` legend is the same list. See
+  [charts](references/charts.md#key-value-lists).
 - **Guides beyond right angles** — angled/curved guides, compositional and perspective grids,
   `place`, `snap`, `guides`/`alignment` checks.
 - **Lyric videos** — `lyric-video-plan/build/export` workflow actions (song + LRC + template). The template's own

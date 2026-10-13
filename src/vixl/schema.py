@@ -431,6 +431,8 @@ def _operation_schema():
     chart_schemas(add)
     from .tables import schemas as table_schemas
     table_schemas(add)
+    from .key_values import schemas as key_value_schemas
+    key_value_schemas(add)
     from .diecut import schemas as diecut_schemas
     diecut_schemas(add)
     from .path_split import schemas as split_schemas

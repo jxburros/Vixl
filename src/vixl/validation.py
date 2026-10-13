@@ -137,6 +137,10 @@ def check_state(project, state):
             from .tables import validate_table
 
             validate_table(layer, state)
+        if "key_values" in layer:
+            from .key_values import validate as validate_key_values
+
+            validate_key_values(layer, state)
         if "chart" in layer:
             from .charts import validate_chart
 

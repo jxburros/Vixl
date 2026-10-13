@@ -168,6 +168,7 @@ SUMMARIES = {
     "table": "Draw a table from rows or a CSV as vector layers (aligned columns, header, rules), or restyle one with target.",
     "die-cut": "Add a sticker cut line: the union of the targets' ink outline, grown by a distance, as a stroked path.",
     "path-split": "Cut a filled path into two named parts along a polygon or line, optionally overlapping the cut.",
+    "key-value-list": "Draw a key-value list (labels left, values and shares right-aligned, rules between rows) as text layers, or restyle one with target.",
     "table-data": "Edit a table's rows in place (cells, rows, columns, CSV reload) and redraw it, keeping layer IDs.",
     "stack": "Lay a group out as a row or column that reflows and re-centres when a member is empty or hidden.",
     "diagram": "Draw a flowchart, dependency graph, org chart or mind map from nodes and edges, laid out automatically.",
@@ -716,6 +717,11 @@ OVERRIDES = {
 }
 
 EXAMPLES = {
+    "key-value-list": [
+        {"type": "key-value-list", "name": "shares", "x": 40, "y": 40, "width": 360,
+         "rows": [{"label": "Drip", "value": "15,900"}, {"label": "Espresso", "value": "11,960"},
+                  {"label": "Tea", "value": "5,260"}], "shares": "auto"},
+    ],
     "qr": [
         {"type": "qr", "name": "ticket-qr", "data": "https://example.com/t/123", "module": 6, "x": 40, "y": 40},
         {"type": "qr", "name": "logo-qr", "data": "https://example.com", "error": "H", "size": 240,
