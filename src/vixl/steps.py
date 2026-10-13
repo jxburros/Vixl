@@ -63,7 +63,8 @@ def import_document(session, project, *, path: str | None = None, data_base64: s
                                     "appearance (one image; SVG source kept)")] = "editable",
                     node_id: Annotated[str | None, Field(description="figma: the frame or node to import (1:2 or 1-2)")] = None,
                     rasterize_unsupported: Annotated[bool, Field(
-                        description="figma: draw nodes Vixl cannot keep editable as pixels instead of failing")] = False):
+                        description="figma: import a PNG render of nodes Vixl cannot keep editable; otherwise they "
+                                    "are skipped and listed in the report")] = False):
     """Import an SVG (Vixl's own round-trips losslessly), one PDF page as editable text, paths and images, or a Figma
     file, frame or node as editable layers (from a URL or key with the server's Figma token, or an exported file
     JSON); svg_mode=appearance imports one image instead. External or active SVG is rejected."""

@@ -778,7 +778,7 @@ def command_help(cmd, args):
         "schema": "schema [OPERATION…]  (no argument: the whole operation-batch schema; "
                   "schema particles pivot: just those operations' fields, types and descriptions; aliases accepted; "
                   "schema document: the JSON Schema of a .vixl file's project.json)",
-        "canvas": "canvas resize SIZE | preset NAME | background COLOR",
+        "canvas": "canvas resize WxH | size NAME [--landscape] [--bleed] | preset NAME | dpi N | background COLOR",
         "save": "save [FILE]",
         "inspect": "inspect [LAYER] | inspect --object NAME|PATH|*",
         "status": "status",

@@ -852,7 +852,7 @@
     },
     "marker_size": {
      "type": "number",
-     "description": "Marker size as a multiple of the stroke width."
+     "description": "Marker length and width in local pixels."
     },
     "marker_style": {
      "type": "string",
@@ -1123,7 +1123,7 @@
     },
     "font": {
      "type": "string",
-     "description": "Font: a registered font name (state.fonts), a bundled font file name or a role."
+     "description": "Font: a registered font name (state.fonts), a fonts/ archive member or a bundled font file name; a role is in font_role."
     },
     "font_role": {
      "type": "string",

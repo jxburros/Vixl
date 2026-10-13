@@ -1648,7 +1648,7 @@ def schemas(add):
                     "Series (pie: slice) colors, any color or @swatch; default: the document palette, then a color-blind-safe set."),
         "legend": d({"anyOf": [B, {"enum": list(LEGENDS)}]}, "auto (default: shown for 2+ series or any pie), none, "
                     "top, bottom, left or right."),
-        "legend_values": d(B, "Add each series' (pie: slice's) total to its legend entry."),
+        "legend_values": d(B, "Draw the legend as an aligned key-value list: swatch, name and total (pie and donut: also the share)."),
         "value_labels": d({"anyOf": [B, {"enum": list(LABEL_MODES)}]},
                           "auto (default: label what fits), true (label everything), false/none, or for pie/donut "
                           "value, percent or both."),
@@ -1678,7 +1678,8 @@ def schemas(add):
     }
     frame = {"target": d(S, "Existing chart group to restyle, resize or give new data; omit to draw a new chart."),
              "name": d(S, "Group name; the layers inside are named NAME/part."), "x": COORD, "y": COORD,
-             "width": d(SIZE, "Chart width (default: the canvas)."), "height": d(SIZE, "Chart height (default: the canvas).")}
+             "width": d(SIZE, "Chart width (default: the canvas safe area, inset two spacing units)."),
+             "height": d(SIZE, "Chart height (default: the canvas safe area, inset two spacing units).")}
     add("chart", {**frame, **data, **{k: (v if k == "kind" else nullable(v)) for k, v in options.items()}},
         description="Draw a data-bound chart (bars, lines, areas, pie, donut) as vector layers, or restyle one with target.")
     add("chart-data", {

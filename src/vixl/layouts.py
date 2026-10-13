@@ -2255,7 +2255,7 @@ def schemas(add):
             "name": S,
             "seed": {"type": ["integer", "string"]},
             "variety": {"enum": ["low", "medium", "high", "fixed"], "description": "Sparse-choice range; fixed defaults to seed 0 or the workspace seed."},
-            "direction": {"type": "object", "description": "Extra rolled choices: motif, look, style, margin, corner, background_treatment and color_assignment."},
+            "direction": {"type": "object", "description": "Extra rolled choices: cta (pill or button), date (highlight or plain), motif, look, style, margin, corner, background_treatment and color_assignment."},
             "unfilled": {
                 "enum": ["blank", "omit"],
                 "description": "blank (default): slots left unfilled show as [Label] placeholders that check "

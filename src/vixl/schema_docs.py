@@ -343,7 +343,7 @@ _DIAGRAM_FIELDS = {
     "layout": "Layout: auto (picks one from the graph), layered (flowcharts, dependencies), tree, radial, mindmap or grid.",
     "routing": "How edges run: orthogonal (right angles, default), curved or straight.",
     "lanes": "Layered layout: turn kind: group nodes into swimlanes (columns for TB, rows for LR) instead of cluster boxes.",
-    "theme": "Colors: light (default), dark or mono.",
+    "theme": "Colors: palette (the document's palette roles), light, dark or mono. Default: palette when the document defines the roles, else dark or light to suit its background.",
     "text_color": "Default label color for nodes and edges.",
     "node_color": "Default node fill; a node's own color wins.",
     "edge_color": "Default edge and arrowhead color; an edge's own color wins.",
