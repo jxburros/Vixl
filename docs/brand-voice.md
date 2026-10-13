@@ -1,6 +1,6 @@
 # Brand voice
 
-[Documentation home](README.md) · [Marketing pack](../marketing/README.md) · [House style decisions](house-style.md)
+[Documentation home](README.md) · [Marketing pack](https://github.com/jxburros/VixlExamples/blob/main/marketing/README.md) · [House style decisions](house-style.md)
 
 How Vixl talks about itself: the README, the marketing pack, release posts, plugin listings and the opening lines
 of docs. This guide covers Vixl's own copy only. It does not set the look of what Vixl makes; for output
@@ -58,8 +58,9 @@ delightful. Technical terms are fine where they are exact, such as a seamless lo
 - `README.md` hero, `pyproject.toml` description and the CLI help header (`src/vixl/cli.py`).
 - Plugin listings: `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` and the desktop extension
   manifest in `distribution/package_extensions.py`.
-- The marketing pack: `marketing/copy.json` (captions, descriptions, demo script), `marketing/posts.csv`
-  (campaign rows) and the artwork text in `marketing/build.py`. Rebuild with `python marketing/build.py` and
-  check with `python marketing/verify.py`.
-- The promo video's on-screen text in `promo/build/scenes.py`. Rebuild with `python promo/build/make_video.py`.
+- The marketing pack in [VixlExamples](https://github.com/jxburros/VixlExamples): `marketing/copy.json` (captions, descriptions, demo
+  script), `marketing/posts.csv` (campaign rows) and the artwork text in `marketing/build.py`. Rebuild with
+  `python marketing/build.py` and check with `python marketing/verify.py`.
+- The promo video's on-screen text in `promo/build/scenes.py` (also in VixlExamples). Rebuild with
+  `python promo/build/make_video.py`.
 - The one-line introduction at the top of docs pages, `skills/vixl/SKILL.md` and its references.

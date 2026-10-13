@@ -1,1 +1,0 @@
-Create garden.vixl at 600x600 on a pale green (#eef6e8) background. Grow a natural-looking six-petal pink flower named bloom, about 400 px wide, centred on the canvas, using Vixl's organic shapes rather than hand-placed ellipses. Export garden.png.

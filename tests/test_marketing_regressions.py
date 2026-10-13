@@ -236,8 +236,3 @@ def test_bounds_measures_grouped_layers_on_the_canvas():
     assert p.bounds("bg") == pytest.approx((250, 100, 100, 300))
     with pytest.raises(VixlError):
         p.bounds("bg", space="page")
-
-
-def test_the_marketing_kit_measures_with_canvas_bounds():
-    source = (Path(__file__).resolve().parents[1] / "marketing" / "build.py").read_text()
-    assert "resolve_layout" not in source and "p.bounds(name)" in source

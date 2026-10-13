@@ -1,5 +1,5 @@
 {
-  "description": "Offline reference acceptance baseline. Every listed brief must pass; this is not a measured Claude performance baseline. tool_call_budgets caps the MCP calls per task (about twice the calls of the recorded live run in evals/live-runs, at least 10, or a set budget for newer tasks) and max_mean_tool_calls caps the mean: a run over either is a regression.",
+  "description": "Offline reference acceptance baseline. Every listed brief must pass; this is not a measured Claude performance baseline. tool_call_budgets caps the MCP calls per task (about twice the calls of the recorded live run in evals/live-runs of the VixlExamples repository, at least 10, or a set budget for newer tasks) and max_mean_tool_calls caps the mean: a run over either is a regression.",
   "required_passes": [
     "adapt-sizes",
     "chart-fix-value",

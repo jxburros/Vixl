@@ -3,7 +3,7 @@
 [Documentation home](README.md) · [Development plan](roadmap.md) · [House style decisions](house-style.md)
 
 This plan is about the quality of what agents make with Vixl: whether a finished piece reads as designed, not just
-correct. It comes from the [blind re-judging of the tool comparison](../eval-results/2026-10-13-blind-rejudging.md)
+correct. It comes from the [blind re-judging of the tool comparison](https://github.com/jxburros/VixlExamples/blob/main/eval-results/2026-10-13-blind-rejudging.md)
 and uses the same complexity (C1–C5) and payoff (P1–P5) ratings as the [development plan](roadmap.md).
 
 ## Where craft stands
@@ -51,7 +51,7 @@ The judges' reasons for picking another lane over Vixl fall into four groups, in
 ## Goals
 
 Measured by re-running the Vixl lane of the tool comparison and judging it blind against the same web-code runs,
-with the [re-judging kit](../evals/tool-comparison/rejudge-2026-10-12/README.md):
+with the [re-judging kit](https://github.com/jxburros/VixlExamples/blob/main/evals/tool-comparison/rejudge-2026-10-12/README.md):
 
 - **Primary:** Vixl wins at least half of the "which would you publish?" calls against web code (today 11 of 27).
 - **Supporting:**
@@ -67,7 +67,7 @@ In order. Each item names the evidence it answers.
 
 | Item | What | C | P |
 | --- | --- | --- | --- |
-| 1a | **Keep the eval sources.** Commit the Vixl lane's `.vixl` documents for tool-comparison runs (a `.gitignore` exception for `evals/tool-comparison/runs/**`). Without them, editability can only be judged from output diffs, and the new checks below can't be backtested | 1 | 4 |
+| 1a | **Keep the eval sources.** Commit the Vixl lane's `.vixl` documents for tool-comparison runs (a `.gitignore` exception for `evals/tool-comparison/runs/**` in VixlExamples, where the kit lives). Without them, editability can only be judged from output diffs, and the new checks below can't be backtested | 1 | 4 |
 | 1b | **Backtest set.** The 16 round-1 Vixl documents, each with the defects the judges named (from `rejudge-2026-10-12/scores/`) as expected findings. Every new check in workstream 2 reports how many of those it catches and how many false findings it adds | 2 | 5 |
 | 1c | **Craft re-run as a routine.** A script that re-runs the Vixl lane on the 16 briefs, packages it with `rejudge.py` beside the fixed other-lane runs, and prints the judge prompt, so a release can be judged in an afternoon | 2 | 4 |
 | 1d | **Craft in the agent evals.** Add the new composition findings (2a) to `evals/house_style.py`'s quality score, so `--compare` against the baseline catches craft regressions on every default change | 2 | 4 |

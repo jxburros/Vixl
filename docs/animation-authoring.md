@@ -129,7 +129,7 @@ vixl -p promo.vixl render --time 2.5s --out promo-poster.png
 ```
 
 Inspect bounds, contrast and sampled frames with your copy. Use a visible poster around 2.5 seconds;
-the loop starts and ends on its background. The [promo variety pack](../promo/variety/README.md)
+the loop starts and ends on its background. The [promo variety pack](https://github.com/jxburros/VixlExamples/blob/main/promo/variety/README.md)
 includes editable masters, a contact gallery and a reproducible preview reel builder.
 
 ## App animation packages

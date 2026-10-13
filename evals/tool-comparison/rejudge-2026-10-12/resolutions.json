@@ -1,7 +1,0 @@
-[
- {"test": "T03", "code": "WLRN", "field": "revision", "drop": [], "reason": "Judges agree on the facts (new kicker set in capitals by styling, nothing else moved) and differ only on the penalty; the median of 4 stands."},
- {"test": "T04", "code": "HTCU", "field": "revision", "drop": [], "reason": "Same as T03: the new tagline is in capitals by styling, no drift; the median of 4 stands."},
- {"test": "T04", "code": "VTCH", "field": "revision", "drop": [], "reason": "Same as T03: the new tagline is in capitals by styling, no drift; the median of 4 stands."},
- {"test": "T10", "code": "NPTJ", "field": "revision", "drop": ["3"], "reason": "Judge 3 said the round-2 Instagram crop shifted. Measured: the best edge alignment between the r1 and r2 crops is a 0 px shift, and the run reused its crop window. Judge 3's score is dropped; the median of the other two is used."},
- {"test": "T16", "code": "AOSO", "field": "revision", "drop": [], "reason": "All three judges saw the same few points of reflow below the Coffee section; two scored 5. The median of 5 stands."}
-]

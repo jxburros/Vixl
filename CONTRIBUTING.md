@@ -6,6 +6,10 @@ Run `pytest -q` and build the distributions before submitting a release change. 
 
 Commit messages, generated pull requests, issue text and generated artwork should describe the work without model signatures or authorship trailers. Keep comments that explain constraints, tradeoffs or non-obvious behavior; remove comments that only repeat the next statement. Provider configuration identifiers are functional data and should remain intact.
 
+Showcases, experiments, films, marketing media and published evaluation results belong in
+[VixlExamples](https://github.com/jxburros/VixlExamples), not here; link to them from the docs. Keep media in this repository only when
+tests, docs or packaging need it (`docs/assets`, `assets/`, `examples/`, `tests/fixtures`).
+
 ## Changing a default
 
 Defaults for sparse briefs live in the house style (`src/vixl/data/house-style.json`, read through `src/vixl/house_style.py`); read values from there instead of adding constants. A changed default affects new documents only: documents store their rolled `design_defaults` with the `house_style_version` that made them. Bump the version when a change alters what a seed rolls, keep what the old version rolled from under `legacy`, and add a changelog line under **Changed defaults** naming the override that restores the old result (an explicit field, a lock, or the previous `house_style_version`, such as `2` for 0.23 rolls). Compare `python -m evals.house_style --compare evals/house-style-baseline.json` before and after; quality must not fall. See [house style](docs/house-style.md#changing-defaults-h2).

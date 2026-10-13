@@ -31,9 +31,9 @@ many clients share one server. Minutes are typical agent wall time on a shared c
 
 | Code | Meaning |
 | --- | --- |
-| **M:T01…T16** | Measured: Vixl lane of the [tool comparison](../eval-results/2026-10-06-vixl-0.20-tool-comparison.md) on 0.20.0, round 1 (all tool calls, including reads and file checks; median-style single runs). **R2** marks the round-2 revision of the same brief. |
-| **M:eval:name** | Measured: live agent run of [`evals/tasks/name.json`](../evals/tasks) on 0.18.0 ([results](../eval-results/2026-10-05-full-evaluation.md)). Counts are Vixl calls only, so add 1–3 for file reads. |
-| **M:X01…X10** | Measured: [exploration](../explorations/README.md) build script on 0.21.0. The time is the *script's* run time; writing such a script by hand is T5. |
+| **M:T01…T16** | Measured: Vixl lane of the [tool comparison](https://github.com/jxburros/VixlExamples/blob/main/eval-results/2026-10-06-vixl-0.20-tool-comparison.md) on 0.20.0, round 1 (all tool calls, including reads and file checks; median-style single runs). **R2** marks the round-2 revision of the same brief. |
+| **M:eval:name** | Measured: live agent run of [`evals/tasks/name.json`](../evals/tasks) on 0.18.0 ([results](https://github.com/jxburros/VixlExamples/blob/main/eval-results/2026-10-05-full-evaluation.md)). Counts are Vixl calls only, so add 1–3 for file reads. |
+| **M:X01…X10** | Measured: [exploration](https://github.com/jxburros/VixlExamples/blob/main/explorations/README.md) build script on 0.21.0. The time is the *script's* run time; writing such a script by hand is T5. |
 | **E** | Estimate from the operations involved and the nearest measured case. Replace with a measurement when you have one. |
 
 ### Requirement tags
@@ -352,7 +352,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PIX-03 | Export saved frames as GIF/APNG/sprite sheet at whole-number scale | `vixl_export_animation` | 1–2 · <1 | E | |
 | BLK-12 | Per-character, per-word or per-line text animation | `text-animate` | 2–4 · 1 | E | Since 0.22; text stays one editable layer. |
 | MOT-09 | Six-second square loop for a tip, launch or event | `vixl_template_create` video-tip/video-launch/video-event, `vixl_export_timeline` | 3–5 · 1 | E | Since 0.24 (#179); fill title, subtitle and cta, then check a contact sheet and pick the poster time. |
-| MOT-14 | Promo variations in square, portrait and widescreen | `vixl_template_create` video-promo-{kinetic,editorial,neon,spotlight,split,stat}, `vixl_export_timeline` | 3–5 · 1 | E | Six distinct compositions, 18 templates; editable copy and palette roles, six-second loops. [Preview pack](../promo/variety/README.md). |
+| MOT-14 | Promo variations in square, portrait and widescreen | `vixl_template_create` video-promo-{kinetic,editorial,neon,spotlight,split,stat}, `vixl_export_timeline` | 3–5 · 1 | E | Six distinct compositions, 18 templates; editable copy and palette roles, six-second loops. [Preview pack](https://github.com/jxburros/VixlExamples/blob/main/promo/variety/README.md). |
 | MOT-13 | Pose a character over time with its joints kept attached | `character-pose` with `time` | 3–6 · 1 | E | Since 0.24 (#472); the rig is solved on every frame; do not also key position/rotation on the same limbs. |
 
 ### Production, forms and review
@@ -658,7 +658,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | AGT-30 | Embed Vixl in another app through REST with auth | `vixl serve` | 1–3 days dev | E | [server] |
 | AGT-31 | Gate pull requests on design checks in CI | `vixl validate`, suites, golden renders | 0.5–1 day | E | The bundled action covers checks and suites in one step (QA-23); this row is custom gates such as golden renders. |
 | AGT-32 | Run the agent eval suite against a new model or schema mode | `python -m evals.run --agent claude` | 1–2 h | E | Needs an API key. |
-| AGT-33 | Compare Vixl with other tools on the 16 briefs | `evals/tool-comparison` kit | 1 day | E | |
+| AGT-33 | Compare Vixl with other tools on the 16 briefs | [`evals/tool-comparison` kit](https://github.com/jxburros/VixlExamples/blob/main/evals/tool-comparison/README.md) in VixlExamples | 1 day | E | |
 | PIX-50 | Complete small game art set (characters, tiles, UI, title screen) | pixel tools, timelines, sheets | days | E | |
 | MOT-50 | Music video beyond lyrics (scenes, characters, camera, audio) | film spec, rigs, parallax | days | E | No nested compositions or motion-path editor. |
 | DEK-50 | Course slide library (100+ slides) on shared masters and components | pages, library components, group apply | days | E | |

@@ -15,6 +15,10 @@
 - Multi-size `adapt-layout --sizes` / `vixl_adapt_layout` with `options: {"recompose": true}` no longer fails with `KeyError: 'canvas'` after writing the first copy; each recomposed size reports its canvas, `scale: null`, `moved: "recomposed"` and the layout name.
 - Explicit campaign `quality: "final"` selects the final check profile unless an explicit `profile` overrides it; reports name the effective profile (#563).
 
+### Repository layout
+
+- Showcases and media moved to [VixlExamples](https://github.com/jxburros/VixlExamples): `art/`, `explorations/`, `marketing/`, `movie/`, `promo/`, `eval-results/`, `qa-reports/`, `evals/live-runs/` and `evals/tool-comparison/`. Docs link there. Builds that need the brand kit or `examples/` find a Vixl checkout through `VIXL_REPO` or a sibling `../Vixl` folder. The eval harness, briefs and baselines stay in `evals/`.
+
 ### Behaviour changes
 
 - Archives default to a cumulative 160 million decoded image pixels and 64 parsed font assets. Trusted Python callers can raise `Limits.max_load_pixels` and `Limits.max_load_fonts`. Existing per-asset checks still apply.

@@ -1,1 +1,0 @@
-sketch.png is a photo of a pen sketch of a house. Turn it into a clean, editable vector line drawing named house in house.vixl (keep the canvas the size of the photo), and export house.svg.

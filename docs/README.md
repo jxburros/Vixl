@@ -66,7 +66,7 @@ See the [provider matrix](providers.md#capability-matrix) before choosing a serv
 ## Development and deeper examples
 
 - [Architecture and resource limits](architecture.md) and [implementation coverage](coverage.md).
-- [Examples](../examples/) and [explorations](../explorations/README.md): longer creative projects.
+- [Examples](../examples/) and [explorations](https://github.com/jxburros/VixlExamples/blob/main/explorations/README.md): longer creative projects.
 - [Agent evaluations](../evals/README.md): briefs and grading contracts.
 - [Documentation maintenance](documentation-maintenance.md): rebuilding visuals and verifying examples.
 - [Brand voice](brand-voice.md): how Vixl's own copy and marketing sound.
