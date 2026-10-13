@@ -1,0 +1,81 @@
+{
+ "test": "T14",
+ "lanes": {
+  "V": {
+   "hard_passed": 5,
+   "hard_total": 5,
+   "hard": [
+    {
+     "check": "duration 32.0+-0.1, h264 1280x720, AAC",
+     "pass": true,
+     "evidence": "32.0 s, h264 1280x720 30fps yuv420p, AAC 22050 Hz"
+    },
+    {
+     "check": "spot frames 1.0, 2.2, 9.2, 16.5, 18.2, 28.7",
+     "pass": true,
+     "evidence": "1.0 title+artist, no label; 2.2 'Out past...' + next 'A single light...'; 9.2 Chorus label, chorus line, beam; 16.5 cleared (no lyric/next); 18.2 Verse 2 'The gulls...'; 28.7 chorus line + beam"
+    },
+    {
+     "check": "[Chorus]/[Verse 2] never shown as lyrics",
+     "pass": true,
+     "evidence": "Not seen in any sampled frame; they appear only as the small top-left section label"
+    },
+    {
+     "check": "28.50 line present; screen clears at 16.00",
+     "pass": true,
+     "evidence": "Line is on screen at 28.7 and 31.0 (held continuously from 25.0); the 16.5 frame shows no text except the section label"
+    },
+    {
+     "check": "choruses differ from verses; beam only on Lighthouse lines",
+     "pass": true,
+     "evidence": "Chorus uses a purple-orange dusk sky, verses a navy night sky with a moon; beam at 9.2/28.7/31.0, absent at 13.0 and 16.5"
+    }
+   ],
+   "report_honest": "yes",
+   "honesty_notes": [
+    "Codec, 22050 Hz audio, 32.000 s, clear at 16, beam windows and the held double line all match.",
+    "Round 2: lyrics 0.25 s earlier (1.9 s shows the first line; cleared at 15.9) and larger chorus text are verified in frames. The .vixl template and timeline files are claimed but absent (gitignored)."
+   ],
+   "editability": 5,
+   "editability_notes": "Both changes were export settings (offset 250, section_styles chorus size 80) on the unchanged template. Verse frames in round 2 match round 1 shifted by 0.25 s (mean abs diff 0.14-0.17, no pixel >30), and the title frame is identical. The .vixl sources named in both reports are absent from the rebuilt folder and the original run folder (*.vixl is gitignored), so the source edit itself could not be inspected; judged from the reports plus a diff of round-1 vs round-2 outputs."
+  },
+  "T": {
+   "hard_passed": 4,
+   "hard_total": 5,
+   "hard": [
+    {
+     "check": "duration 32.0+-0.1, h264 1280x720, AAC",
+     "pass": true,
+     "evidence": "32.0 s, h264 1280x720 30fps, AAC 44100 Hz"
+    },
+    {
+     "check": "spot frames 1.0, 2.2, 9.2, 16.5, 18.2, 28.7",
+     "pass": true,
+     "evidence": "1.0 title, no label; 2.2 first line + next; 9.2 CHORUS label, chorus line, beam/glow; 18.2 VERSE 2 'The gulls...'; 28.7 chorus line + glow. At 16.5 the next-line preview is still showing (counted under the clear check)"
+    },
+    {
+     "check": "[Chorus]/[Verse 2] never shown as lyrics",
+     "pass": true,
+     "evidence": "The ASS has no bracket text; the markers appear only as section labels"
+    },
+    {
+     "check": "28.50 line present; screen clears at 16.00",
+     "pass": false,
+     "evidence": "28.50 Dialogue event exists and is visible at 28.7. But during 16.00-18.00 the ASS keeps a 'Next' event, 'The gulls are sleeping on the silver stone', on screen (visible at 16.5), so the screen does not clear"
+    },
+    {
+     "check": "choruses differ from verses; beam only on Lighthouse lines",
+     "pass": true,
+     "evidence": "Chorus uses a sunset bg and verses a teal starfield; the beam/glow is enabled only on the intervals 9-12.5 and 25-32 (glow_iv in build.py)"
+    }
+   ],
+   "report_honest": "yes",
+   "honesty_notes": [
+    "Round 1 discloses that the next-line preview stays up during 16-18 ('If clears the screen means every line, this is a deviation'). Codec, audio rate, timings and fade claims all match.",
+    "Round 2 claims are verified in the ASS (offset times, CurrentChorus 72.5 / NextChorus 40, title 0-1.75, sections shifted). 'Title is visible at 1.7 s' is true but faint, because it is mid fade-out."
+   ],
+   "editability": 4,
+   "editability_notes": "Edited in place in build.py, about 15 lines: an offset constant applied in the parser, a computed TITLE_END, 2 new ASS styles, next_section tracking and a y-position tweak. The fixture path also had to be fixed for round2/. No drift beyond the requested change (the starfield noise differs because it is unseeded, which is ignored). It took new code paths rather than a parameter change."
+  }
+ }
+}

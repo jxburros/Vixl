@@ -17,11 +17,12 @@ Every tool here is free or comes with Claude and ChatGPT/Codex. Nothing needs a 
 
 ## Results
 
-- [Blind re-judging, 2026-10-12](rejudge-2026-10-12/README.md): every lane rebuilt and scored again from
-  scratch by three judges plus a human calibration set, with [`rejudge.py`](rejudge.py) and the
-  [judging prompt](JUDGING.md). In progress; until it lands, the scores below are the record.
+- [2026-10-13](../../eval-results/2026-10-13-blind-rejudging.md): **the current scores.** Every lane
+  rebuilt and re-judged blind by three judges, with a human calibration set, using
+  [`rejudge.py`](rejudge.py) and the [judging prompt](JUDGING.md); details in
+  [`rejudge-2026-10-12/`](rejudge-2026-10-12/README.md).
 - [2026-10-12](../../eval-results/2026-10-12-vixl-0.26-evaluation.md): the Vixl lane re-run on
-  Vixl 0.26.0 (the current scores in `scoresheet.csv` and `runs/`), with a
+  Vixl 0.26.0 (its scores are superseded by 2026-10-13), with a
   [gallery](../../eval-results/2026-10-12-gallery.md) of every lane's deliverables side by side.
 - [2026-10-06](../../eval-results/2026-10-06-vixl-0.20-tool-comparison.md): the Vixl lane re-run on
   Vixl 0.20.0.

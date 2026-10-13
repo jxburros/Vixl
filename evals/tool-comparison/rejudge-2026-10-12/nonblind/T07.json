@@ -1,0 +1,148 @@
+{
+ "test": "T07",
+ "lanes": {
+  "C": {
+   "hard_passed": 7,
+   "hard_total": 7,
+   "hard": [
+    {
+     "check": "10 PNGs 1200x900 in file order",
+     "pass": true,
+     "evidence": "badge-01..10 all 1200x900; names follow CSV row order"
+    },
+    {
+     "check": "Names exact (O'Brien, Zoë/Ångström-Okonkwo, 花子/山田, Ana Lucía/Gómez)",
+     "pass": true,
+     "evidence": "visual check: all exact, CJK drawn with IPAGothic (no tofu); PDF is raster so text checked visually"
+    },
+    {
+     "check": "Row 4 long name/company fit without clipping or overlap",
+     "pass": true,
+     "evidence": "dark pixels span x 88-1118 of 1200; lines shrunk, no overlap"
+    },
+    {
+     "check": "Row 6 no company: no gap/placeholder",
+     "pass": true,
+     "evidence": "Sam Okafor block re-centred, no 'None'/'nan'"
+    },
+    {
+     "check": "Row 7 VOLUNTEER on sea-foam bar",
+     "pass": true,
+     "evidence": "bar pixel #a8d5c8, text VOLUNTEER"
+    },
+    {
+     "check": "Bar colours by role; readable text on navy",
+     "pass": true,
+     "evidence": "bar pixels: amber/seafoam/amber/seafoam/coral/navy/seafoam/seafoam/coral/amber; white text on navy Staff bar"
+    },
+    {
+     "check": "badges-print.pdf 2 Letter pages, 2x3, exactly 4x3 in, crop marks",
+     "pass": true,
+     "evidence": "2 pages 8.5x11; images placed at 288x216 pt (4x3 in) from (18,72) - centred; 6 + 4 badges; 14 crop-mark lines per page outside grid"
+    }
+   ],
+   "report_honest": "yes",
+   "honesty_notes": [
+    "Claims match: Pillow PNGs with 300 dpi metadata, raster PDF with 0.5 pt marks outside grid, 18/72 pt margins, IPAGothic regular-weight CJK fallback, white-on-plum 8.27:1 in round 2, 11 PNGs, page 2 with 5 badges."
+   ],
+   "editability": 5,
+   "editability_notes": "Round 2 = copied CSV with one appended row + one colour constant and the CSV path changed in make_badges.py. Badges 01-04, 06-08, 10 pixel-identical to round 1; 05/09 differ only in the bar; contrast rule auto-picked white text. Answer met: 11 PNGs, 05/09 plum, PDF 2 pages with 5 on page 2."
+  },
+  "V": {
+   "hard_passed": 7,
+   "hard_total": 7,
+   "hard": [
+    {
+     "check": "10 PNGs 1200x900 in file order",
+     "pass": true,
+     "evidence": "badge-01..10 all 1200x900; names follow CSV row order"
+    },
+    {
+     "check": "Names exact (O'Brien, Zoë/Ångström-Okonkwo, 花子/山田, Ana Lucía/Gómez)",
+     "pass": true,
+     "evidence": "visual check of all badges; pdftotext returns O'Brien, Zoë, Ångström-Okonkwo, 花子, 山田, Ana Lucía (Noto Sans JP fallback)"
+    },
+    {
+     "check": "Row 4 long name/company fit without clipping or overlap",
+     "pass": true,
+     "evidence": "dark pixels span x 67-1137; text-fit shrink, no overlap"
+    },
+    {
+     "check": "Row 6 no company: no gap/placeholder",
+     "pass": true,
+     "evidence": "Sam Okafor block re-centred, no 'None'/'nan'"
+    },
+    {
+     "check": "Row 7 VOLUNTEER on sea-foam bar",
+     "pass": true,
+     "evidence": "bar pixel #a8d5c8, text VOLUNTEER"
+    },
+    {
+     "check": "Bar colours by role; readable text on navy",
+     "pass": true,
+     "evidence": "bar pixels: amber/seafoam/amber/seafoam/coral/navy/seafoam/seafoam/coral/amber; white text on navy Staff bar"
+    },
+    {
+     "check": "badges-print.pdf 2 Letter pages, 2x3, exactly 4x3 in, crop marks",
+     "pass": true,
+     "evidence": "2 pages 8.5x11; vector badge rects 288x216 pt at x 18/306, y 72/288/504 - centred; crop marks visible in render; text embedded (Inter Tight, Inter, Noto Sans JP)"
+    }
+   ],
+   "report_honest": "yes",
+   "honesty_notes": [
+    "Claims match: 180 px bar (43.2 pt in PDF), plum + white bar text in round 2, merge-impose output, PDF fonts embedded, page 2 holds 7-11.",
+    "badge.vixl and badges-sheet.vixl named as sources are not in the archive (unverifiable, not counted)."
+   ],
+   "editability": 5,
+   "editability_notes": "Round 2 = one variable-map edit (barcolor/barink Sponsor) on the template, then batch export + merge-impose rerun with the new CSV. Badges 01-04, 06-08, 10 pixel-identical; layout untouched. Answer met."
+  },
+  "W": {
+   "hard_passed": 7,
+   "hard_total": 7,
+   "hard": [
+    {
+     "check": "10 PNGs 1200x900 in file order",
+     "pass": true,
+     "evidence": "badge-01..10 all 1200x900; names follow CSV row order"
+    },
+    {
+     "check": "Names exact (O'Brien, Zoë/Ångström-Okonkwo, 花子/山田, Ana Lucía/Gómez)",
+     "pass": true,
+     "evidence": "visual check of all badges; pdftotext returns O'Brien, Zoë, Ångström-Okonkwo, 花子, 山田, Ana Lucía (WenQuanYi fallback)"
+    },
+    {
+     "check": "Row 4 long name/company fit without clipping or overlap",
+     "pass": true,
+     "evidence": "dark pixels span x 73-1120; shrink loop, no overlap"
+    },
+    {
+     "check": "Row 6 no company: no gap/placeholder",
+     "pass": true,
+     "evidence": "Sam Okafor block re-centred, no 'None'/'nan'"
+    },
+    {
+     "check": "Row 7 VOLUNTEER on sea-foam bar",
+     "pass": true,
+     "evidence": "bar pixel #a8d5c8, text VOLUNTEER"
+    },
+    {
+     "check": "Bar colours by role; readable text on navy",
+     "pass": true,
+     "evidence": "bar pixels: amber/seafoam/amber/seafoam/coral/navy/seafoam/seafoam/coral/amber; white text on navy Staff bar"
+    },
+    {
+     "check": "badges-print.pdf 2 Letter pages, 2x3, exactly 4x3 in, crop marks",
+     "pass": true,
+     "evidence": "2 pages 8.5x11; vector badge rects 288x216 pt at x 18/306, y 72/288/504 - centred; hairline crop marks visible; fonts embedded (Instrument Sans, WenQuanYi Zen Hei)"
+    }
+   ],
+   "report_honest": "yes",
+   "honesty_notes": [
+    "Claims match: PNGs without DPI metadata (stated), 0.25 in side / 1 in top-bottom margins, WenQuanYi CJK fallback, white text on plum, header rule takes role colour (stated).",
+    "Round-2 diff confirms the three build.py edits; badge.css unchanged."
+   ],
+   "editability": 5,
+   "editability_notes": "Round 2 = CSV copy with appended row, 3 one-line edits in build.py (CSV path, row count assert, sponsor colours). Unchanged badges pixel-identical; 05/09 changed in bar and role-coloured header rule only. Answer met."
+  }
+ }
+}

@@ -1,0 +1,135 @@
+{
+ "test": "T10",
+ "lanes": {
+  "V": {
+   "hard_passed": 6,
+   "hard_total": 6,
+   "hard": [
+    {
+     "check": "Horizon level within 0.3 deg",
+     "pass": true,
+     "evidence": "Fitted sea/sky edge: edited -0.005 deg, caption +0.015 deg (raw +2.198)"
+    },
+    {
+     "check": "No dark rotation wedges",
+     "pass": true,
+     "evidence": "1512x1008 crop at (44,29) in GT frame; brightened corner crops show no wedges on all three files"
+    },
+    {
+     "check": "Exposure/colour natural, noise reduced without smearing",
+     "pass": true,
+     "evidence": "Vs the clean synth: upper sky 44/29/93 (GT 69/51/100), glow 236/173/110 (GT 255/187/114), sea 96/53/64 (GT 119/76/77); MAE to GT 17.2 (leveled raw 36.3). Sky high-pass noise 3.31 -> 1.05. Birds a bit soft (Laplacian corr 0.62 vs 0.87 for C/T) but intact. Slightly dark and magenta"
+    },
+    {
+     "check": "Same scene (4 birds, figure, lighthouse)",
+     "pass": true,
+     "evidence": "Template match to GT 0.92; 4 birds, figure with raised arm and lighthouse present and unmoved in crops"
+    },
+    {
+     "check": "Instagram 1080x1350; caption 1600x900 exact and readable",
+     "pass": true,
+     "evidence": "Sizes exact; 'Port Ellery at golden hour' bottom-left over a radial scrim, clearly readable"
+    },
+    {
+     "check": "Original untouched",
+     "pass": true,
+     "evidence": "Fixture sha256 86ec0e7c...cc7a4c and md5 0adf9cb2... match what all reports cite"
+    }
+   ],
+   "report_honest": "yes",
+   "honesty_notes": [
+    "The rotation, crop size and offset (measured 44,29), the 0.03 deg level claim and the r2 statistics table all reproduce exactly (means, R/B, luma std).",
+    "It says the Instagram crop holds one bird. Confirmed (bird at GT x=980)."
+   ],
+   "editability": 5,
+   "editability_notes": "Round 2 added temperature +22 and contrast -12 effects to the master and refreshed the links in the derived docs. The crop offsets in the outputs are identical (44,29) and the caption only changed text. Rebuilt from the original, so damage does not compound. The .vixl master and linked docs named in the report are not in the run folder (*.vixl is gitignored repo-wide), so editability is judged from the round-2 report and an r1/r2 pixel diff."
+  },
+  "C": {
+   "hard_passed": 6,
+   "hard_total": 6,
+   "hard": [
+    {
+     "check": "Horizon level within 0.3 deg",
+     "pass": true,
+     "evidence": "Edited -0.003 deg, caption -0.002 deg"
+    },
+    {
+     "check": "No dark rotation wedges",
+     "pass": true,
+     "evidence": "1509x1005 crop at (45,31); no wedges in corner crops"
+    },
+    {
+     "check": "Exposure/colour natural, noise reduced without smearing",
+     "pass": true,
+     "evidence": "MAE to GT 13.6; upper sky 53/52/123 (GT 70/52/101) is bluer, glow 248/228/136 (GT 255/187/114) is yellower; looks natural. Sky noise 0.65; birds crisp (corr 0.87)"
+    },
+    {
+     "check": "Same scene",
+     "pass": true,
+     "evidence": "Match to GT 0.97; 4 birds, figure and lighthouse intact"
+    },
+    {
+     "check": "Instagram 1080x1350; caption 1600x900 exact and readable",
+     "pass": true,
+     "evidence": "Sizes exact; caption exact in DejaVu Serif 64 px with gradient and shadow"
+    },
+    {
+     "check": "Original untouched",
+     "pass": true,
+     "evidence": "md5 0adf9cb287cbfd00da4750dad81f245a"
+    }
+   ],
+   "report_honest": "partly",
+   "honesty_notes": [
+    "It diagnoses the raw as having a 'strong magenta/red cast, green suppressed'. The actual fault is a cool/green cast (R x0.86, G x1.02, B x1.08). Its gray-world gains (R x0.892, G x1.099) push against the needed correction, and the result reads bluer and yellower than the source scene.",
+    "The other numbers check out: crop boxes, sizes, horizon row 609 (measured 610) and the r2 RGB means (101/85/99 -> 104/86/93). The r2 luma std and percentile figures use a different luma measure than mine but go the same way."
+   ],
+   "editability": 5,
+   "editability_notes": "edit_coast.py diff: a path fix, WARM/CONTRAST constants plus 4 lines, and the caption string. Rebuilt from the raw; crops unchanged."
+  },
+  "T": {
+   "hard_passed": 6,
+   "hard_total": 6,
+   "hard": [
+    {
+     "check": "Horizon level within 0.3 deg",
+     "pass": true,
+     "evidence": "Edited +0.031 deg, caption -0.005 deg"
+    },
+    {
+     "check": "No dark rotation wedges",
+     "pass": true,
+     "evidence": "1558x1004 max-area crop; no wedges in corner crops"
+    },
+    {
+     "check": "Exposure/colour natural, noise reduced without smearing",
+     "pass": true,
+     "evidence": "MAE to GT 13.6; upper sky 49/34/95, glow 254/176/102, sea 99/56/65, closest hue to GT; sky noise 0.51; birds crisp (corr 0.88); light sharpening"
+    },
+    {
+     "check": "Same scene",
+     "pass": true,
+     "evidence": "Match to GT 0.975; scene intact"
+    },
+    {
+     "check": "Instagram 1080x1350; caption 1600x900 exact and readable",
+     "pass": true,
+     "evidence": "Sizes exact; caption in DejaVu Sans Bold, readable (PNG is RGBA, fully opaque)"
+    },
+    {
+     "check": "Original untouched",
+     "pass": true,
+     "evidence": "md5 0adf9cb287cbfd00da4750dad81f245a"
+    }
+   ],
+   "report_honest": "yes",
+   "honesty_notes": [
+    "The stated sizes, crop window, aspect deviation (1.55:1, disclosed) and r2 means (98.4/58.8/74.4 -> 102.0/61.3/73.4) match.",
+    "It reports a residual slope of -0.08 deg; I measure +0.03. Both are within noise.",
+    "R2 says the contrast cut is only about 2.6% std. That is accurate, and the change is very slight."
+   ],
+   "editability": 5,
+   "editability_notes": "build.sh diff: a path fix, three variables (WARM_R/B, SOFTEN, CAPTION) and two added convert steps. Rebuilt from the raw; crops unchanged."
+  }
+ }
+}
