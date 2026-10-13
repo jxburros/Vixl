@@ -234,16 +234,15 @@ class Slide:
 
             stroke_xml, stroke_alpha = self.color(layer.get("stroke", "transparent"), opacity)
             width = layer.get("stroke_width", 1)
-            # Vixl pads a stroked shape's box by half the stroke and strokes inside the padded box;
-            # PowerPoint centres strokes on the outline, so inset the outline to match (as the PDF
-            # writer does).
-            pad = width / 2 if stroke_alpha > 0 else 0
-            inset = {"rectangle": 2 * pad, "rounded-rectangle": 2 * pad, "capsule": 2 * pad, "ellipse": 2 * pad,
-                     "path": 0, "arc": 0}.get(layer["shape"], pad)
+            # PowerPoint centres strokes on the outline: move the outline to where the stroke's centre
+            # line runs (geometry.stroke_inset; half a stroke in for a closed shape's inside stroke).
+            from .geometry import stroke_inset
+
+            inset, _ = stroke_inset(layer, stroke_alpha > 0)
             rw, rh = rest_size(layer)
             if inset and min(rw, rh) - 2 * inset >= 1:
                 frame = (inset, inset, rw - 2 * inset, rh - 2 * inset)
-            geometry = self.geometry(layer, pad)
+            geometry = self.geometry(layer, inset if frame else 0)
             fill = self.fill(default_fill(layer), opacity)
             if layer["shape"] == "line":
                 fill = "<a:noFill/>"
@@ -261,7 +260,8 @@ class Slide:
         return (f'<p:sp><p:nvSpPr>{c_nv_pr(ident, layer)}<p:cNvSpPr/><p:nvPr/></p:nvSpPr>'
                 f'<p:spPr>{self.xfrm(layer, bounds, emu, frame=frame)}{geometry}{fill}{line}</p:spPr></p:sp>')
 
-    def geometry(self, layer, pad=0.0):
+    def geometry(self, layer, inset=0.0):
+        """Preset or custom geometry for a shape whose frame is ``inset`` from its box on every side."""
         from .geometry import parse_path, shape_path
 
         shape = layer["shape"]
@@ -269,8 +269,8 @@ class Slide:
         if shape == "rectangle":
             return '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
         if shape in ("rounded-rectangle", "capsule"):
-            radius = layer.get("radius", min(w, h) / (2 if shape == "capsule" else 5)) - pad
-            adj = max(0, min(50000, round(radius / max(1e-9, min(w, h) - 4 * pad) * 100000)))
+            radius = min(layer.get("radius", min(w, h) / (2 if shape == "capsule" else 5)), w / 2, h / 2) - inset
+            adj = max(0, min(50000, round(radius / max(1e-9, min(w, h) - 2 * inset) * 100000)))
             return f'<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val {adj}"/></a:avLst></a:prstGeom>'
         if shape == "ellipse":
             return '<a:prstGeom prst="ellipse"><a:avLst/></a:prstGeom>'

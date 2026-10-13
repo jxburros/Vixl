@@ -185,18 +185,29 @@ vixl -p copy.vixl import poster.svg
 ```
 
 - The SVG holds `<metadata id="vixl-document">` with the page's document JSON (the [file format](file-format.md)'s
-  `state`, a multi-page document's exported page as a single page) and the images and fonts it uses as base64, plus
-  a SHA-256 digest of the rest of the SVG. Every layer's group also carries `data-vixl-id` (its layer ID) and
-  `data-layer` (its name). Browsers and other editors ignore the metadata; the SVG draws exactly as before.
+  `state`, a multi-page document's exported page as a single page) and a SHA-256 digest of the rest of the SVG.
+  Every layer's group also carries `data-vixl-id` (its layer ID) and `data-layer` (its name). Browsers and other
+  editors ignore the metadata; the SVG draws exactly as before.
+- Each file the page uses is stored once. An image the page shows as it is (its own size, no effects) is drawn by
+  an `<image>` holding the file's own bytes, and the metadata points at that element. Other files (images of hidden
+  layers, images drawn resized or with effects, masks, brushes, patterns) are stored in the metadata as base64.
+- Fonts are never stored in the SVG, only named: family, weight, style and source (a bundled face, a Google Fonts
+  family, or a file you imported). A blank document is a few KB, and a published SVG does not redistribute font
+  files. On import each font is found again: the same file already in the document, the bundled face, a font the
+  document registers under the same name (or with the same family and style), then the Google Fonts style from the
+  font cache, downloading it when the cache does not have it (`install_fonts=False` in Python keeps the import
+  offline). The result's `fonts` says how each registered font was found. A font none of these supplies (an
+  imported file you do not have registered) is drawn with the bundled DejaVu Sans and listed in `warnings`; the
+  import does not fail, and importing and registering the font under the same name restores it. Everything except
+  the font files round-trips exactly.
 - Importing into a document without layers takes the embedded canvas and resources too, so the result equals the
   exported page. Importing into a document with layers places the layers as one group at their original position
   (names the document already uses are prefixed with the group's name).
-- When the SVG was edited after export (the digest no longer matches), when its embedded images and fonts exceeded
-  32 MiB and were left out, or when the embedded document does not pass the checks a `.vixl` file must pass, the
-  import reads the SVG's visible elements instead and says why in `warnings`.
+- When the SVG was edited after export (the digest no longer matches), when its stored files exceeded 32 MiB and
+  were left out, or when the embedded document does not pass the checks a `.vixl` file must pass, the import reads
+  the SVG's visible elements instead and says why in `warnings`.
 - `svg_document=False` (Python, REST) leaves the metadata out, for example for a web asset. HTML exports and
-  presentation slides never carry it. Fonts are embedded as whole files, as in the `.vixl`; leave the document out of
-  SVGs you publish when a font's license does not allow redistribution.
+  presentation slides never carry it.
 
 ## Importing SVG and PDF
 

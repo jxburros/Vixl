@@ -824,7 +824,7 @@
     },
     "stroke_align": {
      "type": "string",
-     "description": "Stroke position: center, inside or outside."
+     "description": "Stroke position on the outline: inside (default for closed shapes), center (default for paths, arcs, lines and open shapes) or outside."
     },
     "strokes": {
      "type": "array",

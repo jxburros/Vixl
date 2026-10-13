@@ -28,7 +28,7 @@ NOT_STATE_FIELDS = {}
 def _manifests():
     old = ROOT / "tests" / "fixtures" / "convert"  # documents saved by older releases: test_convert converts them
     for path in sorted(ROOT.glob("**/*.vixl")):
-        if ".git" in path.parts or "_failures" in path.parts or old in path.parents:
+        if {".git", ".claude", "_failures"} & set(path.relative_to(ROOT).parts) or old in path.parents:
             continue
         with zipfile.ZipFile(path) as archive:
             yield path.relative_to(ROOT), json.loads(archive.read("project.json"))

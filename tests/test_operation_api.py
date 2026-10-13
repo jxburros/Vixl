@@ -66,7 +66,7 @@ def test_unknown_fields_fail_instead_of_warning():
     with pytest.raises(VixlError, match=r"Unknown field\(s\) 'spread' in effects\[0\]"):
         p.apply({"type": "adjustment", "name": "adj", "effects": [{"name": "brightness", "amount": 10, "spread": 2}]})
     # A valid field that does nothing for this shape is still only an advisory.
-    result = p.apply({"type": "shape", "shape": "rectangle", "name": "r", "radius": 4, "width": 9, "height": 9})
+    result = p.apply({"type": "shape", "shape": "ellipse", "name": "r", "radius": 4, "width": 9, "height": 9})
     assert "radius only rounds" in " ".join(result["warnings"])
 
 

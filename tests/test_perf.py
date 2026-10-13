@@ -115,3 +115,16 @@ def test_full_canvas_opaque_multiply():
     elapsed, results = timed(lambda: [composite(bottom, top, 'multiply') for _ in range(4)])
     assert all(result.getpixel((0, 0))[3] == 255 for result in results)
     assert elapsed < 1.5
+
+
+def test_full_canvas_dithered_linear_gradient():
+    from vixl.design_render import gradient_image
+
+    p = Project(2400, 2400, "white")
+    for direction in ("vertical", "horizontal"):
+        layer = {"type": "gradient", "direction": direction, "start": "#20242a", "end": "#2c3138"}
+        # Dithering every pixel took about 0.1 s; a linear ramp is one row of colours and a 64 px dither period,
+        # now under 10 ms.
+        elapsed, image = timed(lambda: gradient_image(p, layer, (2400, 2400)))
+        assert image.size == (2400, 2400)
+        assert elapsed < 0.1

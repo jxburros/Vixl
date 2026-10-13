@@ -403,10 +403,19 @@ class PageReader:
         if not previous or fill is not None or not stroke:
             return False
         points0, matrix0, operation, left, top = previous
-        same = points0 == points and tuple(matrix0) == tuple(matrix.transform(_matrix(self.raw, obj)))
-        if not same or operation["stroke"] != "transparent":
+        if operation["stroke"] != "transparent":
             return False
+        same = points0 == points and tuple(matrix0) == tuple(matrix.transform(_matrix(self.raw, obj)))
         pad = stroke_width / 2
+        if not same and self.inside_outline(operation, _pen(points, matrix.transform(_matrix(self.raw, obj))), pad):
+            # The stroke runs half its width inside the fill's outline (Vixl's own inside strokes):
+            # the layer keeps the fill's outline and strokes inside it.
+            operation["stroke"], operation["stroke_width"], operation["stroke_align"] = _hex(stroke), stroke_width, "inside"
+            self.stroke_details(obj, operation, _similarity_scale(matrix.transform(_matrix(self.raw, obj))))
+            self.previous_path = None
+            return True
+        if not same:
+            return False
         x0, y0 = operation["x"], operation["y"]
         # Grow the box by the stroke's half width; the path keeps its place.
         grow = math.ceil(pad)
@@ -423,6 +432,27 @@ class PageReader:
         self.stroke_details(obj, operation, _similarity_scale(matrix.transform(_matrix(self.raw, obj))))
         self.previous_path = None
         return True
+
+    @staticmethod
+    def inside_outline(operation, pen, pad):
+        """Whether the closed stroke path ``pen`` (page pixels) runs ``pad`` inside the outline of the
+        fill-only path ``operation``: grown by ``pad`` with mitred corners, it covers the fill's area."""
+        from shapely import BufferJoinStyle
+        from .geometry import path_polygons
+        from .svg_import import path_commands
+        from .vector_boolean import filled_region
+
+        if pad <= 0:
+            return False
+        fill = path_polygons(operation["path"])
+        line = path_polygons(path_commands(pen, operation["x"], operation["y"]))
+        if not fill or not line or not all(len(c) > 3 and c[0] == c[-1] for c in fill + line):
+            return False
+        outer, centre = filled_region(fill), filled_region(line)
+        if outer.is_empty or centre.is_empty:
+            return False
+        grown = centre.buffer(pad, join_style=BufferJoinStyle.mitre, mitre_limit=16)
+        return grown.symmetric_difference(outer).area <= 0.1 * outer.length
 
     def stroke_details(self, obj, operation, scale):
         raw = self.raw

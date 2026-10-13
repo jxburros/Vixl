@@ -65,34 +65,56 @@ def embedded_payload(data):
         return None, ("The SVG was changed after Vixl exported it, so the Vixl document it carries no longer matches "
                       "what it shows; imported its visible elements instead")
     if payload.get("omitted_assets"):
-        return None, (f"The SVG's Vixl document leaves out {len(payload['omitted_assets'])} large image or font "
-                      "file(s); imported its visible elements instead")
+        return None, (f"The SVG's Vixl document leaves out {len(payload['omitted_assets'])} large file(s); imported "
+                      "its visible elements instead")
     return payload, None
 
 
-def embedded_project(payload, project):
-    """The embedded document as a Project, through the same checks as opening a .vixl file."""
+def embedded_project(payload, project, data=b"", *, install_fonts=True):
+    """``(document, report)``: the embedded document as a Project, through the same checks as opening a .vixl file.
+    Images the payload points at in the SVG body are read from there (``data``); fonts are found again by
+    identity (``resolve_fonts``), and ``report`` says how (``fonts``) and what fell back (``warnings``)."""
     from . import __version__
     from .project import ASSET_REFERENCE, Project
 
     document = payload["document"]
     require(isinstance(document, dict) and isinstance(document.get("state"), dict), "Invalid embedded Vixl document",
             "invalid_svg")
-    assets = {}
-    encoded = payload.get("assets") or {}
-    require(isinstance(encoded, dict) and len(encoded) <= 10000, "Invalid embedded assets", "invalid_svg")
-    for name, text in encoded.items():
-        require(isinstance(name, str) and ASSET_REFERENCE.fullmatch(name.encode()) and isinstance(text, str),
-                "Invalid embedded asset", "invalid_svg")
+    encoded, images, fonts = (payload.get(key) or {} for key in ("assets", "images", "fonts"))
+    require(all(isinstance(group, dict) for group in (encoded, images, fonts))
+            and len(encoded) + len(images) + len(fonts) <= 10000, "Invalid embedded assets", "invalid_svg")
+    require(all(isinstance(name, str) and ASSET_REFERENCE.fullmatch(name.encode())
+                for name in (*encoded, *images, *fonts)), "Invalid embedded asset", "invalid_svg")
+
+    def checked(name, text):
+        require(isinstance(text, str), "Invalid embedded asset", "invalid_svg")
         try:
             raw = base64.b64decode(text, validate=True)
         except ValueError as exc:
             raise VixlError("invalid_svg", "Invalid embedded asset") from exc
-        digest = hashlib.sha256(raw).hexdigest()
-        require(name.split("/")[1].startswith(digest + "."), "Embedded asset checksum mismatch", "invalid_svg")
-        assets[name] = raw
+        require(name.split("/")[1].startswith(hashlib.sha256(raw).hexdigest() + "."),
+                "Embedded asset checksum mismatch", "invalid_svg")
+        return raw
+
+    assets = {name: checked(name, text) for name, text in encoded.items()}
+    if images:
+        hrefs = {element.get("id"): element.get("href") or element.get(XLINK) or ""
+                 for element in ET.fromstring(data).iter() if local(element.tag) == "image" and element.get("id")}
+        for name, ident in images.items():
+            href = hrefs.get(ident) if isinstance(ident, str) else None
+            require(href and href.startswith("data:") and ";base64," in href,
+                    f"The SVG has no image {ident!r} for {name}", "invalid_svg")
+            assets[name] = checked(name, href.split(",", 1)[1])
     state = document["state"]
-    root = {"id": "rev_svg_import", "parent": None, "operations": [], "label": "Import", "state": state}
+    report = {"fonts": {}, "warnings": []}
+    renamed = resolve_fonts(fonts, project, assets, report, install=install_fonts)
+    if renamed:
+        # Asset names are content hashes, so a font found again as other bytes has another name everywhere.
+        text = json.dumps(state, ensure_ascii=False)
+        for old, new in renamed.items():
+            text = text.replace(old, new)
+        state = json.loads(text)
+    root ={"id": "rev_svg_import", "parent": None, "operations": [], "label": "Import", "state": state}
     manifest = {"format_version": document.get("format_version"), "vixl_version": __version__, "state": state,
                 "nodes": {root["id"]: root}, "head": root["id"], "branches": {"main": root["id"]}, "checkpoints": {},
                 "current_branch": "main", "redo_stack": [], "transaction": None,
@@ -105,16 +127,91 @@ def embedded_project(payload, project):
                 archive.writestr(name, raw)
         document = Project.load(path, limits=project.limits, workspace=getattr(project, "_workspace", None))
     document.path = None
-    return document
+    return document, report
+
+
+def resolve_fonts(fonts, project, assets, report, *, install=True):
+    """Find each font the payload names by identity (``svg.font_identity``) and add its bytes to ``assets``. In
+    order: the same file already in ``project`` (by hash), the bundled file, a font ``project`` registers under
+    the same name or with the same family and style, the Google Fonts style from the font cache, then (with
+    ``install``) from Google Fonts. A font none of these has falls back to the bundled DejaVu Sans with a warning;
+    the import never fails for a font. Returns ``{old: new}`` asset names for fonts found as other bytes;
+    ``report["fonts"]`` says how each registered font resolved."""
+    from .text import BUNDLED_FONTS, font_style
+
+    folder = Path(__file__).parent / "data"
+    targets = {name: raw for name, raw in project.assets.items() if name.startswith("fonts/")}
+    registry = project.state.get("fonts") or {}
+    renamed, missing = {}, []
+    for name, record in fonts.items():
+        require(isinstance(record, dict), "Invalid embedded font", "invalid_svg")
+        family, weight = str(record.get("family", "")), record.get("weight")
+        weight = weight if isinstance(weight, int) and not isinstance(weight, bool) else 400
+        italic = bool(record.get("italic"))
+        registered = [key for key in record.get("registered") or [] if isinstance(key, str)]
+        raw, how = targets.get(name), "document"
+        if raw is None and record.get("source") == "bundled" and record.get("file") in BUNDLED_FONTS:
+            raw, how = (folder / record["file"]).read_bytes(), "bundled"
+        if raw is None:
+            wanted = (family.casefold(), weight, italic)
+            same = [registry[key] for key in registered if registry.get(key) in targets]
+            same += [other for other in targets if font_style(targets[other])[1:] == wanted[1:]]
+            raw = next((targets[other] for other in same if font_style(targets[other])[0].casefold() == wanted[0]),
+                       None)
+        if raw is None and record.get("source") == "google":
+            raw, how = google_font(family, weight, italic, install)
+        if raw is None:
+            raw, how = (folder / "DejaVuSans.ttf").read_bytes(), "fallback"
+            missing.append(f"{family} {weight}{' italic' if italic else ''}"
+                           + (f" ({', '.join(registered)})" if registered else ""))
+        new = f"fonts/{hashlib.sha256(raw).hexdigest()}.ttf"
+        assets[new] = raw
+        if new != name:
+            renamed[name] = new
+        for key in registered or [family]:
+            report["fonts"][key] = how
+    if missing:
+        report["warnings"].append(
+            f"SVG does not store font files, and these were not found again: {'; '.join(missing)}. Their text uses the "
+            "bundled DejaVu Sans; import the font and register it under the same name to restore it."
+            + ("" if install else " Font installs were off, so Google Fonts were looked for in the font cache only."))
+    return renamed
+
+
+def google_font(family, weight, italic, install):
+    """``(bytes, how)`` for a Google Fonts style at its nearest available weight: from the font cache (``font
+    cache``), else, with ``install``, downloaded (``downloaded``); ``(None, None)`` when neither works."""
+    import httpx
+
+    from .typefaces import fetch_font, find_font
+
+    entry = find_font(family)
+    weights = (entry or {}).get("weights") or [min(900, max(100, round(weight / 100) * 100))]
+    wanted = min(weights, key=lambda w: (abs(w - weight), w))
+
+    def refuse(request):
+        raise httpx.ConnectError("font installs are off", request=request)
+
+    found = {}
+    client = None if install else httpx.Client(transport=httpx.MockTransport(refuse))
+    try:
+        data, _ = fetch_font(family, wanted, italic, client=client, source=found)
+    except VixlError:
+        return None, None
+    finally:
+        if client is not None:
+            client.close()
+    return data, "downloaded" if found.get("origin") == "download" else "font cache"
 
 
 MERGED_RESOURCES = ("swatches", "palettes", "luts", "patterns", "character_styles", "paragraph_styles", "brushes", "maps",
                     "variables", "fonts")
 
 
-def import_embedded(project, document, name, warnings=()):
+def import_embedded(project, document, name, warnings=(), fonts=None):
     """Bring ``document`` into ``project`` as one revision: its whole state into an empty document, else its layers
-    as one editable group at their original positions."""
+    as one editable group at their original positions. ``fonts`` (registered name: how it was found) goes into the
+    result."""
     from .validation import check_state
 
     candidate = project.clone()
@@ -158,6 +255,8 @@ def import_embedded(project, document, name, warnings=()):
               "canvas": "adopted" if adopt else "kept",
               "message": "Imported the Vixl document this SVG carries: its layers, text, groups and effects are "
                          "editable as they were." + ("" if adopt else " They are placed as one group.")}
+    if fonts:
+        result["fonts"] = dict(fonts)
     if warnings:
         result["warnings"] = list(warnings)
     return result

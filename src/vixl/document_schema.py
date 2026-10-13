@@ -117,7 +117,8 @@ LAYER_FIELDS = {
     "line_cap": (STRING, "Stroke cap: butt, round or square."),
     "line_join": (STRING, "Stroke join: miter, round or bevel."),
     "miter_limit": (NUMBER, "Miter limit for mitred joins."),
-    "stroke_align": (STRING, "Stroke position: center, inside or outside."),
+    "stroke_align": (STRING, "Stroke position on the outline: inside (default for closed shapes), center (default "
+                     "for paths, arcs, lines and open shapes) or outside."),
     "strokes": (ARRAY, "paint: brush strokes {brush, points, …}; shape: extra strokes drawn over the outline."),
     "width_profile": (ARRAY, "Variable stroke width profile along the path."),
     "taper_start": (NUMBER, "Stroke taper at the start, 0–1."),

@@ -31,27 +31,54 @@ def gradient_image(project, layer, size):
         arr[..., :3] *= 255 / np.maximum(arr[..., 3:], 1)
         return np.clip(arr, 0, 255)
 
+    if direction in ("horizontal", "vertical"):
+        return Image.fromarray(linear_ramp(values(x[0] if direction == "horizontal" else y[:, 0]), w, h, direction))
     # Float work in bands of rows, so a large canvas never holds several float64 copies of itself.
     result = np.empty((h, w, 4), dtype=np.uint8)
     band = max(1, (1 << 18) // max(1, w))
-    # A linear ramp repeats one row or column: compute its colours once.
-    line = values(x[0] if direction == "horizontal" else y[:, 0]) if direction not in ("radial", "angled") else None
+    # Opaque stops leave alpha alone and a channel the stops share is a whole number: only the others vary.
+    opaque = bool(np.all(colors[:, 3] == 255))
+    wide = np.tile(dither_tile(), (1, w // DITHER + 1))[:, :w]
+    constant = [bool(np.all(colors[:, i] == colors[0, i]) and colors[0, i] == int(colors[0, i])) for i in range(4)]
     for top in range(0, h, band):
         rows = y[top:top + band]
         if direction == "radial":
             cx, cy = layer.get("center", (0.5, 0.5))
-            arr = values(np.sqrt((2 * (x - cx)) ** 2 + (2 * (rows - cy)) ** 2))
-        elif direction == "angled":
+            ramp = np.sqrt((2 * (x - cx)) ** 2 + (2 * (rows - cy)) ** 2)
+        else:
             a = math.radians(layer.get("angle", 0))
             dx, dy = math.cos(a), math.sin(a)
-            arr = values(((x - 0.5) * dx + (rows - 0.5) * dy) / (abs(dx) + abs(dy)) + 0.5)
-        elif direction == "horizontal":
-            arr = line[None, :, :]
+            ramp = ((x - 0.5) * dx + (rows - 0.5) * dy) / (abs(dx) + abs(dy)) + 0.5
+        thresholds = wide[np.arange(top, top + len(rows)) % DITHER]
+        if opaque:
+            for i in range(4):
+                if constant[i]:
+                    result[top:top + band, :, i] = int(colors[0, i])
+                else:
+                    # Stops are in range, so the interpolation is too: no clip, and the sum is done in place.
+                    level = np.interp(ramp, offsets, colors[:, i])
+                    level += thresholds
+                    result[top:top + band, :, i] = np.floor(level, out=level)
         else:
-            arr = line[top:top + band, None, :]
-        thresholds = dither((len(rows), w), top)[..., None]
-        result[top:top + band] = np.floor(arr + thresholds).astype(np.uint8)
+            result[top:top + band] = np.floor(values(ramp) + thresholds[..., None])
     return Image.fromarray(result)
+
+
+def linear_ramp(line, w, h, direction):
+    """A horizontal or vertical gradient from its ``line`` of colours (one per column or row). The dither
+    repeats every DITHER pixels across the ramp, so one strip of that width is computed and copied."""
+    tile = dither_tile()
+    result = np.empty((h, w, 4), dtype=np.uint8)
+    if direction == "vertical":
+        strip = np.floor(line[:, None, :] + tile[np.arange(h) % DITHER][:, :, None]).astype(np.uint8, order="C")
+        full = w // DITHER
+        result[:, :full * DITHER].reshape(h, full, DITHER, 4)[:] = strip[:, None]
+        result[:, full * DITHER:] = strip[:, :w - full * DITHER]
+    else:
+        strip = np.floor(line[None, :, :] + tile[:, np.arange(w) % DITHER][:, :, None]).astype(np.uint8, order="C")
+        for top in range(0, h, DITHER):
+            result[top:top + DITHER] = strip[:h - top]
+    return result
 
 
 DITHER = 64
@@ -74,16 +101,21 @@ def dither(shape, top=0):
 
 
 def vector_routed(project, layer):
-    """Whether ``shape_image`` draws the shape with ``vector_strokes.render`` (filled paths, geometry past
-    the box, catalog shapes, styled strokes, distortion, fractional sizes)."""
+    """Whether ``shape_image`` draws the shape with ``vector_strokes.render`` (filled paths, stroked closed
+    shapes, geometry past the box, catalog shapes, styled strokes, distortion, fractional sizes)."""
     from .render import color
     from .shape_catalog import active as catalog_active
     from .vector_strokes import active as stroke_active
-    from .geometry import path_overflows
+    from .geometry import PATH_SHAPES, path_overflows
+    from .trim import trim_range
 
-    filled_path = layer.get("shape") == "path" and (layer.get("stroke_width", 1) <= 0 or
-                  color(resolve_color(layer.get("stroke", "transparent"), project.state))[3] == 0)
-    return bool(filled_path or path_overflows(layer) or catalog_active(layer) or stroke_active(layer)
+    stroked = layer.get("stroke_width", 1) > 0 and color(
+        resolve_color(layer.get("stroke", "transparent"), project.state))[3] > 0
+    # A closed shape strokes inside its outline (geometry.stroke_align): vector_strokes draws that band
+    # exactly, as the SVG and PDF exports do. Trimmed strokes are drawn by trim.trimmed_image.
+    inside = stroked and layer.get("shape") not in (*PATH_SHAPES, "line") and not trim_range(layer)
+    filled_path = layer.get("shape") == "path" and not stroked
+    return bool(filled_path or inside or path_overflows(layer) or catalog_active(layer) or stroke_active(layer)
                 or layer.get("distort") or layer.get("_distort_groups")
                 or (layer.get("shape") != "path" and any(not isinstance(layer[k], int) for k in ("width", "height"))))
 
@@ -130,46 +162,21 @@ def shape_image(project, layer):
 
     fill = color(resolve_color(default_fill(layer), project.state))
     stroke = color(resolve_color(layer.get("stroke", "transparent"), project.state))
-    width = round(layer.get("stroke_width", 1) * factor)
-    pad = width / 2 if stroke[3] else 0
-    shape = layer["shape"]
-    if pad and shape != "line" and 2 * pad >= min(w, h) * factor - 1:
-        # The stroke inset leaves no room inside a box narrower than the stroke (a small shape, or
-        # one animated toward scale 0). The visible ring shrinks to nothing as the box approaches
-        # this size, so draw nothing rather than inverting the box.
-        return Image.new("RGBA", (w, h))
-    box = (pad, pad, w * factor - 1 - pad, h * factor - 1 - pad)
-    if shape in ("rectangle", "rounded-rectangle", "ellipse", "capsule"):
-        fn = {
-            "rectangle": draw.rectangle,
-            "rounded-rectangle": draw.rounded_rectangle,
-            "ellipse": draw.ellipse,
-            "capsule": draw.rounded_rectangle,
-        }[shape]
-        extra = (
-            {"radius": layer.get("radius", min(w, h) / (2 if shape == "capsule" else 5)) * factor}
-            if shape in ("rounded-rectangle", "capsule")
-            else {}
-        )
-        fn(box, fill=fill, outline=stroke if width and stroke[3] else None, width=max(1, width), **extra)
-    elif shape == "line":
-        draw.line(box, fill=stroke if stroke[3] else fill, width=max(1, width))
+    if layer["shape"] == "line":
+        # The line's ends sit half a stroke in from the box corners (geometry.stroke_inset).
+        width = round(layer.get("stroke_width", 1) * factor)
+        pad = width / 2 if stroke[3] else 0
+        draw.line((pad, pad, w * factor - 1 - pad, h * factor - 1 - pad), fill=stroke if stroke[3] else fill,
+                  width=max(1, width))
     else:
+        # An unstroked polygon, star or shortcut (stroked closed shapes are vector_routed).
         from .geometry import shape_path, path_polygons
 
         path, view = shape_path(layer)
+        scale = ((w * factor - 1) / view[0], (h * factor - 1) / view[1])
         for polygon in path_polygons(path):
-            points = [
-                (box[0] + x / view[0] * (box[2] - box[0]), box[1] + y / view[1] * (box[3] - box[1]))
-                for x, y in polygon
-            ]
-            if len(points) >= 3:
-                draw.polygon(points, fill=fill)
-            if width and stroke[3] and len(points) >= 2:
-                # PIL joins only interior vertices; repeat the first segment so a
-                # closed contour's start vertex is joined instead of capped flat.
-                closed = len(points) >= 4 and points[0] == points[-1]
-                draw.line(points + points[1:2] if closed else points, fill=stroke, width=width, joint="curve")
+            if len(polygon) >= 3:
+                draw.polygon([(x * scale[0], y * scale[1]) for x, y in polygon], fill=fill)
     return image.resize((w, h), Image.Resampling.LANCZOS)
 
 
