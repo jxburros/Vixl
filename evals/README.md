@@ -72,6 +72,45 @@ same thing (HTML and SVG, Python libraries, free desktop tools, image generation
 use the hand-run [tool comparison kit](tool-comparison/README.md): 16 briefs, judging notes with
 answer keys, fixtures and an output inspector.
 
+## Craft re-run
+
+The [craft plan](../docs/craft-plan.md) measures craft by re-running the Vixl lane of the tool comparison and
+judging it blind against the same web-code and Python runs. `evals/craft_rerun.py` makes that a routine:
+
+```text
+python -m evals.craft_rerun --dry-run                      # the plan and both prompts; no API calls, nothing written
+python -m evals.craft_rerun                                # all 16 briefs, rounds 1 and 2 (spends API credits)
+python -m evals.craft_rerun --tests T02,T08 --model claude-opus-5-5 --effort high
+python -m evals.craft_rerun --package-only --runs PATH     # package a finished re-run again
+```
+
+The kit lives in VixlExamples (`evals/tool-comparison/`): pass `--examples PATH`, set `VIXL_EXAMPLES`, or clone
+VixlExamples beside this repository. For each brief the script:
+
+1. makes a fresh workspace that mirrors the repository paths the brief uses: the brief, its fixtures (the song for
+   T14 and the photo for T10 are generated or copied here, never in the kit) and `skills/vixl/`;
+2. runs round 1 with the kit's own kickoff prompt and lane rule V, plus "Save your .vixl document(s) in the
+   workspace.", through the agent harness (`ClaudeAgent`, the in-process MCP server with `--schema slim --tools
+   core`); the run has no shell, so two text-file tools (`read_text_file`, `write_text_file`, text formats only)
+   stand in for "small scripts for reading inputs" and for writing `REPORT.md`;
+3. runs round 2 in a fresh session on the same workspace with the change request from `TESTS.md`;
+4. copies the run folder to `<kit>/runs-<date>-<version>/<test>/claude-V/` (round 2 in `round2/`), with the lane's
+   sources in `src/`: every `.vixl` document the agent left elsewhere in the workspace, `batches.json` (each
+   operation batch it applied), `trace.json` (every tool call) and `run.json` (model, effort, Vixl version, calls,
+   tokens, missing deliverables and any round-1 file that round 2 changed);
+5. copies the other lanes unchanged from the last blind re-judging (`rejudge-*/packages/<test>.zip` decoded with its
+   `sealed/key.csv`; `--fixed` takes another rejudge folder, or a `runs/` folder whose lanes are already built).
+
+Then it calls the kit's `rejudge.py` to build the blind packages in `<kit>/rejudge-<date>-<version>/` (zipped per
+test in `packages/`, the key in `sealed/key.csv`) and prints the prompt from `JUDGING.md` with the package paths.
+Packaging needs what `rejudge.py` needs: Pillow, pypdf, Playwright with Chromium, `pdftoppm`, LibreOffice and
+ffmpeg. Judge with three judges as in the kit's `rejudge-2026-10-12/README.md`.
+
+The script sends no nudges and keeps no time box beyond `--max-turns` (60 by default); `run.json` lists the
+deliverables each round did not produce. Commit the new runs folder in VixlExamples with its `.vixl` sources:
+VixlExamples does not ignore `*.vixl` (only this repository does), so no `.gitignore` exception is needed there.
+`tests/test_craft_rerun.py` exercises the layout, source capture and packaging call offline with a scripted agent.
+
 ## Adding tasks
 
 Write the brief the way a person would, keep checks objective (geometry, text, files, design

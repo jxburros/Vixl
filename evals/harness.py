@@ -337,13 +337,14 @@ class ClaudeAgent:
 
     name = "claude"
 
-    def __init__(self, model="claude-opus-5-5", effort=None, max_turns=40, fallbacks=True, client=None):
+    def __init__(self, model="claude-opus-5-5", effort=None, max_turns=40, fallbacks=True, client=None,
+                 system=SYSTEM_PROMPT):
         if client is None:
             import anthropic
 
             client = anthropic.Anthropic()
         self.client, self.model, self.effort = client, model, effort
-        self.max_turns, self.fallbacks = max_turns, fallbacks
+        self.max_turns, self.fallbacks, self.system = max_turns, fallbacks, system
 
     def create(self, **arguments):
         if self.effort:
@@ -364,7 +365,7 @@ class ClaudeAgent:
             response = self.create(
                 model=self.model,
                 max_tokens=16000,
-                system=SYSTEM_PROMPT,
+                system=self.system,
                 tools=definitions,
                 messages=messages,
                 cache_control={"type": "ephemeral"},
