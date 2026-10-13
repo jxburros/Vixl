@@ -5,10 +5,6 @@ import re
 import xml.etree.ElementTree as ET
 
 from fontTools.misc.transform import Transform, Identity
-from fontTools.pens.boundsPen import BoundsPen
-from fontTools.pens.recordingPen import RecordingPen
-from fontTools.pens.transformPen import TransformPen
-from fontTools.svgLib.path import parse_path
 
 from .errors import VixlError, require
 
@@ -48,266 +44,11 @@ def transform(value):
 
 
 def svg_operations(data, project, name):
-    require(
-        len(data) <= min(project.limits.max_asset_bytes, 4 * 1024 * 1024),
-        "SVG exceeds byte limit",
-        "resource_limit",
-    )
-    try:
-        data = data.decode("utf-8-sig").encode("utf-8")
-    except UnicodeError as exc:
-        raise VixlError("unsupported_svg", "Save SVG as UTF-8 before importing") from exc
-    require(b"\x00" not in data, "Save SVG as UTF-8 before importing", "unsupported_svg")
-    require(
-        b"<!DOCTYPE" not in data.upper() and b"<!ENTITY" not in data.upper(),
-        "SVG declarations/entities are unsupported",
-        "unsupported_svg",
-    )
-    try:
-        root = ET.fromstring(data)
-    except ET.ParseError as exc:
-        raise VixlError("invalid_svg", str(exc)) from exc
-    require(root.tag in ("svg", "{http://www.w3.org/2000/svg}svg"), "Expected an SVG root")
-    operations = []
-    gradients = {node.get("id"): node for node in root.iter()
-                 if node.tag.rsplit("}", 1)[-1] in ("linearGradient", "radialGradient") and node.get("id")}
-    seen = 0
-    base = Identity
-    if "viewBox" in root.attrib:
-        box = numbers(root.attrib["viewBox"])
-        require(len(box) == 4 and box[2] > 0 and box[3] > 0, "Invalid SVG viewBox")
-        width = length(root.get("width", str(box[2])))
-        height = length(root.get("height", str(box[3])))
-        require(width > 0 and height > 0, "SVG dimensions must be positive")
-        preserve = root.get("preserveAspectRatio", "xMidYMid meet")
-        require(
-            preserve in ("none", "xMidYMid", "xMidYMid meet"),
-            "Unsupported preserveAspectRatio",
-            "unsupported_svg",
-        )
-        sx, sy = width / box[2], height / box[3]
-        if preserve != "none":
-            sx = sy = min(sx, sy)
-        base = (
-            Identity.translate((width - box[2] * sx) / 2, (height - box[3] * sy) / 2)
-            .scale(sx, sy)
-            .translate(-box[0], -box[1])
-        )
-    inherited_keys = {
-        "fill",
-        "stroke",
-        "stroke-width",
-        "fill-opacity",
-        "stroke-opacity",
-        "fill-rule",
-        "display",
-        "visibility",
-    }
-    common = inherited_keys | {"id", "transform", "style", "opacity", "paint-order"}
-    geometry_keys = {
-        "path": {"d"},
-        "rect": {"x", "y", "width", "height", "rx", "ry"},
-        "circle": {"cx", "cy", "r"},
-        "ellipse": {"cx", "cy", "rx", "ry"},
-        "line": {"x1", "y1", "x2", "y2"},
-        "polygon": {"points"},
-        "polyline": {"points"},
-    }
+    """Operations that rebuild an SVG's elements as editable layers (see ``svg_import``); unsupported elements
+    fail with ``unsupported_svg``."""
+    from .svg_import import svg_operations as convert
 
-    def walk(node, matrix, inherited, depth=0, clips=()):
-        nonlocal seen
-        seen += 1
-        require(
-            seen <= project.limits.max_operations * 4 and depth <= 64,
-            "SVG structure exceeds limits",
-            "resource_limit",
-        )
-        tag = node.tag.rsplit("}", 1)[-1]
-        # Definitions have no appearance of their own. Referencing one still fails at the
-        # unsupported use/paint attribute below, with an appearance-import suggestion.
-        if tag in ("title", "desc", "metadata", "defs"):
-            return
-        require(
-            tag in {*geometry_keys, "svg", "g"},
-            f"Unsupported SVG element {tag!r}; simplify it to paths or import with svg_mode='appearance' or 'auto'",
-            "unsupported_svg",
-        )
-        attrs = {key: value for key, value in node.attrib.items() if not key.startswith("data-")}
-        style = attrs.pop("style", "")
-        for declaration in style.split(";"):
-            if declaration.strip():
-                require(":" in declaration, "Invalid SVG style")
-                k, v = declaration.split(":", 1)
-                require(k.strip() in common, f"Unsupported SVG style: {k}", "unsupported_svg")
-                attrs[k.strip()] = v.strip()
-        allowed = common | geometry_keys.get(tag, set())
-        if tag == "svg":
-            allowed |= {"width", "height", "viewBox", "version", "preserveAspectRatio", "x", "y", "overflow"}
-        require(
-            not set(attrs) - allowed,
-            f"Unsupported SVG attributes: {sorted(set(attrs) - allowed)}",
-            "unsupported_svg",
-        )
-        props = {**inherited, **{k: v for k, v in attrs.items() if k in inherited_keys}}
-        matrix = matrix.transform(transform(attrs.get("transform", "")))
-        if tag == "svg" and depth:
-            viewbox = numbers(attrs["viewBox"]) if "viewBox" in attrs else [0, 0, length(attrs.get("width", "0")), length(attrs.get("height", "0"))]
-            require(len(viewbox) == 4 and viewbox[2] > 0 and viewbox[3] > 0, "Invalid nested SVG viewBox", "unsupported_svg")
-            w, h = length(attrs.get("width", str(viewbox[2]))), length(attrs.get("height", str(viewbox[3])))
-            require(w > 0 and h > 0, "Nested SVG dimensions must be positive", "unsupported_svg")
-            matrix = matrix.translate(length(attrs.get("x", "0")), length(attrs.get("y", "0")))
-            require(attrs.get("overflow", "hidden") in ("hidden", "visible"), "Unsupported SVG viewport overflow", "unsupported_svg")
-            if attrs.get("overflow", "hidden") == "hidden":
-                clips = (*clips, (matrix.inverse(), w, h))
-            preserve = attrs.get("preserveAspectRatio", "xMidYMid meet")
-            require(preserve in ("none", "xMidYMid", "xMidYMid meet"), "Unsupported preserveAspectRatio", "unsupported_svg")
-            sx, sy = w / viewbox[2], h / viewbox[3]
-            if preserve != "none":
-                sx = sy = min(sx, sy)
-            matrix = matrix.translate((w - viewbox[2] * sx) / 2, (h - viewbox[3] * sy) / 2).scale(sx, sy).translate(-viewbox[0], -viewbox[1])
-        if props.get("display") == "none" or props.get("visibility") == "hidden":
-            return
-        opacity = float(attrs.get("opacity", 1))
-        require(math.isfinite(opacity) and 0 <= opacity <= 1, "SVG opacity must be 0–1")
-        if tag in ("svg", "g"):
-            require(opacity == 1, "Group opacity must be flattened before editable import", "unsupported_svg")
-            for child in node:
-                walk(child, matrix, props, depth + 1, clips)
-            return
-        require(not len(node), "SVG shape children are unsupported", "unsupported_svg")
-        if props.get("fill", "").startswith("url("):
-            require(tag == "rect" and not clips, "Gradient fills on clipped/nonrectangular geometry require appearance import", "unsupported_svg")
-            try:
-                operations.append(_gradient_rect(attrs, props, matrix, gradients, f"{name}-{len(operations) + 1}", opacity))
-            except VixlError as exc:
-                raise VixlError(exc.code, str(exc) + "; use svg_mode='appearance' to preserve appearance", **exc.details) from exc
-            require(len(operations) <= project.limits.max_operations, "SVG has too many shapes", "resource_limit")
-            return
-
-        def get(k, default=0):
-            return length(attrs.get(k, str(default)))
-
-        if tag == "path":
-            d = attrs.get("d", "")
-        elif tag == "rect":
-            x, y, w, h = get("x"), get("y"), get("width"), get("height")
-            require(
-                get("rx") == 0 and get("ry") == 0,
-                "Convert rounded rectangles to paths before import",
-                "unsupported_svg",
-            )
-            require(w >= 0 and h >= 0, "SVG rectangle dimensions must be nonnegative")
-            d = f"M{x} {y} L{x + w} {y} L{x + w} {y + h} L{x} {y + h} Z"
-        elif tag in ("circle", "ellipse"):
-            cx, cy = get("cx"), get("cy")
-            rx, ry = (get("r"), get("r")) if tag == "circle" else (get("rx"), get("ry"))
-            require(rx > 0 and ry > 0, "SVG radii must be positive")
-            d = f"M{cx - rx} {cy} A{rx} {ry} 0 1 0 {cx + rx} {cy} A{rx} {ry} 0 1 0 {cx - rx} {cy} Z"
-        elif tag == "line":
-            d = f"M{get('x1')} {get('y1')} L{get('x2')} {get('y2')}"
-        else:
-            pts = numbers(attrs.get("points", ""))
-            require(len(pts) >= 4 and len(pts) % 2 == 0, "Invalid SVG points")
-            d = (
-                "M"
-                + " L".join(f"{x} {y}" for x, y in zip(pts[::2], pts[1::2]))
-                + (" Z" if tag == "polygon" else "")
-            )
-        require(0 < len(d) <= 32768, "SVG path exceeds limits", "resource_limit")
-        pen = RecordingPen()
-        try:
-            parse_path(d, TransformPen(pen, matrix))
-        except (ValueError, IndexError, AssertionError) as exc:
-            raise VixlError("invalid_svg", f"Invalid SVG path: {exc}") from exc
-        require(len(pen.value) <= 1024, "SVG path exceeds command limit", "resource_limit")
-        bounds = BoundsPen(None)
-        pen.replay(bounds)
-        if bounds.bounds is None:
-            return
-        for inverse, viewport_w, viewport_h in clips:
-            local = BoundsPen(None)
-            pen.replay(TransformPen(local, inverse))
-            if local.bounds:
-                left, top, right, bottom = local.bounds
-                require(left >= -1e-6 and top >= -1e-6 and right <= viewport_w + 1e-6 and bottom <= viewport_h + 1e-6,
-                        "Clipped nested SVG geometry requires svg_mode='appearance' or 'auto'", "unsupported_svg")
-        x0, y0, x1, y1 = bounds.bounds
-        stroke_width = get("stroke-width", props.get("stroke-width", 1))
-        # Stroke width is representable only under a similarity transform.
-        a, b, c, d, _, _ = matrix
-        scale = math.hypot(a, b)
-        stroke = props.get("stroke", "none")
-        require(attrs.get("paint-order", "normal") in ("normal", "fill stroke") or stroke == "none" or
-                stroke_width == 0 or float(props.get("stroke-opacity", 1)) == 0,
-                "SVG stroke-first painting requires svg_mode='appearance' or 'auto'", "unsupported_svg")
-        if stroke != "none":
-            require(
-                abs(scale - math.hypot(c, d)) < 1e-6 and abs(a * c + b * d) < 1e-6,
-                "Nonuniform SVG strokes must be outlined before import",
-                "unsupported_svg",
-            )
-        pad = stroke_width * scale / 2 if stroke != "none" and float(props.get("stroke-opacity", 1)) > 0 else 0
-        if pad:
-            for inverse, viewport_w, viewport_h in clips:
-                local = BoundsPen(None)
-                pen.replay(TransformPen(local, inverse))
-                if local.bounds:
-                    left, top, right, bottom = local.bounds
-                    a, b, c, d, _, _ = inverse
-                    dx, dy = pad * math.hypot(a, c), pad * math.hypot(b, d)
-                    require(left - dx >= -1e-6 and top - dy >= -1e-6 and right + dx <= viewport_w + 1e-6 and bottom + dy <= viewport_h + 1e-6,
-                            "Clipped nested SVG strokes require svg_mode='appearance' or 'auto'", "unsupported_svg")
-        x0, y0 = math.floor(x0 - pad), math.floor(y0 - pad)
-        w, h = max(1, math.ceil(x1 + pad) - x0), max(1, math.ceil(y1 + pad) - y0)
-        project.limits.size(w, h)
-        commands = []
-        for command, points in pen.value:
-            if command in ("closePath", "endPath"):
-                if command == "closePath":
-                    commands.append("Z")
-            else:
-                letter = {"moveTo": "M", "lineTo": "L", "curveTo": "C", "qCurveTo": "Q"}[command]
-                commands.append(letter + " ".join(f"{x - x0:.6g} {y - y0:.6g}" for x, y in points))
-        from .colors import parse, hex_of
-
-        def paint(key):
-            value = props.get(key, "black" if key == "fill" else "none")
-            require(not value.startswith("url("),
-                    "Referenced SVG paints require svg_mode='appearance' or 'auto'", "unsupported_svg")
-            if value == "none":
-                return "transparent"
-            rgba = parse(value)
-            alpha = float(props.get(key + "-opacity", 1))
-            require(math.isfinite(alpha) and 0 <= alpha <= 1, "SVG paint opacity must be 0–1")
-            return hex_of((*rgba[:3], rgba[3] * alpha))
-
-        require(
-            props.get("fill-rule", "nonzero") == "nonzero",
-            "Convert evenodd fill rules to nonzero paths before import",
-            "unsupported_svg",
-        )
-        operations.append(
-            {
-                "type": "shape",
-                "shape": "path",
-                "name": attrs.get("id") or f"{name}-{len(operations) + 1}",
-                "path": " ".join(commands),
-                "width": w,
-                "height": h,
-                "x": x0,
-                "y": y0,
-                "fill": paint("fill"),
-                "stroke": paint("stroke"),
-                "stroke_width": stroke_width * scale,
-            }
-        )
-        if opacity != 1:
-            operations.append({"type": "opacity", "value": opacity})
-        require(len(operations) <= project.limits.max_operations, "SVG has too many shapes", "resource_limit")
-
-    walk(root, base, {})
-    require(operations, "SVG contains no visible geometry")
-    return operations
+    return convert(data, project, name)
 
 
 def _gradient_rect(attrs, props, matrix, gradients, name, opacity):
@@ -379,56 +120,71 @@ def length(value):
     return number
 
 
-def import_document(project, data, format, name="import", page=1, dpi=144, svg_mode="editable"):
-    require(len(data) <= project.limits.max_asset_bytes, "Import exceeds byte limit", "resource_limit")
-    if format.lower() == "svg":
-        require(svg_mode in ("editable", "appearance", "auto"), "SVG mode must be editable, appearance or auto")
-        if svg_mode == "appearance":
-            return svg_appearance(project, data, name)
-        try:
-            return project.apply(svg_operations(data, project, name), detail="compact")
-        except VixlError as exc:
-            if svg_mode == "auto" and exc.code == "unsupported_svg":
-                return svg_appearance(project, data, name)
-            raise
-        except (ValueError, TypeError, KeyError) as exc:
-            raise VixlError("invalid_svg", f"Malformed SVG: {exc}") from exc
-    require(format.lower() == "pdf", "Import format must be svg or pdf")
-    require(
-        isinstance(page, int) and page >= 1 and 36 <= dpi <= 600,
-        "PDF page must be positive and dpi must be 36–600",
-    )
-    try:
-        import pypdfium2 as pdfium
-    except ImportError as exc:
-        raise VixlError("missing_dependency", "Install vixl-engine[pdf] for PDF import") from exc
-    candidate = project.clone()
-    try:
-        with pdfium.PdfDocument(data) as document:
-            require(page <= len(document), "PDF page is out of range")
-            source = document[page - 1]
-            try:
-                w, h = source.get_size()
-                candidate.limits.size(math.ceil(w * dpi / 72), math.ceil(h * dpi / 72))
-                bitmap = source.render(scale=dpi / 72)
-                try:
-                    from .assets import add_image
+def import_document(project, data, format, name="import", page=1, dpi=None, svg_mode="editable", **options):
+    """Import an SVG or a PDF page into ``project`` as one revision.
 
-                    asset = add_image(candidate, bitmap.to_pil())
-                finally:
-                    bitmap.close()
-            finally:
-                source.close()
-    except pdfium.PdfiumError as exc:
-        raise VixlError("invalid_pdf", f"Cannot open PDF: {exc}") from exc
-    result = candidate.apply({"type": "add", "asset": asset, "name": name}, detail="compact")
+    SVG: Vixl's own SVG gives back the document it carries (``svg_import``); other SVG becomes editable layers.
+    ``svg_mode='auto'`` draws the elements Vixl cannot edit as image layers (and the whole SVG as one image when its
+    stylesheet or structure cannot be read); ``'appearance'`` imports the whole SVG as one image with its source kept.
+    PDF: see ``pdf_import``. Figma: ``data`` is a file URL or key, or exported file JSON; ``page`` is the Figma
+    page (number or name) and ``options`` are ``node_id``, ``rasterize_unsupported`` and ``install_fonts``. For SVG,
+    ``install_fonts`` (default true) lets the fonts of Vixl's own SVG, which it names instead of storing, be
+    downloaded from Google Fonts when the font cache does not have them."""
+    if format.lower() == "figma":
+        from .figma_import import import_source
+
+        return import_source(project, data, page=page, **options)
+    install_fonts = options.pop("install_fonts", True) if format.lower() == "svg" else True
+    require(not options, f"Unknown import option(s): {', '.join(sorted(options))}")
+    require(len(data) <= project.limits.max_asset_bytes, "Import exceeds byte limit", "resource_limit")
+    require(svg_mode in ("editable", "appearance", "auto"), "SVG mode must be editable, appearance or auto",
+            field="svg_mode")
+    if format.lower() == "svg":
+        return _import_svg(project, data, name, svg_mode, install_fonts)
+    require(format.lower() == "pdf", "Import format must be svg, pdf or figma")
+    from .pdf_import import import_pdf
+
+    return import_pdf(project, data, name=name, page=page, dpi=dpi, mode=svg_mode)
+
+
+def _import_svg(project, data, name, svg_mode, install_fonts=True):
+    if svg_mode == "appearance":
+        return svg_appearance(project, data, name)
+    from .svg_import import embedded_payload, embedded_project, import_embedded, svg_operations as convert
+
+    payload, warning = embedded_payload(data)
+    warnings = [warning] if warning else []
+    if payload is not None:
+        try:
+            document, report = embedded_project(payload, project, data, install_fonts=install_fonts)
+        except VixlError as exc:
+            warnings.append(f"The Vixl document this SVG carries could not be read ({exc}); imported its visible "
+                            "elements instead")
+        else:
+            return import_embedded(project, document, name, report["warnings"], report["fonts"])
+    candidate = project.clone()
+    report = {}
+    try:
+        operations = convert(data, candidate, name, fallback=svg_mode == "auto", report=report)
+        result = candidate.apply(operations, detail="compact")
+    except VixlError as exc:
+        if svg_mode == "auto" and exc.code == "unsupported_svg":
+            result = svg_appearance(project, data, name)
+            result["warnings"] = [*warnings, f"{exc}", *result["warnings"]]
+            return result
+        raise
+    except (ValueError, TypeError, KeyError) as exc:
+        raise VixlError("invalid_svg", f"Malformed SVG: {exc}") from exc
     project.__dict__.update(candidate.__dict__)
-    return {
-        **result,
-        "page": page,
-        "dpi": dpi,
-        "warnings": ["PDF page imported as a raster layer; use SVG for editable vector geometry."],
-    }
+    result["mode"] = "editable"
+    warnings += report.get("warnings", [])
+    if report.get("rasterized"):
+        result["rasterized"] = report["rasterized"]
+        warnings.append(f"{len(report['rasterized'])} element(s) Vixl cannot edit were imported as image layers: "
+                        + ", ".join(item["layer"] for item in report["rasterized"][:10]))
+    if warnings:
+        result["warnings"] = [*warnings, *result.get("warnings", [])]
+    return result
 
 
 def sanitize_svg(data, limits, *, byte_limit=None):
@@ -470,7 +226,10 @@ def sanitize_svg(data, limits, *, byte_limit=None):
                     decode(raw, limits)
                 else:
                     require(value.startswith("#"), "SVG references must be internal or embedded raster images", "unsupported_svg")
-        css = " ".join(node.attrib.values()) + " " + (node.text or "")
+        # Only style elements hold CSS text; the text of metadata, title and desc is inert (Vixl's own SVG keeps its
+        # document as JSON in metadata).
+        inert = tag in ("metadata", "title", "desc", "text", "tspan")
+        css = " ".join(node.attrib.values()) + " " + ("" if inert else node.text or "")
         require("@import" not in css.lower() and "\\" not in css, "External or escaped CSS is unsupported", "unsupported_svg")
         for url in re.findall(r"url\s*\((.*?)\)", css, re.I | re.S):
             require(url.strip(" \t\r\n\"'").startswith("#"), "SVG URLs must reference internal IDs", "unsupported_svg")

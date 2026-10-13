@@ -4,7 +4,7 @@
 
 Vixl is a headless design engine for AI agents; people can drive the same interfaces.
 
-All edits below are canonical operations, available through Python `Project.apply`, CLI commands/scripts, REST `/operations`, and MCP `vixl_operations_apply`. `vixl schema` describes their fields. Successful edits participate in atomic batches, dry runs, undo/redo, transactions, and `.vixl` persistence. Existing documents remain readable. New design documents require this version of the engine.
+All edits below are canonical operations, available through Python `Project.apply`, CLI commands/scripts, REST `/operations`, and MCP `vixl_apply`. `vixl schema` describes their fields. Successful edits participate in atomic batches, dry runs, undo/redo, transactions, and `.vixl` persistence. Existing documents remain readable. New design documents require this version of the engine.
 
 ## Groups, clipping, shapes, and repeats
 
@@ -42,7 +42,8 @@ vixl shape arc --name drip --width 300 --height 300 --x 50 --y 50 --start-angle 
 vixl shape arc --name progress --width 300 --height 300 --x 400 --y 50 --start-angle -90 --end-angle 160 --open --stroke '#d4241c' --stroke-width 14 --line-cap round
 ```
 
-Each wedge is one editable layer; a visible stroke is drawn inside the box, so strokes of
+Each wedge is one editable layer; a visible stroke is drawn inside the box (its outer edge on the
+ellipse that fills the box, as other closed shapes stroke inside their outline), so strokes of
 neighbouring wedges meet cleanly. A non-square box gives elliptical wedges. SVG, vector PDF
 (`pdf_content: vector`, the default for paged documents) and PowerPoint exports write native curves
 (no arc commands, no raster), and the spellings `pie`, `wedge`, `donut`, `ring` and `sector` are
@@ -73,7 +74,7 @@ scaled parent are refused with the tracks named. The whole call is one undoable 
 ## Examples: gradients, glows, shadows and radial repeats
 
 Shapes take a flat `fill`. Gradients, glows and shadows are layer styles or looks on the same layer, so one shape stays one
-editable layer. `vixl_operation_schema(types=[...])` returns these (and more) as `examples` next to each operation's fields.
+editable layer. `vixl_reference('operations', name=[...])` returns these (and more) as `examples` next to each operation's fields.
 
 ```json
 {"type":"gradient","name":"sky","start":"#1e3a8a","end":"#7dd3fc","direction":"vertical"}
@@ -167,7 +168,7 @@ not as cut off.
 {"type": "pattern-fill", "target": "ground", "pattern": "leaves", "tile_variation": 0.3}
 ```
 
-**Fewer copies without a new layout.** In documents made with house style 4 or later, `pattern-scatter` lays the
+**Fewer copies without a new layout.** `pattern-scatter` lays the
 tile out progressively (`distribution: "progressive"`): layers of Poisson-disc darts at shrinking spacings,
 farthest-first within each, so every prefix of the copies is itself evenly spread. The layout never depends on
 `count`, so the same seed with a lower count keeps the first copies exactly where they were (with the same motif,
@@ -175,7 +176,7 @@ size, turn and colour) and drops the rest, and `count` places exactly that many 
 an existing tile, the most crowded first, and leaves the survivors in place: a share to keep (`0.8` or
 `{"keep": 0.8}`) or `{"count": N}`. The tile remembers the thinning (`pattern_scatter.keep`) through rebuilds
 until `count`, `seed`, `spacing`, `distribution` or the tile size change; the result reports
-`thinned: {kept, of}`. `distribution: "poisson"` (the default in documents before house style 4) is the earlier
+`thinned: {kept, of}`. `distribution: "poisson"` is the earlier
 layout, which re-rolls every copy when `count` changes.
 
 ```json
@@ -286,7 +287,7 @@ vixl info --target title
 
 Measurements return JSON: RGBA/hex point sample, alpha-weighted average RGB, mean alpha, four 256-bin histograms (excluding fully transparent pixels), and optional WCAG luminance contrast minimum/mean/maximum. `--foreground` compares the specified RGBA color against every pixel in the region; transparency composites over `--background white` by default. `--target` uses the actual rendered layer (including nested group children) against the stack below it, including opacity, styles and blending, with antialiased fringe pixels excluded. The target must be visible and drawable. Top-level bounds must be within the canvas; grouped targets measure their visible canvas coverage. A target outlined with a `stroke` style at least 3 px wide (and 2% of its font size) also reports `outline`: the outline ring against the backdrop. Contrast thresholds are 4.5 for normal text and 3 for large text, met by the fill or, for outlined text, by its outline; font size eligibility remains the caller's responsibility.
 
-Use `project.measure(...)`, REST POST `/measure`, or MCP `vixl_measure` for the same read-only results. These are measurements, not a GUI info panel.
+Use `project.measure(...)`, REST POST `/measure`, or MCP `vixl_check(action='measure')` for the same read-only results. These are measurements, not a GUI info panel.
 
 ## Gradients, adjustments, automatic corrections, and LUTs
 

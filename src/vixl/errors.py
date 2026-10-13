@@ -16,17 +16,18 @@ def require(condition, message, code="invalid_operation", **details):
 # Error text names the command a reader can run. Messages are written once; these rewrites give each surface its own
 # spelling of a hint, so a CLI user is not sent to an MCP tool and an agent is not sent to a shell command.
 _FOR_MCP = (
-    (r"vixl layout show NAME", "vixl_layouts_list(name=…)"),
-    (r"vixl layout list", "vixl_layouts_list"),
-    (r"vixl font pairings / font pair, or font install", "vixl_fonts(view='pairings') then vixl_font_pair, or vixl_font_install"),
-    (r"vixl font pair random", "vixl_font_pair()"),
-    (r"vixl font pairings", "vixl_fonts(view='pairings')"),
+    (r"vixl layout show NAME", "vixl_reference('layouts', name=…)"),
+    (r"vixl layout list", "vixl_reference('layouts')"),
+    (r"vixl font pairings / font pair, or font install",
+     "vixl_reference('fonts') then a font-pair step in vixl_apply, or font-install"),
+    (r"vixl font pair random", "a font-pair step in vixl_apply"),
+    (r"vixl font pairings", "vixl_reference('fonts')"),
 )
 _FOR_CLI = (
-    (r"vixl_operation_schema\(types=\['([\w-]+)'\]\)", r"vixl capabilities \1"),
-    (r"vixl_operation_schema\(types=\[(?:…|\.\.\.)\]\)", "vixl schema"),
-    (r"vixl_layouts_list\(name=…\)", "vixl layout show NAME"),
-    (r"vixl_layouts_list", "vixl layout list"),
+    (r"vixl_reference\('operations', name=\['([\w-]+)'\]\)", r"vixl capabilities \1"),
+    (r"vixl_reference\('operations', name=\[(?:…|\.\.\.)\]\)", "vixl schema"),
+    (r"vixl_reference\('layouts', name=…\)", "vixl layout show NAME"),
+    (r"vixl_reference\('layouts'\)", "vixl layout list"),
 )
 
 

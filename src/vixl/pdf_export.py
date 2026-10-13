@@ -344,16 +344,26 @@ class PageBuilder:
 
         state = self.view.state
         from .shape_catalog import active as catalog_active
-        from .vector_strokes import active as stroke_active, primitives
-        if catalog_active(layer) or stroke_active(layer) or layer.get("distort") or layer.get("_distort_groups"):
-            for path, paint in primitives(layer, self.view):
-                if path:
-                    self.fill_ops(path_ops(parse_path(path)), color(resolve_color(paint, state)), opacity)
-            return
+        from .vector_strokes import NATIVE_MITER_LIMIT, active as stroke_active, inside_centre_line, primitives
+        from .geometry import ROUNDED_BOXES, native_stroke_box, stroke_inset
+
         fill = color(resolve_color(default_fill(layer), state))
         stroke = color(resolve_color(layer.get("stroke", "transparent"), state))
         width = layer.get("stroke_width", 1)
         shape = layer["shape"]
+        # A closed shape strokes inside its outline (geometry.stroke_inset): a native stroke along the
+        # outline shrunk by half a stroke where that is exact, else the stroke band as a filled path.
+        inset, pad = stroke_inset(layer, stroke[3] > 0)
+        styled = catalog_active(layer) or stroke_active(layer) or layer.get("distort") or layer.get("_distort_groups")
+        inside = not styled and pad and shape not in (*PATH_SHAPES, "line")
+        centre = None
+        if inside:
+            centre = native_stroke_box(layer, pad) if shape in ROUNDED_BOXES else inside_centre_line(layer, pad)
+        if styled or (inside and centre is None):
+            for path, paint in primitives(layer, self.view):
+                if path:
+                    self.fill_ops(path_ops(parse_path(path)), color(resolve_color(paint, state)), opacity)
+            return
         if shape in PATH_SHAPES:
             path, view = shape_path(layer)
             scale = affine(w / view[0], 0, 0, h / view[1])
@@ -364,37 +374,38 @@ class PageBuilder:
             self.stroke_ops(geometry, stroke, width, opacity, cap, 1 if cap == 1 else 0)
             self.ops.append("Q")
             return
-        pad = width / 2 if stroke[3] else 0
-        if pad and shape != "line" and 2 * pad >= min(w, h) - 1:
-            return
-        x0, y0, bw, bh = pad, pad, w - 2 * pad, h - 2 * pad
-        # Pillow strokes rectangles and ellipses inside their (already inset) box, while PDF strokes
-        # centre on the path: inset the path another half stroke so the two match.
-        ix, iy, iw, ih = x0 + pad, y0 + pad, bw - 2 * pad, bh - 2 * pad
-        if shape == "rectangle":
-            geometry = [f"{_fmt(ix)} {_fmt(iy)} {_fmt(iw)} {_fmt(ih)} re"]
-        elif shape in ("rounded-rectangle", "capsule"):
-            radius = layer.get("radius", min(w, h) / (2 if shape == "capsule" else 5))
-            geometry = rounded_ops(ix, iy, iw, ih, radius - pad)
-        elif shape == "ellipse":
-            geometry = ellipse_ops(ix, iy, iw, ih)
-        elif shape == "line":
-            self.stroke_ops([f"{_fmt(x0)} {_fmt(y0)} m", f"{_fmt(w - pad)} {_fmt(h - pad)} l"],
+        if shape == "line":
+            self.stroke_ops([f"{_fmt(inset)} {_fmt(inset)} m", f"{_fmt(w - inset)} {_fmt(h - inset)} l"],
                             stroke if stroke[3] else fill, max(1, width), opacity)
             return
-        else:
-            path, view = shape_path(layer)
-            from .geometry import path_polygons
 
-            geometry = []
-            for polygon in path_polygons(path):
-                points = [(x0 + px / view[0] * bw, y0 + py / view[1] * bh) for px, py in polygon]
-                if len(points) >= 2:
-                    geometry.append(f"{_fmt(points[0][0])} {_fmt(points[0][1])} m")
-                    geometry += [f"{_fmt(px)} {_fmt(py)} l" for px, py in points[1:]]
-                    geometry.append("h")
+        if shape in ROUNDED_BOXES:
+            def outline(x, y, bw, bh, radius):
+                if shape == "rectangle":
+                    return [f"{_fmt(x)} {_fmt(y)} {_fmt(bw)} {_fmt(bh)} re"]
+                if shape in ("rounded-rectangle", "capsule"):
+                    return rounded_ops(x, y, bw, bh, radius)
+                return ellipse_ops(x, y, bw, bh)
+
+            radius = layer.get("radius", min(w, h) / (2 if shape == "capsule" else 5))
+            self.fill_ops(outline(0, 0, w, h, radius), fill, opacity)
+            if centre:
+                # The fill covers the whole shape, under a stroke whose outer edge is the outline.
+                self.stroke_ops(outline(*centre), stroke, width, opacity)
+            return
+        from .geometry import path_polygons
+
+        path, view = shape_path(layer)
+        geometry = []
+        for polygon in path_polygons(path):
+            points = [(px / view[0] * w, py / view[1] * h) for px, py in polygon]
+            if len(points) >= 2:
+                geometry.append(f"{_fmt(points[0][0])} {_fmt(points[0][1])} m")
+                geometry += [f"{_fmt(px)} {_fmt(py)} l" for px, py in points[1:]]
+                geometry.append("h")
         self.fill_ops(geometry, fill, opacity)
-        self.stroke_ops(geometry, stroke, width, opacity, 1, 1)
+        if centre:
+            self.stroke_ops([f"{NATIVE_MITER_LIMIT} M", *path_ops(parse_path(centre))], stroke, width, opacity)
 
     def text(self, layer, opacity):
         """Draw a text layer's glyphs as embedded-font text (or outlines when a font cannot be
@@ -593,9 +604,7 @@ def page_geometry(canvas, dpi):
     """(width, height, kx, ky, bleed) of a page in points for a canvas exported at ``dpi``.
 
     Print sizes keep their physical trim and bleed (``canvas.physical``), so the page measures
-    exactly trim + 2 × bleed. Documents made before 0.23 stored a fractional bleed rounded up (0.125 in at 300 dpi
-    as 38 px instead of 37.5); their pixels stretch by a hair to fill the page. Other canvases map pixels to points
-    at ``dpi``."""
+    exactly trim + 2 × bleed. Other canvases map pixels to points at ``dpi``."""
     from .sizes import PX, UNIT_INCHES, bleed_pixels, to_pixels
 
     k = 72 / dpi
@@ -603,13 +612,9 @@ def page_geometry(canvas, dpi):
     physical = canvas.get("physical")
     if physical and physical.get("unit", PX) != PX and canvas.get("dpi") == dpi:
         unit, amount = physical["unit"], physical.get("bleed", 0)
-        for side in (bleed_pixels(amount, unit, dpi), round(to_pixels(amount, unit, dpi))):
-            pixels = [round(to_pixels(physical[key], unit, dpi)) + 2 * side for key in ("width", "height")]
-            if pixels == [w, h] and side == bleed:
-                break
-        else:
-            pixels = None
-        if pixels:
+        side = bleed_pixels(amount, unit, dpi)
+        pixels = [round(to_pixels(physical[key], unit, dpi)) + 2 * side for key in ("width", "height")]
+        if pixels == [w, h] and side == bleed:
             points = 72 * UNIT_INCHES[unit]
             width, height = (physical["width"] + 2 * amount) * points, (physical["height"] + 2 * amount) * points
             return width, height, width / w, height / h, amount * points
@@ -727,7 +732,9 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
         except Exception:  # a title is a nicety; never fail an export over it
             title = None
         title = (title or (Path(path).stem if path else ""))[:200]
-    info = writer.add({"Title": Text(title) if title else None, "Producer": Text("Vixl")})
+    # VixlDPI: the pixels per inch the pages were laid out at, so a PDF import maps them back to the same pixels.
+    info = writer.add({"Title": Text(title) if title else None, "Producer": Text("Vixl"),
+                       "VixlDPI": Text(compact_number(dpi, 6))})
     catalog = {"Type": Name("Catalog"), "Pages": pages_ref}
     if title:
         catalog["ViewerPreferences"] = {"DisplayDocTitle": True}

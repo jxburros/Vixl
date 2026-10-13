@@ -13,7 +13,7 @@ from vixl.errors import memory_guard
 
 
 def reference_gradient(project, layer, size):
-    """gradient_image before #341: whole-canvas float64 arrays."""
+    """gradient_image before #341: whole-canvas float64 arrays (with today's dither)."""
     from vixl.design import gradient_stops, resolve_color
     from vixl.render import color
 
@@ -35,7 +35,7 @@ def reference_gradient(project, layer, size):
     colors[:, :3] *= colors[:, 3:] / 255
     arr = np.stack([np.interp(ramp, offsets, colors[:, i]) for i in range(4)], axis=-1)
     arr[:, :, :3] *= 255 / np.maximum(arr[:, :, 3:], 1)
-    return Image.fromarray(np.uint8(np.clip(arr, 0, 255) + 0.5))
+    return Image.fromarray(np.uint8(np.floor(np.clip(arr, 0, 255) + design_render.dither((h, w))[..., None])))
 
 
 def gradient_layer(**options):
@@ -103,10 +103,10 @@ def test_mcp_tools_report_running_out_of_memory_as_a_resource_limit(monkeypatch,
     from vixl.interfaces import mcp_server
 
     server = mcp_server(workspace=tmp_path)
-    call(server, "vixl_document_create", {"path": "a.vixl", "width": 67, "height": 61, "background": "#0a0b0c"})
-    failed, text, _ = call(server, "vixl_operations_apply", {"operations": [
+    call(server, "vixl_document", {"action": "create", "path": "a.vixl", "width": 67, "height": 61, "background": "#0a0b0c"})
+    failed, text, _ = call(server, "vixl_apply", {"operations": [
         {"type": "gradient", "name": "g", "start": "#0d0e0f", "end": "#101112"}]})
     assert not failed, text
     monkeypatch.setattr(design_render, "gradient_image", out_of_memory)
-    failed, text, _ = call(server, "vixl_render_preview", {})
+    failed, text, _ = call(server, "vixl_render", {})
     assert failed and "resource_limit" in text and "memory" in text

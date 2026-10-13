@@ -23,7 +23,7 @@ onto main, and closed the feature requests that 0.22.0 had already shipped.
 
 0.23.0 shipped the whole "defaults and speed" plan:
 
-- **House-style foundation:** the default-change policy and `house_style_version` stamp (#430), the sparse-brief
+- **House-style foundation:** the default-change policy (#430), the sparse-brief
   diversity and quality eval (#431), house style as data in `src/vixl/data/house-style.json` (#401), the purpose tier
   (#403) and safe, bold and avant-garde tiers gated by variety level (#405).
 - **Rolled defaults made visible:** #389, #390, #391, #392, #393, #394, #397, #398, #399 and #285.
@@ -56,10 +56,9 @@ onto main, and closed the feature requests that 0.22.0 had already shipped.
 
 ## Rules for every release below
 
-- **Default changes follow #430**: they apply to new documents only (new `design_defaults` carry
-  `house_style_version`), and each changelog line gives the override that restores the old result.
-- **Default changes are gated by #431**: `python -m evals.house_style --compare evals/house-style-baseline.json` runs
-  before and after, and a change may not lower quality or diversity at any variety level.
+- **Pre-release: breaking changes are allowed; note them in the changelog.** Default changes must still pass the
+  house-style quality/diversity eval (#431): `python -m evals.house_style --compare evals/house-style-baseline.json`
+  runs before and after, and a change may not lower quality or diversity at any variety level.
 - **Speed claims are tested**: a changelog figure is a `pytest -m perf` time budget (`tests/test_perf.py`), not an
   assertion.
 - **Docs are executable**: `tests/test_docs_executable.py` runs the `vixl …` commands and JSON operation blocks in
@@ -132,7 +131,6 @@ scene effects and tool finish, measured by re-judging the Vixl lane.
 | #172 | Device and print mockups | 3 | 3 | Procedural, licence-clean templates |
 | #266 | Non-rectangular canvas | 3 | 3 | Irregular image frames shipped in 0.24.0; a page clip shape in every exporter remains |
 | #218 | Drawing pipeline polish | 3 | 2 | Split into its six items first |
-| #334 | Editable round trip of Vixl's own SVG | 4 | 2 | 0.24.0 re-imports simple gradient rectangles and stroked paths |
 | #177 | Lottie export | 5 | 3 | After motion features settle |
 | #166 | PPTX font embedding | 4 | 3 | Re-scope: warnings and licences shipped; PDF is the fidelity route |
 | #214 | Remainder of a partly shipped issue: bind chart data across charts and into text | 3 | 3 | |

@@ -17,13 +17,13 @@ default brand. Precedence, highest first:
 4. the document's stored `design_defaults`;
 5. a fresh seeded roll.
 
-The purpose comes from an explicit `purpose` (`vixl roll --for slides`, `vixl_roll(purpose=…)`), else
-the brief kind (`vixl_guide("social-card")`), else the purpose stored in the document, else its
+The purpose comes from an explicit `purpose` (`vixl roll --for slides`, `vixl_reference('roll')`), else
+the brief kind (`vixl_reference("social-card")`), else the purpose stored in the document, else its
 named size (`instagram-post` is social, `letter` is document, `favicon` is logo). Roll and creation
 results report `purpose` and `purpose_source` (`explicit`, `brief kind`, `document` or `size`).
 
-Creation (`vixl new --purpose`, `vixl_document_create(purpose=…)`, `Project(purpose=…)`) and rolls
-(`vixl roll --for`, `vixl_roll(purpose=…)`) accept the same names: the eight purposes and their aliases
+Creation (`vixl new --purpose`, `vixl_document(action='create', purpose=…)`, `Project(purpose=…)`) and rolls
+(`vixl roll --for`, `vixl_reference('roll')`) accept the same names: the eight purposes and their aliases
 (`story`, `web`, `email`, `flyer`, `print`, `invitation`, `deck`, `video`, `icon`, `mark`, `emblem`,
 `favicon` …), as well as brief kinds, named sizes and size categories. Each name maps to one purpose
 profile; creation refuses an unknown name with suggestions, while a roll treats one as a free-text hint.
@@ -43,7 +43,7 @@ Each purpose weights the taste:
 Density follows the purpose seven rolls in ten and deviates the rest of the time (decision E4); without
 a purpose the roll picks balanced twice as often as airy or dense.
 
-`vixl house show PURPOSE` (MCP `vixl_resource_get(kind="house-style", name=PURPOSE)`) prints a
+`vixl house show PURPOSE` (MCP `vixl_reference('house-style', name=PURPOSE)`) prints a
 profile; `vixl house` prints the craft rules, the tiers and the levels.
 
 ## Tiers and variety levels
@@ -69,25 +69,24 @@ minimal, corporate …) shifts them toward safe.
 The safe palette pool holds light, dark, saturated, duotone and earthy palettes, each checked with
 the role-assignment contrast pass in every mode it rolls in (ink 7:1, muted and accent text 4.5:1).
 Dark palettes roll only in dark mode. The curated legacy palettes (midnight, nordic, sunset, neon
-…) joined the tiers and keep their names. `vixl_guide(brief="safe-pools")` lists every entry with
+…) joined the tiers and keep their names. `vixl_reference("safe-pools")` lists every entry with
 its tier, moods and modes.
 
 ## What a roll chooses
 
-`vixl_roll(variety="low"|"medium"|"high"|"fixed")` chooses the font pairing, palette, light or dark
+`vixl_reference('roll')` chooses the font pairing, palette, light or dark
 mode, layout, type scale, density, margin, accent motif, background treatment, style, finishing look
 and its amount, a headline treatment, and a recommended container/variant. Corners follow the house
 craft (sharp) unless the rolled style has its own (material and glassmorphism round, kawaii and y2k
 pill), and layout buttons, panels and placed containers take the document's corner style. A bold or
 avant-garde roll, or one with an expressive mood (playful, bold, loud …), sets `headline: large`: the
 headline holds about 8 characters a line instead of 14, so it fills the canvas; quiet rolls keep
-`headline: measured`. Lock it like any other choice (`--lock headline=measured`). From house style 3,
-alignment is weighted by purpose: design purposes roll left three times in four and right otherwise, diagram
+`headline: measured`. Lock it like any other choice (`--lock headline=measured`). Alignment is weighted by purpose: design purposes roll left three times in four and right otherwise, diagram
 and form purposes left or centre 75/25, and marks stay centred; an
 explicit `align` wins. Saturated palette backgrounds are washed only as far as the ink contrast
-target needs. From house style 4 a roll also sets `cta` (`pill` or `button`) and `date` (`highlight` or
+target needs. A roll also sets `cta` (`pill` or `button`) and `date` (`highlight` or
 `plain`): how a layout's call to action and date line look (see [layouts](sizes-and-layouts.md)); they come
-from a separate stream of the seed, so the other choices for a seed are the same as in version 3. The rolled
+from a separate stream of the seed, so they never change the other choices for a seed. The rolled
 look lands where it shows: texture looks on the background, the house offset shadow and other
 shadow, outline and glow looks on the solid shapes (buttons, panels, blocks), never on hairline
 rules. Weight contrast describes the actual heading/body weights in the chosen pairing. A roll
@@ -97,7 +96,7 @@ whose image slot nobody fills.
 ## New documents
 
 Every surface creates documents the same way: `vixl new`, Python `Project()`, `Project.sized()` and
-`Project.new()`, `vixl_document_create`, `vixl_compose` and REST compose. Each new document:
+`Project.new()`, `vixl_document(action='create')`, `vixl_apply(create=…)` and REST compose. Each new document:
 
 - **Size.** Uses the given size. Without one, it uses the purpose's size, from the purpose profile's `size`
   and its aliases' `sizes` in the house-style data (social 1080×1350, story 1080×1920, poster 18×24 in,
@@ -121,7 +120,7 @@ transparent canvas with no `design_defaults`; pass `seed`, `variety` or `purpose
 design document, and `Project.sized(size, design=False)` for a plain named-size canvas.
 
 A `layout-apply` without `seed` on such a document uses the whole stored direction, as
-`vixl_roll(apply=true)` does: the layout seed, palette, mode, type scale, density and accent, and the
+`the roll operation` does: the layout seed, palette, mode, type scale, density and accent, and the
 margin, corner, look, style, motif and background treatment. Fields you pass win one by one. Passing
 `seed` asks for a fresh choice instead of the stored direction.
 
@@ -132,7 +131,7 @@ their own device. An outline frame insets the content two spacing units inside i
 and the direction motif are placed clear of the text (another margin, a shorter column, or left out), and
 the overlap check reports decoration that runs through text as `overlap.decoration-text`.
 
-`vixl_roll(apply=True, slots={"title": "Launch"})` installs its selected fonts,
+`vixl_reference('roll')` installs its selected fonts,
 builds the editable design in one undo step, and returns contrast/legibility checks.
 Ordinary layout/template calls do not download fonts: their `font_choice` result
 names the selected pairing and the explicit installation command. Existing fonts
@@ -153,7 +152,7 @@ Without a component lock, the roll's component is a recommendation for subsequen
 `container-place` calls; a text composition does not gain unrelated placeholder
 content. Document defaults also supply compatible variants when placing containers.
 
-`vixl_guide` attaches a roll to a brief kind. That roll favours the kind's recommended layouts,
+`vixl_reference` attaches a roll to a brief kind. That roll favours the kind's recommended layouts,
 looks and styles where the variety level allows their tier, and the answer's `recommendations`
 says, for each list, what was rolled, whether it is one of the recommendations and which
 recommendations are opt-in alternatives (with their tiers).
@@ -169,14 +168,8 @@ in `.vixl/variety.json` for repeatable tests or production:
 {"variety": "fixed", "seed": 29}
 ```
 
-New documents store `house_style_version` in `design_defaults`, and later rolls in that document
-use the same version, so a change to the house style never reaches an existing document. The
-current version is 3 (0.24). To replay 0.23 rolls (no house-style-3 pairings, alignment weighting or
-reduced background washing), pin version 2; to roll the 0.20–0.22 directions (safe pools only, two
-light rolls in three, looks at amount 0.1), pin version 1: `vixl roll --house-style 2`,
-`roll(..., house_style_version=2)`, or `{"house_style": 2}` in `.vixl/variety.json` for every surface.
-Version-3 geometry defaults (stack gaps of `2u`, chart padding, text-flow gutters, seamless short
-timelines) apply only to documents that record version 3.
+Documents use the current house style. A new document stores its rolled direction in `design_defaults`, and later
+rolls and layouts in that document use it.
 
 ## Measuring it
 

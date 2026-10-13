@@ -440,7 +440,7 @@ def test_mcp_schema_describes_the_new_operations(tmp_path):
     from vixl.mcp_tools import build_server
 
     server = build_server(Session(workspace=tmp_path))
-    result = asyncio.run(server.call_tool("vixl_operation_schema", {"types": ["irregular", "tear"]}))
+    result = asyncio.run(server.call_tool("vixl_reference", {"topic": "operations", "name": ["irregular", "tear"]}))
     content = result[0] if isinstance(result, tuple) else result
     schema = json.loads(content[0].text)
     assert "wobble_length" in schema["irregular"]["properties"] and "edges" in schema["tear"]["properties"]

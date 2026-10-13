@@ -14,6 +14,7 @@ from .fileio import file_lock
 
 from . import __version__
 from .assets import read_bounded
+from .cli_summary import command_of, human_output, wants_json
 from .commands import Parser, compile_command, compile_script, dimensions, normalize, pairs
 from .errors import VixlError, for_surface, friendly, require
 from .model import Limits
@@ -26,7 +27,8 @@ Usage: vixl [--project FILE] [--json] COMMAND ...
 Documents: pack SOURCE_FOLDER OUTPUT.vixl, unpack PROJECT.vixl SOURCE_FOLDER,
            new SIZE|NAME [-o FILE] [--background COLOR] [--dpi N] [--landscape] [--bleed],
            open FILE, save [FILE]   (NAME: letter, a4, business-card, instagram-portrait, favicon …)
-           upgrade FILE [--report] [--pin-fills]   (a document saved before 0.21: what renders differently)
+           convert OLD.vixl [-o NEW.vixl] [--look preserve|current] [--dry-run] [--report R.json] | DIR --out OUTDIR,
+           convert-batch OLD-CALLS.json [-o NEW.json]   (documents and tool calls from earlier releases)
 Inspect:   status, inspect [LAYER], describe, layers, effects [LAYER], manifest,
            dependencies, reproduce --check, schema [OPERATION…] (one operation's fields, e.g. schema particles)
 Layers:    add FILE --name NAME, solid --color COLOR, gradient --start A --end B,
@@ -127,7 +129,7 @@ Finish:    look LAYER NAME [--color C] [--amount 0-1] [--remove]  (clean-flat, s
 Styles:    styles [list [QUERY] | show NAME | apply NAME [--palette] | check [NAME]], style-set NAME… [--options JSON],
            check --checks style [--style NAME…] (premade rules for swiss, brutalist, minimalist, art-deco …)
 Dice:      roll [--apply] [--set title=…] [--for poster] [--mood M] [--size NAME] [--seed N|random] [--lock palette=sage]
-           [--variety low|medium|high] [--unfilled omit|blank] [--house-style 1|2|3], house [show PURPOSE] (the house style)
+           [--variety low|medium|high] [--unfilled omit|blank], house [show PURPOSE] (the house style)
 Brand:     brand validate [--preset NAME] (missing roles, fonts, logos), brand show [--preset NAME]; workflow brand-board
 Color:     color [info] COLOR…, color convert COLOR --to oklch|cmyk|…, color harmony COLOR --scheme triadic,
            color scale COLOR | A B [--count N], color mix A B, color contrast FG BG, color names QUERY,
@@ -153,7 +155,7 @@ AI:        ask PROMPT [--apply], generate --prompt TEXT --provider NAME,
 Updates:   update [--check | --rollback], updates [on | off | status]
 Cache:     cache info | cache clear (the disk render cache; VIXL_RENDER_CACHE=off, VIXL_CACHE_MAX_MB=256)
 Services:  serve | view [--host 127.0.0.1] [--port 8765], notes list|add|resolve
-           mcp [--workspace DIR] [--http] [--tools core|ai|compact|all] [--schema slim|full] [--planner] [--require-document]
+           mcp [--workspace DIR] [--http] [--tools default|ai] [--planner] [--require-document]
            per-call limits (serve, view, mcp): [--call-timeout S] [--max-megapixels N] [--max-pages N] [--max-concurrent N]
 Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144]
            import PHOTO.jpg | https://HOST/photo.jpg [--name N] [--credit TEXT] [--license TEXT]
@@ -168,7 +170,7 @@ HELP = """Vixl — a headless design engine for AI agents.
 Usage: vixl [--project FILE] [--json] COMMAND ...
        vixl                         Interactive editing shell
 
-Documents: new, open, save, pack, unpack, upgrade
+Documents: new, open, save, pack, unpack, convert (older documents and tool calls)
 Inspect:   status, inspect, layers, manifest, schema [OPERATION…], dependencies
 Create:    add, shape, text, gradient, organic, diagram, chart, table
 Edit:      move, resize, rotate, group, ungroup, mask, effect
@@ -208,15 +210,29 @@ def listing_layer(layer):
     return result
 
 
-def emit(value, machine=False):
+def emit(value, machine=False, command=None, human=False):
+    """Print a result: a short summary when ``human`` (a terminal without --json), otherwise the JSON."""
     if value is None:
         return
-    if machine or isinstance(value, (dict, list)):
+    if human and isinstance(value, (dict, list)):
+        from .cli_summary import summarize
+
+        print(summarize(value, command))
+    elif machine or isinstance(value, (dict, list)):
         # ASCII JSON is also valid UTF-8 and survives redirected legacy Windows
         # streams. Never turn a successfully saved edit into an encoding error.
         print(json.dumps(value, indent=2, ensure_ascii=True, allow_nan=False))
     else:
         print(value)
+
+
+def error_line(payload, human):
+    """The one-line error; in a terminal it ends with the suggestions the JSON error carries."""
+    line = f"ERROR: {payload['message']}"
+    hints = [str(item) for item in payload.get("suggestions") or [] if isinstance(item, (str, int))][:4]
+    if human and hints and not any(hint in payload["message"] for hint in hints):
+        line += f" (try: {', '.join(hints)})"
+    return line
 
 
 def session_path():
@@ -456,7 +472,7 @@ def _dispatch(argv):
     if cmd == "catalog":
         from .catalog import cli as catalog_cli
         return catalog_cli(args), options.json
-    if cmd in ("open", "schema", "upgrade") and any(arg in ("--help", "-h") for arg in args):
+    if cmd in ("open", "schema") and any(arg in ("--help", "-h") for arg in args):
         return command_help(cmd, args), options.json
     if cmd in ("commands", "shapes"):
         from .operations import OPERATION_TYPES
@@ -487,7 +503,7 @@ def _dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "pack unpack new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates cache commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house brand emoji capabilities catalog objects".split()
+                        "pack unpack new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert convert-batch render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates cache commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house brand emoji capabilities catalog objects".split()
                     )
                 )
             }
@@ -628,11 +644,8 @@ def _dispatch(argv):
         ), options.json
     if cmd == "open":
         require(len(args) == 1, "Use open FILE")
-        from .upgrade import report
-
         project = Project.load(args[0], limits=limits, allow_linked=options.allow_linked)
         remember(args[0])
-        notice = report(project.state, project.upgraded_from) if project.upgraded_from else None
         return (
             project.inspect()
             if options.detail == "full"
@@ -641,28 +654,13 @@ def _dispatch(argv):
                 "canvas": project.state["canvas"],
                 "layers": len(project.state["layers"]),
                 "head": project.head,
-                **({"upgrade": notice} if notice else {}),
             }
         ), options.json
-    if cmd == "upgrade":
-        from .upgrade import upgrade
-
-        p = Parser(prog="vixl upgrade")
-        p.add_argument("file", nargs="?", help="Document (default: the current one)")
-        p.add_argument("--report", action="store_true", help="Only list what renders differently; change nothing")
-        p.add_argument("--pin-fills", action="store_true",
-                       help="Give open stroked shapes the explicit white fill they rendered with before 0.21")
-        a = p.parse_args(args)
-        require(not (a.report and a.pin_fills), "--report changes nothing; leave out --pin-fills")
-        path = current_path(a.file or options.project)
-        with file_lock(str(path)):
-            project = Project.load(path, limits=limits, allow_linked=options.allow_linked)
-            result = upgrade(project, pin_fills=a.pin_fills, accept=not a.report)
-            if not a.report and result["upgraded_from"]:
-                project.save()
-        return {"path": str(project.path), **result}, options.json
     if cmd == "schema":
         from .schema import operation_schema
+        if args == ["document"]:
+            from .document_schema import document_schema
+            return document_schema(), options.json
         schema = operation_schema()
         if args:
             from .normalize import _canonical_type
@@ -675,6 +673,12 @@ def _dispatch(argv):
         return schema, options.json
     if cmd == "batch":
         return batch(args, limits, options.allow_linked), options.json
+    if cmd == "convert-batch" or cmd == "convert" and args and not {"--grayscale", "--format"} & set(args):
+        # Documents and saved tool calls from earlier releases (the conversion kit); `convert --grayscale` below
+        # is the stdin image filter.
+        from .convert.cli import convert as convert_documents, convert_batch
+
+        return (convert_batch if cmd == "convert-batch" else convert_documents)(args), options.json
     if cmd == "convert":
         p = Parser(prog="vixl convert")
         p.add_argument("--grayscale", action="store_true")
@@ -704,23 +708,11 @@ def _dispatch(argv):
 
         p = Parser(prog="vixl mcp")
         p.add_argument("--workspace", help="Directory containing documents, imports and exports")
-        p.add_argument(
-            "--schema",
-            choices=["full", "slim"],
-            default=os.environ.get("VIXL_MCP_SCHEMA", "slim"),
-            help="slim (default) advertises operation names only; fields come from vixl_operation_schema; "
-            "full inlines every operation schema",
-        )
         p.add_argument("--allow-screen-capture", action="store_true", default=None,
                        help="Allow MCP tools to capture the local desktop; also VIXL_ALLOW_SCREEN_CAPTURE=1")
-        p.add_argument("--planner", action="store_true", help="Expose the provider-backed vixl_ai_plan tool")
-        p.add_argument(
-            "--tools",
-            choices=["all", "core", "ai", "compact"],
-            default=os.environ.get("VIXL_MCP_TOOLS", "core"),
-            help="core (default): all editing tools; compact: 13 document/workflow tools; ai: provider-backed tools; "
-            "all: core and ai from one server",
-        )
+        p.add_argument("--planner", action="store_true", help="With --tools ai: expose the vixl_ai_plan tool")
+        p.add_argument("--tools", choices=["default", "ai"], default="default",
+                       help="default: the design tools; ai: the provider-backed tools (run as a second server)")
         p.add_argument(
             "--require-document",
             action="store_true",
@@ -738,7 +730,7 @@ def _dispatch(argv):
         a = p.parse_args(args)
         # Explicit workspaces can start empty. Existing --project configurations still work.
         path = current_path(options.project) if options.project or not a.workspace else None
-        server = mcp_server(path, limits, workspace=a.workspace, schema=a.schema, planner=a.planner, tools=a.tools,
+        server = mcp_server(path, limits, workspace=a.workspace, planner=a.planner, tools=a.tools,
                             require_document=a.require_document, call_limits=from_arguments(a),
                             allow_screen_capture=a.allow_screen_capture)
         if a.http:
@@ -783,9 +775,9 @@ def command_help(cmd, args):
 
     manual = {
         "open": "open FILE",
-        "upgrade": "upgrade [FILE] [--report] [--pin-fills]",
         "schema": "schema [OPERATION…]  (no argument: the whole operation-batch schema; "
-                  "schema particles pivot: just those operations' fields, types and descriptions; aliases accepted)",
+                  "schema particles pivot: just those operations' fields, types and descriptions; aliases accepted; "
+                  "schema document: the JSON Schema of a .vixl file's project.json)",
         "canvas": "canvas resize SIZE | preset NAME | background COLOR",
         "save": "save [FILE]",
         "inspect": "inspect [LAYER] | inspect --object NAME|PATH|*",
@@ -815,7 +807,7 @@ def command_help(cmd, args):
         "preset": "preset save|apply|show NAME [--set KEY=VALUE]",
         "fonts": "fonts [--category serif] [--role heading] [--mood elegant] [--query TEXT]",
         "view": "view [--host HOST] [--port PORT] [--token-env ENV] (serve and open live review)",
-        "roll": "roll [--apply] [--set title=TEXT] [--for poster] [--mood playful] [--size NAME|WxH] [--seed N|random] [--variety low|medium|high|fixed] [--lock palette=sage] [--unfilled omit|blank] [--house-style 1|2|3]",
+        "roll": "roll [--apply] [--set title=TEXT] [--for poster] [--mood playful] [--size NAME|WxH] [--seed N|random] [--variety low|medium|high|fixed] [--lock palette=sage] [--unfilled omit|blank]",
         "layout": "layout list | show NAME | preview NAME | apply NAME [--seed N|random] [--set title=TEXT] [--unfilled blank|omit] [--palette NAME] "
         "[--mode inherit|light|dark] [--predictable] [--type-scale golden] [--density airy|balanced|dense] [--align left|center|right] "
         "[--accent rule|bar|dot|block|outline|none] [--gap N|2u] [--prefix P] [--replace]",
@@ -857,7 +849,16 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("--dpi", type=int, default=144)
         p.add_argument("--credit", help="attribution kept with an image, e.g. 'Photo: Ana Ruiz / Unsplash'")
         p.add_argument("--license", help="license or usage terms of an image, e.g. 'CC BY 4.0'")
+        p.add_argument("--format", choices=["figma"], help="figma: PATH is a Figma file URL or key (or exported file "
+                       "JSON); reads FIGMA_TOKEN, see docs/figma.md")
+        p.add_argument("--node", help="figma: import this node id (1:2) instead of the first page")
+        p.add_argument("--rasterize-unsupported", action="store_true", help="figma: import a PNG render of nodes "
+                       "that have no editable equivalent")
         a = p.parse_args(args)
+        if a.format == "figma" or re.match(r"(?i)https://(www\.)?figma\.com/", a.path):
+            source = Path(a.path).read_bytes() if Path(a.path).is_file() else a.path.encode()
+            return import_document(project, source, "figma", a.name or "import", a.page, a.dpi, a.svg_mode,
+                                   node_id=a.node, rasterize_unsupported=a.rasterize_unsupported), True
         is_url = re.match(r"(?i)[a-z][a-z0-9+.-]*://", a.path)
         if is_url or Path(a.path).suffix.lower() not in (".svg", ".pdf"):
             from .image_import import import_image_from
@@ -1105,7 +1106,7 @@ def project_command(project, cmd, args, *, detail="compact"):
 
             root = ET.fromstring(data)
             metadata = root.find("{*}metadata")
-            fallbacks = json.loads(metadata.text)["vixl"]["raster_fallbacks"] if metadata is not None else []
+            fallbacks = json.loads(metadata.text)["vixl"].get("raster_fallbacks", []) if metadata is not None else []
             result["svg"] = {"vector_only": not bool(root.findall(".//{*}image")), "raster_fallbacks": fallbacks}
         return result, False
     if cmd == "spacing":
@@ -1460,8 +1461,9 @@ def shell(options):
             prefix = ["--project", options.project] if options.project else []
             if options.allow_linked:
                 prefix.append("--allow-linked")
-            result, machine = dispatch([*prefix, *shlex.split(line)])
-            emit(result, machine)
+            words = [*prefix, *shlex.split(line)]
+            result, machine = dispatch(words)
+            emit(result, machine, command_of(words), human_output(words, sys.stdout))
         except EOFError:
             break
         except KeyboardInterrupt:
@@ -1493,7 +1495,7 @@ def main(argv=None):
         if run is not None and not profiling.attach(result, run):
             # A result that is not a JSON object (an image on stdout, plain text) keeps stdout as it was.
             print(json.dumps({"render_profile": run.report()}), file=sys.stderr)
-        emit(result, machine)
+        emit(result, machine, command_of(argv), human_output(argv, sys.stdout))
         if getattr(result, "passed", None) is False:  # a formatted vixl check --all report
             return 1
         if ("workflow" in argv or ("check" in argv and ("--all" in argv or "--group" in argv)) or "emoji" in argv) and isinstance(result, dict):
@@ -1509,7 +1511,8 @@ def main(argv=None):
         return 0
     except (VixlError, OSError, ValueError, TimeoutError, MemoryError) as exc:
         payload = for_surface(friendly(exc).as_dict(), "cli")
-        print(json.dumps(payload) if "--json" in argv else f"ERROR: {payload['message']}", file=sys.stderr)
+        print(json.dumps(payload) if wants_json(argv) else error_line(payload, human_output(argv, sys.stderr)),
+              file=sys.stderr)
         return 1
     except KeyboardInterrupt:
         print("Interrupted", file=sys.stderr)

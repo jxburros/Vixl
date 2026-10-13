@@ -47,7 +47,7 @@ OPTIONS = ("size", "width", "height", "orientation", "dpi", "bleed", "scale", "a
 
 SCHEMA = {
     "recompose": {"type": "boolean", "description": "Reapply a stored generated-layout recipe for this size (default false); replaces generated layer edits and IDs."},
-    "size": {"type": "string", "description": "Named target size (vixl_sizes_list), e.g. story or a4; or give width "
+    "size": {"type": "string", "description": "Named target size (vixl_reference('sizes')), e.g. story or a4; or give width "
              "and height."},
     "orientation": {"enum": ["portrait", "landscape"], "description": "With a named size."},
     "dpi": {"type": "number", "minimum": 36, "maximum": 2400, "description": "With a named print size."},

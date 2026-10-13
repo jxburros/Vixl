@@ -67,7 +67,7 @@ def test_house_style_is_readable_from_cli_and_resource_view():
     from vixl.finishing_cli import standalone
 
     summary = standalone("house", [])
-    assert summary["version"] == house_style.VERSION and summary["pools"]["palettes"]["safe"] >= 30
+    assert summary["pools"]["palettes"]["safe"] >= 30
     assert standalone("house", ["show", "slides"])["profile"]["purpose"] == "slides"
     assert house_style.show("instagram-post")["purpose"] == "social"
 
@@ -87,7 +87,6 @@ def test_purpose_is_resolved_stored_and_reported():
     p = Project.sized("instagram-post")
     defaults = document_defaults(p, seed=3)
     assert defaults["purpose"] == "social" and defaults["purpose_source"] == "size"
-    assert defaults["house_style_version"] == house_style.VERSION
     rolled = roll_document(p, seed=3)
     assert rolled["purpose"] == "social" and rolled["purpose_source"] == "document"
     assert roll_document(p, seed=3, purpose="slides")["purpose_source"] == "explicit"
@@ -282,32 +281,7 @@ def test_high_variety_poster_briefs_usually_roll_a_recommended_layout():
 # --- default-change policy (#430) ------------------------------------------------------------------
 
 
-def test_version_one_replays_the_old_rolls():
-    # Recorded with 0.22.1 before the house-style change.
-    p = Project.sized("poster-18x24", dpi=40)
-    old = roll_document(p, seed=1000, purpose="poster", variety="low", house_style_version=1)["direction"]
-    assert (old["palette"], old["layout"], old["mode"], old["pairing"], old["look"], old["style"]) == \
-        ("cream-marigold", "quiet-editorial", "dark", "lexend-atkinson", "none", "corporate-flat")
-    p = Project.sized("slide")
-    old = roll_document(p, seed=1012, purpose="slides", variety="low", house_style_version=1)["direction"]
-    assert (old["palette"], old["layout"], old["mode"], old["pairing"], old["look"], old["style"]) == \
-        ("mist-pine", "calm-cover", "light", "eb-garamond-single", "none", "editorial")
-    assert "look_amount" not in old
-
-
-def test_workspace_can_pin_the_house_style_version(tmp_path):
-    (tmp_path / ".vixl").mkdir()
-    (tmp_path / ".vixl" / "variety.json").write_text(json.dumps({"house_style": 1}))
-    p = Project(1080, 1080)
-    defaults = document_defaults(p, seed=8, workspace=tmp_path)
-    assert defaults["house_style_version"] == 1
-    assert defaults["direction"]["palette"] in house_style.legacy(1)["palettes"]
-    # A document keeps the version it was made with, whatever the workspace says later.
-    (tmp_path / ".vixl" / "variety.json").write_text(json.dumps({"house_style": 2}))
-    assert roll_document(p, seed=8, workspace=tmp_path)["house_style_version"] == 1
-
-
-def test_old_directions_keep_their_faint_look_amount():
+def test_a_direction_without_a_look_amount_uses_the_faint_default():
     p = Project(800, 800)
     p.apply({"type": "layout-apply", "name": "open-letter", "seed": 2, "palette": "chalk-indigo", "title": "Old",
              "cta": "Go", "unfilled": "omit", "direction": {"look": "soft-shadow", "corner": "soft"}})
@@ -399,18 +373,11 @@ def test_playful_and_bold_rolls_get_large_headlines():  # #285
     assert sizes["large"] >= sizes["measured"] * 1.5
 
 
-def test_version_two_rolls_replay_before_pool_and_alignment_expansion():
-    import hashlib
-    from pathlib import Path
-    cases = json.loads((Path(__file__).parent / 'fixtures' / 'house-style-v2-rolls.json').read_text())
-    for case in cases:
-        result = roll(**case['options'])
-        assert hashlib.sha256(json.dumps(result, sort_keys=True).encode()).hexdigest() == case['sha256']
-
-
 def test_new_pairings_resolve_catalog_families_and_weights():
     from vixl.typefaces import find_font
-    added = [p for p in pairings() if p.get('introduced') == 3]
+    wanted = ['public-sans-source-serif', 'inter-tight-literata', 'schibsted-noto-serif', 'atkinson-source-serif', 'anton-libre-franklin', 'bebas-source-serif', 'oswald-public-sans', 'bungee-figtree', 'barlow-condensed-newsreader', 'big-shoulders-work-sans', 'fraunces-atkinson', 'archivo-black-karla', 'monoton-space-grotesk', 'grenze-ibm-plex-sans', 'permanent-marker-geist', 'shrikhand-source-code']
+    added = [p for p in pairings() if p['name'] in wanted]
+    assert len(added) == len(wanted)
     assert Counter(p['tier'] for p in added) == {'safe': 4, 'bold': 8, 'avant-garde': 4}
     for pairing in added:
         for role in ('heading', 'body'):
@@ -433,8 +400,7 @@ def test_alignment_distribution_and_marks():
 def test_saturated_background_only_washes_as_needed():
     from vixl.colors import contrast_ratio, parse
     options = {'palette': ['#001122', '#0066aa', '#ee3388', '#33aa88'], 'mode': 'light'}
-    old = assign_roles(options, random.Random(1))
-    new = assign_roles({**options, 'direction': {'house_style_version': 3}}, random.Random(1))
-    assert sum(parse(new['background'])[:3]) < sum(parse(old['background'])[:3]) - 0.4
+    new = assign_roles(options, random.Random(1))
+    assert sum(parse(new['background'])[:3]) < 2.0  # kept saturated, not washed toward white
     for role in ('ink', 'muted', 'accent-text'):
         assert contrast_ratio(parse(new[role])[:3], parse(new['background'])[:3]) >= 4.5

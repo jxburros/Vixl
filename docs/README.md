@@ -15,7 +15,7 @@ the result and export. Text, geometry, masks, effects and history stay in the `.
 4. [Choose an export format](exporting.md): images, vectors, print, decks, forms and motion.
 5. [Resolve common problems](troubleshooting.md): installation, text, checks, imports and providers.
 
-Current tagged release: **0.26.0**. See the [release notes](../CHANGELOG.md#0260)
+Current tagged release: **0.27.0**. See the [release notes](../CHANGELOG.md#0270)
 for the features and behavior changes in this version.
 See [installation and updating](releases.md) for Windows, source and agent bundles.
 
@@ -36,12 +36,12 @@ offline with `python examples/build_documentation.py`.
 
 | Area | Guides and references |
 | --- | --- |
-| Documents and authoring | [Concepts](concepts.md), [authoring](authoring.md), [commands](commands.md), [operation semantics](operations.md) |
+| Documents and authoring | [Concepts](concepts.md), [the `.vixl` file format](file-format.md), [converting documents and tool calls from earlier releases](converting.md), [authoring](authoring.md), [commands](commands.md), [operation semantics](operations.md) |
 | Starting points | [Safe design variety](safe-variety.md), [House style decisions](house-style.md), [Development plan](roadmap.md), [Craft plan](craft-plan.md), [Containers and templates](containers-and-templates.md), [Sizes and layouts](sizes-and-layouts.md), [palettes, templates and resources](agent-resources.md), [brands](brands.md), [design styles](styles.md) |
 | Text and emoji | [Typography](typography.md), [rich text](rich-text.md), [text flow](text-flow.md), [emoji library and custom packs](emojis.md) |
 | Shapes and layout | [Objects: kinds, parts, isolated review and export](objects.md), [Vector paths and strokes](vector-paths.md), [Spatial queries and transforms](spatial-transforms.md), [Design tools](design-tools.md), [organic shapes](organic.md), [diagrams and flowcharts](diagrams.md), [guides and grids](guides.md), [spacing](pixel-animation-spacing.md) |
 | Finishing and imperfection | [Looks](looks.md), [scene atmosphere and motifs](atmosphere.md), [irregularity and torn edges](irregular.md) |
-| Images and drawing | [Materials and media review](media-craft.md), [Drawing cleanup](drawing.md), [artistic filters](artistic-filters.md), [brushes](brushes-and-animation.md), [irregular image frames and paint drips](design-tools.md#irregular-image-frames-and-paint-simulation) |
+| Images and drawing | [Import from Figma](figma.md), [Materials and media review](media-craft.md), [Drawing cleanup](drawing.md), [artistic filters](artistic-filters.md), [brushes](brushes-and-animation.md), [irregular image frames and paint drips](design-tools.md#irregular-image-frames-and-paint-simulation) |
 | Output | [Export guide](exporting.md), [accessibility](accessibility.md), [color and print](color-and-print.md), [slides](slides.md), [marketing build options](marketing-builds.md) (deck legibility profiles, image downsampling), [HTML presenter](presenter.md), [forms](forms.md) |
 | Data and reuse | [Charts](charts.md), [linked documents](linked-documents.md), [data merge and print imposition](imposition.md), [QR codes and barcodes](codes.md) |
 | Motion | [Characters, rigs and scene authoring](animation-authoring.md), [Brushes and timelines](brushes-and-animation.md), [pixel animation](pixel-animation-spacing.md), [lyric video](lyric-video.md), [video templates](animation-authoring.md#joint-pose-keys-and-short-templates), [app animation packages](animation-authoring.md#app-animation-packages) |
@@ -52,8 +52,8 @@ offline with `python examples/build_documentation.py`.
 
 ## Work with an agent
 
-Use `vixl mcp --workspace . --tools core --schema slim` for a small editing toolset, or
-`--tools compact --schema slim` for consolidated workflow tools. Give the agent a brief with
+Use `vixl mcp --workspace .`: seven tools, with operation fields and rarer options looked up through
+`vixl_reference` ([MCP tool surface](mcp-toolsets.md)). Give the agent a brief with
 dimensions, audience, copy, assets, brand rules and required outputs. Ask it to inspect and
 preview before handing off the editable master and exports. [Interface setup](interfaces.md)
 includes client JSON, authentication and HTTP transport; [studio](studio.md) covers review,
@@ -68,6 +68,7 @@ See the [provider matrix](providers.md#capability-matrix) before choosing a serv
 - [Architecture and resource limits](architecture.md) and [implementation coverage](coverage.md).
 - [Examples](../examples/) and [explorations](https://github.com/jxburros/VixlExamples/blob/main/explorations/README.md): longer creative projects.
 - [Agent evaluations](../evals/README.md): briefs and grading contracts.
+- [Render parity](render-parity.md): raster quality measured against Chromium and exact references.
 - [Documentation maintenance](documentation-maintenance.md): rebuilding visuals and verifying examples.
 - [Brand voice](brand-voice.md): how Vixl's own copy and marketing sound.
 - [Changelog](../CHANGELOG.md): shipped changes and source-only additions.

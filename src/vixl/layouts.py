@@ -134,11 +134,7 @@ class Builder:
         self.corner = direction.get("corner") if direction.get("corner") in CORNERS else corner_style(project)
         # A bold or expressive roll sets headlines large (#285); quiet rolls keep the measured headline.
         self.large = direction.get("headline") == "large"
-        defaults = project.state.get("design_defaults", {})
-        self.version = op.get("_house_style_version", direction.get("house_style_version",
-                                                                    defaults.get("house_style_version", 2)))
-        # Details the rolled direction asks for (house style 4): the call to action as a pill, a date line on
-        # a highlight. Version 3 documents and directions without them keep the plain button and date.
+        # Details the rolled direction asks for: the call to action as a pill, a date line on a highlight.
         self.cta_style = direction.get("cta", "button")
         self.date_style = direction.get("date", "plain")
         require(self.cta_style in CTA_STYLES, f"direction.cta must be one of {', '.join(CTA_STYLES)}", field="direction")
@@ -489,9 +485,9 @@ class Builder:
         return (round(x), round(y), round(w), round(h))
 
     def clearance(self, device):
-        """Room a footer rule keeps above the copy (house style 4): one spacing unit above the rule, so the last row
+        """Room a footer rule keeps above the copy: one spacing unit above the rule, so the last row
         never sits on it. One unit is the smallest step of the spacing scale and twice the crowding threshold."""
-        if device != "footer" or self.version < 4:
+        if device != "footer" or not self.op.get("_clearance", True):
             return 0
         clear = self.unit * 1.25  # the rule sits a quarter unit above the bottom margin
         # Copy too tall to leave the room is set smaller (execute_layout's fit loop), not onto the rule.
@@ -647,31 +643,28 @@ def assign_roles(op, rng):
         # order, so it is derived from the background hue.
         ink = mix(background, extreme, 0.9)
     else:
-        version = op.get("_house_style_version", op.get("direction", {}).get("house_style_version", 2))
-        if version >= 3:
-            # Preserve saturated fields when the strongest available ink can meet the target.
-            # Binary search only the necessary wash, bounded by the house-style data.
-            target = house_style.rule("contrast")["ink_target"]
-            if contrast_ratio(extreme[:3], background[:3]) < target:
-                low, high = 0.0, house_style.rule("background_mix_max")[mode]
-                wash = white if mode == "light" else black
-                for _ in range(20):
-                    middle = (low + high) / 2
-                    if contrast_ratio(extreme[:3], mix(background, wash, middle)[:3]) >= target:
-                        high = middle
-                    else:
-                        low = middle
-                background = mix(background, wash, high)
-        elif mode == "light" and relative_luminance(background[:3]) < 0.6:
-            background = mix(background, white, 0.82)
-        elif mode == "dark" and relative_luminance(background[:3]) > 0.08:
-            background = mix(background, black, 0.75)
+        # Preserve saturated fields when the strongest available ink can meet the target.
+        # Binary search only the necessary wash, bounded by the house-style data.
+        target = house_style.rule("contrast")["ink_target"]
+        if contrast_ratio(extreme[:3], background[:3]) < target:
+            low, high = 0.0, house_style.rule("background_mix_max")[mode]
+            wash = white if mode == "light" else black
+            for _ in range(20):
+                middle = (low + high) / 2
+                if contrast_ratio(extreme[:3], mix(background, wash, middle)[:3]) >= target:
+                    high = middle
+                else:
+                    low = middle
+            background = mix(background, wash, high)
     if given_background is not None and parse(given_background)[3] > 0:
         background = parse(given_background)[:3] + (1.0,)
     for step in range(12):
         if contrast_ratio(ink[:3], background[:3]) >= house_style.craft("contrast")["ink_target"]:
             break
         ink = mix(ink, extreme, 0.25)
+    else:
+        # The geometric steps never reach the extreme; the background wash was sized for it.
+        ink = extreme
 
     def chroma(c):
         return to_polar(srgb_to_oklab(c[:3]))[1]
@@ -1467,7 +1460,7 @@ def _bento_grid(b):
 
 # Memes: image slots and caption rules only (no stock images). Captions are white with a black stroke and set
 # uppercase (uppercase=false keeps the case); they shrink to fit their box. Fonts follow the document typography
-# or display_font: an Impact-style OFL face such as Anton (vixl_font_install) suits them.
+# or display_font: an Impact-style OFL face such as Anton (font-install) suits them.
 
 
 def _meme_text(b, text, x, y, width, max_height, name, anchor="top", stroked=True, color="#ffffff"):
@@ -1601,10 +1594,10 @@ SLOT_TEXT = {
     "cta": ("Action", "A two- or three-word call to action, shown as a button"),
     "caption": ("Caption", "A small supporting note"),
     "items": ("Items", "One item per line"),
-    "images": ("Images", "A list of embedded image asset ids, one per panel in reading order (vixl_import_image returns "
-               "them; vixl_compose also takes workspace paths and https URLs). Panels left empty get placeholder frames "
+    "images": ("Images", "A list of embedded image asset ids, one per panel in reading order (import-image returns "
+               "them; vixl_apply(create=…) also takes workspace paths and https URLs). Panels left empty get placeholder frames "
                "to fill later"),
-    "image": ("Image", "An embedded image asset id (vixl_import_image returns one; vixl_compose also takes a workspace "
+    "image": ("Image", "An embedded image asset id (import-image returns one; vixl_apply(create=…) also takes a workspace "
               "path or https URL). Left empty, a placeholder frame is drawn; "
               "fill it later by importing a file, placing a saved resource, drawing it with shape/organic/paint operations, "
               "or generating it with an AI tool: see next_steps in the layout-apply result"),
@@ -1836,10 +1829,10 @@ for _name, _layout_entry in LAYOUTS.items():
 
 
 IMAGE_OPTIONS = [
-    {"option": "import", "how": "vixl_import_image(path='photo.png') returns an asset id; then re-apply this layout with "
+    {"option": "import", "how": "an import-image step ({type: import-image, path: 'photo.png'} in vixl_apply) returns an asset id; then re-apply this layout with "
      "image=<asset>, replace=true and the same seed, or run {type: replace-contents, target: <image layer>, asset: <asset>} "
      "and remove the temporary layer"},
-    {"option": "resource", "how": "A saved shape or container: vixl_workflow(action='resource-list', request={kind: 'shapes'}) "
+    {"option": "resource", "how": "A saved shape or container: vixl_apply(workflow='resource-list', request={kind: 'shapes'}) "
      "then {type: shape-place, resource: NAME, x, y, width, height} inside the slot"},
     {"option": "draw", "how": "Build it from shape, pen, pathfinder, organic (flowers, trees, shells …) and paint operations "
      "inside the slot's bounds, group them, and remove the placeholder; {type: rasterize} on the group gives an asset for replace-contents"},
@@ -1907,12 +1900,12 @@ def catalog():
             }
             for name, item in LAYOUTS.items()
         },
-        "detail": "vixl layout show NAME (vixl_layouts_list name=…) gives principles and each slot's meaning",
+        "detail": "vixl layout show NAME (vixl_reference('layouts', name=…)) gives principles and each slot's meaning",
         "options": {
             "seed": "Integer or 'random'; omitted seeds are fresh unless document/workspace variety is fixed. "
             "Unspecified palette, mode, type scale, density, alignment and accent are rolled from the seed",
             "unfilled": "blank (default): unfilled slots render as visible [Label] placeholders recorded as blanks that "
-            "check reports as errors; omit: leave unfilled slots out (vixl_roll apply omits them when given "
+            "check reports as errors; omit: leave unfilled slots out (the roll operation omits them when given "
             "slots); the layout record's omitted lists what was left out",
             "font": "Registered body font; defaults to the document typography (font pair), else the proofing fallback",
             "display_font": "Registered heading font; defaults to the document typography heading, else font",
@@ -1963,7 +1956,7 @@ def execute_layout(project, op):
 
     defaults = state.get("design_defaults", {})
     if "seed" not in op:
-        # A sparse apply takes the document's whole stored direction, as vixl_roll(apply=true) does;
+        # A sparse apply takes the document's whole stored direction, as the roll operation does;
         # explicit fields win key by key, and an explicit seed asks for a fresh choice instead.
         direction = defaults.get("direction", {})
         op["seed"], _ = seed_for(project, direction.get("layout_seed", defaults.get("seed")), op.get("variety"))
@@ -2005,16 +1998,25 @@ def execute_layout(project, op):
             state.get("blanks", {}).pop(ident, None)
     seed = _seed(op, state["canvas"])
     snapshot = project.clone()
-    fit = 1.0
-    for attempt in range(6):
-        # Build on a copy; if text would leave the canvas, rebuild with a smaller type scale so the
-        # same composition fits small formats (business cards, banners) instead of overflowing.
-        trial = snapshot.clone()
-        trial._resource_budget = getattr(project, "_resource_budget", project.limits.max_operations)
-        builder = _build(trial, layout, op, seed, fit)
-        if "base_size" in op or attempt == 5 or not _overflows(trial, builder):
-            break
-        fit *= 0.84
+
+    def attempt_fits(options):
+        fit = 1.0
+        for attempt in range(6):
+            # Build on a copy; if text would leave the canvas, rebuild with a smaller type scale so the
+            # same composition fits small formats (business cards, banners) instead of overflowing.
+            trial = snapshot.clone()
+            trial._resource_budget = getattr(project, "_resource_budget", project.limits.max_operations)
+            builder = _build(trial, layout, options, seed, fit)
+            if "base_size" in op or not _overflows(trial, builder):
+                return trial, builder, False, fit
+            if attempt < 5:
+                fit *= 0.84
+        return trial, builder, True, fit
+
+    trial, builder, overflowing, fit = attempt_fits(op)
+    if overflowing and builder.floor is not None:
+        # The footer-rule clearance cannot be met even at the smallest type: drop it rather than overflow.
+        trial, builder, _, fit = attempt_fits({**op, "_clearance": False})
     supplied = [k for k in CONTENT_KEYS if k in op]
     unused = [k for k in supplied if k not in builder.read]
     if unused:

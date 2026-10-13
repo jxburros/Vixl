@@ -18,38 +18,27 @@ from vixl.mcp_tools import export_file, preview
 from test_interfaces_ai import FakeProvider
 
 
-def test_operation_schema_is_in_tools_list(tmp_path):
+def test_tools_list_is_lean_and_operations_are_checked_when_applied(tmp_path):
     async def run():
-        tools = {t.name: t for t in await mcp_server(workspace=tmp_path).list_tools()}
-        schema = tools["vixl_operations_apply"].inputSchema
+        server = mcp_server(workspace=tmp_path)
+        tools = {t.name: t for t in await server.list_tools()}
+        schema = tools["vixl_apply"].inputSchema
         jsonschema.Draft202012Validator.check_schema(schema)
-        operations = [
-            {"type": "text", "text": "title", "name": "title"},
-            {"type": "move", "target": "title", "x": 5},
-            {"type": "effect", "name": "blur", "radius": 2},
-            {"type": "mask", "action": "create"},
-            {"type": "hide"},
-        ]
-        jsonschema.validate({"operations": operations}, schema)
-        for invalid in (
-            {"type": "move"},
-            {"type": "made-up"},
-            {"type": "opacity", "value": 3},
-            {"type": "add", "path": "outside.png"},
-            {"type": "mask", "action": "import"},
-        ):
-            with pytest.raises(jsonschema.ValidationError):
-                jsonschema.validate({"operations": [invalid]}, schema)
-        assert "vixl_ai" not in tools
-        assert "args" not in tools["vixl_ai_generate"].inputSchema["properties"]
-        assert tools["vixl_ai_generate"].inputSchema["properties"]["seed"]["type"] == "integer"
-        # Full inline fields include vector editing, motion, characters and materials. Repeated
-        # constraints are shared; slim mode offers the operation names with on-demand field lookup. The 0.25
-        # operations (waiver, brand-preset, table, die-cut, path-split, object, accessibility) bring it to ~104k;
-        # the craft-plan operations (key-value-list, reflection, haze, star-field, string-lights, bokeh) to ~110k.
-        assert len(json.dumps(schema)) < 114000
-        from vixl.mcp_tools import service_operation_schema
-        assert len(json.dumps(service_operation_schema(slim=True))) < 6000
+        jsonschema.validate({"operations": [{"type": "text", "text": "title"}, {"type": "hide"}]}, schema)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate({"operations": [{"text": "no type"}]}, schema)
+        assert not any(name.startswith("vixl_ai") for name in tools)
+        ai = {t.name: t for t in await mcp_server(workspace=tmp_path, tools="ai").list_tools()}
+        assert "args" not in ai["vixl_ai_generate"].inputSchema["properties"]
+        assert ai["vixl_ai_generate"].inputSchema["properties"]["seed"]["type"] == "integer"
+        await server.call_tool("vixl_document", {"action": "create", "path": "a.vixl", "width": 16, "height": 16})
+        for invalid, kind in (({"type": "made-up"}, None), ({"type": "opacity", "value": 3}, "opacity"),
+                              ({"type": "mask", "action": "import"}, "mask")):
+            with pytest.raises(Exception) as caught:
+                await server.call_tool("vixl_apply", {"operations": [invalid]})
+            error = json.loads(str(caught.value)[str(caught.value).index("{"):])
+            if kind:  # The error carries the exact schema of the failing operation.
+                assert error["schema"][kind]["properties"]["type"]["const"] == kind
 
     asyncio.run(run())
 
@@ -197,7 +186,7 @@ def test_typed_ai_preserves_arguments_and_undo(tmp_path, monkeypatch):
     monkeypatch.setattr(vixl.ai, "provider", lambda _: backend)
     session = Session(workspace=tmp_path)
     session.create("a.vixl", 16, 16)
-    server = __import__("vixl.mcp_tools", fromlist=["build_server"]).build_server(session)
+    server = __import__("vixl.mcp_tools", fromlist=["build_server"]).build_server(session, tools="ai")
 
     async def call(tool_name, **arguments):
         return await server.call_tool(tool_name, arguments)
@@ -236,18 +225,20 @@ def test_real_mcp_empty_workspace_to_export(tmp_path):
                     assert not result.isError, result
                     return result
 
-                await call("vixl_workspace_list")
-                await call("vixl_document_create", path="a.vixl", width=20, height=10)
-                await call("vixl_import_image", path="photo.png", name="photo")
-                result = await call("vixl_operations_apply", operations=[{"type": "move", "x": 1}])
+                await call("vixl_document", action="list")
+                created = await call("vixl_document", action="create", path="a.vixl", width=20, height=10)
+                assert len(created.content[0].text) < 400  # a new blank document's result is terse
+                await call("vixl_apply", operations=[{"type": "import-image", "path": "photo.png", "name": "photo"}])
+                result = await call("vixl_apply", operations=[{"type": "move", "x": 1}])
                 assert len(result.model_dump_json()) < 1500
-                await call("vixl_render_preview", max_width=16, max_height=16)
-                await call("vixl_export_file", path="out.png")
-                await call("vixl_document_create", path="b.vixl", width=10, height=10)
-                await call("vixl_document_open", path="a.vixl")
-                failed = await client.call_tool("vixl_import_image", {"path": "../outside.png"})
+                await call("vixl_render", max_width=16, max_height=16)
+                await call("vixl_export", path="out.png")
+                await call("vixl_document", action="create", path="b.vixl", width=10, height=10)
+                await call("vixl_document", action="open", path="a.vixl")
+                failed = await client.call_tool("vixl_apply", {"operations": [
+                    {"type": "import-image", "path": "../outside.png"}]})
                 assert failed.isError
-                await call("vixl_document_inspect", target="photo")
+                await call("vixl_document", target="photo")
 
     asyncio.run(run())
     assert Image.open(tmp_path / "out.png").size == (20, 10)
@@ -279,9 +270,9 @@ def test_workspace_export_profile_with_filename_format(tmp_path):
         assert image.size == (1080, 720)
 
 
-def test_mcp_splits_into_core_and_ai_servers(tmp_path, monkeypatch):
+def test_mcp_splits_into_design_and_ai_servers(tmp_path, monkeypatch):
     import vixl.ai
-    from vixl.mcp_tools import SHARED_TOOLS, build_server
+    from vixl.mcp_tools import SHARED_TOOLS, TOOLS, build_server
 
     backend = FakeProvider()
     monkeypatch.setattr(vixl.ai, "provider", lambda _: backend)
@@ -289,23 +280,60 @@ def test_mcp_splits_into_core_and_ai_servers(tmp_path, monkeypatch):
     async def names(server):
         return {t.name for t in await server.list_tools()}
 
-    everything = asyncio.run(names(mcp_server(workspace=tmp_path)))
-    core = asyncio.run(names(mcp_server(workspace=tmp_path, tools="core")))
+    design = asyncio.run(names(mcp_server(workspace=tmp_path)))
     ai = asyncio.run(names(mcp_server(workspace=tmp_path, tools="ai")))
-    assert core | ai == everything and core & ai == SHARED_TOOLS
-    assert "vixl_operations_apply" in core and not any(n.startswith("vixl_ai_") for n in core)
-    assert {"vixl_ai_generate", "vixl_models_list"} <= ai and "vixl_operations_apply" not in ai
+    assert design == set(TOOLS) and design & ai == SHARED_TOOLS
+    assert {"vixl_ai_generate", "vixl_models_list"} <= ai and "vixl_apply" not in ai
     with pytest.raises(VixlError):
-        mcp_server(workspace=tmp_path, tools="both")
+        mcp_server(workspace=tmp_path, tools="core")
 
-    # Separate processes share documents through the workspace: AI edits reach the core server.
+    # Separate processes share documents through the workspace: AI edits reach the design server.
     core_session, ai_session = Session(workspace=tmp_path), Session(workspace=tmp_path)
-    core_server = build_server(core_session, tools="core")
+    core_server = build_server(core_session)
     ai_server = build_server(ai_session, tools="ai")
-    asyncio.run(core_server.call_tool("vixl_document_create", {"path": "a.vixl", "width": 16, "height": 16}))
+    asyncio.run(core_server.call_tool("vixl_document", {"action": "create", "path": "a.vixl", "width": 16, "height": 16}))
     asyncio.run(ai_server.call_tool("vixl_ai_generate", {"prompt": "a sun", "name": "sun", "document": "a.vixl"}))
     assert [layer["name"] for layer in core_session.inspect()["layers"]] == ["sun"]
-    asyncio.run(core_server.call_tool("vixl_operations_apply", {"operations": [{"type": "hide", "target": "sun"}]}))
+    asyncio.run(core_server.call_tool("vixl_apply", {"operations": [{"type": "hide", "target": "sun"}]}))
     ai_session.open("a.vixl")
     assert not ai_session.inspect()["layers"][0]["visible"]
 
+
+def test_import_document_step_routes_figma_sources_with_their_options(tmp_path, monkeypatch):
+    import vixl.imports
+    from vixl.mcp_tools import build_server
+
+    seen = []
+
+    def fake(project, data, format, name="import", page=1, dpi=144, svg_mode="editable", **options):
+        seen.append((data, format, page, options))
+        return {"imported": format}
+
+    monkeypatch.setattr(vixl.imports, "import_document", fake)
+    session = Session(workspace=tmp_path)
+    session.create("a.vixl", 16, 16)
+    server = build_server(session)
+    asyncio.run(server.call_tool("vixl_apply", {"operations": [{
+        "type": "import-document", "source": "https://www.figma.com/design/KEY/name", "node_id": "1-2",
+        "page": "Cover", "rasterize_unsupported": True}]}))
+    assert seen == [("https://www.figma.com/design/KEY/name", "figma", "Cover",
+                     {"node_id": "1-2", "rasterize_unsupported": True})]
+    with pytest.raises(Exception, match="Figma import options"):
+        asyncio.run(server.call_tool("vixl_apply", {"operations": [{
+            "type": "import-document", "path": "a.svg", "node_id": "1:2"}]}))
+
+
+def test_import_document_step_imports_exported_figma_json_offline(tmp_path):
+    import shutil
+    from pathlib import Path
+
+    from vixl.mcp_tools import build_server
+
+    shutil.copy(Path(__file__).parent / "fixtures" / "figma" / "poster.json", tmp_path / "poster.json")
+    session = Session(workspace=tmp_path)
+    session.create("a.vixl", 16, 16)
+    server = build_server(session)
+    asyncio.run(server.call_tool("vixl_apply", {"operations": [{"type": "import-document", "path": "poster.json"}]}))
+    layers = session.inspect()["layers"]
+    assert any(layer["type"] == "text" for layer in layers)
+    assert len(layers) > 1

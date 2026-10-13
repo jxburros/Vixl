@@ -20,7 +20,7 @@ def font_next_step(project, seed):
     pairing = project.state.get("design_defaults", {}).get("direction", {}).get("pairing")
     pairing = pairing if pairing and pairing != "workspace-brand" else roll_pairing(seed)[0]["name"]
     return {"pairing": pairing, "installed": False,
-            "next_step": f"Install the selected fonts with vixl_font_pair(pairing='{pairing}') or vixl font pair {pairing}; "
+            "next_step": f"Install the selected fonts with a font-pair step ({{type: font-pair, pairing: '{pairing}'}} in vixl_apply) or vixl font pair {pairing}; "
                          "layout/template operations use the proofing fallback until fonts are explicitly installed."}
 
 
@@ -33,30 +33,10 @@ def settings(workspace=None):
     from .assets import read_bounded
 
     result = json.loads(read_bounded(path, 16384))
-    require(isinstance(result, dict) and set(result) <= {"variety", "seed", "house_style"},
-            "Variety settings accept variety, seed and house_style")
+    require(isinstance(result, dict) and set(result) <= {"variety", "seed"},
+            "Variety settings accept variety and seed")
     require(result.get("variety", "medium") in VARIETIES, "Invalid workspace variety")
-    from .house_style import versions
-
-    require(result.get("house_style", versions()[-1]) in versions(),
-            f"house_style must be one of {versions()} (the house-style version new documents use)")
     return result
-
-
-def house_style_version(project=None, version=None, workspace=None):
-    """The house-style version to roll with: an explicit one, then the document's stored one, then the
-    workspace setting (``.vixl/variety.json`` ``house_style``), then the current version."""
-    from . import house_style
-
-    if version is None and project is not None:
-        version = project.state.get("design_defaults", {}).get("house_style_version")
-    if version is None:
-        workspace = workspace or (getattr(project, "_workspace", None) if project else None)
-        version = settings(workspace).get("house_style")
-    version = version or house_style.VERSION
-    require(version in house_style.versions(), f"house_style_version must be one of {house_style.versions()}",
-            field="house_style_version")
-    return version
 
 
 def seed_for(project=None, seed=None, variety=None, workspace=None):
@@ -215,20 +195,17 @@ def dimensions(rng, pairing, variety="medium", *, tier="safe", purpose=None, moo
             "color_assignment": "light"}
 
 
-def document_defaults(project, *, seed=None, variety=None, workspace=None, purpose=None, house_style_version=None):
+def document_defaults(project, *, seed=None, variety=None, workspace=None, purpose=None):
     """Roll and store a new document's ``design_defaults``: the seed, variety level, purpose (explicit, else
-    from the named size), the rolled direction and the ``house_style_version`` that made it. The stored
-    direction is what later layouts inherit, so a changed house style never reaches existing documents."""
+    from the named size), and the rolled direction. The stored direction is what later layouts inherit."""
     from .house_style import resolve_purpose
     from .typefaces import roll_document
 
     if workspace is not None:
         project._workspace = str(Path(workspace).resolve())
     purpose, source = resolve_purpose(purpose, size=project.state.get("canvas", {}).get("size"))
-    result = roll_document(project, workspace=workspace, seed=seed, variety=variety, purpose=purpose,
-                           house_style_version=house_style_version)
+    result = roll_document(project, workspace=workspace, seed=seed, variety=variety, purpose=purpose)
     project.state["design_defaults"] = {"seed": result["seed"], "variety": result["variety"],
-                                        "house_style_version": result["house_style_version"],
                                         **({"purpose": result.get("purpose") or purpose} if purpose else {}),
                                         **({"purpose_source": source} if purpose else {}),
                                         "direction": deepcopy(result["direction"])}
@@ -341,8 +318,7 @@ def apply_direction(project, builder, direction):
             builder.created.append(name)
     look = direction.get("look", "none")
     if look != "none":
-        # Directions rolled before house-style version 2 carry no amount and keep their faint 0.1.
-        amount = direction.get("look_amount", house_style.legacy(1)["look_amount"])
+        amount = direction.get("look_amount", 0.1)
         for layer, color in _look_targets(project, builder, own, background, look):
             execute(project, {"type": "look", "target": layer["id"], "look": look, "amount": amount,
                               **({"color": color} if color else {})})

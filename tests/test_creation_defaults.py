@@ -33,8 +33,9 @@ def test_cli_python_mcp_and_session_roll_identical_design_defaults(tmp_path, mon
     by_cli = cli("new", "1080x1350", "--seed", "41", "--variety", "low", "-o", "cli.vixl")["design_defaults"]
     by_python = Project(1080, 1350, seed=41, variety="low").state["design_defaults"]
     by_new = Project.new(width=1080, height=1350, seed=41, variety="low").state["design_defaults"]
-    by_mcp = mcp(mcp_server(workspace=tmp_path), "vixl_document_create",
-                 {"path": "mcp.vixl", "width": 1080, "height": 1350, "seed": 41, "variety": "low"})["design_defaults"]
+    by_mcp = mcp(mcp_server(workspace=tmp_path), "vixl_document",
+                 {"action": "create", "path": "mcp.vixl", "width": 1080, "height": 1350, "seed": 41, "variety": "low",
+                  "verbose": True})["design_defaults"]
     by_session = Session(None, workspace=tmp_path).create("session.vixl", 1080, 1350, seed=41,
                                                           variety="low")["design_defaults"]
     assert by_cli == by_python == by_new == by_mcp == by_session
@@ -70,9 +71,9 @@ def test_purpose_picks_the_size_and_nothing_gives_1080_square(tmp_path, monkeypa
     assert (blank.state["canvas"]["width"], blank.state["canvas"]["height"]) == (1080, 1080)
     social = Project.new(purpose="social", seed=1)
     assert (social.state["canvas"]["width"], social.state["canvas"]["height"]) == (1080, 1350)
-    result = mcp(mcp_server(workspace=tmp_path), "vixl_document_create", {"path": "deck.vixl", "purpose": "slides"})
+    result = mcp(mcp_server(workspace=tmp_path), "vixl_document", {"action": "create", "path": "deck.vixl", "purpose": "slides"})
     assert result["canvas"]["width"] == 1920 and result["creation"]["size_from"] == "purpose"
-    result = mcp(mcp_server(workspace=tmp_path), "vixl_document_create", {"path": "any.vixl"})
+    result = mcp(mcp_server(workspace=tmp_path), "vixl_document", {"action": "create", "path": "any.vixl"})
     assert (result["canvas"]["width"], result["canvas"]["height"]) == (1080, 1080)
     assert result["creation"]["size_from"] == "default"
     made = cli("new", "--purpose", "icon", "-o", "icon.vixl")

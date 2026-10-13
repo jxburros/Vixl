@@ -1,6 +1,6 @@
 # Editable vector shapes, strokes and paths
 
-All examples are operations for `Project.apply`, the CLI edit command, or `vixl_operations_apply`.
+All examples are operations for `Project.apply`, the CLI edit command, or `vixl_apply`.
 Changes participate in the same validation, atomic batches, save/load and undo history as
 other edits. `shape` with `target` updates a recipe without changing the layer ID.
 
@@ -75,7 +75,7 @@ a fraction up to 1 (of the dimension named) or a percentage.
 `tail_side`, `tail_position`, `tail_size`/`tail_width`, `body_ratio`, `lobe_balance` (heart
 `apex`), `points` (star `sides`) and `arm_width` (`thickness`) are accepted spellings, reported
 under `normalized`. A parameter a shape does not read (`cleft` on a rectangle) is reported under
-`warnings`. `vixl_capabilities("shapes")` lists every shape's parameters.
+`warnings`. `vixl_reference('capabilities', name="shapes")` lists every shape's parameters.
 
 ## Content boxes
 
@@ -106,7 +106,15 @@ Shapes, lines and pen paths support:
 
 - `dash`: positive dash/gap lengths, or `dashed`/`dotted`; `dash_offset` moves the pattern.
 - `line_cap`: `butt`, `round`, `square`; `line_join`: `miter`, `round`, `bevel`; `miter_limit`.
-- `stroke_align`: `center`, `inside`, `outside`. Alignment is meaningful for closed contours.
+- `stroke_align`: `inside`, `center`, `outside`, relative to the outline; meaningful for closed contours.
+  Closed shapes (rectangles, rounded rectangles, capsules, ellipses, polygons, stars, shortcuts and
+  catalog shapes) default to `inside`: the stroke's outer edge is the outline, so a 10 px stroke covers
+  the 10 px inside the box edge, the fill covers the whole shape under it, and a rounded corner keeps
+  the layer's `radius` on the outside (the inner edge's radius is `radius` minus the stroke, at least 0).
+  Paths, arcs, lines and open shapes default to `center`. An explicit value means the same with or
+  without other stroke fields, in every renderer and export (PNG, SVG, PDF, PowerPoint). A line's ends
+  sit half a stroke in from its box corners; a path stroked on its outline can reach half a stroke past
+  its box.
 - `strokes`: additional ordered `{color,width,stroke_align,...}` records, painted after the base stroke.
 - `width_profile`: increasing `[fraction,width_multiplier]` points from fraction 0 to 1.
   `taper_start` and `taper_end` are endpoint multipliers, interpolated to full width at the midpoint.
@@ -153,7 +161,7 @@ This layer's box is `0, 0, 352, 210`: the strokes draw at their literal coordina
 ## Indexed path editing
 
 `shape-to-path` converts parametric and organic shapes to editable Bézier paths while
-keeping identity, fill and stroke. `vixl_document_inspect` exposes `path_nodes`, an array of
+keeping identity, fill and stroke. `vixl_document(action='inspect')` exposes `path_nodes`, an array of
 contours with `closed`, and nodes containing `index`, `point`, and optional `in`/`out` handles.
 Coordinates are in the layer's local pixel space. Compound paths keep their separate contours.
 

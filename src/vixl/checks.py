@@ -951,7 +951,7 @@ def check_design(
                 "fonts",
                 "warning",
                 f"{len(fallback)} text layer(s) use the bundled fallback font, which is for proofing only ({names}). "
-                "Choose typefaces: a font pairing (vixl_fonts and vixl_font_pair over MCP; vixl font pairings and "
+                "Choose typefaces: a font pairing (vixl_reference('fonts') and font-pair over MCP; vixl font pairings and "
                 "vixl font pair on the CLI), or install a font.",
                 fallback,
             )
@@ -1431,7 +1431,7 @@ def suite_summary(project, suites):
     names = suite_names(project, suites)
     if not names:
         return {"note": "No suites are attached. Write one for this document's requirements with suite-set "
-                        "(vixl_guide('testing') explains how) or attach a starter with workflow suite-use."}
+                        "(vixl_reference('testing') explains how) or attach a starter with workflow suite-use."}
     summary = {}
     for name in names:
         report = project.check_suite(name)
@@ -1465,7 +1465,7 @@ def apply_outcome(result):
 def apply_reviewed(project, operations, *, dry_run=False, detail="brief", check=None, preview=None, validate=None,
                    budget=None, suites=None, repair=None):
     """Apply a batch and, on request, check and preview the result in the same call: one round trip instead of
-    apply, vixl_check and vixl_render_preview. ``check`` is true (the default checks), a check name or a list;
+    apply, vixl_check and vixl_render. ``check`` is true (the default checks), a check name or a list;
     ``preview`` is true or {page, region, max_width (default 512), max_height, time, isolate, overlay, focus}:
     ``overlay`` draws the fix findings' boxes labelled with rule and layer ID, ``focus`` (an index into the
     listed findings) zooms to one. A dry run checks and previews the candidate without saving it. ``budget``
@@ -1479,14 +1479,16 @@ def apply_reviewed(project, operations, *, dry_run=False, detail="brief", check=
     from copy import deepcopy
 
     if not check and not preview and not suites and not repair:
-        result = project.apply(operations, dry_run=dry_run, detail=detail, check=validate)
+        # An empty list is the review of a batch whose items were all session steps (Session.apply_steps).
+        result = project.apply(operations, dry_run=dry_run, detail=detail, check=validate) if operations else \
+            {"success": True}
         result["outcome"] = apply_outcome(result)
         return result, None
     names, options = _apply_options(check, preview)
     started = time.monotonic()
     before = {layer["id"]: layer for layer in deepcopy(project.state["layers"])}
     target = project.clone() if dry_run else project  # The candidate a dry run checks and previews, then drops.
-    result = target.apply(operations, detail=detail, check=validate)
+    result = target.apply(operations, detail=detail, check=validate) if operations else {"success": True}
     result["dry_run"] = dry_run
     skipped, image = [], None
     for part, wanted in (("repair", repair), ("check", check), ("suites", suites), ("preview", preview)):
@@ -1524,6 +1526,6 @@ def apply_reviewed(project, operations, *, dry_run=False, detail="brief", check=
                     entry["preview"] = png
     if skipped:
         result["review_skipped"] = (f"The edit took {time.monotonic() - started:.0f} s, so {' and '.join(skipped)} did not run; "
-                                    "call vixl_check, vixl_workflow check or vixl_render_preview.")
+                                    "call vixl_check, vixl_apply(workflow='check') or vixl_render.")
     result["outcome"] = apply_outcome(result)
     return result, image

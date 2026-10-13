@@ -15,7 +15,7 @@ that motivated this took about 50 tool calls by importing and moving every badge
              "output": "badges-print.pdf", "sheet_document": "badges-sheet.vixl"}}
 ```
 
-Through MCP this is `vixl_workflow("merge-impose", request, document=template)` (the template defaults
+Through MCP this is `vixl_apply(workflow='merge-impose', request=request, document=template)` (the template defaults
 to the open document); on the CLI it is `vixl merge`; REST does not serve it (it writes files).
 
 ## The template

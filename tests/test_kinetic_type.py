@@ -15,7 +15,7 @@ from vixl.timeline import export_timeline, inspect_timeline, project_at, render_
 def card(text="Hello world", **extra):
     p = Project(360, 160, "#ffffff")
     p.apply([{"type": "text", "name": "title", "text": text, "size": 40, "color": "#111111", "x": 20, "y": 40, **extra},
-             {"type": "timeline-set", "duration": 2000, "fps": 10}])
+             {"type": "timeline-set", "duration": 2000, "fps": 10, "loop_mode": "off"}])
     return p
 
 
@@ -87,7 +87,7 @@ def test_mid_frame_moves_glyphs_without_exploding_the_layer():
 def test_rich_text_animates_per_word():
     p = Project(360, 160, "#203040")
     p.apply([{"type": "rich-text", "name": "title", "markdown": "Hello **bold** world", "size": 40, "x": 20, "y": 40},
-             {"type": "timeline-set", "duration": 2000}])
+             {"type": "timeline-set", "duration": 2000, "loop_mode": "off"}])
     p.apply({"type": "text-animate", "target": "title", "preset": "pop", "unit": "word", "duration": 400})
     assert len(poses(p, 150, "word")) == 3
     assert not np.array_equal(np.asarray(render(p)), np.asarray(render_at(p, 150)))

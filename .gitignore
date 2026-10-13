@@ -17,12 +17,15 @@ build/
 !docs/assets/generated/*.vixl
 !assets/brand/digital-shift/Editable-Vixl/*.vixl
 !assets/brand/ripple/Editable-Vixl/*.vixl
+!tests/fixtures/convert/*/*.vixl
 .env
 
 examples/output/
 # agent-eval output (python -m evals.run); keep published results in VixlExamples
 /eval-results/
 /reference-results/
+# render parity output (python -m evals.render_parity)
+/render-parity-results/
 
 tests/visual/_failures/
 !tests/fixtures/*.vixl

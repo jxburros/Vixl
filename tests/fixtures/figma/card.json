@@ -1,0 +1,254 @@
+{
+ "name": "Cards",
+ "lastModified": "2026-05-04T10:00:00Z",
+ "version": "1",
+ "document": {
+  "id": "0:0",
+  "type": "DOCUMENT",
+  "name": "Document",
+  "children": [
+   {
+    "id": "0:1",
+    "name": "Page 1",
+    "type": "CANVAS",
+    "children": [
+     {
+      "id": "3:1",
+      "name": "Card",
+      "type": "FRAME",
+      "scrollBehavior": "SCROLLS",
+      "blendMode": "PASS_THROUGH",
+      "relativeTransform": [
+       [
+        1.0,
+        -0.0,
+        40
+       ],
+       [
+        0.0,
+        1.0,
+        40
+       ]
+      ],
+      "size": {
+       "x": 320,
+       "y": 200
+      },
+      "absoluteBoundingBox": {
+       "x": 40.0,
+       "y": 40.0,
+       "width": 320.0,
+       "height": 200.0
+      },
+      "layoutMode": "VERTICAL",
+      "primaryAxisSizingMode": "FIXED",
+      "counterAxisSizingMode": "FIXED",
+      "primaryAxisAlignItems": "MIN",
+      "counterAxisAlignItems": "MIN",
+      "paddingLeft": 20,
+      "paddingRight": 20,
+      "paddingTop": 20,
+      "paddingBottom": 20,
+      "itemSpacing": 12,
+      "cornerRadius": 12,
+      "fills": [
+       {
+        "blendMode": "NORMAL",
+        "type": "SOLID",
+        "color": {
+         "r": 1.0,
+         "g": 1.0,
+         "b": 1.0,
+         "a": 1.0
+        }
+       }
+      ],
+      "strokes": [
+       {
+        "blendMode": "NORMAL",
+        "type": "SOLID",
+        "color": {
+         "r": 0.898,
+         "g": 0.9059,
+         "b": 0.9216,
+         "a": 1.0
+        }
+       }
+      ],
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "clipsContent": true,
+      "effects": [
+       {
+        "type": "DROP_SHADOW",
+        "visible": true,
+        "color": {
+         "r": 0.0,
+         "g": 0.0,
+         "b": 0.0,
+         "a": 0.12
+        },
+        "offset": {
+         "x": 0,
+         "y": 4
+        },
+        "radius": 12,
+        "spread": 0,
+        "blendMode": "NORMAL"
+       }
+      ],
+      "children": [
+       {
+        "id": "3:2",
+        "name": "Heading",
+        "type": "TEXT",
+        "scrollBehavior": "SCROLLS",
+        "blendMode": "PASS_THROUGH",
+        "relativeTransform": [
+         [
+          1.0,
+          -0.0,
+          20
+         ],
+         [
+          0.0,
+          1.0,
+          20
+         ]
+        ],
+        "size": {
+         "x": 280,
+         "y": 28
+        },
+        "absoluteBoundingBox": {
+         "x": 60.0,
+         "y": 60.0,
+         "width": 280.0,
+         "height": 28.0
+        },
+        "characters": "Plan",
+        "fills": [
+         {
+          "blendMode": "NORMAL",
+          "type": "SOLID",
+          "color": {
+           "r": 0.0667,
+           "g": 0.0941,
+           "b": 0.1529,
+           "a": 1.0
+          }
+         }
+        ],
+        "style": {
+         "fontFamily": "Inter",
+         "fontWeight": 700,
+         "fontSize": 24,
+         "textAlignHorizontal": "LEFT",
+         "lineHeightPx": 28,
+         "textAutoResize": "WIDTH_AND_HEIGHT"
+        },
+        "characterStyleOverrides": [],
+        "styleOverrideTable": {}
+       },
+       {
+        "id": "3:3",
+        "name": "Bar",
+        "type": "RECTANGLE",
+        "scrollBehavior": "SCROLLS",
+        "blendMode": "PASS_THROUGH",
+        "relativeTransform": [
+         [
+          1.0,
+          -0.0,
+          20
+         ],
+         [
+          0.0,
+          1.0,
+          60
+         ]
+        ],
+        "size": {
+         "x": 280,
+         "y": 8
+        },
+        "absoluteBoundingBox": {
+         "x": 60.0,
+         "y": 100.0,
+         "width": 280.0,
+         "height": 8.0
+        },
+        "cornerRadius": 4,
+        "fills": [
+         {
+          "blendMode": "NORMAL",
+          "type": "SOLID",
+          "color": {
+           "r": 0.898,
+           "g": 0.9059,
+           "b": 0.9216,
+           "a": 1.0
+          }
+         }
+        ],
+        "layoutAlign": "STRETCH"
+       },
+       {
+        "id": "3:4",
+        "name": "Body",
+        "type": "TEXT",
+        "scrollBehavior": "SCROLLS",
+        "blendMode": "PASS_THROUGH",
+        "relativeTransform": [
+         [
+          1.0,
+          -0.0,
+          20
+         ],
+         [
+          0.0,
+          1.0,
+          80
+         ]
+        ],
+        "size": {
+         "x": 280,
+         "y": 40
+        },
+        "absoluteBoundingBox": {
+         "x": 60.0,
+         "y": 120.0,
+         "width": 280.0,
+         "height": 40.0
+        },
+        "characters": "Everything in one place.",
+        "fills": [
+         {
+          "blendMode": "NORMAL",
+          "type": "SOLID",
+          "color": {
+           "r": 0.2941,
+           "g": 0.3333,
+           "b": 0.3882,
+           "a": 1.0
+          }
+         }
+        ],
+        "style": {
+         "fontFamily": "Inter",
+         "fontWeight": 400,
+         "fontSize": 16,
+         "textAlignHorizontal": "LEFT",
+         "lineHeightPx": 24,
+         "textAutoResize": "HEIGHT"
+        },
+        "characterStyleOverrides": [],
+        "styleOverrideTable": {}
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

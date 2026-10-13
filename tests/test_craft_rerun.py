@@ -102,7 +102,7 @@ class ScriptedAgent:
     def run(self, task, tools):
         self.prompts.append(task["prompt"])
         names = {tool["name"] for tool in tools.definitions()}
-        assert {"read_text_file", "write_text_file", "vixl_operations_apply"} <= names
+        assert {"read_text_file", "write_text_file", "vixl_apply"} <= names
         run = "evals/tool-comparison/runs/T02/claude-V"
         trace = []
 
@@ -117,16 +117,16 @@ class ScriptedAgent:
             assert "Ada" in call("read_text_file", {"path": "evals/tool-comparison/fixtures/badges.csv"})[1][0]["text"]
             call("read_text_file", {"path": "../outside.md"}, error=True)
             call("write_text_file", {"path": f"{run}/post.svg", "text": "<svg/>"}, error=True)
-            call("vixl_document_create", {"path": "scratch.vixl", "width": 50, "height": 50})
-            call("vixl_document_create", {"path": f"{run}/post.vixl", "width": 200, "height": 100, "background": "white"})
-            call("vixl_operations_apply", {"operations": [{"type": "text", "name": "title", "text": "Open studio",
+            call("vixl_document", {"action": "create", "path": "scratch.vixl", "width": 50, "height": 50})
+            call("vixl_document", {"action": "create", "path": f"{run}/post.vixl", "width": 200, "height": 100, "background": "white"})
+            call("vixl_apply", {"operations": [{"type": "text", "name": "title", "text": "Open studio",
                                                            "size": 24, "color": "#111111", "x": 10, "y": 10}]})
-            call("vixl_export_file", {"path": f"{run}/post.png"})
+            call("vixl_export", {"path": f"{run}/post.png"})
             call("write_text_file", {"path": f"{run}/REPORT.md", "text": "# Report\n\npost.png from post.vixl\n"})
             return {"round_trips": 3, "trace": trace, "usage": {}, "final": "Done."}
-        call("vixl_document_open", {"path": f"{run}/post.vixl"})
-        call("vixl_operations_apply", {"operations": [{"type": "text-set", "target": "title", "color": "#cc0000"}]})
-        call("vixl_export_file", {"path": f"{run}/round2/post.png"})
+        call("vixl_document", {"action": "open", "path": f"{run}/post.vixl"})
+        call("vixl_apply", {"operations": [{"type": "text-set", "target": "title", "color": "#cc0000"}]})
+        call("vixl_export", {"path": f"{run}/round2/post.png"})
         return {"round_trips": 2, "trace": trace, "usage": {}, "final": "Made the title red."}
 
 

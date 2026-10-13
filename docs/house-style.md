@@ -92,7 +92,7 @@ Today the levels are `low`, `medium` (default), `high` and `fixed`. Low and medi
 Decision:
 
 ### A6. The same defaults on every surface
-Today MCP `vixl_document_create` and REST/session creation roll and store `design_defaults`, while CLI `vixl new`,
+Today MCP `vixl_document(action='create')` and REST/session creation roll and store `design_defaults`, while CLI `vixl new`,
 `Project()` and `Project.sized()` do not. The CLI has no `--seed` or `--variety`
 (`src/vixl/interfaces.py:205-207`, `src/vixl/cli.py:423-468`).
 - [X] Unify: one creation path for every surface
@@ -575,10 +575,10 @@ Decision:
 
 ### H2. Changing defaults over time
 Today documents store their rolled `design_defaults`, so existing documents keep their direction.
-- [X] Changing a default affects new documents only; record it in the changelog with a way to restore the old look
+- [X] Pre-release: breaking changes are allowed and noted in the changelog; a changed default must still pass the quality/diversity eval
 - [ ] Version the house style and pin each document to a version
 
-**Recommendation:** new documents only, with changelog notes.
+**Recommendation:** no versioning; every document uses the current house style.
 
 Decision:
 
@@ -628,7 +628,7 @@ Each decision above is tracked in #388.
 | F5 | #427 | Illustration house style: flat vector, part lines, offset shadows, thin lines (sometimes double or triple), slight imperfections |
 | F6 | #428 | Split and pattern background treatments at medium variety for social and posters |
 | G2 | #429 | House easing table and seamless short-form loops by default |
-| H2 | #430 | Default-change policy: new documents only, changelog notes with a restore path |
+| H2 | #430 | Default-change policy: breaking changes allowed before launch and noted in the changelog; the eval gates default changes |
 | H3 | #431 | Diversity and quality eval for sparse briefs, gating changes to defaults |
 | A6 | #394 (comment) | Unify document creation across surfaces |
 | B1 | #283 (comment) | Text without a colour always uses the contrast pick |
@@ -663,7 +663,7 @@ one module, `src/vixl/house_style.py`. A workspace `brand.json` and explicit fie
   pairings, layouts and styles, the finishing look and its amount, and background treatments.
   `default_profile` is the general profile, with the 1080×1080 size for a document given nothing.
   Creation and rolls read this one vocabulary.
-- **`legacy`** records what earlier versions rolled from, so pinned documents and tests reproduce.
+- **`safe_palettes`** lists the quiet palettes that `layout-apply` without a palette, templates and the safe tier draw from.
 
 Read it, never copy it. The API:
 
@@ -677,10 +677,10 @@ Read it, never copy it. The API:
 | `house_style.purpose_size(value)`, `is_mark(purpose, size)` | the size a purpose implies, and whether a document is a mark |
 | `house_style.tier_of(kind, name, purpose=None)`, `entries(kind)`, `names(kind, tier)` | tiers and metadata of the pools |
 | `house_style.level(variety)` | a variety level's tier weights, look scale, motifs and treatments |
-| `house_style.VERSION`, `versions()`, `legacy(version)` | the current and earlier house-style versions |
+| `house_style.safe_palettes()` | the quiet palettes the safe tier and palette-less layouts draw from |
 
 People and agents read it with `vixl house [show PURPOSE]` or
-`vixl_resource_get(kind="house-style", name="all"|PURPOSE)`.
+`vixl_reference('house-style', name="all"|PURPOSE)`.
 
 ### The craft signature (A1)
 
@@ -691,17 +691,12 @@ y2k, memphis), and the house shadow is the solid offset (`hard-shadow`) in the i
 
 ## Changing defaults (H2)
 
-A changed default affects **new documents only**:
+Pre-release: breaking changes are allowed; note them in the changelog. Default changes must still pass the
+house-style quality/diversity eval.
 
-- A new document stores its rolled direction in `design_defaults`, with the `house_style_version` that
-  made it. Later layouts and rolls in that document use the stored direction and version, so an
-  existing document never changes because the house style did.
-- Bump `version` in `house-style.json` when a change alters what a seed rolls, and record what the
-  previous version rolled from under `legacy` (version 1 is kept as code in `src/vixl/legacy_roll.py`).
-- Every changed default gets a changelog line under **Changed defaults** that names the override
-  restoring the old result: an explicit field (`strength: "natural"`), a lock (`--lock mode=light`), or the
-  version pin (`house_style_version: 1`, `vixl roll --house-style 1`, or `{"house_style": 1}` in
-  `.vixl/variety.json`; version 3 replays 0.24–0.26, version 2 replays 0.23).
+- Documents use the current house style. A new document stores its rolled direction in `design_defaults`,
+  and later layouts and rolls in that document use the stored direction; there is no version stamp and no
+  replay of earlier rolls.
 - Run the house-style eval (`python -m evals.house_style --compare evals/house-style-baseline.json`)
   before and after: quality must not fall, and diversity may fall only on purpose, with the baseline
   updated in the same change.
@@ -727,30 +722,31 @@ These are tracked in #388. Fix them whatever the decisions above turn out to be.
 Related issues already filed: #283 (white default text), #282 (loose layout leading), #285 (playful rolls stay quiet)
 and #370 (layouts fail their own safe-area check).
 
-## House style 3 (0.24)
+## Current defaults
 
-Version 3 adds sixteen pairings (4 safe, 8 bold, 4 avant-garde). The new fonts are existing open-font catalog families; display pairs carry small-size/long-copy cautions. New design rolls weight left/right alignment 75/25; diagram and form purposes use left/centre 75/25, and marks (the logo purpose) stay centred. Layout selection excludes arrangements that do not support the rolled alignment. Explicit alignment wins.
-
-Background mixing uses only the amount needed to make the ink contrast target (7.1:1) possible, bounded by `craft.background_mix_max` (0.82 light, 0.75 dark); secondary roles are verified against background/surface. Saturated palettes can remain visibly saturated. New stacks default to two spacing units, chart padding to two label-size units and text-flow gutters to three text-size units. Explicit geometry wins. Stack/layout gaps accept a unit expression such as `2u`; a unit is half the body size, rounded, at least 2 px. These geometry defaults apply only to documents that record version 3 or later, as does the seamless default for new short timelines. In every document, social and poster minor text is at least 2.2% of the short side, and bold text (700+) counts as large for contrast from 18.66 px; regular text from 24 px.
-
-Pin `house_style_version: 2` / `vixl roll --house-style 2` to replay 0.23 rolls. Version 1 remains available. Existing stored geometry is not recomposed implicitly. The version-2 regression fixture covers multiple seeds, purposes and variety levels.
-
-## House style 4
-
-Version 4 keeps every choice version 3 rolls and adds two rolled details; it also changes craft defaults for new
-documents. A document that records version 3 or earlier keeps the old behaviour, and `house_style_version: 3` (CLI
-`--house-style 3`) restores all of it in a new document.
-
+- **Pairings.** Seventy-six pairings: the original sixty plus sixteen tiered ones (4 safe, 8 bold, 4
+  avant-garde). Display pairs carry small-size and long-copy cautions.
+- **Alignment.** Design rolls weight left/right alignment 75/25; diagram and form purposes use left/centre 75/25,
+  and marks (the logo purpose) stay centred. Layout selection excludes arrangements that do not support the
+  rolled alignment. Explicit alignment wins.
+- **Backgrounds.** Background mixing uses only the amount needed to make the ink contrast target (7.1:1)
+  possible, bounded by `craft.background_mix_max` (0.82 light, 0.75 dark); secondary roles are verified against
+  background and surface. Saturated palettes can remain visibly saturated.
+- **Geometry.** New stacks default to two spacing units, chart padding to two label-size units and text-flow
+  gutters to three text-size units. Explicit geometry wins. Stack and layout gaps accept a unit expression such
+  as `2u`; a unit is half the body size, rounded, at least 2 px. New short timelines are seamless loops.
+- **Minor text and contrast.** Social and poster minor text is at least 2.2% of the short side, and bold text
+  (700+) counts as large for contrast from 18.66 px; regular text from 24 px.
 - **Layout details (craft plan 5b, 5c).** A roll also sets `cta` (`pill` or `button`) and `date` (`highlight` or
-  `plain`) from a separate stream of the seed, so every other rolled field matches version 3; see
-  [safe variety](safe-variety.md). Footer rules in the safe compositions and the `section-header` rule keep one
-  spacing unit of clearance. Lock `cta=button` and `date=plain` for the old details.
+  `plain`) from a separate stream of the seed; see [safe variety](safe-variety.md). Footer rules in the safe
+  compositions and the `section-header` rule keep one spacing unit of clearance. Lock `cta=button` and
+  `date=plain` for the plain details.
 - **Balanced headings (4a).** A new text box on a heading (a heading font role or stage, or text whose size reads as
   the h2 step or larger) and every layout headline take `wrap: "balance"`, lines of even width in the same line count
   (`craft.wrap`). Body text keeps greedy wrapping; `wrap: "pretty"` asks for no one-word last line. Pass
-  `wrap: "greedy"` for the old breaks. See [line breaking](typography.md#line-breaking).
+  `wrap: "greedy"` for greedy breaks. See [line breaking](typography.md#line-breaking).
 - **Scatter that thins in place (7a).** `pattern-scatter` lays tiles out progressively (`distribution:
   "progressive"`), so the same seed with a lower `count` keeps the first copies in place and `count` places exactly
-  that many. `distribution: "poisson"` keeps the layout that re-rolls on every count change.
+  that many. `distribution: "poisson"` re-rolls the layout on every count change.
 - **Finished sprites (7e).** `pixel-art` sprites draw with a shading ramp and an outline (`shading`, `outline`).
   `shading: false` and `outline: false` keep the flat sprite.

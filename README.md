@@ -14,7 +14,7 @@ out at the print shop.
 
 Works through MCP, CLI, Python or REST. No windows required.
 
-Current tagged release: **0.26.0**. See the [changelog](CHANGELOG.md#0260) for release notes.
+Current tagged release: **0.27.0**. See the [changelog](CHANGELOG.md#0270) for release notes.
 Run `vixl --version` to check your runtime;
 record the Git commit when using a source checkout.
 
@@ -37,6 +37,7 @@ record the Git commit when using a source checkout.
 
 | Goal | Examples and guides |
 | --- | --- |
+| Designs from Figma | [Import a Figma file or frame as editable layers and live text](docs/figma.md) with your own read-only token |
 | Posters, social graphics and branded variants | [Campaign tutorial](docs/tutorials/campaign.md), [sizes/layouts](docs/sizes-and-layouts.md), [brands](docs/brands.md), [design styles](docs/styles.md), [finishing looks](docs/looks.md), [CSV merge to print sheets](docs/imposition.md), [linked documents](docs/linked-documents.md) |
 | Charts, diagrams and infographics | [Editable chart tutorial](docs/tutorials/charts.md), [data-bound charts](docs/charts.md), [flowcharts and diagrams](docs/diagrams.md), [design tools](docs/design-tools.md) |
 | Photo edits, drawings and painted artwork | [Filters](docs/artistic-filters.md), [drawing cleanup](docs/drawing.md), [brushes](docs/brushes-and-animation.md), [organic shapes](docs/organic.md), [irregularity and torn edges](docs/irregular.md), [irregular image frames and paint drips](docs/design-tools.md#irregular-image-frames-and-paint-simulation) |
@@ -95,6 +96,7 @@ vixl -p hello.vixl render --out hello-preview.png
 vixl -p hello.vixl export hello.png
 ```
 
+In a terminal each command prints a short summary; piped output, `--json` and `VIXL_JSON=1` give the full JSON.
 Editing commands autosave; pass `-p` explicitly in scripts. Inspect the preview before
 handoff. The [first-design walkthrough](docs/getting-started.md) explains undo,
 checkpoints, JSON batches and Python. Use the bundled font for proofing; choose suitable
@@ -105,17 +107,20 @@ checkpoints, JSON batches and Python. Use the bundled font for proofing; choose 
 Point your agent at a workspace folder and let it work:
 
 ```bash
-vixl mcp --workspace . --tools core --schema slim
+vixl mcp --workspace .
 ```
 
 For a pinned tagged runtime with uv:
 
 ```bash
-uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.26.0.tar.gz vixl mcp --workspace . --tools core --schema slim
+uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.27.0.tar.gz vixl mcp --workspace .
 ```
 
-The workspace must exist. Use `--tools compact --schema slim` for consolidated workflow
-tools, `--tools ai` for provider-backed tools, or `--http` for Streamable HTTP.
+The workspace must exist. The server offers seven tools (`vixl_document`, `vixl_apply`, `vixl_check`,
+`vixl_render`, `vixl_export`, `vixl_reference`, `vixl_job`) in about 7,000 characters of tool list; agents
+look up operation fields and rarer options on demand with `vixl_reference`
+([MCP tool surface](docs/mcp-toolsets.md)). Use `--tools ai` for a second server with the provider-backed
+tools, or `--http` for Streamable HTTP.
 [Interface setup](docs/interfaces.md) includes client JSON, multi-document sessions,
 REST authentication, imports and live human review (`vixl -p hello.vixl view`).
 

@@ -1,6 +1,6 @@
 # Containers, template variants and comic pages
 
-Containers are editable groups with semantic text and image slots. Their local layout can reflow at a new size, and named variants preserve the filled content. `vixl_workflow(action="resource-show", request={"kind":"containers","name":"profile"})` returns the resource's slots, defaults, bounds and variants. Use `kind: "templates"` to inspect a template's category, supported named sizes, slots and recommended looks.
+Containers are editable groups with semantic text and image slots. Their local layout can reflow at a new size, and named variants preserve the filled content. `vixl_apply(workflow='resource-show', request={"kind":"containers","name":"profile"})` returns the resource's slots, defaults, bounds and variants. Use `kind: "templates"` to inspect a template's category, supported named sizes, slots and recommended looks.
 
 ## Place, fill and rearrange
 
@@ -14,7 +14,7 @@ Containers are editable groups with semantic text and image slots. Their local l
 ]
 ```
 
-Import the image first with `vixl_import_image` and use its returned asset ID. Python and CLI calls can also supply an image path inside the workspace; services accept embedded assets only. Source images remain embedded, so resizing recrops from the source rather than a previously cropped thumbnail.
+Import the image first with `import-image` and use its returned asset ID. Python and CLI calls can also supply an image path inside the workspace; services accept embedded assets only. Source images remain embedded, so resizing recrops from the source rather than a previously cropped thumbnail.
 
 `container-variant` preserves the group identity, image source, supplied variables and direct edits to slot text. It recreates the arrangement's children; use `container-reflow` when existing child IDs need to stay unchanged. `container-swap` replaces the resource while carrying compatible named variables across. Resources with different base sizes require explicit dimensions. Changing a size updates the group's local layout box, wraps/fits opted-in text and recomputes image crops. It does not geometrically stretch the group. An impossible fit or min/max violation fails atomically.
 
@@ -40,9 +40,9 @@ Omitting a seed selects a fresh one. Placement reports its seed and selected var
 
 The original headline, quote, feature and illustration containers remain available. Text and decorations use palette role swatches. Image-bearing resources show crossed neutral placeholders until filled. Both the normal blanks check and the `container-layout` suite report missing image slots; the container suite also reports sources with fewer pixels than the displayed image requires.
 
-In documents made with house style 4, the section header's rule keeps at least one spacing unit (half the document's body size) between itself and the container's bottom edge at any height, so the row that follows never sits on it (the [craft plan](craft-plan.md) counts a gap under half a unit as crowding; one unit keeps clear of that threshold). Documents pinned to `house_style_version: 3` keep the rule where its frame puts it.
+The section header's rule keeps at least one spacing unit (half the document's body size) between itself and the container's bottom edge at any height, so the row that follows never sits on it (the [craft plan](craft-plan.md) counts a gap under half a unit as crowding; one unit keeps clear of that threshold).
 
-Custom resources can declare `min_width`, `max_width`, `min_height`, `max_height` and named `variants`, each containing `operations` and optional `rules`. Local content supports `frame: [x, y, width, height]` in fractions of the container, plus `fit_text: true` and `min_size` on text operations, and `clear_below` (spacing units kept between an item and the container's bottom edge, house style 4). A text frame wraps and shrinks only as far as its minimum; overly long copy is rejected rather than clipped. Vertical, horizontal and grid rules continue to support padding, gaps, columns and hidden-member collapse.
+Custom resources can declare `min_width`, `max_width`, `min_height`, `max_height` and named `variants`, each containing `operations` and optional `rules`. Local content supports `frame: [x, y, width, height]` in fractions of the container, plus `fit_text: true` and `min_size` on text operations, and `clear_below` (spacing units kept between an item and the container's bottom edge). A text frame wraps and shrinks only as far as its minimum; overly long copy is rejected rather than clipped. Vertical, horizontal and grid rules continue to support padding, gaps, columns and hidden-member collapse.
 
 An image operation inside a resource can declare:
 

@@ -1,0 +1,79 @@
+{
+ "documents": {
+  "chart": {
+   "made": [
+    "sales"
+   ],
+   "skipped": []
+  },
+  "designed": {
+   "house_style_version": 3,
+   "made": [
+    "headline",
+    "text-layout",
+    "visits"
+   ],
+   "skipped": []
+  },
+  "diagram": {
+   "made": [
+    "flow"
+   ],
+   "skipped": []
+  },
+  "effects": {
+   "made": [
+    "sky",
+    "warm",
+    "warm",
+    "sun",
+    "temperature",
+    "card",
+    "tint"
+   ],
+   "skipped": []
+  },
+  "irregular": {
+   "made": [
+    "card",
+    "irregular card",
+    "paper",
+    "tear paper"
+   ],
+   "skipped": []
+  },
+  "shapes": {
+   "made": [
+    "rect",
+    "rounded",
+    "pill",
+    "oval",
+    "hexagon",
+    "dashed",
+    "rule",
+    "open path",
+    "tilted"
+   ],
+   "skipped": []
+  },
+  "sprite": {
+   "made": [
+    "coin",
+    "resize coin",
+    "keyframe coin",
+    "keyframe coin"
+   ],
+   "skipped": []
+  },
+  "text": {
+   "made": [
+    "title",
+    "text-layout title",
+    "body",
+    "text-layout body"
+   ],
+   "skipped": []
+  }
+ },
+ "vixl_version": "0.26.0"
+}

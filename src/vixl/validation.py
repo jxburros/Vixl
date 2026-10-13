@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 
 from .errors import VixlError, require
-from .model import finite
+from .model import LAYER_ROLES, LAYER_TYPES, finite
 from .render import BLENDS, color, resolve_layout
 
 
@@ -56,7 +56,7 @@ def check_state(project, state):
         )
         require(layer["id"] not in ids, f"Duplicate layer id {layer['id']!r}", "invalid_project")
         require(layer["name"] not in names, f"Duplicate layer name {layer['name']!r}", "invalid_project")
-        require(layer.get("role", "content") in ("content", "decoration", "background", "title"), "Invalid layer role", "invalid_project")
+        require(layer.get("role", "content") in LAYER_ROLES, "Invalid layer role", "invalid_project")
         if "pen_origin" in layer:
             origin = layer["pen_origin"]
             require(isinstance(origin, list) and len(origin) == 2, "Invalid pen origin", "invalid_project")
@@ -71,23 +71,7 @@ def check_state(project, state):
         ids.add(layer["id"])
         names.add(layer["name"])
         require(
-            layer["type"]
-            in (
-                "raster",
-                "text",
-                "solid",
-                "gradient",
-                "shape",
-                "group",
-                "frame",
-                "adjustment",
-                "pathfinder",
-                "symbol",
-                "pixel",
-                "paint",
-                "field",
-                "link",
-            ),
+            layer["type"] in LAYER_TYPES,
             "Invalid layer type",
             "invalid_project",
         )
@@ -257,10 +241,9 @@ def check_document(project):
         check_state(project, project.transaction["state"])
         require(isinstance(project.transaction["operations"], list), "Invalid transaction")
     from copy import deepcopy
-    from .project import upgrade_state
 
     head = project._state_at(project.head)
-    check_state(project, upgrade_state(deepcopy(head)))
+    check_state(project, deepcopy(head))
     project._head_state = head
     project._verified = {project.head}
     resolve_layout(project)

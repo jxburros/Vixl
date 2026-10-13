@@ -102,7 +102,7 @@ def animated():
         [
             {"type": "shape", "name": "ball", "shape": "ellipse", "fill": "red", "width": 20, "height": 20, "x": 0, "y": 40},
             {"type": "text", "name": "label", "text": "Hi", "size": 20, "color": "black", "x": 150, "y": 10},
-            {"type": "timeline-set", "duration": "1s", "fps": 10},
+            {"type": "timeline-set", "duration": "1s", "fps": 10, "loop_mode": "off"},
             {"type": "animate", "target": "ball", "property": "x", "from": 0, "to": 180, "easing": "linear"},
             {"type": "animate", "target": "ball", "property": "fill", "to": "blue", "start": 0, "end": "1s"},
             {"type": "animate-preset", "target": "label", "preset": "fade-in", "duration": "0.5s"},
@@ -244,28 +244,28 @@ def test_mcp_tools_cover_new_features(tmp_path):
                 assert not result.isError, result.content[0].text
                 return result
 
-            await call("vixl_document_create", {"path": "post.vixl", "size": "instagram-portrait"})
-            sizes = json.loads((await call("vixl_sizes_list", {"category": "logos"})).content[0].text)
+            await call("vixl_document", {"action": "create", "path": "post.vixl", "size": "instagram-portrait"})
+            sizes = json.loads((await call("vixl_reference", {"topic": "sizes", "category": "logos"})).content[0].text)
             assert any(item["name"] == "logo-horizontal" for item in sizes["sizes"])
-            colors = json.loads((await call("vixl_color", {"action": "harmony", "colors": ["#2563eb"], "scheme": "triadic"})).content[0].text)
+            colors = json.loads((await call("vixl_reference", {"topic": "color", "action": "harmony", "name": ["#2563eb"], "scheme": "triadic"})).content[0].text)
             assert len(colors["colors"]) == 3
-            layouts = json.loads((await call("vixl_layouts_list", {})).content[0].text)
+            layouts = json.loads((await call("vixl_reference", {"topic": "layouts"})).content[0].text)
             assert "golden-section" in layouts["layouts"]
-            await call("vixl_operations_apply", {"operations": [{"type": "layout-apply", "name": "hero-statement", "title": "Hello", "seed": 1}]})
-            await call("vixl_operations_apply", {"operations": [{"type": "paint", "brush": "marker", "points": [[10, 10], [300, 60]], "size": 20, "color": "@accent"}]})
-            await call("vixl_operations_apply", {"operations": [{"type": "animate-preset", "target": "headline", "preset": "slide-in-left", "duration": "0.5s"}, {"type": "timeline-set", "duration": "1s", "fps": 4}]})
-            preview = await call("vixl_timeline_preview", {"count": 4, "max_width": 400})
+            await call("vixl_apply", {"operations": [{"type": "layout-apply", "name": "hero-statement", "title": "Hello", "seed": 1}]})
+            await call("vixl_apply", {"operations": [{"type": "paint", "brush": "marker", "points": [[10, 10], [300, 60]], "size": 20, "color": "@accent"}]})
+            await call("vixl_apply", {"operations": [{"type": "animate-preset", "target": "headline", "preset": "slide-in-left", "duration": "0.5s"}, {"type": "timeline-set", "duration": "1s", "fps": 4}]})
+            preview = await call("vixl_render", {"action": "timeline", "count": 4, "max_width": 400})
             assert preview.content[0].type == "image"
-            await call("vixl_render_preview", {"time": "0.25s", "simulate": "deuteranopia", "max_width": 200})
-            exported = json.loads((await call("vixl_export_timeline", {"path": "post.gif", "scale": 0.2})).content[0].text)
+            await call("vixl_render", {"time": "0.25s", "simulate": "deuteranopia", "max_width": 200})
+            exported = json.loads((await call("vixl_export", {"kind": "timeline", "path": "post.gif", "scale": 0.2})).content[0].text)
             assert exported["frames"] <= exported.get("rendered_frames", 4) == 4  # Identical frames merge in the file.
-            pdf = json.loads((await call("vixl_export_file", {"path": "post.pdf", "color_space": "cmyk", "ink_limit": 300})).content[0].text)
+            pdf = json.loads((await call("vixl_export", {"path": "post.pdf", "color_space": "cmyk", "ink_limit": 300})).content[0].text)
             assert pdf["format"] == "PDF"
-            icons = json.loads((await call("vixl_export_icons", {"directory": "icons"})).content[0].text)
+            icons = json.loads((await call("vixl_export", {"kind": "icons", "path": "icons"})).content[0].text)
             assert "favicon.ico" in icons["files"]
             report = json.loads((await call("vixl_check", {"checks": ["print"]})).content[0].text)
             assert any("dpi" in issue["message"] for issue in report["issues"])
-            brushes = json.loads((await call("vixl_brushes_list", {})).content[0].text)
+            brushes = json.loads((await call("vixl_reference", {"topic": "brushes"})).content[0].text)
             assert "watercolor" in brushes["brushes"]
 
     asyncio.run(run())

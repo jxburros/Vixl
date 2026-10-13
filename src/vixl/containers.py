@@ -198,13 +198,10 @@ def execute(project, op):
     from .craft import CORNERS
 
     corner = direction.get("corner")
-    version = project.state.get("design_defaults", {}).get("house_style_version", 2)
     for original, operation in zip(selected["operations"], ops):
         operation = deepcopy(operation)
         local_name = operation.get("name", operation["type"])
         spec = {k: operation.pop(k) for k in SPEC if k in operation}
-        if version < 4:
-            spec.pop("clear_below", None)
         operation["name"] = group["name"] + "/" + local_name
         if operation["type"] == "text" and spec.get("fit_text"):
             # Start from a type scale suited to the requested cell, then wrap/shrink locally.

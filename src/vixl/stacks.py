@@ -128,8 +128,7 @@ def execute(project, op):
         group.update(width=width, height=height, content_width=width, content_height=height)
     from .craft import body_size, resolve_space
     defaults = dict(DEFAULTS)
-    if project.state.get("design_defaults", {}).get("house_style_version", 2) >= 3:
-        defaults["gap"] = resolve_space("2u", body_size(project))
+    defaults["gap"] = resolve_space("2u", body_size(project))
     group["stack"] = {**defaults, **group.get("stack", {}), **{k: op[k] for k in set(DEFAULTS) | EXTRAS if k in op}}
     group["stack"]["gap"] = resolve_space(group["stack"]["gap"], body_size(project))
     if "hide_if_empty" in op:

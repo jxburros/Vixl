@@ -26,7 +26,7 @@ def test_guide_without_a_brief_gives_the_recipe_and_every_kind():
     result = briefs.guide()
     assert len(result["start_here"]) >= 5
     assert any("Sparse briefs" in step and "seed" in step for step in result["start_here"])
-    assert all(any(term in step for step in result["start_here"]) for term in ("layout", "vixl_fonts", "vixl_check"))
+    assert all(any(term in step for step in result["start_here"]) for term in ("layout", "vixl_reference('fonts')", "vixl_check"))
     assert {"logo", "app-icon", "character", "scene", "pattern", "mandala", "diagram", "social-card", "slides"} <= set(result["kinds"])
     assert "not default to a poster" in result["tip"]
 
@@ -106,30 +106,27 @@ def test_mcp_exposes_the_guide_and_the_start_here_instructions(tmp_path):
 
     server = build_server(Session(workspace=tmp_path))
     names = {tool.name for tool in asyncio.run(server.list_tools())}
-    assert {"vixl_guide", "vixl_styles"} <= names
+    assert "vixl_reference" in names
     text = server.instructions
-    assert text.startswith("Edit layered image documents") and "START HERE" in text
-    start = text.index("START HERE")
-    assert text.index("vixl_layouts_list", start) < text.index("vixl_fonts", start) < text.index("vixl_check", start)
-    assert "vixl_guide" in text[start:start + 400] and "not freehand shapes" in text
+    assert text.startswith("Vixl edits layered design documents") and "vixl_reference()" in text
+    assert text.index("vixl_document") < text.index("vixl_apply") < text.index("vixl_render") < text.index("vixl_export")
 
     async def call(tool, **arguments):
         result = await server.call_tool(tool, arguments)
         content = result[0] if isinstance(result, tuple) else result
         return json.loads(content[0].text)
 
-    assert asyncio.run(call("vixl_guide", brief="mascot"))["matched"] == "character"
-    assert "start_here" in asyncio.run(call("vixl_guide"))
-    assert set(asyncio.run(call("vixl_guide", brief="looks"))["looks"]) == set(LOOKS)
-    compact = build_server(Session(workspace=tmp_path), tools="compact", schema="slim")
-    assert "vixl_guide" not in {tool.name for tool in asyncio.run(compact.list_tools())}
-    assert "vixl_guide(brief)" not in compact.instructions and "START HERE" in compact.instructions
+    assert asyncio.run(call("vixl_reference", topic="mascot"))["matched"] == "character"
+    start = asyncio.run(call("vixl_reference"))["start_here"]
+    assert start.index(next(step for step in start if "layout-apply" in step)) \
+        < start.index(next(step for step in start if "vixl_reference('fonts')" in step))
+    assert set(asyncio.run(call("vixl_reference", topic="looks"))["looks"]) == set(LOOKS)
 
 
 def test_skill_and_docs_carry_the_start_here_recipe():
     skill = (ROOT / "skills/vixl/SKILL.md").read_text()
-    assert "Start here" in skill and "vixl_guide" in skill and "layout-apply" in skill
-    assert skill.index("layout-apply") < skill.index("vixl_font_pair") < skill.index("vixl_check")
+    assert "Start here" in skill and "vixl_reference" in skill and "layout-apply" in skill
+    assert skill.index("layout-apply") < skill.index("font-pair") < skill.index("vixl_check")
     for path in ("docs/styles.md", "docs/looks.md"):
         assert (ROOT / path).exists()
 
@@ -155,7 +152,7 @@ def test_layout_apply_returns_next_steps_for_unfilled_image_slots():
     x, y, w, h = image["bounds"]
     assert w > 100 and h > 100 and image["aspect_ratio"] == pytest.approx(w / h, abs=0.01)
     options = {option["option"]: option["how"] for option in image["options"]}
-    assert "vixl_import_image" in options["import"] and "replace-contents" in options["import"]
+    assert "import-image" in options["import"] and "replace-contents" in options["import"]
     assert "shape" in options["draw"] and "organic" in options["draw"] and "vixl_ai_generate" in options["ai"]
     # Filling every slot leaves nothing to do.
     full = Project(1080, 1350, "#ffffff")

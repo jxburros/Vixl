@@ -17,48 +17,42 @@ from PIL import Image
 async def verify(executable, workspace):
     Image.new("RGB", (2400, 1600), "blue").save(workspace / "input photo.jpg")
     env = {**os.environ, "VIXL_NO_UPDATE": "1"}
-    env.pop("VIXL_MCP_TOOLS", None)
-    env.pop("VIXL_MCP_SCHEMA", None)
-    # A bare `vixl mcp` serves core tools with slim schemas.
-    default = StdioServerParameters(command=executable, args=["mcp", "--workspace", str(workspace)], env=env)
-    async with stdio_client(default) as (read, write):
+    # `vixl mcp --tools ai` serves the provider-backed tools beside the shared document tools.
+    ai = StdioServerParameters(command=executable, args=["mcp", "--workspace", str(workspace), "--tools", "ai"], env=env)
+    async with stdio_client(ai) as (read, write):
         async with ClientSession(read, write) as client:
             await client.initialize()
             tools = {tool.name: tool for tool in (await client.list_tools()).tools}
-            assert "vixl_compose" in tools and "vixl_ai_remove_background" not in tools
-            assert "oneOf" not in json.dumps(tools["vixl_operations_apply"].inputSchema["properties"]["operations"])
+            assert "vixl_ai_remove_background" in tools and "vixl_apply" not in tools
 
-    params = StdioServerParameters(
-        command=executable,
-        args=["mcp", "--workspace", str(workspace), "--tools", "all", "--schema", "full"],
-        env=env,
-    )
+    # A bare `vixl mcp` serves the seven design tools.
+    params = StdioServerParameters(command=executable, args=["mcp", "--workspace", str(workspace)], env=env)
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as client:
             await client.initialize()
             tools = {tool.name: tool for tool in (await client.list_tools()).tools}
-            assert tools["vixl_operations_apply"].inputSchema["properties"]["operations"]["items"]["oneOf"]
-            assert "vixl_ai_remove_background" in tools and "vixl_ai" not in tools
+            assert "vixl_reference" in tools and "vixl_ai_remove_background" not in tools
+            assert "oneOf" not in json.dumps(tools["vixl_apply"].inputSchema["properties"]["operations"])
 
             async def call(tool, **arguments):
                 result = await client.call_tool(tool, arguments)
                 assert not result.isError, result
                 return result
 
-            await call("vixl_document_create", path="new.vixl", width=2400, height=1600)
-            await call("vixl_import_image", path="input photo.jpg", name="photo")
-            result = await call("vixl_operations_apply", operations=[{"type": "move", "x": 5}])
+            await call("vixl_document", action="create", path="new.vixl", width=2400, height=1600)
+            await call("vixl_apply", operations=[{"type": "import-image", "path": "input photo.jpg", "name": "photo"}])
+            result = await call("vixl_apply", operations=[{"type": "move", "x": 5}])
             assert len(json.dumps(result.model_dump())) < 1500
-            result = await call("vixl_render_preview", max_width=512, max_height=512, max_bytes=65536)
+            result = await call("vixl_render", max_width=512, max_height=512, max_bytes=65536)
             data = base64.b64decode(result.content[0].data)
             assert len(data) <= 65536 and Image.open(BytesIO(data)).width <= 512
-            await call("vixl_export_file", path="exported.png")
-            await call("vixl_document_create", path="second.vixl", width=16, height=16)
-            await call("vixl_document_open", path="new.vixl")
-            await call("vixl_document_inspect", target="photo")
-            await call("vixl_document_create", path="sprite.vixl", width=4, height=4)
+            await call("vixl_export", path="exported.png")
+            await call("vixl_document", action="create", path="second.vixl", width=16, height=16)
+            await call("vixl_document", action="open", path="new.vixl")
+            await call("vixl_document", target="photo")
+            await call("vixl_document", action="create", path="sprite.vixl", width=4, height=4)
             await call(
-                "vixl_operations_apply",
+                "vixl_apply",
                 operations=[
                     {"type": "pixel-art", "name": "sprite", "width": 4, "height": 4},
                     {"type": "pixel-draw", "x": 0, "y": 0, "color": "#"},
@@ -67,18 +61,18 @@ async def verify(executable, workspace):
                     {"type": "frame-save", "name": "spark", "duration": 200},
                 ],
             )
-            await call("vixl_pixels_inspect", target="sprite")
-            await call("vixl_animation_preview", name="idle")
-            await call("vixl_export_animation", path="sprite.gif", format="gif", scale=2)
-            await call("vixl_export_animation", path="sprite.png", format="sheet", scale=2)
+            await call("vixl_check", action="pixels", target="sprite")
+            await call("vixl_render", action="animation", name="idle")
+            await call("vixl_export", kind="animation", path="sprite.gif", format="gif", scale=2)
+            await call("vixl_export", kind="animation", path="sprite.png", format="sheet", scale=2)
             await call(
-                "vixl_operations_apply",
+                "vixl_apply",
                 operations=[
                     {"type": "solid", "name": "a", "width": 1, "height": 1},
                     {"type": "solid", "name": "b", "width": 1, "height": 1, "y": 2},
                 ],
             )
-            await call("vixl_measure_spacing", targets=["a", "b"], expected=1, tolerance=0)
+            await call("vixl_check", action="spacing", targets=["a", "b"], expected=1, tolerance=0)
     assert Image.open(workspace / "exported.png").size == (2400, 1600)
     assert Image.open(workspace / "sprite.gif").n_frames == 2
     assert Image.open(workspace / "sprite.png").size == (16, 8)

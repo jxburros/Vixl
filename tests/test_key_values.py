@@ -3,7 +3,6 @@ rolled pill and date-highlight details, and new charts inside the safe area."""
 
 import pytest
 
-from vixl import house_style
 from vixl.containers import measure
 from vixl.craft import spacing_unit
 from vixl.errors import VixlError
@@ -127,16 +126,12 @@ def test_a_new_chart_starts_inside_the_safe_area():
 
 def test_rolled_details_are_seeded_and_leave_the_rest_of_the_roll_alone():
     for seed in range(40):
-        new, old = (roll(seed, purpose="social", canvas=(1080, 1080), house_style_version=v)["direction"] for v in (4, 3))
+        new = roll(seed, purpose="social", canvas=(1080, 1080))["direction"]
         assert new["cta"] in ("pill", "button") and new["date"] in ("highlight", "plain")
-        assert "cta" not in old and "date" not in old
-        assert {k: v for k, v in new.items() if k not in ("cta", "date", "house_style_version")} == \
-               {k: v for k, v in old.items() if k != "house_style_version"}
         assert roll(seed, purpose="social", canvas=(1080, 1080))["direction"]["cta"] == new["cta"]
     rolled = [roll(seed, purpose="social", canvas=(1080, 1080))["direction"] for seed in range(80)]
     assert {d["cta"] for d in rolled} == {"pill", "button"} and {d["date"] for d in rolled} == {"highlight", "plain"}
     assert roll(3, locks={"cta": "button", "date": "plain"})["direction"]["cta"] == "button"
-    assert house_style.VERSION >= 4 and 3 in house_style.versions()
 
 
 COPY = {"title": "Open mic night", "label": "Fri · November 19", "subtitle": "Sign up at the bar from 7 pm",
@@ -146,7 +141,7 @@ COPY = {"title": "Open mic night", "label": "Fri · November 19", "subtitle": "S
 def test_direction_sets_a_pill_call_to_action_and_a_highlighted_date_line():
     p = Project(1080, 1350, "#ffffff")
     p.apply({"type": "layout-apply", "name": "centered-axis", "seed": 7, "palette": "coffee", **COPY,
-             "direction": {"cta": "pill", "date": "highlight", "house_style_version": 4}})
+             "direction": {"cta": "pill", "date": "highlight"}})
     button, label, highlight = p.layer("cta-button"), p.layer("label"), p.layer("label-highlight")
     assert button["shape"] == "rounded-rectangle" and button["radius"] == pytest.approx(button["height"] / 2, abs=1)
     assert label["color"] == "@on-accent" and highlight["fill"] == "@accent"
@@ -154,10 +149,10 @@ def test_direction_sets_a_pill_call_to_action_and_a_highlighted_date_line():
     assert highlight["y"] <= label["y"] and highlight["y"] + highlight["height"] >= label["y"] + label["height"]
     report = p.check(checks=["overlap", "contrast", "safe_area"])
     assert not report["issues"], report["issues"]
-    # A plain direction (and every version 3 document) keeps the corner-styled button and a plain date.
+    # A plain direction keeps the corner-styled button and a plain date.
     q = Project(1080, 1350, "#ffffff")
     q.apply({"type": "layout-apply", "name": "centered-axis", "seed": 7, "palette": "coffee", **COPY,
-             "direction": {"house_style_version": 3}})
+             "direction": {}})
     assert q.layer("cta-button")["shape"] == "rectangle" and q.find_layer("label-highlight") is None
     with pytest.raises(VixlError, match="direction.cta"):
         q.apply({"type": "layout-apply", "name": "centered-axis", "seed": 7, "replace": True, **COPY,
@@ -167,33 +162,32 @@ def test_direction_sets_a_pill_call_to_action_and_a_highlighted_date_line():
 def test_only_a_date_line_is_highlighted():
     p = Project(1080, 1350, "#ffffff")
     p.apply({"type": "layout-apply", "name": "centered-axis", "seed": 7, "palette": "coffee",
-             **{**COPY, "label": "New season"}, "direction": {"date": "highlight", "house_style_version": 4}})
+             **{**COPY, "label": "New season"}, "direction": {"date": "highlight"}})
     assert p.find_layer("label-highlight") is None
 
 
 def test_footer_rule_keeps_a_spacing_unit_above_the_copy():
     long = "One supporting sentence that explains why it matters, " * 3
 
-    def gap(version):
+    def gap():
         p = Project(1200, 480, "#ffffff")
         # Copy that fills the banner, so the composition would otherwise end on the footer rule.
         p.apply({"type": "layout-apply", "name": "quiet-invitation", "seed": 2, "palette": "slate", "density": "dense",
                  "title": "A headline that wraps onto two lines here", "subtitle": long, "body": long,
-                 "caption": "example.com", "label": "Notice", "cta": "Go now", "direction": {"house_style_version": version}})
+                 "caption": "example.com", "label": "Notice", "cta": "Go now"})
         record = p.state["layout"]
         unit = spacing_unit(record["base_size"] * DENSITY_SPACING[record["density"]])
         copy = [layer for layer in p.state["layers"] if layer["type"] == "text" or layer["name"].endswith("-button")]
         return p.layer("quiet-footer")["y"] - max(layer["y"] + layer["height"] for layer in copy), unit
 
-    clear, unit = gap(4)
+    clear, unit = gap()
     assert clear >= unit - 1  # one unit, give or take the pixel rounding of the rule
-    assert gap(3)[0] < unit - 1
 
 
 def test_section_header_rule_clears_the_next_row_at_any_height():
-    def place(version):
+    def place():
         p = Project(1080, 1080, "#ffffff")
-        document_defaults(p, seed=1, house_style_version=version)
+        document_defaults(p, seed=1)
         # A large body size makes one spacing unit larger than the room the frame leaves under the rule.
         p.apply([{"type": "palette-apply", "name": "slate"}, {"type": "style-define", "name": "body", "kind": "character", "settings": {"size": 80}},
                  {"type": "container-place", "name": "head", "resource": "section-header", "width": 480, "height": 200,
@@ -201,5 +195,4 @@ def test_section_header_rule_clears_the_next_row_at_any_height():
         rule = p.layer("head/rule")
         return 200 - (rule["y"] + rule["height"])
 
-    assert place(4) >= 40  # one unit: half the 80 px body
-    assert place(3) < 40
+    assert place() >= 40  # one unit: half the 80 px body

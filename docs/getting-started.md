@@ -27,14 +27,14 @@ vixl --version
 ```
 
 The core install is `python -m pip install -e .`; MCP is included. `server` adds REST and
-live review; `pdf` adds PDF page import. To update this checkout later, save your changes,
+live review; `pdf` adds PDF page import (as editable layers or one image). To update this checkout later, save your changes,
 run `git pull --ff-only`, and repeat the install. Pip installs use pip-managed updates;
 the bundled Windows updater is a separate installation mechanism.
 
 For reproducible work, install a tag rather than tracking `main`:
 
 ```bash
-python -m pip install 'https://github.com/jxburros/Vixl/archive/refs/tags/v0.26.0.tar.gz'
+python -m pip install 'https://github.com/jxburros/Vixl/archive/refs/tags/v0.27.0.tar.gz'
 ```
 
 Latest `main` may include changes beyond the tagged release while reporting the same
@@ -55,6 +55,11 @@ vixl -p hello.vixl check --checks bounds contrast
 vixl -p hello.vixl render --out hello-preview.png
 vixl -p hello.vixl export hello.png
 ```
+
+In a terminal each command prints a short summary (`created hello.vixl  800×600  bg #18283b`,
+`check passed (bounds, contrast) — 0 errors, 0 warnings`, `exported hello.png (16.2 KB)`). When output is piped or
+redirected, or you pass `--json` or set `VIXL_JSON=1`, it prints the full JSON instead, so scripts and agents always
+get JSON.
 
 You now have an editable `hello.vixl` and a PNG export. Open the PNG to inspect the actual
 appearance. `check` covers the rules requested, not every possible design problem. The

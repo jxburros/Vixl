@@ -42,6 +42,34 @@ class SvgCache(OrderedDict):
 CACHE = SvgCache()
 
 
+def placed(root, matrix, ns="{http://www.w3.org/2000/svg}"):
+    """A group in the SVG element ``root`` that maps box pixels by the affine ``matrix`` (SVG order):
+    vector content drawn straight into its final place instead of resampling its box image there.
+    Pair it with ``clip_to_box``."""
+    import xml.etree.ElementTree as ET
+
+    return ET.SubElement(root, ns + "g", {"transform": "matrix(" + " ".join(format(v, ".10g") for v in matrix) + ")"})
+
+
+def clip_to_box(image, matrix, width, height):
+    """Cut what a ``placed`` drawing put past its box (0, 0, ``width``, ``height``), as rasterizing the
+    box on its own does. The cut runs a pixel outside the box, so its anti-aliased edge never dims ink
+    that ends exactly on the box edge (the top of a glyph, a path's side); only content drawn past the
+    box keeps up to a pixel more. A mask, not an SVG clip: resvg composites clipped groups separately,
+    which moves the anti-aliasing of strokes over fills by several levels."""
+    from PIL import ImageChops
+
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{image.width}" height="{image.height}">'
+           f'<g transform="matrix({" ".join(format(v, ".10g") for v in matrix)})">'
+           f'<rect x="-1" y="-1" width="{width + 2}" height="{height + 2}"/></g></svg>')
+    mask = stencil(svg)
+    if mask.getextrema()[0] == 255:
+        return image
+    image = image.copy()
+    image.putalpha(ImageChops.multiply(image.getchannel("A"), mask))
+    return image
+
+
 def rasterize(svg):
     """``svg`` (markup) as an RGBA image the caller may change."""
     import resvg_py

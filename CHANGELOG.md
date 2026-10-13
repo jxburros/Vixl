@@ -1,8 +1,69 @@
 # Changelog
 
-## Unreleased
+## 0.27.0
+
+A breaking release: a seven-tool MCP server, the compatibility machinery for older releases removed (use the [conversion kit](docs/converting.md) for documents and saved batches from 0.26 and earlier), a published `.vixl` format with SVG round trip and editable SVG, PDF and Figma import, flush-inside strokes on closed shapes, render-parity fixes and terminal summaries in the CLI.
 
 Work from the [craft plan](docs/craft-plan.md). Craft claims here wait for a blind re-judging; nothing below claims a craft gain on its own.
+
+### Conversion kit
+
+- `vixl convert OLD.vixl [-o NEW.vixl] [--look preserve|current] [--dry-run] [--report R.json]` (and `vixl convert DIR --out OUTDIR`, `vixl.convert.convert_file`) turns documents saved by earlier releases into current ones: format-1 archives, the pre-0.21 `lookup` field, `upgraded_from`, house-style versions, pre-0.21 open-shape fills and temperature/tint scale, pre-0.24 text boxes, recipes without a strength, line height, padding, wrap or distribution, and closed-shape strokes for the flush stroke rule. `preserve` (default) writes the old implicit behaviour into fields so the document looks and edits as before; `current` lets today's defaults apply and lists what changes. Every undo revision is converted, the result is opened and schema-checked before it is written, and nothing is overwritten without `--overwrite`. See [Converting](docs/converting.md).
+- `vixl convert OLD.svg` rebuilds the editable document from an SVG with a version-1 Vixl payload, which now imports as plain SVG.
+- `vixl convert-batch OLD.json` rewrites saved MCP calls (all 64 earlier tool names), operation batches and MCP client configurations (`--tools core|compact|all`, `--schema`) for the seven-tool server.
+- Migration from the breaking changes below: run `vixl convert` once on documents from 0.26 or earlier; `vixl upgrade` is `vixl convert`. The kit lives in `src/vixl/convert/`, which the engine never imports.
+- The published schema describes the `tear` layer record and allows only format 2.
+
+### MCP surface consolidated (breaking)
+
+- The MCP server serves seven tools: `vixl_document`, `vixl_apply`, `vixl_check`, `vixl_render`, `vixl_export`, `vixl_reference` and `vixl_job`. The tool list drops from 51 tools and about 67k characters to about 7.3k, and the server instructions from 3.9k to about 0.7k. Every earlier tool name is gone.
+- Imports, font installs, catalog styles and rolls are steps inside `vixl_apply` batches (`import-image`, `import-document` for SVG/PDF/Figma, `import-font`, `font-pair`, `font-install`, `style-use`, `roll`) and apply atomically with the batch's operations. Compose is `vixl_apply(create={…})`, workflows are `vixl_apply(workflow=…, request={…})`, and multi-size adaptation is the `adapt-sizes` workflow.
+- Rarely used parameters move into `options`, documented by `vixl_reference(TOOL)`. Unknown options and invalid operations fail with the exact schema expected.
+- MCP results are terse by default; `verbose: true` returns the full payload.
+- Removed `vixl mcp --tools core|compact|all`, `--schema full|slim`, `VIXL_MCP_TOOLS` and `VIXL_MCP_SCHEMA`. `vixl mcp` serves the design tools and `--tools ai` the provider-backed ones. The eval harness drops `--schema` and `--tools`.
+- Entries further down this section were written before the consolidation and name the old tools: `vixl_guide`, `vixl_resource_get` and `vixl_capabilities` are now `vixl_reference`; `vixl_render_preview` is `vixl_render`; `vixl_operations_apply`, `vixl_compose` and `vixl_workflow` are `vixl_apply`; `vixl_export_*` are `vixl_export` kinds.
+- A ratchet (`tests/mcp_surface_baseline.json`, `python -m scripts.mcp_surface`) replaces the fixed schema-size ceilings: the surface may shrink but not grow without `--allow-growth`, and no tool may exceed 2,000 characters.
+
+### Compatibility machinery removed (breaking)
+
+Vixl is pre-release with no users to protect, so code that existed only to reproduce older releases is gone.
+
+- Removed house-style versioning: no `house_style_version` stamp, `--house-style` flag, `house_style` key in `.vixl/variety.json`, or version argument on `roll()`. Every document uses the current house style; `src/vixl/legacy_roll.py` and the old-version tables in `house-style.json` are gone.
+- Plain `Project` documents now get the current defaults: seamless short timelines, shaded and outlined pixel sprites, balanced headings, 2u stack gaps, chart padding, text-flow gutters, section-header and footer-rule clearance, progressive pattern-scatter.
+- `.vixl` archives must be format version 2; layers with the pre-0.21 `lookup` field are no longer converted on load; `vixl convert` converts them once.
+- Removed `vixl upgrade`, `src/vixl/upgrade.py`, the `upgrade` option on open and the `upgraded_from` manifest field (migration of documents saved before 0.21); `vixl convert` replaces it.
+- Removed the `mcp` pip extra; `mcp` is a base dependency.
+- Removed fallbacks for pre-0.23 documents: irregular and tear recipes without a strength use `subtle`, diagrams without `line_height` use the caption line height, and the old rounded-up PDF bleed is no longer matched.
+- Pre-release: breaking changes are allowed and noted here; default changes must still pass the house-style quality/diversity eval.
+
+### Open format, SVG round trip, PDF and Figma import
+
+- The `.vixl` format is published: [File format](docs/file-format.md) and a JSON Schema for `project.json` (`src/vixl/data/vixl-document.schema.json`, `vixl schema document`, `vixl.document_schema.validate_manifest`), checked against every `.vixl` in the repository and against the fields the code reads and writes.
+- SVG export carries its document in `<metadata id="vixl-document">` with `data-vixl-id` on each layer group, so importing Vixl's own SVG restores the same editable layers, live text, groups and effects (#334). The metadata names fonts instead of storing their files (family, weight, style, and whether bundled, Google Fonts or an imported file), so a blank document's SVG is a few KB instead of hundreds and published SVGs do not redistribute fonts; the import finds each font again (the same file in the document, the bundled face, a font registered under the same name, the font cache, then a Google Fonts download unless `install_fonts=False`) and draws a font it cannot find with the bundled face, with a warning. An image shown at its own size is stored once, in the visible `<image>`, which the metadata points at. `svg_document=False` leaves the metadata out, for example for a web asset; HTML exports never carry it.
+- SVG import reads other SVG as editable layers: live `<text>`, groups, gradients, embedded images, `<use>`, class stylesheets, even-odd fills, dashes and rounded rectangles. `svg_mode="auto"` draws only unsupported elements (filters, masks, clip paths) as images instead of the whole file.
+- PDF import is editable by default: live text, vector paths and images, with shadings and clipped content as image layers. Vixl PDFs record `VixlDPI` and come back at their pixel size. `svg_mode="appearance"` gives the previous one-image import; `dpi` applies only to that mode.
+- `vixl import SOURCE --format figma` (also `import_document(format="figma")` and `POST /import?format=figma`) imports a Figma file, page or frame (`--node`) as editable layers: groups, auto-layout stacks, rectangles and paths, linear/radial gradients, image fills, live text with style runs, strokes, drop shadows, blur, blend modes and rotation. The token comes only from `FIGMA_TOKEN` or `VIXL_FIGMA_TOKEN` and is never stored. Every unmapped feature is listed in the result's `report`; `--rasterize-unsupported` imports a PNG render of nodes with no editable equivalent. Figma API errors (`figma_token_missing`, `figma_forbidden`, `figma_not_found`, `figma_rate_limited` with `retry_after_s`) return JSON with suggestions. See [Figma import](docs/figma.md); export is tracked in #662.
+- REST `POST /import` takes `page` as text (a Figma page name or number); a non-numeric `page` for SVG/PDF is a 400 instead of a 422.
+
+### Rendering parity
+
+- Text, path shapes, ellipses, rounded rectangles and capsules at fractional positions, or turned, flipped or skewed, are drawn from their outlines straight into place instead of being resampled: `baseline_y` and centred text stay as sharp as on whole pixels and no longer gain about 6% ink. Layers with effects, masks or paper texture are unchanged.
+- Gradients are dithered below one level, so subtle ramps no longer show 8-bit bands; flat and end colours stay exact. A full-canvas 2400×2400 linear gradient takes about 8 ms (3 ms before dithering); radial and angled ones about 0.15 s.
+- Unstroked ellipses, rounded rectangles and capsules are rasterized by resvg instead of Pillow supersampling; edge pixels change by a few levels.
+- Look change: a closed shape's stroke now sits inside its outline and flush with it. `stroke_align` defaults to `inside` for rectangles, rounded rectangles, capsules, ellipses, polygons, stars, shortcuts and catalog shapes, and to `center` for paths, arcs, lines and open shapes; an explicit value means the same with or without dashes, profiles or markers, in PNG, SVG, PDF and PowerPoint. A 10 px stroke on a rectangle or ellipse now covers 0-10 px in from the box edge (it covered 5-15 px), the fill covers the whole shape under the stroke, and a rounded corner keeps `radius` on the outside (inner radius `radius` minus the stroke). Polygon and star strokes keep their outer edge on the outline with mitred corners (their centre line used to sit half a stroke in, with round joins), and styled or catalog strokes that defaulted to centred now default to inside. To keep an old document's look, shrink a plain stroked rectangle's, rounded rectangle's, capsule's or ellipse's box by half the stroke on every side (`x`, `y` + 5 px and `width`, `height` − 10 px for a 10 px stroke; `radius` unchanged, written out when it was the default), leave polygons and stars as they are (outer corners become sharp), and set `stroke_align: "center"` where a styled or catalog stroke relied on the centred default. A `rectangle` given a `radius` (or `border_radius`/`corner_radius`) becomes a `rounded-rectangle`, reported under `normalized`, so its corners are round in every output (PNG rounded them and the exports did not). PDF import joins a fill and the stroke drawn half its width inside it into one layer with `stroke_align: "inside"`.
+- New `python -m evals.render_parity` measures raster output against headless Chromium and exact references (eval-only; `pip install playwright`). Findings: [Render parity](docs/render-parity.md).
+
+### CLI output
+
+- The CLI prints a short summary in a terminal (`created a.vixl  800×600  bg #18283b`, `added text "title"`, `check passed (bounds, contrast) — 0 errors, 0 warnings`, a list of findings when a check fails, `exported hello.png (16.2 KB)`). Piped or redirected output, `--json` and `VIXL_JSON=1` print the full JSON as before.
+- `VIXL_JSON=1` also turns CLI errors into JSON, like `--json`. In a terminal, the one-line `ERROR:` adds the error's suggestions.
+
+### Fixed
+
+- MCP tool descriptions are the same on every Python: 3.11 and 3.12 kept docstring indentation (8 extra spaces per continuation line, sent to every client); they are now cleaned at registration.
+- Footer-rule clearance no longer pushes the cta button out of the safe area on small banners.
+- Dark-mode ink reaches the 7:1 target on saturated palettes (candy came out at 6.99:1): when the ink steps run out, it snaps to pure white or black, which the background wash was sized for.
+- Strokes land in the same place in PNG, SVG, PDF and PowerPoint: the SVG export stroked rectangles, ellipses and polygons a stroke width away from the other renderers (where strokes now go: see Rendering parity). PNG no longer cuts the outer half of a path's stroke at the layer box. Render parity finding 15.
 
 ### Finishing pass in the agent loop
 

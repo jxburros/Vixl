@@ -32,7 +32,7 @@ def service_check(operation, fonts=None):
         not any(k in operation for k in blocked)
         and ("path" not in operation or (kind in ("text-layout", "shape") or (kind == "select" and operation.get("shape") == "path"))),
         "Filesystem fields (path, linked, font files) are unavailable through services; "
-        "import images with vixl_import_image and reference the returned asset"
+        "import images with import-image and reference the returned asset"
         + ("" if fonts is not None else "; fonts are named only in operations applied to a document, by registered name or role"),
         "forbidden",
         field=next((k for k in ("path", *blocked) if k in operation), None),
@@ -58,6 +58,19 @@ def service_check(operation, fonts=None):
         )
     if kind == "mask":
         require(operation.get("action") != "import", "Import masks using embedded assets", "forbidden")
+
+
+def offset_indexes(exc, indexes, start=0):
+    """Rewrite an error's operation indexes (local to one segment of a batch) to their place in the whole batch."""
+    def place(value):
+        return indexes[value] if isinstance(value, int) and 0 <= value < len(indexes) else value
+
+    if "operation_index" in exc.details:
+        exc.details["operation_index"] = place(exc.details["operation_index"])
+    for item in exc.details.get("errors", []) or []:
+        if isinstance(item, dict) and "operation_index" in item:
+            item["operation_index"] = place(item["operation_index"])
+    return exc
 
 
 class _Document:
@@ -155,29 +168,15 @@ class Session:
         self.path = path
         note_document(path)
 
-    def open(self, path, upgrade=None):
-        """Open a document. A document saved before the 0.21 rendering changes reports the affected
-        layers under ``upgrade``; ``upgrade="accept"`` records the new rendering as accepted and
-        ``"pin-fills"`` also restores the white fill of open shapes (see upgrade.py)."""
-        from .upgrade import report, upgrade as run_upgrade
-
-        require(upgrade in (None, "accept", "pin-fills"), "upgrade must be 'accept' or 'pin-fills'",
-                field="upgrade")
+    def open(self, path):
+        """Open a document and return its summary."""
         with self._mutex:
             resolved = self.resolve(path)
             require(resolved.is_file(), f"Document does not exist: {path}", "not_found", field="path")
             with file_lock(str(resolved)):
                 project = self.load(resolved)
-                done = None
-                if upgrade and project.upgraded_from:
-                    done = run_upgrade(project, pin_fills=upgrade == "pin-fills")
-                    project.save()
                 self._remember(resolved, project, self.stamp(resolved))
             summary = self.summary(project)
-            if done:
-                summary["upgrade"] = done
-            elif project.upgraded_from and (notice := report(project.state, project.upgraded_from)):
-                summary["upgrade"] = notice
             return summary
 
     def create(self, path, width=None, height=None, background=None, *, size=None, purpose=None, dpi=None,
@@ -341,12 +340,71 @@ class Session:
             single = "type" in operations or "operation" in operations
             operations = [operations] if single else operations.get("operations", [operations])
         require(isinstance(operations, list), "Expected operation array")
+        from .steps import is_step
+
+        if any(is_step(op) for op in operations):
+            return self.apply_steps(operations, dry_run, detail, document, check=check, preview=preview,
+                                    budget=budget, suites=suites, repair=repair)
         with self.project(write=not dry_run, document=document) as p:
             from .service_fonts import checker
 
             return apply_reviewed(p, operations, dry_run=dry_run, detail=detail, check=check, preview=preview,
                                   validate=checker(p, service_check), budget=budget, suites=suites,
                                   repair=repair)
+
+    def apply_steps(self, operations, dry_run, detail, document, **review):
+        """A batch that mixes operations with session steps (steps.py): every item applies, in order, to one
+        candidate copy that replaces the document only when all succeeded. Workspace-scoped font steps run after."""
+        from .checks import apply_reviewed
+        from .service_fonts import checker
+        from .steps import is_step, run, workspace_scoped
+
+        later = [(index, op) for index, op in enumerate(operations) if is_step(op) and workspace_scoped(op)]
+        items = [(index, op) for index, op in enumerate(operations) if not (is_step(op) and workspace_scoped(op))]
+        steps, result, image = [], {"success": True}, None
+        if items:
+            with self.project(write=not dry_run, document=document) as p:
+                candidate = p.clone()
+                validate = checker(candidate, service_check)
+                segment = []
+
+                def flush(final=False):
+                    nonlocal result, image
+                    if not segment and not final:
+                        return
+                    start = segment[0][0] if segment else 0
+                    ops = [op for _, op in segment]
+                    try:
+                        if final:
+                            result, image = apply_reviewed(candidate, ops, detail=detail, validate=validate, **review)
+                        else:
+                            candidate.apply(ops, detail=detail, check=validate)
+                    except VixlError as exc:
+                        offset_indexes(exc, [index for index, _ in segment], start)
+                        raise
+                    segment.clear()
+
+                for index, op in items:
+                    if not is_step(op):
+                        segment.append((index, op))
+                        continue
+                    flush()
+                    kind, value, expanded = run(self, candidate, op, index)
+                    if expanded is not None:
+                        segment.extend((index, item) for item in expanded)
+                    steps.append({"index": index, "type": kind, **({"result": value} if value is not None else {})})
+                flush(final=True)
+                result["dry_run"] = dry_run
+                if not dry_run:
+                    p.__dict__.update(candidate.__dict__)
+        elif any(review.get(key) for key in ("check", "preview", "suites", "repair")):
+            raise VixlError("invalid_operation", "check, preview, suites and repair need document operations; this "
+                            "batch only changes workspace defaults", field="check")
+        for index, op in later:
+            kind, value, _ = run(self, None, op, index) if not dry_run else (op["type"], {"dry_run": True}, None)
+            steps.append({"index": index, "type": kind, "result": value})
+        result["steps"] = steps
+        return result, image
 
     def render(self, variables=None, artboard=None, comp=None, document=None):
         with self.project(document=document) as p:
@@ -665,6 +723,7 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
             "sampling",
             "profile",
             "svg_policy",
+            "svg_document",
             "color_space",
             "icc_profile_base64",
             "intent",
@@ -913,7 +972,7 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     @app.post("/compose")
     @limited
     def compose_piece(body: dict):
-        """vixl_compose as a dry run: this server serves one fixed document, so it builds, checks and previews the
+        """vixl_apply(create=…) as a dry run: this server serves one fixed document, so it builds, checks and previews the
         piece without saving it (use MCP or the CLI to write it)."""
         import base64
         from .compose import compose
@@ -921,7 +980,7 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
         options = fixed(body)
         require(not options.get("exports") and options.get("dry_run", True) is True
                 and not {"path", "operations_path"} & set(options),
-                "REST compose is a dry run (no path or exports); use vixl_compose or vixl compose to save", "forbidden")
+                "REST compose is a dry run (no path or exports); use vixl_apply(create=…) or vixl compose to save", "forbidden")
         result, image = compose(session, **{**options, "dry_run": True})
         if image is not None:
             result["preview_base64"] = base64.b64encode(image).decode()
@@ -1010,13 +1069,20 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
                                fonts=bool(body.get("fonts", True)))
 
     @app.post("/import")
-    async def import_document(request: Request, format: str, name: str = "import", page: int = 1, dpi: int = 144, svg_mode: str = "editable"):
+    async def import_document(request: Request, format: str, name: str = "import", page: str = "1", dpi: int = 144,
+                              svg_mode: str = "editable", node_id: str | None = None,
+                              rasterize_unsupported: bool = False):
         from .imports import import_document as execute_import
         from starlette.concurrency import run_in_threadpool
         data = await request.body()
+        # A figma import's body is a file URL or key; the server's FIGMA_TOKEN reads the file.
+        figma = format.lower() == "figma"
+        require(figma or page.isdigit(), "page must be a number", field="page")
+        options = {"node_id": node_id, "rasterize_unsupported": rasterize_unsupported} if figma else {}
         def apply_import():
             with session.project(write=True) as project:
-                return execute_import(project, data, format, name, page, dpi, svg_mode)
+                return execute_import(project, data, format, name, int(page) if page.isdigit() else page, dpi,
+                                      svg_mode, **options)
         return await run_in_threadpool(apply_import)
 
     @app.post("/assets")
@@ -1074,14 +1140,14 @@ def require_document_default():
     return os.environ.get("VIXL_REQUIRE_DOCUMENT", "").strip().lower() in ("1", "true", "yes", "on")
 
 
-def mcp_server(path=None, limits=None, *, workspace=None, schema="full", planner=False, tools="all",
+def mcp_server(path=None, limits=None, *, workspace=None, planner=False, tools="default",
                require_document=None, call_limits=None, allow_screen_capture=None):
     try:
         from .mcp_tools import build_server, check_sdk
         check_sdk()
         import mcp.server.fastmcp  # noqa: F401
     except ImportError as exc:
-        raise VixlError("missing_dependency", "Install vixl-engine[mcp]") from exc
+        raise VixlError("missing_dependency", "The mcp package is missing; reinstall vixl-engine") from exc
 
     if require_document is None:
         require_document = require_document_default()
@@ -1091,7 +1157,7 @@ def mcp_server(path=None, limits=None, *, workspace=None, schema="full", planner
     session = Session(path, call_limits.apply_to(limits or Limits()), workspace=workspace,
                       require_document=require_document)
     session.call_limits = call_limits
-    return build_server(session, schema=schema, planner=planner, tools=tools,
+    return build_server(session, planner=planner, tools=tools,
                         allow_screen_capture=allow_screen_capture)
 
 

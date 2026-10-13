@@ -6,7 +6,7 @@ note 1, a composition finding one more), and the second region is the best one t
 first. Findings about the whole document (fonts, links, brand) have no place. Where the findings name fewer
 places, the rest are places worth a look anyway: the densest block of text and the largest empty area.
 ``crops`` renders them at real size (never enlarged; reduced only to fit ``max_side``), which is what
-``vixl_operations_apply`` returns with ``check`` and ``preview``.
+``vixl_apply`` returns with ``check`` and ``preview``.
 """
 
 from .composition import _inside, _overlap_share, free_rectangles, geometry_boxes

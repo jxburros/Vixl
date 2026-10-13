@@ -258,9 +258,9 @@ def digest(folder, skip=()):
             and not set(p.relative_to(folder).parts) & set(skip)}
 
 
-def run_round(agent, prompt, workspace, run, number, schema, tool_set):
+def run_round(agent, prompt, workspace, run, number):
     """One fresh session: the agent works on the prompt; returns its stats and trace."""
-    tools = LaneTools(workspace, schema=schema, tools=tool_set)
+    tools = LaneTools(workspace)
     started, error = time.monotonic(), None
     try:
         outcome = agent.run({"id": f"{run.parent.name}-r{number}", "prompt": prompt}, tools)
@@ -310,7 +310,7 @@ def copy_tree(source, destination, skip=()):
         shutil.copy2(path, target)
 
 
-def run_test(test, agent, examples, runs, *, rounds=2, schema="slim", tool_set="core", meta=None):
+def run_test(test, agent, examples, runs, *, rounds=2, meta=None):
     """Both rounds of one brief in a fresh workspace; the lane lands in runs/<test>/claude-V/."""
     kit = examples / KIT
     rejudge = load_rejudge(kit)
@@ -320,14 +320,14 @@ def run_test(test, agent, examples, runs, *, rounds=2, schema="slim", tool_set="
     with tempfile.TemporaryDirectory(prefix=f"vixl-craft-{test}-") as directory:
         workspace = Path(directory)
         run = prepare_workspace(workspace, examples, test)
-        stats, trace = run_round(agent, first, workspace, run, 1, schema, tool_set)
+        stats, trace = run_round(agent, first, workspace, run, 1)
         copy_tree(run, destination, skip=("round2",))
         stats["sources"] = keep_sources(workspace, run, trace, destination)
         stats["missing"] = missing(rejudge, test, destination, round2=False)
         record["rounds"].append(stats)
         if rounds > 1:
             before = digest(run, skip=("round2",))
-            stats, trace = run_round(agent, second, workspace, run, 2, schema, tool_set)
+            stats, trace = run_round(agent, second, workspace, run, 2)
             if (run / "round2").is_dir():
                 copy_tree(run / "round2", destination / "round2")
             stats["sources"] = keep_sources(workspace, run, trace, destination / "round2")
@@ -384,7 +384,7 @@ def plan(examples, runs, out, tests, fixed, args, version):
     rejudge = load_rejudge(kit)
     lines = [f"Craft re-run of the Vixl lane, Vixl {version}", f"kit: {kit}",
              f"agent: claude {args.model}" + (f", effort {args.effort}" if args.effort else "")
-             + f", schema {args.schema}, tools {args.tools}, max {args.max_turns} turns, {args.rounds} round(s)",
+             + f", max {args.max_turns} turns, {args.rounds} round(s)",
              f"runs: {runs}", f"package: {out}", f"fixed lanes: {fixed}", ""]
     for test in tests:
         others = fixed_lanes(fixed, test)
@@ -402,8 +402,6 @@ def main(argv=None, agent=None):
     parser.add_argument("--tests", default=",".join(TESTS), help="comma-separated tests, e.g. T02,T08")
     parser.add_argument("--model", default="claude-opus-5-5")
     parser.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"])
-    parser.add_argument("--schema", choices=["full", "slim"], default="slim")
-    parser.add_argument("--tools", choices=["all", "core"], default="core")
     parser.add_argument("--max-turns", type=int, default=60)
     parser.add_argument("--rounds", type=int, choices=[1, 2], default=2)
     parser.add_argument("--no-fallbacks", action="store_true", help="disable server-side refusal fallbacks")
@@ -442,12 +440,11 @@ def main(argv=None, agent=None):
 
             agent = ClaudeAgent(args.model, args.effort, args.max_turns, fallbacks=not args.no_fallbacks,
                                 system=SYSTEM_PROMPT)
-        meta = {"vixl_version": __version__, "model": args.model, "effort": args.effort, "schema": args.schema,
-                "tools": args.tools, "date": datetime.date.today().isoformat()}
+        meta = {"vixl_version": __version__, "model": args.model, "effort": args.effort,
+                "date": datetime.date.today().isoformat()}
         for test in tests:
             shutil.rmtree(runs / test / LANE, ignore_errors=True)
-            record = run_test(test, agent, examples, runs, rounds=args.rounds, schema=args.schema,
-                              tool_set=args.tools, meta=meta)
+            record = run_test(test, agent, examples, runs, rounds=args.rounds, meta=meta)
             others = copy_fixed(fixed, test, runs)
             calls = ", ".join(f"r{r['round']} {r['tool_calls']} calls" + (f" ({r['error']})" if r["error"] else "")
                               + (f", missing {', '.join(r['missing'])}" if r["missing"] else "")

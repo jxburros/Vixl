@@ -4,7 +4,7 @@ save → export.
 The chain runs on an unsaved document; the .vixl file is written only when every step before it
 succeeded, and exports only after that (a failed export removes the document and the files the call
 wrote). An error keeps the normal error schema and adds ``step``, the step that failed, to it.
-Shared by ``vixl_compose`` (MCP), ``vixl compose`` (CLI), ``POST /compose`` (REST, a dry run: that
+Shared by ``vixl_apply(create=…)`` (MCP), ``vixl compose`` (CLI), ``POST /compose`` (REST, a dry run: that
 server serves one fixed document) and ``compose`` (Python).
 """
 
@@ -37,7 +37,7 @@ class _Step:
 
 
 def _targets(session, exports, overwrite, path):
-    """Validated export targets (same options as vixl_export_batch), checked before anything is written."""
+    """Validated export targets (same options as vixl_export(kind='batch')), checked before anything is written."""
     from .export_batch import MAX_TARGETS, parse_target
     from .mcp_tools import EXPORT_SUFFIXES
 
@@ -83,7 +83,7 @@ def _brief(result):
 
 def _slot_images(session, project, layout):
     """``layout`` with its ``image``/``images`` slots embedded: an entry that is not already an asset of the
-    document is a workspace file or an https URL, imported through the same limits as vixl_import_image
+    document is a workspace file or an https URL, imported through the same limits as import-image
     (workspace containment, the fetch policy, byte and pixel limits). Returns ``(layout, {asset: source})``."""
     import hashlib
 
@@ -101,7 +101,7 @@ def _slot_images(session, project, layout):
         else:
             resolved = session.resolve(value)
             require(resolved.is_file(), f"{field}: no image file at {value!r} in the workspace (give a workspace "
-                    "path, an https URL or an asset id from vixl_import_image)", "not_found", field=f"layout.{field}")
+                    "path, an https URL or an asset id from import-image)", "not_found", field=f"layout.{field}")
             data, source = read_bounded(resolved, limit), {"path": value}
         asset, _ = add_encoded(project, data)
         sources[asset] = {**source, "sha256": hashlib.sha256(data).hexdigest()}
@@ -209,7 +209,7 @@ def compose(session, *, path=None, operations=None, operations_path=None, layout
         looks = [look] if isinstance(look, dict) else look or []
         require(isinstance(looks, list) and all(isinstance(item, dict) and item.get("look") for item in looks),
                 "look is {look, target?, color?, amount?} or a list of them", field="look")
-        require(style is None or isinstance(style, str), "style is a style name (vixl_styles)", field="style")
+        require(style is None or isinstance(style, str), "style is a style name (vixl_reference('styles'))", field="style")
         names, preview_options = _apply_options(check if check is not False else None, preview)
     targets = []
     if exports:
@@ -306,7 +306,7 @@ def compose(session, *, path=None, operations=None, operations_path=None, layout
         result.update(document=session.relative(resolved), canvas=project.state["canvas"],
                       layer_count=len(project.state["layers"]), head=project.head, active_document=True)
         if previous and previous != resolved and Path(previous).is_relative_to(session.workspace):
-            # Like vixl_document_create, compose activates the new document; say so, since later calls without
+            # Like vixl_document(action='create'), compose activates the new document; say so, since later calls without
             # document= now edit and export it rather than the one that was active.
             result.setdefault("warnings", []).append(
                 f"{session.relative(resolved)} is now the active document; calls without document= use it. Pass "
@@ -360,7 +360,7 @@ def cli(args, options, limits):
 
     parser = Parser(prog="vixl compose", description="Build a whole piece in one call: create, fonts, layout, style, "
                     "look, operations, check, preview, save and exports (atomic; errors name the failing step)")
-    parser.add_argument("--request", required=True, help="JSON request file (or - for stdin); fields as vixl_compose")
+    parser.add_argument("--request", required=True, help="JSON request file (or - for stdin); fields as vixl_apply(create=…)")
     parser.add_argument("--preview", help="Write the preview PNG here")
     parser.add_argument("--workspace", default=str(Path.cwd()))
     a = parser.parse_args(args)

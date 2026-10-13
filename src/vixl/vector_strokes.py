@@ -7,8 +7,8 @@ Widths and dash distances are measured in local pixels, independent of path view
 import math
 
 from .errors import require
-from .geometry import OPEN_SHAPES
-from .geometry import default_fill
+from .geometry import OPEN_SHAPES, PATH_SHAPES
+from .geometry import default_fill, stroke_align
 
 FIELDS = (
     "dash",
@@ -92,6 +92,9 @@ def schema():
             "taper_start": "Width multiplier at the start; reaches full width at the middle.",
             "marker_size": "Arrowhead length and width in local pixels (not a multiplier). Use at least twice stroke_width for a visible head; 1–5 px heads may be hidden by a thick shaft.",
             "taper_end": "Width multiplier at the end; starts tapering from the middle.",
+            "stroke_align": "Where the stroke sits on the outline: inside (the default for closed shapes: its outer "
+                            "edge on the outline, so it stays in the box), center (the default for paths, arcs, lines "
+                            "and open shapes) or outside. The same in every renderer and export.",
         }.get(key, key.replace("_", " ").capitalize() + ".")}
     return props
 
@@ -343,13 +346,23 @@ def expanded(layer, path):
             else dash
         )
         cap = style.get("line_cap", "round" if dash == "dotted" else "butt")
+        alignment = stroke_align(layer, style)
+        join, miter_limit = style.get("line_join", "miter"), style.get("miter_limit", 4)
         out = []
-        for original in contours:
+        rest = contours
+        if alignment != "center" and not (pattern or trim or any(
+                key in style for key in ("width_profile", "taper_start", "taper_end"))):
+            # Inside and outside strokes of the closed contours: the band between the filled area and
+            # that area shrunk or grown by the stroke width, so the stroke's outer (inside) or inner
+            # (outside) edge is exactly the outline, holes included, however tight the curves.
+            out.append(aligned_band([c for c in contours if len(c) > 3 and c[0] == c[-1]], width, alignment,
+                                    join, miter_limit))
+            rest = [c for c in contours if not (len(c) > 3 and c[0] == c[-1])]
+        for original in rest:
             points = [
                 point for index, point in enumerate(original) if index == 0 or point != original[index - 1]
             ]
             closed = len(points) > 2 and points[0] == points[-1]
-            alignment = style.get("stroke_align", "center")
             if closed and (pattern or trim) and alignment != "center":
                 inward = area(points) > 0
                 sign = 1 if (alignment == "inside") == inward else -1
@@ -357,8 +370,8 @@ def expanded(layer, path):
                     points[:-1],
                     [sign * width / 2] * (len(points) - 1),
                     True,
-                    style.get("line_join", "miter"),
-                    style.get("miter_limit", 4),
+                    join,
+                    miter_limit,
                 )
                 points = points + points[:1]
             for run, fractions in dashed(points, pattern, style.get("dash_offset", 0)):
@@ -375,10 +388,10 @@ def expanded(layer, path):
                         width,
                         closed and not pattern and not trim,
                         cap,
-                        style.get("line_join", "miter"),
-                        style.get("miter_limit", 4),
+                        join,
+                        miter_limit,
                         widths,
-                        style.get("stroke_align", "center"),
+                        alignment,
                     )
                 )
             marker_points = points
@@ -406,6 +419,67 @@ def expanded(layer, path):
     return result
 
 
+def aligned_band(contours, width, alignment, join="miter", miter_limit=4):
+    """Path data of an ``inside`` or ``outside`` stroke of ``width`` around the area the closed point
+    lists ``contours`` fill (nonzero winding); the whole area when an inside stroke is wider than it."""
+    from shapely import BufferJoinStyle
+    from shapely.geometry.polygon import orient
+    from .shape_catalog import poly
+    from .vector_boolean import filled_region
+
+    if not contours or width <= 0:
+        return ""
+    region = filled_region(contours)
+    if region.is_empty:
+        return ""
+    style = {"round": BufferJoinStyle.round, "bevel": BufferJoinStyle.bevel}.get(join, BufferJoinStyle.mitre)
+
+    def grown(distance):
+        return region.buffer(distance, quad_segs=16, join_style=style, mitre_limit=miter_limit)
+
+    band = region.difference(grown(-width)) if alignment == "inside" else grown(width).difference(region)
+    parts = []
+    for polygon in getattr(band, "geoms", [band]):
+        if polygon.geom_type != "Polygon" or polygon.is_empty:
+            continue
+        polygon = orient(polygon)
+        parts.append(poly(list(polygon.exterior.coords)))
+        parts.extend(poly(list(ring.coords)) for ring in polygon.interiors)
+    return " ".join(parts)
+
+
+# The miter limit of native strokes that trace inside_centre_line: high enough that a sharp star point
+# keeps its tip (the band drawn in PNG has no limit on its outer edge).
+NATIVE_MITER_LIMIT = 16
+
+
+def inside_centre_line(layer, pad):
+    """Path data, in the layer's pixels, of the line a native stroke of width ``2 * pad`` (mitred, miter
+    limit ``NATIVE_MITER_LIMIT``) follows to stroke a plain polygon, star or shortcut inside its outline:
+    the outline shrunk by ``pad``, so the stroke's outer edge is the outline. None when that native
+    stroke would not draw the same band as ``aligned_band`` (the stroke reaches the shape's middle, or a
+    corner is too sharp): draw the band from ``primitives`` instead."""
+    from shapely import BufferJoinStyle
+    from shapely.geometry.polygon import orient
+    from .geometry import path_polygons
+    from .shape_catalog import poly
+    from .vector_boolean import filled_region
+    from .vector_paths import pixel_path
+
+    contours = [c for c in path_polygons(pixel_path(layer)) if len(c) > 3 and c[0] == c[-1]]
+    region = filled_region(contours) if contours else None
+    if region is None or region.geom_type != "Polygon":
+        return None
+    mitre = {"join_style": BufferJoinStyle.mitre, "mitre_limit": NATIVE_MITER_LIMIT}
+    centre = region.buffer(-pad, **mitre)
+    if centre.is_empty or centre.geom_type != "Polygon" or len(centre.interiors) != len(region.interiors):
+        return None
+    if centre.buffer(pad, **mitre).symmetric_difference(region).area > 0.05 * region.length:
+        return None
+    centre = orient(centre)
+    return " ".join([poly(list(centre.exterior.coords)), *(poly(list(r.coords)) for r in centre.interiors)])
+
+
 def active(layer):
     return layer.get("vector_geometry", False) or any(key in layer for key in FIELDS if key != "line_cap")
 
@@ -414,6 +488,9 @@ def primitives(layer, project=None):
     """Ordered (filled path, paint) primitives in the layer's pixel coordinate space."""
     from .vector_paths import pixel_path
 
+    line = plain_line(layer, project)
+    if line is not None:
+        return line
     path = pixel_path(layer)
     if project is not None and layer.get("_distort_groups"):
         from .vector_paths import group_warp
@@ -433,7 +510,35 @@ def primitives(layer, project=None):
     return result + expanded(layer, stroke_path)
 
 
-def render(project, layer):
+def plain_line(layer, project=None):
+    """The primitives of a plain ``line`` with a visible stroke (drawn here only for its fractional size):
+    its ends half a stroke in from the box corners, as every renderer draws it
+    (``geometry.stroke_inset``); None for other layers."""
+    from .shape_catalog import active as catalog_active
+    from .geometry import stroke_inset
+
+    if (layer.get("shape") != "line" or active(layer) or catalog_active(layer) or layer.get("distort")
+            or layer.get("_distort_groups")):
+        return None
+    stroke = layer.get("stroke", "transparent")
+    if project is not None:
+        from .design import resolve_color
+        from .render import color
+
+        visible = color(resolve_color(stroke, project.state))[3] > 0
+    else:
+        visible = stroke != "transparent"
+    inset, pad = stroke_inset(layer, visible)
+    if not pad:
+        return None
+    w, h = layer["width"], layer["height"]
+    return expanded(layer, f"M {inset} {inset} L {w - inset} {h - inset}")
+
+
+def render(project, layer, size=None, matrix=None):
+    """The shape as an RGBA image of its box plus the margin its geometry reaches past it (centred on the
+    box). ``size`` and ``matrix`` draw that image's content into an image of ``size`` instead, mapped by
+    the affine ``matrix`` from the image's pixels (see ``text.render_text``)."""
     import io
     import xml.etree.ElementTree as ET
     from PIL import Image
@@ -444,20 +549,24 @@ def render(project, layer):
     w, h = layer["width"], layer["height"]
     drawn = primitives(layer, project)
     mx, my = path_margin(drawn, w, h)
-    size = (max(1, math.ceil(w)) + 2 * mx, max(1, math.ceil(h)) + 2 * my)
-    project.limits.size(*size)
-    root = ET.Element(
-        "svg",
-        xmlns="http://www.w3.org/2000/svg",
-        width=str(size[0]),
-        height=str(size[1]),
-        viewBox=f"{-mx - (math.ceil(w) - w) / 2} {-my - (math.ceil(h) - h) / 2} {size[0]} {size[1]}",
-    )
+    own = (max(1, math.ceil(w)) + 2 * mx, max(1, math.ceil(h)) + 2 * my)
+    project.limits.size(*own)
+    frame = {"width": str(own[0]), "height": str(own[1]),
+             "viewBox": f"{-mx - (math.ceil(w) - w) / 2} {-my - (math.ceil(h) - h) / 2} {own[0]} {own[1]}"}
+    if matrix is None:
+        root = parent = ET.Element("svg", xmlns="http://www.w3.org/2000/svg", **frame)
+    else:
+        project.limits.size(*size)
+        root = ET.Element("svg", xmlns="http://www.w3.org/2000/svg", width=str(size[0]), height=str(size[1]))
+        group = ET.SubElement(root, "g", transform="matrix(" + " ".join(format(v, ".10g") for v in matrix) + ")")
+        # The frame's margin already holds everything drawn, so it needs no clip (whose anti-aliased
+        # edge would dim ink ending on it).
+        parent = ET.SubElement(group, "svg", overflow="visible", **frame)
     for path, paint in drawn:
         rgba = parse(resolve_color(paint, project.state))
         if path and rgba[3]:
             ET.SubElement(
-                root, "path", d=path, fill=hex_of((*rgba[:3], 1)), attrib={"fill-opacity": str(rgba[3])}
+                parent, "path", d=path, fill=hex_of((*rgba[:3], 1)), attrib={"fill-opacity": str(rgba[3])}
             )
     image = Image.open(
         io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode")))
@@ -488,6 +597,11 @@ def margin(layer):
     from .geometry import path_overflows
 
     if not (path_overflows(layer) or active(layer) or catalog_active(layer) or layer.get("distort") or layer.get("_distort_groups")):
+        visible = layer.get("stroke", "transparent") != "transparent" and layer.get("stroke_width", 1) > 0
+        if visible and layer.get("shape") in PATH_SHAPES:
+            return native_stroke_margin(layer)
+        if stroke_align(layer) == "inside":
+            return 0, 0  # The stroke stays inside the shape's box.
         width = layer.get("stroke_width", 0) if layer.get("stroke", "transparent") != "transparent" else 0
         return math.ceil(width / 2), math.ceil(width / 2)
     mx, my = path_margin(primitives(layer), layer["width"], layer["height"])
@@ -498,6 +612,23 @@ def margin(layer):
         mx += math.ceil(extra)
         my += math.ceil(extra)
     return mx, my
+
+
+def native_stroke_margin(layer):
+    """Whole pixels ``(mx, my)`` by which a path or arc drawn with a native SVG stroke (stroke width in
+    its view units, miter limit 4) reaches past its box: the raster image holds all of it, as the SVG
+    and PDF exports draw it."""
+    from .geometry import path_extents, shape_path
+
+    path, view = shape_path(layer)
+    w, h = layer["width"], layer["height"]
+    sx, sy = w / view[0], h / view[1]
+    cap = layer.get("line_cap")
+    # A miter join reaches up to the miter limit (4) times half the stroke; a square cap sqrt(2) times.
+    reach = layer.get("stroke_width", 1) / 2 * (1 if cap == "round" else 4)
+    x0, y0, x1, y1 = path_extents(path)
+    return (math.ceil(max(0, reach * sx - x0 * sx, x1 * sx + reach * sx - w)),
+            math.ceil(max(0, reach * sy - y0 * sy, y1 * sy + reach * sy - h)))
 
 
 def clip_run(points, fractions, start, end):

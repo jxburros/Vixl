@@ -71,7 +71,7 @@ def test_text_layout_with_only_a_width_grows_to_fit_the_wrapped_lines():
 
 def test_fields_that_change_nothing_are_reported():
     found = warnings([
-        {"type": "shape", "shape": "rectangle", "name": "r", "width": 20, "height": 20, "radius": 5, "stroke_width": 2},
+        {"type": "shape", "shape": "ellipse", "name": "r", "width": 20, "height": 20, "radius": 5, "stroke_width": 2},
         {"type": "gradient", "name": "g", "stops": [{"offset": 0, "color": "red"}, {"offset": 1, "color": "blue"}],
          "start": "red", "angle": 20},
         {"type": "align", "target": "t", "alignment": "center", "margin": 4},
@@ -99,18 +99,18 @@ def test_validation_errors_point_at_the_schema_and_name_the_fields():
     with pytest.raises(VixlError) as error:
         p.apply({"type": "shape", "shape": "rectangle", "gradient": ["red", "blue"]})
     err = error.value
-    assert "vixl_operation_schema(types=['shape'])" in str(err) and "Allowed:" in str(err)
-    assert err.details["schema"] == "vixl_operation_schema(types=['shape'])" and "fill" in err.details["fields"]
+    assert "vixl_reference('operations', name=['shape'])" in str(err) and "Allowed:" in str(err)
+    assert err.details["schema"] == "vixl_reference('operations', name=['shape'])" and "fill" in err.details["fields"]
     with pytest.raises(VixlError) as error:
         p.apply({"type": "opacity", "target": "t", "value": "0.5"})
-    assert "(see vixl_operation_schema(types=['opacity']))" in str(error.value)
+    assert "(see vixl_reference('operations', name=['opacity']))" in str(error.value)
     assert "type" in error.value.details["expected"]
     with pytest.raises(VixlError) as error:
         p.apply({"type": "mvoe", "x": 1})
-    assert "move" in error.value.details["suggestions"] and "vixl_operation_schema" in str(error.value)
+    assert "move" in error.value.details["suggestions"] and "vixl_reference('operations'" in str(error.value)
     with pytest.raises(VixlError) as error:
         p.apply({"type": "move", "target": "t"})
-    assert "at least one of: x, y" in str(error.value) and "vixl_operation_schema(types=['move'])" in str(error.value)
+    assert "at least one of: x, y" in str(error.value) and "vixl_reference('operations', name=['move'])" in str(error.value)
     with pytest.raises(VixlError, match="exactly"):
         p.apply({"type": "gradient", "name": "g", "stops": [{"pos": 0, "color": "red"}, {"pos": 1, "color": "blue"}]})
 
@@ -203,7 +203,7 @@ def test_batch_tool_over_mcp_and_require_document(tmp_path):
     async def scenario():
         async with create_connected_server_and_client_session(server._mcp_server) as client:
             async def call(**args):
-                result = await client.call_tool("vixl_export_batch", args)
+                result = await client.call_tool("vixl_export", {"kind": "batch", **args})
                 return result.isError, "".join(c.text for c in result.content)
 
             failed, text = await call(targets=[{"path": "x.png"}])
@@ -215,26 +215,28 @@ def test_batch_tool_over_mcp_and_require_document(tmp_path):
     assert Image.open(tmp_path / "y/z.webp").size == (15, 15)
 
 
-def test_misspelt_tool_arguments_are_reported_instead_of_silently_dropped(tmp_path):
+def test_misspelt_tool_arguments_are_refused_with_the_closest_names(tmp_path):
     server = mcp_server(workspace=tmp_path)
 
     async def scenario():
         async with create_connected_server_and_client_session(server._mcp_server) as client:
-            await client.call_tool("vixl_document_create", {"path": "a.vixl", "width": 64, "height": 64})
-            result = await client.call_tool("vixl_operations_apply", {
+            await client.call_tool("vixl_document", {"action": "create", "path": "a.vixl", "width": 64, "height": 64})
+            applied = await client.call_tool("vixl_apply", {
                 "operations": [{"type": "solid", "name": "bg"}], "detial": "full", "dryrun": True})
-            applied = json.loads(result.content[0].text)
-            preview = await client.call_tool("vixl_render_preview", {"regoin": [0, 0, 8, 8], "max_width": 32})
-            fine = await client.call_tool("vixl_document_inspect", {})
-            return applied, preview, json.loads(fine.content[0].text)
+            preview = await client.call_tool("vixl_render", {"regoin": [0, 0, 8, 8], "max_width": 32})
+            job = await client.call_tool("vixl_job", {"action": "list", "wiat": 1})
+            fine = await client.call_tool("vixl_document", {})
+            return applied, preview, json.loads(job.content[0].text), json.loads(fine.content[0].text)
 
-    applied, preview, fine = asyncio.run(scenario())
-    (warning,) = applied["warnings"]
-    assert "'detial' (did you mean 'detail'?)" in warning and "'dryrun' (did you mean 'dry_run'?)" in warning
-    assert applied["success"] and applied["dry_run"] is False  # The misspelt option really was not applied.
-    assert preview.content[0].type == "image"
-    assert "'regoin' (did you mean 'region'?)" in json.loads(preview.content[-1].text)["warnings"][0]
-    assert "warnings" not in fine
+    applied, preview, job, fine = asyncio.run(scenario())
+    # Unadvertised arguments are options of the chosen action: a misspelt one is an error naming the right one,
+    # and nothing is applied.
+    assert applied.isError and "'detial' (did you mean 'detail'?)" in applied.content[0].text
+    assert "'dryrun' (did you mean 'dry_run'?)" in applied.content[0].text
+    assert preview.isError and "'regoin' (did you mean 'region'?)" in preview.content[0].text
+    assert fine["layers"] == []
+    # A tool without options still runs and warns about the argument it dropped.
+    assert "'wiat' (did you mean 'wait'?)" in job["warnings"][0]
 
 
 def test_create_and_export_make_missing_directories_over_mcp(tmp_path):
@@ -247,13 +249,13 @@ def test_create_and_export_make_missing_directories_over_mcp(tmp_path):
                 text = "".join(item.text for item in result.content)
                 return (True, text) if result.isError else json.loads(text)
 
-            made = await call("vixl_document_create", path="clients/acme/2026/poster.vixl", width=40, height=40)
+            made = await call("vixl_document", action="create", path="clients/acme/2026/poster.vixl", width=40, height=40)
             assert made["path"] == "clients/acme/2026/poster.vixl"
-            out = await call("vixl_export_file", path="clients/acme/out/final/poster.png")
+            out = await call("vixl_export", path="clients/acme/out/final/poster.png")
             assert out["path"] == "clients/acme/out/final/poster.png"
-            clash = await call("vixl_document_create", path="clients/acme/2026/poster.vixl/x.vixl", width=4, height=4)
+            clash = await call("vixl_document", action="create", path="clients/acme/2026/poster.vixl/x.vixl", width=4, height=4)
             assert clash[0]
-            escape = await call("vixl_document_create", path="../outside/a.vixl", width=4, height=4)
+            escape = await call("vixl_document", action="create", path="../outside/a.vixl", width=4, height=4)
             assert escape[0] and "outside the workspace" in escape[1]
 
     asyncio.run(scenario())

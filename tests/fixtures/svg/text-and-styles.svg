@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- In the style of an Illustrator export: a class stylesheet, gradients, symbols and use, text with tspans. -->
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+     width="320px" height="200px" viewBox="0 0 320 200" style="enable-background:new 0 0 320 200;" xml:space="preserve">
+<style type="text/css">
+  .st0{fill:#1d3557;}
+  .st1{fill:url(#sky);}
+  .st2{fill:#e63946;stroke:#ffffff;stroke-width:3;}
+  .label{font-family:'DejaVu Sans', sans-serif;font-size:18px;fill:#f1faee;}
+</style>
+<defs>
+  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#a8dadc"/>
+    <stop offset="1" stop-color="#457b9d"/>
+  </linearGradient>
+  <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+    <stop offset="0" style="stop-color:#ffd166"/>
+    <stop offset="1" style="stop-color:#ffd166;stop-opacity:0"/>
+  </radialGradient>
+  <symbol id="dot" viewBox="0 0 10 10"><circle cx="5" cy="5" r="5"/></symbol>
+</defs>
+<rect class="st1" width="320" height="120"/>
+<rect class="st0" y="120" width="320" height="80"/>
+<circle id="halo" cx="250" cy="50" r="40" fill="url(#glow)"/>
+<path id="badge" class="st2" d="M40,30 h60 a10,10 0 0 1 10,10 v30 a10,10 0 0 1 -10,10 h-60 a10,10 0 0 1 -10,-10 v-30 a10,10 0 0 1 10,-10 z"/>
+<use id="dot-a" xlink:href="#dot" x="150" y="140" width="20" height="20" fill="#f4a261"/>
+<use id="dot-b" xlink:href="#dot" x="180" y="140" width="20" height="20" fill="#2a9d8f"/>
+<text id="headline" class="label" x="160" y="170" text-anchor="middle">Live text</text>
+<text id="note" x="20" y="150" font-family="sans-serif" font-size="12" fill="#f1faee">
+  <tspan x="20" y="150">First line</tspan>
+  <tspan x="20" y="166">Second line</tspan>
+</text>
+<image id="swatch" x="260" y="140" width="32" height="24"
+       xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAMCAYAAABr5z2BAAAALElEQVR4nGP8f53hPwMeIL8TrzQDE15ZIsCoAQwMLIRCeV+LLW1dMGoAAwMA/8gIHIiDwXQAAAAASUVORK5CYII="/>
+</svg>

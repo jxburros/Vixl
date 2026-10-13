@@ -722,7 +722,7 @@ def _make_frames(project, name, rec, spec):
         require(key in spec, f"A frame needs {key} (or a layer or shape to follow)", field=key)
     columns = int(spec.get("columns", 1))
     gutter = float(spec.get("gutter", round(style["size"] * 1.5) if columns > 1 else 0))
-    if "gutter" not in spec and columns > 1 and state.get("design_defaults", {}).get("house_style_version", 2) >= 3:
+    if "gutter" not in spec and columns > 1:
         from .craft import space
         gutter = space(3, style["size"])
     rects = _column_rects(spec["x"], spec["y"], spec["width"], spec["height"], columns, gutter)

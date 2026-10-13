@@ -37,6 +37,7 @@ project with appropriate layers or input files. See each guide for complete crea
 | App animation package | `workflow app-animation-package --request package.json --workspace .` | [App animation packages](animation-authoring.md#app-animation-packages) |
 | Six-second loop | `template new video-tip -o tip.vixl --set title=… --set subtitle=… --set cta=…` (also `video-launch`, `video-event`) | [Short templates](animation-authoring.md#joint-pose-keys-and-short-templates) |
 | Readable source folder | `unpack design.vixl design-source`, `pack design-source design.vixl [--overwrite]` | [Reviewing in Git](#reviewing-editable-projects-in-git) |
+| Documents and tool calls from earlier releases | `convert OLD.vixl -o NEW.vixl [--look preserve\|current] [--dry-run] [--report R.json]`, `convert DIR --out OUTDIR`, `convert-batch OLD-CALLS.json` | [Converting](converting.md) |
 | Emoji catalog and packs | `emoji list --query wave`, `emoji template face --out smile.vixl`, `emoji export --destination discord --emojis 👋 --out pack.zip` | [Emoji](#emoji-024) |
 
 Since 0.19.0, `export --alpha auto|keep|flatten` controls supported image formats.
@@ -61,6 +62,8 @@ See [spacing checks and pixel animation](pixel-animation-spacing.md) for the 0.9
 See [design tools and template production](design-tools.md) for groups, clipping, shapes, styles, artboards, CSV rendering, measurements, and the other design operations.
 
 Global options can appear before or after the command: `--project FILE` / `-p FILE`, `--json`, `--allow-linked`, `--plugins`, `--max-pixels N`, `--version`. The default project is stored in the current directory's `.vixl-session.json`. Use explicit paths in CI and concurrent workflows. `vixl COMMAND --help` prints syntax for editing commands.
+
+**Output.** In a terminal a command prints a short human summary (`created a.vixl  800×600  bg #18283b`, `added text "title"`, `check failed — 1 error, 0 warnings` with one line per finding, `exported hello.png (16.2 KB)`); a result with no dedicated summary lists its main fields. When stdout is not a terminal (a pipe, a file, CI), or `--json` is given, or `VIXL_JSON=1` is set, the command prints the full JSON result exactly as before. Exit codes do not change. Errors are one `ERROR:` line on stderr (with suggestions appended in a terminal), or the JSON error with `--json` or `VIXL_JSON=1`.
 
 ## Installed application updates
 
@@ -94,8 +97,7 @@ next export of the unchanged document, in a new process, reads the frame back in
 | Command | Behavior |
 | --- | --- |
 | `new 1920x1080 -o poster.vixl --background '#111111'` | Create a project; refuses existing files unless `--overwrite` |
-| `open poster.vixl` | Select an existing project for this directory. A document saved before 0.21 reports, under `upgrade`, the layers that render differently now (effects on rotated/flipped/skewed layers, `temperature`/`tint`, open stroked shapes that were filled white) |
-| `upgrade [poster.vixl] [--report] [--pin-fills]` | Accept the 0.21 rendering for an older document and stop the notice; `--pin-fills` first gives open stroked shapes the explicit white fill they used to render with (one undoable revision); `--report` only lists the affected layers |
+| `open poster.vixl` | Select an existing project for this directory |
 | `save [copy.vixl]` | Save, or save as a new selected project |
 | `status`, `inspect [LAYER]`, `describe`, `layers [--full]` | JSON state, including resolved bounds; `layers` abbreviates long path data and point lists (`--full` or `inspect LAYER` shows them) |
 | `manifest`, `dependencies`, `reproduce --check` | List assets/fonts/providers; check current renderability |
@@ -117,6 +119,8 @@ vixl layer add image.png --name hero
 vixl add logo.png --name logo --linked
 vixl add photo.jpg --name hero --credit "Photo: Ana Ruiz" --license "CC0"
 vixl import https://images.example.com/cat.jpg --name cat --license "CC BY 4.0"
+vixl import artwork.svg --svg-mode auto    # SVG as editable layers; a Vixl SVG restores its document
+vixl import flyer.pdf --page 1             # a PDF page as editable text, paths and images
 vixl select-layer hero
 vixl layer rename hero portrait
 vixl layer duplicate portrait copy
@@ -284,7 +288,7 @@ vixl compact             # drop undo history and unused embedded files
 
 Presets save the active/target layer's complete effect stack. Applying one assigns fresh effect IDs and captures the current selection. Branches name movable tips; checkpoints are fixed. Checking out a checkpoint detaches history; create a branch to name subsequent work. Undo/redo moves the current branch tip; alternate history nodes remain available by ID. Transactions allow provisional edits across processes and commit as one undoable history entry. They do not hide provisional state from other clients of the same project.
 
-A document keeps every embedded file that some revision uses, so undo can restore a replaced image or an earlier font pairing; saving drops only files no revision references. `check` reports the files the current design does not use (an `info` finding of the `fonts` check, with `unused_assets`: each file's `asset`, `kind`, `bytes`, and `fonts` for a registered font no text, role or fallback uses). `vixl compact` (MCP `vixl_history(action="compact")`, REST `POST /history/compact`, Python `project.compact()`) is the explicit way to shed them: it discards all undo history, the redo stack, branches and checkpoints, unregisters unused fonts (`--keep-fonts` keeps them), and drops every embedded file the current design does not use. The design does not change. The result lists what went (`revisions_dropped`, `branches_dropped`, `checkpoints_dropped`, `fonts_unregistered`, `assets_dropped` with bytes, `bytes_dropped`); `--dry-run` (`dry_run: true`) reports without changing anything. Nothing compacts implicitly, and an open transaction must be committed or rolled back first.
+A document keeps every embedded file that some revision uses, so undo can restore a replaced image or an earlier font pairing; saving drops only files no revision references. `check` reports the files the current design does not use (an `info` finding of the `fonts` check, with `unused_assets`: each file's `asset`, `kind`, `bytes`, and `fonts` for a registered font no text, role or fallback uses). `vixl compact` (MCP `vixl_document(action='compact')`, REST `POST /history/compact`, Python `project.compact()`) is the explicit way to shed them: it discards all undo history, the redo stack, branches and checkpoints, unregisters unused fonts (`--keep-fonts` keeps them), and drops every embedded file the current design does not use. The design does not change. The result lists what went (`revisions_dropped`, `branches_dropped`, `checkpoints_dropped`, `fonts_unregistered`, `assets_dropped` with bytes, `bytes_dropped`); `--dry-run` (`dry_run: true`) reports without changing anything. Nothing compacts implicitly, and an open transaction must be committed or rolled back first.
 
 `batch` refuses output collisions and existing destinations, reports each input's result, and exits nonzero if any fail. Earlier successful outputs remain if a later item fails.
 
@@ -300,7 +304,7 @@ Use `palette list|show|add|apply`, `template list|show|add|new|apply`, `guidance
 
 `placeholders` (on by default) finds leftover template copy in what text draws, after variables: lorem ipsum, `TODO`/`TBD`/`XXX` markers, slot text such as "Your headline here" or "Headline goes here", and a `${name}` merge field that drew literally are `fix` warnings; a variable nothing defines is an error naming it (and, in production, the variant and input `row`); `{{name}}`, `[[name]]` or `<<name>>` from another tool's template is only `review`. `$${name}`, the escape for a literal `${name}`, is never flagged. brand.json `placeholders` adds regular expressions; mark intended text that only looks like a placeholder with `layer-intent LAYER --literal-text`. Unfilled layout and template slots stay the `blanks` check's. `check --artboards all --pages all --comps light dark` (or lists of names) checks every combination in one report: each finding names its `variant` and its message starts with it (`[artboard story] …`), `variants` gives each one's status and `coverage` what was checked; pages hidden from export need `--include-hidden`. With deck checks `--pages` keeps its meaning (the pages the deck review covers).
 
-`connected` (opt-in: `check --checks connected`, `--connect-tolerance 2`) looks inside every visible group that is one object (a mascot, a character, a prop built from shapes; charts, drawings, repeats and speech bubbles are skipped). The drawn ink of each direct part is compared on the canvas: parts whose ink touches or overlaps within the tolerance form one piece, the piece with the most ink is the main body, and every other part is a `connected` warning with its `gap` in pixels and its `group`. Text parts are ignored. A document with a timeline is checked at its poster, middle and last frames (`frame` names the one where a part first comes loose). Mark a part that floats on purpose (a spark, a thrown ball), or a group whose parts are separate by design, with `layer-intent detached_ok`. To look at one object alone, preview it with `isolate` (`vixl_render_preview(isolate=["cat"])`).
+`connected` (opt-in: `check --checks connected`, `--connect-tolerance 2`) looks inside every visible group that is one object (a mascot, a character, a prop built from shapes; charts, drawings, repeats and speech bubbles are skipped). The drawn ink of each direct part is compared on the canvas: parts whose ink touches or overlaps within the tolerance form one piece, the piece with the most ink is the main body, and every other part is a `connected` warning with its `gap` in pixels and its `group`. Text parts are ignored. A document with a timeline is checked at its poster, middle and last frames (`frame` names the one where a part first comes loose). Mark a part that floats on purpose (a spark, a thrown ball), or a group whose parts are separate by design, with `layer-intent detached_ok`. To look at one object alone, preview it with `isolate` (`vixl_render(isolate=["cat"])`).
 
 `cost` (opt-in: `check --checks cost`) draws the document once with empty caches and times every layer (a group's time excludes its children). A layer that takes over 10× the median layer and at least 50 ms is a `cost` warning with action `review`, its `ms`, the `median_ms`, the slowest `stage` (`draw`, `effects`, `transform`) and `causes` read from its fields (the largest blur radius, other effects, paint stroke and point counts, soft style blurs, very long text, repeated copies, a very large box). It does not fail a check; it says which layer to simplify or rasterize when renders, previews and timeline frames are slow.
 
@@ -321,8 +325,7 @@ vixl guide a mascot for a coffee brand   # approach, operations, layouts, looks,
 vixl guide operations                    # every operation by purpose, with summaries
 vixl looks                               # the finishing looks
 vixl house [show PURPOSE]                # the house style: craft, tiers, levels; or one purpose's profile
-vixl roll --for slides --variety high --lock tier=bold [--house-style 1|2|3]  # a tiered, purpose-weighted direction;
-                                         # house style 4 by default, 3 replays 0.24–0.26 rolls, 2 0.23, 1 0.20–0.22
+vixl roll --for slides --variety high --lock tier=bold  # a tiered, purpose-weighted direction
 vixl look LAYER glow [--color C] [--amount 0-1] [--remove]
 vixl radial-repeat LAYER --count 12 [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--no-group] [--name N]
 vixl layer-intent LAYER --allow-crop     # a deliberate edge crop: checks report it as informational
@@ -421,7 +424,7 @@ vixl catalog export --out catalog.json --section sizes --section checks
 
 ## Large batches and focused schemas
 
-`vixl apply operations.json` accepts JSON input up to 64 MiB; the same bound applies to inline JSON and stdin. Operation-count and document resource limits still apply, and a failing batch is atomic. `vixl --json schema text shape` returns only the requested operation schemas. Bare `schema` returns the full catalog.
+`vixl apply operations.json` accepts JSON input up to 64 MiB; the same bound applies to inline JSON and stdin. Operation-count and document resource limits still apply, and a failing batch is atomic. `vixl --json schema text shape` returns only the requested operation schemas. Bare `schema` returns the full catalog; `vixl schema document` returns the JSON Schema of a `.vixl` file's `project.json` ([file format](file-format.md)).
 
 Workflow request arguments accept a JSON file, `-` for stdin, or an inline JSON object. CLI workspace resources resolve from the current directory. Add `.vixl-session.json` to your repository's `.gitignore`; it records the local current-document session and is not a project source file. Shared MCP servers require an explicit document when closing a session with several documents open.
 

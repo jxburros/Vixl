@@ -2,7 +2,7 @@
 
     python -m evals.run                         # offline reference agent (no API key)
     python -m evals.run --agent claude          # Claude via the Anthropic SDK
-    python -m evals.run --agent claude --schema slim --effort low --tasks "photo-*"
+    python -m evals.run --agent claude --effort low --tasks "photo-*"
 """
 
 import argparse
@@ -18,8 +18,6 @@ def main(argv=None):
     parser.add_argument("--agent", choices=["reference", "claude"], default="reference")
     parser.add_argument("--model", default="claude-opus-5-5")
     parser.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"])
-    parser.add_argument("--schema", choices=["full", "slim"], default="slim", help="MCP schema mode under test")
-    parser.add_argument("--tools", choices=["all", "core"], default="core")
     parser.add_argument("--baseline", help="Stored task acceptance baseline to compare")
     parser.add_argument("--tasks", default="*", help="glob over task ids, e.g. 'photo-*'")
     parser.add_argument("--max-turns", type=int, default=40)
@@ -37,8 +35,8 @@ def main(argv=None):
         agent = ReferenceAgent()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    results, summary = run(tasks, agent, schema=args.schema, keep=out / "workspaces" if args.keep else None, tool_set=args.tools)
-    meta = {"agent": args.agent, "model": args.model if args.agent == "claude" else None, "effort": args.effort, "schema": args.schema, "tools": args.tools}
+    results, summary = run(tasks, agent, keep=out / "workspaces" if args.keep else None)
+    meta = {"agent": args.agent, "model": args.model if args.agent == "claude" else None, "effort": args.effort}
     (out / "results.json").write_text(json.dumps({"meta": meta, "summary": summary, "results": results}, indent=2, default=str), encoding="utf-8")
     regressions = []
     if args.baseline:

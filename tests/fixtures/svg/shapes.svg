@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A hand-written SVG in the style of a drawing program's export: shapes, strokes, transforms, groups. -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+     width="240" height="180" viewBox="0 0 120 90" version="1.1">
+  <title>Foreign shapes</title>
+  <rect id="paper" width="120" height="90" fill="#fdf6e3"/>
+  <g id="frames" inkscape:label="Frames">
+    <rect id="card" x="6" y="6" width="40" height="28" rx="5" fill="#268bd2" stroke="#073642" stroke-width="2"/>
+    <circle id="sun" cx="70" cy="20" r="12" fill="#b58900" fill-opacity="0.8"/>
+    <ellipse id="pond" cx="96" cy="22" rx="16" ry="9" fill="none" stroke="#2aa198" stroke-width="3"/>
+  </g>
+  <g id="faded" opacity="0.5">
+    <polygon id="roof" points="10,80 30,50 50,80" fill="#dc322f"/>
+    <polyline id="zigzag" points="56,80 64,60 72,80 80,60" fill="none" stroke="#6c71c4" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <line id="rule" x1="84" y1="44" x2="116" y2="44" stroke="#586e75" stroke-width="2" stroke-dasharray="4 2"/>
+  <path id="ring" fill-rule="evenodd" fill="#859900"
+        d="M100 52 a14 14 0 1 0 0.01 0 Z M100 59 a7 7 0 1 0 0.01 0 Z" transform="translate(-4 4)"/>
+  <rect id="tilted" x="-6" y="-4" width="12" height="8" fill="#d33682" transform="translate(70 70) rotate(30)"/>
+</svg>

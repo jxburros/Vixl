@@ -197,14 +197,14 @@ def test_real_mcp_stdio_handshake_and_tools(project_path):
                 initialized = await client.initialize()
                 assert initialized.serverInfo.name == "Vixl"
                 listed = await client.list_tools()
-                assert "vixl_operations_apply" in [t.name for t in listed.tools]
-                result = await client.call_tool("vixl_document_inspect", {})
+                assert "vixl_apply" in [t.name for t in listed.tools]
+                result = await client.call_tool("vixl_document", {})
                 assert not result.isError
                 result = await client.call_tool(
-                    "vixl_operations_apply", {"operations": [{"type": "move", "target": "logo", "y": 3}]}
+                    "vixl_apply", {"operations": [{"type": "move", "target": "logo", "y": 3}]}
                 )
                 assert not result.isError
-                result = await client.call_tool("vixl_render_preview", {})
+                result = await client.call_tool("vixl_render", {})
                 assert not result.isError and result.content[0].type == "image"
 
     asyncio.run(run())

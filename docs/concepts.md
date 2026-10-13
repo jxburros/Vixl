@@ -7,7 +7,7 @@
 ## Master and deliverable
 
 The `.vixl` file is your editable master, a portable ZIP archive holding document state,
-embedded assets and branching history. A PNG is a rendered deliverable; exporting it does
+embedded assets and branching history ([file format and JSON Schema](file-format.md)). A PNG is a rendered deliverable; exporting it does
 not replace the master. Retain both when handing off a project. Supported SVG, PDF and
 PowerPoint exports preserve some geometry and text, with explicit appearance fallbacks.
 To review a master in Git, `vixl unpack design.vixl design-source` writes its current state as a

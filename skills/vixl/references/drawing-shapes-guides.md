@@ -12,7 +12,7 @@ When a person gives you a photo or scan of their drawing, keep their lines and b
 {"type": "drawing", "action": "stroke", "target": "house", "points": [[960, 330], [960, 230], [1010, 230]]}
 ```
 
-- `import` (MCP: import the image with `vixl_import_image` first, then pass `asset`) cleans the
+- `import` (MCP: import the image with `import-image` first, then pass `asset`) cleans the
   photo into `NAME/ink` over a hidden, aligned `NAME/original`. `clean` re-runs it (`sensitivity`,
   `weight`, `ink: "original"` keeps the pencil colour, `despeckle`, `deskew`). The desk around a
   photographed sheet of paper is left out (`sheet: false` keeps it, for a border drawn along the photo's edge), and a page
@@ -28,7 +28,7 @@ When a person gives you a photo or scan of their drawing, keep their lines and b
   Bézier path per connected part (`NAME/part-001` … in reading order) instead of one polyline layer; `path-split`
   (`polygon` or `line`, `overlap`, `names`) separates shapes that touch or cross. `drawing report` returns
   `fidelity` (`iou`, `mismatch`): aim for `iou` ≥ 0.99 when asked for an exact recreation.
-- Before `fill`, call `vixl_workflow("drawing-report", {"target": "house"})`: it lists closed
+- Before `fill`, call `vixl_apply(workflow='drawing-report', request={"target": "house"})`: it lists closed
   regions with a point inside each (`point` on the canvas, `group_point` in the drawing's own
   coordinates), the drawing group's `offset`, `scale` and `rotation`, and how much of the original line
   work is kept. `fill` and `stroke` points are canvas positions by default, wherever the drawing has been
@@ -40,7 +40,7 @@ When a person gives you a photo or scan of their drawing, keep their lines and b
   paper shows between a fill and its line.
   `import`/`clean` keep the paper's extent; `settings.crop: true` crops to the ink.
 - After edits, check `preserved` (aim for ≥ 0.9 unless told to redraw) and look at
-  `vixl_workflow("drawing-compare", {"target": "house", "output": "compare.png"})` (original red,
+  `vixl_apply(workflow='drawing-compare', request={"target": "house", "output": "compare.png"})` (original red,
   result blue). `vixl_check(checks=["drawing"])` warns when original lines were lost.
 - Optional colouring with a provider: `vixl ai drawing-color house --prompt …` (CLI/Python).
 
@@ -87,7 +87,7 @@ One operation each, deterministic for `seed`: `haze` (a glow band behind a light
 `from`/`to`/`sag` or a `target` path, with glows), `bokeh` (soft light discs) and `reflection` (the layers above a
 `horizon` mirrored, rippled and faded below it; one raster layer that `{type: reflection, target: reflection}`
 re-renders after the scene changes). The first four make editable groups of vector shapes and gradients.
-`vixl_guide(brief)` returns `motifs` for a brief that implies a setting: the concrete things to draw (a cup with
+`vixl_reference(brief)` returns `motifs` for a brief that implies a setting: the concrete things to draw (a cup with
 steam, a lighthouse in filled water, strung lanterns, an irregular skyline) and the catalog shapes (`cup`, `steam`,
 `lighthouse`, `lantern`), presets and operations that draw them. Full reference: `docs/atmosphere.md`.
 
@@ -132,7 +132,7 @@ targeting the torn layer (the `-face` layer for a free sheet). Reference: `docs/
 jitter, `colors`/`tone_variation` and `exclude`. `merge: true` draws every copy as one path per tone
 (shape motifs), so large scatters stay within the layer limit. `pattern-scatter` makes a seamless
 tile: motifs crossing an edge get wrapped copies, the result reports `seam`, and `pattern` saves it
-for `pattern-fill` (`tile_variation` varies each repeat). In new documents (house style 4) a lower
+for `pattern-fill` (`tile_variation` varies each repeat). A lower
 `count` with the same seed keeps the first copies exactly in place, and `thin` (a share to keep, or
 `{count: N}`) removes the most crowded copies of an existing tile; use these for "fewer motifs" so the
 revision does not re-roll the pattern. `distribution: "poisson"` is the earlier layout. Fur: `preset: fur`, the `plush` look or
@@ -158,7 +158,7 @@ shape's content box (`content_bounds`: a speech bubble's body, a badge, a frame 
 by `margin`; `text` with `within` centres new text there.
 
 `vixl_check(checks=["guides", "alignment"])` reports near misses with the fixing move;
-`vixl_render_preview(guides=true)` draws them. Full reference: `docs/guides.md`.
+`vixl_render(guides=true)` draws them. Full reference: `docs/guides.md`.
 
 
 ### Field-report corrections

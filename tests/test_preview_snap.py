@@ -19,15 +19,23 @@ def document():
 
 
 def counting(monkeypatch):
+    """Every exact fractional placement: a translating resample, or vector content drawn at its place."""
     calls = []
-    original = render_module.warp
+    original, drawing = render_module.warp, render_module.redrawn
 
     def warp(image, size, data, sampling):
         if tuple(data[:2]) == (1, 0) and tuple(data[3:5]) == (0, 1):
             calls.append(data)  # a pure translation: the fractional-placement resample
         return original(image, size, data, sampling)
 
+    def redrawn(redraw, size, matrix, box):
+        result = drawing(redraw, size, matrix, box)
+        if result is not None:
+            calls.append(matrix)
+        return result
+
     monkeypatch.setattr(render_module, "warp", warp)
+    monkeypatch.setattr(render_module, "redrawn", redrawn)
     return calls
 
 
@@ -50,9 +58,12 @@ def test_snapped_preview_stays_close_to_the_exact_one():
     # Ink lands within half a pixel of where it belongs.
     for image in (snapped, exact):
         assert (image < 200).sum() > 1000
-    ys, xs = np.nonzero(snapped < 128)
-    ye, xe = np.nonzero(exact < 128)
-    assert abs(xs.mean() - xe.mean()) < 0.5 and abs(ys.mean() - ye.mean()) < 0.5
+    # Centroids of the ink (weighted by how dark each pixel is), so a sharper edge in one of the two
+    # renders does not move the result by changing how many pixels pass a threshold.
+    ys, xs = np.mgrid[0:snapped.shape[0], 0:snapped.shape[1]]
+    for axis in (xs, ys):
+        assert abs((axis * (255 - snapped)).sum() / (255 - snapped).sum()
+                   - (axis * (255 - exact)).sum() / (255 - exact).sum()) < 0.5
 
 
 def test_full_size_render_and_export_keep_exact_placement(monkeypatch):

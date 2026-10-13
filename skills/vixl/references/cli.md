@@ -8,7 +8,7 @@ vixl                      # interactive shell (don't use from an agent; use comm
 vixl COMMAND --help       # exact argument syntax for any editing command
 ```
 
-**Global options** (before or after the command): `--project/-p FILE`, `--json` (structured
+**Global options** (before or after the command): `--project/-p FILE`, `--json` (JSON results in a terminal, structured
 errors on stderr), `--allow-linked` (trust linked file references), `--plugins` (enable installed
 filter/provider entry points — trusted code), `--max-pixels N`, `--detail brief|compact|full`, `--version`.
 
@@ -16,7 +16,7 @@ Agent conventions:
 
 - Always pass `-p FILE.vixl`. Without it Vixl uses the project recorded by `vixl open` in
   `./.vixl-session.json`.
-- Add `--json` so errors are machine-readable: `{"error":"layer_not_found","message":…,"suggestions":[…]}`, exit 1.
+- Results are full JSON whenever stdout is not a terminal (an agent's shell is not); in a terminal they are a short summary unless `--json` or `VIXL_JSON=1` is set. Add `--json` so errors are machine-readable too: `{"error":"layer_not_found","message":…,"suggestions":[…]}`, exit 1.
 - Editing commands autosave and print a compact result (changed values keyed by layer ID); `--detail full` adds
   before/after snapshots.
 - Quote `#` colors (`'#ff8800'`), JSON arguments, and text.
@@ -253,7 +253,7 @@ vixl apply ops.json [--dry-run]          # or: cat ops.json | vixl apply -
 vixl apply ops.json --check --preview p.png   # also check the result and write a 512 px preview
 vixl apply ops.json --check --suites         # also run every attached check suite (or name them)
 vixl run script.vixlscript               # one editing command per line, # comments; atomic
-vixl compose --request req.json [--preview p.png] [--workspace DIR]   # vixl_compose: create → … → exports, atomic
+vixl compose --request req.json [--preview p.png] [--workspace DIR]   # vixl_apply(create=…): create → … → exports, atomic
 vixl batch './photos/*.jpg' --run cleanup.vixlscript --output ./processed [--format png]
 vixl each layer --type raster --name 'card-*' -- saturation -10
 vixl transaction begin ; …edits… ; vixl transaction commit   # or rollback; one undo step
@@ -308,10 +308,9 @@ vixl ai remove --as removed ; vixl ai content-aware-fill --prompt '…' ; vixl a
 
 ```bash
 vixl -p F.vixl serve [--host 127.0.0.1] [--port 8765] [--token-env VIXL_API_TOKEN]
-vixl mcp --workspace DIR [--tools core|ai|compact|all] [--schema slim|full] [--require-document]   # MCP over stdio; default core + slim; core + ai run as two servers; --require-document (or VIXL_REQUIRE_DOCUMENT=1) makes document= mandatory
+vixl mcp --workspace DIR [--tools default|ai] [--require-document]   # MCP over stdio: seven design tools; --tools ai runs the provider tools as a second server; --require-document (or VIXL_REQUIRE_DOCUMENT=1) makes document= mandatory
 vixl update --check | vixl update | vixl update --rollback ; vixl updates status|on|off   # Windows installer only
 vixl cache info | vixl cache clear   # disk render cache (VIXL_RENDER_CACHE=off, VIXL_CACHE_MAX_MB=256); VIXL_PROFILE=1 adds render_profile to results
-vixl upgrade old.vixl [--report] [--pin-fills]   # document saved before 0.21: list layers that render differently; --pin-fills restores white open-shape fills
 ```
 
 ## Sizes, layouts, color, print, brushes and motion (0.13)
@@ -347,7 +346,7 @@ vixl -p promo.vixl export-timeline --out banner.gif --colors 64 --fps 12   # sma
 
 Times: ms, `1.5s`, `250ms`, `50%`, or a marker (`vixl marker reveal 1.2s`).
 
-`vixl new` documents roll house style 3, so a new timeline of 10 s or less loops seamlessly (and warns about loop
+A new timeline of 10 s or less loops seamlessly (and warns about loop
 seams); for a play-once sequence use `timeline set --duration 3s --loop 1`, or `timeline set --loop-mode off` once the
 timeline exists. Since 0.24.1 the other 0.24 fields have flags too: `animate --intent entrance|exit|loop|emphasis`,
 `timeline set --loop-mode seamless|off [--close]`, `frame --frame-shape heart` or `--outline 'M… Z'`,
@@ -358,9 +357,11 @@ timeline exists. Since 0.24.1 the other 0.24 fields have flags too: `animate --i
 
 Use `schema text shape` for focused schemas, inline JSON or stdin for workflow requests, and batches up to 64 MiB. Workspace resources use the CLI current directory. Ignore `.vixl-session.json` in Git. Multi-size copies: `adapt-layout --sizes instagram-post story --directory out --formats png`; review each output. Layout recomposition: `adapt-layout --size story --recompose` (or `--options '{"recompose": true}'` with `--sizes`).
 
+A document saved by 0.26 or earlier opens after `vixl convert OLD.vixl -o NEW.vixl [--look preserve|current] [--dry-run] [--report R.json]` (a folder: `vixl convert DIR --out OUTDIR`); saved MCP calls convert with `vixl convert-batch OLD.json`. Nothing is overwritten without `--overwrite`.
+
 For Git review, `unpack design.vixl design-source` writes current state as stable JSON (`project.json`, with asset hashes) plus asset files into a new folder; `pack design-source reviewed.vixl [--overwrite]` validates paths, sizes and hashes and writes a portable archive. History and history-only assets are intentionally omitted; registered fonts are kept. Keep the original for undo and commit external linked sources too.
 
-Emoji: `vixl emoji list|get|template|replace|install|settings|reset|requirements|destinations|export` (`vixl -p F.vixl emoji settings --mode font` prefers the font; bundled art is the default). House style: `vixl roll --house-style 2` replays a 0.23 roll (`1`: 0.20–0.22); documents keep the version they were created with.
+Emoji: `vixl emoji list|get|template|replace|install|settings|reset|requirements|destinations|export` (`vixl -p F.vixl emoji settings --mode font` prefers the font; bundled art is the default). House style: `vixl roll` rolls from the current house style.
 
 `screen-capture` is a shared workflow action with output PNG, optional desktop bbox, Windows window HWND/all_screens and overwrite. It needs an interactive desktop and any OS-required permission. `app-animation-package` takes named source states, a default state, themes, transitions and a new output directory; see production guidance.
 

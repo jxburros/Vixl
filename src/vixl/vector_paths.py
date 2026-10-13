@@ -226,6 +226,11 @@ def pixel_path(layer, distort=True):
 
     shape = layer["shape"]
     if shape in ("rectangle", "rounded-rectangle", "capsule", "ellipse", "line"):
+        from .shape_catalog import active as catalog_active
+
+        if shape == "rectangle" and "radius" in layer and not catalog_active(layer):
+            # A plain rectangle has square corners in every renderer; radius rounds rounded-rectangles.
+            layer = {k: v for k, v in layer.items() if k != "radius"}
         path = catalog_path(layer)
     else:
         path, view = shape_path({k: v for k, v in layer.items() if k != "distort"})

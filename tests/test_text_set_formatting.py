@@ -162,16 +162,18 @@ def test_mcp_explains_the_split_in_the_tool_description_and_schema_lookup(tmp_pa
 
     async def run():
         tools = {t.name: t for t in await server.list_tools()}
-        result = await server.call_tool("vixl_operation_schema", {"types": ["text-set", "text-style"]})
+        result = await server.call_tool("vixl_reference", {"topic": "operations", "name": ["text-set", "text-style"]})
         content = result[0] if isinstance(result, tuple) else result
-        return tools, "".join(getattr(item, "text", "") for item in content)
+        guide = await server.call_tool("vixl_reference", {"topic": "batches"})
+        guide = guide[0] if isinstance(guide, tuple) else guide
+        return tools, "".join(getattr(item, "text", "") for item in content), json.loads(guide[0].text)["text"]
 
-    tools, text = asyncio.run(run())
-    assert "text-set changes a whole text layer" in tools["vixl_operations_apply"].description
+    tools, text, batches = asyncio.run(run())
+    assert "text-set changes a whole text layer" in batches
     schemas = json.loads(text)
     assert "text-style" in schemas["text-set"]["description"] and "text-set" in schemas["text-style"]["description"]
-    inline = json.dumps(tools["vixl_operations_apply"].inputSchema)
-    assert "Change a whole text layer" not in inline  # prose stays out of tools/list; vixl_operation_schema has it
+    inline = json.dumps(tools["vixl_apply"].inputSchema)
+    assert "Change a whole text layer" not in inline  # prose stays out of tools/list; vixl_reference has it
 
 
 def test_text_set_font_goes_through_the_batch_font_rules(tmp_path):

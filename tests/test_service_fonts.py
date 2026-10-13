@@ -75,7 +75,7 @@ def test_unregistered_font_names_point_to_the_install_path(session):
         session.apply([{"type": "solid", "name": "bg"}, {"type": "text", "text": "x", "font": "serif-4000"}])
     error = caught.value.as_dict()
     assert error["error"] == "missing_font" and error["field"] == "font" and error["operation_index"] == 1
-    assert error["suggestions"] == ["serif-400"] and "vixl_font_install" in error["message"]
+    assert error["suggestions"] == ["serif-400"] and "font-install" in error["message"]
     assert "heading" in error["allowed"] and "serif-400" in error["allowed"]
     with session.project() as project:
         assert project.state["layers"] == []  # nothing from the failed batch was kept
@@ -94,7 +94,7 @@ def test_font_files_are_still_refused_everywhere_a_font_can_be_named(session, tm
         with pytest.raises(VixlError) as caught:
             session.apply([operation])
         assert caught.value.code == "forbidden", operation
-        assert "vixl_font_install" in str(caught.value)
+        assert "font-install" in str(caught.value)
     with pytest.raises(VixlError) as caught:
         session.apply([{"type": "add", "path": "outside.png"}])  # path/linked stay refused
     assert caught.value.code == "forbidden"
@@ -102,20 +102,20 @@ def test_font_files_are_still_refused_everywhere_a_font_can_be_named(session, tm
 
 def test_mcp_batch_with_font_schema_and_errors(tmp_path):
     server = mcp_server(workspace=tmp_path)
-    call(server, "vixl_document_create", {"path": "a.vixl", "width": 200, "height": 100})
+    call(server, "vixl_document", {"action": "create", "path": "a.vixl", "width": 200, "height": 100})
     data = DEJAVU.read_bytes()
     asset = f"fonts/{hashlib.sha256(data).hexdigest()}.ttf"
     project = Project.load(tmp_path / "a.vixl")
     project.assets[asset] = data
     project.apply([{"type": "font-register", "name": "body-font", "asset": asset}])
     project.save(tmp_path / "a.vixl")
-    failed, text = call(server, "vixl_operations_apply", {"operations": [
+    failed, text = call(server, "vixl_apply", {"operations": [
         {"type": "text", "name": "t", "text": "hello", "font": "body-font"},
         {"type": "text-set", "target": "t", "font": "body-font", "size": 30}]})
     assert not failed and json.loads(text)["success"]
-    failed, text = call(server, "vixl_operations_apply", {"operations": [{"type": "text", "text": "a", "font": "/etc/passwd"}]})
-    assert failed and error_payload(text)["error"] == "forbidden" and "vixl_font_install" in error_payload(text)["message"]
-    failed, text = call(server, "vixl_operation_schema", {"types": ["text", "text-set"]})
+    failed, text = call(server, "vixl_apply", {"operations": [{"type": "text", "text": "a", "font": "/etc/passwd"}]})
+    assert failed and error_payload(text)["error"] == "forbidden" and "font-install" in error_payload(text)["message"]
+    failed, text = call(server, "vixl_reference", {"topic": "operations", "name": ["text", "text-set"]})
     schema = json.loads(text)
     for kind in ("text", "text-set"):
         assert "Registered font name" in schema[kind]["properties"]["font"]["description"]
@@ -124,5 +124,7 @@ def test_mcp_batch_with_font_schema_and_errors(tmp_path):
     async def tools():
         return {t.name: t for t in await server.list_tools()}
 
-    inline = asyncio.run(tools())["vixl_operations_apply"]
-    assert '"font"' in json.dumps(inline.inputSchema) and "registered font name" in inline.description
+    inline = asyncio.run(tools())["vixl_apply"]
+    assert "vixl_reference('operations'" in json.dumps(inline.inputSchema)
+    guide = call(server, "vixl_reference", {"topic": "batches"})[1]
+    assert "registered font name" in json.loads(guide)["text"]

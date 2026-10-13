@@ -67,9 +67,9 @@ def test_slow_call_becomes_a_job_and_still_applies_once(tmp_path, monkeypatch):
     slow(monkeypatch, 0.8)
 
     async def scenario(client):
-        pointer = await client.call("vixl_operations_apply", **apply_move(7))
+        pointer = await client.call("vixl_apply", **apply_move(7))
         assert pointer["status"] == "running" and pointer["job"].startswith("job_")
-        assert "vixl_job" in pointer["message"] and pointer["tool"] == "vixl_operations_apply"
+        assert "vixl_job" in pointer["message"] and pointer["tool"] == "vixl_apply"
         # The event loop stays free: the job can be asked about while the edit is still running.
         early = await client.call("vixl_job", id=pointer["job"])
         assert early["status"] in ("queued", "running")
@@ -92,7 +92,7 @@ def test_as_job_returns_at_once_and_cancel_stops_a_queued_or_running_batch(tmp_p
 
     async def scenario(client):
         started = time.monotonic()
-        pointer = await client.call("vixl_operations_apply", as_job=True, **apply_move(9))
+        pointer = await client.call("vixl_apply", as_job=True, **apply_move(9))
         assert time.monotonic() - started < 3 and pointer["status"] in ("queued", "running")
         cancelled = await client.call("vixl_job", action="cancel", id=pointer["job"])
         assert cancelled["id"] == pointer["job"]
@@ -109,22 +109,22 @@ def test_request_id_replays_the_first_result_instead_of_applying_twice(tmp_path)
     server, session = prepared(tmp_path)
 
     async def scenario(client):
-        first = await client.call("vixl_operations_apply", request_id="r1",
+        first = await client.call("vixl_apply", request_id="r1",
                                   operations=[{"type": "move", "target": "t", "x": 3, "relative": True}])
-        again = await client.call("vixl_operations_apply", request_id="r1",
+        again = await client.call("vixl_apply", request_id="r1",
                                   operations=[{"type": "move", "target": "t", "x": 3, "relative": True}])
         assert "replayed" not in first and again["replayed"] is True and again["request_id"] == "r1"
         assert again["changes"] == first["changes"]
-        misuse = await client.call("vixl_operations_apply", request_id="r1", operations=[{"type": "hide", "target": "t"}])
+        misuse = await client.call("vixl_apply", request_id="r1", operations=[{"type": "hide", "target": "t"}])
         assert misuse[0] and "already used" in misuse[1]
         # A failed call is not remembered, so the retry runs.
-        bad = await client.call("vixl_operations_apply", request_id="r2", operations=[{"type": "move", "target": "nope", "x": 1}])
+        bad = await client.call("vixl_apply", request_id="r2", operations=[{"type": "move", "target": "nope", "x": 1}])
         assert bad[0]
-        good = await client.call("vixl_operations_apply", request_id="r2", operations=[{"type": "move", "target": "t", "x": 1}])
+        good = await client.call("vixl_apply", request_id="r2", operations=[{"type": "move", "target": "t", "x": 1}])
         assert good["success"]
         # Document-level tools take it too.
-        made = await client.call("vixl_document_create", path="b.vixl", width=10, height=10, request_id="c1")
-        again = await client.call("vixl_document_create", path="b.vixl", width=10, height=10, request_id="c1")
+        made = await client.call("vixl_document", action="create", path="b.vixl", width=10, height=10, request_id="c1")
+        again = await client.call("vixl_document", action="create", path="b.vixl", width=10, height=10, request_id="c1")
         assert again["replayed"] and made["path"] == "b.vixl"
 
     run(server, scenario)
@@ -140,14 +140,14 @@ def test_retry_of_a_running_call_points_at_its_job(tmp_path, monkeypatch):
     slow(monkeypatch, 0, release)
 
     async def scenario(client):
-        first = await client.call("vixl_operations_apply", request_id="slow", **apply_move(11))
+        first = await client.call("vixl_apply", request_id="slow", **apply_move(11))
         assert first["status"] == "running"
-        retry = await client.call("vixl_operations_apply", request_id="slow", **apply_move(11))
+        retry = await client.call("vixl_apply", request_id="slow", **apply_move(11))
         assert retry["job"] == first["job"] and "still running" in retry["message"]
         release.set()
         done = await client.call("vixl_job", action="result", id=first["job"], wait=10)
         assert done["status"] == "completed"
-        replay = await client.call("vixl_operations_apply", request_id="slow", **apply_move(11))
+        replay = await client.call("vixl_apply", request_id="slow", **apply_move(11))
         assert replay["replayed"] is True
 
     run(server, scenario)
@@ -164,7 +164,7 @@ def test_batches_report_progress_notifications(tmp_path):
     async def scenario(client):
         operations = [{"type": "shape", "shape": "rectangle", "name": f"s{i}", "width": 5, "height": 5, "x": i}
                       for i in range(40)]
-        result = await client.call("vixl_operations_apply", operations=operations, _progress=collect)
+        result = await client.call("vixl_apply", operations=operations, _progress=collect)
         assert result["success"]
 
     run(server, scenario)
@@ -216,31 +216,31 @@ def test_active_document_is_per_client_and_results_name_the_document(tmp_path):
         async with create_connected_server_and_client_session(server._mcp_server) as one:
             async with create_connected_server_and_client_session(server._mcp_server) as two:
                 a, b = Client(one), Client(two)
-                made = await a.call("vixl_document_create", path="a.vixl", width=100, height=50)
+                made = await a.call("vixl_document", action="create", path="a.vixl", width=100, height=50)
                 assert made["path"] == "a.vixl"
-                await b.call("vixl_document_create", path="b.vixl", width=300, height=200)
+                await b.call("vixl_document", action="create", path="b.vixl", width=300, height=200)
                 # Each client's own call lands on its own document, and says so.
-                seen_a = await a.call("vixl_document_inspect")
-                seen_b = await b.call("vixl_document_inspect")
+                seen_a = await a.call("vixl_document")
+                seen_b = await b.call("vixl_document")
                 assert seen_a["document"] == "a.vixl" and seen_a["canvas"]["width"] == 100
                 assert seen_b["document"] == "b.vixl" and seen_b["canvas"]["width"] == 300
-                edit = await a.call("vixl_operations_apply", operations=[{"type": "solid", "name": "bg"}])
+                edit = await a.call("vixl_apply", operations=[{"type": "solid", "name": "bg"}])
                 assert edit["document"] == "a.vixl"
-                assert not (await b.call("vixl_document_inspect"))["layers"]
+                assert not (await b.call("vixl_document"))["layers"]
                 # Opening another document moves only this client's active document.
-                await b.call("vixl_document_open", path="a.vixl")
-                assert (await b.call("vixl_document_inspect"))["document"] == "a.vixl"
-                assert (await a.call("vixl_document_inspect"))["document"] == "a.vixl"
-                await a.call("vixl_document_open", path="b.vixl")
-                assert (await b.call("vixl_document_inspect"))["document"] == "a.vixl"
+                await b.call("vixl_document", action="open", path="a.vixl")
+                assert (await b.call("vixl_document"))["document"] == "a.vixl"
+                assert (await a.call("vixl_document"))["document"] == "a.vixl"
+                await a.call("vixl_document", action="open", path="b.vixl")
+                assert (await b.call("vixl_document"))["document"] == "a.vixl"
                 # A client that never opened anything has no active document.
                 async with create_connected_server_and_client_session(server._mcp_server) as three:
-                    failed = await Client(three).call("vixl_document_inspect")
+                    failed = await Client(three).call("vixl_document")
                     assert failed[0] and "no_project" in failed[1]
                     # An explicit document= still works and is named.
-                    named = await Client(three).call("vixl_document_inspect", document="b.vixl")
+                    named = await Client(three).call("vixl_document", document="b.vixl")
                     assert named["document"] == "b.vixl"
-                preview = await one.call_tool("vixl_render_preview", {"max_width": 64, "max_height": 64})
+                preview = await one.call_tool("vixl_render", {"max_width": 64, "max_height": 64})
                 assert preview.content[0].type == "image"
                 assert json.loads(preview.content[-1].text) == {"document": "b.vixl"}
 
@@ -251,16 +251,16 @@ def test_require_document_makes_document_mandatory(tmp_path, monkeypatch):
     server = mcp_server(workspace=tmp_path, require_document=True)
 
     async def scenario(client):
-        made = await client.call("vixl_document_create", path="a.vixl", width=40, height=40)
+        made = await client.call("vixl_document", action="create", path="a.vixl", width=40, height=40)
         assert made["path"] == "a.vixl"
-        failed = await client.call("vixl_document_inspect")
+        failed = await client.call("vixl_document")
         assert failed[0] and "document_required" in failed[1] and "--require-document" in failed[1]
-        failed = await client.call("vixl_operations_apply", operations=[{"type": "solid", "name": "x"}])
+        failed = await client.call("vixl_apply", operations=[{"type": "solid", "name": "x"}])
         assert failed[0] and "document_required" in failed[1]
-        ok = await client.call("vixl_operations_apply", document="a.vixl", operations=[{"type": "solid", "name": "x"}])
+        ok = await client.call("vixl_apply", document="a.vixl", operations=[{"type": "solid", "name": "x"}])
         assert ok["document"] == "a.vixl" and ok["success"]
-        assert (await client.call("vixl_document_close"))[0]
-        assert "active" in await client.call("vixl_document_close", document="a.vixl")
+        assert (await client.call("vixl_document", action="close"))[0]
+        assert "active" in await client.call("vixl_document", action="close", document="a.vixl")
 
     run(server, scenario)
     assert "document=" in server.instructions
@@ -288,45 +288,23 @@ def test_session_scopes_active_document_by_client_context(tmp_path):
     assert session.relative(session.path) == "shared.vixl"  # Outside MCP nothing changed.
 
 
-def test_compact_tool_set_polls_jobs_through_the_workflow_tool(tmp_path, monkeypatch):
-    server = mcp_server(workspace=tmp_path, tools="compact")
-    session = server.vixl_runtime.session
-    session.create("a.vixl", 100, 100)
-    session.apply([{"type": "text", "name": "t", "text": "Hi", "x": 1, "y": 1}])
-    server.vixl_runtime.inline_seconds = 0.2
-    slow(monkeypatch, 0.6)
-
-    async def scenario(client):
-        pointer = await client.call("vixl_operations_apply", **apply_move(4))
-        assert pointer["status"] == "running" and "vixl_workflow" in pointer["message"]
-        server.vixl_runtime.inline_seconds = 10  # A poll that waits must not itself become a job.
-        done = await client.call("vixl_workflow", action="status", request={"id": pointer["job"], "wait": 10})
-        assert done["status"] == "completed" and done["result"]["success"]
-        failed = await client.call("vixl_workflow", action="cancel", request={"id": "job_unknown"})
-        assert failed[0]
-
-    run(server, scenario)
-    assert session.inspect()["layers"][0]["x"] == 4
-
-
 def test_instructions_describe_jobs_and_ids(tmp_path):
     assert "vixl_job" in mcp_server(workspace=tmp_path).instructions
     assert "vixl_job" in mcp_server(workspace=tmp_path, tools="ai").instructions
-    assert "vixl_workflow" in mcp_server(workspace=tmp_path, tools="compact").instructions
     assert "request_id" in mcp_server(workspace=tmp_path).instructions
 
 
 def test_tool_schemas_offer_request_id_and_as_job_only_where_they_help(tmp_path):
     async def scenario():
         tools = {t.name: t for t in await mcp_server(workspace=tmp_path).list_tools()}
-        apply = tools["vixl_operations_apply"].inputSchema["properties"]
+        apply = tools["vixl_apply"].inputSchema["properties"]
         assert {"request_id", "as_job"} <= set(apply) and "ctx" not in apply
-        assert "request_id" in tools["vixl_document_create"].inputSchema["properties"]
-        assert "as_job" not in tools["vixl_document_create"].inputSchema["properties"]
-        # vixl_export_file already has a background colour: the job flag must not collide with it.
-        export = tools["vixl_export_file"].inputSchema["properties"]
-        assert export["background"]["default"] == "white" and "as_job" in export
-        for name in ("vixl_job", "vixl_render_preview", "vixl_document_inspect"):
+        assert "request_id" in tools["vixl_document"].inputSchema["properties"]
+        assert "as_job" not in tools["vixl_document"].inputSchema["properties"]
+        export = tools["vixl_export"].inputSchema["properties"]
+        assert {"request_id", "as_job"} <= set(export)
+        assert "as_job" in tools["vixl_check"].inputSchema["properties"]
+        for name in ("vixl_job", "vixl_render", "vixl_reference"):
             assert not {"request_id", "as_job"} & set(tools[name].inputSchema["properties"])
 
     asyncio.run(scenario())

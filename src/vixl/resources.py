@@ -413,7 +413,7 @@ def execute_resource(project, op):
         explicit_palette = "palette" in op
         op = sparse_options(project, op)
         # Every template receives a reproducible direction; explicit and brand roles win.
-        role_options = {k: op[k] for k in ("palette", "mode", "direction", "_house_style_version") if k in op}
+        role_options = {k: op[k] for k in ("palette", "mode", "direction") if k in op}
         if explicit_palette:
             role_options["policy"] = "strict"
         if kit.get("palette") and not explicit_palette:

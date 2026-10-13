@@ -443,20 +443,20 @@ def test_workflow_links_action_over_mcp_and_rest(tmp_path):
         content = result[0] if isinstance(result, tuple) else result
         return json.loads("".join(getattr(item, "text", "") for item in content))
 
-    asyncio.run(call("vixl_document_create", {"path": "a.vixl", "width": 300, "height": 200}))
-    asyncio.run(call("vixl_operations_apply", {"operations": [{"type": "link", "source": "tile.vixl", "name": "t"}]}))
-    listing = asyncio.run(call("vixl_workflow", {"action": "links", "request": {}}))
+    asyncio.run(call("vixl_document", {"action": "create", "path": "a.vixl", "width": 300, "height": 200}))
+    asyncio.run(call("vixl_apply", {"operations": [{"type": "link", "source": "tile.vixl", "name": "t"}]}))
+    listing = asyncio.run(call("vixl_apply", {"workflow": "links", "request": {}}))
     assert listing["count"] == 1 and listing["links"][0]["state"] == "ok"
-    summary = asyncio.run(call("vixl_document_inspect", {}))
+    summary = asyncio.run(call("vixl_document", {}))
     assert summary["layers"][0]["source"] == "tile.vixl" and summary["links"] == {"count": 1}
     make_tile(tmp_path / "tile.vixl", fill="#112233")
-    assert asyncio.run(call("vixl_workflow", {"action": "links", "request": {}}))["stale"] == 1
-    summary = asyncio.run(call("vixl_document_inspect", {}))
+    assert asyncio.run(call("vixl_apply", {"workflow": "links", "request": {}}))["stale"] == 1
+    summary = asyncio.run(call("vixl_document", {}))
     assert summary["links"]["stale"] == 1 and summary["links"]["problems"][0]["layer"] == "t"
     checked = asyncio.run(call("vixl_check", {"checks": ["links"]}))
     assert checked["passed"] and checked["warnings"] == 1 and checked["issues"][0]["check"] == "links"
-    assert asyncio.run(call("vixl_operations_apply", {"operations": [{"type": "link-refresh"}]}))["success"]
-    assert asyncio.run(call("vixl_workflow", {"action": "links", "request": {}}))["links"][0]["state"] == "ok"
+    assert asyncio.run(call("vixl_apply", {"operations": [{"type": "link-refresh"}]}))["success"]
+    assert asyncio.run(call("vixl_apply", {"workflow": "links", "request": {}}))["links"][0]["state"] == "ok"
 
 
 def test_placement_geometry():

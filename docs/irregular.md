@@ -20,7 +20,7 @@ Both are undone by normal history, regrown with a new `seed`, and removed with `
 
 ## When not to use it
 
-These rules are also the `imperfection` guidance, which `vixl_guide("imperfection")` returns and the
+These rules are also the `imperfection` guidance, which `vixl_reference("imperfection")` returns and the
 character, scene, pattern and hand-drawing guides point to.
 
 Use it on a few chosen things, not as a finish for the whole document. Imperfection helps where
@@ -59,7 +59,7 @@ vixl irregular leaves --seed 3 --only placement color     # micro variation for 
 
 `target` (or `targets`) names layers; a group stands for all the vector layers inside it, so one
 operation varies a whole set, each layer on its own stream of the seed. Over MCP send the JSON form
-through `vixl_operations_apply`; `vixl_operation_schema(types=["irregular", "tear"])` lists the
+through `vixl_apply`; `vixl_reference('operations', name=["irregular", "tear"])` lists the
 fields with their bounds and descriptions.
 
 | Field | Meaning |

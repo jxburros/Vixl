@@ -1,4 +1,4 @@
-"""vixl_roll with apply leaves unfilled slots out, so the applied direction passes check."""
+"""A roll that applies its direction leaves unfilled slots out, so the applied direction passes check."""
 
 import pytest
 
