@@ -31,27 +31,54 @@ def gradient_image(project, layer, size):
         arr[..., :3] *= 255 / np.maximum(arr[..., 3:], 1)
         return np.clip(arr, 0, 255)
 
+    if direction in ("horizontal", "vertical"):
+        return Image.fromarray(linear_ramp(values(x[0] if direction == "horizontal" else y[:, 0]), w, h, direction))
     # Float work in bands of rows, so a large canvas never holds several float64 copies of itself.
     result = np.empty((h, w, 4), dtype=np.uint8)
     band = max(1, (1 << 18) // max(1, w))
-    # A linear ramp repeats one row or column: compute its colours once.
-    line = values(x[0] if direction == "horizontal" else y[:, 0]) if direction not in ("radial", "angled") else None
+    # Opaque stops leave alpha alone and a channel the stops share is a whole number: only the others vary.
+    opaque = bool(np.all(colors[:, 3] == 255))
+    wide = np.tile(dither_tile(), (1, w // DITHER + 1))[:, :w]
+    constant = [bool(np.all(colors[:, i] == colors[0, i]) and colors[0, i] == int(colors[0, i])) for i in range(4)]
     for top in range(0, h, band):
         rows = y[top:top + band]
         if direction == "radial":
             cx, cy = layer.get("center", (0.5, 0.5))
-            arr = values(np.sqrt((2 * (x - cx)) ** 2 + (2 * (rows - cy)) ** 2))
-        elif direction == "angled":
+            ramp = np.sqrt((2 * (x - cx)) ** 2 + (2 * (rows - cy)) ** 2)
+        else:
             a = math.radians(layer.get("angle", 0))
             dx, dy = math.cos(a), math.sin(a)
-            arr = values(((x - 0.5) * dx + (rows - 0.5) * dy) / (abs(dx) + abs(dy)) + 0.5)
-        elif direction == "horizontal":
-            arr = line[None, :, :]
+            ramp = ((x - 0.5) * dx + (rows - 0.5) * dy) / (abs(dx) + abs(dy)) + 0.5
+        thresholds = wide[np.arange(top, top + len(rows)) % DITHER]
+        if opaque:
+            for i in range(4):
+                if constant[i]:
+                    result[top:top + band, :, i] = int(colors[0, i])
+                else:
+                    # Stops are in range, so the interpolation is too: no clip, and the sum is done in place.
+                    level = np.interp(ramp, offsets, colors[:, i])
+                    level += thresholds
+                    result[top:top + band, :, i] = np.floor(level, out=level)
         else:
-            arr = line[top:top + band, None, :]
-        thresholds = dither((len(rows), w), top)[..., None]
-        result[top:top + band] = np.floor(arr + thresholds).astype(np.uint8)
+            result[top:top + band] = np.floor(values(ramp) + thresholds[..., None])
     return Image.fromarray(result)
+
+
+def linear_ramp(line, w, h, direction):
+    """A horizontal or vertical gradient from its ``line`` of colours (one per column or row). The dither
+    repeats every DITHER pixels across the ramp, so one strip of that width is computed and copied."""
+    tile = dither_tile()
+    result = np.empty((h, w, 4), dtype=np.uint8)
+    if direction == "vertical":
+        strip = np.floor(line[:, None, :] + tile[np.arange(h) % DITHER][:, :, None]).astype(np.uint8, order="C")
+        full = w // DITHER
+        result[:, :full * DITHER].reshape(h, full, DITHER, 4)[:] = strip[:, None]
+        result[:, full * DITHER:] = strip[:, :w - full * DITHER]
+    else:
+        strip = np.floor(line[None, :, :] + tile[:, np.arange(w) % DITHER][:, :, None]).astype(np.uint8, order="C")
+        for top in range(0, h, DITHER):
+            result[top:top + DITHER] = strip[:h - top]
+    return result
 
 
 DITHER = 64

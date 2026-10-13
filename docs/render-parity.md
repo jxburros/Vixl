@@ -56,8 +56,9 @@ Numbers below are 0-255 levels unless marked; "exact" is the supersampled refere
   ellipse and path, rotated text, identity redraw).
 - **Gradients are dithered** (3). An ordered dither (interleaved gradient noise, 64 px tile) below one
   level is added before quantizing; whole values are unchanged, so flat colours and end colours stay
-  exact. Banding 0.23 -> 0.012, longest flat run 43 -> 13 px. Linear gradients now compute every pixel:
-  a 2400 x 2400 ramp takes about 0.1 s instead of 3 ms. Tests: `tests/test_render_quality.py`.
+  exact. Banding 0.23 -> 0.012, longest flat run 43 -> 13 px. A linear ramp computes one row of colours and
+  repeats the 64 px dither period, so a 2400 x 2400 ramp takes about 8 ms (3 ms before dithering, 0.1 s
+  when every pixel was dithered); radial and angled ramps still compute every pixel (about 0.15 s). Tests: `tests/test_render_quality.py`.
 
 - **One stroke rule in every export** (15). PNG, PDF and PowerPoint already shared a rule
   (`geometry.stroke_inset`): a plain shape keeps its stroke inside its box. Rectangles, rounded
