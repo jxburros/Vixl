@@ -407,9 +407,10 @@ def build_server(session, *, planner=False, tools="default", allow_screen_captur
 
     @tool
     def vixl_reference(
-        topic: Annotated[str, Field(description="start, operations, workflows, capabilities, sizes, layouts, fonts, "
+        topic: Annotated[str, Field(description="operations, workflows, capabilities, sizes, layouts, fonts, "
                                                 "brushes, styles, looks, color, roll, palettes, templates, objects, "
-                                                "checks, exports, a tool name, a guidance name or a brief")] = "start",
+                                                "guidance, house-style, a tool name, a guidance name or a "
+                                                "brief")] = "start",
         name: Annotated[str | list[str] | None, Field(description="The entry to read (operation types, a layout, a "
                                                                   "style …)")] = None,
         options: Options = None,

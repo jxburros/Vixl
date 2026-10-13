@@ -8,10 +8,10 @@
         "vixl_document": 1195,
         "vixl_export": 999,
         "vixl_job": 476,
-        "vixl_reference": 812,
+        "vixl_reference": 811,
         "vixl_render": 1117
       },
-      "total_chars": 7330,
+      "total_chars": 7329,
       "total_tokens": 1832,
       "instructions_chars": 735,
       "instructions_tokens": 184

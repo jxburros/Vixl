@@ -16,9 +16,10 @@ workspace. Client config:
 **Seven tools.** `vixl_document`, `vixl_apply`, `vixl_check`, `vixl_render`, `vixl_export`, `vixl_reference` and
 `vixl_job`. Each advertises a few typed fields (`action` or `kind` picks what it does) plus `options`; any other
 argument is folded into `options` and validated against the chosen action, so `vixl_render(max_width=200)` works.
-`vixl_reference("vixl_export")` (any tool name) lists every action with its options and
-`vixl_reference("vixl_export", name="timeline")` one action; an unknown or mistyped option fails with the closest
-names and that schema.
+`vixl_reference("vixl_export")` (any tool with actions: all but `vixl_job`) lists every action with its options and
+`vixl_reference("vixl_export", name="timeline")` one action; an unknown or mistyped option fails with
+`invalid_arguments`, the closest names and that schema (`vixl_job` and the `vixl_ai_*` tools take no `options`: an
+unknown argument there is ignored with a warning).
 
 **Two servers:** `vixl mcp` serves the design tools; `vixl mcp --tools ai` serves the provider-backed `vixl_ai_*`
 tools and `vixl_models_list`, plus `vixl_document`, `vixl_render` and `vixl_job`.
@@ -38,18 +39,19 @@ All paths are server-local and relative to (or absolute inside) the workspace; e
 symlinks out are rejected; `vixl_document(action='create')` (also with a template) and exports create missing
 directories inside the workspace. Successful edits are saved immediately,
 so switching documents never loses work. External edits to the file are detected and reloaded.
-Results are terse by default (a new document: path, canvas, seed, the fonts chosen); `verbose: true` returns
-everything.
+Results are terse by default (a new document: path, canvas, seed, the fonts chosen); `verbose: true` on
+`vixl_document` and on a `vixl_apply` batch returns everything.
 
-**Long calls:** a call still running after ~40 s (`VIXL_MCP_INLINE_SECONDS`) returns
-`{"status":"running","job":"job_…"}` and carries on; `as_job: true` on `vixl_apply`, `vixl_check` and
-`vixl_export` does so at once. Under load (more calls than `VIXL_MCP_WORKERS`) calls become jobs sooner;
-`queued: true` means it has not started yet.
+**Long calls:** a call still running after ~40 s (`VIXL_MCP_INLINE_SECONDS`, or `--call-timeout`/`VIXL_CALL_TIMEOUT`)
+returns `{"status":"running","job":"job_…"}` and carries on; `as_job: true` on `vixl_apply`, `vixl_check`,
+`vixl_export` and the `vixl_ai_*` tools does so at once. `vixl_render` always answers inline. Under load (more calls
+than `VIXL_MCP_WORKERS`) calls become jobs sooner; `queued: true` means it has not started yet.
 Follow it with `vixl_job(action="status"|"result"|"cancel"|"list", id, wait=…)`; never resend a call
 that timed out. A timeline export's `progress` has `timing` (`elapsed_s`, `eta_s`, `setup_ms`, `raster_ms`).
 With `VIXL_PROFILE=1` in the server's environment, results carry a `render_profile` (REST: also the
-`X-Vixl-Profile` header). `vixl_document`, `vixl_apply` and `vixl_export` take `request_id`: repeating a call with
-the same id returns the first result (`"replayed": true`) instead of applying twice.
+`X-Vixl-Profile` header). `vixl_document`, `vixl_apply`, `vixl_export` and the `vixl_ai_*` tools take `request_id`
+(up to 64 characters): repeating a call with the same id returns the first result (`"replayed": true`) instead of
+applying twice, and the same id with different arguments is `request_id_conflict`.
 A shared server may set per-call limits (`vixl_job(action="list")` shows them under `limits`). A call over
 one fails with `limit_exceeded` and names the `limit`: `max_megapixels` (lower `scale` or export fewer
 pages), `max_pages` (export a page range, then the next) or `max_concurrent` (wait for a running job, then retry).
@@ -110,7 +112,7 @@ Assertion grammar: `canvas.width == 1920`, `layer.NAME.exists`, `layer.NAME.boun
 | `file` (default) | **`path`** (format from the extension), `overwrite`, `quality`, `scale=1` (0.01–16), `profile`, `variables`, `background="white"`, `sampling`, `svg_policy`, `artboard`, `comp`, `color_space="rgb"\|"cmyk"`, `icc_profile` (workspace path), `intent`, `black_generation`, `ink_limit`, `proof`, `simulate`, `dpi`, `icon_sizes`, `time`, `page`, `pages`, `pdf_content`, `fillable`, `values`, `fill_mode`, `alpha`, `presenter`, `title`, `max_bytes`, `isolate`, `padding` | PNG/JPEG/WEBP/TIFF/AVIF/SVG/PDF/ICO/HTML/PPTX/PSD; returns `{path, format, bytes, …}` and never image bytes (`vixl_reference("exports")` explains the formats) |
 | `batch` | **`targets`** (1–64 of `{path, document?, overwrite?, …any file option}`), `defaults`, `overwrite`, `stop_on_error` | Everything is validated before the first file is written; each target reports its metadata or its own `error` |
 | `timeline` | **`path`** (.gif/.apng/.webp/.zip/.mp4/.webm, or `format="sheet"`), `fps`, `scale`, `start`, `end`, `background`, `columns`, `quality`, `colors`, `dither`, `max_bytes`, `target_bytes`, `preset` (`chat`/`web`/`email`), `poster`, `sample_rate`, `overwrite` | Keyframed motion; MP4/WebM need ffmpeg |
-| `animation` | **`path`**, `format`, `animation=NAME`, `scale` (1–32), `sampling`, `colors`, `dither`, `max_bytes`, `quality`, `columns`, `overwrite` | Saved frames; a sheet also writes `same-stem.json` with frame rects, durations and the `animations` map |
+| `animation` | **`path`**, `format`, `animation=NAME`, `scale` (0.05–32), `sampling`, `colors`, `dither`, `max_bytes`, `quality`, `columns`, `overwrite` | Saved frames; a sheet also writes `same-stem.json` with frame rects, durations and the `animations` map |
 | `audio` | **`path`** (.wav), `sample_rate` | Mix of the audio tracks at the highest source rate (≤48 kHz), mono when every source is mono and unpanned |
 | `icons` | **`path`** (a folder), `icon_set` `web\|apple\|android\|windows\|all`, `sampling` | favicon.ico, PNG sizes, site.webmanifest |
 | `character` | **`path`** (.vixl), **`target`** | A portable character library for `character-load` |
@@ -129,7 +131,8 @@ looks, styles, a working example and `motifs`; a guidance name (`finishing`, `te
 `view`, `mood`, `best_for`, `category`, `role`), `brushes`, `styles` (`name`, or `query`), `looks`, `color`
 (**`name`**: colours, `action` info\|convert\|harmony\|scale\|mix\|contrast\|names\|natural, `to`, `scheme`, `count`,
 `amount`, `space`), `roll` (`purpose`, `mood`, `seed`, `variety`, `locks`: a direction without applying it),
-`palettes`, `templates`, `guidance`, `objects`, `house-style`, and any tool name (its actions and options).
+`palettes`, `templates`, `guidance`, `objects`, `house-style`, `guide` (`name`: a kind of work or brief, `seed`,
+`variety`) and any tool name with actions (its actions and options; not `vixl_job`).
 `vixl_check` also takes `style=` (and `checks=["style"]`) to evaluate a style's rules.
 
 ### AI tools (`vixl mcp --tools ai`; need configured providers; see ai.md)
@@ -147,6 +150,7 @@ looks, styles, a working example and `motifs`; a guidance name (`finishing`, `te
 | `vixl_ai_content_aware_fill` | `prompt`, `name="filled-region"`, `provider` |
 | `vixl_ai_analyze` | **`capability`** `describe`\|`detect`\|`ocr`, `query`, `provider` |
 | `vixl_ai_plan` | **`prompt`**, `apply=False`, `provider` — only with `vixl mcp --tools ai --planner` |
+| `vixl_models_list` | `provider`, `capability` (plan, describe, detect, ocr, generate, segment, upscale, background-remove), `refresh` — the model IDs an account offers |
 
 Every document tool also accepts `document` (workspace path) to address a document other than the active one.
 
@@ -178,7 +182,7 @@ Non-loopback hosts require a bearer token from `VIXL_API_TOKEN` (or `--token-env
 | --- | --- | --- |
 | `GET /schema` | | Operation JSON Schema |
 | `GET /document` · `GET /layers` | | Inspection |
-| `POST /operations` | `{"operations":[…],"dry_run":false,"detail":"compact"}` | Change summary |
+| `POST /operations` | `{"operations":[…],"dry_run":false,"detail":"compact"}`, or `operations_path`; optional `check`, `suites`, `repair`, `preview` as for `vixl_apply` | Change summary (`preview_base64` with `preview`) |
 | `GET /render` | | PNG |
 | `POST /render` | `{"variables":{…},"artboard":…,"comp":…}` | PNG |
 | `POST /measure` | `{"point":[x,y]}` / `{"region":[…],"foreground":…}` / `{"target":…}` | Measurements |
@@ -193,6 +197,11 @@ Non-loopback hosts require a bearer token from `VIXL_API_TOKEN` (or `--token-env
 | `POST /animation/export` | `{"format":"gif"\|"apng"\|"webp"\|"mp4"\|"webm"\|"sheet","animation":"walk","scale":8,"sampling":…,"colors":…,"quality":…,"columns":…}` | Animation bytes (mp4/webm need ffmpeg) |
 | `GET /history` · `POST /history/{action}` | `{"ref":…,"count":1}` | History graph / new head |
 | `POST /assets?name=photo` | raw image bytes, or empty with `url=https://…`; optional `credit`, `license` | New layer |
+| `POST /import?format=svg\|pdf\|figma` | raw bytes (Figma: the URL or file key); `name`, `page`, `dpi`, `svg_mode`, `node_id`, `rasterize_unsupported` | Editable layers (`svg_mode=appearance`: one image) |
+| `POST /fonts?name=brand` | raw TTF/OTF bytes (≤16 MiB) | Registered font |
+| `GET /resources/{kind}` · `GET\|POST /resources/{kind}/{name}` | POST `{"value":…}` | Names · one entry · save |
+| `POST /workflow/{action}` · `GET /workflow/schema` | the action's request | Workflows allowed on a fixed document (`docs/interfaces.md#capability-matrix` lists them) |
+| `GET /limits` · `GET /jobs` · `GET /jobs/{id}?wait=20` · `GET /jobs/{id}/result` | | Per-call limits · detached calls (a call over `--call-timeout` answers `202` with a job) |
 | `POST /ai/{command}` | `{"args":["--prompt","forest","--provider","local"]}` | CLI-style AI call |
 | `POST /export` | `{"format":"PDF","color_space":"cmyk","ink_limit":300}`, `ICO`+`icon_sizes`, `icc_profile_base64`, `proof`, `simulate`, `dpi`, `time` | File bytes |
 | `GET /sizes?category=` · `GET /layouts` · `GET /brushes` · `GET /guide?brief=` · `GET /styles?query=\|name=` · `GET /looks` | | Catalogs |
@@ -200,7 +209,8 @@ Non-loopback hosts require a bearer token from `VIXL_API_TOKEN` (or `--token-env
 | `GET /timeline` · `GET /timeline/frame?time=1.5s` | | Tracks · PNG frame |
 | `POST /timeline/export` | `{"format":"gif","fps":15,"scale":0.5}` | Animation bytes |
 
-Errors: HTTP 400 with `{"error":CODE,"message":…}` (403 for `forbidden`, 413 for oversized bodies).
+Errors: HTTP 400 with `{"error":CODE,"message":…}` (401 without the token, 403 for `forbidden`, 413 for oversized
+bodies and `limit_exceeded`, 429 with `Retry-After` for `max_concurrent`).
 `path`/`linked` operation fields are rejected and `font` takes only a registered name or role, as with MCP.
 
 ```bash
