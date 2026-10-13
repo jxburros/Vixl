@@ -128,3 +128,17 @@ def test_dithering_keeps_whole_values_exact():
     ramp = np.asarray(gradient_image(p, {"type": "gradient", "direction": "horizontal", "start": "#000000",
                                          "end": "#ffffff"}, (64, 8)))
     assert (ramp[:, 0, :3] == 0).all() and (ramp[:, -1, :3] == 255).all()
+
+
+def test_linear_gradient_matches_per_pixel_dither():
+    from vixl.design_render import dither
+
+    p = Project(300, 300, "white")
+    for direction, w, h in (("vertical", 203, 131), ("horizontal", 131, 203)):
+        layer = {"type": "gradient", "direction": direction, "start": "#20242a", "end": "#2c7138"}
+        got = np.asarray(gradient_image(p, layer, (w, h)))
+        ramp = np.linspace(0, 1, h if direction == "vertical" else w)
+        ends = ((0x20, 0x2c), (0x24, 0x71), (0x2a, 0x38), (255, 255))
+        rgb = np.stack([np.interp(ramp, [0, 1], pair) for pair in ends], -1)
+        line = rgb[:, None, :] if direction == "vertical" else rgb[None, :, :]
+        assert (got == np.floor(line + dither((h, w))[..., None]).astype(np.uint8)).all()

@@ -38,7 +38,7 @@ Vixl is pre-release with no users to protect, so code that existed only to repro
 ### Rendering parity
 
 - Text, path shapes, ellipses, rounded rectangles and capsules at fractional positions, or turned, flipped or skewed, are drawn from their outlines straight into place instead of being resampled: `baseline_y` and centred text stay as sharp as on whole pixels and no longer gain about 6% ink. Layers with effects, masks or paper texture are unchanged.
-- Gradients are dithered below one level, so subtle ramps no longer show 8-bit bands; flat and end colours stay exact. A full-canvas 2400×2400 gradient now takes about 0.1 s instead of 3 ms.
+- Gradients are dithered below one level, so subtle ramps no longer show 8-bit bands; flat and end colours stay exact. A full-canvas 2400×2400 linear gradient takes about 8 ms (3 ms before dithering); radial and angled ones about 0.15 s.
 - Unstroked ellipses, rounded rectangles and capsules are rasterized by resvg instead of Pillow supersampling; edge pixels change by a few levels.
 - New `python -m evals.render_parity` measures raster output against headless Chromium and exact references (eval-only; `pip install playwright`). Findings: [Render parity](docs/render-parity.md).
 
