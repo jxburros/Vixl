@@ -71,7 +71,7 @@ def test_text_layout_with_only_a_width_grows_to_fit_the_wrapped_lines():
 
 def test_fields_that_change_nothing_are_reported():
     found = warnings([
-        {"type": "shape", "shape": "rectangle", "name": "r", "width": 20, "height": 20, "radius": 5, "stroke_width": 2},
+        {"type": "shape", "shape": "ellipse", "name": "r", "width": 20, "height": 20, "radius": 5, "stroke_width": 2},
         {"type": "gradient", "name": "g", "stops": [{"offset": 0, "color": "red"}, {"offset": 1, "color": "blue"}],
          "start": "red", "angle": 20},
         {"type": "align", "target": "t", "alignment": "center", "margin": 4},

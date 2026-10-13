@@ -151,10 +151,11 @@ def test_inside_stroke_of_a_thin_ellipse_stays_in_its_box():
         assert box(image).tolist() == [20, 30, 209, 69], name
 
 
-def test_a_rectangle_with_a_radius_keeps_square_corners():
+def test_a_rectangle_with_a_radius_becomes_a_rounded_rectangle_everywhere():
     project = build("rectangle", radius=20)
+    assert project.state["layers"][0]["shape"] == "rounded-rectangle"
     for name, image in renders(project).items():
-        assert image[50, 50] > 0.9, name
+        assert image[50, 50] < 0.1 and image[50, 70] > 0.9, name
 
 
 def test_trimmed_rectangle_stroke_runs_from_the_box_edge():

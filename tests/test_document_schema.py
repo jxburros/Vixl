@@ -27,7 +27,7 @@ NOT_STATE_FIELDS = {}
 
 def _manifests():
     for path in sorted(ROOT.glob("**/*.vixl")):
-        if ".git" in path.parts or "_failures" in path.parts:
+        if {".git", ".claude", "_failures"} & set(path.relative_to(ROOT).parts):
             continue
         with zipfile.ZipFile(path) as archive:
             yield path.relative_to(ROOT), json.loads(archive.read("project.json"))

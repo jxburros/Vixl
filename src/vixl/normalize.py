@@ -421,6 +421,11 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
             op["shape"] = shape
             for key, value in extra.items():
                 op.setdefault(key, value)
+    radius = op.get("radius")
+    if kind == "shape" and op.get("shape") == "rectangle" and radius and radius != [0, 0, 0, 0]:
+        # Rectangles have square corners in every renderer; asking one for a radius means a rounded rectangle.
+        note("shape 'rectangle' with radius → 'rounded-rectangle'")
+        op["shape"] = "rounded-rectangle"
     normalize_opacity(op, kind, note)
     if isinstance(op.get("text_transform"), str) and "text_transform" in allowed:
         given = op["text_transform"]
