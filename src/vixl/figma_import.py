@@ -669,14 +669,17 @@ class Builder:
 
     # node dispatch -----------------------------------------------------------------------------------------
     def emit(self, node, parent_abs, parent_box):
-        """Create the layer(s) for ``node``; returns the Vixl layer name that stands for it, or None."""
+        """Create the layer(s) for a child of a parent at ``parent_abs``; returns the Vixl layer name or None."""
+        return self.emit_at(node, multiply(parent_abs, self.relative(node, parent_box)))
+
+    def emit_at(self, node, absolute):
+        """Create the layer(s) for ``node`` whose absolute transform is known; returns its Vixl layer name or None."""
         kind = node.get("type")
         if kind in IGNORED:
             return None
         if node.get("isMask"):
             self.lost(node, "mask layer skipped: the layers it clipped are drawn unmasked")
             return None
-        absolute = multiply(parent_abs, self.relative(node, parent_box))
         if kind in CONTAINERS:
             return self.container(node, absolute)
         if kind == "TEXT":
@@ -1160,8 +1163,7 @@ def build(project, data, *, images=None, rasters=None, fonts=None, node_id=None,
         plan.canvas = size
         made = []
         for node, absolute, _ in nodes:
-            made_name = builder.container(node, absolute) if node.get("type") in CONTAINERS else \
-                builder.emit(node, IDENTITY, None)
+            made_name = builder.emit_at(node, absolute)
             if made_name and node.get("type") in FRAME_LIKE:
                 x0, y0, x1, y1 = extent(node, absolute)
                 made.append((made_name, node, (x0 - left, y0 - top, x1 - x0, y1 - y0)))
@@ -1222,30 +1224,48 @@ def _note(family, weight, italic, wanted, got_italic):
 
 # --------------------------------------------------------------------------------------------- public entry
 
-def import_figma_document(project, data, *, images=None, rasters=None, fonts=None, node_id=None, page=None,
-                          rasterize_unsupported=False):
-    """Apply a Figma file JSON (a dict, already fetched) to ``project``. No network access."""
-    require(isinstance(data, dict), "Figma data must be a JSON object", "invalid_figma_document")
-    candidate = project.clone()
-    plan = build(candidate, data, images=images, rasters=rasters, fonts=fonts, node_id=node_id, page=page,
-                 rasterize_unsupported=rasterize_unsupported)
+def _run(project, document, *, images, node_id, page, rasterize_unsupported, install_fonts, fonts=None,
+         rasters=None, fetch_rasters=None, extra=None):
+    """Build the plan on a copy of ``project``, apply it atomically and describe the result."""
+    require(isinstance(document, dict), "Figma data must be a JSON object", "invalid_figma_document")
+
+    def attempt(rasters):
+        candidate = project.clone()
+        plan = build(candidate, document, images=images, rasters=rasters,
+                     fonts=fonts or font_resolver(candidate, install_fonts), node_id=node_id, page=page,
+                     rasterize_unsupported=rasterize_unsupported)
+        return candidate, plan
+
+    candidate, plan = attempt(rasters or {})
+    if rasterize_unsupported and fetch_rasters and plan.raster_ids:
+        candidate, plan = attempt(fetch_rasters(plan.raster_ids))
     require(len(plan.operations) <= candidate.limits.max_operations,
             f"The import needs {len(plan.operations)} operations (limit {candidate.limits.max_operations}); import one "
             "frame with its node-id", "resource_limit", field="node_id")
     result = candidate.apply(plan.operations, detail="compact")
     project.__dict__.update(candidate.__dict__)
-    return {**result, "figma": {"name": data.get("name"), "last_modified": data.get("lastModified"),
-                                "version": data.get("version"), **plan.summary,
-                                "operations": len(plan.operations)},
+    return {**result,
+            "figma": {**(extra or {}), "name": document.get("name"), "last_modified": document.get("lastModified"),
+                      "version": document.get("version"), **plan.summary, "operations": len(plan.operations),
+                      "images": len(images or {}), "images_missing": len([r for r in plan.image_refs
+                                                                         if r not in (images or {})])},
             "report": plan.report,
-            "warnings": ([f"{len(plan.report)} lossy decision(s) in the Figma import; see report"]
-                         if plan.report else [])}
+            "warnings": [f"{len(plan.report)} lossy decision(s) in the Figma import; see report"] if plan.report else []}
 
 
-def import_source(project, data, *, node_id=None, page=None, rasterize_unsupported=False,
-                  install_fonts=True, token=None, env=None, client=None, transport=None, download=None):
+def import_figma_document(project, data, *, images=None, rasters=None, fonts=None, install_fonts=False,
+                          node_id=None, page=None, rasterize_unsupported=False):
+    """Apply Figma file JSON (a dict, already fetched) to ``project``; no network access except font installs when
+    ``install_fonts`` is true. ``images`` maps imageRef to bytes, ``rasters`` node id to PNG bytes."""
+    return _run(project, data, images=images, node_id=normalize_node_id(node_id), page=page,
+                rasterize_unsupported=rasterize_unsupported, install_fonts=install_fonts, fonts=fonts, rasters=rasters)
+
+
+def import_source(project, data, *, node_id=None, page=None, rasterize_unsupported=False, install_fonts=True,
+                  token=None, env=None, client=None, transport=None, download=None):
     """Import from Figma. ``data`` is a file URL or key (text or bytes), or the JSON of a Figma file to import
-    offline. The token comes from the environment unless passed."""
+    offline. The token comes from the environment unless passed. ``install_fonts`` downloads missing Google Fonts
+    families through the font cache; other fonts are substituted and reported."""
     text = data.decode("utf-8-sig") if isinstance(data, (bytes, bytearray)) else str(data)
     node_id = normalize_node_id(node_id)
     if text.lstrip().startswith("{"):
@@ -1253,16 +1273,14 @@ def import_source(project, data, *, node_id=None, page=None, rasterize_unsupport
             document = json.loads(text)
         except ValueError as exc:
             raise VixlError("invalid_figma_document", f"Malformed Figma JSON: {exc}") from exc
-        return import_figma_document(project, document, node_id=node_id, page=page,
-                                     rasterize_unsupported=False, fonts=font_resolver(project, install_fonts))
+        return import_figma_document(project, document, node_id=node_id, page=page, install_fonts=install_fonts)
     key, url_node = parse_source(text.strip())
     node_id = node_id or url_node
     api = client or FigmaClient(token or token_from_env(env), transport=transport, download=download,
                                 limits=project.limits)
     document = api.file(key, node_id)
-    selected, _canvas, _pages = select(document, node_id, page)
     refs = []
-    for node, _m, _b in selected:
+    for node, _matrix, _box in select(document, node_id, page)[0]:
         collect_image_refs(node, refs)
     images = {}
     if refs:
@@ -1276,31 +1294,15 @@ def import_source(project, data, *, node_id=None, page=None, rasterize_unsupport
                 except VixlError:
                     continue
 
-    def attempt(rasters):
-        candidate = project.clone()
-        plan = build(candidate, document, images=images, rasters=rasters, fonts=font_resolver(candidate, install_fonts),
-                     node_id=node_id, page=page, rasterize_unsupported=rasterize_unsupported)
-        return candidate, plan
-
-    candidate, plan = attempt({})
-    if rasterize_unsupported and plan.raster_ids:
+    def fetch_rasters(ids):
         rasters = {}
-        for ident, url in api.render(key, plan.raster_ids).items():
+        for ident, url in api.render(key, ids).items():
             try:
                 rasters[ident] = api.download(url)
             except VixlError:
                 continue
-        candidate, plan = attempt(rasters)
-    require(len(plan.operations) <= candidate.limits.max_operations,
-            f"The import needs {len(plan.operations)} operations (limit {candidate.limits.max_operations}); import one "
-            "frame with its node-id", "resource_limit", field="node_id")
-    result = candidate.apply(plan.operations, detail="compact")
-    project.__dict__.update(candidate.__dict__)
-    missing = [r for r in plan.image_refs if r not in images]
-    return {**result, "figma": {"key": key, "node_id": node_id, "name": document.get("name"),
-                                "last_modified": document.get("lastModified"), "version": document.get("version"),
-                                **plan.summary, "operations": len(plan.operations),
-                                "images": len(images), "images_missing": len(missing)},
-            "report": plan.report,
-            "warnings": ([f"{len(plan.report)} lossy decision(s) in the Figma import; see report"]
-                         if plan.report else [])}
+        return rasters
+
+    return _run(project, document, images=images, node_id=node_id, page=page,
+                rasterize_unsupported=rasterize_unsupported, install_fonts=install_fonts,
+                fetch_rasters=fetch_rasters, extra={"key": key, "node_id": node_id})
