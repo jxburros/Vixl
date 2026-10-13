@@ -1,0 +1,92 @@
+{
+  "lanes": {
+    "IRQG": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 5,
+      "craft_sub": {
+        "hierarchy": 5,
+        "spacing": 5,
+        "type": 5,
+        "colour": 5,
+        "finish": 5,
+        "motif": null
+      },
+      "defects": [],
+      "craft_notes": "Refined serif/sans system, restrained cards and rules, direct percentage-to-drink mapping and clear busiest-month emphasis. All required text and zero-based stacks present. Displayed monthly totals sum to 35,280; drink totals and one-decimal percentages agree. CSV absent, so original input values cannot be independently verified.",
+      "revision": 4,
+      "revision_notes": "December segments reflect 1,480/1,120/90/640, total 3,330, annual 35,630 and drink totals 15,900/11,960/2,510/5,260. Correct shares and December callout/emphasis; tea plum throughout. Source footer also gains December corrected, an unrequested small copy change."
+    },
+    "RYGP": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 4,
+      "craft_sub": {
+        "hierarchy": 5,
+        "spacing": 4,
+        "type": 5,
+        "colour": 5,
+        "finish": 5,
+        "motif": null
+      },
+      "defects": [
+        {
+          "where": "infographic.png.overview.png, donut and legend",
+          "what": "Percentages sit around the donut while drink names sit in a separate distant legend, requiring extra color matching.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Warm and clear editorial typography, large callouts and sharp charts. Stacks use a zero baseline, all text matches, totals and shares internally consistent. Original CSV is not supplied, limiting source-data verification.",
+      "revision": 4,
+      "revision_notes": "Every data-dependent total, share, December stack and busiest-month callout updated correctly; exact plum tea color in chart and legend. Unrelated coral header rule also changes to plum."
+    },
+    "VNPK": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 4,
+      "craft_sub": {
+        "hierarchy": 5,
+        "spacing": 4,
+        "type": 4,
+        "colour": 5,
+        "finish": 5,
+        "motif": null
+      },
+      "defects": [
+        {
+          "where": "infographic.svg.render.png, Flat white percentage and count",
+          "what": "Percentage and cup total nearly touch, unlike the spacing in other rows.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Readable clean charts with useful direct legend percentages; header is somewhat generic but effective. All required copy and dimensions met; monthly/drink totals and percentages internally consistent. CSV absent, so input-data accuracy cannot be independently confirmed.",
+      "revision": 4,
+      "revision_notes": "Correct December 3,330, year 35,630, shares and drink totals throughout vector and raster exports; plum tea maintained everywhere. Added Dec corrected to source footer is a small unrequested change."
+    }
+  },
+  "pairwise_round1": [
+    {
+      "a": "IRQG",
+      "b": "RYGP",
+      "publish": "a",
+      "margin": "slight",
+      "why": "IRQG pairs percentages directly with drink names and uses a more refined, restrained typographic hierarchy."
+    },
+    {
+      "a": "IRQG",
+      "b": "VNPK",
+      "publish": "a",
+      "margin": "clear",
+      "why": "IRQG's more considered type pairing and better-spaced share table give it a more finished editorial presentation."
+    },
+    {
+      "a": "RYGP",
+      "b": "VNPK",
+      "publish": "a",
+      "margin": "slight",
+      "why": "RYGP's warmer type system and stronger callout emphasis outweigh VNPK's tighter percentage-to-count spacing."
+    }
+  ],
+  "judge": "3",
+  "test": "T08"
+}

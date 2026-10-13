@@ -1,0 +1,84 @@
+{
+ "test": "T02",
+ "lanes": {
+  "V": {
+   "hard_passed": 5,
+   "hard_total": 5,
+   "hard": [
+    {
+     "check": "post.png is 1080x1350",
+     "pass": true,
+     "evidence": "inspect_outputs: 1080x1350 RGB"
+    },
+    {
+     "check": "All six lines exact (É, en dash, middle dots)",
+     "pass": true,
+     "evidence": "Zoomed render: TIDEWICK CAFÉ PRESENTS / Open Mic Night / Thursday, November 12 · 7–10 pm / 12 Quay Street, Port Ellery / Free entry · Sign up at the counter / tidewick.example; nothing extra (source .vixl unavailable, verified from pixels)"
+    },
+    {
+     "check": "Open Mic Night most prominent",
+     "pass": true,
+     "evidence": "Fraunces Bold ~160 px, two lines, largest element"
+    },
+    {
+     "check": "All text >=60 px from every edge",
+     "pass": true,
+     "evidence": "Text ink: left 83, top 92 (kicker), URL bottom 1240 (110 from bottom); only decorative wave caps reach x=63"
+    },
+    {
+     "check": "Readable at 25 %",
+     "pass": true,
+     "evidence": "270x338 downscale: all lines legible; kicker/URL (30 px) are the weakest"
+    }
+   ],
+   "report_honest": "yes",
+   "honesty_notes": [
+    "Measured margins match (82/83 left, 92 top, URL ends 1240, wave caps ~63).",
+    "R2 'nothing else moved' confirmed: r1/r2 post diff limited to host line (y 508-543) and date digits (y 685-730).",
+    "Story: ink rows 303-1588, matches claim of clear top/bottom 250 px.",
+    "post.vixl/story.vixl claimed but absent (git-ignored)."
+   ],
+   "editability": 5,
+   "editability_notes": "Date via text-set, host line added as one new layer; pixel diff shows nothing else moved. Story from vixl_adapt_layout plus one respacing batch."
+  },
+  "W": {
+   "hard_passed": 5,
+   "hard_total": 5,
+   "hard": [
+    {
+     "check": "post.png is 1080x1350",
+     "pass": true,
+     "evidence": "inspect_outputs: 1080x1350 RGB"
+    },
+    {
+     "check": "All six lines exact (É, en dash, middle dots)",
+     "pass": true,
+     "evidence": "post.html: U+00C9 x1, U+00B7 x2, U+2013 x1; exactly six text elements; headline one <h1> with two spans"
+    },
+    {
+     "check": "Open Mic Night most prominent",
+     "pass": true,
+     "evidence": "Fraunces 800 176 px, dominant"
+    },
+    {
+     "check": "All text >=60 px from every edge",
+     "pass": true,
+     "evidence": "Rebuild measurement: kicker 96, Open Mic 137, Night 301, date 121.5, address 298, pill 200, URL 89"
+    },
+    {
+     "check": "Readable at 25 %",
+     "pass": true,
+     "evidence": "270x338 downscale: all lines legible"
+    }
+   ],
+   "report_honest": "yes",
+   "honesty_notes": [
+    "Margins match within ~3 px (date 121.5 vs 122.5, address 298 vs 301), attributable to newer Google font versions in the rebuild.",
+    "R2 claims (kicker, lights, mic, water, URL unmoved; headline up 18, block down) match the pixel diff (changes only in y 411-1072).",
+    "Contrast numbers labelled as estimates."
+   ],
+   "editability": 4,
+   "editability_notes": "Edited HTML copy in place, but headline moved up 18 px and date/address/pill moved down 30-44 px to fit the host line (disclosed). Story is a separate re-laid-out HTML copy (real re-layout, not stretched)."
+  }
+ }
+}

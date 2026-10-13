@@ -1,0 +1,86 @@
+{
+ "test": "T02",
+ "judge": "1",
+ "lanes": {
+  "ABTC": {
+   "fidelity": 5,
+   "fidelity_misses": [],
+   "craft": 4,
+   "craft_sub": {
+    "hierarchy": 4,
+    "spacing": 3,
+    "type": 4,
+    "colour": 4,
+    "finish": 4,
+    "motif": 3
+   },
+   "defects": [
+    {
+     "where": "r1/post.png, microphone holder (approx. x 750-885, y 440-495)",
+     "what": "U-shaped holder arms end in flat, squared-off cuts and look clipped where they meet the capsule",
+     "severity": "minor"
+    },
+    {
+     "where": "r1/post.png, microphone grille",
+     "what": "middle grille line is thicker and darker than the other two, so it reads as inconsistent rather than deliberate",
+     "severity": "minor"
+    },
+    {
+     "where": "r1/post.png, lower third (y 910-1350)",
+     "what": "the lower half is weak: three generic sine-wave strokes fill the space, and the small light-weight URL is stranded at bottom left",
+     "severity": "minor"
+    },
+    {
+     "where": "r1/post.png, address and free-entry lines",
+     "what": "light-weight sans on navy is thin for phone viewing next to the heavy headline and date bar; secondary info feels underweighted",
+     "severity": "minor"
+    }
+   ],
+   "craft_notes": "Confident editorial layout: left-aligned stack, heavy serif headline, glowing coral mic and an amber date bar that gives the key info a strong second read. Copy is exact. The bottom half (wave lines and a small URL) is generic and loose compared with the strong top half, and the mic holder has small drawing flaws.",
+   "revision": 5,
+   "revision_notes": "Post: date changed to 19 and 'Hosted by Mara Quinn' added in amber directly under the headline, in space that was already free. Nothing else moved. Story 1080x1920: the same layout and content, re-proportioned. Topmost text at about y 310 and the URL at about y 1575, so both 250 px bands are clear. The lower part of the story is somewhat empty, but that space is mostly inside the required safe band."
+  },
+  "SPAN": {
+   "fidelity": 5,
+   "fidelity_misses": [],
+   "craft": 4,
+   "craft_sub": {
+    "hierarchy": 5,
+    "spacing": 4,
+    "type": 4,
+    "colour": 5,
+    "finish": 4,
+    "motif": 4
+   },
+   "defects": [
+    {
+     "where": "r1/post.png, microphone under string lights (x 510-570, y 230-390)",
+     "what": "small mic hangs directly beneath a coral bulb, so it reads as dangling from the light string; its stand stops in mid-air with no base",
+     "severity": "minor"
+    },
+    {
+     "where": "r1/post.png, wave band (y 1090-1170)",
+     "what": "the short amber dashes meant as lamp reflections are ambiguous and read as stray marks at a glance",
+     "severity": "minor"
+    },
+    {
+     "where": "r1/post.png, overall",
+     "what": "the centred stack with a pill CTA and a wave footer is a fairly familiar template structure",
+     "severity": "minor"
+    }
+   ],
+   "craft_notes": "Warm and atmospheric: festoon lights with soft glow, a big cream serif headline, the date in amber, and the CTA in a coral pill with good contrast, ending in sea-foam waves and a cream footer for the URL. The reading order is very clear and everything is legible at phone size. The mic motif is small and oddly attached to the light string.",
+   "revision": 4,
+   "revision_notes": "Post: date changed to 19 and the sea-foam 'Hosted by Mara Quinn' line added directly under the headline. To make room, the headline moved up about 20 px, the date/address gap tightened and the CTA pill moved down about 30 px. These are small collateral shifts and the info block is a little more crowded than in r1. Story 1080x1920: same design re-flowed. Text runs from about y 320 to about y 1650, so both safe bands are clear, but the cream footer below the URL is a large empty area."
+  }
+ },
+ "pairwise_round1": [
+  {
+   "a": "ABTC",
+   "b": "SPAN",
+   "publish": "b",
+   "margin": "slight",
+   "why": "SPAN's string lights, glow and wave-to-cream footer give a warmer, more cohesive coastal-evening mood with a clearer centred reading order, while ABTC's strong top half gives way to a generic, loose bottom half."
+  }
+ ]
+}

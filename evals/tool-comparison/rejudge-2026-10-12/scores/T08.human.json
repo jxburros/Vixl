@@ -1,0 +1,77 @@
+{
+ "judge": "human",
+ "lanes": {
+  "IRQG": {
+   "craft": 5,
+   "craft_sub": {
+    "colour": 5,
+    "finish": 5,
+    "hierarchy": 5,
+    "motif": 5,
+    "spacing": 5,
+    "type": 5
+   },
+   "defects": "",
+   "fidelity": 5,
+   "fidelity_misses": "",
+   "revision": 5,
+   "revision_notes": ""
+  },
+  "RYGP": {
+   "craft": 5,
+   "craft_sub": {
+    "colour": 5,
+    "finish": 5,
+    "hierarchy": 5,
+    "motif": 5,
+    "spacing": 4,
+    "type": 5
+   },
+   "defects": "",
+   "fidelity": 5,
+   "fidelity_misses": "",
+   "revision": 5,
+   "revision_notes": ""
+  },
+  "VNPK": {
+   "craft": 5,
+   "craft_sub": {
+    "colour": 4,
+    "finish": 3,
+    "hierarchy": 4,
+    "motif": 5,
+    "spacing": 4,
+    "type": 4
+   },
+   "defects": "",
+   "fidelity": 5,
+   "fidelity_misses": "",
+   "revision": 5,
+   "revision_notes": ""
+  }
+ },
+ "pairwise_round1": [
+  {
+   "a": "IRQG",
+   "b": "RYGP",
+   "margin": null,
+   "publish": "a",
+   "why": ""
+  },
+  {
+   "a": "IRQG",
+   "b": "VNPK",
+   "margin": null,
+   "publish": "a",
+   "why": ""
+  },
+  {
+   "a": "RYGP",
+   "b": "VNPK",
+   "margin": null,
+   "publish": "a",
+   "why": ""
+  }
+ ],
+ "test": "T08"
+}

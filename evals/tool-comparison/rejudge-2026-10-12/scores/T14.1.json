@@ -1,0 +1,112 @@
+{
+ "test": "T14",
+ "judge": "1",
+ "lanes": {
+  "TJZS": {
+   "fidelity": 4,
+   "fidelity_misses": [
+    "Instrumental break (16-18 s): the screen is not cleared; the next line 'The gulls are sleeping on the silver stone' stays visible in small type",
+    "Title-card artist is set in capitals ('THE VIXL EXAMPLES'), and section labels are set in capitals ('CHORUS', 'VERSE 2'). They are likely given in mixed case in the LRC.",
+    "No editable source in the folder (allowed only if the tool has none)"
+   ],
+   "craft": 2,
+   "craft_sub": {
+    "hierarchy": 4,
+    "spacing": 3,
+    "type": 2,
+    "colour": 3,
+    "finish": 2,
+    "motif": 2
+   },
+   "defects": [
+    {
+     "where": "lighthouse.mp4, all frames, left foreground",
+     "what": "the 'lighthouse' is a plain black rectangle with a small square window, so it barely reads as a lighthouse",
+     "severity": "major"
+    },
+    {
+     "where": "lighthouse.mp4, all lyric frames, centre",
+     "what": "heavy dark drop shadow on bold DejaVu-style sans lyrics and a muddy outlined shadow on the italic next line; looks like default karaoke styling",
+     "severity": "major"
+    },
+    {
+     "where": "lighthouse.mp4 12.5-18 s (mid-frame view, frame at 12.9 s), upper half",
+     "what": "visible horizontal banding steps in the sky gradient, and a hard-edged glow rectangle edge at about y=300 across the frame",
+     "severity": "major"
+    },
+    {
+     "where": "lighthouse.mp4 16-18 s",
+     "what": "during the instrumental break the next line stays on screen instead of clearing",
+     "severity": "minor"
+    },
+    {
+     "where": "lighthouse.mp4 12.5 s chorus line",
+     "what": "the second chorus line switches to a different orange/maroon background from the magenta used for the other chorus lines, so the chorus look is inconsistent",
+     "severity": "minor"
+    },
+    {
+     "where": "lighthouse.mp4, title card 0-2 s",
+     "what": "the serif title, the tracked caps subtitle and the sans lyrics do not read as one system",
+     "severity": "minor"
+    }
+   ],
+   "craft_notes": "Timing is correct (changes at 2.0/5.5/9.0/12.5/16.0/18.0/21.5/25.0/28.5 s), and the chorus and verse backgrounds are clearly different, with a warm glow on 'Lighthouse' lines. The lyrics are legible and well broken. Execution is crude: the black-bar lighthouse, heavy text shadows, gradient banding and a hard glow-box edge.",
+   "revision": 4,
+   "revision_notes": "Every line change moved 0.233-0.25 s earlier (first lyric at about 1.77 s, title card still from 0). Chorus lines are about 25 % larger. The enlargement was also applied to chorus lines shown as the small 'next' line during verses (5.8 s, 21.9 s), so the next-line size now varies. That is a defensible reading of the request but a visible side effect. Nothing else drifted."
+  },
+  "TMNV": {
+   "fidelity": 5,
+   "fidelity_misses": [
+    "No editable source in the folder (allowed only if the tool has none)"
+   ],
+   "craft": 4,
+   "craft_sub": {
+    "hierarchy": 4,
+    "spacing": 3,
+    "type": 4,
+    "colour": 4,
+    "finish": 4,
+    "motif": 4
+   },
+   "defects": [
+    {
+     "where": "lighthouse.mp4, verse lines (4 s, 18-21 s)",
+     "what": "awkward line breaks leave single-word or two-word second lines ('waves break', 'stone', 'alone')",
+     "severity": "minor"
+    },
+    {
+     "where": "lighthouse.mp4 9-12 s and 25-28 s, centre",
+     "what": "the beam band runs through the small next-line text, which lowers its contrast",
+     "severity": "minor"
+    },
+    {
+     "where": "lighthouse.mp4, mid-frame view, lower right",
+     "what": "the island ellipse sits below the wave line in the dark sea, so the lighthouse looks pasted on, and faint lighter blotches show in the sea",
+     "severity": "minor"
+    },
+    {
+     "where": "lighthouse.mp4 9.4 s frame, lantern",
+     "what": "the soft glow halo washes out the lantern roof",
+     "severity": "minor"
+    },
+    {
+     "where": "lighthouse.mp4, all lyric frames",
+     "what": "the large gap between the current line and the next line, with a tiny next line, makes the pair read loosely",
+     "severity": "minor"
+    }
+   ],
+   "craft_notes": "A coherent flat illustration: a striped lighthouse, a moon in the verses, and a sunset sky in the choruses with a beam and glow that appear only on 'Lighthouse' lines. The serif and sans pairing is elegant, with short crossfades. Timing matches the cues, and the break clears to the background with only the section label. Weak points are line breaks, the next line sitting in the beam, and small finish issues.",
+   "revision": 4,
+   "revision_notes": "Line changes moved to about 1.77 s, 5.15 s, 8.77 s and so on (0.25 s earlier), and the title card still starts at 0. The current chorus lines are about 25 % larger and were rebroken. The larger chorus lines now sit closer to the next line and the beam, so the layout is tighter. Verse frames and the background are unchanged."
+  }
+ },
+ "pairwise_round1": [
+  {
+   "a": "TJZS",
+   "b": "TMNV",
+   "publish": "b",
+   "margin": "clear",
+   "why": "TMNV has a real illustrated lighthouse, elegant type and clean gradients, and it clears the screen at the break. TJZS uses a black-bar lighthouse, heavy-shadow karaoke text and banded gradients."
+  }
+ ]
+}

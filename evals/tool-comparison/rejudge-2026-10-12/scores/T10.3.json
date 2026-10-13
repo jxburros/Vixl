@@ -1,0 +1,127 @@
+{
+  "lanes": {
+    "NPTJ": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 4,
+      "craft_sub": {
+        "hierarchy": 4,
+        "spacing": 4,
+        "type": 3,
+        "colour": 4,
+        "finish": 4,
+        "motif": 4
+      },
+      "defects": [
+        {
+          "where": "coast-caption.png.view.png, bottom caption",
+          "what": "Heavy oversized bold caption competes with the foreground subject.",
+          "severity": "minor"
+        },
+        {
+          "where": "coast-instagram.jpg.view.png, water",
+          "what": "Water texture is noticeably smoothed and soft at real size.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Cleanest sky and silhouettes; coherent warm sunset, readable caption and usable crops. Raw input is absent, so original resolution, preservation and correction relative to source cannot be verified.",
+      "revision": 3,
+      "revision_notes": "All three images become warmer with slightly reduced contrast and exact replacement caption. Instagram crop also shifts horizontally: sun and figure move left substantially, an unrequested compositional change."
+    },
+    "RYIF": {
+      "fidelity": 4,
+      "fidelity_misses": [
+        "Noise remains conspicuous on the sky and foreground despite the requested noise correction."
+      ],
+      "craft": 3,
+      "craft_sub": {
+        "hierarchy": 4,
+        "spacing": 3,
+        "type": 3,
+        "colour": 2,
+        "finish": 2,
+        "motif": 4
+      },
+      "defects": [
+        {
+          "where": "coast-edited.jpg.view.png, sunset sky above sun",
+          "what": "Wavy tonal contour bands are visible in the gradient.",
+          "severity": "major"
+        },
+        {
+          "where": "coast-instagram.jpg.view.png, horizon and sky",
+          "what": "Large fluorescent yellow-green horizon band overwhelms the warmer sunset colour.",
+          "severity": "major"
+        },
+        {
+          "where": "coast-edited.jpg.view.png, foreground rocks and lighthouse",
+          "what": "Fine grain remains visible in dark silhouettes.",
+          "severity": "minor"
+        },
+        {
+          "where": "coast-caption.png.view.png, caption",
+          "what": "Large serif lettering with a heavy dark shadow feels overlaid rather than subtly integrated.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Deliverable sizes and caption are correct; horizon reads level. The conspicuous colour cast, banding and grain need further correction. Missing raw prevents checking scene preservation and original full resolution.",
+      "revision": 5,
+      "revision_notes": "Warmer and lower-contrast treatment reaches all three exports; exact new caption, stable crop and scene positions."
+    },
+    "XMNM": {
+      "fidelity": 4,
+      "fidelity_misses": [
+        "Pronounced residual noise in sky and water does not satisfy the requested noise correction."
+      ],
+      "craft": 3,
+      "craft_sub": {
+        "hierarchy": 4,
+        "spacing": 4,
+        "type": 4,
+        "colour": 3,
+        "finish": 2,
+        "motif": 4
+      },
+      "defects": [
+        {
+          "where": "coast-instagram.jpg.view.png, sky and water",
+          "what": "Dense fine grain is obvious at native size, particularly in the large sky area.",
+          "severity": "major"
+        },
+        {
+          "where": "coast-edited.jpg.view.png, water",
+          "what": "Strong magenta cast makes the water colour less convincing.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Restrained caption typography and clear silhouette composition; image finishing needs improvement. Raw source is unavailable, so preservation, original resolution and before/after correction cannot be verified.",
+      "revision": 5,
+      "revision_notes": "All three exports have a warmer, softer tonal treatment and the exact new caption; composition and caption styling remain stable."
+    }
+  },
+  "pairwise_round1": [
+    {
+      "a": "NPTJ",
+      "b": "RYIF",
+      "publish": "a",
+      "margin": "clear",
+      "why": "NPTJ has a cleaner sky and more controlled sunset colour without RYIF's green-yellow banding."
+    },
+    {
+      "a": "NPTJ",
+      "b": "XMNM",
+      "publish": "a",
+      "margin": "clear",
+      "why": "NPTJ's substantially cleaner image finish outweighs XMNM's more elegant caption."
+    },
+    {
+      "a": "RYIF",
+      "b": "XMNM",
+      "publish": "b",
+      "margin": "slight",
+      "why": "XMNM has more restrained sunset colour and better integrated caption typography despite its grain."
+    }
+  ],
+  "judge": "3",
+  "test": "T10"
+}

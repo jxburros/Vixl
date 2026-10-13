@@ -1,0 +1,93 @@
+{
+ "test": "T01",
+ "judge": "1",
+ "lanes": {
+  "ZENE": {
+   "fidelity": 5,
+   "fidelity_misses": [],
+   "craft": 3,
+   "craft_sub": {
+    "hierarchy": 3,
+    "spacing": 3,
+    "type": null,
+    "colour": 4,
+    "finish": 4,
+    "motif": 3
+   },
+   "defects": [
+    {
+     "where": "picture.png overview / crop-1-2, centre right",
+     "what": "The beam's lower edge cuts straight through the setting sun and its halo rings, so the two light sources fight for the focal point and the overlap reads as a muddy wedge",
+     "severity": "major"
+    },
+    {
+     "where": "picture.png overview, left half",
+     "what": "The lighthouse is small and the near-black cliff fills about a third of the frame as one dead dark mass",
+     "severity": "minor"
+    },
+    {
+     "where": "picture.png overview, x~850-1000 y~828 (overview px)",
+     "what": "A wave line is drawn in two tones (bright half, faint half) and looks like a rendering slip",
+     "severity": "minor"
+    },
+    {
+     "where": "picture.png crop-1-1, lantern",
+     "what": "The lantern glow is three hard-edged translucent discs that look like a target rather than a glow",
+     "severity": "minor"
+    },
+    {
+     "where": "picture.png overview, right edge at horizon",
+     "what": "The translucent beam runs over the far headland and down past the horizon at the edge, washing out the land",
+     "severity": "minor"
+    }
+   ],
+   "craft_notes": "A competent flat travel-poster scene with nice four-point stars and a good sun path on the water. But the sun and the beam compete, the beam slices through the sun's glow, and the huge dark cliff with a small lighthouse weakens the hierarchy. Edges are clean at 1:1.",
+   "revision": 3,
+   "revision_notes": "The sky is darker and still a gradient, the beam is much brighter, the lighthouse and rocks are on the right with the beam sweeping left, and a third boat was added. But the whole scene was mirrored, so the sun, the far hills, the two original boats (sail shading flipped), the offshore rock and the wave lines all moved. The setting sun stays at full brightness in a night sky. The new beam is an opaque, muddy olive that covers a star and swamps the sun's halo. The lantern halo turned dull grey."
+  },
+  "ZUKB": {
+   "fidelity": 4,
+   "fidelity_misses": [
+    "The beam stays in the sky and ends at about horizon height at the right edge. It points out over the sea but never actually crosses the water ('across the sea' only loosely met)."
+   ],
+   "craft": 4,
+   "craft_sub": {
+    "hierarchy": 5,
+    "spacing": 4,
+    "type": null,
+    "colour": 4,
+    "finish": 4,
+    "motif": 4
+   },
+   "defects": [
+    {
+     "where": "picture.png crop-1-2 / overview, near boat at x~1030",
+     "what": "A wave line runs behind the boat and shows through the gap between the sails, so it looks as if it pierces the boat",
+     "severity": "minor"
+    },
+    {
+     "where": "picture.png crop-1-2, just below horizon",
+     "what": "A soft amber-to-violet fade band sits under the horizon and looks slightly smeared against the otherwise hard-edged flat style",
+     "severity": "minor"
+    },
+    {
+     "where": "picture.png overview, beam",
+     "what": "The beam bands are greyish and lose warmth where they cross the amber sky",
+     "severity": "minor"
+    }
+   ],
+   "craft_notes": "A strong, clear poster composition: the large two-tone lighthouse with a soft lantern glow reads first, and the beam leads the eye to the boats. The sky gradient is smooth and the shapes are clean at 1:1. It is slightly generic, with small polish issues (a wave line through a boat, the horizon fade band).",
+   "revision": 4,
+   "revision_notes": "All requested changes were made. The sky is darker (still a gradient), the beam is brighter, the lighthouse and rocks were mirrored to the right with the beam sweeping left, and a third boat was added. Stars, lighthouse styling and glow are unchanged. Collateral: the two original boats and the far headland were mirrored to new positions. A leftover orange strip on the water at the horizon no longer matches the night sky. A wave line again runs through a boat."
+  }
+ },
+ "pairwise_round1": [
+  {
+   "a": "ZENE",
+   "b": "ZUKB",
+   "publish": "b",
+   "margin": "clear",
+   "why": "ZUKB has one clear focal point (a big lighthouse with a clean beam), while ZENE's sun and beam compete and overlap under a heavy dark cliff."
+  }
+ ]
+}

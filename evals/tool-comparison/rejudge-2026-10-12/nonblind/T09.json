@@ -1,0 +1,91 @@
+{
+ "test": "T09",
+ "lanes": {
+  "V": {
+   "hard_passed": 6,
+   "hard_total": 6,
+   "hard": [
+    {
+     "check": "Six files at exact sizes",
+     "pass": true,
+     "evidence": "1080x1080, 1080x1920, 1600x900, 1920x1005, 728x90, 600x200, all RGB"
+    },
+    {
+     "check": "Copy exact on four larger sizes; small sizes carry headline + line 3",
+     "pass": true,
+     "evidence": "Four lines word for word on square/story/X/FB (visual read); leaderboard and email show headline + date line. Extra 'TIDEWICK CAFÉ' label disclosed"
+    },
+    {
+     "check": "Story: no text in top/bottom 250 px",
+     "pass": true,
+     "evidence": "Text block spans about y=560-1400; top band holds only the lamp, bottom band only waves"
+    },
+    {
+     "check": "Nothing stretched/letterboxed",
+     "pass": true,
+     "evidence": "Lamp disc 170x170, 240x240, 230x230, 220x220, 66x66 (ratio 1.00); leaderboard disc 34x32 because the wave overlaps it; layouts drawn per size"
+    },
+    {
+     "check": "One family",
+     "pass": true,
+     "evidence": "Same navy ground, Fraunces/Work Sans, amber lamp + layered sea-foam/coral/cream waves on all six"
+    },
+    {
+     "check": "Leaderboard readable at 100%",
+     "pass": true,
+     "evidence": "Headline about 28 px cap-height serif, date line about 17 px, clear contrast"
+    }
+   ],
+   "report_honest": "yes",
+   "honesty_notes": [
+    "Every checked claim held: sizes, the story text band (540-1400), the lamp move in r2 (800,90 -> 840,60, measured), small sizes dropping lines 2 and 4, and the r2 headline wrapping to two lines.",
+    "The editable .vixl sources are listed but missing from the folder because of the gitignore. Not counted against honesty."
+   ],
+   "editability": 4,
+   "editability_notes": "The round-2 report says text-set on the existing live text layers. The new headline overflowed on 3 sizes, so the headline was resized (124->112, 136->128, 163->156) and the square's lamp was moved 40/30 px. The r1/r2 diff shows changes only in the text areas and the square lamp; the waves and other layers are untouched. The .vixl sources named in the report are not in the run folder (*.vixl is gitignored repo-wide), so editability is judged from the round-2 report and an r1/r2 pixel diff."
+  },
+  "W": {
+   "hard_passed": 6,
+   "hard_total": 6,
+   "hard": [
+    {
+     "check": "Six files at exact sizes",
+     "pass": true,
+     "evidence": "1080x1080, 1080x1920, 1600x900, 1920x1005, 728x90, 600x200"
+    },
+    {
+     "check": "Copy exact on four larger sizes; small sizes carry headline + line 3",
+     "pass": true,
+     "evidence": "Four lines exact on the large sizes (coral separators); leaderboard and email show headline + date line"
+    },
+    {
+     "check": "Story: no text in top/bottom 250 px",
+     "pass": true,
+     "evidence": "Text spans y about 741-1549 (render.py DOM boxes; visually confirmed); the lamp and waves sit in the margins"
+    },
+    {
+     "check": "Nothing stretched/letterboxed",
+     "pass": true,
+     "evidence": "Lamp discs measured 176x176, 300x300, 280x280, 40x40, 72x72; FB disc circular in a crop"
+    },
+    {
+     "check": "One family",
+     "pass": true,
+     "evidence": "Fraunces + DM Sans, amber lamp with steam curls and halo rings, same striped wave band on all six"
+    },
+    {
+     "check": "Leaderboard readable at 100%",
+     "pass": true,
+     "evidence": "One-line headline about 24 px, date line about 13 px; legible"
+    }
+   ],
+   "report_honest": "yes",
+   "honesty_notes": [
+    "Sizes, the story text band, the extra dark navy colour #0d1b2b, the hard wave edge at x=600 on the leaderboard and the forced email break are all as stated.",
+    "R2 says 'nothing else changed: layout numbers'. That is true of the code, but on the FB cover the items line re-wraps and the date and pill move down about 20 px. Not misleading."
+   ],
+   "editability": 5,
+   "editability_notes": "The diff of campaign.html shows only the HEAD and ITEMS constants and the email headline markup changed; render.py is identical. One extra render pass was needed to add a nowrap span. The pixel diff is confined to the text blocks, plus copy-driven reflow on FB. The square's 'Winter Menu:' colon now touches the lamp's faint halo rings."
+  }
+ }
+}

@@ -1,0 +1,62 @@
+{
+ "test": "T12",
+ "judge": "claude",
+ "lanes": {
+  "FJPE": {
+   "fidelity": 4,
+   "fidelity_misses": [
+    "Waves are three thin stroked lines, not layered (filled) waves; they read as a pattern rather than layered water",
+    "Lighthouse grows up from its own platform bar mid-frame rather than standing in the sea; it does not relate to the waves"
+   ],
+   "craft": 3,
+   "craft_sub": {
+    "hierarchy": 4,
+    "spacing": 3,
+    "type": 4,
+    "colour": 4,
+    "finish": 3,
+    "motif": 3
+   },
+   "defects": [
+    {"where": "intro-last-frame.png / 1:1 crop, beam left of lantern", "what": "Beam is a blurred wedge built from three visible translucent bands with soft, smeared ends; reads as a motion-blur artefact rather than a light beam", "severity": "major"},
+    {"where": "intro.mp4 frames 3.25 s, 4.25 s and GIF frame 171", "what": "The sweep is faked by squashing the wedge horizontally, so at mid-sweep the beam collapses to a stubby clipped fan beside the lantern", "severity": "minor"},
+    {"where": "intro-last-frame.png, whole layout", "what": "Lighthouse floats on a short sea-foam bar in mid-air, separated from the waves by the text block; the scene does not connect", "severity": "minor"},
+    {"where": "intro-last-frame.png, bottom third", "what": "Three thin wave lines leave the bottom third mostly empty navy; the sea feels sparse and generic", "severity": "minor"}
+   ],
+   "craft_notes": "Clean centred lockup with a strong bold serif wordmark and a quiet tracked sans tagline in sea-foam; timings match the brief and the stroked waves draw in smoothly with round caps. Let down by the blurry banded beam and the generic line waves, and the lighthouse floats unconnected to the sea.",
+   "revision": 5,
+   "revision_notes": "MP4 and GIF are 8.0 s; tagline reads 'Open daily from 7 am', typed on and finished by about 5.0 s, then a 3 s hold. Beam period measured at a fixed pixel went from about 2.4 s to about 4.8 s, so half speed. The build-up is stretched slightly to fit 8 s with a 3 s hold, which the request implies. Layout, colours and type are unchanged."
+  },
+  "XVMB": {
+   "fidelity": 5,
+   "fidelity_misses": [],
+   "craft": 4,
+   "craft_sub": {
+    "hierarchy": 4,
+    "spacing": 4,
+    "type": 3,
+    "colour": 4,
+    "finish": 3,
+    "motif": 4
+   },
+   "defects": [
+    {"where": "intro.mp4 frames 0.25-1.25 s (and gif frames 17, 34)", "what": "Waves are revealed by a hard vertical wipe, so mid-draw each layer ends in a flat rectangular block edge down to the frame bottom instead of a drawn line", "severity": "major"},
+    {"where": "intro.gif, background", "what": "Visible dither grain in the navy gradient background of the 540 px GIF", "severity": "minor"},
+    {"where": "intro-last-frame.png, wordmark", "what": "Wordmark is set in a regular-weight book serif that looks like a default face; it is a bit light against the bolder illustration", "severity": "minor"},
+    {"where": "intro-last-frame.png, beam", "what": "Beam often runs off the top/left edge of the frame and crosses the empty sky away from the text, so it does little for the composition at those moments", "severity": "minor"}
+   ],
+   "craft_notes": "A fuller scene: three filled sea-foam wave layers with a cream crest line, a well-drawn striped lighthouse rising from behind the waves, a glowing lantern and a beam that fades along its length and swings in a wide arc. Text sits as a centred block to the right, with a cream serif wordmark and an amber tagline. The block-edged wave wipe in the first second looks crude, and the type is serviceable rather than distinctive.",
+   "revision": 5,
+   "revision_notes": "MP4 and GIF are 8.0 s; tagline reads 'Open daily from 7 am', typed on and complete by about 5.0 s, then a 3 s hold. The beam visibly swings about half as fast (probe passes about twice as far apart). The build-up is stretched slightly to fit, as the request implies. Composition, colours and type are the same as round 1, and the tagline is still centred under the wordmark."
+  }
+ },
+ "pairwise_round1": [
+  {
+   "a": "FJPE",
+   "b": "XVMB",
+   "publish": "b",
+   "margin": "clear",
+   "why": "XVMB's filled layered sea, grounded lighthouse and fading, properly sweeping beam make a real harbour scene, while FJPE's blurred banded beam and thin line waves look unfinished despite its stronger wordmark."
+  }
+ ]
+}

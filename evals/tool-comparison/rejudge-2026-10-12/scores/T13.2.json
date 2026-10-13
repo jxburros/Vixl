@@ -1,0 +1,61 @@
+{
+  "test": "T13",
+  "judge": "2",
+  "lanes": {
+    "KWNH": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 4,
+      "craft_sub": {
+        "hierarchy": 4,
+        "spacing": 4,
+        "type": null,
+        "colour": 4,
+        "finish": 5,
+        "motif": 4
+      },
+      "defects": [
+        {
+          "where": "keeper-idle.gif.frames.png face",
+          "what": "Face has no distinct eye pixel, so the pale facial shape reads less clearly at 32 pixels.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Recognizable hooded keeper with beard, boots and lantern; readable alternating walk poses. All five round-1 views inspected. Four unique walk frames, 13-colour sheet, binary alpha, nearest-neighbour GIF blocks, timing and baseline y=30 verified.",
+      "revision": 5,
+      "revision_notes": "Only the three coat palette colours change in the original six frames; alpha and other colours identical. Two wave poses appended with correct 250ms timing and GIF; sheet is 256x32."
+    },
+    "WBJG": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 4,
+      "craft_sub": {
+        "hierarchy": 5,
+        "spacing": 4,
+        "type": null,
+        "colour": 5,
+        "finish": 5,
+        "motif": 5
+      },
+      "defects": [
+        {
+          "where": "keeper-sheet.png all frames",
+          "what": "Boot soles sit on the very last canvas row, leaving no lower breathing room.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Expressive readable face, clear lantern silhouette and convincing small-scale coat shading. All five round-1 views inspected. Four unique walk frames, 13 colours, binary transparency, 8x nearest-neighbour GIF scaling, timings and baseline y=31 verified. Magenta in the first-frame view is the transparent palette colour, not an opaque background defect.",
+      "revision": 5,
+      "revision_notes": "Original six frames change only three coat palette colours; added two clear wave poses at 250ms and matching GIF, correct 256x32 sheet and metadata."
+    }
+  },
+  "pairwise_round1": [
+    {
+      "a": "KWNH",
+      "b": "WBJG",
+      "publish": "b",
+      "margin": "slight",
+      "why": "WBJG's eye, hood and lantern silhouette communicate the character more clearly at native size."
+    }
+  ]
+}

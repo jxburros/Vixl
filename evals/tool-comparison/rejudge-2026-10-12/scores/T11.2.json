@@ -1,0 +1,107 @@
+{
+  "test": "T11",
+  "judge": "2",
+  "lanes": {
+    "GNQS": {
+      "fidelity": 4,
+      "fidelity_misses": [
+        "Roof and wall outlines still do not meet at the eaves in the clean line drawing."
+      ],
+      "craft": 3,
+      "craft_sub": {
+        "hierarchy": 4,
+        "spacing": 4,
+        "type": null,
+        "colour": 5,
+        "finish": 3,
+        "motif": 4
+      },
+      "defects": [
+        {
+          "where": "sketch-color.png.crop-1-2.png left canopy edge",
+          "what": "Pale sliver separates green fill from the black contour.",
+          "severity": "minor"
+        },
+        {
+          "where": "sketch-color.png.crop-1-1.png door bottom",
+          "what": "Thin pale seam remains along the bottom of the navy fill.",
+          "severity": "minor"
+        },
+        {
+          "where": "sketch-clean.png.crop-1-2.png tree",
+          "what": "Wobbly canopy contour and protruding trunk endpoint are much rougher than the geometric sun.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Preserves sketch character and composition, with the supplied comparison providing visual reference. All round-1 views/crops inspected; palette values verified. Several edge refinements remain.",
+      "revision": 5,
+      "revision_notes": "Exact red roof and right-side chimney added; pixel changes confined to roof/chimney in artwork and comparison."
+    },
+    "IRCG": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 5,
+      "craft_sub": {
+        "hierarchy": 5,
+        "spacing": 5,
+        "type": null,
+        "colour": 5,
+        "finish": 5,
+        "motif": 5
+      },
+      "defects": [],
+      "craft_notes": "Clean closed joins, round sun, straightened architecture and smooth tree preserve the source composition while delivering polished flat artwork. All round-1 views/crops inspected; exact palette confirmed and SVG contains vectors without embedded raster.",
+      "revision": 5,
+      "revision_notes": "Exact red roof and matching-weight right chimney; unaffected art remains pixel-identical."
+    },
+    "WPOZ": {
+      "fidelity": 4,
+      "fidelity_misses": [
+        "Residual tilt remains visible in roof baseline, windows and wall uprights.",
+        "Clean roof outline does not join the wall at the eaves."
+      ],
+      "craft": 4,
+      "craft_sub": {
+        "hierarchy": 4,
+        "spacing": 4,
+        "type": null,
+        "colour": 5,
+        "finish": 4,
+        "motif": 4
+      },
+      "defects": [
+        {
+          "where": "sketch-clean.png.crop-1-1.png house",
+          "what": "Roof baseline and windows still visibly slope, and roof-to-wall joins remain open.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Smooth flat fills, faithful composition and retained hand-drawn irregularity. All round-1 views/crops inspected; palette verified and SVG has no embedded raster. Architectural alignment needs one cleanup pass.",
+      "revision": 5,
+      "revision_notes": "Correct red and right-side chimney in matching stroke character; changes limited to roof/chimney and comparison."
+    }
+  },
+  "pairwise_round1": [
+    {
+      "a": "GNQS",
+      "b": "IRCG",
+      "publish": "b",
+      "margin": "clear",
+      "why": "IRCG has cleaner joins and fill boundaries with a more consistent line finish."
+    },
+    {
+      "a": "GNQS",
+      "b": "WPOZ",
+      "publish": "b",
+      "margin": "slight",
+      "why": "WPOZ has smoother canopy contours and cleaner colour-to-line registration."
+    },
+    {
+      "a": "IRCG",
+      "b": "WPOZ",
+      "publish": "a",
+      "margin": "clear",
+      "why": "IRCG resolves the tilted architecture and open eaves while retaining the original composition."
+    }
+  ]
+}

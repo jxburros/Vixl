@@ -1,0 +1,96 @@
+{
+ "test": "T06",
+ "judge": "1",
+ "lanes": {
+  "GQFW": {
+   "fidelity": 5,
+   "fidelity_misses": [],
+   "craft": 3,
+   "craft_sub": {
+    "hierarchy": 4,
+    "spacing": 3,
+    "type": 3,
+    "colour": 4,
+    "finish": 3,
+    "motif": null
+   },
+   "defects": [
+    {
+     "where": "signup-form.pdf, Type of act row (crop-1-1, crop-1-2)",
+     "what": "Radio circles are small and sit visibly below the label baseline; in the sample they are drawn larger and centred, so blank and filled versions don't match",
+     "severity": "minor"
+    },
+    {
+     "where": "signup-form.pdf, Preferred slot (crop-2-1)",
+     "what": "Blank dropdown has no arrow or other affordance; it looks like a plain text box on screen and in print",
+     "severity": "minor"
+    },
+    {
+     "where": "signup-form.pdf / signup-sample.pdf, lower page (overview)",
+     "what": "Dead band of about 1.3 in between the signature/date row and the footer rule",
+     "severity": "minor"
+    },
+    {
+     "where": "signup-form.pdf, Number of performers row (overview)",
+     "what": "Small box with a floating '1 to 6' hint leaves most of the row empty; the slot dropdown sits alone below the titles box, which breaks the grouping and the rhythm",
+     "severity": "minor"
+    },
+    {
+     "where": "signup-sample.pdf, filled values (crop-1-1)",
+     "what": "Filled values are pure black Helvetica while labels are navy; plain un-embedded system Helvetica gives a generic look",
+     "severity": "minor"
+    }
+   ],
+   "craft_notes": "A correct, tidy form: a navy header with an amber rule, cream-filled boxes, amber required asterisks and helpful right-aligned hints. The fields work well (email, number and date validation). Execution is generic, with small inconsistencies: misaligned radio buttons in the blank form, no dropdown affordance, uneven row rhythm and an empty band above the footer.",
+   "revision": 5,
+   "revision_notes": "Instagram handle (required) was added between Email and Phone in the same row, so the row is now three columns. The slot options were changed to the six 30-minute slots. Widget order is performer_name, email, instagram, phone and so on. The sample shows @driftwoodquartet and 8:30–9:00. Nothing else moved: the other crops are pixel-identical in size and layout."
+  },
+  "MHMI": {
+   "fidelity": 5,
+   "fidelity_misses": [],
+   "craft": 4,
+   "craft_sub": {
+    "hierarchy": 5,
+    "spacing": 4,
+    "type": 4,
+    "colour": 4,
+    "finish": 4,
+    "motif": null
+   },
+   "defects": [
+    {
+     "where": "signup-form.pdf, Signature/Date row (crop-2-1, crop-2-2)",
+     "what": "The signature is an underline only while the date is a taller box than every other field, so the row mixes two field styles and two heights",
+     "severity": "minor"
+    },
+    {
+     "where": "signup-sample.pdf, Signature (crop-2-1)",
+     "what": "The signature value is set at about twice the size of every other filled value, which looks out of scale",
+     "severity": "minor"
+    },
+    {
+     "where": "signup-form.pdf, lower page (overview)",
+     "what": "Dead band of about 0.8 in between the signature row and the footer rule",
+     "severity": "minor"
+    },
+    {
+     "where": "signup-sample.pdf, filled text boxes (crop-1-1)",
+     "what": "Filled values are light and small against tall boxes, with tight left padding (text starts about 5 pt from the border)",
+     "severity": "minor"
+    }
+   ],
+   "craft_notes": "Polished and on-brand: an embedded Plus Jakarta Sans, a strong navy header with an amber subtitle and rule, rounded light-grey boxes, and a well-organised grid that pairs number with slot and email with phone. The checkbox and radio rows sit on a shared four-column grid. Remaining issues are small: the mixed styling in the signature/date row, the oversized signature value and some empty space above the footer.",
+   "revision": 4,
+   "revision_notes": "All requests were met: a required instagram field labelled 'Instagram handle *' right after Email, the six 30-minute slot options, tab order email, instagram, phone and so on, and a sample with @driftwoodquartet and 8:30–9:00. Collateral reflow: Phone moved from beside Email onto its own half-width row, which left an orphaned right half. Everything below shifted about 85 px, and spacing was compressed, so the signature/date row now sits about 0.25 in above the footer rule and the dead space moved below the footer."
+  }
+ },
+ "pairwise_round1": [
+  {
+   "a": "GQFW",
+   "b": "MHMI",
+   "publish": "b",
+   "margin": "clear",
+   "why": "MHMI's embedded typeface, tighter grid (number and slot paired, aligned four-column option rows) and consistent controls read as designed, while GQFW has misaligned radio buttons, an arrowless dropdown and uneven row rhythm."
+  }
+ ]
+}

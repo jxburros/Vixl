@@ -1,0 +1,65 @@
+{
+ "test": "T16",
+ "judge": "claude",
+ "lanes": {
+  "AOSO": {
+   "fidelity": 5,
+   "fidelity_misses": [],
+   "craft": 4,
+   "craft_sub": {
+    "hierarchy": 5,
+    "spacing": 4,
+    "type": 4,
+    "colour": 5,
+    "finish": 4,
+    "motif": 3
+   },
+   "defects": [
+    {"where": "menu.pdf 300dpi crop-1-2 / crop-2-2, right end of every dot leader", "what": "Leaders end in a squeezed partial dot (doubled dot at the end), so the run does not stop cleanly before the price gap", "severity": "minor"},
+    {"where": "menu.pdf page-1, SEASONAL panel", "what": "Cream panel and amber left bar break out of the content column asymmetrically (extends further left than right of the price column); reads slightly off-grid", "severity": "minor"},
+    {"where": "menu.pdf page-1, section rules", "what": "Hairline section rules render at visibly different weights at screen/150 dpi (BAKERY rule looks grey and thinner than COFFEE/TEA) because they sit on fractional positions", "severity": "minor"},
+    {"where": "menu.pdf page-1, header wave mark", "what": "Small sun-over-waves glyph is a generic token, very small relative to the title", "severity": "minor"},
+    {"where": "menu.pdf text layer", "what": "Type3 fonts; headings extract as 'C O F F E E' and ff/fi ligatures as ligature glyphs, so copy/search of the PDF text is slightly degraded", "severity": "minor"}
+   ],
+   "craft_notes": "Polished, conventional menu: navy masthead with cream serif title and amber italic tagline, tracked sans section heads with amber rules, serif items with tabular, decimal-aligned and right-aligned prices, amber dietary tags in small caps-like sans (9.5 pt), tinted seasonal panel with italic descriptions, footer band. Clear hierarchy and good rhythm; everything at or above 9 pt and inside a 0.5 in frame on white, so it prints on a desktop printer. Only small refinements needed (leader ends, seasonal panel alignment).",
+   "revision": 5,
+   "revision_notes": "All coffee prices +$0.25 (Espresso $3.25 ... Drip coffee $3.00), Drip refill removed, 'Oat milk +$0.75' added under the Coffee list as a small italic note aligned to the price column (11 pt). Lower sections moved up a few pixels as the layout reflowed; style, colours and all other copy unchanged (apparent rule-weight differences are rasterisation of the same amber hairline)."
+  },
+  "FKJR": {
+   "fidelity": 4,
+   "fidelity_misses": [
+    "Prices are decimal-aligned but not right-aligned: with proportional figures the right edge of the price column is ragged ($4.75, $1.00, $5.25 end short of $3.00)",
+    "Cream background fills the whole page to the trim edge, which a 'no bleed' desktop print cannot reproduce (white unprinted rim will show)"
+   ],
+   "craft": 3,
+   "craft_sub": {
+    "hierarchy": 4,
+    "spacing": 3,
+    "type": 3,
+    "colour": 4,
+    "finish": 3,
+    "motif": null
+   },
+   "defects": [
+    {"where": "menu-preview crop-1-1 and crop-2-1, every section heading", "what": "Amber rule sits directly under the heading baseline and directly on top of the first item's cap height, with no breathing room; heading, rule and first row crowd together", "severity": "major"},
+    {"where": "menu.pdf 300dpi crop-1-1, crop-2-1", "what": "Heading rule starts a few points left of the heading and item text, so the left edge is not aligned", "severity": "minor"},
+    {"where": "menu.pdf page-1, price column", "what": "Ragged right edge of prices (proportional digits; $1.00 indented, $4.75/$5.25 short)", "severity": "minor"},
+    {"where": "menu.pdf page-1, whole page", "what": "Full-page cream fill to the trim edge on a no-bleed desktop print; the inset navy/amber double frame will sit inside an uneven white printer margin", "severity": "minor"},
+    {"where": "menu-preview crop-2-1, footer", "what": "Hours/address line runs nearly the full width of the frame, wider than the menu column above it", "severity": "minor"},
+    {"where": "menu.pdf page-1, section gaps", "what": "Large dead bands between sections versus no gap between heading and items; vertical rhythm is uneven", "severity": "minor"}
+   ],
+   "craft_notes": "Clean and legible: DM Serif Display title and condensed caps section heads with DM Sans body, navy on cream, amber rules and a double inset frame. But the heading/rule/first-row stacking is cramped while the gaps between sections are oversized, tags are plain text, and the price column is ragged on the right. Pleasant but generic; several typographic fixes needed before printing.",
+   "revision": 5,
+   "revision_notes": "All coffee prices +$0.25, Drip refill removed, 'Oat milk +$0.75' added as a small grey left-aligned note under Drip coffee (11.5 pt). Changes are confined to the Coffee block; the Tea section and everything below did not move (the note sits in the former gap, so the Coffee-to-Tea gap is now a little smaller than the others). No other drift."
+  }
+ },
+ "pairwise_round1": [
+  {
+   "a": "AOSO",
+   "b": "FKJR",
+   "publish": "a",
+   "margin": "clear",
+   "why": "AOSO has a clear masthead, well-spaced sections and a true right/decimal-aligned price column, while FKJR crowds each heading rule against its first item and leaves the prices ragged."
+  }
+ ]
+}

@@ -1,0 +1,113 @@
+{
+ "test": "T04",
+ "lanes": {
+  "V": {
+   "hard_passed": 8,
+   "hard_total": 8,
+   "hard": [
+    {
+     "check": "All seven files exist",
+     "pass": true,
+     "evidence": "All seven present"
+    },
+    {
+     "check": "SVGs: embedded_images=0 and text_elements=0",
+     "pass": true,
+     "evidence": "All four SVGs: text=0, images=0"
+    },
+    {
+     "check": "SVGs render the same without fonts",
+     "pass": true,
+     "evidence": "Outlined paths only, no font-family/href; rsvg-convert renders match"
+    },
+    {
+     "check": "favicon.ico has 16/32/48",
+     "pass": true,
+     "evidence": "ico_sizes=16,32,48"
+    },
+    {
+     "check": "app-icon-1024.png 1024x1024 RGB, square corners",
+     "pass": true,
+     "evidence": "RGB; all four corners (20,38,59)"
+    },
+    {
+     "check": "logo-sheet.png 1600x1200, all versions on cream and navy, 16/32/64 marks",
+     "pass": true,
+     "evidence": "1600x1200 RGB; both halves show horizontal, stacked, mark, mono (cream knock-out on navy) and 64/32/16 px marks"
+    },
+    {
+     "check": "Mark recognizable at 16 px; <=2 colours; mono navy only",
+     "pass": true,
+     "evidence": "16 px ICO reads as disc + lamp + wave (soft); mark.svg fills navy+amber (black strokes at opacity 0); mono one navy path"
+    },
+    {
+     "check": "Wordmark and tagline spelled exactly",
+     "pass": true,
+     "evidence": "'Tidewick' / 'COFFEE BY THE HARBOR' (caps styling)"
+    }
+   ],
+   "report_honest": "yes",
+   "honesty_notes": [
+    "Canvas sizes, 28/35 path counts, r2 ink span 50-1504 (claimed 1505) verified.",
+    "Mark/mono/ICO/app icon copied byte-identical in r2 as stated.",
+    "src/*.vixl claimed but absent (git-ignored); op JSON and gen.py present and diff matches the described text/size changes."
+   ],
+   "editability": 4,
+   "editability_notes": "Lockups edited with text-set; wordmark resized 172->150/140 px and repositioned to fit; canvases grew. Mark unchanged (byte-identical). Sheet needed rework: 4 lockup PNGs re-exported, old image layers removed, new ones imported and placed, links relinked (workaround for a tracking bug)."
+  },
+  "W": {
+   "hard_passed": 8,
+   "hard_total": 8,
+   "hard": [
+    {
+     "check": "All seven files exist",
+     "pass": true,
+     "evidence": "All seven present"
+    },
+    {
+     "check": "SVGs: embedded_images=0 and text_elements=0",
+     "pass": true,
+     "evidence": "All four SVGs: text=0, images=0"
+    },
+    {
+     "check": "SVGs render the same without fonts",
+     "pass": true,
+     "evidence": "Glyphs outlined via fontTools, no font-family/href; rsvg-convert renders correctly"
+    },
+    {
+     "check": "favicon.ico has 16/32/48",
+     "pass": true,
+     "evidence": "ico_sizes=16,32,48"
+    },
+    {
+     "check": "app-icon-1024.png 1024x1024 RGB, square corners",
+     "pass": true,
+     "evidence": "RGB; all four corners (20,38,59)"
+    },
+    {
+     "check": "logo-sheet.png 1600x1200, all versions on cream and navy, 16/32/64 marks",
+     "pass": true,
+     "evidence": "1600x1200 RGB; cream and navy halves with all versions (reversed on navy) and colour + mono at 16/32/64 px"
+    },
+    {
+     "check": "Mark recognizable at 16 px; <=2 colours; mono navy only",
+     "pass": true,
+     "evidence": "16 px ICO reads as flame over waves; mark.svg amber+navy; mono all #14263b"
+    },
+    {
+     "check": "Wordmark and tagline spelled exactly",
+     "pass": true,
+     "evidence": "'Tidewick' / 'COFFEE BY THE HARBOR' (caps styling)"
+    }
+   ],
+   "report_honest": "yes",
+   "honesty_notes": [
+    "File specs, outlining, ICO sizes, cream ICO tile, app icon RGB verified.",
+    "R2: favicon and app icon pixel-identical (maxdiff 0); mark SVGs differ only in <title>, as stated.",
+    "App icon third colour and reversed extras disclosed."
+   ],
+   "editability": 5,
+   "editability_notes": "Two string edits (wordmark, tagline) plus title strings and one sheet width (600->700) in make.py/sheet.html, then reran the scripts. Mark unchanged; viewBoxes widened naturally."
+  }
+ }
+}

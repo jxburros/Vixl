@@ -116,6 +116,12 @@ text renders without tofu offline. Still open: making a Noto face the default pr
 Emoji artwork, editable masters, custom packs and destination exports are now implemented; see [Emojis](emojis.md).
 Color emoji font support remains subject to the text engine's font format limits.
 
+## Craft
+
+The [craft plan](craft-plan.md) orders the work on the quality of finished pieces that came out of the 2026-10-13
+blind re-judging: composition checks and repair, a finishing pass in the agent loop, typography, components,
+scene effects and tool finish, measured by re-judging the Vixl lane.
+
 ## Later
 
 | Issue | What | C | P | Note |

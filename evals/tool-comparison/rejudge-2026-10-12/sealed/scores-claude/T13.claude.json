@@ -1,0 +1,57 @@
+{
+ "test": "T13",
+ "judge": "claude",
+ "lanes": {
+  "KWNH": {
+   "fidelity": 5,
+   "fidelity_misses": [],
+   "craft": 4,
+   "craft_sub": {
+    "hierarchy": 4,
+    "spacing": null,
+    "type": null,
+    "colour": 4,
+    "finish": 4,
+    "motif": 4
+   },
+   "defects": [
+    {"where": "keeper-sheet.png, all frames", "what": "Raincoat is one tall flat slab from hood to hem with only a short dark line for the arm, so the body reads as a block and has little form", "severity": "minor"},
+    {"where": "keeper-idle.gif frames 1-2", "what": "The lantern only moves down 1 px with the body bob. There is barely any sway, which the brief asked for", "severity": "minor"},
+    {"where": "keeper-sheet.png, all frames", "what": "Boots are mid-dark brown rather than clearly dark, and the lantern is small (about 3 px wide) and hard to read", "severity": "minor"}
+   ],
+   "craft_notes": "All checks pass: 32x32 frames, 13 colours, alpha is binary, clean 8x nearest GIFs, and the baseline stays at row 30 in every frame. The white-bearded old keeper with a long hood is a charming and specific take on the subject. Outlines are consistent, the face and beard read well, and the walk cycle has clear contact and passing poses. The weak point is the silhouette: the coat is a featureless rectangle and the lantern is tiny.",
+   "revision": 5,
+   "revision_notes": "Only the three coat-ramp colours changed (yellow ramp to red ramp), and every other pixel of the six original frames is identical. The sheet is 256x32 and the JSON adds wave1 and wave2 at 250 ms, with a matching wave animation entry. keeper-wave.gif is 8x, 250 ms, looping. The wave raises the near arm clearly with a hand wiggle. The raised sleeve covers part of the face/nose area, which is a little crude, but it reads as a wave."
+  },
+  "WBJG": {
+   "fidelity": 5,
+   "fidelity_misses": [],
+   "craft": 4,
+   "craft_sub": {
+    "hierarchy": 4,
+    "spacing": null,
+    "type": null,
+    "colour": 4,
+    "finish": 4,
+    "motif": 4
+   },
+   "defects": [
+    {"where": "keeper-sheet.png, all frames, torso", "what": "The arm is drawn as a long diagonal outline stroke across the coat with no sleeve volume, so it reads like a crease more than an arm", "severity": "minor"},
+    {"where": "keeper-sheet.png, all frames", "what": "Feet sit on the bottom pixel row (y=31), so there is no margin below the baseline", "severity": "minor"},
+    {"where": "keeper-walk.gif frame 2/4", "what": "The lantern swings forward to knee height, which looks a little detached from the hand", "severity": "minor"}
+   ],
+   "craft_notes": "All checks pass: 32x32 frames, 13 colours, alpha is binary, clean 8x nearest GIFs, and the baseline is constant. The round hood, rounded coat with three-tone shading and highlight, and the larger glowing lantern give the sprite more volume and a clearer lighthouse-keeper read at 1x. The idle has both a bob and a lantern swing. The walk is readable, with stride and passing poses and a bob. The arm line and the slightly hunched, bulky silhouette are the main weaknesses.",
+   "revision": 4,
+   "revision_notes": "This is a pure recolour: three coat colours were remapped to a red ramp, and no other pixel in the original six frames changed. The idle and walk GIFs were regenerated in red. The sheet is 256x32, the JSON gains wave_1 and wave_2 at 250 ms plus a wave animation, and keeper-wave.gif is 8x, 250 ms, looping. The wave itself is weak. The raised hand pops up from behind the hood with no visible arm connecting to the body, and in frame 2 it is a thin vertical stub that touches the top edge of the frame (row 0), so it reads like an antenna."
+  }
+ },
+ "pairwise_round1": [
+  {
+   "a": "KWNH",
+   "b": "WBJG",
+   "publish": "b",
+   "margin": "slight",
+   "why": "WBJG's rounded, shaded raincoat and readable lantern give a stronger silhouette at 1x and a more visible lantern sway, while KWNH's coat reads as a flat slab despite its charming bearded face."
+  }
+ ]
+}

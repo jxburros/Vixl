@@ -1,0 +1,66 @@
+{
+  "test": "T06",
+  "judge": "2",
+  "lanes": {
+    "GQFW": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 4,
+      "craft_sub": {
+        "hierarchy": 4,
+        "spacing": 3,
+        "type": 4,
+        "colour": 4,
+        "finish": 4,
+        "motif": null
+      },
+      "defects": [
+        {
+          "where": "r1 signup-form.pdf, below signature/date",
+          "what": "A disproportionately large empty band separates the completed form from the footer while the writing boxes above remain fairly shallow.",
+          "severity": "minor"
+        },
+        {
+          "where": "r1 signup-form.pdf, Preferred slot",
+          "what": "The blank dropdown has no visible arrow in the supplied rendering, making its interaction less apparent than in the sample.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Clear conventional form with precise alignment, readable sample values and useful field hints. Every round-1 view and crop inspected. Field names, required flags, options, validation actions, reading-order annotation sequence and flattened sample checked in the PDFs; viewer-specific JavaScript execution was not tested.",
+      "revision": 5,
+      "revision_notes": "Required instagram field follows Email both visually and in annotation order; all six half-hour options and both sample values are correct. The new field fits the existing row without shifting the rest of the form."
+    },
+    "MHMI": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 4,
+      "craft_sub": {
+        "hierarchy": 4,
+        "spacing": 4,
+        "type": 4,
+        "colour": 4,
+        "finish": 4,
+        "motif": null
+      },
+      "defects": [
+        {
+          "where": "r1 signup-sample.pdf, signature line and lower crops",
+          "what": "The sample signature is much larger than every other entry and nearly fills the line, giving it excessive emphasis.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Friendly, legible typography, generous writing areas and a balanced page with clean real-size edges. All round-1 views and crops inspected. Actual fields, flags, validation actions and flattened values checked; annotation sequence matches reading order. Viewer-specific tab behavior and JavaScript execution were not exercised.",
+      "revision": 5,
+      "revision_notes": "Required Instagram field and six revised slots are present; the flattened sample shows @driftwoodquartet and 8:30–9:00. Reflow accommodates the new row without losing content, and annotation order follows the visual order."
+    }
+  },
+  "pairwise_round1": [
+    {
+      "a": "GQFW",
+      "b": "MHMI",
+      "publish": "b",
+      "margin": "slight",
+      "why": "MHMI uses the page more evenly and offers larger, clearer writing areas with a gentler typographic hierarchy."
+    }
+  ]
+}

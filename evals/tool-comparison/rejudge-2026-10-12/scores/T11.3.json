@@ -1,0 +1,114 @@
+{
+  "lanes": {
+    "GNQS": {
+      "fidelity": 4,
+      "fidelity_misses": [
+        "Ground stroke is extended to both canvas edges instead of keeping the original finite line."
+      ],
+      "craft": 4,
+      "craft_sub": {
+        "hierarchy": 5,
+        "spacing": 4,
+        "type": null,
+        "colour": 5,
+        "finish": 3,
+        "motif": 5
+      },
+      "defects": [
+        {
+          "where": "sketch-color.png.crop-1-1.png, door bottom",
+          "what": "Thin pale fringe remains between navy door fill and ground stroke.",
+          "severity": "minor"
+        },
+        {
+          "where": "sketch-clean.png.crop-1-2.png, canopy and trunk junction",
+          "what": "A short trunk stroke protrudes upward into the canopy; canopy contour has small rough bumps.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Retains the original pen character most closely while removing paper and correcting tilt; exact flat palette, round sun and closed shapes. All four deliverables present and SVG contains vector paths without raster images.",
+      "revision": 5,
+      "revision_notes": "Exact red roof and right-side chimney appear in clean, vector, colour and comparison exports. Changes remain confined to roof/chimney region; existing scene stays fixed."
+    },
+    "IRCG": {
+      "fidelity": 4,
+      "fidelity_misses": [
+        "Background fill boundary does not follow the ground stroke exactly, leaving pale blue below parts of the line."
+      ],
+      "craft": 4,
+      "craft_sub": {
+        "hierarchy": 5,
+        "spacing": 4,
+        "type": null,
+        "colour": 5,
+        "finish": 4,
+        "motif": 4
+      },
+      "defects": [
+        {
+          "where": "sketch-color.png.crop-1-2.png, ground beneath tree and right edge",
+          "what": "Blue wedge appears below the ground stroke before the sea-foam fill begins.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Clean, consistent line execution and considered closure of gaps; house geometry is straightened successfully, though the canopy is more regularized than the original. All deliverables, sizes, exact palette and vector-only SVG verified.",
+      "revision": 5,
+      "revision_notes": "Roof becomes exact #c0392b, with a right-side chimney matching existing stroke weight. All four exports reflect the change and other scene elements remain fixed."
+    },
+    "WPOZ": {
+      "fidelity": 4,
+      "fidelity_misses": [
+        "Background fill does not consistently meet the ground line, leaving pale blue below it in places."
+      ],
+      "craft": 4,
+      "craft_sub": {
+        "hierarchy": 5,
+        "spacing": 4,
+        "type": null,
+        "colour": 5,
+        "finish": 4,
+        "motif": 4
+      },
+      "defects": [
+        {
+          "where": "sketch-color.png.crop-1-2.png, ground right of tree",
+          "what": "Fill transition sits below the black ground stroke and leaves a blue sliver underneath.",
+          "severity": "minor"
+        },
+        {
+          "where": "sketch-clean.png.crop-1-1.png, window corners",
+          "what": "Overlapping stroke endpoints make small dark nubs at some window corners.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Simple clean artwork with some retained irregularity and exact specified colours. All four files and 2000px artwork widths verified; SVG uses editable lines and shapes, so zero path count is not a missing vector deliverable.",
+      "revision": 5,
+      "revision_notes": "Correct red roof and chimney of matching line character on its right side; clean PNG, SVG and comparison updated consistently. Pixel differences are confined to requested roof/chimney changes."
+    }
+  },
+  "pairwise_round1": [
+    {
+      "a": "GNQS",
+      "b": "IRCG",
+      "publish": "b",
+      "margin": "slight",
+      "why": "IRCG's cleaner contours and junctions outweigh GNQS's closer retention of pen texture."
+    },
+    {
+      "a": "GNQS",
+      "b": "WPOZ",
+      "publish": "a",
+      "margin": "slight",
+      "why": "GNQS better preserves the original character and joins its ground colour to the actual line."
+    },
+    {
+      "a": "IRCG",
+      "b": "WPOZ",
+      "publish": "a",
+      "margin": "slight",
+      "why": "IRCG has cleaner window corners and more consistent house geometry."
+    }
+  ],
+  "judge": "3",
+  "test": "T11"
+}
