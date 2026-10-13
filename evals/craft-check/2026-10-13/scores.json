@@ -1,0 +1,311 @@
+{
+ "C01": [
+  {
+   "judge": "a",
+   "craft": 4,
+   "hierarchy": 5,
+   "spacing": 4,
+   "type": 4,
+   "colour": 5,
+   "finish": 4,
+   "motif": 3,
+   "fit": 5,
+   "verdict": "publish after fixes",
+   "fixes": [
+    "Blurred cloud bars over the sun read as smudges (major)",
+    "Generic synthwave sunset, no jazz or harbour cue",
+    "Empty band between reflection and title",
+    "Address line too light for across a room"
+   ]
+  },
+  {
+   "judge": "b",
+   "craft": 4,
+   "hierarchy": 5,
+   "spacing": 4,
+   "type": 4,
+   "colour": 5,
+   "finish": 4,
+   "motif": 3,
+   "fit": 4,
+   "verdict": "publish after fixes",
+   "fixes": [
+    "Stock retro sunset says nothing about jazz or harbour (major)",
+    "Cloud bars look like smudges",
+    "Empty band between reflection and title",
+    "Address line too light"
+   ]
+  }
+ ],
+ "C02": [
+  {
+   "judge": "a",
+   "craft": 4,
+   "hierarchy": 5,
+   "spacing": 4,
+   "type": 4,
+   "colour": 5,
+   "finish": 3,
+   "motif": 4,
+   "fit": 4,
+   "verdict": "publish after fixes",
+   "fixes": [
+    "Dashed coupon border breaks at the notched corners (major)",
+    "Wordmark runs nearly edge to edge",
+    "Backing circle and loaf base meet badly at the shelf",
+    "Steam too thin and pale"
+   ]
+  },
+  {
+   "judge": "b",
+   "craft": 4,
+   "hierarchy": 5,
+   "spacing": 4,
+   "type": 4,
+   "colour": 5,
+   "finish": 3,
+   "motif": 3,
+   "fit": 4,
+   "verdict": "publish after fixes",
+   "fixes": [
+    "Loaf top cut off flat instead of a dome (major)",
+    "Dashed coupon border breaks at corners",
+    "Wordmark too close to the edges",
+    "Generic clip-art loaf",
+    "Kicker small at phone size"
+   ]
+  }
+ ],
+ "C03": [
+  {
+   "judge": "a",
+   "craft": 4,
+   "hierarchy": 5,
+   "spacing": 4,
+   "type": 4,
+   "colour": 4,
+   "finish": 4,
+   "motif": 3,
+   "fit": 4,
+   "verdict": "publish after fixes",
+   "fixes": [
+    "Nine objects drawn in mixed styles, outlined and flat (major)",
+    "Navy 'leaf' unidentifiable, stray inner outline",
+    "Uneven object scale and centring in cells",
+    "'A novel' floats in empty space",
+    "Author name lacks presence"
+   ]
+  },
+  {
+   "judge": "b",
+   "craft": 3,
+   "hierarchy": 4,
+   "spacing": 3,
+   "type": 4,
+   "colour": 4,
+   "finish": 3,
+   "motif": 3,
+   "fit": 3,
+   "verdict": "publish after fixes",
+   "fixes": [
+    "Mixed illustration styles read as clip-art (major)",
+    "Objects generic, not northern-beach specific (major)",
+    "Uneven placement and scale in cells",
+    "Author name illegible at thumbnail",
+    "'A novel' floats in a large gap"
+   ]
+  }
+ ],
+ "C04": [
+  {
+   "judge": "a",
+   "craft": 4,
+   "hierarchy": 5,
+   "spacing": 4,
+   "type": 4,
+   "colour": 4,
+   "finish": 4,
+   "motif": 3,
+   "fit": 5,
+   "verdict": "publish after fixes",
+   "fixes": [
+    "Warm glow behind the bars reads as a muddy smudge",
+    "Signal-bars icon is a stock pictogram",
+    "Dead band between subtitle and rule",
+    "Unlit bars and rule too faint for a projector"
+   ]
+  },
+  {
+   "judge": "b",
+   "craft": 4,
+   "hierarchy": 5,
+   "spacing": 4,
+   "type": 4,
+   "colour": 4,
+   "finish": 4,
+   "motif": 3,
+   "fit": 5,
+   "verdict": "publish after fixes",
+   "fixes": [
+    "Warm glow looks muddy on navy",
+    "Stock signal icon, nothing specific to the talk",
+    "Loose band between subtitle and rule",
+    "Event label small for a projected slide"
+   ]
+  }
+ ],
+ "C05": [
+  {
+   "judge": "a",
+   "craft": 4,
+   "hierarchy": 5,
+   "spacing": 4,
+   "type": 5,
+   "colour": 5,
+   "finish": 5,
+   "motif": null,
+   "fit": 4,
+   "verdict": "publish after fixes",
+   "fixes": [
+    "Stat row repeats the -9 already shown twice",
+    "'1 pt = 12 px' footnote means nothing to readers",
+    "Column widths unbalanced; change header not on its axis",
+    "Loose bands above the chart and below the footnote"
+   ]
+  },
+  {
+   "judge": "b",
+   "craft": 4,
+   "hierarchy": 5,
+   "spacing": 4,
+   "type": 4,
+   "colour": 4,
+   "finish": 5,
+   "motif": null,
+   "fit": 4,
+   "verdict": "publish after fixes",
+   "fixes": [
+    "Change chart wastes its column; +1 bars are slivers",
+    "Labels and headers small at thumbnail",
+    "Stat row repeats chart facts",
+    "Uneven vertical rhythm"
+   ]
+  }
+ ],
+ "C06": [
+  {
+   "judge": "a",
+   "craft": 3,
+   "hierarchy": 3,
+   "spacing": 3,
+   "type": 3,
+   "colour": 4,
+   "finish": 4,
+   "motif": 3,
+   "fit": 4,
+   "verdict": "publish after fixes",
+   "fixes": [
+    "Closing script line competes with the names (major)",
+    "Geometric sans on the venue is an out-of-place third face (major)",
+    "Monogram small in an oversized wreath",
+    "Uneven vertical rhythm, lower half crowded",
+    "Wreath leaves look mechanical"
+   ]
+  },
+  {
+   "judge": "b",
+   "craft": 3,
+   "hierarchy": 3,
+   "spacing": 3,
+   "type": 3,
+   "colour": 4,
+   "finish": 4,
+   "motif": 3,
+   "fit": 4,
+   "verdict": "publish after fixes",
+   "fixes": [
+    "Closing script line competes with the names (major)",
+    "Venue sans clashes with script and serif (major)",
+    "Bottom crowds the frame; top has spare room",
+    "Monogram weak, wreath uneven",
+    "Straight apostrophe in o'clock"
+   ]
+  }
+ ],
+ "C07": [
+  {
+   "judge": "a",
+   "craft": 4,
+   "hierarchy": 5,
+   "spacing": 3,
+   "type": 4,
+   "colour": 5,
+   "finish": 4,
+   "motif": 4,
+   "fit": 5,
+   "verdict": "publish after fixes",
+   "fixes": [
+    "~390 px dead band above the illustration (major)",
+    "Loose, arbitrary gaps between copy, dots and button",
+    "Body line break leaves 'watch' hanging",
+    "Button shadow heavy and grey"
+   ]
+  },
+  {
+   "judge": "b",
+   "craft": 4,
+   "hierarchy": 5,
+   "spacing": 3,
+   "type": 4,
+   "colour": 5,
+   "finish": 4,
+   "motif": 4,
+   "fit": 5,
+   "verdict": "publish after fixes",
+   "fixes": [
+    "~380 px dead band at the top (major)",
+    "Copy, dots and button float loosely",
+    "Sprout leaves don't join the stem",
+    "Bar bases and backdrop circle unresolved",
+    "Button shadow heavy"
+   ]
+  }
+ ],
+ "C08": [
+  {
+   "judge": "a",
+   "craft": 4,
+   "hierarchy": 5,
+   "spacing": 4,
+   "type": 4,
+   "colour": 5,
+   "finish": 4,
+   "motif": 4,
+   "fit": 4,
+   "verdict": "publish after fixes",
+   "fixes": [
+    "Muddy wide shadow under the paperclip",
+    "Gap between clip and title larger than the rest",
+    "Tagline too light at 120 px"
+   ]
+  },
+  {
+   "judge": "b",
+   "craft": 4,
+   "hierarchy": 5,
+   "spacing": 4,
+   "type": 4,
+   "colour": 5,
+   "finish": 4,
+   "motif": 4,
+   "fit": 4,
+   "verdict": "publish after fixes",
+   "fixes": [
+    "Shadow fills the clip's inner gap with mud",
+    "Generic soft shadow adds nothing",
+    "Tagline nearly disappears at 120 px",
+    "Clip and title don't read as one lockup"
+   ]
+  }
+ ]
+}
