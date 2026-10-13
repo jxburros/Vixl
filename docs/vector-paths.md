@@ -1,5 +1,7 @@
 # Editable vector shapes, strokes and paths
 
+[Documentation home](README.md) · [Design tools](design-tools.md)
+
 All examples are operations for `Project.apply`, the CLI edit command, or `vixl_apply`.
 Changes participate in the same validation, atomic batches, save/load and undo history as
 other edits. `shape` with `target` updates a recipe without changing the layer ID.
@@ -8,7 +10,9 @@ other edits. `shape` with `target` updates a recipe without changing the layer I
 
 `radius` accepts pixels, a percentage of the shorter box edge, or four values in CSS order:
 top-left, top-right, bottom-right, bottom-left. Adjacent radii are reduced proportionally
-when they would overlap. `corner_style` is `round`, `chamfer`, or `inverted`.
+when they would overlap. `corner_style` is `round`, `chamfer`, or `inverted`. A `rectangle` created with a `radius`
+(or `border_radius`/`corner_radius`) becomes a `rounded-rectangle`, reported under `normalized`, so its corners are
+round in PNG, SVG, PDF and PowerPoint alike.
 
 ```json
 {"type":"shape","shape":"rounded-rectangle","name":"tab","width":240,"height":80,"radius":[24,24,0,0],"fill":"navy"}

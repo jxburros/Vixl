@@ -111,7 +111,7 @@ def schemas(add):
              "description": "Node IDs or {id, label, kind, color, text_color, icon, size, group}."}
     edges = {"type": "array", "maxItems": MAX_EDGES,
              "items": {"anyOf": [{"type": "array", "items": S, "minItems": 2, "maxItems": 3}, edge]},
-             "description": "{from, to, label, kind, from_port, to_port, color, arrow} or [from, to, label]."}
+             "description": "{from, to, label, kind, from_port, to_port, color, arrow, width} or [from, to, label]."}
     options = {
         "layout": enum(*LAYOUTS), "direction": enum(*L.DIRECTIONS), "routing": enum(*L.ROUTINGS), "lanes": B,
         "columns": POSITIVE_INT, "theme": enum(*THEMES), "font": S, "size": N, "text_color": S, "node_color": S,
@@ -226,7 +226,7 @@ def _edge(raw):
         raw = {"from": raw[0], "to": raw[1], **({"label": raw[2]} if len(raw) == 3 else {})}
     require(isinstance(raw, dict) and "from" in raw and "to" in raw, "Each edge needs from and to", field="edges")
     unknown = sorted(set(raw) - {"id", "from", "to", "label", "kind", "from_port", "to_port", "color", "arrow", "width"})
-    require(not unknown, f"Unknown edge field(s) {', '.join(unknown)}; use from, to, label, kind, from_port, to_port, color, arrow, id",
+    require(not unknown, f"Unknown edge field(s) {', '.join(unknown)}; use from, to, label, kind, from_port, to_port, color, arrow, width, id",
             field="edges")
     edge = {"from": _id(raw["from"], "from"), "to": _id(raw["to"], "to")}
     if raw.get("id") is not None:

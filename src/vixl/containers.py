@@ -7,7 +7,7 @@ from .model import finite, new_layer, Limits
 from .stacks import collapsed
 
 TYPES = ("container-place", "container-swap", "container-variant", "container-fill", "container-reflow", "shape-place", "image-slot")
-# Layout settings a container item carries besides its operation: its frame, text fitting, and (house style 4)
+# Layout settings a container item carries besides its operation: its frame, text fitting, and
 # the spacing units it keeps clear of the container's bottom edge.
 SPEC = ("frame", "fit_text", "min_size", "clear_below")
 CONTENT = {"text", "solid", "gradient", "shape", "pen", "image-slot", "key-value-list"}

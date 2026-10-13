@@ -125,7 +125,7 @@ LAYER_FIELDS = {
     "taper_end": (NUMBER, "Stroke taper at the end, 0–1."),
     "marker_start": (STRING, "Marker at the path start (arrow, dot …)."),
     "marker_end": (STRING, "Marker at the path end."),
-    "marker_size": (NUMBER, "Marker size as a multiple of the stroke width."),
+    "marker_size": (NUMBER, "Marker length and width in local pixels."),
     "marker_style": (STRING, "Marker drawing style."),
     "distort": (OBJECT, "Envelope distortion of the geometry (arc, wave, perspective …)."),
     "vector_geometry": (OBJECT, "Cached outline geometry of a vector stroke."),
@@ -190,7 +190,7 @@ LAYER_FIELDS = {
     # Text
     "text": (STRING, "text: the plain text (also the text of rich text); ${variables} are substituted."),
     "size": (NUMBER, "text and field: font size in pixels."),
-    "font": (STRING, "Font: a registered font name (state.fonts), a bundled font file name or a role."),
+    "font": (STRING, "Font: a registered font name (state.fonts), a fonts/ archive member or a bundled font file name; a role is in font_role."),
     "font_role": (STRING, "Typography role the font follows (heading, body …)."),
     "align": (STRING, "Text alignment: left, center or right (fields too)."),
     "spacing": (NUMBER, "text: extra line spacing in pixels; catalog shapes: spacing parameter."),

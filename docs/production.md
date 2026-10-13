@@ -28,8 +28,10 @@ MCP: `vixl_reference('workflows')` and `vixl_apply(workflow=ACTION, request={…
 Python: `vixl.workflows.dispatch(Session(...), action, request)` or the functions below.
 Every path is relative to the session's workspace and must stay within it. The CLI
 defaults the workspace to its current directory; use an explicit project path.
-The fixed-project REST service exposes `GET /workflow/schema` and
-`POST /workflow/check|act|plan|film-plan`. Filesystem/library/job actions require
+The fixed-project REST service exposes `GET /workflow/schema` and `POST /workflow/ACTION` for
+`check`, `act`, `plan`, `film-plan`, `lyric-video-plan`, `organic-catalog`, `form-fill`, `drawing-report`, `links`,
+`repair-layout`, `protected-edit` and the resource actions of the [studio guide](studio.md) (`resource-*`, `shape-save`,
+`suite-use`, `effect-run`, `palette-check`). Filesystem/library/job actions require
 CLI, Python or a workspace-scoped MCP session. This preserves REST's existing scope.
 
 `vixl_apply(create=…)` (CLI `vixl compose --request req.json`) builds a new document in one atomic call (create, font pairing,
@@ -52,6 +54,8 @@ and hashes, loads the result as a project and writes it with one history entry. 
 never captures the screen. Request fields: `output` (.png), optional `bbox` `[left, top, right, bottom]`
 (negative monitor coordinates allowed), or on Windows `window` (an HWND) and `all_screens`, and
 `overwrite`. Headless sessions or a denied OS screen-recording permission fail with `capture_unavailable`.
+Over MCP the action is off until the server owner starts `vixl mcp` with `--allow-screen-capture` (or
+`VIXL_ALLOW_SCREEN_CAPTURE=1`).
 
 ```text
 vixl workflow screen-capture --request '{"output":"screen.png","bbox":[0,0,800,600]}' --workspace .
@@ -275,7 +279,8 @@ built-in ones, in `.vixl-checks.json` at its root; a project group's `profiles` 
 
 `final` keeps `composition` even when a workspace narrows its `checks`, so unresolved [composition
 reviews](guides.md#composition) (dead bands, margin drift, uneven rhythm, crowding, clumped scatter) fail shipping
-until they are fixed or waived with a reason.
+until they are fixed or waived with a reason. Only a workspace that narrows `checks` and also sets `final.optional`
+replaces the built-in `optional` list (`color_vision`, `composition`); name `composition` in it to keep the gate.
 
 A profile has `fail_on`, `checks` (default: the standard checks), `optional` (opt-in checks added to them),
 `suites` (`"all"`, `"none"` or a list of names) and `description`. The report's `outcome` follows the profile: what
@@ -432,7 +437,8 @@ mode, ICC profile, the PDF colour spaces it uses, a document's canvas and dpi) a
 `vixl_check` findings (`check: false` skips them), with waived findings marked and the document's
 [waivers](#waivers-and-check-profiles) listed with their reasons and expiry dates. `before` adds a before/after pair with the changed share: it is
 another file, or a revision of a `.vixl` item (`previous`, `head~2`, a checkpoint or branch). Items are paths or
-`{path, label?, before?, note?}`; up to 200.
+`{path, label?, before?, note?}`; up to 200. `overlay: true` outlines each `fix` finding on a checked document's
+thumbnail, labelled with its rule and layer ID.
 
 The page is a single file that works offline: every image is a data URI, and its Content-Security-Policy allows only
 those images, inline styles and, with `decisions: true`, the one inline script it names by hash. That script adds
@@ -609,6 +615,11 @@ a worker again. Local production resumes. Cancellation is cooperative between ou
 frames and does not claim to cancel external inference. Encoding/audio mixing may finish
 their current bounded operation before cancellation is observed.
 
+Over MCP, `vixl_job(action='status' | 'result' | 'cancel', id=JOB, wait=SECONDS)` follows a durable job by its
+32-character id from `submit`, as `status` and `cancel` do; `resume` stays a workflow action. The same tool follows the
+in-memory job id (`{status: running, job}`) that any call returns when it runs past the inline limit (about 40 seconds)
+or is sent with `as_job: true` ([long calls](interfaces.md#long-calls-retries-and-progress)).
+
 Job kinds:
 
 - `production`: source, spec, output directory.
@@ -616,6 +627,8 @@ Job kinds:
 - `generate`: source, explicit provider, request (prompt, width, height, optional model,
   negative_prompt, seed, strength and generate mode), output `.vixl`.
 - `video`: explicit provider, request, output MP4/WebM (gateway contract below).
+- `lyric-video`: request, output MP4/WebM ([lyric videos](lyric-video.md)).
+- `form-fill`: source, request, output ([forms](forms.md)).
 
 An interrupted synchronous image request becomes `needs_review` and is never blindly
 repeated. Pollable video jobs keep their remote ID. Network failures back off; after
@@ -653,7 +666,8 @@ The mix is written at the highest source sample rate (up to 48 kHz; 48 kHz for s
 tracks), mono when every source is mono and unpanned; `sample_rate` (Hz) on the spec chooses
 another. The result reports `sample_rate` and `channels`.
 
-Limits: 100 shots, 1,000 captions, eight audio tracks, 3,600 frames, ten minutes, 60fps.
+Limits: 100 shots, 1,000 captions, eight audio tracks, ten minutes, 60fps, and 3,600 frames for ZIP output
+(MP4/WebM stream frames and have no frame cap).
 MP4/WebM, clip decoding and audio mixing require ffmpeg on PATH. ZIP exports stream PNG
 frames plus timing.json and do not support audio. Draft films cap dimensions at 640px;
 set their fps explicitly. Output is staged and published only after completion.

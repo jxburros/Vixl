@@ -30,7 +30,7 @@ def service_check(operation, fonts=None):
     blocked = ("linked",) if fonts is not None else ("linked", "font", "display_font")
     require(
         not any(k in operation for k in blocked)
-        and ("path" not in operation or (kind in ("text-layout", "shape") or (kind == "select" and operation.get("shape") == "path"))),
+        and ("path" not in operation or (kind in ("text-layout", "shape", "paint") or (kind == "select" and operation.get("shape") == "path"))),
         "Filesystem fields (path, linked, font files) are unavailable through services; "
         "import images with import-image and reference the returned asset"
         + ("" if fonts is not None else "; fonts are named only in operations applied to a document, by registered name or role"),

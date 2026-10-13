@@ -48,7 +48,7 @@ DENSITY_CHOICES = ("airy", "balanced", "balanced", "dense")
 # How density scales a rolled margin and the spacing unit (gaps), relative to balanced.
 DENSITY_SPACING = {"airy": 1.25, "balanced": 1.0, "dense": 0.75}
 ACCENTS = ("rule", "bar", "dot", "block", "outline", "none")
-# How a rolled direction (house style 4) sets the call to action and a date line.
+# How a rolled direction sets the call to action and a date line.
 CTA_STYLES = ("button", "pill")
 DATE_STYLES = ("plain", "highlight")
 # A date line: a weekday or month name, or a numeric date (21/6, 2026-06-21).
@@ -467,7 +467,7 @@ class Builder:
         align = align or self.align
         size = self.sizes["body"]
         tw, th = self.measure(label, size, None, 0, "left", self.font)
-        # A layout's own button style wins; then a direction that rolled a pill (house style 4); otherwise the
+        # A layout's own button style wins; then a direction that rolled a pill; otherwise the
         # button takes the document corner style (#410).
         style = self.layout.get("button") or ("pill" if self.cta_style == "pill" else None)
         # A pill's round ends need more room beside the label than square corners do.
@@ -2255,7 +2255,7 @@ def schemas(add):
             "name": S,
             "seed": {"type": ["integer", "string"]},
             "variety": {"enum": ["low", "medium", "high", "fixed"], "description": "Sparse-choice range; fixed defaults to seed 0 or the workspace seed."},
-            "direction": {"type": "object", "description": "Extra rolled choices: motif, look, style, margin, corner, background_treatment and color_assignment."},
+            "direction": {"type": "object", "description": "Extra rolled choices: cta (pill or button), date (highlight or plain), motif, look, style, margin, corner, background_treatment and color_assignment."},
             "unfilled": {
                 "enum": ["blank", "omit"],
                 "description": "blank (default): slots left unfilled show as [Label] placeholders that check "

@@ -159,6 +159,7 @@ Services:  serve | view [--host 127.0.0.1] [--port 8765], notes list|add|resolve
            per-call limits (serve, view, mcp): [--call-timeout S] [--max-megapixels N] [--max-pages N] [--max-concurrent N]
 Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144]
            import PHOTO.jpg | https://HOST/photo.jpg [--name N] [--credit TEXT] [--license TEXT]
+           import FIGMA_URL_OR_KEY --format figma [--node 1:2] [--rasterize-unsupported]
 
 Options: --project/-p FILE, --json, --allow-linked, --plugins, --max-pixels N, --detail brief|compact|full, --version
 Use vixl commands --json for a complete inventory; vixl COMMAND --help works without a document. See docs/commands.md.
@@ -503,7 +504,7 @@ def _dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "pack unpack new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert convert-batch render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates cache commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house brand emoji capabilities catalog objects".split()
+                        "pack unpack new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert convert-batch render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates cache commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house brand emoji capabilities catalog objects compact link-set".split()
                     )
                 )
             }
@@ -778,7 +779,7 @@ def command_help(cmd, args):
         "schema": "schema [OPERATION…]  (no argument: the whole operation-batch schema; "
                   "schema particles pivot: just those operations' fields, types and descriptions; aliases accepted; "
                   "schema document: the JSON Schema of a .vixl file's project.json)",
-        "canvas": "canvas resize SIZE | preset NAME | background COLOR",
+        "canvas": "canvas resize WxH | size NAME [--landscape] [--bleed] | preset NAME | dpi N | background COLOR",
         "save": "save [FILE]",
         "inspect": "inspect [LAYER] | inspect --object NAME|PATH|*",
         "status": "status",

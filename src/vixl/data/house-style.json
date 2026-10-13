@@ -48,7 +48,7 @@
   "taste": {
     "alignment": {"design": {"left": 0.75, "right": 0.25}, "data": {"left": 0.75, "center": 0.25}, "mark": {"center": 1}},
     "details": {
-      "summary": "Version 4: how a roll sets a layout's call to action (a pill or the corner-styled button) and a date line (on an accent highlight or plain). The shares are per tier; square_styles keep square buttons, and a pill corner always gives a pill.",
+      "summary": "How a roll sets a layout's call to action (a pill or the corner-styled button) and a date line (on an accent highlight or plain). The shares are per tier; square_styles keep square buttons, and a pill corner always gives a pill.",
       "cta_pill": {"safe": 0.4, "bold": 0.6, "avant-garde": 0.6},
       "date_highlight": {"safe": 0.35, "bold": 0.55, "avant-garde": 0.6},
       "square_styles": ["swiss", "brutalist", "neo-brutalist", "bauhaus", "editorial", "vintage-letterpress", "art-deco", "pixel-art"]

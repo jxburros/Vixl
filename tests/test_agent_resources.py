@@ -192,7 +192,7 @@ def test_document_independent_help_catalog_and_compact_cli(tmp_path):
         result = cli(cmd, "--help")
         assert result.returncode == 0 and b"No current project" not in result.stderr, (cmd, result.stderr)
     commands = json.loads(cli("commands", "--json").stdout)["commands"]
-    assert {"shape", "export", "palette", "models", "template"} <= set(commands)
+    assert {"shape", "export", "palette", "models", "template", "compact", "link-set"} <= set(commands)
     assert cli("template", "new", "logo", "-o", "logo.vixl").returncode == 0
     result = cli("apply", "-", input=b'{"operations":[{"type":"move","target":"mark","x":1}]}')
     compact = json.loads(result.stdout)

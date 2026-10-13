@@ -31,9 +31,10 @@ a provider/configuration error, report it to the user instead of looping.
 
 - Keys are referenced by env-var name (`key_env`); `url_env` may replace `url`.
 - `VIXL_AI_PROVIDER` overrides `default`; `--provider NAME` / `provider=` overrides per call.
-- `--provider openai|gemini|flux|anthropic` works without a config entry once `OPENAI_API_KEY`,
-  `GEMINI_API_KEY`, `BFL_API_KEY` or `ANTHROPIC_API_KEY` is set. Anthropic needs the
-  `vixl-engine[anthropic]` extra and covers describe/detect/OCR/plan only (Claude does not generate images).
+- `--provider openai|gemini|flux|anthropic|mistral|meta` works without a config entry once `OPENAI_API_KEY`,
+  `GEMINI_API_KEY`, `BFL_API_KEY`, `ANTHROPIC_API_KEY`, `MISTRAL_API_KEY` or `MODEL_API_KEY` (Meta) is set.
+  Anthropic needs the `vixl-engine[anthropic]` extra and covers describe/detect/OCR/plan only (Claude does not
+  generate images); Mistral and Meta use OpenAI-compatible chat (Meta also generates and edits images).
 - Provider config is never read from `.vixl` files. MCP/REST servers use the server machine's config.
 
 ## Capability matrix
@@ -54,22 +55,26 @@ Detections from every provider come back as `objects[{label, box:[x,y,w,h]}]` in
 
 ## Operations
 
+The MCP tools come from the second server, `vixl mcp --tools ai`, which also serves `vixl_document` (find layers,
+inspect), `vixl_render` (look at the result) and `vixl_job`; register it beside the design server with the same
+workspace (see mcp-rest-python.md). Selections and other edits that need `vixl_apply` go through the design server.
+
 | Goal | MCP | CLI |
 | --- | --- | --- |
 | Generate a new layer | `vixl_ai_generate(prompt, width, height, seed, name, provider)` | `vixl generate --prompt '…' --size 1024x1024 --as NAME --provider P [--seed N]` |
-| Inpaint a region | select first (`select` op), then `vixl_ai_generate(prompt, mode="inpaint")` | `vixl select rect …` then `vixl generate --prompt '…' --mode inpaint --as NAME` |
+| Inpaint a region | select first (`select` op through `vixl_apply`, or `vixl_ai_select_object`), then `vixl_ai_generate(prompt, mode="inpaint")` | `vixl select rect …` then `vixl generate --prompt '…' --mode inpaint --as NAME` |
 | Image-to-image (whole canvas) | `vixl_ai_generate(prompt, mode="img2img", strength=0.6)` | `vixl generate --mode img2img --strength 0.6 …` |
 | Outpaint / extend canvas | `vixl_ai_extend(prompt, right=500)` | `vixl ai extend --right 500 --prompt '…' --as extension` |
 | Upscale a layer | `vixl_ai_upscale(layer, scale=2)` | `vixl ai upscale LAYER --2x` / `--scale 4` |
 | Re-roll a generated layer | `vixl_ai_regenerate(layer, prompt?, seed?)` | `vixl ai regenerate LAYER [--seed 42]` |
-| Provenance of a layer | `vixl_document(action='inspect', target)` → `provenance` | `vixl ai info LAYER` |
+| Provenance of a layer | `vixl_document(action='inspect', target, verbose=true)` → `provenance` | `vixl ai info LAYER` |
 | Remove background | `vixl_ai_remove_background(layer)` | `vixl ai background-remove LAYER` |
 | Select an object by label | `vixl_ai_select_object(label)` | `vixl select object 'the red car' --provider vision` |
 | Select main subject | `vixl_ai_select_subject()` | `vixl ai select-subject` |
 | Remove selected object | `vixl_ai_remove()` | `vixl ai remove --as removed-object` |
 | Content-aware fill selection | `vixl_ai_content_aware_fill(prompt?)` | `vixl ai content-aware-fill --prompt '…'` |
 | Describe / detect / OCR | `vixl_ai_analyze("describe"\|"detect"\|"ocr", query)` | `vixl ai describe` · `vixl detect objects\|faces` · `vixl ocr` |
-| Plan edits from English | `vixl_ai_plan(prompt)` then `apply=True` (server started with `--planner`) | `vixl ask '…'` then `vixl ask '…' --apply` |
+| Plan edits from English | `vixl_ai_plan(prompt)` then `apply=True` (only on `vixl mcp --tools ai --planner`) | `vixl ask '…'` then `vixl ask '…' --apply` |
 
 Behavior worth knowing:
 

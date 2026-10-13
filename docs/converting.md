@@ -1,5 +1,7 @@
 # Converting documents and tool calls from earlier releases
 
+[Documentation home](README.md) · [File format](file-format.md)
+
 This release removed the code that kept documents from earlier releases rendering as they used to: format-1 archives,
 the pre-0.21 `lookup` field and `vixl upgrade`, house-style versions, and the fallbacks for recipes saved before 0.23.
 The MCP server went from 51 tools to seven, and closed shapes draw their stroke inside and flush with the box. The
@@ -49,7 +51,8 @@ payload version 1 (state plus base64 images and fonts); current Vixl imports suc
 `.vixl` saved by 0.26 (an SVG whose payload left out images is refused: convert the original `.vixl`).
 
 Other options: `--history drop` starts a new undo history instead of converting every revision, and
-`--saved-by VERSION` names the release that saved a document whose `vixl_version` is missing or wrong.
+`--saved-by VERSION` names the release that saved a document whose `vixl_version` is missing or wrong. `--batch`
+treats the source as saved tool calls, like `vixl convert-batch`.
 
 ## Two modes
 
@@ -99,8 +102,8 @@ boxes.
 ```json
 {
   "converted": [{
-    "source": "poster-0.20.vixl", "output": "poster.vixl", "saved_by": "0.20.0", "look": "preserve",
-    "stroke_model": "inset", "history": {"revisions": 6, "kept": true},
+    "source": "poster-0.20.vixl", "output": "poster.vixl", "dry_run": false, "saved_by": "0.20.0",
+    "look": "preserve", "stroke_model": "inset", "history": {"revisions": 6, "kept": true},
     "changes": [
       {"change": "lookup-field", "layer": "sky", "field": "effects", "lut": "warm",
        "reason": "The lookup field became a lookup effect at the end of the effect stack, where it rendered"},
@@ -117,15 +120,16 @@ boxes.
 ```
 
 Each change names the `layer` (or the document `field`), what changed (`before`, `after`) and why; `warnings` lists
-what was not converted, and in `current` mode what will look different.
+what was not converted, and in `current` mode what will look different. A file that could not be converted is listed
+under `failed` with its `error` code and `message`.
 
 ## Convert saved tool calls
 
 `vixl convert-batch` rewrites saved MCP calls, operation batches and MCP client configurations for the seven-tool
 server. It reads JSON (one call, a list of calls, a JSON-RPC `tools/call`, a `tool_use` block with `name` and
 `input`, an operation batch, or an `mcpServers` configuration) or JSONL (one call per line), and writes
-`NAME-converted.json` beside the source unless `-o` names another file. Client prefixes such as `mcp__vixl__` are
-kept.
+`NAME-converted.json` (`.jsonl` for JSONL) beside the source unless `-o` names another file; `--dry-run`, `--report FILE`
+and `--overwrite` work as for documents. Client prefixes such as `mcp__vixl__` are kept.
 
 <!-- docs-test: save old-calls.json -->
 ```json
@@ -232,8 +236,9 @@ Every tool of 0.26 and earlier and what replaces it (generated from `vixl.conver
 | `vixl_ai_extend` | unchanged |
 <!-- conversion-table: end -->
 
-A tool name that is not in this table and not a current tool is left as it is and reported as `unmapped-tool`; a
-dropped parameter is a `parameter` warning.
+The report lists each rewrite as a change (`tool`, `operation-field`, `server-flag`, `server-env`) with its position
+in the file under `at`. A tool name that is not in this table and not a current tool is left as it is and reported as
+an `unmapped-tool` warning; a dropped parameter is a `parameter` warning.
 
 ## What is not converted
 

@@ -1,5 +1,7 @@
 # Render parity
 
+[Documentation home](README.md) · [Exporting](exporting.md)
+
 How close Vixl's PNG renders are to a browser engine and to exact geometry, which differences are
 defects, and what was fixed. The harness is [`evals/render_parity`](../evals/render_parity/README.md):
 `python -m evals.render_parity` (needs `pip install playwright`) writes side-by-side and difference

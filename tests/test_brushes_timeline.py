@@ -300,3 +300,12 @@ def test_rest_endpoints_for_new_features(tmp_path):
     pdf = client.post("/export", json={"format": "PDF", "color_space": "cmyk"})
     assert pdf.content.startswith(b"%PDF")
     assert client.post("/preview", json={"time": 100, "simulate": "tritanopia", "max_width": 64}).status_code == 200
+
+
+def test_services_accept_paint_path_data_but_not_files():
+    # paint's `path` is SVG path data, like shape's, so services take it; a drawing import `path` is a file.
+    from vixl.interfaces import service_check
+
+    service_check({"type": "paint", "target": "sketch", "brush": "ink", "path": "M10 100 C60 10 140 10 190 100"})
+    with pytest.raises(VixlError):
+        service_check({"type": "drawing", "action": "import", "path": "scan.png"})

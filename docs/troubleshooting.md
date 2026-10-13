@@ -2,7 +2,8 @@
 
 [Documentation home](README.md) · [Commands](commands.md) · [Coverage and limits](coverage.md)
 
-Start with `vixl --version`, the exact command and its structured error. For source installs,
+Start with `vixl --version`, the exact command and its structured error (a terminal shows a one-line
+`ERROR:` with the suggestions; `--json` or `VIXL_JSON=1` prints the full JSON). For source installs,
 record `git rev-parse HEAD`. Use `vixl -p your-file.vixl inspect --json` to confirm the target
 document before changing anything.
 
@@ -12,18 +13,24 @@ document before changing anything.
 | Old version after updating | Another executable on PATH or a running old session | Check executable location, run its `--version`, restart the client/session |
 | Server/view or PDF import is unavailable | Missing optional dependency | Install `.[server]` or `.[pdf]` in the same environment as Vixl |
 | Command edits the wrong file | Directory-default project selection | Pass `-p file.vixl` explicitly; MCP tools accept `document=` |
-| Unknown operation/field | Wrong spelling or syntax from another release | Inspect `vixl schema` and command `--help`; follow the error's field and suggestions |
+| Unknown operation/field | Wrong spelling or syntax from another release | Inspect `vixl schema` and command `--help` (MCP: the error carries the schema, or `vixl_reference('operations', name=[…])`); follow the error's field and suggestions |
+| `Unknown tool: vixl_…`, or `vixl mcp --tools core` is refused | A saved call, prompt or client configuration from before 0.27 names a removed tool or flag; the server has seven tools (`--tools` is `default` or `ai`) | `vixl convert-batch OLD.json` rewrites it ([Converting](converting.md#convert-saved-tool-calls)) |
+| MCP call fails with “Create or open a document first” or `document_required` | This client has no active document, or the server runs with `--require-document` | `vixl_document(action='create')` or `open`, or pass `document=` on every call ([interfaces](interfaces.md#several-agents-on-one-server)) |
+| MCP call answers `{"status": "running", "job": …}` | It outlived the inline wait (about 40 s) or was sent with `as_job`; the work carries on | `vixl_job(action='result', id=…, wait=30)`; do not resend it ([long calls](interfaces.md#long-calls-retries-and-progress)) |
+| Call refused with `limit_exceeded` | The server was started with per-call limits | Lower `scale`, export fewer pages or wait for a running job ([per-call limits](interfaces.md#per-call-limits)) |
 | Layer not found | Typo, renamed layer or wrong active page | Inspect layers/pages; use the immutable layer ID when names can change |
 | “Unknown swatch” / undefined variable | `@name` or `${name}` has no definition | Define it first, or use a literal; inspect the reported operation index |
-| Image/font file denied through a service | Services restrict operation file paths | Import through MCP image/font tools or REST asset endpoints; reuse embedded asset IDs |
+| Image/font file denied through a service | Services restrict operation file paths | Import with an `import-image` or `import-font` step in `vixl_apply`, or the REST `/assets` and `/fonts` endpoints; reuse embedded asset IDs |
 | Effect changes only part of a layer | Selection was active when effect was added | Clear selection before adding whole-layer effects; edit/remove the old masked effect |
 | Layer stops responding to canvas resize | Absolute move/align cleared constraints | Reapply intended constraints, then preview the new canvas |
 | Text is cut off or too small | Copy exceeded box or fit reduced size | Inspect resolved bounds, use a suitable text-layout box and review at destination size |
+| `check` lists `composition.*` review findings, or `--profile final` fails on them | A dead band, drifting margin, uneven rhythm, crowding under a rule or heading, or a clumped scatter ([composition](guides.md#composition)) | `vixl_apply(workflow='repair-layout')` repairs most ([layout repair](agent-trust.md#layout-repair)); otherwise fix the layout, or waive a deliberate finding with a reason |
 | Layout contains `[Label]` placeholders | Unfilled template/layout slots | Discover slots, fill all required copy and reapply with the same seed |
 | Pixel sprite looks blurred | Smooth resampling | Use nearest sampling and integer scaling |
 | Strict SVG fails | Content needs a raster fallback | Read the layer/effect details; simplify or use appearance export |
 | Export refuses a destination | Existing file or protected extension | Use a fresh filename; MCP needs `overwrite=true` for allowed export overwrite |
 | Movie/audio export fails | ffmpeg unavailable or input invalid | Check `ffmpeg -version`; try WebP or frame output to isolate encoding |
+| Figma import fails with `figma_token_missing`, `figma_forbidden`, `figma_not_found` or `figma_rate_limited` | No or invalid `FIGMA_TOKEN`, no access to the file, a wrong key or node id, or Figma's rate limit (`retry_after_s`) | Set `FIGMA_TOKEN` (or `VIXL_FIGMA_TOKEN`) in the process environment; import one frame with `--node` ([Figma errors](figma.md#errors)) |
 | Provider command fails | Missing config/key, unsupported model/capability or service error | Check [provider discovery](providers.md); image generators and vision providers have different abilities |
 
 ## Interpret checks
@@ -58,8 +65,8 @@ reason. Do not lower thresholds simply to make a report pass. [Studio](studio.md
 ## Find out why a render is slow
 
 Set `VIXL_PROFILE=1` in the environment of the CLI, the MCP server or the REST server. Every call then returns a
-`render_profile` next to its result: in CLI `--json` output and other JSON results (a command that writes an image
-to stdout prints it on stderr instead), in MCP result envelopes (a text note after an image), and in REST JSON
+`render_profile` next to its result: in CLI `--json` output and other JSON results (in a terminal the CLI prints a short
+summary without it, so add `--json`; a command that writes an image to stdout prints it on stderr instead), in MCP result envelopes (a text note after an image), and in REST JSON
 bodies and the `X-Vixl-Profile` header (a shorter summary, also on PNG responses). With the variable unset nothing
 is recorded and the renderer does no extra work.
 
@@ -68,7 +75,7 @@ is recorded and the renderer does no extra work.
 | `layers` | The 25 slowest layers drawn from scratch: `ms` (its own time; a group's excludes its children), `draws`, and `stages_ms` (`draw`, `effects`, `transform`) |
 | `by_type` | Time and count per layer type |
 | `phases_ms` | `render` (whole renders), `resolve` and `layout` (resolving variables and constraints), `styles` (drop shadows, glows, strokes), `frame_setup` and `frame_raster` (timeline exports) |
-| `caches` | `layer_hits`, `layer_misses`, `layer_writes`, `layer_evictions` (rendered layers and composited groups), `styled_hits`/`styled_misses`, `svg_hits`/`svg_misses` (rasterised text and paths; process-wide), `disk_hits`, `disk_misses`, `disk_writes`, `disk_frame_hits`, `disk_frame_writes`, `disk_frame_writes_skipped`, `disk_evictions`, `disk_bytes_written` |
+| `caches` | `layer_hits`, `layer_misses`, `layer_writes`, `layer_evictions`, `layer_uncacheable` (rendered layers and composited groups), `styled_hits`/`styled_misses`, `svg_hits`/`svg_misses` (rasterised text and paths; process-wide), `disk_hits`, `disk_misses`, `disk_writes`, `disk_frame_hits`, `disk_frame_misses`, `disk_frame_writes`, `disk_frame_writes_skipped`, `disk_evictions`, `disk_bytes_written` |
 | `renders` | Each render: `incremental` (only a box was redrawn), `dirty_box` and `dirty_pixels` against `canvas_pixels`, `from_disk`, or the `reason` it drew everything |
 
 To find the culprit without reading numbers, run the opt-in `cost` check: it draws the document once with empty

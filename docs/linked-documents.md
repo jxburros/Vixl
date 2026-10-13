@@ -30,7 +30,9 @@ a sheet of badges built from one template) stop going out of date.
 Rotation, flips, opacity, blend, masks, effects, layer styles, clipping, constraints and groups work on a
 link exactly as on an image layer (`rotate`, `flip`, `opacity`, `blur`, `group`, `align` …). `resize` and
 `scale` change the box, and `fit`/`position`/`crop` decide what happens inside it. The source is
-re-rendered at the size it is shown at, so text and vectors stay sharp when you enlarge a link.
+re-rendered at the size it is shown at, so text and vectors stay sharp when you enlarge a link. A photo in the source
+that is shown larger than its own pixels runs the `denoise` effects that open its stack at its own pixels before it
+is scaled up, so a linked crop of a corrected master shows the cleaned photo, not enlarged grain.
 
 A `link` operation with a `target` (CLI: `link-set LAYER`) changes `source`, `artboard`, `source_page`, `variables`,
 `fit`, `position` or `crop` (`null` clears an optional setting) and checks the result against the source; the layer's
@@ -116,7 +118,7 @@ Linked files are an opt-in dependency, not an import (see the security notes in
 vixl link FILE.vixl [--name N] [--x X] [--y Y] [--width W] [--height H] [--fit fill|fit|stretch]
           [--position top-left|0.5,0.5] [--crop X,Y,W,H] [--artboard NAME] [--source-page P] [--set NAME=VALUE]…
 vixl link-set LAYER [--source F] [--fit …] [--position …] [--crop …] [--artboard …] [--source-page …]
-          [--set NAME=VALUE]… [--clear artboard|source_page|variables|crop]…
+          [--set NAME=VALUE]… [--clear artboard|source_page|variables|crop|corner_pin]…
 vixl link-refresh [LAYER]
 vixl link-embed LAYER
 vixl links-relink FROM TO        # rewrite a source prefix in every link
@@ -170,8 +172,8 @@ is a link to the template with one CSV row as its `variables`.
 `Project(..., workspace=ROOT)`, `Project.sized(..., workspace=ROOT)` and
 `Project.load(path, workspace=ROOT)` expose the linked-source workspace publicly.
 The default is the current directory captured when the project is created or
-loaded. Relative links resolve against that fixed root, then the saved document's
-directory. Saving into a subdirectory or changing the process directory does not
+loaded. Relative links resolve against the saved document's directory first, then that
+fixed root. Saving into a subdirectory or changing the process directory does not
 change an existing project's workspace. When opening a master from another working
 directory, pass the original workspace explicitly; workspace paths are not embedded
 in portable documents.

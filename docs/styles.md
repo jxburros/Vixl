@@ -32,7 +32,7 @@ optional `options` (below). Python: `vixl.styles` (`listing`, `describe`, `guida
 | `do`, `dont` | Short lists |
 | `checks` | The premade rules, each with `id`, `kind`, `severity`, `summary`, `fix` and `params` |
 
-`styles apply NAME` (MCP `action="apply"`) is guidance as operations: it tags the document (`style-set`), stores a compact
+`styles apply NAME` (MCP: the `style-use` step of `vixl_apply`, with `name` and `palette`) is guidance as operations: it tags the document (`style-set`), stores a compact
 brief as design guidance (`guidance` with `style: "style"`, visible in `inspect`), and with `palette` also defines and applies
 the style's first palette, mapping background, ink and accent from its swatches. Nothing is downloaded: install the
 suggested fonts with `font-pair` or `font-install`.

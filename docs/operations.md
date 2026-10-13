@@ -8,7 +8,7 @@ See [spacing checks and pixel animation](pixel-animation-spacing.md) for the 0.9
 
 See [design tools and template production](design-tools.md) for groups, clipping, shapes, styles, artboards, CSV rendering, measurements, and the other design operations.
 
-`vixl schema` or REST `GET /schema` returns the full Draft 2020-12 JSON Schema. MCP exposes the same schema at `vixl://operations`. Every editing operation is schema-checked before I/O, then validated against the document and resource limits.
+`vixl schema` or REST `GET /schema` returns the full Draft 2020-12 JSON Schema (`vixl schema OPERATION` one operation's fields; `vixl schema document` the schema of a `.vixl` file's `project.json`, see [file format](file-format.md)). MCP exposes the operation schema at `vixl://operations` and per operation through `vixl_reference('operations', name=[…])`. Every editing operation is schema-checked before I/O, then validated against the document and resource limits.
 
 ```json
 {"operations":[
@@ -51,10 +51,11 @@ Common operation fields:
 | --- | --- |
 | add | path **or** embedded asset; name, x, y, linked, credit, license (kept in provenance) |
 | solid / gradient | name, width, height, color **or** start/end/direction/stops/angle; `target` edits an existing layer |
-| text | text, name, font, size, color, align, spacing, hide_if_empty, x/y; `target` edits an existing text layer |
+| text | text, name, font, size, color, align, spacing, line_height, tabs, hide_if_empty, x/y; `target` edits an existing text layer |
 | shape | shape, name, width, height, x/y, fill, stroke, stroke_width, line_cap, trim_start/trim_end, radius, sides, inner_radius, path, opacity, rotation; `target` edits an existing shape. A `path` is in literal local pixels from the layer's x/y; without width/height its box reaches the path's farthest point ([vector paths](vector-paths.md#path-coordinates-and-the-layer-box)) |
 | text-set | target; text, size, color, align, spacing, stroke_width/stroke_color, hide_if_empty, font — the whole layer; on rich text keeps formatting that still applies and reports what it drops under `warnings` ([rich text](rich-text.md#editing)) |
-| stack | target (a group) **or** name + targets; direction, gap, padding, align, justify, width/height, hide_if_empty; `remove` releases it |
+| text-layout | target; width/height, fit, `wrap` (`greedy`, `balance` evens a heading's lines, `pretty` keeps one word off a paragraph's last line; the breaks are the same in PNG, SVG, PDF and PPTX), warp, amount, path |
+| stack | target (a group) **or** name + targets; direction, gap (pixels or spacing units such as `"2u"`, the default), padding, align, justify, width/height, hide_if_empty; `remove` releases it |
 | move / resize / scale | target; x/y/relative **or** width/height (+ `keep_aspect`; one side alone leaves the other except on imported images) **or** `value` factor (or per-axis `x`/`y`; negative factors mirror) |
 | rotate / opacity / blend | target or targets, value (opacity 0–1 or `"N%"`) |
 | pivot | target, value `[x, y]` or an anchor; units `fraction` (default), `px` or `canvas` (a document point, converted through the parent groups) |
@@ -80,7 +81,7 @@ History transitions and project lifecycle use explicit methods / commands, not e
 
 ## `.vixl` format, version 2
 
-A ZIP archive contains `project.json`, `assets/<sha256>.<png|jpg|webp>`, `masks/<sha256>.png`, and optionally `fonts/<sha256>.ttf`. Imported PNG, JPEG and WebP files keep their original bytes (orientation is applied when decoding); other formats are normalized to PNG. Image members are stored without recompression. All members are checksummed. No archive paths are extracted to disk. Version 1 archives (complete snapshots in every revision) still load; saving writes version 2.
+A ZIP archive contains `project.json`, `assets/<sha256>.<png|jpg|webp>`, `masks/<sha256>.png`, and optionally `fonts/<sha256>.ttf`. Imported PNG, JPEG and WebP files keep their original bytes (orientation is applied when decoding); other formats are normalized to PNG. Image members are stored without recompression. All members are checksummed. No archive paths are extracted to disk. Only version 2 archives open: an older one (complete snapshots in every revision) is rewritten once by `vixl convert` ([converting](converting.md)). The format is published in [file format](file-format.md).
 
 The manifest stores current state, stable object IDs, the history DAG (each revision holds either a full `state` snapshot or a `delta` from its parent; squashed revisions are marked `squashed`), branch/checkpoint references, redo stack, and an optional open transaction. Image bytes are shared between revisions by content hash. Asset hashes identify bytes; revision and object IDs are intentionally unique, not pixel-deterministic. Archive timestamps/IDs are not intended for byte-identical builds.
 
@@ -99,17 +100,17 @@ New shared operations are `palette-apply` (`name`, optional `prefix`), `template
 | Operation | Fields |
 | --- | --- |
 | canvas | `size` or `preset` (named size), `orientation` (portrait/landscape), `bleed` (true or amount in the size's unit), `dpi`, `background`; or `width`/`height`; or `dpi` alone |
-| layout-apply | `name`; content `title`, `subtitle`, `body`, `label`, `cta`, `caption`, `items`, `image` (asset ID); `seed`, `palette` (name or colors), `colors` (role overrides), `mode`, `type_scale`, `base_size`, `density`, `align`, `accent`, `mark`, `font`, `display_font`, `transparent`, `uppercase_labels`, `prefix`, `replace` |
+| layout-apply | `name`; content `title`, `subtitle`, `body`, `label`, `cta`, `caption`, `items`, `image` (asset ID); `seed`, `palette` (name or colors), `colors` (role overrides), `mode`, `type_scale`, `base_size`, `density`, `align`, `accent`, `accent_words` (headline words set in the accent text color), `gap`, `mark`, `font`, `display_font`, `transparent`, `uppercase_labels`, `prefix`, `replace` |
 | type-scale | `base` (px), `ratio` (name or number), `prefix`, `color` — defines character styles caption … display |
 | palette-generate | `name`, `color`, `scheme` (`scale` or a harmony), `count` |
 | paint-layer | `name`, `width`, `height`, `x`, `y` |
 | paint | `target` (paint layer; omitted → active paint layer or a new one), `brush`, `points` [[x, y(, pressure)]] or `path` (SVG), `pressure`, `space`, `size`, `color`, `opacity`, `mode` (paint/erase), `seed`, `settings` (brush overrides) |
 | paint-clear | `target`, `last` (N strokes; omitted → all) |
 | brush-define | `name`, `base` (built-in brush), `settings`, `description` |
-| timeline-set | `duration`, `fps`, `loop`, `clear` |
+| timeline-set | `duration`, `fps`, `loop`, `loop_mode` (`seamless`, the default for a new timeline of 10 s or less unless `loop` is 1, or `off`), `close`, `clear` |
 | keyframe | `target` (layer or `canvas`), `property`, `time`, `value`, `easing` |
 | keyframe-remove | `target`, optional `property`, `time` |
-| animate | `target`, `property`, `to`, optional `from`, `start`, `end` or `duration`, `easing` |
+| animate | `target` or `targets`, `property`, `to`, optional `from`, `start`, `end` or `duration`, `easing`, `intent` (`entrance`, `exit`, `loop`, `emphasis`: picks the house easing) |
 | animate-preset | `target`, `preset`, `start`, `duration`, `easing`, `amount`, `distance`, `fade`, `to` |
 | marker | `name`, `time` or `delete` |
 | text-animate | `target` (text layer), `preset`, `unit` (char/word/line), `start`, `duration` (per unit), `stagger`, `easing`, `direction`, `seed`, `mode`, `distance`, `amount`, `rotate`, `from`, `repeat`, `remove`, `extend` |
@@ -158,6 +159,22 @@ New document state: `canvas.size`, `canvas.dpi`, `canvas.physical`, `canvas.blee
 `ungroup` refuses a declared object (its identity would be lost) until `{type: object, action: unset}` or `force: true`.
 
 Every operation also accepts `page` (a page name or number) in a multi-page document.
+
+## Scene atmosphere, key-value lists and tool finish (0.27)
+
+| Operation | Fields |
+| --- | --- |
+| haze | `target` (the light) **or** `x`/`y`, `form` (`band`/`round`), `width`, `height`, `color`, `strength`, `name`, `below` — a soft glow band or halo directly below its light — [scene atmosphere](atmosphere.md) |
+| star-field | `region` **or** `target`, `count`, `size`, `opacity`, `color`, `sparkles`, `fade`, `avoid` (default: every text layer), `clearance`, `seed`, `name`, `below` — seeded stars that keep clear of text |
+| string-lights | `target` (a path) **or** `from`/`to`, `sag`, `count` **or** `spacing`, `size`, `bulb` (`globe`/`pear`/`lantern`), `colors`, `glow`, `hang`, `jitter`, `wire`, `wire_width`, `seed`, `name`, `below` |
+| bokeh | `region` **or** `target`, `count`, `size`, `opacity`, `colors`, `softness`, `avoid`, `blend`, `seed`, `name`, `below` — soft out-of-focus discs |
+| reflection | **`horizon`**, `targets`, `squash`, `ripple`, `breakup`, `fade`, `blur`, `opacity`, `tint`, `tint_amount`, `seed`, `name`; `target` re-renders an existing reflection after the scene above it changed (one raster layer that keeps its settings) |
+| key-value-list | `rows` (`label`, `value`, `share`) **or** `items` text (`label \| value \| share` per line), `shares` (`auto` computes each row's share of the total), `number_format`, `colors`, `rules`, `font_size`, `font`, `value_font`, `text_color`, `share_color`, `rule_color`, `name`, `x`, `y`, `width`; `target` restyles an existing list on the same layer IDs — [key-value lists](containers-and-templates.md#key-value-lists) |
+| pattern-scatter | `distribution` (`progressive`, the default, keeps the first copies in place when `count` drops; `poisson` is the earlier layout), `thin` (a share to keep, `{keep}` or `{count}`: removes the most crowded copies and keeps the rest) |
+| pixel-art / pixel-palette | `shading` and `outline` (on by default for new sprites; `false` gives the flat sprite) |
+| organic | preset `water` (bands of sea in related tones, lighter at the horizon; `params.tones` back to front or `params.color`) built with the generator `band` |
+
+The five scene operations are deterministic for a `seed`. `haze`, `star-field`, `string-lights` and `bokeh` build editable groups of vector shapes and radial gradients that every exporter draws natively; `reflection` is one image layer. A `chart` drawn without `x`, `y`, `width` or `height` fills the canvas safe area inset by two spacing units, and its `legend_values` legend is a key-value list.
 
 <a id="bulk-edits-and-resizing-a-whole-layout-unreleased"></a>
 

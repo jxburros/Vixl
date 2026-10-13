@@ -136,9 +136,9 @@ Verify: `vixl_check(action='spacing', targets=["card","card2","card3"], axis="ho
 ]
 ```
 
-Inspect as text with `vixl_check(action='pixels', "coin")`; preview `vixl_render(action='animation', "glint", scale=8)`;
-export `vixl_export(kind='animation', path="coin.gif", format="gif", scale=8)` or `format="sheet"` for a game
-engine (writes `coin.png` + `coin.json`). Static enlargements: `sampling="nearest"`.
+Inspect as text with `vixl_check(action='pixels', target="coin")`; preview `vixl_render(action='animation', name="glint", scale=8)`;
+export `vixl_export(kind='animation', path="coin.gif", format="gif", scale=8)` or, for a game engine,
+`path="coin.png", format="sheet"` (writes `coin.png` + `coin.json`). Static enlargements: `sampling="nearest"`.
 
 Several animations in one document: save every pose with `frame-save`, then give each cycle its own
 subset, order and timing, and export them separately. Recolour all poses at once with `frames-edit`
@@ -159,10 +159,10 @@ subset, order and timing, and export them separately. Recolour all poses at once
 ## Explore alternatives safely
 
 ```text
-vixl_document(action='checkpoint'ref="base")
-… edits …                     → vixl_document(action='branch'ref="warm")
-vixl_document(action='checkout'ref="base")
-… other edits …               → vixl_document(action='branch'ref="cool")
+vixl_document(action='checkpoint', ref="base")
+… edits …                     → vixl_document(action='branch', ref="warm")
+vixl_document(action='checkout', ref="base")
+… other edits …               → vixl_document(action='branch', ref="cool")
 ```
 
 MCP: `vixl_render(action='compare', before="warm", after="cool")` returns both side by side (or
@@ -228,8 +228,10 @@ vixl -p icon.vixl export-icons --out icons --set all
 vixl_apply(operations=[
   {"type":"paint-layer","name":"marks"},
   {"type":"paint","target":"marks","brush":"marker","points":[[120,610],[420,600],[700,615]],"size":26,"color":"alpha(@accent, 0.7)"},
-  {"type":"paint","target":"marks","brush":"brush-pen","path":"M760 540 C820 470 900 520 860 600","size":10,"color":"@ink"}])
+  {"type":"paint","target":"marks","brush":"brush-pen","points":[[760,540],[800,490],[860,495],[880,540],[860,600]],"size":10,"color":"@ink"}])
 ```
+
+Through MCP and REST a stroke is given as `points` (an SVG `path` string on `paint` is CLI and Python only).
 
 ## Animated social post
 
@@ -244,7 +246,7 @@ vixl_render(action='timeline', count=8)
 vixl_export(kind='timeline', path="post.mp4")          # needs ffmpeg; otherwise post.webp or post.gif
 ```
 
-In a house-style-3 document a new timeline of 10 s or less is a seamless loop, so entrances play back before the
+A new timeline of 10 s or less is a seamless loop, so entrances play back before the
 loop restarts; add `"loop_mode":"off"` (or `"loop":1`) to `timeline-set` for a post that plays once and holds.
 
 

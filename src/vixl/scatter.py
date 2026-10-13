@@ -108,10 +108,10 @@ def schemas(add):
         "y": field(N, "Tile top edge in pixels (default 0)."),
         "background": field(S, "Tile background color (a rectangle at the bottom of the tile); omit for transparent."),
         "pattern": field(S, "Also save the tile as a document pattern of this name, for pattern-fill."),
-        "distribution": {"enum": list(DISTRIBUTIONS), "description": "progressive (default in new documents): an "
-                         "order where every prefix is evenly spread, so the same seed with a lower count keeps the "
-                         "first copies in place and drops the rest; poisson: the earlier layout, which re-rolls when "
-                         "count changes (documents before house style 4)."},
+        "distribution": {"enum": list(DISTRIBUTIONS), "description": "progressive (default): an order where every "
+                         "prefix is evenly spread, so the same seed with a lower count keeps the first copies in "
+                         "place and drops the rest; poisson: the earlier layout, which re-rolls when count "
+                         "changes."},
         "thin": {"anyOf": [{"type": "number", "exclusiveMinimum": 0, "maximum": 1},
                            {"type": "object", "properties": {"keep": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
                                                              "count": {"type": "integer", "minimum": 1}},

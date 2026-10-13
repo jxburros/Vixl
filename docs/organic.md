@@ -86,7 +86,7 @@ export writes native paths.
 | `pinecone` | pointed scales clipped to an egg, occluded | `rows`, `color` |
 | `lily-pad` | notched pad with radiating veins | `color` |
 | `fur-blob` | an ellipse body with lanceolate tufts `along` its outline pointing out, and darker inner flicks | `tufts`, `aspect`, `length`, `color`, `flick_color` |
-| `water` | filled layered water: `band` parts lighter at the horizon and darker in front, each with a crest sliver (a scene preset that fills its box) | `bands` 4, `color`, `tones` (back to front), `amplitude` 0.07, `waves` 2.5, `phase`, `crest` true |
+| `water` | filled layered water: `band` parts lighter at the horizon and darker in front, each with a crest sliver (a scene preset that fills its box) | `bands` 4 (2–8), `color`, `tones` (back to front), `amplitude` 0.07, `waves` 2.5, `phase`, `crest` true |
 
 ### Presets and their kinds
 
@@ -308,6 +308,9 @@ Agents can build new organisms by combining the same steps the presets use:
 
 The `scatter` rule works inside an organic form's own unit frame. To scatter copies of finished
 layers over another layer's outline (leaves over a hill, confetti in a card, studs along an
-edge), use the `scatter` operation; for a seamless wrap-around tile, `pattern-scatter`. Both use
-Poisson-disc sampling (`pattern-scatter` in an order that lets a lower `count` keep the surviving copies in
-place), take a `seed`, and with `merge: true` draw all copies as one path per tone. See [design tools](design-tools.md#scatter-and-seamless-pattern-tiles).
+edge), use the `scatter` operation; for a seamless wrap-around tile, `pattern-scatter`. Both take a `seed` and,
+with `merge: true`, draw all copies as one path per tone. `scatter` places copies by Poisson-disc sampling.
+`pattern-scatter` lays a tile out progressively: the same seed with a lower `count` keeps the first copies exactly
+where they were and drops the rest, and `thin` removes the most crowded copies of an existing tile
+(`distribution: "poisson"` gives the earlier layout, which re-rolls when `count` changes). See
+[design tools](design-tools.md#scatter-and-seamless-pattern-tiles).

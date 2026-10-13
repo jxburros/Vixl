@@ -3,9 +3,9 @@
 Read the built-in guidance resources `natural-color-light`, `anatomy-proportions`,
 `illustration-perspective`, `drawn-textures`, and `film-review` using
 `vixl_reference('guidance', name=...)`. Each reference includes methods,
-limits and source citations. `vixl_reference('color')`
-returns an illustrative natural palette. Subjects: skin, foliage, sky, earth,
-water, stone. Times: day, dawn, dusk, night. These palettes are starting points,
+limits and source citations. `vixl_reference('color', name=["water", "dusk"], action="natural")`
+returns an illustrative natural palette for a subject and time. Subjects: skin, foliage, sky, earth,
+water, stone. Times: day (the default), dawn, dusk, night. These palettes are starting points,
 not measured reflectance data or classifications of human appearance.
 
 ## Patterns, handmade texture and clone stamping

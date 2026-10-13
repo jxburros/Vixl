@@ -78,7 +78,7 @@ def moods():
 
 
 def details():
-    """How a roll sets layout details (house style 4): ``cta_pill`` and ``date_highlight`` shares per tier, and
+    """How a roll sets layout details: ``cta_pill`` and ``date_highlight`` shares per tier, and
     the ``square_styles`` that keep square buttons."""
     return deepcopy(_data()["taste"]["details"])
 

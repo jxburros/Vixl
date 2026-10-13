@@ -655,7 +655,8 @@ one module, `src/vixl/house_style.py`. A workspace `brand.json` and explicit fie
   always reflect the data; layouts, rich text, text flow, charts, diagrams, templates and containers
   read the same values.
 - **`taste`** holds the pools a roll draws from (palettes, pairings, layouts, styles, looks), each entry
-  with a `tier` and moods, and the variety `levels` that gate the tiers.
+  with a `tier` and moods, the variety `levels` that gate the tiers, the `alignment` weights and the `details`
+  shares that decide a roll's `cta` and `date`.
 - **`purposes`** holds one profile per purpose (poster, social, slides, document, form, diagram, logo,
   motion): the brief kinds, size categories and aliases that map to it, the default document `size`
   (and `sizes` for aliases with their own, such as `story`, `icon` or `favicon`), whether it is a `mark`
@@ -741,7 +742,7 @@ and #370 (layouts fail their own safe-area check).
   `plain`) from a separate stream of the seed; see [safe variety](safe-variety.md). Footer rules in the safe
   compositions and the `section-header` rule keep one spacing unit of clearance. Lock `cta=button` and
   `date=plain` for the plain details.
-- **Balanced headings (4a).** A new text box on a heading (a heading font role or stage, or text whose size reads as
+- **Balanced headings (4a).** A new `text-layout` box on a heading (a heading font role or stage, or text whose size reads as
   the h2 step or larger) and every layout headline take `wrap: "balance"`, lines of even width in the same line count
   (`craft.wrap`). Body text keeps greedy wrapping; `wrap: "pretty"` asks for no one-word last line. Pass
   `wrap: "greedy"` for greedy breaks. See [line breaking](typography.md#line-breaking).

@@ -37,7 +37,7 @@ vixl pixels coin
 vixl export coin-large.png --scale 8 --sampling nearest
 ```
 
-A pixel layer stores a small grid of single-character palette indices instead of image bytes. `pixels` returns just the grid, palette, native dimensions and layer ID/name. An agent can read or replace a 16×16 sprite as sixteen short strings. Create a complete pattern in one operation:
+A pixel layer stores a small grid of single-character palette indices instead of image bytes. `pixels` returns just the grid, palette, native dimensions and layer ID/name, plus the `shading` and `outline` settings and the `drawn` result (below). An agent can read or replace a 16×16 sprite as sixteen short strings. Create a complete pattern in one operation:
 
 ```json
 {"type":"pixel-art","name":"spark","rows":[".w.","www",".w."],"palette":{".":"transparent","w":"#ffffff"},"x":6,"y":1}
@@ -50,7 +50,7 @@ Grids are 1–256 pixels per axis with 1–94 printable non-space ASCII palette 
 - `outline` rings the silhouette with a 1 px line on the transparent cells around it, in the darkest palette colour (or a colour you give). A sprite whose edge is already mostly dark gets no second outline.
 - `shading` darkens the band of each colour area that faces away from the light and lights the band that faces it. Shadows turn toward violet and lights toward warm yellow, so a yellow coat gets an orange shadow. The largest areas are shaded first, and the sprite stays within `colors` opaque colours (default 16), with binary alpha. `light` is `auto` (the default: it follows the light of any ramp you drew, else top-left), `top-left`, `top` or `top-right`; `highlight: false` adds only shadows. Colours that already have a substantial hand-drawn ramp, dark outline colours and areas thinner than 3 pixels stay as drawn.
 
-`"shading": false` and `"outline": false` on `pixel-art` keep the flat sprite. `pixel-palette` turns either on or off on an existing layer:
+`"shading": false` and `"outline": false` on `pixel-art` keep the flat sprite (CLI `vixl pixel-art … --shading false --outline false`; `--shading` also takes JSON such as `'{"light":"top-right"}'`). `pixel-palette` turns either on or off on an existing layer (`vixl pixel-palette gem --shading false`):
 
 ```json
 {"type":"pixel-art","name":"gem","rows":["..#..",".###.","#####",".###.","..#.."],"palette":{".":"transparent","#":"#3a7bd5"},"shading":{"light":"top-right","colors":8},"outline":"#10162a"}

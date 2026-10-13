@@ -118,12 +118,13 @@ it verifies that the reference passes and that an idle agent fails.
 
 ## Stored baseline and weekly comparison
 
-There are 26 briefs: the original eight plus layouts, font pairing, applied rolls, templates,
+There are 31 briefs: the original eight plus layouts, font pairing, applied rolls, templates,
 CMYK export, timelines, checked workflow edits, editable SVG imports, a fillable registration
 form, batch form filling with a bad row, and (added after the 0.20 tool comparison) a chart whose
 value is corrected in place, a three-slide deck exported to PPTX and PDF, a sketch photo
 vectorized as a drawing, an organic flower, a pathfinder badge with a see-through hole, a seamless
-spinner loop, a promo adapted to two sizes, and a `targets` fan-out edit in one atomic batch. Font tasks populate
+spinner loop, a promo adapted to two sizes, a `targets` fan-out edit in one atomic batch, and five object briefs (a potted
+cactus, a dog, a guitar, a person playing a guitar, and a pile of loose shapes declared one cat). Font tasks populate
 an isolated temporary font cache with the bundled DejaVu font under the requested pairing's
 cache names. This tests pairing installation/registration and agent tool usage offline, not the
 appearance or availability of Google Fonts. Live runs use the same fixtures for comparability.

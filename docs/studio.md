@@ -365,7 +365,7 @@ image layers; an SVG whose stylesheet cannot be read imports by appearance.
 Appearance import stores a raster layer **and the original SVG source** in the archive. It
 reports the fallback; source geometry is not individually editable. Active content, scripts,
 foreignObject, animation, file/remote references, entities and nested data-URI SVG are rejected.
-Embed PNG/JPEG/WebP images; source size is limited to 4 MiB and normal canvas limits apply.
+Embed PNG/JPEG/WebP images; appearance source size is limited to 4 MiB (editable import reads up to 16 MiB) and normal canvas limits apply.
 Text uses the bundled fallback font; arbitrary browser CSS/fonts are not reproduced exactly.
 
 HTML export is a standalone responsive artwork page with a self-contained SVG image, escaped

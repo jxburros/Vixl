@@ -69,13 +69,15 @@ findings get a suggestion per check. `offset` and `limit` page the findings; `pa
 
 ## Visual feedback
 
-`vixl_apply(check=..., preview={...})` takes two more preview options:
+`vixl_apply(check=..., preview={...})` takes three more preview options:
 
 - `overlay: true` outlines each fix finding on the returned PNG, labelled `index rule · layer ID`;
   `feedback.overlay` lists the same boxes in document pixels (`region`) and preview pixels (`box`), with
   `feedback.scale`, `size`, `bytes` and `max_bytes` (512 KB by default).
 - `focus: N` zooms the preview to listed finding `N` with a margin (a detail crop); without `overlay` it is a
   clean view of that spot.
+- `regions: 0`, `1` or `2` (default 2): with `check`, real-size crops of the weakest regions (the places carrying the most
+  findings) follow the preview as extra images; `0` leaves them out, and none are made for a `page` or `time` preview.
 
 `vixl_render(overlay=true)` runs `vixl_check` and returns the same boxes beside the picture. The
 proof workflow takes `overlay: true` to mark the thumbnails of checked documents. Overlays are drawn on a

@@ -6,7 +6,9 @@
 
 Vixl can build charts from text and shapes. This example is a horizontal bar chart with
 ordinary editable layers; it does not require a chart-specific operation or an AI provider.
-The numbers are illustrative, not Vixl performance measurements.
+The numbers are illustrative, not Vixl performance measurements. The `chart` operation draws bar,
+line, pie and other charts from a table in one step, with scale, labels and legend ([Charts](../charts.md));
+this tutorial maps data to geometry by hand so each step is visible.
 
 ## Map data to geometry
 
