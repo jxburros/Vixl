@@ -112,12 +112,21 @@ def test_docs_and_skills_name_only_real_mcp_tools():  # #252
     real = {name for path in (root / "src" / "vixl").glob("*.py")
             for name in re.findall(r"def (vixl_\w+)\(", path.read_text(encoding="utf-8"))}
     assert "vixl_reference" in real and "vixl_apply" in real
+    # The conversion kit's table of earlier tool names, and only where it is defined, documented and tested.
+    from vixl.convert.batches import TOOLS as earlier
+
+    conversion = {root / "docs" / "converting.md", root / "src" / "vixl" / "convert" / "batches.py",
+                  root / "tests" / "test_convert.py"}
+
+    def allowed(name, path):
+        return path in conversion and name in earlier
+
     unknown = {}
     for folder in ("docs", "skills"):
         for path in (root / folder).rglob("*.md"):
             for name in re.findall(r"\bvixl_\w+", path.read_text(encoding="utf-8")):
                 # `vixl_ai_*` is the provider tool family; `vixl_version` is a project.json key (file-format.md).
-                if name not in real and name not in ("vixl_ai_", "vixl_version"):
+                if name not in real and name not in ("vixl_ai_", "vixl_version") and not allowed(name, path):
                     unknown.setdefault(name, set()).add(path.name)
     assert not unknown, f"docs name MCP tools that do not exist: {unknown}"
     # Code, evals and tests name only real tools too (identifiers that merely start with vixl_ are listed here).
@@ -130,7 +139,8 @@ def test_docs_and_skills_name_only_real_mcp_tools():  # #252
              *(root / "tests").glob("*.py")]
     for path in files:
         for name in re.findall(r"\bvixl_\w+", path.read_text(encoding="utf-8")):
-            if name not in real | identifiers | deliberate and not name.startswith("vixl_launcher"):
+            if name not in real | identifiers | deliberate and not name.startswith("vixl_launcher") \
+                    and not allowed(name, path):
                 unknown.setdefault(name, set()).add(path.name)
     assert not unknown, f"code, evals or tests name MCP tools that do not exist: {unknown}"
 

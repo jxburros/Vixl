@@ -9,7 +9,7 @@ The JSON is described by a published JSON Schema (draft 2020-12),
 `vixl schema document`; in Python, `vixl.document_schema.document_schema()` returns it and
 `vixl.document_schema.validate_manifest(value)` lists a `project.json` value's problems. The schema is generated from
 the engine's own constants and field registry, and the test suite checks every `.vixl` file in the repository against
-it and fails when the code uses a layer or document field the schema does not describe.
+it (except the older releases' documents the [conversion kit](converting.md) is tested on) and fails when the code uses a layer or document field the schema does not describe.
 
 ```bash
 vixl schema document > vixl-document.schema.json
@@ -70,7 +70,7 @@ are stored uncompressed (they are already compressed); `project.json` and fonts 
 
 | Field | Meaning |
 | --- | --- |
-| `format_version` | Archive format version. Vixl writes 2 and reads 1 and 2; any other value is refused. |
+| `format_version` | Archive format version: 2. Any other value is refused; format-1 archives (0.10 and earlier) open after [`vixl convert`](converting.md). |
 | `vixl_version` | The Vixl release that saved the file (informational). |
 | `state` | The current document: the canvas, layers and every document-level resource. It is always equal to the state of the `head` revision. |
 | `nodes`, `head`, `branches`, `checkpoints`, `current_branch`, `redo_stack`, `transaction` | The [history](#history). |
@@ -174,6 +174,13 @@ When it opens a document Vixl checks the archive before decoding anything: at mo
 10,000 members, 64 MiB per asset, 64 fonts and 160 million decoded pixels across all images; at most 4,096 layers per
 page, canvases up to 16,384 px a side and 40 million pixels. Then it validates the state (`vixl validate` reports the
 same checks) and verifies that the history is acyclic and every reference resolves.
+
+## Documents from earlier releases
+
+This release reads only format 2 and the current fields. A document saved by an earlier release (format 1, a
+layer `lookup` field, `upgraded_from`, house-style versions, recipes from before 0.23, strokes placed by the old
+rule) opens after a one-time [`vixl convert`](converting.md), which rewrites it for the current code, keeps its look
+and reports every change.
 
 ## Other formats
 

@@ -4,6 +4,13 @@
 
 Work from the [craft plan](docs/craft-plan.md). Craft claims here wait for a blind re-judging; nothing below claims a craft gain on its own.
 
+### Conversion kit
+
+- `vixl convert OLD.vixl [-o NEW.vixl] [--look preserve|current] [--dry-run] [--report R.json]` (and `vixl convert DIR --out OUTDIR`, `vixl.convert.convert_file`) turns documents saved by earlier releases into current ones: format-1 archives, the pre-0.21 `lookup` field, `upgraded_from`, house-style versions, pre-0.21 open-shape fills and temperature/tint scale, pre-0.24 text boxes, recipes without a strength, line height, padding, wrap or distribution, and closed-shape strokes for the flush stroke rule. `preserve` (default) writes the old implicit behaviour into fields so the document looks and edits as before; `current` lets today's defaults apply and lists what changes. Every undo revision is converted, the result is opened and schema-checked before it is written, and nothing is overwritten without `--overwrite`. See [Converting](docs/converting.md).
+- `vixl convert-batch OLD.json` rewrites saved MCP calls (all 64 earlier tool names), operation batches and MCP client configurations (`--tools core|compact|all`, `--schema`) for the seven-tool server.
+- Migration from the breaking changes below: run `vixl convert` once on documents from 0.26 or earlier; `vixl upgrade` is `vixl convert`. The kit lives in `src/vixl/convert/`, which the engine never imports.
+- The published schema describes the `tear` layer record and allows only format 2.
+
 ### MCP surface consolidated (breaking)
 
 - The MCP server serves seven tools: `vixl_document`, `vixl_apply`, `vixl_check`, `vixl_render`, `vixl_export`, `vixl_reference` and `vixl_job`. The tool list drops from 51 tools and about 67k characters to about 7.3k, and the server instructions from 3.9k to about 0.7k. Every earlier tool name is gone.
@@ -20,8 +27,8 @@ Vixl is pre-release with no users to protect, so code that existed only to repro
 
 - Removed house-style versioning: no `house_style_version` stamp, `--house-style` flag, `house_style` key in `.vixl/variety.json`, or version argument on `roll()`. Every document uses the current house style; `src/vixl/legacy_roll.py` and the old-version tables in `house-style.json` are gone.
 - Plain `Project` documents now get the current defaults: seamless short timelines, shaded and outlined pixel sprites, balanced headings, 2u stack gaps, chart padding, text-flow gutters, section-header and footer-rule clearance, progressive pattern-scatter.
-- `.vixl` archives must be format version 2; layers with the pre-0.21 `lookup` field are no longer converted on load.
-- Removed `vixl upgrade`, `src/vixl/upgrade.py`, the `upgrade` option on open and the `upgraded_from` manifest field (migration of documents saved before 0.21).
+- `.vixl` archives must be format version 2; layers with the pre-0.21 `lookup` field are no longer converted on load; `vixl convert` converts them once.
+- Removed `vixl upgrade`, `src/vixl/upgrade.py`, the `upgrade` option on open and the `upgraded_from` manifest field (migration of documents saved before 0.21); `vixl convert` replaces it.
 - Removed the `mcp` pip extra; `mcp` is a base dependency.
 - Removed fallbacks for pre-0.23 documents: irregular and tear recipes without a strength use `subtle`, diagrams without `line_height` use the caption line height, and the old rounded-up PDF bleed is no longer matched.
 - Pre-release: breaking changes are allowed and noted here; default changes must still pass the house-style quality/diversity eval.

@@ -27,6 +27,8 @@ Usage: vixl [--project FILE] [--json] COMMAND ...
 Documents: pack SOURCE_FOLDER OUTPUT.vixl, unpack PROJECT.vixl SOURCE_FOLDER,
            new SIZE|NAME [-o FILE] [--background COLOR] [--dpi N] [--landscape] [--bleed],
            open FILE, save [FILE]   (NAME: letter, a4, business-card, instagram-portrait, favicon …)
+           convert OLD.vixl [-o NEW.vixl] [--look preserve|current] [--dry-run] [--report R.json] | DIR --out OUTDIR,
+           convert-batch OLD-CALLS.json [-o NEW.json]   (documents and tool calls from earlier releases)
 Inspect:   status, inspect [LAYER], describe, layers, effects [LAYER], manifest,
            dependencies, reproduce --check, schema [OPERATION…] (one operation's fields, e.g. schema particles)
 Layers:    add FILE --name NAME, solid --color COLOR, gradient --start A --end B,
@@ -168,7 +170,7 @@ HELP = """Vixl — a headless design engine for AI agents.
 Usage: vixl [--project FILE] [--json] COMMAND ...
        vixl                         Interactive editing shell
 
-Documents: new, open, save, pack, unpack
+Documents: new, open, save, pack, unpack, convert (older documents and tool calls)
 Inspect:   status, inspect, layers, manifest, schema [OPERATION…], dependencies
 Create:    add, shape, text, gradient, organic, diagram, chart, table
 Edit:      move, resize, rotate, group, ungroup, mask, effect
@@ -501,7 +503,7 @@ def _dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "pack unpack new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates cache commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house brand emoji capabilities catalog objects".split()
+                        "pack unpack new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert convert-batch render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates cache commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house brand emoji capabilities catalog objects".split()
                     )
                 )
             }
@@ -671,6 +673,12 @@ def _dispatch(argv):
         return schema, options.json
     if cmd == "batch":
         return batch(args, limits, options.allow_linked), options.json
+    if cmd == "convert-batch" or cmd == "convert" and args and not {"--grayscale", "--format"} & set(args):
+        # Documents and saved tool calls from earlier releases (the conversion kit); `convert --grayscale` below
+        # is the stdin image filter.
+        from .convert.cli import convert as convert_documents, convert_batch
+
+        return (convert_batch if cmd == "convert-batch" else convert_documents)(args), options.json
     if cmd == "convert":
         p = Parser(prog="vixl convert")
         p.add_argument("--grayscale", action="store_true")

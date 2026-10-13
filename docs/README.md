@@ -36,7 +36,7 @@ offline with `python examples/build_documentation.py`.
 
 | Area | Guides and references |
 | --- | --- |
-| Documents and authoring | [Concepts](concepts.md), [the `.vixl` file format](file-format.md), [authoring](authoring.md), [commands](commands.md), [operation semantics](operations.md) |
+| Documents and authoring | [Concepts](concepts.md), [the `.vixl` file format](file-format.md), [converting documents and tool calls from earlier releases](converting.md), [authoring](authoring.md), [commands](commands.md), [operation semantics](operations.md) |
 | Starting points | [Safe design variety](safe-variety.md), [House style decisions](house-style.md), [Development plan](roadmap.md), [Craft plan](craft-plan.md), [Containers and templates](containers-and-templates.md), [Sizes and layouts](sizes-and-layouts.md), [palettes, templates and resources](agent-resources.md), [brands](brands.md), [design styles](styles.md) |
 | Text and emoji | [Typography](typography.md), [rich text](rich-text.md), [text flow](text-flow.md), [emoji library and custom packs](emojis.md) |
 | Shapes and layout | [Objects: kinds, parts, isolated review and export](objects.md), [Vector paths and strokes](vector-paths.md), [Spatial queries and transforms](spatial-transforms.md), [Design tools](design-tools.md), [organic shapes](organic.md), [diagrams and flowcharts](diagrams.md), [guides and grids](guides.md), [spacing](pixel-animation-spacing.md) |

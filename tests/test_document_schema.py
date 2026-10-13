@@ -19,15 +19,16 @@ SOURCE = ROOT / "src" / "vixl"
 # Names the source scan picks up that are not layer fields: a variable called ``layer`` holding something else.
 NOT_LAYER_FIELDS = {
     "children": "replace_across walks a tree of {children} nodes, not layers",
-    "lookup": "pre-0.20 field, turned into a lookup effect when a document opens (project.upgrade_state)",
+    "lookup": "pre-0.21 field, turned into a lookup effect by the conversion kit (vixl.convert)",
 }
 # Names the source scan picks up that are not document state keys.
 NOT_STATE_FIELDS = {}
 
 
 def _manifests():
+    old = ROOT / "tests" / "fixtures" / "convert"  # documents saved by older releases: test_convert converts them
     for path in sorted(ROOT.glob("**/*.vixl")):
-        if ".git" in path.parts or "_failures" in path.parts:
+        if ".git" in path.parts or "_failures" in path.parts or old in path.parents:
             continue
         with zipfile.ZipFile(path) as archive:
             yield path.relative_to(ROOT), json.loads(archive.read("project.json"))

@@ -130,6 +130,7 @@ LAYER_FIELDS = {
     "vector_geometry": (OBJECT, "Cached outline geometry of a vector stroke."),
     "organic": (OBJECT, "Organic shape recipe {preset, seed, naturalness}."),
     "irregular": (OBJECT, "Irregular (torn, rough) edge recipe and its source geometry."),
+    "tear": (OBJECT, "Torn-edge record: the tear recipe, mask or path mode and its rim and fibre layers."),
     "die_cut": (OBJECT, "A die-cut outline record: the layers it surrounds and the offset distance."),
     "reflection": (OBJECT, "A reflection layer's settings (horizon, sources), kept so it can be re-rendered."),
     "cut_paper": (OBJECT, "Cut-paper look settings (grain, edge texture)."),
@@ -458,8 +459,8 @@ def document_schema():
                        + ". See docs/file-format.md.",
         "type": "object",
         "properties": {
-            "format_version": {"enum": [1, FORMAT_VERSION], "description": "Archive format version; Vixl writes "
-                               f"{FORMAT_VERSION} and reads 1 and {FORMAT_VERSION}."},
+            "format_version": {"const": FORMAT_VERSION, "description": f"Archive format version: {FORMAT_VERSION}. "
+                               "Older archives open after vixl convert."},
             "vixl_version": {"type": "string", "description": "Vixl release that saved the file."},
             "state": {"$ref": "#/$defs/state", "description": "The current document state (the history head)."},
             "nodes": {"type": "object", "additionalProperties": {"$ref": "#/$defs/node"},

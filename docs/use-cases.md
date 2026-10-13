@@ -92,6 +92,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DOC-40 | Import a PDF page as editable text, paths and images | `import-document` pdf | 1 · <1 | E | `[pdf]`. Vixl's own PDFs come back at their pixel size; shadings and clipped content become image layers; fonts match by family name. |
 | DOC-41 | Read, generate or validate a `.vixl` file without Vixl | [file format](file-format.md), `vixl schema document` | 1 · <1 | E | JSON Schema of `project.json`, checked against every `.vixl` in the repository. |
 | DOC-42 | Import a Figma frame or page as editable layers, live text and stacks `[Figma]` | `import-document` format=figma, `vixl import URL --format figma`, `import_document(format="figma")`, REST `POST /import?format=figma` | 1 · <1 | E | [Mapping and known losses](figma.md); the `report` lists every unmapped feature. Export back to Figma: #662. |
+| DOC-43 | Open a document saved by an earlier release (format 1, pre-0.21 lookups, house-style versions, inset strokes) with its old look | `vixl convert OLD.vixl -o NEW.vixl`, `vixl convert DIR --out OUTDIR`, `vixl.convert.convert_file` | 1 · <1 | E | [Conversion kit](converting.md): `--look preserve` writes formerly implicit behaviour into fields, `--look current` reports what changes; the report lists every change and what was not converted. |
 
 | DOC-37 | Capture the desktop, a rectangle or a Windows window to PNG | `vixl_apply(workflow='screen-capture')` | 1 · <1 | E | Since 0.24 (#259); interactive local desktop only; OS screen permission may be needed. |
 
@@ -240,6 +241,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | AGT-03 | Read the JSON schema of one operation | `vixl_reference('operations')` | 1 · <1 | E | |
 | AGT-04 | Browse layouts, styles, brushes, resources or workflows | `vixl_reference('layouts')`, `vixl_reference('styles')`, `vixl_reference('brushes')`, `vixl_reference`, `vixl_reference('workflows')` | 1 · <1 | E | |
 | AGT-05 | Check the installed version and update it | `vixl --version`, `vixl update` | 1 · <1 | E | Verified Windows updater with rollback. |
+| AGT-35 | Rewrite saved MCP calls, batches or an MCP client config for the seven-tool server | `vixl convert-batch OLD.json`, `vixl.convert.convert_batch` | 1 · <1 | E | Maps every 0.26 tool and its parameters (steps, `options`, `create`, `workflow`) and drops `--tools core\|compact`, `--schema`; unmapped names are reported. |
 | AGT-06 | Read the house style: craft rules, tiers, variety levels or one purpose's profile | `vixl_reference('house-style')`, `vixl house show PURPOSE` | 1 · <1 | E | Purposes: poster, social, slides, document, form, diagram, logo, motion. |
 | BRD-53 | Validate a brand kit: missing font roles, unreadable fonts or logos, palette roles left to derivation, guidance colours the palette does not approve | `vixl brand validate`, `vixl brand show` | 1 · <1 | E | |
 | AGT-34 | Export the design catalogs (sizes, palettes, pairings, layouts, briefs, guidance, check IDs) for a host app | `vixl catalog export --out catalog.json` | 1 · <1 | E | Versioned JSON with a schema; also a release asset (#536). |

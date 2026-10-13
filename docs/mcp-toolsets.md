@@ -14,6 +14,9 @@ handful of typed common fields and an `options` object, with the detail served o
 | `vixl_reference` | topics: `start` (default), `operations`, `workflows`, `capabilities`, `sizes`, `layouts`, `fonts`, `brushes`, `styles`, `looks`, `color`, `roll`, `palettes`, `templates`, `guidance`, `objects`, `house-style`, a tool name, a guidance name or a free-text brief | Catalogs, exact schemas and craft guidance, all from the one guidance registry (`guidance.py`). |
 | `vixl_job` | `status`, `result`, `cancel`, `list` | Calls that outlived the inline wait (about 40 s) or were sent with `as_job`. |
 
+Saved calls, batches and client configurations for the earlier 51 tools convert with `vixl convert-batch`
+([Converting](converting.md#convert-saved-tool-calls)).
+
 `vixl mcp --tools ai` serves the provider-backed tools (`vixl_ai_*`, `vixl_models_list`) as a second server that
 shares `vixl_document`, `vixl_render` and `vixl_job`; see [interfaces](interfaces.md#mcp).
 

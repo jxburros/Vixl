@@ -1,0 +1,75 @@
+{
+ "documents": {
+  "chart": {
+   "made": [
+    "sales"
+   ],
+   "skipped": []
+  },
+  "diagram": {
+   "made": [
+    "flow"
+   ],
+   "skipped": []
+  },
+  "effects": {
+   "made": [
+    "sky",
+    "warm",
+    "warm",
+    "sun",
+    "temperature",
+    "card",
+    "tint"
+   ],
+   "skipped": []
+  },
+  "irregular": {
+   "made": [
+    "card",
+    "irregular card",
+    "paper",
+    "tear paper"
+   ],
+   "skipped": []
+  },
+  "shapes": {
+   "made": [
+    "rect",
+    "rounded",
+    "pill",
+    "oval",
+    "hexagon",
+    "dashed",
+    "rule",
+    "open path"
+   ],
+   "skipped": [
+    {
+     "error": "Unknown field(s) 'rotation' for 'shape'. Allowed: amplitude, angle, apex, arms, control, corner_style, count, curve, dash, dash_offset, depth, end_angle, expone",
+     "name": "tilted",
+     "operation": "shape"
+    }
+   ]
+  },
+  "sprite": {
+   "made": [
+    "coin",
+    "resize coin",
+    "keyframe coin",
+    "keyframe coin"
+   ],
+   "skipped": []
+  },
+  "text": {
+   "made": [
+    "title",
+    "text-layout title",
+    "body",
+    "text-layout body"
+   ],
+   "skipped": []
+  }
+ },
+ "vixl_version": "0.20.0"
+}
