@@ -48,9 +48,9 @@ result = import_document(project, b"https://www.figma.com/design/KEY/Poster?node
 print(result["figma"]["root"], len(result["report"]))
 ```
 
-`POST /import?format=figma&node_id=1-2&rasterize_unsupported=false` takes the URL or key as the request body; the
-server reads the token from its own environment. In MCP, an `import-document` step in `vixl_apply` takes `format="figma"` with `source` set
-to the URL or key (and `node_id`, `rasterize_unsupported`).
+`POST /import?format=figma&node_id=1-2&rasterize_unsupported=false` takes the URL or key as the request body (`page`
+is a page name or number); the server reads the token from its own environment. In MCP, an `import-document` step in
+`vixl_apply` takes `format="figma"` with `source` set to the URL or key (and `node_id`, `page`, `rasterize_unsupported`).
 
 Options (Python keyword arguments, `--node`/`--rasterize-unsupported` and the query parameters above):
 
@@ -66,7 +66,9 @@ Options (Python keyword arguments, `--node`/`--rasterize-unsupported` and the qu
 One frame (selected with a node id, or the only frame on the page) becomes the whole document, sized to the frame.
 A page with several frames becomes one canvas that holds them all at their Figma positions, each frame as a group with
 an [artboard](design-tools.md) of its own size (`render --artboard NAME` exports one). An empty document is resized to the imported
-frame or page; a project that already has layers keeps its canvas and receives the import as additional layers.
+frame or page; a project that already has layers keeps its canvas and receives the import as additional layers. When
+the document is empty and the frame's only fill is one opaque solid colour with square corners and no stroke, that
+colour becomes the canvas background instead of a `<name> background` layer.
 
 The result is the usual compact apply result plus:
 
@@ -144,6 +146,7 @@ Errors are JSON with `error`, `message` and `suggestions`, like the rest of Vixl
 | `figma_error`, `figma_bad_request`, `figma_unreachable` | other API failures and network errors |
 | `invalid_figma_source` | the argument is not a Figma URL or file key |
 | `invalid_figma_document` | the JSON is not a Figma file, or the page or node is empty |
+| `figma_empty` | the selected frame or page held nothing Vixl could import; the report names the skipped nodes |
 | `resource_limit` | the import needs more operations (default 10,000) or image fills (200) than allowed: import one frame |
 
 A failed import changes nothing: the whole import is one atomic batch, so `vixl undo` removes it in a single step.

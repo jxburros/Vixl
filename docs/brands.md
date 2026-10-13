@@ -201,7 +201,7 @@ vixl -p poster.vixl roll --apply --for poster --seed 42 \
   --set body='Doors at 6' --set cta='example.com' --set caption='All ages'
 ```
 
-MCP uses `vixl_reference('roll')`. Font downloads and the layout commit together as
+MCP applies a roll with the `roll` step of `vixl_apply` (`vixl_reference('roll')` previews one). Font downloads and the layout commit together as
 one undo step; failures leave the document unchanged. Layout application returns `unfilled_slots`
 and full layout notes immediately, including for compact responses and dry runs.
 

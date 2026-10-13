@@ -46,7 +46,7 @@ Operations that store colors in the document:
 {"type": "swatch", "name": "brand-soft", "color": "mix(@brand-500, white, 70%)"}
 ```
 
-`scale` creates `brand-50` … `brand-950`; harmonies create `NAME-1` … `NAME-n`. MCP agents use `vixl_reference('color')`; REST clients `POST /color`.
+`scale` creates `brand-50` … `brand-950`; harmonies create `NAME-1` … `NAME-n`. MCP agents use `vixl_reference('color', name='#2563eb')` (with `action`, `scheme`, `to` …); REST clients `POST /color`.
 
 ## Print output
 

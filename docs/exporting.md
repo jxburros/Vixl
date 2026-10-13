@@ -14,7 +14,7 @@ can substitute fonts, emphasize form fields or handle animation differently.
 | Photograph or flattened artwork | JPEG | Lossy RGB or CMYK; transparent pixels composite onto a background |
 | Smaller web artwork | WebP; AVIF where supported | Encoded image; confirm support in the consuming system |
 | Print raster | TIFF or JPEG with CMYK | Supply the printer's ICC profile for controlled separations |
-| Scalable supported geometry | SVG | Shapes/text/gradients and supported effects; appearance policy may embed raster fallbacks |
+| Scalable supported geometry | SVG | Shapes/text/gradients and supported effects; appearance policy may embed raster fallbacks; carries the editable document ([round trip](#svg-round-trip)) |
 | Print or selectable-text pages | PDF | Vector pages where supported; effects can fall back to raster; CMYK PDF stays vector (DeviceCMYK) |
 | Editable presentation | PPTX | Real text, supported shapes, images, notes; unsupported appearances become pictures |
 | Layered handoff to Photoshop and similar editors | PSD | One 8-bit RGBA pixel layer per layer with names, opacity, visibility, blend modes and layer groups, plus the flattened composite; text is pixels, not editable type |
@@ -72,9 +72,10 @@ RGBA8 sRGB; CMYK is an export setting, not an editing space. Spot colors and RAW
 are outside the implementation. A proof image helps assess separations but does not replace
 a printer proof. See [color and print](color-and-print.md) for ink limits and simulations.
 
-Latest source fixes raster PDF physical dimensions and TrimBox/BleedBox handling, including
-fractional bleed pixels. Verify the PDF's page dimensions and boxes when print precision
-matters, and record the source revision alongside your output.
+A document made from a print size exports a PDF page of exactly trim plus bleed on every side, with a
+TrimBox and BleedBox, including when the bleed is a fraction of a pixel (raster PDFs too). Verify the
+PDF's page dimensions and boxes when print precision matters, and record the source revision alongside
+your output.
 
 ## Pages, forms and motion
 
@@ -142,8 +143,8 @@ approve/reject decisions; `vixl diff A B` shows what changed between two exports
 
 ## Python export consistency
 
-`Project.export`, `Project.export_animation`, `export_timeline` and the MCP export
-tools protect existing files by default (`overwrite=False`). Pass `overwrite=True`
+`Project.export`, `Project.export_animation`, `export_timeline` and MCP `vixl_export`
+protect existing files by default (`overwrite=False`). Pass `overwrite=True`
 for repeatable builds that intentionally replace outputs; CLI render/export and
 saved-frame animation commands accept `--overwrite`.
 
@@ -169,6 +170,14 @@ PSD keep declared [objects](objects.md) as named groups, and every format carrie
 language ([accessibility](accessibility.md)).
 
 SVG export writes `multiply`, `screen`, `overlay`, `darken`, `lighten` and `difference` layers as native `mix-blend-mode` groups inside an isolated root, keeping every shape and text vector. `add`, `subtract` and other backdrop-dependent operations still rasterize the document and report the fallback; strict mode rejects them.
+
+**Strokes land in the same place in every format.** A closed shape (rectangle, rounded rectangle, capsule, ellipse,
+polygon, star, shortcut or catalog shape) strokes `inside` by default: the stroke's outer edge is the outline, so a
+10 px stroke on a rectangle covers the 10 px just inside its box edge and the fill runs under it. Paths, arcs, lines and
+open shapes stroke `center`. An explicit `stroke_align` (`inside`, `center`, `outside`) means the same with or without
+dashes, width profiles or markers, in PNG, SVG, PDF and PPTX; a rounded corner keeps its `radius` on the outside. A
+`rectangle` created with a `radius` is stored as a `rounded-rectangle` (reported under `normalized`), so its corners are round in
+every output. See [vector shapes and strokes](vector-paths.md#strokes) and [render parity](render-parity.md).
 
 ## SVG round trip
 
@@ -237,7 +246,9 @@ draws each such element as an image layer. External resources are never fetched.
 consecutive lines of one style that share a left edge, centre or right edge become one multi-line layer, and a text
 outline pass becomes the layer's `stroke_color` and `stroke_width`. Fonts are matched by family name as for SVG
 (PDFs usually embed subsets, which are not registered). Path objects become path shape layers (fill and even-odd
-fill, stroke, width, caps, joins, dashes); a stroke painted right after a fill of the same path joins that layer.
+fill, stroke, width, caps, joins, dashes); a stroke painted right after a fill of the same path joins that layer, and
+so does one that runs half its width inside the fill's outline (how Vixl writes an inside stroke), which becomes
+`stroke_align: "inside"`.
 Image objects become image layers at their position, size and rotation. Shadings, clipped objects, patterns,
 mirrored text and other content Vixl cannot represent are drawn, run by run in stacking order, as image layers
 (listed in `rasterized`). Into a document without layers the page size becomes the canvas and a full-page backdrop

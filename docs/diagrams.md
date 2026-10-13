@@ -58,10 +58,10 @@ label color is chosen for 4.5:1 contrast unless `text_color` is set. `icon` is o
 
 ### Edges
 
-`edges` is a list of `[from, to]`, `[from, to, label]` or `{from, to, label, kind, from_port, to_port, color, arrow, id}`.
+`edges` is a list of `[from, to]`, `[from, to, label]` or `{from, to, label, kind, from_port, to_port, color, arrow, width, id}`.
 
 * `kind`: `arrow` (solid, arrowhead at the end), `line` (solid, no head), `dashed` (dashed, arrowhead). `arrow` overrides
-  the heads: `end`, `start`, `both` or `none`.
+  the heads: `end`, `start`, `both` or `none`. `width` is the line thickness in px (0.5–20; default the diagram's `stroke_width`).
 * `from_port` / `to_port`: `top`, `right`, `bottom` or `left` to leave or enter a node by a given side. The router then
   finds a right-angled path around the other nodes.
 * `id` defaults to `from->to` (`#2`, `#3` for parallel edges). Updating an edge by endpoints changes the existing one;

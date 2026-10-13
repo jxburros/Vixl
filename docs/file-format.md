@@ -1,5 +1,7 @@
 # The `.vixl` file format
 
+[Documentation home](README.md) · [Converting older documents](converting.md) · [Exporting](exporting.md)
+
 A `.vixl` document is a ZIP archive: one JSON member, `project.json`, holding the document model and its history,
 plus the binary files that model references. Nothing in it is executable, and every member is named by its content
 hash, so a document can be read, diffed, generated or repaired by other tools without Vixl.
@@ -111,8 +113,8 @@ The rest depend on the type. The main ones:
 
 | Type | Fields |
 | --- | --- |
-| `shape` | `shape` (rectangle, rounded-rectangle, capsule, ellipse, line, polygon, star, path or a catalog shape), `fill`, `stroke`, `stroke_width`, `radius`, `sides`, `inner_radius`; paths store SVG path data in `path` within a `path_view` box `[w, h]` that is stretched to the layer. Stroke details: `line_cap`, `line_join`, `dash`, `stroke_align`, markers, trims. |
-| `text` | `text`, `font` (a registered font name, a bundled font file or a role), `size` in pixels, `color`, `align`, `line_height`, `spacing`, `tracking`, `auto_size` (the box follows the text) or `text_layout` (a fixed box it wraps in), and `rich` for styled spans. Text stays live: it is laid out with the embedded font each time the document is drawn. |
+| `shape` | `shape` (rectangle, rounded-rectangle, capsule, ellipse, line, polygon, star, path or a catalog shape), `fill`, `stroke`, `stroke_width`, `radius`, `sides`, `inner_radius`; paths store SVG path data in `path` within a `path_view` box `[w, h]` that is stretched to the layer. Stroke details: `line_cap`, `line_join`, `dash`, markers, trims and `stroke_align` (`inside`, `center` or `outside`; unset it is `inside` for closed shapes, flush with the outline, and `center` for paths, arcs, lines and open shapes). |
+| `text` | `text`, `font` (a `state.fonts` name, a `fonts/` member or the bundled `DejaVuSans.ttf`; the typography role it follows is `font_role`), `size` in pixels, `color`, `align`, `line_height`, `spacing`, `tracking`, `auto_size` (the box follows the text) or `text_layout` (a fixed box it wraps in), and `rich` for styled spans. Text stays live: it is laid out with the embedded font each time the document is drawn. |
 | `solid` | `fill`. |
 | `gradient` | `start` and `end` or `stops` (`[{offset, color}]`), `direction` (horizontal, vertical, radial, angled), `angle`, `center`, `falloff`. |
 | `raster`, `frame` | `asset`: an `assets/` member drawn into the box. |
@@ -148,10 +150,11 @@ a page with `master` draws that master's layers underneath its own.
 ## Assets and fonts
 
 Layers refer to archive members by name (`assets/…`, `masks/…`). Fonts are registered by name in `state.fonts`
-(`name → fonts/<sha256>.ttf`), and a text layer's `font` is such a name, a bundled font file name
-(`DejaVuSans.ttf`, `NotoSans-Regular.ttf` …) or a role resolved through `state.typography`. `state.font_fallbacks`
-lists font members tried for glyphs the main font lacks. Fonts are embedded so a document renders the same on any
-machine.
+(`name → fonts/<sha256>.ttf`), and a text layer's `font` is such a name, the `fonts/` member itself (what the
+operations store) or the bundled `DejaVuSans.ttf`. A layer that follows a typography role (`heading`, `body`) names it
+in `font_role`; `state.typography` maps the role to a registered font, and the layer's `font` follows it when the
+typography changes. `state.font_fallbacks` lists font members tried for glyphs the main font lacks. Fonts are
+embedded so a document renders the same on any machine.
 
 ## History
 
@@ -172,8 +175,8 @@ it.
 
 When it opens a document Vixl checks the archive before decoding anything: at most 256 MiB on disk and expanded,
 10,000 members, 64 MiB per asset, 64 fonts and 160 million decoded pixels across all images; at most 4,096 layers per
-page, canvases up to 16,384 px a side and 40 million pixels. Then it validates the state (`vixl validate` reports the
-same checks) and verifies that the history is acyclic and every reference resolves.
+page, canvases up to 16,384 px a side and 40 million pixels. Then it validates the state and verifies that the
+history is acyclic and every reference resolves.
 
 ## Documents from earlier releases
 

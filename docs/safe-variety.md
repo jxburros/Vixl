@@ -86,7 +86,8 @@ and form purposes left or centre 75/25, and marks stay centred; an
 explicit `align` wins. Saturated palette backgrounds are washed only as far as the ink contrast
 target needs. A roll also sets `cta` (`pill` or `button`) and `date` (`highlight` or
 `plain`): how a layout's call to action and date line look (see [layouts](sizes-and-layouts.md)); they come
-from a separate stream of the seed, so they never change the other choices for a seed. The rolled
+from a separate stream of the seed, so they never change the other choices for a seed. Lock them like any
+choice (`--lock cta=button --lock date=plain`, or `direction: {"cta": "button", "date": "plain"}` on `layout-apply`). The rolled
 look lands where it shows: texture looks on the background, the house offset shadow and other
 shadow, outline and glow looks on the solid shapes (buttons, panels, blocks), never on hairline
 rules. Weight contrast describes the actual heading/body weights in the chosen pairing. A roll
@@ -131,7 +132,8 @@ their own device. An outline frame insets the content two spacing units inside i
 and the direction motif are placed clear of the text (another margin, a shorter column, or left out), and
 the overlap check reports decoration that runs through text as `overlap.decoration-text`.
 
-`vixl_reference('roll')` installs its selected fonts,
+`vixl_reference('roll')` and a plain `vixl roll` only preview a direction and change nothing. Applying one (the `roll`
+step of `vixl_apply`, `vixl roll --apply`) installs its selected fonts,
 builds the editable design in one undo step, and returns contrast/legibility checks.
 Ordinary layout/template calls do not download fonts: their `font_choice` result
 names the selected pairing and the explicit installation command. Existing fonts
@@ -168,6 +170,7 @@ in `.vixl/variety.json` for repeatable tests or production:
 {"variety": "fixed", "seed": 29}
 ```
 
+`variety.json` accepts only `variety` and `seed`; any other key (including the removed `house_style`) is refused.
 Documents use the current house style. A new document stores its rolled direction in `design_defaults`, and later
 rolls and layouts in that document use it.
 
@@ -175,7 +178,7 @@ rolls and layouts in that document use it.
 
 `python -m evals.house_style` rolls 48 sparse briefs across the eight purposes at each level, applies
 them, and scores diversity (entropy of palette, layout, mode, pairing, look and style, and the mean
-pairwise distance of renders) and quality (no `fix` findings, fonts installed, contrast). See
+pairwise distance of renders) and quality (no `fix` findings, no `composition` findings, fonts installed, contrast). See
 [the eval README](../evals/README.md#house-style-eval). The acceptance matrix also renders every safe
 palette and composition at Open Graph, portrait social, and slide sizes, then checks contrast and text
 legibility at their reading widths, and every layout a social roll can pick is applied at every named

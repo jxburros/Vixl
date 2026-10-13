@@ -163,6 +163,11 @@ by `margin`; `text` with `within` centres new text there.
 
 ### Field-report corrections
 
+Shape strokes sit inside a closed shape's outline, flush with it: `stroke_align` defaults to `inside` for rectangles, rounded
+rectangles, capsules, ellipses, polygons, stars and catalog shapes (a 10 px stroke covers the 10 px inside the box edge, in PNG,
+SVG, PDF and PPTX alike) and to `center` for paths, arcs, lines and open shapes; set `stroke_align` to `center` or `outside` to
+change it. A `rectangle` created with a `radius` becomes a `rounded-rectangle`. Reference: `docs/vector-paths.md#strokes`.
+
 Edit pen target=NAME in place. marker_size is local pixels; choose at least twice the shaft width for a visible head. Radial gradients accept fractional center=[x,y]. Layouts emit layout-columns and layout-baseline guide grids. Path boxes are coordinate frames, not clips.
 
 Irregular frames: `frame_shape` selects rectangle/ellipse/star/hexagon/heart; `outline` supplies a closed SVG path in frame-local pixels. Both produce an embedded mask that survives `replace-contents`. Keep the canvas transparent for shaped image output; file dimensions remain rectangular.

@@ -98,7 +98,7 @@ vixl font list                         # registered fonts, the document typograp
 
 Installs fetch one static TTF per style from the Google Fonts CSS API (`fonts.gstatic.com`, HTTPS only, bounded size). Any Google Fonts family works, not only catalog entries. Files are validated and cached in `~/.cache/vixl/fonts` (set `VIXL_FONT_CACHE` to move it), then embedded in the document and registered as `family-weight` (for example `dm-serif-display-400`). A saved `.vixl` file therefore renders anywhere without the network. `font pair` and `--role` set `state.typography`, and layouts use it for headings and body unless you pass `font`/`display_font`. The structured operation is `{"type": "font-register", "name": "dm-sans-400", "role": "body"}`.
 
-Each install reports where the font came from, so agents and CI can verify offline behaviour: `source.origin` is `cache` (served from `source.cache_file` with no network) or `download` (with the Google Fonts stylesheet in `source.stylesheet` and the font file in `source.url`; `cache_file` is the copy it was stored as, or null when the cache is not writable). `source.cache_dir` is the cache directory and `source.cache_dir_from` says whether `VIXL_FONT_CACHE` or the default chose it. `family`, `weight`, `italic` and `name` give the resolved style, and `file` names the embedded asset (`fonts/<sha256>.ttf`), its byte size and hash. `font pair` returns this for both the heading and body fonts plus `origin` (`cache`, `download` or `mixed`); `vixl_reference('roll')` with `apply` returns the same under `fonts`. `source.bundled_fallback` is always false: a font that cannot be downloaded or found in the cache fails with `font_download_failed` (or `unknown_font`), and the bundled DejaVu Sans is never substituted silently. To run offline, pre-fill the cache (or set `VIXL_FONT_CACHE` to a directory holding `family-weight[-italic].ttf` files such as `inter-400.ttf`) and check for `origin: "cache"`.
+Each install reports where the font came from, so agents and CI can verify offline behaviour: `source.origin` is `cache` (served from `source.cache_file` with no network) or `download` (with the Google Fonts stylesheet in `source.stylesheet` and the font file in `source.url`; `cache_file` is the copy it was stored as, or null when the cache is not writable). `source.cache_dir` is the cache directory and `source.cache_dir_from` says whether `VIXL_FONT_CACHE` or the default chose it. `family`, `weight`, `italic` and `name` give the resolved style, and `file` names the embedded asset (`fonts/<sha256>.ttf`), its byte size and hash. `font pair` returns this for both the heading and body fonts plus `origin` (`cache`, `download` or `mixed`); an applied roll (the `roll` step of `vixl_apply`, `vixl roll --apply`) returns the same under `fonts`. `source.bundled_fallback` is always false: a font that cannot be downloaded or found in the cache fails with `font_download_failed` (or `unknown_font`), and the bundled DejaVu Sans is never substituted silently. To run offline, pre-fill the cache (or set `VIXL_FONT_CACHE` to a directory holding `family-weight[-italic].ttf` files such as `inter-400.ttf`) and check for `origin: "cache"`.
 
 ### Workspace default fonts
 
@@ -176,10 +176,10 @@ Neither changes the line count, so a box keeps its height. A paragraph holding a
 greedy breaks, and lines you break yourself are never moved. The breaks are worked out once and shared: PNG, SVG and
 PDF draw the same lines, and PPTX writes balanced or runt-free lines with explicit line breaks (greedy text is left
 for PowerPoint to wrap, as before). `wrap` is kept when the box is resized with another `text-layout`; pass
-`"wrap": "greedy"` to go back. `balanced`, `even` and `no-runts` are accepted and reported under `normalized`.
+`"wrap": "greedy"` to go back (CLI: `vixl text-layout NAME --width 1080 --wrap balance`). `balanced`, `even` and `no-runts` are accepted and reported under `normalized`.
 
-**Headings balance by default.** A new text box on a heading (a heading font role or stage, or text whose size
-reads as the h2 step or larger) and every layout headline take `wrap: "balance"`. Pass `wrap: "greedy"` on the
+**Headings balance by default.** A new `text-layout` box on a heading (a heading font role or stage, or text whose size
+reads as the h2 step or larger) and every layout headline take `wrap: "balance"`. Rich text keeps `greedy` unless you ask. Pass `wrap: "greedy"` on the
 `text-layout` for greedy breaks.
 
 ## Tab stops and leaders
@@ -201,7 +201,7 @@ the canvas width without a box), `align` and an optional `leader`:
 
 A line with a tab is set on one line and not wrapped; past the last stop a tab moves to the next multiple of four
 spaces. Without `tabs`, a tab is four spaces, as before. `text-set` with `"tabs": []` removes them; `tab_stops` is
-accepted. PNG, SVG and PDF draw the stops and leaders; PPTX writes native tab stops (left, right, centre, decimal) and
+accepted, and the CLI takes the stops as JSON in `--tabs`. PNG, SVG and PDF draw the stops and leaders; PPTX writes native tab stops (left, right, centre, decimal) and
 the leader as characters before the tab, since PowerPoint has no leaders. Rich text keeps tabs as spaces. For a price
 list with several columns, a `table` with a decimal column and a column `leader` does the same
 ([tables](charts.md#tables)).
