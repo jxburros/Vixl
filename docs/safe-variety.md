@@ -81,13 +81,12 @@ craft (sharp) unless the rolled style has its own (material and glassmorphism ro
 pill), and layout buttons, panels and placed containers take the document's corner style. A bold or
 avant-garde roll, or one with an expressive mood (playful, bold, loud …), sets `headline: large`: the
 headline holds about 8 characters a line instead of 14, so it fills the canvas; quiet rolls keep
-`headline: measured`. Lock it like any other choice (`--lock headline=measured`). From house style 3,
-alignment is weighted by purpose: design purposes roll left three times in four and right otherwise, diagram
+`headline: measured`. Lock it like any other choice (`--lock headline=measured`). Alignment is weighted by purpose: design purposes roll left three times in four and right otherwise, diagram
 and form purposes left or centre 75/25, and marks stay centred; an
 explicit `align` wins. Saturated palette backgrounds are washed only as far as the ink contrast
-target needs. From house style 4 a roll also sets `cta` (`pill` or `button`) and `date` (`highlight` or
+target needs. A roll also sets `cta` (`pill` or `button`) and `date` (`highlight` or
 `plain`): how a layout's call to action and date line look (see [layouts](sizes-and-layouts.md)); they come
-from a separate stream of the seed, so the other choices for a seed are the same as in version 3. The rolled
+from a separate stream of the seed, so they never change the other choices for a seed. The rolled
 look lands where it shows: texture looks on the background, the house offset shadow and other
 shadow, outline and glow looks on the solid shapes (buttons, panels, blocks), never on hairline
 rules. Weight contrast describes the actual heading/body weights in the chosen pairing. A roll
@@ -169,14 +168,8 @@ in `.vixl/variety.json` for repeatable tests or production:
 {"variety": "fixed", "seed": 29}
 ```
 
-New documents store `house_style_version` in `design_defaults`, and later rolls in that document
-use the same version, so a change to the house style never reaches an existing document. The
-current version is 3 (0.24). To replay 0.23 rolls (no house-style-3 pairings, alignment weighting or
-reduced background washing), pin version 2; to roll the 0.20–0.22 directions (safe pools only, two
-light rolls in three, looks at amount 0.1), pin version 1: `vixl roll --house-style 2`,
-`roll(..., house_style_version=2)`, or `{"house_style": 2}` in `.vixl/variety.json` for every surface.
-Version-3 geometry defaults (stack gaps of `2u`, chart padding, text-flow gutters, seamless short
-timelines) apply only to documents that record version 3.
+Documents use the current house style. A new document stores its rolled direction in `design_defaults`, and later
+rolls and layouts in that document use it.
 
 ## Measuring it
 

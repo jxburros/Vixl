@@ -132,7 +132,7 @@ targeting the torn layer (the `-face` layer for a free sheet). Reference: `docs/
 jitter, `colors`/`tone_variation` and `exclude`. `merge: true` draws every copy as one path per tone
 (shape motifs), so large scatters stay within the layer limit. `pattern-scatter` makes a seamless
 tile: motifs crossing an edge get wrapped copies, the result reports `seam`, and `pattern` saves it
-for `pattern-fill` (`tile_variation` varies each repeat). In new documents (house style 4) a lower
+for `pattern-fill` (`tile_variation` varies each repeat). A lower
 `count` with the same seed keeps the first copies exactly in place, and `thin` (a share to keep, or
 `{count: N}`) removes the most crowded copies of an existing tile; use these for "fewer motifs" so the
 revision does not re-roll the pattern. `distribution: "poisson"` is the earlier layout. Fur: `preset: fur`, the `plush` look or

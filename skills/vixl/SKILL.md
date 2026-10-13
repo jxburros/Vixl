@@ -228,9 +228,8 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
   `loop_mode: "off"` or `loop: 1` for play-once. `animate` `intent` (entrance, exit, loop, emphasis) picks the house
   easing. Templates `video-tip`, `video-launch`, `video-event` build editable six-second loops (title/subtitle/cta).
   See [brushes and timeline](references/brushes-timeline.md).
-- **House style 3** — 16 more font pairings (76), weighted alignment, saturated backgrounds kept. Documents keep the
-  version they were created with; replay 0.23 rolls with `vixl roll --house-style 2` or `{"house_style": 2}` in
-  `.vixl/variety.json`. Explicit fields and saved geometry win. Minor social/poster text must be at least 2.2 % of
+- **House style** — 76 font pairings, weighted alignment, saturated backgrounds kept. Explicit fields and saved
+  geometry win. Minor social/poster text must be at least 2.2 % of
   the short side; bold text counts as large from 18.66 px (regular from 24 px).
 - **Spacing units** — `stack` and `layout-apply` `gap` accept `"2u"` (CLI `--gap 2u`; 1u = half the body size); new house-style
   stacks default to 2u.

@@ -61,7 +61,7 @@ The static `scale` operation takes `value` (both axes) or per-axis `x` and `y`; 
 
 Times are milliseconds or strings: `"1.5s"`, `"250ms"`, `"50%"` of the duration, or a marker name.
 
-A new timeline is 3 s at 30 fps, looping forever (`loop: 0`). In a document whose `design_defaults` record house style 3 (new design documents since 0.24) it is also a seamless loop (`loop_mode: "seamless"`); see [animation authoring](animation-authoring.md#joint-pose-keys-and-short-templates) to make it play once.
+A new timeline is 3 s at 30 fps, looping forever (`loop: 0`). It is also a seamless loop (`loop_mode: "seamless"`); see [animation authoring](animation-authoring.md#joint-pose-keys-and-short-templates) to make it play once.
 
 Easings: `linear`, `hold`, `ease`, `ease-in`, `ease-out`, `ease-in-out`, `ease-in/out/in-out-sine|quad|cubic|quart|expo|back`, `bounce-in`, `bounce-out`, `elastic-out`, `spring`, `cubic-bezier(x1, y1, x2, y2)`, `steps(n)`.
 

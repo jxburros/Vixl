@@ -109,7 +109,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | TXT-13 | Brand tracking and caps on text that changes (keyed lyric lines, `${variable}` values) | `text-set` with `tracking`, `text_transform` | 1 · <1 | E | Layer properties (#603); before, tracking needed a `text-style` match on fixed text and caps a pre-cased copy of the source. |
 | TXT-14 | Set mixed Latin, Greek, Cyrillic and symbol text (⏻ ⎈ ⧉ ∮ 𝔸) offline without tofu | `text` | 1 · <1 | E | Bundled Noto Sans, Symbols, Symbols 2 and Math fall back behind DejaVu Sans (#419); CJK still needs an installed face in `font-fallbacks`. |
 | TXT-15 | Set text on a stage (display, h1–h3, subtitle, lead, body, caption, citation, label) and spread 2–4 fonts across the stages | `text` with `stage`, `font-register` with a role or stage | 1–2 · <1 | E | Stages follow heading/body until a stage or brand role gets its own face. |
-| TXT-16 | Break a heading into lines of even width, or keep one word off a paragraph's last line | `text-layout` `wrap: balance` / `pretty` | 1 · <1 | E | Craft plan 4a (T09, T14). Headings and layout headlines balance by default in house style 4 documents; the breaks are shared by PNG, SVG, PDF and PPTX. Before, a runt needed a hand line break. |
+| TXT-16 | Break a heading into lines of even width, or keep one word off a paragraph's last line | `text-layout` `wrap: balance` / `pretty` | 1 · <1 | E | Craft plan 4a (T09, T14). Headings and layout headlines balance by default; the breaks are shared by PNG, SVG, PDF and PPTX. Before, a runt needed a hand line break. |
 | BLK-07 | Tab stops and dot leaders in text (menus, price lists, contents pages) | `text` `tabs: [{at, align, leader}]` with `\t`; `table` column `leader` | 1 · <1 | E | Moved from Blocked (craft plan 4b, #213; T16): left, right, centre and decimal stops with leaders in PNG, SVG and PDF; native tab stops in PPTX with the leader written as characters. Before, leaders were drawn by hand. |
 | TXT-17 | Two-tone headline: one or two words of a layout headline in the accent color | `layout-apply` `accent_words` | 1 · <1 | E | Craft plan 4c (T03, T09); before, a `text-style` match per word after the layout, with the box height fixed by hand. |
 
@@ -267,7 +267,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PHO-10 | Photo on top, caption panel below, for a 1080×1350 post | import, `scale`, `shape`, `text` | 7 · 2 | M:eval:photo-caption | |
 | COL-01 | Restore a mistakenly deleted layer without losing later edits | `vixl_history` | 5 · 1–2 | M:eval:restore-deleted | |
 | SOC-02 | Roll a design direction with locks and apply it | `vixl_roll` | 5 · 1–2 | M:eval:roll-applied | Use `unfilled=omit` for empty slots. The roll is weighted by purpose (`purpose`, else the document size) and gated by `variety`; `locks={tier: "bold"}` explores one tier. |
-| SOC-05 | Event or promo post with a pill call to action and the date on a highlight | `layout-apply` with `direction: {cta: "pill", date: "highlight"}`, or a house-style-4 roll | 3 · 1 | E | Craft plan 5c (T02, T09): a roll sets them per seed; `house_style_version: 3` or `direction: {cta: "button", date: "plain"}` for the plain result. |
+| SOC-05 | Event or promo post with a pill call to action and the date on a highlight | `layout-apply` with `direction: {cta: "pill", date: "highlight"}`, or a roll | 3 · 1 | E | Craft plan 5c (T02, T09): a roll sets them per seed; `house_style_version: 3` or `direction: {cta: "button", date: "plain"}` for the plain result. |
 | SOC-03 | Story with gradient and an evenly spaced three-item list | `gradient`, `text` ×3, distribute | 5 · 1–2 | M:eval:story-list | |
 | BRD-01 | Import an SVG logo as editable geometry, edit and re-export | `vixl_import_document` svg editable | 4 · 1 | M:eval:svg-logo-import | |
 | SOC-04 | Start from a built-in template with title and subtitle | `vixl_template_create` | 4 · 1 | M:eval:template-creation | 43 templates. |
@@ -346,7 +346,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PHO-14 | Select by color, wand or lasso and adjust only that area | `select`, effect | 3–4 · 1 | E | |
 | PHO-15 | Clone-stamp a blemish | clone stamp | 2–4 · <1 | E | |
 | BLK-11 | Seamless random scatter for patterns | `pattern-scatter`, `pattern-fill` | 2–4 · 1 | E | Since 0.22; reports a seam score. |
-| ILL-06 | Fewer motifs in a scattered pattern without re-rolling it | `pattern-scatter` `target` with a lower `count`, or `thin` | 1–2 · <1 | E | House style 4: the surviving copies stay in place (T15 R2 kept 7 % of the ink on 0.26). |
+| ILL-06 | Fewer motifs in a scattered pattern without re-rolling it | `pattern-scatter` `target` with a lower `count`, or `thin` | 1–2 · <1 | E | The surviving copies stay in place (T15 R2 kept 7 % of the ink on 0.26). |
 | ILL-51 | Scatter motifs inside or along a shape, or fur on a mascot | `scatter` (`preset: fur`), `plush` look | 1–3 · 1 | E | Since 0.22. |
 
 ### Motion and pixels
@@ -413,7 +413,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SOC-30 | Social post with exact copy and layout | layout, fonts, check, preview | 29 · 2.4 | M:T02 | |
 | DAT-20 | Infographic from a small data table | `chart`, text, check | 18 · 1.4 | M:T08 | Totals and callouts are still typed by hand. |
 | FRM-10 | Fillable PDF form with validation (email, range, date) | `field`, `form settings`, `export --fillable` | 25 · 3.4 | M:T06 | |
-| PIX-10 | Pixel-art sprite with named animations | `pixel-art`, `frame-save`, `animation-set` | 23 · 3.7 | M:T13 | One `frames-edit` recolors every frame. House style 4 shades and outlines new sprites. |
+| PIX-10 | Pixel-art sprite with named animations | `pixel-art`, `frame-save`, `animation-set` | 23 · 3.7 | M:T13 | One `frames-edit` recolors every frame. New sprites are shaded and outlined. |
 | MOT-10 | Animated intro (logo/title reveal) | timeline, presets, stroke draw-on | 38 · 4.0 | M:T12 | |
 | PRN-10 | Print poster with bleed, CMYK PDF, TrimBox/BleedBox | print size, layout, `export --cmyk` | 38 · 6.3 | M:T03 | Fewer calls than T3 but slower: print checks. |
 | SOC-31 | YouTube thumbnail with large headline and subtitle | size, `text`, shapes, check | 13 · 3 | M:eval:youtube-thumbnail | |
@@ -435,7 +435,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | MOT-11 | Revise an animated intro | 23 · 2.5 | M:T12 R2 | |
 | PIX-11 | Recolor or retime a sprite | 28 · 2.8 | M:T13 R2 | |
 | MOT-12 | Shift lyric timing in a lyric video | 30 · 5.4 | M:T14 R2 | One `offset` field; time is the re-render. |
-| ILL-22 | Revise a seamless pattern | 27 · 2.5 | M:T15 R2 | Keeps 87 % of the original ink on 0.20 and 7 % on 0.26 (re-rolled scatter); house style 4 keeps the surviving copies in place (ILL-06). |
+| ILL-22 | Revise a seamless pattern | 27 · 2.5 | M:T15 R2 | Keeps 87 % of the original ink on 0.20 and 7 % on 0.26 (re-rolled scatter); progressive scatter keeps the surviving copies in place (ILL-06). |
 | PRN-12 | Change prices on a café menu | 17 · 1.6 | M:T16 R2 | Per-price layers make it a direct edit; in a `table` a price is one `table-data` set (#169). |
 
 ### Social, web and ads

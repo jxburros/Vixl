@@ -16,7 +16,7 @@ vixl font show "Space Grotesk"         # full entry plus the pairings that use i
 
 ## Pairings
 
-76 curated heading/body pairings: the original 60 plus 16 tiered ones from house style 3 (4 safe, 8 bold, 4 avant-garde; `tier` in each entry). They are described by their relationship (`contrast` of classification, `superfamily`, or `concord`), mood and best uses, a one-line reason they work, a caution and, where one exists, a published source. Single-family pairings get weight contrast from one family.
+76 curated heading/body pairings: the original 60 plus 16 tiered ones (4 safe, 8 bold, 4 avant-garde; `tier` in each entry). They are described by their relationship (`contrast` of classification, `superfamily`, or `concord`), mood and best uses, a one-line reason they work, a caution and, where one exists, a published source. Single-family pairings get weight contrast from one family.
 
 ```bash
 vixl font pairings --mood editorial --for reports
@@ -178,10 +178,9 @@ PDF draw the same lines, and PPTX writes balanced or runt-free lines with explic
 for PowerPoint to wrap, as before). `wrap` is kept when the box is resized with another `text-layout`; pass
 `"wrap": "greedy"` to go back. `balanced`, `even` and `no-runts` are accepted and reported under `normalized`.
 
-**Headings balance by default in new documents.** In a document made with house style 4 or later, a new text box on a
-heading (a heading font role or stage, or text whose size reads as the h2 step or larger) and every layout headline
-take `wrap: "balance"`. Documents made earlier keep greedy wrapping. Pass `wrap: "greedy"` on the `text-layout`, or
-create the document with `house_style_version: 3`, for the old breaks.
+**Headings balance by default.** A new text box on a heading (a heading font role or stage, or text whose size
+reads as the h2 step or larger) and every layout headline take `wrap: "balance"`. Pass `wrap: "greedy"` on the
+`text-layout` for greedy breaks.
 
 ## Tab stops and leaders
 

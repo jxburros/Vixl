@@ -167,7 +167,7 @@ not as cut off.
 {"type": "pattern-fill", "target": "ground", "pattern": "leaves", "tile_variation": 0.3}
 ```
 
-**Fewer copies without a new layout.** In documents made with house style 4 or later, `pattern-scatter` lays the
+**Fewer copies without a new layout.** `pattern-scatter` lays the
 tile out progressively (`distribution: "progressive"`): layers of Poisson-disc darts at shrinking spacings,
 farthest-first within each, so every prefix of the copies is itself evenly spread. The layout never depends on
 `count`, so the same seed with a lower count keeps the first copies exactly where they were (with the same motif,
@@ -175,7 +175,7 @@ size, turn and colour) and drops the rest, and `count` places exactly that many 
 an existing tile, the most crowded first, and leaves the survivors in place: a share to keep (`0.8` or
 `{"keep": 0.8}`) or `{"count": N}`. The tile remembers the thinning (`pattern_scatter.keep`) through rebuilds
 until `count`, `seed`, `spacing`, `distribution` or the tile size change; the result reports
-`thinned: {kept, of}`. `distribution: "poisson"` (the default in documents before house style 4) is the earlier
+`thinned: {kept, of}`. `distribution: "poisson"` is the earlier
 layout, which re-rolls every copy when `count` changes.
 
 ```json
