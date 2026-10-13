@@ -69,24 +69,59 @@ OPEN_SHAPES = ("line", "wave", "zigzag", "sawtooth", "square-wave", "dashed-line
 
 
 ROUNDED_BOXES = ("rectangle", "rounded-rectangle", "capsule", "ellipse")
+STROKE_ALIGNS = ("inside", "center", "outside")
+
+
+def default_stroke_align(layer):
+    """Where a stroke sits when ``stroke_align`` is not set: ``inside`` a closed shape (its outer edge on
+    the outline, so the ink stays in the box), ``center`` on paths, arcs, lines and other open shapes."""
+    return "center" if layer.get("shape") in PATH_SHAPES or is_open_shape(layer) else "inside"
+
+
+def stroke_align(layer, style=None):
+    """The alignment a stroke uses: ``style``'s (an extra ``strokes`` record) or the layer's explicit
+    ``stroke_align``, else ``default_stroke_align``."""
+    source = layer if style is None else style
+    return source.get("stroke_align") or default_stroke_align(layer)
 
 
 def stroke_inset(layer, stroke_visible):
-    """``(inset, pad)``: how far every renderer pulls a plain shape's outline into its box before
-    stroking it on the centre of that outline, and half the stroke width.
+    """``(inset, pad)``: how far inside a shape's outline the centre line of its stroke runs, for
+    renderers that draw a native stroke centred on a line (SVG, PDF, PowerPoint, trims), and half the
+    stroke width.
 
-    A plain shape (no styled-stroke fields, catalog geometry or distortion; those stroke the box edge)
-    keeps its stroke inside the box. Rectangles, rounded rectangles, capsules and ellipses draw the
-    whole shape in the box inset by half the stroke and the stroke inward from that edge, so the
-    outline sits a full stroke width in (a rounded corner's radius shrinks by ``pad``). Polygons,
-    stars and lines put the outline half a stroke in. Paths and arcs use their own coordinates (an arc
-    builds the inset into its path), so their outline is not moved."""
+    Closed shapes stroke ``inside`` by default (``stroke_align``): the centre line is half a stroke in,
+    so the ink runs from the outline (the box edge for rectangles and ellipses) one stroke width
+    inward; ``center`` puts it on the outline and ``outside`` half a stroke out (a negative inset). A
+    line keeps its endpoints half a stroke in from the box corners. Paths and arcs are stroked on their
+    own outline (an arc builds the inset into its path)."""
     width = layer.get("stroke_width", 1)
     pad = width / 2 if stroke_visible and width > 0 else 0
     shape = layer.get("shape", "rectangle")
     if shape in PATH_SHAPES:
         return 0, pad
-    return (2 * pad if shape in ROUNDED_BOXES else pad), pad
+    if shape == "line":
+        return pad, pad
+    return {"inside": pad, "center": 0, "outside": -pad}[stroke_align(layer)], pad
+
+
+def native_stroke_box(layer, pad):
+    """The centre line a native stroke of width ``2 * pad`` traces so that a plain rectangle, rounded
+    rectangle, capsule or ellipse is stroked inside its box: ``(x, y, w, h, corner radius)`` in the
+    layer's pixels. None when a native stroke cannot draw it exactly (a corner radius under half the
+    stroke, a stroke reaching the shape's middle, or another shape): draw the stroke ring from
+    ``vector_strokes.primitives`` instead."""
+    shape = layer.get("shape", "rectangle")
+    w, h = layer["width"], layer["height"]
+    if shape not in ROUNDED_BOXES or 4 * pad >= min(w, h):
+        return None
+    radius = 0 if shape in ("rectangle", "ellipse") else layer.get("radius", min(w, h) / (2 if shape == "capsule" else 5))
+    if not isinstance(radius, (int, float)):
+        return None  # Per-corner or relative radii are catalog geometry.
+    radius = min(radius, w / 2, h / 2)
+    if 0 < radius < pad:
+        return None
+    return pad, pad, w - 2 * pad, h - 2 * pad, max(0, radius - pad)
 
 
 def placed_path(path, view, box):

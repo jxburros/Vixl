@@ -71,12 +71,12 @@ def test_closed_shapes_start_top_left_or_top_and_run_clockwise():
     rect.apply({"type": "shape", "shape": "rectangle", "name": "r", "width": 100, "height": 100, "fill": "transparent",
                 "stroke": "black", "stroke_width": 4, "trim_end": 25})
     mask = ink(rect.render())
-    assert mask[4, 10:90].all() and not mask[50, 4] and not mask[90:, :].any()  # top edge drawn, left and bottom not
+    assert mask[2, 10:90].all() and not mask[50, 2] and not mask[90:, :].any()  # top edge drawn, left and bottom not
     ring = Project(100, 100, "white")
     ring.apply({"type": "shape", "shape": "ellipse", "name": "e", "width": 100, "height": 100, "fill": "transparent",
                 "stroke": "black", "stroke_width": 4, "trim_end": 25})
     arc = ink(ring.render())
-    assert arc[4, 50] and arc[46, 95] and arc[30, 90] and not arc[50, 4] and not arc[94, 50]  # 12 o'clock to 3 o'clock
+    assert arc[2, 50] and arc[46, 97] and arc[29, 93] and not arc[50, 2] and not arc[97, 50]  # 12 o'clock to 3 o'clock
 
 
 @pytest.mark.parametrize("shape", ["rectangle", "rounded-rectangle", "ellipse", "polygon", "star", "line", "heart", "capsule"])
