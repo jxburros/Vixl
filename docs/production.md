@@ -258,7 +258,7 @@ checks. Three are built in:
 | --- | --- | --- | --- |
 | `draft` | `error`: only errors fail | | none |
 | `review` | `fix`: any finding whose action is fix fails (the plain `check` verdict) | | all attached |
-| `final` | `review`: fix and review findings fail | `color_vision` | all attached |
+| `final` | `review`: fix and review findings fail | `color_vision`, `composition` | all attached |
 
 `check --profile final` (`vixl_check(profile="final")`, `profile` on production `run`, on `group-apply` and on the
 [CI action](ci.md)) runs the profile's checks and suites; its `fail_on` decides `passed`, and the report's `profile`
@@ -272,6 +272,10 @@ built-in ones, in `.vixl-checks.json` at its root; a project group's `profiles` 
               "social": {"fail_on": "fix", "checks": ["bounds", "contrast", "safe_area", "legibility"]}},
  "waivers": [{"check": "safe_area", "target": "title-bar", "reason": "full-bleed bar by design", "expires": "2030-12-31"}]}
 ```
+
+`final` keeps `composition` even when a workspace narrows its `checks`, so unresolved [composition
+reviews](guides.md#composition) (dead bands, margin drift, uneven rhythm, crowding, clumped scatter) fail shipping
+until they are fixed or waived with a reason.
 
 A profile has `fail_on`, `checks` (default: the standard checks), `optional` (opt-in checks added to them),
 `suites` (`"all"`, `"none"` or a list of names) and `description`. The report's `outcome` follows the profile: what

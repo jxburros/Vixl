@@ -57,6 +57,21 @@ def test_overlap_check_on_dense_text():  # #327
     assert elapsed < 6
 
 
+def test_composition_check_on_scattered_labels():
+    import random
+
+    rng = random.Random(1)
+    p = Project(4000, 4000, "white")
+    p.apply([{"type": "text", "name": f"t{i}", "text": "Label", "size": 14, "color": "black",
+              "x": rng.randint(0, 3800), "y": rng.randint(0, 3900)} for i in range(1500)], detail="brief")
+    # The first version took over 10 minutes: free rectangles split by every scattered label, and every pair of
+    # labels compared for drift (now under half a second, with at most 12 findings of each kind).
+    elapsed, report = timed(lambda: p.check(checks=["composition"]))
+    drift = [x for x in report["issues"] if x.get("code") == "margin_drift"]
+    assert len(drift) == 12 and drift[-1].get("omitted", 0) > 0
+    assert elapsed < 8
+
+
 def test_a_100k_character_text_flow():  # #335
     p = Project(1900, 1900, "white")
     # Before 0.23: about 5 minutes for one 100,000-character word (now about 6 s).

@@ -115,6 +115,15 @@ overflow or overlap with no single fix use workflow `repair-layout` (`protected`
 default, unchanged when infeasible); `protected-edit` commits an edit only if protected layers and regions are
 unchanged; `vixl reproduce --reference PNG` or `--lock FILE` verifies an approved render.
 
+**Composition is checked by default.** `vixl_check(checks=["composition"])` (CLI `vixl check --checks composition`)
+reports craft as `review` findings with a `code`: `dead_band` (an empty band much larger than the document's own
+gaps), `margin_drift` (stacked blocks a few pixels off one edge or centre axis), `uneven_rhythm` (a line further
+from the line it belongs with than from the next), `crowding` (a rule, band or heading under half a spacing unit
+above text) and `clumped_scatter`. Each names its layers, `region`, measured `values` and `threshold`, in spacing
+units of half the body size. They do not fail a plain check but fail `profile="final"`: fix them, or waive a
+deliberate one with a reason (`{type: waiver, check: composition, reason}`). Marked decoration, backgrounds and
+bleeding art are not judged.
+
 **One call for a new piece.** When you already know the size, layout slots, look and operations,
 `vixl_compose(path, size=…, font_pairing=…, layout={name, …slots}, style=…, look={…}, operations=[…],
 check=true, preview=true, exports=[…])` (CLI `vixl compose --request req.json --preview p.png`) runs steps 1–5

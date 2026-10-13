@@ -8,9 +8,10 @@ motion) at each variety level, applies every roll to a real document, and scores
 * **diversity**: the entropy in bits (0 = always the same choice, 1 = an even split between two,
   more for wider spreads) of the rolled palette, layout, mode, pairing, look and style, and the mean pairwise distance between small
   renders (0 = identical images, 1 = opposite colours everywhere);
-* **quality**: the share of designs with no ``fix`` finding from ``check``, the share whose fonts
-  are installed (the document typography, not the proofing fallback), the share that pass the
-  contrast check, and the lowest ink contrast seen.
+* **quality**: the share of designs with no ``fix`` finding from ``check``, the share with no
+  ``composition`` finding (dead bands, margin drift, uneven rhythm, crowding, clumped scatter: the craft
+  the checks can measure), the share whose fonts are installed (the document typography, not the
+  proofing fallback), the share that pass the contrast check, and the lowest ink contrast seen.
 
 It runs offline: fonts come from a temporary cache filled with the bundled font under each
 pairing's file names, as in the agent eval, so it measures font installation, not font design.
@@ -196,6 +197,7 @@ def run_one(brief, seed, level, workspace, house_style_version=None):
     typography = project.state.get("typography") or {}
     fonts_ok = bool(typography.get("heading") and typography.get("body"))
     contrast = [i for i in issues if i.get("check") == "contrast" and i.get("action") == "fix"]
+    composition = [i for i in issues if i.get("check") == "composition" and i.get("action") != "informational"]
     direction = result["direction"]
     from vixl.colors import contrast_ratio, parse
 
@@ -208,6 +210,7 @@ def run_one(brief, seed, level, workspace, house_style_version=None):
         "choices": {key: str(direction.get(key)) for key in DIMENSIONS},
         "tier": direction.get("tier"),
         "fix": [f"{i.get('check')}:{i.get('code', i.get('message', ''))[:60]}" for i in fixes],
+        "composition": [f"{size}:{i['code']}" for i in composition],
         "fonts": fonts_ok,
         "contrast_ok": not contrast,
         "ink_contrast": ink_contrast,
@@ -243,6 +246,7 @@ def evaluate(briefs=BRIEFS, levels=LEVELS, seed_base=1000, progress=None, house_
             contrasts = [row["ink_contrast"] for row in rows if row["ink_contrast"] is not None]
             quality = {
                 "no_fix_findings": round(sum(not row["fix"] for row in rows) / len(rows), 3),
+                "no_composition_findings": round(sum(not row["composition"] for row in rows) / len(rows), 3),
                 "fonts_installed": round(sum(row["fonts"] for row in rows) / len(rows), 3),
                 "contrast_pass": round(sum(row["contrast_ok"] for row in rows) / len(rows), 3),
                 "min_ink_contrast": min(contrasts) if contrasts else None,
@@ -250,7 +254,8 @@ def evaluate(briefs=BRIEFS, levels=LEVELS, seed_base=1000, progress=None, house_
             tiers = Counter(row["tier"] for row in rows if row["tier"])
             scores[level] = {"diversity": diversity, "quality": quality,
                              **({"tiers": dict(sorted(tiers.items()))} if tiers else {}),
-                             "fix_findings": sorted({f for row in rows for f in row["fix"]})}
+                             "fix_findings": sorted({f for row in rows for f in row["fix"]}),
+                             "composition_findings": sorted({f for row in rows for f in row["composition"]})}
     for row in runs:
         row.pop("thumb")
     return {"briefs": len(briefs), "levels": list(levels), "scores": scores}, runs
@@ -281,15 +286,16 @@ def markdown(result):
     version = result.get("house_style_version") or "current"
     lines = [f"House-style eval: {result['briefs']} sparse briefs per level, house style {version}", "",
              "Diversity is entropy in bits per dimension, then mean pairwise image and layout-structure distance; "
-             "quality is the share of designs with no fix finding, with fonts installed and passing contrast.", "",
+             "quality is the share of designs with no fix finding, with no composition finding, with fonts installed and "
+             "passing contrast.", "",
              "| Level | palette | layout | mode | pairing | look | style | image dist. | same-mode dist. | structure dist. "
-             "| no fix | fonts | contrast |",
-             "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+             "| no fix | no composition | fonts | contrast |",
+             "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
     for level, score in result["scores"].items():
         d, q = score["diversity"], score["quality"]
         lines.append(f"| {level} | {d['palette']} | {d['layout']} | {d['mode']} | {d['pairing']} | {d['look']} | {d['style']} "
                      f"| {d['image_distance']} | {d['same_mode_distance']} | {d['structure_distance']} "
-                     f"| {q['no_fix_findings']} | {q['fonts_installed']} "
+                     f"| {q['no_fix_findings']} | {q.get('no_composition_findings', '')} | {q['fonts_installed']} "
                      f"| {q['contrast_pass']} |")
     return "\n".join(lines) + "\n"
 

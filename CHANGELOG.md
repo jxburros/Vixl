@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Composition checks
+
+- A `composition` check family, on by default, reports craft problems as `review` findings (craft plan 2a): `dead_band` (an empty band much larger than the document's own gaps, between blocks or against an edge), `margin_drift` (stacked blocks whose left edges, right edges of right-aligned text or centre axes are within two spacing units but not equal), `uneven_rhythm` (a stack whose middle line sits further from the line above it, which it matches in size, than from the next, or lines of one size spaced unevenly), `crowding` (a rule, band or heading less than half a spacing unit above text) and `clumped_scatter` (a `pattern-scatter` or `scatter` whose motif coverage bunches over the tile). Each finding has a stable `code` (rule `composition.dead_band` …), `layer_ids`, the `region` it concerns, `measured` actual against expected, the `values` it measured, the `threshold` it applied and the `spacing_unit` (half the body size). Select it alone with `vixl check --checks composition` or `vixl_check(checks=["composition"])`. Backgrounds, marked decoration, bleeding art, glows and the insides of charts and scatters are not judged as blocks; waive a deliberate finding with `layer-intent waive` or the `waiver` operation (`check: composition`) and a reason.
+- Backtest on reconstructions of the 16 round-1 Vixl documents (`python -m evals.craft_backtest`, 20 documents, 21 composition defects the blind judges named): 12 caught, 9 missed, 0 false findings, 2 findings on judged defects outside composition. By kind: dead band 5 of 10, margin drift 4 of 5, uneven rhythm 2 of 4, crowding 1 of 1, clumped scatter 0 of 1. The 144 rolled house-style designs of `evals.house_style` get no composition finding.
+- `evals.house_style` scores the share of designs with no composition finding (`no_composition_findings`), so `--compare` against the baseline catches a default change that adds dead bands, drift or crowding to rolled designs (craft plan 1d).
+
+### Behaviour changes
+
+- Plain `check` runs one more default family. Its findings are `review`, so the plain verdict (`passed`, which fails on `fix`) does not change; a run that gates on review findings (`--profile final`, `fail_on: review`) now also fails on unresolved composition findings. Turn the family off for one run with an explicit `checks` list without `composition`, or waive a finding with a reason.
+- The built-in `final` profile adds `composition` to its checks (craft plan 2c), even where a workspace narrows its `checks`, so shipping fails on unresolved composition reviews unless they are waived with a reason. A workspace `.vixl-checks.json` that sets `final.optional` replaces this list.
+
 ## 0.26.0
 
 ### Fixed and added

@@ -15,7 +15,7 @@ from .model import finite
 from .timeline import animated as timeline_animated
 
 CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "placeholders", "fonts", "brand", "content",
-          "form", "links", "diagram", "flow", "codes")
+          "form", "links", "diagram", "flow", "codes", "composition")
 FALLBACK_FONT = "DejaVuSans.ttf"
 OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing", "style", "motion", "character", "captions",
                    "connected", "cost", "accessibility")
@@ -1007,6 +1007,11 @@ def check_design(
         from .textflow import check_flows
 
         check_flows(candidate, resolved, issue)
+
+    if "composition" in checks:
+        from .composition import check as check_composition
+
+        check_composition(candidate, resolved, geometry, content, role, ancestors, issue)
 
     if "cost" in checks:
         from .profiling import cost_findings

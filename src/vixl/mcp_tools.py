@@ -930,8 +930,8 @@ def build_server(session, *, schema="full", planner=False, tools="all", allow_sc
     def vixl_check(
         checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "placeholders", "fonts", "brand", "print", "color_vision", "guides", "alignment",
                              "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style",
-                             "diagram", "flow", "codes", "motion", "character", "captions", "connected", "cost",
-                             "accessibility"]]
+                             "diagram", "flow", "codes", "composition", "motion", "character", "captions", "connected",
+                             "cost", "accessibility"]]
         | None = None,
         targets: list[str] | None = None,
         safe_area: Annotated[
@@ -986,7 +986,9 @@ def build_server(session, *, schema="full", planner=False, tools="all", allow_sc
         expired ones. connected (opt-in) finds parts of a group (a mascot, a character) that float free of its main
         body; cost (opt-in) times every layer and flags the ones that take over 10× the median to draw, naming the blur
         radius, stroke points or effects behind it. accessibility (opt-in) adds contrast and color_vision to missing alt
-        text, an unset language, small text, colour-only charts and reading order. artboards/pages/comps check every variant in one call. Reports
+        text, an unset language, small text, colour-only charts and reading order. composition (on by default) reviews
+        craft: dead bands, margin drift, uneven rhythm, crowding under a rule or heading and clumped scatters, each
+        finding with its code, region, measured value and threshold. artboards/pages/comps check every variant in one call. Reports
         only problems. Each finding has a stable rule ID
         (bounds.text-overflow, contrast.text-contrast, safe_area.outside, overlap.text-text …), layer_ids, its
         box or region in document pixels, measured actual versus expected, and for fix findings a repair suggestion:
