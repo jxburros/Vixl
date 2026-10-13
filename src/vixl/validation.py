@@ -114,8 +114,9 @@ def check_state(project, state):
             if key in layer:
                 color(resolve_color(layer[key], state))
         if layer["type"] == "pixel":
-            from .pixel import validate_pixel
+            from .pixel import validate_finish, validate_pixel
 
+            validate_finish(layer)
             validate_pixel(layer, state)
         if layer["type"] == "paint":
             from .brushes import validate_paint
@@ -137,6 +138,10 @@ def check_state(project, state):
             from .tables import validate_table
 
             validate_table(layer, state)
+        if "key_values" in layer:
+            from .key_values import validate as validate_key_values
+
+            validate_key_values(layer, state)
         if "chart" in layer:
             from .charts import validate_chart
 

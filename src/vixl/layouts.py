@@ -48,6 +48,15 @@ DENSITY_CHOICES = ("airy", "balanced", "balanced", "dense")
 # How density scales a rolled margin and the spacing unit (gaps), relative to balanced.
 DENSITY_SPACING = {"airy": 1.25, "balanced": 1.0, "dense": 0.75}
 ACCENTS = ("rule", "bar", "dot", "block", "outline", "none")
+# How a rolled direction (house style 4) sets the call to action and a date line.
+CTA_STYLES = ("button", "pill")
+DATE_STYLES = ("plain", "highlight")
+# A date line: a weekday or month name, or a numeric date (21/6, 2026-06-21).
+DATE_PATTERN = re.compile(
+    r"\b(mon|tue|wed|thu|fri|sat|sun)(day|sday|nesday|rsday|urday)?\b|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|"
+    r"nov|dec)[a-z]*\.?\s+\d|\d\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\b|\b\d{1,4}[/.-]\d{1,2}"
+    r"[/.-]\d{1,4}\b|\b(january|february|march|april|june|july|august|september|october|november|december)\b",
+    re.IGNORECASE)
 # A stored design direction: these keys are layout-apply fields; the rest (except the skipped ones) are
 # its ``direction`` (margin, corner, look, style, motif, background treatment ...).
 DIRECTION_OPTIONS = ("palette", "mode", "type_scale", "density", "accent", "align")
@@ -125,6 +134,19 @@ class Builder:
         self.corner = direction.get("corner") if direction.get("corner") in CORNERS else corner_style(project)
         # A bold or expressive roll sets headlines large (#285); quiet rolls keep the measured headline.
         self.large = direction.get("headline") == "large"
+        defaults = project.state.get("design_defaults", {})
+        self.version = op.get("_house_style_version", direction.get("house_style_version",
+                                                                    defaults.get("house_style_version", 2)))
+        # Details the rolled direction asks for (house style 4): the call to action as a pill, a date line on
+        # a highlight. Version 3 documents and directions without them keep the plain button and date.
+        self.cta_style = direction.get("cta", "button")
+        self.date_style = direction.get("date", "plain")
+        require(self.cta_style in CTA_STYLES, f"direction.cta must be one of {', '.join(CTA_STYLES)}", field="direction")
+        require(self.date_style in DATE_STYLES, f"direction.date must be one of {', '.join(DATE_STYLES)}",
+                field="direction")
+        self.highlighted = False
+        # The lowest the copy may reach (a footer rule keeps it above itself); None for the canvas safe area.
+        self.floor = None
         # Color roles with contrast guarantees.
         self.colors = assign_roles(op, self.rng)
         self.contrast = round(contrast_ratio(parse(self.colors["ink"])[:3], parse(self.colors["background"])[:3]), 2)
@@ -143,6 +165,8 @@ class Builder:
         # design needs but nobody filled renders as a visible "[Label]" placeholder and is
         # recorded as a blank, so it can never ship silently as invented sample text.
         self.content = {k: op[k] for k in CONTENT_KEYS if k in op}
+        self.accent_words = [word for word in op.get("accent_words") or [] if isinstance(word, str) and word.strip()]
+        self.accented, self.accent_skipped = set(), set()
         self.slots = slot_spec(layout)
         self.unfilled = op.get("unfilled", "blank")
         require(self.unfilled in ("blank", "omit"), "unfilled must be blank or omit", field="unfilled")
@@ -181,15 +205,21 @@ class Builder:
         self.ops.append(op)
         return op
 
-    def measure(self, text, size, width=None, spacing=0, align="left", font=None):
+    def measure(self, text, size, width=None, spacing=0, align="left", font=None, wrap=None):
+        """(width, height) of ``text`` set in ``font``, wrapped at ``width``. Text in the display font wraps as the
+        document's headings do unless ``wrap`` says otherwise: balanced lines can hold other ascenders and
+        descenders than greedy ones, so the box is measured as it will be drawn."""
         from .render import text_metrics, document_variables
         from .variables import substitute
-        from .text import UnsupportedText, font_data, measure
+        from .text import UnsupportedText, document_wrap, font_data, measure
 
+        if wrap is None:
+            wrap = document_wrap(self.project, font is not None and font == self.display_font)
         text = substitute(text, document_variables(self.project))
         layer = {"text": text, "size": size, "spacing": spacing, "align": align, "font": self.project.state.get("fonts", {}).get(font, font or "DejaVuSans.ttf")}
         try:
-            _, box = measure(font_data(self.project, layer), text, size, spacing, align, width)
+            _, box = measure(font_data(self.project, layer), text, size, spacing, align, width,
+                             wrap if width is not None else "greedy", None)
             return math.ceil(box[2] - box[0]), math.ceil(box[3] - box[1])
         except UnsupportedText:
             w, h, _ = text_metrics(self.project, layer, {})
@@ -239,10 +269,29 @@ class Builder:
         if heavy and max_height is None:
             max_height = self.ch * 0.55
 
-        w, h = self.measure(content, size, width, spacing_for(size), align, font)
+        highlight = self.date_line(name, content)
+        if highlight:
+            # The text sits inside the highlight, whose edge stays on the column edge.
+            x, width = x + highlight[0], max(1, width - 2 * highlight[0])
+        from .text import document_wrap
+
+        wrap = document_wrap(self.project, heavy)
+        w, h = self.measure(content, size, width, spacing_for(size), align, font, wrap)
         while size > 6 and (w > width or (max_height and h > max_height)):
             size = max(6, int(size * 0.92))
-            w, h = self.measure(content, size, width, spacing_for(size), align, font)
+            w, h = self.measure(content, size, width, spacing_for(size), align, font, wrap)
+        if highlight:
+            pad_x, pad_y = highlight
+            left = x if align == "left" else x + width - w if align == "right" else x + (width - w) / 2
+            self.rect(f"{name}-highlight", left - pad_x, y - pad_y, w + 2 * pad_x, h + 2 * pad_y, "@accent",
+                      decoration=True)
+            # The text box hugs the line, so the highlight holds it whole (a panel around text, not through it).
+            x, width, color = left, w + 1, "@on-accent"
+        accented = bool(self.accent_words) and ((name or role) in ("headline", "title")
+                                                or content == self.content.get("title"))
+        if accented:
+            # Accent words make the headline rich text, whose box holds whole line boxes rather than ink.
+            h = max(h, self.rich_height(content, size, width, multiple, font, align, wrap))
         layer = self.name(name or role)
         op = {"type": "text", "name": layer, "text": content, "size": size, "color": color, "align": align, "line_height": multiple, "x": round(x), "y": round(y)}
         if stage_font:
@@ -254,9 +303,54 @@ class Builder:
             # text-set re-measures the text, so the stroke comes before the text box.
             self.add({"type": "text-set", "target": layer, "stroke_width": stroke[0], "stroke_color": stroke[1]})
             h += 2 * stroke[0]
-        self.add({"type": "text-layout", "target": layer, "width": width, "height": max(1, h)})
+        box = {"type": "text-layout", "target": layer, "width": width, "height": max(1, h)}
+        if wrap != "greedy":
+            box["wrap"] = wrap
+        self.add(box)
+        if accented:
+            self.accent_headline(layer, content, color)
         self.created.append(layer)
         return (round(x), round(y), width, h)
+
+    def date_line(self, name, content):
+        """``(pad_x, pad_y)`` when this text is the composition's date line and the direction highlights it (the
+        first short, one-line label, caption, subtitle or body that reads as a date), else None."""
+        if (self.date_style != "highlight" or self.highlighted or name not in ("label", "caption", "subtitle", "body")
+                or not isinstance(content, str) or "\n" in content or len(content) > 60 or "[" in content
+                or not DATE_PATTERN.search(content)):
+            return None
+        self.highlighted = True
+        return round(self.unit * 0.75), round(self.unit * 0.35)
+
+    def rich_height(self, content, size, width, multiple, font, align, wrap):
+        """The height ``content`` takes as rich text in a ``width`` box (see ``measure`` for plain text)."""
+        from .render import document_variables
+        from .richtext import layout, size_leading
+        from .variables import substitute
+
+        text = substitute(content, document_variables(self.project))
+        layer = {"type": "text", "text": text, "size": size, "align": align, "line_height": multiple, "width": width,
+                 "font": self.project.state.get("fonts", {}).get(font, font or "DejaVuSans.ttf"),
+                 "text_layout": {"width": width, "wrap": wrap}}
+        rich = {"spans": [{"text": text}], "paragraphs": [{}]}
+        size_leading(self.project, layer, rich, multiple)
+        layer["rich"] = rich
+        return math.ceil(layout(self.project, layer).height)
+
+    def accent_headline(self, layer, content, color):
+        """Set the headline's accent words in the accent text color, through rich-text spans: whole words,
+        matched without regard to case. Copy already set on the accent color keeps one color."""
+        for word in self.accent_words:
+            found = list(re.finditer(rf"(?<!\w){re.escape(word.strip())}(?!\w)", content, re.IGNORECASE))
+            if not found:
+                continue
+            if color != "@ink":
+                self.accent_skipped.add(word)
+                continue
+            self.accented.add(word)
+            for match in found:
+                self.add({"type": "text-style", "target": layer, "start": match.start(), "end": match.end(),
+                          "color": "@accent-text"})
 
     def measure_cap(self, role, content, size, width):
         """Keep a readable measure: a heavy line holds at least ~10 (display) or 14 (headings) characters,
@@ -377,20 +471,32 @@ class Builder:
         align = align or self.align
         size = self.sizes["body"]
         tw, th = self.measure(label, size, None, 0, "left", self.font)
-        pad_x, pad_y = round(size * 1.1), round(size * 0.6)
+        # A layout's own button style wins; then a direction that rolled a pill (house style 4); otherwise the
+        # button takes the document corner style (#410).
+        style = self.layout.get("button") or ("pill" if self.cta_style == "pill" else None)
+        # A pill's round ends need more room beside the label than square corners do.
+        pad_x, pad_y = round(size * (1.4 if style == "pill" else 1.1)), round(size * 0.6)
         w, h = tw + 2 * pad_x, th + 2 * pad_y
         if align == "center":
             x = x - w / 2
         elif align == "right":
             x = x - w
-        # A layout's own button style wins; otherwise the button takes the document corner style (#410).
-        style = self.layout.get("button")
         radius = (h / 2 if style == "pill" else round(size * 0.35) if style == "rounded" else 0) if style \
             else h * CORNERS[self.corner]
         self.rect(name + "-button", x, y, w, h, fill, radius=radius)
         self.add({"type": "text", "name": self.name(name), "text": label, "size": size, "color": ink, "x": round(x + pad_x), "y": round(y + pad_y), **({"font": self.font} if self.font else {})})
         self.created.append(self.name(name))
         return (round(x), round(y), round(w), round(h))
+
+    def clearance(self, device):
+        """Room a footer rule keeps above the copy (house style 4): one spacing unit above the rule, so the last row
+        never sits on it. One unit is the smallest step of the spacing scale and twice the crowding threshold."""
+        if device != "footer" or self.version < 4:
+            return 0
+        clear = self.unit * 1.25  # the rule sits a quarter unit above the bottom margin
+        # Copy too tall to leave the room is set smaller (execute_layout's fit loop), not onto the rule.
+        self.floor = self.B - clear
+        return clear
 
     def outline_width(self):
         return max(2, round(self.unit * 0.75))
@@ -1664,7 +1770,7 @@ def _safe_composition(b):
     if b.orientation == "wide" and height > b.ch:
         # A banner too shallow for one column: the label and headline on the left, the rest beside them.
         return _two_columns(b, entries, vertical, device)
-    y = b.T + max(0, b.ch - height) * vertical
+    y = b.T + max(0, b.ch - height - b.clearance(device)) * vertical
     if device == "rule":
         b.rect("quiet-rule", b.L, max(0, b.T - b.unit - max(2, b.unit / 4)), b.cw, max(2, b.unit / 4), "@accent", decoration=True)
     elif device == "rail":
@@ -1695,7 +1801,7 @@ def _two_columns(b, entries, vertical, device):
     align = "left" if b.align == "right" else b.align
     for index, (column, x, width) in enumerate(((lead, b.L, left_w), (rest, b.L + left_w + gap, right_w))):
         height = b.stack_height(column, width, gap=b.unit * 2)
-        y = b.T + max(0, b.ch - height) * vertical
+        y = b.T + max(0, b.ch - height - b.clearance(device)) * vertical
         if index == 0 and not (b.accent == "rule" and device == "rule"):
             b.accent_device(x, y, width, height)
         b.stack(column, x, y, width, gap=b.unit * 2, align=align)
@@ -1995,6 +2101,19 @@ def execute_layout(project, op):
             f"Type was reduced to {fit:.0%} of the medium's scale to fit this canvas; "
             "shorten the copy or choose a larger size or a layout made for this format."
         )
+    if builder.accent_words:
+        from .notices import warn
+
+        missing = [word for word in builder.accent_words if word not in builder.accented | builder.accent_skipped]
+        state["layout"]["accent_words"] = {"styled": [w for w in builder.accent_words if w in builder.accented],
+                                           **({"missing": missing} if missing else {}),
+                                           **({"skipped": sorted(builder.accent_skipped)} if builder.accent_skipped else {})}
+        if missing:
+            warn(project, f"accent_words {', '.join(map(repr, missing))} not found as whole words in the headline "
+                          f"{builder.content.get('title', '')!r}; nothing was accented for them")
+        if builder.accent_skipped:
+            warn(project, f"accent_words {', '.join(map(repr, sorted(builder.accent_skipped)))} were not accented: "
+                          f"layout {name!r} sets its headline on the accent color, where accent text would not read")
     if notes:
         state["layout"]["notes"] = notes
 
@@ -2112,6 +2231,8 @@ def _overflows(project, builder):
             x, y, w, h = bounds[layer["id"]]
             if x < left or y < top or x + w > c["width"] - right or y + h > c["height"] - bottom:
                 return True
+            if builder.floor is not None and y + h > builder.floor + 1:
+                return True
     return False
 
 
@@ -2156,6 +2277,11 @@ def schemas(add):
             "predictable": B,
             "keep_order": B,
             **{key: S for key in CONTENT_KEYS if key != "images"},
+            "accent_words": {"type": "array", "items": S, "maxItems": 12,
+                             "description": "Words of the headline (title) to set in the accent text color, such as "
+                             "['Winter'] for a two-tone headline. Whole words, any case; every match is styled. A word "
+                             "that is not in the headline is reported as a warning. (accent alone names the accent "
+                             "device.)"},
             "images": {"type": "array", "items": S, "maxItems": 8,
                        "description": "Multi-panel layouts (meme-comparison, meme-four-panel): one image asset id per panel."},
             "uppercase": {"type": "boolean", "description": "Meme layouts: set stroked captions uppercase (default true)."},

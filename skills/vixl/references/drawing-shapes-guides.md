@@ -34,6 +34,10 @@ When a person gives you a photo or scan of their drawing, keep their lines and b
   work is kept. `fill` and `stroke` points are canvas positions by default, wherever the drawing has been
   moved; pass `space: "group"` to give them in the drawing's own coordinates instead. Sky and ground that
   only the drawing's edge closes are listed under `edge_regions`; fill them with `settings: {"edge_closes": true}`.
+  When the ground line stops short of the paper's sides, `edge_closes` carries its ends on to the edge (not
+  drawn; `edge_reach`, default 15% of the short side, 0 for none), so sky and ground still separate: do not draw
+  extension strokes. Fills follow the strokes as they render and tuck under them to the line's centre, so no
+  paper shows between a fill and its line.
   `import`/`clean` keep the paper's extent; `settings.crop: true` crops to the ink.
 - After edits, check `preserved` (aim for ≥ 0.9 unless told to redraw) and look at
   `vixl_workflow("drawing-compare", {"target": "house", "output": "compare.png"})` (original red,
@@ -64,12 +68,28 @@ Full reference: `docs/drawing.md`.
 
 For living things (flowers, trees, leaves, shells, creatures, coral, markings) use `organic`
 rather than hand-placing ellipses: `{"type": "organic", "preset": "sunflower", "name": "bloom",
-"seed": 7}`. `vixl organics` / workflow `organic-catalog` lists 18 generators, 19 rules and 33
+"seed": 7}`. `vixl organics` / workflow `organic-catalog` lists 19 generators, 19 rules and 34
 presets; `parts` compose your own. Regrow with a new `seed` and the same `target`. To keep a
 form inside a brand palette pass `fill` (every filled part), `stroke` and `stroke_width` (every
 line, extra outputs such as shell chambers and leaf veins included); `colors` names single
 parts and wins over `fill`. A regrow with `stroke`/`fill` restyles the same way as creating
 with them. Full reference: `docs/organic.md`.
+
+Water is the scene preset `water`: filled bands lighter at the horizon and darker in front, with crests, filling its
+box edge to edge (`{"type": "organic", "preset": "water", "name": "sea", "x": 0, "y": 700, "width": 1080, "height":
+380, "params": {"tones": ["#a8d5c8", "#3f7f95", "#14263b"]}}`). Use it instead of stroked wave lines; stand a
+lighthouse or pier in it by ordering it below the front band.
+
+## Scene atmosphere and motifs
+
+One operation each, deterministic for `seed`: `haze` (a glow band behind a light, `target` the light), `star-field`
+(stars and sparkles in a `region`, clear of every text layer), `string-lights` (bulbs or `bulb: lantern` evenly along
+`from`/`to`/`sag` or a `target` path, with glows), `bokeh` (soft light discs) and `reflection` (the layers above a
+`horizon` mirrored, rippled and faded below it; one raster layer that `{type: reflection, target: reflection}`
+re-renders after the scene changes). The first four make editable groups of vector shapes and gradients.
+`vixl_guide(brief)` returns `motifs` for a brief that implies a setting: the concrete things to draw (a cup with
+steam, a lighthouse in filled water, strung lanterns, an irregular skyline) and the catalog shapes (`cup`, `steam`,
+`lighthouse`, `lantern`), presets and operations that draw them. Full reference: `docs/atmosphere.md`.
 
 ## Imperfection: irregular and tear
 
@@ -104,6 +124,7 @@ targeting the torn layer (the `-face` layer for a free sheet). Reference: `docs/
 {"type": "scatter", "target": "bear", "preset": "fur", "seed": 2}
 {"type": "pattern-scatter", "source": ["leaf", "dot"], "width": 200, "height": 200, "count": 14, "seed": 11, "rotation_jitter": 180, "background": "#fff7ed", "pattern": "leaves", "name": "tile"}
 {"type": "pattern-scatter", "target": "tile"}                 # rebuild and re-wrap after editing a motif
+{"type": "pattern-scatter", "target": "tile", "thin": 0.8}    # drop the most crowded fifth, the rest stay put
 ```
 
 `scatter` copies motifs inside a layer's outline (Poisson-disc, no grid look) or `along` its edge
@@ -111,7 +132,10 @@ targeting the torn layer (the `-face` layer for a free sheet). Reference: `docs/
 jitter, `colors`/`tone_variation` and `exclude`. `merge: true` draws every copy as one path per tone
 (shape motifs), so large scatters stay within the layer limit. `pattern-scatter` makes a seamless
 tile: motifs crossing an edge get wrapped copies, the result reports `seam`, and `pattern` saves it
-for `pattern-fill` (`tile_variation` varies each repeat). Fur: `preset: fur`, the `plush` look or
+for `pattern-fill` (`tile_variation` varies each repeat). In new documents (house style 4) a lower
+`count` with the same seed keeps the first copies exactly in place, and `thin` (a share to keep, or
+`{count: N}`) removes the most crowded copies of an existing tile; use these for "fewer motifs" so the
+revision does not re-roll the pattern. `distribution: "poisson"` is the earlier layout. Fur: `preset: fur`, the `plush` look or
 the organic `fur-blob` preset; the `hand-made` look applies a removable irregular wobble.
 `repeat`/`radial-repeat` take `rotation_step`, `scale_step`, `opacity_step`, seeded jitter and
 `merge`. Reference: `docs/design-tools.md#scatter-and-seamless-pattern-tiles`.

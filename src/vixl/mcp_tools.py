@@ -412,7 +412,13 @@ def build_server(session, *, schema="full", planner=False, tools="all", allow_sc
             "(the bundled font is a proofing fallback); 4) finish with look (glow, soft-shadow, gradient, grain, paper …) and, "
             "when the brief names a style, vixl_styles; 5) test before you look: vixl_check plus your own check suite "
             "(suite-set: the brief's requirements as rules, e.g. contrast, spacing, relation, hierarchy, balance) → fix "
-            "the 'fix' findings and failing rules, glance at 'review' → vixl_render_preview (region= to zoom) → "
+            "the 'fix' findings and failing rules, glance at 'review'; 6) finishing pass (not the look of step 4: "
+            "critique and polish once the checks pass"
+            + ("" if tools == "compact" else ", vixl_guide('finishing')")
+            + "): vixl_check(checks=[\"composition\"]) for dead bands, margin drift, uneven rhythm and crowding "
+            "(workflow repair-layout repairs most) → a short critique against the craft checklist → one fix batch with "
+            "check=true, preview=true (it returns real-size crops of the two weakest regions) → a real-size look at two "
+            "regions (those crops, or vixl_render_preview region=[x, y, w, h] with max_width=w, max_height=h) → "
             "vixl_export_file. Typical loop: vixl_document_create/open → "
             "vixl_operations_apply (atomic batches; dry_run to test; check=true, suites=true and preview=true return the "
             "vixl_check findings, failing suite rules and a small preview in the same call) → vixl_export_file; vixl_compose runs that whole chain for a new "
@@ -748,13 +754,15 @@ def build_server(session, *, schema="full", planner=False, tools="all", allow_sc
         check: Annotated[
             bool | str | list[str] | None,
             Field(description="Also run vixl_check on the result: true (default checks) or check names. Lists 'fix' "
-                              "findings and those on the layers this batch touched"),
+                              "findings, composition findings and those on the layers this batch touched, and the two "
+                              "weakest regions"),
         ] = None,
         preview: Annotated[
             bool | dict | None,
             Field(description="Also return a small preview PNG: true, or {page, region, max_width (512), max_height, time, "
-                              "isolate, overlay, focus}. overlay (with check) outlines each fix finding labelled with its "
-                              "rule and layer ID; focus (a listed finding's index) zooms to that finding"),
+                              "isolate, overlay, focus, regions}. overlay (with check) outlines each fix finding labelled "
+                              "with its rule and layer ID; focus (a listed finding's index) zooms to that finding; with "
+                              "check, real-size crops of the weakest regions follow the preview (regions: 0-2, default 2)"),
         ] = None,
         suites: Annotated[
             bool | str | list[str] | None,
@@ -792,7 +800,14 @@ def build_server(session, *, schema="full", planner=False, tools="all", allow_sc
         result, image = session.apply_reviewed(operations, dry_run, detail, document, operations_path=operations_path,
                                                check=check, preview=preview, budget=budget, suites=suites,
                                                repair=repair)
-        return result if image is None else [result, Image(data=image, format="png")]
+        from .critique import take_previews
+
+        crops = take_previews(result)
+        for number, entry in enumerate((result.get("check") or {}).get("regions", [])[:len(crops)], start=2):
+            entry["preview"] = f"image {number} of {len(crops) + 1}"
+        if image is None:
+            return result
+        return [result, Image(data=image, format="png"), *(Image(data=png, format="png") for png in crops)]
 
     @tool
     def vixl_operation_schema(types: list[str]) -> dict:
@@ -930,8 +945,8 @@ def build_server(session, *, schema="full", planner=False, tools="all", allow_sc
     def vixl_check(
         checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "placeholders", "fonts", "brand", "print", "color_vision", "guides", "alignment",
                              "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style",
-                             "diagram", "flow", "codes", "motion", "character", "captions", "connected", "cost",
-                             "accessibility"]]
+                             "diagram", "flow", "codes", "composition", "motion", "character", "captions", "connected",
+                             "cost", "accessibility"]]
         | None = None,
         targets: list[str] | None = None,
         safe_area: Annotated[
@@ -986,7 +1001,9 @@ def build_server(session, *, schema="full", planner=False, tools="all", allow_sc
         expired ones. connected (opt-in) finds parts of a group (a mascot, a character) that float free of its main
         body; cost (opt-in) times every layer and flags the ones that take over 10× the median to draw, naming the blur
         radius, stroke points or effects behind it. accessibility (opt-in) adds contrast and color_vision to missing alt
-        text, an unset language, small text, colour-only charts and reading order. artboards/pages/comps check every variant in one call. Reports
+        text, an unset language, small text, colour-only charts and reading order. composition (on by default) reviews
+        craft: dead bands, margin drift, uneven rhythm, crowding under a rule or heading and clumped scatters, each
+        finding with its code, region, measured value and threshold. artboards/pages/comps check every variant in one call. Reports
         only problems. Each finding has a stable rule ID
         (bounds.text-overflow, contrast.text-contrast, safe_area.outside, overlap.text-text …), layer_ids, its
         box or region in document pixels, measured actual versus expected, and for fix findings a repair suggestion:
@@ -1505,7 +1522,9 @@ def build_server(session, *, schema="full", planner=False, tools="all", allow_sc
     ) -> dict:
         """What to make and how. No brief: the start-here recipe, every kind of work and every guidance name. A kind or
         free-text brief: the approach, the operations, layouts, looks and styles that suit it, the guidance to read and a
-        working example. A guidance name returns that guidance text. brief=operations lists every operation by purpose;
+        working example; a brief that implies a setting (a café, a harbor, a night market) also gets motifs: the concrete
+        things to draw and the shapes, presets and operations that draw them (brief=motifs lists every theme). A guidance
+        name returns that guidance text. brief=operations lists every operation by purpose;
         brief=looks lists the finishing looks. Use it before improvising: layouts are text compositions, so non-poster
         work starts here. Field-level detail: vixl_capabilities."""
         from .briefs import guide

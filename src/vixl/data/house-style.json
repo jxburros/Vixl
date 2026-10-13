@@ -1,6 +1,6 @@
 {
   "name": "vixl-house-style",
-  "version": 3,
+  "version": 4,
   "description": "Vixl's built-in default brand. Craft is fixed and the same everywhere; taste is rolled from tiered pools, gated by the variety level and weighted by purpose. A workspace brand.json and explicit fields override it. Changing a value here changes new documents only: documents store their rolled design_defaults with the house_style_version that made them.",
   "precedence": ["explicit field", "brand (brand.json)", "purpose profile", "document design_defaults", "seeded roll"],
   "craft": {
@@ -17,6 +17,7 @@
     "spacing": {"unit": 0.5, "unit_of": "body size", "minimum_unit": 2, "steps": [1, 2, 3, 4, 6, 8]},
     "line_height": {"display": 1.0, "heading": 1.1, "lead": 1.35, "body": 1.45, "caption": 1.3},
     "line_length": {"min": 45, "max": 75},
+    "wrap": {"heading": "balance", "since": 4},
     "minimum_text": {"minor_share_of_short_side": 0.022, "print_points": 6, "large_text_px": 24, "large_bold_text_px": 18.66},
     "base_size": {"screen_share_of_short_side": 0.026, "screen_minimum_px": 10, "print_points_per_inch_of_short_side": 1.25,
                   "print_minimum_points": 7.5, "print_maximum_points": 60},
@@ -47,6 +48,12 @@
   },
   "taste": {
     "alignment": {"design": {"left": 0.75, "right": 0.25}, "data": {"left": 0.75, "center": 0.25}, "mark": {"center": 1}},
+    "details": {
+      "summary": "Version 4: how a roll sets a layout's call to action (a pill or the corner-styled button) and a date line (on an accent highlight or plain). The shares are per tier; square_styles keep square buttons, and a pill corner always gives a pill.",
+      "cta_pill": {"safe": 0.4, "bold": 0.6, "avant-garde": 0.6},
+      "date_highlight": {"safe": 0.35, "bold": 0.55, "avant-garde": 0.6},
+      "square_styles": ["swiss", "brutalist", "neo-brutalist", "bauhaus", "editorial", "vintage-letterpress", "art-deco", "pixel-art"]
+    },
     "tiers": ["safe", "bold", "avant-garde"],
     "tier_notes": {
       "safe": "Broad-use choices that suit most briefs.",
@@ -456,6 +463,7 @@
     }
   },
   "legacy": {
+    "3": {"description": "0.24-0.26 rolls and behaviour: no cta or date detail in the direction (plain buttons in the corner style, plain date lines), no footer-rule clearance in safe compositions, no rule clearance in the section-header container, greedy heading breaks in new documents, a pattern-scatter layout that re-rolls when count changes, and pixel-art sprites without the default shading ramp and outline."},
     "2": {"description": "0.23 roll: excludes pairings introduced in version 3 and keeps its original alignment and background mixing."},
     "1": {
       "summary": "The 0.20-0.22 rolls: safe pools only, two light rolls in three for every purpose, rolled looks at amount 0.1.",

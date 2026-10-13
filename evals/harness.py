@@ -25,7 +25,9 @@ TASK_DIR = Path(__file__).parent / "tasks"
 SYSTEM_PROMPT = (
     "You are a design agent working through Vixl's image-editing tools in a sandboxed workspace. "
     "Complete the user's brief end to end: create or open documents, apply operations, verify the "
-    "result with vixl_check and vixl_render_preview, fix problems, and export files when asked. "
+    "result with vixl_check and fix problems; for a design you make, finish with the finishing pass in "
+    "vixl_guide('finishing') (composition check, a short critique, one fix batch, a real-size look at two "
+    "regions with vixl_render_preview), and export files when asked. "
     "Use workspace-relative paths. When the brief is fully done, reply with a one-line summary."
 )
 
@@ -335,13 +337,14 @@ class ClaudeAgent:
 
     name = "claude"
 
-    def __init__(self, model="claude-opus-5-5", effort=None, max_turns=40, fallbacks=True, client=None):
+    def __init__(self, model="claude-opus-5-5", effort=None, max_turns=40, fallbacks=True, client=None,
+                 system=SYSTEM_PROMPT):
         if client is None:
             import anthropic
 
             client = anthropic.Anthropic()
         self.client, self.model, self.effort = client, model, effort
-        self.max_turns, self.fallbacks = max_turns, fallbacks
+        self.max_turns, self.fallbacks, self.system = max_turns, fallbacks, system
 
     def create(self, **arguments):
         if self.effort:
@@ -362,7 +365,7 @@ class ClaudeAgent:
             response = self.create(
                 model=self.model,
                 max_tokens=16000,
-                system=SYSTEM_PROMPT,
+                system=self.system,
                 tools=definitions,
                 messages=messages,
                 cache_control={"type": "ephemeral"},

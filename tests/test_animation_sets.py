@@ -342,7 +342,8 @@ def test_cli_exposes_named_animations_and_frames_edit(tmp_path, monkeypatch, cap
 
     monkeypatch.chdir(tmp_path)
     assert main(["new", "8x8", "-o", "k.vixl"]) == 0
-    assert main(["pixel-art", "--name", "coat", "--palette", json.dumps(PALETTE), "--rows", json.dumps(COAT)]) == 0
+    assert main(["pixel-art", "--name", "coat", "--palette", json.dumps(PALETTE), "--rows", json.dumps(COAT),
+                 "--shading", "false", "--outline", "false"]) == 0
     for name, x in (("one", 0), ("two", 1), ("three", 2)):
         assert main(["pixel-draw", "coat", "pixel", str(x), "0", "--color", "L"]) == 0
         assert main(["frame-save", name, "--duration", "100"]) == 0

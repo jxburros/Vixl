@@ -315,8 +315,10 @@ def apply_direction(project, builder, direction):
     corner = direction.get("corner") or house_style.rule("corner")
     scale = house_style.rule("corner_scale")
     require(corner in scale, "Unknown corner style", field="direction")
+    # A call to action the direction sets as a pill keeps its round ends whatever the corner style.
+    pill = builder.name("cta-button") if direction.get("cta") == "pill" else None
     for layer in own:
-        if layer.get("shape") in ("rectangle", "rounded-rectangle") and layer is not background:
+        if layer.get("shape") in ("rectangle", "rounded-rectangle") and layer is not background and layer["name"] != pill:
             amount = scale[corner]
             radius = min(layer["width"], layer["height"]) * amount
             layer.update(shape="rounded-rectangle" if radius else "rectangle", radius=radius)

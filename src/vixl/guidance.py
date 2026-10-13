@@ -3,16 +3,28 @@
 ``vixl_guide(brief=NAME)``, ``vixl_resource_get(kind="guidance", name=NAME)``, ``vixl_resources_list``,
 the guidance names a ``vixl_guide`` kind points at and the ``guidance`` that ``vixl_capabilities`` lists
 all read ``GUIDANCE``; user additions (``vixl_resource_add``) join it through ``resources.catalog``.
+
+Motif knowledge (the concrete things a brief implies and what draws them) is data in ``data/motifs.json``,
+read only here: ``motifs(brief)`` gives the themes a brief matches, which ``vixl_guide`` returns as ``motifs``.
 """
 
+from functools import lru_cache
+import json
+from pathlib import Path
+import re
+import unicodedata
+
+MOTIFS_FILE = Path(__file__).resolve().parent / "data" / "motifs.json"
+
 GUIDANCE = {
+    "motifs": "Draw the specific thing the brief names, not a placeholder: a cup with steam rather than a disc, a lighthouse standing in filled layered water rather than on a bar, strung lanterns with glows rather than dots on a line, an irregular lit skyline rather than equal boxes, reflections that mirror the scene rather than dashes. vixl_guide(brief) lists the motifs a brief implies with the catalog shapes, organic presets, object kinds and operations (string-lights, star-field, haze, reflection, bokeh, organic preset water) that draw them; vixl_guide('motifs') lists every theme. Give the motif one focal place, keep decoration clear of the copy, and check the preview at delivery size: if a shape could be anything, add the detail that names it.",
     "overall": "Choose a clear hierarchy, align related elements, use consistent spacing, preserve readable contrast, inspect at delivery size, and measure before exporting.",
     "minimal": "Use generous negative space, a small palette, few type sizes, and a single focal point. Prefer simple geometry and deliberate alignment.",
     "editorial": "Establish headline, body and caption hierarchy. Use a coherent grid, restrained accents, and consistent margins. Keep body text readable.",
     "playful": "Use energetic accents and rounded forms while preserving hierarchy, contrast, and consistent spacing.",
     "meme": "Memes are layouts plus your own pictures: layout-apply meme-top-bottom, meme-caption-above, meme-comparison, meme-labelled, meme-reaction or meme-four-panel, with image (or images, one per panel) set to assets you have the rights to use; Vixl ships no meme images. Keep captions to a few words: stroked captions are uppercase, white with a black stroke, and shrink to fit their box (uppercase=false keeps the case). For the Impact look install an OFL condensed face, e.g. vixl_font_install('Anton', role='heading') or display_font, never a non-OFL font. Check, preview at phone size, export PNG or JPEG. GIF: start from meme-reaction, animate the caption (animate-preset pop-in or shake, or motion), preview with vixl_timeline_preview and export with vixl_export_timeline to .gif (keep it short, 2-4 s, and loop).",
     "logo": "Start on a transparent canvas. Use simple silhouettes, test small sizes and monochrome, and export SVG when scalable geometry is needed.",
-    "pixel-art": "Use an intentional limited palette, integer positions and crisp nearest-neighbor exports. Keep sprite timing and silhouettes readable.",
+    "pixel-art": "Use an intentional limited palette, integer positions and crisp nearest-neighbor exports. Keep sprite timing and silhouettes readable. New sprites draw with a shading ramp and a 1 px outline; give a large area some form rather than one flat colour.",
     "typography": "Pick a pairing before placing text (vixl font pairings; font pair NAME), never ship the proofing fallback, and use one or two families with fixed roles: contrast in classification or a superfamily, matched x-heights, heading 600–800 over body 400. Use a modular type scale (type-scale). Keep body lines 45–75 characters, line height about 1.4 for body and 1.1 for headlines, and create hierarchy with size and weight before color. Align text to a shared edge.",
     "color": "Assign roles before picking hues: background, surface, ink, muted, accent. Keep body text at 4.5:1 or better, large text and graphics at 3:1, and use the accent sparingly for the one thing that matters. Check designs with color-vision simulation; never rely on hue alone.",
     "layout": "Start from a grid or a proportional system (thirds, golden section, modular columns). Give each piece of content one job, group related items by proximity, align to edges, keep consistent margins on a spacing unit, and leave space empty on purpose.",
@@ -87,7 +99,44 @@ Use video-sample with explicit times or interval to produce visible labeled cont
     "testing": """Testing a design: why, when, which and how
 Why: you cannot look at every pixel, and a preview is a small downsampled picture. Tests measure what a glance misses (text 1 px off the canvas, contrast 4.2:1 instead of 4.5:1, gaps of 20 and 24 px, a forgotten [Label]) and they stay true while later edits pile up, so a fix in one place cannot silently break another. They are cheap, exact and repeatable; a preview is for what tests cannot judge: taste, likeness, mood. Test first, then preview.
 When: 1) Before building, turn the brief into requirements and attach them as a suite (suite-set) in the first batch. 2) While building, add check=true and suites=true to vixl_operations_apply so every batch reports its findings and failing rules with the edit. 3) Before every vixl_render_preview, run vixl_check and the suites and fix what fails; preview only a design that passes. 4) Before export, run them once more (with sampling for animation). A failed test means change the design, never loosen the rule; set tolerances before checking, not to make a failure go away.
-Choose: vixl_check covers general defects (bounds, overlap, contrast, safe_area, legibility, blanks, placeholders, fonts) and opt-in families for the document type: deck for slides, print for print, color_vision, form with sample=worst, diagram, codes, drawing, connected and character for characters and mascots, motion for animation, guides/alignment, style for a tagged style. Starter suites (vixl_workflow resource-list kind suites; suite-use attaches one) bundle them per type: social-card, composition, slide-deck, logo, motion-loop, character, fillable-form, diagram, print-ready, accessible, delivery, palette, opaque, no-placeholders, containers. Then add rules for what only this brief requires.
+Choose: vixl_check covers general defects (bounds, overlap, contrast, safe_area, legibility, blanks, placeholders, fonts) and composition (dead bands, margin drift, uneven rhythm, crowding, clumped scatter as review findings), and opt-in families for the document type: deck for slides, print for print, color_vision, form with sample=worst, diagram, codes, drawing, connected and character for characters and mascots, motion for animation, guides/alignment, style for a tagged style. Starter suites (vixl_workflow resource-list kind suites; suite-use attaches one) bundle them per type: social-card, composition, slide-deck, logo, motion-loop, character, fillable-form, diagram, print-ready, accessible, delivery, palette, opaque, no-placeholders, containers. Then add rules for what only this brief requires.
 Make your own: one rule per requirement, named for the requirement. Requirement to rule kind: 'title reads at thumbnail size' -> contrast {target, minimum 4.5} and text-fit {target, minimum}; 'headline clearly dominates' -> hierarchy {targets [title, subtitle, body], ratio 1.25}; 'cards evenly spaced' -> spacing {targets, axis, expected?}; 'logo 48 px from the edges' -> relation {target logo, to canvas, position inside, minimum 48}; 'caption under the photo, left-aligned' -> relation {target caption, to photo, position below, align [left], maximum 24}; 'price never overlaps the product' -> relation {position apart}; 'keep the top third quiet for the headline' -> ink {region, maximum 0.02}; 'balanced' -> balance {tolerance 0.1} or focal {target, grid thirds}; 'brand red stays brand red' -> color {point or region, expected @brand} or palette; 'exactly three bullets' -> count {target 'bullet-*', minimum 3, maximum 3}; 'headline at most 40 characters', 'must say Terms apply', 'never say free' -> text {target, max_characters 40} / {contains 'Terms apply'} / {forbid '(?i)\\bfree\\b'}; 'at most 3 fonts, images 240 ppi' -> budget {max_fonts 3, min_ppi 240}; 'transparent logo' -> alpha; any fixed value -> property or assert; a finished part that must not change -> suite-capture (unchanged and pixels rules). Use severity warning for preferences (balance, breathing room) so they need review instead of failing. Animation: add sampling {mode: sampled, count: 8} so rules hold at every sampled time; several formats: sampling {artboards: 'all', pages: 'all', comps: [...]} so rules hold on every variant. An approved design: vixl_workflow('suite-infer', {name}) proposes a tolerant suite with what each rule measured; review it before use.
 Run: vixl_workflow('check', {suite: NAME or an inline suite}) returns each rule's status and measurements (failed, needs_review, passed); a rule that cannot be measured is needs_review, never a pass. vixl_workflow('act', {operations, suites}) applies a batch only if the suites still pass (repair: true first tries the built-in repairs: fit-text, contrast ink, safe-area nudge). Every result has an outcome: validated means required checks ran and passed with nothing left to review; unvalidated means nothing required was checked. Save a suite you will reuse with resource-save kind suites. Read the failing rule's numbers, fix the design, rerun, then preview. A passing suite proves only its own rules: keep them specific to the brief.""",
+    "finishing": """Finishing pass: critique and polish before export
+Passing checks proves a design is correct, not that it reads as designed. A finish (the look operation: glow, soft-shadow, grain, paper …) is one step of building; the finishing pass is the last step before export, after vixl_check and your suites pass: a short critique against the craft checklist, one batch of fixes and a look at real size.
+1) Check composition: vixl_check(checks=["composition"]) reports dead bands, margin drift, uneven rhythm, crowding and clumped scatter as review findings (profile='final' includes them; vixl_operations_apply with check=true lists them with every batch). vixl_workflow('repair-layout') repairs most of them, least disruptive first and never adding a finding: it snaps drifting edges, re-spaces stacks, opens crowded gaps, spreads dead bands and thins clumped pattern-scatter tiles (a dry run by default; apply the plan it returns). Fix the rest or waive it with a reason (layer-intent waive).
+2) Critique: walk the craft checklist and write down every miss with the layer it concerns. Craft checklist:
+- one focal point: one element reads first and everything else is clearly secondary;
+- the accent colour is used once or twice, on what matters, never sprinkled;
+- no dead band: no empty strip between blocks, or between content and an edge, that the layout did not plan;
+- one left edge per column: text in a column shares one left edge (and a column of numbers or prices one right edge);
+- the motif names the subject: imagery is specific to this brief (a lighthouse standing in the sea, a cup with steam), not a generic disc, wave or skyline;
+- nothing reads as a placeholder: no stand-in shape, lorem text, default label or empty slot.
+3) Fix: make every fix from the critique in one vixl_operations_apply batch with check=true and preview=true, not a string of nudges, and keep the checks passing. That call returns the findings (every composition finding included), the preview and real-size crops of the two weakest regions: the places carrying the most findings, else the densest text and the largest empty area (check.regions says which; preview={regions: 0} leaves the crops out).
+4) Look at real size: the two crops of step 3 are 1:1. For another place (the focal point, a detail) use vixl_render_preview(region=[x, y, w, h], max_width=w, max_height=h); the default preview is reduced, and halos, blur, crowding, runts and ragged edges only show at real size.
+5) Export with vixl_export_file; before shipping, vixl_check(profile='final') also fails on unresolved review findings.""",
 }
+
+
+@lru_cache(maxsize=1)
+def motif_registry():
+    """Every motif theme: ``{name: {title, keywords, elements}}``."""
+    return json.loads(MOTIFS_FILE.read_text(encoding="utf-8"))["themes"]
+
+
+def _plain(text):
+    folded = unicodedata.normalize("NFKD", str(text)).encode("ascii", "ignore").decode("ascii")
+    return " " + " ".join(re.findall(r"[a-z0-9]+", folded.lower())) + " "
+
+
+def motifs(brief):
+    """The motif themes a free-text brief implies, best match first, each with the keywords it matched."""
+    text = _plain(brief)
+    found = []
+    for index, (name, theme) in enumerate(motif_registry().items()):
+        hits = [word for word in theme["keywords"] if _plain(word) in text]
+        if hits:
+            found.append((-sum(len(_plain(w).split()) for w in hits), index, name, hits))
+    return [{"theme": name, "title": motif_registry()[name]["title"], "matched": hits,
+             "elements": json.loads(json.dumps(motif_registry()[name]["elements"]))}
+            for _, _, name, hits in sorted(found)]

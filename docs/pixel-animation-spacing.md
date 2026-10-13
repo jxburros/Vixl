@@ -45,6 +45,18 @@ A pixel layer stores a small grid of single-character palette indices instead of
 
 Grids are 1–256 pixels per axis with 1–94 printable non-space ASCII palette symbols; every cell must have a palette entry. Palette colors can use `@swatch` or `${variable}`. Without a palette, `.` is transparent and `#` is black. Blank grids use `.` by default; pass `--background SYMBOL` with a custom palette. Explicit rows supply their own dimensions/background and cannot be combined with width/height/background.
 
+**Shading and outline.** In documents made with house style 4 or later, a new sprite draws with a shading ramp and an outline, so a figure reads as a form rather than a flat silhouette. Both apply as the layer draws: the stored rows and palette stay exactly as given, `pixels` returns them (and the drawn result under `drawn`), and a palette swap carries into the ramp.
+
+- `outline` rings the silhouette with a 1 px line on the transparent cells around it, in the darkest palette colour (or a colour you give). A sprite whose edge is already mostly dark gets no second outline.
+- `shading` darkens the band of each colour area that faces away from the light and lights the band that faces it. Shadows turn toward violet and lights toward warm yellow, so a yellow coat gets an orange shadow. The largest areas are shaded first, and the sprite stays within `colors` opaque colours (default 16), with binary alpha. `light` is `auto` (the default: it follows the light of any ramp you drew, else top-left), `top-left`, `top` or `top-right`; `highlight: false` adds only shadows. Colours that already have a substantial hand-drawn ramp, dark outline colours and areas thinner than 3 pixels stay as drawn.
+
+`"shading": false` and `"outline": false` on `pixel-art` keep the flat sprite; documents before house style 4 draw flat unless you turn them on. `pixel-palette` turns either on or off on an existing layer:
+
+```json
+{"type":"pixel-art","name":"gem","rows":["..#..",".###.","#####",".###.","..#.."],"palette":{".":"transparent","#":"#3a7bd5"},"shading":{"light":"top-right","colors":8},"outline":"#10162a"}
+{"type":"pixel-palette","target":"gem","shading":false,"outline":false}
+```
+
 `pixel-draw` tools:
 
 - `pixel X Y --color SYMBOL`: set one cell.

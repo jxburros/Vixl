@@ -76,7 +76,8 @@ def test_apply_check_names_dry_run_and_bad_options(server, tmp_path):
     result = json.loads(content[0].text)
     assert result["dry_run"] and result["check"]["checked"]["checks"] == ["bounds"]
     assert [i["layers"] for i in result["check"]["issues"]] == [["new"]]
-    assert len(content) == 2 and (tmp_path / "a.vixl").read_bytes() == before  # The candidate was checked, not saved.
+    # The preview and real-size crops of the two weakest regions; the candidate was checked, not saved.
+    assert len(content) == 4 and (tmp_path / "a.vixl").read_bytes() == before
     for options in ({"check": ["nonsense"]}, {"preview": {"zoom": 2}}):
         with pytest.raises(Exception, match="check|preview"):
             contents(server, "vixl_operations_apply", {"operations": [{**TEXT, "text": "x", "name": "z"}], **options})

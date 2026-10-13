@@ -46,6 +46,8 @@ Fixed templates make every adopter look alike. A layout is a composition system 
 - **Type scale** — character styles `caption`, `body`, `lead`, `subhead`, `title`, `headline` and `display` from a medium-appropriate base size and a modular ratio (`minor-third` 1.2 … `golden` 1.618). Print bases are set in points at the canvas dpi. Safe compositions and rolled directions on social and poster canvases keep every role at least 2.2% of the canvas short side (24 px on 1080), the minor-text minimum the legibility check also uses.
 - **Spacing** — margins from the density (`airy`, `balanced`, `dense`), never inside the safe area, and gaps on a spacing unit (half the body size, at least 2 px); `gap` overrides the content-stack gaps in pixels or units such as `"2u"`. Text and buttons stay inside the canvas safe area: type shrinks until they fit, and on a 3:1 banner the safe compositions set their copy in two columns. Rails, panels, accents and full-bleed pictures are marked as decoration or intentional crop.
 - **Corners** — buttons, panels and rounded parts of placed containers take the document's corner style (the rolled `corner`, else the house corner, sharp).
+- **Details** (house style 4) — a rolled direction also says how the call to action and a date line look. `cta: "pill"` sets the `cta` slot as a pill (fully rounded ends, whatever the corner style); `cta: "button"` keeps the corner-styled button. `date: "highlight"` sets the composition's date line (the first short one-line label, caption, subtitle or body that reads as a date, such as `Fri · November 19` or `21/6`) in `@on-accent` on an `@accent` highlight whose edge stays on the column edge; `date: "plain"` leaves it as text. The roll picks them from the seed, by tier (pills about two rolls in five for safe directions, three in five for bold ones; highlights a little less often), never pills for square-cornered styles (Swiss, brutalist, Bauhaus, editorial …) and always for a pill corner. A layout's own button style (the product card's rounded button) still wins, and the event poster keeps its date block. Lock them like any other choice (`--lock cta=button --lock date=plain`), pass them in `direction`, or pin `house_style_version: 3` for the earlier result.
+- **Rules and the copy** (house style 4) — a footer rule keeps one spacing unit between itself and the last line of copy: copy too tall to leave that room is set smaller, as copy that would leave the safe area is. Rule accents above the copy already keep at least one unit. One unit is the smallest step of the spacing scale and twice the half-unit gap the [craft plan](craft-plan.md) counts as crowding.
 - **Composition** — alignment, focal placement, split proportions, accent device (`rule`, `bar`, `dot`, `block`, `outline`, `none`) and button shape.
 
 To carry a generated layout to another size, `adapt-layout` with `recompose: true` re-applies the saved layout recipe at the new canvas (replacing the generated layers and any manual edits to them); without it, adaptation scales and moves the existing layers proportionally.
@@ -119,6 +121,22 @@ Each layout is a form. `vixl layout show NAME` (or `vixl_layouts_list`) lists it
   `vixl_export_timeline(path="reaction.gif", fps=15)`. Keep GIFs short and small: 480–600 px wide and few colours.
 - **Unused slots are errors.** Copy for a slot the layout does not read on this canvas, such as `subtitle` on `event-poster`, fails with `unused_slot` and lists the slots it does use, instead of being dropped.
 - **Fill blanks by re-applying.** Re-apply with the copy, `replace: true` and the `seed` the first pass reported. The composition stays the same and type is sized for the real copy. Editing a blank layer's text directly also clears it.
+
+**Accent words.** `accent_words: ["Winter"]` sets those words of the headline (the `title` slot) in the accent text
+color (`@accent-text`, the accent adjusted to read on the background), through ordinary rich-text spans, so the
+two-tone headline needs no second pass. Matching is by whole word and ignores case (`winter` accents "Winter" but not
+"Winterland"); every match is styled. A word that is not in the headline is a warning and is listed under the layout
+record's `accent_words.missing`; a layout that sets its headline on the accent color (a filled hero cell) leaves it
+one color and warns. `accent` with a list is read as `accent_words` and reported under `normalized`, since `accent`
+alone names the accent device (`rule`, `bar` …).
+
+```json
+{"type": "layout-apply", "name": "hero-statement", "title": "Winter warmers on the quay", "accent_words": ["Winter"],
+ "seed": 3, "unfilled": "omit"}
+```
+
+In documents made with house style 4 or later, layout headlines also wrap balanced (`wrap: "balance"`, see
+[line breaking](typography.md#line-breaking)).
 
 `prefix` namespaces layer names, `replace: true` removes the previous layout's layers, `transparent: true` skips the background, and `font`/`display_font` use registered fonts. Without them, layouts use the document typography set by `font pair`, or the proofing fallback font, which `check` flags.
 

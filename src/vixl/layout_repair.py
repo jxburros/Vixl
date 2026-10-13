@@ -2,12 +2,17 @@
 
 For text overflow, overlap, spacing and safe-area failures it tries the built-in repair (repair.suggest)
 first, then other geometric candidates (a taller or wider text box, moves clear of the other layer, equal
-gaps). Every candidate is applied to a copy and evaluated against the same design checks and suites; it
-is accepted only if its failure is gone, nothing new fails, protected layers are untouched and no text
-drops below ``minimum_size``. The least disruptive accepted candidate is kept and the next failure is
-tried, within ``max_candidates``, ``max_iterations`` and ``time_budget``. The document changes only when
-every targeted failure is resolved and ``dry_run`` is false; otherwise it is left as it was and the result
-lists the unsatisfied constraints. Candidate order is fixed, so the same input gives the same plan.
+gaps). When the checks include ``composition`` (the default set does), its review findings are repaired after
+the failures, with the candidates of ``composition_repair`` (snap a drifting edge, re-space a stack, open a
+crowded gap, redistribute a dead band, thin a clumped tile). Every candidate is applied to a copy and evaluated
+against the same design checks and suites; it is accepted only if its finding is gone, nothing new fails (and,
+when composition is checked, no new composition finding appears; a composition repair may not add a review
+finding of any check either), protected layers are untouched and no text drops below ``minimum_size``. The least
+disruptive accepted candidate is kept and the next finding is tried, within ``max_candidates``,
+``max_iterations`` and ``time_budget``. The document changes only when every targeted failure is resolved and
+``dry_run`` is false; otherwise it is left as it was and the result lists the unsatisfied constraints. Composition
+findings left over are listed under ``reviews_remaining`` and never make a repair infeasible. Candidate order is
+fixed, so the same input gives the same plan.
 """
 
 import math
@@ -39,7 +44,15 @@ def _spacing_findings(project, reports):
     return findings
 
 
+def _composition(checks):
+    from .checks import CHECKS
+
+    return checks is not False and "composition" in (checks or CHECKS)
+
+
 def _state(project, checks, suites):
+    """``(fixes, failing, reviews)``: the fix findings (with the suites' repairable failures), the failing suites
+    and every review finding (composition and the other checks)."""
     from .checks import check_design
 
     report = check_design(project, checks=checks, repairs=False) if checks is not False else {"issues": []}
@@ -47,7 +60,14 @@ def _state(project, checks, suites):
     fixes = [item for item in report["issues"] if item.get("action") == "fix"]
     fixes += suite_findings(project, reports) + _spacing_findings(project, reports)
     failing = {name for name, item in reports.items() if item["status"] == "failed"}
-    return fixes, failing
+    reviews = [item for item in report["issues"] if item.get("action") == "review"]
+    return fixes, failing, reviews
+
+
+def _targets(fixes, reviews, composition):
+    """The findings repair works on, in order: repairable failures, then composition reviews."""
+    return [item for item in fixes if item["rule"] in REPAIRABLE] + (
+        [item for item in reviews if item.get("check") == "composition"] if composition else [])
 
 
 def _move(ident, dx, dy):
@@ -59,6 +79,10 @@ def _candidates(project, finding, boxes, minimum):
     from .render import resolved_layers
 
     rule, ids = finding["rule"], finding.get("layer_ids") or []
+    if finding.get("check") == "composition":
+        from .composition_repair import candidates
+
+        return candidates(project, finding)[0]
     out = []
     first = suggest(project, {**finding, "minimum": max(minimum or 0, finding.get("minimum") or 0) or None})
     if first.get("available"):
@@ -146,24 +170,35 @@ def repair_layout(project, *, checks=None, suites=(), protected=(), minimum_size
     started = time.monotonic()
     suites = list(suites or [])
     locked = _protected(project, protected)
+    composition = _composition(checks)
     work = project.clone()
-    fixes, failing = _state(work, checks, suites)
-    initial = [{"rule": item["rule"], "layers": item.get("layers", [])} for item in fixes]
-    attempts, selected, given_up = [], [], set()
+    fixes, failing, reviews = _state(work, checks, suites)
+    initial = [{"rule": item["rule"], "layers": item.get("layers", [])}
+               for item in fixes + ([x for x in reviews if x.get("check") == "composition"] if composition else [])]
+    attempts, selected, given_up, reasons = [], [], set(), {}
     evaluated, stopped = 0, None
     for _ in range(max_iterations):
-        targets = [item for item in fixes if item["rule"] in REPAIRABLE and _key(item) not in given_up]
+        targets = [item for item in _targets(fixes, reviews, composition) if _key(item) not in given_up]
         if not targets:
             break
         finding = targets[0]
         if locked & set(finding.get("layer_ids") or []) and not set(finding.get("layer_ids") or []) - locked:
             given_up.add(_key(finding))
+            reasons[_key(finding)] = "every layer it concerns is protected"
             attempts.append({"rule": finding["rule"], "layers": finding.get("layers", []), "candidate": None,
                              "result": "skipped", "reason": "every layer it concerns is protected"})
             continue
+        review = finding.get("check") == "composition"
         boxes, layout_boxes = canvas_boxes(work, "ink"), canvas_boxes(work)
         best = None
-        for name, operations in _candidates(work, finding, boxes, minimum_size):
+        options = _candidates(work, finding, boxes, minimum_size)
+        if review and not options:
+            from .composition_repair import candidates
+
+            reasons[_key(finding)] = "not auto-repairable: " + candidates(work, finding)[1]
+            attempts.append({"rule": finding["rule"], "layers": finding.get("layers", []), "candidate": None,
+                             "result": "skipped", "reason": reasons[_key(finding)]})
+        for name, operations in options:
             if evaluated >= max_candidates:
                 stopped = "max_candidates"
                 break
@@ -192,20 +227,24 @@ def repair_layout(project, *, checks=None, suites=(), protected=(), minimum_size
             if small:
                 record.update(result="rejected", reason=f"text below {minimum_size} px: {', '.join(small)}")
                 continue
-            after, after_failing = _state(trial, checks, suites)
-            keys = {_key(item) for item in after}
-            new = [item["rule"] for item in after if _key(item) not in {_key(x) for x in fixes}]
+            after, after_failing, after_reviews = _state(trial, checks, suites)
+            keys = {_key(item) for item in after + after_reviews}
+            before = {_key(x) for x in fixes + reviews}
+            # A composition repair may add no review finding at all; any repair, no composition finding.
+            watched = after + [item for item in after_reviews if review or (
+                composition and item.get("check") == "composition")]
+            new = [item["rule"] for item in watched if _key(item) not in before]
             if _key(finding) in keys:
-                record.update(result="rejected", reason="the failure remains")
+                record.update(result="rejected", reason="the finding remains" if review else "the failure remains")
             elif new or after_failing - failing:
                 record.update(result="rejected", reason="it introduces " + ", ".join(new + sorted(after_failing - failing)))
             else:
                 score = _disruption(work, trial, layout_boxes, canvas_boxes(trial))
                 record.update(result="valid", disruption=score)
                 if best is None or score < best[0]:
-                    best = (score, name, operations, trial, after, after_failing)
+                    best = (score, name, operations, trial, after, after_failing, after_reviews)
         if best is not None:
-            score, name, operations, work, fixes, failing = best
+            score, name, operations, work, fixes, failing, reviews = best
             for record in attempts:
                 if record.get("candidate") == name and record.get("operations") is operations:
                     record["result"] = "selected"
@@ -213,8 +252,13 @@ def repair_layout(project, *, checks=None, suites=(), protected=(), minimum_size
                              "operations": operations, "disruption": score})
         else:
             given_up.add(_key(finding))
+            reasons.setdefault(_key(finding), "no candidate resolved it without a new finding (see attempts)")
         if stopped:
             break
+    remaining = [{"rule": item["rule"], "layers": item.get("layers", []),
+                  "reason": reasons.get(_key(item), "not tried: the search stopped at "
+                                        + (stopped or "max_iterations"))}
+                 for item in reviews if composition and item.get("check") == "composition"]
     unsatisfied = [{"rule": item["rule"], "layers": item.get("layers", []), **(
         {"message": item["message"]} if item.get("message") else {})} for item in fixes if item["rule"] in REPAIRABLE]
     # Fix findings layout repair does not address (missing fonts, blanks ...) are reported, not counted against it.
@@ -231,6 +275,7 @@ def repair_layout(project, *, checks=None, suites=(), protected=(), minimum_size
         "selected": selected, "operations": operations if feasible else [],
         "attempts": attempts, "initial": initial, "unsatisfied": unsatisfied,
         "failing_suites": sorted(failing), **({"out_of_scope": other[:20]} if other else {}),
+        **({"reviews_remaining": remaining[:20]} if remaining else {}),
         "bounds": {"candidates": evaluated, "max_candidates": max_candidates, "max_iterations": max_iterations,
                    "time_budget": time_budget, "elapsed_s": round(time.monotonic() - started, 2),
                    **({"stopped": stopped} if stopped else {})},

@@ -1,5 +1,109 @@
 # Changelog
 
+## Unreleased
+
+Work from the [craft plan](docs/craft-plan.md). Craft claims here wait for a blind re-judging; nothing below claims a craft gain on its own.
+
+### Finishing pass in the agent loop
+
+- The agent loop no longer ends when the checks pass. `briefs.START_HERE` (returned by `vixl_guide`), the MCP server
+  instructions, `skills/vixl/SKILL.md` and the agent-eval system prompt continue with a finishing pass: check
+  composition, a short critique against a craft checklist, one fix batch, a real-size look at two regions with
+  `vixl_render_preview(region=[x, y, w, h], max_width=w, max_height=h)`, then export. "Finish" still means applying a
+  look; the finishing pass is the critique and polish after the checks pass.
+- New guidance entry `finishing` holds the craft checklist (one focal point; the accent colour used once or twice; no
+  dead band; one left edge per column; the motif names the subject; nothing reads as a placeholder) and the pass.
+  `vixl_guide("finishing")` returns it (also as `craft`, `craft-checklist`, `critique`, `finishing-pass` or
+  `polish`), as do `vixl_resource_get(kind="guidance", name="finishing")`, the `testing` and `layout` capability
+  topics and the poster, social-card, banner-ad, document, stationery, diagram, slides and scene kinds.
+
+### Craft re-run
+
+- `python -m evals.craft_rerun` re-runs the Vixl lane of the tool comparison on its 16 briefs (both rounds, each in a
+  fresh workspace, through the agent harness), copies the other lanes' fixed deliverables from the last blind
+  re-judging, packages everything with the kit's `rejudge.py` and prints the judging prompt with the package paths.
+  It finds the kit in VixlExamples through `--examples`, `VIXL_EXAMPLES` or a sibling checkout; `--dry-run` prints
+  the plan without API calls, `--tests T02,T08` selects briefs, and `--model`/`--effort` pass through as in
+  `evals.run`. See [evals/README.md](evals/README.md#craft-re-run).
+- The re-run keeps the lane's sources: every `.vixl` document the agent leaves in its workspace, its operation batches
+  and the tool-call trace land in `src/` beside the outputs, and the lane rule asks the agent to save its `.vixl`
+  documents in the workspace.
+- `evals.harness.ClaudeAgent` takes a `system` prompt.
+
+### Components, layout details and chart placement
+
+- **`key-value-list`**: a label, a value and an optional share per row in aligned columns: labels flush left, values and shares right-aligned on shared edges, a hairline rule between rows, row padding and column gaps from the spacing scale and one height for every single-line row. Rows come as `rows` or as `items` text (`label | value | share` per line); `shares: "auto"` computes each value's share of the total, `number_format` formats numbers, `colors` adds swatches, and `target` restyles the list on the same layer IDs. The container library gains a `key-value-list` container (a title over a list that widens to its frame and steps its text down to fit). Craft plan 5a (T08).
+- **Chart value legends are key-value lists**: `legend_values` now sets swatch and name, the total and (pie and donut) the share in aligned, ruled columns, with the same geometry as `key-value-list`, instead of appending the total to each name. On a pie or donut the automatic percentage labels around the ring are left out because the list carries them; `value_labels: "percent"` (or `value`, `both`, `true`) keeps them.
+- **A new chart starts inside the safe area** (craft plan 7d): a `chart` drawn without `x`, `y`, `width` or `height` fills the canvas safe area inset by two spacing units, so it no longer fails `check` (`safe_area`) as created. Pass `"x": 0, "y": 0` and the canvas `width` and `height` for the old full-canvas placement; a canvas without a safe area keeps it.
+
+### Typography (craft plan 4a–4c)
+
+- `text-layout` takes `wrap` (also `rich-text` with a width): `balance` sets a heading's lines at even widths in the same line count, `pretty` keeps one word off a paragraph's last line, `greedy` is the old behaviour. The breaks are worked out once, so PNG, SVG, PDF and PPTX show the same lines (PPTX writes them as line breaks). A wrap is kept when the box is resized. The `runt` check names the fix. Aliases such as `balanced` and `no-runts` are reported under `normalized` (T09, T14).
+- Tab stops on plain text: `tabs: [{at, align, leader}]` on `text`/`text-set` (CLI `--tabs`), with `left`, `right`, `center` and `decimal` stops at pixels or a percentage of the box, and leaders such as `"."` that line up across lines. PPTX writes native tab stops and the leader as characters. `table` columns take `leader` for menus and price lists; in a native PPTX table it stops at the cell edge (#213, BLK-07, T16).
+- `layout-apply` takes `accent_words: ["Winter"]`: whole-word, any-case matches in the headline are set in `@accent-text` through rich-text spans, and the headline box is measured as rich text so it still fits. A word that is not in the headline is a warning and is listed under the layout's `accent_words.missing`; `accent` given a list is read as `accent_words` (T03, T09).
+
+### Scene atmosphere and motifs
+
+- **Scene effects as single operations** (craft plan 6a): `haze` (a soft glow band or halo behind a light, placed
+  directly below it), `star-field` (seeded stars and sparkles that keep clear of every text layer and thin toward the
+  horizon), `string-lights` (bulbs, pears or paper lanterns hung evenly along a sagging wire or an existing path, each
+  with a lit core and a glow) and `bokeh` (soft out-of-focus discs) build editable groups of vector shapes and radial
+  gradients that every exporter draws natively. `reflection` mirrors the layers above a `horizon` into the water below,
+  with seeded ripples, ripple bands, a vertical smear and a fade; it is one raster layer that keeps its settings, so
+  `{type: reflection, target: reflection}` re-renders it after the scene changes. All five are deterministic for a
+  `seed`. See [scene atmosphere and motifs](docs/atmosphere.md).
+- **Motifs from the brief** (6b): `vixl_guide(brief)` returns `motifs` when a brief implies a setting (coffee and cafés,
+  sea and coast, lakes, markets and festivals, night city, night sky, concerts): the concrete things to draw (a cup with
+  steam rather than a disc, a lighthouse standing in the sea rather than on a bar), the placeholder each replaces, and
+  the shapes, organic presets, object kinds and operations that draw them. `vixl_guide('motifs')` lists every theme;
+  the knowledge lives in one data file (`data/motifs.json`) read by the guidance registry. A brief that names only a
+  setting ("a lighthouse at dusk") now matches the `scene` kind with its motifs instead of the bare object guide.
+- **Motif shapes**: catalog shapes `cup` (a mug on its saucer, with a handle hole), `steam`, `lighthouse` (with a
+  lantern window and a door) and `lantern`.
+- **Filled layered water** (6c): organic preset `water` draws bands of sea in related tones, lighter at the horizon and
+  darker in front, each with a crest, filling its box edge to edge (`params.tones` back to front, or `params.color`).
+  The new organic generator `band` (a filled band under a wavy edge) builds it. Sea, coast and lake motifs point to it.
+
+### Tool finish (craft plan 7)
+
+- **`pattern-scatter` thins in place.** In new documents a tile is laid out progressively, so the same seed with a lower `count` keeps the first copies exactly where they were (with the same motif, size and turn) and drops the rest, and `count` places exactly that many copies. `thin` (a share to keep, `{keep}` or `{count}`) removes the most crowded copies of an existing tile and keeps the survivors; the tile remembers it until `count`, `seed`, `spacing`, `distribution` or its size change. T15's round 2 kept 7 % of the pattern on 0.26.
+- **Drawing fills register to their lines** (#218). Fills follow strokes as they render (a smoothed stroke's curve, at its layer's width), tuck under each line to its centre, and meet a neighbour on the straight line across a bridged break, so no paper halo shows along a line and no fill bulges through an open corner (T11). With `edge_closes`, lines that stop short of the paper's sides are carried on to the edge without being drawn (`edge_reach`, default 15% of the short side, 0 for none), so a short ground line still divides sky from ground; `drawing report` lists the regions the same way.
+- **Crops take the cleaned master.** A photo shown larger than its own pixels (a linked Instagram or caption crop of a corrected master, or a photo scaled up in its document) runs its leading `denoise` effects at its own pixels before it is scaled, so the enlargement shows the denoised master instead of grain (T10).
+- **Pixel sprites get a shading ramp and an outline** (T13). New `pixel-art` layers draw a 1 px outline in the darkest palette colour and a hue-shifted shadow and light band on each colour area, within 16 opaque colours and binary alpha, following any ramp the artist drew. The stored rows and palette are unchanged, so palette swaps carry into the ramp; `pixels` also returns the drawn result. `pixel-palette` turns `shading` and `outline` on or off on an existing layer.
+
+### Composition checks
+
+- A `composition` check family, on by default, reports craft problems as `review` findings (craft plan 2a): `dead_band` (an empty band much larger than the document's own gaps, between blocks or against an edge), `margin_drift` (stacked blocks whose left edges, right edges of right-aligned text or centre axes are within two spacing units but not equal), `uneven_rhythm` (a stack whose middle line sits further from the line above it, which it matches in size, than from the next, or lines of one size spaced unevenly), `crowding` (a rule, band or heading less than half a spacing unit above text) and `clumped_scatter` (a `pattern-scatter` or `scatter` whose motif coverage bunches over the tile). Each finding has a stable `code` (rule `composition.dead_band` …), `layer_ids`, the `region` it concerns, `measured` actual against expected, the `values` it measured, the `threshold` it applied and the `spacing_unit` (half the body size). Select it alone with `vixl check --checks composition` or `vixl_check(checks=["composition"])`. Backgrounds, marked decoration, bleeding art, glows and the insides of charts and scatters are not judged as blocks; waive a deliberate finding with `layer-intent waive` or the `waiver` operation (`check: composition`) and a reason.
+- Text set in a chip that hugs it (a highlighted date line, a pill or a button, wider than tall) aligns and spaces by the chip's edges, so house style 4's highlighted dates are not read as margin drift.
+- Backtest on reconstructions of the 16 round-1 Vixl documents (`python -m evals.craft_backtest`, 20 documents, 21 composition defects the blind judges named): 12 caught, 9 missed, 0 false findings, 2 findings on judged defects outside composition. By kind: dead band 5 of 10, margin drift 4 of 5, uneven rhythm 2 of 4, crowding 1 of 1, clumped scatter 0 of 1. The 144 rolled house-style designs of `evals.house_style` get no composition finding.
+- `evals.house_style` scores the share of designs with no composition finding (`no_composition_findings`), so `--compare` against the baseline catches a default change that adds dead bands, drift or crowding to rolled designs (craft plan 1d).
+
+### Composition repair and the critique in the fix call (craft plan 2b, 3b)
+
+- Workflow `repair-layout` repairs composition findings when its `checks` include `composition` (the default set does), after the failures: it snaps drifting edges to the margin, moves a line to the line it belongs with or evens a stack, opens a crowded gap under a rule or heading, spreads a dead band over the frame's other gaps (or moves the blocks beside it), centres or spreads content into an edge band, and thins or re-seeds a clumped `pattern-scatter` tile. Every candidate is a relative move or a recipe rebuild, kept only if its finding is gone and no fix or review finding of any check is new, ranked by least disruption as before. Drawings made of touching shapes move whole, chips and glows move with their layer, and backgrounds and bleeding art stay put. Leftovers go under `reviews_remaining` with the reason (a scatter without a recipe is not auto-repairable) and never make a repair infeasible. Composition findings use `max_iterations` like failures. Leave them alone with `checks` that omit `composition`.
+- `margin_drift` findings list their stray layers in `values.stray_ids`.
+- Backtest (`python -m evals.craft_backtest --repair`, default checks, 20 iterations): repair-layout resolves 19 of the 22 composition findings on the round-1 reconstructions, 17 of the 20 that catch a judged defect, with no new finding: crowding 5 of 5, uneven rhythm 2 of 2, margin drift 9 of 10, dead band 3 of 5. No craft gain is claimed until a blind re-judging.
+- `vixl_operations_apply` (and REST `/operations`, CLI `apply --check`) with `check` now lists every composition finding, not only those on the layers the batch touched, after the `fix` findings, and adds `check.regions`: the two weakest regions of the design (the places carrying the most and most severe findings, composition first; with fewer, the densest block of text and the largest empty area), each with its `findings` indexes. With `preview` as well, real-size crops of those regions follow the preview: one canvas pixel per image pixel, reduced only past 512 px a side, at most 256 KiB each, as extra MCP images, a `preview_base64` per region over REST, `NAME-region1.png` and `NAME-region2.png` beside the CLI `--preview NAME.png`, and PNG bytes under `preview` in Python. A call with `check` and `preview` therefore returns up to two more images; `preview={"regions": 0}` restores the single preview (`regions: 1` keeps one crop).
+- The finishing pass (`vixl_guide("finishing")`, `briefs.START_HERE`, the MCP instructions and `skills/vixl/SKILL.md`) says that `repair-layout` repairs most composition findings and that the fix batch with `check=true, preview=true` returns the crops of the two weakest regions for the real-size look; the composition call is spelled `vixl_check(checks=["composition"])` everywhere, and `docs/getting-started.md` runs `vixl check --checks composition`.
+
+### Changed defaults (house style 4)
+
+New documents record `house_style_version: 4`; existing documents keep the version they were made with. Version 4 rolls every choice version 3 rolls, plus the `cta` and `date` details below from a separate stream of the seed. Pin `house_style_version: 3` (`vixl roll --house-style 3`, `{"house_style": 3}` in `.vixl/variety.json`) to restore all of the 0.24–0.26 results, or use the per-change override named below.
+
+House-style eval (`python -m evals.house_style --compare evals/house-style-baseline.json`, baseline recorded at house style 3): no regressions. Quality is unchanged at every level (no fix finding, no composition finding, fonts and contrast all 1.0); the rolled-choice entropies are identical; image distance moves by at most 0.0004, same-mode distance rises by up to 0.0014, and layout-structure distance falls by up to 0.0035 (0.9666 → 0.9631 at low), inside the eval's tolerance.
+
+- **Pills and highlighted dates are rolled** (craft plan 5c, T02 and T09): a roll's direction now carries `cta` (`pill` or `button`) and `date` (`highlight` or `plain`), drawn from the seed by tier (pills about two in five safe rolls and three in five bold ones, never for square-cornered styles, always for a pill corner; highlights a little less often) on a separate stream, so every other rolled choice is unchanged for the same seed. Layouts set a `pill` call to action with fully rounded ends whatever the corner style, and put the composition's date line (a short label, caption, subtitle or body that reads as a date) in `@on-accent` on an `@accent` highlight that keeps the column edge. Override per document with `--lock cta=button --lock date=plain`, or `direction: {"cta": "button", "date": "plain"}` on `layout-apply`.
+- **Rules keep a spacing unit from the copy** (craft plan 5b, T16): the safe compositions' footer rule keeps one spacing unit above the last line (copy too tall for that is set smaller), and the `section-header` container's rule keeps one unit from the container's bottom edge at any height (`clear_below`, a new container item setting in spacing units). One unit is the smallest step of the spacing scale and twice the half-unit gap the craft plan counts as crowding. Restore with `house_style_version: 3`.
+- **Headings wrap balanced** (craft plan 4a): a new `text-layout` box on a heading (a heading font role or stage, or text whose size reads as the h2 step or larger) and every layout headline get `wrap: "balance"`. Pass `wrap: "greedy"` on the `text-layout` for the old breaks.
+- **`pattern-scatter` lays tiles out progressively** (7a): `distribution: "progressive"` ; a seed now lays out a different tile than before. Pass `distribution: "poisson"` for the earlier layout.
+- **Pixel sprites are shaded and outlined** (7e): `pixel-art` defaults to `shading: true` and `outline: true`. Pass `shading: false` and `outline: false` for the flat sprite.
+
+### Behaviour changes
+
+- Plain `check` runs one more default family. Its findings are `review`, so the plain verdict (`passed`, which fails on `fix`) does not change; a run that gates on review findings (`--profile final`, `fail_on: review`) now also fails on unresolved composition findings. Turn the family off for one run with an explicit `checks` list without `composition`, or waive a finding with a reason.
+- The built-in `final` profile adds `composition` to its checks (craft plan 2c), even where a workspace narrows its `checks`, so shipping fails on unresolved composition reviews unless they are waived with a reason. A workspace `.vixl-checks.json` that sets `final.optional` replaces this list.
+- An enlarged photo layer with `denoise` first in its stack now draws less grain in every document, existing ones included (the earlier result was a defect, so there is no switch).
+
 ## 0.26.0
 
 ### Fixed and added

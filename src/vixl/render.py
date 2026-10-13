@@ -194,12 +194,12 @@ def text_metrics(project, layer, variables=None):
         from .richtext import measure as measure_rich
 
         return measure_rich(project, layer, variables)
-    from .text import measure, font_data, UnsupportedText
+    from .text import measure, font_data, tab_stops, UnsupportedText
 
     try:
         # The same arguments as text.plan, so drawing the layer reuses this cached measurement.
         _, box = measure(font_data(project, layer), text, layer["size"], layer.get("spacing", 4),
-                         layer.get("align", "left"), None)
+                         layer.get("align", "left"), None, "greedy", tab_stops(layer, project))
         stroke = layer.get("stroke_width", 0)
         box = (box[0] - stroke, box[1] - stroke, box[2] + stroke, box[3] + stroke)
         return max(1, math.ceil(box[2] - box[0])), max(1, math.ceil(box[3] - box[1])), box
@@ -1019,6 +1019,21 @@ def draw_ink(project, layer, bounds, profile=None):
     return image
 
 
+def denoised_first(project, layer, bounds, image):
+    """Run the denoise effects that open an enlarged photo's stack on its own pixels, before it is
+    scaled up: upsampling smooths grain into blobs the noise estimate reads as detail, so a crop
+    shown larger kept its grain. Returns the image and the layer with the rest of its stack."""
+    effects = layer.get("effects", [])
+    lead = 0
+    while lead < len(effects) and (not effects[lead].get("enabled", True)
+                                   or (effects[lead]["name"] == "denoise" and not effects[lead].get("selection"))):
+        lead += 1
+    if not any(effect.get("enabled", True) for effect in effects[:lead]):
+        return image, layer
+    image = layer_effects(project, {**layer, "effects": effects[:lead]}, bounds, image)
+    return image, {**layer, "effects": effects[lead:]}
+
+
 def transform_layer_image(project, layer, bounds, image):
     """Apply the same geometry and appearance to a layer or an isolated group child."""
     kind = layer["type"]
@@ -1030,7 +1045,10 @@ def transform_layer_image(project, layer, bounds, image):
         # without the overflow, which only adds whole output pixels around it.
         image = group_overflow_resize(layer, image, sampling)
     elif not layer.get("repeat") and not image.info.get("vixl_vector_overflow"):
-        image = resize(image, (max(1, math.ceil(layer["width"])), max(1, math.ceil(layer["height"]))), sampling)
+        size = (max(1, math.ceil(layer["width"])), max(1, math.ceil(layer["height"])))
+        if kind == "raster" and size[0] > image.width and size[1] > image.height:
+            image, layer = denoised_first(project, layer, bounds, image)
+        image = resize(image, size, sampling)
     from .affine import linear, precise
     # Effects run on the layer in its own frame, at its box size, before it is flipped, turned or
     # skewed: a blur, denoise or grain treats the content the same at any angle. Canvas-space

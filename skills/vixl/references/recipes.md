@@ -274,4 +274,6 @@ A mandala is one petal and `radial-repeat`, then a glow:
 ```
 
 A scene stacks a gradient sky, a glowing sun, hills (`allow_crop` for the bleed) and an `organic` tree, then
-`look grain`. Tag a style with `vixl_styles(action="apply", name="retro-futurism")` and run `check --checks style`.
+`look grain`. Water is `organic` preset `water` (filled bands, not line waves); night scenes add `star-field`, `haze`
+behind lights, `string-lights` and a `reflection` below the waterline, and `vixl_guide(brief)` lists the brief's
+`motifs` (a cup with steam, a lighthouse in the sea) with the shapes that draw them. Tag a style with `vixl_styles(action="apply", name="retro-futurism")` and run `check --checks style`.

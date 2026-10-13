@@ -45,8 +45,9 @@ def test_operation_schema_is_in_tools_list(tmp_path):
         assert tools["vixl_ai_generate"].inputSchema["properties"]["seed"]["type"] == "integer"
         # Full inline fields include vector editing, motion, characters and materials. Repeated
         # constraints are shared; slim mode offers the operation names with on-demand field lookup. The 0.25
-        # operations (waiver, brand-preset, table, die-cut, path-split, object, accessibility) bring it to ~104k.
-        assert len(json.dumps(schema)) < 110000
+        # operations (waiver, brand-preset, table, die-cut, path-split, object, accessibility) bring it to ~104k;
+        # the craft-plan operations (key-value-list, reflection, haze, star-field, string-lights, bokeh) to ~110k.
+        assert len(json.dumps(schema)) < 114000
         from vixl.mcp_tools import service_operation_schema
         assert len(json.dumps(service_operation_schema(slim=True))) < 6000
 

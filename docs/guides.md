@@ -115,3 +115,52 @@ vixl check --checks guides alignment
 MCP: `vixl_check(checks=["guides", "alignment"])`; previews draw the guides with
 `vixl_render_preview(guides=true)` (or a list of guide or grid names). Python:
 `vixl.proxy.render_preview(project, w, h, guides=True)` and `vixl.guides.draw_overlay(image, project)`.
+
+## Composition
+
+The `composition` family is on by default. It reports what reads as "not designed" even when every other check
+passes, as `review` warnings: they never fail a plain `check`, but they fail the `final` profile (and any run
+with `fail_on: review`) until they are fixed or waived with a reason. Distances are in the craft spacing unit, half
+the document's body size (`craft.spacing.unit` in the [house style](house-style.md)).
+
+| Code | What it finds | Threshold |
+| --- | --- | --- |
+| `dead_band` | An empty horizontal band between content blocks, or between content and an edge, from the free rectangles of `spatial` | At least 6% of the frame's height, 4 units and 2.25× the median gap between stacked blocks; across a third of the content width (a narrower band only when artwork, not a line of text, closes its sides); an edge band must also be twice the opposite margin. Only frames with two or more lines of type whose blocks fill half their height, and bands up to 42% of it |
+| `margin_drift` | Stacked text, rules, charts, images and free-standing marks whose left edges (right edges of right-aligned text, centres of centred text) are close but not equal | More than 1.5 px and at most 2 units apart |
+| `uneven_rhythm` | A stack of three lines where the middle line sits further from the line above it, which it matches more closely in size, than from the line below (a first name, a last name and a company); for lines of one size, gaps up to 3 units that differ. A subtitle tight under its title and away from what follows is by design | Gaps differing by 1.6× and 2 units (1 unit for lines of one size) |
+| `crowding` | A rule, band or heading less than half a unit above the text below it | Half a unit |
+| `clumped_scatter` | A `pattern-scatter` or `scatter` whose motifs bunch in some cells of the tile and leave others empty | Coverage varies by more than 0.6 (coefficient of variation over 4×4 cells); seeded `pattern-scatter` tiles stay under 0.5 |
+
+What is not judged: backgrounds and canvas-covering layers, layers marked `role: decoration` (they still fill
+space, so a band they close off is not dead), art that bleeds off the canvas, glows that fade to transparent, and
+the insides of charts, scatters and repeats (each is one block). Text inside a panel or card is aligned and spaced
+against that panel; text in a chip that hugs it (a highlight, pill or button) aligns by the chip's edge; a panel that covers a fifth of the canvas frames its own bands, a list hangs its markers, and a
+label after an icon follows the icon. A capitalised kicker may sit tight to the line it labels.
+
+Each finding carries `code` (rule `composition.dead_band` …), `layer_ids` and `layers`, the `region` it concerns,
+`measured` (actual against expected), the `values` it measured (gaps, edges, the band's height and the typical
+gap), the `threshold` it applied and `spacing_unit`, and a message that says what to do.
+
+```bash
+vixl check --checks composition
+vixl check --profile final --strict
+```
+
+MCP: `vixl_check(checks=["composition"])`, or `vixl_check(profile="final")`. `vixl_operations_apply` with
+`check=true` lists every composition finding with the batch, wherever it is, and `check.regions`: the two weakest
+regions; add `preview=true` and their real-size crops follow the preview ([interfaces](interfaces.md)). Workflow
+`repair-layout` repairs most findings (snap the drift, re-space the stack, open the gap, spread the band, thin the
+tile) without adding any; see [layout repair](agent-trust.md#layout-repair). A deliberate finding (an optical
+indent, a field of space on purpose) is accepted with a reason, on the layer (`layer-intent waive`) or the
+document:
+
+```json
+{"type": "waiver", "check": "composition", "reason": "the open lower half is the quiet field of this layout"}
+```
+
+The thresholds were tuned on the [craft backtest](../evals/craft_backtest/README.md): reconstructions of the 16
+round-1 Vixl documents of the tool comparison with the defects the blind judges named. Of the 21 composition
+defects there, the family catches 12 (dead band 5 of 10, margin drift 4 of 5, uneven rhythm 2 of 4, crowding 1 of
+1, clumped scatter 0 of 1) with no false findings, and it finds nothing on the 144 rolled designs of the
+house-style eval. It misses bands that thin lines cross (three wave strokes in an empty third, faint ripples), dead space beside a
+lone footnote, and a scatter whose density is even but whose like motifs line up.

@@ -308,6 +308,9 @@ class Layout:
     box: tuple = (0, 0, 0, 0)
     lines: list = field(default_factory=list)  # [(top, baseline, height, paragraph, descent)] for PPTX
     size_scale: float = 1.0
+    # {paragraph: [character offsets where a wrapped line starts]} for balance and pretty wrapping, whose
+    # breaks PowerPoint cannot work out itself, so PPTX writes them as line breaks.
+    breaks: dict = field(default_factory=dict)
 
 
 def _metrics(data):
@@ -432,6 +435,63 @@ def _split_word(project, token, width):
     return result
 
 
+def _wrap(project, tokens, limit):
+    """Greedy line breaking of shaped tokens at ``limit`` pixels (None: no wrapping)."""
+    lines, current, x = [], [], 0.0
+    for token in tokens:
+        if limit is not None and not token["space"] and current and x + token["width"] > limit:
+            while current and current[-1]["space"]:
+                current.pop()
+            lines.append(current)
+            current, x = [], 0.0
+        if limit is not None and not token["space"] and not current and token["width"] > limit:
+            pieces = _split_word(project, token, limit)
+            lines.extend([piece] for piece in pieces[:-1])
+            token = pieces[-1]
+        current.append(token)
+        x += token["width"]
+    if current:
+        lines.append(current)
+    return [line for line in lines if line] or [[]]
+
+
+def _words(line):
+    """A line's words as runs of non-space tokens (a word can change style midway)."""
+    words, current = [], []
+    for token in line:
+        if token["space"]:
+            if current:
+                words.append(current)
+            current = []
+        else:
+            current.append(token)
+    return words + ([current] if current else [])
+
+
+def _rewrap(project, tokens, limit, greedy, wrap):
+    """``balance`` or ``pretty`` line breaks for a paragraph (see ``text.lines``, which plain text uses)."""
+    from .text import narrowest_width
+
+    widest = max((sum(t["width"] for t in word) for word in _words(tokens)), default=0)
+    if widest > limit:
+        return greedy
+    if wrap == "balance":
+        narrowest = narrowest_width(lambda width: len(_wrap(project, tokens, width)), widest, limit)
+        return _wrap(project, tokens, narrowest) if narrowest < limit else greedy
+    before, last = greedy[-2], greedy[-1]
+    if len(_words(last)) != 1 or len(_words(before)) < 3:
+        return greedy
+    cut = max(i for i, token in enumerate(before) if token["space"]) + 1
+    head = before[:cut]
+    while head and head[-1]["space"]:
+        head.pop()
+    spaces = before[len(head):cut]
+    moved = before[cut:] + spaces + last
+    if sum(t["width"] for t in moved) > limit:
+        return greedy
+    return [*greedy[:-2], head, moved]
+
+
 def layout(project, layer, *, width=None, scale=1.0, variables=None):
     """Lay out a rich text layer. ``width`` wraps lines (default: the text-layout box width);
     ``scale`` multiplies every size, indent and spacing (used to fit text to its box)."""
@@ -455,9 +515,10 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
     spacing = 0.0 if by_size else float(layer.get("spacing", 0)) * scale
     after_default = float(rich.get("paragraph_spacing", 0)) * scale
     list_indent = float(rich["list_indent"]) * scale if rich.get("list_indent") else base_size * 1.4
+    wrap = box.get("wrap", "greedy")
 
     # Pass 1: break every paragraph into lines.
-    rows, counters = [], {}
+    rows, counters, breaks = [], {}, {}
     for index, paragraph in enumerate(_paragraphs(spans)):
         para = settings[index] if index < len(settings) else {}
         kind = para.get("list", "none")
@@ -477,22 +538,14 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
         after = float(para["space_after"]) * scale if "space_after" in para else after_default
         tokens = _tokens(project, paragraph, scale)
         limit = None if available is None else max(1.0, available - text_left)
-        lines, current, x = [], [], 0.0
-        for token in tokens:
-            if limit is not None and not token["space"] and current and x + token["width"] > limit:
-                while current and current[-1]["space"]:
-                    current.pop()
-                lines.append(current)
-                current, x = [], 0.0
-            if limit is not None and not token["space"] and not current and token["width"] > limit:
-                pieces = _split_word(project, token, limit)
-                lines.extend([piece] for piece in pieces[:-1])
-                token = pieces[-1]
-            current.append(token)
-            x += token["width"]
-        if current:
-            lines.append(current)
-        lines = [line for line in lines if line] or [[]]
+        lines = _wrap(project, tokens, limit)
+        if wrap != "greedy" and len(lines) > 1:
+            lines = _rewrap(project, tokens, limit, lines, wrap)
+            offsets, count = {}, 0
+            for token in tokens:
+                offsets[id(token)] = count
+                count += len(token["text"])
+            breaks[index] = [offsets[id(line[0])] for line in lines[1:] if line and id(line[0]) in offsets]
         for number, line in enumerate(lines):
             if line:
                 ascent = max(t["ascent"] for t in line)
@@ -516,7 +569,7 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
         [row["text_left"] + content for row, content in zip(rows, contents)] + [0.0])
 
     # Pass 3: place glyphs and decorations.
-    result = Layout(0, 0, size_scale=scale)
+    result = Layout(0, 0, size_scale=scale, breaks=breaks)
     def overhang(row):
         # Tight leading (a line height below the font's own pitch) lets the first line's ascenders and
         # the last line's descenders reach past the line box; the layer box still holds them.
@@ -757,7 +810,8 @@ def schemas(add):
     add("rich-text", {"name": S, "markdown": S, "spans": {"type": "array", "items": obj, "maxItems": MAX_SPANS},
                       "paragraphs": {"type": "array", "items": obj}, "font": FONT, "size": N, "color": S,
                       "align": {"enum": ["left", "center", "right", "justify"]}, "line_height": N, "paragraph_spacing": N,
-                      "list_indent": N, "font_variants": obj, "width": SIZE, "height": SIZE, "fit": B, "x": COORD,
+                      "list_indent": N, "font_variants": obj, "width": SIZE, "height": SIZE, "fit": B,
+                      "wrap": {"enum": ["greedy", "balance", "pretty"]}, "x": COORD,
                       "y": COORD}, anyOf=[{"required": ["markdown"]}, {"required": ["spans"]}])
     add("text-style", {"match": {**S, "description": "Style every occurrence of this text (see occurrence)."},
                        "occurrence": {"anyOf": [{"type": "integer", "minimum": 1}, {"enum": ["all"]}]},
@@ -889,6 +943,11 @@ def execute(project, op):
             if "height" not in op:
                 layer["height"] = layout(project, layer).height
                 settings["height"] = layer["height"]
+        require("wrap" not in op or "width" in (layer.get("text_layout") or {}),
+                "wrap breaks lines in a text box; give a width too", field="wrap")
+        if "wrap" in op:
+            # Balanced and runt-free breaks keep the greedy line count, so the box keeps its height.
+            layer["text_layout"]["wrap"] = op["wrap"]
         if not layer.get("text_layout"):
             layer["width"], layer["height"], _ = measure(project, layer)
             layer["auto_size"] = True

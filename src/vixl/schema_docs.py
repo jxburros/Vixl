@@ -28,7 +28,7 @@ SUMMARIES = {
     "brush-define": "Save a custom brush as overrides on a built-in brush.",
     "pixel-art": "Add a pixel-art layer from character rows and a palette.",
     "pixel-draw": "Draw a pixel, line, rectangle or flood fill on a pixel layer.",
-    "pixel-palette": "Replace the palette of a pixel layer.",
+    "pixel-palette": "Replace colours of a pixel layer's palette, or turn its shading ramp and outline on or off.",
     "rich-text": "Create or replace a text layer from Markdown or spans, with paragraphs, lists and mixed styles.",
     "text-style": "Style part of a text layer: a matched phrase, a character range or paragraphs. To change the layer's content or overall color, size or font use text-set.",
     "text-layout": "Set a text layer's wrapping box, fit-to-box, warp (arc, flag, bulge) or path.",
@@ -168,12 +168,18 @@ SUMMARIES = {
     "table": "Draw a table from rows or a CSV as vector layers (aligned columns, header, rules), or restyle one with target.",
     "die-cut": "Add a sticker cut line: the union of the targets' ink outline, grown by a distance, as a stroked path.",
     "path-split": "Cut a filled path into two named parts along a polygon or line, optionally overlapping the cut.",
+    "key-value-list": "Draw a key-value list (labels left, values and shares right-aligned, rules between rows) as text layers, or restyle one with target.",
     "table-data": "Edit a table's rows in place (cells, rows, columns, CSV reload) and redraw it, keeping layer IDs.",
     "stack": "Lay a group out as a row or column that reflows and re-centres when a member is empty or hidden.",
     "diagram": "Draw a flowchart, dependency graph, org chart or mind map from nodes and edges, laid out automatically.",
     "diagram-from-text": "Draw a diagram from a short text format (A -> B: label, indentation for hierarchies, group lanes).",
     "diagram-set": "Change a diagram's nodes, edges or options and lay it out again in place, keeping layer IDs.",
     "text-flow": "Flow one story through linked text frames (columns, pages, shapes), reflow it and report overflow.",
+    "reflection": "Mirror what stands above a horizon into the water below it, with ripples, ripple bands and a fade (one raster layer that re-renders).",
+    "haze": "Add a soft glow band behind a light source (two radial gradients in a group).",
+    "star-field": "Scatter seeded stars and a few sparkles over a region, keeping clear of text (an editable group).",
+    "string-lights": "Hang bulbs or paper lanterns with glows evenly along a path or a sagging wire (an editable group).",
+    "bokeh": "Scatter soft out-of-focus light discs over a region (radial gradients in an editable group).",
 }
 
 # Every effect is also an operation type ({type: blur, amount: 6} equals {type: effect, name: blur ...}).
@@ -531,6 +537,10 @@ OVERRIDES = {
     "comp-save": {"name": "Comp name."}, "comp-apply": {"name": "Saved comp name."},
     "text-layout": {"width": "Wrapping box width in pixels or a percentage.", "height": "Box height; omit it with a width and the box grows to the wrapped lines.",
                     "fit": "true shrinks the text to fit the box.", "warp": "none, arc, flag or bulge.",
+                    "wrap": "How lines break in the box: greedy fills each line; balance evens the line widths (same "
+                            "line count; for headings and short text); pretty fills lines but never leaves one word "
+                            "alone on a paragraph's last line (body text). Kept when the box changes; headings in new "
+                            "documents default to balance.",
                     "amount": "Warp strength as a fraction of the box height (default 0.2; negative bends the other way).", "path": "Points [[x, y] …] the text follows."},
     "guide": {"name": "Guide name.", "axis": "x (vertical line) or y (horizontal line) for an axis guide.",
               "position": "Axis guide position in pixels.",
@@ -672,7 +682,9 @@ OVERRIDES = {
              "anchors": "Layer anchors that may snap."},
     "rich-text": {"markdown": "Markdown (bold, italic, headings, lists, [text]{color=…}).",
                   "spans": "Explicit spans [{text, bold, italic, color …}].", "name": "Layer name.",
-                  "size": "Base font size.", "color": "Base text color.", "fit": "Shrink text to fit the box."},
+                  "size": "Base font size.", "color": "Base text color.", "fit": "Shrink text to fit the box.",
+                  "wrap": "Line breaking in the box (with width): greedy, balance (even line widths, for headings) or "
+                          "pretty (no one-word last line, for body text)."},
     "text-style": {"match": "Text to find and style.", "occurrence": "Which match: a 1-based number, or 'all' (default).",
                    "paragraphs": "Paragraph indexes (0-based) the paragraph settings apply to, or 'all'.",
                    "start": "First character index.", "end": "Character index after the last.",
@@ -716,6 +728,11 @@ OVERRIDES = {
 }
 
 EXAMPLES = {
+    "key-value-list": [
+        {"type": "key-value-list", "name": "shares", "x": 40, "y": 40, "width": 360,
+         "rows": [{"label": "Drip", "value": "15,900"}, {"label": "Espresso", "value": "11,960"},
+                  {"label": "Tea", "value": "5,260"}], "shares": "auto"},
+    ],
     "qr": [
         {"type": "qr", "name": "ticket-qr", "data": "https://example.com/t/123", "module": 6, "x": 40, "y": 40},
         {"type": "qr", "name": "logo-qr", "data": "https://example.com", "error": "H", "size": 240,
@@ -838,6 +855,23 @@ EXAMPLES = {
     "text-animate": [
         {"type": "text-animate", "target": "greeting", "preset": "fade-up", "unit": "char", "duration": "400ms", "stagger": "40ms"},
         {"type": "text-animate", "target": "greeting", "preset": "wave", "unit": "char", "stagger": "20%", "repeat": True},
+    ],
+    "reflection": [
+        {"type": "reflection", "horizon": 300, "targets": ["moon", "card"], "ripple": 0.4, "fade": 0.6, "seed": 3},
+    ],
+    "haze": [
+        {"type": "haze", "target": "moon", "color": "#ffd38a", "strength": 0.45},
+        {"type": "haze", "x": 400, "y": 300, "width": 600, "form": "band"},
+    ],
+    "star-field": [
+        {"type": "star-field", "region": [0, 0, 800, 300], "count": 80, "seed": 4},
+    ],
+    "string-lights": [
+        {"type": "string-lights", "from": [0, 60], "to": [800, 60], "sag": 50, "count": 9, "colors": ["#ffd77a", "#ff9f6b"]},
+        {"type": "string-lights", "from": [40, 40], "to": [760, 90], "bulb": "lantern", "size": 36, "spacing": 120},
+    ],
+    "bokeh": [
+        {"type": "bokeh", "region": [0, 0, 800, 600], "count": 12, "seed": 2},
     ],
 }
 

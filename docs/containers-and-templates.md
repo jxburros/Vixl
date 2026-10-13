@@ -35,11 +35,14 @@ Omitting a seed selects a fresh one. Placement reports its seed and selected var
 | `badge`, `ribbon` | label | default |
 | `photo-caption` | photo, caption | default |
 | `product-card` | photo, name, price, optional tag | left, centered, split |
-| `section-header` | eyebrow, title | default |
+| `section-header` | eyebrow, title (a rule closes it) | default |
+| `key-value-list` | title, items (one `label \| value \| share` per line) | default |
 
 The original headline, quote, feature and illustration containers remain available. Text and decorations use palette role swatches. Image-bearing resources show crossed neutral placeholders until filled. Both the normal blanks check and the `container-layout` suite report missing image slots; the container suite also reports sources with fewer pixels than the displayed image requires.
 
-Custom resources can declare `min_width`, `max_width`, `min_height`, `max_height` and named `variants`, each containing `operations` and optional `rules`. Local content supports `frame: [x, y, width, height]` in fractions of the container, plus `fit_text: true` and `min_size` on text operations. A text frame wraps and shrinks only as far as its minimum; overly long copy is rejected rather than clipped. Vertical, horizontal and grid rules continue to support padding, gaps, columns and hidden-member collapse.
+In documents made with house style 4, the section header's rule keeps at least one spacing unit (half the document's body size) between itself and the container's bottom edge at any height, so the row that follows never sits on it (the [craft plan](craft-plan.md) counts a gap under half a unit as crowding; one unit keeps clear of that threshold). Documents pinned to `house_style_version: 3` keep the rule where its frame puts it.
+
+Custom resources can declare `min_width`, `max_width`, `min_height`, `max_height` and named `variants`, each containing `operations` and optional `rules`. Local content supports `frame: [x, y, width, height]` in fractions of the container, plus `fit_text: true` and `min_size` on text operations, and `clear_below` (spacing units kept between an item and the container's bottom edge, house style 4). A text frame wraps and shrinks only as far as its minimum; overly long copy is rejected rather than clipped. Vertical, horizontal and grid rules continue to support padding, gaps, columns and hidden-member collapse.
 
 An image operation inside a resource can declare:
 
@@ -48,6 +51,37 @@ An image operation inside a resource can declare:
 ```
 
 `cover` crops around the focal point, `contain` letterboxes with transparency, and `fill` stretches. `mask_shape` accepts supported shape silhouettes, with `rect`, `rounded` and `circle` aliases; rounded masks accept `radius`. Source resolution is independent of the cropped asset generated for rendering.
+
+## Key-value lists
+
+`key-value-list` sets rows of a label, a value and an optional share in aligned columns: labels flush left,
+values right-aligned on one edge and shares on another, with a hairline rule between rows. Right-aligned
+columns keep figures lined up even in fonts whose digits are proportional. Row padding and column gaps come
+from the spacing scale for the text size (one unit above and below each line, two units between columns),
+and every single-line row has the same height. The result is a group of ordinary text layers and rules that
+keeps its rows under `key_values`; `key-value-list` with `target` restyles it, resizes it or gives it new rows
+on the same layer IDs.
+
+```json
+[
+  {"type":"key-value-list","name":"shares","x":80,"y":80,"width":420,"number_format":"#,##0","shares":"auto",
+   "rows":[{"label":"Drip","value":15900},{"label":"Espresso","value":11960},{"label":"Cold brew","value":2510},{"label":"Tea","value":5260}]},
+  {"type":"key-value-list","target":"shares","font_size":22,"colors":["#0072b2","#e69f00","#009e73","#cc79a7"]}
+]
+```
+
+- Rows: `rows` as `{label, value, share}` objects or `[label, value, share]` lists, or `items` as text, one
+  `label | value | share` per line (the same convention as the `price-list` layout). Numbers take
+  `number_format`; `shares: "auto"` computes each value's share of the total.
+- `width`: values and shares move to its right edge and labels wrap to the room left; without it the list is
+  as wide as its widest row. `font_size` defaults to the document's body size.
+- Look: `font`, `value_font`, `text_color`, `share_color` (default: the muted text color, still 4.5:1),
+  `rules` (default true), `rule_color`, and `colors` for a swatch before each label.
+- A chart's `legend_values` legend is the same list (see [charts](charts.md)), so a chart and a separate
+  summary list of the same numbers line up.
+- The `key-value-list` container places one under a title; `container-fill` with new `items` rebuilds it, and
+  resizing the container widens the list to its frame and steps the text down (to `min_size`) until the rows
+  fit.
 
 ## Hug-content buttons and badges
 

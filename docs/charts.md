@@ -70,6 +70,14 @@ Several edits can be combined; they apply in this order:
 An unknown category or series name fails with the available names and the closest match, and the
 operation changes nothing (batches are atomic, like every operation).
 
+## Placement
+
+A chart's group is placed where `x`, `y`, `width` and `height` say. Fields left out start inside the
+document's safe area, inset by two spacing units (about one body size): a chart drawn with no geometry
+fills the safe area with that padding, so it passes the `safe_area` check as created. Pass
+`"x": 0, "y": 0` with the canvas `width` and `height` for the full canvas (earlier versions started a chart without geometry
+at the top-left corner at the canvas size). A canvas without a safe area keeps the whole canvas.
+
 ## What is kept in sync
 
 Everything is recomputed from the data on every `chart` and `chart-data`: a round-numbered value
@@ -101,7 +109,8 @@ to clear it.
 | --- | --- |
 | `title`, `subtitle` | Top-left, in the heading font and the muted text color. |
 | `colors` | Series (pie: slice) colors, any color or `@swatch`. A series' own `color` wins, and an edit that sets `colors` warns which series it does not recolour. The value axis picks round maxima with little headroom (3,330 gives 0–3,500). Default: the document's active palette (colors that stand out from the background), then a color-blind-safe set; one series uses `@accent` when the document has it. |
-| `legend` | `auto` (default: for two or more series, and for pies), `none`, `top`, `bottom`, `left`, `right`. `legend_values` adds each total. |
+| `legend` | `auto` (default: for two or more series, and for pies), `none`, `top`, `bottom`, `left`, `right`. |
+| `legend_values` | Draws the legend as a [key-value list](containers-and-templates.md#key-value-lists): swatch and name flush left, each total right-aligned in one column and, for pies and donuts, each share right-aligned in another, with a hairline rule between rows. It is the same geometry as the `key-value-list` operation, so a chart's value legend and a separate list agree. Beside the plot it takes at most half the chart's width (names wrap). On a pie or donut the `auto` value labels around the ring are left out, since the list already pairs every name with its number and share; `value_labels: "percent"` (or `value`, `both`, `true`) keeps them. |
 | `value_labels` | `auto` (default, for charts of up to 60 values: decided for the whole chart so labels thin evenly. Every value is labelled if the labels fit their marks without colliding, at a smaller size (down to about 0.6 × `font_size`) when that is what fits; otherwise whole series, the largest first; otherwise every second (third ...) value of the largest series; otherwise none. A series never keeps labels on only some of its marks. Value labels may overlap the chart's own lines, areas, markers and bars, which `check` does not report), `true` (label everything), `false`; pie/donut: `value`, `percent` (default) or `both`. Inside stacked segments the label color is chosen for contrast. |
 | `total_labels` | Stacked charts: each stack's total above it. |
 | `gridlines` | On by default. |
@@ -173,6 +182,10 @@ vixl table-data --target menu --set Tea:Price=3.5
   `center`, `right` or **`decimal`**: figures share their decimal point, and a whole number ends where
   the point would be, which is what a price list needs. Numeric columns right-align by default.
   `format` (or `number_format` for every numeric column) is the Excel-style format charts use.
+  `leader` (such as `"."`) runs a dot leader from the end of each body cell to the next cell's text in the
+  row, so a menu needs no hand-drawn dots: `"columns": [{"width": "1fr", "leader": "."}, {"align": "decimal"}]`.
+  The dots sit on a grid from the column's left edge, so every row's dots line up; each row's leader is a
+  text layer (`leader-ROW-COLUMN`), and `summary.leaders` counts them.
 - **Look**: `font_size`, `header_font_size`, `header_font` (default the heading role), `body_font`,
   `text_color`, `header_color`, `header_fill`, `fill`, `zebra` (`true` or a color), `borders`
   (`horizontal`, the default; `all`, `outer`, `header` or `none`), `border_color`, `border_width`,
@@ -186,6 +199,6 @@ vixl table-data --target menu --set Tea:Price=3.5
 - **Exports**: PNG, SVG and PDF draw the layers (vector text and rules). **PPTX writes a native table**
   with the same column widths, row heights, fonts, colors, fills and rules, editable in PowerPoint,
   Keynote and Google Slides; the export report lists it under `tables` (decimal columns are
-  right-aligned there). A rotated or flipped table, or one whose layers carry effects, exports as its shapes.
+  right-aligned there, and a leader is written into its cell as characters that stop at the cell edge). A rotated or flipped table, or one whose layers carry effects, exports as its shapes.
 - `check` sees every cell like any other text (contrast is measured in two renders per table).
   Up to 200 body rows by 24 columns.

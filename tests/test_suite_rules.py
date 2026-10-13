@@ -168,7 +168,7 @@ def test_guide_gives_every_kind_a_test_plan_and_a_testing_guidance():
     text = guide("testing")["text"]
     for word in ("Why", "When", "preview", "suite-set", "hierarchy", "relation", "never loosen"):
         assert word in text
-    assert any("Preview after tests pass" in step for step in guide()["start_here"])
+    assert any("Finishing pass after tests pass" in step for step in guide()["start_here"])
     found = lookup("testing")
     assert set(found["suite_rules"]) == set(RULE_FIELDS) and "testing" in found["guidance"]
     assert "suite-set" in found["operations"] and "check" in found["workflows"]

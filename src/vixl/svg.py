@@ -339,7 +339,9 @@ class Exporter:
 
             return svg_field(self, parent, layer)
         elif kind == "pixel":
-            rows = layer["pixels"]
+            from .pixel import finished
+
+            rows, palette = finished(self.project, layer)
             group = node(
                 parent,
                 "g",
@@ -352,7 +354,7 @@ class Exporter:
                     end = x + 1
                     while end < len(row) and row[end] == row[x]:
                         end += 1
-                    fill, alpha = paint(layer["palette"][row[x]], self.project.state)
+                    fill, alpha = paint(palette[row[x]], self.project.state)
                     if alpha:
                         node(group, "rect", x=x, y=y, width=end - x, height=1, fill=fill, fill_opacity=alpha)
                     x = end

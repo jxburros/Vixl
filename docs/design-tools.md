@@ -150,7 +150,7 @@ recipe under `scatter`.
 ```
 
 `pattern-scatter` scatters motifs in a `width` × `height` tile (at `x`, `y`, default 0, 0) with toroidal
-Poisson-disc spacing: distances wrap across the edges, and a copy that crosses an edge gets a wrapped copy on the
+Poisson-disc spacing (see *Fewer copies without a new layout* below): distances wrap across the edges, and a copy that crosses an edge gets a wrapped copy on the
 opposite side, so the tile repeats without a seam. `background` adds a colored rectangle under the motifs;
 `pattern: NAME` also saves the tile (cropped to its box) as a document pattern for `pattern-fill`. The result
 reports `pattern_scatter: [{name, copies, ghosts, spacing, seed, seam}]`, where `seam` is the same
@@ -165,6 +165,22 @@ not as cut off.
 ```json
 {"type": "pattern-scatter", "source": ["leaf", "dot"], "width": 200, "height": 200, "count": 14, "seed": 11, "rotation_jitter": 180, "background": "#fff7ed", "pattern": "leaves", "name": "tile"}
 {"type": "pattern-fill", "target": "ground", "pattern": "leaves", "tile_variation": 0.3}
+```
+
+**Fewer copies without a new layout.** In documents made with house style 4 or later, `pattern-scatter` lays the
+tile out progressively (`distribution: "progressive"`): layers of Poisson-disc darts at shrinking spacings,
+farthest-first within each, so every prefix of the copies is itself evenly spread. The layout never depends on
+`count`, so the same seed with a lower count keeps the first copies exactly where they were (with the same motif,
+size, turn and colour) and drops the rest, and `count` places exactly that many copies. `thin` removes copies from
+an existing tile, the most crowded first, and leaves the survivors in place: a share to keep (`0.8` or
+`{"keep": 0.8}`) or `{"count": N}`. The tile remembers the thinning (`pattern_scatter.keep`) through rebuilds
+until `count`, `seed`, `spacing`, `distribution` or the tile size change; the result reports
+`thinned: {kept, of}`. `distribution: "poisson"` (the default in documents before house style 4) is the earlier
+layout, which re-rolls every copy when `count` changes.
+
+```json
+{"type": "pattern-scatter", "target": "tile", "count": 10}
+{"type": "pattern-scatter", "target": "tile", "thin": 0.8}
 ```
 
 `pattern-fill` and `pattern-stroke` take `tile_variation` (0-1): each repeat of the tile is lightened or darkened

@@ -864,6 +864,10 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
             operations_path=body.get("operations_path"), check=body.get("check"), preview=body.get("preview"),
             suites=body.get("suites"), repair=body.get("repair"),
         )
+        from .critique import take_previews
+
+        for entry, png in zip(result.get("check", {}).get("regions", []), take_previews(result)):
+            entry["preview_base64"] = base64.b64encode(png).decode()
         if image is not None:
             result["preview_base64"] = base64.b64encode(image).decode()
         return result

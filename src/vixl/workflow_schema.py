@@ -653,7 +653,8 @@ ACTION_FIELDS = {
     },
     "repair-layout": {
         "checks": {"type": "array", "items": STR, "description": "Design checks to satisfy (default: vixl_check's "
-                   "default set)."},
+                   "default set). With composition (in the default set) its review findings are repaired too, "
+                   "after the failures; leftovers are listed under reviews_remaining."},
         "suites": {**COMMON["suites"], "description": "Attached suites that must not get worse; their text-fit, "
                    "contrast and spacing rules are repaired too."},
         "protected": {"type": "array", "items": STR, "description": "Layers (IDs or names) no candidate may change; "
@@ -785,7 +786,8 @@ SUMMARIES = {
                       "match, apply publishes through the group journal (group-recover undoes an interrupted run).",
     "group-recover": "Roll back an interrupted group edit from its journal.",
     "repair-layout": "Bounded layout repair: try several candidates per overflow, overlap, spacing, contrast or "
-                     "safe-area failure, keep the least disruptive that passes; infeasible leaves the document "
+                     "safe-area failure, then per composition finding (drift, rhythm, crowding, dead band, clumped "
+                     "tile), keep the least disruptive that adds no finding; infeasible leaves the document "
                      "unchanged and lists unsatisfied constraints (dry run by default).",
     "protected-edit": "Apply operations only if protected layers keep their structure and pixels and protected "
                       "regions keep their pixels; otherwise roll back and report located differences.",

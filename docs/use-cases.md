@@ -109,6 +109,9 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | TXT-13 | Brand tracking and caps on text that changes (keyed lyric lines, `${variable}` values) | `text-set` with `tracking`, `text_transform` | 1 · <1 | E | Layer properties (#603); before, tracking needed a `text-style` match on fixed text and caps a pre-cased copy of the source. |
 | TXT-14 | Set mixed Latin, Greek, Cyrillic and symbol text (⏻ ⎈ ⧉ ∮ 𝔸) offline without tofu | `text` | 1 · <1 | E | Bundled Noto Sans, Symbols, Symbols 2 and Math fall back behind DejaVu Sans (#419); CJK still needs an installed face in `font-fallbacks`. |
 | TXT-15 | Set text on a stage (display, h1–h3, subtitle, lead, body, caption, citation, label) and spread 2–4 fonts across the stages | `text` with `stage`, `font-register` with a role or stage | 1–2 · <1 | E | Stages follow heading/body until a stage or brand role gets its own face. |
+| TXT-16 | Break a heading into lines of even width, or keep one word off a paragraph's last line | `text-layout` `wrap: balance` / `pretty` | 1 · <1 | E | Craft plan 4a (T09, T14). Headings and layout headlines balance by default in house style 4 documents; the breaks are shared by PNG, SVG, PDF and PPTX. Before, a runt needed a hand line break. |
+| BLK-07 | Tab stops and dot leaders in text (menus, price lists, contents pages) | `text` `tabs: [{at, align, leader}]` with `\t`; `table` column `leader` | 1 · <1 | E | Moved from Blocked (craft plan 4b, #213; T16): left, right, centre and decimal stops with leaders in PNG, SVG and PDF; native tab stops in PPTX with the leader written as characters. Before, leaders were drawn by hand. |
+| TXT-17 | Two-tone headline: one or two words of a layout headline in the accent color | `layout-apply` `accent_words` | 1 · <1 | E | Craft plan 4c (T03, T09); before, a `text-style` match per word after the layout, with the box height fixed by hand. |
 
 ### Color
 
@@ -161,17 +164,22 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | ILL-01 | Add a finishing look: glow, neon, soft/hard shadow, outline, grain, paper, film, duotone, risograph, halftone, watercolor, sketch | `look` | 1 · <1 | E | 20 looks; some export to SVG as raster. |
 | ILL-02 | Apply one of 19 artistic filters (oil paint, mosaic …) | `filter` | 1 · <1 | E | Seeded and deterministic. |
 | ILL-03 | Make an edge look torn, or make vector art look hand-made | `tear`, `irregular` | 1 · <1 | E | `--remove` undoes. |
-| ILL-04 | Grow an organic form (flower, tree, fern, shell, coral, mushroom …) | `organic PRESET` | 1 · <1 | E | 33 presets, editable paths, reseedable. |
+| ILL-04 | Grow an organic form (flower, tree, fern, shell, coral, mushroom …) | `organic PRESET` | 1 · <1 | E | 34 presets, editable paths, reseedable. |
 | ILL-05 | Add paint drips and relief, each controlled on its own | `paint` with `settings.drip`, `relief`, `light_angle` | 1 · <1 | E | Since 0.24 (#258); deterministic visual simulation, not a fluid solver. |
+| ILL-54 | Atmosphere in a scene: a glow behind a light, stars clear of the copy, string lights or lanterns along a sagging wire, out-of-focus discs | `haze`, `star-field`, `string-lights`, `bokeh` | 1 · <1 | E | Craft plan 6a. Editable seeded groups, vector in every export. Was a generator script writing hundreds of shapes (M:T03). |
+| ILL-55 | Reflection of a scene in water below a horizon, with ripples and a fade | `reflection` | 1 · <1 | E | Craft plan 6a. One raster layer; `reflection --target` re-renders it after the scene changes. Was hand-placed dashes (M:T03). |
+| ILL-56 | Filled layered water: sea, harbor or lake bands with crests | `organic` preset `water` | 1 · <1 | E | Craft plan 6c. Replaces stroked wave lines (M:T09, T12). |
+| ILL-57 | The concrete motif a brief implies (a cup with steam, a lighthouse in the sea, strung lanterns) | `vixl_guide` motifs; shapes `cup`, `steam`, `lighthouse`, `lantern` | 1–3 · <1 | E | Craft plan 6b. |
 
 ### Data and diagrams
 
 | ID | Use case | Main route | Calls · min | Ev. | Notes |
 | --- | --- | --- | --- | --- | --- |
-| DAT-01 | Bar, stacked, 100 %, horizontal, line, area, pie or donut chart from inline data | `chart` | 1 · <1 | E | One editable vector group with axes and legend. |
+| DAT-01 | Bar, stacked, 100 %, horizontal, line, area, pie or donut chart from inline data | `chart` | 1 · <1 | E | One editable vector group with axes and legend. A chart given no geometry fills the safe area with spacing-scale padding, so it passes `safe_area` as created (craft plan 7d). |
 | DAT-02 | Chart straight from a CSV in the workspace | `chart --csv` | 1 · <1 | E | |
 | DAT-03 | Change one value, add a row or reload the CSV | `chart-data` | 1 · <1 | M:T08 R2 | Same layer IDs survive. |
 | DAT-51 | Table from rows or a workspace CSV: menu, price list, pricing table, schedule, spec sheet | `table` | 1 · <1 | E | Since #169: aligned columns (decimal for prices), header, zebra, rules; native PPTX table. |
+| DAT-53 | Names, numbers and percentages paired in one aligned, ruled list: a share list, stats, a summary beside a chart | `key-value-list` (or the `key-value-list` container, or a chart's `legend_values`) | 1 · <1 | E | Craft plan 5a (T08): labels left, figures right-aligned on shared edges, rules between rows, spacing from the spacing scale; `shares: "auto"` computes the percentages. |
 | DAT-52 | Change a price, add or remove a row or column, or reload the CSV of a table | `table-data` | 1 · <1 | E | Since #169; cells keep their positions and layer IDs. |
 | DAT-04 | Flowchart from a line of text (`A -> B -> C`) | `diagram-from-text` | 1 · <1 | E | Layered, tree, radial, mindmap and grid layouts. Since 0.23 it follows the document palette and dark mode. |
 
@@ -208,7 +216,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | QA-06 | Check print readiness (ink limit, effective ppi, bleed) | `check --checks print` | 1 · <1 | E | |
 | QA-07 | Check color-vision safety of text and chart series | `check --checks color_vision` | 1 · <1 | E | Other adjacent fills not compared yet. |
 | QA-08 | Check a design against a named style (Swiss, Bauhaus …) | `check --checks style` | 1 · <1 | E | 28 styles. |
-| QA-09 | Catch a wrapped headline that leaves one short word alone on its last line | `vixl_check` (legibility, `code: runt`) | 1 · <1 | E | Review finding for text 24 px and up (#532); before, only a look at the render caught it. |
+| QA-09 | Catch a wrapped headline that leaves one short word alone on its last line | `vixl_check` (legibility, `code: runt`) | 1 · <1 | E | Review finding for text 24 px and up (#532); before, only a look at the render caught it. The fix is `text-layout` `wrap: pretty` or `balance` (TXT-16). |
 | QA-25 | Fix overflowing text, low contrast and safe-area findings automatically | `vixl_check(repair=true)`, `vixl_operations_apply(repair=true)`, act / group-apply `repair` | 1 · <1 | E | Since 0.25 (#571); a repair is kept only when its finding is resolved and nothing new fails; one undoable step. Blanks are held. |
 | QA-26 | Repair a layout (longer headline, overlap, uneven gaps) without touching the logo or going below a type size | `vixl_workflow` repair-layout | 1–2 · <1 | E | Since 0.25 (#518); bounded candidates ranked by least disruption; infeasible leaves the document unchanged and lists what remains. |
 | QA-27 | Replace the background but keep the subject's pixels and the headline wording | `vixl_workflow` protected-edit | 1 · <1 | E | Since 0.25 (#520); structural and pixel guarantees, rolls back on any violation. |
@@ -217,6 +225,9 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | QA-33 | Check a draft loosely and a final strictly | `check --profile` (draft, review, final), `.vixl-checks.json` | 1 · <1 | E | Also on production `run`, `group-apply`, `vixl check --all --profile` and the CI action (#563). |
 | BRD-05 | Brand contrast floor with a large-text tier, so a display-only brand colour passes at 3:1 | `brand.json` `minimum_contrast: {text, large_text}` | 1 · <1 | E | #527; translucent black/white shadows no longer count as off-palette (#528). |
 | QA-34 | Find leftover template copy: lorem ipsum, TODO/TBD, "Headline here", unresolved `${name}` | `vixl_check` (placeholders, on by default) | 1 · <1 | E | `{{name}}` from other tools is review only; `layer-intent literal_text` exempts intended text. |
+| QA-41 | Find dead bands, two left margins, uneven gaps in a name block, a rule pressed onto the first row and a clumped scatter | `vixl_check` (composition, on by default), `check --checks composition` | 1 · <1 | E | Review findings with code, region, values and threshold; fail the `final` profile unless waived. Backtest on the round-1 documents: 12 of 21 judged composition defects caught, no false findings ([composition](guides.md#composition)). Before, only a critique of the render caught them. |
+| QA-42 | Repair those composition findings: snap the drifting edge, even the name block, open the gap under the rule, close the dead band | `vixl_workflow` repair-layout (composition in `checks`, as by default) | 1–2 · <1 | E | Craft plan 2b; candidates ranked by least disruption, each kept only if no finding of any check is new. Backtest: 19 of 22 findings resolved (17 of the 20 on judged defects); a scatter without a `pattern-scatter` recipe is not auto-repairable ([layout repair](agent-trust.md#layout-repair)). Before, by hand. |
+| QA-43 | Critique in the fix call: the composition findings and a real-size look at the two weakest regions | `vixl_operations_apply(check=true, preview=true)` (`check.regions`) | 1 · <1 | E | Craft plan 3b; regions carry the most findings, else the densest text and the largest empty area; two crops of at most 512 px a side, `preview={regions: 0}` for none. Before, a `vixl_check` and two `vixl_render_preview(region)` calls. |
 | QA-35 | Check every artboard, page and comp in one call | `check --artboards all --pages all --comps …`, suite `sampling` | 1 · <1 | E | Findings name their variant; hidden pages need `include_hidden`. |
 | AGT-01 | Ask what to make and with which tools for a brief | `vixl_guide(brief)` | 1 · <1 | E | 20 kinds: poster, logo, character, comic, form … |
 | AGT-02 | Look up fields and gotchas for a topic | `vixl_capabilities(topic)` | 1 · <1 | E | |
@@ -256,6 +267,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PHO-10 | Photo on top, caption panel below, for a 1080×1350 post | import, `scale`, `shape`, `text` | 7 · 2 | M:eval:photo-caption | |
 | COL-01 | Restore a mistakenly deleted layer without losing later edits | `vixl_history` | 5 · 1–2 | M:eval:restore-deleted | |
 | SOC-02 | Roll a design direction with locks and apply it | `vixl_roll` | 5 · 1–2 | M:eval:roll-applied | Use `unfilled=omit` for empty slots. The roll is weighted by purpose (`purpose`, else the document size) and gated by `variety`; `locks={tier: "bold"}` explores one tier. |
+| SOC-05 | Event or promo post with a pill call to action and the date on a highlight | `layout-apply` with `direction: {cta: "pill", date: "highlight"}`, or a house-style-4 roll | 3 · 1 | E | Craft plan 5c (T02, T09): a roll sets them per seed; `house_style_version: 3` or `direction: {cta: "button", date: "plain"}` for the plain result. |
 | SOC-03 | Story with gradient and an evenly spaced three-item list | `gradient`, `text` ×3, distribute | 5 · 1–2 | M:eval:story-list | |
 | BRD-01 | Import an SVG logo as editable geometry, edit and re-export | `vixl_import_document` svg editable | 4 · 1 | M:eval:svg-logo-import | |
 | SOC-04 | Start from a built-in template with title and subtitle | `vixl_template_create` | 4 · 1 | M:eval:template-creation | 43 templates. |
@@ -334,6 +346,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PHO-14 | Select by color, wand or lasso and adjust only that area | `select`, effect | 3–4 · 1 | E | |
 | PHO-15 | Clone-stamp a blemish | clone stamp | 2–4 · <1 | E | |
 | BLK-11 | Seamless random scatter for patterns | `pattern-scatter`, `pattern-fill` | 2–4 · 1 | E | Since 0.22; reports a seam score. |
+| ILL-06 | Fewer motifs in a scattered pattern without re-rolling it | `pattern-scatter` `target` with a lower `count`, or `thin` | 1–2 · <1 | E | House style 4: the surviving copies stay in place (T15 R2 kept 7 % of the ink on 0.26). |
 | ILL-51 | Scatter motifs inside or along a shape, or fur on a mascot | `scatter` (`preset: fur`), `plush` look | 1–3 · 1 | E | Since 0.22. |
 
 ### Motion and pixels
@@ -400,7 +413,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SOC-30 | Social post with exact copy and layout | layout, fonts, check, preview | 29 · 2.4 | M:T02 | |
 | DAT-20 | Infographic from a small data table | `chart`, text, check | 18 · 1.4 | M:T08 | Totals and callouts are still typed by hand. |
 | FRM-10 | Fillable PDF form with validation (email, range, date) | `field`, `form settings`, `export --fillable` | 25 · 3.4 | M:T06 | |
-| PIX-10 | Pixel-art sprite with named animations | `pixel-art`, `frame-save`, `animation-set` | 23 · 3.7 | M:T13 | One `frames-edit` recolors every frame. |
+| PIX-10 | Pixel-art sprite with named animations | `pixel-art`, `frame-save`, `animation-set` | 23 · 3.7 | M:T13 | One `frames-edit` recolors every frame. House style 4 shades and outlines new sprites. |
 | MOT-10 | Animated intro (logo/title reveal) | timeline, presets, stroke draw-on | 38 · 4.0 | M:T12 | |
 | PRN-10 | Print poster with bleed, CMYK PDF, TrimBox/BleedBox | print size, layout, `export --cmyk` | 38 · 6.3 | M:T03 | Fewer calls than T3 but slower: print checks. |
 | SOC-31 | YouTube thumbnail with large headline and subtitle | size, `text`, shapes, check | 13 · 3 | M:eval:youtube-thumbnail | |
@@ -422,7 +435,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | MOT-11 | Revise an animated intro | 23 · 2.5 | M:T12 R2 | |
 | PIX-11 | Recolor or retime a sprite | 28 · 2.8 | M:T13 R2 | |
 | MOT-12 | Shift lyric timing in a lyric video | 30 · 5.4 | M:T14 R2 | One `offset` field; time is the re-render. |
-| ILL-22 | Revise a seamless pattern | 27 · 2.5 | M:T15 R2 | Keeps 87 % of the original ink. |
+| ILL-22 | Revise a seamless pattern | 27 · 2.5 | M:T15 R2 | Keeps 87 % of the original ink on 0.20 and 7 % on 0.26 (re-rolled scatter); house style 4 keeps the surviving copies in place (ILL-06). |
 | PRN-12 | Change prices on a café menu | 17 · 1.6 | M:T16 R2 | Per-price layers make it a direct edit; in a `table` a price is one `table-data` set (#169). |
 
 ### Social, web and ads
@@ -547,13 +560,13 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 
 | ID | Use case | Main route | Calls · min | Ev. | Notes |
 | --- | --- | --- | --- | --- | --- |
-| PRN-30 | Café menu with sections, items and prices | `print-menu` / `price-list`, `table` with a decimal column | 41 · 4.5 | M:T16 | Measured before `table` (#169) aligned prices; no dot leaders. |
+| PRN-30 | Café menu with sections, items and prices | `print-menu` / `price-list`, `table` with a decimal column and a dot `leader` column, or `tabs` | 41 · 4.5 | M:T16 | Measured before `table` (#169) aligned prices and before leaders (BLK-07); expect fewer calls now that leaders are not drawn by hand. |
 | DEK-30 | Slide deck (title, content, chart, closing) to PPTX and PDF | pages, masters, notes, native PPTX chart | 47 · 4.5 | M:T05 | |
 | PRD-30 | Name badges from a spreadsheet, imposed on print sheets | `vixl_workflow` merge-impose | 48 · 3.3 | M:T07 | Empty fields don't re-centre unless `stack --hide-if-empty`. |
 | ILL-40 | Seamless repeating pattern | motifs, pattern-check, repeat | 61 · 7.5 | M:T15 | Scatter positions computed outside Vixl; no seamless scatter. |
 | SOC-60 | One campaign in six sizes | `vixl_adapt_layout`, per-size fixes | 63 · 4.4 | M:T09 | Measured before #210 (safe zones, uniform decoration, grouped content, `min_text`); re-measure. Revision: 44 calls, 1.8 min. |
-| PHO-40 | Photo correction (tilt, cast, exposure, noise) | effects, denoise, white balance, links | 63 · 5.0 | M:T10 | |
-| DRW-30 | Hand drawing → clean vector art with fills | `drawing import/clean/vectorize/straighten/fill` | 64 · 5.7 | M:T11 | Gap closing bridges curves with straight lines. Sky and ground bounded by the drawing's edge fill with `settings.edge_closes` (was BLK-22); `clean` keeps the paper's extent. |
+| PHO-40 | Photo correction (tilt, cast, exposure, noise) | effects, denoise, white balance, links | 63 · 5.0 | M:T10 | Linked crops of the corrected master (Instagram, caption) show its denoised pixels even when enlarged. |
+| DRW-30 | Hand drawing → clean vector art with fills | `drawing import/clean/vectorize/straighten/fill` | 64 · 5.7 | M:T11 | Gap closing bridges curves with straight lines. Sky and ground bounded by the drawing's edge fill with `settings.edge_closes` (was BLK-22), also when the ground line stops short of the edge (no extension strokes); fills register to their lines (no halo, no bulge at an open corner); `clean` keeps the paper's extent. |
 | MOT-30 | Lyric video from a song, an LRC file and a template | `lyric-video-build/export` | 40 · 6.4 | M:T14 | [ffmpeg] Audio resampled to 24 kHz. |
 
 ### Social and marketing
@@ -678,7 +691,6 @@ note the version.
 | BLK-04 | High-bit-depth (16/32-bit) editing | Not implemented (RGBA8) | – |
 | BLK-05 | Draw live with a pressure tablet | No live input; pressure is explicit or simulated | Send stroke points with pressure values. |
 | BLK-06 | Use a desktop GUI, TUI or web editor | Headless only | `vixl view` for live review. [server] |
-| BLK-07 | Tab stops or dot leaders in text | Missing (T16); decimal-aligned columns in a `table` since #169 (DAT-51) | A `table` with a decimal column for price lists; dot leaders by hand. |
 | BLK-09 | Bind chart values into text, or one chart into another | Missing (T08) | Type totals and callouts by hand. |
 | BLK-13 | Motion-path editor, nested compositions with their own timelines | Not implemented (group and child tracks compose; `attach` follows a moving layer since 0.22) | Keyframes per property; markers. |
 | BLK-14 | Automatic discovery of fallback fonts for mixed scripts | Not implemented (fallbacks are listed by hand; weight- and slope-matched since 0.22) | Document-wide `font-fallbacks`. |

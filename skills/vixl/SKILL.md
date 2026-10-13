@@ -39,7 +39,8 @@ instead of improvising freehand shapes:
    with a `pivot` at each joint, patterns scatter motifs rather than tile a grid, and animation loops
    are `motion` recipes (`period`, several `targets`, `stagger`). A kind names the guidance to read:
    `vixl_guide(brief="looping-motion")` (or `natural-motion`, `character-rigging`, `imperfection` …)
-   returns the text.
+   returns the text. A brief that implies a setting also returns `motifs`: draw those specific things
+   (a cup with steam, a lighthouse standing in filled water), not a disc or a box standing in for them.
 2. **Layout** — `vixl_sizes_list` → `vixl_document_create(size=…)` (or `purpose="social"|"slides"|"logo"…`, which
    picks the size; with neither it is 1080×1080). For anything with text,
    `vixl_layouts_list` → `layout-apply`, filling every slot it lists. An unfilled image slot comes back
@@ -48,16 +49,33 @@ instead of improvising freehand shapes:
    says so); otherwise, or to choose, `vixl_fonts` → `vixl_font_pair` (the bundled font is a proofing fallback).
 4. **Finish** — apply a `look` (glow, soft-shadow, hard-shadow, gradient, grain, paper …) so flat shapes
    read as finished work; when the brief names a style (swiss, brutalist, art-deco, kawaii …) use
-   `vixl_styles` and `style-set`, then `check --checks style`.
-5. **Test, then look** — write the brief's requirements as a check suite before you build (below), run
-   it with `vixl_check` while you build, and only preview a design that passes: `vixl_check` (fix the
-   `fix` findings, glance at `review`, accept `informational` ones; mark a deliberate edge crop with
-   `layer-intent` `allow_crop`, and deliberately faint text with `layer-intent` `waive: [{check: "contrast",
-   reason}]`: waived findings stay listed as informational) plus your suite, then `vixl_render_preview` →
-   `vixl_export_file`. Before shipping, `vixl_check(profile="final")` also fails on review findings.
-   `vixl_operations_apply(..., check=true, suites=true, preview=true)` returns the findings (the
-   batch's layers plus every `fix`), the suite rules that did not pass and a small preview with the edit
-   itself, so the loop is one call.
+   `vixl_styles` and `style-set`, then `check --checks style`. A finish is a look on the surface; it is
+   not the *finishing pass* of step 6.
+5. **Test** — write the brief's requirements as a check suite before you build (below), and run it with
+   `vixl_check` while you build: fix the `fix` findings, glance at `review`, accept `informational` ones;
+   mark a deliberate edge crop with `layer-intent` `allow_crop`, and deliberately faint text with
+   `layer-intent` `waive: [{check: "contrast", reason}]` (waived findings stay listed as informational).
+   `vixl_operations_apply(..., check=true, suites=true, preview=true)` returns the findings (the batch's
+   layers plus every `fix` and every composition finding), the suite rules that did not pass and a small
+   preview with the edit itself, so the loop is one call.
+6. **Finishing pass, then export** — passing checks prove the piece is correct, not that it reads as
+   designed. Once `vixl_check` and your suite pass:
+   1. **Check composition**: `vixl_check(checks=["composition"])` reports dead bands, margin drift,
+      uneven rhythm, crowding and clumped scatter as `review` findings. `vixl_workflow("repair-layout")`
+      repairs most of them without adding a finding (a dry run by default; see "Composition is checked by
+      default" below).
+   2. **Critique** in a few lines against the craft checklist that `vixl_guide("finishing")` returns
+      (one focal point; the accent colour used once or twice; no dead band; one left edge per column;
+      the motif names the subject; nothing reads as a placeholder), naming the layer for each miss.
+   3. **Fix** everything the critique found in **one** batch (`check=true, preview=true`), not a string
+      of nudges. With `check` the result lists every composition finding and `check.regions`, the two
+      weakest regions (the most findings, else the densest text and the largest empty area); with
+      `preview` their real-size crops come back after the preview (`preview={regions: 0}` leaves them out).
+   4. **Look at real size** at two regions: the crops of step 3 are 1:1. For another place (the focal
+      point, a detail) `vixl_render_preview(region=[x, y, w, h], max_width=w, max_height=h)` is 1:1. The
+      default preview is reduced; halos, crowding, runts and ragged edges only show at real size.
+   5. **Export**: `vixl_check(profile="final")` (it also fails on unresolved review findings, composition
+      included), then `vixl_export_file`.
 
 ## Tests: why, when and how
 
@@ -76,6 +94,9 @@ likeness, mood). `vixl_guide("testing")` is the full method; every `vixl_guide(k
    (or an inline suite object); preview once they pass.
 4. **A failing rule means change the design.** Never loosen a rule or its tolerance to pass; pick
    tolerances when you write the rule. Use `severity: "warning"` for preferences.
+5. **When they pass, start the finishing pass** (step 6 above): composition check, a critique against
+   the craft checklist, one fix batch and a real-size look at two regions. Tests catch what is wrong;
+   the finishing pass catches what is merely correct.
 
 | Requirement | Rule |
 | --- | --- |
@@ -114,6 +135,20 @@ nudge inside the safe area; blanks are held) and keeps only repairs that leave n
 overflow or overlap with no single fix use workflow `repair-layout` (`protected`, `minimum_size`; dry run by
 default, unchanged when infeasible); `protected-edit` commits an edit only if protected layers and regions are
 unchanged; `vixl reproduce --reference PNG` or `--lock FILE` verifies an approved render.
+
+**Composition is checked by default.** `vixl_check(checks=["composition"])` (CLI `vixl check --checks composition`)
+reports craft as `review` findings with a `code`: `dead_band` (an empty band much larger than the document's own
+gaps), `margin_drift` (stacked blocks a few pixels off one edge or centre axis), `uneven_rhythm` (a line further
+from the line it belongs with than from the next), `crowding` (a rule, band or heading under half a spacing unit
+above text) and `clumped_scatter`. Each names its layers, `region`, measured `values` and `threshold`, in spacing
+units of half the body size. They do not fail a plain check but fail `profile="final"`: fix them, or waive a
+deliberate one with a reason (`{type: waiver, check: composition, reason}`). Marked decoration, backgrounds and
+bleeding art are not judged. Workflow `repair-layout` repairs them after any failures, when its `checks` include
+`composition` (the default set does): it snaps a drifting edge to the margin, re-spaces a stack, opens a crowded gap
+to a spacing unit, spreads a dead band over the other gaps (or moves the blocks beside it) and thins or re-seeds a
+clumped `pattern-scatter` tile. Each candidate is kept only if its finding is gone and no finding of any check is new,
+and the least disruptive wins; drawings move whole, chips and glows move with their layer. What it cannot repair is
+listed under `reviews_remaining` with the reason, and never blocks the repair of failures.
 
 **One call for a new piece.** When you already know the size, layout slots, look and operations,
 `vixl_compose(path, size=…, font_pairing=…, layout={name, …slots}, style=…, look={…}, operations=[…],
@@ -235,9 +270,13 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
 - **Text flow** — `text-flow` threads a long text through linked frames (columns, pages, shapes); results report `overflow`.
 - **Diagrams** — `diagram-from-text` / `diagram` / `diagram-set` draw flowcharts, dependency graphs, org charts and mind maps
   as editable layers (swimlanes, auto-fit, `check diagram`).
-- **Organic shapes** — `organic` presets and composable generators for living things.
+- **Organic shapes** — `organic` presets and composable generators for living things; preset `water` draws filled
+  layered sea or lake bands.
+- **Scene atmosphere** — `haze`, `star-field` (keeps clear of text), `string-lights`, `bokeh` and `reflection`, one
+  operation each and seeded; catalog shapes `cup`, `steam`, `lighthouse`, `lantern` for common motifs.
 - **Scatter and seamless tiles** — `scatter` (Poisson-disc copies inside or along a layer's outline, seeded jitter,
-  `merge` for one path per tone, `preset: fur`), `pattern-scatter` (wrap-around tile with a seam score), per-step
+  `merge` for one path per tone, `preset: fur`), `pattern-scatter` (wrap-around tile with a seam score; a lower
+  `count` or `thin` keeps the surviving copies in place), per-step
   and jittered `repeat`/`radial-repeat` (`vixl_guide("scatter")`).
 - **Imperfection** — opt-in `irregular` (seeded wobble, stroke weight, color drift, micro placement)
   and `tear` (torn edges) for characters, stickers, scenes, scattered patterns, hand-made looks and
@@ -248,8 +287,11 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
   badge's centre, a screen): put text there with `text` `within`, `place` `within` or `align` `box: "content"`.
 - **Charts** — `chart` (bar, stacked, 100 %, horizontal, line, area, pie, donut) from a table or workspace CSV, `chart-data` to fix
   a value on stable layer IDs, native PPTX charts; see [charts](references/charts.md) before drawing any chart by hand.
-- **Tables** — `table` (rows or a workspace CSV; aligned columns including `decimal` for prices, header, zebra,
-  rules) and `table-data` for cell and row edits; native PPTX tables; see [charts](references/charts.md#tables).
+- **Tables** — `table` (rows or a workspace CSV; aligned columns including `decimal` for prices, dot `leader`s, header,
+  zebra, rules) and `table-data` for cell and row edits; native PPTX tables; see [charts](references/charts.md#tables).
+- **Key-value lists** — `key-value-list` pairs labels with right-aligned values and shares in ruled columns
+  (`shares: "auto"` computes percentages); a chart's `legend_values` legend is the same list. See
+  [charts](references/charts.md#key-value-lists).
 - **Guides beyond right angles** — angled/curved guides, compositional and perspective grids,
   `place`, `snap`, `guides`/`alignment` checks.
 - **Lyric videos** — `lyric-video-plan/build/export` workflow actions (song + LRC + template). The template's own
@@ -356,7 +398,7 @@ If found, prepend its folder to PATH for this session — see
 
 ## 2. The core loop (do this every time)
 
-0. **Start right** (see *Start here* above: guide → layout → fonts → finish → check) — for a new piece, create it from a named size (`size="instagram-portrait"`,
+0. **Start right** (see *Start here* above: guide → layout → fonts → finish → test → finishing pass) — for a new piece, create it from a named size (`size="instagram-portrait"`,
    `"letter"` with `bleed`, `"favicon"`, `"logo-horizontal"` …) rather than guessed pixels. If the brief
    is open-ended, apply a fitting layout (`layout-apply`) and refine it instead of improvising a
    composition from scratch. Choose a font pairing first (`font pair`), fill every slot the layout
@@ -378,15 +420,24 @@ If found, prepend its folder to PATH for this session — see
    `avoid=[[x,y,w,h]]`) and text too small at thumbnail width (on print sizes: below 6 pt). It lists only problems.
    Then run your own suite (`vixl_workflow("check", {suite: NAME})`, or `suites=true` on the apply) for
    this brief's requirements; see "Tests: why, when and how" above. Fix failures before step 6.
-6. **Look at the result.** MCP: `vixl_render_preview()` returns an image (≤1024 px, ≤1 MiB by
-   default; `region=[x,y,w,h]` zooms in; `isolate=["mascot"]` shows one object alone, cropped to it).
+   **Measure, don't eyeball,** when precision matters: `vixl_measure` / `vixl info` (colors,
+   WCAG contrast of a text layer), `vixl_measure_spacing` / `vixl spacing` (gaps),
+   `vixl_validate` / `vixl validate` (bounds, aspect ratios, assertions).
+6. **Finishing pass** (a critique and polish; a *finish* is the look of *Start here* step 4). Run
+   `vixl_check(checks=["composition"])` for dead bands, margin drift, uneven rhythm, crowding and clumped
+   scatter (workflow `repair-layout` repairs most); write a short critique against the craft checklist
+   (`vixl_guide("finishing")`), naming the layer for each miss; then make every fix in one batch with
+   `check=true, preview=true`, or `undo` an edit that did not help.
+7. **Look at the result, at real size.** MCP: `vixl_render_preview()` returns an image (≤1024 px, ≤1 MiB by
+   default, so a large canvas is reduced). The fix batch of step 6 already returned 1:1 crops of the two
+   weakest regions (`check.regions`). For any other place, such as the focal point or a detail:
+   `region=[x,y,w,h]` with `max_width=w, max_height=h` (a larger max enlarges the region up to 8x);
+   `isolate=["mascot"]` shows one object alone, cropped to it.
    `vixl_render_compare()` shows previous vs current (also with `isolate`).
    CLI: `vixl render --out /tmp/preview.png` then view the file. Never declare a visual
    task done without looking.
-7. **Measure, don't eyeball,** when precision matters: `vixl_measure` / `vixl info` (colors,
-   WCAG contrast of a text layer), `vixl_measure_spacing` / `vixl spacing` (gaps),
-   `vixl_validate` / `vixl validate` (bounds, aspect ratios, assertions).
-8. **Fix with targeted edits or `undo`**, then **export** (`vixl_export_file` / `vixl export`).
+8. **Export** after `vixl_check(profile="final")` passes (it also fails on unresolved review findings):
+   `vixl_export_file` / `vixl export`.
    A `.psd` path writes a layered Photoshop handoff file (one pixel layer per layer, groups kept, text as pixels).
 
 ## 3. Minimal examples
@@ -476,6 +527,9 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   and named fonts stay as they are.
 - **Text auto-sizes** to its rendered bounds; an explicit `resize` turns that off, editing text turns it back on.
   For wrapping use `text-layout` with `width` (the height grows to the wrapped lines) or `width`/`height` (optionally `fit: true`).
+  `wrap: "balance"` evens a heading's lines (the default for headings in new documents), `wrap: "pretty"` keeps one
+  word off a paragraph's last line. Price lists: `tabs: [{at: "100%", align: "right", leader: "."}]` with `\t` in the
+  text, or a `table` column `leader: "."`. Two-tone headlines: `layout-apply` `accent_words: ["Winter"]`.
 - **Variables:** `${name}` works in text, colors, gradient fills and image-asset IDs. Undefined
   variables are errors. Swatches are `@name` in color fields.
 - **Through MCP/REST, operation `path` and `linked` fields are rejected, and `font` takes only a registered
@@ -549,7 +603,7 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 | Layout | `align` (to canvas/selection/layer), `distribute`, `constrain`/`unconstrain`, `stack` (auto-layout column/row that re-flows around hidden or empty members; text `hide_if_empty`), `guide`, `grid`, `canvas` (resize/preset), `artboard` |
 | Color & filters | 27 built-in effects (brightness … white-balance … auto-contrast), `effect-set/enable/disable/remove/move`, `lut` + `lookup` (a stack effect), `preset-save/apply` |
 | Selections & masks | `select` (rect/ellipse/color/alpha/all/none/invert, add/subtract/intersect, feather), `mask` (create/from-selection/import/invert/enable/disable/delete) |
-| Typography | `text`, `text-set`, `text-layout` (box, fit, warp, path), `style-define`/`style-apply`, `swatch` |
+| Typography | `text`, `text-set` (`tabs`), `text-layout` (box, fit, wrap, warp, path), `style-define`/`style-apply`, `swatch` |
 | Decoration | `layer-style` (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay), `look` (named finishes: clean-flat, subtle-grain, light-paper, glow, neon, soft-shadow, hard-shadow, outline, gradient, soft-halo, grain, paper, film, duotone, risograph, sketch, watercolor, halftone, hand-made, plush), `repeat`, `repeat-blend`, `radial-repeat` (copies around a center, optional mirror, per-step/jitter, `merge`), `scatter`, `pattern-scatter`, `pathfinder` |
 | Templates | `variable`, `replace-contents`, `comp-save`/`comp-apply`, CSV `render --data`, `export-screens` |
 | Painting | `paint` (17 brushes, points or SVG path, pressure, erase), `paint-clear`, `brush-define` |

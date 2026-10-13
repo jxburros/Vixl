@@ -701,7 +701,7 @@ A changed default affects **new documents only**:
 - Every changed default gets a changelog line under **Changed defaults** that names the override
   restoring the old result: an explicit field (`strength: "natural"`), a lock (`--lock mode=light`), or the
   version pin (`house_style_version: 1`, `vixl roll --house-style 1`, or `{"house_style": 1}` in
-  `.vixl/variety.json`; version 2 replays 0.23).
+  `.vixl/variety.json`; version 3 replays 0.24–0.26, version 2 replays 0.23).
 - Run the house-style eval (`python -m evals.house_style --compare evals/house-style-baseline.json`)
   before and after: quality must not fall, and diversity may fall only on purpose, with the baseline
   updated in the same change.
@@ -731,6 +731,26 @@ and #370 (layouts fail their own safe-area check).
 
 Version 3 adds sixteen pairings (4 safe, 8 bold, 4 avant-garde). The new fonts are existing open-font catalog families; display pairs carry small-size/long-copy cautions. New design rolls weight left/right alignment 75/25; diagram and form purposes use left/centre 75/25, and marks (the logo purpose) stay centred. Layout selection excludes arrangements that do not support the rolled alignment. Explicit alignment wins.
 
-Background mixing uses only the amount needed to make the ink contrast target (7.1:1) possible, bounded by `craft.background_mix_max` (0.82 light, 0.75 dark); secondary roles are verified against background/surface. Saturated palettes can remain visibly saturated. New stacks default to two spacing units, chart padding to two label-size units and text-flow gutters to three text-size units. Explicit geometry wins. Stack/layout gaps accept a unit expression such as `2u`; a unit is half the body size, rounded, at least 2 px. These geometry defaults apply only to documents that record version 3, as does the seamless default for new short timelines. In every document, social and poster minor text is at least 2.2% of the short side, and bold text (700+) counts as large for contrast from 18.66 px; regular text from 24 px.
+Background mixing uses only the amount needed to make the ink contrast target (7.1:1) possible, bounded by `craft.background_mix_max` (0.82 light, 0.75 dark); secondary roles are verified against background/surface. Saturated palettes can remain visibly saturated. New stacks default to two spacing units, chart padding to two label-size units and text-flow gutters to three text-size units. Explicit geometry wins. Stack/layout gaps accept a unit expression such as `2u`; a unit is half the body size, rounded, at least 2 px. These geometry defaults apply only to documents that record version 3 or later, as does the seamless default for new short timelines. In every document, social and poster minor text is at least 2.2% of the short side, and bold text (700+) counts as large for contrast from 18.66 px; regular text from 24 px.
 
 Pin `house_style_version: 2` / `vixl roll --house-style 2` to replay 0.23 rolls. Version 1 remains available. Existing stored geometry is not recomposed implicitly. The version-2 regression fixture covers multiple seeds, purposes and variety levels.
+
+## House style 4
+
+Version 4 keeps every choice version 3 rolls and adds two rolled details; it also changes craft defaults for new
+documents. A document that records version 3 or earlier keeps the old behaviour, and `house_style_version: 3` (CLI
+`--house-style 3`) restores all of it in a new document.
+
+- **Layout details (craft plan 5b, 5c).** A roll also sets `cta` (`pill` or `button`) and `date` (`highlight` or
+  `plain`) from a separate stream of the seed, so every other rolled field matches version 3; see
+  [safe variety](safe-variety.md). Footer rules in the safe compositions and the `section-header` rule keep one
+  spacing unit of clearance. Lock `cta=button` and `date=plain` for the old details.
+- **Balanced headings (4a).** A new text box on a heading (a heading font role or stage, or text whose size reads as
+  the h2 step or larger) and every layout headline take `wrap: "balance"`, lines of even width in the same line count
+  (`craft.wrap`). Body text keeps greedy wrapping; `wrap: "pretty"` asks for no one-word last line. Pass
+  `wrap: "greedy"` for the old breaks. See [line breaking](typography.md#line-breaking).
+- **Scatter that thins in place (7a).** `pattern-scatter` lays tiles out progressively (`distribution:
+  "progressive"`), so the same seed with a lower `count` keeps the first copies in place and `count` places exactly
+  that many. `distribution: "poisson"` keeps the layout that re-rolls on every count change.
+- **Finished sprites (7e).** `pixel-art` sprites draw with a shading ramp and an outline (`shading`, `outline`).
+  `shading: false` and `outline: false` keep the flat sprite.
