@@ -152,7 +152,7 @@ def test_svg_export_honours_pivot():
     px, py = 8 + ox, 0 + oy  # the pivot in the arm's local box, relative to its center
     canvas = (tx + px * math.cos(a) - py * math.sin(a), ty + px * math.sin(a) + py * math.cos(a))
     assert math.dist(canvas, (134, 64)) <= 1
-    assert '"raster_fallbacks":[]' in svg
+    assert "raster_fallbacks" not in svg
 
 
 def test_timeline_export_renders_at_target_resolution(tmp_path):

@@ -603,7 +603,8 @@ def export_svg(project, *, scale=1, variables=None, artboard=None, comp=None, sv
     body = ET.tostring(root, encoding="utf-8", xml_declaration=True)
     payload = embedded_document(shown)
     payload["digest"] = hashlib.sha256(body).hexdigest()
-    payload = {"raster_fallbacks": exporter.fallbacks, **payload}
+    if exporter.fallbacks:
+        payload = {"raster_fallbacks": exporter.fallbacks, **payload}
     text = escape(json.dumps({"vixl": payload}, ensure_ascii=False, separators=(",", ":")))
     end = body.rindex(b"</svg>")
     return body[:end] + f'<metadata id="{METADATA_ID}">{text}</metadata>'.encode() + body[end:]

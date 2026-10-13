@@ -1109,7 +1109,7 @@ def project_command(project, cmd, args, *, detail="compact"):
 
             root = ET.fromstring(data)
             metadata = root.find("{*}metadata")
-            fallbacks = json.loads(metadata.text)["vixl"]["raster_fallbacks"] if metadata is not None else []
+            fallbacks = json.loads(metadata.text)["vixl"].get("raster_fallbacks", []) if metadata is not None else []
             result["svg"] = {"vector_only": not bool(root.findall(".//{*}image")), "raster_fallbacks": fallbacks}
         return result, False
     if cmd == "spacing":
