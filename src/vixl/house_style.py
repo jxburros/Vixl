@@ -80,6 +80,12 @@ def moods():
     return deepcopy(_data()["taste"]["moods"])
 
 
+def details():
+    """How a roll sets layout details (house style 4): ``cta_pill`` and ``date_highlight`` shares per tier, and
+    the ``square_styles`` that keep square buttons."""
+    return deepcopy(_data()["taste"]["details"])
+
+
 def entries(kind):
     """``{name: metadata}`` for one pool: palettes, pairings, layouts, styles or looks. Every entry has a tier."""
     taste = _data()["taste"]

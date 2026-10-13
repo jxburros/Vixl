@@ -29,7 +29,9 @@ DRINKS = {
 
 def make(kind="bar", data=SALES, width=900, height=560, background="#ffffff", **options):
     p = Project(width, height, background)
-    p.apply({"type": "chart", "name": "Sales", "kind": kind, "title": "Cups sold", **data, **options})
+    # The whole canvas, so parts' local coordinates are canvas pixels (a chart placed without them sits in the safe area).
+    p.apply({"type": "chart", "name": "Sales", "kind": kind, "title": "Cups sold", "x": 0, "y": 0, "width": width,
+             "height": height, **data, **options})
     return p
 
 

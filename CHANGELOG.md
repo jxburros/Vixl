@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Components, layout details and chart placement
+
+- **`key-value-list`**: a label, a value and an optional share per row in aligned columns: labels flush left, values and shares right-aligned on shared edges, a hairline rule between rows, row padding and column gaps from the spacing scale and one height for every single-line row. Rows come as `rows` or as `items` text (`label | value | share` per line); `shares: "auto"` computes each value's share of the total, `number_format` formats numbers, `colors` adds swatches, and `target` restyles the list on the same layer IDs. The container library gains a `key-value-list` container (a title over a list that widens to its frame and steps its text down to fit). Craft plan 5a (T08).
+- **Chart value legends are key-value lists**: `legend_values` now sets swatch and name, the total and (pie and donut) the share in aligned, ruled columns, with the same geometry as `key-value-list`, instead of appending the total to each name. On a pie or donut the automatic percentage labels around the ring are left out because the list carries them; `value_labels: "percent"` (or `value`, `both`, `true`) keeps them.
+- **A new chart starts inside the safe area** (craft plan 7d): a `chart` drawn without `x`, `y`, `width` or `height` fills the canvas safe area inset by two spacing units, so it no longer fails `check` (`safe_area`) as created. Pass `"x": 0, "y": 0` and the canvas `width` and `height` for the old full-canvas placement; a canvas without a safe area keeps it.
+
+### Changed defaults (house style 4)
+
+New documents use house style 4; documents keep the version they were made with. Pin `house_style_version: 3` (`vixl roll --house-style 3`, `{"house_style": 3}` in `.vixl/variety.json`) to restore the 0.24–0.26 results. House-style eval (`--compare`): quality unchanged at every level (no fix findings, fonts and contrast all 1.0); the rolled-choice entropies are identical, image distance moves by at most 0.0004 and structure distance by at most 0.004 (same-mode distance rises), all inside the eval's tolerance.
+
+- **Pills and highlighted dates are rolled** (craft plan 5c, T02 and T09): a roll's direction now carries `cta` (`pill` or `button`) and `date` (`highlight` or `plain`), drawn from the seed by tier (pills about two in five safe rolls and three in five bold ones, never for square-cornered styles, always for a pill corner; highlights a little less often) on a separate stream, so every other rolled choice is unchanged for the same seed. Layouts set a `pill` call to action with fully rounded ends whatever the corner style, and put the composition's date line (a short label, caption, subtitle or body that reads as a date) in `@on-accent` on an `@accent` highlight that keeps the column edge. Override per document with `--lock cta=button --lock date=plain`, or `direction: {"cta": "button", "date": "plain"}` on `layout-apply`.
+- **Rules keep a spacing unit from the copy** (craft plan 5b, T16): the safe compositions' footer rule keeps one spacing unit above the last line (copy too tall for that is set smaller), and the `section-header` container's rule keeps one unit from the container's bottom edge at any height (`clear_below`, a new container item setting in spacing units). One unit is the smallest step of the spacing scale and twice the half-unit gap the craft plan counts as crowding. Restore with `house_style_version: 3`.
+
 ## 0.26.0
 
 ### Fixed and added

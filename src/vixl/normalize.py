@@ -379,6 +379,10 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
         from .tables import normalize as normalize_table
 
         op = normalize_table(op, note)
+    if kind == "key-value-list":
+        from .key_values import normalize as normalize_key_values
+
+        op = normalize_key_values(op, note)
     if kind == "shape" and isinstance(op.get("shape"), str) and op["shape"] not in SHAPES:
         guess = op["shape"].lower().replace("_", "-").replace(" ", "-")
         if guess not in SHAPE_TYPES:

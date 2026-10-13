@@ -7,7 +7,10 @@ from .model import finite, new_layer, Limits
 from .stacks import collapsed
 
 TYPES = ("container-place", "container-swap", "container-variant", "container-fill", "container-reflow", "shape-place", "image-slot")
-CONTENT = {"text", "solid", "gradient", "shape", "pen", "image-slot"}
+# Layout settings a container item carries besides its operation: its frame, text fitting, and (house style 4)
+# the spacing units it keeps clear of the container's bottom edge.
+SPEC = ("frame", "fit_text", "min_size", "clear_below")
+CONTENT = {"text", "solid", "gradient", "shape", "pen", "image-slot", "key-value-list"}
 
 
 def validate(value):
@@ -52,7 +55,7 @@ def validate(value):
     for op in substitute(ops, value.get("defaults", {})):
         require(
             op.get("type") in CONTENT,
-            "Container content must be self-contained text, shape, pen, solid or gradient",
+            "Container content must be self-contained text, shape, pen, solid, gradient, image slots or key-value lists",
         )
         if "frame" in op:
             frame = op["frame"]
@@ -64,7 +67,9 @@ def validate(value):
             require(op["type"] == "text" and op["fit_text"] in (True, False, "wrap", "shrink"), "fit_text must be wrap, shrink or boolean on text")
         if "min_size" in op:
             finite(op["min_size"], "min_size", 1, 4096)
-        operation = validate_operation({k: v for k, v in op.items() if k not in ("frame", "fit_text", "min_size")})
+        if "clear_below" in op:
+            finite(op["clear_below"], "clear_below", 0, 8)
+        operation = validate_operation({k: v for k, v in op.items() if k not in SPEC})
         service_check(operation)
         require(not operation.get("target"), "Container content cannot target existing layers")
         name = operation.get("name", operation["type"])
@@ -193,15 +198,21 @@ def execute(project, op):
     from .craft import CORNERS
 
     corner = direction.get("corner")
+    version = project.state.get("design_defaults", {}).get("house_style_version", 2)
     for original, operation in zip(selected["operations"], ops):
         operation = deepcopy(operation)
         local_name = operation.get("name", operation["type"])
-        spec = {k: operation.pop(k) for k in ("frame", "fit_text", "min_size") if k in operation}
+        spec = {k: operation.pop(k) for k in SPEC if k in operation}
+        if version < 4:
+            spec.pop("clear_below", None)
         operation["name"] = group["name"] + "/" + local_name
         if operation["type"] == "text" and spec.get("fit_text"):
             # Start from a type scale suited to the requested cell, then wrap/shrink locally.
             scale = min(width / item["width"], height / item["height"])
             operation["size"] = max(spec.get("min_size", 12), round(operation.get("size", 24) * scale))
+        if operation["type"] == "key-value-list":
+            scale = min(width / item["width"], height / item["height"])
+            operation["font_size"] = max(spec.get("min_size", 12), round(operation.get("font_size", 20) * scale))
         if operation["type"] == "image-slot":
             slot = operation.get("slot", local_name)
             operation["asset"] = variables.get(slot, operation.get("asset", ""))
@@ -497,6 +508,18 @@ def reflow(project, target):
             require(isinstance(frame, list) and len(frame) == 4 and all(isinstance(v, (int, float)) for v in frame), "frame must be [x,y,width,height] fractions")
             layer["x"], layer["y"] = round(frame[0] * width), round(frame[1] * height)
             layer["width"], layer["height"] = max(1, round(frame[2] * width)), max(1, round(frame[3] * height))
+            if spec.get("clear_below"):
+                from .craft import body_size, space
+
+                # A rule closing a header keeps its clearance from the next row whatever the container's height.
+                limit = height - space(spec["clear_below"], body_size(project))
+                if layer["y"] + layer["height"] > limit:
+                    layer["y"] = max(0, round(limit - layer["height"]))
+        if frame and layer.get("key_values") and layer["type"] == "group":
+            from .key_values import fit
+
+            # The list spans its frame's width and steps its text down (to min_size) until its rows fit the height.
+            fit(project, layer, layer["width"], layer["height"], spec.get("min_size", 12))
         if layer["type"] == "text" and spec.get("fit_text"):
             from .text import measure as text_measure, font_data
             if not frame:

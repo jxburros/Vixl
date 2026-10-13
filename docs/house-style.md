@@ -701,7 +701,7 @@ A changed default affects **new documents only**:
 - Every changed default gets a changelog line under **Changed defaults** that names the override
   restoring the old result: an explicit field (`strength: "natural"`), a lock (`--lock mode=light`), or the
   version pin (`house_style_version: 1`, `vixl roll --house-style 1`, or `{"house_style": 1}` in
-  `.vixl/variety.json`; version 2 replays 0.23).
+  `.vixl/variety.json`; version 3 replays 0.24–0.26, version 2 replays 0.23).
 - Run the house-style eval (`python -m evals.house_style --compare evals/house-style-baseline.json`)
   before and after: quality must not fall, and diversity may fall only on purpose, with the baseline
   updated in the same change.

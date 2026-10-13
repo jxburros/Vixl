@@ -292,6 +292,13 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
     direction["headline"] = "large" if direction["tier"] != "safe" or expressive else "measured"
     if version >= 3:
         direction.update(align=alignment, house_style_version=version)
+    if version >= 4:
+        # A separate stream, so these details never change what the seed rolls for the fields above.
+        details, pick = house_style.details(), random.Random(seed ^ 0xC7A)
+        style, corner = locks.get("style", direction["style"]), locks.get("corner", direction["corner"])
+        pill = 1 if corner == "pill" else 0 if style in details["square_styles"] else details["cta_pill"][direction["tier"]]
+        direction["cta"] = "pill" if pick.random() < pill else "button"
+        direction["date"] = "highlight" if pick.random() < details["date_highlight"][direction["tier"]] else "plain"
     unknown = set(locks) - set(direction)
     require(not unknown, f"Unknown lock(s) {sorted(unknown)}; lockable: {', '.join(direction)}", field="locks")
     direction.update(locks)
