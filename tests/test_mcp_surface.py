@@ -49,3 +49,18 @@ def test_growth_is_refused_without_the_flag(tmp_path, monkeypatch):
     assert mcp_surface.main(["--update", "--allow-growth"]) == 0
     assert json.loads(baseline.read_text())["servers"] == current
     assert mcp_surface.main(["--update"]) == 0  # no growth now: lowering or keeping is always allowed
+
+
+def test_tool_descriptions_carry_no_docstring_indentation():
+    # Python 3.11 and 3.12 keep docstring indentation (3.13 strips it); clients must get the same text everywhere.
+    from vixl.mcp_tools import build_server
+    from vixl.interfaces import Session
+    import asyncio
+    import tempfile
+    from pathlib import Path
+
+    for tools in mcp_surface.SERVERS:
+        with tempfile.TemporaryDirectory() as workspace:
+            listed = asyncio.run(build_server(Session(workspace=Path(workspace)), tools=tools).list_tools())
+        for tool in listed:
+            assert not any(line[:1].isspace() for line in tool.description.splitlines()), tool.name

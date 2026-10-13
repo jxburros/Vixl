@@ -7,6 +7,7 @@ an optional ``document``.
 
 import base64
 import binascii
+import inspect
 import json
 import os
 from types import SimpleNamespace
@@ -308,7 +309,8 @@ def build_server(session, *, planner=False, tools="default", allow_screen_captur
         wrapper = runtime.wrap(fn)
         defined.add(fn.__name__)
         if selected(fn.__name__):
-            server.tool(structured_output=False)(wrapper)
+            # Python 3.13 dedents docstrings, 3.11 and 3.12 do not: clean them so every client gets the same text.
+            server.tool(description=inspect.cleandoc(fn.__doc__ or ""), structured_output=False)(wrapper)
         return wrapper
 
     @tool

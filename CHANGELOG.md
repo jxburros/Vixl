@@ -60,6 +60,7 @@ Vixl is pre-release with no users to protect, so code that existed only to repro
 
 ### Fixed
 
+- MCP tool descriptions are the same on every Python: 3.11 and 3.12 kept docstring indentation (8 extra spaces per continuation line, sent to every client); they are now cleaned at registration.
 - Footer-rule clearance no longer pushes the cta button out of the safe area on small banners.
 - Dark-mode ink reaches the 7:1 target on saturated palettes (candy came out at 6.99:1): when the ink steps run out, it snaps to pure white or black, which the background wash was sized for.
 - Strokes land in the same place in PNG, SVG, PDF and PowerPoint: the SVG export stroked rectangles, ellipses and polygons a stroke width away from the other renderers (where strokes now go: see Rendering parity). PNG no longer cuts the outer half of a path's stroke at the layer box. Render parity finding 15.
