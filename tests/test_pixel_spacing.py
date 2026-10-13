@@ -25,6 +25,8 @@ def sprite():
             "name": "sprite",
             "rows": ["....", ".rr.", ".rr.", "...."],
             "palette": {".": "transparent", "r": "#ff0000", "b": "#0000ff"},
+            "shading": False,
+            "outline": False,
         }
     )
     return p

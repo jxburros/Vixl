@@ -15,6 +15,7 @@ RUNT = "The gulls are sleeping on the silver stone"
 
 
 def boxed(text, width, size=40, canvas=(900, 400), **layout):
+    layout.setdefault("wrap", "greedy")
     p = Project(*canvas)
     p.apply([{"type": "text", "name": "t", "text": text, "size": size, "color": "#000000", "x": 20, "y": 20},
              {"type": "text-layout", "target": "t", "width": width, **layout}])
@@ -80,19 +81,18 @@ def test_greedy_text_is_left_for_powerpoint_to_wrap(tmp_path):
     assert "<a:br/>" not in pptx_xml(boxed(RUNT, 760), tmp_path)
 
 
-def test_headings_balance_in_house_style_4_only():
-    def heading(version, **layout):
+def test_headings_balance_by_default():
+    def heading(**layout):
         p = Project(900, 400)
-        document_defaults(p, seed=3, house_style_version=version)
+        document_defaults(p, seed=3)
         p.apply([{"type": "text", "name": "t", "text": RUNT, "stage": "h1", "x": 20, "y": 20},
                  {"type": "text-layout", "target": "t", "width": 700, **layout}])
         return p.layer("t")["text_layout"]
 
-    assert heading(4)["wrap"] == "balance"
-    assert "wrap" not in heading(3)
-    assert heading(4, wrap="greedy")["wrap"] == "greedy"
+    assert heading()["wrap"] == "balance"
+    assert heading(wrap="greedy")["wrap"] == "greedy"
     p = Project(900, 400)
-    document_defaults(p, seed=3, house_style_version=4)
+    document_defaults(p, seed=3)
     p.apply([{"type": "text", "name": "body", "text": RUNT, "stage": "body", "x": 20, "y": 20},
              {"type": "text-layout", "target": "body", "width": 700}])
     assert "wrap" not in p.layer("body")["text_layout"]
@@ -105,15 +105,11 @@ def test_a_wrap_survives_a_new_box():
 
 
 def test_layout_headlines_balance_in_new_documents():
-    def headline(version):
-        p = Project(1080, 1080)
-        document_defaults(p, seed=3, house_style_version=version)
-        p.apply({"type": "layout-apply", "name": "hero-statement", "title": "Lighthouse nights on the quay",
-                 "seed": 3, "unfilled": "omit"})
-        return p.layer("headline")["text_layout"]
-
-    assert headline(4).get("wrap") == "balance"
-    assert "wrap" not in headline(3)
+    p = Project(1080, 1080)
+    document_defaults(p, seed=3)
+    p.apply({"type": "layout-apply", "name": "hero-statement", "title": "Lighthouse nights on the quay",
+             "seed": 3, "unfilled": "omit"})
+    assert p.layer("headline")["text_layout"].get("wrap") == "balance"
 
 
 def test_wrap_aliases_and_validation():

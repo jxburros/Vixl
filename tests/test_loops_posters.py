@@ -123,7 +123,7 @@ def test_check_enables_motion_for_animated_documents_and_reports_the_seam():
 
 def test_a_play_once_timeline_has_no_seam_finding():
     p = card()
-    p.apply({'type': 'timeline-set', 'loop': 1})
+    p.apply({'type': 'timeline-set', 'loop': 1, 'loop_mode': 'off'})
     p.apply({'type': 'animate', 'target': 'sun', 'property': 'translate-x', 'from': 0, 'to': 80, 'end': 1000})
     assert 'loop-seam' not in codes(check_design(p))
 

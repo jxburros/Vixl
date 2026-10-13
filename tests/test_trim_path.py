@@ -97,6 +97,7 @@ def test_trimmed_shapes_draw_a_part_of_the_untrimmed_stroke(shape):
 
 def test_draw_on_preset_animates_a_stroke_that_grows_to_the_finished_line():
     p = line(stroke_width=8)
+    p.apply({"type": "timeline-set", "loop_mode": "off"})
     result = p.apply({"type": "animate-preset", "target": "wave", "preset": "draw-on", "start": 0, "duration": "1s",
                       "easing": "linear"})
     assert "warnings" not in result

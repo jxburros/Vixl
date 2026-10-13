@@ -205,8 +205,7 @@ def default_timeline():
 def _timeline(project):
     if "timeline" not in project.state:
         timeline = default_timeline()
-        if project.state.get("design_defaults", {}).get("house_style_version", 2) >= 3:
-            timeline["loop_mode"] = "seamless"
+        timeline["loop_mode"] = "seamless"
         project.state["timeline"] = timeline
     return project.state["timeline"]
 

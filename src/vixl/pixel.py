@@ -266,10 +266,9 @@ def execute_pixel(project, op):
             x=op.get("x", 0),
             y=op.get("y", 0),
         )
-        version = project.state.get("design_defaults", {}).get("house_style_version", 2)
         for key in ("shading", "outline"):
-            # Sprites in new documents (house style 4) get a shading ramp and an outline unless told not to.
-            value = op.get(key, True if version >= 4 else None)
+            # Sprites get a shading ramp and an outline unless told not to.
+            value = op.get(key, True)
             if value:
                 layer[key] = deepcopy(value)
         validate_finish(layer)

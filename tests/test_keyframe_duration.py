@@ -10,7 +10,7 @@ def doc():
     p = Project(100, 100, "white")
     p.apply([{"type": "solid", "name": "bar", "color": "red", "width": 20, "height": 10},
              {"type": "text", "name": "words", "text": "hi", "size": 12},
-             {"type": "timeline-set", "duration": 8000}])
+             {"type": "timeline-set", "duration": 8000, "loop_mode": "off"}])
     return p
 
 

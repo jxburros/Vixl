@@ -312,9 +312,8 @@ def test_fur_blob_preset_grows_tufts_body_and_flicks():
     assert project.layer("fluff/tufts")["path"].count("M") == 40
 
 
-def _tile_positions(count=40, version=4, seed=5, **extra):
+def _tile_positions(count=40, seed=5, **extra):
     project = stage()
-    project.state["design_defaults"] = {"house_style_version": version}
     report = project.apply({"type": "pattern-scatter", "source": ["dot", "pea"], "width": 400, "height": 400,
                             "count": count, "seed": seed, "rotation_jitter": 60, "scale_jitter": 0.3, "name": "tile",
                             **extra})["pattern_scatter"][0]
@@ -334,13 +333,11 @@ def test_lowering_count_keeps_the_survivors_in_place():  # craft plan 7a: T15 ke
     kept = _copies(few) & _copies(many)
     # Every copy of the 32 sits where the 40-copy layout had it, with the same size and turn.
     assert len(kept) / len(_copies(few)) >= 0.95
-    # The earlier layout re-rolls: documents before house style 4 keep it, and so does distribution: poisson.
-    old_many, _ = _tile_positions(40, version=3)
-    old_few, old = _tile_positions(32, version=3)
+    # distribution: poisson re-rolls the layout when the count changes.
+    old_many, _ = _tile_positions(40, distribution="poisson")
+    old_few, old = _tile_positions(32, distribution="poisson")
     assert old["distribution"] == "poisson"
     assert len(_copies(old_few) & _copies(old_many)) / len(_copies(old_few)) < 0.5
-    explicit, _ = _tile_positions(32, distribution="poisson")
-    assert _copies(explicit) == _copies(old_few)
 
 
 def test_progressive_layout_stays_evenly_spread():
@@ -360,7 +357,7 @@ def test_progressive_layout_stays_evenly_spread():
 
 
 def test_thin_removes_the_densest_copies_and_keeps_the_rest_in_place():
-    project, report = _tile_positions(40, version=3)
+    project, report = _tile_positions(40)
     before = _copies(project)
     thinned = project.apply({"type": "pattern-scatter", "target": "tile", "thin": 0.8})["pattern_scatter"][0]
     assert thinned["copies"] == round(report["copies"] * 0.8)

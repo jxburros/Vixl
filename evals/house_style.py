@@ -183,14 +183,14 @@ def offline_fonts():
                 os.environ["VIXL_FONT_CACHE"] = previous
 
 
-def run_one(brief, seed, level, workspace, house_style_version=None):
+def run_one(brief, seed, level, workspace):
     from vixl import Project
     from vixl.typefaces import roll_document
 
     purpose, size, dpi, slots = brief
     project = Project.sized(size, dpi=dpi) if dpi else Project.sized(size)
     result = roll_document(project, workspace=workspace, seed=seed, purpose=purpose, variety=level,
-                           apply=True, slots=slots, house_style_version=house_style_version)
+                           apply=True, slots=slots)
     report = project.check()
     issues = report.get("issues", [])
     fixes = [i for i in issues if i.get("action") == "fix"]
@@ -218,9 +218,8 @@ def run_one(brief, seed, level, workspace, house_style_version=None):
     }
 
 
-def evaluate(briefs=BRIEFS, levels=LEVELS, seed_base=1000, progress=None, house_style_version=None):
-    """Roll, apply, check and render every brief at every level; return per-level scores. ``house_style_version``
-    pins the house style (1 replays the 0.20-0.22 rolls, the "before" of the 0.23 changes)."""
+def evaluate(briefs=BRIEFS, levels=LEVELS, seed_base=1000, progress=None):
+    """Roll, apply, check and render every brief at every level; return per-level scores for the current house style."""
     from vixl.variety import VARIETIES  # noqa: F401  (fails early on a broken install)
 
     scores = {}
@@ -229,7 +228,7 @@ def evaluate(briefs=BRIEFS, levels=LEVELS, seed_base=1000, progress=None, house_
         for level in levels:
             rows = []
             for index, brief in enumerate(briefs):
-                rows.append(run_one(brief, seed_base + index, level, workspace, house_style_version))
+                rows.append(run_one(brief, seed_base + index, level, workspace))
                 if progress:
                     progress(level, index + 1, len(briefs))
             runs.extend(rows)
@@ -283,8 +282,7 @@ def compare(result, baseline):
 
 
 def markdown(result):
-    version = result.get("house_style_version") or "current"
-    lines = [f"House-style eval: {result['briefs']} sparse briefs per level, house style {version}", "",
+    lines = [f"House-style eval: {result['briefs']} sparse briefs per level", "",
              "Diversity is entropy in bits per dimension, then mean pairwise image and layout-structure distance; "
              "quality is the share of designs with no fix finding, with no composition finding, with fonts installed and "
              "passing contrast.", "",
@@ -306,17 +304,13 @@ def main(argv=None):
     parser.add_argument("--levels", default=",".join(LEVELS))
     parser.add_argument("--out", help="write the scores and every run as JSON here")
     parser.add_argument("--compare", help="a stored baseline to compare against (exit 1 on a regression)")
-    parser.add_argument("--house-style", type=int, dest="house_style",
-                        help="pin a house-style version (1 replays the 0.20-0.22 rolls)")
     args = parser.parse_args(argv)
     briefs = BRIEFS
     if args.limit:
         briefs = BRIEFS[::max(1, len(BRIEFS) // args.limit)][:args.limit]
     started = time.time()
     result, runs = evaluate(briefs, tuple(args.levels.split(",")),
-                            progress=lambda level, i, n: print(f"\r{level} {i}/{n}", end="", file=sys.stderr),
-                            house_style_version=args.house_style)
-    result["house_style_version"] = args.house_style
+                            progress=lambda level, i, n: print(f"\r{level} {i}/{n}", end="", file=sys.stderr))
     print(file=sys.stderr)
     result["seconds"] = round(time.time() - started, 1)
     print(markdown(result))

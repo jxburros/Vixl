@@ -52,7 +52,6 @@
    "required": ["roles", "items"],
    "properties": {
     "roles": {"type": "array", "items": {"type": "string"}},
-    "house_style_version": {"type": "integer"},
     "contrast_targets": {"type": "object", "additionalProperties": {"type": "number"}},
     "items": {
      "type": "array",

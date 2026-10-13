@@ -28,9 +28,8 @@ ROWS = [
 PALETTE = {".": "transparent", "y": "#f4c430", "s": "#f2c79b", "e": "#1e1a2a", "n": "#2b3a67", "b": "#5a3a22"}
 
 
-def sprite(version=4, **extra):
+def sprite(**extra):
     p = Project(16, 16)
-    p.state["design_defaults"] = {"house_style_version": version}
     p.apply({"type": "pixel-art", "name": "keeper", "rows": ROWS, "palette": PALETTE, **extra})
     return p
 
@@ -67,8 +66,8 @@ def test_new_sprites_get_a_shading_ramp_and_an_outline():
     assert len(drawn["rows"]) == 16 and set("".join(drawn["rows"])) <= set(drawn["palette"])
 
 
-def test_older_documents_and_explicit_overrides_keep_the_flat_sprite():
-    for p in (sprite(version=3), sprite(shading=False, outline=False)):
+def test_explicit_overrides_keep_the_flat_sprite():
+    for p in (sprite(shading=False, outline=False),):
         assert "shading" not in p.layer("keeper") and "outline" not in p.layer("keeper")
         assert np.array_equal(np.asarray(p.render()), flat(p))
     only_outline = sprite(shading=False)
@@ -76,7 +75,7 @@ def test_older_documents_and_explicit_overrides_keep_the_flat_sprite():
     p = sprite()
     p.apply({"type": "pixel-palette", "target": "keeper", "shading": False, "outline": False})
     assert np.array_equal(np.asarray(p.render()), flat(p))
-    old = sprite(version=3)
+    old = sprite(shading=False, outline=False)
     old.apply({"type": "pixel-palette", "target": "keeper", "shading": {"light": "top-right", "colors": 8}, "outline": "#000000"})
     image = old.render()
     assert len(colours(image)) <= 8 and (0, 0, 0) in colours(image)
@@ -95,7 +94,6 @@ def test_a_palette_swap_carries_into_the_ramp():
 def test_hand_drawn_outlines_and_ramps_are_respected_and_the_colour_cap_holds():
     rows = ["........", ".oooooo.", ".oaaaao.", ".oaddao.", ".oaaaao.", ".oooooo.", "........", "........"]
     p = Project(8, 8)
-    p.state["design_defaults"] = {"house_style_version": 4}
     p.apply({"type": "pixel-art", "name": "box", "rows": rows, "palette": {".": "transparent", "o": "#111111",
                                                                           "a": "#3a7bd5", "d": "#1f4f99"}})
     a = np.asarray(p.render())
@@ -103,7 +101,6 @@ def test_hand_drawn_outlines_and_ramps_are_respected_and_the_colour_cap_holds():
     many = {chr(65 + i): f"#{(i * 15) % 256:02x}{(80 + i * 9) % 256:02x}{(200 - i * 11) % 256:02x}" for i in range(16)}
     big = [".........."] + ["." + "".join(chr(65 + (x + y) % 16) * 1 for x in range(8)) + "." for y in range(8)] + [".........."]
     q = Project(10, 10)
-    q.state["design_defaults"] = {"house_style_version": 4}
     q.apply({"type": "pixel-art", "name": "busy", "rows": big, "palette": {".": "transparent", **many}})
     assert len(colours(q.render())) <= 16
 
@@ -111,7 +108,7 @@ def test_hand_drawn_outlines_and_ramps_are_respected_and_the_colour_cap_holds():
 def test_svg_and_schema_follow_the_finish():
     p = sprite()
     svg = p.export(format="SVG").decode()
-    ramp = colours(p.render()) - colours(sprite(version=3).render())
+    ramp = colours(p.render()) - colours(sprite(shading=False, outline=False).render())
     assert ramp and all(("#%02x%02x%02x" % c) in svg or ("rgb(%d,%d,%d)" % c) in svg for c in ramp)
     with pytest.raises(VixlError, match="shading"):
         sprite(shading={"light": "left"})

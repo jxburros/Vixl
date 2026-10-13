@@ -526,25 +526,24 @@ def _directed(result, kind, seed, variety, workspace):
         recommend = {"layouts": item["layouts"], "looks": item["looks"], "styles": item["styles"]}
         direction = roll_document(workspace=workspace, seed=seed, variety=variety, kind=kind, recommend=recommend)
         result["direction"] = direction
-        if direction.get("house_style_version", 1) > 1:
-            chosen = direction["direction"]
-            purpose = direction.get("purpose")
-            notes = {}
-            for key, kind_name in (("layouts", "layout"), ("looks", "look"), ("styles", "style")):
-                pick = chosen.get(kind_name)
-                notes[key] = {
-                    "rolled": pick,
-                    "in_recommendations": pick in recommend[key],
-                    "alternatives": [{"name": name, "tier": tier_of(key, name, purpose)}
-                                     for name in recommend[key] if name != pick],
-                }
-            result["recommendations"] = {
-                "note": "The direction is one seeded roll from the house style for this purpose and variety level, "
-                        "favouring the recommended layouts, looks and styles where the level allows their tier. "
-                        "The other recommendations are opt-in alternatives: lock one (locks={layout: NAME}) or raise "
-                        "the variety level to roll bolder tiers.",
-                **notes,
+        chosen = direction["direction"]
+        purpose = direction.get("purpose")
+        notes = {}
+        for key, kind_name in (("layouts", "layout"), ("looks", "look"), ("styles", "style")):
+            pick = chosen.get(kind_name)
+            notes[key] = {
+                "rolled": pick,
+                "in_recommendations": pick in recommend[key],
+                "alternatives": [{"name": name, "tier": tier_of(key, name, purpose)}
+                                 for name in recommend[key] if name != pick],
             }
+        result["recommendations"] = {
+            "note": "The direction is one seeded roll from the house style for this purpose and variety level, "
+                    "favouring the recommended layouts, looks and styles where the level allows their tier. "
+                    "The other recommendations are opt-in alternatives: lock one (locks={layout: NAME}) or raise "
+                    "the variety level to roll bolder tiers.",
+            **notes,
+        }
     return result
 
 

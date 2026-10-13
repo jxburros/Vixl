@@ -171,7 +171,6 @@ so it measures installation, not typeface design).
 ```bash
 python -m evals.house_style                                   # every brief at low, medium and high
 python -m evals.house_style --compare evals/house-style-baseline.json   # exit 1 on a regression
-python -m evals.house_style --house-style 1                   # the 0.20-0.22 rolls, for a before/after
 python -m evals.house_style --limit 8 --levels medium         # a quick look
 ```
 
