@@ -24,8 +24,9 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "tests" / "fixtures" / "convert"
 # v0.10.0 writes archive format 1; v0.20.0 predates the 0.21 render changes (lookup field, open-shape fill, the old
 # temperature/tint scale); v0.22.1 predates the 0.23 strength and leading defaults; v0.26.0 is the last release with
-# house-style versioning; afaee33 is main before the compatibility code was removed.
-RELEASES = ("v0.10.0", "v0.20.0", "v0.22.1", "v0.26.0", "afaee33")
+# house-style versioning; afaee33 is main before the compatibility code was removed; 9d0a4ce is the last build with
+# inset strokes, and its SVGs carry the version-1 document payload.
+RELEASES = ("v0.10.0", "v0.20.0", "v0.22.1", "v0.26.0", "afaee33", "9d0a4ce")
 
 SPRITE = ["..####..", ".#oooo#.", "#oo##oo#", "#oooooo#", "#o#oo#o#", "#oo##oo#", ".#oooo#.", "..####.."]
 LUT = [[r / 1, g / 1, b / 1] for b in (0, 1) for g in (0, 1) for r in (0, 1)]
@@ -125,6 +126,11 @@ def build(out):
             continue
         project.save(str(out / f"{name}.vixl"))
         project.export(str(out / f"{name}.png"))
+        if name == "shapes":
+            # Builds between the SVG round trip and payload version 2 embedded the document in their SVG.
+            svg = project.export(format="SVG")
+            if b'<metadata id="vixl-document">' in svg and b'"version":1' in svg:
+                (out / "shapes.svg").write_bytes(svg)
         manifest["documents"][name] = {"made": made, "skipped": skipped}
     if designed is not None:
         made = []

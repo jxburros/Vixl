@@ -43,6 +43,11 @@ project = convert_project("poster-0.20.vixl")                      # a Project i
 convert_directory("old-docs", "converted")
 ```
 
+An SVG exported by a development build between the SVG round trip and payload version 2 carries its document as
+payload version 1 (state plus base64 images and fonts); current Vixl imports such a file as plain SVG elements.
+`vixl convert OLD.svg -o NEW.vixl` reads the payload instead and writes the editable document, converted like a
+`.vixl` saved by 0.26 (an SVG whose payload left out images is refused: convert the original `.vixl`).
+
 Other options: `--history drop` starts a new undo history instead of converting every revision, and
 `--saved-by VERSION` names the release that saved a document whose `vixl_version` is missing or wrong.
 
@@ -74,13 +79,16 @@ applies to; rules without one look at the fields themselves.
 | `heading-wrap` | | Boxed headings in documents before house style 4 get `wrap: "greedy"`, so resizing the box keeps greedy breaks. | Warning: a resize balances the lines. |
 | `scatter-distribution` | | `pattern-scatter` tiles without a `distribution` get `poisson`, so a rebuild keeps every copy where it is. | Warning: a rebuild lays the tile out progressively. |
 | `closed-stroke-geometry` | 0.27 | When the installed renderer draws closed strokes flush with the box: plain rectangles, rounded rectangles, capsules and ellipses with a visible stroke move in by half the stroke on every side (the centre stays put, also when rotated), keeping their corner radius (a default radius is stored explicitly). The ink lands where it was. The source shape kept by an `irregular` record and the positions layer comps store move too. | Warning: the stroke now starts at the box edge, so the shape looks half a stroke larger. |
-| `styled-stroke-align` | 0.27 | A dashed, multi-stroke or profiled stroke on a closed shape without `stroke_align` gets `"center"`, its old default. | Warning (with the flush renderer): the stroke now sits inside. |
+| `rectangle-radius` | 0.27 | A `rectangle` with a non-zero `radius` (drawn rounded in PNG, square in SVG and PDF) becomes the `rounded-rectangle` it drew as, as `normalize` now does for new operations. | Warning. |
+| `styled-stroke-align` | 0.27 | A dashed, multi-stroke or profiled stroke, or a catalog shape's stroke (heart, arrow, speech bubble …), without `stroke_align` gets `"center"`, its old default. | Warning (with the flush renderer): the stroke now sits inside. |
+| `polygon-joins` | 0.27 | With the flush renderer: plain polygons, stars and shortcut shapes keep their box; their stroke's outer corners were round and are now mitred, so they get `line_join: "round"`. | Warning: the corners are sharp. |
+| `thick-stroke` | 0.27 | Warning only, with the flush renderer: a plain stroke as wide as its shape drew nothing and now fills the shape with the stroke colour. | Same. |
 | `pdf-bleed` | 0.23 | Warning only: the canvas holds a bleed rounded up to whole pixels, so a PDF export is a pixel larger than trim plus bleed. | Same. |
 | `history` | | Every undo revision is converted the same way (`--history drop` keeps only the current state); the report gives the count under `history`. A warning says so when the history could not be read. | Same. |
 | `transaction` | | A document saved inside an open transaction is rolled back to its last committed state (warning). | Same. |
 
-Polygons and stars already drew their stroke from the edge inward, and lines, arcs and paths keep their geometry, so
-the stroke rules leave them alone. Which stroke model applies is measured on the installed renderer
+Polygons and stars already drew their stroke from the edge inward (only their corners change), and lines, arcs and
+paths keep their geometry. Which stroke model applies is measured on the installed renderer
 (`report.stroke_model`: `inset` or `flush`), so a document converted by a release that still insets strokes keeps its
 boxes.
 
@@ -247,15 +255,15 @@ dropped parameter is a `parameter` warning.
 
 ## How it is tested
 
-`tests/fixtures/convert/` holds small documents made by v0.10.0 (format 1), v0.20.0, v0.22.1, v0.26.0 and the last
-commit before the compatibility code was removed, each with the render that release made of it
-(`python -m scripts.convert_fixtures` rebuilds them from the tags). `tests/test_convert.py` converts every one,
-opens and schema-checks the result, and compares its render with the old one: a pixel counts as different when a
-channel moves by more than 32 levels, and at most 0.5 % of pixels may differ (2.5 % for irregular outlines, whose
-ribbons are drawn differently since render parity; 5 % for v0.10 text, set about a pixel higher since 0.20; 1 % for
-v0.22 shapes, where a turned layer lands a pixel over), with a mean difference under two levels (gradients are
-dithered now). Edits after conversion are tested too: a chart redrawn in a `preserve` conversion matches the old
-render and an irregular outline regrown from its recipe comes out the same, while in a `current` conversion they
-change. The stroke rule was checked against a renderer patched to draw closed strokes flush: `preserve` conversions of
-the shape fixtures stay within 0.3 % of the old renders (0.8 % if the radius were reduced by half a stroke too), and
-`current` ones differ by 11–15 %.
+`tests/fixtures/convert/` holds small documents made by v0.10.0 (format 1), v0.20.0, v0.22.1, v0.26.0, the last
+commit before the compatibility code was removed (afaee33) and the last build with inset strokes (9d0a4ce, which also
+wrote a version-1 SVG), each with the render that release made of it (`python -m scripts.convert_fixtures` rebuilds
+them from the tags). `tests/test_convert.py` converts every one, opens and schema-checks the result, and compares
+its render with the old one: a pixel counts as different when a channel moves by more than 32 levels, and at most
+0.5 % of pixels may differ, with a mean difference under two levels (gradients are dithered now). The exceptions are
+measured differences with no field behind them: 2.5 % for irregular outlines (their ribbons are drawn differently
+since render parity), 2.5 % and a mean of three for the shape fixtures (the old renderer supersampled thick strokes
+and put their anti-aliased edges up to half a pixel off the exact outline the flush rule draws; a `current`
+conversion of the same files differs by 12–19 %), and 5 % for v0.10 text (set about a pixel higher since 0.20).
+Edits after conversion are tested too: a chart redrawn and an irregular outline regrown from its recipe in a
+`preserve` conversion match the old render, and in a `current` conversion they do not.

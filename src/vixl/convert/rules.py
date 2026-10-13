@@ -403,15 +403,66 @@ def styled_stroke_align(ctx, state):
     for layer in layers(state):
         if layer.get("type") != "shape" or "stroke_align" in layer or not strokes.closed(layer):
             continue
-        if not strokes.styled(layer) or not strokes.stroke_visible(ctx.project, layer):
+        if not (strokes.styled(layer) or strokes.catalog(layer)) or not strokes.stroke_visible(ctx.project, layer):
             continue
         if ctx.preserve:
             layer["stroke_align"] = "center"
-            ctx.change("styled-stroke-align", "The styled stroke was centred on the outline by default; that is now "
-                       "explicit (closed shapes default to inside)", layer, "stroke_align", after="center")
+            ctx.change("styled-stroke-align", "The styled or catalog shape's stroke was centred on the outline by "
+                       "default; that is now explicit (closed shapes default to inside)", layer, "stroke_align",
+                       after="center")
         elif ctx.stroke_model == "flush":
             ctx.warn("styled-stroke-align", "The styled stroke now sits inside the shape instead of on its outline",
                      layer)
+
+
+def rectangle_radius(ctx, state):
+    """A rectangle with a radius drew rounded in PNG and square in SVG and PDF; a radius now makes a rounded
+    rectangle everywhere (normalize does the same for new operations)."""
+    if not ctx.older(CURRENT_SINCE):
+        return
+    for layer in layers(state):
+        radius = layer.get("radius")
+        if layer.get("type") != "shape" or layer.get("shape") != "rectangle" or not radius or radius == [0, 0, 0, 0]:
+            continue
+        if ctx.preserve:
+            layer["shape"] = "rounded-rectangle"
+            ctx.change("rectangle-radius", "A rectangle with a radius is stored as the rounded rectangle it drew as",
+                       layer, "shape", before="rectangle", after="rounded-rectangle")
+        else:
+            ctx.warn("rectangle-radius", "This rectangle has a radius: PNG drew it rounded and SVG and PDF square",
+                     layer, "radius")
+
+
+def polygon_joins(ctx, state):
+    """Plain polygons, stars and shortcut shapes kept their box but drew round outer corners; the flush rule mitres
+    them."""
+    if ctx.stroke_model != "flush" or not ctx.older(CURRENT_SINCE):
+        return
+    for layer in layers(state):
+        if not strokes.plain_corners(layer) or "line_join" in layer or not strokes.stroke_visible(ctx.project, layer):
+            continue
+        if ctx.preserve:
+            layer["line_join"] = "round"
+            ctx.change("polygon-joins", "The stroke's corners were round; that is now explicit (the default is "
+                       "mitred)", layer, "line_join", after="round")
+        else:
+            ctx.warn("polygon-joins", "The stroke's outer corners are now sharp instead of round", layer)
+
+
+def thick_stroke(ctx, state):
+    """A plain stroke too wide for its shape drew nothing; it now fills the shape."""
+    if ctx.stroke_model != "flush" or not ctx.older(CURRENT_SINCE):
+        return
+    for layer in layers(state):
+        if not (strokes.plain_box(layer) or strokes.plain_corners(layer)):
+            continue
+        width, height, stroke = layer.get("width"), layer.get("height"), layer.get("stroke_width", 1)
+        if not all(isinstance(v, (int, float)) for v in (width, height, stroke)):
+            continue
+        if stroke >= min(width, height) - 1 and strokes.stroke_visible(ctx.project, layer):
+            ctx.warn("thick-stroke", "The stroke is as wide as the shape: it used to draw nothing and now fills the "
+                     "whole shape with the stroke colour; hide the layer or thin the stroke for the old look", layer,
+                     "stroke_width")
 
 
 def pdf_bleed(ctx, state):
@@ -471,7 +522,10 @@ RULES = (
     ("chart-padding", chart_padding),
     ("heading-wrap", heading_wrap),
     ("scatter-distribution", scatter_distribution),
+    ("rectangle-radius", rectangle_radius),
     ("closed-stroke-geometry", closed_stroke_geometry),
     ("styled-stroke-align", styled_stroke_align),
+    ("polygon-joins", polygon_joins),
+    ("thick-stroke", thick_stroke),
     ("pdf-bleed", pdf_bleed),
 )

@@ -53,6 +53,41 @@ def read_archive(path, limits=None):
     return manifest, assets
 
 
+def read_svg(path, limits=None):
+    """``(manifest, assets)`` from an SVG exported by a build that embedded its document as payload version 1 (the
+    state and base64 archive members in ``<metadata id="vixl-document">``). Payload version 2 SVGs import directly."""
+    import base64
+    from html import unescape
+    import re
+
+    from ..model import Limits
+
+    limits = limits or Limits()
+    path = Path(path)
+    require(path.is_file(), f"File does not exist: {path}", "not_found", field="path")
+    require(path.stat().st_size <= limits.max_project_bytes, "SVG exceeds byte limit", "resource_limit")
+    match = re.search(rb'<metadata id="vixl-document">(.*?)</metadata>', path.read_bytes(), re.S)
+    require(match, f"{path.name} carries no Vixl document; import it with import-document instead", "invalid_project")
+    try:
+        payload = json.loads(unescape(match.group(1).decode("utf-8")))["vixl"]
+    except (KeyError, TypeError, ValueError) as exc:
+        raise VixlError("invalid_project", f"The SVG's Vixl metadata is not readable: {exc}") from exc
+    require(payload.get("format") == "vixl-svg-document" and payload.get("version") == 1,
+            "Only version-1 SVG payloads need converting; a current Vixl SVG imports with import-document",
+            "invalid_project")
+    require(not payload.get("omitted_assets"), "The SVG left out some images (" +
+            ", ".join(payload.get("omitted_assets") or []) + "); convert the original .vixl instead", "missing_asset")
+    state = payload["document"]["state"]
+    assets = {name: base64.b64decode(data) for name, data in (payload.get("assets") or {}).items()}
+    head = "rev_svg"
+    manifest = {"format_version": payload["document"].get("format_version", 2), "vixl_version": None,
+                "state": state, "nodes": {head: {"id": head, "parent": None, "operations": [],
+                                                 "label": "Imported from SVG", "state": deepcopy(state)}},
+                "head": head, "branches": {"main": head}, "checkpoints": {}, "current_branch": "main",
+                "redo_stack": [], "transaction": None, "asset_hashes": {}}
+    return manifest, assets
+
+
 def scratch(state, assets):
     """A project over ``state`` for colour, font and text measurement (never saved)."""
     from ..project import Project
@@ -231,7 +266,7 @@ def verify(path):
 
 def convert_file(source, output=None, *, look="preserve", dry_run=False, overwrite=False, history="keep",
                  saved_by=None, stroke_model=None):
-    """Convert one ``.vixl`` file. ``output`` defaults to ``NAME-converted.vixl`` beside the source; an existing
+    """Convert one ``.vixl`` file (or an SVG carrying a version-1 Vixl payload). ``output`` defaults to ``NAME-converted.vixl`` beside the source; an existing
     output is replaced only with ``overwrite``. ``dry_run`` converts and checks without writing. Returns the report:
     ``{source, output, saved_by, look, changes, warnings, counts}``."""
     source = Path(source)
@@ -242,7 +277,12 @@ def convert_file(source, output=None, *, look="preserve", dry_run=False, overwri
                 "output_exists", field="output")
         require(output.resolve() != source.resolve(), "Write the converted document to a new file", "output_exists",
                 field="output")
-    manifest, assets = read_archive(source)
+    if source.suffix.lower() == ".svg":
+        manifest, assets = read_svg(source)
+        # Version-1 payloads were written only by builds that still reported 0.26.0 (before the flush strokes).
+        saved_by = saved_by or "0.26.0"
+    else:
+        manifest, assets = read_archive(source)
     converted, report = convert_manifest(manifest, assets, look=look, history=history, saved_by=saved_by,
                                          stroke_model=stroke_model)
     folder = output.parent if not dry_run else None

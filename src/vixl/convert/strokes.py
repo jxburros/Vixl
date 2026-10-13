@@ -67,6 +67,22 @@ def plain_box(layer):
             and not catalog_active(layer) and not layer.get("distort") and not layer.get("_distort_groups"))
 
 
+def catalog(layer):
+    from ..shape_catalog import active as catalog_active
+
+    return bool(catalog_active(layer))
+
+
+def plain_corners(layer):
+    """A plain closed shape other than the four box shapes (polygon, star, shortcut shapes such as triangle): its
+    box stays, only the outer corners of its stroke change."""
+    from ..geometry import PATH_SHAPES
+
+    return (layer.get("type", "shape") == "shape" and layer.get("shape") not in BOX_SHAPES
+            and layer.get("shape") not in PATH_SHAPES and closed(layer) and not styled(layer) and not catalog(layer)
+            and not layer.get("distort") and not layer.get("_distort_groups"))
+
+
 def closed(layer):
     from ..geometry import is_open_shape
 
