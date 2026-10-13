@@ -8,7 +8,7 @@ vixl                      # interactive shell (don't use from an agent; use comm
 vixl COMMAND --help       # exact argument syntax for any editing command
 ```
 
-**Global options** (before or after the command): `--project/-p FILE`, `--json` (structured
+**Global options** (before or after the command): `--project/-p FILE`, `--json` (JSON results in a terminal, structured
 errors on stderr), `--allow-linked` (trust linked file references), `--plugins` (enable installed
 filter/provider entry points — trusted code), `--max-pixels N`, `--detail brief|compact|full`, `--version`.
 
@@ -16,7 +16,7 @@ Agent conventions:
 
 - Always pass `-p FILE.vixl`. Without it Vixl uses the project recorded by `vixl open` in
   `./.vixl-session.json`.
-- Add `--json` so errors are machine-readable: `{"error":"layer_not_found","message":…,"suggestions":[…]}`, exit 1.
+- Results are full JSON whenever stdout is not a terminal (an agent's shell is not); in a terminal they are a short summary unless `--json` or `VIXL_JSON=1` is set. Add `--json` so errors are machine-readable too: `{"error":"layer_not_found","message":…,"suggestions":[…]}`, exit 1.
 - Editing commands autosave and print a compact result (changed values keyed by layer ID); `--detail full` adds
   before/after snapshots.
 - Quote `#` colors (`'#ff8800'`), JSON arguments, and text.

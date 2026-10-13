@@ -56,6 +56,11 @@ vixl -p hello.vixl render --out hello-preview.png
 vixl -p hello.vixl export hello.png
 ```
 
+In a terminal each command prints a short summary (`created hello.vixl  800×600  bg #18283b`,
+`check passed (bounds, contrast) — 0 errors, 0 warnings`, `exported hello.png (16.2 KB)`). When output is piped or
+redirected, or you pass `--json` or set `VIXL_JSON=1`, it prints the full JSON instead, so scripts and agents always
+get JSON.
+
 You now have an editable `hello.vixl` and a PNG export. Open the PNG to inspect the actual
 appearance. `check` covers the rules requested, not every possible design problem. The
 bundled DejaVu Sans font makes proofing work offline; for finished brand work, choose a

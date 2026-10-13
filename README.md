@@ -95,6 +95,7 @@ vixl -p hello.vixl render --out hello-preview.png
 vixl -p hello.vixl export hello.png
 ```
 
+In a terminal each command prints a short summary; piped output, `--json` and `VIXL_JSON=1` give the full JSON.
 Editing commands autosave; pass `-p` explicitly in scripts. Inspect the preview before
 handoff. The [first-design walkthrough](docs/getting-started.md) explains undo,
 checkpoints, JSON batches and Python. Use the bundled font for proofing; choose suitable

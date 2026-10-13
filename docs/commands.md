@@ -62,6 +62,8 @@ See [design tools and template production](design-tools.md) for groups, clipping
 
 Global options can appear before or after the command: `--project FILE` / `-p FILE`, `--json`, `--allow-linked`, `--plugins`, `--max-pixels N`, `--version`. The default project is stored in the current directory's `.vixl-session.json`. Use explicit paths in CI and concurrent workflows. `vixl COMMAND --help` prints syntax for editing commands.
 
+**Output.** In a terminal a command prints a short human summary (`created a.vixl  800×600  bg #18283b`, `added text "title"`, `check failed — 1 error, 0 warnings` with one line per finding, `exported hello.png (16.2 KB)`); a result with no dedicated summary lists its main fields. When stdout is not a terminal (a pipe, a file, CI), or `--json` is given, or `VIXL_JSON=1` is set, the command prints the full JSON result exactly as before. Exit codes do not change. Errors are one `ERROR:` line on stderr (with suggestions appended in a terminal), or the JSON error with `--json` or `VIXL_JSON=1`.
+
 ## Installed application updates
 
 For the Windows installer edition, these commands work without an open project:

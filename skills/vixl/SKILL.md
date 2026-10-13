@@ -371,7 +371,7 @@ Use `vixl_roll(apply=true, slots={...})` or `roll --apply --set title=...` to ap
 | You have… | Use | Reference |
 | --- | --- | --- |
 | `vixl_*` tools in your tool list | **MCP** — typed tools, compact diffs, inline previews | [references/mcp-rest-python.md](references/mcp-rest-python.md) |
-| A shell with `vixl` on PATH | **CLI** (add `--json` for machine errors) or `vixl apply ops.json` | [references/cli.md](references/cli.md) |
+| A shell with `vixl` on PATH | **CLI** (JSON when piped or with `--json`/`VIXL_JSON=1`; a terminal gets a short summary) or `vixl apply ops.json` | [references/cli.md](references/cli.md) |
 | Python with `vixl` importable | `from vixl import Project` | [references/mcp-rest-python.md](references/mcp-rest-python.md) |
 | A running `vixl serve` | REST (`POST /operations`, `GET /render`) | [references/mcp-rest-python.md](references/mcp-rest-python.md) |
 
