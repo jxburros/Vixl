@@ -357,6 +357,8 @@ timeline exists. Since 0.24.1 the other 0.24 fields have flags too: `animate --i
 
 Use `schema text shape` for focused schemas, inline JSON or stdin for workflow requests, and batches up to 64 MiB. Workspace resources use the CLI current directory. Ignore `.vixl-session.json` in Git. Multi-size copies: `adapt-layout --sizes instagram-post story --directory out --formats png`; review each output. Layout recomposition: `adapt-layout --size story --recompose` (or `--options '{"recompose": true}'` with `--sizes`).
 
+A document saved by 0.26 or earlier opens after `vixl convert OLD.vixl -o NEW.vixl [--look preserve|current] [--dry-run] [--report R.json]` (a folder: `vixl convert DIR --out OUTDIR`); saved MCP calls convert with `vixl convert-batch OLD.json`. Nothing is overwritten without `--overwrite`.
+
 For Git review, `unpack design.vixl design-source` writes current state as stable JSON (`project.json`, with asset hashes) plus asset files into a new folder; `pack design-source reviewed.vixl [--overwrite]` validates paths, sizes and hashes and writes a portable archive. History and history-only assets are intentionally omitted; registered fonts are kept. Keep the original for undo and commit external linked sources too.
 
 Emoji: `vixl emoji list|get|template|replace|install|settings|reset|requirements|destinations|export` (`vixl -p F.vixl emoji settings --mode font` prefers the font; bundled art is the default). House style: `vixl roll` rolls from the current house style.

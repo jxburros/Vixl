@@ -1,0 +1,93 @@
+{
+ "documents": {
+  "effects": {
+   "made": [
+    "sky",
+    "warm",
+    "warm",
+    "sun",
+    "temperature",
+    "card",
+    "tint"
+   ],
+   "skipped": []
+  },
+  "irregular": {
+   "made": [
+    "card",
+    "paper"
+   ],
+   "skipped": [
+    {
+     "error": "Unknown operation: irregular",
+     "name": "card",
+     "operation": "irregular"
+    },
+    {
+     "error": "Unknown operation: tear",
+     "name": "paper",
+     "operation": "tear"
+    }
+   ]
+  },
+  "shapes": {
+   "made": [
+    "rect",
+    "rounded",
+    "oval",
+    "hexagon",
+    "rule"
+   ],
+   "skipped": [
+    {
+     "error": "'capsule' is not one of ['rectangle', 'rounded-rectangle', 'ellipse', 'polygon', 'star', 'line']",
+     "name": "pill",
+     "operation": "shape"
+    },
+    {
+     "error": "Additional properties are not allowed ('dash' was unexpected)",
+     "name": "dashed",
+     "operation": "shape"
+    },
+    {
+     "error": "'path' is not one of ['rectangle', 'rounded-rectangle', 'ellipse', 'polygon', 'star', 'line']",
+     "name": "open path",
+     "operation": "shape"
+    },
+    {
+     "error": "Additional properties are not allowed ('rotation' was unexpected)",
+     "name": "tilted",
+     "operation": "shape"
+    }
+   ]
+  },
+  "sprite": {
+   "made": [
+    "coin",
+    "resize coin"
+   ],
+   "skipped": [
+    {
+     "error": "Unknown operation: keyframe",
+     "name": "coin",
+     "operation": "keyframe"
+    },
+    {
+     "error": "Unknown operation: keyframe",
+     "name": "coin",
+     "operation": "keyframe"
+    }
+   ]
+  },
+  "text": {
+   "made": [
+    "title",
+    "text-layout title",
+    "body",
+    "text-layout body"
+   ],
+   "skipped": []
+  }
+ },
+ "vixl_version": "0.10.0"
+}

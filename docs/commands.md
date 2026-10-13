@@ -37,6 +37,7 @@ project with appropriate layers or input files. See each guide for complete crea
 | App animation package | `workflow app-animation-package --request package.json --workspace .` | [App animation packages](animation-authoring.md#app-animation-packages) |
 | Six-second loop | `template new video-tip -o tip.vixl --set title=… --set subtitle=… --set cta=…` (also `video-launch`, `video-event`) | [Short templates](animation-authoring.md#joint-pose-keys-and-short-templates) |
 | Readable source folder | `unpack design.vixl design-source`, `pack design-source design.vixl [--overwrite]` | [Reviewing in Git](#reviewing-editable-projects-in-git) |
+| Documents and tool calls from earlier releases | `convert OLD.vixl -o NEW.vixl [--look preserve\|current] [--dry-run] [--report R.json]`, `convert DIR --out OUTDIR`, `convert-batch OLD-CALLS.json` | [Converting](converting.md) |
 | Emoji catalog and packs | `emoji list --query wave`, `emoji template face --out smile.vixl`, `emoji export --destination discord --emojis 👋 --out pack.zip` | [Emoji](#emoji-024) |
 
 Since 0.19.0, `export --alpha auto|keep|flatten` controls supported image formats.

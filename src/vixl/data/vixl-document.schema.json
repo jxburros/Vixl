@@ -6,11 +6,8 @@
  "type": "object",
  "properties": {
   "format_version": {
-   "enum": [
-    1,
-    2
-   ],
-   "description": "Archive format version; Vixl writes 2 and reads 1 and 2."
+   "const": 2,
+   "description": "Archive format version: 2. Older archives open after vixl convert."
   },
   "vixl_version": {
    "type": "string",
@@ -876,6 +873,10 @@
     "irregular": {
      "type": "object",
      "description": "Irregular (torn, rough) edge recipe and its source geometry."
+    },
+    "tear": {
+     "type": "object",
+     "description": "Torn-edge record: the tear recipe, mask or path mode and its rim and fibre layers."
     },
     "die_cut": {
      "type": "object",

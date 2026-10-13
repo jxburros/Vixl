@@ -218,6 +218,9 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
 - **Source folders** — `vixl unpack design.vixl design-source` writes the current state as stable JSON (`project.json`,
   with asset hashes) plus asset files (no history; registered fonts kept); `vixl pack design-source out.vixl` validates and rebuilds it. See
   [cli](references/cli.md).
+- **Documents from earlier releases** — this release opens only current documents: run `vixl convert OLD.vixl -o NEW.vixl`
+  once (`--look preserve` keeps the old look, `--look current` lists what changes; the report names every change), and
+  `vixl convert-batch OLD.json` for saved tool calls from the 51-tool server. See `docs/converting.md`.
 - **App delivery** — `vixl_apply(workflow='app-animation-package', request={states, default_state, output, themes?, transitions?, format?})`
   writes named states, light/dark variables, transitions, reduced-motion PNGs, editable masters, a manifest and an HTML
   consumer. `screen-capture` (`{output, bbox? | window?, all_screens?}`) is an explicit local desktop capture, not

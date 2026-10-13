@@ -191,6 +191,26 @@ def validation(result, command):
     return [head, *tail([f"  {c.get('rule')}" for c in failed], [])]
 
 
+def conversion(result, command):
+    """``vixl convert``: one line per file, then the warnings (what was not converted or will look different)."""
+    summary = result["summary"]
+    lines = []
+    for report in result["converted"]:
+        counts = report.get("counts") or {}
+        target = os.path.basename(str(report["output"])) if report.get("output") else "(dry run)"
+        saved = f" (saved by {report['saved_by']})" if report.get("saved_by") else ""
+        lines.append(f"converted {os.path.basename(str(report['source']))}{saved} → {target}  "
+                     f"{plural(counts.get('changes', 0), 'change')}, {plural(counts.get('warnings', 0), 'warning')}")
+    for item in result.get("failed") or []:
+        lines.append(f"failed {os.path.basename(str(item['source']))}: {item.get('message', item.get('error'))}")
+    if len(result["converted"]) + len(result.get("failed") or []) > 1:
+        lines.insert(0, f"{plural(summary['converted'], 'file')} converted, {summary['failed']} failed — "
+                        f"{plural(summary['changes'], 'change')}, {plural(summary['warnings'], 'warning')}")
+    rows = [f"  warning {entry.get('layer') or entry.get('at') or '-'}: {entry['reason']}"
+            for report in result["converted"] for entry in report.get("warnings") or []]
+    return [*tail(lines, []), *tail(rows, [])]
+
+
 def assertion(result, command):
     return [f"assertion passed: {result['rule']}"]
 
@@ -255,6 +275,8 @@ def summarize(result, command=None):
             lines = written(result, command)
         elif "valid" in result and isinstance(result.get("checks"), list):
             lines = validation(result, command)
+        elif isinstance(result.get("converted"), list) and isinstance(result.get("summary"), dict):
+            lines = conversion(result, command)
         elif result.get("passed") is True and isinstance(result.get("rule"), str):
             lines = assertion(result, command)
         else:
