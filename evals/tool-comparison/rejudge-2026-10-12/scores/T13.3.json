@@ -1,0 +1,60 @@
+{
+  "lanes": {
+    "KWNH": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 4,
+      "craft_sub": {
+        "hierarchy": 4,
+        "spacing": 5,
+        "type": null,
+        "colour": 5,
+        "finish": 5,
+        "motif": 4
+      },
+      "defects": [
+        {
+          "where": "keeper-idle.gif.frames.png, face",
+          "what": "No eye or comparable face detail makes the profile read less distinctly at 32px.",
+          "severity": "minor"
+        },
+        {
+          "where": "keeper-idle.gif.frames.png, feet",
+          "what": "Boots merge into one broad shape in idle, weakening the leg silhouette.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Crisp limited-palette character with a clear hood and lantern and readable stepping poses. All five r1 views inspected; 32px frames, 192x32 sheet, binary alpha, 13 opaque colours, common baseline, exact JSON rectangles/durations and GIF loops verified. GIFs exactly match nearest-neighbor 8x sheet frames.",
+      "revision": 5,
+      "revision_notes": "Raincoat becomes red across retained frames; two readable raised-hand wave frames follow walk at x192/x224, 250ms each. Sheet is 256x32, JSON and new GIF agree exactly; existing animation timing and baseline remain intact."
+    },
+    "WBJG": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 5,
+      "craft_sub": {
+        "hierarchy": 5,
+        "spacing": 5,
+        "type": null,
+        "colour": 5,
+        "finish": 5,
+        "motif": 5
+      },
+      "defects": [],
+      "craft_notes": "Expressive readable profile with clear eye, coat shading, lantern and separated walk poses; economical detail works at actual sprite size. Every r1 view inspected. Binary transparency, 13 opaque colours, shared baseline, dimensions, JSON coordinates/durations and looped GIF timing verified; scaled GIF frames are pixel-exact nearest-neighbor matches.",
+      "revision": 5,
+      "revision_notes": "Exact requested structure: red coat on existing frames, two waving poses appended, 256x32 sheet, correct JSON names/rectangles/250ms durations and matching new wave GIF. Existing poses and timings are preserved."
+    }
+  },
+  "pairwise_round1": [
+    {
+      "a": "KWNH",
+      "b": "WBJG",
+      "publish": "b",
+      "margin": "clear",
+      "why": "WBJG's eye, coat detail and stronger silhouette give the keeper more character and readability at 32px."
+    }
+  ],
+  "judge": "3",
+  "test": "T13"
+}

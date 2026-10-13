@@ -1,0 +1,75 @@
+{
+  "lanes": {
+    "BHPS": {
+      "fidelity": 4,
+      "fidelity_misses": [
+        "PPTX and PDF do not look the same in provided renders: serif headings/numbers in PDF become sans serif in PPTX, and chart geometry differs."
+      ],
+      "craft": 4,
+      "craft_sub": {
+        "hierarchy": 4,
+        "spacing": 3,
+        "type": 4,
+        "colour": 5,
+        "finish": 4,
+        "motif": 3
+      },
+      "defects": [
+        {
+          "where": "deck.pptx.page-2.png, statistic cards",
+          "what": "The 35,280 number sits very close to the right edge of its card and does not share the 312 baseline.",
+          "severity": "minor"
+        },
+        {
+          "where": "deck.pdf.page-4.png, right year panel",
+          "what": "Oversized year panel consumes space and forces avoidable multi-line bullets.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Warm serif PDF, consistent coral title accents and tidy footers; all requested content, editable chart data and 3-sentence notes verified. Font substitution in the supplied LibreOffice views limits assessment of intended PPTX type.",
+      "revision": 5,
+      "revision_notes": "35,630 updated in statistics and notes, native Q4 value becomes 9,250, seven-page PDF and PPTX add Our regulars in correct position with exact quote, attribution and three-sentence notes. Other content and layout retained apart from required footer numbering."
+    },
+    "YYIO": {
+      "fidelity": 4,
+      "fidelity_misses": [
+        "By the numbers speaker notes contain four sentences, exceeding 2–3."
+      ],
+      "craft": 3,
+      "craft_sub": {
+        "hierarchy": 4,
+        "spacing": 4,
+        "type": 3,
+        "colour": 4,
+        "finish": 4,
+        "motif": 2
+      },
+      "defects": [
+        {
+          "where": "deck.pptx.page-1.png, top-right circles and lower rules",
+          "what": "Generic shadowed circles and rules do little to identify a harbor café.",
+          "severity": "minor"
+        },
+        {
+          "where": "deck.pptx.page-4.png and page-5.png, titles",
+          "what": "Amber title underline appears on priorities but disappears on What worked, weakening content-slide consistency.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Readable conventional meeting deck with balanced stat cards and well-spaced bullets; little distinctive visual character. PPTX text, native chart values and notes verified; PDF broadly matches with shadow and chart positioning differences.",
+      "revision": 5,
+      "revision_notes": "Correct total and Q4 value in slides and notes; inserted quote slide uses same card style and three-sentence notes. Chart subtitle and highlight appropriately change from Q3 to Q4, and footer numbering updates. Unchanged content preserved."
+    }
+  },
+  "pairwise_round1": [
+    {
+      "a": "BHPS",
+      "b": "YYIO",
+      "publish": "a",
+      "margin": "slight",
+      "why": "BHPS's warmer PDF typography, coastal waves and more consistent title/footer system give it stronger café character than YYIO's generic presentation template."
+    }
+  ],
+  "judge": "3",
+  "test": "T05"
+}

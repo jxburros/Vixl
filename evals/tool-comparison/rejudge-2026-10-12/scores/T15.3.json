@@ -1,0 +1,106 @@
+{
+  "lanes": {
+    "KVXZ": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 3,
+      "craft_sub": {
+        "hierarchy": 5,
+        "spacing": 3,
+        "type": 5,
+        "colour": 5,
+        "finish": 3,
+        "motif": 4
+      },
+      "defects": [
+        {
+          "where": "tile.png.view.png, kelp tips and shells",
+          "what": "Several dots collide with motif outlines, creating accidental knobs and tangencies.",
+          "severity": "minor"
+        },
+        {
+          "where": "preview-3x3.png.crop-1-2.png, shell outlines",
+          "what": "Shell outlines look slightly jagged at real pixels, while the SVG rendering is smoother.",
+          "severity": "minor"
+        },
+        {
+          "where": "preview-3x3.png.overview.png, repeat distribution",
+          "what": "Large navy curls dominate repeated diagonal bands while other regions are comparatively empty.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Subject-specific kelp and detailed shells, restrained palette and well centered readable label. Every r1 overview/vector/crop inspected. Seam crossings look continuous; 3x3 is an exact raster repeat and mug dimensions/300dpi metadata verified.",
+      "revision": 3,
+      "revision_notes": "Shells become amber and density falls about a third; all four outputs regenerated with continuous repeats and unchanged label. Remaining motifs and dots are substantially repositioned, an additional layout change beyond recolouring and removal."
+    },
+    "ONSJ": {
+      "fidelity": 4,
+      "fidelity_misses": [
+        "Mug PNG lacks the requested 300dpi resolution metadata."
+      ],
+      "craft": 4,
+      "craft_sub": {
+        "hierarchy": 5,
+        "spacing": 5,
+        "type": 5,
+        "colour": 4,
+        "finish": 5,
+        "motif": 4
+      },
+      "defects": [
+        {
+          "where": "tile.png.view.png, coral shells with amber outlines",
+          "what": "Amber internal strokes on coral shells have weak contrast and lose spiral detail.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Even organic spread, useful rotation variety and clean vector-like finish. All supplied r1 views/crops inspected with no visible seam. Files have requested pixel dimensions; preview has only small antialiasing differences from literal raster tiling, with matching motif geometry. Mug lacks dpi metadata.",
+      "revision": 3,
+      "revision_notes": "All shells now amber with clear navy detail, density visibly reduced around a third and every file regenerated. Existing wave placements and many dots also move; label remains unchanged and repeats remain continuous."
+    },
+    "VIGE": {
+      "fidelity": 4,
+      "fidelity_misses": [
+        "Mug PNG lacks 300dpi resolution metadata required for its specified physical print size."
+      ],
+      "craft": 5,
+      "craft_sub": {
+        "hierarchy": 5,
+        "spacing": 5,
+        "type": 5,
+        "colour": 5,
+        "finish": 5,
+        "motif": 5
+      },
+      "defects": [],
+      "craft_notes": "Cohesive simple shell, kelp and wave drawings with balanced scale variety, clean pixel edges and a refined double-border label. All ten r1 views inspected. No visible seams, exact 3x3 raster repeat, matching SVG and correct pixel dimensions; print metadata is the fidelity limitation.",
+      "revision": 3,
+      "revision_notes": "Shells are amber, element density drops roughly one third and every export is regenerated, retaining label and drawing style. Most surviving waves, fronds and dots are repositioned or rotated as well, so the arrangement drifts beyond the requested removals."
+    }
+  },
+  "pairwise_round1": [
+    {
+      "a": "KVXZ",
+      "b": "ONSJ",
+      "publish": "b",
+      "margin": "clear",
+      "why": "ONSJ distributes motifs more evenly and avoids KVXZ's accidental dot collisions and dominant curls."
+    },
+    {
+      "a": "KVXZ",
+      "b": "VIGE",
+      "publish": "b",
+      "margin": "clear",
+      "why": "VIGE's coherent motif drawing and clean, balanced repeat are more resolved than KVXZ's uneven visual rhythm."
+    },
+    {
+      "a": "ONSJ",
+      "b": "VIGE",
+      "publish": "b",
+      "margin": "slight",
+      "why": "VIGE has stronger shell contrast and a more cohesive illustration language and label finish."
+    }
+  ],
+  "judge": "3",
+  "test": "T15"
+}

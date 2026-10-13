@@ -1,0 +1,76 @@
+{
+  "lanes": {
+    "VAHU": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 3,
+      "craft_sub": {
+        "hierarchy": 4,
+        "spacing": 3,
+        "type": 4,
+        "colour": 4,
+        "finish": 4,
+        "motif": 3
+      },
+      "defects": [
+        {
+          "where": "instagram-story.png.crop-1-1.png, headline and rings",
+          "what": "Concentric rings run behind the headline and dominate the upper half, weakening the text-first hierarchy.",
+          "severity": "minor"
+        },
+        {
+          "where": "facebook-event.png.crop-1-1.png, product line",
+          "what": "Scattered background speckles intrude into text and resemble stray marks.",
+          "severity": "minor"
+        },
+        {
+          "where": "instagram-square.png.view.png, CTA",
+          "what": "Cream lettering on coral has weaker contrast than the otherwise strong text palette.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Cohesive warm palette and wave motif across sizes, with purposeful narrow banners; steam-in-disc motif reads ambiguously as a heater icon and feels overdecorated at larger sizes. Exact copy, dimensions and story text-safe area met.",
+      "revision": 4,
+      "revision_notes": "Correct new headline in all six and Spiced honey cortado in the four product-bearing sizes; optional product line remains omitted in narrow formats. Facebook product line wraps and date/CTA move down; story product line rebreaks. Motif and palette preserved, though square headline now crowds the ring."
+    },
+    "WGJQ": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 4,
+      "craft_sub": {
+        "hierarchy": 5,
+        "spacing": 4,
+        "type": 5,
+        "colour": 5,
+        "finish": 5,
+        "motif": 3
+      },
+      "defects": [
+        {
+          "where": "instagram-square.png.view.png, product list",
+          "what": "Long single-line product copy is considerably smaller than surrounding logistics and loses phone readability.",
+          "severity": "minor"
+        },
+        {
+          "where": "instagram-story.png.overview.png, upper sky",
+          "what": "Large gap between sun and brand text leaves a weakly used upper band.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Clean warm serif typography, excellent contrast and coherent calm coastal waves; layouts adapt to all six shapes and small banners stay legible. Motif is generic but restrained; exact copy and story safe zones satisfied.",
+      "revision": 4,
+      "revision_notes": "Both requested copy changes correct across applicable files. Most layout stable; square sun moves upward/right despite request being text-only, and headline sizes/rebreaks adjust to fit. Product line remains appropriately omitted in the two smallest formats."
+    }
+  },
+  "pairwise_round1": [
+    {
+      "a": "VAHU",
+      "b": "WGJQ",
+      "publish": "b",
+      "margin": "clear",
+      "why": "WGJQ's calmer composition and stronger text contrast avoid VAHU's distracting rings, speckles and low-contrast CTA."
+    }
+  ],
+  "judge": "3",
+  "test": "T09"
+}
