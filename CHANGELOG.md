@@ -4,6 +4,32 @@
 
 Work from the [craft plan](docs/craft-plan.md). Craft claims here wait for a blind re-judging; nothing below claims a craft gain on its own.
 
+### Finishing pass in the agent loop
+
+- The agent loop no longer ends when the checks pass. `briefs.START_HERE` (returned by `vixl_guide`), the MCP server
+  instructions, `skills/vixl/SKILL.md` and the agent-eval system prompt continue with a finishing pass: check
+  composition, a short critique against a craft checklist, one fix batch, a real-size look at two regions with
+  `vixl_render_preview(region=[x, y, w, h], max_width=w, max_height=h)`, then export. "Finish" still means applying a
+  look; the finishing pass is the critique and polish after the checks pass.
+- New guidance entry `finishing` holds the craft checklist (one focal point; the accent colour used once or twice; no
+  dead band; one left edge per column; the motif names the subject; nothing reads as a placeholder) and the pass.
+  `vixl_guide("finishing")` returns it (also as `craft`, `craft-checklist`, `critique`, `finishing-pass` or
+  `polish`), as do `vixl_resource_get(kind="guidance", name="finishing")`, the `testing` and `layout` capability
+  topics and the poster, social-card, banner-ad, document, stationery, diagram, slides and scene kinds.
+
+### Craft re-run
+
+- `python -m evals.craft_rerun` re-runs the Vixl lane of the tool comparison on its 16 briefs (both rounds, each in a
+  fresh workspace, through the agent harness), copies the other lanes' fixed deliverables from the last blind
+  re-judging, packages everything with the kit's `rejudge.py` and prints the judging prompt with the package paths.
+  It finds the kit in VixlExamples through `--examples`, `VIXL_EXAMPLES` or a sibling checkout; `--dry-run` prints
+  the plan without API calls, `--tests T02,T08` selects briefs, and `--model`/`--effort` pass through as in
+  `evals.run`. See [evals/README.md](evals/README.md#craft-re-run).
+- The re-run keeps the lane's sources: every `.vixl` document the agent leaves in its workspace, its operation batches
+  and the tool-call trace land in `src/` beside the outputs, and the lane rule asks the agent to save its `.vixl`
+  documents in the workspace.
+- `evals.harness.ClaudeAgent` takes a `system` prompt.
+
 ## 0.26.0
 
 ### Fixed and added

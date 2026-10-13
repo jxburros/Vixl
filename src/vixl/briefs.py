@@ -20,14 +20,19 @@ START_HERE = [
     "For art without a text frame (icons, characters, scenes, patterns), build from shape, pen, pathfinder, organic and radial-repeat.",
     "Type: vixl_fonts then vixl_font_pair (the bundled font is a proofing fallback).",
     "Finish: apply a look (glow, soft-shadow, hard-shadow, gradient, grain, paper …) so flat shapes read as finished; "
-    "tag a style (vixl_styles) when the brief names a look.",
+    "tag a style (vixl_styles) when the brief names a look. A look is part of building, not the finishing pass below.",
     "Tests: before building, write the brief's requirements as a check suite (suite-set; the kind's 'tests' lists a "
     "starter suite and rules to adapt; vixl_guide('testing') explains why and how) and keep it attached.",
     "Check while building: vixl_operations_apply(check=true, suites=true) reports findings and failing rules with each "
     "batch; fix them as you go.",
-    "Preview after tests pass: vixl_check and the suites clean (fix the 'fix' findings, glance at 'review'), then "
-    "vixl_render_preview for what tests cannot judge, then vixl_export_file.",
+    "Finishing pass after tests pass (vixl_guide('finishing')): vixl_check and the suites clean (fix the 'fix' "
+    "findings, glance at 'review'), then vixl_check(checks=['composition']) for dead bands, margin drift, uneven rhythm "
+    "and crowding, a short critique against the craft checklist, one fix batch, a real-size look at two regions with "
+    "vixl_render_preview(region=[x, y, w, h], max_width=w, max_height=h), then vixl_export_file.",
 ]
+# Other names an agent may ask vixl_guide for the finishing pass by.
+GUIDANCE_ALIASES = {"craft": "finishing", "craft-checklist": "finishing", "critique": "finishing",
+                    "finishing-pass": "finishing", "polish": "finishing"}
 # Art without a text frame: a rolled direction (palette, layout-apply steps) would steer these toward a poster.
 NO_DIRECTION = {"character", "scene", "pattern", "mandala", "animation", "pixel-art", "hand-drawing"}
 
@@ -41,7 +46,7 @@ KINDS = {
                      "Add chart groups for evidence, then run flow and print checks before exporting PDF."],
         "operations": ["page", "master", "text-flow", "rich-text", "chart"],
         "layouts": ["editorial-grid"], "looks": [], "styles": ["editorial"], "sizes": ["a4", "letter"],
-        "guidance": ["typography", "print"], "example": [{"type": "page", "action": "add", "name": "Findings"}],
+        "guidance": ["typography", "print", "finishing"], "example": [{"type": "page", "action": "add", "name": "Findings"}],
     },
     "comic": {
         "title": "Comic page or sequential panels",
@@ -63,7 +68,7 @@ KINDS = {
         "layouts": ["hero-statement", "typographic-poster", "event-poster", "big-number", "diagonal-band"],
         "looks": ["grain", "paper", "hard-shadow"], "styles": ["swiss", "brutalist", "editorial", "risograph"],
         "sizes": ["poster-18x24", "a3", "instagram-portrait"],
-        "guidance": ["typography", "layout"],
+        "guidance": ["typography", "layout", "finishing"],
         "example": [{"type": "layout-apply", "name": "hero-statement", "title": "Make it simple", "subtitle": "One idea, said well.",
                      "label": "Open call", "cta": "Join in", "palette": "midnight", "seed": 7}],
     },
@@ -77,6 +82,7 @@ KINDS = {
         "layouts": ["story-vertical", "thumbnail-bold", "quote-card", "big-number", "product-card"],
         "looks": ["soft-shadow", "outline", "glow"], "styles": ["neo-brutalist", "minimalist", "y2k"],
         "sizes": ["instagram-post", "story", "youtube-thumbnail", "linkedin-post"],
+        "guidance": ["finishing"],
         "example": [{"type": "layout-apply", "name": "quote-card", "title": "Design is how it works.", "subtitle": "Someone Wise",
                      "palette": "sunset", "seed": 3}],
     },
@@ -89,6 +95,7 @@ KINDS = {
         "operations": ["layout-apply", "gradient", "shape", "look"],
         "layouts": ["banner", "z-pattern", "split-screen"], "looks": ["gradient", "soft-shadow"],
         "styles": ["corporate-flat", "material"], "sizes": ["leaderboard", "web-banner", "linkedin-banner", "email-header"],
+        "guidance": ["finishing"],
         "example": [{"type": "layout-apply", "name": "banner", "title": "Your offer in one line", "subtitle": "A short detail",
                      "cta": "Get started", "palette": "ocean", "seed": 2}],
     },
@@ -177,7 +184,7 @@ KINDS = {
                        "radial-repeat"],
         "layouts": ["photo-caption", "rule-of-thirds"], "looks": ["glow", "grain", "paper", "watercolor", "gradient"],
         "styles": ["retro-futurism", "mid-century-modern", "hand-drawn", "risograph"], "sizes": ["instagram-post", "web-hero", "poster-18x24"],
-        "guidance": ["natural-color-light", "illustration-perspective", "imperfection"],
+        "guidance": ["natural-color-light", "illustration-perspective", "imperfection", "finishing"],
         "example": [
             {"type": "gradient", "name": "sky", "direction": "vertical", "start": "#1e3a8a", "end": "#fdba74"},
             {"type": "shape", "shape": "ellipse", "name": "sun", "x": 520, "y": 220, "width": 160, "height": 160, "fill": "#fde68a"},
@@ -242,6 +249,7 @@ KINDS = {
         "operations": ["layout-apply", "shape", "text", "guide", "grid", "place", "distribute", "align", "arrange-grid"],
         "layouts": ["big-number", "bento-grid", "f-pattern", "slide-content"], "looks": ["soft-shadow"],
         "styles": ["data-viz", "corporate-flat", "swiss"], "sizes": ["instagram-post", "slide", "a4"],
+        "guidance": ["finishing"],
         "example": [{"type": "layout-apply", "name": "big-number", "label": "Customer satisfaction", "title": "94%",
                      "subtitle": "would recommend us.", "body": "Survey of 2,000 customers.", "palette": "accessible-blue", "seed": 1}],
     },
@@ -254,6 +262,7 @@ KINDS = {
         "operations": ["page", "master", "layout-apply", "rich-text", "text-layout"],
         "layouts": ["slide-title", "slide-content", "f-pattern", "split-screen"], "looks": [],
         "styles": ["corporate-flat", "editorial", "minimalist"], "sizes": ["slide", "slide-4x3", "instagram-portrait"],
+        "guidance": ["finishing"],
         "example": [{"type": "layout-apply", "name": "slide-title", "title": "Quarterly review", "subtitle": "Q3 results",
                      "caption": "Company · 2026", "palette": "midnight", "seed": 2}],
     },
@@ -266,7 +275,7 @@ KINDS = {
         "operations": ["layout-apply", "canvas", "text", "shape"],
         "layouts": ["business-card", "letterhead", "framed", "price-list", "centered-axis"], "looks": ["paper"],
         "styles": ["vintage-letterpress", "minimalist", "art-deco"], "sizes": ["business-card", "letterhead", "certificate", "menu"],
-        "guidance": ["print", "typography"],
+        "guidance": ["print", "typography", "finishing"],
         "example": [{"type": "layout-apply", "name": "business-card", "title": "Alex Morgan", "subtitle": "Creative Director",
                      "body": "alex@example.com | +1 555 0100", "palette": "slate", "seed": 6}],
     },
@@ -586,7 +595,8 @@ def guide(brief=None, *, seed=None, variety=None, workspace=None):
         return listing()
     if key in KINDS:
         return _directed({**entry(key), "start_here": START_HERE}, key, seed, variety, workspace)
-    found = guidance(key, workspace=workspace)
+    found = guidance(key, workspace=workspace) or (key in GUIDANCE_ALIASES
+                                                   and guidance(GUIDANCE_ALIASES[key], workspace=workspace))
     if found:
         return found
     from .objects import find as find_kind, kind_in_text, registry

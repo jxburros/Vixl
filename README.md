@@ -119,8 +119,8 @@ tools, `--tools ai` for provider-backed tools, or `--http` for Streamable HTTP.
 [Interface setup](docs/interfaces.md) includes client JSON, multi-document sessions,
 REST authentication, imports and live human review (`vixl -p hello.vixl view`).
 
-The [Vixl agent skill](skills/vixl/SKILL.md) teaches the inspect → apply → check → preview
-→ export loop, recipes and operation details. Copy its folder to your agent's skills
+The [Vixl agent skill](skills/vixl/SKILL.md) teaches the inspect → apply → check → finishing pass
+(critique, one fix batch, a real-size look) → export loop, recipes and operation details. Copy its folder to your agent's skills
 directory. AI functions use explicitly configured providers; Vixl contains no model weights.
 
 ## Use Python
