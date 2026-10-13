@@ -14,21 +14,24 @@ Your judge id: `<JUDGE_ID>`
 
 ## 1. Get only the judging files
 
-Check out just these two paths, so nothing else in the repository is in front of you:
+Check out just these paths, so nothing else in the repository is in front of you:
 
 ```bash
 git clone --filter=blob:none --no-checkout --branch claude/tender-dijkstra-q6va0n \
   https://github.com/jxburros/Vixl.git vixl-judge
 cd vixl-judge
-git sparse-checkout set --no-cone /evals/tool-comparison/JUDGING.md /evals/tool-comparison/rejudge-2026-10-12/packages/ /evals/tool-comparison/rejudge-2026-10-12/scores/
+git sparse-checkout set --no-cone /evals/tool-comparison/JUDGING.md /evals/tool-comparison/rejudge-2026-10-12/packages/
 git checkout
+mkdir -p evals/tool-comparison/rejudge-2026-10-12/scores
 ```
+
+The `scores/` folder is left out on purpose: other judges' forms are in it, and you must not see them.
 
 You need Python with Pillow (and pypdf, python-pptx if available) and ffmpeg for the video tests.
 
 ## 2. Rules
 
-- Read nothing else in the repository: no other folders, no git history, no other branches, and don't
+- Read nothing else in the repository: no other folders (including other judges' forms in `scores/`), no git history, no other branches, and don't
   try to open `sealed.tar.gz.enc`. They hold earlier scores and the answer key, and seeing them spoils
   the test.
 - Judge only what's in each package. The entries are under random codes, so don't try to work out
@@ -52,8 +55,8 @@ You need Python with Pillow (and pypdf, python-pptx if available) and ffmpeg for
 
 ## 4. When all 16 are done
 
-- If you can push to the repository, commit the 16 files on a new branch named
-  `rejudge-scores-<JUDGE_ID>` and push it. Use a plain commit message such as "Add blind judge scores"
+- If you can push to the repository, commit only your 16 files on a new branch named
+  `rejudge-scores-<JUDGE_ID>` and push it. Don't add, change or delete anything else. Use a plain commit message such as "Add blind judge scores"
   with no model names, signatures or co-author trailers.
 - If you can't push, print all 16 JSON forms in your final answer, one after another, each under a line
   with its file name.
