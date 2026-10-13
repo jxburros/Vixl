@@ -737,9 +737,20 @@ Pin `house_style_version: 2` / `vixl roll --house-style 2` to replay 0.23 rolls.
 
 ## House style 4
 
-Version 4 rolls the same directions as version 3. It changes how headings break: in a document that records version 4,
-a new text box on a heading (a heading font role or stage, or text whose size reads as the h2 step or larger) and every
-layout headline take `wrap: "balance"`, lines of even width in the same line count (`craft.wrap`). Body text keeps
-greedy wrapping; `wrap: "pretty"` is there to ask for no one-word last line. Documents that record version 3 or earlier
-keep greedy headings. Pass `wrap: "greedy"` on the `text-layout`, or pin `house_style_version: 3`, for the old breaks.
-See [line breaking](typography.md#line-breaking).
+Version 4 keeps every choice version 3 rolls and adds two rolled details; it also changes craft defaults for new
+documents. A document that records version 3 or earlier keeps the old behaviour, and `house_style_version: 3` (CLI
+`--house-style 3`) restores all of it in a new document.
+
+- **Layout details (craft plan 5b, 5c).** A roll also sets `cta` (`pill` or `button`) and `date` (`highlight` or
+  `plain`) from a separate stream of the seed, so every other rolled field matches version 3; see
+  [safe variety](safe-variety.md). Footer rules in the safe compositions and the `section-header` rule keep one
+  spacing unit of clearance. Lock `cta=button` and `date=plain` for the old details.
+- **Balanced headings (4a).** A new text box on a heading (a heading font role or stage, or text whose size reads as
+  the h2 step or larger) and every layout headline take `wrap: "balance"`, lines of even width in the same line count
+  (`craft.wrap`). Body text keeps greedy wrapping; `wrap: "pretty"` asks for no one-word last line. Pass
+  `wrap: "greedy"` for the old breaks. See [line breaking](typography.md#line-breaking).
+- **Scatter that thins in place (7a).** `pattern-scatter` lays tiles out progressively (`distribution:
+  "progressive"`), so the same seed with a lower `count` keeps the first copies in place and `count` places exactly
+  that many. `distribution: "poisson"` keeps the layout that re-rolls on every count change.
+- **Finished sprites (7e).** `pixel-art` sprites draw with a shading ramp and an outline (`shading`, `outline`).
+  `shading: false` and `outline: false` keep the flat sprite.

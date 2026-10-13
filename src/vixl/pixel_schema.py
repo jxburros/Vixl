@@ -12,6 +12,22 @@ def schemas(add):
     grid = {"type": "integer", "minimum": 1, "maximum": 256}
     coordinate = {"type": "integer", "minimum": 0, "maximum": 255}
     palette = {"type": "object", "additionalProperties": S, "minProperties": 1, "maxProperties": 94}
+    shading = {
+        "anyOf": [B, {"type": "object", "properties": {
+            "light": enum("auto", "top-left", "top", "top-right"),
+            "colors": {"type": "integer", "minimum": 2, "maximum": 64},
+            "highlight": B}, "additionalProperties": False}],
+        "description": "Shade each colour area as it draws: a darker, cooler band on the side away from the light and "
+        "a lighter one facing it, while the sprite stays within colors (default 16) opaque colours. true, false, or "
+        "{light: auto|top-left|top|top-right, colors, highlight}. Stored rows are not changed. Default true for new "
+        "documents (house style 4).",
+    }
+    outline = {
+        "anyOf": [B, S],
+        "description": "Ring the silhouette with a 1 px outline on the transparent cells around it: true (the darkest "
+        "palette colour), a colour, or false. Skipped when the edge is already dark. Default true for new documents "
+        "(house style 4).",
+    }
     add(
         "pixel-art",
         {
@@ -28,6 +44,8 @@ def schemas(add):
                 "minItems": 1,
                 "maxItems": 256,
             },
+            "shading": shading,
+            "outline": outline,
         },
     )
     add(
@@ -44,7 +62,8 @@ def schemas(add):
         },
         ["x", "y", "color"],
     )
-    add("pixel-palette", {"colors": palette}, ["colors"])
+    add("pixel-palette", {"colors": palette, "shading": shading, "outline": outline},
+        anyOf=[{"required": ["colors"]}, {"required": ["shading"]}, {"required": ["outline"]}])
     add(
         "frame-save",
         {"name": S, "duration": {"type": "integer", "minimum": 10, "maximum": 60000, "multipleOf": 10}},
@@ -102,6 +121,10 @@ def schemas(add):
     )
 
 
+def _flag_or_color(value):
+    return {"true": True, "false": False}.get(value.lower(), value)
+
+
 def compile_pixel(cmd, args):
     from .commands import Parser
 
@@ -117,6 +140,8 @@ def compile_pixel(cmd, args):
         p.add_argument("--palette", type=json.loads)
         p.add_argument("--rows", type=json.loads)
         p.add_argument("--background")
+        p.add_argument("--shading", type=json.loads, help="true, false or JSON {light, colors, highlight}")
+        p.add_argument("--outline", type=_flag_or_color, help="true, false or a colour")
     elif cmd == "pixel-draw":
         p.add_argument("target")
         p.add_argument("tool", choices=["pixel", "line", "rect", "fill"])
@@ -127,7 +152,9 @@ def compile_pixel(cmd, args):
             p.add_argument("--" + key, type=int)
     elif cmd == "pixel-palette":
         p.add_argument("target")
-        p.add_argument("--colors", type=json.loads, required=True)
+        p.add_argument("--colors", type=json.loads)
+        p.add_argument("--shading", type=json.loads, help="true, false or JSON {light, colors, highlight}")
+        p.add_argument("--outline", type=_flag_or_color, help="true, false or a colour")
     elif cmd.startswith("frame-"):
         p.add_argument("name")
         if cmd == "frame-save":

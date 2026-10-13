@@ -75,6 +75,20 @@ New documents use house style 4; documents keep the version they were made with.
   darker in front, each with a crest, filling its box edge to edge (`params.tones` back to front, or `params.color`).
   The new organic generator `band` (a filled band under a wavy edge) builds it. Sea, coast and lake motifs point to it.
 
+### Tool finish (craft plan 7)
+
+- **`pattern-scatter` thins in place.** In new documents a tile is laid out progressively, so the same seed with a lower `count` keeps the first copies exactly where they were (with the same motif, size and turn) and drops the rest, and `count` places exactly that many copies. `thin` (a share to keep, `{keep}` or `{count}`) removes the most crowded copies of an existing tile and keeps the survivors; the tile remembers it until `count`, `seed`, `spacing`, `distribution` or its size change. T15's round 2 kept 7 % of the pattern on 0.26.
+- **Drawing fills register to their lines** (#218). Fills follow strokes as they render (a smoothed stroke's curve, at its layer's width), tuck under each line to its centre, and meet a neighbour on the straight line across a bridged break, so no paper halo shows along a line and no fill bulges through an open corner (T11). With `edge_closes`, lines that stop short of the paper's sides are carried on to the edge without being drawn (`edge_reach`, default 15% of the short side, 0 for none), so a short ground line still divides sky from ground; `drawing report` lists the regions the same way.
+- **Crops take the cleaned master.** A photo shown larger than its own pixels (a linked Instagram or caption crop of a corrected master, or a photo scaled up in its document) runs its leading `denoise` effects at its own pixels before it is scaled, so the enlargement shows the denoised master instead of grain (T10).
+- **Pixel sprites get a shading ramp and an outline** (T13). New `pixel-art` layers draw a 1 px outline in the darkest palette colour and a hue-shifted shadow and light band on each colour area, within 16 opaque colours and binary alpha, following any ramp the artist drew. The stored rows and palette are unchanged, so palette swaps carry into the ramp; `pixels` also returns the drawn result. `pixel-palette` turns `shading` and `outline` on or off on an existing layer.
+
+### Changed defaults (house style 4)
+
+- New documents record `house_style_version: 4`. Rolls are unchanged from version 3.
+- `pattern-scatter` defaults to `distribution: "progressive"` in house style 4 documents; a seed now lays out a different tile than before. Pass `distribution: "poisson"` (or pin `house_style_version: 3`) for the earlier layout. Existing documents keep it.
+- `pixel-art` defaults to `shading: true` and `outline: true` in house style 4 documents. Pass `shading: false` and `outline: false` (or pin `house_style_version: 3`) for the flat sprite.
+- An enlarged photo layer with `denoise` first in its stack now draws less grain in every document, existing ones included (the earlier result was a defect, so there is no switch).
+
 ## 0.26.0
 
 ### Fixed and added

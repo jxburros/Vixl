@@ -41,7 +41,10 @@ MARKS = {
 STEP_KEYS = ("rotation_step", "scale_step", "opacity_step", "seed", "rotation_jitter", "scale_jitter",
              "position_jitter", "opacity_jitter", "merge")
 RECIPE_KEYS = ("source", "mark", "width", "height", "spacing", "count", "seed", "scale", "scale_jitter", "rotation",
-               "rotation_jitter", "colors", "tone_variation", "tones", "background", "merge", "pattern")
+               "rotation_jitter", "colors", "tone_variation", "tones", "background", "merge", "pattern", "distribution")
+# Recipe fields that decide where copies land: changing one drops a stored thinning.
+LAYOUT_KEYS = ("width", "height", "spacing", "count", "seed", "distribution")
+DISTRIBUTIONS = ("progressive", "poisson")
 
 
 def stream(seed, *keys):
@@ -105,6 +108,17 @@ def schemas(add):
         "y": field(N, "Tile top edge in pixels (default 0)."),
         "background": field(S, "Tile background color (a rectangle at the bottom of the tile); omit for transparent."),
         "pattern": field(S, "Also save the tile as a document pattern of this name, for pattern-fill."),
+        "distribution": {"enum": list(DISTRIBUTIONS), "description": "progressive (default in new documents): an "
+                         "order where every prefix is evenly spread, so the same seed with a lower count keeps the "
+                         "first copies in place and drops the rest; poisson: the earlier layout, which re-rolls when "
+                         "count changes (documents before house style 4)."},
+        "thin": {"anyOf": [{"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+                           {"type": "object", "properties": {"keep": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+                                                             "count": {"type": "integer", "minimum": 1}},
+                            "additionalProperties": False}],
+                 "description": "Remove copies from a tile, densest first, keeping the survivors exactly where they "
+                 "are: a share to keep (0.8 or {keep: 0.8}) or {count: N} copies. Kept until count, seed, spacing, "
+                 "distribution or the tile size change."},
     }, anyOf=[{"required": ["source"]}, {"required": ["mark"]}, {"required": ["target"]}])
 
 
@@ -229,6 +243,138 @@ def toroidal_poisson(rng, width, height, spacing, count):
         else:
             active.remove(k)
     return points[:count]
+
+
+LEVEL_START = 8  # points the first level of a progressive layout aims for
+
+
+def _torus_distances(points, point, width, height):
+    d = np.abs(np.asarray(points, dtype=float) - point)
+    d = np.minimum(d, (width, height) - d)
+    return np.sqrt((d * d).sum(axis=1))
+
+
+def _torus_fill(rng, width, height, spacing, existing):
+    """Bridson darts on a W x H torus that fill the gaps between ``existing`` points (which are
+    already at least ``spacing`` apart) until no new point fits ``spacing`` away from every other."""
+    cell = spacing / math.sqrt(2)
+    cols, rows = max(1, int(width // cell)), max(1, int(height // cell))
+    require(cols * rows <= MAX_POISSON_CELLS, "spacing is too small for this tile", "resource_limit", field="spacing")
+    cw, ch = width / cols, height / rows
+    grid = [[] for _ in range(cols * rows)]
+    reach_x, reach_y = int(math.ceil(spacing / cw)), int(math.ceil(spacing / ch))
+    points = list(existing)
+    for k, (x, y) in enumerate(points):
+        grid[(int(y / ch) % rows) * cols + int(x / cw) % cols].append(k)
+    active = list(range(len(points)))
+    start = len(points)
+
+    def far_enough(x, y):
+        gx, gy = int(x / cw) % cols, int(y / ch) % rows
+        for j in range(-reach_y, reach_y + 1):
+            for i in range(-reach_x, reach_x + 1):
+                for k in grid[((gy + j) % rows) * cols + (gx + i) % cols]:
+                    dx, dy = abs(points[k][0] - x), abs(points[k][1] - y)
+                    dx, dy = min(dx, width - dx), min(dy, height - dy)
+                    if dx * dx + dy * dy < spacing * spacing:
+                        return False
+        return True
+
+    def put(x, y):
+        grid[(int(y / ch) % rows) * cols + int(x / cw) % cols].append(len(points))
+        points.append((x, y))
+        active.append(len(points) - 1)
+
+    if not points:
+        put(*rng.uniform(0, 1, 2) * (width, height))
+    while active and len(points) < start + 2 * MAX_ITEMS:
+        k = active[rng.integers(len(active))]
+        for _ in range(30):
+            angle, distance = rng.uniform(0, math.tau), rng.uniform(spacing, 2 * spacing)
+            x = (points[k][0] + distance * math.cos(angle)) % width
+            y = (points[k][1] + distance * math.sin(angle)) % height
+            if far_enough(x, y):
+                put(x, y)
+                break
+        else:
+            active.remove(k)
+    return points[start:]
+
+
+def _farthest_first(new, existing, width, height):
+    """``new`` reordered so each point is the one farthest from everything placed before it."""
+    if not new:
+        return []
+    pts = np.asarray(new, dtype=float)
+    nearest = np.full(len(pts), np.inf)
+    for point in existing:
+        np.minimum(nearest, _torus_distances(pts, point, width, height), out=nearest)
+    order = []
+    pick = 0 if not existing else int(np.argmax(nearest))
+    for _ in range(len(pts)):
+        order.append(pick)
+        np.minimum(nearest, _torus_distances(pts, pts[pick], width, height), out=nearest)
+        nearest[pick] = -1.0
+        pick = int(np.argmax(nearest))
+    return [new[i] for i in order]
+
+
+def progressive_points(seed, width, height, count=None, spacing=None):
+    """Points on a W x H torus, in an order where every prefix is itself evenly spread.
+
+    With ``spacing`` it is one saturated Poisson-disc layer; with ``count`` alone, layers of
+    Poisson-disc darts at shrinking spacings (each about doubling the points, filling the gaps
+    of the layers before it) until there are ``count``. Within a layer the points come
+    farthest-first. Nothing depends on ``count``, so the same seed with a lower count keeps the
+    first points where they were and drops the rest. Returns ``(points, smallest spacing used)``."""
+    points = []
+    level = 0
+    radius = spacing if spacing is not None else math.sqrt(0.68 * width * height / LEVEL_START)
+    while True:
+        fresh = _torus_fill(stream(seed, 3, level), width, height, radius, points)
+        points += _farthest_first(fresh, points, width, height)
+        if spacing is not None or count is None or len(points) >= count or len(points) >= MAX_ITEMS:
+            break
+        level += 1
+        radius /= math.sqrt(2)
+    limit = min(count or MAX_ITEMS, MAX_ITEMS)
+    return points[:limit], radius
+
+
+def thinned(points, indices, width, height, keep):
+    """The ``keep`` of ``indices`` that stay when copies are removed densest first: the copy whose
+    nearest neighbour is closest goes (of a pair, the one more crowded by its next neighbours,
+    then the later one), until ``keep`` remain. Survivors stay where they are."""
+    alive = list(indices)
+    if keep >= len(alive):
+        return alive
+    pts = np.asarray([points[i] for i in alive], dtype=float)
+    live = np.ones(len(pts), bool)
+    near, third = np.zeros(len(pts)), np.zeros(len(pts))
+    crowd = np.zeros(len(pts))
+
+    def measure(k):
+        d = _torus_distances(pts, pts[k], width, height)
+        d[~live] = np.inf
+        d[k] = np.inf
+        closest = np.sort(d)[:3]
+        closest = closest[np.isfinite(closest)]
+        near[k] = closest[0] if len(closest) else np.inf
+        third[k] = closest[-1] if len(closest) else np.inf
+        crowd[k] = float(closest.mean()) if len(closest) else np.inf
+
+    for k in range(len(pts)):
+        measure(k)
+    for _ in range(len(pts) - keep):
+        candidates = np.flatnonzero(live)
+        order = np.lexsort((-candidates, crowd[candidates], near[candidates]))
+        gone = int(candidates[order[0]])
+        live[gone] = False
+        # Only copies that had the removed one among their three nearest change.
+        reach = _torus_distances(pts, pts[gone], width, height)
+        for k in np.flatnonzero(live & (reach <= third + 1e-9)):
+            measure(int(k))
+    return [alive[k] for k in range(len(pts)) if live[k]]
 
 
 def up_vector(rotation):
@@ -808,6 +954,22 @@ def tile_image(project, group):
     return candidate.render()
 
 
+def _thin_target(value, current):
+    """How many of ``current`` copies a ``thin`` value keeps."""
+    if isinstance(value, dict):
+        require(len(value) == 1 and set(value) <= {"keep", "count"}, "thin is a share to keep, {keep: share} or "
+                "{count: N}", field="thin")
+        if "count" in value:
+            count = value["count"]
+            require(isinstance(count, int) and not isinstance(count, bool) and count >= 1, "thin count is a whole "
+                    "number of copies, at least 1", field="thin")
+            return min(count, current)
+        value = value["keep"]
+    share = finite(value, "thin", 0, 1)
+    require(share > 0, "thin keeps a share above 0 (0.8 keeps 80% of the copies)", field="thin")
+    return max(1, round(current * share))
+
+
 def execute_pattern_scatter(project, op):
     from .design import descendants
     from .model import new_layer
@@ -819,7 +981,10 @@ def execute_pattern_scatter(project, op):
         group = project.layer(op["target"])
         require(group.get("pattern_scatter"), f"{group['name']!r} was not made by pattern-scatter; target a "
                 "pattern-scatter tile, or omit target to make one", field="target")
-        recipe = {**deepcopy(group["pattern_scatter"]), **{k: deepcopy(op[k]) for k in RECIPE_KEYS if k in op}}
+        prior = group["pattern_scatter"]
+        recipe = {**deepcopy(prior), **{k: deepcopy(op[k]) for k in RECIPE_KEYS if k in op}}
+        if any(k in op and op[k] != prior.get(k) for k in LAYOUT_KEYS):
+            recipe.pop("keep", None)
         if "mark" in op:
             recipe.pop("source", None)
         if "source" in op:
@@ -847,8 +1012,26 @@ def execute_pattern_scatter(project, op):
         spacing = math.sqrt(0.68 * width * height / count) if count else \
             1.1 * max(max(s["width"], s["height"]) for s in sources) * variation.scale
     spacing = finite(float(spacing), "spacing", 1, 100000)
-    points = toroidal_poisson(stream(seed, 1), width, height, spacing, count or MAX_ITEMS)
+    distribution = recipe.get("distribution")
+    if distribution is None:
+        version = project.state.get("design_defaults", {}).get("house_style_version", 2)
+        distribution = recipe["distribution"] = "progressive" if version >= 4 else "poisson"
+    require(distribution in DISTRIBUTIONS, "distribution is progressive or poisson", field="distribution")
+    if distribution == "progressive":
+        explicit = recipe.get("spacing") is not None or not count
+        points, smallest = progressive_points(seed, width, height, count, spacing if explicit else None)
+        spacing = spacing if explicit else smallest
+    else:
+        points = toroidal_poisson(stream(seed, 1), width, height, spacing, count or MAX_ITEMS)
     entries = build(project, variation, [(x, y, None) for x, y in points], "center")
+    if group is not None and round(spacing, 3) != prior.get("spacing_used", round(spacing, 3)):
+        recipe.pop("keep", None)  # a spacing taken from the motifs' size moved every point
+    # Every point is drawn (so each copy keeps its own seeded look), then only the kept ones placed.
+    kept = [i for i in recipe.get("keep") or range(len(points)) if i < len(points)]
+    if op.get("thin") is not None:
+        kept = thinned(points, kept, width, height, _thin_target(op["thin"], len(kept)))
+        recipe["keep"] = kept
+    entries = [entries[i] for i in kept]
     wrapped = []
     for layer, bounds in entries:
         for dx, dy in ghosts(bounds, width, height):
@@ -898,6 +1081,8 @@ def execute_pattern_scatter(project, op):
     gather(project, group)
     stored = {k: v for k, v in recipe.items() if k in RECIPE_KEYS}
     stored["spacing_used"] = round(spacing, 3)
+    if recipe.get("keep") is not None:
+        stored["keep"] = recipe["keep"]
     if "source" in stored:
         stored["source"] = [s["source_id"] for s in sources]
     group["pattern_scatter"] = stored
@@ -907,7 +1092,9 @@ def execute_pattern_scatter(project, op):
     image = tile_image(project, group)
     check = seamless_check(image)
     report = {"name": group["name"], "copies": len(entries), "ghosts": len(wrapped), "spacing": round(spacing, 2),
-              "seed": seed, "seam": check}
+              "seed": seed, "distribution": distribution, "seam": check}
+    if recipe.get("keep") is not None:
+        report["thinned"] = {"kept": len(kept), "of": len(points)}
     if recipe.get("pattern"):
         from .assets import add_image
         from .design import named
@@ -1104,6 +1291,8 @@ def compile_command(cmd, args):
             p.add_argument("--" + key, type=float)
         p.add_argument("--background")
         p.add_argument("--pattern", help="also save the tile as a pattern of this name")
+        p.add_argument("--distribution", choices=DISTRIBUTIONS)
+        p.add_argument("--thin", type=json.loads, help="share of copies to keep (0.8), or JSON {\"count\": N}")
     p.add_argument("--source", action="append", help="motif layer (repeatable)")
     p.add_argument("--mark", type=json.loads, help="JSON shape spec for a motif drawn on the fly")
     p.add_argument("--count", type=int)

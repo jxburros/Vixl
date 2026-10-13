@@ -463,7 +463,7 @@
     }
   },
   "legacy": {
-    "3": {"description": "0.24-0.26 rolls: no cta or date detail in the direction (plain buttons in the corner style, plain date lines), no footer-rule clearance in safe compositions, no rule clearance in the section-header container, and headings in new documents wrap greedily instead of balanced (text-layout wrap)."},
+    "3": {"description": "0.24-0.26 rolls and behaviour: no cta or date detail in the direction (plain buttons in the corner style, plain date lines), no footer-rule clearance in safe compositions, no rule clearance in the section-header container, greedy heading breaks in new documents, a pattern-scatter layout that re-rolls when count changes, and pixel-art sprites without the default shading ramp and outline."},
     "2": {"description": "0.23 roll: excludes pairings introduced in version 3 and keeps its original alignment and background mixing."},
     "1": {
       "summary": "The 0.20-0.22 rolls: safe pools only, two light rolls in three for every purpose, rolled looks at amount 0.1.",

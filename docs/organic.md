@@ -309,5 +309,5 @@ Agents can build new organisms by combining the same steps the presets use:
 The `scatter` rule works inside an organic form's own unit frame. To scatter copies of finished
 layers over another layer's outline (leaves over a hill, confetti in a card, studs along an
 edge), use the `scatter` operation; for a seamless wrap-around tile, `pattern-scatter`. Both use
-the same Poisson-disc sampling, take a `seed`, and with `merge: true` draw all copies as one path
-per tone. See [design tools](design-tools.md#scatter-and-seamless-pattern-tiles).
+Poisson-disc sampling (`pattern-scatter` in an order that lets a lower `count` keep the surviving copies in
+place), take a `seed`, and with `merge: true` draw all copies as one path per tone. See [design tools](design-tools.md#scatter-and-seamless-pattern-tiles).
