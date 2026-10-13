@@ -68,6 +68,7 @@ See the [provider matrix](providers.md#capability-matrix) before choosing a serv
 - [Architecture and resource limits](architecture.md) and [implementation coverage](coverage.md).
 - [Examples](../examples/) and [explorations](https://github.com/jxburros/VixlExamples/blob/main/explorations/README.md): longer creative projects.
 - [Agent evaluations](../evals/README.md): briefs and grading contracts.
+- [Render parity](render-parity.md): raster quality measured against Chromium and exact references.
 - [Documentation maintenance](documentation-maintenance.md): rebuilding visuals and verifying examples.
 - [Brand voice](brand-voice.md): how Vixl's own copy and marketing sound.
 - [Changelog](../CHANGELOG.md): shipped changes and source-only additions.
