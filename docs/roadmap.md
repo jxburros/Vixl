@@ -95,7 +95,8 @@ P4 and P3.
 ### Data model (#213 → #169 → #214)
 
 Tab stops and decimal alignment first (#213, C3 P3): the table layer needs them. Then the table layer (#169, C4 P5),
-then the remainder of #214 (C4 P3). Add one named dataset (CSV or inline) that tables, charts and text bind to,
+then the remainder of #214 (C4 P3). The table layer and #213 have shipped: text takes left, right, centre and
+decimal tab stops with dot leaders, and table columns take a `leader` (craft plan 4b). Add one named dataset (CSV or inline) that tables, charts and text bind to,
 formatted with the merge-field filters that shipped in 0.22.0; it makes #214 mostly wiring.
 
 ### Markdown builds (#170 + #332)

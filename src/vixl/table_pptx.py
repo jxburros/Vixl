@@ -4,7 +4,8 @@ A table group (see ``tables.py``) exports to .pptx as a real table (``a:tbl`` in
 can be edited in PowerPoint, Keynote or Google Slides: one cell per table cell with its text, font, size,
 color and alignment, the column widths and row heights Vixl laid out, the header band, zebra bands and
 rules. Decimal-aligned columns are right-aligned (their figures share a number format, so the points line
-up). Rotated or flipped tables, and tables whose layers carry effects, export as their shapes instead.
+up). A column's dot leader is written into its cells as characters and stops at the cell edge, since a table
+cell cannot reach into the next one. Rotated or flipped tables, and tables whose layers carry effects, export as their shapes instead.
 """
 
 from xml.sax.saxutils import escape, quoteattr
@@ -46,6 +47,13 @@ def borders(recipe, rows, columns, top):
                 if j == columns - 1:
                     edges[1] = weight
     return grid
+
+
+def padding(recipe, summary):
+    """The cell padding ``tables.layout`` used, (horizontal, vertical) in table pixels."""
+    pad = recipe.get("padding")
+    fs = summary.get("font_size", 16)
+    return (pad if pad is not None else fs * 0.6, pad if pad is not None else fs * 0.45)
 
 
 def shapes(slide, layer, bounds, emu, layers, index):
@@ -101,6 +109,16 @@ def shapes(slide, layer, bounds, emu, layers, index):
             size = (part["size"] if part else 16) * pt
             color = part["color"] if part else "#000000"
             text = shown(value, specs[j]["format"] if i >= top else None)
+            leader = parts.get(f"leader-{i}-{j}")
+            if leader and leader["visible"] and text:
+                # The leader layer's repeats, cut back to what fits before this cell's right padding.
+                repeat = specs[j]["leader"]
+                count = len(leader["text"]) // max(1, len(repeat))
+                unit = leader["width"] / max(1, count)
+                room = sum(summary["column_widths"][:j + 1]) - round(padding(recipe, summary)[0]) - leader["x"]
+                fits = int(room // unit) - 1 if unit > 0 else 0
+                if fits >= 2:
+                    text += " " + repeat * min(count, fits)
             align = ALIGN["right" if specs[j]["align"] == "decimal" and i < top else specs[j]["align"]]
             run = (f'<a:rPr lang="en-US" sz="{max(100, min(400000, round(size * 100)))}" b="0" dirty="0">'
                    f'{solid(state, color)}<a:latin typeface={quoteattr(faces[font])}/><a:ea typeface={quoteattr(faces[font])}/>'
@@ -109,10 +127,8 @@ def shapes(slide, layer, bounds, emu, layers, index):
                 f'<a:p><a:pPr algn="{align}"/>' + (f"<a:r>{run}<a:t>{escape(line)}</a:t></a:r>" if line else "")
                 + f'<a:endParaRPr lang="en-US" sz="{max(100, min(400000, round(size * 100)))}" dirty="0"/></a:p>'
                 for line in (text.split("\n") if text else [""]))
-            pad = recipe.get("padding")
-            fs = summary.get("font_size", 16)
-            padx = round((pad if pad is not None else fs * 0.6) * sx * emu)
-            pady = round((pad if pad is not None else fs * 0.45) * sy * emu)
+            px, py = padding(recipe, summary)
+            padx, pady = round(px * sx * emu), round(py * sy * emu)
             left, right, upper, lower = (round(v * min(sx, sy) * emu) for v in edges[i][j])
             fill = bands.get(i, background)
             cells.append(
@@ -150,7 +166,12 @@ def shapes(slide, layer, bounds, emu, layers, index):
         if xml:
             out.append(xml)
     info = {"layer": layer["name"], "native": True, "rows": len(rows), "columns": count}
+    notes = []
     if any(s["align"] == "decimal" for s in specs):
-        info["notes"] = ["decimal-aligned columns are right-aligned"]
+        notes.append("decimal-aligned columns are right-aligned")
+    if any(s.get("leader") for s in specs):
+        notes.append("leaders stop at the edge of their cell")
+    if notes:
+        info["notes"] = notes
     slide.table_info.append(info)
     return out

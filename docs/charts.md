@@ -182,6 +182,10 @@ vixl table-data --target menu --set Tea:Price=3.5
   `center`, `right` or **`decimal`**: figures share their decimal point, and a whole number ends where
   the point would be, which is what a price list needs. Numeric columns right-align by default.
   `format` (or `number_format` for every numeric column) is the Excel-style format charts use.
+  `leader` (such as `"."`) runs a dot leader from the end of each body cell to the next cell's text in the
+  row, so a menu needs no hand-drawn dots: `"columns": [{"width": "1fr", "leader": "."}, {"align": "decimal"}]`.
+  The dots sit on a grid from the column's left edge, so every row's dots line up; each row's leader is a
+  text layer (`leader-ROW-COLUMN`), and `summary.leaders` counts them.
 - **Look**: `font_size`, `header_font_size`, `header_font` (default the heading role), `body_font`,
   `text_color`, `header_color`, `header_fill`, `fill`, `zebra` (`true` or a color), `borders`
   (`horizontal`, the default; `all`, `outer`, `header` or `none`), `border_color`, `border_width`,
@@ -195,6 +199,6 @@ vixl table-data --target menu --set Tea:Price=3.5
 - **Exports**: PNG, SVG and PDF draw the layers (vector text and rules). **PPTX writes a native table**
   with the same column widths, row heights, fonts, colors, fills and rules, editable in PowerPoint,
   Keynote and Google Slides; the export report lists it under `tables` (decimal columns are
-  right-aligned there). A rotated or flipped table, or one whose layers carry effects, exports as its shapes.
+  right-aligned there, and a leader is written into its cell as characters that stop at the cell edge). A rotated or flipped table, or one whose layers carry effects, exports as its shapes.
 - `check` sees every cell like any other text (contrast is measured in two renders per table).
   Up to 200 body rows by 24 columns.

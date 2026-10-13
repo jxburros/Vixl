@@ -109,6 +109,9 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | TXT-13 | Brand tracking and caps on text that changes (keyed lyric lines, `${variable}` values) | `text-set` with `tracking`, `text_transform` | 1 · <1 | E | Layer properties (#603); before, tracking needed a `text-style` match on fixed text and caps a pre-cased copy of the source. |
 | TXT-14 | Set mixed Latin, Greek, Cyrillic and symbol text (⏻ ⎈ ⧉ ∮ 𝔸) offline without tofu | `text` | 1 · <1 | E | Bundled Noto Sans, Symbols, Symbols 2 and Math fall back behind DejaVu Sans (#419); CJK still needs an installed face in `font-fallbacks`. |
 | TXT-15 | Set text on a stage (display, h1–h3, subtitle, lead, body, caption, citation, label) and spread 2–4 fonts across the stages | `text` with `stage`, `font-register` with a role or stage | 1–2 · <1 | E | Stages follow heading/body until a stage or brand role gets its own face. |
+| TXT-16 | Break a heading into lines of even width, or keep one word off a paragraph's last line | `text-layout` `wrap: balance` / `pretty` | 1 · <1 | E | Craft plan 4a (T09, T14). Headings and layout headlines balance by default in house style 4 documents; the breaks are shared by PNG, SVG, PDF and PPTX. Before, a runt needed a hand line break. |
+| BLK-07 | Tab stops and dot leaders in text (menus, price lists, contents pages) | `text` `tabs: [{at, align, leader}]` with `\t`; `table` column `leader` | 1 · <1 | E | Moved from Blocked (craft plan 4b, #213; T16): left, right, centre and decimal stops with leaders in PNG, SVG and PDF; native tab stops in PPTX with the leader written as characters. Before, leaders were drawn by hand. |
+| TXT-17 | Two-tone headline: one or two words of a layout headline in the accent color | `layout-apply` `accent_words` | 1 · <1 | E | Craft plan 4c (T03, T09); before, a `text-style` match per word after the layout, with the box height fixed by hand. |
 
 ### Color
 
@@ -209,7 +212,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | QA-06 | Check print readiness (ink limit, effective ppi, bleed) | `check --checks print` | 1 · <1 | E | |
 | QA-07 | Check color-vision safety of text and chart series | `check --checks color_vision` | 1 · <1 | E | Other adjacent fills not compared yet. |
 | QA-08 | Check a design against a named style (Swiss, Bauhaus …) | `check --checks style` | 1 · <1 | E | 28 styles. |
-| QA-09 | Catch a wrapped headline that leaves one short word alone on its last line | `vixl_check` (legibility, `code: runt`) | 1 · <1 | E | Review finding for text 24 px and up (#532); before, only a look at the render caught it. |
+| QA-09 | Catch a wrapped headline that leaves one short word alone on its last line | `vixl_check` (legibility, `code: runt`) | 1 · <1 | E | Review finding for text 24 px and up (#532); before, only a look at the render caught it. The fix is `text-layout` `wrap: pretty` or `balance` (TXT-16). |
 | QA-25 | Fix overflowing text, low contrast and safe-area findings automatically | `vixl_check(repair=true)`, `vixl_operations_apply(repair=true)`, act / group-apply `repair` | 1 · <1 | E | Since 0.25 (#571); a repair is kept only when its finding is resolved and nothing new fails; one undoable step. Blanks are held. |
 | QA-26 | Repair a layout (longer headline, overlap, uneven gaps) without touching the logo or going below a type size | `vixl_workflow` repair-layout | 1–2 · <1 | E | Since 0.25 (#518); bounded candidates ranked by least disruption; infeasible leaves the document unchanged and lists what remains. |
 | QA-27 | Replace the background but keep the subject's pixels and the headline wording | `vixl_workflow` protected-edit | 1 · <1 | E | Since 0.25 (#520); structural and pixel guarantees, rolls back on any violation. |
@@ -549,7 +552,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 
 | ID | Use case | Main route | Calls · min | Ev. | Notes |
 | --- | --- | --- | --- | --- | --- |
-| PRN-30 | Café menu with sections, items and prices | `print-menu` / `price-list`, `table` with a decimal column | 41 · 4.5 | M:T16 | Measured before `table` (#169) aligned prices; no dot leaders. |
+| PRN-30 | Café menu with sections, items and prices | `print-menu` / `price-list`, `table` with a decimal column and a dot `leader` column, or `tabs` | 41 · 4.5 | M:T16 | Measured before `table` (#169) aligned prices and before leaders (BLK-07); expect fewer calls now that leaders are not drawn by hand. |
 | DEK-30 | Slide deck (title, content, chart, closing) to PPTX and PDF | pages, masters, notes, native PPTX chart | 47 · 4.5 | M:T05 | |
 | PRD-30 | Name badges from a spreadsheet, imposed on print sheets | `vixl_workflow` merge-impose | 48 · 3.3 | M:T07 | Empty fields don't re-centre unless `stack --hide-if-empty`. |
 | ILL-40 | Seamless repeating pattern | motifs, pattern-check, repeat | 61 · 7.5 | M:T15 | Scatter positions computed outside Vixl; no seamless scatter. |
@@ -680,7 +683,6 @@ note the version.
 | BLK-04 | High-bit-depth (16/32-bit) editing | Not implemented (RGBA8) | – |
 | BLK-05 | Draw live with a pressure tablet | No live input; pressure is explicit or simulated | Send stroke points with pressure values. |
 | BLK-06 | Use a desktop GUI, TUI or web editor | Headless only | `vixl view` for live review. [server] |
-| BLK-07 | Tab stops or dot leaders in text | Missing (T16); decimal-aligned columns in a `table` since #169 (DAT-51) | A `table` with a decimal column for price lists; dot leaders by hand. |
 | BLK-09 | Bind chart values into text, or one chart into another | Missing (T08) | Type totals and callouts by hand. |
 | BLK-13 | Motion-path editor, nested compositions with their own timelines | Not implemented (group and child tracks compose; `attach` follows a moving layer since 0.22) | Keyframes per property; markers. |
 | BLK-14 | Automatic discovery of fallback fonts for mixed scripts | Not implemented (fallbacks are listed by hand; weight- and slope-matched since 0.22) | Document-wide `font-fallbacks`. |

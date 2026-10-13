@@ -41,7 +41,8 @@ USE_INSTEAD = {
 }
 
 SHAPE_FIELDS = (*CATALOG_FIELDS, *STROKE_FIELDS, "shape", "path", "fill", "stroke", "stroke_width", "radius", "sides", "inner_radius", "start_angle", "end_angle", "closed", "trim_start", "trim_end")
-TEXT_FIELDS = ("text", "size", "color", "align", "spacing", "font", "hide_if_empty", "tracking", "text_transform", "stage")
+TEXT_FIELDS = ("text", "size", "color", "align", "spacing", "font", "hide_if_empty", "tracking", "text_transform", "stage",
+               "tabs")
 
 
 def target_schema(kind):

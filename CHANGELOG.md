@@ -43,6 +43,16 @@ New documents use house style 4; documents keep the version they were made with.
 - **Pills and highlighted dates are rolled** (craft plan 5c, T02 and T09): a roll's direction now carries `cta` (`pill` or `button`) and `date` (`highlight` or `plain`), drawn from the seed by tier (pills about two in five safe rolls and three in five bold ones, never for square-cornered styles, always for a pill corner; highlights a little less often) on a separate stream, so every other rolled choice is unchanged for the same seed. Layouts set a `pill` call to action with fully rounded ends whatever the corner style, and put the composition's date line (a short label, caption, subtitle or body that reads as a date) in `@on-accent` on an `@accent` highlight that keeps the column edge. Override per document with `--lock cta=button --lock date=plain`, or `direction: {"cta": "button", "date": "plain"}` on `layout-apply`.
 - **Rules keep a spacing unit from the copy** (craft plan 5b, T16): the safe compositions' footer rule keeps one spacing unit above the last line (copy too tall for that is set smaller), and the `section-header` container's rule keeps one unit from the container's bottom edge at any height (`clear_below`, a new container item setting in spacing units). One unit is the smallest step of the spacing scale and twice the half-unit gap the craft plan counts as crowding. Restore with `house_style_version: 3`.
 
+### Typography (craft plan 4a–4c)
+
+- `text-layout` takes `wrap` (also `rich-text` with a width): `balance` sets a heading's lines at even widths in the same line count, `pretty` keeps one word off a paragraph's last line, `greedy` is the old behaviour. The breaks are worked out once, so PNG, SVG, PDF and PPTX show the same lines (PPTX writes them as line breaks). A wrap is kept when the box is resized. The `runt` check names the fix. Aliases such as `balanced` and `no-runts` are reported under `normalized` (T09, T14).
+- Tab stops on plain text: `tabs: [{at, align, leader}]` on `text`/`text-set` (CLI `--tabs`), with `left`, `right`, `center` and `decimal` stops at pixels or a percentage of the box, and leaders such as `"."` that line up across lines. PPTX writes native tab stops and the leader as characters. `table` columns take `leader` for menus and price lists; in a native PPTX table it stops at the cell edge (#213, BLK-07, T16).
+- `layout-apply` takes `accent_words: ["Winter"]`: whole-word, any-case matches in the headline are set in `@accent-text` through rich-text spans, and the headline box is measured as rich text so it still fits. A word that is not in the headline is a warning and is listed under the layout's `accent_words.missing`; `accent` given a list is read as `accent_words` (T03, T09).
+
+### Changed defaults
+
+- **House style 4: headings wrap balanced** in new documents. A new `text-layout` box on a heading (a heading font role or stage, or text whose size reads as the h2 step or larger) and every layout headline get `wrap: "balance"` in documents that record `house_style_version` 4. Rolls are unchanged from version 3, and existing documents keep greedy breaks. To restore the old result pass `wrap: "greedy"` on the `text-layout`, or create the document with `house_style_version: 3` (`vixl roll --house-style 3`, `{"house_style": 3}` in `.vixl/variety.json`).
+
 ## 0.26.0
 
 ### Fixed and added

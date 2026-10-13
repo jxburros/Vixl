@@ -70,6 +70,19 @@ A roll draws from Vixl's house style: it first draws a tier (`safe`, `bold` or `
 
 ### Field-report corrections
 
-`check` reports `code: runt` (review) when wrapped display text (24 px+) leaves one word, or under 20% of the longest line, alone on its last line; widen the box or break the line. Letter spacing is `tracking` in local pixels: on the layer (`text`/`text-set`, also for keyed or `${variable}` text) or on a span with `text-style`. `spacing` and `line_height` are line spacing. `text_transform` (`uppercase`, `lowercase`, `capitalize`) cases the drawn text without changing the stored text, including keyed text. Width-only text boxes grow after copy/variable edits; fixed height stays fixed. Rich text-flow preserves size-based leading.
+`check` reports `code: runt` (review) when wrapped display text (24 px+) leaves one word, or under 20% of the longest line, alone on its last line; set `wrap`, widen the box or break the line.
+
+### Line breaking, tab stops and accent words
+
+- `text-layout` `wrap` (also `rich-text` with a width): `greedy` (fill each line), `balance` (same line count, even
+  widths: headings, titles, short text) or `pretty` (no one-word last line: body text, lyrics). Kept when the box is
+  resized. Breaks are shared by PNG, SVG, PDF and PPTX (explicit line breaks there). In documents made with house
+  style 4 or later, headings and layout headlines default to `balance`; `wrap: "greedy"` or `house_style_version: 3`
+  restores greedy breaks.
+- `tabs` on `text`/`text-set` (plain text): `[{at, align, leader}]`, `at` in px or `"100%"` of the box, `align`
+  `left`/`right`/`center`/`decimal`, `leader` such as `"."`. Each `\t` moves to the next stop; a line with a tab is
+  not wrapped. PPTX gets native tab stops with the leader written as characters. Tables take a column `leader`.
+- `layout-apply` `accent_words: ["Winter"]` styles whole-word, any-case matches in the headline with
+  `@accent-text` (rich-text spans); a word not found is a warning. `accent` with a list is read as `accent_words`. Letter spacing is `tracking` in local pixels: on the layer (`text`/`text-set`, also for keyed or `${variable}` text) or on a span with `text-style`. `spacing` and `line_height` are line spacing. `text_transform` (`uppercase`, `lowercase`, `capitalize`) cases the drawn text without changing the stored text, including keyed text. Width-only text boxes grow after copy/variable edits; fixed height stays fixed. Rich text-flow preserves size-based leading.
 
 House style 3 adds weighted alignment and scale-aware minor-text checking for social/poster work (2.2% of the short side). Large-text contrast is weight-aware: 18.66 px bold or 24 px regular. Explicit thumbnail settings and print/deck profiles retain their own contexts. Use `gap: "2u"` (1u = half the body size) for shared spacing in `stack` and `layout-apply`.

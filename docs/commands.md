@@ -321,7 +321,7 @@ vixl guide a mascot for a coffee brand   # approach, operations, layouts, looks,
 vixl guide operations                    # every operation by purpose, with summaries
 vixl looks                               # the finishing looks
 vixl house [show PURPOSE]                # the house style: craft, tiers, levels; or one purpose's profile
-vixl roll --for slides --variety high --lock tier=bold [--house-style 1|2|3] # a tiered, purpose-weighted direction;
+vixl roll --for slides --variety high --lock tier=bold [--house-style 1|2|3]  # a tiered, purpose-weighted direction;
                                          # house style 4 by default, 3 replays 0.24–0.26 rolls, 2 0.23, 1 0.20–0.22
 vixl look LAYER glow [--color C] [--amount 0-1] [--remove]
 vixl radial-repeat LAYER --count 12 [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--no-group] [--name N]

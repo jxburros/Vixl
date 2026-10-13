@@ -120,6 +120,7 @@ def compile_design(cmd, args):
         p.add_argument("target")
         p.add_argument("--fit", action="store_true")
         p.add_argument("--warp", choices=["none", "arc", "flag", "bulge"])
+        p.add_argument("--wrap", choices=["greedy", "balance", "pretty"])
         p.add_argument("--amount", type=float)
         p.add_argument("--path", type=json.loads)
     elif cmd == "guide":

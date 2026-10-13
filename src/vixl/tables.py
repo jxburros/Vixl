@@ -7,7 +7,8 @@ columns, a CSV reload) and ``table`` with a ``target`` restyles it; both redraw 
 existing layers in place (``charts.sync``), so layer IDs and anything added to them survive.
 
 Columns can be aligned left, center, right or on the decimal point (a price list: ``3.25`` and
-``12.5`` share the point, ``8`` ends where the point would be). PPTX export swaps the group for a
+``12.5`` share the point, ``8`` ends where the point would be). A column's ``leader`` (``"."``) runs dots from
+the end of each body cell to the next cell's text in the row, as a menu does. PPTX export swaps the group for a
 native, editable table (see ``table_pptx.py``); SVG and PDF draw its layers as vector text and rules.
 """
 
@@ -32,7 +33,7 @@ OPTIONS = (
     "header_color", "header_fill", "fill", "zebra", "borders", "border_color", "border_width", "padding",
     "row_height", "number_format",
 )
-COLUMN_KEYS = ("width", "align", "format")
+COLUMN_KEYS = ("width", "align", "format", "leader")
 # Stacking order of generated layers, bottom to top.
 Z_FILL, Z_BAND, Z_RULE, Z_TEXT = range(4)
 _NUMERIC = re.compile(r"[-+−]?[$€£¥]?\s*[-+]?\d[\d,]*(\.\d+)?\s*%?")
@@ -258,7 +259,8 @@ def column_specs(recipe, count, body):
         numeric = bool(values) and all(numeric_text(v) for v in values)
         align = entry.get("align") or ("right" if numeric else "left")
         specs.append({"width": entry.get("width", "auto"), "align": align,
-                      "format": entry.get("format", recipe.get("number_format") if numeric else None)})
+                      "format": entry.get("format", recipe.get("number_format") if numeric else None),
+                      "leader": entry.get("leader", "")})
     return specs
 
 
@@ -432,6 +434,7 @@ def layout(project, recipe, width=None):
             seen.add(key)
             parts.rect(key, key.replace("-", " "), box, rule, Z_RULE)
 
+    boxes = {}
     for i, row_labs in enumerate(labs):
         for j, item in enumerate(row_labs):
             if item is None:
@@ -442,18 +445,56 @@ def layout(project, recipe, width=None):
             if align == "decimal":
                 whole, _ = split_decimal(texts[i][j])
                 x = right - points[j] - (kit.width(whole, fs, False) if whole else 0)
-                place(parts, f"cell-{i}-{j}", f"r{i}c{j + 1}" if not head[i] else f"h{j + 1}", lab, x, base, Z_TEXT)
+                boxes[i, j] = place(parts, f"cell-{i}-{j}", f"r{i}c{j + 1}" if not head[i] else f"h{j + 1}", lab, x,
+                                    base, Z_TEXT)
             else:
                 x = {"left": left, "center": (left + right) / 2, "right": right}[align]
                 anchor = {"left": "left", "center": "center", "right": "right"}[align]
-                place(parts, f"cell-{i}-{j}", f"r{i}c{j + 1}" if not head[i] else f"h{j + 1}", lab, x, base, Z_TEXT,
-                      anchor=anchor)
+                boxes[i, j] = place(parts, f"cell-{i}-{j}", f"r{i}c{j + 1}" if not head[i] else f"h{j + 1}", lab, x,
+                                    base, Z_TEXT, anchor=anchor)
+    leaders = leader_parts(kit, parts, specs, labs, boxes, tops, lefts, pady, fs, ink, top)
     summary = {"rows": len(body), "columns": count, "header": bool(top), "column_widths": widths,
                "row_heights": heights, "font_size": fs, "overflow": overflow,
                "aligns": [s["align"] for s in specs]}
+    if leaders:
+        summary["leaders"] = leaders
     if overflow:
         summary["needed_width"] = round(sum(minimum))
     return parts, (max(1, total), max(1, total_h)), summary
+
+
+def leader_parts(kit, parts, specs, labs, boxes, tops, lefts, pady, fs, ink, top):
+    """Dot leaders for columns with a ``leader``: in each body row, the leader repeats from the end of the cell's
+    last line to the next filled cell's text, on that line's baseline, as one text layer per row. Repeats sit on a
+    grid from the column's left edge, so the dots of every row line up. Returns how many rows got one."""
+    count = 0
+    for j, spec in enumerate(specs):
+        leader = spec.get("leader")
+        if not leader:
+            continue
+        unit = (kit.width(leader * 11, fs) - kit.width(leader, fs)) / 10
+        if unit <= 0:
+            continue
+        gap = fs * 0.3
+        for i in range(top, len(labs)):
+            item = labs[i][j]
+            following = next((k for k in range(j + 1, len(specs)) if labs[i][k] is not None), None)
+            if item is None or following is None:
+                continue
+            lab, cap, _ = item
+            rows = lab["text"].split("\n")
+            end = boxes[i, j][0] + (kit.width(rows[-1], fs) if len(rows) > 1 else lab["width"])
+            stop = boxes[i, following][0] - gap
+            start = lefts[j] + math.ceil((end + gap - lefts[j]) / unit) * unit
+            repeats = int((stop - start) // unit)
+            if repeats < 2:
+                continue
+            dots = kit.make(leader * repeats, fs, lab["color"], False, "left", stage="body")
+            pitch = kit.make("0\n0", fs, ink, False, stage="body")["height"] - kit.make("0", fs, ink, False, stage="body")["height"]
+            base = tops[i] + pady + cap + pitch * (len(rows) - 1)
+            place(parts, f"leader-{i}-{j}", f"r{i}c{j + 1} leader", dots, start, base, Z_TEXT)
+            count += 1
+    return count
 
 
 def redraw(project, group, recipe, width=None):
@@ -527,7 +568,10 @@ def check_options(state, recipe):
             "settings", field="columns")
     for j, entry in enumerate(columns):
         require(isinstance(entry, dict) and set(entry) <= set(COLUMN_KEYS),
-                f"columns[{j}] must be {{width?, align?, format?}}", field=f"columns[{j}]")
+                f"columns[{j}] must be {{width?, align?, format?, leader?}}", field=f"columns[{j}]")
+        leader = entry.get("leader", "")
+        require(isinstance(leader, str) and len(leader) <= 4 and "\n" not in leader and "\t" not in leader,
+                f"columns[{j}].leader is up to 4 characters, such as '.'", field=f"columns[{j}].leader")
         width = entry.get("width", "auto")
         require((isinstance(width, (int, float)) and not isinstance(width, bool) and 1 <= width <= 20000)
                 or width == "auto" or (isinstance(width, str) and re.fullmatch(r"\d*(\.\d+)?fr", width)
@@ -592,7 +636,9 @@ def schemas(add):
                    "of the remaining width such as '1fr' or '2fr'."),
         "align": d({"enum": list(ALIGNS)}, "left, center, right, or decimal (figures share their decimal point: "
                    "prices). Default: right for numeric columns, else left."),
-        "format": d(S, "Excel-style number format for this column's numbers, such as '$#,##0.00' or '0.0%'.")},
+        "format": d(S, "Excel-style number format for this column's numbers, such as '$#,##0.00' or '0.0%'."),
+        "leader": d({"type": "string", "maxLength": 4}, "Characters repeated from the end of each body cell to the "
+                    "next cell's text in the row, such as '.' for a menu's dot leader (default: none).")},
         "additionalProperties": False}
     data = {
         "table": d({"type": "array", "items": {"type": "array", "items": value, "maxItems": MAX_COLUMNS},
@@ -605,7 +651,7 @@ def schemas(add):
     options = {
         "header": d(B, "The first row is a header, set in the header font with a rule under it (default true)."),
         "columns": d({"type": "array", "items": column, "maxItems": MAX_COLUMNS},
-                     "Per-column width, align and format, in column order; missing entries use the defaults."),
+                     "Per-column width, align, format and leader, in column order; missing entries use the defaults."),
         "font_size": d(N, "Body text size in pixels (default: scaled to the table width)."),
         "header_font_size": d(N, "Header text size in pixels (default: font_size)."),
         "header_font": d(S, "Registered font or the heading/body role for the header row (default heading)."),
@@ -669,7 +715,7 @@ def compile_command(cmd, args):
             p.add_argument("--" + key, type=number_or_center)
         p.add_argument("--width", type=int)
         p.add_argument("--csv-columns", help="comma-separated CSV columns to show")
-        p.add_argument("--columns", type=json.loads, help='JSON list of {"width", "align", "format"} per column')
+        p.add_argument("--columns", type=json.loads, help='JSON list of {"width", "align", "format", "leader"} per column')
         p.add_argument("--align", help="comma-separated align per column: left, center, right or decimal")
         for key in ("header-font", "body-font", "text-color", "header-color", "header-fill", "fill", "border-color",
                     "number-format"):

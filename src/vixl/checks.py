@@ -149,7 +149,7 @@ def boxed_text_need(project, layer):
     """For text set in a text-layout box, the (width, height) its lines need when wrapped at the
     box width, else None. Fitted, warped and path text are skipped: fit shrinks to the box, and
     warps and paths are laid out differently."""
-    from .text import measure, font_data, UnsupportedText
+    from .text import measure, font_data, tab_stops, UnsupportedText
     from .render import document_variables
     from .variables import layer_text
 
@@ -171,7 +171,7 @@ def boxed_text_need(project, layer):
     text = layer_text(layer, document_variables(project))
     try:
         _, box = measure(font_data(project, layer), text, layer["size"], layer.get("spacing", 4),
-                         layer.get("align", "left"), layer["width"])
+                         layer.get("align", "left"), layer["width"], settings.get("wrap", "greedy"), tab_stops(layer, project))
     except UnsupportedText:
         return None
     stroke = 2 * layer.get("stroke_width", 0)
@@ -813,7 +813,7 @@ def check_design(
 
     if "legibility" in checks:
         from .craft import body_size, stage_for
-        from .text import font_data, lines
+        from .text import font_data, lines, wrap_mode
         from .house_style import rule
 
         for item in texts:
@@ -821,7 +821,7 @@ def check_design(
             if stage_for(effective.get("size", 0), body_size(candidate)) != "body":
                 continue
             wrapped = lines(font_data(candidate, effective), effective.get("text", ""), effective["size"],
-                            (effective.get("text_layout") or {}).get("width"))
+                            (effective.get("text_layout") or {}).get("width"), wrap_mode(effective))
             lengths = [len(line) for line in wrapped if line.strip()]
             if lengths and (max(lengths) > rule("line_length")["max"] or (len(lengths) > 2 and max(lengths[:-1]) < 30)):
                 issue("legibility", "warning", f"{item['name']!r} body measure is {max(lengths)} characters; "
@@ -835,7 +835,8 @@ def check_design(
             if runt:
                 issue("legibility", "warning",
                       f"{item['name']!r} wraps with {runt['text']!r} alone on its last line ({runt['share']:.0%} of "
-                      "the longest line); widen the box, add an explicit line break or run fit-text", [item],
+                      "the longest line); set text-layout wrap 'pretty' (or 'balance' for a heading), widen the box, add an "
+                      "explicit line break or run fit-text", [item],
                       code="runt", action="review", line=runt["text"], share=runt["share"])
 
     physical = c.get("physical") and c.get("dpi")

@@ -161,6 +161,20 @@ def _operation_schema():
                            "description": "Draw the layer's text in this case without changing the stored text "
                            "(capitalize upper-cases the first letter of each word); applies to text changed by "
                            "keyframes and ${variable} values too. none removes it."},
+        "tabs": {"type": "array", "maxItems": 32,
+                 "items": {"type": "object", "properties": {
+                     "at": {"type": ["number", "string"], "description": "Stop position in pixels from the text's left "
+                            "edge, or a percentage of the text box width (of the canvas width without a box), "
+                            "such as '100%'."},
+                     "align": {"enum": ["left", "right", "center", "decimal"], "description": "How the text after the "
+                               "tab sits on the stop: starts there (left, default), ends there (right), centres on it, "
+                               "or puts its decimal point there (decimal, for prices)."},
+                     "leader": {"type": "string", "maxLength": 4, "description": "Characters repeated across the gap "
+                                "before the stop, such as '.' for a dot leader."}},
+                     "required": ["at"], "additionalProperties": False},
+                 "description": "Tab stops for plain text: each tab character (\\t) in the text moves what follows "
+                 "to the next stop past it. A line with a tab is not wrapped. [] removes them. Menus and price lists: "
+                 "[{at: '100%', align: 'right', leader: '.'}]."},
         "stage": {"enum": list(STAGES),
                   "description": "Text stage (alias role): its font role, type-scale size, line height and case fill "
                   "what the operation leaves out. display and h1–h3 follow the heading font, the rest the body font, "

@@ -17,6 +17,7 @@
     "spacing": {"unit": 0.5, "unit_of": "body size", "minimum_unit": 2, "steps": [1, 2, 3, 4, 6, 8]},
     "line_height": {"display": 1.0, "heading": 1.1, "lead": 1.35, "body": 1.45, "caption": 1.3},
     "line_length": {"min": 45, "max": 75},
+    "wrap": {"heading": "balance", "since": 4},
     "minimum_text": {"minor_share_of_short_side": 0.022, "print_points": 6, "large_text_px": 24, "large_bold_text_px": 18.66},
     "base_size": {"screen_share_of_short_side": 0.026, "screen_minimum_px": 10, "print_points_per_inch_of_short_side": 1.25,
                   "print_minimum_points": 7.5, "print_maximum_points": 60},
@@ -462,7 +463,7 @@
     }
   },
   "legacy": {
-    "3": {"description": "0.24-0.26 rolls: no cta or date detail in the direction (plain buttons in the corner style, plain date lines), no footer-rule clearance in safe compositions and no rule clearance in the section-header container."},
+    "3": {"description": "0.24-0.26 rolls: no cta or date detail in the direction (plain buttons in the corner style, plain date lines), no footer-rule clearance in safe compositions, no rule clearance in the section-header container, and headings in new documents wrap greedily instead of balanced (text-layout wrap)."},
     "2": {"description": "0.23 roll: excludes pairings introduced in version 3 and keeps its original alignment and background mixing."},
     "1": {
       "summary": "The 0.20-0.22 rolls: safe pools only, two light rolls in three for every purpose, rolled looks at amount 0.1.",

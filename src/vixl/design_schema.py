@@ -156,6 +156,7 @@ def schemas(add):
             "height": SIZE,
             "fit": B,
             "warp": enum("none", "arc", "flag", "bulge"),
+            "wrap": enum("greedy", "balance", "pretty"),
             "amount": N,
             "path": {
                 "type": "array",

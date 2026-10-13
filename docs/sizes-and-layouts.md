@@ -122,6 +122,22 @@ Each layout is a form. `vixl layout show NAME` (or `vixl_layouts_list`) lists it
 - **Unused slots are errors.** Copy for a slot the layout does not read on this canvas, such as `subtitle` on `event-poster`, fails with `unused_slot` and lists the slots it does use, instead of being dropped.
 - **Fill blanks by re-applying.** Re-apply with the copy, `replace: true` and the `seed` the first pass reported. The composition stays the same and type is sized for the real copy. Editing a blank layer's text directly also clears it.
 
+**Accent words.** `accent_words: ["Winter"]` sets those words of the headline (the `title` slot) in the accent text
+color (`@accent-text`, the accent adjusted to read on the background), through ordinary rich-text spans, so the
+two-tone headline needs no second pass. Matching is by whole word and ignores case (`winter` accents "Winter" but not
+"Winterland"); every match is styled. A word that is not in the headline is a warning and is listed under the layout
+record's `accent_words.missing`; a layout that sets its headline on the accent color (a filled hero cell) leaves it
+one color and warns. `accent` with a list is read as `accent_words` and reported under `normalized`, since `accent`
+alone names the accent device (`rule`, `bar` …).
+
+```json
+{"type": "layout-apply", "name": "hero-statement", "title": "Winter warmers on the quay", "accent_words": ["Winter"],
+ "seed": 3, "unfilled": "omit"}
+```
+
+In documents made with house style 4 or later, layout headlines also wrap balanced (`wrap: "balance"`, see
+[line breaking](typography.md#line-breaking)).
+
 `prefix` namespaces layer names, `replace: true` removes the previous layout's layers, `transparent: true` skips the background, and `font`/`display_font` use registered fonts. Without them, layouts use the document typography set by `font pair`, or the proofing fallback font, which `check` flags.
 
 ### Palette roles and keeping your order
