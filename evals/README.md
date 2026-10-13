@@ -179,7 +179,9 @@ python -m evals.house_style --limit 8 --levels medium         # a quick look
 pairwise distance of 48 px renders (`image dist.`, dominated by light against dark); the same distance
 within one mode (`same-mode dist.`); and `structure dist.`, one minus the correlation of normalised
 lightness maps (the arrangement, whatever the colours). **Quality** is the share of designs with no `fix`
-finding from `check`, with their fonts installed and passing the contrast check. `--compare` fails when a
+finding from `check`, with no `composition` finding (`no composition`: dead bands, margin drift, uneven rhythm,
+crowding or clumped scatter, the craft the checks measure; see [the craft backtest](craft_backtest/README.md)), with
+their fonts installed and passing the contrast check. `--compare` fails when a
 quality share falls or a level's diversity falls by more than the baseline's tolerance; a deliberate
 change updates `house-style-baseline.json` in the same commit. `tests/test_house_style.py` runs four
 briefs at two levels as part of the test suite.
@@ -200,3 +202,17 @@ legibility check at every level (no-fix share 0.979); the rolled-layout thumbnai
 Mode and look entropy fall on purpose: documents, forms, slides and logos are mostly light and carry no
 finishing look (decisions D2 and F1), which also lowers the raw image distance. Within a mode, designs
 are about twice as far apart, and the entropies, same-mode and structure distances rise from low to high.
+
+Since the composition checks (house style 3, same seeds), every rolled design at every level is free of
+composition findings (`no composition` 1.0 at low, medium and high), so a default change that adds a dead band,
+two left margins or a crowded rule to rolled designs fails `--compare`. The baseline was refreshed with that column;
+the high level's diversity mean (3.73) had already fallen 0.08 below the stored 0.23 value (3.81) before the
+column was added, and the refreshed baseline records the current house style.
+
+## Craft backtest
+
+`python -m evals.craft_backtest` runs the composition checks on reconstructions of the 16 round-1 Vixl documents
+of the tool comparison and scores them against the defects the blind judges named: per kind, how many expected
+defects it catches and misses, and how many findings match no judged defect. `tests/test_craft_backtest.py` pins
+the numbers. How each document was rebuilt, and why it is not the original, is in
+[craft_backtest/README.md](craft_backtest/README.md).
