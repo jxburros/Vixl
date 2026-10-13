@@ -433,7 +433,10 @@ def primitives(layer, project=None):
     return result + expanded(layer, stroke_path)
 
 
-def render(project, layer):
+def render(project, layer, size=None, matrix=None):
+    """The shape as an RGBA image of its box plus the margin its geometry reaches past it (centred on the
+    box). ``size`` and ``matrix`` draw that image's content into an image of ``size`` instead, mapped by
+    the affine ``matrix`` from the image's pixels (see ``text.render_text``)."""
     import io
     import xml.etree.ElementTree as ET
     from PIL import Image
@@ -444,20 +447,24 @@ def render(project, layer):
     w, h = layer["width"], layer["height"]
     drawn = primitives(layer, project)
     mx, my = path_margin(drawn, w, h)
-    size = (max(1, math.ceil(w)) + 2 * mx, max(1, math.ceil(h)) + 2 * my)
-    project.limits.size(*size)
-    root = ET.Element(
-        "svg",
-        xmlns="http://www.w3.org/2000/svg",
-        width=str(size[0]),
-        height=str(size[1]),
-        viewBox=f"{-mx - (math.ceil(w) - w) / 2} {-my - (math.ceil(h) - h) / 2} {size[0]} {size[1]}",
-    )
+    own = (max(1, math.ceil(w)) + 2 * mx, max(1, math.ceil(h)) + 2 * my)
+    project.limits.size(*own)
+    frame = {"width": str(own[0]), "height": str(own[1]),
+             "viewBox": f"{-mx - (math.ceil(w) - w) / 2} {-my - (math.ceil(h) - h) / 2} {own[0]} {own[1]}"}
+    if matrix is None:
+        root = parent = ET.Element("svg", xmlns="http://www.w3.org/2000/svg", **frame)
+    else:
+        project.limits.size(*size)
+        root = ET.Element("svg", xmlns="http://www.w3.org/2000/svg", width=str(size[0]), height=str(size[1]))
+        group = ET.SubElement(root, "g", transform="matrix(" + " ".join(format(v, ".10g") for v in matrix) + ")")
+        # The frame's margin already holds everything drawn, so it needs no clip (whose anti-aliased
+        # edge would dim ink ending on it).
+        parent = ET.SubElement(group, "svg", overflow="visible", **frame)
     for path, paint in drawn:
         rgba = parse(resolve_color(paint, project.state))
         if path and rgba[3]:
             ET.SubElement(
-                root, "path", d=path, fill=hex_of((*rgba[:3], 1)), attrib={"fill-opacity": str(rgba[3])}
+                parent, "path", d=path, fill=hex_of((*rgba[:3], 1)), attrib={"fill-opacity": str(rgba[3])}
             )
     image = Image.open(
         io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode")))

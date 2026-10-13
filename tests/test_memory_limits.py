@@ -13,7 +13,7 @@ from vixl.errors import memory_guard
 
 
 def reference_gradient(project, layer, size):
-    """gradient_image before #341: whole-canvas float64 arrays."""
+    """gradient_image before #341: whole-canvas float64 arrays (with today's dither)."""
     from vixl.design import gradient_stops, resolve_color
     from vixl.render import color
 
@@ -35,7 +35,7 @@ def reference_gradient(project, layer, size):
     colors[:, :3] *= colors[:, 3:] / 255
     arr = np.stack([np.interp(ramp, offsets, colors[:, i]) for i in range(4)], axis=-1)
     arr[:, :, :3] *= 255 / np.maximum(arr[:, :, 3:], 1)
-    return Image.fromarray(np.uint8(np.clip(arr, 0, 255) + 0.5))
+    return Image.fromarray(np.uint8(np.floor(np.clip(arr, 0, 255) + design_render.dither((h, w))[..., None])))
 
 
 def gradient_layer(**options):

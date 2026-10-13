@@ -187,3 +187,11 @@ of the tool comparison and scores them against the defects the blind judges name
 defects it catches and misses, and how many findings match no judged defect. `tests/test_craft_backtest.py` pins
 the numbers. How each document was rebuilt, and why it is not the original, is in
 [craft_backtest/README.md](craft_backtest/README.md).
+
+## Render parity
+
+`python -m evals.render_parity` renders text, shapes, strokes, gradients, blends, blur, shadows, rotation and image
+scaling with Vixl and with headless Chromium (same font file, sizes and colours) and measures both, against each
+other and against exact supersampled references. It needs `pip install playwright` and writes images and a report
+to `render-parity-results/`. See [render_parity/README.md](render_parity/README.md) and the findings in
+[docs/render-parity.md](../docs/render-parity.md).

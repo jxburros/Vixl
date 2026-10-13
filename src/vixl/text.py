@@ -1060,29 +1060,31 @@ def append_paths(parent, layout, layer, project, motion=None):
         ET.SubElement(parent, "{http://www.w3.org/2000/svg}path", attrs)
 
 
-def render_text(project, layer):
+def render_text(project, layer, size=None, matrix=None):
+    """The text layer as an RGBA image of its box. ``size`` and ``matrix`` draw the same glyphs into an
+    image of ``size`` instead, mapped by the affine ``matrix`` (SVG order, from box pixels): the final
+    placement of a layer at a fractional position or angle, drawn from the outlines instead of resampled."""
     layout = plan(project, layer)
     if layer.get("_kinetic") and layout.shaped:
         from .kinetic import render_plain
 
         return render_plain(project, layer, layout, placed_glyphs(project, layer, layout))
+    width, height = size or (layout.width, layout.height)
     root = ET.Element(
         "{http://www.w3.org/2000/svg}svg",
-        {
-            "width": str(layout.width),
-            "height": str(layout.height),
-            "viewBox": f"0 0 {layout.width} {layout.height}",
-        },
+        {"width": str(width), "height": str(height), "viewBox": f"0 0 {width} {height}"},
     )
     from .emojis import EmojiArt
-    from .vector_raster import painted, rasterize
+    from .vector_raster import painted, placed, rasterize
+
+    parent = root if matrix is None else placed(root, matrix)
 
     stroked = layer.get("stroke_width", 0) > 0 and color_of(project, layer, "stroke_color", "black")[3] > 0
     if not stroked and not any(isinstance(path, EmojiArt) for path, _ in layout.paths):
         # One paint: rasterise the glyphs once as a stencil and paint it, so a recoloured label reuses them.
-        append_paths(root, layout, {**layer, "color": "black"}, project)
+        append_paths(parent, layout, {**layer, "color": "black"}, project)
         return painted(ET.tostring(root, encoding="unicode"), color_of(project, layer, "color", "white"))
-    append_paths(root, layout, layer, project)
+    append_paths(parent, layout, layer, project)
     return rasterize(ET.tostring(root, encoding="unicode"))
 
 

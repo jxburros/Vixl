@@ -728,8 +728,9 @@ def append_svg(parent, result, layer, project, *, node=None, motion=None):
                          "fill_opacity": alpha})
 
 
-def render(project, layer):
-    """The rich text layer as an RGBA image of its box (or natural size when auto-sized)."""
+def render(project, layer, size=None, matrix=None):
+    """The rich text layer as an RGBA image of its box (or natural size when auto-sized). ``size`` and
+    ``matrix`` draw it into an image of ``size``, mapped by the affine ``matrix`` (see ``text.render_text``)."""
     import resvg_py
     from PIL import Image
 
@@ -748,9 +749,15 @@ def render(project, layer):
         image = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode")))).convert("RGBA")
         image.info["vixl_vector_overflow"] = True
         return image
+    width, height = size or (width, height)
     project.limits.size(width, height)
     root = ET.Element(SVG + "svg", {"width": str(width), "height": str(height), "viewBox": f"0 0 {width} {height}"})
-    append_svg(root, result, layer, project)
+    if matrix is None:
+        append_svg(root, result, layer, project)
+    else:
+        from .vector_raster import placed
+
+        append_svg(placed(root, matrix, ns=SVG), result, layer, project)
     data = resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode"))
     return Image.open(io.BytesIO(data)).convert("RGBA")
 

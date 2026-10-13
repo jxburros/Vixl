@@ -1,6 +1,7 @@
 """Procedural shape, gradient, text and appearance rendering."""
 
 from copy import copy, deepcopy
+from functools import lru_cache
 import math
 
 import numpy as np
@@ -25,81 +26,89 @@ def gradient_image(project, layer, size):
     # Interpolate premultiplied alpha to avoid halos around transparent stops.
     colors[:, :3] *= colors[:, 3:] / 255
 
-    def pixels(ramp):
+    def values(ramp):
         arr = np.stack([np.interp(ramp, offsets, colors[:, i]) for i in range(4)], axis=-1)
         arr[..., :3] *= 255 / np.maximum(arr[..., 3:], 1)
-        return np.uint8(np.clip(arr, 0, 255) + 0.5)
+        return np.clip(arr, 0, 255)
 
-    if direction not in ("radial", "angled"):
-        # A linear ramp repeats one row or column: compute that once and repeat its bytes.
-        line = pixels(x[0] if direction == "horizontal" else y[:, 0])
-        rows = np.broadcast_to(line[None, :, :] if direction == "horizontal" else line[:, None, :], (h, w, 4))
-        return Image.fromarray(np.ascontiguousarray(rows))
     # Float work in bands of rows, so a large canvas never holds several float64 copies of itself.
     result = np.empty((h, w, 4), dtype=np.uint8)
     band = max(1, (1 << 18) // max(1, w))
+    # A linear ramp repeats one row or column: compute its colours once.
+    line = values(x[0] if direction == "horizontal" else y[:, 0]) if direction not in ("radial", "angled") else None
     for top in range(0, h, band):
         rows = y[top:top + band]
         if direction == "radial":
             cx, cy = layer.get("center", (0.5, 0.5))
-            ramp = np.sqrt((2 * (x - cx)) ** 2 + (2 * (rows - cy)) ** 2)
-        else:
+            arr = values(np.sqrt((2 * (x - cx)) ** 2 + (2 * (rows - cy)) ** 2))
+        elif direction == "angled":
             a = math.radians(layer.get("angle", 0))
             dx, dy = math.cos(a), math.sin(a)
-            ramp = ((x - 0.5) * dx + (rows - 0.5) * dy) / (abs(dx) + abs(dy)) + 0.5
-        result[top:top + band] = pixels(ramp)
+            arr = values(((x - 0.5) * dx + (rows - 0.5) * dy) / (abs(dx) + abs(dy)) + 0.5)
+        elif direction == "horizontal":
+            arr = line[None, :, :]
+        else:
+            arr = line[top:top + band, None, :]
+        thresholds = dither((len(rows), w), top)[..., None]
+        result[top:top + band] = np.floor(arr + thresholds).astype(np.uint8)
     return Image.fromarray(result)
+
+
+DITHER = 64
+
+
+@lru_cache(maxsize=1)
+def dither_tile():
+    """A DITHER x DITHER tile of interleaved gradient noise in [0, 1)."""
+    yy, xx = np.mgrid[0:DITHER, 0:DITHER]
+    return np.modf(52.9829189 * np.modf(0.06711056 * xx + 0.00583715 * yy)[0])[0].astype(np.float32)
+
+
+def dither(shape, top=0):
+    """Ordered dither thresholds in [0, 1) for an (h, w) block of a gradient starting at row ``top``:
+    adding them before rounding down quantizes a smooth ramp to 8 bits without visible steps (on a
+    subtle gradient, flat bands tens of pixels wide) at the cost of noise below one level. A whole
+    value stays exactly as it is."""
+    tile = dither_tile()
+    return tile[(np.arange(top, top + shape[0]) % DITHER)[:, None], (np.arange(shape[1]) % DITHER)[None, :]]
+
+
+def vector_routed(project, layer):
+    """Whether ``shape_image`` draws the shape with ``vector_strokes.render`` (filled paths, geometry past
+    the box, catalog shapes, styled strokes, distortion, fractional sizes)."""
+    from .render import color
+    from .shape_catalog import active as catalog_active
+    from .vector_strokes import active as stroke_active
+    from .geometry import path_overflows
+
+    filled_path = layer.get("shape") == "path" and (layer.get("stroke_width", 1) <= 0 or
+                  color(resolve_color(layer.get("stroke", "transparent"), project.state))[3] == 0)
+    return bool(filled_path or path_overflows(layer) or catalog_active(layer) or stroke_active(layer)
+                or layer.get("distort") or layer.get("_distort_groups")
+                or (layer.get("shape") != "path" and any(not isinstance(layer[k], int) for k in ("width", "height"))))
+
+
+def svg_shape(project, layer):
+    """Whether ``shape_image`` draws the shape as one SVG path in its box (``svg_shape_image``)."""
+    from .trim import trim_range
+    from .geometry import PATH_SHAPES
+
+    return not vector_routed(project, layer) and not trim_range(layer) and layer["shape"] in PATH_SHAPES
 
 
 def shape_image(project, layer):
     from .render import color
     from .trim import trim_range, trimmed_image
+    from .vector_strokes import render as vector_render
+    from .geometry import PATH_SHAPES
 
-    from .shape_catalog import active as catalog_active
-    from .vector_strokes import active as stroke_active, render as vector_render
-    from .geometry import path_overflows
-
-    filled_path = layer.get("shape") == "path" and (layer.get("stroke_width", 1) <= 0 or
-                  color(resolve_color(layer.get("stroke", "transparent"), project.state))[3] == 0)
-    if filled_path or path_overflows(layer) or catalog_active(layer) or stroke_active(layer) or layer.get("distort") or layer.get("_distort_groups") or (layer.get("shape") != "path" and any(not isinstance(layer[k], int) for k in ("width", "height"))):
+    if vector_routed(project, layer):
         return vector_render(project, layer)
     if trim_range(layer):
         return trimmed_image(project, layer)
-    w, h = layer["width"], layer["height"]
-    from .geometry import PATH_SHAPES
-
     if layer["shape"] in PATH_SHAPES:
-        # SVG's nonzero winding preserves holes in compound imported logo paths (and donut rings).
-        import xml.etree.ElementTree as ET
-        from .geometry import shape_path
-        path, view = shape_path(layer)
-        root = ET.Element("svg", xmlns="http://www.w3.org/2000/svg", width=str(w), height=str(h),
-                          viewBox=f"0 0 {view[0]} {view[1]}", preserveAspectRatio="none")
-        from .colors import parse, hex_of
-        attrs = {"d": path}
-        from .geometry import default_fill
-        for field, value in (("fill", default_fill(layer)), ("stroke", layer.get("stroke", "transparent"))):
-            rgba = parse(resolve_color(value, project.state))
-            if field == "stroke" and (rgba[3] == 0 or layer.get("stroke_width", 1) <= 0):
-                continue
-            attrs[field] = hex_of((*rgba[:3], 1))
-            attrs[field + "-opacity"] = str(rgba[3])
-            if field == "stroke":
-                attrs["stroke-width"] = str(layer.get("stroke_width", 1))
-                if layer.get("line_cap"):
-                    attrs["stroke-linecap"] = layer["line_cap"]
-                    attrs["stroke-linejoin"] = "round" if layer["line_cap"] == "round" else "miter"
-        from .vector_raster import painted, rasterize
-
-        if "stroke" not in attrs and "fill" in attrs:
-            # One paint: a recoloured or duplicated shape reuses the rasterised geometry.
-            paint = parse(resolve_color(default_fill(layer), project.state))
-            attrs.update({"fill": "#000000", "fill-opacity": "1"})
-            ET.SubElement(root, "path", attrs)
-            return painted(ET.tostring(root, encoding="unicode"),
-                           tuple(round(min(max(c, 0.0), 1.0) * 255) for c in paint))
-        ET.SubElement(root, "path", attrs)
-        return rasterize(ET.tostring(root, encoding="unicode"))
+        return svg_shape_image(project, layer)
+    w, h = layer["width"], layer["height"]
     if layer["shape"] == "rectangle" and (
         layer.get("stroke_width", 1) <= 0 or color(resolve_color(layer.get("stroke", "transparent"), project.state))[3] == 0
     ):
@@ -107,6 +116,8 @@ def shape_image(project, layer):
         from .geometry import default_fill
 
         return Image.new("RGBA", (w, h), color(resolve_color(default_fill(layer), project.state)))
+    if filled_outline(project, layer):
+        return outline_image(project, layer)
     # Supersample within the resource budget; geometry is re-evaluated at every size.
     factor = min(
         4,
@@ -160,6 +171,114 @@ def shape_image(project, layer):
                 closed = len(points) >= 4 and points[0] == points[-1]
                 draw.line(points + points[1:2] if closed else points, fill=stroke, width=width, joint="curve")
     return image.resize((w, h), Image.Resampling.LANCZOS)
+
+
+def svg_shape_image(project, layer, size=None, matrix=None):
+    """A path shape (``svg_shape``) as an RGBA image of its box; ``size`` and ``matrix`` draw it into an
+    image of ``size``, mapped by the affine ``matrix`` from box pixels (see ``text.render_text``)."""
+    # SVG's nonzero winding preserves holes in compound imported logo paths (and donut rings).
+    import xml.etree.ElementTree as ET
+    from .colors import parse, hex_of
+    from .geometry import default_fill, shape_path
+    from .vector_raster import painted, rasterize
+
+    w, h = layer["width"], layer["height"]
+    path, view = shape_path(layer)
+    box = {"width": str(w), "height": str(h), "viewBox": f"0 0 {view[0]} {view[1]}", "preserveAspectRatio": "none"}
+    if matrix is None:
+        root = parent = ET.Element("svg", xmlns="http://www.w3.org/2000/svg", **box)
+    else:
+        from .vector_raster import placed
+
+        root = ET.Element("svg", xmlns="http://www.w3.org/2000/svg", width=str(size[0]), height=str(size[1]))
+        parent = ET.SubElement(placed(root, matrix, ns=""), "svg", overflow="visible", **box)
+    attrs = {"d": path}
+    for field, value in (("fill", default_fill(layer)), ("stroke", layer.get("stroke", "transparent"))):
+        rgba = parse(resolve_color(value, project.state))
+        if field == "stroke" and (rgba[3] == 0 or layer.get("stroke_width", 1) <= 0):
+            continue
+        attrs[field] = hex_of((*rgba[:3], 1))
+        attrs[field + "-opacity"] = str(rgba[3])
+        if field == "stroke":
+            attrs["stroke-width"] = str(layer.get("stroke_width", 1))
+            if layer.get("line_cap"):
+                attrs["stroke-linecap"] = layer["line_cap"]
+                attrs["stroke-linejoin"] = "round" if layer["line_cap"] == "round" else "miter"
+    if "stroke" not in attrs and "fill" in attrs:
+        # One paint: a recoloured or duplicated shape reuses the rasterised geometry.
+        paint = parse(resolve_color(default_fill(layer), project.state))
+        attrs.update({"fill": "#000000", "fill-opacity": "1"})
+        ET.SubElement(parent, "path", attrs)
+        return painted(ET.tostring(root, encoding="unicode"),
+                       tuple(round(min(max(c, 0.0), 1.0) * 255) for c in paint))
+    ET.SubElement(parent, "path", attrs)
+    return rasterize(ET.tostring(root, encoding="unicode"))
+
+
+OUTLINES = ("rounded-rectangle", "capsule", "ellipse")
+
+
+def filled_outline(project, layer):
+    """Whether a shape is a rounded rectangle, capsule or ellipse with no visible outline:
+    ``outline_image`` rasterizes its outline directly (no supersampled Pillow drawing)."""
+    from .render import color
+
+    return layer.get("shape") in OUTLINES and (
+        layer.get("stroke_width", 1) <= 0
+        or color(resolve_color(layer.get("stroke", "transparent"), project.state))[3] == 0)
+
+
+def outline_image(project, layer, size=None, matrix=None):
+    """A ``filled_outline`` shape as an RGBA image of its box; ``size`` and ``matrix`` draw it into an
+    image of ``size``, mapped by the affine ``matrix`` from box pixels (see ``text.render_text``)."""
+    import xml.etree.ElementTree as ET
+    from .colors import parse
+    from .geometry import default_fill
+    from .vector_raster import painted
+
+    w, h = layer["width"], layer["height"]
+    shape = layer["shape"]
+    root = ET.Element("svg", xmlns="http://www.w3.org/2000/svg", width=str((size or (w, h))[0]),
+                      height=str((size or (w, h))[1]))
+    parent = root
+    if matrix is not None:
+        parent = ET.SubElement(root, "g", transform="matrix(" + " ".join(format(v, ".10g") for v in matrix) + ")")
+    if shape == "ellipse":
+        ET.SubElement(parent, "ellipse", cx=str(w / 2), cy=str(h / 2), rx=str(w / 2), ry=str(h / 2))
+    else:
+        radius = layer.get("radius", min(w, h) / (2 if shape == "capsule" else 5))
+        ET.SubElement(parent, "rect", width=str(w), height=str(h), rx=str(min(radius, w / 2, h / 2)))
+    paint = parse(resolve_color(default_fill(layer), project.state))
+    return painted(ET.tostring(root, encoding="unicode"), tuple(round(min(max(c, 0.0), 1.0) * 255) for c in paint))
+
+
+def vector_drawing(project, layer):
+    """A function ``draw(size, matrix)`` that draws a text or vector shape layer's own content
+    (what ``draw_ink`` draws for it, before effects) into an image of ``size``, mapped by the affine
+    ``matrix`` from box pixels; None for layers drawn otherwise."""
+    if layer["type"] == "shape":
+        if vector_routed(project, layer):
+            from .vector_strokes import render
+
+            return lambda size, matrix: render(project, layer, size, matrix)
+        from .trim import trim_range
+
+        if svg_shape(project, layer):
+            return lambda size, matrix: svg_shape_image(project, layer, size, matrix)
+        if filled_outline(project, layer) and not trim_range(layer):
+            return lambda size, matrix: outline_image(project, layer, size, matrix)
+        return None
+    if layer["type"] != "text" or layer.get("_kinetic"):
+        return None
+    from .richtext import active
+
+    if active(layer):
+        from .richtext import render
+
+        return lambda size, matrix: render(project, layer, size, matrix)
+    from .text import render_text
+
+    return lambda size, matrix: render_text(project, layer, size, matrix)
 
 
 def text_image(project, layer):
