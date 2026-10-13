@@ -178,6 +178,7 @@ same checks) and verifies that the history is acyclic and every reference resolv
 ## Other formats
 
 - [Exporting](exporting.md) covers PNG, SVG, PDF, PPTX, PSD and HTML. Vixl's own SVG embeds this document model, so
-  importing it back gives the same editable layers ([SVG round trip](exporting.md#svg-round-trip)).
+  importing it back gives the same editable layers ([SVG round trip](exporting.md#svg-round-trip)). It names the
+  archive's fonts instead of storing them; the import finds them again.
 - [Reviewing projects in Git](commands.md#reviewing-editable-projects-in-git) unpacks a document into a folder of
   readable files and back.

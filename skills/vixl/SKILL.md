@@ -362,7 +362,8 @@ Use a `roll` step in `vixl_apply` (CLI `roll --apply --set title=...`) to apply 
 `vixl_reference('roll')` to see one without applying it;
 `layout apply` returns unfilled slots immediately. Check and fill them before export. A roll with `slots` omits the slots you did not fill (`unfilled: "omit"`), so it passes `check`; pass `unfilled: "blank"` to keep `[Label]` placeholders instead.
 An `import-document` step (`vixl_apply`) imports SVG and PDF as editable layers. Vixl's own SVG export carries its document, so
-re-importing it restores the same layers, live text, groups and effects. Other SVG becomes shapes, live text
+re-importing it restores the same layers, live text, groups and effects (fonts are named, not stored: bundled and
+Google Fonts faces are found again; other fonts fall back to the bundled face with a warning). Other SVG becomes shapes, live text
 (`<text>`), groups (`<g>`), gradients and images; a PDF page becomes live text, paths and images (shadings and
 clipped content as image layers). With the default `svg_mode="editable"` an unsupported SVG feature returns an
 error; `"auto"` draws just those elements as images; `"appearance"` imports the whole SVG or PDF page as one image

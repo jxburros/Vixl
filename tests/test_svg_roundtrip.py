@@ -144,7 +144,8 @@ def test_tampered_embedded_document_is_refused_and_the_svg_imports_editably():
     from vixl.assets import add_image
 
     asset = add_image(original, Image.new("RGBA", (8, 8), (200, 30, 30, 255)))
-    original.apply({"type": "add", "asset": asset, "name": "tile", "x": 4, "y": 4})
+    # Drawn larger than the file, so the body does not show its bytes and the payload stores them.
+    original.apply({"type": "add", "asset": asset, "name": "tile", "x": 4, "y": 4, "width": 16, "height": 16})
     svg = original.export(format="SVG")
     match = METADATA.search(svg)
     payload = json.loads(ET.fromstring(match.group(0)).text)
@@ -165,11 +166,180 @@ def test_assets_over_the_budget_are_left_out_and_reported(monkeypatch):
 
     monkeypatch.setattr(vixl.svg, "EMBED_BUDGET", 10)
     original = with_font_and_variety()
+    from vixl.assets import add_image
+
+    asset = add_image(original, Image.new("RGBA", (8, 8), (200, 30, 30, 255)))
+    original.apply({"type": "add", "asset": asset, "name": "tile", "x": 4, "y": 4, "width": 16, "height": 16})
     svg = original.export(format="SVG")
     payload = json.loads(ET.fromstring(METADATA.search(svg).group(0)).text)["vixl"]
     assert payload["omitted_assets"] and not payload["assets"]
     result = import_document(Project(240, 160), svg, "svg", svg_mode="auto")
     assert result["mode"] == "editable" and any("leaves out" in w for w in result["warnings"])
+
+
+def payload_of(svg):
+    return json.loads(ET.fromstring(METADATA.search(svg).group(0)).text)["vixl"]
+
+
+def renamed_font(family):
+    """A bundled face renamed to ``family`` (other bytes, so it is not recognised as bundled)."""
+    import io
+
+    from fontTools.ttLib import TTFont
+
+    font = TTFont(ROOT / "src" / "vixl" / "data" / "NotoSans-Regular.ttf")
+    names = font["name"]
+    for name_id in (1, 4, 16):
+        names.removeNames(nameID=name_id)
+    names.setName(family, 1, 3, 1, 0x409)
+    names.setName(family, 4, 3, 1, 0x409)
+    stream = io.BytesIO()
+    font.save(stream)
+    return stream.getvalue()
+
+
+@pytest.fixture
+def font_cache(tmp_path, monkeypatch):
+    """An empty font cache and no network: a download attempt fails the test."""
+    import httpx
+
+    from vixl import typefaces
+
+    monkeypatch.setenv("VIXL_FONT_CACHE", str(tmp_path / "fonts"))
+    real = httpx.Client
+
+    def offline(*args, **kwargs):
+        if "transport" in kwargs:
+            return real(*args, **kwargs)
+        raise AssertionError("the import tried to download a font")
+
+    monkeypatch.setattr(typefaces.httpx, "Client", offline)
+    return tmp_path / "fonts"
+
+
+def google_poster(cache):
+    """A text poster in a registered Google Fonts family (Inter, served from the font cache)."""
+    from vixl import typefaces
+
+    cache.mkdir(parents=True, exist_ok=True)
+    data = renamed_font("Inter")
+    (cache / "inter-400.ttf").write_bytes(data)
+    p = Project(400, 300, "#ffffff")
+    typefaces.install_font(p, "Inter", 400)
+    p.apply({"type": "text", "name": "title", "text": "Poster title", "font": "inter-400", "size": 40, "x": 20,
+             "y": 20, "color": "#111111"})
+    return p, data
+
+
+def test_a_blank_document_svg_is_small_and_carries_no_font_files(font_cache):
+    """Fonts are recorded by identity, not stored: a blank document that registers fonts exports a few KB."""
+    from vixl.fonts import import_font
+
+    p, data = google_poster(font_cache)
+    p.apply({"type": "remove", "target": "title"})
+    import_font(p, ROOT / "src" / "vixl" / "data" / "NotoSans-Regular.ttf", "noto")
+    svg = p.export(format="SVG")
+    assert len(svg) < 20 * 1024
+    payload = payload_of(svg)
+    assert not payload["assets"]
+    assert {record["source"] for record in payload["fonts"].values()} == {"google", "bundled"}
+
+
+def test_text_in_a_google_font_stores_no_font_bytes_and_resolves_from_the_font_cache(font_cache):
+    p, data = google_poster(font_cache)
+    svg = p.export(format="SVG")
+    assert base64.b64encode(data[:300]).decode()[:200] not in svg.decode()
+    assert len(svg) < len(data) // 4
+    record = next(iter(payload_of(svg)["fonts"].values()))
+    assert record == {"family": "Inter", "weight": 400, "italic": False, "registered": ["inter-400"],
+                      "source": "google"}
+    restored = Project(10, 10)
+    result = import_document(restored, svg, "svg")
+    assert result["fonts"] == {"inter-400": "font cache"} and not result.get("warnings")
+    assert restored.state == p.state and restored.assets == p.assets
+
+
+def test_a_google_font_missing_from_the_cache_is_downloaded_only_when_installs_are_allowed(font_cache, monkeypatch):
+    import httpx
+
+    from vixl import typefaces
+
+    p, data = google_poster(font_cache)
+    svg = p.export(format="SVG")
+    (font_cache / "inter-400.ttf").unlink()
+    off = Project(10, 10)
+    result = import_document(off, svg, "svg", install_fonts=False)
+    assert result["fonts"] == {"inter-400": "fallback"}
+    assert any("Inter 400 (inter-400)" in w and "cache only" in w for w in result["warnings"])
+    requests = []
+
+    def handler(request):
+        requests.append(request.url.host)
+        if request.url.host == "fonts.googleapis.com":
+            return httpx.Response(200, text="@font-face { src: url(https://fonts.gstatic.com/s/x/v1/a.ttf) "
+                                            "format('truetype'); }")
+        return httpx.Response(200, content=data)
+
+    real = httpx.Client
+    monkeypatch.setattr(typefaces.httpx, "Client",
+                        lambda *args, **kwargs: real(transport=kwargs.get("transport") or httpx.MockTransport(handler)))
+    on = Project(10, 10)
+    result = import_document(on, svg, "svg")
+    assert result["fonts"] == {"inter-400": "downloaded"} and requests
+    assert on.state == p.state
+
+
+def test_a_user_font_that_cannot_be_found_falls_back_with_a_warning(tmp_path, font_cache):
+    from vixl.fonts import import_font
+
+    path = tmp_path / "house.ttf"
+    path.write_bytes(renamed_font("Vixl House Face"))
+    p = Project(200, 80, "#ffffff")
+    import_font(p, path, "house")
+    p.apply({"type": "text", "name": "word", "text": "House", "font": "house", "size": 30, "x": 10, "y": 10})
+    svg = p.export(format="SVG")
+    assert payload_of(svg)["fonts"][p.state["fonts"]["house"]]["source"] == "file"
+    restored = Project(10, 10)
+    result = import_document(restored, svg, "svg")
+    assert result["mode"] == "document" and result["fonts"] == {"house": "fallback"}
+    assert any("Vixl House Face 400 (house)" in w and "DejaVu Sans" in w for w in result["warnings"])
+    fallback = (ROOT / "src" / "vixl" / "data" / "DejaVuSans.ttf").read_bytes()
+    assert restored.assets[restored.state["fonts"]["house"]] == fallback
+    assert restored.layer("word")["text"] == "House" and restored.layer("word")["font"] == restored.state["fonts"]["house"]
+    # Everything but the font file comes back as it was.
+    assert [x["id"] for x in restored.state["layers"]] == [x["id"] for x in p.state["layers"]]
+    # A document that has the font registered under the same name supplies it.
+    target = Project(200, 80, "#ffffff")
+    import_font(target, path, "house")
+    result = import_document(target, svg, "svg", name="art")
+    assert result["fonts"] == {"house": "document"} and not result.get("warnings")
+
+
+def test_images_shown_as_they_are_are_stored_once():
+    from vixl.assets import add_image
+
+    p = Project(80, 60, "#ffffff")
+    shown = add_image(p, Image.new("RGBA", (20, 10), (200, 30, 30, 255)))
+    hidden = add_image(p, Image.new("RGBA", (6, 6), (30, 30, 200, 255)))
+    scaled = add_image(p, Image.new("RGBA", (4, 4), (30, 200, 30, 255)))
+    p.apply([{"type": "add", "asset": shown, "name": "shown", "x": 3, "y": 4},
+             {"type": "add", "asset": hidden, "name": "hidden", "x": 40, "y": 4},
+             {"type": "hide", "target": "hidden"},
+             {"type": "add", "asset": scaled, "name": "scaled", "x": 40, "y": 30, "width": 12, "height": 12}])
+    svg = p.export(format="SVG")
+    payload = payload_of(svg)
+    # The body draws the shown image with the file's own bytes; the payload points at that element.
+    ident = payload["images"][shown]
+    element = next(e for e in ET.fromstring(svg).iter() if e.get("id") == ident)
+    assert element.get("href") == "data:image/png;base64," + base64.b64encode(p.assets[shown]).decode()
+    assert svg.count(base64.b64encode(p.assets[shown])[:40]) == 1
+    # Members with no element of their own stay in the payload.
+    assert set(payload["assets"]) == {hidden, scaled}
+    restored = Project(10, 10)
+    import_document(restored, svg, "svg")
+    assert restored.state == p.state and restored.assets == p.assets
+    # Without the document the body keeps the re-encoded image, as before.
+    assert b"vixl-asset-" not in p.export(format="SVG", svg_document=False)
 
 
 def test_svg_document_can_be_left_out():
