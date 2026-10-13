@@ -593,9 +593,7 @@ def page_geometry(canvas, dpi):
     """(width, height, kx, ky, bleed) of a page in points for a canvas exported at ``dpi``.
 
     Print sizes keep their physical trim and bleed (``canvas.physical``), so the page measures
-    exactly trim + 2 × bleed. Documents made before 0.23 stored a fractional bleed rounded up (0.125 in at 300 dpi
-    as 38 px instead of 37.5); their pixels stretch by a hair to fill the page. Other canvases map pixels to points
-    at ``dpi``."""
+    exactly trim + 2 × bleed. Other canvases map pixels to points at ``dpi``."""
     from .sizes import PX, UNIT_INCHES, bleed_pixels, to_pixels
 
     k = 72 / dpi
@@ -603,13 +601,9 @@ def page_geometry(canvas, dpi):
     physical = canvas.get("physical")
     if physical and physical.get("unit", PX) != PX and canvas.get("dpi") == dpi:
         unit, amount = physical["unit"], physical.get("bleed", 0)
-        for side in (bleed_pixels(amount, unit, dpi), round(to_pixels(amount, unit, dpi))):
-            pixels = [round(to_pixels(physical[key], unit, dpi)) + 2 * side for key in ("width", "height")]
-            if pixels == [w, h] and side == bleed:
-                break
-        else:
-            pixels = None
-        if pixels:
+        side = bleed_pixels(amount, unit, dpi)
+        pixels = [round(to_pixels(physical[key], unit, dpi)) + 2 * side for key in ("width", "height")]
+        if pixels == [w, h] and side == bleed:
             points = 72 * UNIT_INCHES[unit]
             width, height = (physical["width"] + 2 * amount) * points, (physical["height"] + 2 * amount) * points
             return width, height, width / w, height / h, amount * points

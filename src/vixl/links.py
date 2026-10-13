@@ -16,8 +16,7 @@ ordinary image layer.
 Links are opt-in and confined. A relative source resolves against the document's own folder first,
 then the workspace (the service's workspace, or the CLI's folder), so a folder holding a document and
 its sources can be copied or moved as a whole. A source inside the document's folder is stored
-relative to it; other sources are stored relative to the workspace (documents saved before 0.22
-stored every source that way, and still resolve through the workspace fallback). Saving a document to
+relative to it; other sources are stored relative to the workspace. Saving a document to
 another folder rewrites its relative sources so they keep pointing at the same files, and
 ``links-relink`` rewrites a source prefix by hand. A source outside both needs
 ``--allow-linked`` (CLI/Python only: services never allow it, so REST and MCP links stay inside the

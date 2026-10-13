@@ -321,7 +321,7 @@ def _new_spec(project, op):
     _options(project, op, spec)
     _merge(project, spec, op, None)
     # New diagrams record their look, so a later diagram-set keeps it: the document palette and mode unless a
-    # theme was chosen, and label leading from the line-height table. Older specs keep the light theme.
+    # theme was chosen, and label leading from the line-height table.
     spec.setdefault("theme", default_theme(project))
     spec.setdefault("line_height", LINE_HEIGHT["caption"])
     return spec
@@ -580,12 +580,13 @@ class _Text:
     """Measures label text through the document's own text engine, with a cache."""
 
     def __init__(self, project, font, line_height=None):
-        self.project, self.font, self.cache, self.line_height = project, font, {}, line_height
+        from .craft import LINE_HEIGHT
+
+        self.project, self.font, self.cache = project, font, {}
+        self.line_height = LINE_HEIGHT["caption"] if line_height is None else line_height
 
     def spacing(self, size):
-        """Label leading: the spec's line-height multiple (diagrams made since 0.23), else the older fixed rule."""
-        if self.line_height is None:
-            return max(0, round(size * 0.18))
+        """Label leading: the spec's line-height multiple."""
         from .craft import spacing_for
 
         return spacing_for(self.project, self.font, size, self.line_height)

@@ -277,7 +277,7 @@ def test_brush_defaults_follow_the_stroke_rule():
 
 # Irregularity (#425)
 
-def test_irregular_and_tear_default_to_subtle_and_older_recipes_stay_natural():
+def test_irregular_and_tear_default_to_subtle():
     project = Project(600, 600)
     project.apply([{"type": "shape", "shape": "rectangle", "name": "box", "width": 200, "height": 200, "fill": "#333"},
                    {"type": "irregular", "target": "box", "seed": 3},
@@ -285,12 +285,6 @@ def test_irregular_and_tear_default_to_subtle_and_older_recipes_stay_natural():
     assert project.layer("box")["irregular"]["recipe"]["strength"] == "subtle"
     torn = next(layer for layer in project.state["layers"] if layer.get("tear"))
     assert torn["tear"]["recipe"]["strength"] == "subtle"
-    legacy = Project(600, 600)
-    legacy.apply([{"type": "shape", "shape": "rectangle", "name": "box", "width": 200, "height": 200, "fill": "#333"},
-                  {"type": "irregular", "target": "box", "seed": 3}])
-    legacy.layer("box")["irregular"]["recipe"].pop("strength")
-    legacy.apply({"type": "irregular", "target": "box", "seed": 4})
-    assert legacy.layer("box")["irregular"]["recipe"]["strength"] == "natural"
 
 
 # Diagrams (#397)
