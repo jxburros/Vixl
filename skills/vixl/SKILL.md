@@ -226,15 +226,15 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
   consumer. `screen-capture` (`{output, bbox? | window?, all_screens?}`) is an explicit local desktop capture, not
   rendering. MCP requires the server owner to enable `--allow-screen-capture` or `VIXL_ALLOW_SCREEN_CAPTURE=1`; paths are workspace-relative. See [production](references/production.md).
 - **Motion** — `character-pose` with `time` (and `easing`) keys joint angles and solves the rig every frame; don't add
-  separate limb x/y/rotation keys. In house-style-3 documents a new timeline of 10 s or less is a seamless loop: pass
+  separate limb x/y/rotation keys. A new timeline of 10 s or less is a seamless loop: pass
   `loop_mode: "off"` or `loop: 1` for play-once. `animate` `intent` (entrance, exit, loop, emphasis) picks the house
   easing. Templates `video-tip`, `video-launch`, `video-event` build editable six-second loops (title/subtitle/cta).
   See [brushes and timeline](references/brushes-timeline.md).
 - **House style** — 76 font pairings, weighted alignment, saturated backgrounds kept. Explicit fields and saved
   geometry win. Minor social/poster text must be at least 2.2 % of
   the short side; bold text counts as large from 18.66 px (regular from 24 px).
-- **Spacing units** — `stack` and `layout-apply` `gap` accept `"2u"` (CLI `--gap 2u`; 1u = half the body size); new house-style
-  stacks default to 2u.
+- **Spacing units** — `stack` and `layout-apply` `gap` accept `"2u"` (CLI `--gap 2u`; 1u = half the body size); stacks default
+  to 2u.
 - **Brushes and frames** — paint `settings` `drip` (0–4 brush sizes), `relief` (0–1) and `light_angle` (degrees,
   default -45); `frame` `frame_shape` (rectangle, ellipse, star, hexagon, heart) or a closed SVG `outline` in
   frame-local pixels; keep the canvas transparent for a shaped image.
@@ -260,8 +260,8 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
   `vixl_check(checks=["deck"])`, export `.pdf` (vector, selectable text), `.pptx` (editable) or
   `.html` (a one-file presentation with speaker view).
 - **Forms** — `field` layers (rules such as `format`, `pattern`, `max_length` become PDF actions),
-  `export_file(fillable=true)`, filling with `values` or the `form-fill` workflow, `check form` with
-  `sample="worst"` (each overflow reports what it measured).
+  `vixl_export(fillable=true)`, filling with `values` or the `form-fill` workflow, `vixl_check(checks=["form"],
+  sample="worst")` (each overflow reports what it measured).
 - **Hand drawings** — `drawing` import/clean/vectorize/straighten/fill/stroke; keep the person's
   lines and measure it with `drawing-report` (`preserved`) and `drawing-compare`.
 - **Rich text** — `rich-text` (Markdown) and `text-style` for mixed styles and lists in one box. `text-set` changes the
@@ -327,7 +327,7 @@ Use submit/start/status for long jobs. An uncertain external generation request 
 not be blindly repeated; preserve its remote job identity.
 
 - **Named sizes** — `vixl_document(action='create', size="letter", bleed=true)` / `vixl new business-card --bleed`; 150 print, social, web, ad, video, slide, icon and logo sizes with dpi, bleed, safe area and guides.
-- **New documents** — every surface (`vixl new`, `Project()`, `vixl_document(action='create')`, compose) rolls and stores `design_defaults` (`seed`/`--seed`, `variety`/`--variety` reproduce them), gives the canvas the palette background (transparent for logos, icons and favicons; pass `background` to choose) and installs the rolled pairing. A `layout-apply` without `seed` then follows the whole stored direction.
+- **New documents** — every creation surface (`vixl new`, `Project.new()`, `vixl_document(action='create')`, compose) rolls and stores `design_defaults` (`seed`/`--seed`, `variety`/`--variety` reproduce them), gives the canvas the palette background (transparent for logos, icons and favicons; pass `background` to choose) and installs the rolled pairing. A `layout-apply` without `seed` then follows the whole stored direction.
 - **Layouts** — 53 principled, seed-varied layouts (`layout-apply`) that adapt to the canvas and set up contrast-checked color roles, a type scale and grids. Use them when a brief gives you free rein. They are fill-in-the-blank forms: `vixl layout show NAME` / `vixl_reference('layouts')` lists each layout's slots and what each needs. Fill them all; an unfilled slot renders as a `[Label]` blank that `check` reports as an error, and a slot the layout doesn't use is rejected rather than silently dropped. Templates work the same way.
 - **Typefaces** — the bundled font is a proofing fallback (`check` warns about it). Pick real type from a researched catalog of open-licensed families and curated heading/body pairings: `vixl font pairings --mood editorial` / `vixl_reference('fonts')`, then `vixl font pair NAME|random` / `font-pair` downloads, embeds and sets them as the document typography that layouts use; the result's `source` says whether each font came from the cache or a download (URL). `vixl font principles` explains how to combine fonts. Text without `font` uses the body face once the document has typography, text without `color` uses `@ink` (or black or white, whichever reads on the canvas), text without `size` uses the body size of the type scale (proportional to the canvas), and leading follows one line-height table (body 1.45, headings 1.1, display 1.0; `spacing` is line spacing and may be negative). Letter spacing is the layer's `tracking` (pixels), and `text_transform` (`uppercase`, `lowercase`, `capitalize`) cases the drawn text; both apply to keyed and `${variable}` text.
 - **Dice** — when the brief is thin, roll instead of defaulting: `vixl roll --for poster` / `vixl_reference('roll')` picks a pairing, a mood-consistent palette, a layout and its parameters from one seed, weighted by purpose (poster, social, slides, document, form, diagram, logo, motion; else the document's size) and gated by `variety` (low: safe pools only; medium: mostly safe, sometimes bold; high: every tier); layouts and templates accept `seed: "random"`. Roll a few, preview, keep the seed you like, and `--lock` choices you want fixed (`--lock tier=bold` explores a tier). `vixl house show PURPOSE` prints the purpose profile.
@@ -342,13 +342,13 @@ See [design-system.md](references/design-system.md) (sizes, layouts, color, prin
 
 Discover commands with `vixl commands --json` and shape shortcuts with `vixl shapes`. Command help works without an open document. CLI edits now default to compact results; add `--detail full` for snapshots. Use named palettes, built-in/custom templates, overall/style guidance, explicit HTTPS/local fonts, expanded shapes and Bézier paths. SVG retains supported shapes, gradients, groups, pixels, boolean silhouettes and shaped Unicode text and common effects/styles as vectors; strict SVG policy rejects embedded raster content with layer/effect details. See [local artistic filters](references/artistic-filters.md) for 19 deterministic treatments, defaults and ranges; no AI provider is needed. PNG preserves transparency; JPG flattens against an explicit background.
 
-See [resources](references/resources.md) for the new MCP tools and CLI/operation examples. Discover authenticated provider models with `vixl models --refresh` or `vixl_models_list`; native Anthropic/Gemini and OpenAI-compatible Mistral/Meta join the existing providers. Midjourney requires an authorized HTTP gateway, not a fabricated official API.
+See [resources](references/resources.md) for resource calls and CLI/operation examples. Discover authenticated provider models with `vixl models --refresh` or `vixl_models_list`; native Anthropic/Gemini and OpenAI-compatible Mistral/Meta join the existing providers. Midjourney requires an authorized HTTP gateway, not a fabricated official API.
 
 ## Workspace review and brands
 
 `vixl mcp --workspace .` serves seven tools (`vixl_document`, `vixl_apply`, `vixl_check`, `vixl_render`,
 `vixl_export`, `vixl_reference`, `vixl_job`); fetch operation fields with `vixl_reference('operations', name=[…])`
-and a tool's rarer options with `vixl_reference('vixl_export')` (any tool name). Unadvertised arguments go into
+and a tool's rarer options with `vixl_reference('vixl_export')` (any tool name but `vixl_job`). Unadvertised arguments go into
 `options`, and an error returns the schema it expected. HTTP clients can use `--http` at `/mcp` with the configured bearer token.
 Read `vixl_document(action='notes')` before revising a document and resolve notes after addressing them.
 Humans can follow progress with `vixl -p DOCUMENT view`.
@@ -365,16 +365,18 @@ Use a `roll` step in `vixl_apply` (CLI `roll --apply --set title=...`) to apply 
 `vixl_reference('roll')` to see one without applying it;
 `layout apply` returns unfilled slots immediately. Check and fill them before export. A roll with `slots` omits the slots you did not fill (`unfilled: "omit"`), so it passes `check`; pass `unfilled: "blank"` to keep `[Label]` placeholders instead.
 An `import-document` step (`vixl_apply`) imports SVG and PDF as editable layers. Vixl's own SVG export carries its document, so
-re-importing it restores the same layers, live text, groups and effects (fonts are named, not stored: bundled and
-Google Fonts faces are found again; other fonts fall back to the bundled face with a warning). Other SVG becomes shapes, live text
+re-importing it restores the same layers, live text, groups and effects (fonts are named, not stored: the import finds a
+bundled, cached, same-named registered or Google Fonts face again; any other font falls back to the bundled face with a
+warning). Other SVG becomes shapes, live text
 (`<text>`), groups (`<g>`), gradients and images; a PDF page becomes live text, paths and images (shadings and
 clipped content as image layers). With the default `svg_mode="editable"` an unsupported SVG feature returns an
 error; `"auto"` draws just those elements as images; `"appearance"` imports the whole SVG or PDF page as one image
 (`dpi` sets a PDF page's resolution).
 A Figma file or frame imports as editable layers, live text, stacks and gradients with `format="figma"` and `source` set to the URL or key
-(CLI `vixl import URL --format figma`, Python `import_document(project, b"URL", "figma")`, REST `POST /import?format=figma`); the user's read-only token is
-the `FIGMA_TOKEN` environment variable, and the result's `report` lists what could not map. See
-[Import from Figma](../../docs/figma.md).
+(`node_id` picks one frame, `rasterize_unsupported` draws nodes with no editable equivalent as images; CLI
+`vixl import URL --format figma [--node 1:2] [--rasterize-unsupported]`, Python `import_document(project, b"URL", "figma")`, REST
+`POST /import?format=figma`); the user's read-only token is the `FIGMA_TOKEN` (or `VIXL_FIGMA_TOKEN`) environment variable of
+the process that runs Vixl, and the result's `report` lists what could not map. See [Import from Figma](../../docs/figma.md).
 
 ## 1. Pick the interface
 
@@ -392,7 +394,7 @@ AI-provider features (generate, inpaint, segmentation, OCR, plan) are in
 [references/ai.md](references/ai.md).
 
 Check availability first: `vixl --version` (CLI) or call `vixl_document(action='list')` (MCP). Install from
-source with `pip install -e ".[server]"` (Python ≥ 3.11); Windows users use the installer.
+source with `pip install -e ".[server]"` (Python ≥ 3.11; add the `pdf` extra for PDF import); Windows users use the installer.
 Set `VIXL_NO_UPDATE=1` in automation so the Windows auto-updater never runs mid-task.
 A slow render? `check --checks cost` names the costly layer; `VIXL_PROFILE=1` adds a `render_profile`
 (per-layer times, cache hits) to every result. `vixl cache info|clear` manages the disk render cache
@@ -447,7 +449,9 @@ If found, prepend its folder to PATH for this session — see
    CLI: `vixl render --out /tmp/preview.png` then view the file. Never declare a visual
    task done without looking.
 8. **Export** after `vixl_check(profile="final")` passes (it also fails on unresolved review findings):
-   `vixl_export` / `vixl export`.
+   `vixl_export` / `vixl export`. Profiles: `draft` fails only on errors, `review` on `fix` findings (as a plain
+   check does) and runs every attached suite, `final` also fails on `review` findings and adds the `color_vision` and
+   `composition` checks; a workspace `.vixl-checks.json` defines more.
    A `.psd` path writes a layered Photoshop handoff file (one pixel layer per layer, groups kept, text as pixels).
 
 ## 3. Minimal examples
@@ -481,7 +485,7 @@ vixl_document(action='create', path="spring.vixl", size="instagram-portrait")
 vixl_apply(operations=[{"type":"font-pair","pairing":"random","mood":"friendly"},   # heading + body typography
   {"type":"layout-apply","name":"split-screen","title":"Spring collection",
   "subtitle":"New colors, same perfect fit.","label":"Just landed","cta":"Shop now","palette":"spring","seed":11}])
-vixl_apply(operations=[{"type":"import-image","path":"photos/spring.jpg"}])   # steps[0].result.asset: "assets/…"
+vixl_apply(operations=[{"type":"import-image","path":"photos/spring.jpg","name":"hero"}])   # steps[0].result.asset: "assets/…"
 vixl_apply(operations=[{"type":"replace-contents","target":"image","asset":"assets/…"},
   {"type":"remove","target":"hero"}])                         # the photo now fills the layout's frame
 vixl_check() ; vixl_render() ; vixl_export(path="spring.png")   # check fails while blanks remain
@@ -508,7 +512,8 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   per-directory default in `.vixl-session.json`, which is fragile across concurrent work.
 - **CLI edits default to compact output** with changed values and layer IDs. Use `--detail full`
   for complete before/after snapshots. REST also defaults to `detail:"compact"`; MCP defaults to the
-  leaner `detail:"brief"` (IDs, names and bounds of changed layers, plus `warnings`).
+  leaner `detail:"brief"` (IDs, names and bounds of changed layers, plus `warnings`), and `vixl_document` and `vixl_apply`
+  answer with a terse summary unless the call passes `verbose: true`.
 - **CLI JSON is ASCII-escaped UTF-8**, so Unicode names and normalization notes survive Windows
   redirected output. Parse JSON normally; escapes decode to the original text.
 - **Errors are structured.** MCP tool errors and CLI `--json` failures are
@@ -522,6 +527,12 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   read as `amount`. `radius` is its own field for `vignette` (0–1.4) and `rounded-rectangle` corners.
 - **Opacity is 0–1 everywhere**; `"50%"` is read as 0.5, and a bare number above 1 is an error (never guessed as a percentage).
 - **Scale `value` is a factor** (`0.8`); CLI accepts `80%`.
+- **A closed shape's stroke sits inside its outline**, flush with the box edge (`stroke_align` `inside`, the default for
+  rectangles, rounded rectangles, capsules, ellipses, polygons, stars and catalog shapes): a 10 px stroke on a
+  rectangle covers the outer 10 px of its box and the fill runs under it. Paths, arcs, lines and open shapes stroke on
+  their centre line (`center`); `stroke_align` (`inside`, `center`, `outside`) overrides either, and PNG, SVG, PDF and
+  PowerPoint put the stroke in the same place. A `rectangle` with a `radius` becomes a `rounded-rectangle` (reported
+  under `normalized`).
 - **Absolute `move` and `align`/`distribute` clear constraints** on that layer. Use `constrain`
   when layout should survive canvas resizes, artboards or text changes; use `align` for a one-off.
 - **One constraint per axis** (e.g. `left` *or* `center-x` *or* `right`). Anchors: `canvas`, a layer
@@ -542,7 +553,8 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   text, or a `table` column `leader: "."`. Two-tone headlines: `layout-apply` `accent_words: ["Winter"]`.
 - **Variables:** `${name}` works in text, colors, gradient fills and image-asset IDs. Undefined
   variables are errors. Swatches are `@name` in color fields.
-- **Through MCP/REST, operation `path` and `linked` fields are rejected, and `font` takes only a registered
+- **Through MCP/REST, operation `path` and `linked` fields are rejected (SVG path data on `shape`, `text-layout` and
+  `select` is allowed), and `font` takes only a registered
   font name or role (`heading`/`body`; install with `font pair`/`font install` first).** Import files with
   an `import-image` step in `vixl_apply` (`path`, or `data_base64` when you only have the bytes)
   or `POST /assets` (REST); reuse already-embedded images via `asset` IDs.
@@ -570,8 +582,8 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 - **Read `warnings` in apply results**: text cut off by the canvas or its box, and fields that were
   accepted but change nothing (`radius` on a plain rectangle). Unknown fields are errors with the
   accepted field names and a `vixl_reference('operations', name=[…])` pointer.
-- **CLI `new` and `export`/`render --out` refuse existing destinations** in batch/data/animation
-  workflows; choose fresh names.
+- **CLI `new`, `export`, `render --out` and `export-animation` refuse existing destinations** unless
+  `--overwrite`; `render --data` and `export-screens` never overwrite, so choose fresh names.
 - **Pixel art:** export with `--sampling nearest` (`sampling:"nearest"` in MCP) or it will be smoothed.
 - **AI features need a configured provider** (`~/.config/vixl/providers.json`). There is no
   offline fallback; if no provider is configured, say so instead of retrying.
@@ -596,7 +608,8 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   10 000 operations per batch. History keeps 2 000 revisions; older unreferenced ones are squashed
   automatically, so long sessions never lock. Pixel-art frames ≤ 256×256, ≤ 256 frames; timelines
   ≤ 10 min, 60 fps, 3 600 frames; 4 096 strokes per paint layer.
-- **Not supported** (don't promise them): editable import of arbitrary SVG (appearance import rasterizes it),
+- **Not supported** (don't promise them): a faithful editable import of every SVG, PDF or Figma feature (filters,
+  masks, clip paths, shadings and unmapped Figma nodes become image layers or are listed in `report`), export to Figma,
   CMYK *editing* or spot colors, live tablet input, RAW, PSD/XCF import (PSD *export* is layered pixels: text is not
   editable type), a GUI editor.
 
@@ -621,11 +634,11 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 | Color & print | color language in every color field, `vixl_reference('color')`, CMYK/PDF/ICO export, `vixl_export(kind='icons')`, proof/simulate previews, `print`/`color_vision` checks |
 | History | undo/redo (a count larger than the history goes as far as it can and says so), checkpoint, branch, checkout, compare, transactions |
 | Styles | `vixl_reference('styles')` (28 design styles: principles, palettes, type, layout, imagery, do/don't), `style-set` tags the document, `check --checks style` evaluates the style's premade rules |
-| QA | check (bounds/overlap/contrast/safe area/legibility; opt-in print, color_vision, style, connected (floating parts of a grouped object), cost (layers that take over 10× the median to draw, naming the blur radius or stroke points), accessibility (alt text, language, small text, colour-only charts, reading order, plus contrast and colour vision); every finding has an `action`: fix / review / informational), inspect, measure (sample/histogram/contrast), spacing, validate/assert, render preview (zoomable, time, proof, simulate, isolate one object), compare revisions |
+| QA | check (bounds/overlap/contrast/safe area/legibility/composition; opt-in print, color_vision, style, connected (floating parts of a grouped object), cost (layers that take over 10× the median to draw, naming the blur radius or stroke points), accessibility (alt text, language, small text, colour-only charts, reading order, plus contrast and colour vision); every finding has an `action`: fix / review / informational), inspect, measure (sample/histogram/contrast), spacing, validate/assert, render preview (zoomable, time, proof, simulate, isolate one object), compare revisions |
 | AI (provider) | generate/inpaint/img2img, extend (outpaint), upscale, regenerate, background-remove, select object/subject, remove, content-aware-fill, describe/detect/OCR, natural-language plan |
 
-When unsure of a field, get the authoritative schema: MCP embeds it in `vixl_apply`'s
-input schema (also resource `vixl://operations`); CLI `vixl schema` (`vixl schema OPERATION` for one; `vixl schema document` for the `.vixl` file format); REST `GET /schema`; per-command
+When unsure of a field, get the authoritative schema: MCP `vixl_reference('operations', name=[…])`
+(also resource `vixl://operations`); CLI `vixl schema` (`vixl schema OPERATION` for one; `vixl schema document` for the `.vixl` file format); REST `GET /schema`; per-command
 syntax via `vixl COMMAND --help`.
 
 ## Interface and output contracts

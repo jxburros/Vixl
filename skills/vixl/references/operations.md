@@ -176,7 +176,7 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 | `style-apply` | **`name`**, `target`, `kind` | Linked: redefining the style updates layers. |
 | `variable` | **`name`**, `value`, or `delete: true` | `${name}` in text/colors/gradients/asset IDs. Filters: `${name|upper}`, `lower`, `title`, `default:TEXT`, `map:NAME`, `number[:DECIMALS]`, `format:SPEC`, chained left to right; unknown filters are errors. `$${name}` is a literal `${name}`. |
 | `variable-map` | **`name`**, **`values`** (`{value: replacement}`, `"*"` = fallback), `merge`, or `delete: true` | Named lookup table for `${var|map:NAME}` (e.g. state codes to names, tiers to colours). |
-| `stack` | `target` (a group) *or* **`name`** + **`targets`**, `direction` (`vertical`/`horizontal`), `gap` (px or spacing units such as `"2u"`, 1u = half the body size; new house-style stacks default to 2u), `padding`, `align`, `justify` (`start`/`center`/`end`), `width`, `height`, `hide_if_empty`, `remove` | Auto-layout: lays the group's members out in a column or row inside its box, re-flowing around members that are hidden or empty (see below). Members cannot be moved/aligned/constrained by hand (`stack_managed`). |
+| `stack` | `target` (a group) *or* **`name`** + **`targets`**, `direction` (`vertical`/`horizontal`), `gap` (px or spacing units such as `"2u"`, 1u = half the body size; the default is 2u), `padding`, `align`, `justify` (`start`/`center`/`end`), `width`, `height`, `hide_if_empty`, `remove` | Auto-layout: lays the group's members out in a column or row inside its box, re-flowing around members that are hidden or empty (see below). Members cannot be moved/aligned/constrained by hand (`stack_managed`). |
 | `comp-save` | **`name`** | Captures visibility/position/rotation/opacity/blend/constraints/styles. |
 | `comp-apply` | **`name`** | Undoable; `render --comp NAME` previews read-only. |
 | `symbol` | **`name`**, `target` | Turn a drawable layer into a master. |
@@ -225,7 +225,7 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 | `paint` | `target`, `brush`, **`points`** or **`path`**, `pressure`, `space`, `size`, `color`, `opacity`, `mode` (`paint`/`erase`), `seed`, `settings` | Adds one editable stroke; `size` defaults to 1.5% of the layer's short side and `color` to `@ink`. No target → active paint layer or a new `paint` layer. |
 | `paint-clear` | `target`, `last` | Remove the last N (or all) strokes. |
 | `brush-define` | **`name`**, `base`, `settings`, `description` | Custom brush in the document. |
-| `timeline-set` | `duration`, `fps` (1–60), `loop` (0 = forever), `loop_mode` (`seamless`/`off`), `close`, `clear` | `seamless` warns about tracks that end differently from how they start and makes `animate-preset` entrances close themselves; `close: true` appends each track's start value at the end. A new timeline in a house-style-3 document is seamless unless it is longer than 10 s or `loop: 1`; pass `loop_mode: "off"` for a play-once sequence. |
+| `timeline-set` | `duration`, `fps` (1–60), `loop` (0 = forever), `loop_mode` (`seamless`/`off`), `close`, `clear` | `seamless` warns about tracks that end differently from how they start and makes `animate-preset` entrances close themselves; `close: true` appends each track's start value at the end. A new timeline is seamless unless it is longer than 10 s or `loop: 1`; pass `loop_mode: "off"` for a play-once sequence. |
 | `keyframe` | `target` (layer or `canvas`) or `targets` (list), **`property`**, **`time`**, **`value`**, `easing`, `extend` | Replaces a key at the same time. A key past the end lengthens the timeline and the result's `warnings` say `timeline duration changed 8000 -> 8400 ms`; `extend: false` keeps the duration. |
 | `keyframe-remove` | `target`, `property`, `time` | Track or single key. |
 | `animate` | `target` or `targets`, **`property`**, **`to`**, `from`, `start`, `end`/`duration`, `easing`, `intent`, `repeat`/`until`, `period`, `stagger`, `close`, `extend` | Two keys; `from` defaults to the current value. `targets` gives several parts the same keys (`stagger` ms apart). Without `easing`, `intent` (`entrance`/`exit`/`loop`/`emphasis`) picks the house easing (ease-out, ease-in, ease-in-out); otherwise ease-in-out. |
@@ -233,6 +233,22 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 | `marker` | **`name`**, `time` or `delete` | Named times usable wherever a time is accepted. |
 | `character-pose` | `target` (the character), **`angles`** (`{bone: degrees}`), `time`, `easing` | Without `time`: a static pose. With `time`: joint keys (`joint:BONE` tracks); the rig is solved on every frame so limbs stay attached. Don't mix with x/y/rotation keys on the same limbs. Rigging: `character`, `character-rig`, `character-cycle`, `character-ik`. |
 | `text-animate` | `target` or `targets` (text layers), **`preset`**, `unit` (`char`/`word`/`line`), `start`, `duration` (each unit), `stagger` (ms or `"30%"` of duration), `easing`, `direction` (forward/reverse/center/edges/random + `seed`), `mode` (in/out/in-out), `distance`, `amount`, `rotate`, `from`, `repeat`, `remove`, `extend` | Kinetic type: fade/fade-up/fade-down/slide-left/slide-right/pop/wave/typewriter/color-sweep per unit. The text stays one editable layer; stills, SVG, PDF and PPTX show the resting text. |
+
+## Session steps (MCP `vixl_apply`)
+
+Besides operations, a `vixl_apply` batch takes steps that need the workspace or the network. They run in order inside
+the same all-or-nothing batch, so a later operation can use what an earlier step made (an `import-image` result, `steps[i].result`,
+carries the new layer's `id`, `name` and `asset`). CLI equivalents: `vixl import`, `vixl font install|pair`, `vixl roll --apply`.
+
+| step | fields | notes |
+| --- | --- | --- |
+| `import-image` | `path` *or* `data_base64` *or* `url`, `name` (default `image`), `credit`, `license` | Embeds an image as a new layer. A name that exists already is an error: name it when a layout has an `image` layer. |
+| `import-document` | `path` *or* `data_base64` (SVG, PDF) *or* `source` (Figma URL or key); `format` (`svg`, `pdf`, `figma`), `name`, `page`, `dpi`, `svg_mode` (`editable`, `auto`, `appearance`), `node_id`, `rasterize_unsupported` | Editable layers; `report` lists what a Figma import could not map. See SKILL.md and `docs/figma.md`. |
+| `import-font` | **`name`**, `path` *or* `url` | Registers a TTF/OTF under that name. |
+| `font-pair` | `pairing` (name or `random`), `seed`, `mood`, `best_for`, `scope` (`document`, `workspace`) | Installs and sets the heading and body fonts. |
+| `font-install` | **`family`**, `weight`, `italic`, `name`, `role`, `scope` | One Google Fonts style, optionally as a role's font. |
+| `style-use` | **`name`**, `palette` | Tags the document with a catalog style (and applies its first palette). |
+| `roll` | `purpose`, `mood`, `seed`, `variety`, `locks`, `slots`, `unfilled` | Rolls a direction and applies fonts and layout. |
 
 ## Legacy aliases (avoid in new code)
 
@@ -256,8 +272,9 @@ lists every operation by purpose.
 
 | type | key fields | reference |
 | --- | --- | --- |
-| `chart` / `chart-data` | `kind`, `categories`+`series` / `table` / `csv`, `title`, `colors`, `legend`, `value_labels`, `number_format`, `target` (restyle); `chart-data`: `set`, `append`, `remove_categories`, `add_series`, `remove_series`, `reload` | [charts](charts.md) |
+| `chart` / `chart-data` | `kind`, `categories`+`series` / `table` / `csv`, `title`, `colors`, `legend`, `legend_values` (the legend as a key-value list), `value_labels`, `number_format`, `padding`, `target` (restyle); without `x`/`y`/`width`/`height` a new chart fills the safe area inset by two spacing units; `chart-data`: `set`, `append`, `remove_categories`, `add_series`, `remove_series`, `reload` | [charts](charts.md) |
 | `table` / `table-data` | `table` (rows, header first) / `csv`, `columns` (`width`, `align` incl. `decimal`, `format`, `leader` such as `"."`), `header_fill`, `zebra`, `borders`, `font_size`, `width`, `target` (restyle); `table-data`: `set` (`row`, `column`, `value`), `append`, `remove_rows`, `add_columns`, `remove_columns`, `reload` | [charts](charts.md#tables) |
+| `key-value-list` | `rows` (`{label, value, share}`) *or* `items` text (`label \| value \| share` per line), `shares: "auto"` (each value's share of the total), `number_format`, `colors` (a swatch per row), `rules`, `font_size`, `font`, `value_font`, `text_color`, `share_color`, `rule_color`, `name`, `x`, `y`, `width`; `target` restyles or gives new rows | [charts](charts.md#key-value-lists) |
 | `organic` | `preset` or `parts`, `params`, `colors`, `fill`, `stroke`, `stroke_width`, `seed`, `name`, `target` (regrow) | [organic shapes](drawing-shapes-guides.md#organic-shapes) |
 | `reflection` | **`horizon`**, `targets` (default: what stands above it), `squash`, `ripple`, `breakup`, `fade`, `blur`, `opacity`, `tint`, `seed`; `target` re-renders an existing reflection | [scene atmosphere](drawing-shapes-guides.md#scene-atmosphere-and-motifs) |
 | `haze` / `bokeh` | `haze`: `target` (the light) or `x`/`y`, `form` (`band`/`round`), `width`, `height`, `color`, `strength`; `bokeh`: `region`, `count`, `size`, `opacity`, `colors`, `softness`, `blend`, `seed` | [scene atmosphere](drawing-shapes-guides.md#scene-atmosphere-and-motifs) |

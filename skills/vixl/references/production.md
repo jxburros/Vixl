@@ -131,4 +131,6 @@ Production without suites still checks bounds and flow; clipping returns needs_r
 MCP desktop capture is disabled by default. Start the server with `--allow-screen-capture` or `VIXL_ALLOW_SCREEN_CAPTURE=1` to enable it for that server; this grants connected agents access to the interactive desktop. Capture output paths are relative to the workspace.
 
 Campaign runs with explicit `quality: "final"` default to the final check profile. Set `profile: "draft"`
-explicitly to keep draft blocking rules at full resolution; reports identify the effective profile.
+explicitly to keep draft blocking rules at full resolution; reports identify the effective profile. The `final`
+profile also checks `composition` and fails on `review` findings, so a `final` campaign or `check-all` run fails on
+unresolved composition findings unless they are waived with a reason or repaired (`repair-layout`).
