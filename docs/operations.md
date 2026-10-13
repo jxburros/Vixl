@@ -51,9 +51,9 @@ Common operation fields:
 | --- | --- |
 | add | path **or** embedded asset; name, x, y, linked, credit, license (kept in provenance) |
 | solid / gradient | name, width, height, color **or** start/end/direction/stops/angle; `target` edits an existing layer |
-| text | text, name, font, size, color, align, spacing, hide_if_empty, x/y; `target` edits an existing text layer |
+| text | text, name, font, size, color, align, spacing, hide_if_empty, `tabs` (tab stops `{at, align, leader}`, [typography](typography.md#tab-stops-and-leaders)), x/y; `target` edits an existing text layer |
 | shape | shape, name, width, height, x/y, fill, stroke, stroke_width, line_cap, trim_start/trim_end, radius, sides, inner_radius, path, opacity, rotation; `target` edits an existing shape. A `path` is in literal local pixels from the layer's x/y; without width/height its box reaches the path's farthest point ([vector paths](vector-paths.md#path-coordinates-and-the-layer-box)) |
-| text-set | target; text, size, color, align, spacing, stroke_width/stroke_color, hide_if_empty, font — the whole layer; on rich text keeps formatting that still applies and reports what it drops under `warnings` ([rich text](rich-text.md#editing)) |
+| text-set | target; text, size, color, align, spacing, stroke_width/stroke_color, hide_if_empty, `tabs` (`[]` removes), font — the whole layer; on rich text keeps formatting that still applies and reports what it drops under `warnings` ([rich text](rich-text.md#editing)) |
 | stack | target (a group) **or** name + targets; direction, gap, padding, align, justify, width/height, hide_if_empty; `remove` releases it |
 | move / resize / scale | target; x/y/relative **or** width/height (+ `keep_aspect`; one side alone leaves the other except on imported images) **or** `value` factor (or per-axis `x`/`y`; negative factors mirror) |
 | rotate / opacity / blend | target or targets, value (opacity 0–1 or `"N%"`) |
@@ -99,7 +99,7 @@ New shared operations are `palette-apply` (`name`, optional `prefix`), `template
 | Operation | Fields |
 | --- | --- |
 | canvas | `size` or `preset` (named size), `orientation` (portrait/landscape), `bleed` (true or amount in the size's unit), `dpi`, `background`; or `width`/`height`; or `dpi` alone |
-| layout-apply | `name`; content `title`, `subtitle`, `body`, `label`, `cta`, `caption`, `items`, `image` (asset ID); `seed`, `palette` (name or colors), `colors` (role overrides), `mode`, `type_scale`, `base_size`, `density`, `align`, `accent`, `mark`, `font`, `display_font`, `transparent`, `uppercase_labels`, `prefix`, `replace` |
+| layout-apply | `name`; content `title`, `subtitle`, `body`, `label`, `cta`, `caption`, `items`, `image` (asset ID); `seed`, `palette` (name or colors), `colors` (role overrides), `mode`, `type_scale`, `base_size`, `density`, `align`, `accent`, `accent_words` (headline words in the accent color), `mark`, `font`, `display_font`, `transparent`, `uppercase_labels`, `prefix`, `replace` |
 | type-scale | `base` (px), `ratio` (name or number), `prefix`, `color` — defines character styles caption … display |
 | palette-generate | `name`, `color`, `scheme` (`scale` or a harmony), `count` |
 | paint-layer | `name`, `width`, `height`, `x`, `y` |
@@ -124,7 +124,7 @@ New document state: `canvas.size`, `canvas.dpi`, `canvas.physical`, `canvas.blee
 | --- | --- |
 | chart | `kind`, `categories`+`series` or `table` or `csv` (`category_column`, `series_columns`), `title`, `subtitle`, `colors`, `legend`, `legend_values`, `value_labels`, `total_labels`, `gridlines`, `number_format`, `min`, `max`, `ticks`, `value_title`, `category_title`, `font_size`, `title_font`, `label_font`, `text_color`, `grid_color`, `axis_color`, `background`, `bar_gap`, `line_width`, `markers`, `hole`, `start_angle`, `center_text`, `padding`, `name`, `x`, `y`, `width`, `height`, `target` (restyle) — [charts](charts.md) |
 | chart-data | `target`, `set`, `append`, `remove_categories`, `add_series`, `remove_series`, `reload`, or new `categories`+`series`/`table`/`csv` |
-| table | `table` (rows, header first) or `csv` (`csv_columns`), `header`, `columns` (`width` px/`auto`/`Nfr`, `align` left/center/right/decimal, `format`), `font_size`, `header_font_size`, `header_font`, `body_font`, `text_color`, `header_color`, `header_fill`, `fill`, `zebra`, `borders`, `border_color`, `border_width`, `padding`, `row_height`, `number_format`, `name`, `x`, `y`, `width`, `target` (restyle) — [tables](charts.md#tables) |
+| table | `table` (rows, header first) or `csv` (`csv_columns`), `header`, `columns` (`width` px/`auto`/`Nfr`, `align` left/center/right/decimal, `format`, `leader`), `font_size`, `header_font_size`, `header_font`, `body_font`, `text_color`, `header_color`, `header_fill`, `fill`, `zebra`, `borders`, `border_color`, `border_width`, `padding`, `row_height`, `number_format`, `name`, `x`, `y`, `width`, `target` (restyle) — [tables](charts.md#tables) |
 | path-split | `target` (a shape or path), `polygon` or `line` (`[[x, y], …]`), `overlap`, `names` (two), `space` (`layer`/`canvas`), `curves` — two path parts, the target hidden — [vector paths](vector-paths.md#constructive-paths) |
 | die-cut | `targets` (any layers; a group brings its members), `distance` (px, default 12), `name` (default `cut-line`), `stroke`, `stroke_width`, `join`, `threshold`, `smooth` — a stroked, unfilled cut-line path around the union of their ink — [vector paths](vector-paths.md#constructive-paths) |
 | table-data | `target`, `set` (`row`, `column`, `value`), `append`, `remove_rows`, `add_columns`, `remove_columns`, `reload`, or new `table`/`csv` |
@@ -134,7 +134,7 @@ New document state: `canvas.size`, `canvas.dpi`, `canvas.physical`, `canvas.blee
 | guide | `name`, `kind` (`axis`, `line`, `ray`, `segment`, `point`, `circle`, `path`) and its geometry, `delete` — [guides](guides.md) |
 | grid | `name`, `kind` (`columns`, `baseline`, `thirds`, `golden`, `armature`, `golden-spiral`, `polar`, `isometric`, `triangular`, `hex`, `oblique`, `perspective`), kind settings, `region`, `delete` |
 | place / snap | `targets`, `guide`, `at`, `start`/`end`, `spacing`, `with`, `index`, `anchor`, `orient`, `rotate`, `offset`; `snap`: `tolerance` |
-| rich-text | `markdown` or `spans` + `paragraphs`, `name`/`target`, `font`, `size`, `color`, `align`, `width`, `height`, `fit`, `line_height`, `paragraph_spacing`, `list_indent`, `x`, `y` — [rich text](rich-text.md) |
+| rich-text | `markdown` or `spans` + `paragraphs`, `name`/`target`, `font`, `size`, `color`, `align`, `width`, `height`, `fit`, `wrap`, `line_height`, `paragraph_spacing`, `list_indent`, `x`, `y` — [rich text](rich-text.md) |
 | text-style | `target`, `match`/`occurrence` or `start`/`end`, character styles, `clear`, `paragraphs` with paragraph settings — parts of a text layer; use `text-set` for the whole layer's text, color, size or font |
 | page | `action` (`add`, `select`, `remove`, `move`, `set`), `page`/`name`, `after`/`before`/`index`, `duplicate`, `master`, `notes`, `background`, `variables`, `hidden`, `transition`, `rename`, `select` — [pages](slides.md) |
 | master | `action` (`add`, `select`, `remove`, `set`), `name`, `from`, `background`, `rename` |

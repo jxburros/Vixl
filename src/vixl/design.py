@@ -348,6 +348,13 @@ def execute_design(project, op):
         previous = layer.get("text_layout")
         grown = layer.get("auto_size", True) or (bool(previous) and "height" not in previous)
         layer["text_layout"] = {k: deepcopy(v) for k, v in op.items() if k not in ("type", "target")}
+        if "wrap" not in op and "width" in op:
+            # A wrap is kept when the box changes; a new box takes the document's default for its text.
+            from .text import document_wrap, is_heading
+
+            wrap = (previous or {}).get("wrap") or document_wrap(project, is_heading(project, layer))
+            if wrap != "greedy":
+                layer["text_layout"]["wrap"] = wrap
         if "width" in op or "height" in op:
             layer.update(
                 width=op.get("width", layer["width"]),
@@ -778,6 +785,12 @@ def validate_design(project, state):
             from .stacks import validate_layer
 
             validate_layer(layer)
+        if "tabs" in layer:
+            from .text import validate_tabs
+
+            require(kind == "text" and not layer.get("rich"), "Tab stops (tabs) belong to plain text layers; rich "
+                    "text keeps its tabs as spaces", field="tabs")
+            validate_tabs(layer["tabs"])
         for key in ("fill", "color", "stroke", "stroke_color"):
             if key in layer:
                 color(resolve_color(layer[key], state))
@@ -817,9 +830,11 @@ def validate_design(project, state):
         layout = layer.get("text_layout", {})
         if layout:
             require(
-                kind == "text" and not set(layout) - {"width", "height", "fit", "warp", "amount", "path"},
+                kind == "text" and not set(layout) - {"width", "height", "fit", "warp", "amount", "path", "wrap"},
                 "Invalid text layout",
             )
+            require(layout.get("wrap", "greedy") in ("greedy", "balance", "pretty"), "wrap must be greedy, balance or pretty",
+                    field="wrap")
             require(layout.get("warp", "none") in ("none", "arc", "flag", "bulge"), "Invalid warp")
             finite(layout.get("amount", 0.2), "warp amount", -1, 1)
             if "path" in layout:

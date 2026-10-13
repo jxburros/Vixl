@@ -157,6 +157,8 @@ FIELD_ALIASES = {
         "text_role": "stage",
         "type_stage": "stage",
         **{key: "hide_if_empty" for key in ("hide_when_empty", "collapse_if_empty", "collapse_when_empty", "hide_empty")},
+        "tab_stops": "tabs",
+        "tabstops": "tabs",
     },
     "shape": {
         "color": "fill",
@@ -213,10 +215,16 @@ FIELD_ALIASES = {
                "part_name": "part"},
     "object-place": {"as": "name_as", "rename": "name_as"},
     "layer-intent": {"alt_text": "alt", "description": "alt", "aria_label": "alt"},
+    "layout-apply": {key: "accent_words" for key in ("accent_word", "accents", "highlight_words", "highlight",
+                                                     "emphasis", "accent_text")},
+    "text-layout": {"text_wrap": "wrap", "wrapping": "wrap", "line_breaks": "wrap"},
     "accessibility": {"language": "lang", "locale": "lang", "page_description": "page_alt",
                       "page_language": "page_lang"},
 }
 FIELD_ALIASES["text-set"] = FIELD_ALIASES["text"]
+# CSS text-wrap values and the usual guesses for them.
+WRAP_ALIASES = {"balanced": "balance", "even": "balance", "wrap": "greedy", "normal": "greedy", "auto": "greedy",
+                "stable": "greedy", "no-runts": "pretty", "avoid-runts": "pretty", "no-orphans": "pretty"}
 # CSS text-transform values and the usual guesses for them.
 TEXT_TRANSFORMS = {
     **{key: "uppercase" for key in ("uppercase", "upper", "caps", "all-caps", "allcaps", "upper-case")},
@@ -379,6 +387,19 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
         from .tables import normalize as normalize_table
 
         op = normalize_table(op, note)
+    if kind == "layout-apply":
+        # accent names the accent device (rule, bar …); a list there is the headline's accent words.
+        if isinstance(op.get("accent"), list) and "accent_words" not in op:
+            op["accent_words"] = op.pop("accent")
+            note("accent [words] → 'accent_words' (accent alone names the accent device)")
+        if isinstance(op.get("accent_words"), str):
+            op["accent_words"] = [op["accent_words"]]
+            note("accent_words 'word' → ['word']")
+    if kind == "text-layout" and isinstance(op.get("wrap"), str):
+        wrap = WRAP_ALIASES.get(op["wrap"].strip().lower(), op["wrap"])
+        if wrap != op["wrap"]:
+            note(f"wrap {op['wrap']!r} → {wrap!r}")
+            op["wrap"] = wrap
     if kind == "shape" and isinstance(op.get("shape"), str) and op["shape"] not in SHAPES:
         guess = op["shape"].lower().replace("_", "-").replace(" ", "-")
         if guess not in SHAPE_TYPES:

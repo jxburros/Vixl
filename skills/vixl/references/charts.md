@@ -48,7 +48,8 @@ schedules and spec sheets instead of one text layer per cell.
 ```
 
 - `columns[i]`: `width` (px, `auto`, `"1fr"`), `align` (`left`, `center`, `right`, `decimal`: prices share
-  their point), `format` (Excel-style). Rows grow to fit wrapped text; a table too narrow for its words warns.
+  their point), `format` (Excel-style), `leader` (`"."`: dots from each body cell to the next cell's text, for
+  menus; in PPTX they stop at the cell edge). Rows grow to fit wrapped text; a table too narrow for its words warns.
 - Look: `font_size`, `header_fill`, `header_color`, `text_color`, `fill`, `zebra`, `borders`
   (`horizontal`/`all`/`outer`/`header`/`none`), `border_color`, `border_width`, `padding`, `row_height`.
 - `table-data`: `set` (`row`: number from 1 or first-cell text; `column`: number or header), `append`,

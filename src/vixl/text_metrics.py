@@ -4,7 +4,7 @@ from collections import OrderedDict
 from functools import lru_cache
 import threading
 
-from .text import advance, face, font_data, glyph_outline, lines, plan
+from .text import face, font_data, glyph_outline, lines, plan, set_line, tab_stops, wrap_mode
 
 
 @lru_cache(maxsize=256)
@@ -94,11 +94,12 @@ def inspect_text(project, layer, bounds):
                     getattr(transformed, command)(*points)
                 if pen.bounds:
                     boxes.append(pen.bounds)
+            tabs = tab_stops(layer, project)
             wrapped = lines(data, layer["text"], result.size,
-                            layer["width"] if "width" in layer.get("text_layout", {}) else None)
+                            layer["width"] if "width" in layer.get("text_layout", {}) else None, wrap_mode(layer), tabs)
             step = metrics["ascent"] + metrics["descent"] + layer.get("spacing", 4)
             baselines = [metrics["ascent"] + index * step - result.box[1] for index in range(len(wrapped))]
-            width = max((advance(data, line, result.size) for line in wrapped), default=0)
+            width = max((set_line(data, line, result.size, tabs)[1] for line in wrapped), default=0)
             line_box = (result.offset - result.box[0], -result.box[1], width,
                         len(wrapped) * step - layer.get("spacing", 4))
         if boxes:
@@ -214,9 +215,10 @@ def drawn_lines(project, layer):
     data = font_data(project, layer)
     size = plan(project, layer).size if settings.get("fit") else layer["size"]
     width = layer["width"] if "width" in settings else None
-    return [(index, line.strip(), advance(data, line.strip(), size))
-            for index, paragraph in enumerate(layer["text"].expandtabs(4).split("\n"))
-            for line in lines(data, paragraph, size, width)]
+    tabs = tab_stops(layer, project)
+    return [(index, line.strip(), set_line(data, line.strip(), size, tabs)[1])
+            for index, paragraph in enumerate((layer["text"] if tabs else layer["text"].expandtabs(4)).split("\n"))
+            for line in lines(data, paragraph, size, width, wrap_mode(layer), tabs)]
 
 
 RUNT_MINIMUM_SIZE = 24  # px: display text; body copy has its own measure check

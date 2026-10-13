@@ -531,6 +531,10 @@ OVERRIDES = {
     "comp-save": {"name": "Comp name."}, "comp-apply": {"name": "Saved comp name."},
     "text-layout": {"width": "Wrapping box width in pixels or a percentage.", "height": "Box height; omit it with a width and the box grows to the wrapped lines.",
                     "fit": "true shrinks the text to fit the box.", "warp": "none, arc, flag or bulge.",
+                    "wrap": "How lines break in the box: greedy fills each line; balance evens the line widths (same "
+                            "line count; for headings and short text); pretty fills lines but never leaves one word "
+                            "alone on a paragraph's last line (body text). Kept when the box changes; headings in new "
+                            "documents default to balance.",
                     "amount": "Warp strength as a fraction of the box height (default 0.2; negative bends the other way).", "path": "Points [[x, y] …] the text follows."},
     "guide": {"name": "Guide name.", "axis": "x (vertical line) or y (horizontal line) for an axis guide.",
               "position": "Axis guide position in pixels.",
@@ -672,7 +676,9 @@ OVERRIDES = {
              "anchors": "Layer anchors that may snap."},
     "rich-text": {"markdown": "Markdown (bold, italic, headings, lists, [text]{color=…}).",
                   "spans": "Explicit spans [{text, bold, italic, color …}].", "name": "Layer name.",
-                  "size": "Base font size.", "color": "Base text color.", "fit": "Shrink text to fit the box."},
+                  "size": "Base font size.", "color": "Base text color.", "fit": "Shrink text to fit the box.",
+                  "wrap": "Line breaking in the box (with width): greedy, balance (even line widths, for headings) or "
+                          "pretty (no one-word last line, for body text)."},
     "text-style": {"match": "Text to find and style.", "occurrence": "Which match: a 1-based number, or 'all' (default).",
                    "paragraphs": "Paragraph indexes (0-based) the paragraph settings apply to, or 'all'.",
                    "start": "First character index.", "end": "Character index after the last.",

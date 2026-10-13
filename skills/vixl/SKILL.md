@@ -248,8 +248,8 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
   badge's centre, a screen): put text there with `text` `within`, `place` `within` or `align` `box: "content"`.
 - **Charts** — `chart` (bar, stacked, 100 %, horizontal, line, area, pie, donut) from a table or workspace CSV, `chart-data` to fix
   a value on stable layer IDs, native PPTX charts; see [charts](references/charts.md) before drawing any chart by hand.
-- **Tables** — `table` (rows or a workspace CSV; aligned columns including `decimal` for prices, header, zebra,
-  rules) and `table-data` for cell and row edits; native PPTX tables; see [charts](references/charts.md#tables).
+- **Tables** — `table` (rows or a workspace CSV; aligned columns including `decimal` for prices, dot `leader`s, header,
+  zebra, rules) and `table-data` for cell and row edits; native PPTX tables; see [charts](references/charts.md#tables).
 - **Guides beyond right angles** — angled/curved guides, compositional and perspective grids,
   `place`, `snap`, `guides`/`alignment` checks.
 - **Lyric videos** — `lyric-video-plan/build/export` workflow actions (song + LRC + template). The template's own
@@ -476,6 +476,9 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   and named fonts stay as they are.
 - **Text auto-sizes** to its rendered bounds; an explicit `resize` turns that off, editing text turns it back on.
   For wrapping use `text-layout` with `width` (the height grows to the wrapped lines) or `width`/`height` (optionally `fit: true`).
+  `wrap: "balance"` evens a heading's lines (the default for headings in new documents), `wrap: "pretty"` keeps one
+  word off a paragraph's last line. Price lists: `tabs: [{at: "100%", align: "right", leader: "."}]` with `\t` in the
+  text, or a `table` column `leader: "."`. Two-tone headlines: `layout-apply` `accent_words: ["Winter"]`.
 - **Variables:** `${name}` works in text, colors, gradient fills and image-asset IDs. Undefined
   variables are errors. Swatches are `@name` in color fields.
 - **Through MCP/REST, operation `path` and `linked` fields are rejected, and `font` takes only a registered
@@ -549,7 +552,7 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 | Layout | `align` (to canvas/selection/layer), `distribute`, `constrain`/`unconstrain`, `stack` (auto-layout column/row that re-flows around hidden or empty members; text `hide_if_empty`), `guide`, `grid`, `canvas` (resize/preset), `artboard` |
 | Color & filters | 27 built-in effects (brightness … white-balance … auto-contrast), `effect-set/enable/disable/remove/move`, `lut` + `lookup` (a stack effect), `preset-save/apply` |
 | Selections & masks | `select` (rect/ellipse/color/alpha/all/none/invert, add/subtract/intersect, feather), `mask` (create/from-selection/import/invert/enable/disable/delete) |
-| Typography | `text`, `text-set`, `text-layout` (box, fit, warp, path), `style-define`/`style-apply`, `swatch` |
+| Typography | `text`, `text-set` (`tabs`), `text-layout` (box, fit, wrap, warp, path), `style-define`/`style-apply`, `swatch` |
 | Decoration | `layer-style` (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay), `look` (named finishes: clean-flat, subtle-grain, light-paper, glow, neon, soft-shadow, hard-shadow, outline, gradient, soft-halo, grain, paper, film, duotone, risograph, sketch, watercolor, halftone, hand-made, plush), `repeat`, `repeat-blend`, `radial-repeat` (copies around a center, optional mirror, per-step/jitter, `merge`), `scatter`, `pattern-scatter`, `pathfinder` |
 | Templates | `variable`, `replace-contents`, `comp-save`/`comp-apply`, CSV `render --data`, `export-screens` |
 | Painting | `paint` (17 brushes, points or SVG path, pressure, erase), `paint-clear`, `brush-define` |

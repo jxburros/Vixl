@@ -662,6 +662,8 @@ def execute(project, op):
             text_defaults(project, layer, op)
             if op.get("hide_if_empty"):
                 layer["hide_if_empty"] = True
+            if op.get("tabs"):
+                layer["tabs"] = deepcopy(op["tabs"])
             from .lettering import store
 
             store(layer, op)
@@ -793,6 +795,11 @@ def execute(project, op):
                     "hide_if_empty"):
             if key in op:
                 layer[key] = op[key]
+        if "tabs" in op:
+            if op["tabs"]:
+                layer["tabs"] = deepcopy(op["tabs"])
+            else:
+                layer.pop("tabs", None)
         if "spacing" in op:
             layer.pop("line_height", None)
         from .lettering import store

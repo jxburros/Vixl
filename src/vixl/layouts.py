@@ -143,6 +143,8 @@ class Builder:
         # design needs but nobody filled renders as a visible "[Label]" placeholder and is
         # recorded as a blank, so it can never ship silently as invented sample text.
         self.content = {k: op[k] for k in CONTENT_KEYS if k in op}
+        self.accent_words = [word for word in op.get("accent_words") or [] if isinstance(word, str) and word.strip()]
+        self.accented, self.accent_skipped = set(), set()
         self.slots = slot_spec(layout)
         self.unfilled = op.get("unfilled", "blank")
         require(self.unfilled in ("blank", "omit"), "unfilled must be blank or omit", field="unfilled")
@@ -181,15 +183,21 @@ class Builder:
         self.ops.append(op)
         return op
 
-    def measure(self, text, size, width=None, spacing=0, align="left", font=None):
+    def measure(self, text, size, width=None, spacing=0, align="left", font=None, wrap=None):
+        """(width, height) of ``text`` set in ``font``, wrapped at ``width``. Text in the display font wraps as the
+        document's headings do unless ``wrap`` says otherwise: balanced lines can hold other ascenders and
+        descenders than greedy ones, so the box is measured as it will be drawn."""
         from .render import text_metrics, document_variables
         from .variables import substitute
-        from .text import UnsupportedText, font_data, measure
+        from .text import UnsupportedText, document_wrap, font_data, measure
 
+        if wrap is None:
+            wrap = document_wrap(self.project, font is not None and font == self.display_font)
         text = substitute(text, document_variables(self.project))
         layer = {"text": text, "size": size, "spacing": spacing, "align": align, "font": self.project.state.get("fonts", {}).get(font, font or "DejaVuSans.ttf")}
         try:
-            _, box = measure(font_data(self.project, layer), text, size, spacing, align, width)
+            _, box = measure(font_data(self.project, layer), text, size, spacing, align, width,
+                             wrap if width is not None else "greedy", None)
             return math.ceil(box[2] - box[0]), math.ceil(box[3] - box[1])
         except UnsupportedText:
             w, h, _ = text_metrics(self.project, layer, {})
@@ -239,10 +247,18 @@ class Builder:
         if heavy and max_height is None:
             max_height = self.ch * 0.55
 
-        w, h = self.measure(content, size, width, spacing_for(size), align, font)
+        from .text import document_wrap
+
+        wrap = document_wrap(self.project, heavy)
+        w, h = self.measure(content, size, width, spacing_for(size), align, font, wrap)
         while size > 6 and (w > width or (max_height and h > max_height)):
             size = max(6, int(size * 0.92))
-            w, h = self.measure(content, size, width, spacing_for(size), align, font)
+            w, h = self.measure(content, size, width, spacing_for(size), align, font, wrap)
+        accented = bool(self.accent_words) and ((name or role) in ("headline", "title")
+                                                or content == self.content.get("title"))
+        if accented:
+            # Accent words make the headline rich text, whose box holds whole line boxes rather than ink.
+            h = max(h, self.rich_height(content, size, width, multiple, font, align, wrap))
         layer = self.name(name or role)
         op = {"type": "text", "name": layer, "text": content, "size": size, "color": color, "align": align, "line_height": multiple, "x": round(x), "y": round(y)}
         if stage_font:
@@ -254,9 +270,44 @@ class Builder:
             # text-set re-measures the text, so the stroke comes before the text box.
             self.add({"type": "text-set", "target": layer, "stroke_width": stroke[0], "stroke_color": stroke[1]})
             h += 2 * stroke[0]
-        self.add({"type": "text-layout", "target": layer, "width": width, "height": max(1, h)})
+        box = {"type": "text-layout", "target": layer, "width": width, "height": max(1, h)}
+        if wrap != "greedy":
+            box["wrap"] = wrap
+        self.add(box)
+        if accented:
+            self.accent_headline(layer, content, color)
         self.created.append(layer)
         return (round(x), round(y), width, h)
+
+    def rich_height(self, content, size, width, multiple, font, align, wrap):
+        """The height ``content`` takes as rich text in a ``width`` box (see ``measure`` for plain text)."""
+        from .render import document_variables
+        from .richtext import layout, size_leading
+        from .variables import substitute
+
+        text = substitute(content, document_variables(self.project))
+        layer = {"type": "text", "text": text, "size": size, "align": align, "line_height": multiple, "width": width,
+                 "font": self.project.state.get("fonts", {}).get(font, font or "DejaVuSans.ttf"),
+                 "text_layout": {"width": width, "wrap": wrap}}
+        rich = {"spans": [{"text": text}], "paragraphs": [{}]}
+        size_leading(self.project, layer, rich, multiple)
+        layer["rich"] = rich
+        return math.ceil(layout(self.project, layer).height)
+
+    def accent_headline(self, layer, content, color):
+        """Set the headline's accent words in the accent text color, through rich-text spans: whole words,
+        matched without regard to case. Copy already set on the accent color keeps one color."""
+        for word in self.accent_words:
+            found = list(re.finditer(rf"(?<!\w){re.escape(word.strip())}(?!\w)", content, re.IGNORECASE))
+            if not found:
+                continue
+            if color != "@ink":
+                self.accent_skipped.add(word)
+                continue
+            self.accented.add(word)
+            for match in found:
+                self.add({"type": "text-style", "target": layer, "start": match.start(), "end": match.end(),
+                          "color": "@accent-text"})
 
     def measure_cap(self, role, content, size, width):
         """Keep a readable measure: a heavy line holds at least ~10 (display) or 14 (headings) characters,
@@ -1995,6 +2046,19 @@ def execute_layout(project, op):
             f"Type was reduced to {fit:.0%} of the medium's scale to fit this canvas; "
             "shorten the copy or choose a larger size or a layout made for this format."
         )
+    if builder.accent_words:
+        from .notices import warn
+
+        missing = [word for word in builder.accent_words if word not in builder.accented | builder.accent_skipped]
+        state["layout"]["accent_words"] = {"styled": [w for w in builder.accent_words if w in builder.accented],
+                                           **({"missing": missing} if missing else {}),
+                                           **({"skipped": sorted(builder.accent_skipped)} if builder.accent_skipped else {})}
+        if missing:
+            warn(project, f"accent_words {', '.join(map(repr, missing))} not found as whole words in the headline "
+                          f"{builder.content.get('title', '')!r}; nothing was accented for them")
+        if builder.accent_skipped:
+            warn(project, f"accent_words {', '.join(map(repr, sorted(builder.accent_skipped)))} were not accented: "
+                          f"layout {name!r} sets its headline on the accent color, where accent text would not read")
     if notes:
         state["layout"]["notes"] = notes
 
@@ -2156,6 +2220,11 @@ def schemas(add):
             "predictable": B,
             "keep_order": B,
             **{key: S for key in CONTENT_KEYS if key != "images"},
+            "accent_words": {"type": "array", "items": S, "maxItems": 12,
+                             "description": "Words of the headline (title) to set in the accent text color, such as "
+                             "['Winter'] for a two-tone headline. Whole words, any case; every match is styled. A word "
+                             "that is not in the headline is reported as a warning. (accent alone names the accent "
+                             "device.)"},
             "images": {"type": "array", "items": S, "maxItems": 8,
                        "description": "Multi-panel layouts (meme-comparison, meme-four-panel): one image asset id per panel."},
             "uppercase": {"type": "boolean", "description": "Meme layouts: set stroked captions uppercase (default true)."},

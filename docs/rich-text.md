@@ -82,7 +82,9 @@ old rule (1.2 times the font's own line pitch, plus the layer's `spacing`), so s
 
 ## Boxes and fitting
 
-`width` wraps lines; `height` fixes the box (leaving it out sizes the height to the text). With
+`width` wraps lines; `height` fixes the box (leaving it out sizes the height to the text). `wrap` chooses how the
+lines break: `greedy` (default), `balance` (even line widths, the same line count; for headings) or `pretty` (no
+one-word last line; for body text), as for plain text ([line breaking](typography.md#line-breaking)). With
 `fit: true` every size, indent and spacing shrinks together until the text fits both dimensions.
 Without a width the layer sizes itself to its longest line. The `bounds` check reports rich text
 that overflows a box without `fit`.

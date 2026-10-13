@@ -731,6 +731,15 @@ and #370 (layouts fail their own safe-area check).
 
 Version 3 adds sixteen pairings (4 safe, 8 bold, 4 avant-garde). The new fonts are existing open-font catalog families; display pairs carry small-size/long-copy cautions. New design rolls weight left/right alignment 75/25; diagram and form purposes use left/centre 75/25, and marks (the logo purpose) stay centred. Layout selection excludes arrangements that do not support the rolled alignment. Explicit alignment wins.
 
-Background mixing uses only the amount needed to make the ink contrast target (7.1:1) possible, bounded by `craft.background_mix_max` (0.82 light, 0.75 dark); secondary roles are verified against background/surface. Saturated palettes can remain visibly saturated. New stacks default to two spacing units, chart padding to two label-size units and text-flow gutters to three text-size units. Explicit geometry wins. Stack/layout gaps accept a unit expression such as `2u`; a unit is half the body size, rounded, at least 2 px. These geometry defaults apply only to documents that record version 3, as does the seamless default for new short timelines. In every document, social and poster minor text is at least 2.2% of the short side, and bold text (700+) counts as large for contrast from 18.66 px; regular text from 24 px.
+Background mixing uses only the amount needed to make the ink contrast target (7.1:1) possible, bounded by `craft.background_mix_max` (0.82 light, 0.75 dark); secondary roles are verified against background/surface. Saturated palettes can remain visibly saturated. New stacks default to two spacing units, chart padding to two label-size units and text-flow gutters to three text-size units. Explicit geometry wins. Stack/layout gaps accept a unit expression such as `2u`; a unit is half the body size, rounded, at least 2 px. These geometry defaults apply only to documents that record version 3 or later, as does the seamless default for new short timelines. In every document, social and poster minor text is at least 2.2% of the short side, and bold text (700+) counts as large for contrast from 18.66 px; regular text from 24 px.
 
 Pin `house_style_version: 2` / `vixl roll --house-style 2` to replay 0.23 rolls. Version 1 remains available. Existing stored geometry is not recomposed implicitly. The version-2 regression fixture covers multiple seeds, purposes and variety levels.
+
+## House style 4
+
+Version 4 rolls the same directions as version 3. It changes how headings break: in a document that records version 4,
+a new text box on a heading (a heading font role or stage, or text whose size reads as the h2 step or larger) and every
+layout headline take `wrap: "balance"`, lines of even width in the same line count (`craft.wrap`). Body text keeps
+greedy wrapping; `wrap: "pretty"` is there to ask for no one-word last line. Documents that record version 3 or earlier
+keep greedy headings. Pass `wrap: "greedy"` on the `text-layout`, or pin `house_style_version: 3`, for the old breaks.
+See [line breaking](typography.md#line-breaking).

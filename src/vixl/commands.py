@@ -248,6 +248,8 @@ def compile_command(tokens):
             p.add_argument("--within", help="centre the text in this shape's content box (instead of --x/--y)")
             p.add_argument("--hide-if-empty", action=argparse.BooleanOptionalAction, default=None,
                            help="do not draw the text while it is empty after ${variable} substitution")
+            p.add_argument("--tabs", type=json.loads,
+                           help='JSON tab stops, e.g. [{"at": "100%%", "align": "right", "leader": "."}]')
         elif cmd == "gradient":
             p.add_argument("--start", default="black")
             p.add_argument("--end", default="white")
@@ -274,6 +276,8 @@ def compile_command(tokens):
                        help="draw the text in this case without changing it")
         p.add_argument("--hide-if-empty", action=argparse.BooleanOptionalAction, default=None,
                        help="do not draw the text while it is empty after ${variable} substitution")
+        p.add_argument("--tabs", type=json.loads,
+                       help='JSON tab stops ([] removes them), e.g. [{"at": "100%%", "align": "right", "leader": "."}]')
     elif cmd in (
         "remove",
         "hide",

@@ -404,7 +404,7 @@ class Slide:
     def plain_paragraphs(self, layer, pt):
         from .design import resolve_color
         from .render import color
-        from .text import face, font_data, plan
+        from .text import face, font_data, leadered, lines, plan, tab_stops, wrap_mode
 
         data = font_data(self.view, layer)
         self.exporter.font(data)
@@ -426,10 +426,22 @@ class Slide:
         span = {"font": self.view.state.get("fonts", {}).get(font, font)}
         style = {"bold": self.exporter.is_bold(span), "italic": self.exporter.is_italic(span)}
         out = []
+        settings = layer.get("text_layout") or {}
+        wrap, tabs = wrap_mode(layer), tab_stops(layer, self.view)
+        stops = ""
+        if tabs:
+            kinds = {"left": "l", "right": "r", "center": "ctr", "decimal": "dec"}
+            stops = "<a:tabLst>" + "".join(f'<a:tab pos="{round(at * pt * 12700)}" algn="{kinds[kind]}"/>'
+                                           for at, kind, _ in tabs) + "</a:tabLst>"
         for text in layer["text"].split("\n"):
-            run = self.font_runs(text, data, size * pt, rgba, style, layer["opacity"]) if text else ""
+            # Balanced and runt-free breaks are Vixl's, so they are written as line breaks; greedy text
+            # is left for the application to wrap in the same box.
+            pieces = (lines(data, text, size, layer["width"], wrap, tabs)
+                      if wrap != "greedy" and "width" in settings and text else [text])
+            run = "<a:br/>".join(self.font_runs(leadered(data, piece, size, tabs), data, size * pt, rgba, style,
+                                                layer["opacity"]) if piece else "" for piece in pieces)
             out.append(f'<a:p><a:pPr algn="{align}"><a:lnSpc><a:spcPts val="{round(line * pt * 100)}"/></a:lnSpc>'
-                       f'<a:buNone/></a:pPr>{run}<a:endParaRPr lang="en-US" sz="{round(size * pt * 100)}" dirty="0"/></a:p>')
+                       f'<a:buNone/>{stops}</a:pPr>{run}<a:endParaRPr lang="en-US" sz="{round(size * pt * 100)}" dirty="0"/></a:p>')
         return out, first_top, pen_left
 
     def rich_paragraphs(self, layer, pt):
@@ -474,7 +486,15 @@ class Slide:
             spacing += f'<a:spcBef><a:spcPts val="{round(before * pt * 100)}"/></a:spcBef>'
             spacing += f'<a:spcAft><a:spcPts val="{round(after * pt * 100)}"/></a:spcAft>'
             runs = []
+            cuts = result.breaks.get(index, [])
+            offset = 0
             for span in paragraph:
+                pieces, start = [], offset
+                for cut in [c for c in cuts if offset < c < offset + len(span["text"])]:
+                    pieces.append((span["text"][start - offset:cut - offset].rstrip(" "), True))
+                    start = cut
+                pieces.append((span["text"][start - offset:], offset + len(span["text"]) in cuts))
+                offset += len(span["text"])
                 style = {"bold": span["fake_bold"] or self.exporter.is_bold(span), "italic": span["fake_italic"] or self.exporter.is_italic(span),
                          "underline": span["underline"], "strike": span["strike"], "baseline": span["baseline"],
                          "tracking": span["tracking"] * pt,
@@ -482,7 +502,13 @@ class Slide:
                 from .richtext import style_font_data
 
                 data = style_font_data(self.view, self.exporter.base_font(span["font"]), span["text"])
-                runs.append(self.font_runs(span["text"], data, span["size"] * scale * pt, span["color"], style, layer["opacity"]))
+                for text, broken in pieces:
+                    text = text.rstrip(" ") if broken else text
+                    if text:
+                        runs.append(self.font_runs(text, data, span["size"] * scale * pt, span["color"], style,
+                                                   layer["opacity"]))
+                    if broken:
+                        runs.append("<a:br/>")
             out.append(f'<a:p><a:pPr{attrs}>{spacing}{bullet}</a:pPr>{"".join(runs)}'
                        f'<a:endParaRPr lang="en-US" sz="{round(base * pt * 100)}" dirty="0"/></a:p>')
         first_top = 0.0

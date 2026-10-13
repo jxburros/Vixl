@@ -127,7 +127,7 @@ Finish:    look LAYER NAME [--color C] [--amount 0-1] [--remove]  (clean-flat, s
 Styles:    styles [list [QUERY] | show NAME | apply NAME [--palette] | check [NAME]], style-set NAME… [--options JSON],
            check --checks style [--style NAME…] (premade rules for swiss, brutalist, minimalist, art-deco …)
 Dice:      roll [--apply] [--set title=…] [--for poster] [--mood M] [--size NAME] [--seed N|random] [--lock palette=sage]
-           [--variety low|medium|high] [--unfilled omit|blank] [--house-style 1|2], house [show PURPOSE] (the house style)
+           [--variety low|medium|high] [--unfilled omit|blank] [--house-style 1|2|3], house [show PURPOSE] (the house style)
 Brand:     brand validate [--preset NAME] (missing roles, fonts, logos), brand show [--preset NAME]; workflow brand-board
 Color:     color [info] COLOR…, color convert COLOR --to oklch|cmyk|…, color harmony COLOR --scheme triadic,
            color scale COLOR | A B [--count N], color mix A B, color contrast FG BG, color names QUERY,
@@ -815,7 +815,7 @@ def command_help(cmd, args):
         "preset": "preset save|apply|show NAME [--set KEY=VALUE]",
         "fonts": "fonts [--category serif] [--role heading] [--mood elegant] [--query TEXT]",
         "view": "view [--host HOST] [--port PORT] [--token-env ENV] (serve and open live review)",
-        "roll": "roll [--apply] [--set title=TEXT] [--for poster] [--mood playful] [--size NAME|WxH] [--seed N|random] [--variety low|medium|high|fixed] [--lock palette=sage] [--unfilled omit|blank] [--house-style 1|2]",
+        "roll": "roll [--apply] [--set title=TEXT] [--for poster] [--mood playful] [--size NAME|WxH] [--seed N|random] [--variety low|medium|high|fixed] [--lock palette=sage] [--unfilled omit|blank] [--house-style 1|2|3]",
         "layout": "layout list | show NAME | preview NAME | apply NAME [--seed N|random] [--set title=TEXT] [--unfilled blank|omit] [--palette NAME] "
         "[--mode inherit|light|dark] [--predictable] [--type-scale golden] [--density airy|balanced|dense] [--align left|center|right] "
         "[--accent rule|bar|dot|block|outline|none] [--gap N|2u] [--prefix P] [--replace]",
