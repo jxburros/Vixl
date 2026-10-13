@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+Work from the [craft plan](docs/craft-plan.md). Craft claims here wait for a blind re-judging; nothing below claims a craft gain on its own.
+
 ## 0.26.0
 
 ### Fixed and added
