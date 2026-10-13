@@ -18,7 +18,7 @@ Current tagged release: **0.26.0**. See the [changelog](CHANGELOG.md#0260) for r
 Run `vixl --version` to check your runtime;
 record the Git commit when using a source checkout.
 
-**[Documentation home](docs/README.md)** · [Getting started](docs/getting-started.md) ·
+**[Documentation home](docs/README.md)** · [User guide (PDF)](docs/user-guide/vixl-user-guide.pdf) · [Getting started](docs/getting-started.md) ·
 [Visual gallery](docs/gallery.md) · [Command reference](docs/commands.md) ·
 [Downloads](https://github.com/jxburros/Vixl/releases/latest) · [Marketing pack](marketing/README.md)
 

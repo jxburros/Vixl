@@ -149,3 +149,11 @@ def test_double_dollar_writes_a_literal_placeholder_in_text_rich_text_and_flows(
     assert "${title}" in text and "$$" not in text
     with pytest.raises(VixlError, match=r"write \$\$\{nope\}"):
         p.apply({"type": "text", "name": "bad", "text": "${nope}"})
+
+
+def test_fonts_check_does_not_expand_a_literal_placeholder_in_rich_text_twice():
+    p = Project(700, 200)
+    p.apply({"type": "rich-text", "name": "rich", "markdown": "Write `$${headline}` once", "size": 20,
+             "width": 600, "x": 10, "y": 10})
+    report = p.check(checks=["fonts"])
+    assert not any("headline" in str(issue) for issue in report["issues"])

@@ -4,6 +4,8 @@
 
 ### Fixed and added
 
+- A printable user guide for people, made with Vixl: fifteen letter-size pages covering install, the first design, the working loop, the document model, the four interfaces, briefing an agent, checks, export formats and troubleshooting. `docs/user-guide/` holds the vector PDF, the editable master and a contact sheet; `examples/build_user_guide.py` rebuilds them.
+- The `fonts` check no longer fails with `missing_variable` on rich text that writes a literal placeholder as `$${name}`; glyph coverage reads the already-substituted span text.
 - Eighteen editable promo video templates: kinetic, editorial, neon, spotlight, split comparison and statistic treatments in square, portrait and widescreen. Six-second loops use editable copy and seeded palette roles; a reproducible promo variety pack includes masters, proofs and a preview reel. Proportional templates now scale `fit-text` size limits with their canvas.
 
 - Path shapes accept `path_view: [source_width, source_height]` on creation and update (CLI `--path-view`), scaling unchanged native path data into the display box across raster and vector output (#610).

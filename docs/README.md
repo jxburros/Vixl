@@ -15,6 +15,12 @@ the result and export. Text, geometry, masks, effects and history stay in the `.
 4. [Choose an export format](exporting.md): images, vectors, print, decks, forms and motion.
 5. [Resolve common problems](troubleshooting.md): installation, text, checks, imports and providers.
 
+Prefer to read it as a booklet? The [user guide PDF](user-guide/vixl-user-guide.pdf) covers the same ground in
+fifteen printable letter-size pages. It was built with Vixl by `examples/build_user_guide.py`, and its
+[editable master](user-guide/vixl-user-guide.vixl) sits next to it.
+
+[![The fifteen pages of the Vixl user guide](user-guide/contact-sheet.png)](user-guide/vixl-user-guide.pdf)
+
 Current tagged release: **0.26.0**. See the [release notes](../CHANGELOG.md#0260)
 for the features and behavior changes in this version.
 See [installation and updating](releases.md) for Windows, source and agent bundles.
