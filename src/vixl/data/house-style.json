@@ -1,6 +1,6 @@
 {
   "name": "vixl-house-style",
-  "version": 3,
+  "version": 4,
   "description": "Vixl's built-in default brand. Craft is fixed and the same everywhere; taste is rolled from tiered pools, gated by the variety level and weighted by purpose. A workspace brand.json and explicit fields override it. Changing a value here changes new documents only: documents store their rolled design_defaults with the house_style_version that made them.",
   "precedence": ["explicit field", "brand (brand.json)", "purpose profile", "document design_defaults", "seeded roll"],
   "craft": {
@@ -456,6 +456,7 @@
     }
   },
   "legacy": {
+    "3": {"description": "0.26 behaviour: rolls as version 4; pattern-scatter re-rolls the whole layout when count changes, and pixel-art sprites draw without the default shading ramp and outline."},
     "2": {"description": "0.23 roll: excludes pairings introduced in version 3 and keeps its original alignment and background mixing."},
     "1": {
       "summary": "The 0.20-0.22 rolls: safe pools only, two light rolls in three for every purpose, rolled looks at amount 0.1.",
