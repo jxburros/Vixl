@@ -23,6 +23,8 @@ examples/output/
 # agent-eval output (python -m evals.run); keep published results in VixlExamples
 /eval-results/
 /reference-results/
+# render parity output (python -m evals.render_parity)
+/render-parity-results/
 
 tests/visual/_failures/
 !tests/fixtures/*.vixl
