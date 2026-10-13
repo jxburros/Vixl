@@ -30,7 +30,7 @@ and the older `/file/KEY/Name` are the same file; `1-2` in a URL is node `1:2`; 
 
 <!-- docs-test: skip needs a Figma token and network access -->
 ```bash
-vixl new poster
+vixl new 800x600 -o poster.vixl
 vixl -p poster.vixl import "https://www.figma.com/design/KEY/Poster?node-id=1-2"
 vixl -p poster.vixl import KEY --format figma --node 1:2
 vixl -p poster.vixl import KEY --format figma --rasterize-unsupported
@@ -65,8 +65,8 @@ Options (Python keyword arguments, `--node`/`--rasterize-unsupported` and the qu
 
 One frame (selected with a node id, or the only frame on the page) becomes the whole document, sized to the frame.
 A page with several frames becomes one canvas that holds them all at their Figma positions, each frame as a group with
-an [artboard](design-tools.md) of its own size (`render --artboard NAME` exports one). A project that already has layers
-keeps its canvas and receives the import as additional layers.
+an [artboard](design-tools.md) of its own size (`render --artboard NAME` exports one). An empty document is resized to the imported
+frame or page; a project that already has layers keeps its canvas and receives the import as additional layers.
 
 The result is the usual compact apply result plus:
 
