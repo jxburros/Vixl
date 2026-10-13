@@ -1,0 +1,76 @@
+{
+  "test": "T09",
+  "judge": "2",
+  "lanes": {
+    "VAHU": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 3,
+      "craft_sub": {
+        "hierarchy": 4,
+        "spacing": 3,
+        "type": 3,
+        "colour": 3,
+        "finish": 4,
+        "motif": 3
+      },
+      "defects": [
+        {
+          "where": "Square and story body copy",
+          "what": "Background speckles intersect letters and read as stray punctuation.",
+          "severity": "minor"
+        },
+        {
+          "where": "Story headline",
+          "what": "Large concentric rings run behind the headline and compete with it.",
+          "severity": "minor"
+        },
+        {
+          "where": "Leaderboard right edge",
+          "what": "Wave decoration starts with an abrupt vertical cut; tightly joined coloured headline runs also impair word spacing.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Consistent palette and adapted formats, but excessive decoration and low-contrast cream-on-coral CTA reduce polish. All round-1 views and crops inspected; story text is within safe bounds.",
+      "revision": 5,
+      "revision_notes": "Requested headline and drink replacement appear throughout the applicable six sizes; layout system retained."
+    },
+    "WGJQ": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 4,
+      "craft_sub": {
+        "hierarchy": 4,
+        "spacing": 4,
+        "type": 4,
+        "colour": 4,
+        "finish": 4,
+        "motif": 3
+      },
+      "defects": [
+        {
+          "where": "Story menu line",
+          "what": "Line wrapping splits Smoked maple from latte.",
+          "severity": "minor"
+        },
+        {
+          "where": "Square menu line",
+          "what": "Long single-line menu approaches the right margin too closely.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Readable restrained type, calm coastal waves and good consistency across aspect ratios. Motif is generic but clean. All round-1 views and crops inspected; story text is within safe bounds.",
+      "revision": 3,
+      "revision_notes": "Copy updates are correct across all six formats, but the square sun shifts upward and right despite no request to change the background."
+    }
+  },
+  "pairwise_round1": [
+    {
+      "a": "VAHU",
+      "b": "WGJQ",
+      "publish": "b",
+      "margin": "clear",
+      "why": "WGJQ gives the copy cleaner surroundings and more controlled decoration across the campaign."
+    }
+  ]
+}

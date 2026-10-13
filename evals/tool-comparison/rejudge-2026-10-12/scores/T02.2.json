@@ -1,0 +1,66 @@
+{
+  "test": "T02",
+  "judge": "2",
+  "lanes": {
+    "ABTC": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 3,
+      "craft_sub": {
+        "hierarchy": 4,
+        "spacing": 3,
+        "type": 4,
+        "colour": 4,
+        "finish": 4,
+        "motif": 3
+      },
+      "defects": [
+        {
+          "where": "post.png.view.png, middle left below headline",
+          "what": "Large empty pocket between headline and date makes the composition feel uneven beside the microphone.",
+          "severity": "minor"
+        },
+        {
+          "where": "post.png.view.png, lower third",
+          "what": "Three oversized generic wave rules consume space while the website is comparatively small and detached.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Legible, cleanly aligned copy, but the vertical rhythm and decorative allocation need refinement.",
+      "revision": 5,
+      "revision_notes": "Date correctly changed, host added directly under headline, and story supplied at 1080×1920 with text clear of both 250 px zones. Existing post styling and composition preserved."
+    },
+    "SPAN": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 4,
+      "craft_sub": {
+        "hierarchy": 5,
+        "spacing": 4,
+        "type": 4,
+        "colour": 4,
+        "finish": 4,
+        "motif": 3
+      },
+      "defects": [
+        {
+          "where": "post.png.view.png, upper microphone",
+          "what": "The tiny microphone merges visually with the hanging lights and reads less clearly than the headline.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Strong phone-readable hierarchy and warm palette; decoration is somewhat generic but text remains clear.",
+      "revision": 5,
+      "revision_notes": "Correct November 19 date and host line directly below headline in both exports. Story dimensions and 250 px text exclusion zones satisfied. Small post shifts accommodate the added line without changing the visual system."
+    }
+  },
+  "pairwise_round1": [
+    {
+      "a": "ABTC",
+      "b": "SPAN",
+      "publish": "b",
+      "margin": "clear",
+      "why": "SPAN has a more cohesive vertical rhythm and a stronger, more readable event-information hierarchy."
+    }
+  ]
+}

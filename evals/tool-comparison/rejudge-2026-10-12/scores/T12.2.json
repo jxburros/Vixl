@@ -1,0 +1,78 @@
+{
+  "test": "T12",
+  "judge": "2",
+  "lanes": {
+    "FJPE": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 4,
+      "craft_sub": {
+        "hierarchy": 5,
+        "spacing": 4,
+        "type": 5,
+        "colour": 5,
+        "finish": 4,
+        "motif": 4
+      },
+      "defects": [
+        {
+          "where": "intro-last-frame.png beam tip",
+          "what": "Light cone ends in a conspicuous flat vertical cutoff instead of dissipating.",
+          "severity": "minor"
+        },
+        {
+          "where": "intro.gif.frames.png waves versus MP4",
+          "what": "GIF wave strokes are disproportionately thin compared with the video artwork.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Clear centred lockup, readable type and coherent lighthouse. All supplied round-1 views inspected and video decoded with ffmpeg; formats, durations, loop and sub-5MB GIF verified. Motion assessed through timestamped frames and decoded frame measurements.",
+      "revision": 5,
+      "revision_notes": "8-second outputs, exact new tagline, slower sweep consistent with doubled period, and completed text by 5 seconds for a 3-second hold. Composition retained. The 8-second/3-second-hold combination necessarily extends the pre-hold sequence to 5 seconds."
+    },
+    "XVMB": {
+      "fidelity": 4,
+      "fidelity_misses": [
+        "At beam onset the beam floats above the rising lighthouse instead of emanating from its lamp."
+      ],
+      "craft": 3,
+      "craft_sub": {
+        "hierarchy": 4,
+        "spacing": 3,
+        "type": 4,
+        "colour": 4,
+        "finish": 3,
+        "motif": 4
+      },
+      "defects": [
+        {
+          "where": "intro.mp4.frames.png at 2.25 seconds",
+          "what": "Beam origin is visibly detached above the lighthouse during its rise.",
+          "severity": "major"
+        },
+        {
+          "where": "intro-last-frame.png lighthouse base",
+          "what": "Flat tower base floats above the wave trough.",
+          "severity": "minor"
+        },
+        {
+          "where": "intro-last-frame.png upper half",
+          "what": "Large unused upper area leaves the main lockup sitting low and right-heavy.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Attractive layered waves and warm typography, but the lighthouse/beam integration needs repair. All supplied round-1 views inspected and video decoded with ffmpeg; formats, duration, loop and GIF size verified. Motion assessed from timestamped frames and frame measurements.",
+      "revision": 5,
+      "revision_notes": "Correct 8-second duration, new tagline, half-speed sweep and text completed at 5 seconds, leaving the requested 3-second final hold; visual system retained. Existing beam/base defects persist but were not revision requests."
+    }
+  },
+  "pairwise_round1": [
+    {
+      "a": "FJPE",
+      "b": "XVMB",
+      "publish": "a",
+      "margin": "clear",
+      "why": "FJPE's centred composition and attached light beam are more publication-ready than XVMB's floating tower and detached beam."
+    }
+  ]
+}

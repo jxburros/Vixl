@@ -1,0 +1,97 @@
+{
+  "test": "T08",
+  "judge": "2",
+  "lanes": {
+    "IRQG": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 5,
+      "craft_sub": {
+        "hierarchy": 5,
+        "spacing": 5,
+        "type": 5,
+        "colour": 5,
+        "finish": 5,
+        "motif": null
+      },
+      "defects": [],
+      "craft_notes": "A polished, readable information hierarchy: restrained serif headings, aligned callouts, a clearly emphasized peak month and a well-organized share table. Charts remain clean in all real-size crops. Displayed monthly totals sum to 35,280 and drink totals yield the stated percentages. The original CSV is excluded, so source-data agreement cannot be independently verified.",
+      "revision": 5,
+      "revision_notes": "December segments encode 1480/1120/90/640 at a common scale, total 3,330; annual total is 35,630, shares 44.6/33.6/7.0/14.8%. Peak-month emphasis moves to December, tea is plum throughout, and layout remains stable."
+    },
+    "RYGP": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 4,
+      "craft_sub": {
+        "hierarchy": 4,
+        "spacing": 4,
+        "type": 4,
+        "colour": 5,
+        "finish": 5,
+        "motif": null
+      },
+      "defects": [
+        {
+          "where": "r1 infographic.png, annual-share legend",
+          "what": "Drink totals run directly after variable-length labels without a common numeric alignment, making comparison slower.",
+          "severity": "minor"
+        },
+        {
+          "where": "r1 infographic.png, annual-share section",
+          "what": "Percentages sit around the donut while drink names and counts are far to the right, requiring repeated color matching to combine the information.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "Strong slab-serif personality and restrained color with clean chart geometry. All supplied views/crops inspected. Monthly totals, annual totals and rounded shares are internally consistent; absent CSV prevents checking source values independently.",
+      "revision": 5,
+      "revision_notes": "December becomes 3,330 and the busiest month; annual total and all drink counts/shares update correctly. Tea is plum in both charts and legends, and the existing design is retained."
+    },
+    "VNPK": {
+      "fidelity": 5,
+      "fidelity_misses": [],
+      "craft": 4,
+      "craft_sub": {
+        "hierarchy": 4,
+        "spacing": 4,
+        "type": 4,
+        "colour": 4,
+        "finish": 5,
+        "motif": null
+      },
+      "defects": [
+        {
+          "where": "r1 infographic.png, legends above and below monthly chart",
+          "what": "Tea and cold brew swap order between the two legends, adding a small avoidable lookup burden.",
+          "severity": "minor"
+        }
+      ],
+      "craft_notes": "A clear conventional infographic with large key numbers, readable axes and neatly aligned annual figures. Less distinctive typography, but useful and clean at real size. All views/crops inspected. Displayed totals and shares agree arithmetically; input CSV is absent, limiting source-data verification.",
+      "revision": 5,
+      "revision_notes": "Correct 35,630 total, December 3,330 peak, revised shares and drink totals, and plum tea throughout. The cold-brew peak remains August 420, correctly. No unrelated layout drift observed."
+    }
+  },
+  "pairwise_round1": [
+    {
+      "a": "IRQG",
+      "b": "RYGP",
+      "publish": "a",
+      "margin": "slight",
+      "why": "IRQG's aligned share table combines labels, counts and percentages more efficiently and its lighter typography gives a calmer hierarchy."
+    },
+    {
+      "a": "IRQG",
+      "b": "VNPK",
+      "publish": "a",
+      "margin": "slight",
+      "why": "IRQG adds more considered typography and peak-month emphasis while maintaining clear data presentation."
+    },
+    {
+      "a": "RYGP",
+      "b": "VNPK",
+      "publish": "b",
+      "margin": "slight",
+      "why": "VNPK keeps drink names, percentages and counts together, making the annual summary easier to read."
+    }
+  ]
+}
