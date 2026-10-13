@@ -42,7 +42,8 @@ vixl shape arc --name drip --width 300 --height 300 --x 50 --y 50 --start-angle 
 vixl shape arc --name progress --width 300 --height 300 --x 400 --y 50 --start-angle -90 --end-angle 160 --open --stroke '#d4241c' --stroke-width 14 --line-cap round
 ```
 
-Each wedge is one editable layer; a visible stroke is drawn inside the box, so strokes of
+Each wedge is one editable layer; a visible stroke is drawn inside the box (its outer edge on the
+ellipse that fills the box, as other closed shapes stroke inside their outline), so strokes of
 neighbouring wedges meet cleanly. A non-square box gives elliptical wedges. SVG, vector PDF
 (`pdf_content: vector`, the default for paged documents) and PowerPoint exports write native curves
 (no arc commands, no raster), and the spellings `pie`, `wedge`, `donut`, `ring` and `sector` are

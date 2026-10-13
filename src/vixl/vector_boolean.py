@@ -83,25 +83,34 @@ def winding(points, x, y):
     return result
 
 
-def offset_geometry(path, distance, join="miter", miter_limit=4, holes=True):
-    """The filled region of ``path`` (nonzero winding) grown or inset by ``distance``, as a shapely geometry.
-    ``holes=False`` fills the holes first (an outer silhouette, as a cut line needs)."""
-    from shapely import BufferJoinStyle
-    from shapely.geometry import LineString, Polygon
+def filled_region(contours):
+    """The area closed point lists (first point repeated last) fill under the nonzero winding rule, as a
+    shapely geometry (possibly empty)."""
+    from shapely.geometry import LineString
     from shapely.ops import polygonize, unary_union
 
-    contours = flatten(path)
-    require(
-        contours and all(len(p) > 3 and p[0] == p[-1] for p in contours),
-        "Offset requires closed contours; use outline-stroke for an open path",
-    )
     faces = polygonize(unary_union([LineString(p) for p in contours]))
     filled = []
     for face in faces:
         q = face.representative_point()
         if sum(winding(p, q.x, q.y) for p in contours):
             filled.append(face)
-    geometry = unary_union(filled)
+    return unary_union(filled)
+
+
+def offset_geometry(path, distance, join="miter", miter_limit=4, holes=True):
+    """The filled region of ``path`` (nonzero winding) grown or inset by ``distance``, as a shapely geometry.
+    ``holes=False`` fills the holes first (an outer silhouette, as a cut line needs)."""
+    from shapely import BufferJoinStyle
+    from shapely.geometry import Polygon
+    from shapely.ops import unary_union
+
+    contours = flatten(path)
+    require(
+        contours and all(len(p) > 3 and p[0] == p[-1] for p in contours),
+        "Offset requires closed contours; use outline-stroke for an open path",
+    )
+    geometry = filled_region(contours)
     require(not geometry.is_empty, "Path has no filled area to offset")
     if not holes:
         parts = list(geometry.geoms) if geometry.geom_type == "MultiPolygon" else [geometry]

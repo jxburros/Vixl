@@ -101,16 +101,21 @@ def dither(shape, top=0):
 
 
 def vector_routed(project, layer):
-    """Whether ``shape_image`` draws the shape with ``vector_strokes.render`` (filled paths, geometry past
-    the box, catalog shapes, styled strokes, distortion, fractional sizes)."""
+    """Whether ``shape_image`` draws the shape with ``vector_strokes.render`` (filled paths, stroked closed
+    shapes, geometry past the box, catalog shapes, styled strokes, distortion, fractional sizes)."""
     from .render import color
     from .shape_catalog import active as catalog_active
     from .vector_strokes import active as stroke_active
-    from .geometry import path_overflows
+    from .geometry import PATH_SHAPES, path_overflows
+    from .trim import trim_range
 
-    filled_path = layer.get("shape") == "path" and (layer.get("stroke_width", 1) <= 0 or
-                  color(resolve_color(layer.get("stroke", "transparent"), project.state))[3] == 0)
-    return bool(filled_path or path_overflows(layer) or catalog_active(layer) or stroke_active(layer)
+    stroked = layer.get("stroke_width", 1) > 0 and color(
+        resolve_color(layer.get("stroke", "transparent"), project.state))[3] > 0
+    # A closed shape strokes inside its outline (geometry.stroke_align): vector_strokes draws that band
+    # exactly, as the SVG and PDF exports do. Trimmed strokes are drawn by trim.trimmed_image.
+    inside = stroked and layer.get("shape") not in (*PATH_SHAPES, "line") and not trim_range(layer)
+    filled_path = layer.get("shape") == "path" and not stroked
+    return bool(filled_path or inside or path_overflows(layer) or catalog_active(layer) or stroke_active(layer)
                 or layer.get("distort") or layer.get("_distort_groups")
                 or (layer.get("shape") != "path" and any(not isinstance(layer[k], int) for k in ("width", "height"))))
 
@@ -157,46 +162,21 @@ def shape_image(project, layer):
 
     fill = color(resolve_color(default_fill(layer), project.state))
     stroke = color(resolve_color(layer.get("stroke", "transparent"), project.state))
-    width = round(layer.get("stroke_width", 1) * factor)
-    pad = width / 2 if stroke[3] else 0
-    shape = layer["shape"]
-    if pad and shape != "line" and 2 * pad >= min(w, h) * factor - 1:
-        # The stroke inset leaves no room inside a box narrower than the stroke (a small shape, or
-        # one animated toward scale 0). The visible ring shrinks to nothing as the box approaches
-        # this size, so draw nothing rather than inverting the box.
-        return Image.new("RGBA", (w, h))
-    box = (pad, pad, w * factor - 1 - pad, h * factor - 1 - pad)
-    if shape in ("rectangle", "rounded-rectangle", "ellipse", "capsule"):
-        fn = {
-            "rectangle": draw.rectangle,
-            "rounded-rectangle": draw.rounded_rectangle,
-            "ellipse": draw.ellipse,
-            "capsule": draw.rounded_rectangle,
-        }[shape]
-        extra = (
-            {"radius": layer.get("radius", min(w, h) / (2 if shape == "capsule" else 5)) * factor}
-            if shape in ("rounded-rectangle", "capsule")
-            else {}
-        )
-        fn(box, fill=fill, outline=stroke if width and stroke[3] else None, width=max(1, width), **extra)
-    elif shape == "line":
-        draw.line(box, fill=stroke if stroke[3] else fill, width=max(1, width))
+    if layer["shape"] == "line":
+        # The line's ends sit half a stroke in from the box corners (geometry.stroke_inset).
+        width = round(layer.get("stroke_width", 1) * factor)
+        pad = width / 2 if stroke[3] else 0
+        draw.line((pad, pad, w * factor - 1 - pad, h * factor - 1 - pad), fill=stroke if stroke[3] else fill,
+                  width=max(1, width))
     else:
+        # An unstroked polygon, star or shortcut (stroked closed shapes are vector_routed).
         from .geometry import shape_path, path_polygons
 
         path, view = shape_path(layer)
+        scale = ((w * factor - 1) / view[0], (h * factor - 1) / view[1])
         for polygon in path_polygons(path):
-            points = [
-                (box[0] + x / view[0] * (box[2] - box[0]), box[1] + y / view[1] * (box[3] - box[1]))
-                for x, y in polygon
-            ]
-            if len(points) >= 3:
-                draw.polygon(points, fill=fill)
-            if width and stroke[3] and len(points) >= 2:
-                # PIL joins only interior vertices; repeat the first segment so a
-                # closed contour's start vertex is joined instead of capped flat.
-                closed = len(points) >= 4 and points[0] == points[-1]
-                draw.line(points + points[1:2] if closed else points, fill=stroke, width=width, joint="curve")
+            if len(polygon) >= 3:
+                draw.polygon([(x * scale[0], y * scale[1]) for x, y in polygon], fill=fill)
     return image.resize((w, h), Image.Resampling.LANCZOS)
 
 

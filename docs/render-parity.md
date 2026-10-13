@@ -60,22 +60,28 @@ Numbers below are 0-255 levels unless marked; "exact" is the supersampled refere
   repeats the 64 px dither period, so a 2400 x 2400 ramp takes about 8 ms (3 ms before dithering, 0.1 s
   when every pixel was dithered); radial and angled ramps still compute every pixel (about 0.15 s). Tests: `tests/test_render_quality.py`.
 
-- **One stroke rule in every export** (15). PNG, PDF and PowerPoint already shared a rule
-  (`geometry.stroke_inset`): a plain shape keeps its stroke inside its box. Rectangles, rounded
-  rectangles, capsules and ellipses are drawn in the box inset by half the stroke with the stroke inward
-  from there (the stroke covers half a stroke to one and a half strokes in from the box edge); polygons,
-  stars and lines put the stroke's centre line half a stroke in; paths and arcs are stroked on their
-  own outline (an arc builds the inset into its path). Keeping that rule, rather than moving three
-  renderers to centred strokes, leaves existing documents unchanged. The SVG export now writes the same
-  inset geometry, with polygon outlines in pixels so a stroke keeps its width in any box; plain shapes at
-  fractional sizes (drawn from filled stroke outlines in PNG) use the rule too; PDF rectangles keep square
-  corners. Shapes with styled strokes (`stroke_align`, dashes, profiles, markers), catalog shapes and
-  distortion stroke their outline as `stroke_align` says (centred by default) in every renderer, as
-  before. PNG draws a path's or arc's whole stroke: the image holds the box plus the margin the stroke
-  reaches past it (miter joins and caps included), instead of cutting the stroke at the box. Measured on
-  a 10 px stroke: ink boxes and stroke edges in PNG, SVG (resvg) and PDF (pdfium) within 1 px for
+- **One stroke rule in every export** (15). Every renderer follows `stroke_align`, and closed shapes
+  default to `inside` (`geometry.stroke_align`, `geometry.stroke_inset`): the stroke's outer edge is the
+  outline, so a 10 px stroke on a rectangle, rounded rectangle, capsule or ellipse covers 0-10 px in from
+  the box edge, the fill covers the whole shape under it, and a rounded corner keeps the layer's radius
+  outside (inner radius: radius minus the stroke, at least 0). Polygons, stars, shortcuts and catalog
+  shapes stroke inside their outline the same way. Paths, arcs, lines and open shapes default to
+  `center`; a line's ends sit half a stroke in from its box corners, and an arc builds a half-stroke
+  inset into its path, so its rim is flush too. An explicit `stroke_align` means the same with or
+  without dashes, profiles or markers. This replaced an earlier rule that drew rectangles, rounded
+  rectangles, capsules and ellipses in the box inset by half the stroke and stroked inward from there
+  (ink 5-15 px in for a 10 px stroke) and put the centre line of polygon and star strokes half a stroke
+  in (round joins), while styled strokes were centred on the box outline by default.
+  PNG draws an inside or outside stroke as the band between the filled area and that area shrunk or
+  grown by the stroke width (`vector_strokes.aligned_band`, exact for holes and tight curves); SVG and
+  PDF draw a native stroke along the outline shrunk by half the stroke (rectangles, rounded rectangles
+  and ellipses as elements, polygons and stars as mitred paths) where that draws the same band, and the
+  band itself otherwise; PowerPoint, which centres strokes, insets the shape's frame by half the stroke.
+  PNG draws a path's or arc's whole stroke: the image holds the box plus the margin the stroke reaches
+  past it (miter joins and caps included), instead of cutting the stroke at the box. Measured on a
+  10 px stroke: ink boxes and stroke edges in PNG, SVG (resvg) and PDF (pdfium) within 1 px for
   rectangles, rounded rectangles, ellipses, polygons, stars, lines and open and closed paths, at whole
-  and fractional sizes (before: SVG 10 px out on rectangles and ellipses, PNG paths cut by 3-5 px).
+  and fractional sizes, and for explicit `inside`, `center` and `outside`.
   Tests: `tests/test_stroke_placement.py`.
 
 Golden images regenerated for the intended changes: `blend_modes`, `chart_line`, `groups`,
@@ -83,7 +89,9 @@ Golden images regenerated for the intended changes: `blend_modes`, `chart_line`,
 `irregular_torn` (a turned path drawn in place), `gradients`, `gradient_to_transparent`,
 `effect_lookup_lut` (dither, at most 2 levels); for finding 15, `path_stroke_only` and
 `path_open_default_fill` (whole path strokes), `path_stroke_only.pdf` and `shapes_and_strokes.pdf`
-(square rectangle corners) and the `shapes_and_strokes`, `path_stroke_only` and `groups` SVG snapshots.
+(square rectangle corners) and the `shapes_and_strokes`, `path_stroke_only` and `groups` SVG snapshots;
+for the flush inside stroke, `shapes_and_strokes`, `path_stroke_only` and `groups` (PNG, PDF, SVG and
+PowerPoint snapshots) and `irregular_torn` (a stroked rectangle turned into a path keeps the stroke inside).
 
 ## What remains
 
