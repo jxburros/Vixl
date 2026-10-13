@@ -265,14 +265,14 @@ def source_svg(raw, format, limits):
     if format == "vixl":
         project = load_master(raw, limits)
         w, h = project.state["canvas"]["width"], project.state["canvas"]["height"]
-        svg = export_svg(project)
+        svg = export_svg(project, document=False)
         svg = svg.encode() if isinstance(svg, str) else svg
     elif format == "svg":
         project = Project(72, 72, background="transparent", limits=limits)
         from .imports import svg_operations
 
         project.apply(svg_operations(raw, project, "emoji"))
-        svg = export_svg(project)
+        svg = export_svg(project, document=False)
         svg = svg.encode() if isinstance(svg, str) else svg
         w = h = 72
     else:

@@ -356,10 +356,12 @@ vixl import artwork.svg --svg-mode auto
 vixl export artwork.html
 ```
 
-`editable` remains the default SVG import mode: supported geometry becomes editable paths
-and unsupported appearance fails explicitly. `appearance` accepts self-contained static SVG
-supported by resvg, including gradients, masks, clipping, filters, groups, text and embedded
-raster images. `auto` tries editable import, then uses appearance when a feature is unsupported.
+`editable` remains the default SVG import mode: shapes, paths, text, groups, gradients, embedded images and
+class stylesheets become editable layers, Vixl's own SVG comes back as the document it carries, and unsupported
+appearance fails explicitly ([importing SVG and PDF](exporting.md#importing-svg-and-pdf)). `appearance` accepts
+self-contained static SVG supported by resvg, including gradients, masks, clipping, filters, groups, text and embedded
+raster images. `auto` imports editably and draws only the unsupported elements (a filter, mask or clip path) as
+image layers; an SVG whose stylesheet cannot be read imports by appearance.
 Appearance import stores a raster layer **and the original SVG source** in the archive. It
 reports the fallback; source geometry is not individually editable. Active content, scripts,
 foreignObject, animation, file/remote references, entities and nested data-URI SVG are rejected.

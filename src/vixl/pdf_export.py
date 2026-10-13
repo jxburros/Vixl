@@ -721,7 +721,9 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
         except Exception:  # a title is a nicety; never fail an export over it
             title = None
         title = (title or (Path(path).stem if path else ""))[:200]
-    info = writer.add({"Title": Text(title) if title else None, "Producer": Text("Vixl")})
+    # VixlDPI: the pixels per inch the pages were laid out at, so a PDF import maps them back to the same pixels.
+    info = writer.add({"Title": Text(title) if title else None, "Producer": Text("Vixl"),
+                       "VixlDPI": Text(compact_number(dpi, 6))})
     catalog = {"Type": Name("Catalog"), "Pages": pages_ref}
     if title:
         catalog["ViewerPreferences"] = {"DisplayDocTitle": True}

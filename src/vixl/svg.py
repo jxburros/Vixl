@@ -1,8 +1,11 @@
 """Self-contained SVG with vector logo geometry and explicit raster fallbacks."""
 
 import base64
+import hashlib
 import json
 import math
+import re
+from xml.sax.saxutils import escape
 import xml.etree.ElementTree as ET
 
 from .assets import png_bytes
@@ -79,6 +82,7 @@ class Exporter:
         self.fallbacks = []
         self.text_reasons = {}
         self.used_ids = set()
+        self.with_ids = True
 
     def describe(self, element, layer):
         """Object identity (id, data-vixl-object/kind/part) and accessibility (title, role, aria-hidden) of a
@@ -106,6 +110,11 @@ class Exporter:
             heading = ET.Element(f"{{{NS}}}title")
             heading.text = title
             element.insert(0, heading)
+
+    def identity(self, layer):
+        """``data-vixl-id``, the layer ID, on SVG that carries its document (IDs are random per document, so SVG
+        without one, such as HTML exports, leaves them out and stays deterministic)."""
+        return {"data-vixl-id": layer["id"]} if self.with_ids else {}
 
     def ident(self, prefix):
         self.counter += 1
@@ -396,7 +405,8 @@ class Exporter:
             and supported(layer)
             and vector_overlay(layer, self.project.state)
         )
-        group = ET.Element(f"{{{NS}}}g", {"opacity": str(layer["opacity"]), "data-layer": layer["name"]})
+        group = ET.Element(f"{{{NS}}}g", {"opacity": str(layer["opacity"]), "data-layer": layer["name"],
+                                         **self.identity(layer)})
         geometry = node(group, "g", transform=self.transform(layer, b))
         self.describe(group, layer)
         if simple and self.geometry(geometry, layer):
@@ -483,7 +493,7 @@ class Exporter:
             if layer.get("alt") or decorative(layer) or export_identity(layer, self.index):
                 # An image (or a layer drawn as one) that is described, decorative or part of an object keeps a
                 # group of its own to carry that.
-                parent = node(parent, "g", data_layer=layer["name"])
+                parent = node(parent, "g", data_layer=layer["name"], **self.identity(layer))
                 self.describe(parent, layer)
             if layer.get("styles") or layer.get("clip"):
                 from .render import layer_surface
@@ -512,8 +522,12 @@ class Exporter:
             )
 
 
-def export_svg(project, *, scale=1, variables=None, artboard=None, comp=None, svg_policy="appearance"):
+def export_svg(project, *, scale=1, variables=None, artboard=None, comp=None, svg_policy="appearance", document=True):
+    """The SVG bytes of one page. With ``document`` (the default) the SVG carries the Vixl document it shows in a
+    ``<metadata id="vixl-document">`` element (``embedded_document``), so importing it gives back the same editable
+    layers; every layer's group also names its layer ID in ``data-vixl-id``."""
     candidate = artboard_project(project, artboard, comp, variables)
+    shown = candidate
     from .export_appearance import prepare
 
     candidate = prepare(candidate)
@@ -527,6 +541,7 @@ def export_svg(project, *, scale=1, variables=None, artboard=None, comp=None, sv
         },
     )
     exporter = Exporter(candidate, root)
+    exporter.with_ids = document
     from .accessibility import document_title, page_alt, page_language
 
     lang = page_language(candidate.state)
@@ -581,5 +596,51 @@ def export_svg(project, *, scale=1, variables=None, artboard=None, comp=None, sv
                 "SVG requires raster content; see fallback details",
                 fallbacks=exporter.fallbacks,
             )
-        node(root, "metadata").text = json.dumps({"vixl": {"raster_fallbacks": exporter.fallbacks}})
-    return ET.tostring(root, encoding="utf-8", xml_declaration=True)
+    if not document:
+        if exporter.fallbacks:
+            node(root, "metadata").text = json.dumps({"vixl": {"raster_fallbacks": exporter.fallbacks}})
+        return ET.tostring(root, encoding="utf-8", xml_declaration=True)
+    body = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+    payload = embedded_document(shown)
+    payload["digest"] = hashlib.sha256(body).hexdigest()
+    if exporter.fallbacks:
+        payload = {"raster_fallbacks": exporter.fallbacks, **payload}
+    text = escape(json.dumps({"vixl": payload}, ensure_ascii=False, separators=(",", ":")))
+    end = body.rindex(b"</svg>")
+    return body[:end] + f'<metadata id="{METADATA_ID}">{text}</metadata>'.encode() + body[end:]
+
+
+METADATA_ID = "vixl-document"
+METADATA = re.compile(rb'<metadata id="' + METADATA_ID.encode() + rb'">(.*?)</metadata>', re.S)
+# Embedded archive members (images, masks, fonts) beyond this many bytes in total are left out of the SVG; the
+# import then reads the SVG's own elements instead and says why.
+EMBED_BUDGET = 32 * 1024 * 1024
+DOCUMENT_FORMAT = 1
+
+
+def embedded_document(project):
+    """The JSON payload that makes an exported SVG a lossless carrier of ``project`` (one page): the document state
+    (a paged document's page view becomes a single-page state), the archive members it references as base64, and
+    ``omitted_assets`` when the members exceed ``EMBED_BUDGET``."""
+    from copy import deepcopy
+    from .project import ASSET_REFERENCE, FORMAT_VERSION
+
+    state = deepcopy(project.state)
+    for key in ("pages", "page", "masters"):
+        state.pop(key, None)
+    text = json.dumps(state, ensure_ascii=False).encode()
+    names = sorted(set(name.decode() for name in ASSET_REFERENCE.findall(text)) & set(project.assets),
+                   key=lambda name: (len(project.assets[name]), name))
+    assets, omitted, used = {}, [], 0
+    for name in names:
+        size = len(project.assets[name])
+        if used + size > EMBED_BUDGET:
+            omitted.append(name)
+            continue
+        used += size
+        assets[name] = base64.b64encode(project.assets[name]).decode("ascii")
+    payload = {"format": "vixl-svg-document", "version": DOCUMENT_FORMAT,
+               "document": {"format_version": FORMAT_VERSION, "state": state}, "assets": dict(sorted(assets.items()))}
+    if omitted:
+        payload["omitted_assets"] = sorted(omitted)
+    return payload

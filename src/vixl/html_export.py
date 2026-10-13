@@ -8,7 +8,7 @@ def export_html(project, **options):
     from .accessibility import document_title, page_alt, page_language
     from .svg import export_svg
 
-    svg = export_svg(project, **options)
+    svg = export_svg(project, **options, document=False)
     texts = [
         layer.get("text", "")
         for layer in project.state["layers"]

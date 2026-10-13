@@ -168,4 +168,69 @@ every format; a `.vixl` path writes a portable object document for `object-place
 PSD keep declared [objects](objects.md) as named groups, and every format carries alt text and the document
 language ([accessibility](accessibility.md)).
 
-SVG export writes `multiply`, `screen`, `overlay`, `darken`, `lighten` and `difference` layers as native `mix-blend-mode` groups inside an isolated root, keeping every shape and text vector. `add`, `subtract` and other backdrop-dependent operations still rasterize the document and report the fallback; strict mode rejects them. Editable SVG import also accepts native gradient rectangles (unrounded, unstroked, translated only, user-space padded linear or radial gradients with 2–32 plain stops) and stroked paths that overflow their box. Arbitrary transforms, clipping, gradient-filled nonrectangular geometry and unsupported SVG features still require appearance/auto mode.
+SVG export writes `multiply`, `screen`, `overlay`, `darken`, `lighten` and `difference` layers as native `mix-blend-mode` groups inside an isolated root, keeping every shape and text vector. `add`, `subtract` and other backdrop-dependent operations still rasterize the document and report the fallback; strict mode rejects them.
+
+## SVG round trip
+
+An SVG Vixl exports carries the document it shows, so importing it back gives the same editable document: the same
+layers with their IDs and names, live text in its fonts, groups, effects, layer styles, masks and every other field.
+Use SVG as an interchange file without losing the master.
+
+```bash
+vixl new 1080x1350 -o poster.vixl
+vixl -p poster.vixl text add 'Spring fair' --name title --size 96
+vixl -p poster.vixl export poster.svg
+vixl new 1080x1350 -o copy.vixl
+vixl -p copy.vixl import poster.svg
+```
+
+- The SVG holds `<metadata id="vixl-document">` with the page's document JSON (the [file format](file-format.md)'s
+  `state`, a multi-page document's exported page as a single page) and the images and fonts it uses as base64, plus
+  a SHA-256 digest of the rest of the SVG. Every layer's group also carries `data-vixl-id` (its layer ID) and
+  `data-layer` (its name). Browsers and other editors ignore the metadata; the SVG draws exactly as before.
+- Importing into a document without layers takes the embedded canvas and resources too, so the result equals the
+  exported page. Importing into a document with layers places the layers as one group at their original position
+  (names the document already uses are prefixed with the group's name).
+- When the SVG was edited after export (the digest no longer matches), when its embedded images and fonts exceeded
+  32 MiB and were left out, or when the embedded document does not pass the checks a `.vixl` file must pass, the
+  import reads the SVG's visible elements instead and says why in `warnings`.
+- `svg_document=False` (Python, REST) leaves the metadata out, for example for a web asset. HTML exports and
+  presentation slides never carry it. Fonts are embedded as whole files, as in the `.vixl`; leave the document out of
+  SVGs you publish when a font's license does not allow redistribution.
+
+## Importing SVG and PDF
+
+`vixl import FILE.svg` / `FILE.pdf` (MCP `vixl_import_document`, REST `POST /import`, Python
+`vixl.imports.import_document`) adds the file's content to the current document as one revision. `svg_mode` chooses
+how, for SVG and PDF alike:
+
+| `svg_mode` | SVG | PDF |
+| --- | --- | --- |
+| `editable` (default) | Vixl's own SVG: the embedded document. Other SVG: editable layers; an unsupported element fails the import. | The page as editable layers; objects Vixl cannot represent become image layers. |
+| `auto` | As `editable`, but an unsupported element becomes an image layer of just that element (listed in `rasterized`); an unreadable stylesheet imports the whole SVG as one image. | As `editable`. |
+| `appearance` | The whole SVG as one image layer, its source kept in the archive. | The page as one image at `dpi` (default 144). |
+
+**Other SVG.** `rect`, `circle`, `ellipse`, `line`, `polyline`, `polygon` and `path` become path shape layers with
+their fill (nonzero or even-odd), stroke, stroke width, caps, joins, dashes and opacity; transforms are applied to
+the geometry. `<text>` and `<tspan>` become live text layers (size, colour, `text-anchor`, rotation, letter spacing;
+lines that share an `x` become one multi-line layer). A font family the document has registered (by registered name
+or by the font's own family name) is used, else the default face with a warning; a text with mixed span styles takes
+its first style. `<g>` elements with an `id`, `data-layer` or Inkscape label, or with opacity, become groups (a group
+of one layer passes its name and opacity to it). Linear and radial gradients become gradient layers on rectangles
+(and radial glows on circles) and gradient overlays on other shapes. Embedded PNG, JPEG and WebP `<image>` data
+becomes an image layer. `<use>` and `<symbol>` are expanded, and `<style>` rules with type, class and ID selectors
+apply. Filters, masks, clip paths, patterns, markers, skewed text and external references are not editable: `auto`
+draws each such element as an image layer. External resources are never fetched.
+
+**PDF.** A page's text objects become live text layers with their text, size, colour, position and rotation;
+consecutive lines of one style that share a left edge, centre or right edge become one multi-line layer, and a text
+outline pass becomes the layer's `stroke_color` and `stroke_width`. Fonts are matched by family name as for SVG
+(PDFs usually embed subsets, which are not registered). Path objects become path shape layers (fill and even-odd
+fill, stroke, width, caps, joins, dashes); a stroke painted right after a fill of the same path joins that layer.
+Image objects become image layers at their position, size and rotation. Shadings, clipped objects, patterns,
+mirrored text and other content Vixl cannot represent are drawn, run by run in stacking order, as image layers
+(listed in `rasterized`). Into a document without layers the page size becomes the canvas and a full-page backdrop
+its background (white otherwise). A PDF Vixl exported maps back to the pixels it was made at (it records `VixlDPI`);
+other PDFs map one point to one pixel, and `dpi` applies to `appearance` imports only. Rotated pages, form fields,
+annotations, blend modes and transparency groups are not read as such: rotated pages import as one image, and
+the others as what pdfium reports for each object.

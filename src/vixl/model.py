@@ -12,6 +12,11 @@ from .errors import require
 # Layers in one document (or page). Lists that name layers (targets, refs) share this bound; documents with more
 # layers than an older release allowed do not open in that release.
 MAX_LAYERS = 4096
+# Every layer type a document may hold; validation, the published document schema (document_schema.py) and the
+# file-format docs read this list.
+LAYER_TYPES = ("raster", "text", "solid", "gradient", "shape", "group", "frame", "adjustment", "pathfinder", "symbol",
+               "pixel", "paint", "field", "link")
+LAYER_ROLES = ("content", "decoration", "background", "title")
 
 
 @dataclass(frozen=True)

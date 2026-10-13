@@ -239,7 +239,7 @@ def test_svg_appearance_static_features_source_and_html(tmp_path):
     <defs><linearGradient id="g"><stop stop-color="red"/><stop offset="1" stop-color="blue"/></linearGradient></defs>
     <g opacity="0.5"><rect width="40" height="20" rx="4" fill="url(#g)"/></g></svg>"""
     p = Project(40, 20)
-    result = import_document(p, svg, "svg", svg_mode="auto")
+    result = import_document(p, svg, "svg", svg_mode="appearance")
     assert result["mode"] == "appearance"
     assert p.assets[result["source"]] == svg
     assert 120 <= p.render().getpixel((20, 10))[3] <= 130

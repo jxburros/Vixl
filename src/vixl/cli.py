@@ -678,6 +678,9 @@ def _dispatch(argv):
         return {"path": str(project.path), **result}, options.json
     if cmd == "schema":
         from .schema import operation_schema
+        if args == ["document"]:
+            from .document_schema import document_schema
+            return document_schema(), options.json
         schema = operation_schema()
         if args:
             from .normalize import _canonical_type
@@ -800,7 +803,8 @@ def command_help(cmd, args):
         "open": "open FILE",
         "upgrade": "upgrade [FILE] [--report] [--pin-fills]",
         "schema": "schema [OPERATION…]  (no argument: the whole operation-batch schema; "
-                  "schema particles pivot: just those operations' fields, types and descriptions; aliases accepted)",
+                  "schema particles pivot: just those operations' fields, types and descriptions; aliases accepted; "
+                  "schema document: the JSON Schema of a .vixl file's project.json)",
         "canvas": "canvas resize SIZE | preset NAME | background COLOR",
         "save": "save [FILE]",
         "inspect": "inspect [LAYER] | inspect --object NAME|PATH|*",
@@ -1129,7 +1133,7 @@ def project_command(project, cmd, args, *, detail="compact"):
 
             root = ET.fromstring(data)
             metadata = root.find("{*}metadata")
-            fallbacks = json.loads(metadata.text)["vixl"]["raster_fallbacks"] if metadata is not None else []
+            fallbacks = json.loads(metadata.text)["vixl"].get("raster_fallbacks", []) if metadata is not None else []
             result["svg"] = {"vector_only": not bool(root.findall(".//{*}image")), "raster_fallbacks": fallbacks}
         return result, False
     if cmd == "spacing":

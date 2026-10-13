@@ -119,6 +119,8 @@ vixl layer add image.png --name hero
 vixl add logo.png --name logo --linked
 vixl add photo.jpg --name hero --credit "Photo: Ana Ruiz" --license "CC0"
 vixl import https://images.example.com/cat.jpg --name cat --license "CC BY 4.0"
+vixl import artwork.svg --svg-mode auto    # SVG as editable layers; a Vixl SVG restores its document
+vixl import flyer.pdf --page 1             # a PDF page as editable text, paths and images
 vixl select-layer hero
 vixl layer rename hero portrait
 vixl layer duplicate portrait copy
@@ -422,7 +424,7 @@ vixl catalog export --out catalog.json --section sizes --section checks
 
 ## Large batches and focused schemas
 
-`vixl apply operations.json` accepts JSON input up to 64 MiB; the same bound applies to inline JSON and stdin. Operation-count and document resource limits still apply, and a failing batch is atomic. `vixl --json schema text shape` returns only the requested operation schemas. Bare `schema` returns the full catalog.
+`vixl apply operations.json` accepts JSON input up to 64 MiB; the same bound applies to inline JSON and stdin. Operation-count and document resource limits still apply, and a failing batch is atomic. `vixl --json schema text shape` returns only the requested operation schemas. Bare `schema` returns the full catalog; `vixl schema document` returns the JSON Schema of a `.vixl` file's `project.json` ([file format](file-format.md)).
 
 Workflow request arguments accept a JSON file, `-` for stdin, or an inline JSON object. CLI workspace resources resolve from the current directory. Add `.vixl-session.json` to your repository's `.gitignore`; it records the local current-document session and is not a project source file. Shared MCP servers require an explicit document when closing a session with several documents open.
 

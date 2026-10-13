@@ -199,7 +199,8 @@ def export_presenter(project, *, pages=None, options=None, variables=None, svg_p
             media = (f'<img src="data:image/png;base64,{base64.b64encode(png).decode("ascii")}" alt="" '
                      'decoding="sync" draggable="false">')
         else:
-            media, problems = inline_svg(export_svg(view, variables=variables, svg_policy=svg_policy), f"s{number}-")
+            media, problems = inline_svg(export_svg(view, variables=variables, svg_policy=svg_policy, document=False),
+                                         f"s{number}-")
             if problems:
                 fallbacks[str(number)] = problems
         notes = (record.get("notes") or "") if opts["notes"] else ""

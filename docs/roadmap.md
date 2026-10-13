@@ -131,7 +131,6 @@ scene effects and tool finish, measured by re-judging the Vixl lane.
 | #172 | Device and print mockups | 3 | 3 | Procedural, licence-clean templates |
 | #266 | Non-rectangular canvas | 3 | 3 | Irregular image frames shipped in 0.24.0; a page clip shape in every exporter remains |
 | #218 | Drawing pipeline polish | 3 | 2 | Split into its six items first |
-| #334 | Editable round trip of Vixl's own SVG | 4 | 2 | 0.24.0 re-imports simple gradient rectangles and stroked paths |
 | #177 | Lottie export | 5 | 3 | After motion features settle |
 | #166 | PPTX font embedding | 4 | 3 | Re-scope: warnings and licences shipped; PDF is the fidelity route |
 | #214 | Remainder of a partly shipped issue: bind chart data across charts and into text | 3 | 3 | |

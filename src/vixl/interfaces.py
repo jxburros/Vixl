@@ -665,6 +665,7 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
             "sampling",
             "profile",
             "svg_policy",
+            "svg_document",
             "color_space",
             "icc_profile_base64",
             "intent",
