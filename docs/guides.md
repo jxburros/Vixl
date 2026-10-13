@@ -146,7 +146,11 @@ vixl check --checks composition
 vixl check --profile final --strict
 ```
 
-MCP: `vixl_check(checks=["composition"])`, or `vixl_check(profile="final")`. A deliberate finding (an optical
+MCP: `vixl_check(checks=["composition"])`, or `vixl_check(profile="final")`. `vixl_operations_apply` with
+`check=true` lists every composition finding with the batch, wherever it is, and `check.regions`: the two weakest
+regions; add `preview=true` and their real-size crops follow the preview ([interfaces](interfaces.md)). Workflow
+`repair-layout` repairs most findings (snap the drift, re-space the stack, open the gap, spread the band, thin the
+tile) without adding any; see [layout repair](agent-trust.md#layout-repair). A deliberate finding (an optical
 indent, a field of space on purpose) is accepted with a reason, on the layer (`layer-intent waive`) or the
 document:
 

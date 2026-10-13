@@ -113,6 +113,33 @@ infeasible request leaves the document unchanged and lists `unsatisfied` constra
 candidate with its result and reason, and the same input gives the same plan. Fix findings it does not
 address (fonts, blanks) are listed under `out_of_scope`.
 
+When `checks` include `composition` (the default set does), the [composition](guides.md#composition) review
+findings are repaired after the failures, with geometric candidates of their own:
+
+| Code | Candidates (least disruptive accepted wins) |
+| --- | --- |
+| `margin_drift` | snap the stray edges to the margin the most blocks share; or move the margin to the stray edge |
+| `uneven_rhythm` | move the middle line to the line it belongs with (or halfway, for lines of one size); close the stack up; snap the gaps to whole spacing units |
+| `crowding` | open the gap under the rule, band or heading to one spacing unit, or just past half a unit: push the text down (alone or with the rest of its column) or lift the rule (alone or with what is above it) |
+| `dead_band` | between blocks: spread the band over the frame's other gaps in proportion to their size, move the blocks below up (all the way to the typical gap, or half), or move the blocks above down by half; at an edge: spread the content into the band, or centre it in its frame |
+| `clumped_scatter` | a `pattern-scatter` tile is thinned in place or re-seeded from its recipe; any other scatter is listed as not auto-repairable |
+
+A composition candidate is accepted only if its finding is gone and no finding of any check (fix or review) is new,
+and while composition is checked no candidate for a failure may add a composition finding either. Moves never touch
+backgrounds or art that bleeds off the canvas; a drawing made of touching shapes moves whole or not at all, and a
+chip that hugs a line of text or a glow around a layer moves with it. Composition findings left over go under
+`reviews_remaining` with the reason (not auto-repairable, no candidate passed, or the search stopped); they never
+make a repair infeasible. A failure left unrepaired still keeps the whole plan uncommitted, composition repairs
+included (`selected` lists them; fix the failure, or name `checks` without its family). Each finding tried counts
+against `max_iterations`, so raise it for a page with many findings. To leave composition alone, name `checks`
+without it.
+
+On the [craft backtest](../evals/craft_backtest/README.md#repair) (`python -m evals.craft_backtest --repair`, the
+default checks, up to 20 iterations), the plan resolves 19 of the 22 composition findings (17 of the 20 that catch a
+defect the judges named) with no new finding of any check: every crowding and uneven-rhythm finding, 9 of 10 margin
+drifts and 3 of 5 dead bands. It leaves a band beside a drawing that spans it (T02), a band in the logo sheet's dark
+half (T04) and chart titles that would leave the safe area to meet the margin (T08).
+
 ```json
 {"checks": ["bounds", "overlap"], "protected": ["logo"], "minimum_size": 28, "dry_run": true}
 ```

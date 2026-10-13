@@ -415,9 +415,11 @@ def build_server(session, *, schema="full", planner=False, tools="all", allow_sc
             "the 'fix' findings and failing rules, glance at 'review'; 6) finishing pass (not the look of step 4: "
             "critique and polish once the checks pass"
             + ("" if tools == "compact" else ", vixl_guide('finishing')")
-            + "): vixl_check(checks=['composition']) for dead bands, margin drift, uneven rhythm and crowding → a short "
-            "critique against the craft checklist → one fix batch → a real-size look at two regions (vixl_render_preview "
-            "region=[x, y, w, h] with max_width=w, max_height=h) → vixl_export_file. Typical loop: vixl_document_create/open → "
+            + "): vixl_check(checks=[\"composition\"]) for dead bands, margin drift, uneven rhythm and crowding "
+            "(workflow repair-layout repairs most) → a short critique against the craft checklist → one fix batch with "
+            "check=true, preview=true (it returns real-size crops of the two weakest regions) → a real-size look at two "
+            "regions (those crops, or vixl_render_preview region=[x, y, w, h] with max_width=w, max_height=h) → "
+            "vixl_export_file. Typical loop: vixl_document_create/open → "
             "vixl_operations_apply (atomic batches; dry_run to test; check=true, suites=true and preview=true return the "
             "vixl_check findings, failing suite rules and a small preview in the same call) → vixl_export_file; vixl_compose runs that whole chain for a new "
             "piece in one atomic call. Use layer IDs or "
@@ -752,13 +754,15 @@ def build_server(session, *, schema="full", planner=False, tools="all", allow_sc
         check: Annotated[
             bool | str | list[str] | None,
             Field(description="Also run vixl_check on the result: true (default checks) or check names. Lists 'fix' "
-                              "findings and those on the layers this batch touched"),
+                              "findings, composition findings and those on the layers this batch touched, and the two "
+                              "weakest regions"),
         ] = None,
         preview: Annotated[
             bool | dict | None,
             Field(description="Also return a small preview PNG: true, or {page, region, max_width (512), max_height, time, "
-                              "isolate, overlay, focus}. overlay (with check) outlines each fix finding labelled with its "
-                              "rule and layer ID; focus (a listed finding's index) zooms to that finding"),
+                              "isolate, overlay, focus, regions}. overlay (with check) outlines each fix finding labelled "
+                              "with its rule and layer ID; focus (a listed finding's index) zooms to that finding; with "
+                              "check, real-size crops of the weakest regions follow the preview (regions: 0-2, default 2)"),
         ] = None,
         suites: Annotated[
             bool | str | list[str] | None,
@@ -796,7 +800,14 @@ def build_server(session, *, schema="full", planner=False, tools="all", allow_sc
         result, image = session.apply_reviewed(operations, dry_run, detail, document, operations_path=operations_path,
                                                check=check, preview=preview, budget=budget, suites=suites,
                                                repair=repair)
-        return result if image is None else [result, Image(data=image, format="png")]
+        from .critique import take_previews
+
+        crops = take_previews(result)
+        for number, entry in enumerate((result.get("check") or {}).get("regions", [])[:len(crops)], start=2):
+            entry["preview"] = f"image {number} of {len(crops) + 1}"
+        if image is None:
+            return result
+        return [result, Image(data=image, format="png"), *(Image(data=png, format="png") for png in crops)]
 
     @tool
     def vixl_operation_schema(types: list[str]) -> dict:

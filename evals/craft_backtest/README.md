@@ -91,3 +91,25 @@ What it misses, and why:
 
 The thresholds were also run on the 144 rolled designs of `python -m evals.house_style` (48 sparse briefs at three
 variety levels): none gets a composition finding.
+
+## Repair
+
+`python -m evals.craft_backtest --repair` runs workflow `repair-layout` (craft plan 2b) on every document with
+composition findings, with the default checks and up to 20 iterations, and counts the findings its plan resolves
+while adding no fix or review finding of any check. The reconstructions keep text in the safe-area margin where the
+originals set it, a failure repair cannot fix, so the plan is never committed on its own; the run applies the
+composition repairs it selected and checks again.
+
+| Kind | findings | resolved |
+|---|---:|---:|
+| dead_band | 5 | 3 |
+| margin_drift | 10 | 9 |
+| uneven_rhythm | 2 | 2 |
+| crowding | 5 | 5 |
+| clumped_scatter | 0 | 0 |
+| all | 22 | 19 |
+
+17 of the 20 findings that catch a judged defect are resolved, with no new finding. Left over: the T02 band beside
+the microphone (the drawing spans the band, and moving the blocks below it would run them into its base), the band in
+the T04 logo sheet's dark half, and the T08 chart titles, which would leave the safe area to meet the margin.
+`tests/test_craft_backtest.py` pins these numbers too.

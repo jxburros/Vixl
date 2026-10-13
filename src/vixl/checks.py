@@ -1326,7 +1326,7 @@ def side_by_side(left, right, gap=8):
 
 
 APPLY_ISSUES = 20  # Findings an apply call returns; vixl_check lists them all.
-APPLY_PREVIEW = ("page", "region", "max_width", "max_height", "time", "isolate", "overlay", "focus")
+APPLY_PREVIEW = ("page", "region", "max_width", "max_height", "time", "isolate", "overlay", "focus", "regions")
 APPLY_PREVIEW_BYTES = 524_288
 
 
@@ -1351,6 +1351,8 @@ def _apply_options(check, preview):
                 f"preview is true or an object with {', '.join(APPLY_PREVIEW)}", field="preview")
         require(not (options.get("overlay") or options.get("focus") is not None) or check,
                 "preview overlay and focus mark check findings: pass check as well", field="preview")
+        regions = options.get("regions", 2)
+        require(type(regions) is int and 0 <= regions <= 2, "preview regions is 0, 1 or 2", field="preview")
         options = {"max_width": 512, **options}
         options.setdefault("max_height", options["max_width"])
     return names, options
@@ -1376,25 +1378,33 @@ def _touched(before, project):
 
 
 def batch_findings(project, names, touched):
-    """vixl_check's summary with its issues limited to the touched layers plus every 'fix' finding (at most
-    APPLY_ISSUES, fixes first). The counts, ``passed`` and ``outcome`` still describe the whole document."""
+    """vixl_check's summary with its issues limited to every 'fix' finding, every composition finding and those on
+    the touched layers (at most APPLY_ISSUES: fixes, then composition, then the rest), plus the two weakest
+    ``regions`` (critique.weakest_regions). The counts, ``passed`` and ``outcome`` still describe the whole
+    document."""
     report = check_design(project, checks=names)
     if "issues" not in report:
         return report
 
     def concerns(item):
         layers = item.get("layers") or ([item["layer"]] if item.get("layer") else [])
-        return item["action"] == "fix" or bool(touched & set(layers))
+        return item["action"] == "fix" or (item["check"] == "composition" and item["action"] == "review") or bool(
+            touched & set(layers))
 
     order = {action: index for index, action in enumerate(ACTIONS)}
-    kept = sorted((item for item in report["issues"] if concerns(item)), key=lambda item: order[item["action"]])[:APPLY_ISSUES]
+    kept = sorted((item for item in report["issues"] if concerns(item)),
+                  key=lambda item: (order[item["action"]], item["check"] != "composition"))[:APPLY_ISSUES]
     summary = {key: report[key] for key in ("passed", "errors", "warnings", "info", "outcome") if key in report}
     summary.update(issues=kept, by_action={action: [i for i, x in enumerate(kept) if x["action"] == action] for action in ACTIONS})
     if "checked" in report:
         summary["checked"] = report["checked"]
     if len(report["issues"]) > len(kept):
         summary["omitted"] = len(report["issues"]) - len(kept)
-        summary["note"] = f"Only 'fix' findings and those on layers this batch touched are listed (at most {APPLY_ISSUES}); vixl_check lists all."
+        summary["note"] = (f"Only 'fix' findings, composition findings and those on layers this batch touched are listed "
+                           f"(at most {APPLY_ISSUES}); vixl_check lists all.")
+    from .critique import weakest_regions
+
+    summary["regions"] = weakest_regions(project, kept)
     return summary
 
 
@@ -1493,15 +1503,25 @@ def apply_reviewed(project, operations, *, dry_run=False, detail="brief", check=
             result["check"] = batch_findings(target, names, _touched(before, target))
         elif part == "suites":
             result["suites"] = suite_summary(target, suites)
-        elif options.get("overlay") or options.get("focus") is not None:
-            from .feedback import preview as feedback_preview
-
-            image, result["feedback"] = feedback_preview(target, result["check"]["issues"], **options,
-                                                         max_bytes=APPLY_PREVIEW_BYTES)
         else:
-            from .proxy import preview_png
+            count = options.pop("regions", 2)
+            if options.get("overlay") or options.get("focus") is not None:
+                from .feedback import preview as feedback_preview
 
-            image = preview_png(target, max_bytes=APPLY_PREVIEW_BYTES, **options)
+                image, result["feedback"] = feedback_preview(target, result["check"]["issues"], **options,
+                                                             max_bytes=APPLY_PREVIEW_BYTES)
+            else:
+                from .proxy import preview_png
+
+                image = preview_png(target, max_bytes=APPLY_PREVIEW_BYTES, **options)
+            regions = (result.get("check") or {}).get("regions") or []
+            if count and regions and options.get("page") is None and options.get("time") is None:
+                from .critique import crops
+
+                # Real-size looks at the weakest regions ride along with the preview (Python: PNG bytes under
+                # "preview"; the interfaces turn them into images, base64 or files).
+                for entry, png in zip(regions[:count], crops(target, regions[:count])):
+                    entry["preview"] = png
     if skipped:
         result["review_skipped"] = (f"The edit took {time.monotonic() - started:.0f} s, so {' and '.join(skipped)} did not run; "
                                     "call vixl_check, vixl_workflow check or vixl_render_preview.")

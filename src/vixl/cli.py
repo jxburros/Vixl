@@ -1274,9 +1274,17 @@ def project_command(project, cmd, args, *, detail="compact"):
         suites = None if a.suites is None else (a.suites or True)
         result, image = apply_reviewed(project, ops, dry_run=a.dry_run, detail=detail, check=check,
                                        preview=preview if a.preview else None, suites=suites)
+        from .critique import take_previews
+
+        crops = take_previews(result)
         if image is not None:
             Path(a.preview).write_bytes(image)
             result["preview"] = a.preview
+            base = Path(a.preview)
+            for number, (entry, png) in enumerate(zip(result.get("check", {}).get("regions", []), crops), start=1):
+                path = base.with_name(f"{base.stem}-region{number}{base.suffix}")
+                path.write_bytes(png)
+                entry["preview"] = str(path)
         return result, not a.dry_run
     if cmd == "each":
         import fnmatch

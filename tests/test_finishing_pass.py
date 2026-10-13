@@ -26,7 +26,7 @@ def test_the_craft_checklist_lives_in_the_finishing_guidance():
     for item in CHECKLIST:
         assert item in text, item
     # The loop after the checks pass, in order.
-    order = ["checks=['composition']", "Critique", "one vixl_operations_apply batch", "region=[x, y, w, h]",
+    order = ['checks=["composition"]', "Critique", "one vixl_operations_apply batch", "region=[x, y, w, h]",
              "vixl_export_file"]
     assert [text.index(step) for step in order] == sorted(text.index(step) for step in order)
     assert "max_width=w, max_height=h" in text
@@ -56,7 +56,7 @@ def test_start_here_ends_with_the_finishing_pass_and_keeps_finish_as_a_look():
     assert "look" in finish and "not the finishing pass" in finish
     last = steps[-1]
     assert last.startswith("Finishing pass after tests pass") and "vixl_guide('finishing')" in last
-    order = ["vixl_check and the suites", "checks=['composition']", "critique", "one fix batch", "real-size look",
+    order = ["vixl_check and the suites", 'checks=["composition"]', "critique", "one fix batch", "real-size look",
              "vixl_render_preview(region=", "vixl_export_file"]
     assert [last.index(step) for step in order] == sorted(last.index(step) for step in order)
     assert briefs.guide("poster")["start_here"][-1] == last
@@ -65,7 +65,7 @@ def test_start_here_ends_with_the_finishing_pass_and_keeps_finish_as_a_look():
 def test_mcp_instructions_and_skill_describe_the_finishing_pass(tmp_path):
     text = mcp_server(workspace=tmp_path).instructions
     start = text.index("6) finishing pass")
-    assert text.index("vixl_check(checks=['composition'])", start) < text.index("a short critique", start) \
+    assert text.index('vixl_check(checks=["composition"])', start) < text.index("a short critique", start) \
         < text.index("one fix batch", start) < text.index("vixl_render_preview", start) < text.index("vixl_export_file", start)
     skill = (ROOT / "skills/vixl/SKILL.md").read_text(encoding="utf-8")
     start = skill.index("6. **Finishing pass, then export**")

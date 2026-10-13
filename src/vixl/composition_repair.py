@@ -1,14 +1,15 @@
 """Repair candidates for ``composition`` findings (craft plan 2b), tried by ``layout_repair.repair_layout``.
 
-Each finding kind gets a few geometric candidates, all relative moves, in a fixed order:
+Each finding kind gets a few candidates in a fixed order, all relative moves except the scatter's rebuild:
 
-| Code | Candidates |
-| --- | --- |
-| ``margin_drift`` | snap the stray edges to the margin; or move the margin to the stray edge |
-| ``uneven_rhythm`` | move the middle line so the gaps match; close the stack up to the smaller gap; snap the gaps to whole spacing units |
-| ``crowding`` | open the gap under the rule, band or heading to one spacing unit (or just over half): push the text down, alone or with the rest of its column, or lift the rule |
-| ``dead_band`` | between blocks: grow the other gaps of the frame into the band (spread), or move the blocks below up; at an edge: spread the content, or centre it in its frame |
-| ``clumped_scatter`` | a ``pattern-scatter`` tile is thinned in place (densest copies first) or re-seeded; any other scatter is not repaired |
+- ``margin_drift``: snap the stray edges to the margin, or move the margin to the stray edge;
+- ``uneven_rhythm``: move the middle line to its group (halfway, for lines of one size), close the stack up, or
+  snap the gaps to whole spacing units;
+- ``crowding``: open the gap under the rule, band or heading to one spacing unit (or just over half): push the text
+  down, alone or with the rest of its column, or lift the rule, alone or with what is above it;
+- ``dead_band``: between blocks, spread the band over the frame's other gaps, move the blocks below up (fully or
+  halfway) or the blocks above down halfway; at an edge, spread the content into the band or centre it in its frame;
+- ``clumped_scatter``: a ``pattern-scatter`` tile is thinned in place or re-seeded; any other scatter is not.
 
 Layout repair applies every candidate to a copy, keeps it only when the finding is gone and nothing new appears
 (no fix finding, no review finding of any check) and picks the least disruptive. Moving a line of text moves the
@@ -97,7 +98,8 @@ class Scene:
         inside = set(ids) | {d for ident in ids for d in self.descendants(ident)}
         holding = {a for ident in ids for a in self.ancestors(ident)}
         others = [x["id"] for x in self.resolved.values()
-                  if x["id"] not in inside and x["id"] not in holding and x["type"] not in ("group", "adjustment", "gradient")
+                  if x["id"] not in inside and x["id"] not in holding
+                  and x["type"] not in ("group", "adjustment", "gradient")
                   and x.get("visible", True) and x.get("opacity", 1) > 0 and not self.background(x)]
 
         def touches(a, b):

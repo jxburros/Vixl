@@ -26,9 +26,11 @@ START_HERE = [
     "Check while building: vixl_operations_apply(check=true, suites=true) reports findings and failing rules with each "
     "batch; fix them as you go.",
     "Finishing pass after tests pass (vixl_guide('finishing')): vixl_check and the suites clean (fix the 'fix' "
-    "findings, glance at 'review'), then vixl_check(checks=['composition']) for dead bands, margin drift, uneven rhythm "
-    "and crowding, a short critique against the craft checklist, one fix batch, a real-size look at two regions with "
-    "vixl_render_preview(region=[x, y, w, h], max_width=w, max_height=h), then vixl_export_file.",
+    "findings, glance at 'review'), then vixl_check(checks=[\"composition\"]) for dead bands, margin drift, uneven "
+    "rhythm and crowding (vixl_workflow('repair-layout') repairs most), a short critique against the craft checklist, "
+    "one fix batch with check=true and preview=true (it returns real-size crops of the two weakest regions), a "
+    "real-size look at two regions (those crops, or vixl_render_preview(region=[x, y, w, h], max_width=w, "
+    "max_height=h)), then vixl_export_file.",
 ]
 # Other names an agent may ask vixl_guide for the finishing pass by.
 GUIDANCE_ALIASES = {"craft": "finishing", "craft-checklist": "finishing", "critique": "finishing",

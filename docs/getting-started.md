@@ -63,10 +63,17 @@ font with `vixl font pairings` and install a pairing or import your licensed fon
 [typography](typography.md).
 
 Passing checks make a design correct, not finished. Before you hand one over, make a finishing pass:
+check the composition (dead bands, two left margins, uneven gaps, crowded rules, clumped scatters), and
 `vixl guide finishing` prints the craft checklist (one focal point, an accent colour used once or twice,
 no dead band, one left edge per column, a motif that names the subject, nothing that reads as a
 placeholder). Fix what it turns up in one batch, then look at the export at its real size, not as a
 thumbnail.
+
+<!-- docs-test: continue -->
+```bash
+vixl -p hello.vixl check --checks composition
+vixl guide finishing
+```
 
 Editing commands autosave. To revise the headline and undo the change:
 

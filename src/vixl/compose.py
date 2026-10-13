@@ -285,7 +285,8 @@ def compose(session, *, path=None, operations=None, operations_path=None, layout
         with _Step("preview", done):
             from .proxy import preview_png
 
-            image = preview_png(project, max_bytes=524_288, **preview_options)
+            image = preview_png(project, max_bytes=524_288,
+                                **{k: v for k, v in preview_options.items() if k != "regions"})
     result = {"steps": done, **steps}
     if report is not None:
         result["check"] = report
