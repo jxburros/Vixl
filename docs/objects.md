@@ -150,4 +150,5 @@ Alt text from [accessibility](accessibility.md) is written alongside: an object'
 - Object records do not change rendering. Proportion ranges and connections are reference data for agents and
   the `connected` check; there is no proportion check yet.
 - A portable object loses the rotation and skew of groups above it (its size keeps their scale).
-- SVG import does not read `data-vixl-*` back yet.
+- SVG import restores objects from the document a Vixl SVG carries ([SVG round trip](exporting.md#svg-round-trip));
+  an SVG edited elsewhere is read element by element and `data-vixl-object`/`data-vixl-part` are not read back.

@@ -40,7 +40,7 @@ many clients share one server. Minutes are typical agent wall time on a shared c
 
 `[AI]` needs a configured provider ([providers](providers.md)). `[ffmpeg]` needs ffmpeg on `PATH`
 for MP4/WebM/audio mux. `[server]` needs the `server` extra (REST, live view). `[pdf]` needs the
-`pdf` extra for PDF page import. No tag means the core install, offline.
+`pdf` extra for PDF page import (editable or as an image). No tag means the core install, offline.
 
 ### Domain prefixes
 
@@ -74,7 +74,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DOC-04 | Rename, hide, show, raise, lower, duplicate or delete a layer | `vixl_operations_apply` | 1 · <1 | E | Works on `targets` lists in one atomic batch. |
 | DOC-05 | Change canvas size or switch to another preset (portrait ↔ landscape) | `canvas resize`, `canvas size NAME --landscape` | 1 · <1 | E | Constrained layers follow their anchors. |
 | DOC-06 | Add a solid or gradient background | `solid`, `gradient` operations | 1 · <1 | E | Linear, radial and multi-stop gradients. |
-| DOC-07 | Import an image, SVG or PDF page as a layer | `vixl_import_image`, `vixl_import_document` | 1 · <1 | E | PDF needs `[pdf]`; SVG editable or appearance mode. Since 0.24 Vixl's own simple gradient rectangles and stroked paths re-import editably (#334). |
+| DOC-07 | Import an image, SVG or PDF page as a layer | `vixl_import_image`, `vixl_import_document` | 1 · <1 | E | PDF needs `[pdf]`. SVG and PDF import as editable layers (`svg_mode=auto` draws unsupported elements as images; `appearance` imports one image). |
 | DOC-08 | Undo, redo or jump back in history | `vixl_history`, `vixl undo N` | 1 · <1 | E | Delta history with checkpoints. |
 | DOC-09 | Save a named checkpoint before a risky edit | `vixl checkpoint NAME` | 1 · <1 | E | Restore with `checkout`. |
 | DOC-10 | Set a document variable and render with an override | `variable set`, `render --set NAME=VALUE` | 2 · <1 | E | |
@@ -87,6 +87,10 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DOC-34 | Import a camera photo above the pixel limit (108 MP) | `vixl_import_image`, or `add` with `max_pixels` | 1 · <2 | E | Since 0.23; downsampled to the limit, sources up to 4× it. |
 | DOC-35 | Edit a document of thousands of layers one operation at a time, or send a 10,000-operation batch | `vixl_operations_apply` | 1 · <1 | E | Since 0.23 an edit lays out only the layers it depends on; was seconds per edit and minutes per batch (#284, #300). |
 | DOC-36 | Unpack a `.vixl` into a readable source folder for Git review, and pack it back | `vixl unpack`, `vixl pack`, `vixl.project_folder` | 1–2 · <1 | E | Since 0.24 (#511); current state and registered fonts only, no undo history; packing validates paths, sizes and hashes. |
+| DOC-38 | Re-import Vixl's own SVG as the same editable document (layers, names, live text, groups, effects) | `vixl_import_document` svg | 1 · <1 | E | The SVG carries its document; an SVG edited elsewhere imports element by element ([SVG round trip](exporting.md#svg-round-trip), #334). |
+| DOC-39 | Import a third-party SVG (shapes, text, groups, gradients, images, class styles) as editable layers | `vixl_import_document` svg | 1 · <1 | E | `<text>` stays live; filters, masks and clip paths need `svg_mode=auto`, which draws just those elements as images. |
+| DOC-40 | Import a PDF page as editable text, paths and images | `vixl_import_document` pdf | 1 · <1 | E | `[pdf]`. Vixl's own PDFs come back at their pixel size; shadings and clipped content become image layers; fonts match by family name. |
+| DOC-41 | Read, generate or validate a `.vixl` file without Vixl | [file format](file-format.md), `vixl schema document` | 1 · <1 | E | JSON Schema of `project.json`, checked against every `.vixl` in the repository. |
 | DOC-37 | Capture the desktop, a rectangle or a Windows window to PNG | `vixl_workflow` screen-capture | 1 · <1 | E | Since 0.24 (#259); interactive local desktop only; OS screen permission may be needed. |
 
 ### Text and typography
@@ -194,7 +198,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DRW-31 | Cut a traced or drawn shape into two parts along a line or polygon | `path-split` | 1 · <1 | E | Since #443; `overlap` keeps crossing shapes whole. |
 | DOC-20 | Export PNG, JPEG, WebP or TIFF | `vixl_export_file` | 1 · <1 | E | RGB PNG by default since 0.20. |
 | DOC-21 | Export at 2× or 3× for screens | `export --scale 2x`, `export-screens` | 1 · <1 | E | |
-| DOC-22 | Export editable SVG | `vixl_export_file` `.svg` | 1 · <1 | E | Strict mode rejects raster content. Since 0.24 supported blend modes stay vector as `mix-blend-mode` (#231). |
+| DOC-22 | Export editable SVG | `vixl_export_file` `.svg` | 1 · <1 | E | Strict mode rejects raster content. Since 0.24 supported blend modes stay vector as `mix-blend-mode` (#231). The SVG carries its document, so it re-imports losslessly (DOC-38). |
 | DOC-23 | Export vector PDF with selectable text | `.pdf` | 1 · <1 | E | |
 | DOC-24 | Export a CMYK TIFF/JPEG/PDF for print | `export --cmyk [--icc …]` | 3 · <1 | M:eval:print-cmyk | |
 | DOC-25 | Soft-proof or simulate color-vision deficiency | `export --proof`, `--simulate deuteranopia` | 1 · <1 | E | |

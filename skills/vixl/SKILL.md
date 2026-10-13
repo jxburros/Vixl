@@ -362,9 +362,12 @@ the result; `workspace_fonts: false` skips). `vixl brand validate` flags missing
 Set the workspace typography with `vixl_font_pair`/`vixl_font_install(role=...)` and `scope: "workspace"`.
 Use `vixl_roll(apply=true, slots={...})` or `roll --apply --set title=...` to apply a whole direction;
 `layout apply` returns unfilled slots immediately. Check and fill them before export. A roll with `slots` omits the slots you did not fill (`unfilled: "omit"`), so it passes `check`; pass `unfilled: "blank"` to keep `[Label]` placeholders instead.
-`vixl_import_document` imports editable SVG paths or a raster PDF page. With the default
-`svg_mode="editable"` unsupported SVG features return an error; `"appearance"` keeps the look as a raster layer
-(with the SVG source stored) and `"auto"` falls back to it.
+`vixl_import_document` imports SVG and PDF as editable layers. Vixl's own SVG export carries its document, so
+re-importing it restores the same layers, live text, groups and effects. Other SVG becomes shapes, live text
+(`<text>`), groups (`<g>`), gradients and images; a PDF page becomes live text, paths and images (shadings and
+clipped content as image layers). With the default `svg_mode="editable"` an unsupported SVG feature returns an
+error; `"auto"` draws just those elements as images; `"appearance"` imports the whole SVG or PDF page as one image
+(`dpi` sets a PDF page's resolution).
 
 ## 1. Pick the interface
 
@@ -616,7 +619,7 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 | AI (provider) | generate/inpaint/img2img, extend (outpaint), upscale, regenerate, background-remove, select object/subject, remove, content-aware-fill, describe/detect/OCR, natural-language plan |
 
 When unsure of a field, get the authoritative schema: MCP embeds it in `vixl_operations_apply`'s
-input schema (also resource `vixl://operations`); CLI `vixl schema` (`vixl schema OPERATION` for one); REST `GET /schema`; per-command
+input schema (also resource `vixl://operations`); CLI `vixl schema` (`vixl schema OPERATION` for one; `vixl schema document` for the `.vixl` file format); REST `GET /schema`; per-command
 syntax via `vixl COMMAND --help`.
 
 ## Interface and output contracts

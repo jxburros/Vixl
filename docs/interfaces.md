@@ -420,8 +420,8 @@ vixl -p poster.vixl import https://images.example.com/cat.jpg --name cat --credi
 ```
 
 MCP: `vixl_import_document(format="svg", path="logo.svg")`, or `data_base64` instead of `path`.
-REST: `POST /import?format=svg` with raw bytes. PDF additionally accepts a one-based `page` and
-`dpi` (36–600); it imports a raster reference layer, not editable PDF text or paths.
+REST: `POST /import?format=svg` with raw bytes. PDF additionally accepts a one-based `page`; it imports the page
+as editable layers (text, paths, images), or with `svg_mode=appearance` as one image at `dpi` (36–600).
 
 Any other file, or an `https://` URL, is imported as an image layer, the same as
 `vixl_import_image(url=…)`, `POST /assets?url=…` and `Project.import_image(url=…)` in Python. A URL
@@ -433,13 +433,16 @@ file and base64 imports, and the `add` operation's `credit`/`license` fields). C
 `source_url`, `credit` and `license`; `vixl dependencies` lists them under `attributions`. Use web
 images only with the rights to do so (guidance `image-rights`).
 
-SVG imports create editable path layers with solid fills, strokes, translations, scales,
-rotations, matrix transforms, and compound nonzero-winding paths (including holes). Arc and
-shorthand path commands are converted to editable Bézier geometry. UTF-8 SVG files are limited
-to 4 MiB and existing document resource limits. Unsupported features fail before changing the
-document: text, images, gradients, CSS classes, clipping, filters, evenodd fills, rounded rectangles,
-group opacity and nonuniformly transformed strokes. This is the default `svg_mode="editable"`. Use `svg_mode="appearance"` to render supported self-contained static SVG while retaining the source, or `"auto"` to try editable then appearance. See [studio.md](studio.md) for support and input restrictions.
-Imports never fetch external resources. The original SVG element IDs become layer names.
+An SVG Vixl exported comes back as the document it carries (same layers, names, text, groups and effects; see
+[SVG round trip](exporting.md#svg-round-trip)). Other SVG becomes editable layers: shapes and paths with fills,
+strokes, dashes, opacity and transforms, `<text>` as live text, `<g>` as groups, gradients, embedded images, `<use>`
+and class stylesheets. With the default `svg_mode="editable"` an unsupported feature (filters, masks, clip paths,
+patterns …) fails before changing the document; `"auto"` draws just those elements as image layers; `"appearance"`
+renders the whole SVG as one image while retaining the source. UTF-8 SVG files are limited to 16 MiB (a Vixl SVG
+carrying its document, 64 MiB) and existing document resource limits. See
+[importing SVG and PDF](exporting.md#importing-svg-and-pdf) for the details and [studio.md](studio.md) for appearance
+input restrictions. Imports never fetch external resources. Element IDs (or `data-layer` names and Inkscape labels)
+become layer names.
 
 ### Source folders, emoji, app packages and capture (0.24)
 

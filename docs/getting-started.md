@@ -27,7 +27,7 @@ vixl --version
 ```
 
 The core install is `python -m pip install -e .`; MCP is included. `server` adds REST and
-live review; `pdf` adds PDF page import. To update this checkout later, save your changes,
+live review; `pdf` adds PDF page import (as editable layers or one image). To update this checkout later, save your changes,
 run `git pull --ff-only`, and repeat the install. Pip installs use pip-managed updates;
 the bundled Windows updater is a separate installation mechanism.
 
