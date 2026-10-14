@@ -4,7 +4,38 @@
 
 ### Fixed and added
 
+- The `composition` check family, backtested on the eight craft-check pieces of 2026-10-13
+  (`evals/craft-check`): it now finds the judged spacing defect on four of the seven pieces the judges marked
+  (before: one). C07's 390 px empty band above the illustration (the major defect), C07's page dots floating
+  midway between the copy and the button, C03's "A novel" floating between the title and the tray, and C01's band
+  between the reflection and the title; C04, C05 and C08 are still missed, and C02 (no spacing complaint) stays
+  clean. It drops two findings no judge named (C04's 2 px drift, C05's "−9" bar label) and keeps two (C01's 700 px
+  sky above the moon, C06's script names 16 px off the centre axis). What changed:
+  - text is spaced by the top and bottom of its glyphs rather than its line box (it still aligns by its layout box);
+  - layers drawn fainter than 30% opacity, and gradient fills that run to two page edges over a fifth of the page,
+    are not blocks;
+  - a signed value or a share beside its data ("−9", "+6", "38%") is not a margin;
+  - `uneven_rhythm` also reports a small block (secondary text, a row of dots, a subtitle under a display title)
+    as far from the block above as from the one below, between blocks of other kinds; `repair-layout` repairs it
+    by moving the block one spacing unit from a neighbour (`float-to-above`, `float-to-below`).
+  The round-1 craft backtest keeps 12 of 21 judged defects caught with no false finding; it now reports the T03
+  subtitle that floats under the title and the T14 lyric frame's empty top as findings on other judged defects,
+  and no longer reports the faint T03 ripple as a crowded rule. `repair-layout` there resolves 17 of 23 findings
+  (was 19 of 22): the T07 badge name blocks are left alone, because pulling the last name up leaves the company
+  line floating. The 144 rolled house-style designs still get no composition finding.
+- The finishing pass's craft checklist (`vixl_reference("finishing")`) adds what the craft-check judges asked for:
+  secondary text readable at its real use size, glows and shadows only where they read as light, illustrations in
+  one consistent style with joined parts, and a motif that is not a stand-in such as a sunset, a plain disc or a
+  stock icon. SKILL.md and the getting-started guide list the same checklist.
+
 ### Behaviour changes
+
+- `composition` can report new `review` findings, and drops others: floating blocks (`uneven_rhythm`), bands
+  that a faint layer, an edge-to-edge gradient fill or a text layer's line box used to close, and edge bands of
+  1.75 times the opposite margin (was 2); margin drift starts above 2 px (was 1.5 px) and skips signed values and
+  shares. `profile="final"` fails on these like on any review finding. To keep a layout as it is, waive the
+  finding with a reason (`{"type": "waiver", "check": "composition", "reason": "…"}` or `layer-intent waive`); to
+  leave the family out, pass an explicit `checks` list without `composition`.
 
 ## 0.27.0
 

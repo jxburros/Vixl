@@ -23,6 +23,21 @@ def content_rect(layer, transform):
     return envelope(corners(box, transform))
 
 
+def glyph_box(project, layer, box, parent):
+    """Canvas-space box of a text layer's glyph outlines (widened by its text stroke, not by shadows or
+    glows), given its layout ``box`` and its group transform ``parent``; None when it draws no glyphs."""
+    from .text_metrics import inspect_text
+
+    ink = inspect_text(project, layer, box).get("ink_bounds")
+    if ink is None:
+        return None
+    # Text metrics are unrotated parent coordinates. Keep the glyph outline box distinct from a
+    # constrained/wrapped layout box, and carry it through the complete ancestor transform.
+    stroke = layer.get("stroke_width", 0)
+    glyph = (ink[0] - box[0] - stroke, ink[1] - box[1] - stroke, ink[2] + 2 * stroke, ink[3] + 2 * stroke)
+    return envelope(corners(glyph, parent @ layer_matrix(layer, box)))
+
+
 def canvas_boxes(project, bounds="box", content=None, *, layers=None, local=None):
     """Canvas-space boxes of every layer. With a ``content`` dict, also fills it with the canvas-space
     content box of each shape whose inner area is smaller than its box (see content_rect). A caller that
@@ -41,23 +56,10 @@ def canvas_boxes(project, bounds="box", content=None, *, layers=None, local=None
         if bounds == "ink":
             x, y, r, b = extent(layer, local, children, memo)
             if layer["type"] == "text" and not layer.get("repeat"):
-                from .text_metrics import inspect_text
-
                 box = local[layer["id"]]
-                ink = inspect_text(project, layer, box).get("ink_bounds")
-                if ink is not None:
-                    # Text metrics are unrotated parent coordinates. Keep the glyph
-                    # outline box distinct from a constrained/wrapped layout box,
-                    # and carry it through the complete ancestor transform.
-                    stroke = layer.get("stroke_width", 0)
-                    glyph = (
-                        ink[0] - box[0] - stroke,
-                        ink[1] - box[1] - stroke,
-                        ink[2] + 2 * stroke,
-                        ink[3] + 2 * stroke,
-                    )
-                    transform = parent @ layer_matrix(layer, box)
-                    ix, iy, iw, ih = envelope(corners(glyph, transform))
+                glyph = glyph_box(project, layer, box, parent)
+                if glyph is not None:
+                    ix, iy, iw, ih = glyph
                     # Spreading styles/effects are measured in parent coordinates.
                     # Transform their conservative envelope separately from glyphs.
                     mx = max(box[0] - x, r - box[0] - box[2], 0)

@@ -110,8 +110,11 @@ Passing checks proves a design is correct, not that it reads as designed. A fini
 - the accent colour is used once or twice, on what matters, never sprinkled;
 - no dead band: no empty strip between blocks, or between content and an edge, that the layout did not plan;
 - one left edge per column: text in a column shares one left edge (and a column of numbers or prices one right edge);
-- the motif names the subject: imagery is specific to this brief (a lighthouse standing in the sea, a cup with steam), not a generic disc, wave or skyline;
-- nothing reads as a placeholder: no stand-in shape, lorem text, default label or empty slot.
+- the motif names the subject: imagery is specific to this brief (a lighthouse standing in the sea, a cup with steam), not a generic stand-in such as a sunset, a plain disc, a wave, a skyline or a stock icon;
+- nothing reads as a placeholder: no stand-in shape, lorem text, default label or empty slot;
+- secondary text (dates, captions, credits, footnotes) is readable at the real use size: on the phone, across the room, at print size, not only in the preview;
+- glows and shadows sit only where they read as light or depth, never as a muddy halo or a smudge of dirt;
+- illustrations are drawn in one consistent style (stroke weight, corners, shading) and their parts join: no gaps, cut-off shapes or broken dashes.
 3) Fix: make every fix from the critique in one vixl_apply batch with check=true and preview=true, not a string of nudges, and keep the checks passing. That call returns the findings (every composition finding included), the preview and real-size crops of the two weakest regions: the places carrying the most findings, else the densest text and the largest empty area (check.regions says which; preview={regions: 0} leaves the crops out).
 4) Look at real size: the two crops of step 3 are 1:1. For another place (the focal point, a detail) use vixl_render(region=[x, y, w, h], max_width=w, max_height=h); the default preview is reduced, and halos, blur, crowding, runts and ragged edges only show at real size.
 5) Export with vixl_export; before shipping, vixl_check(profile='final') also fails on unresolved review findings.""",
