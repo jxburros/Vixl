@@ -42,7 +42,7 @@ def test_scaled_pixel_group_stays_crisp():
         {"type": "group", "name": "g", "targets": ["a"]},
         {"type": "scale", "target": "g", "value": 4},
     ])
-    assert len(set(p.render().get_flattened_data())) == 3
+    assert len(p.render().getcolors()) == 3
 
 
 def test_animated_nested_limb_stays_visible():
