@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed and added
+
+### Behaviour changes
+
 ## 0.26.0
 
 ### Fixed and added
