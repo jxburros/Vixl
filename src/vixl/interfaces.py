@@ -87,7 +87,13 @@ class Session:
     ``document`` path and otherwise uses the active document. The active document belongs to
     one MCP client session (see ``calls.py``), so clients sharing a server cannot redirect each
     other's edits; with ``require_document`` there is no active document and ``document`` is
-    mandatory."""
+    mandatory.
+
+    An MCP client session is a connection, not an agent: subagents of one host share a stdio
+    connection, and the protocol carries nothing that tells them apart. So an MCP call without
+    ``document`` is refused (``ambiguous_document``) once its client has created, opened or
+    addressed more than one document that is still open, or when it never chose one and several
+    are open; a call can then only act on a document its caller named."""
 
     MAX_OPEN = 8
 
@@ -98,6 +104,7 @@ class Session:
         self.require_document = require_document
         self._path = None  # The server-wide default: the document it started with, or set outside MCP.
         self._client_paths = WeakKeyDictionary()
+        self._client_seen = WeakKeyDictionary()  # Client -> documents it created, opened or named, by recency.
         self.documents = {}
         # Each document's render caches, kept when the document is reloaded (it changed on disk, a call
         # failed, or it was closed and opened again): keys are content-addressed, so a reload re-renders
@@ -128,8 +135,48 @@ class Session:
             "document_required",
             field="document",
         )
+        client = current_client()
+        if client is not None:
+            # ``documents`` is a cache (a failed call or the LRU drops entries), so what a connection has touched
+            # is tracked apart from it and forgotten only when the document is closed.
+            own = self._client_paths.get(client)
+            mine = [path for path in self._client_seen.get(client, ()) if path.exists()]
+            if [path for path in mine if path != own]:
+                self._ambiguous(own, mine)
+            if client not in self._client_paths and len(everyone := self._open_paths()) > 1:
+                self._ambiguous(None, everyone)
         require(self.path is not None, "Create or open a document first", "no_project")
         return self.path
+
+    def _open_paths(self):
+        paths = dict.fromkeys(self.documents)
+        for seen in self._client_seen.values():
+            paths.update(seen)
+        if self._path is not None:
+            paths[self._path] = True
+        return [path for path in paths if path.exists()]
+
+    def _ambiguous(self, own, paths):
+        names = [self.relative(path) for path in reversed(paths)]
+        active = f" This connection last created or opened {self.relative(own)}." if own is not None else ""
+        raise VixlError(
+            "ambiguous_document",
+            f"{len(names)} documents are open ({', '.join(names)}) and this call did not name one. Clients sharing "
+            f"one connection (subagents, for example) share its active document, so a call without document= "
+            f"could act on another caller's file.{active} Pass document= with the .vixl path you mean.",
+            field="document",
+            documents=names,
+            suggestions=[f"document={name!r}" for name in names],
+        )
+
+    def _seen(self, path):
+        client = current_client()
+        if client is not None:
+            seen = self._client_seen.setdefault(client, {})
+            seen.pop(path, None)
+            seen[path] = True
+            while len(seen) > 2 * self.MAX_OPEN:  # Two are enough to refuse; keep the most recent.
+                del seen[next(iter(seen))]
 
     def resolve(self, path):
         resolved = (self.workspace / path).resolve()
@@ -166,6 +213,7 @@ class Session:
                 break
             del self.documents[oldest]  # Everything is already saved; reopening reloads it.
         self.path = path
+        self._seen(path)
         note_document(path)
 
     def open(self, path):
@@ -230,12 +278,18 @@ class Session:
                     "Several documents are open; pass document explicitly to close one", "ambiguous_document",
                     field="document", documents=[self.relative(path) for path in self.documents])
             path = self.resolve(document) if document else self.active()
-            require(path in self.documents, "Document is not open", "no_project", field="document")
+            client = current_client()
+            mine = self._client_seen.get(client, {}) if client is not None else {}
+            # A document this connection touched counts as open even when the cache has dropped it.
+            require(path in self.documents or path in mine, "Document is not open", "no_project", field="document")
             note_document(path)
-            del self.documents[path]
+            self.documents.pop(path, None)
+            for seen in self._client_seen.values():
+                seen.pop(path, None)
             if self.path == path:
                 # Another client's document must not become this client's active one.
-                self.path = next(reversed(self.documents), None) if current_client() is None else None
+                pool = self.documents if client is None else [p for p in mine if p.exists()]
+                self.path = next(reversed(pool), None)
             return self.open_documents()
 
     def open_documents(self):
@@ -262,6 +316,7 @@ class Session:
                 require(path.suffix.lower() == ".vixl", "Document path must end in .vixl", field="document")
                 if path not in self.documents:
                     require(path.is_file(), f"Document does not exist: {document}", "not_found", field="document")
+                self._seen(path)
             else:
                 path = self.active()
             note_document(path)
