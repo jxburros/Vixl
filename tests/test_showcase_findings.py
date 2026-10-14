@@ -250,7 +250,7 @@ def test_deck_from_markdown_fits_the_cover_and_keeps_one_type_scale(tmp_path):
     from vixl.deck_markdown import run
     from vixl.interfaces import Session
 
-    (tmp_path / "deck.md").write_text(DECK)
+    (tmp_path / "deck.md").write_text(DECK, encoding="utf-8")
     summary = run(Session(workspace=tmp_path), {"markdown": "deck.md", "output": "deck.vixl"})
     kinds = {(issue["check"], issue["message"].split(" ")[0]) for issue in summary["check"]["issues"]}
     assert not [i for i in summary["check"]["issues"] if i["check"] in ("bounds", "safe_area", "type_scale")], kinds
