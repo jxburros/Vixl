@@ -459,7 +459,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SOC-41 | Web hero or landing-page header | `web-hero`, `split-screen` layout | 12–20 · 2–3 | E | |
 | SOC-42 | Blog featured image | `blog-featured` size, layout, look | 10–15 · 2 | E | |
 | SOC-43 | LinkedIn/X/Facebook/YouTube banner | named size, `banner` layout | 10–18 · 2–3 | E | Safe zones for platform UI. |
-| SOC-44 | Podcast or album cover art | `album-art` size, illustration, type | 15–25 · 3 | E | |
+| SOC-44 | Podcast or album cover art | `album-art` size, illustration, type | 15–25 · 3 | E | `check` judges text at the 120 px app thumbnail (`use-size`). |
 | SOC-45 | Pinterest pin with long layout | `pinterest-long` size, `f-pattern` | 12–20 · 2–3 | E | |
 | SOC-46 | Post in a named design style (Bauhaus, vaporwave, Memphis …) | `vixl_reference('styles')` apply + check | 15–25 · 3 | E | |
 | SOC-47 | Compare a few rolled directions and pick one | `vixl_reference('roll')` ×3–5, previews | 10–15 · 2–3 | E | |
@@ -476,7 +476,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | --- | --- | --- | --- | --- | --- |
 | PRN-20 | Custom invitation (wedding, party) in Art Deco or minimal style | `centered-axis` / `quiet-invitation`, style | 15–25 · 3 | E | |
 | PRN-21 | Greeting card (front + inside as pages) | `greeting-card` size, pages | 15–25 · 3 | E | |
-| PRN-22 | Book cover (front only) | `book-6x9`, typography, illustration | 15–30 · 3–4 | E | Spine/back wrap is T3. |
+| PRN-22 | Book cover (front only) | `book-6x9` (print) or `ebook-cover` (shops), typography, illustration | 15–30 · 3–4 | E | Spine/back wrap is T3. `check` judges `ebook-cover` text at a 160 px shop thumbnail. |
 | PRN-23 | Letterhead and envelope | `letterhead`, `envelope-10` | 12–20 · 2–3 | E | |
 | PRN-24 | Business card front and back with bleed and CMYK PDF | pages, `--bleed`, `export --cmyk` | 15–25 · 3 | E | Vector DeviceCMYK pages. |
 | PRN-25 | Rack card or one-page flyer with photo | `rack-card`, `photo-caption` | 15–25 · 3 | E | |
