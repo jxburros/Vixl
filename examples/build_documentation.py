@@ -41,7 +41,7 @@ def build(output):
     def save(name, width, height, ops, description, **extras):
         project = Project(width, height, PAPER)
         project.apply(ops)
-        project.save(output / f"{name}.vixl")
+        project.save(output / f"{name}.vixl", overwrite=True)
         project.export(output / f"{name}.png", alpha="auto", overwrite=True)
         (output / f"{name}.json").write_text(json.dumps({"operations": ops}, indent=2) + "\n")
         report = project.check(checks=["bounds"])

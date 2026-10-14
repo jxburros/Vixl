@@ -6,7 +6,7 @@
       1260,
       490
     ],
-    "version": "0.21.0",
+    "version": "0.27.0",
     "bounds": {
       "passed": true,
       "errors": 0,
@@ -16,6 +16,16 @@
         "fix": [],
         "review": [],
         "informational": []
+      },
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "design checks"
+        ]
       },
       "issues": [],
       "checked": {
@@ -35,7 +45,7 @@
       1180,
       630
     ],
-    "version": "0.21.0",
+    "version": "0.27.0",
     "bounds": {
       "passed": true,
       "errors": 0,
@@ -45,6 +55,16 @@
         "fix": [],
         "review": [],
         "informational": []
+      },
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "design checks"
+        ]
       },
       "issues": [],
       "checked": {
@@ -64,7 +84,7 @@
       1060,
       595
     ],
-    "version": "0.21.0",
+    "version": "0.27.0",
     "bounds": {
       "passed": true,
       "errors": 0,
@@ -74,6 +94,16 @@
         "fix": [],
         "review": [],
         "informational": []
+      },
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "design checks"
+        ]
       },
       "issues": [],
       "checked": {
@@ -99,7 +129,7 @@
       1060,
       570
     ],
-    "version": "0.21.0",
+    "version": "0.27.0",
     "bounds": {
       "passed": true,
       "errors": 0,
@@ -109,6 +139,16 @@
         "fix": [],
         "review": [],
         "informational": []
+      },
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "design checks"
+        ]
       },
       "issues": [],
       "checked": {
@@ -128,7 +168,7 @@
       1060,
       560
     ],
-    "version": "0.21.0",
+    "version": "0.27.0",
     "bounds": {
       "passed": true,
       "errors": 0,
@@ -138,6 +178,16 @@
         "fix": [],
         "review": [],
         "informational": []
+      },
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "design checks"
+        ]
       },
       "issues": [],
       "checked": {
@@ -157,7 +207,7 @@
       850,
       1100
     ],
-    "version": "0.21.0",
+    "version": "0.27.0",
     "bounds": {
       "passed": true,
       "errors": 0,
@@ -167,6 +217,16 @@
         "fix": [],
         "review": [],
         "informational": []
+      },
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "design checks"
+        ]
       },
       "issues": [],
       "checked": {
@@ -186,7 +246,7 @@
       1060,
       595
     ],
-    "version": "0.21.0",
+    "version": "0.27.0",
     "bounds": {
       "passed": true,
       "errors": 0,
@@ -196,6 +256,16 @@
         "fix": [],
         "review": [],
         "informational": []
+      },
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "design checks"
+        ]
       },
       "issues": [],
       "checked": {
@@ -215,7 +285,7 @@
       1060,
       450
     ],
-    "version": "0.21.0",
+    "version": "0.27.0",
     "bounds": {
       "passed": true,
       "errors": 0,
@@ -225,6 +295,16 @@
         "fix": [],
         "review": [],
         "informational": []
+      },
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "design checks"
+        ]
       },
       "issues": [],
       "checked": {
