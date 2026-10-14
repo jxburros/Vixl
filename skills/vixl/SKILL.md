@@ -552,7 +552,8 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   word off a paragraph's last line. Price lists: `tabs: [{at: "100%", align: "right", leader: "."}]` with `\t` in the
   text, or a `table` column `leader: "."`. Two-tone headlines: `layout-apply` `accent_words: ["Winter"]`.
 - **Variables:** `${name}` works in text, colors, gradient fills and image-asset IDs. Undefined
-  variables are errors. Swatches are `@name` in color fields.
+  variables are errors. Swatches are `@name` in color fields; `swatch` with `delete: true` removes one
+  (refused while used, listing the users; `detach: true` writes its color into them first).
 - **Through MCP/REST, operation `path` and `linked` fields are rejected (SVG path data on `shape`, `paint`, `text-layout` and
   `select` is allowed), and `font` takes only a registered
   font name or role (`heading`/`body`; install with `font pair`/`font install` first).** Import files with
