@@ -148,7 +148,7 @@ paid agent run (`python -m evals.craft_rerun`, 1c) and judges, so no craft gain 
 | 1c | Built, not yet run: re-runs the Vixl lane on the 16 briefs, packages it with `rejudge.py` beside the fixed lanes and prints the judge prompt | `python -m evals.craft_rerun` ([evals/README.md](../evals/README.md#craft-re-run)) |
 | 1d | Built: `no_composition_findings` is part of the house-style quality score; it caught the first false finding of 2a during this work | `evals/house_style.py` |
 | 2a | Built: the `composition` family, a default family of review findings. Backtest: 12 of 21 judged defects caught, 0 false findings (dead band 5/10, margin drift 4/5, uneven rhythm 2/4, crowding 1/1, clumped scatter 0/1) | `src/vixl/composition.py`, [guides](guides.md) |
-| 2b | Built: `repair-layout` repairs composition findings; on the backtest it resolves 19 of 22 findings with no new finding | `src/vixl/composition_repair.py`, [agent trust](agent-trust.md) |
+| 2b | Built: `repair-layout` repairs composition findings; on the backtest it resolves 17 of 23 findings with no new finding | `src/vixl/composition_repair.py`, [agent trust](agent-trust.md) |
 | 2c | Built: the `final` profile runs `composition` | `src/vixl/policy.py` |
 | 3a | Built: the finishing pass ends the loop in SKILL.md, `START_HERE` and the MCP instructions; the checklist lives once, as guidance `finishing` | `src/vixl/guidance.py` |
 | 3b | Built: `check=true` returns every composition finding and the two weakest regions, with real-size crops when `preview` is also asked for | `src/vixl/critique.py` |

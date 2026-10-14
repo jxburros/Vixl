@@ -66,7 +66,9 @@ instead of improvising freehand shapes:
       default" below).
    2. **Critique** in a few lines against the craft checklist that `vixl_reference("finishing")` returns
       (one focal point; the accent colour used once or twice; no dead band; one left edge per column;
-      the motif names the subject; nothing reads as a placeholder), naming the layer for each miss.
+      the motif names the subject, not a sunset, plain disc or stock icon; nothing reads as a placeholder;
+      secondary text readable at real size; glows and shadows that read as light, not dirt; illustrations
+      in one style with joined parts), naming the layer for each miss.
    3. **Fix** everything the critique found in **one** batch (`check=true, preview=true`), not a string
       of nudges. With `check` the result lists every composition finding and `check.regions`, the two
       weakest regions (the most findings, else the densest text and the largest empty area); with
@@ -139,11 +141,11 @@ unchanged; `vixl reproduce --reference PNG` or `--lock FILE` verifies an approve
 **Composition is checked by default.** `vixl_check(checks=["composition"])` (CLI `vixl check --checks composition`)
 reports craft as `review` findings with a `code`: `dead_band` (an empty band much larger than the document's own
 gaps), `margin_drift` (stacked blocks a few pixels off one edge or centre axis), `uneven_rhythm` (a line further
-from the line it belongs with than from the next), `crowding` (a rule, band or heading under half a spacing unit
+from the line it belongs with than from the next, or a small block floating midway between two others), `crowding` (a rule, band or heading under half a spacing unit
 above text) and `clumped_scatter`. Each names its layers, `region`, measured `values` and `threshold`, in spacing
 units of half the body size. They do not fail a plain check but fail `profile="final"`: fix them, or waive a
-deliberate one with a reason (`{type: waiver, check: composition, reason}`). Marked decoration, backgrounds and
-bleeding art are not judged. Workflow `repair-layout` repairs them after any failures, when its `checks` include
+deliberate one with a reason (`{type: waiver, check: composition, reason}`). Marked decoration, backgrounds,
+edge-to-edge gradient fills, layers under 30% opacity and bleeding art are not judged; text is measured by its glyphs. Workflow `repair-layout` repairs them after any failures, when its `checks` include
 `composition` (the default set does): it snaps a drifting edge to the margin, re-spaces a stack, opens a crowded gap
 to a spacing unit, spreads a dead band over the other gaps (or moves the blocks beside it) and thins or re-seeds a
 clumped `pattern-scatter` tile. Each candidate is kept only if its finding is gone and no finding of any check is new,

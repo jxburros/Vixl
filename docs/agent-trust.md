@@ -137,10 +137,12 @@ against `max_iterations`, so raise it for a page with many findings. To leave co
 without it.
 
 On the [craft backtest](../evals/craft_backtest/README.md#repair) (`python -m evals.craft_backtest --repair`, the
-default checks, up to 20 iterations), the plan resolves 19 of the 22 composition findings (17 of the 20 that catch a
-defect the judges named) with no new finding of any check: every crowding and uneven-rhythm finding, 9 of 10 margin
-drifts and 3 of 5 dead bands. It leaves a band beside a drawing that spans it (T02), a band in the logo sheet's dark
-half (T04) and chart titles that would leave the safe area to meet the margin (T08).
+default checks, up to 20 iterations), the plan resolves 17 of the 23 composition findings (15 of the 20 that catch a
+defect the judges named) with no new finding of any check: every crowding finding, 9 of 10 margin drifts, 3 of 6 dead
+bands and 1 of 3 uneven-rhythm findings (a floating subtitle). It leaves a band beside a drawing that spans it (T02),
+a band in the logo sheet's dark half (T04), chart titles that would leave the safe area to meet the margin (T08) and
+two badge name blocks whose repair would leave the company line floating (T07). A floating block is repaired by
+moving it one spacing unit under the block above or over the block below.
 
 ```json
 {"checks": ["bounds", "overlap"], "protected": ["logo"], "minimum_size": 28, "dry_run": true}

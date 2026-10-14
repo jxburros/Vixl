@@ -8,7 +8,8 @@ Five kinds of finding, each a ``review`` warning with a stable ``code``:
   text) are close but not equal: two margins where one was meant;
 - ``uneven_rhythm``: a stack of lines whose consecutive gaps differ by more than the spacing scale allows: the
   middle line sits further from the line above it, which it matches in size, than from the next, or lines of one
-  size are unevenly spaced;
+  size are unevenly spaced; or a small block (secondary text, a row of dots) floats midway between two blocks of
+  other kinds;
 - ``crowding``: a rule, band or heading closer to the text below it than half a spacing unit;
 - ``clumped_scatter``: a scatter (``pattern-scatter``, ``scatter``) whose motifs bunch in some cells of the
   tile and leave others empty.
@@ -43,9 +44,9 @@ THRESHOLDS = {
     "dead_band_fill": 0.5,
     "dead_band_max_share": 0.42,
     # An edge band also has to be this many times the frame's margin on the opposite side.
-    "edge_band_ratio": 2.0,
+    "edge_band_ratio": 1.75,
     # Edges further apart than this many pixels and closer than this many spacing units drift.
-    "drift_tolerance_px": 1.5,
+    "drift_tolerance_px": 2.0,
     "drift_units": 2,
     # Two consecutive gaps of a stack are uneven when the larger is this many times the smaller and they
     # differ by this many spacing units.
@@ -53,6 +54,10 @@ THRESHOLDS = {
     "rhythm_units": 2,
     # Siblings of one size: gaps up to this many units are one run (a larger gap is a break between groups).
     "rhythm_sibling_units": 3,
+    # A small block floats when the gaps above and below it are both at least this many spacing units and the
+    # larger is at most this many times the smaller.
+    "float_units": 3,
+    "float_ratio": 1.5,
     # Crowding: the gap below a rule, band or heading is under this many spacing units.
     "crowding_units": 0.5,
     # Clumped scatter: the coefficient of variation of motif coverage over the tile's cells.
@@ -60,9 +65,13 @@ THRESHOLDS = {
     "scatter_min_items": 8,
 }
 
+# A signed value or a share set beside its data (a bar's "−9", "+6", "38%"): placed by the data, not by a margin.
+DATA_LABEL = re.compile(r"^\s*(?:[+\-−–]\s*\d[\d.,]*\s*(?:pts?|%)?|\d[\d.,]*\s*%)\s*$")
 LIST_MARKER = re.compile(r"^\s*(?:[•·▪◦‣–—*-]|\d{1,3}[.)])\s")
 UNIT_GROUPS = ("chart", "pattern_scatter", "repeat", "radial", "table", "diagram")
 GROUND_SHARE = 0.2
+# Layers drawn fainter than this (their opacity times their groups') are atmosphere, not blocks.
+FAINT = 0.3
 MAX_PER_CODE = 12
 CONTAINER_SHARE = 0.005
 
@@ -164,6 +173,8 @@ def collect(candidate, resolved, geometry, content, role, ancestors, width, heig
             kind = "unit"
         elif item["type"] in ("group", "adjustment"):
             continue
+        elif math.prod(x["opacity"] for x in (item, *ancestors(item))) < FAINT:
+            continue  # Atmosphere (smoke, haze, the last fading stripes of a reflection), not a block.
         elif item["type"] == "gradient" and not item.get("role") and role(item) == "decoration":
             continue  # A glow that fades out has no edge to space against.
         else:
@@ -173,6 +184,9 @@ def collect(candidate, resolved, geometry, content, role, ancestors, width, heig
         if w <= 0 or h <= 0 or x >= width or y >= height or x + w <= 0 or y + h <= 0:
             continue
         bleeding = x < -0.5 or y < -0.5 or x + w > width + 0.5 or y + h > height + 0.5
+        touching = sum((x <= 0.5, y <= 0.5, x + w >= width - 0.5, y + h >= height - 0.5))
+        if item["type"] == "gradient" and touching >= 2 and w * h >= GROUND_SHARE * width * height:
+            continue  # A gradient fill running to the page edges (sky, water) is ground, not a block.
         # Bleeding art (a hill, a wave band) fills space but is not aligned or spaced like a block.
         art = bleeding and item["type"] != "text"
         layer = resolved[item["id"]]
@@ -230,6 +244,27 @@ def collect(candidate, resolved, geometry, content, role, ancestors, width, heig
     grounds = [b for b in containers if b.box[2] * b.box[3] >= GROUND_SHARE * width * height
                and any(other.container is b for other in blocks)]
     return blocks, grounds, scatters
+
+
+def ink_heights(candidate, resolved, geometry, content, local_bounds):
+    """``geometry`` with each text layer's vertical extent narrowed to its glyphs. A text box includes the line's
+    leading above the capitals and below the baseline, which a reader sees as space: the gap between a picture
+    and a title set in a tall line box is the gap to the letters. The horizontal extent stays the layout box,
+    which is where text aligns (glyph side bearings differ from letter to letter)."""
+    from .checks import group_matrix
+    from .spatial import glyph_box
+
+    narrowed = dict(geometry)
+    for item in content:
+        layer = resolved[item["id"]]
+        if layer["type"] != "text" or layer.get("repeat") or not str(layer.get("text", "")).strip():
+            continue
+        glyph = glyph_box(candidate, layer, local_bounds[item["id"]], group_matrix(layer, resolved, local_bounds))
+        if glyph is None:
+            continue
+        x, _, w, _ = geometry[item["id"]]
+        narrowed[item["id"]] = (x, glyph[1], w, glyph[3])
+    return narrowed
 
 
 def hugs(text_box, chip_box):
@@ -470,6 +505,8 @@ def margin_drift(blocks, unit, emit, area):
                 if b.kind == "text":
                     if axis == "left" and (b.marker or id(b) in led):
                         return False
+                    if DATA_LABEL.match(str(b.item.get("text", "")).strip()):
+                        return False
                     return (b.align or "left") == axis or (axis == "left" and b.align == "justify")
                 # Rules, charts, images and free-standing marks keep a margin; the parts of a drawing do not.
                 return axis != "center" and (b.kind in ("rule", "unit", "image") or (
@@ -571,6 +608,60 @@ def uneven_rhythm(blocks, unit, emit, body):
                                 "sibling_max_units": t["rhythm_sibling_units"]})
 
 
+def _alike(a, b):
+    """Two blocks of one kind: text of about the same size, or artwork of about the same height."""
+    if (a.kind == "text") != (b.kind == "text"):
+        return False
+    first, second = (a.size or 0, b.size or 0) if a.kind == "text" else (a.box[3], b.box[3])
+    return abs(first - second) <= 0.15 * max(first, second, 1)
+
+
+def floating(blocks, unit, emit, taken):
+    """A small block of a stack (a line of secondary text, a row of dots) as far from the block above as from
+    the one below, between blocks of other kinds, so proximity no longer says what it belongs to. Evenly spaced
+    items of one kind (lines of a list) are a rhythm, not a float. Gaps inside ``taken`` (dead bands) are not
+    reported again."""
+    t = THRESHOLDS
+    # Layout blocks only: the parts of a drawing (a lantern's ribs, the stripes of a reflection) have their own
+    # small gaps, which are not the rhythm of the page.
+    judged = [b for b in blocks if not b.decoration and b.container is None and (
+        b.kind in ("text", "rule", "band", "unit", "image") or not b.item.get("parent"))]
+    links = {id(upper): (lower, gap) for upper, lower, gap in stacked_gaps(judged) if gap > 0.5}
+    starts = set(links) - {id(lower) for lower, _ in links.values()}
+    by_id = {id(b): b for b in judged}
+    seen = set()
+
+    def reported(upper, lower):
+        return (id(upper), id(lower)) in seen or any(
+            r[1] <= upper.bottom + 1 and r[1] + r[3] >= lower.top - 1 for r in taken)
+
+    for start in sorted(starts, key=lambda key: by_id[key].top):
+        chain, gaps = [by_id[start]], []
+        while id(chain[-1]) in links and len(chain) < 256:
+            lower, gap = links[id(chain[-1])]
+            chain.append(lower)
+            gaps.append(gap)
+        for i in range(len(gaps) - 1):
+            a, b, c = chain[i:i + 3]
+            g1, g2 = gaps[i], gaps[i + 1]
+            # Small: secondary text (a heading counts when a line at least 2.5 times its size sits next to it, as a
+            # subtitle under a display title does) or a mark under two spacing units tall.
+            small = (b.kind == "text" and (not b.heading or any(
+                x.kind == "text" and x.size and b.size and b.size * 2.5 <= x.size for x in (a, c)))) or (
+                b.kind != "text" and b.box[3] < 2 * unit)
+            if not small or min(g1, g2) < t["float_units"] * unit or max(g1, g2) > t["float_ratio"] * min(g1, g2):
+                continue
+            if _alike(a, b) or _alike(b, c) or reported(a, b) or reported(b, c):
+                continue
+            seen.update({(id(a), id(b)), (id(b), id(c))})
+            emit("uneven_rhythm", f"{b.item['name']!r} floats midway: {g1:.0f} px below {a.item['name']!r} and "
+                 f"{g2:.0f} px above {c.item['name']!r}, so it belongs to neither. Move it close to the block it "
+                 f"goes with (about one spacing unit, {unit:g} px) and let the larger gap separate the groups",
+                 [a, b, c], _union([x.box for x in (a, b, c)]), actual=round(max(g1, g2) / min(g1, g2), 2),
+                 expected=t["float_ratio"], values={"gaps": [round(g1, 1), round(g2, 1)], "floating": b.item["name"]},
+                 threshold={"max_ratio": t["float_ratio"], "min_gap_px": round(t["float_units"] * unit, 1)})
+
+
 def crowding(blocks, unit, emit):
     t = THRESHOLDS
     limit = t["crowding_units"] * unit
@@ -636,13 +727,16 @@ def clumped_scatter(candidate, resolved, geometry, scatters, emit):
              threshold={"max_cv": t["scatter_cv"]})
 
 
-def check(candidate, resolved, geometry, content, role, ancestors, issue):
-    """Run the composition family on a check_design candidate, reporting through ``issue``."""
+def check(candidate, resolved, geometry, content, role, ancestors, issue, local_bounds=None):
+    """Run the composition family on a check_design candidate, reporting through ``issue``. With the candidate's
+    ``local_bounds`` (layout boxes), text is measured from the top to the bottom of its glyphs."""
     from .craft import body_size
 
     canvas = candidate.state["canvas"]
     width, height = canvas["width"], canvas["height"]
     unit = float(unit_of(candidate))
+    if local_bounds is not None:
+        geometry = ink_heights(candidate, resolved, geometry, content, local_bounds)
     blocks, grounds, scatters = collect(candidate, resolved, geometry, content, role, ancestors, width, height)
     pending = []
 
@@ -661,6 +755,7 @@ def check(candidate, resolved, geometry, content, role, ancestors, issue):
     dead_bands(blocks, grounds, unit, width, height, emit)
     margin_drift(blocks, unit, emit, width * height)
     uneven_rhythm(blocks, unit, emit, body_size(candidate))
+    floating(blocks, unit, emit, [entry[3]["region"] for entry in pending if entry[0] == "dead_band"])
     crowding(blocks, unit, emit)
     clumped_scatter(candidate, resolved, geometry, scatters, emit)
     # A page of scattered labels can drift in hundreds of pairs: report the first few of each kind and count
