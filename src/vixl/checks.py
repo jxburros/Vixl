@@ -1063,7 +1063,7 @@ def check_design(
     if "composition" in checks:
         from .composition import check as check_composition
 
-        check_composition(candidate, resolved, geometry, content, role, ancestors, issue)
+        check_composition(candidate, resolved, geometry, content, role, ancestors, issue, local_bounds=local_bounds)
 
     if "cost" in checks:
         from .profiling import cost_findings

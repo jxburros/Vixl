@@ -65,17 +65,18 @@ At the thresholds in `src/vixl/composition.py`:
 
 | Kind | expected | caught | missed | findings | false | on other judged defects |
 |---|---:|---:|---:|---:|---:|---:|
-| dead_band | 10 | 5 | 5 | 5 | 0 | 0 |
+| dead_band | 10 | 5 | 5 | 6 | 0 | 1 |
 | margin_drift | 5 | 4 | 1 | 10 | 0 | 1 |
-| uneven_rhythm | 4 | 2 | 2 | 2 | 0 | 0 |
-| crowding | 1 | 1 | 0 | 5 | 0 | 1 |
+| uneven_rhythm | 4 | 2 | 2 | 3 | 0 | 1 |
+| crowding | 1 | 1 | 0 | 4 | 0 | 0 |
 | clumped_scatter | 1 | 0 | 1 | 0 | 0 | 0 |
-| all | 21 | 12 | 9 | 22 | 0 | 2 |
+| all | 21 | 12 | 9 | 23 | 0 | 3 |
 
 Findings exceed catches because one defect is often found more than once (the four section rules of the T16 menu,
-every caption of the T04 sheet). The two findings on other judged defects are a ripple line touching the T03 credit
-(the judges' "ripples run through the list") and the indented `$1.00` of the T16 price column (their "ragged price
-column").
+every caption of the T04 sheet). The three findings on other judged defects are the empty top band of the T14 lyric
+frame, the T03 subtitle floating midway between the title and the date (the judges' "the list floats"), and the
+indented `$1.00` of the T16 price column (their "ragged price column"). Layers under 30% opacity are not blocks, so
+the faint ripple that touched the T03 credit no longer counts as a crowded rule.
 
 What it misses, and why:
 
@@ -102,14 +103,17 @@ composition repairs it selected and checks again.
 
 | Kind | findings | resolved |
 |---|---:|---:|
-| dead_band | 5 | 3 |
+| dead_band | 6 | 3 |
 | margin_drift | 10 | 9 |
-| uneven_rhythm | 2 | 2 |
-| crowding | 5 | 5 |
+| uneven_rhythm | 3 | 1 |
+| crowding | 4 | 4 |
 | clumped_scatter | 0 | 0 |
-| all | 22 | 19 |
+| all | 23 | 17 |
 
-17 of the 20 findings that catch a judged defect are resolved, with no new finding. Left over: the T02 band beside
+15 of the 20 findings that catch a judged defect are resolved, with no new finding. Left over: the T02 band beside
 the microphone (the drawing spans the band, and moving the blocks below it would run them into its base), the band in
-the T04 logo sheet's dark half, and the T08 chart titles, which would leave the safe area to meet the margin.
+the T04 logo sheet's dark half, the T08 chart titles, which would leave the safe area to meet the margin, and the
+name blocks of T07 badges 01 and 03: pulling the last name up to the first leaves the company line floating midway
+between the name and the role bar (a floating block is an `uneven_rhythm` finding since the craft-check backtest),
+and closing up the whole stack opens a dead band above the bar.
 `tests/test_craft_backtest.py` pins these numbers too.

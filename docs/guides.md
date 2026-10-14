@@ -125,15 +125,19 @@ the document's body size (`craft.spacing.unit` in the [house style](house-style.
 
 | Code | What it finds | Threshold |
 | --- | --- | --- |
-| `dead_band` | An empty horizontal band between content blocks, or between content and an edge, from the free rectangles of `spatial` | At least 6% of the frame's height, 4 units and 2.25× the median gap between stacked blocks; across a third of the content width (a narrower band only when artwork, not a line of text, closes its sides); an edge band must also be twice the opposite margin. Only frames with two or more lines of type whose blocks fill half their height, and bands up to 42% of it |
-| `margin_drift` | Stacked text, rules, charts, images and free-standing marks whose left edges (right edges of right-aligned text, centres of centred text) are close but not equal | More than 1.5 px and at most 2 units apart |
-| `uneven_rhythm` | A stack of three lines where the middle line sits further from the line above it, which it matches more closely in size, than from the line below (a first name, a last name and a company); for lines of one size, gaps up to 3 units that differ. A subtitle tight under its title and away from what follows is by design | Gaps differing by 1.6× and 2 units (1 unit for lines of one size) |
+| `dead_band` | An empty horizontal band between content blocks, or between content and an edge, from the free rectangles of `spatial` | At least 6% of the frame's height, 4 units and 2.25× the median gap between stacked blocks; across a third of the content width (a narrower band only when artwork, not a line of text, closes its sides); an edge band must also be 1.75× the opposite margin. Only frames with two or more lines of type whose blocks fill half their height, and bands up to 42% of it |
+| `margin_drift` | Stacked text, rules, charts, images and free-standing marks whose left edges (right edges of right-aligned text, centres of centred text) are close but not equal | More than 2 px and at most 2 units apart |
+| `uneven_rhythm` | A stack of three lines where the middle line sits further from the line above it, which it matches more closely in size, than from the line below (a first name, a last name and a company); for lines of one size, gaps up to 3 units that differ. A subtitle tight under its title and away from what follows is by design. Also a small block (secondary text, a row of dots, a subtitle under a display title 2.5 times its size) as far from the block above as from the one below, between blocks of other kinds, so it belongs to neither | Gaps differing by 1.6× and 2 units (1 unit for lines of one size); a floating block has gaps of at least 3 units on both sides, within 1.5× of each other |
 | `crowding` | A rule, band or heading less than half a unit above the text below it | Half a unit |
 | `clumped_scatter` | A `pattern-scatter` or `scatter` whose motifs bunch in some cells of the tile and leave others empty | Coverage varies by more than 0.6 (coefficient of variation over 4×4 cells); seeded `pattern-scatter` tiles stay under 0.5 |
 
-What is not judged: backgrounds and canvas-covering layers, layers marked `role: decoration` (they still fill
-space, so a band they close off is not dead), art that bleeds off the canvas, glows that fade to transparent, and
-the insides of charts, scatters and repeats (each is one block). Text inside a panel or card is aligned and spaced
+What is not judged: backgrounds and canvas-covering layers, gradient fills that run to two page edges and cover a
+fifth of it (a sky, the water), layers drawn fainter than 30% opacity (smoke, haze, the last stripes of a
+reflection), layers marked `role: decoration` (they still fill space, so a band they close off is not dead), art
+that bleeds off the canvas, glows that fade to transparent, and the insides of charts, scatters and repeats (each
+is one block). Text is measured from the top to the bottom of its glyphs, not its line box, so the leading above a
+tall title counts as the space a reader sees; it aligns by its layout box. A signed value or a share set beside
+its data ("−9", "+6", "38%") is not a margin. Text inside a panel or card is aligned and spaced
 against that panel; text in a chip that hugs it (a highlight, pill or button) aligns by the chip's edge; a panel that covers a fifth of the canvas frames its own bands, a list hangs its markers, and a
 label after an icon follows the icon. A capitalised kicker may sit tight to the line it labels.
 

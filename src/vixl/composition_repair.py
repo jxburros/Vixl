@@ -246,6 +246,13 @@ def _uneven_rhythm(scene, finding, unit):
         return scene.select(lambda box: box[1] >= top - 1 and _overlaps(box, x0, x1), exclude=[a])
 
     out = []
+    if finding["values"].get("floating"):
+        # A block floating midway: join it to the block above or the one below, one spacing unit away.
+        if g1 > unit:
+            out.append(("float-to-above", scene.shift([b], 0, -(g1 - unit))))
+        if g2 > unit:
+            out.append(("float-to-below", scene.shift([b], 0, g2 - unit)))
+        return out
     if g1 > g2:
         if siblings:
             out.append(("even-middle", scene.shift([b], 0, -(g1 - g2) / 2)))
