@@ -29,6 +29,7 @@ This module only reads the data. The rolls that use it live in ``typefaces.roll`
 ``purpose_size(value)`` and ``is_mark(...)``  the size a purpose implies and whether it is a mark
 ``tier_of(kind, name, purpose=None)`` and ``entries(kind)``  tier and metadata of pool entries
 ``level(variety)``            the settings of a variety level
+``neutral()``                 what a document gets with ``house_style: "off"``: no roll, a neutral direction
 """
 
 from copy import deepcopy
@@ -269,6 +270,18 @@ def profile(purpose=None):
 def safe_palettes():
     """The quiet palettes that layout-apply without a palette, templates and the safe tier draw from."""
     return list(_data()["safe_palettes"])
+
+
+OFF = "off"
+
+
+def neutral():
+    """What a new document gets with the house style off (``house_style: "off"``): ``summary``, the canvas
+    ``background`` for non-marks and the neutral ``direction`` that layout-apply follows instead of a rolled
+    one. Nothing in it is rolled; the direction's corner is the craft corner."""
+    entry = deepcopy(_data()["off"])
+    entry["direction"]["corner"] = rule("corner")
+    return entry
 
 
 def show(purpose=None):

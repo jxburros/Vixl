@@ -75,16 +75,18 @@ def batch_error(errors):
 class Project:
 
     def __init__(self, width=None, height=None, background=None, *, purpose=None, seed=None, variety=None,
-                 workspace_fonts=True, limits=None, workspace=None):
+                 workspace_fonts=True, limits=None, workspace=None, house_style=None):
         """A new document.
 
         ``Project(width, height)`` alone is a plain transparent canvas, as before. Leaving out the size, or
         passing ``purpose``, ``seed`` or ``variety``, creates a design document exactly as ``vixl new`` and
         ``vixl_document(action='create')`` do (``creation.py``): the purpose's size (else 1080×1080), rolled
         ``design_defaults``, the palette background (transparent for marks) and the rolled font pairing
-        (``workspace_fonts=False`` skips fonts). An unseeded roll is recorded in the workspace history
-        only when ``workspace`` is given."""
-        designed = (width is None and height is None) or any(v is not None for v in (purpose, seed, variety))
+        (``workspace_fonts=False`` skips fonts). ``house_style="off"`` rolls nothing: a white canvas (transparent
+        for marks), no pairing and neutral ``design_defaults``. An unseeded roll is recorded in the workspace
+        history only when ``workspace`` is given."""
+        designed = (width is None and height is None) or any(v is not None for v in (purpose, seed, variety,
+                                                                                      house_style))
         size, source = None, "argument"
         if designed:
             from .creation import resolve_size
@@ -104,7 +106,7 @@ class Project:
                 self._apply_size({"type": "canvas", "size": size}, f"Create {size} document")
             design(self, size=size, size_from=source, purpose=purpose, background=background, seed=seed,
                    variety=variety, workspace=workspace, remember=workspace is not None,
-                   workspace_fonts=workspace_fonts)
+                   workspace_fonts=workspace_fonts, house_style=house_style)
 
     def _init_blank(self, width, height, background, limits, workspace):
         self.limits = limits or Limits()
@@ -134,13 +136,14 @@ class Project:
 
     @classmethod
     def sized(cls, size, background=None, *, limits=None, dpi=None, orientation=None, bleed=False, workspace=None,
-              purpose=None, seed=None, variety=None, workspace_fonts=True, design=True):
+              purpose=None, seed=None, variety=None, workspace_fonts=True, design=True, house_style=None):
         """Create a document from a named size (``letter``, ``instagram-portrait``, ``favicon`` …),
         recording its dpi, bleed, safe area and trim/safe guides in the first revision.
 
         Like ``vixl new SIZE`` it rolls ``design_defaults`` and, without ``background``, uses the palette
-        background (transparent for logo and icon sizes) and installs the rolled pairing. ``design=False``
-        gives a plain canvas (transparent unless ``background`` is given)."""
+        background (transparent for logo and icon sizes) and installs the rolled pairing; ``house_style="off"``
+        rolls nothing (white canvas, no pairing, neutral defaults). ``design=False`` gives a plain canvas
+        (transparent unless ``background`` is given)."""
         from .sizes import resolve
 
         info = resolve(size, dpi=dpi, orientation=orientation, bleed=bleed)
@@ -152,19 +155,22 @@ class Project:
             from .creation import design as finish
 
             finish(project, size=info["size"], purpose=purpose, background=background, seed=seed, variety=variety,
-                   workspace=workspace, remember=workspace is not None, workspace_fonts=workspace_fonts)
+                   workspace=workspace, remember=workspace is not None, workspace_fonts=workspace_fonts,
+                   house_style=house_style)
         return project
 
     @classmethod
     def new(cls, size=None, *, width=None, height=None, purpose=None, background=None, dpi=None, orientation=None,
-            bleed=False, seed=None, variety=None, workspace=None, workspace_fonts=True, limits=None, report=None):
+            bleed=False, seed=None, variety=None, workspace=None, workspace_fonts=True, limits=None, report=None,
+            house_style=None):
         """The one creation path with every option ``vixl new`` and ``vixl_document(action='create')`` take; ``report``
-        receives what creation chose (``creation``, ``workspace_fonts``)."""
+        receives what creation chose (``creation``, ``workspace_fonts``). ``house_style`` is ``"on"`` or
+        ``"off"`` (None follows ``.vixl/variety.json``, on by default)."""
         from .creation import create
 
         return create(width, height, background, size=size, purpose=purpose, dpi=dpi, orientation=orientation,
                       bleed=bleed, seed=seed, variety=variety, workspace=workspace, remember=workspace is not None,
-                      workspace_fonts=workspace_fonts, limits=limits, report=report)
+                      workspace_fonts=workspace_fonts, limits=limits, report=report, house_style=house_style)
 
     def _apply_size(self, op, label):
         from .operations import execute
