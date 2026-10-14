@@ -30,7 +30,8 @@ from .notices import note
 
 STYLE_KEYS = ("bold", "italic", "underline", "strike", "color", "size", "font", "highlight", "baseline", "tracking")
 PARAGRAPH_KEYS = ("list", "level", "align", "space_before", "space_after", "indent", "line_height", "start")
-ROOT_KEYS = ("spans", "paragraphs", "line_height", "line_basis", "paragraph_spacing", "list_indent", "font_variants")
+ROOT_KEYS = ("spans", "paragraphs", "line_height", "line_basis", "paragraph_spacing", "list_indent", "font_variants",
+             "ink_box")
 BULLETS = ("•", "◦", "▪", "‣")
 MAX_SPANS = 4000
 SYNTHETIC_SKEW = math.tan(math.radians(12))
@@ -196,6 +197,7 @@ def validate_rich(rich, state, text=None):
             "Rich text needs one paragraph entry per line", "invalid_project")
     for item in paragraphs:
         validate_paragraph(item)
+    require(isinstance(rich.get("ink_box", False), bool), "ink_box must be true or false", "invalid_project")
     finite(rich.get("line_height", 1.2), "line_height", 0.5, 5)
     require(rich.get("line_basis", "size") == "size", "Invalid rich text line_basis", "invalid_project")
     finite(rich.get("paragraph_spacing", 0), "paragraph_spacing", 0, 2000)
@@ -402,36 +404,49 @@ def _tokens(project, paragraph, scale):
         for piece in re.findall(r" +|[^ ]+", span["text"]):
             size = span["size"] * scale * (0.65 if span["baseline"] in ("super", "sub") else 1)
             data = style_font_data(project, span["font"], piece)
-            glyphs, advance = shape(data, piece, size)
             tracking = span["tracking"] * scale
-            if tracking:
-                for i, glyph in enumerate(glyphs):
-                    glyph.x += tracking * i
-                advance += tracking * len(glyphs)
+            glyphs, advance, trail = tracked(*shape(data, piece, size), tracking)
             ascent, descent = _metrics(data)
             tokens.append({"space": piece.isspace() and "\u00a0" not in piece, "glyphs": glyphs, "width": advance, "style": span, "size": size,
                            "ascent": ascent * span["size"] * scale, "descent": descent * span["size"] * scale,
-                           "data": data, "text": piece})
+                           "data": data, "text": piece, "tracking": tracking, "trail": trail})
     return tokens
+
+
+def tracked(glyphs, advance, tracking):
+    """``(glyphs, advance, trail)`` with ``tracking`` px added after every character (HarfBuzz cluster, so
+    marks stay on their base and a ligature counts once). ``advance`` includes the space after the last
+    character, which is ``trail``: it separates this piece from the next on the line, and is dropped
+    where a line ends, so tracked text measures, centres and right-aligns by its glyphs."""
+    if not tracking or not glyphs:
+        return glyphs, advance, 0.0
+    count = 0
+    for index, glyph in enumerate(glyphs):
+        if glyph.text or index == 0:
+            count += 1
+        glyph.x += tracking * (count - 1)
+    return glyphs, advance + tracking * count, tracking
 
 
 def _split_word(project, token, width):
     """Break a word wider than the line at safe shaping boundaries."""
     from .text import clusters, shape
 
-    token["data"][0] if isinstance(token["data"], tuple) else token["data"]
-    pieces, current = [], ""
+    tracking = token.get("tracking", 0.0)
+    pieces, current, count = [], "", 0
     for cluster in clusters(token["data"], token["text"]):
-        if current and shape(token["data"], current + cluster, token["size"])[1] > width:
+        # A line ends after this piece, so its last character carries no tracking.
+        if current and shape(token["data"], current + cluster, token["size"])[1] + tracking * count > width:
             pieces.append(current)
-            current = ""
+            current, count = "", 0
         current += cluster
+        count += 1
     if current:
         pieces.append(current)
     result = []
     for piece in pieces:
-        glyphs, advance = shape(token["data"], piece, token["size"])
-        result.append({**token, "glyphs": glyphs, "width": advance, "text": piece})
+        glyphs, advance, trail = tracked(*shape(token["data"], piece, token["size"]), tracking)
+        result.append({**token, "glyphs": glyphs, "width": advance, "text": piece, "trail": trail})
     return result
 
 
@@ -439,12 +454,13 @@ def _wrap(project, tokens, limit):
     """Greedy line breaking of shaped tokens at ``limit`` pixels (None: no wrapping)."""
     lines, current, x = [], [], 0.0
     for token in tokens:
-        if limit is not None and not token["space"] and current and x + token["width"] > limit:
+        # A line ends at its last character: the tracking after it does not need room.
+        if limit is not None and not token["space"] and current and x + token["width"] - token["trail"] > limit:
             while current and current[-1]["space"]:
                 current.pop()
             lines.append(current)
             current, x = [], 0.0
-        if limit is not None and not token["space"] and not current and token["width"] > limit:
+        if limit is not None and not token["space"] and not current and token["width"] - token["trail"] > limit:
             pieces = _split_word(project, token, limit)
             lines.extend([piece] for piece in pieces[:-1])
             token = pieces[-1]
@@ -564,7 +580,9 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
             })
 
     # Pass 2: the container width (the box, or the widest line for auto-sized text).
-    contents = [sum(t["width"] for t in row["tokens"]) for row in rows]
+    # A line ends at its last character: the tracking after it is not part of the line.
+    contents = [sum(t["width"] for t in row["tokens"]) - (row["tokens"][-1]["trail"] if row["tokens"] else 0.0)
+                for row in rows]
     container = available if available is not None else max(
         [row["text_left"] + content for row, content in zip(rows, contents)] + [0.0])
 
@@ -601,10 +619,11 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
             for glyph in glyphs:
                 result.glyphs.append(Placed(glyph.data, glyph.name, mx + glyph.x, baseline + glyph.y, first["size"],
                                             mstyle["color"], glyph.text, line=len(result.lines)))
+        last = row["tokens"][-1] if row["tokens"] else None
         for token in row["tokens"]:
             style = token["style"]
             shift = {"super": -0.35, "sub": 0.15}.get(style["baseline"], 0.0) * style["size"] * scale
-            advance = token["width"] + (extra if token["space"] else 0)
+            advance = token["width"] + (extra if token["space"] else 0) - (token["trail"] if token is last else 0.0)
             if style["highlight"]:
                 result.rects.append((cursor, baseline - token["ascent"], advance, token["ascent"] - token["descent"],
                                      style["highlight"], "highlight"))
@@ -627,7 +646,38 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
     result.width = int(width) if width is not None else max(1, math.ceil(widest))
     result.height = max(1, math.ceil(y + stroke))
     result.box = (0, 0, widest, y + stroke)
+    if rich.get("ink_box"):
+        _ink_box(result, stroke, width)
     return result
+
+
+def _ink_box(result, stroke, width):
+    """Give the layout plain text's box (``text.measure``): its top at the ink, its left at the pen or the
+    ink when a glyph reaches left of it, so a plain layer laid out here (for its tracking) stays where the
+    plain engine put it."""
+    from .text import face, glyph_outline
+
+    boxes = []
+    for glyph in result.glyphs:
+        path, bounds = glyph_outline(glyph.data, glyph.name)
+        if path and bounds:
+            f = glyph.size / face(glyph.data)[0]["head"].unitsPerEm
+            boxes.append((glyph.x + bounds[0] * f, glyph.y - bounds[3] * f, glyph.x + bounds[2] * f, glyph.y - bounds[1] * f))
+    if not boxes:
+        return
+    left, top = min(b[0] for b in boxes), min(b[1] for b in boxes)
+    right, bottom = max(b[2] for b in boxes), max(b[3] for b in boxes)
+    dx, dy = max(0.0, stroke - left), stroke - top
+    for glyph in result.glyphs:
+        glyph.x += dx
+        glyph.y += dy
+    result.rects = [(x + dx, y + dy, w, h, rgba, kind) for x, y, w, h, rgba, kind in result.rects]
+    result.lines = [(top_ + dy, baseline + dy, *rest) for top_, baseline, *rest in result.lines]
+    extent = max(result.box[2] - stroke, right) + dx + stroke
+    result.box = (0, 0, extent, bottom + dy + stroke)
+    if width is None:
+        result.width = max(1, math.ceil(extent))
+    result.height = max(1, math.ceil(bottom + dy + stroke))
 
 
 def fitted(project, layer, variables=None):
@@ -728,24 +778,90 @@ def append_svg(parent, result, layer, project, *, node=None, motion=None):
                          "fill_opacity": alpha})
 
 
+def layout_box(layer, result):
+    """The (width, height) the layout is drawn into: the text box, or the natural size of auto-sized text."""
+    return (layer["width"], layer["height"]) if layer.get("text_layout") else (result.width, result.height)
+
+
+def ink_overhang(project, layer, result, box=None):
+    """``(left, top, right, bottom)``: how far glyph ink reaches past the layout box, in layout pixels.
+    Script swashes, italic and synthetic-italic slants, bold and outline strokes draw past the advance
+    widths and line boxes that set the box. Lines whose baseline falls below a text box overflow it
+    and stay cut off at its edge, so only the lines that fit count."""
+    from .design import resolve_color
+    from .render import color
+    from .text import face, glyph_outline
+
+    width, height = box or layout_box(layer, result)
+    outline = layer.get("stroke_width", 0)
+    if outline and color(resolve_color(layer.get("stroke_color", "black"), project.state))[3] == 0:
+        outline = 0
+    left = top = right = bottom = 0.0
+    for glyph in result.glyphs:
+        if glyph.y > height + 0.5:
+            continue
+        path, bounds = glyph_outline(glyph.data, glyph.name)
+        if not path or not bounds:
+            continue
+        f = glyph.size / face(glyph.data)[0]["head"].unitsPerEm
+        skew = SYNTHETIC_SKEW if glyph.italic else 0.0
+        pad = max(outline, glyph.size * 0.0225 if glyph.bold else 0.0)
+        x0, y0, x1, y1 = bounds
+        xs = [glyph.x + f * (x + skew * y) for x in (x0, x1) for y in (y0, y1)]
+        left = max(left, pad - min(xs))
+        right = max(right, max(xs) + pad - width)
+        top = max(top, pad - (glyph.y - f * y1))
+        bottom = max(bottom, glyph.y - f * y0 + pad - height)
+    return left, top, right, bottom
+
+
 def render(project, layer, size=None, matrix=None):
-    """The rich text layer as an RGBA image of its box (or natural size when auto-sized). ``size`` and
-    ``matrix`` draw it into an image of ``size``, mapped by the affine ``matrix`` (see ``text.render_text``)."""
+    """The rich text layer as an RGBA image of its box (or natural size when auto-sized). Ink that
+    reaches past the box (swashes, slants) is drawn on a padded canvas centred on the box. ``size`` and
+    ``matrix`` draw it into an image of ``size``, mapped by the affine ``matrix`` from the pixels of the
+    image this returns without them (see ``text.render_text``)."""
     import resvg_py
     from PIL import Image
 
     result = fitted(project, layer)
-    width, height = (layer["width"], layer["height"]) if layer.get("text_layout") else (result.width, result.height)
-    width, height = math.ceil(width), math.ceil(height)
+    natural = layout_box(layer, result)
+    width, height = math.ceil(natural[0]), math.ceil(natural[1])
+    reach = ink_overhang(project, layer, result, natural)
     if layer.get("_kinetic"):
         from .kinetic import padding, rich_motion, svg_canvas
 
         moves, boxes = rich_motion(project, layer, result)
         margin = padding(boxes, [m[0] for m in moves], width, height, layer.get("stroke_width", 0) + 0.05 * layer.get("size", 48))
+        margin = tuple(max(m, math.ceil(max(a, b)) + 1 if max(a, b) > 0 else 0)
+                       for m, (a, b) in zip(margin, ((reach[0], reach[2]), (reach[1], reach[3]))))
         size, attrs = svg_canvas(width, height, *margin)
         project.limits.size(*size)
         root = ET.Element(SVG + "svg", attrs)
         append_svg(root, result, layer, project, motion=moves)
+        image = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode")))).convert("RGBA")
+        image.info["vixl_vector_overflow"] = True
+        return image
+    if max(reach) > 0:
+        # Drawn at the layer's box size, as the pipeline would resize the unpadded image (auto-sized text
+        # whose stored box differs from its natural size, as in scaled previews), with room for the ink,
+        # on a canvas centred on the box the way the layer pipeline places an overflowing image.
+        target = (layer["width"], layer["height"])
+        sx, sy = target[0] / max(1e-6, natural[0]), target[1] / max(1e-6, natural[1])
+        mx, my = [math.ceil(max(a, b) * s) + 1 if max(a, b) > 0 else 0
+                  for (a, b), s in (((reach[0], reach[2]), sx), ((reach[1], reach[3]), sy))]
+        boxed = [max(1, math.ceil(v)) for v in target]
+        padded = (boxed[0] + 2 * mx, boxed[1] + 2 * my)
+        inner = (f"translate({mx + (boxed[0] - target[0]) / 2:.9g} {my + (boxed[1] - target[1]) / 2:.9g}) "
+                 f"scale({sx:.9g} {sy:.9g})")
+        width, height = size or padded
+        project.limits.size(width, height)
+        root = ET.Element(SVG + "svg", {"width": str(width), "height": str(height), "viewBox": f"0 0 {width} {height}"})
+        parent = root
+        if matrix is not None:
+            from .vector_raster import placed
+
+            parent = placed(root, matrix, ns=SVG)
+        append_svg(ET.SubElement(parent, SVG + "g", {"transform": inner}), result, layer, project)
         image = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode")))).convert("RGBA")
         image.info["vixl_vector_overflow"] = True
         return image
@@ -978,10 +1094,14 @@ def execute(project, op):
         return
     if not layer.get("rich") or plain(layer["rich"]) != layer["text"]:
         previous = layer.get("rich") or {}
-        layer["rich"] = {"spans": [{"text": layer["text"]}], "paragraphs": [{} for _ in range(paragraph_count(layer["text"]))]}
+        # The plain engine's box (its top at the ink) and line pitch, so styling the text does not move it.
+        layer["rich"] = {"spans": [{"text": layer["text"]}], "paragraphs": [{} for _ in range(paragraph_count(layer["text"]))],
+                         "ink_box": True}
         if previous.get("line_basis") == "size" or (not previous and "line_height" in layer):
             # Text whose leading is a multiple of its size keeps the same line pitch as rich text.
             size_leading(project, layer, layer["rich"], previous.get("line_height", layer.get("line_height")))
+        else:
+            layer["rich"]["line_height"] = 1.0
     rich = layer["rich"]
     style = {k: op[k] for k in STYLE_KEYS if k in op}
     validate_style(style, project.state)

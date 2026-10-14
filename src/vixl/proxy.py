@@ -36,7 +36,11 @@ def _scale_layer(layer, s):
         if key in layer:
             layer[key] = _size(layer[key], s)
     if "size" in layer and layer.get("type") == "text":
-        layer["size"] = _size(layer["size"], s)
+        # Unrounded: a size rounded to whole preview pixels sets every line up to a few percent wider or
+        # narrower than the full-size render (outline text takes fractional sizes; raster fonts round).
+        layer["size"] = max(1.0, layer["size"] * s)
+    if isinstance(layer.get("tracking"), (int, float)):
+        layer["tracking"] = layer["tracking"] * s
     if layer.get("type") == "field":
         from .forms import scale_field
 

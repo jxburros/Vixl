@@ -87,7 +87,8 @@ def test_exports_carry_case_and_tracking(tmp_path):
     p.export(tmp_path / "t.pdf")
     p.export(tmp_path / "t.svg")
     slide = zipfile.ZipFile(tmp_path / "t.pptx").read("ppt/slides/slide1.xml").decode()
-    assert "Hello World" in re.findall(r"<a:t>([^<]*)</a:t>", slide)
+    # The last letter is a run of its own: it is not tracked.
+    assert "Hello World" == "".join(re.findall(r"<a:t>([^<]*)</a:t>", slide))
     assert re.search(r'spc="\d+"', slide)
     import pypdfium2
 
