@@ -997,6 +997,7 @@ class Converter:
                 values *= 2
             if any(values) and all(v >= 0 for v in values):
                 operation["dash"] = values
+                operation["dash_fit"] = False  # SVG dash arrays are exact lengths from the path's start
                 offset = length(props.get("stroke-dashoffset", "0")) * scale
                 if offset:
                     operation["dash_offset"] = offset

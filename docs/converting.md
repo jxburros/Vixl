@@ -86,6 +86,7 @@ applies to; rules without one look at the fields themselves.
 | `styled-stroke-align` | 0.27 | A dashed, multi-stroke or profiled stroke, or a catalog shape's stroke (heart, arrow, speech bubble …), without `stroke_align` gets `"center"`, its old default. | Warning (with the flush renderer): the stroke now sits inside. |
 | `polygon-joins` | 0.27 | With the flush renderer: plain polygons, stars and shortcut shapes keep their box; their stroke's outer corners were round and are now mitred, so they get `line_join: "round"`. | Warning: the corners are sharp. |
 | `thick-stroke` | 0.27 | Warning only, with the flush renderer: a plain stroke as wide as its shape drew nothing and now fills the shape with the stroke colour. | Same. |
+| `dash-fit` | | Dashed shapes (or extra `strokes` with a dash) get `dash_fit: false`: the pattern was drawn at its exact lengths from the start of the outline. | Warning: the pattern is fitted to the corners. |
 | `pdf-bleed` | 0.23 | Warning only: the canvas holds a bleed rounded up to whole pixels, so a PDF export is a pixel larger than trim plus bleed. | Same. |
 | `history` | | Every undo revision is converted the same way (`--history drop` keeps only the current state); the report gives the count under `history`. A warning says so when the history could not be read. | Same. |
 | `transaction` | | A document saved inside an open transaction is rolled back to its last committed state (warning). | Same. |

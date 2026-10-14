@@ -536,6 +536,12 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   their centre line (`center`); `stroke_align` (`inside`, `center`, `outside`) overrides either, and PNG, SVG, PDF and
   PowerPoint put the stroke in the same place. A `rectangle` with a `radius` becomes a `rounded-rectangle` (reported
   under `normalized`).
+- **Dashes are fitted to corners** (`dash_fit`, default true): the pattern stretches slightly so every corner,
+  notch and open end lands on a dash. `dash_fit: false` keeps the exact lengths.
+- **A glow or shadow without a `color` takes it from what lies under the layer**: a shadow is the backdrop in shade
+  (small and light; never grey dirt), a glow a lighter tint of the layer's colour that only adds light, capped at
+  opacity 0.6. Give `color` for an exact colour. A `layer-style` is drawn exactly as given (unset: black shadow,
+  white glow), so prefer the looks for a clean default.
 - **Absolute `move` and `align`/`distribute` clear constraints** on that layer. Use `constrain`
   when layout should survive canvas resizes, artboards or text changes; use `align` for a one-off.
 - **One constraint per axis** (e.g. `left` *or* `center-x` *or* `right`). Anchors: `canvas`, a layer

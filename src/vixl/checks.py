@@ -11,6 +11,7 @@ import re
 import numpy as np
 
 from .errors import require
+from .geometry import compact_number
 from .model import finite
 from .timeline import animated as timeline_animated
 
@@ -284,6 +285,34 @@ def geometry_bounds(layer):
         return (float(x0), float(y0), float(x1), float(y1))
     except Exception:  # noqa: BLE001 - geometry that cannot be read falls back to the box.
         return box
+
+
+def clipped_geometry(project, layer, bounds, tolerance=2.0):
+    """The box edges (``top``, ``right``, ``bottom``, ``left``) past which a ``path`` or ``arc`` shape's own
+    geometry runs while its rendered image does not: the renderer cut it off (or squeezed it) at its box.
+    Shapes draw past their box by design, so this finds a drawing that comes out flattened, else []."""
+    if layer["type"] != "shape" or layer.get("repeat") or layer["visible"] is False:
+        return []
+    from .geometry import PATH_SHAPES
+
+    if layer.get("shape") not in PATH_SHAPES or layer.get("distort") or layer.get("_distort_groups"):
+        return []
+    from .vector_strokes import geometry_reach
+
+    reach = geometry_reach(layer)
+    if reach is None:
+        return []
+    x0, y0, x1, y1 = reach
+    w, h = layer["width"], layer["height"]
+    past = {"top": -y0, "right": x1 - w, "bottom": y1 - h, "left": -x0}
+    if max(past.values()) <= tolerance:
+        return []
+    from .render import layer_ink
+
+    image = layer_ink(project, layer, bounds)
+    room_x, room_y = (image.width - math.ceil(w)) / 2, (image.height - math.ceil(h)) / 2
+    return [side for side in ("top", "right", "bottom", "left") if past[side] > tolerance
+            and (room_y if side in ("top", "bottom") else room_x) < past[side] - tolerance]
 
 
 def canvas_projection(resolved, local_bounds):
@@ -566,6 +595,15 @@ def check_design(
                   + (f" ({len(particles)} particles at this frame)" if particles else "")
                   + "; particles that start or end off the canvas are expected", [group], intentional=True,
                   code="particles-off-canvas")
+        for item in layers:
+            sides = clipped_geometry(candidate, resolved[item["id"]], local_bounds[item["id"]])
+            if sides:
+                layer = resolved[item["id"]]
+                issue("bounds", "error",
+                      f"{item['name']!r} is a path whose geometry runs past the {', '.join(sides)} edge"
+                      f"{'s' if len(sides) > 1 else ''} of its {compact_number(layer['width'], 2)}×{compact_number(layer['height'], 2)} box, "
+                      "but it is drawn cut off at the box, so the shape comes out flattened. Scale it into the box with "
+                      "path-fit, or give it a box that holds the whole path", [item], code="geometry-clipped", sides=sides)
         for item in content:
             needed = boxed_text_overflow(candidate, resolved[item["id"]])
             if needed:
