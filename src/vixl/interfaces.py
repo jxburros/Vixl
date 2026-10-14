@@ -180,7 +180,7 @@ class Session:
             return summary
 
     def create(self, path, width=None, height=None, background=None, *, size=None, purpose=None, dpi=None,
-               orientation=None, bleed=False, seed=None, variety=None, workspace_fonts=True):
+               orientation=None, bleed=False, seed=None, variety=None, workspace_fonts=True, house_style=None):
         """Create and save a document through ``creation.create``; the summary adds ``creation`` (size,
         background and fonts chosen, and why) and ``workspace_fonts`` (the ``brand.json`` fonts embedded)."""
         with self._mutex:
@@ -189,19 +189,23 @@ class Session:
             from .creation import resolve_size
 
             resolve_size(width, height, size, purpose)  # a bad request must not leave directories behind
+            from .variety import house_style_off
+
+            house_style_off(house_style, self.workspace)
             self.make_parent(resolved)
             with file_lock(str(resolved)):
                 require(not resolved.exists(), "Destination already exists; open it instead", field="path")
                 report = {}
                 project = self.new_project(width, height, background, size=size, purpose=purpose, dpi=dpi,
                                            orientation=orientation, bleed=bleed, seed=seed, variety=variety,
-                                           workspace_fonts=workspace_fonts, report=report)
+                                           workspace_fonts=workspace_fonts, report=report, house_style=house_style)
                 project.save(resolved)
                 self._remember(resolved, project, self.stamp(resolved))
             return {**self.summary(project), **report}
 
     def new_project(self, width=None, height=None, background=None, *, size=None, purpose=None, dpi=None,
-                    orientation=None, bleed=False, seed=None, variety=None, workspace_fonts=False, report=None):
+                    orientation=None, bleed=False, seed=None, variety=None, workspace_fonts=False, report=None,
+                    house_style=None):
         """An unsaved document as ``create`` makes it (``creation.create``): from a named size, width/height,
         a purpose or nothing (1080×1080), with the workspace's design defaults. ``report`` receives
         ``creation`` and ``workspace_fonts``."""
@@ -209,7 +213,7 @@ class Session:
 
         return create(width, height, background, size=size, purpose=purpose, dpi=dpi, orientation=orientation,
                       bleed=bleed, seed=seed, variety=variety, workspace=self.workspace, remember=True,
-                      workspace_fonts=workspace_fonts, limits=self.limits, report=report)
+                      workspace_fonts=workspace_fonts, limits=self.limits, report=report, house_style=house_style)
 
     def make_parent(self, path):
         """Create the missing directories above ``path`` (always inside the workspace: ``resolve``

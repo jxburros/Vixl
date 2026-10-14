@@ -461,6 +461,22 @@
       "treatments": {"medium": {"flat": 3, "gradient": 2, "split": 1}}
     }
   },
+  "off": {
+    "summary": "house_style: off. New documents roll nothing: a white canvas (transparent for marks), the workspace default fonts else the bundled font, and a neutral direction that layout-apply follows (mono palette in light mode, perfect-fourth scale, balanced density, no accent, motif, look, style or background treatment). The craft rules still apply.",
+    "background": "#ffffff",
+    "direction": {
+      "palette": "mono",
+      "mode": "light",
+      "type_scale": "perfect-fourth",
+      "density": "balanced",
+      "accent": "none",
+      "motif": "none",
+      "look": "none",
+      "look_amount": 0,
+      "background_treatment": "flat",
+      "headline": "measured"
+    }
+  },
   "safe_palettes": ["chalk-indigo", "linen-teal", "clay-navy", "cloud-blue", "oat-olive", "rose-charcoal", "mist-pine", "ivory-cobalt",
                    "sand-terracotta", "pearl-plum", "frost-slate", "warm-graphite", "cream-marigold", "sea-glass", "quiet-lilac",
                    "paper-rust", "porcelain-ink", "sky-umber", "stone-berry", "almond-forest"]

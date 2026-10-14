@@ -665,6 +665,8 @@ one module, `src/vixl/house_style.py`. A workspace `brand.json` and explicit fie
   `default_profile` is the general profile, with the 1080×1080 size for a document given nothing.
   Creation and rolls read this one vocabulary.
 - **`safe_palettes`** lists the quiet palettes that `layout-apply` without a palette, templates and the safe tier draw from.
+- **`off`** is what a new document gets with the house style switched off: the canvas `background` and the
+  neutral `direction` layout-apply follows (see [Turning the house style off](#turning-the-house-style-off)).
 
 Read it, never copy it. The API:
 
@@ -679,6 +681,7 @@ Read it, never copy it. The API:
 | `house_style.tier_of(kind, name, purpose=None)`, `entries(kind)`, `names(kind, tier)` | tiers and metadata of the pools |
 | `house_style.level(variety)` | a variety level's tier weights, look scale, motifs and treatments |
 | `house_style.safe_palettes()` | the quiet palettes the safe tier and palette-less layouts draw from |
+| `house_style.neutral()` | what `house_style: "off"` gives: `summary`, `background` and the neutral `direction` |
 
 People and agents read it with `vixl house [show PURPOSE]` or
 `vixl_reference('house-style', name="all"|PURPOSE)`.
@@ -689,6 +692,38 @@ Vixl is recognisable by its craft only: **sharp corners, thin part lines, offset
 labels and one line-height rule**. Fonts, palettes and layouts vary by purpose and seed. In rolls this
 means corners are sharp unless the rolled style has its own corner (material, glassmorphism, kawaii,
 y2k, memphis), and the house shadow is the solid offset (`hard-shadow`) in the ink colour.
+
+## Turning the house style off
+
+The house style is on by default. To create documents with no rolled direction, pass `house_style: "off"`:
+
+| Surface | How |
+|---|---|
+| CLI | `vixl new SIZE --house-style off`; `"house_style": "off"` in a `vixl compose` request |
+| Python | `Project.new(..., house_style="off")`, `Project.sized(size, house_style="off")`, `Project(house_style="off")` |
+| MCP | `vixl_document` with `action: "create"` and `house_style: "off"`; `vixl_apply` with `create: {…, house_style: "off"}` |
+| REST | `POST /compose` with `"house_style": "off"` |
+| Workspace | `{"house_style": "off"}` in `.vixl/variety.json`, for every surface |
+
+An explicit `house_style: "on"` overrides the workspace setting. With the house style off, a new document:
+
+- rolls no palette, pairing, layout, motif, look, style, background treatment or other decoration, and adds
+  nothing to the roll history;
+- gets a white canvas, or a transparent one for marks (logos, icons, favicons); an explicit `background` or a
+  workspace `brand.json` background still wins;
+- embeds the workspace default fonts when `brand.json` sets them, else keeps the bundled font; no pairing is
+  downloaded;
+- stores `design_defaults` with `house_style: "off"`, its seed and purpose, and a
+  neutral direction: the `mono` palette in light mode, the perfect-fourth type scale, balanced density, no accent,
+  motif, look or style, a flat background and the craft corner (sharp). A sparse `layout-apply` follows it, so it
+  draws the copy in black on white with no decoration; the seed only picks among the layout's alternatives
+  (such as alignment);
+- keeps the craft: the safe area, the spacing unit, the line-height table and the minimum text sizes still apply.
+
+Creation results report `creation.house_style: "off"` and `background_from: "neutral"`. Explicit fields still
+win one by one (`layout-apply` with `palette`, `mode`, `accent` or `direction`), a `layout-apply` with its own
+`seed` takes a fresh choice, and a roll (`vixl roll`, the roll step, `vixl_reference('roll')`) still rolls the house style on request,
+also when the workspace turns it off.
 
 ## Changing defaults (H2)
 

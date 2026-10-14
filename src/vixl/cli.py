@@ -607,6 +607,10 @@ def _dispatch(argv):
         p.add_argument("--dpi", type=float)
         p.add_argument("--seed", type=int, help="Reproduce the design defaults of an earlier roll")
         p.add_argument("--variety", choices=["low", "medium", "high", "fixed"])
+        p.add_argument("--house-style", choices=["on", "off"],
+                       help="on (default) rolls a house-style direction; off rolls nothing: a white canvas "
+                       "(transparent for marks), the workspace fonts else the bundled font, neutral layout defaults. "
+                       "Default: house_style in .vixl/variety.json, else on")
         orientation = p.add_mutually_exclusive_group()
         orientation.add_argument("--landscape", dest="orientation", action="store_const", const="landscape")
         orientation.add_argument("--portrait", dest="orientation", action="store_const", const="portrait")
@@ -628,7 +632,7 @@ def _dispatch(argv):
         project = create(width, height, a.background, size=a.size if named_size else None, purpose=a.purpose,
                          dpi=a.dpi, orientation=a.orientation, bleed=a.bleed or False, seed=a.seed, variety=a.variety,
                          workspace=Path(a.out).resolve().parent, remember=True, workspace_fonts=a.workspace_fonts,
-                         limits=limits, report=report)
+                         limits=limits, report=report, house_style=a.house_style)
         project.save(a.out, overwrite=a.overwrite)
         remember(a.out)
         return (

@@ -11,6 +11,12 @@ A new document gets, in this order:
 5. the rolled font pairing, from the font cache first and then the network, when ``workspace_fonts`` and no
    brand fonts apply. Without either, the document keeps the proofing fallback and the report says why.
 
+With the house style off (``house_style="off"``, or ``"house_style": "off"`` in ``.vixl/variety.json``), steps 3-5
+roll nothing: ``design_defaults`` records ``house_style: "off"`` and a neutral direction (``house_style.neutral``),
+the background is white (transparent for marks; a brand background still wins) and no pairing is installed, so
+text uses the workspace default fonts, else the bundled font. The craft rules (safe area, spacing unit, minimum
+sizes) apply either way.
+
 Everything is folded into the document's first revision, so the first edit stays the first undoable step.
 ``VIXL_AUTO_FONTS`` set to ``cache`` never downloads during creation, and ``off`` skips step 5.
 """
@@ -43,7 +49,7 @@ def resolve_size(width=None, height=None, size=None, purpose=None):
 
 def create(width=None, height=None, background=None, *, size=None, purpose=None, dpi=None, orientation=None,
            bleed=False, seed=None, variety=None, workspace=None, remember=True, workspace_fonts=True, limits=None,
-           report=None):
+           report=None, house_style=None):
     """A new unsaved document with design defaults (see the module docstring). ``remember`` records an
     unseeded roll in the workspace history (``.vixl/rolls.json``) so the next roll differs; ``report``
     receives what creation chose."""
@@ -60,17 +66,20 @@ def create(width=None, height=None, background=None, *, size=None, purpose=None,
             require(isinstance(dpi, (int, float)) and 36 <= dpi <= 2400, "dpi must be 36–2400", field="dpi")
             project.state["canvas"]["dpi"] = dpi
     design(project, size=size, size_from=source, purpose=purpose, background=background, seed=seed, variety=variety,
-           workspace=workspace, remember=remember, workspace_fonts=workspace_fonts, report=report)
+           workspace=workspace, remember=remember, workspace_fonts=workspace_fonts, report=report,
+           house_style=house_style)
     return project
 
 
 def design(project, *, size=None, size_from="argument", purpose=None, background=None, seed=None, variety=None,
-           workspace=None, remember=True, workspace_fonts=True, report=None):
-    """Give a freshly constructed document its design defaults, background and fonts in its first revision."""
+           workspace=None, remember=True, workspace_fonts=True, report=None, house_style=None):
+    """Give a freshly constructed document its design defaults, background and fonts in its first revision.
+    ``house_style`` is ``"on"`` or ``"off"``; None follows the workspace setting (on by default)."""
     from .sizes import is_mark, purpose_name
-    from .variety import document_defaults, seed_for
+    from .variety import document_defaults, house_style_off, neutral_defaults, seed_for
 
     purpose = purpose_name(purpose)
+    off = house_style_off(house_style, workspace)
     report = {} if report is None else report
     label = project.nodes[project.head].get("label", "Create document") if project.head in project.nodes else "Create document"
     if background is not None:
@@ -83,15 +92,20 @@ def design(project, *, size=None, size_from="argument", purpose=None, background
         fonts = apply_workspace_fonts(project, workspace)
         if fonts:
             report["workspace_fonts"] = fonts
-    if not remember:
-        # A pre-resolved seed keeps an unseeded roll out of the workspace history (and reads none).
-        seed, variety = seed_for(project, seed, variety, workspace)
-    defaults = document_defaults(project, seed=seed, variety=variety, workspace=workspace, purpose=purpose)
+    if off:
+        defaults = neutral_defaults(project, seed=seed, variety=variety, workspace=workspace, purpose=purpose)
+    else:
+        if not remember:
+            # A pre-resolved seed keeps an unseeded roll out of the workspace history (and reads none).
+            seed, variety = seed_for(project, seed, variety, workspace)
+        defaults = document_defaults(project, seed=seed, variety=variety, workspace=workspace, purpose=purpose)
     canvas = project.state["canvas"]
     if background is not None:
         canvas["background"], background_from = background, "argument"
     elif is_mark(purpose, canvas.get("size")):
         canvas["background"], background_from = "transparent", "mark"
+    elif off:
+        canvas["background"], background_from = neutral_background(project), "neutral"
     else:
         canvas["background"], background_from = palette_background(project, defaults), "palette"
     from .layouts import assign_roles, ROLES
@@ -107,8 +121,12 @@ def design(project, *, size=None, size_from="argument", purpose=None, background
             swatches.setdefault(role, roles[role])
     created = {"size": canvas.get("size") or f"{canvas['width']}x{canvas['height']}", "size_from": size_from,
                **({"purpose": purpose} if purpose else {}), "background": canvas["background"],
-               "background_from": background_from}
-    if workspace_fonts:
+               "background_from": background_from, **({"house_style": "off"} if off else {})}
+    if workspace_fonts and off:
+        reason = ("the workspace fonts apply" if (project.state.get("typography") or {}).get("body")
+                  else "the house style is off: text uses the bundled font until you choose a pairing")
+        created["fonts"] = {"installed": False, "reason": reason}
+    elif workspace_fonts:
         created["fonts"] = install_rolled_pairing(project, defaults)
     report["creation"] = created
     _fold(project, label)
@@ -129,6 +147,14 @@ def palette_background(project, defaults):
         return "transparent"
     roles = assign_roles({"palette": palette, "mode": direction.get("mode", "light")}, random.Random(defaults["seed"]))
     return roles["background"]
+
+
+def neutral_background(project):
+    """The canvas with the house style off: a workspace brand's background, else white."""
+    from .brand import for_project
+    from .house_style import neutral
+
+    return (for_project(project).get("palette") or {}).get("background") or neutral()["background"]
 
 
 def install_rolled_pairing(project, defaults):
