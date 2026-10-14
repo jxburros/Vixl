@@ -1,6 +1,7 @@
 """The published document schema (src/vixl/data/vixl-document.schema.json) matches the model."""
 
 import ast
+import io
 import json
 from pathlib import Path
 import re
@@ -158,6 +159,23 @@ def test_a_saved_paged_document_validates(tmp_path):
         assert set(archive.namelist()) == {"project.json", *manifest["asset_hashes"]}
     assert manifest["state"]["pages"]
     assert validate_manifest(manifest) == []
+
+
+def test_corner_radii_and_radial_groups_validate_and_export(tmp_path):
+    p = Project(240, 160, "white")
+    p.apply([{"type": "shape", "shape": "rounded-rectangle", "name": "tab", "x": 8, "y": 8, "width": 100,
+              "height": 60, "radius": [24, 24, 4, 4], "fill": "#bfdcc8", "stroke": "#1d4d33", "stroke_width": 4},
+             {"type": "shape", "shape": "rounded-rectangle", "name": "soft", "x": 8, "y": 84, "width": 100,
+              "height": 60, "radius": "25%", "fill": "#f4c27a"},
+             {"type": "shape", "shape": "ellipse", "name": "petal", "x": 170, "y": 20, "width": 12, "height": 40},
+             {"type": "radial-repeat", "target": "petal", "count": 8, "cx": 176, "cy": 80, "name": "rosette"}])
+    with zipfile.ZipFile(p.save(tmp_path / "doc.vixl")) as archive:
+        manifest = json.loads(archive.read("project.json"))
+    assert manifest["state"]["layers"][-1]["radial"]["count"] == 8
+    assert validate_manifest(manifest) == []
+    with zipfile.ZipFile(io.BytesIO(p.export(format="PPTX"))) as deck:
+        slide = deck.read("ppt/slides/slide1.xml").decode()
+    assert slide.count("<a:custGeom>") >= 2  # both radii are drawn as outlines, not a uniform roundRect
 
 
 def test_cli_prints_the_document_schema(capsys):

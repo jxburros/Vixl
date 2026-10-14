@@ -264,12 +264,14 @@ class Slide:
     def geometry(self, layer, inset=0.0):
         """Preset or custom geometry for a shape whose frame is ``inset`` from its box on every side."""
         from .geometry import parse_path, shape_path
+        from .shape_catalog import active as catalog_active
 
         shape = layer["shape"]
         w, h = layer["width"], layer["height"]
         if shape == "rectangle":
             return '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
-        if shape in ("rounded-rectangle", "capsule"):
+        if shape in ("rounded-rectangle", "capsule") and not catalog_active(layer):
+            # A percentage or per-corner radius is catalog geometry: the custom outline below draws it.
             radius = min(layer.get("radius", min(w, h) / (2 if shape == "capsule" else 5)), w / 2, h / 2) - inset
             adj = max(0, min(50000, round(radius / max(1e-9, min(w, h) - 2 * inset) * 100000)))
             return f'<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val {adj}"/></a:avLst></a:prstGeom>'

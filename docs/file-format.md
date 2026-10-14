@@ -113,12 +113,12 @@ The rest depend on the type. The main ones:
 
 | Type | Fields |
 | --- | --- |
-| `shape` | `shape` (rectangle, rounded-rectangle, capsule, ellipse, line, polygon, star, path or a catalog shape), `fill`, `stroke`, `stroke_width`, `radius`, `sides`, `inner_radius`; paths store SVG path data in `path` within a `path_view` box `[w, h]` that is stretched to the layer. Stroke details: `line_cap`, `line_join`, `dash`, markers, trims and `stroke_align` (`inside`, `center` or `outside`; unset it is `inside` for closed shapes, flush with the outline, and `center` for paths, arcs, lines and open shapes). |
+| `shape` | `shape` (rectangle, rounded-rectangle, capsule, ellipse, line, polygon, star, path or a catalog shape), `fill`, `stroke`, `stroke_width`, `radius` (pixels, a percentage string such as `"25%"` of the shorter side, or four corner radii `[top-left, top-right, bottom-right, bottom-left]`), `sides`, `inner_radius`; paths store SVG path data in `path` within a `path_view` box `[w, h]` that is stretched to the layer. Stroke details: `line_cap`, `line_join`, `dash`, markers, trims and `stroke_align` (`inside`, `center` or `outside`; unset it is `inside` for closed shapes, flush with the outline, and `center` for paths, arcs, lines and open shapes). |
 | `text` | `text`, `font` (a `state.fonts` name, a `fonts/` member or the bundled `DejaVuSans.ttf`; the typography role it follows is `font_role`), `size` in pixels, `color`, `align`, `line_height`, `spacing`, `tracking`, `auto_size` (the box follows the text) or `text_layout` (a fixed box it wraps in), and `rich` for styled spans. Text stays live: it is laid out with the embedded font each time the document is drawn. |
 | `solid` | `fill`. |
 | `gradient` | `start` and `end` or `stops` (`[{offset, color}]`), `direction` (horizontal, vertical, radial, angled), `angle`, `center`, `falloff`. |
 | `raster`, `frame` | `asset`: an `assets/` member drawn into the box. |
-| `group` | `content_width`, `content_height`: the coordinate space of its children, which name it in `parent`. The group's box scales that space, so resizing a group scales its contents. Groups do not clip. Charts, tables, objects and characters are groups with a record (`chart`, `table`, `object`, `character`). |
+| `group` | `content_width`, `content_height`: the coordinate space of its children, which name it in `parent`. The group's box scales that space, so resizing a group scales its contents. Groups do not clip. Charts, tables, objects and characters are groups with a record (`chart`, `table`, `object`, `character`); a group made by `radial-repeat` keeps `radial` (`count`, `center`, `sweep`, `start_angle`, `mirror`). |
 | `pathfinder` | `mode` (union, subtract, intersect …) and the `operands` it combines. |
 | `symbol` | `symbol`: the name of a master in `state.symbols`. |
 | `pixel` | `pixels` (rows of palette keys) and `palette`. |
