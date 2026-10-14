@@ -227,20 +227,23 @@ def test_active_document_is_per_client_and_results_name_the_document(tmp_path):
                 edit = await a.call("vixl_apply", operations=[{"type": "solid", "name": "bg"}])
                 assert edit["document"] == "a.vixl"
                 assert not (await b.call("vixl_document"))["layers"]
-                # Opening another document moves only this client's active document.
+                # Opening another document moves only this client's active document, but a connection that has
+                # touched two open documents cannot tell whose default it is, so document= becomes required.
                 await b.call("vixl_document", action="open", path="a.vixl")
-                assert (await b.call("vixl_document"))["document"] == "a.vixl"
+                refused = await b.call("vixl_document")
+                assert refused[0] and "ambiguous_document" in refused[1]
+                assert (await b.call("vixl_document", document="a.vixl"))["document"] == "a.vixl"
                 assert (await a.call("vixl_document"))["document"] == "a.vixl"
                 await a.call("vixl_document", action="open", path="b.vixl")
-                assert (await b.call("vixl_document"))["document"] == "a.vixl"
-                # A client that never opened anything has no active document.
+                assert (await a.call("vixl_document"))[0]
+                # A client that never opened anything has no default once several documents are open.
                 async with create_connected_server_and_client_session(server._mcp_server) as three:
                     failed = await Client(three).call("vixl_document")
-                    assert failed[0] and "no_project" in failed[1]
+                    assert failed[0] and "ambiguous_document" in failed[1]
                     # An explicit document= still works and is named.
                     named = await Client(three).call("vixl_document", document="b.vixl")
                     assert named["document"] == "b.vixl"
-                preview = await one.call_tool("vixl_render", {"max_width": 64, "max_height": 64})
+                preview = await one.call_tool("vixl_render", {"max_width": 64, "max_height": 64, "document": "b.vixl"})
                 assert preview.content[0].type == "image"
                 assert json.loads(preview.content[-1].text) == {"document": "b.vixl"}
 
@@ -286,6 +289,68 @@ def test_session_scopes_active_document_by_client_context(tmp_path):
         finally:
             CALL.reset(token)
     assert session.relative(session.path) == "shared.vixl"  # Outside MCP nothing changed.
+
+
+def test_agents_sharing_one_connection_must_name_the_document(tmp_path):
+    # Subagents of one host share its MCP connection, so the server sees them as one client.
+    server = mcp_server(workspace=tmp_path)
+    session = server.vixl_runtime.session
+
+    async def scenario(client):
+        await client.call("vixl_document", action="create", path="poster.vixl", width=100, height=100)
+        alone = await client.call("vixl_apply", operations=[{"type": "solid", "name": "bg"}])
+        assert alone["success"] and alone["document"] == "poster.vixl"  # One open document: no document= needed.
+        await client.call("vixl_document", action="create", path="infographic.vixl", width=200, height=100)
+        refused = await client.call("vixl_apply", operations=[{"type": "solid", "name": "stray"}])
+        assert refused[0]
+        error = json.loads(refused[1][refused[1].index("{"):])
+        assert error["error"] == "ambiguous_document" and error["field"] == "document"
+        assert set(error["documents"]) == {"poster.vixl", "infographic.vixl"}
+        assert "document='poster.vixl'" in error["suggestions"] and "document=" in error["message"]
+        for tool, args in (("vixl_document", {}), ("vixl_render", {}), ("vixl_check", {}),
+                           ("vixl_document", {"action": "close"})):
+            assert (await client.call(tool, **args))[0], tool
+        named = await client.call("vixl_apply", document="poster.vixl", operations=[{"type": "solid", "name": "mine"}])
+        assert named["success"] and named["document"] == "poster.vixl"
+        # A failed call drops its document from the server's cache; that must not make the other one the default.
+        broken = await client.call("vixl_apply", document="poster.vixl", operations=[{"type": "move", "target": "nope"}])
+        assert broken[0]
+        assert "ambiguous_document" in (await client.call("vixl_apply", operations=[{"type": "solid"}]))[1]
+        # Closing one leaves a single open document, and the default works again.
+        await client.call("vixl_document", action="close", document="infographic.vixl")
+        assert (await client.call("vixl_document"))["document"] == "poster.vixl"
+
+    run(server, scenario)
+    assert [layer["name"] for layer in session.inspect(document="poster.vixl")["layers"]] == ["bg", "mine"]
+    assert Project.load(tmp_path / "infographic.vixl").state["layers"] == []
+
+
+def test_client_without_a_choice_does_not_inherit_the_server_default(tmp_path):
+    class Who:
+        pass
+
+    session = Session(workspace=tmp_path)
+    session.create("started.vixl", 10, 10)  # The document a server was started with.
+    mine, theirs = Who(), Who()
+    token = CALL.set(CallState(client=theirs))
+    try:
+        session.create("theirs.vixl", 10, 10)
+    finally:
+        CALL.reset(token)
+    token = CALL.set(CallState(client=mine))
+    try:
+        with pytest.raises(VixlError) as caught:
+            session.active()
+        assert caught.value.code == "ambiguous_document"
+        session.open("started.vixl")
+        assert session.relative(session.active()) == "started.vixl"  # Chosen by this client, and only that one.
+    finally:
+        CALL.reset(token)
+    token = CALL.set(CallState(client=theirs))
+    try:
+        assert session.relative(session.active()) == "theirs.vixl"
+    finally:
+        CALL.reset(token)
 
 
 def test_instructions_describe_jobs_and_ids(tmp_path):

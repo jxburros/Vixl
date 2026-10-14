@@ -33,8 +33,11 @@ Windows installer path if `vixl` is not on PATH: `%LOCALAPPDATA%\Programs\Vixl\b
 **Session model:** one *active document* per MCP client session. Nothing works without `document=`
 until you call `vixl_document(action='create')` or `vixl_document(action='open')` (error: "Create or open a document
 first"). Every result names the document it acted on (`"document": "poster.vixl"`). Subagents sharing
-one stdio server share its one client session, so pass `document=` on every call; start the server
-with `--require-document` (or `VIXL_REQUIRE_DOCUMENT=1`) to make that mandatory (`document_required`).
+one stdio server share its one client session, so pass `document=` on every call. Once a connection has
+created, opened or addressed more than one document it has not closed (or has chosen none while several
+are open), a call without `document=` is refused (`ambiguous_document`, listing them under `documents`);
+with one open it keeps working. Start the server with `--require-document` (or `VIXL_REQUIRE_DOCUMENT=1`)
+to make `document=` mandatory (`document_required`).
 All paths are server-local and relative to (or absolute inside) the workspace; escaping paths and
 symlinks out are rejected; `vixl_document(action='create')` (also with a template) and exports create missing
 directories inside the workspace. Successful edits are saved immediately,
