@@ -16,6 +16,10 @@ Bold/italic use installed variants (`font install Inter --weight 700`) or are sy
 on a rich layer keeps bullets, spacing and span styles where the structure still applies and lists what it
 dropped under `warnings`; `rich-text --target` rebuilds formatted content. Full syntax: `docs/rich-text.md`.
 
+Tracking (letter spacing, px; on the layer with `text-set`, or on spans with `text-style`) goes between letters, not
+after a line's last one, so centred tracked text is centred on its ink, and adding it does not move plain text.
+Swashes and slanted letters that reach past the box are drawn, not clipped; the box stays the layout box.
+
 ## Text flow: one story through linked frames
 
 `text-flow` threads a long text through frames: columns, one frame per page, or a shape's outline. Each frame is an

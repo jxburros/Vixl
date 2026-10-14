@@ -131,6 +131,13 @@ text by its baseline instead of its box:
 
 Rotated or skewed text is not positioned by baseline (the measurements are in the upright frame).
 
+## Overhanging glyphs
+
+Script faces, italics and outlines often draw past the box their advance widths make (the swash of a final
+`t`, the top of a slanted `f`). Vixl keeps that box for layout and draws the overhang outside it, so glyphs are
+not clipped; compare `ink_bounds` with the box in `inspect` to see how far it reaches before placing text near
+the canvas edge. See [rich text](rich-text.md#character-styles).
+
 ## Rolling a direction
 
 When a brief leaves the look open, roll instead of settling for defaults:
@@ -148,7 +155,7 @@ A roll picks a pairing first, then a palette whose mood fits it, a layout suited
 
 ## Letter spacing and edits
 
-Tracking is letter spacing in local pixels after every character; negative values tighten text. Set it on the layer with `text` or `text-set`, for example `{"type":"text-set","target":"headline","tracking":4}`: layer tracking applies to whatever text the layer holds, including text changed later by `text` keyframes, typewriter or captions, and `${variable}` values. `text-style` tracking styles a matched phrase, range or paragraph, and rich-text spans take `tracking` too; a span's own (nonzero) tracking replaces the layer's. `letter_spacing` is accepted as an alias. This is the letter-spacing control, distinct from `spacing` and `line_height` (line spacing). Inspect and preview after tracking changes because the text may wrap differently. Tracked text is laid out by the rich-text engine; a layer whose text had no rich formatting keeps its line pitch.
+Tracking is letter spacing in local pixels between characters (never after the last one on a line); negative values tighten text. Set it on the layer with `text` or `text-set`, for example `{"type":"text-set","target":"headline","tracking":4}`: layer tracking applies to whatever text the layer holds, including text changed later by `text` keyframes, typewriter or captions, and `${variable}` values. `text-style` tracking styles a matched phrase, range or paragraph, and rich-text spans take `tracking` too; a span's own (nonzero) tracking replaces the layer's. `letter_spacing` is accepted as an alias. This is the letter-spacing control, distinct from `spacing` and `line_height` (line spacing). Inspect and preview after tracking changes because the text may wrap differently. Tracked text is laid out by the rich-text engine; a layer whose text had no rich formatting keeps its line pitch and its box (top at the ink), so adding tracking, on the layer or with a first `text-style`, does not move the text. Because no tracking follows a line's last letter, tracked text measures, wraps, centres and right-aligns by its glyphs, and PNG, SVG, PDF, PPTX, scaled previews and linked documents agree.
 
 `text_transform` draws the text in a case without changing the stored text: `uppercase`, `lowercase`, `capitalize` (the first letter of each word) or `none`. Like tracking it is a layer property, so `{"type":"text-set","target":"lyric","text_transform":"uppercase","tracking":4}` gives keyed lyric lines and merge-field values the brand's caps and tracking. `text-transform`, `case`, and values such as `caps`, `upper` and `title` are accepted and reported under `normalized`. Rendering, `inspect`, `check`, `fit-text` and the SVG, PDF and PPTX exports all use the cased, tracked text.
 
