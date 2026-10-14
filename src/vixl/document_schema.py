@@ -80,6 +80,7 @@ LAYER_FIELDS = {
     "stack": (OBJECT, "Auto-layout stack settings of a group: direction, gap, alignment, padding."),
     "hide_if_empty": (BOOLEAN, "Skip the layer (and its stack slot) while its text is empty after variables."),
     "repeat": (OBJECT, "Repeat settings: count and per-copy offsets (dx, dy, dw, dh, rotation, colour ramp)."),
+    "radial": (OBJECT, "group made by radial-repeat: {count, center [x, y], sweep, start_angle, mirror}."),
     "symbol": (STRING, "symbol: name of the symbol master in state.symbols it instances."),
     "linked": (BOOLEAN, "raster: the asset is a link to a file outside the archive (allow_linked)."),
     "asset_variable": (STRING, "Variable naming the image asset to draw (variable data merge)."),
@@ -104,7 +105,9 @@ LAYER_FIELDS = {
               "catalog shape (arrow, speech bubble, heart …)."),
     "path": (STRING, "shape path: SVG path data (M L H V C S Q T A Z) in path_view coordinates."),
     "path_view": (POINT, "shape path: [width, height] of the coordinate box path is written in."),
-    "radius": (NUMBER, "Corner radius in pixels (rounded rectangles; catalog shapes use it as a fraction)."),
+    "radius": ((NUMBER, STRING, ARRAY), "Corner radius: pixels, a percentage string of the shorter side, or four "
+               "corner radii [top-left, top-right, bottom-right, bottom-left] (catalog shapes read a bare number "
+               "as a fraction)."),
     "sides": (INTEGER, "polygon and star: number of sides or points."),
     "inner_radius": (NUMBER, "star: inner radius as a fraction of the outer."),
     "start_angle": (NUMBER, "wedge and arc: start angle in degrees."),
