@@ -4,7 +4,16 @@
 
 ### Fixed and added
 
+- **Tracked text measures the way it draws.** Tracking (layer `tracking` and rich-text span `tracking`) goes between letters and no longer after a line's last letter, so auto-sized boxes, wrapping, `center`/`right` alignment and centring the layer follow the ink instead of sitting half a letter-space off. Tracking now spaces each character (HarfBuzz cluster), so combining marks stay on their letters, and a word broken across lines keeps its tracking. PPTX writes the last letter of each tracked line as a run without `spc`, and fitted text scales its PPTX tracking with the fit.
+- **Previews and linked documents draw tracked text at the export's width.** The preview proxy did not scale layer `tracking`, so downscaled previews and link layers drew tracked lines far too wide (about 1986 px against 1178 px bounds at a 0.198 preview), and it rounded text sizes to whole preview pixels (up to about 2% wide or narrow); it now scales tracking and keeps fractional sizes.
+- **Adding tracking does not move plain text.** Tracked plain text is laid out by the rich-text engine, whose box started at the line rather than at the ink, so adding `tracking` (or a first `text-style`) moved the text down by the difference (about 10–30 px at display sizes). Plain text laid out there now keeps the plain box (rich record `ink_box: true`) and line pitch.
+- **Glyph overhangs are no longer clipped.** Script swashes, italic and synthetic-oblique slants, synthetic bold and outlines that reach past a rich or tracked text layer's box are drawn in PNG, previews, redrawn turned or fractionally placed layers and SVG (PDF and PPTX did not clip). The layer box is still the layout box for alignment and wrapping; lines that overflow a fixed box below its bottom stay cut off.
+
 ### Behaviour changes
+
+- Text with `tracking` lays out narrower by one tracking amount per line: auto-sized boxes shrink, and centred or right-aligned tracked lines move by half or all of it. There is no setting for the old trailing space; to keep a box's previous width, widen it with `text-layout` or move the layer by the difference.
+- Plain text with layer `tracking` draws at the plain text's position (about 10–30 px higher than in 0.27 at display sizes, and with the plain line pitch for multi-line text). A first `text-style` on a plain layer stores `ink_box: true` and `line_height: 1.0` so it keeps the plain box and leading; set `line_height` with `text-style` for other leading.
+- Rich text whose ink reaches past its box (script faces, slanted or outlined letters) now draws that ink instead of cutting it off at the box edge.
 
 ## 0.27.0
 

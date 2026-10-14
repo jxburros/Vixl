@@ -1,6 +1,6 @@
 """Layer-level tracking and text case.
 
-``tracking`` (pixels after every character) and ``text_transform`` (``uppercase``, ``lowercase``,
+``tracking`` (pixels between characters) and ``text_transform`` (``uppercase``, ``lowercase``,
 ``capitalize``) belong to the text layer, not to a span of fixed text, so they apply to whatever the
 layer holds: text changed by keyframes, typewriter or captions, and ``${variable}`` values.
 
@@ -90,6 +90,8 @@ def apply(layer):
         else:
             # The plain engine's pitch: the font's own line height plus the layer's spacing.
             rich["line_height"] = 1.0
+        # And the plain engine's box (top at the ink), so adding tracking does not move the text.
+        rich["ink_box"] = True
         layer["rich"] = rich
     if mode != "none":
         if active(layer):

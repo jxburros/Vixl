@@ -53,6 +53,22 @@ bundled fallback, and fallback glyphs are checked against each span's own font.
 | `baseline` | `super`, `sub` or `normal` |
 | `tracking` | extra pixels between letters (negative tightens) |
 
+**Tracking goes between letters, not after the last one on a line.** A tracked line measures from its first
+glyph to its last, so auto-sized boxes, wrapping, `center` and `right` alignment and centring the layer on the
+canvas all follow the ink; PNG, SVG, PDF and PPTX draw it the same way (PPTX writes the line's last letter as a
+run without `spc`). Scaled previews and linked documents scale tracking with the size. To letter-space a whole
+layer, set the layer's `tracking` with `text` or `text-set` ([typography](typography.md#letter-spacing-and-edits)).
+The first `text-style` on a plain layer turns it into rich text that keeps the plain text's box (its top at the
+ink; `ink_box: true` in the record) and line pitch, so styling it does not move it. `spacing` on `text` is the
+gap between lines, not letters.
+
+**Glyphs are never cut off at the box.** Script swashes, italic and synthetic-oblique slants, synthetic bold and
+outlines can reach past the advance widths and line boxes that size the layer. The layer box stays the layout
+box (alignment, wrapping, `inspect` bounds and constraints use it), and the ink that reaches past it is drawn
+on a padded canvas in PNG and previews and inside a widened viewport in SVG. Lines that overflow a fixed
+`width`/`height` box below its bottom are still cut off at its edge (the `bounds` check reports them).
+`inspect` reports the ink as `ink_bounds`.
+
 **Bold and italic use real fonts when they are installed.** For a layer in `inter-400` (the
 name `font install` gives), bold uses `inter-700` (or 800, 600, 900) and italic uses
 `inter-400-italic`; set `font_variants: {"bold": NAME, "italic": NAME, "bold_italic": NAME}` for

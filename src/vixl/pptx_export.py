@@ -15,6 +15,7 @@ that is not a font every Office installation has, so they can be installed where
 import io
 import math
 from pathlib import Path
+import unicodedata
 import zipfile
 from xml.sax.saxutils import escape, quoteattr
 
@@ -488,7 +489,7 @@ class Slide:
             runs = []
             cuts = result.breaks.get(index, [])
             offset = 0
-            for span in paragraph:
+            for number, span in enumerate(paragraph):
                 pieces, start = [], offset
                 for cut in [c for c in cuts if offset < c < offset + len(span["text"])]:
                     pieces.append((span["text"][start - offset:cut - offset].rstrip(" "), True))
@@ -497,16 +498,27 @@ class Slide:
                 offset += len(span["text"])
                 style = {"bold": span["fake_bold"] or self.exporter.is_bold(span), "italic": span["fake_italic"] or self.exporter.is_italic(span),
                          "underline": span["underline"], "strike": span["strike"], "baseline": span["baseline"],
-                         "tracking": span["tracking"] * pt,
+                         "tracking": span["tracking"] * scale * pt,
                          "highlight": span["highlight"]}
                 from .richtext import style_font_data
 
                 data = style_font_data(self.view, self.exporter.base_font(span["font"]), span["text"])
-                for text, broken in pieces:
+                for which, (text, broken) in enumerate(pieces):
                     text = text.rstrip(" ") if broken else text
+                    tail = ""
+                    if style["tracking"] and (broken or (number == len(paragraph) - 1 and which == len(pieces) - 1)):
+                        # PowerPoint spaces out a line's last character too; Vixl tracks between characters
+                        # only, so the last character of each line (with its marks) is a run without tracking.
+                        cut = len(text) - 1
+                        while cut > 0 and unicodedata.combining(text[cut]):
+                            cut -= 1
+                        text, tail = text[:max(cut, 0)], text[max(cut, 0):]
                     if text:
                         runs.append(self.font_runs(text, data, span["size"] * scale * pt, span["color"], style,
                                                    layer["opacity"]))
+                    if tail:
+                        runs.append(self.font_runs(tail, data, span["size"] * scale * pt, span["color"],
+                                                   {**style, "tracking": 0}, layer["opacity"]))
                     if broken:
                         runs.append("<a:br/>")
             out.append(f'<a:p><a:pPr{attrs}>{spacing}{bullet}</a:pPr>{"".join(runs)}'
