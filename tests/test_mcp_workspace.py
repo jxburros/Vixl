@@ -235,10 +235,13 @@ def test_real_mcp_empty_workspace_to_export(tmp_path):
                 await call("vixl_export", path="out.png")
                 await call("vixl_document", action="create", path="b.vixl", width=10, height=10)
                 await call("vixl_document", action="open", path="a.vixl")
-                failed = await client.call_tool("vixl_apply", {"operations": [
+                failed = await client.call_tool("vixl_apply", {"document": "a.vixl", "operations": [
                     {"type": "import-image", "path": "../outside.png"}]})
-                assert failed.isError
-                await call("vixl_document", target="photo")
+                assert failed.isError and "ambiguous_document" not in failed.content[0].text
+                # Two documents open on one connection: a call must name its document.
+                ambiguous = await client.call_tool("vixl_document", {"target": "photo"})
+                assert ambiguous.isError and "ambiguous_document" in ambiguous.content[0].text
+                await call("vixl_document", target="photo", document="a.vixl")
 
     asyncio.run(run())
     assert Image.open(tmp_path / "out.png").size == (20, 10)

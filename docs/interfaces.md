@@ -162,7 +162,7 @@ Vixl is designed to be driven mainly by agents. The intended loop is: create or 
 and `examples` for the common ones (gradients, glows, shadows, radial repeats, layouts, palettes …). `tools/list` stays lean: it carries
 types and constraints only.
 
-Every document tool accepts an optional `document` path. Up to 8 documents stay open per server; addressing one with `document` does not change the active document. Every result names the document it acted on (`"document": "poster.vixl"`; previews add a text line after the image), so a call that landed on the wrong document is visible.
+Every document tool accepts an optional `document` path. Up to 8 documents stay open per server; addressing one with `document` does not change the active document. When several documents are open, a call without `document` is refused with `ambiguous_document` unless the active document unambiguously belongs to the calling connection (see [several agents on one server](#several-agents-on-one-server)). Every result names the document it acted on (`"document": "poster.vixl"`; previews add a text line after the image), so a call that landed on the wrong document is visible.
 
 For example, create `poster.vixl` at 4000×3000, import `photo.jpg` as `photo`, apply `[{"type":"move","target":"photo","x":20}]`, run `vixl_check`, request a preview, then export `poster.png`. File paths refer to the machine running Vixl; a client without access to that file system can send image bytes with `data_base64` instead.
 
@@ -263,7 +263,19 @@ vixl serve --call-timeout 30 --max-megapixels 50 --max-pages 40 --max-concurrent
 
 ### Several agents on one server
 
-The server keeps documents loaded in one shared cache, but the **active document is per MCP client session**: with Streamable HTTP each connected client opens, creates and closes documents without moving anyone else's active document, and a client that has opened nothing gets the document the server was started with (or none). A stdio server has exactly one client connection, so subagents of one parent agent still share one active document there. Three safeguards help in that case:
+The server keeps documents loaded in one shared cache, but the **active document is per MCP client session**: with Streamable HTTP each connected client opens, creates and closes documents without moving anyone else's active document. A client session is a connection, not an agent: a stdio server has exactly one client connection, so subagents of one parent agent share one active document there, and MCP carries nothing that tells them apart. So a call without `document=` uses the active document only when it unambiguously belongs to the caller:
+
+- A connection that has created, opened or addressed (with `document=`) **one** document that is still open uses it, whatever other connections have open.
+- A connection that has touched **two or more** documents it has not closed gets no default: a call without `document=` is refused before it does anything.
+- A connection that has chosen **none** gets the document the server was started with only while that is the only open document; with several open it is refused too.
+
+```json
+{"error": "ambiguous_document", "field": "document", "documents": ["infographic.vixl", "poster.vixl"],
+ "message": "2 documents are open (infographic.vixl, poster.vixl) and this call did not name one. … Pass document= with the .vixl path you mean.",
+ "suggestions": ["document='infographic.vixl'", "document='poster.vixl'"]}
+```
+
+Pass `document=`, or close documents with `vixl_document(action='close', document=…)` until this connection has one left. Closing the active document makes this connection's previous document active, never another connection's. Further safeguards:
 
 - `vixl mcp --require-document` (or `VIXL_REQUIRE_DOCUMENT=1`) makes `document=` mandatory on every document tool: there is no active document to fall back to, and a call without it fails with `document_required`. `vixl_document(action='create')`/`open` still work and name the document in their result.
 - Every result names the document it acted on (`document`), so a mistake shows up in the first response.
@@ -376,7 +388,8 @@ and reject remote binds without it. Use a TLS reverse proxy for remote access. O
 is not implemented: clients that require OAuth, including some hosted connector setups, need
 an OAuth-capable gateway. Each connected client has its own active document (see
 [several agents on one server](#several-agents-on-one-server)); agents that share one stdio connection should
-still pass `document` explicitly on every document tool. Access covers the entire
+still pass `document` explicitly on every document tool (once a connection has several documents open, a call
+without it is refused with `ambiguous_document`). Access covers the entire
 configured workspace and any locally configured provider accounts.
 
 The viewer polls once per second, showing the current PNG, layers, history, and review notes.

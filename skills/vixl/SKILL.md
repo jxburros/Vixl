@@ -565,7 +565,8 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   (`--tools ai`) for provider-backed `vixl_ai_*` tools. They share the workspace; edits made in one are
   seen by the other on its next call.
 - **Several documents can be open over MCP.** Pass `document="other.vixl"` to any tool to address one
-  without changing the active document.
+  without changing the active document. Once your connection has touched several open documents, a call
+  without `document=` is refused (`ambiguous_document`, naming them).
 - **MCP paths are relative to the server's `--workspace`** and must stay inside it; missing
   subdirectories are created by `vixl_document(action='create')` and the exports. Exports refuse to overwrite
   unless `overwrite: true`, and never overwrite `.vixl`. `vixl_export(kind='batch')` writes several files

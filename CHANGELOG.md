@@ -4,7 +4,11 @@
 
 ### Fixed and added
 
+- **An MCP call can no longer act on a document its caller did not choose.** Agents sharing one MCP connection (subagents of one host) share its active document, so a call without `document=` used whichever document any of them created or opened last. Now, once a connection has created, opened or addressed more than one document it has not closed, or has chosen none while several are open, a document tool called without `document=` fails with `ambiguous_document`, listing the documents (`documents`) and suggesting `document=` for each; a failed call that drops a document from the server's cache no longer changes the default. A server with one open document, and separate connections that each keep to their own document, work without `document=` as before. Closing the active document makes this connection's previous document active again, never another connection's.
+
 ### Behaviour changes
+
+- **MCP calls without `document=` are refused (`ambiguous_document`) when the active document is not unambiguously this connection's** (see above). Migration: pass `document="name.vixl"` on every document tool call once more than one document is open; `vixl mcp --require-document` makes that mandatory from the start.
 
 ## 0.27.0
 
