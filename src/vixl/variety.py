@@ -350,9 +350,11 @@ def apply_direction(project, builder, direction):
     look = direction.get("look", "none")
     if look != "none":
         amount = direction.get("look_amount", 0.1)
-        for layer, color in _look_targets(project, builder, own, background, look):
-            execute(project, {"type": "look", "target": layer["id"], "look": look, "amount": amount,
-                              **({"color": color} if color else {})})
+        targets = _look_targets(project, builder, own, background, look)
+        for color in dict.fromkeys(color for _, color in targets):
+            # One operation per colour, so a look that reads the backdrop measures every target in one render.
+            execute(project, {"type": "look", "targets": [layer["id"] for layer, c in targets if c == color], "look": look,
+                              "amount": amount, **({"color": color} if color else {})})
     if direction.get("style"):
         for operation in apply_operations(direction["style"], palette=False):
             execute(project, operation)

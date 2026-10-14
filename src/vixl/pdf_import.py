@@ -471,6 +471,7 @@ class PageReader:
                     dash *= 2
                 if any(dash) and all(v >= 0 for v in dash):
                     operation["dash"] = dash
+                    operation["dash_fit"] = False  # PDF dash arrays are exact lengths from the path's start
                     phase = ctypes.c_float()
                     if raw.FPDFPageObj_GetDashPhase(obj, phase) and phase.value:
                         operation["dash_offset"] = phase.value * scale

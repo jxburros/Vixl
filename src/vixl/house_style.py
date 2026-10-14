@@ -30,6 +30,7 @@ This module only reads the data. The rolls that use it live in ``typefaces.roll`
 ``tier_of(kind, name, purpose=None)`` and ``entries(kind)``  tier and metadata of pool entries
 ``level(variety)``            the settings of a variety level
 ``neutral()``                 what a document gets with ``house_style: "off"``: no roll, a neutral direction
+``finish()``                  the finishing rules: glow, shadow and halo colours, dash fitting
 """
 
 from copy import deepcopy
@@ -282,6 +283,12 @@ def neutral():
     entry = deepcopy(_data()["off"])
     entry["direction"]["corner"] = rule("corner")
     return entry
+
+
+def finish():
+    """The finishing rules (``craft.finish``): what a glow, a shadow or a halo looks like when no colour is given,
+    and whether dash patterns are fitted to corners by default."""
+    return _data()["craft"]["finish"]
 
 
 def show(purpose=None):

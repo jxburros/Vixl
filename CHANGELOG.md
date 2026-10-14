@@ -15,6 +15,16 @@
 - **Glyph overhangs are no longer clipped.** Script swashes, italic and synthetic-oblique slants, synthetic bold and outlines that reach past a rich or tracked text layer's box are drawn in PNG, previews, redrawn turned or fractionally placed layers and SVG (PDF and PPTX did not clip). The layer box is still the layout box for alignment and wrapping; lines that overflow a fixed box below its bottom stay cut off.
 - **An MCP call can no longer act on a document its caller did not choose.** Agents sharing one MCP connection (subagents of one host) share its active document, so a call without `document=` used whichever document any of them created or opened last. Now, once a connection has created, opened or addressed more than one document it has not closed, or has chosen none while several are open, a document tool called without `document=` fails with `ambiguous_document`, listing the documents (`documents`) and suggesting `document=` for each; a failed call that drops a document from the server's cache no longer changes the default. A server with one open document, and separate connections that each keep to their own document, work without `document=` as before. Closing the active document makes this connection's previous document active again, never another connection's.
 - **Corner radii and radial-repeat groups pass the file-format schema.** A `radius` given as a percentage (`"25%"`) or as four corner radii (`[24, 24, 4, 4]`), and the `radial` record a `radial-repeat` group keeps, are part of the published document schema, so documents that use them (including ones from 0.26, which `vixl convert` refused) save, validate and convert. PPTX export draws those radii as outlines instead of failing.
+- `cut-paper` no longer flattens a drawing that reaches past its box: its grain and edge pass dropped the marker that
+  keeps an overflowing vector image unscaled, so a path's dome (a loaf top) was squeezed into the box.
+- `check` (bounds) reports a path or arc whose own geometry runs past its box but is drawn cut off there
+  (`code: "geometry-clipped"`, a `fix`), naming the edges and pointing to `path-fit` or a larger box.
+- Dotted strokes draw round dots: a dot that fell on a vertex lost its cap direction and drew a spur or half a dot, and a
+  flattened curve that closed a hair's breadth from its start put a spike at the seam of an inside or outside dashed stroke.
+- PowerPoint export keeps dashes, width profiles, tapers, extra `strokes` and markers: such a shape is exported as the
+  filled outlines every other renderer draws (it was a plain solid line). Alignment, caps and joins stay a native line.
+- Looks that read the backdrop measure every target of one `look` operation in one render, and rolled looks apply as
+  one operation per colour.
 
 ### Behaviour changes
 
@@ -24,6 +34,20 @@
 - Plain text with layer `tracking` draws at the plain text's position (about 10–30 px higher than in 0.27 at display sizes, and with the plain line pitch for multi-line text). A first `text-style` on a plain layer stores `ink_box: true` and `line_height: 1.0` so it keeps the plain box and leading; set `line_height` with `text-style` for other leading.
 - Rich text whose ink reaches past its box (script faces, slanted or outlined letters) now draws that ink instead of cutting it off at the box edge.
 - **MCP calls without `document=` are refused (`ambiguous_document`) when the active document is not unambiguously this connection's** (see above). Migration: pass `document="name.vixl"` on every document tool call once more than one document is open; `vixl mcp --require-document` makes that mandatory from the start.
+- **Glows and shadows without a colour no longer read as dirt.** A shadow look (`soft-shadow`, `hard-shadow`) is now the colour of what it falls on, darker in the same hue, instead of black, and
+  `soft-shadow` is tighter and lighter (offset 1.5-4% and blur 3-8% of the layer's short side, opacity 0.14-0.30; it was
+  3-8%, 5-15% and 0.2-0.5). A glow look (`glow`, `neon`, `soft-halo`) is a lighter tint of the layer's
+  colour screened over the backdrop, so it only adds light, with opacity capped at 0.6 (a `soft-halo` core at 0.7); on a
+  ground lighter than that tint it keeps the layer's colour. An explicit `color` is kept exactly, and `layer-style` is
+  unchanged (drawn as given). Migration: pass `color` to the look for the old colour
+  (`{"type": "look", "look": "soft-shadow", "color": "#000000", "amount": 0.5}`), or set the shadow exactly with
+  `layer-style` (`{"color": "#000000", "dx": 0, "dy": 6, "blur": 10, "opacity": 0.35}`). Looks already applied keep
+  their stored styles. See [looks](docs/looks.md#behaviour).
+- **Dash patterns are fitted to corners** (`dash_fit`, default true): each length is stretched or squeezed by the same
+  small factor so the pattern divides every stretch between corners evenly, a dash is centred on every corner (sharp,
+  rounded or notched) and open paths start and end on a dash; a closed curve without corners is divided into whole
+  repeats. This applies to every dashed stroke in PNG, SVG, PDF and PowerPoint. Migration: set `dash_fit: false` on a
+  shape (or on one of its `strokes`) for the exact lengths and the old placement.
 
 ## 0.27.0
 

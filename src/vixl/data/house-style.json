@@ -45,6 +45,14 @@
       "caption": {"font": "body", "step": "caption", "line_height": "caption"},
       "citation": {"font": "body", "step": "caption", "line_height": "caption"},
       "label": {"font": "body", "step": "caption", "line_height": "caption", "case": "upper"}
+    },
+    "finish": {
+      "shadow": {"color": "backdrop", "lightness": 0.35, "chroma": 1.1, "hard_lightness": 0.3,
+                 "soft": {"offset": [0.015, 0.025, 1, 24], "blur": [0.03, 0.05, 2, 40], "opacity": [0.14, 0.16]}},
+      "glow": {"color": "lighter tint, screened over the backdrop", "tint": 0.2, "max_opacity": 0.6,
+               "blur": [0.04, 0.12, 4, 100], "opacity": [0.35, 0.25]},
+      "halo": {"max_core": 0.7},
+      "dash_fit": true
     }
   },
   "taste": {

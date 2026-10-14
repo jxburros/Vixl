@@ -10,9 +10,9 @@ from vixl import Project
 from vixl.assets import add_image
 
 FIXTURES = {}
-SVG_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "gradients", "text_plain", "groups")
-PDF_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "text_plain")
-PPTX_FIXTURES = ("shapes_and_strokes", "text_plain", "groups")
+SVG_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "gradients", "text_plain", "groups", "dashes_fitted")
+PDF_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "text_plain", "dashes_fitted")
+PPTX_FIXTURES = ("shapes_and_strokes", "text_plain", "groups", "dashes_fitted")
 
 
 def fixture(builder):
@@ -334,3 +334,33 @@ def irregular_torn():
         {"type": "shape", "shape": "ellipse", "name": "blob", "x": 60, "y": 40, "width": 80, "height": 60, "fill": "#dda15e"},
         {"type": "irregular", "target": "blob", "seed": 7},
     ])
+
+
+@fixture
+def dashes_fitted():
+    # Dash patterns fitted to corners (rounded, notched, sharp) and a dotted ring with round dots.
+    return doc(240, 170, "#ffffff", ops=[
+        rect("card", 12, 12, 100, 70, "transparent", radius=16, stroke="#1d3557", stroke_width=4, dash=[12, 8]),
+        {"type": "shape", "shape": "ticket", "name": "coupon", "x": 128, "y": 12, "width": 100, "height": 70,
+         "fill": "#e63946", "stroke": "#fff1e6", "stroke_width": 3, "dash": [9, 6]},
+        {"type": "shape", "shape": "ellipse", "name": "ring", "x": 16, "y": 100, "width": 56, "height": 56,
+         "fill": "transparent", "stroke": "#2a9d8f", "stroke_width": 3, "dash": "dotted"},
+        {"type": "shape", "shape": "path", "name": "zig", "x": 90, "y": 108, "width": 140, "height": 44,
+         "path": "M0 40 L35 4 L70 40 L105 4 L140 40", "fill": "none", "stroke": "#264653", "stroke_width": 3,
+         "dash": [8, 5]},
+    ])
+
+
+@fixture
+def finish_glow_shadow():
+    # Default glow on a dark ground (a lighter tint that adds light) and a default shadow on a light one (the
+    # ground in shade, small and light).
+    p = doc(240, 160, "#14213d", ops=[
+        rect("bar", 30, 40, 40, 90, "#f59e0b"),
+        {"type": "look", "target": "bar", "look": "glow", "amount": 0.8},
+        rect("panel", 120, 20, 110, 120, "#f3e9d2"),
+        rect("button", 140, 60, 70, 34, "#c1121f"),
+        {"type": "group", "name": "card", "targets": ["panel", "button"]},
+        {"type": "look", "target": "button", "look": "soft-shadow", "amount": 0.8},
+    ])
+    return p
