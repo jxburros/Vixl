@@ -33,6 +33,22 @@ AUTO_LABELS = 60  # value_labels "auto" labels charts of up to this many values
 LEGENDS = ("auto", "none", "top", "bottom", "left", "right")
 LABEL_MODES = ("auto", "none", "value", "percent", "both")
 DEFAULT_COLORS = ["#0072b2", "#e69f00", "#009e73", "#cc79a7", "#d55e00", "#56b4e9", "#7f7f7f", "#f0c800"]
+
+
+def layout_palette(state):
+    """The colours of the palette the document's layout (or rolled direction) used, when no palette was made
+    active: a deck or report built by layout-apply has role swatches but no active palette, and its charts
+    should still be drawn in its colours rather than the default set."""
+    name = (state.get("layout") or {}).get("palette") or ((state.get("design_defaults") or {}).get("direction")
+                                                           or {}).get("palette")
+    if not isinstance(name, str):
+        return []
+    own = (state.get("palettes") or {}).get(name)
+    if own:
+        return list(own)
+    from .house_style import palette_colors
+
+    return palette_colors().get(name, [])
 # Options that restyle a chart; the data keys are handled separately.
 OPTIONS = (
     "kind", "title", "subtitle", "colors", "legend", "legend_values", "value_labels", "total_labels", "gridlines",
@@ -484,7 +500,7 @@ class Style:
         state = self.project.state
         pool = [c for c in (self.recipe.get("colors") or [])]
         explicit = len(pool)
-        palette = (state.get("palettes") or {}).get(state.get("active_palette")) or []
+        palette = (state.get("palettes") or {}).get(state.get("active_palette")) or layout_palette(state)
         usable = [c for c in palette if contrast(state, c, self.bg) >= 1.6]
         if count == 1 and not explicit and "accent" in state.get("swatches", {}):
             pool.append("@accent")
@@ -609,6 +625,26 @@ def place(parts, key, label, lab, x, y, z, anchor="left", at="base"):
     return parts.text(key, label, lab, *spot(lab, x, y, anchor, at), z)
 
 
+def crosses(box, a, b, margin=2):
+    """Whether the segment a-b passes through ``box`` (x, y, w, h) widened by ``margin`` (Liang-Barsky)."""
+    x0, y0, x1, y1 = box[0] - margin, box[1] - margin, box[0] + box[2] + margin, box[1] + box[3] + margin
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    low, high = 0.0, 1.0
+    for p, q in ((-dx, a[0] - x0), (dx, x1 - a[0]), (-dy, a[1] - y0), (dy, y1 - a[1])):
+        if p == 0:
+            if q < 0:
+                return False
+            continue
+        t = q / p
+        if p < 0:
+            low = max(low, t)
+        else:
+            high = min(high, t)
+        if low > high:
+            return False
+    return True
+
+
 class Collider:
     """Keeps automatic labels from landing on each other."""
 
@@ -622,6 +658,11 @@ class Collider:
 
     def take(self, box):
         self.boxes.append(box)
+
+    @staticmethod
+    def overlaps(a, b, margin=1):
+        return (a[0] < b[0] + b[2] + margin and b[0] < a[0] + a[2] + margin and a[1] < b[1] + b[3] + margin
+                and b[1] < a[1] + a[3] + margin)
 
 
 def header(kit, style, recipe, parts, size):
@@ -751,6 +792,8 @@ class Cartesian:
         self.totals_shown = bool(recipe.get("total_labels")) and self.stacked and not self.percent
         self.crowd = Collider()
         self.pending = []
+        # The drawn lines and markers of a line chart, which automatic value labels keep clear of.
+        self.paths, self.marks = [], []
         self.cap = kit.make("0", style.fs, style.ink)["cap"]
         self.value_size = max(8, style.snap(style.fs * 0.85))
         self.value_cap = kit.make("0", self.value_size, style.ink)["cap"]
@@ -876,11 +919,12 @@ class Cartesian:
             return b0, a0, max(1, b1 - b0), max(1, a1 - a0)
         return a0, b0, max(1, a1 - a0), max(1, b1 - b0)
 
-    def label(self, key, name, value, x, y, anchor, color, at="base", fit=None, drop=0):
+    def label(self, key, name, value, x, y, anchor, color, at="base", fit=None, drop=0, alternative=None):
         """A data label at (x, y + ``drop`` cap heights). Forced labels are placed at once; automatic ones wait
-        for ``place_labels``, which decides for the chart as a whole."""
+        for ``place_labels``, which decides for the chart as a whole; ``alternative`` (y, drop) is a second spot
+        (below a line's point instead of above it) for when the first one sits on another series."""
         entry = {"key": key, "name": name, "text": format_number(value, self.label_format), "x": x, "y": y,
-                 "anchor": anchor, "color": color, "at": at, "fit": fit, "drop": drop}
+                 "anchor": anchor, "color": color, "at": at, "fit": fit, "drop": drop, "alternative": alternative}
         if self.auto:
             self.pending.append(entry)
             return
@@ -899,13 +943,24 @@ class Cartesian:
             fit = entry["fit"]
             if fit and ((fit[0] is not None and lab["width"] > fit[0]) or (fit[1] is not None and lab["height"] > fit[1])):
                 return None
-            left, top = spot(lab, entry["x"], entry["y"] + entry["drop"] * cap, entry["anchor"], entry["at"])
+            y, drop = entry["alternative"] if entry.get("flipped") else (entry["y"], entry["drop"])
+            left, top = spot(lab, entry["x"], y + drop * cap, entry["anchor"], entry["at"])
             box = (round(left), round(top), lab["width"], lab["height"])
-            if not crowd.free(box) or box[0] < 0 or box[0] + box[2] > self.W or box[1] < 0 or box[1] + box[3] > self.H:
+            if not (crowd.free(box) and 0 <= box[0] and box[0] + box[2] <= self.W and 0 <= box[1]
+                    and box[1] + box[3] <= self.H and self.clear_of_marks(box, entry["key"])):
                 return None
             crowd.take(box)
             placed.append((entry, lab, left, top))
         return placed
+
+    def clear_of_marks(self, box, key):
+        """A value label that touches no line or marker of another series (resting on one, it hides it; its
+        own line may run under it, as it always has)."""
+        own = int(key.split("-")[1]) if key.startswith("value-") else None
+        if any(Collider.overlaps(box, mark) for series, mark in self.marks if series != own):
+            return False
+        return not any(crosses(box, a, b, width / 2 + 1) for series, run, width in self.paths if series != own
+                       for a, b in zip(run, run[1:]))
 
     def place_labels(self):
         """Automatic labels, decided for the whole chart so they thin evenly: every label (at a smaller size if
@@ -933,6 +988,14 @@ class Cartesian:
             chosen = self.layout_labels([e for name in order for e in groups[name]], size)
             if chosen:
                 break
+        if not chosen and any(e.get("alternative") for name in order[1:] for e in groups[name]):
+            # Lines that run close: the largest series keeps its labels above its points, the others move theirs
+            # below theirs, each series on one side.
+            flipped = [{**e, "flipped": bool(e.get("alternative"))} for name in order[1:] for e in groups[name]]
+            for size in sizes:
+                chosen = self.layout_labels(groups[order[0]] + flipped, size)
+                if chosen:
+                    break
         if not chosen:
             best = None
             for size in sizes:
@@ -1077,6 +1140,7 @@ class Cartesian:
                     if len(run) > 1:
                         segment(self.project, parts, "line", f"line-{s_index}-{r_index}", f"line {name}", run, "transparent",
                                 color, width, Z_LINES)
+                        self.paths.append((s_index, run, width))
                 points = [(self.center(i), self.vp(v)) if v is not None else None for i, v in enumerate(s["values"])]
             for i, point in enumerate(points):
                 if point is None:
@@ -1085,13 +1149,15 @@ class Cartesian:
                 if dots:
                     parts.add(f"marker-{s_index}-{i}", f"marker {name} {self.categories[i]}", "ellipse", Z_MARKERS,
                               x=round(x - dot / 2), y=round(y - dot / 2), width=dot, height=dot, fill=color)
+                    if not self.area:
+                        self.marks.append((s_index, (round(x - dot / 2), round(y - dot / 2), dot, dot)))
                 if self.point_labels and s["values"][i] is not None:
                     value, reach = s["values"][i], (dot if dots else width) / 2 + gap
                     key, label = f"value-{s_index}-{i}", f"value {name} {self.categories[i]}"
-                    if value >= 0:
-                        self.label(key, label, value, x, y - reach, "center", style.ink)
-                    else:
-                        self.label(key, label, value, x, y + reach, "center", style.ink, drop=1)
+                    above, below = (y - reach, 0), (y + reach, 1)
+                    first, second = (above, below) if value >= 0 else (below, above)
+                    self.label(key, label, value, x, first[0], "center", style.ink, drop=first[1],
+                               alternative=second if self.m > 1 and not self.area else None)
 
     def draw_legend(self):
         legend, W, H, pad = self.legend, self.W, self.H, self.style.pad

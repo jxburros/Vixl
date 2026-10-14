@@ -60,7 +60,7 @@ segments) or explicit anchor nodes. Handle coordinates are absolute in the path'
 ],"stroke":"#006d77","stroke_width":4,"fill":"transparent"}
 ```
 
-`stroke_width`, `line_cap`, `trim_start` and `trim_end` apply to the pen's stroke; the trim (0–100 % of the path's length) is animatable, which draws the path on over time (see [animation](brushes-and-animation.md#drawing-a-line-on)).
+A pen with a `fill` and neither `stroke` nor `stroke_width` has no outline; one without a fill gets a 2 px black stroke so it shows. `stroke_width`, `line_cap`, `trim_start` and `trim_end` apply to the pen's stroke; the trim (0–100 % of the path's length) is animatable, which draws the path on over time (see [animation](brushes-and-animation.md#drawing-a-line-on)).
 
 `opacity` (0–1, or a percentage string such as `"40%"`) and `rotation` (degrees) set the layer's opacity and rotation when the pen creates or edits a path, as on `shape`; PNG, SVG and PDF draw the same translucency (`vixl pen … --opacity 0.4`).
 

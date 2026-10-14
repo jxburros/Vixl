@@ -757,7 +757,7 @@ def _build(project, spec, scale, area, name, direction=None):
     b = Build(style=style, font=font, layout_name=layout_name, direction=direction, routing=routing, scale=scale, notes=[])
     lnodes, ledges, lgroups = [], [], []
     b.info = {}
-    max_w = 190 * scale
+    max_w = 190 * scale * spec.get("_wrap", 1.0)  # _wrap: a narrower wrap the fit below may try
     nested = False
     for n in spec["nodes"]:
         kind = n.get("kind", "process")
@@ -1064,6 +1064,20 @@ def _layout_into_document(project, name, rec):
             across = _build(project, spec, scale, area, name, direction="LR")
             if min(area[2] / across.size[0], area[3] / across.size[1]) > down * 1.05:
                 direction, first = "LR", across
+    if fit != "none" and first.layout_name in ("layered", "tree") and not ({"rank_gap", "node_gap"} & set(spec)):
+        # A long chain shrinks its text to fit its gaps: tighter gaps (as a person would draw it) keep the labels
+        # larger. Used only when they let the diagram be drawn noticeably larger.
+        down = min(area[2] / first.size[0], area[3] / first.size[1])
+        if down < 1:
+            # Running out of width with height to spare (a long left-to-right chain), narrower node labels
+            # help too: the nodes grow taller instead of wider.
+            tall = area[3] / first.size[1] > area[2] / first.size[0] * 1.5
+            for tight in ({**spec, "rank_gap": 40, "node_gap": 32},
+                          *([{**spec, "rank_gap": 40, "node_gap": 32, "_wrap": 0.6}] if tall else [])):
+                trial = _build(project, tight, scale, area, name, direction)
+                better = min(area[2] / trial.size[0], area[3] / trial.size[1])
+                if better > down * 1.08:
+                    spec, first, down = tight, trial, better
     for attempt in range(5):
         b = first if attempt == 0 else _build(project, spec, scale, area, name, direction)
         if natural is None:

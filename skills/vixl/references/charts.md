@@ -23,9 +23,9 @@ fixing a number is one operation and nothing is recomputed by hand. Full referen
 - The group keeps the numbers: `inspect` the chart layer and read `chart.summary` (`totals`,
   `shares`, `scale`). Generated layers are named `NAME/part` and are owned by the chart: edit the
   data or options, not their geometry; effects, styles and opacity you add to them survive.
-- Colors and fonts come from the document: `colors` / `@swatch`, the active palette, `@accent`/`@ink`,
+- Colors and fonts come from the document: `colors` / `@swatch`, the active palette (else the layout's palette), `@accent`/`@ink`,
   the heading and body font roles. Set `number_format` (`#,##0`, `0.0%`, `$#,##0`) once for ticks,
-  labels and the PPTX chart. `value_labels: "auto"` labels every value if the labels fit (shrinking them if needed), else whole series largest first, else every k-th value of the largest series; `true` labels everything.
+  labels and the PPTX chart. `value_labels: "auto"` labels every value if the labels fit (shrinking them if needed; never on another line's path or marker), else on a line chart the largest series above its points and the others below theirs, else whole series largest first, else every k-th value of the largest series; `true` labels everything.
 - Placement: without `x`/`y`/`width`/`height` a new chart fills the document's safe area, inset by two spacing
   units, so it passes `safe_area` as created; give all four (`x: 0, y: 0` and the canvas size) for the full canvas.
 - `legend_values: true` draws the legend as a key-value list: swatch and name left, totals right-aligned and, for

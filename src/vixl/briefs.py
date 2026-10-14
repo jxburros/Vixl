@@ -177,7 +177,8 @@ KINDS = {
     "scene": {
         "title": "Scene or illustration",
         "keywords": ["scene", "illustration", "landscape", "sunset", "mountains", "forest", "sky", "city", "poster art", "background", "nature",
-                     "seascape", "skyline"],
+                     "seascape", "skyline", "lighthouse", "coast", "headland", "harbor", "harbour", "beach", "ocean",
+                     "dusk", "dawn", "night sky"],
         "summary": "Depth from layered flat shapes: sky gradient, sun, hills and foreground, with organic forms for plants.",
         "approach": ["Fill the canvas with a sky gradient.", "Stack hills and buildings back to front, darker toward the foreground.",
                      "Add a sun or moon with a glow; plant organic trees, flowers or ferns.",
@@ -417,7 +418,8 @@ def match(text):
     for kind, entry in KINDS.items():
         score = 0
         for keyword in entry["keywords"]:
-            if keyword in lowered:
+            # Whole words (plurals too): "ad" must not match "headland", nor "icon" "iconic"; "icons" still counts.
+            if re.search(rf"(?<![a-z0-9]){re.escape(keyword)}(?:s|es)?(?![a-z0-9])", lowered):
                 score += 3 if " " in keyword or keyword == kind else 2
             elif _words(keyword) & wanted:
                 score += 1

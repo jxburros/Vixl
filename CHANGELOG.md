@@ -4,6 +4,65 @@
 
 ### Fixed and added
 
+Found while making a batch of showcase pieces (event poster, report, deck, logo package, scene, business cards,
+fillable form, loop, mandala, flowchart):
+
+- **`check --profile final` keeps its verdict.** A document with unused embedded fonts got an informational "unused
+  files" note that recomputed `passed` and `outcome` from fix findings only, so a final profile failing on review
+  findings (its own `profile.failing` listed them) reported `passed: true` over CLI, Python and MCP. The note now
+  updates only the counts and `by_action`.
+- **A filled `pen` path has no outline unless asked.** Every pen got a 2 px black stroke even when only `fill` was
+  given (the schema said "omit for no outline"); the hidden stroke also made a `pathfinder` of the path a raster
+  fallback, so `logo-package` skipped every SVG. An unfilled pen still gets the 2 px black line so it shows.
+  `pen` with `target` and no `points`/`nodes` restyles the path (fill, stroke, opacity …) and keeps its geometry.
+- **`check` reports text hidden under a layer painted above it** (`overlap`, `code: hidden-text`, a `fix`): contrast
+  measures text against what lies beneath it, so a band, panel or image stacked over the words (a decorative one
+  included) hid them with every check passing. Translucent layers (alpha under about 88%) and blend modes other
+  than normal do not count.
+- **`ring` and `donut` take `inner_radius`** (the hole's share of the outer radius, as on an arc) when no
+  `thickness` is given; it was silently ignored.
+- **`mask` action `gradient`** fades a layer out over its box (`start` white, `end` black by default; `stops`,
+  `direction`, `angle`, `center`, `falloff` as on `gradient`; CLI `vixl mask gradient LAYER --start --end
+  --direction`). The coast motif's light beam used a `gradient-overlay` style, which recolours a layer and whose
+  transparent stops show the layer's own fill, so it never faded; the guidance now uses the gradient mask.
+- **`stagger` keeps a seamless loop's length.** On `spin`, `wiggle`, `orbit`, `breathing`, `blink` and `hover` in a
+  seamless loop, `stagger` is now a phase offset of each target's cycle; it delayed the keys instead and lengthened
+  the timeline (2400 → 3000 ms for three targets 300 ms apart), breaking the loop. A motion that does lengthen the
+  timeline warns once with the whole growth instead of once per key.
+- **CLI parity with MCP.** `vixl apply ops.json` runs session steps (`font-pair`, `import-image`, `roll` …) in the same
+  all-or-nothing batch, reading paths from the current directory; `vixl export loop.gif` (`.apng`, `.mp4`, `.webm`)
+  exports the timeline, or the saved frames when there is none, as `vixl_export` does.
+- **Brief results stay small.** With `detail: brief` (the MCP default) a new group of more than 12 new children (a
+  star field, scatter, string lights, radial repeat) is listed with `children_added` and `children_sample`, and its
+  `groups` record with `member_count` and `members_sample`, instead of every child: a 140-star field returned about
+  50 KB, now under 1 KB. `detail: compact` still lists every child. Star fields mark their group `allow_crop`, so a
+  star on the sky's edge is not reported as cut off.
+- **`vixl_reference(brief)` matches whole words** (plurals included): "a lighthouse on a rocky headland" was read as
+  a banner ad because `ad` matched inside "headland". Scenes also match lighthouse, coast, headland, harbour,
+  beach, ocean, dusk, dawn and night sky.
+- **A `look` in `vixl_apply(create=…)` without a target** goes where the house style puts a rolled look (textures on
+  the background, shadows and outlines on the solid shapes) instead of on the last layer the layout added.
+- **Charts use the layout's palette** when the document has no active palette (a deck or report built by
+  `layout-apply`), instead of the default colour set. **Line-chart value labels never rest on another series' line
+  or marker**: when they would, the largest series keeps its labels above its points and the others move theirs
+  below theirs, each series on one side (before, the smaller series lost its labels, or a label sat on the other
+  line). Golden `chart_line` updated: its "9" label sat on series A's marker.
+- **`deck-from-markdown` decks read as one system.** Body text and tables take the lead step of the deck's type scale
+  when they fit (40 → 60 px for a few bullets on a 1080p slide), charts at least the lead step, every content slide's
+  title one step, and the cover, section and quote titles the step at or below their fitted size (they were 95, 114,
+  147 px: off the scale). The `slide-title` layout sets a long subtitle a step smaller and lifts the title so it stays
+  on the slide (it ran off the bottom). The `quote-card` quotation mark is marked decoration, and the deck check's
+  `type_scale` does not count decoration.
+- **A long left-to-right flowchart keeps its labels larger.** When a layered or tree diagram has to shrink to fit and
+  no `rank_gap`/`node_gap` is given, it tries tighter gaps and, for a chain with height to spare, narrower node labels,
+  keeping them when it can be drawn noticeably larger (a ten-step flow in a 2160 × 900 box: labels 21 → 28 px).
+- **`composition` reports a hole in the middle.** An interior band of 30–70% of the frame with type directly above
+  and below it, and one side carrying the copy (three blocks or a tenth of the frame), is a `dead_band` even in a
+  sparse frame or above the 42% band limit: an event poster whose headline sat 1,850 px above its date block passed
+  clean. A headline over a lone credit line far below stays a minimal composition. The craft backtest numbers are
+  unchanged (dead band 10 expected, 5 caught, 0 false).
+- `align` reads `to` as `relative_to` (reported under `normalized`).
+
 - **Swatches can be deleted.** `{"type": "swatch", "name": "old", "delete": true}` (`vixl swatch old --delete`) removes a swatch. While layers, other swatches, character or paragraph styles, variables or artboards still use it (`@old`, `lighten(@old, 10%)`, gradient stops …), the deletion is refused with error `swatch_in_use` naming them under `used_by`; `detach: true` (`--detach`) first writes the swatch's color (its definition as written) into each use, so the design renders unchanged. Undo restores the swatch and its references. `color` is now required only when not deleting.
 - **`pen` takes `opacity` and `rotation`**, as `shape` does, when it creates or edits a path (`vixl pen … --opacity 40%`). Opacity is 0–1 or a percentage string; a bare number above 1 is an error. PNG, SVG and PDF draw the same translucency.
 - **An off switch for the house style.** `house_style: "off"` creates documents with no rolled direction on every creation path: `vixl_document` create and `vixl_apply(create=…)`, `vixl new --house-style off` and `vixl compose`, REST compose, Python `Project()`/`Project.new()`/`Project.sized()`, or `{"house_style": "off"}` in `.vixl/variety.json` for all of them. Such a document gets no rolled palette, pairing, motif, look, style, background treatment or decoration; a white canvas (transparent for marks; an explicit `background` or a `brand.json` background still wins); the workspace default fonts, else the bundled font, with no pairing download. `design_defaults` records `house_style: "off"` and a neutral direction (mono palette, light mode, perfect-fourth scale, balanced density, no accent), so a sparse `layout-apply` and compose use neutral layout defaults; the craft rules (safe area, spacing unit, minimum sizes) still apply. Creation results report `creation.house_style: "off"` and `background_from: "neutral"`. The house style stays on by default; `house_style: "on"` overrides the workspace setting, and a roll (`vixl roll`, the roll step, `vixl_reference('roll')`) still rolls the house style on request. The neutral direction lives in `house-style.json` (`off`), read through `house_style.neutral()`.

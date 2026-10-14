@@ -134,6 +134,33 @@ def brief_changes(before, after):
     return changes
 
 
+CONDENSE = 12  # brief detail lists at most this many new children of one group (a star field adds hundreds)
+
+
+def condense(result):
+    """Brief detail: a new group with more than CONDENSE new children (stars, scatter, string lights, a
+    radial repeat) is listed with a count and a few names instead of every child, and its ``groups`` record
+    without each member's offset, so one call does not return tens of thousands of tokens. Inspect the group,
+    or use detail=compact, for every child."""
+    layers = (result.get("changes") or {}).get("layers") or {}
+    children = {}
+    for ident, entry in layers.items():
+        if entry.get("added") and entry.get("parent") in layers and layers[entry["parent"]].get("added"):
+            children.setdefault(entry["parent"], []).append(ident)
+    for group, members in children.items():
+        if len(members) <= CONDENSE:
+            continue
+        names = [layers[ident]["name"] for ident in members]
+        for ident in members:
+            del layers[ident]
+        layers[group].update(children_added=len(names), children_sample=names[:5])
+    for record in result.get("groups", []):
+        if isinstance(record, dict) and len(record.get("members", {})) > CONDENSE:
+            names = list(record.pop("members"))
+            record.update(member_count=len(names), members_sample=names[:5])
+    return result
+
+
 def _grouped(layer, layers):
     """A grouped layer's ``bounds`` are local to its group: name the group and add canvas bounds."""
     if not layer or not layer.get("parent"):

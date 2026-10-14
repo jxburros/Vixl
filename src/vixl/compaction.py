@@ -112,5 +112,8 @@ def check_note(project, report):
                    f"design{fonts}; the rest are kept so undo can restore them. Compacting (vixl_document(action='history') "
                    "action='compact', CLI vixl compact) drops them together with the undo history.",
         "unused_assets": found["assets"], "bytes": found["bytes"]})
-    report.update(tally(report["issues"]))
+    # An info finding changes no verdict: keep passed and outcome, which a check profile may have set from
+    # its own fail_on (recomputing them here turned a failing final profile into a pass).
+    counts = tally(report["issues"])
+    report.update({key: counts[key] for key in ("errors", "warnings", "info", "by_action")})
     return report

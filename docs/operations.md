@@ -53,7 +53,7 @@ Common operation fields:
 | solid / gradient | name, width, height, color **or** start/end/direction/stops/angle; `target` edits an existing layer |
 | text | text, name, font, size, color, align, spacing, line_height, tabs, hide_if_empty, x/y; `target` edits an existing text layer |
 | shape | shape, name, width, height, x/y, fill, stroke, stroke_width, line_cap, trim_start/trim_end, radius, sides, inner_radius, path, opacity, rotation; `target` edits an existing shape. A `path` is in literal local pixels from the layer's x/y; without width/height its box reaches the path's farthest point ([vector paths](vector-paths.md#path-coordinates-and-the-layer-box)) |
-| pen | nodes **or** points; name, closed, smooth, tension, corners, fill, stroke, stroke_width, line_cap, trim_start/trim_end, width/height, x/y, opacity, rotation; `target` replaces an existing path's geometry ([studio](studio.md)) |
+| pen | nodes **or** points; name, closed, smooth, tension, corners, fill, stroke, stroke_width, line_cap, trim_start/trim_end, width/height, x/y, opacity, rotation; `target` replaces an existing path's geometry, or with neither nodes nor points only restyles it; a filled pen with no stroke fields has no outline ([studio](studio.md)) |
 | text-set | target; text, size, color, align, spacing, stroke_width/stroke_color, hide_if_empty, font — the whole layer; on rich text keeps formatting that still applies and reports what it drops under `warnings` ([rich text](rich-text.md#editing)) |
 | text-layout | target; width/height, fit, `wrap` (`greedy`, `balance` evens a heading's lines, `pretty` keeps one word off a paragraph's last line; the breaks are the same in PNG, SVG, PDF and PPTX), warp, amount, path |
 | stack | target (a group) **or** name + targets; direction, gap (pixels or spacing units such as `"2u"`, the default), padding, align, justify, width/height, hide_if_empty; `remove` releases it |
@@ -67,7 +67,7 @@ Common operation fields:
 | align | target, alignment, margin |
 | constrain | target, constraints object |
 | select | shape, shape-specific coordinates/color/target/asset; mode, feather |
-| mask | target, action; path for import |
+| mask | target, action; path for import; `gradient` fades the layer with `start`/`end` or `stops`, `direction`, `angle`, `center`, `falloff` (white shows, black or a transparent stop hides) |
 | effect | target, name, amount; seed, radius, strength, black/white, points, shadow_color/highlight_color; luminance, chroma, search (denoise); gains or neutral (white-balance); lut (lookup) |
 | effect-set / enable / disable / remove | target, effect ID, 1-based index or (when used once in the stack) name; amount etc. for set |
 | effect-move | target, effect; **one of** `to` (1-based position, `top` or `bottom`), `before` or `after` (another effect). One history entry; renders exactly as removing and re-adding in the new order |

@@ -247,6 +247,8 @@ def check_deck(project, *, checks=None, safe_area=None, min_contrast=None, pages
             titles[label] = {"layer": title["name"], "x": anchor, "y": y, "align": align, "master": record.get("master"),
                              "number": number}
         for item in texts:
+            if item.get("role") == "decoration":
+                continue  # an ornament (a big quotation mark) is not body text or a step of the type scale
             scale = projection["scales"][item["id"]]
             chrome = CHROME_NAME.search(item["name"])
             for size, count in text_sizes(view, item):

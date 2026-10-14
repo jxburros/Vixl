@@ -184,7 +184,11 @@ CLI `vixl workflow deck-from-markdown --request req.json`, Python `vixl.workflow
 - Text in `<!-- comments -->`, or after a `Notes:` line, becomes the page's speaker notes.
 - Every page uses one master, `deck`, with the deck background and a `${page} / ${pages}` page number; every
   slide uses the same layout `seed` (default 1) and palette (`palette`, else the first slide's roll), and text
-  sizes stay above the deck check's 18 pt minimum. `fonts` installs a font pairing (as `font-pair`);
+  sizes stay above the deck check's 18 pt minimum. Sizes come from the deck's type scale: body text and tables
+  take the lead step when they fit the content area (else the body step), charts at least the lead step, every
+  content slide's title one step (the largest every title fits), and the cover, section and quote titles the step
+  at or below the size their layout fitted. A long cover subtitle sets a step smaller and lifts the title so it
+  stays on the slide. `fonts` installs a font pairing (as `font-pair`);
   otherwise the workspace's `brand.json` fonts are used, and without either the `fonts` check asks for a
   pairing.
 - The deck checks run at the end (`check: false` skips them); the result reports their `fix` and `review`
@@ -203,7 +207,7 @@ see:
 | Check | Finds |
 | --- | --- |
 | `title_position` | Titles on pages sharing a master that sit at a different left edge or height from the rest. The deck's first titled page (the cover) is exempt. |
-| `type_scale` | Text sizes that are not on the document's type scale (its character styles, e.g. from `type-scale`), near-duplicate sizes (30 and 32 px), and more than six sizes in total. |
+| `type_scale` | Text sizes that are not on the document's type scale (its character styles, e.g. from `type-scale`), near-duplicate sizes (30 and 32 px), and more than six sizes in total. Text marked `role: decoration` (a big quotation mark) is not counted. |
 | `words` | Pages with more than `max_words` (60) words, excluding master layers and notes. |
 | `min_font` | Page text smaller than `min_font` (18) points on the exported slide. Master layers and layers named footer, footnote, source, credit, page-number and the like are exempt. |
 | `notes` | Some pages with speaker notes and some without. |

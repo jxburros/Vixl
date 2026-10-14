@@ -3,7 +3,8 @@
 Five kinds of finding, each a ``review`` warning with a stable ``code``:
 
 - ``dead_band``: an empty horizontal band between content blocks, or between content and an edge, that is
-  much larger than the document's own gaps (from ``spatial``'s free rectangles);
+  much larger than the document's own gaps (from ``spatial``'s free rectangles); a hole of 30-70% of the frame
+  with type directly above and below it counts even in a sparse frame;
 - ``margin_drift``: stacked blocks whose left edges (right edges for right-aligned text, centres for centred
   text) are close but not equal: two margins where one was meant;
 - ``uneven_rhythm``: a stack of lines whose consecutive gaps differ by more than the spacing scale allows: the
@@ -43,6 +44,8 @@ THRESHOLDS = {
     # frame is a deliberate field of space.
     "dead_band_fill": 0.5,
     "dead_band_max_share": 0.42,
+    "dead_band_hole": 0.3,  # an interior band between type this tall is dead even in a sparse frame
+    "dead_band_hole_max": 0.7,
     # An edge band also has to be this many times the frame's margin on the opposite side.
     "edge_band_ratio": 1.75,
     # Edges further apart than this many pixels and closer than this many spacing units drift.
@@ -396,8 +399,8 @@ def dead_bands(blocks, grounds, unit, width, height, emit):
             if end > reach:
                 filled += end - max(start, reach)
                 reach = end
-        if filled < t["dead_band_fill"] * frame[3]:
-            continue
+        # A sparse frame is judged as open space, except for a hole between two blocks of type (below).
+        sparse = filled < t["dead_band_fill"] * frame[3]
         # The frame's rhythm is the gaps between its own blocks, not the padding inside its cards.
         gaps = [gap for _, _, gap in stacked_gaps([b for b in members if b.container is ground]) if gap > 0.5]
         typical = median(gaps) if gaps else 0
@@ -413,7 +416,21 @@ def dead_bands(blocks, grounds, unit, width, height, emit):
             x, y, w, h = rect
             # Only the part of the band across the content column counts as its width.
             across = min(x + w, right) - max(x, left)
-            if h < need or h > t["dead_band_max_share"] * frame[3] or across < t["dead_band_width"] * span:
+            interior = frame[1] + 0.5 < y and y + h < frame[1] + frame[3] - 0.5
+            # A hole between a headline and the rest of the type (a poster whose middle was left empty) is dead
+            # however sparse the frame or wide the hole; other very tall or sparse bands are open space.
+            hole = interior and h >= t["dead_band_hole"] * frame[3] and h <= t["dead_band_hole_max"] * frame[3] and _between_type(
+                members, x, y, w, h, frame[3])
+            if (sparse or h > t["dead_band_max_share"] * frame[3]) and not hole:
+                continue
+            if hole:
+                # With few blocks the hole is itself the median gap: judge it against the other gaps.
+                others = [gap for gap in gaps if gap < h - 1]
+                bar = max(t["dead_band_share"] * frame[3], t["dead_band_units"] * unit,
+                          t["dead_band_gap_ratio"] * (median(others) if others else 0))
+            else:
+                bar = need
+            if h < bar or across < t["dead_band_width"] * span:
                 continue
             # Space beside a line of text or a rule on the same rows is a ragged edge, not a band: a band
             # short of the full column counts only when artwork, not type, closes its sides.
@@ -455,6 +472,19 @@ def dead_bands(blocks, grounds, unit, width, height, emit):
                          "frame_share": round(h / frame[3], 3), **({"edge": side} if side else {})},
                  threshold={"min_height": round(need, 1), "min_width_share": t["dead_band_width"],
                             **({"edge_ratio": t["edge_band_ratio"]} if side else {})})
+
+
+def _between_type(members, x, y, w, h, frame_height):
+    """Whether text closes a band from above and from below (not artwork, which sets a scene in it), and one side
+    carries the copy (three blocks or a tenth of the frame): a headline over a credit line far below is a
+    minimal composition, not a hole."""
+    above = [b for b in members if b.bottom <= y + 1 and min(b.right, x + w) > max(b.left, x)]
+    below = [b for b in members if b.top >= y + h - 1 and min(b.right, x + w) > max(b.left, x)]
+    if not (above and below) or max(above, key=lambda b: b.bottom).kind != "text" or min(
+            below, key=lambda b: b.top).kind != "text":
+        return False
+    return any(len(side) >= 3 or max(b.bottom for b in side) - min(b.top for b in side) >= 0.1 * frame_height
+               for side in (above, below))
 
 
 def _overlap_share(a, b):

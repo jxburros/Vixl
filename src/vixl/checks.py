@@ -364,6 +364,68 @@ def overlap_candidates(boxes, texts, width, height):
     return sorted(set(pairs))
 
 
+def paint_order(resolved):
+    """Each layer's position in the order the renderer paints them: siblings in document order, and a
+    group's children at the group's own place in its parent's stack."""
+    children = {}
+    for item in resolved.values():
+        children.setdefault(item.get("parent"), []).append(item["id"])
+    order = {}
+    stack = list(reversed(children.get(None, [])))
+    while stack:
+        ident = stack.pop()
+        order[ident] = len(order)
+        stack.extend(reversed(children.get(ident, [])))
+    return order
+
+
+def hidden_text(project, resolved, layers, bounds, ink, alpha, is_text, issue, width, height):
+    """Report text that a layer painted above it covers: contrast measures text against what lies beneath it,
+    so a panel, band or image stacked on top of the words (often after a reorder) would hide them unseen."""
+    from .render import layer_canvas_alpha
+
+    order = paint_order(resolved)
+    covers = [item for item in layers if item["type"] != "group" and not is_text(item)
+              and item.get("blend", "normal") == "normal"]
+    opaque = {}
+
+    def solid(item, box):
+        key = (item["id"], box)
+        if key not in opaque:
+            opaque[key] = np.asarray(layer_canvas_alpha(project, resolved[item["id"]], box, bounds, resolved)) >= 224
+        return opaque[key]
+
+    for text in layers:
+        if not is_text(text) or not resolved[text["id"]].get("text", "").strip():
+            continue
+        x, y, w, h = ink(text)
+        box = (max(0, x), max(0, y), min(width, x + w), min(height, y + h))
+        if box[0] >= box[2] or box[1] >= box[3]:
+            continue
+        glyphs = alpha(text)
+        total = int(glyphs.sum())
+        if total == 0:
+            continue
+        covered = np.zeros_like(glyphs)
+        culprits = []
+        for item in covers:
+            if order.get(item["id"], -1) <= order[text["id"]]:
+                continue
+            ix, iy, iw, ih = ink(item)
+            if ix >= box[2] or iy >= box[3] or ix + iw <= box[0] or iy + ih <= box[1]:
+                continue
+            mask = np.logical_and(solid(item, box), glyphs)
+            if mask.any():
+                covered |= mask
+                culprits.append(item)
+        share = float(covered.sum()) / total
+        if share >= 0.25:
+            issue("overlap", "error",
+                  f"{text['name']!r} is {share:.0%} hidden under {', '.join(repr(x['name']) for x in culprits[:3])}, "
+                  "painted above it. Move the text above them (reorder) or move them off it",
+                  [text, *culprits[:3]], code="hidden-text", hidden=round(share, 3))
+
+
 def check_design(
     project,
     *,
@@ -765,6 +827,8 @@ def check_design(
                         code="text-text" if len(texts) == 2 else "text-object",
                         pixels=pixels,
                     )
+
+            hidden_text(candidate, resolved, layers, local_bounds, ink, alpha, is_text, issue, width, height)
 
     # Empty text (a lyric between lines, a cleared label) draws nothing to measure.
     texts = [item for item in content if is_text(item) and resolved[item["id"]].get("text", "").strip()]

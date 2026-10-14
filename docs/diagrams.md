@@ -112,7 +112,7 @@ CEO
 
 `direction` is `TB` (default), `LR`, `BT` or `RL` for layered and tree layouts. `routing` is `orthogonal` (right
 angles with bends on non-overlapping tracks), `curved` (cubic S-curves) or `straight`.
-`node_gap` and `rank_gap` (px at scale 1) loosen or tighten the spacing. Extra edges (a cycle's back edge, edges the
+`node_gap` and `rank_gap` (px at scale 1) loosen or tighten the spacing. When neither is given and a layered or tree diagram has to shrink to fit its area, the layout first tries tighter gaps (and, for a long chain with height to spare, narrower node labels that wrap onto more lines) and keeps them when the diagram can then be drawn noticeably larger. Extra edges (a cycle's back edge, edges the
 layout did not place) attach beside the connectors already on a side, so a pair such as `A -> B` and `B -> A` draws as
 two lines rather than one two-headed arrow.
 

@@ -430,7 +430,7 @@ If found, prepend its folder to PATH for this session — see
    `bounds`; changed layers list only their new values. If it contains `normalized`, note the
    canonical spelling it reports and use that next time.
 5. **Check without looking:** `vixl_check` / `vixl check` reports content cut off by the canvas,
-   overlapping text (and decoration running through text, for review), low WCAG contrast, safe-area or reserved-zone violations (`safe_area="5%"`,
+   overlapping text (and decoration running through text, for review), text hidden under a layer stacked above it, low WCAG contrast, safe-area or reserved-zone violations (`safe_area="5%"`,
    `avoid=[[x,y,w,h]]`) and text too small at thumbnail width (on print sizes: below 6 pt). It lists only problems.
    Secondary text too small, light or faint at the size the piece is really seen (cover art at 120 px, a book
    cover at 160 px, a projected slide, a poster across a room) is a `use-size` review finding naming the
@@ -637,7 +637,7 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 | Objects | `object` (kind, named parts, sub-objects, paths like `dog/head`), `object-save`/`object-place`, `inspect object=`, `isolate` with `views: [parts]`, isolated `export` |
 | Layout | `align` (to canvas/selection/layer), `distribute`, `constrain`/`unconstrain`, `stack` (auto-layout column/row that re-flows around hidden or empty members; text `hide_if_empty`), `guide`, `grid`, `canvas` (resize/preset), `artboard` |
 | Color & filters | 27 built-in effects (brightness … white-balance … auto-contrast), `effect-set/enable/disable/remove/move`, `lut` + `lookup` (a stack effect), `preset-save/apply` |
-| Selections & masks | `select` (rect/ellipse/color/alpha/all/none/invert, add/subtract/intersect, feather), `mask` (create/from-selection/import/invert/enable/disable/delete) |
+| Selections & masks | `select` (rect/ellipse/color/alpha/all/none/invert, add/subtract/intersect, feather), `mask` (create/from-selection/import/gradient/invert/enable/disable/delete; `gradient` fades a layer out, which a `gradient-overlay` style cannot: its transparent stops show the layer's own fill) |
 | Typography | `text`, `text-set` (`tabs`), `text-layout` (box, fit, wrap, warp, path), `style-define`/`style-apply`, `swatch` |
 | Decoration | `layer-style` (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay), `look` (named finishes: clean-flat, subtle-grain, light-paper, glow, neon, soft-shadow, hard-shadow, outline, gradient, soft-halo, grain, paper, film, duotone, risograph, sketch, watercolor, halftone, hand-made, plush), `repeat`, `repeat-blend`, `radial-repeat` (copies around a center, optional mirror, per-step/jitter, `merge`), `scatter`, `pattern-scatter`, `pathfinder` |
 | Templates | `variable`, `replace-contents`, `comp-save`/`comp-apply`, CSV `render --data`, `export-screens` |

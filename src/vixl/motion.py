@@ -14,6 +14,7 @@ SAMPLE_FUNCTIONS = ("sin", "cos", "triangle", "saw", "square", "noise")
 BOIL_STRENGTHS = ("subtle", "natural", "rough")
 # Recipes whose duration defaults to the rest of the timeline rather than one second.
 FILL_RECIPES = ("spin", "attach", "wiggle", "line-boil")
+WRAPPED_RECIPES = ("spin", "wiggle", "orbit", "breathing", "blink", "hover")  # periodic: stagger becomes a phase
 
 
 def schemas(add):
@@ -152,6 +153,34 @@ def line_boil(project, op, targets, start, length):
 
 
 def execute(project, op):
+    queue = getattr(project, "_warnings", None)
+    seen = len(queue) if queue is not None else 0
+    try:
+        _execute(project, op)
+    finally:
+        if queue is not None:
+            merge_growth(queue, seen)
+
+
+GROWTH = "timeline duration changed "
+
+
+def merge_growth(queue, seen):
+    """One motion or keyframes operation writes many keys past the timeline end; say once how far the
+    timeline grew (2400 -> 3000 ms) instead of once per key (2400 -> 2410, 2410 -> 2452 …)."""
+    grown = [i for i in range(seen, len(queue)) if queue[i].startswith(GROWTH)]
+    if len(grown) < 2:
+        return
+    first, last = queue[grown[0]], queue[grown[-1]]
+    old = first[len(GROWTH):].split(" ", 1)[0]
+    merged = GROWTH + old + " -> " + last[len(GROWTH):].split(" -> ", 1)[1]
+    merged = merged.replace(f"to keep {last[len(GROWTH):].split(' ', 1)[0]} ms", f"to keep {old} ms")
+    for i in reversed(grown):
+        del queue[i]
+    queue.insert(grown[0], merged)
+
+
+def _execute(project, op):
     from .timeline import execute_timeline, _timeline, parse_time, static_value, project_at, _snapshot
     if op["type"] == "keyframes":
         keys = (sampled_keys(project, op["sample"]) if "sample" in op else []) + list(op.get("keys", []))
@@ -173,6 +202,9 @@ def execute(project, op):
         targets = [layer for layer in project.state["layers"] if layer.get("parent") in roots]
     require(targets, "Motion needs at least one target")
     stagger = finite(op.get("stagger", 0), "stagger", 0, 600000)
+    # In a seamless loop a repeating motion's stagger is a phase offset: each target runs the same cycle a little
+    # later, wrapped around the loop, instead of starting later and pushing keys past the end of the timeline.
+    wrap = bool(stagger) and recipe in WRAPPED_RECIPES and settings.get("loop_mode") == "seamless"
     if recipe == "line-boil":
         line_boil(project, op, targets, start, length)
         return
@@ -186,8 +218,8 @@ def execute(project, op):
             _note(project, f"spin turns {turns:g} is not a whole number, so the loop jumps at the seam; use a whole number of turns")
         sweep = 360 * turns / symmetry
         for index, layer in enumerate(targets):
-            offset = start + round(stagger * index)
-            base = static_value(project, layer["id"], "rotation")
+            offset = start + (0 if wrap else round(stagger * index))
+            base = static_value(project, layer["id"], "rotation") - (sweep * stagger * index / length if wrap else 0)
             for time, value in ((offset, base), (offset + length, base + sweep)):
                 execute_timeline(project, {"type": "keyframe", "target": layer["id"], "property": "rotation", "time": time, "value": value,
                                            "easing": op.get("easing", "linear"), "extend": op.get("extend", True)})
@@ -211,7 +243,7 @@ def execute(project, op):
     amount = finite(op.get("amount", 12), "amount", -100000, 100000)
     period = finite(op.get("period", 1000), "period", 10, 600000)
     frequency = finite(op.get("frequency", 3), "frequency", 0.01, 60)
-    if (recipe == "wiggle" and settings.get("loop_mode") == "seamless" and not stagger
+    if (recipe == "wiggle" and settings.get("loop_mode") == "seamless" and (wrap or not stagger)
             and start + length == settings["duration"]):
         # A wiggle that runs to the loop end closes only after whole cycles.
         cycles = max(1, round(frequency * length / 1000))
@@ -242,7 +274,11 @@ def execute(project, op):
     total_keys = len(targets) * (samples + 1) * 3
     require(total_keys <= 8192, "Motion would generate too many keys; reduce samples or targets", "resource_limit")
     for index, layer in enumerate(targets):
-        offset = start + round(stagger * index)
+        offset = start + (0 if wrap else round(stagger * index))
+        delay = stagger * index if wrap else 0
+        # The cycle offset of this target: turns for period-based recipes, radians for wiggle and shake.
+        turn = phase - delay / period
+        radians = phase - math.tau * frequency * delay / 1000
         prop = op.get("property", "rotation" if recipe in ("wiggle", "look-at") else "translate-x")
         base = static_value(project, layer["id"], prop) if recipe in ("spring", "wiggle") else 0
         steps = [(i / samples, None) for i in range(samples + 1)]
@@ -256,7 +292,7 @@ def execute(project, op):
                     steps.append((snapped / length, {"translate-y": 0.0}))
         for u, forced in steps:
             t = length * u / 1000
-            angle = math.tau * (t * 1000 / period + phase)
+            angle = math.tau * (t * 1000 / period + turn)
             values = {}
             if recipe == "follow-path":
                 from .timeline import easing_function
@@ -295,12 +331,12 @@ def execute(project, op):
                 values = {prop: base + (target - base) * response}
             elif recipe in ("shake", "wiggle"):
                 envelope = math.sin(math.pi * u) if recipe == "shake" else 1
-                values = {prop: base + amount * envelope * math.sin(math.tau * frequency * t + phase)}
+                values = {prop: base + amount * envelope * math.sin(math.tau * frequency * t + radians)}
             elif recipe == "breathing":
                 values = {"scale-y": 1 + abs(amount) / 100 * (1 - math.cos(angle)) / 2}
             elif recipe == "blink":
                 # Short closures, held by actual stepped keys, rather than a whole-cycle flap.
-                values = {"scale-y": 0.08 if (t * 1000 / period + phase) % 1 >= 0.9 else 1}
+                values = {"scale-y": 0.08 if (t * 1000 / period + turn) % 1 >= 0.9 else 1}
             elif recipe == "hover":
                 values = {"translate-y": -amount * math.sin(angle)}
             elif recipe in ("look-at", "overlap"):

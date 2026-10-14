@@ -230,11 +230,18 @@ def test_automatic_value_labels_label_every_bar_or_whole_series_largest_first():
     assert len(labels) == 18 and len({layer["size"] for layer in labels.values()}) == 1
     p.apply({"type": "chart-data", "target": "Sales", "set": [{"category": "Jun", "series": "Online", "value": 26000}]})
     assert len(value_labels(p)) == 18
-    # Two lines whose labels land on each other: the larger series keeps every label, the other gives way whole.
+    # Two lines whose labels would land on each other: the larger series keeps its labels above its points, the
+    # other puts all of its own below its points, so neither sits on the other line.
     close = {"categories": MONTHS, "series": [{"name": "A", "values": [100, 104, 108, 112, 116, 120]},
                                               {"name": "B", "values": [99, 103, 107, 111, 115, 119]}]}
-    keys = set(value_labels(make("line", close)))
-    assert keys == {f"value-0-{i}" for i in range(6)}, keys
+    p = make("line", close)
+    labels = value_labels(p)
+    assert set(labels) == {f"value-{s}-{i}" for s in (0, 1) for i in range(6)}, set(labels)
+    markers = {layer["name"]: layer for layer in p.state["layers"] if layer["name"].startswith("Sales/marker")}
+    for i, month in enumerate(MONTHS):
+        a, b = markers[f"Sales/marker A {month}"], markers[f"Sales/marker B {month}"]
+        assert labels[f"value-0-{i}"]["y"] < a["y"] and labels[f"value-1-{i}"]["y"] > b["y"] + b["height"]
+    assert not [x for x in p.check(checks=["overlap"])["issues"] if x["check"] == "overlap"]
 
 
 def test_chart_internals_give_one_legibility_finding_and_no_mark_overlaps():  # #360

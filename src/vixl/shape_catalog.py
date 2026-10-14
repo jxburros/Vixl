@@ -88,8 +88,8 @@ SHAPE_PARAMETERS = {
     "sparkle": ("arms", "inner_radius", "rotation_offset"),
     "sunburst": ("count", "inner_radius", "taper"),
     "sun": ("count", "ray_length", "thickness"),
-    "ring": ("thickness", "frame_shape", "sides"),
-    "donut": ("thickness", "frame_shape", "sides"),
+    "ring": ("thickness", "inner_radius", "frame_shape", "sides"),
+    "donut": ("thickness", "inner_radius", "frame_shape", "sides"),
     "frame": ("thickness", "frame_shape", "radius", "sides"),
     "phone-frame": ("thickness", "radius"),
     "tablet-frame": ("thickness", "radius"),
@@ -329,11 +329,19 @@ def radial(n, w, h, inner=1, rotation=-90):
     ]
 
 
+def band(p, k, mn):
+    """A frame's band width: ``thickness``, else for a ring or donut ``inner_radius`` (the hole's share of the
+    outer radius, as on an arc), else 15% of the shorter side."""
+    if p.get("thickness") is None and k in ("ring", "donut") and p.get("inner_radius") is not None:
+        return mn / 2 * (1 - min(max(float(p["inner_radius"]), 0.0), 0.999))
+    return length(p.get("thickness"), mn, mn * 0.15)
+
+
 def path(layer):
     k, w, h = layer["shape"], float(layer["width"]), float(layer["height"])
     p = layer
     mn = min(w, h)
-    t = length(p.get("thickness"), mn, mn * 0.15)
+    t = band(p, k, mn)
     n = int(p.get("count", p.get("sides", 6)))
     n = max(2, min(n, 128))
     rot = p.get("rotation_offset", 0) - 90
@@ -1132,7 +1140,7 @@ def content_box(layer):
     if k == "sun":
         return _centered(w, h, 0.5 / math.sqrt(2))
     if k in FRAMES:
-        t = min(length(p.get("thickness"), mn, mn * 0.15), mn / 2 - 0.001)
+        t = min(band(p, k, mn), mn / 2 - 0.001)
         shape = p.get("frame_shape", "ellipse" if k in ("ring", "donut") else "rectangle")
         if shape == "ellipse":
             x, y, iw, ih = _centered(w - 2 * t, h - 2 * t, 1 / math.sqrt(2))

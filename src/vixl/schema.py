@@ -346,8 +346,16 @@ def _operation_schema():
     add(
         "mask",
         {
-            "action": enum("create", "from-selection", "import", "invert", "enable", "disable", "delete"),
+            "action": enum("create", "from-selection", "import", "gradient", "invert", "enable", "disable", "delete"),
             "path": S,
+            "start": S,
+            "end": S,
+            "stops": {"type": "array", "items": {"type": "object"}},
+            "direction": enum("horizontal", "vertical", "radial", "angled"),
+            "angle": N,
+            "center": {"type": "array", "items": {"type": "number", "minimum": 0, "maximum": 1},
+                       "minItems": 2, "maxItems": 2},
+            "falloff": enum("linear", "smooth", "ease", "quadratic", "gaussian"),
         },
     )
     effect = {

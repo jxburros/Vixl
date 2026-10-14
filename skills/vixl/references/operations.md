@@ -108,7 +108,7 @@ The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://opera
 | type | fields | notes |
 | --- | --- | --- |
 | `select` | **`shape`**, `x`, `y`, `width`, `height`, `color`, `tolerance`, `target`, `asset`, `mode`, `feather` | `shape`: `rect`, `ellipse` (x,y,w,h), `color` (`color`, `tolerance`), `alpha` (`target` layer), `asset` (grayscale mask asset), `all`, `none`, `invert`. `mode`: `replace`/`add`/`subtract`/`intersect`. Canvas coordinates. |
-| `mask` | `target`, **`action`**, `path` | `action`: `create` (white), `from-selection`, `import` (`path`; CLI/Python only), `invert`, `enable`, `disable`, `delete`. White = visible. Masks follow the layer's transform. |
+| `mask` | `target`, **`action`**, `path`, `start`, `end`, `stops`, `direction`, `angle`, `center`, `falloff` | `action`: `create` (white), `from-selection`, `import` (`path`; CLI/Python only), `gradient` (a fade over the layer's box: `start` white and `end` black by default, `direction` horizontal; the gradient fields as on `gradient`), `invert`, `enable`, `disable`, `delete`. White = visible, black or a transparent stop = hidden. Masks follow the layer's transform. To fade a shape out (a light beam, a vignette band) use `gradient`, not a `gradient-overlay` style: an overlay recolours the layer and its transparent stops show the layer's own fill. |
 
 New effects are limited to the selection active **when they are added**. Select `none` first for whole-layer effects.
 

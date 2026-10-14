@@ -219,11 +219,16 @@ def build_slide(project, session, slide, kind, number, settings, report):
         visual_box = (left, top, width, bottom - top)
     ops = []
     size = settings["body_size"]
+    lead = _step(project, "lead", round(size * 1.5))
     ink = "@ink" if "ink" in project.state.get("swatches", {}) else None
     if text_box:
-        ops.append({"type": "rich-text", "name": "body", "markdown": text.strip(), "x": text_box[0], "y": text_box[1],
-                    "width": text_box[2], "height": text_box[3], "size": size, "fit": True,
-                    **({"color": ink} if ink else {})})
+        # The lead step when the text fits the content area at that size (a few bullets read from the back of the
+        # room); else the body step, shrunk to fit only when even that overflows.
+        body = {"type": "rich-text", "name": "body", "markdown": text.strip(), "x": text_box[0], "y": text_box[1],
+                "width": text_box[2], "height": text_box[3], "size": lead, "fit": True, **({"color": ink} if ink else {})}
+        project.apply(body)
+        if lead > size and not _fits(project, "body"):
+            project.apply([{"type": "remove", "target": "body"}, {**body, "size": size}])
     if visual_box:
         x, y, w, h = visual_box
         share = (h - gap * (len(visuals) - 1)) // max(1, len(visuals))
@@ -233,11 +238,11 @@ def build_slide(project, session, slide, kind, number, settings, report):
             if block["kind"] in ("csv", "table"):
                 rows = rows_from_csv(block["text"], f"slide {number}")
                 ops.append({"type": "table", "name": name, "x": x, "y": box_y, "width": w, "table": rows,
-                            "font_size": settings["table_size"], **({"text_color": ink} if ink else {})})
+                            "font_size": lead, **({"text_color": ink} if ink else {}), "_room": share})
             elif block["kind"] == "chart":
                 rows = numeric(rows_from_csv(block["text"], f"slide {number}"))
                 ops.append({"type": "chart", "name": name, "x": x, "y": box_y, "width": w, "height": share,
-                            "table": rows, "kind": block["info"] or "bar", "font_size": settings["chart_size"],
+                            "table": rows, "kind": block["info"] or "bar", "font_size": max(settings["chart_size"], lead),
                             **({"text_color": ink} if ink else {})})
             else:
                 from .assets import add_encoded, read_bounded
@@ -249,13 +254,63 @@ def build_slide(project, session, slide, kind, number, settings, report):
                 ops.append({"type": "frame", "name": name, "asset": asset, "x": x, "y": box_y, "width": w,
                             "height": share, "fit": "fit"})
     if ops:
+        rooms = {op["name"]: op.pop("_room") for op in ops if "_room" in op}
         project.apply(ops)
         for op in ops:
             if op["type"] == "table":
                 table = project.layer(op["name"])
+                if table["height"] > rooms[op["name"]] and op["font_size"] > settings["table_size"]:
+                    project.apply({"type": "table", "target": op["name"], "font_size": settings["table_size"]})
+                    table = project.layer(op["name"])
                 if table["height"] > visual_box[3]:
                     report.append(f"slide {number}: the table is taller than the slide's content area")
     return result
+
+
+def _step(project, role, fallback):
+    """The size of a type-scale step (character style ``role``) the slide's layout set up."""
+    return round((project.state.get("character_styles") or {}).get(role, {}).get("size") or fallback)
+
+
+def _fits(project, name):
+    """Whether rich text fits its box at its own size (``fit`` would otherwise scale it down when drawn)."""
+    from .richtext import _fits_width, layout
+
+    layer = project.layer(name)
+    result = layout(project, layer)
+    return result.height <= layer["height"] and _fits_width(result, layer["width"])
+
+
+def harmonize(project, built):
+    """Snap the titles the layouts fitted (147, 114, 95 px …) down onto the deck's type scale, and give every
+    content slide's title one size, so the deck reads as one system (the deck check's type_scale finding)."""
+    scale = sorted({round(style["size"]) for style in (project.state.get("character_styles") or {}).values()
+                    if style.get("size")})
+    if not scale:
+        return
+
+    def snapped(size):
+        lower = [step for step in scale if step <= size + 0.5]
+        return lower[-1] if lower else size
+
+    titles = {}
+    for name, kind in built:
+        project.apply({"type": "page", "action": "select", "page": name})
+        for layer in project.state["layers"]:
+            if (layer["type"] == "text" and not layer.get("parent") and layer.get("role") != "decoration"
+                    and layer["name"] in ("title", "subtitle", "quote") and isinstance(layer.get("size"), (int, float))):
+                titles.setdefault(name, []).append((layer["name"], layer["size"], kind))
+    content = [size for items in titles.values() for layer, size, kind in items if kind == "content" and layer == "title"]
+    shared = snapped(min(content)) if content else None
+    for name, items in titles.items():
+        project.apply({"type": "page", "action": "select", "page": name})
+        changes = []
+        for layer, size, kind in items:
+            target = shared if kind == "content" and layer == "title" else snapped(size)
+            if target != size:
+                changes.append({"type": "text-set", "target": layer, "size": target})
+        if changes:
+            project.apply(changes)
 
 
 def run(session, request):
@@ -337,6 +392,7 @@ def run(session, request):
                        "y": H - max(bottom, round(H * 0.04)) - number_layer["height"]})
         project.apply({"type": "text-set", "target": "page-number", "text": "${page} / ${pages}"})
     first_layout = None
+    built = []
     for index, (name, kind, slide, digest) in enumerate(plan):
         if name in pages and previous.get(name) == digest:
             project.apply({"type": "page", "action": "set", "page": name, "notes": slide["notes"] or ""})
@@ -353,11 +409,13 @@ def run(session, request):
                            **({"notes": slide["notes"]} if slide["notes"] else {})})
             pages.add(name)
         result = build_slide(project, session, slide, kind, index + 1, settings, findings)
+        built.append((name, kind))
         layout = (result or {}).get("layout") or {}
         if first_layout is None and layout:
             first_layout = layout
             settings["palette"] = settings.get("palette") or layout.get("palette")
         rebuilt.append(name)
+    harmonize(project, built)
     # Slides deleted from the Markdown go; pages made by hand stay.
     gone = [name for name in previous if name not in {p[0] for p in plan} and name in pages]
     for name in gone:

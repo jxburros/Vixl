@@ -172,6 +172,25 @@ def _style_fonts(project, key):
     return {"pairing": installed["pairing"], "installed": True, "typography": installed.get("typography")}
 
 
+def _look_operations(project, looks):
+    """A look without target or targets goes where the house style puts it (textures on the background,
+    shadows and outlines on the solid shapes), not on the last layer the layout added."""
+    from .variety import default_look_targets
+
+    operations = []
+    for item in looks:
+        if "target" in item or "targets" in item:
+            operations.append({**item, "type": "look"})
+            continue
+        targets = default_look_targets(project, item["look"])
+        require(targets, f"look {item['look']!r} has nothing to finish here (no background or solid shapes); "
+                "give target or targets", field="look")
+        for color in dict.fromkeys(color for _, color in targets):
+            operations.append({**item, "type": "look", "targets": [layer["id"] for layer, c in targets if c == color],
+                               **({"color": color} if color and "color" not in item else {})})
+    return operations
+
+
 def compose(session, *, path=None, operations=None, operations_path=None, layout=None, style=None, look=None,
             font_pairing=None, check=True, strict=False, preview=None, exports=None, overwrite=False,
             dry_run=False, **create):
@@ -269,7 +288,7 @@ def compose(session, *, path=None, operations=None, operations_path=None, layout
             steps["style"] = {"style": style}
     if looks:
         with _Step("look", done):
-            steps["look"] = _brief(_apply(project, [{**item, "type": "look"} for item in looks], validate))
+            steps["look"] = _brief(_apply(project, _look_operations(project, looks), validate))
     if operations:
         with _Step("operations", done):
             steps["operations"] = _brief(_apply(project, operations, validate))

@@ -205,7 +205,7 @@ FIELD_ALIASES = {
     "effect": {"effect": "name", "filter": "name", "value": "amount"},
     "canvas": {"color": "background", "fill": "background"},
     "variable": {"key": "name"},
-    "align": {"align": "alignment", "position": "alignment", "relativeTo": "relative_to"},
+    "align": {"align": "alignment", "position": "alignment", "relativeTo": "relative_to", "to": "relative_to"},
     "animation-set": {"frames": "order", "sequence": "order"},
     "frames-edit": {"ops": "operations", "edits": "operations"},
     "resize": {
