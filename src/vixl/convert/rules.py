@@ -255,6 +255,24 @@ def irregular_strength(ctx, state):
                          "natural", layer)
 
 
+def dash_fit(ctx, state):
+    """Dash patterns were drawn at their exact lengths, from the start of the outline; the default now fits them
+    to corners and open ends."""
+    if not ctx.older(CURRENT_SINCE):
+        return
+    for layer in layers(state):
+        records = [layer, *[s for s in layer.get("strokes") or [] if isinstance(s, dict)]]
+        if layer.get("type") != "shape" or "dash_fit" in layer or not any(r.get("dash") for r in records):
+            continue
+        if ctx.preserve:
+            layer["dash_fit"] = False
+            ctx.change("dash-fit", "The dash pattern was drawn at its exact lengths; that is now explicit (dashes are "
+                       "fitted to corners by default)", layer, "dash_fit", after=False)
+        else:
+            ctx.warn("dash-fit", "The dash pattern is now fitted to the corners: dashes and gaps change length "
+                     "slightly and every corner lands on a dash", layer)
+
+
 def diagram_line_height(ctx, state):
     """Diagrams made before 0.23 have no line height and set label leading at 0.18 × size over the font's pitch."""
     from ..craft import natural_height
@@ -527,5 +545,6 @@ RULES = (
     ("styled-stroke-align", styled_stroke_align),
     ("polygon-joins", polygon_joins),
     ("thick-stroke", thick_stroke),
+    ("dash-fit", dash_fit),
     ("pdf-bleed", pdf_bleed),
 )

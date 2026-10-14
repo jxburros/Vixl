@@ -232,7 +232,11 @@ class Slide:
         else:
             from .geometry import default_fill
             from .render import rest_size
-
+            # DrawingML has no fitted dashes, width profiles, extra strokes, markers or distortion: draw the
+            # outlines the other renderers draw. Alignment, caps and joins stay a native line.
+            if any(layer.get(key) and layer.get(key) != "none" for key in NOT_NATIVE) or layer.get("distort") \
+                    or layer.get("_distort_groups"):
+                return self.primitives(layer, bounds, emu)
             stroke_xml, stroke_alpha = self.color(layer.get("stroke", "transparent"), opacity)
             width = layer.get("stroke_width", 1)
             # PowerPoint centres strokes on the outline: move the outline to where the stroke's centre
@@ -260,6 +264,40 @@ class Slide:
                 line = "<a:ln><a:noFill/></a:ln>"
         return (f'<p:sp><p:nvSpPr>{c_nv_pr(ident, layer)}<p:cNvSpPr/><p:nvPr/></p:nvSpPr>'
                 f'<p:spPr>{self.xfrm(layer, bounds, emu, frame=frame)}{geometry}{fill}{line}</p:spPr></p:sp>')
+
+    def primitives(self, layer, bounds, emu):
+        """A shape whose stroke has dashes, a width profile, extra strokes, alignment, markers or a distortion:
+        the filled outlines every other renderer draws (``vector_strokes.primitives``), one custom-geometry shape
+        each, in a group in the layer's own pixel space. PowerPoint's own dashes cannot match the fitted ones."""
+        from fontTools.pens.boundsPen import BoundsPen
+        from fontTools.svgLib.path import parse_path as pen_path
+
+        from .geometry import parse_path
+        from .vector_strokes import primitives
+
+        parts = []
+        for path, paint in primitives(layer, self.view):
+            fill = self.fill(paint, layer["opacity"])
+            if not path or fill == "<a:noFill/>":
+                continue
+            pen = BoundsPen(None)
+            pen_path(path, pen)
+            if pen.bounds is None:
+                continue
+            x0, y0, x1, y1 = pen.bounds
+            width, height = max(x1 - x0, 1e-3), max(y1 - y0, 1e-3)
+            local = [(cmd, [v - (x0 if i % 2 == 0 else y0) for i, v in enumerate(values)])
+                     for cmd, values in parse_path(path)]
+            parts.append(f'<p:sp><p:nvSpPr><p:cNvPr id="{self.ident()}" name={_attr(layer["name"])}/><p:cNvSpPr/><p:nvPr/>'
+                         f'</p:nvSpPr><p:spPr><a:xfrm><a:off x="{round(x0 * emu)}" y="{round(y0 * emu)}"/>'
+                         f'<a:ext cx="{max(1, round(width * emu))}" cy="{max(1, round(height * emu))}"/></a:xfrm>'
+                         f'{self.custom_geometry(local, (width, height))}{fill}<a:ln><a:noFill/></a:ln></p:spPr></p:sp>')
+        if not parts:
+            return None
+        return (f'<p:grpSp><p:nvGrpSpPr><p:cNvPr id="{self.ident()}" name={_attr(layer["name"])}/><p:cNvGrpSpPr/>'
+                f'<p:nvPr/></p:nvGrpSpPr><p:grpSpPr>'
+                f'{self.xfrm(layer, bounds, emu, child=(layer["width"], layer["height"]))}'
+                f'</p:grpSpPr>{"".join(parts)}</p:grpSp>')
 
     def geometry(self, layer, inset=0.0):
         """Preset or custom geometry for a shape whose frame is ``inset`` from its box on every side."""
@@ -529,6 +567,9 @@ class Slide:
             before = float((settings[first] if first < len(settings) else {}).get("space_before", 0)) * scale
             first_top = baseline - (height + gap) - descent - before
         return out, first_top, 0.0
+
+
+NOT_NATIVE = ("dash", "width_profile", "taper_start", "taper_end", "strokes", "marker_start", "marker_end")
 
 
 class Unsupported(Exception):

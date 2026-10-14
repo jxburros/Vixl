@@ -229,7 +229,11 @@ def paper_image(image, layer):
     eroded = np.asarray(padded.filter(ImageFilter.MinFilter(3)).crop((1, 1, w + 1, h + 1)), dtype=np.float32)
     edge = pixels[:, :, 3] - eroded
     pixels[:, :, 3] -= edge * rng.uniform(0, settings["roughness"], (h, w))
-    return Image.fromarray(pixels.astype(np.uint8), "RGBA")
+    result = Image.fromarray(pixels.astype(np.uint8), "RGBA")
+    # A vector drawing that reaches past its box (a path's dome, a stroke) must stay unscaled: without the
+    # marker the renderer would squeeze the larger image back into the box and flatten the shape.
+    result.info.update(image.info)
+    return result
 
 
 def composite(image, project):

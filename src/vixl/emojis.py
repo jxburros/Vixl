@@ -254,6 +254,9 @@ def load_master(raw, limits):
                 ),
                 "Embed emoji master fonts before importing",
             )
+        if layer["type"] == "shape" and layer.get("dash") and "dash_fit" not in layer:
+            # Masters are drawn from SVG artwork, whose dash arrays are exact lengths from the path's start.
+            layer["dash_fit"] = False
     project.path = None
     return project
 

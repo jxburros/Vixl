@@ -13,6 +13,16 @@
 - **Previews and linked documents draw tracked text at the export's width.** The preview proxy did not scale layer `tracking`, so downscaled previews and link layers drew tracked lines far too wide (about 1986 px against 1178 px bounds at a 0.198 preview), and it rounded text sizes to whole preview pixels (up to about 2% wide or narrow); it now scales tracking and keeps fractional sizes.
 - **Adding tracking does not move plain text.** Tracked plain text is laid out by the rich-text engine, whose box started at the line rather than at the ink, so adding `tracking` (or a first `text-style`) moved the text down by the difference (about 10–30 px at display sizes). Plain text laid out there now keeps the plain box (rich record `ink_box: true`) and line pitch.
 - **Glyph overhangs are no longer clipped.** Script swashes, italic and synthetic-oblique slants, synthetic bold and outlines that reach past a rich or tracked text layer's box are drawn in PNG, previews, redrawn turned or fractionally placed layers and SVG (PDF and PPTX did not clip). The layer box is still the layout box for alignment and wrapping; lines that overflow a fixed box below its bottom stay cut off.
+- `cut-paper` no longer flattens a drawing that reaches past its box: its grain and edge pass dropped the marker that
+  keeps an overflowing vector image unscaled, so a path's dome (a loaf top) was squeezed into the box.
+- `check` (bounds) reports a path or arc whose own geometry runs past its box but is drawn cut off there
+  (`code: "geometry-clipped"`, a `fix`), naming the edges and pointing to `path-fit` or a larger box.
+- Dotted strokes draw round dots: a dot that fell on a vertex lost its cap direction and drew a spur or half a dot, and a
+  flattened curve that closed a hair's breadth from its start put a spike at the seam of an inside or outside dashed stroke.
+- PowerPoint export keeps dashes, width profiles, tapers, extra `strokes` and markers: such a shape is exported as the
+  filled outlines every other renderer draws (it was a plain solid line). Alignment, caps and joins stay a native line.
+- Looks that read the backdrop measure every target of one `look` operation in one render, and rolled looks apply as
+  one operation per colour.
 
 ### Behaviour changes
 
@@ -21,6 +31,20 @@
 - Text with `tracking` lays out narrower by one tracking amount per line: auto-sized boxes shrink, and centred or right-aligned tracked lines move by half or all of it. There is no setting for the old trailing space; to keep a box's previous width, widen it with `text-layout` or move the layer by the difference.
 - Plain text with layer `tracking` draws at the plain text's position (about 10–30 px higher than in 0.27 at display sizes, and with the plain line pitch for multi-line text). A first `text-style` on a plain layer stores `ink_box: true` and `line_height: 1.0` so it keeps the plain box and leading; set `line_height` with `text-style` for other leading.
 - Rich text whose ink reaches past its box (script faces, slanted or outlined letters) now draws that ink instead of cutting it off at the box edge.
+- **Glows and shadows without a colour no longer read as dirt.** A shadow look (`soft-shadow`, `hard-shadow`) is now the colour of what it falls on, darker in the same hue, instead of black, and
+  `soft-shadow` is tighter and lighter (offset 1.5-4% and blur 3-8% of the layer's short side, opacity 0.14-0.30; it was
+  3-8%, 5-15% and 0.2-0.5). A glow look (`glow`, `neon`, `soft-halo`) is a lighter tint of the layer's
+  colour screened over the backdrop, so it only adds light, with opacity capped at 0.6 (a `soft-halo` core at 0.7); on a
+  ground lighter than that tint it keeps the layer's colour. An explicit `color` is kept exactly, and `layer-style` is
+  unchanged (drawn as given). Migration: pass `color` to the look for the old colour
+  (`{"type": "look", "look": "soft-shadow", "color": "#000000", "amount": 0.5}`), or set the shadow exactly with
+  `layer-style` (`{"color": "#000000", "dx": 0, "dy": 6, "blur": 10, "opacity": 0.35}`). Looks already applied keep
+  their stored styles. See [looks](docs/looks.md#behaviour).
+- **Dash patterns are fitted to corners** (`dash_fit`, default true): each length is stretched or squeezed by the same
+  small factor so the pattern divides every stretch between corners evenly, a dash is centred on every corner (sharp,
+  rounded or notched) and open paths start and end on a dash; a closed curve without corners is divided into whole
+  repeats. This applies to every dashed stroke in PNG, SVG, PDF and PowerPoint. Migration: set `dash_fit: false` on a
+  shape (or on one of its `strokes`) for the exact lengths and the old placement.
 
 ## 0.27.0
 

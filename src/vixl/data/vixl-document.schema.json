@@ -803,12 +803,19 @@
      "description": "Stroke trim end, 0–1 of the outline length."
     },
     "dash": {
-     "type": "array",
-     "description": "Dash pattern lengths in pixels."
+     "type": [
+      "array",
+      "string"
+     ],
+     "description": "Dash pattern lengths in pixels, or the preset dashed or dotted."
     },
     "dash_offset": {
      "type": "number",
      "description": "Dash pattern offset in pixels."
+    },
+    "dash_fit": {
+     "type": "boolean",
+     "description": "Fit the dash pattern to corners and open ends (default true); false keeps exact lengths."
     },
     "line_cap": {
      "type": "string",

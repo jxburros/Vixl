@@ -649,8 +649,9 @@ one module, `src/vixl/house_style.py`. A workspace `brand.json` and explicit fie
   half the body size), the line-height table, line length, minimum text sizes, the base-size rule, the
   headline measure, the default safe area (5%) and stroke width (1.5%), the neutral fill and the palette
   roles fills and strokes take, the house corner and corner scale, the irregularity strength, margins,
-  outline and shadow treatment, label case, and the text-stage ladder (`type_stages`: each stage's font role,
-  type-scale step, line height and case). `src/vixl/craft.py` holds the helpers that apply them
+  outline and shadow treatment, label case, the text-stage ladder (`type_stages`: each stage's font role,
+  type-scale step, line height and case), and the finishing rules (`finish`: what a glow, shadow or halo
+  looks like without a colour, and whether dashes are fitted to corners). `src/vixl/craft.py` holds the helpers that apply them
   (text, shape and stroke defaults) and read-only names (`LINE_HEIGHT`, `CORNERS`, `SAFE_AREA` …) that
   always reflect the data; layouts, rich text, text flow, charts, diagrams, templates and containers
   read the same values.
@@ -786,3 +787,13 @@ and #370 (layouts fail their own safe-area check).
   that many. `distribution: "poisson"` re-rolls the layout on every count change.
 - **Finished sprites (7e).** `pixel-art` sprites draw with a shading ramp and an outline (`shading`, `outline`).
   `shading: false` and `outline: false` keep the flat sprite.
+- **Glows and shadows (`craft.finish`).** A glow or shadow look given no colour builds it from what lies under the
+  layer. Shadows are the backdrop in shade (same hue and chroma, about a third of its lightness), never neutral
+  grey or black, and `soft-shadow` is small and light (offset 1.5-4% and blur 3-8% of the short side, opacity
+  0.14-0.30). Glows are a lighter tint of the layer's colour screened over the backdrop, so they only add light
+  (on a ground lighter than the tint, the layer's own colour), with opacity capped at 0.6 and a `soft-halo` core at
+  0.7. An explicit `color` is kept exactly; `layer-style` draws what it is given. The craft check of 2026-10-13
+  found muddy glows and shadows on four of eight pieces. See [looks](looks.md#behaviour).
+- **Fitted dashes (`craft.finish.dash_fit`).** Dash patterns stretch or squeeze slightly so each stretch between
+  corners divides evenly, with a dash on every corner and at open ends. `dash_fit: false` keeps the exact
+  lengths. See [strokes](vector-paths.md#strokes).

@@ -6,6 +6,7 @@ Widths and dash distances are measured in local pixels, independent of path view
 
 import math
 
+from . import house_style
 from .errors import require
 from .geometry import OPEN_SHAPES, PATH_SHAPES
 from .geometry import default_fill, stroke_align
@@ -13,6 +14,7 @@ from .geometry import default_fill, stroke_align
 FIELDS = (
     "dash",
     "dash_offset",
+    "dash_fit",
     "line_cap",
     "line_join",
     "miter_limit",
@@ -29,7 +31,7 @@ FIELDS = (
 
 
 def schema():
-    from .schema import N, S, enum
+    from .schema import B, N, S, enum
 
     props = {
         "dash": {
@@ -44,6 +46,7 @@ def schema():
             ]
         },
         "dash_offset": N,
+        "dash_fit": B,
         "line_cap": enum("butt", "round", "square"),
         "line_join": enum("miter", "round", "bevel"),
         "miter_limit": {"type": "number", "minimum": 1, "maximum": 1000},
@@ -87,6 +90,9 @@ def schema():
     for key, value in list(props.items()):
         props[key] = {**value, "description": {
             "dash": "Dash/gap pixel lengths or dashed/dotted preset; separate from trim_start/trim_end reveal.",
+            "dash_fit": "Stretch or squeeze the dash pattern slightly so it divides each stretch between corners "
+                        "evenly, with a dash centred on every corner and at open ends (default true); false keeps the "
+                        "exact lengths.",
             "width_profile": "Ordered [fraction along path, width multiplier] control points; endpoints 0 and 1.",
             "strokes": "Additional strokes painted in array order after the base stroke.",
             "taper_start": "Width multiplier at the start; reaches full width at the middle.",
@@ -106,6 +112,7 @@ def validate(layer):
         for key in ("dash_offset", "taper_start", "taper_end", "marker_size", "miter_limit", "width"):
             if key in settings:
                 finite(settings[key], key, -1e6 if key == "dash_offset" else 0, 1e6)
+        require(isinstance(settings.get("dash_fit", False), bool), "dash_fit must be true or false", field="dash_fit")
         require(settings.get("line_cap", "butt") in ("butt", "round", "square"), "Invalid line cap")
         require(settings.get("line_join", "miter") in ("miter", "round", "bevel"), "Invalid line join")
         require(
@@ -297,6 +304,152 @@ def dashed(points, pattern, offset=0):
     return runs
 
 
+# Turning that adds up to this much within one cluster is a corner (a sharp vertex or a rounded arc).
+CORNER_TURN = math.radians(35)
+STRAIGHT = math.radians(0.5)
+
+
+def corners(points, closed, reach):
+    """Arc-length positions of the corners of a flattened contour. Turning vertices with the same sense that lie
+    within ``reach`` of each other along the outline form one cluster (the steps of a rounded corner's arc, or the
+    two bends of a short notch); a cluster that turns at least ``CORNER_TURN`` is a corner, placed where half its
+    turning is done. A closed contour that is one cluster all round (a circle, an ellipse, a blob) has none."""
+    count = len(points)
+    at = [0.0]
+    for a, b in zip(points, points[1:]):
+        at.append(at[-1] + math.dist(a, b))
+    total = at[-1]
+    last = count - 1 if closed else count
+    turning = []
+    for i in range(last):
+        if closed:
+            before, after = points[i - 1] if i else points[-2], points[i + 1]
+        elif 0 < i < count - 1:
+            before, after = points[i - 1], points[i + 1]
+        else:
+            continue
+        u, v = unit(before, points[i]), unit(points[i], after)
+        turn = math.atan2(cross(u, v), u[0] * v[0] + u[1] * v[1])
+        if abs(turn) > STRAIGHT:
+            turning.append((at[i], turn))
+    if not turning:
+        return []
+
+    def linked(a, b, wrap=0.0):
+        return (a[1] > 0) == (b[1] > 0) and b[0] + wrap - a[0] <= reach
+
+    clusters = [[turning[0]]]
+    for previous, item in zip(turning, turning[1:]):
+        if linked(previous, item):
+            clusters[-1].append(item)
+        else:
+            clusters.append([item])
+    if closed:
+        if len(clusters) == 1 and linked(turning[-1], turning[0], total):
+            return []
+        if len(clusters) > 1 and linked(turning[-1], turning[0], total):
+            clusters[0] = [(position - total, turn) for position, turn in clusters.pop()] + clusters[0]
+    found = []
+    for cluster in clusters:
+        amount = sum(abs(turn) for _, turn in cluster)
+        if amount < CORNER_TURN:
+            continue
+        seen = 0.0
+        for position, turn in cluster:
+            seen += abs(turn)
+            if seen >= amount / 2 - 1e-12:
+                found.append(position % total if closed else position)
+                break
+    return sorted(found)
+
+
+def _cut(points, start, end):
+    """The part of a polyline between arc-length positions ``start`` and ``end``."""
+    out, at = [], 0.0
+    for a, b in zip(points, points[1:]):
+        length = math.dist(a, b)
+        lo, hi = max(start, at), min(end, at + length)
+        if hi >= lo and length > 1e-12 and not (hi == lo and out):
+            for t in (lo, hi):
+                f = (t - at) / length
+                p = (a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f)
+                if not out or math.dist(out[-1], p) > 1e-9:
+                    out.append(p)
+        at += length
+        if at >= end:
+            break
+    return out
+
+
+def fitted(points, pattern, offset=0, closed=False):
+    """Dash runs like ``dashed``, with the pattern stretched or squeezed a little (every length by the same
+    factor) so that it divides each stretch between corners evenly: corners land in the middle of a dash and an
+    open path starts and ends on a dash. A closed contour without corners is divided into whole repeats. The
+    offset still shifts the pattern (by the same factor), so a marching-ants animation keeps moving."""
+    # Flattened curves can end a hair's breadth from their start: such a sliver has no direction to turn from.
+    cleaned = [points[0]]
+    for point in points[1:]:
+        if math.dist(cleaned[-1], point) > 1e-6:
+            cleaned.append(point)
+    if closed:
+        if len(cleaned) > 1 and math.dist(cleaned[-1], cleaned[0]) <= 1e-6:
+            cleaned[-1] = cleaned[0]
+        elif cleaned[-1] != cleaned[0]:
+            cleaned.append(cleaned[0])
+    points = cleaned
+    lengths = [math.dist(a, b) for a, b in zip(points, points[1:])]
+    total = sum(lengths)
+    if total <= 1e-12 or not pattern or len(points) < 3:
+        return dashed(points, pattern, offset)
+    pattern = pattern * 2 if len(pattern) % 2 else pattern
+    period, dash = sum(pattern), pattern[0]
+    found = corners(points, closed, period / 2)
+    if closed:
+        if not found:
+            count = max(1, round(total / period))
+            scale = total / (count * period)
+            return dashed(points, [v * scale for v in pattern], offset * scale)
+        loop = points + points[1:]
+        stops = [*found, found[0] + total]
+        spans = [(_cut(loop, a, b), a, b, True, True) for a, b in zip(stops, stops[1:])]
+    else:
+        stops = [0.0, *[c for c in found if 1e-9 < c < total - 1e-9], total]
+        spans = [(_cut(points, a, b), a, b, i > 0, i < len(stops) - 2) for i, (a, b) in enumerate(zip(stops, stops[1:]))]
+    runs = []
+    for span, a, b, corner_start, corner_end in spans:
+        length = b - a
+        if len(span) < 2 or length <= 1e-9:
+            continue
+        # A corner sits mid-dash; an open end starts or ends a whole dash.
+        ends = (0 if corner_start else dash / 2) + (0 if corner_end else dash / 2)
+        least = 1 if corner_start and corner_end else 0
+        count = max(least, round((length - ends) / period))
+        scale = length / (count * period + ends)
+        if corner_start and corner_end and scale < 0.5:
+            # Too short for a gap: one dash runs through this stretch and joins its neighbours.
+            pieces = dashed(span, [length * 2, length], 0)
+        else:
+            phase = (dash / 2 if corner_start else 0) + offset
+            pieces = dashed(span, [v * scale for v in pattern], phase * scale)
+        for run, fractions in pieces:
+            runs.append((run, [((a + f * length) % total if closed else a + f * length) / total for f in fractions]))
+    return _join(runs, closed)
+
+
+def _join(runs, closed):
+    """Merge runs that meet end to start (a dash that continues around a corner)."""
+    merged = []
+    for run, fractions in runs:
+        if merged and math.dist(merged[-1][0][-1], run[0]) < 1e-6:
+            merged[-1] = (merged[-1][0] + run[1:], merged[-1][1] + fractions[1:])
+        else:
+            merged.append((list(run), list(fractions)))
+    if closed and len(merged) > 1 and math.dist(merged[-1][0][-1], merged[0][0][0]) < 1e-6:
+        last = merged.pop()
+        merged[0] = (last[0] + merged[0][0][1:], last[1] + merged[0][1][1:])
+    return merged
+
+
 def width_at(t, settings):
     profile = settings.get("width_profile") or [
         [0, settings.get("taper_start", 1)],
@@ -362,6 +515,10 @@ def expanded(layer, path):
             points = [
                 point for index, point in enumerate(original) if index == 0 or point != original[index - 1]
             ]
+            if pattern and len(points) > 3 and points[0] == points[-1] and math.dist(points[-2], points[-1]) < 1e-6:
+                # A flattened curve that closes a hair's breadth from its start: the sliver would turn the
+                # offset (inside or outside) contour into a spike at the seam.
+                points = points[:-2] + points[-1:]
             closed = len(points) > 2 and points[0] == points[-1]
             if closed and (pattern or trim) and alignment != "center":
                 inward = area(points) > 0
@@ -374,7 +531,10 @@ def expanded(layer, path):
                     miter_limit,
                 )
                 points = points + points[:1]
-            for run, fractions in dashed(points, pattern, style.get("dash_offset", 0)):
+            fit = style.get("dash_fit", layer.get("dash_fit", house_style.rule("finish")["dash_fit"])) and pattern
+            runs = (fitted(points, pattern, style.get("dash_offset", 0), closed) if fit
+                    else dashed(points, pattern, style.get("dash_offset", 0)))
+            for run, fractions in runs:
                 if trim:
                     run, fractions = clip_run(run, fractions, *trim)
                     if len(run) < 2:
@@ -382,6 +542,17 @@ def expanded(layer, path):
                 widths = [width * width_at(q, style) for q in fractions]
                 if closed and not pattern and not trim:
                     widths = widths[:-1]
+                if pattern and cap == "round" and sum(math.dist(a, b) for a, b in zip(run, run[1:])) < width * 0.05:
+                    # A dot: its run is too short to give the caps a direction (one that straddles a vertex can
+                    # point anywhere and draw a spur or half a dot), so draw the round dot itself.
+                    from .shape_catalog import poly
+
+                    centre = run[len(run) // 2]
+                    radius = max(widths) / 2
+                    count = max(12, math.ceil(math.sqrt(max(1, radius)) * 8))
+                    out.append(poly([(centre[0] + radius * math.cos(math.tau * i / count),
+                                      centre[1] + radius * math.sin(math.tau * i / count)) for i in range(count)]))
+                    continue
                 out.append(
                     stroke_outline(
                         run,
@@ -481,7 +652,7 @@ def inside_centre_line(layer, pad):
 
 
 def active(layer):
-    return layer.get("vector_geometry", False) or any(key in layer for key in FIELDS if key != "line_cap")
+    return layer.get("vector_geometry", False) or any(key in layer for key in FIELDS if key not in ("line_cap", "dash_fit"))
 
 
 def primitives(layer, project=None):
@@ -587,6 +758,21 @@ def path_margin(primitives, w, h):
         return 0, 0
     x0, y0, x1, y1 = pen.bounds
     return math.ceil(max(0, -x0, x1 - w)), math.ceil(max(0, -y0, y1 - h))
+
+
+def geometry_reach(layer):
+    """(left, top, right, bottom) of a plain ``path`` or ``arc`` shape's own geometry in its box's pixels, without
+    the stroke; None when it cannot be read."""
+    from fontTools.pens.boundsPen import BoundsPen
+    from fontTools.svgLib.path import parse_path
+    from .vector_paths import pixel_path
+
+    pen = BoundsPen(None)
+    try:
+        parse_path(pixel_path(layer, distort=False), pen)
+    except Exception:  # noqa: BLE001 - unreadable geometry is drawn (and judged) by its box.
+        return None
+    return pen.bounds
 
 
 def margin(layer):

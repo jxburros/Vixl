@@ -15,7 +15,8 @@ def document(path=None):
     p.apply([{"type": "shape", "shape": "star", "name": "s", "x": 10, "y": 10, "width": 100, "height": 100,
               "fill": "gold"},
              {"type": "text", "name": "t", "text": "Hello", "size": 40, "x": 200, "y": 100, "color": "black"},
-             {"type": "look", "look": "soft-shadow", "target": "t"}], detail="brief")
+             # An explicit colour: without one the look renders the backdrop, which would warm the caches.
+             {"type": "look", "look": "soft-shadow", "target": "t", "color": "#000000"}], detail="brief")
     if path:
         p.save(path)
     return p
