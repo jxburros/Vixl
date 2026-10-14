@@ -10,6 +10,7 @@ import binascii
 import inspect
 import json
 import os
+import re
 from types import SimpleNamespace
 from typing import Annotated, Literal
 
@@ -235,10 +236,11 @@ def check_sdk():
     try:
         installed = version("mcp")
     except PackageNotFoundError as exc:
-        raise VixlError("missing_dependency", "Vixl needs the mcp SDK 1.x: pip install 'mcp>=1.12,<2'") from exc
-    parts = installed.split(".")
-    require(parts[0] == "1" and len(parts) > 1 and parts[1].isdigit() and int(parts[1]) >= 12,
-            f"Vixl needs the mcp SDK >=1.12,<2 (found {installed}): pip install 'mcp>=1.12,<2'",
+        raise VixlError("missing_dependency", "Vixl needs the mcp SDK 1.x: pip install 'mcp>=1.21.1,<2'") from exc
+    # Releases before 1.21.1 import a helper that current pydantic no longer has.
+    parts = ([int(part) for part in re.findall(r"\d+", installed)[:3]] + [0, 0, 0])[:3]
+    require(parts[0] == 1 and parts[1:] >= [21, 1],
+            f"Vixl needs the mcp SDK >=1.21.1,<2 (found {installed}): pip install 'mcp>=1.21.1,<2'",
             "missing_dependency")
 
 

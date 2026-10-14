@@ -441,7 +441,7 @@ REST workflow route, scoped to its one document, does not serve them.
 
 ### MCP startup requirements
 
-Vixl needs the MCP Python SDK `>=1.12,<2`. Startup reports `missing_dependency` with the installed version when the SDK is incompatible; install it with `pip install 'mcp>=1.12,<2'`.
+Vixl needs the MCP Python SDK `>=1.21.1,<2`. Startup reports `missing_dependency` with the installed version when the SDK is incompatible; install it with `pip install 'mcp>=1.21.1,<2'`.
 
 MCP desktop capture is disabled by default. Start the server with `--allow-screen-capture` or `VIXL_ALLOW_SCREEN_CAPTURE=1` to enable it for that server; this grants connected agents access to the interactive desktop. Capture output paths are relative to the workspace. The Python `mcp_server` and `build_server` functions accept `allow_screen_capture=True` (or `False` to override the environment).
 

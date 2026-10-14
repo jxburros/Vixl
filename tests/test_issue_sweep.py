@@ -89,7 +89,7 @@ def test_failed_save_preserves_document(tmp_path, monkeypatch, failure):
 
 
 @pytest.mark.parametrize('entry', ['public', 'builder'])
-@pytest.mark.parametrize('version', ['2.2.0', '1.11.0'])
+@pytest.mark.parametrize('version', ['2.2.0', '1.21.0', '1.11.0'])
 def test_incompatible_mcp_sdk_names_version_and_install_fix(tmp_path, monkeypatch, entry, version):
     monkeypatch.setattr(importlib.metadata, 'version', lambda name: version)
     with pytest.raises(VixlError) as error:
@@ -98,7 +98,7 @@ def test_incompatible_mcp_sdk_names_version_and_install_fix(tmp_path, monkeypatc
         else:
             build_server(Session(workspace=tmp_path))
     assert error.value.code == 'missing_dependency'
-    assert version in str(error.value) and "pip install 'mcp>=1.12,<2'" in str(error.value)
+    assert version in str(error.value) and "pip install 'mcp>=1.21.1,<2'" in str(error.value)
 
 
 @pytest.mark.parametrize('enabled', [False, True, 'env'])
@@ -126,3 +126,11 @@ def test_mcp_screen_capture_requires_server_opt_in(tmp_path, monkeypatch, enable
         assert calls and (tmp_path / 'shot.png').exists()
         assert '"output":"shot.png"' in str(result)
         assert str(tmp_path) not in str(result)
+
+
+@pytest.mark.parametrize('version', ['1.21.1', '1.22.0', '1.26.0rc1'])
+def test_supported_mcp_sdk_versions_pass_the_check(monkeypatch, version):
+    from vixl.mcp_tools import check_sdk
+
+    monkeypatch.setattr(importlib.metadata, 'version', lambda name: version)
+    check_sdk()

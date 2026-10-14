@@ -66,6 +66,7 @@ Vixl is pre-release with no users to protect, so code that existed only to repro
 - `paint` with an SVG `path` (instead of `points`) works through MCP and REST, like `path` on `shape` and `text-layout`; services refused it as a filesystem path.
 - `vixl commands --json` lists `compact` and `link-set`; `vixl help --full` shows the Figma import flags and `vixl canvas --help` all five forms (`resize`, `size`, `preset`, `dpi`, `background`).
 - Field descriptions that still named house-style versions, a chart's whole-canvas default, the diagram theme default or the old `marker_size` multiplier now describe the current behaviour.
+- Dependency floors match what works: `mcp>=1.21.1` (earlier 1.x releases fail to import against current pydantic, and the startup check now refuses them) and `pypdfium2>=5.0` for the `pdf` extra (4.x documents are not context managers, which PDF import uses). `Pillow>=11.3` stays; a test that used the 12.x-only `get_flattened_data` no longer does. A new CI job, `minimum-versions`, installs the lowest declared version of every direct dependency and runs the suite.
 
 ### Finishing pass in the agent loop
 
