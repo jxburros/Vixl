@@ -207,6 +207,10 @@ def test_workspace_variety_settings_lose_the_house_style_pin(tmp_path):
     result = convert_directory(source, tmp_path / "out")
     assert json.loads((tmp_path / "out" / ".vixl" / "variety.json").read_text()) == {"variety": "low"}
     assert result["summary"]["by_change"] == {"house-style-version": 1}
+    (source / ".vixl" / "variety.json").write_text(json.dumps({"house_style": "off"}))
+    result = convert_directory(source, tmp_path / "kept")
+    assert json.loads((tmp_path / "kept" / ".vixl" / "variety.json").read_text()) == {"house_style": "off"}
+    assert result["summary"]["by_change"] == {}
 
 
 def test_cli_converts_and_summarizes(tmp_path, monkeypatch, capsys):

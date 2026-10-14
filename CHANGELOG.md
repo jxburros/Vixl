@@ -4,6 +4,8 @@
 
 ### Fixed and added
 
+- **An off switch for the house style.** `house_style: "off"` creates documents with no rolled direction on every creation path: `vixl_document` create and `vixl_apply(create=…)`, `vixl new --house-style off` and `vixl compose`, REST compose, Python `Project()`/`Project.new()`/`Project.sized()`, or `{"house_style": "off"}` in `.vixl/variety.json` for all of them. Such a document gets no rolled palette, pairing, motif, look, style, background treatment or decoration; a white canvas (transparent for marks; an explicit `background` or a `brand.json` background still wins); the workspace default fonts, else the bundled font, with no pairing download. `design_defaults` records `house_style: "off"` and a neutral direction (mono palette, light mode, perfect-fourth scale, balanced density, no accent), so a sparse `layout-apply` and compose use neutral layout defaults; the craft rules (safe area, spacing unit, minimum sizes) still apply. Creation results report `creation.house_style: "off"` and `background_from: "neutral"`. The house style stays on by default; `house_style: "on"` overrides the workspace setting, and a roll (`vixl roll`, the roll step, `vixl_reference('roll')`) still rolls the house style on request. The neutral direction lives in `house-style.json` (`off`), read through `house_style.neutral()`.
+
 ### Behaviour changes
 
 ## 0.27.0

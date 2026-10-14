@@ -33,6 +33,10 @@ PURPOSE_HELP = ("What the piece is for: social, story, poster, flyer, print, doc
                 "icon 1024×1024); with neither, 1080×1080. It also weights the rolled defaults")
 BACKGROUND_HELP = ("Canvas colour. Omitted: the rolled palette's background, or transparent for logo, icon and "
                    "favicon sizes and mark purposes; 'transparent' keeps it clear")
+HOUSE_STYLE_HELP = ("'on' (default) rolls a house-style direction (palette, background, motif, look, style, "
+                    "fonts …) into design_defaults; 'off' rolls nothing: a white canvas (transparent for marks), "
+                    "the workspace default fonts else the bundled font, and neutral layout defaults (craft rules "
+                    "still apply). Omitted: the workspace setting (.vixl/variety.json house_style), else on")
 REPAIRS = Literal["fit-text", "contrast-ink", "safe-area-nudge"]
 CHECKS = Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "placeholders", "fonts", "brand",
                  "print", "color_vision", "guides", "alignment", "deck", "title_position", "type_scale", "words",
@@ -179,8 +183,8 @@ def terse_document(summary):
     creation = summary.get("creation")
     if creation:
         fonts = creation.get("fonts") or {}
-        result["creation"] = {**{k: creation[k] for k in ("size", "size_from", "purpose", "background", "background_from")
-                                 if k in creation},
+        result["creation"] = {**{k: creation[k] for k in ("size", "size_from", "purpose", "background", "background_from",
+                                                          "house_style") if k in creation},
                               **({"fonts": {k: fonts[k] for k in ("pairing", "heading", "body", "installed")
                                             if k in fonts}} if fonts else {})}
     for key in ("template", "typography", "font_pairing_error", "workspace_fonts"):
@@ -233,19 +237,22 @@ def document_create(
     workspace_fonts: Annotated[bool, Field(
         description="Embed the workspace default fonts (brand.json), else the rolled pairing from the font cache or "
                     "network; false keeps the proofing fallback; ignored with font_pairing")] = True,
+    house_style: Annotated[Literal["on", "off"] | None, Field(description=HOUSE_STYLE_HELP)] = None,
     template: Annotated[str | None, Field(description="Create from this named template (vixl_reference('templates'))")] = None,
     variables: Annotated[dict | None, Field(description="template: values for its variables")] = None,
     verbose: Verbose = False,
 ):
     """Create and activate a new .vixl file from a named size, width/height, a purpose or a template (with none of
     them 1080×1080). Print sizes record dpi, bleed, safe area and trim/safe guides; the document gets reproducible
-    design defaults (seed, variety), the palette background and the rolled font pairing."""
+    design defaults (seed, variety), the palette background and the rolled font pairing; house_style='off' rolls
+    none of them."""
     session = ctx.session
     if template is not None:
         from .resources import create_template
 
         require(width is None and height is None and size is None and purpose is None,
                 "A template sets its own size; drop size, width, height and purpose", field="template")
+        require(house_style is None, "A template sets its own design; drop house_style", field="house_style")
         with session._mutex:
             destination = session.resolve(path)
             require(destination.suffix.lower() == ".vixl", "Use a .vixl path in the workspace", field="path")
@@ -262,7 +269,7 @@ def document_create(
     require(variables is None, "variables fill a template; pass template too", field="variables")
     created = session.create(path, width, height, background, size=size, purpose=purpose, dpi=dpi,
                              orientation=orientation, bleed=bleed, seed=seed, variety=variety,
-                             workspace_fonts=workspace_fonts and not font_pairing)
+                             workspace_fonts=workspace_fonts and not font_pairing, house_style=house_style)
     if font_pairing:
         from .typefaces import pair_fonts
 
@@ -523,7 +530,8 @@ def apply_create(
     ctx,
     create: Annotated[dict, Field(description="The new document: {path, size | width+height, purpose, background, "
                                               "font_pairing, layout {name, slots…}, style, look, dpi, orientation, "
-                                              "bleed, seed, variety}")],
+                                              "bleed, seed, variety, house_style ('on' or 'off': "
+                                              "'off' rolls no direction)}")],
     operations: Annotated[list[dict] | None, Field(max_length=Limits().max_operations)] = None,
     operations_path: OperationsPath = None,
     check: Annotated[bool | list[str], Field(description="vixl_check the result (true, or check names)")] = True,
