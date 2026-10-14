@@ -347,10 +347,11 @@ def convert_directory(source, out, *, look="preserve", dry_run=False, overwrite=
 
 
 def convert_settings(source, output, *, dry_run=False, overwrite=False):
-    """``.vixl/variety.json`` without the removed ``house_style`` key."""
+    """``.vixl/variety.json`` without a removed house-style version pin (``"house_style": 2``); the on/off
+    switch (``"house_style": "off"``) is kept."""
     data = json.loads(Path(source).read_text(encoding="utf-8"))
     report = {"source": str(source), "output": None if dry_run else str(output), "changes": [], "warnings": []}
-    if isinstance(data, dict) and "house_style" in data:
+    if isinstance(data, dict) and "house_style" in data and data["house_style"] not in ("on", "off"):
         report["changes"].append({"change": "house-style-version", "field": "house_style",
                                   "before": data.pop("house_style"),
                                   "reason": "Workspaces no longer pin a house-style version"})

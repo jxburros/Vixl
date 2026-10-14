@@ -127,6 +127,18 @@ class Builder:
                                     short * rule("minimum_text")["minor_share_of_short_side"]
                                     if purpose in ("social", "poster") else 0))
             self.sizes = {role: max(minimum, value) for role, value in self.sizes.items()}
+        if "base_size" not in op:
+            # Minor text is set at least as large as the legibility check's use size asks of a regular face
+            # (a cover at 120 px, a projected slide, a poster across a room); an explicit base_size wins.
+            from .checks import use_scale
+            from .house_style import purpose_for
+            from .sizes import use_size
+
+            use = use_size(c, project.state.get("design_defaults", {}).get("purpose") or purpose_for(c.get("size")))
+            if use:
+                scale, least, _ = use_scale(c, use)
+                floor = math.ceil(least / scale * fit)
+                self.sizes = {role: max(floor, value) for role, value in self.sizes.items()}
         # The spacing unit: half the body size (craft spacing), scaled by density.
         self.unit = spacing_unit(base * DENSITY_SPACING[density])
         direction = op.get("direction") or {}

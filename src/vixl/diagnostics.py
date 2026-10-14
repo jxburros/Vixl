@@ -125,6 +125,7 @@ MEASURES = {
     "bounds.off-canvas": ("bounds", "canvas", "box"),
     "overlap.text-text": ("pixels", None, "px"),
     "overlap.text-object": ("pixels", None, "px"),
+    "legibility.use-size": ("font_size", "needed_size", "px"),
     "legibility": ("thumbnail_size", "min_thumbnail_text", "px"),
 }
 

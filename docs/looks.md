@@ -18,10 +18,10 @@ CLI: `vixl look LAYER NAME [--color C] [--amount A] [--remove]`, `vixl looks` fo
 
 | Look | What it adds | SVG export |
 | --- | --- | --- |
-| `glow` | outer glow in the layer's own color (or `color`) | native filter |
+| `glow` | outer glow from the layer's own color (or `color`); see [glow and shadow colors](#glow-and-shadow-colors) | native filter |
 | `neon` | bright outline plus a wide glow | native |
-| `soft-shadow` | gentle blurred drop shadow | native |
-| `hard-shadow` | solid offset shadow, no blur (sticker, neo-brutalist) | native |
+| `soft-shadow` | small, light blurred drop shadow in the color of what it falls on | native |
+| `hard-shadow` | solid offset shadow, no blur (sticker, neo-brutalist), a dark shade of what it falls on unless `color` is given | native |
 | `outline` | clean stroke around the shape or text | native |
 | `gradient` | vertical light-to-dark gradient from the layer's color (or `color`) | native |
 | `soft-halo` | on a gradient layer: a radial fade from its first color (or `color`) to transparent with a `gaussian` falloff, ending at the inscribed ellipse so the box never shows; on other layers a wide soft glow | native |
@@ -48,6 +48,16 @@ along the shape's edge. Pixels outside a layer's box count as paper, so a shape 
 
 - **`amount`** (0-1, default 0.5) moves a look between subtle and strong. Sizes scale with the layer (blur and offsets follow its smaller side), so the
   same look suits an icon and a poster. `color` is the main color of the look (glow color, shadow color, ink); it may be an `@swatch`.
+- **Glow and shadow colors.** Without `color`, a look reads what lies under the layer (the canvas and the layers
+  painted before it, inside a group too) and builds its color from that, so it never reads as dirt:
+  - a shadow (`soft-shadow`, `hard-shadow`) is the backdrop in shade: the same hue and chroma at about a third of its
+    lightness, never neutral grey or black (black only on a transparent canvas). `soft-shadow` is small and light: offset
+    1.5-4% and blur 3-8% of the layer's short side, opacity 0.14-0.30.
+  - a glow (`glow`, `neon`, `soft-halo`) is a lighter tint of the layer's own color, screened over the backdrop, so it
+    only adds light: over an even dark ground it is exactly a screen blend, and a warm glow on navy stays light instead
+    of turning brown. Over a ground lighter than the tint the glow keeps the layer's own color. Its opacity is capped at
+    0.6 (a `soft-halo` gradient's core at 0.7).
+  An explicit `color` is used exactly as given. The values come from `craft.finish` in the house style.
 - **Replace, don't stack.** Applying a look again replaces it. A style belongs to one look: `hard-shadow` after `soft-shadow` takes the
   `drop-shadow` over. Looks never remove styles or effects you added by hand; `remove: true` takes off exactly what that look added.
 - **Records.** The layer keeps `looks` (`{name: {styles, effects, amount, color}}`; `soft-halo` on a gradient also keeps the `fields` it changed, which `remove` puts back). The styles and effects themselves are the normal ones: `layer-style`

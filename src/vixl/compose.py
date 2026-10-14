@@ -12,7 +12,8 @@ from pathlib import Path
 
 from .errors import VixlError, require
 
-CREATE = ("width", "height", "background", "size", "purpose", "dpi", "orientation", "bleed", "seed", "variety")
+CREATE = ("width", "height", "background", "size", "purpose", "dpi", "orientation", "bleed", "seed", "variety",
+          "house_style")
 FIELDS = {"path", *CREATE, "font_pairing", "layout", "style", "look", "operations", "operations_path", "check",
           "strict", "preview", "exports", "overwrite", "dry_run"}
 

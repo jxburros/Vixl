@@ -92,6 +92,15 @@ DOCS = {
          "fill": "#2a9d8f"},
         {"type": "effect", "target": "card", "name": "tint", "amount": 4},
     ]),
+    "corners": (240, 160, [
+        {"type": "shape", "shape": "rounded-rectangle", "name": "tab", "x": 8, "y": 8, "width": 100, "height": 60,
+         "radius": [24, 24, 4, 4], "fill": "#bfdcc8", "stroke": "#1d4d33", "stroke_width": 4},
+        {"type": "shape", "shape": "rounded-rectangle", "name": "soft", "x": 8, "y": 84, "width": 100, "height": 60,
+         "radius": "25%", "fill": "#f4c27a"},
+        {"type": "shape", "shape": "ellipse", "name": "petal", "x": 170, "y": 20, "width": 12, "height": 40,
+         "fill": "#118ab2"},
+        {"type": "radial-repeat", "target": "petal", "count": 8, "cx": 176, "cy": 80, "name": "rosette"},
+    ]),
     "diagram": (240, 160, [
         {"type": "diagram", "name": "flow", "x": 0, "y": 0, "width": 240, "height": 160,
          "nodes": [{"id": "a", "label": "Idea"}, {"id": "b", "label": "Sketch the plan"}, {"id": "c", "label": "Ship"}],

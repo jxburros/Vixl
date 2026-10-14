@@ -284,11 +284,19 @@ class Exporter:
         from .richtext import active
 
         if active(layer):
-            from .richtext import append_svg, fitted
+            from .richtext import append_svg, fitted, ink_overhang, layout_box
 
+            # The layout fills the layer's box (auto-sized text is stretched to it, as in PNG), widened by
+            # the ink that reaches past it, so swashes and slants are not cut off.
             result = fitted(self.project, layer)
-            nested = node(parent, "svg", width=layer["width"], height=layer["height"],
-                          viewBox=f"0 0 {layer['width']} {layer['height']}", overflow="hidden")
+            width, height = layout_box(layer, result)
+            left, top, right, bottom = (v + 1 if v > 0 else 0.0
+                                        for v in ink_overhang(self.project, layer, result, (width, height)))
+            sx, sy = layer["width"] / max(1e-6, width), layer["height"] / max(1e-6, height)
+            nested = node(parent, "svg", x=f"{-left * sx:.6g}", y=f"{-top * sy:.6g}",
+                          width=f"{(width + left + right) * sx:.6g}", height=f"{(height + top + bottom) * sy:.6g}",
+                          viewBox=f"{-left:.6g} {-top:.6g} {width + left + right:.6g} {height + top + bottom:.6g}",
+                          preserveAspectRatio="none", overflow="hidden")
             append_svg(nested, result, layer, self.project, node=node)
             return True
 

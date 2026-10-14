@@ -115,9 +115,16 @@ Every surface creates documents the same way: `vixl new`, Python `Project()`, `P
   `workspace_fonts=false` (`--no-fonts`) embeds no fonts. The environment variable `VIXL_AUTO_FONTS=cache`
   never downloads, and `VIXL_AUTO_FONTS=off` skips the pairing.
 
+**House style off.** `house_style: "off"` (`vixl new --house-style off`, `house_style="off"` in Python, MCP and
+REST compose, or `{"house_style": "off"}` in `.vixl/variety.json`) skips the roll: the document gets a white
+canvas (transparent for marks), the workspace default fonts else the bundled font, and `design_defaults` with
+`house_style: "off"` and a neutral direction (mono palette, light mode, no accent, motif, look, style or
+background treatment) that `layout-apply` follows. The craft rules still apply, and the default stays on. See
+[house style](house-style.md#turning-the-house-style-off).
+
 The result's `creation` says what was chosen and why (`size_from`: argument, purpose or default;
-`background_from`: argument, palette or mark). `Project(width, height)` on its own is still a plain
-transparent canvas with no `design_defaults`; pass `seed`, `variety` or `purpose` (or leave out the size) for a
+`background_from`: argument, palette, mark or neutral; `house_style: "off"` when it is off). `Project(width, height)` on its own is still a plain
+transparent canvas with no `design_defaults`; pass `seed`, `variety`, `purpose` or `house_style` (or leave out the size) for a
 design document, and `Project.sized(size, design=False)` for a plain named-size canvas.
 
 A `layout-apply` without `seed` on such a document uses the whole stored direction, as
@@ -170,9 +177,10 @@ in `.vixl/variety.json` for repeatable tests or production:
 {"variety": "fixed", "seed": 29}
 ```
 
-`variety.json` accepts only `variety` and `seed`; any other key (including the removed `house_style`) is refused.
-Documents use the current house style. A new document stores its rolled direction in `design_defaults`, and later
-rolls and layouts in that document use it.
+`variety.json` accepts `variety`, `seed` and `house_style` (`"on"`, the default, or `"off"`: new documents roll
+no direction, see [New documents](#new-documents)); any other key is refused. Documents use the current house
+style. A new document stores its rolled direction in `design_defaults`, and later rolls and layouts in that
+document use it; an explicit roll still rolls the house style when the workspace turns it off.
 
 ## Measuring it
 

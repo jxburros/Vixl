@@ -213,3 +213,70 @@ def test_text_in_a_chip_aligns_by_the_chip():
     # The same inset without the chip is drift.
     assert "margin_drift" in codes(doc(text("date", 72, 70), text("headline", 60, 140, size=48),
                                        text("subtitle", 60, 220)))
+
+
+# The craft-check backtest (2026-10-13): what the eight pieces made through Vixl showed the family missing.
+
+
+def test_drift_of_two_pixels_or_less_is_not_reported():
+    assert not found(doc(text("title", 60, 60), text("subtitle", 62, 100)))
+    assert codes(doc(text("title", 60, 60), text("subtitle", 63, 100))) == ["margin_drift"]
+
+
+def test_signed_values_and_shares_beside_their_data_are_not_margins():
+    base = [text("header", 800, 60), text("stat", 800, 300), text("caption", 800, 400)]
+    assert codes(doc(*base, {**text("delta", 808, 180), "text": "−9"})) == []
+    assert codes(doc(*base, {**text("share", 808, 180), "text": "38%"})) == []
+    assert codes(doc(*base, {**text("label", 808, 180), "text": "Ferry"})) == ["margin_drift"]
+
+
+def lines(*names, start=430, step=60):
+    return [text(name, 100, start + i * step) for i, name in enumerate(names)]
+
+
+def test_faint_layers_and_edge_to_edge_gradient_fills_do_not_close_a_band():
+    blocks = [panel("art", 60, 460), *lines("one", "two", "three", start=740, step=50)]
+    assert any(x["code"] == "dead_band" and "art" in x["layers"] for x in found(doc(*blocks)))
+    smoke = {**panel("smoke", 540, 160), "opacity": 0.15}
+    water = {"type": "gradient", "name": "water", "x": 0, "y": 380, "width": 1000, "height": 620,
+             "start": "#223344", "end": "#556677"}
+    assert any(x["code"] == "dead_band" and "art" in x["layers"] for x in found(doc(*blocks, smoke)))
+    assert any(x["code"] == "dead_band" and "art" in x["layers"] for x in found(doc(water, *blocks)))
+    # Content drawn in the band does close it.
+    assert not any("art" in x["layers"] for x in found(doc(*blocks, panel("photo", 540, 160))))
+
+
+def test_text_is_spaced_by_its_glyphs_not_its_line_box():
+    # A title in a tall text box: the box reaches down to the lines below, its letters end far above them.
+    p = doc(panel("art", 60, 440), text("title", 100, 520, size=96), *lines("one", "two", start=900, step=40))
+    p.apply({"type": "text-layout", "target": "title", "width": 800, "height": 370})
+    assert p.layer("title")["height"] == 370
+    assert any(x["code"] == "dead_band" and "title" in x["layers"] and x["region"][1] < 700 for x in found(p))
+
+
+def test_an_edge_band_counts_at_one_and_three_quarter_times_the_opposite_margin():
+    assert THRESHOLDS["edge_band_ratio"] == 1.75
+    # A 290 px top band over a bottom margin of about 162 px (1.8 times): an edge band.
+    stack = [panel("art", 290, 470), *lines("one", "two", start=780, step=40)]
+    assert any(x["code"] == "dead_band" and x["values"].get("edge") == "top" for x in found(doc(*stack)))
+
+
+def test_a_small_block_floating_midway_is_uneven_rhythm_and_repairable():
+    from vixl.layout_repair import repair_layout
+
+    ops = [text("title", 100, 80, size=96), text("note", 100, 330), panel("tray", 520, 380)]
+    p = doc(*ops)
+    (item,) = [x for x in found(p) if x["code"] == "uneven_rhythm"]
+    assert item["values"]["floating"] == "note" and "floats midway" in item["message"]
+    assert item["layers"] == ["title", "note", "tray"]
+    # Close to the title, it belongs to it.
+    p.apply({"type": "move", "target": "note", "y": 210})
+    assert not [x for x in found(p) if x["code"] == "uneven_rhythm"]
+    # Repair joins it to a neighbour, one spacing unit away.
+    plan = repair_layout(doc(*ops), checks=["composition"], dry_run=True)
+    assert plan["selected"] and plan["selected"][0]["candidate"] in ("float-to-above", "float-to-below")
+
+
+def test_evenly_spaced_lines_of_one_kind_do_not_float():
+    p = doc(text("title", 100, 80, size=96), *lines("a", "b", "c", "d", start=330, step=150))
+    assert not [x for x in found(p) if x["code"] == "uneven_rhythm"]

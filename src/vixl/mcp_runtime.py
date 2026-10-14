@@ -18,8 +18,10 @@ worker thread through ``Runtime.wrap``:
 * ``request_id`` on the mutating tools makes a retry safe: the second call with the same id
   returns the first call's recorded result (``"replayed": true``) instead of applying twice, or
   points at the job that is still running. A recent-id store is kept per document and bounded.
-* Results name the document they acted on, so a call that fell back to another client's active
-  document is visible.
+* Results name the document they acted on. A call without ``document`` never falls back to a
+  document another caller chose: the client identity is the MCP connection (``ctx.session``), which
+  subagents of one host share, so once a connection has touched several open documents such a call
+  is refused (``Session.active``).
 """
 
 import asyncio

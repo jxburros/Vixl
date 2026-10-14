@@ -54,9 +54,11 @@ def test_text_set_changes_font_and_missing_font_lists_registered_fonts():
 def test_print_legibility_is_judged_in_points_not_thumbnails():
     p = Project.sized("poster-18x24")
     p.apply({"type": "text", "name": "detail", "text": "Riverside Park", "size": 60})
-    assert not [i for i in p.check()["issues"] if i["check"] == "legibility"]
+    # 29 pt is fine in print; read across a room it is a review note (use size), not a fix.
+    assert [(i["rule"], i["action"]) for i in p.check()["issues"] if i["check"] == "legibility"] == [
+        ("legibility.use-size", "review")]
     p.apply({"type": "text", "name": "tiny", "text": "fine print", "size": 8, "y": 200})
-    issues = [i for i in p.check()["issues"] if i["check"] == "legibility"]
+    issues = [i for i in p.check()["issues"] if i["check"] == "legibility" and i.get("code") != "use-size"]
     assert [i["layers"] for i in issues] == [["tiny"]] and "pt" in issues[0]["message"]
     assert [i for i in p.check(thumbnail_width=320)["issues"] if i["check"] == "legibility"]
 

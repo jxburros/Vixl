@@ -144,6 +144,7 @@ vixl swatch brand '#e8885c'
 vixl style-define Heading --settings '{"size":80,"color":"@brand","stroke_width":1}'
 vixl style-define Caption --kind paragraph --settings '{"align":"center","spacing":8}'
 vixl style-apply title Heading ; vixl style-apply title Caption --kind paragraph
+vixl swatch brand --delete --detach   # Heading keeps the color; without --detach this is refused while @brand is used
 ```
 
 ## Layout
@@ -336,6 +337,7 @@ vixl cache info | vixl cache clear   # disk render cache (VIXL_RENDER_CACHE=off,
 vixl sizes --category print                         # also: social stationery icons logos ads email video slides …
 vixl new letter --bleed -o flyer.vixl               # named size; --landscape, --dpi 150
 vixl new --purpose slides --seed 7 -o deck.vixl     # purpose size; --variety, --background, --no-fonts
+vixl new story --house-style off -o plain.vixl      # no rolled direction: white canvas, neutral layout defaults
 vixl canvas size instagram-story                    # resize to a named size; canvas dpi 300
 vixl layout list ; vixl layout show editorial-grid
 vixl -p flyer.vixl layout apply editorial-grid --set title='Annual report' --set body='…' --palette slate --seed 3

@@ -55,28 +55,162 @@ def _static(value, state):
     return hex_of(parse(resolve_color(value, state))[:3] + (1.0,))
 
 
-def _glow(layer, state, color, a):
+# Glows and shadows given no colour (house style ``craft.finish``): a shadow takes the colour of what it
+# falls on, darker and in the same hue, small and light; a glow is a lighter tint of the layer's own
+# colour, screened over what lies behind it, with its alpha capped. Black shadows and full-strength glows
+# in the layer's colour read as dirt on coloured grounds (craft check 2026-10-13).
+
+
+def _scaled(rule, ref, a):
+    low, slope, least, most = rule
+    return round(_clamp(ref * (low + slope * a), least, most))
+
+
+def backdrop_color(project, layer):
+    """The average colour drawn under ``layer``'s box just before it is painted (an (r, g, b) in 0-1), or None
+    when less than half of that area is covered (a transparent canvas). Shadows and glows read it."""
+    return backdrops(project, [layer]).get(layer["id"])
+
+
+def backdrops(project, layers):
+    """``{layer id: backdrop colour or None}`` for ``layers``, from one render for the top-level ones and one
+    render each for layers inside groups (everything painted from that layer on is hidden)."""
+    from .design import resolve_color
+    from .render import render_layers
+
+    result = {}
+    top = [layer for layer in layers if not layer.get("parent")]
+    if top:
+        seen = {}
+        try:
+            render_layers(project, background=resolve_color(project.state["canvas"]["background"], project.state),
+                          observe={layer["id"]: (lambda ident: lambda before, after: seen.__setitem__(ident, before))(layer["id"])
+                                   for layer in top})
+        except VixlError:
+            seen = {}
+        result.update({layer["id"]: _average(seen.get(layer["id"])) for layer in top})
+    for layer in layers:
+        if layer.get("parent"):
+            result[layer["id"]] = _nested_backdrop(project, layer)
+    return result
+
+
+def _nested_backdrop(project, layer):
+    from .checks import canvas_projection
+    from .design import resolve_color
+    from .render import pixel_box, render_layers, resolve_layout, resolved_layers
+
+    view = project.clone()
+    layers = view.state["layers"]
+    children = {}
+    for item in layers:
+        children.setdefault(item.get("parent"), []).append(item)
+    order = []
+
+    def walk(parent):
+        for item in children.get(parent, []):
+            order.append(item)
+            if item["type"] == "group":
+                walk(item["id"])
+
+    walk(None)
+    position = next(i for i, item in enumerate(order) if item["id"] == layer["id"])
+    for item in order[position:]:
+        item["visible"] = False
+    try:
+        image = render_layers(view, background=resolve_color(view.state["canvas"]["background"], view.state))
+        resolved = {item["id"]: item for item in resolved_layers(project)}
+        bounds = canvas_projection(resolved, resolve_layout(project, layers=list(resolved.values())))["bounds"]
+    except VixlError:
+        return None
+    box = pixel_box(bounds[layer["id"]], image.size)
+    if box[0] >= box[2] or box[1] >= box[3]:
+        return None
+    return _average(image.crop(box))
+
+
+def _average(image):
+    import numpy as np
+
+    if image is None or not image.width or not image.height:
+        return None
+    pixels = np.asarray(image.convert("RGBA"), dtype=np.float64) / 255
+    alpha = pixels[:, :, 3]
+    if alpha.mean() < 0.5:
+        return None
+    rgb = (pixels[:, :, :3] * alpha[:, :, None]).sum(axis=(0, 1)) / alpha.sum()
+    return tuple(float(c) for c in rgb)
+
+
+def shadow_color(backdrop, lightness):
+    """A shadow in the colour of ``backdrop``: the same hue, its lightness scaled by ``lightness`` and its
+    chroma kept, so it reads as the surface in shade rather than grey dirt. Black without a backdrop."""
+    from .colors import from_polar, gamut_map, hex_of, srgb_to_oklab, to_polar
+
+    if backdrop is None:
+        return "#000000"
+    rules = _data_finish()["shadow"]
+    L, C, H = to_polar(srgb_to_oklab(backdrop))
+    return hex_of(gamut_map(from_polar((L * lightness, min(0.2, C * rules["chroma"]), H))) + (1.0,))
+
+
+def glow_color(base, backdrop, state):
+    """A glow from ``base`` (the layer's own colour): a lighter tint of it, screened over ``backdrop`` so the
+    glow only ever adds light to what lies behind it (over an even backdrop this is exactly a screen blend).
+    Over a backdrop lighter than that tint the glow is the layer's own colour."""
+    from .colors import from_polar, gamut_map, hex_of, parse, srgb_to_oklab, to_polar
+
+    try:
+        rgb = parse(_static(base, state))[:3]
+    except VixlError:
+        rgb = (1.0, 1.0, 1.0)
+    L, C, H = to_polar(srgb_to_oklab(rgb))
+    lifted = L + (1 - L) * _data_finish()["glow"]["tint"]
+    if backdrop is not None and to_polar(srgb_to_oklab(backdrop))[0] >= lifted:
+        # On a backdrop lighter than the tint, light added would not show: the glow keeps the layer's colour and
+        # tints the backdrop toward it (mixing with a light ground never browns it).
+        return hex_of(tuple(rgb) + (1.0,))
+    tint = gamut_map(from_polar((lifted, C, H)))
+    if backdrop is not None:
+        tint = tuple(1 - (1 - b) * (1 - t) for b, t in zip(backdrop, tint))
+    return hex_of(tuple(tint) + (1.0,))
+
+
+def _data_finish():
+    from .house_style import finish
+
+    return finish()
+
+
+def _glow(layer, state, color, a, backdrop=None, rules=None):
+    glow = (rules or _data_finish())["glow"]
     ref = _reference(layer)
-    return {"outer-glow": {"color": color or _base(layer, state), "blur": round(_clamp(ref * (0.04 + 0.14 * a), 4, 100)),
-                           "opacity": round(0.55 + 0.45 * a, 2)}}, []
+    return {"outer-glow": {"color": color or glow_color(_base(layer, state), backdrop, state),
+                           "blur": _scaled(glow["blur"], ref, a),
+                           "opacity": round(min(glow["max_opacity"], glow["opacity"][0] + glow["opacity"][1] * a), 2)}}, []
 
 
-def _neon(layer, state, color, a):
+def _neon(layer, state, color, a, backdrop=None, rules=None):
+    glow = (rules or _data_finish())["glow"]
     ref = _reference(layer)
     tube = color or _base(layer, state)
     return {"stroke": {"color": tube, "width": round(_clamp(ref * 0.02, 1, 8))},
-            "outer-glow": {"color": tube, "blur": round(_clamp(ref * (0.06 + 0.2 * a), 6, 100)), "opacity": 0.9}}, []
+            "outer-glow": {"color": color or glow_color(tube, backdrop, state),
+                           "blur": round(_clamp(ref * (0.06 + 0.2 * a), 6, 100)), "opacity": glow["max_opacity"]}}, []
 
 
-def _soft_shadow(layer, state, color, a):
-    ref = _reference(layer)
-    return {"drop-shadow": {"color": color or "#000000", "dx": 0, "dy": round(_clamp(ref * (0.03 + 0.05 * a), 2, 60)),
-                            "blur": round(_clamp(ref * (0.05 + 0.1 * a), 3, 100)), "opacity": round(0.2 + 0.3 * a, 2)}}, []
+def _soft_shadow(layer, state, color, a, backdrop=None, rules=None):
+    shadow = (rules or _data_finish())["shadow"]
+    soft, ref = shadow["soft"], _reference(layer)
+    return {"drop-shadow": {"color": color or shadow_color(backdrop, shadow["lightness"]), "dx": 0,
+                            "dy": _scaled(soft["offset"], ref, a), "blur": _scaled(soft["blur"], ref, a),
+                            "opacity": round(soft["opacity"][0] + soft["opacity"][1] * a, 2)}}, []
 
 
-def _hard_shadow(layer, state, color, a):
+def _hard_shadow(layer, state, color, a, backdrop=None, rules=None):
     offset = round(_clamp(_reference(layer) * (0.04 + 0.04 * a), 3, 60))
-    return {"drop-shadow": {"color": color or "#000000", "dx": offset, "dy": offset, "blur": 0, "opacity": 1}}, []
+    color = color or shadow_color(backdrop, (rules or _data_finish())["shadow"]["hard_lightness"])
+    return {"drop-shadow": {"color": color, "dx": offset, "dy": offset, "blur": 0, "opacity": 1}}, []
 
 
 def _outline(layer, state, color, a):
@@ -89,19 +223,25 @@ def _gradient(layer, state, color, a):
                                  "end": f"darken({base}, {round(8 + 25 * a)}%)", "direction": "vertical"}}, []
 
 
-def _soft_halo(layer, state, color, a):
+def _soft_halo(layer, state, color, a, backdrop=None, rules=None):
     """A gradient layer becomes a radial fade with a gaussian falloff that reaches transparency at its
-    inscribed ellipse, so its box never shows; other layers get a wide, soft glow."""
+    inscribed ellipse, so its box never shows; other layers get a wide, soft glow. Either is a glow: a
+    lighter tint that adds light to the backdrop, with its alpha capped (a warm halo mixed half-way into a
+    dark backdrop turns brown)."""
+    rules = rules or _data_finish()
     base = color or _base(layer, state)
     if layer["type"] != "gradient":
         ref = _reference(layer)
-        return {"outer-glow": {"color": base, "blur": round(_clamp(ref * (0.15 + 0.3 * a), 8, 100)),
-                               "opacity": round(0.45 + 0.4 * a, 2)}}, []
+        return {"outer-glow": {"color": color or glow_color(base, backdrop, state),
+                               "blur": round(_clamp(ref * (0.15 + 0.3 * a), 8, 100)),
+                               "opacity": min(rules["glow"]["max_opacity"], round(0.45 + 0.4 * a, 2))}}, []
     if layer.get("stops"):
         base = color or layer["stops"][0]["color"]
-    core = round(0.55 + 0.45 * a, 2)
+    core = min(rules["halo"]["max_core"], round(0.55 + 0.45 * a, 2))
+    if not color:
+        base = glow_color(base, backdrop, state)
     return {}, [], {"direction": "radial", "falloff": "gaussian", "stops": [
-        {"offset": 0, "color": f"color-mix(in srgb, {base} {round(core * 100)}%, transparent)" if core < 1 else base},
+        {"offset": 0, "color": f"color-mix(in srgb, {base} {round(core * 100)}%, transparent)"},
         {"offset": 1, "color": f"color-mix(in srgb, {base} 0%, transparent)"}]}
 
 
@@ -326,8 +466,15 @@ def _strip(layer, name, project=None):
     return True
 
 
-def apply_look(project, layer, name, color=None, amount=0.5, remove=False):
+# Looks whose colours come from the house finish rules: they read the backdrop when no colour is given.
+FINISHED = ("glow", "neon", "soft-shadow", "hard-shadow", "soft-halo")
+
+
+def apply_look(project, layer, name, color=None, amount=0.5, remove=False, backdrop=False):
+    """Apply (or with ``remove`` take off) look ``name``. ``backdrop`` is the colour under the layer for the
+    finished looks, measured here when not given (False)."""
     from .design import validate_style
+    from .house_style import finish
     from .operations import effect_valid
 
     state = project.state
@@ -335,8 +482,14 @@ def apply_look(project, layer, name, color=None, amount=0.5, remove=False):
         require(_strip(layer, name, project), f"{layer['name']!r} has no {name!r} look", field="look")
         return
     builder = LOOKS[name][0]
+    rules = finish() if name in FINISHED else None
+    if rules and backdrop is False:
+        backdrop = None if color else backdrop_color(project, layer)
     _strip(layer, name, project)
-    styles, effects, *rest = builder(layer, state, color, amount)
+    if name in FINISHED:
+        styles, effects, *rest = builder(layer, state, color, amount, backdrop=backdrop or None, rules=rules)
+    else:
+        styles, effects, *rest = builder(layer, state, color, amount)
     fields = rest[0] if rest else {}
     record = {"styles": [], "effects": [], "amount": amount, **({"color": color} if color else {})}
     if fields:
@@ -379,7 +532,14 @@ def execute(project, op):
     for layer in layers:
         if layer["type"] == "field":
             raise VixlError("invalid_operation", "Looks do not apply to form fields", field="target")
-        apply_look(project, layer, name, op.get("color"), amount, bool(op.get("remove")))
+
+    measured = {}
+    if name in FINISHED and not op.get("remove") and op.get("color") is None:
+        # One render measures what lies under every top-level target, before any of them changes.
+        measured = backdrops(project, layers)
+    for layer in layers:
+        apply_look(project, layer, name, op.get("color"), amount, bool(op.get("remove")),
+                   measured.get(layer["id"], False) if measured else False)
 
 
 def compile_command(cmd, args):

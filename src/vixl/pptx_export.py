@@ -15,6 +15,7 @@ that is not a font every Office installation has, so they can be installed where
 import io
 import math
 from pathlib import Path
+import unicodedata
 import zipfile
 from xml.sax.saxutils import escape, quoteattr
 
@@ -231,7 +232,11 @@ class Slide:
         else:
             from .geometry import default_fill
             from .render import rest_size
-
+            # DrawingML has no fitted dashes, width profiles, extra strokes, markers or distortion: draw the
+            # outlines the other renderers draw. Alignment, caps and joins stay a native line.
+            if any(layer.get(key) and layer.get(key) != "none" for key in NOT_NATIVE) or layer.get("distort") \
+                    or layer.get("_distort_groups"):
+                return self.primitives(layer, bounds, emu)
             stroke_xml, stroke_alpha = self.color(layer.get("stroke", "transparent"), opacity)
             width = layer.get("stroke_width", 1)
             # PowerPoint centres strokes on the outline: move the outline to where the stroke's centre
@@ -260,15 +265,51 @@ class Slide:
         return (f'<p:sp><p:nvSpPr>{c_nv_pr(ident, layer)}<p:cNvSpPr/><p:nvPr/></p:nvSpPr>'
                 f'<p:spPr>{self.xfrm(layer, bounds, emu, frame=frame)}{geometry}{fill}{line}</p:spPr></p:sp>')
 
+    def primitives(self, layer, bounds, emu):
+        """A shape whose stroke has dashes, a width profile, extra strokes, alignment, markers or a distortion:
+        the filled outlines every other renderer draws (``vector_strokes.primitives``), one custom-geometry shape
+        each, in a group in the layer's own pixel space. PowerPoint's own dashes cannot match the fitted ones."""
+        from fontTools.pens.boundsPen import BoundsPen
+        from fontTools.svgLib.path import parse_path as pen_path
+
+        from .geometry import parse_path
+        from .vector_strokes import primitives
+
+        parts = []
+        for path, paint in primitives(layer, self.view):
+            fill = self.fill(paint, layer["opacity"])
+            if not path or fill == "<a:noFill/>":
+                continue
+            pen = BoundsPen(None)
+            pen_path(path, pen)
+            if pen.bounds is None:
+                continue
+            x0, y0, x1, y1 = pen.bounds
+            width, height = max(x1 - x0, 1e-3), max(y1 - y0, 1e-3)
+            local = [(cmd, [v - (x0 if i % 2 == 0 else y0) for i, v in enumerate(values)])
+                     for cmd, values in parse_path(path)]
+            parts.append(f'<p:sp><p:nvSpPr><p:cNvPr id="{self.ident()}" name={_attr(layer["name"])}/><p:cNvSpPr/><p:nvPr/>'
+                         f'</p:nvSpPr><p:spPr><a:xfrm><a:off x="{round(x0 * emu)}" y="{round(y0 * emu)}"/>'
+                         f'<a:ext cx="{max(1, round(width * emu))}" cy="{max(1, round(height * emu))}"/></a:xfrm>'
+                         f'{self.custom_geometry(local, (width, height))}{fill}<a:ln><a:noFill/></a:ln></p:spPr></p:sp>')
+        if not parts:
+            return None
+        return (f'<p:grpSp><p:nvGrpSpPr><p:cNvPr id="{self.ident()}" name={_attr(layer["name"])}/><p:cNvGrpSpPr/>'
+                f'<p:nvPr/></p:nvGrpSpPr><p:grpSpPr>'
+                f'{self.xfrm(layer, bounds, emu, child=(layer["width"], layer["height"]))}'
+                f'</p:grpSpPr>{"".join(parts)}</p:grpSp>')
+
     def geometry(self, layer, inset=0.0):
         """Preset or custom geometry for a shape whose frame is ``inset`` from its box on every side."""
         from .geometry import parse_path, shape_path
+        from .shape_catalog import active as catalog_active
 
         shape = layer["shape"]
         w, h = layer["width"], layer["height"]
         if shape == "rectangle":
             return '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
-        if shape in ("rounded-rectangle", "capsule"):
+        if shape in ("rounded-rectangle", "capsule") and not catalog_active(layer):
+            # A percentage or per-corner radius is catalog geometry: the custom outline below draws it.
             radius = min(layer.get("radius", min(w, h) / (2 if shape == "capsule" else 5)), w / 2, h / 2) - inset
             adj = max(0, min(50000, round(radius / max(1e-9, min(w, h) - 2 * inset) * 100000)))
             return f'<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val {adj}"/></a:avLst></a:prstGeom>'
@@ -488,7 +529,7 @@ class Slide:
             runs = []
             cuts = result.breaks.get(index, [])
             offset = 0
-            for span in paragraph:
+            for number, span in enumerate(paragraph):
                 pieces, start = [], offset
                 for cut in [c for c in cuts if offset < c < offset + len(span["text"])]:
                     pieces.append((span["text"][start - offset:cut - offset].rstrip(" "), True))
@@ -497,16 +538,27 @@ class Slide:
                 offset += len(span["text"])
                 style = {"bold": span["fake_bold"] or self.exporter.is_bold(span), "italic": span["fake_italic"] or self.exporter.is_italic(span),
                          "underline": span["underline"], "strike": span["strike"], "baseline": span["baseline"],
-                         "tracking": span["tracking"] * pt,
+                         "tracking": span["tracking"] * scale * pt,
                          "highlight": span["highlight"]}
                 from .richtext import style_font_data
 
                 data = style_font_data(self.view, self.exporter.base_font(span["font"]), span["text"])
-                for text, broken in pieces:
+                for which, (text, broken) in enumerate(pieces):
                     text = text.rstrip(" ") if broken else text
+                    tail = ""
+                    if style["tracking"] and (broken or (number == len(paragraph) - 1 and which == len(pieces) - 1)):
+                        # PowerPoint spaces out a line's last character too; Vixl tracks between characters
+                        # only, so the last character of each line (with its marks) is a run without tracking.
+                        cut = len(text) - 1
+                        while cut > 0 and unicodedata.combining(text[cut]):
+                            cut -= 1
+                        text, tail = text[:max(cut, 0)], text[max(cut, 0):]
                     if text:
                         runs.append(self.font_runs(text, data, span["size"] * scale * pt, span["color"], style,
                                                    layer["opacity"]))
+                    if tail:
+                        runs.append(self.font_runs(tail, data, span["size"] * scale * pt, span["color"],
+                                                   {**style, "tracking": 0}, layer["opacity"]))
                     if broken:
                         runs.append("<a:br/>")
             out.append(f'<a:p><a:pPr{attrs}>{spacing}{bullet}</a:pPr>{"".join(runs)}'
@@ -517,6 +569,9 @@ class Slide:
             before = float((settings[first] if first < len(settings) else {}).get("space_before", 0)) * scale
             first_top = baseline - (height + gap) - descent - before
         return out, first_top, 0.0
+
+
+NOT_NATIVE = ("dash", "width_profile", "taper_start", "taper_end", "strokes", "marker_start", "marker_end")
 
 
 class Unsupported(Exception):

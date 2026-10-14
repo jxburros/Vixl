@@ -455,6 +455,7 @@ class Builder:
         dashes = [d for d in node.get("strokeDashes") or [] if d > 0]
         if dashes:
             stroke["dash"] = [number(d, 2) for d in dashes]
+            stroke["dash_fit"] = False  # Figma draws its dashes at their exact lengths
         return stroke
 
     def corner_radii(self, node):

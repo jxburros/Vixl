@@ -131,6 +131,13 @@ text by its baseline instead of its box:
 
 Rotated or skewed text is not positioned by baseline (the measurements are in the upright frame).
 
+## Overhanging glyphs
+
+Script faces, italics and outlines often draw past the box their advance widths make (the swash of a final
+`t`, the top of a slanted `f`). Vixl keeps that box for layout and draws the overhang outside it, so glyphs are
+not clipped; compare `ink_bounds` with the box in `inspect` to see how far it reaches before placing text near
+the canvas edge. See [rich text](rich-text.md#character-styles).
+
 ## Rolling a direction
 
 When a brief leaves the look open, roll instead of settling for defaults:
@@ -148,7 +155,7 @@ A roll picks a pairing first, then a palette whose mood fits it, a layout suited
 
 ## Letter spacing and edits
 
-Tracking is letter spacing in local pixels after every character; negative values tighten text. Set it on the layer with `text` or `text-set`, for example `{"type":"text-set","target":"headline","tracking":4}`: layer tracking applies to whatever text the layer holds, including text changed later by `text` keyframes, typewriter or captions, and `${variable}` values. `text-style` tracking styles a matched phrase, range or paragraph, and rich-text spans take `tracking` too; a span's own (nonzero) tracking replaces the layer's. `letter_spacing` is accepted as an alias. This is the letter-spacing control, distinct from `spacing` and `line_height` (line spacing). Inspect and preview after tracking changes because the text may wrap differently. Tracked text is laid out by the rich-text engine; a layer whose text had no rich formatting keeps its line pitch.
+Tracking is letter spacing in local pixels between characters (never after the last one on a line); negative values tighten text. Set it on the layer with `text` or `text-set`, for example `{"type":"text-set","target":"headline","tracking":4}`: layer tracking applies to whatever text the layer holds, including text changed later by `text` keyframes, typewriter or captions, and `${variable}` values. `text-style` tracking styles a matched phrase, range or paragraph, and rich-text spans take `tracking` too; a span's own (nonzero) tracking replaces the layer's. `letter_spacing` is accepted as an alias. This is the letter-spacing control, distinct from `spacing` and `line_height` (line spacing). Inspect and preview after tracking changes because the text may wrap differently. Tracked text is laid out by the rich-text engine; a layer whose text had no rich formatting keeps its line pitch and its box (top at the ink), so adding tracking, on the layer or with a first `text-style`, does not move the text. Because no tracking follows a line's last letter, tracked text measures, wraps, centres and right-aligns by its glyphs, and PNG, SVG, PDF, PPTX, scaled previews and linked documents agree.
 
 `text_transform` draws the text in a case without changing the stored text: `uppercase`, `lowercase`, `capitalize` (the first letter of each word) or `none`. Like tracking it is a layer property, so `{"type":"text-set","target":"lyric","text_transform":"uppercase","tracking":4}` gives keyed lyric lines and merge-field values the brand's caps and tracking. `text-transform`, `case`, and values such as `caps`, `upper` and `title` are accepted and reported under `normalized`. Rendering, `inspect`, `check`, `fit-text` and the SVG, PDF and PPTX exports all use the cased, tracked text.
 
@@ -205,5 +212,21 @@ accepted, and the CLI takes the stops as JSON in `--tabs`. PNG, SVG and PDF draw
 the leader as characters before the tab, since PowerPoint has no leaders. Rich text keeps tabs as spaces. For a price
 list with several columns, a `table` with a decimal column and a column `leader` does the same
 ([tables](charts.md#tables)).
+
+### Size at real use
+
+`check` also judges text at the size the piece is really seen and reports what is too small there as a `legibility` finding with `code: use-size` and `action: review`. The use comes from the named size, else from a custom canvas with exactly a named size's pixels (3000×3000 is cover art, 1600×2560 a book cover), else from the purpose in the house style:
+
+| Use | Where it comes from | Minimum |
+| --- | --- | --- |
+| cover art at 120 px wide | `album-art` (alias `podcast-cover`) | 10 px at that width |
+| shop thumbnail at 160 px wide | `ebook-cover` (alias `book-cover`) | 10 px at that width |
+| home-screen icon at 60 px, browser tab at 32 px | app-icon masters, `favicon` | 10 px at that width |
+| feed thumbnail at 320 px (600 for `og-image`, `x-post`) | the social purpose | 10 px at that width |
+| projected slide | the slides purpose, and landscape diagrams | 18 pt projected: 36 px on a 1080 px tall slide |
+| infographic thumbnail at 400 px wide | portrait and square diagrams | 10 px at that width |
+| poster read across a room | the poster purpose on poster and print sheets or custom canvases | 3% of the sheet's short side |
+
+The minimum grows for light weights (×1.2 at 300, ×1.4 at 200) and for faint colours (+15% per contrast point below the 4.6:1 secondary-text target), and shrinks for bold faces as WCAG's large-text rule does (×0.78 at 700). The finding names the layer, the use, the size it needs there and, when one would do, the weight that would pass at its current size. Decorative layers (`layer-intent decorative`) are skipped and waivers apply; `thumbnail_width: null` turns the thumbnail uses off, and an explicit `thumbnail_width` replaces their width. Documents, forms, logos and motion have no use size. The values live in the house style (`craft.minimum_text`, each purpose's `use`) and in `vixl sizes` (`use`).
 
 For social and poster purposes, automatic legibility checking and generated layout minor text use the house minimum (2.2% of the short canvas side). Explicit thumbnail widths remain a caller-selected viewing-context check. Print keeps the 6-point minimum and decks keep their profile checks. The contrast check treats bold text (font weight 700+) from 18.66 px (14 pt) as large, needing 3:1; regular text needs 24 px. Shared spacing expressions such as `2u` use half the body size per unit.

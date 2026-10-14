@@ -41,8 +41,15 @@ def _print(w, h, unit, description, dpi=300, category="print", bleed=None, safe=
     return {"category": category, "width": w, "height": h, "unit": unit, "dpi": dpi, "bleed": bleed, "safe": safe, "description": description}
 
 
-def _px(w, h, category, description, safe=0):
-    return {"category": category, "width": w, "height": h, "unit": PX, "safe": safe, "description": description}
+def _px(w, h, category, description, safe=0, use=None):
+    entry = {"category": category, "width": w, "height": h, "unit": PX, "safe": safe, "description": description}
+    return {**entry, "use": use} if use else entry
+
+
+# How a piece in these sizes is really seen, for the legibility check's use size (``use_size``). ``by_pixels``
+# lets a custom canvas of exactly these pixels count as the size: only for dimensions nothing else shares.
+COVER_ART = {"seen": "thumbnail", "width": 120, "as": "cover art in a podcast or music app", "by_pixels": True}
+HOME_SCREEN = {"seen": "thumbnail", "width": 60, "as": "a home-screen icon"}
 
 
 # Platform UI covers the top and bottom of a story; the sides only need a normal margin.
@@ -111,7 +118,10 @@ SIZES = {
     # Packaging and merchandise
     "cd-cover": _print(4.75, 4.75, IN, "CD booklet cover", category="packaging"),
     "vinyl-cover": _print(12.375, 12.375, IN, "12-inch vinyl LP jacket", category="packaging"),
-    "album-art": _px(3000, 3000, "packaging", "Streaming album artwork (3000×3000)", safe=150),
+    "album-art": _px(3000, 3000, "packaging", "Streaming album, podcast or audiobook artwork (3000×3000)", safe=150,
+                     use=COVER_ART),
+    "ebook-cover": _px(1600, 2560, "packaging", "E-book or book cover for online shops (1600×2560)", safe=80,
+                       use={"seen": "thumbnail", "width": 160, "as": "a shop thumbnail", "by_pixels": True}),
     "tshirt-print": _print(12, 16, IN, "T-shirt front print area", category="packaging", bleed=0, safe=0),
     "tote-print": _print(10, 10, IN, "Tote bag print area", category="packaging", bleed=0, safe=0),
     "mug-wrap": _print(8.5, 3.5, IN, "11 oz mug wrap", category="packaging", bleed=0, safe=0.25),
@@ -186,19 +196,20 @@ SIZES = {
     "android-screenshot": _px(1080, 1920, "app-store", "Google Play phone screenshot", safe=60),
     "play-feature-graphic": _px(1024, 500, "app-store", "Google Play feature graphic", safe=40),
     # Icons (square masters; export an icon set or ICO for small sizes)
-    "favicon": _px(512, 512, "icons", "Favicon master; export ICO 16–256 and PNG 32/180/192/512", safe=32),
+    "favicon": _px(512, 512, "icons", "Favicon master; export ICO 16–256 and PNG 32/180/192/512", safe=32,
+                   use={"seen": "thumbnail", "width": 32, "as": "a browser-tab icon"}),
     "favicon-16": _px(16, 16, "icons", "16px favicon", safe=0),
     "favicon-32": _px(32, 32, "icons", "32px favicon", safe=0),
     "favicon-48": _px(48, 48, "icons", "48px favicon", safe=1),
     "apple-touch-icon": _px(180, 180, "icons", "iOS home-screen web icon", safe=12),
     "android-chrome-192": _px(192, 192, "icons", "Android/PWA icon", safe=12),
-    "android-chrome-512": _px(512, 512, "icons", "Android/PWA large icon", safe=32),
-    "pwa-maskable": _px(512, 512, "icons", "PWA maskable icon; keep content inside the central 80% circle", safe=52),
+    "android-chrome-512": _px(512, 512, "icons", "Android/PWA large icon", safe=32, use=HOME_SCREEN),
+    "pwa-maskable": _px(512, 512, "icons", "PWA maskable icon; keep content inside the central 80% circle", safe=52, use=HOME_SCREEN),
     "android-adaptive-icon": _px(432, 432, "icons", "Android adaptive icon layer; safe zone is the central 66/108", safe=84),
-    "ios-app-icon": _px(1024, 1024, "icons", "iOS/iPadOS App Store icon (system applies the rounded mask)", safe=80),
-    "macos-app-icon": _px(1024, 1024, "icons", "macOS app icon; artwork in the 824px rounded square", safe=100),
+    "ios-app-icon": _px(1024, 1024, "icons", "iOS/iPadOS App Store icon (system applies the rounded mask)", safe=80, use=HOME_SCREEN),
+    "macos-app-icon": _px(1024, 1024, "icons", "macOS app icon; artwork in the 824px rounded square", safe=100, use=HOME_SCREEN),
     "windows-tile": _px(310, 310, "icons", "Windows large tile", safe=24),
-    "app-icon": _px(1024, 1024, "icons", "Generic app icon master", safe=80),
+    "app-icon": _px(1024, 1024, "icons", "Generic app icon master", safe=80, use=HOME_SCREEN),
     "icon-16": _px(16, 16, "icons", "16px UI icon", safe=1),
     "icon-24": _px(24, 24, "icons", "24px UI icon on a 2px keyline", safe=2),
     "icon-32": _px(32, 32, "icons", "32px UI icon", safe=2),
@@ -248,6 +259,10 @@ ALIASES = {
     "1080p": "video-1080p",
     "4k": "video-4k",
     "app-icon-ios": "ios-app-icon",
+    "podcast-cover": "album-art",
+    "podcast-art": "album-art",
+    "book-cover": "ebook-cover",
+    "kindle-cover": "ebook-cover",
     "logo-square": "logo",
     "logo-vertical": "logo-stacked",
     "logotype": "wordmark",
@@ -345,6 +360,8 @@ def summary(key):
             dpi=entry["dpi"],
             pixels=info["trim"],
         )
+    if entry.get("use"):
+        item["use"] = {k: v for k, v in entry["use"].items() if k != "by_pixels"}
     return item
 
 
@@ -510,3 +527,39 @@ def is_mark(purpose=None, size=None):
     from .house_style import is_mark as mark
 
     return mark(purpose, size)
+
+
+def use_size(canvas, purpose=None):
+    """How a piece is really seen, for the legibility check's use size: a copy of the ``use`` of the canvas's
+    named size, else of the named size whose pixels a custom canvas has exactly (sizes marked ``by_pixels``),
+    else of the purpose profile in the house style, else None. ``source`` names where it came from.
+
+    ``seen`` is ``thumbnail`` (shown ``width`` px wide; ``auto`` is the check's own thumbnail width),
+    ``projected`` (a slide on a projector) or ``distance`` (a sheet read across a room). A purpose's
+    ``landscape`` entry replaces its use on a landscape canvas (a wide diagram is a slide, a tall one an
+    infographic), and its ``categories`` limit it to custom canvases and named sizes of those categories
+    (a poster's distance reading is not a phone wallpaper's)."""
+    from copy import deepcopy
+
+    named = canvas.get("size")
+    entry = SIZES.get(named) if named else None
+    if entry is not None and entry.get("use"):
+        return {**deepcopy(entry["use"]), "source": f"size {named}"}
+    if entry is None:
+        pixels = (canvas.get("width"), canvas.get("height"))
+        same = [(key, item) for key, item in SIZES.items()
+                if item["unit"] == PX and (item["width"], item["height"]) == pixels]
+        uses = [item.get("use") for _, item in same]
+        if same and all(use and use.get("by_pixels") and use == uses[0] for use in uses):
+            return {**deepcopy(uses[0]), "source": f"pixels of {same[0][0]}"}
+    if purpose:
+        from .house_style import profile
+
+        use = deepcopy(profile(purpose).get("use"))
+        categories = use.pop("categories", None) if use else None
+        if use and not (entry is not None and categories and entry["category"] not in categories):
+            wide = use.pop("landscape", None)
+            if wide and canvas.get("width", 0) > canvas.get("height", 0):
+                use = wide
+            return {**use, "source": f"purpose {purpose}"}
+    return None

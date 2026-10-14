@@ -649,8 +649,9 @@ one module, `src/vixl/house_style.py`. A workspace `brand.json` and explicit fie
   half the body size), the line-height table, line length, minimum text sizes, the base-size rule, the
   headline measure, the default safe area (5%) and stroke width (1.5%), the neutral fill and the palette
   roles fills and strokes take, the house corner and corner scale, the irregularity strength, margins,
-  outline and shadow treatment, label case, and the text-stage ladder (`type_stages`: each stage's font role,
-  type-scale step, line height and case). `src/vixl/craft.py` holds the helpers that apply them
+  outline and shadow treatment, label case, the text-stage ladder (`type_stages`: each stage's font role,
+  type-scale step, line height and case), and the finishing rules (`finish`: what a glow, shadow or halo
+  looks like without a colour, and whether dashes are fitted to corners). `src/vixl/craft.py` holds the helpers that apply them
   (text, shape and stroke defaults) and read-only names (`LINE_HEIGHT`, `CORNERS`, `SAFE_AREA` …) that
   always reflect the data; layouts, rich text, text flow, charts, diagrams, templates and containers
   read the same values.
@@ -665,6 +666,8 @@ one module, `src/vixl/house_style.py`. A workspace `brand.json` and explicit fie
   `default_profile` is the general profile, with the 1080×1080 size for a document given nothing.
   Creation and rolls read this one vocabulary.
 - **`safe_palettes`** lists the quiet palettes that `layout-apply` without a palette, templates and the safe tier draw from.
+- **`off`** is what a new document gets with the house style switched off: the canvas `background` and the
+  neutral `direction` layout-apply follows (see [Turning the house style off](#turning-the-house-style-off)).
 
 Read it, never copy it. The API:
 
@@ -679,6 +682,7 @@ Read it, never copy it. The API:
 | `house_style.tier_of(kind, name, purpose=None)`, `entries(kind)`, `names(kind, tier)` | tiers and metadata of the pools |
 | `house_style.level(variety)` | a variety level's tier weights, look scale, motifs and treatments |
 | `house_style.safe_palettes()` | the quiet palettes the safe tier and palette-less layouts draw from |
+| `house_style.neutral()` | what `house_style: "off"` gives: `summary`, `background` and the neutral `direction` |
 
 People and agents read it with `vixl house [show PURPOSE]` or
 `vixl_reference('house-style', name="all"|PURPOSE)`.
@@ -689,6 +693,38 @@ Vixl is recognisable by its craft only: **sharp corners, thin part lines, offset
 labels and one line-height rule**. Fonts, palettes and layouts vary by purpose and seed. In rolls this
 means corners are sharp unless the rolled style has its own corner (material, glassmorphism, kawaii,
 y2k, memphis), and the house shadow is the solid offset (`hard-shadow`) in the ink colour.
+
+## Turning the house style off
+
+The house style is on by default. To create documents with no rolled direction, pass `house_style: "off"`:
+
+| Surface | How |
+|---|---|
+| CLI | `vixl new SIZE --house-style off`; `"house_style": "off"` in a `vixl compose` request |
+| Python | `Project.new(..., house_style="off")`, `Project.sized(size, house_style="off")`, `Project(house_style="off")` |
+| MCP | `vixl_document` with `action: "create"` and `house_style: "off"`; `vixl_apply` with `create: {…, house_style: "off"}` |
+| REST | `POST /compose` with `"house_style": "off"` |
+| Workspace | `{"house_style": "off"}` in `.vixl/variety.json`, for every surface |
+
+An explicit `house_style: "on"` overrides the workspace setting. With the house style off, a new document:
+
+- rolls no palette, pairing, layout, motif, look, style, background treatment or other decoration, and adds
+  nothing to the roll history;
+- gets a white canvas, or a transparent one for marks (logos, icons, favicons); an explicit `background` or a
+  workspace `brand.json` background still wins;
+- embeds the workspace default fonts when `brand.json` sets them, else keeps the bundled font; no pairing is
+  downloaded;
+- stores `design_defaults` with `house_style: "off"`, its seed and purpose, and a
+  neutral direction: the `mono` palette in light mode, the perfect-fourth type scale, balanced density, no accent,
+  motif, look or style, a flat background and the craft corner (sharp). A sparse `layout-apply` follows it, so it
+  draws the copy in black on white with no decoration; the seed only picks among the layout's alternatives
+  (such as alignment);
+- keeps the craft: the safe area, the spacing unit, the line-height table and the minimum text sizes still apply.
+
+Creation results report `creation.house_style: "off"` and `background_from: "neutral"`. Explicit fields still
+win one by one (`layout-apply` with `palette`, `mode`, `accent` or `direction`), a `layout-apply` with its own
+`seed` takes a fresh choice, and a roll (`vixl roll`, the roll step, `vixl_reference('roll')`) still rolls the house style on request,
+also when the workspace turns it off.
 
 ## Changing defaults (H2)
 
@@ -751,3 +787,13 @@ and #370 (layouts fail their own safe-area check).
   that many. `distribution: "poisson"` re-rolls the layout on every count change.
 - **Finished sprites (7e).** `pixel-art` sprites draw with a shading ramp and an outline (`shading`, `outline`).
   `shading: false` and `outline: false` keep the flat sprite.
+- **Glows and shadows (`craft.finish`).** A glow or shadow look given no colour builds it from what lies under the
+  layer. Shadows are the backdrop in shade (same hue and chroma, about a third of its lightness), never neutral
+  grey or black, and `soft-shadow` is small and light (offset 1.5-4% and blur 3-8% of the short side, opacity
+  0.14-0.30). Glows are a lighter tint of the layer's colour screened over the backdrop, so they only add light
+  (on a ground lighter than the tint, the layer's own colour), with opacity capped at 0.6 and a `soft-halo` core at
+  0.7. An explicit `color` is kept exactly; `layer-style` draws what it is given. The craft check of 2026-10-13
+  found muddy glows and shadows on four of eight pieces. See [looks](looks.md#behaviour).
+- **Fitted dashes (`craft.finish.dash_fit`).** Dash patterns stretch or squeeze slightly so each stretch between
+  corners divides evenly, with a dash on every corner and at open ends. `dash_fit: false` keeps the exact
+  lengths. See [strokes](vector-paths.md#strokes).

@@ -33,10 +33,24 @@ def settings(workspace=None):
     from .assets import read_bounded
 
     result = json.loads(read_bounded(path, 16384))
-    require(isinstance(result, dict) and set(result) <= {"variety", "seed"},
-            "Variety settings accept variety and seed")
+    require(isinstance(result, dict) and set(result) <= {"variety", "seed", "house_style"},
+            "Variety settings accept variety, seed and house_style")
     require(result.get("variety", "medium") in VARIETIES, "Invalid workspace variety")
+    require(result.get("house_style", "on") in ("on", house_style.OFF),
+            "house_style in .vixl/variety.json is 'on' (the default) or 'off' (new documents roll no direction)",
+            field="house_style", allowed=["on", house_style.OFF])
     return result
+
+
+def house_style_off(value=None, workspace=None):
+    """Whether a new document skips the house style: ``value`` (``"on"`` or ``"off"``) when given, else the
+    workspace setting (``.vixl/variety.json`` ``"house_style": "off"``). The default is on."""
+    require(value in (None, "on", house_style.OFF), "house_style is 'on' (roll a house-style direction, the "
+            "default) or 'off' (no rolled direction: a plain canvas and neutral layout defaults)",
+            field="house_style", allowed=["on", house_style.OFF])
+    if value is not None:
+        return value == house_style.OFF
+    return settings(workspace).get("house_style") == house_style.OFF
 
 
 def seed_for(project=None, seed=None, variety=None, workspace=None):
@@ -213,6 +227,23 @@ def document_defaults(project, *, seed=None, variety=None, workspace=None, purpo
     return project.state["design_defaults"]
 
 
+def neutral_defaults(project, *, seed=None, variety=None, workspace=None, purpose=None):
+    """Store ``design_defaults`` for a new document with the house style off: nothing is rolled. It records
+    ``house_style: "off"``, the seed (it only varies the layout's alternatives, such as alignment), the purpose
+    and the neutral direction (``house_style.neutral``) that layout-apply and the other consumers follow."""
+    from .house_style import neutral, resolve_purpose
+
+    if workspace is not None:
+        project._workspace = str(Path(workspace).resolve())
+    purpose, source = resolve_purpose(purpose, size=project.state.get("canvas", {}).get("size"))
+    seed, variety = seed_for(project, seed, variety, workspace)
+    project.state["design_defaults"] = {"seed": seed, "variety": variety, "house_style": house_style.OFF,
+                                        **({"purpose": purpose, "purpose_source": source} if purpose else {}),
+                                        "direction": neutral()["direction"]}
+    record_as_creation(project, "Choose neutral design defaults")
+    return project.state["design_defaults"]
+
+
 def record_as_creation(project, label):
     """Fold changes into a fresh document's first revision, or record them as ``label``."""
     initial = project.nodes.get(project.head, {})
@@ -319,9 +350,11 @@ def apply_direction(project, builder, direction):
     look = direction.get("look", "none")
     if look != "none":
         amount = direction.get("look_amount", 0.1)
-        for layer, color in _look_targets(project, builder, own, background, look):
-            execute(project, {"type": "look", "target": layer["id"], "look": look, "amount": amount,
-                              **({"color": color} if color else {})})
+        targets = _look_targets(project, builder, own, background, look)
+        for color in dict.fromkeys(color for _, color in targets):
+            # One operation per colour, so a look that reads the backdrop measures every target in one render.
+            execute(project, {"type": "look", "targets": [layer["id"] for layer, c in targets if c == color], "look": look,
+                              "amount": amount, **({"color": color} if color else {})})
     if direction.get("style"):
         for operation in apply_operations(direction["style"], palette=False):
             execute(project, operation)

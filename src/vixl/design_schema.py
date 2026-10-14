@@ -107,7 +107,8 @@ def schemas(add):
         ["name", "settings"],
     )
     add("style-apply", {"name": S, "kind": enum("character", "paragraph")}, ["name"])
-    add("swatch", {"name": S, "color": S}, ["name", "color"])
+    add("swatch", {"name": S, "color": S, "delete": B, "detach": B}, ["name"],
+        anyOf=[{"required": ["color"]}, {"required": ["delete"]}])
     add(
         "artboard",
         {**board, "preset": S, "background": S, "variables": obj, "targets": refs, "delete": B},

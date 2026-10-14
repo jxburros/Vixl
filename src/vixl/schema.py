@@ -30,7 +30,7 @@ OPACITY = {
 }
 # Layer-creating operations that also set the layer's opacity and rotation (the opacity and rotate
 # operations, in one step); with target they change the edited layer's.
-LAYER_FINISH = ("add", "solid", "gradient", "text", "shape")
+LAYER_FINISH = ("add", "solid", "gradient", "text", "shape", "pen")
 FINISH_FIELDS = {
     "opacity": OPACITY,
     "rotation": {"type": "number", "description": "Rotation in degrees, clockwise, around the layer's pivot "
@@ -153,7 +153,7 @@ def _operation_schema():
             "after ${variable} substitution.",
         },
         "tracking": {"type": "number", "minimum": -1000, "maximum": 1000,
-                     "description": "Letter spacing (tracking) in pixels added after every character, for the whole "
+                     "description": "Letter spacing (tracking) in pixels added between characters (not after a line's last), for the whole "
                      "layer: it applies to whatever text the layer holds, including text changed by keyframes and "
                      "${variable} values. Rich-text spans with their own tracking keep it. 0 removes it. Not line "
                      "spacing (that is spacing or line_height)."},

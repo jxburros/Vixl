@@ -1,5 +1,83 @@
 # Changelog
 
+## Unreleased
+
+### Fixed and added
+
+- **Swatches can be deleted.** `{"type": "swatch", "name": "old", "delete": true}` (`vixl swatch old --delete`) removes a swatch. While layers, other swatches, character or paragraph styles, variables or artboards still use it (`@old`, `lighten(@old, 10%)`, gradient stops …), the deletion is refused with error `swatch_in_use` naming them under `used_by`; `detach: true` (`--detach`) first writes the swatch's color (its definition as written) into each use, so the design renders unchanged. Undo restores the swatch and its references. `color` is now required only when not deleting.
+- **`pen` takes `opacity` and `rotation`**, as `shape` does, when it creates or edits a path (`vixl pen … --opacity 40%`). Opacity is 0–1 or a percentage string; a bare number above 1 is an error. PNG, SVG and PDF draw the same translucency.
+- **An off switch for the house style.** `house_style: "off"` creates documents with no rolled direction on every creation path: `vixl_document` create and `vixl_apply(create=…)`, `vixl new --house-style off` and `vixl compose`, REST compose, Python `Project()`/`Project.new()`/`Project.sized()`, or `{"house_style": "off"}` in `.vixl/variety.json` for all of them. Such a document gets no rolled palette, pairing, motif, look, style, background treatment or decoration; a white canvas (transparent for marks; an explicit `background` or a `brand.json` background still wins); the workspace default fonts, else the bundled font, with no pairing download. `design_defaults` records `house_style: "off"` and a neutral direction (mono palette, light mode, perfect-fourth scale, balanced density, no accent), so a sparse `layout-apply` and compose use neutral layout defaults; the craft rules (safe area, spacing unit, minimum sizes) still apply. Creation results report `creation.house_style: "off"` and `background_from: "neutral"`. The house style stays on by default; `house_style: "on"` overrides the workspace setting, and a roll (`vixl roll`, the roll step, `vixl_reference('roll')`) still rolls the house style on request. The neutral direction lives in `house-style.json` (`off`), read through `house_style.neutral()`.
+- `check` judges secondary text at the size the piece is really seen: cover art at 120 px, book covers at a 160 px shop thumbnail, app icons at 60 px, social at its thumbnail width, portrait infographics at 400 px, slides projected (18 pt, 36 px at 1080p) and posters across a room (3% of the sheet's short side). Light weights and faint colours need more size, bold less. Findings (`legibility`, `code: use-size`, `action: review`) name the layer, the use and the font size or weight needed; decorative layers are skipped and waivers apply. The use comes from the named size, a custom canvas with a named size's exact pixels, or the house-style purpose (`use`).
+- New named size `ebook-cover` (1600×2560, aliases `book-cover`, `kindle-cover`); `podcast-cover` and `podcast-art` are aliases of `album-art`. `vixl sizes` lists each size's `use`.
+- **Tracked text measures the way it draws.** Tracking (layer `tracking` and rich-text span `tracking`) goes between letters and no longer after a line's last letter, so auto-sized boxes, wrapping, `center`/`right` alignment and centring the layer follow the ink instead of sitting half a letter-space off. Tracking now spaces each character (HarfBuzz cluster), so combining marks stay on their letters, and a word broken across lines keeps its tracking. PPTX writes the last letter of each tracked line as a run without `spc`, and fitted text scales its PPTX tracking with the fit.
+- **Previews and linked documents draw tracked text at the export's width.** The preview proxy did not scale layer `tracking`, so downscaled previews and link layers drew tracked lines far too wide (about 1986 px against 1178 px bounds at a 0.198 preview), and it rounded text sizes to whole preview pixels (up to about 2% wide or narrow); it now scales tracking and keeps fractional sizes.
+- **Adding tracking does not move plain text.** Tracked plain text is laid out by the rich-text engine, whose box started at the line rather than at the ink, so adding `tracking` (or a first `text-style`) moved the text down by the difference (about 10–30 px at display sizes). Plain text laid out there now keeps the plain box (rich record `ink_box: true`) and line pitch.
+- **Glyph overhangs are no longer clipped.** Script swashes, italic and synthetic-oblique slants, synthetic bold and outlines that reach past a rich or tracked text layer's box are drawn in PNG, previews, redrawn turned or fractionally placed layers and SVG (PDF and PPTX did not clip). The layer box is still the layout box for alignment and wrapping; lines that overflow a fixed box below its bottom stay cut off.
+- **An MCP call can no longer act on a document its caller did not choose.** Agents sharing one MCP connection (subagents of one host) share its active document, so a call without `document=` used whichever document any of them created or opened last. Now, once a connection has created, opened or addressed more than one document it has not closed, or has chosen none while several are open, a document tool called without `document=` fails with `ambiguous_document`, listing the documents (`documents`) and suggesting `document=` for each; a failed call that drops a document from the server's cache no longer changes the default. A server with one open document, and separate connections that each keep to their own document, work without `document=` as before. Closing the active document makes this connection's previous document active again, never another connection's.
+- **Corner radii and radial-repeat groups pass the file-format schema.** A `radius` given as a percentage (`"25%"`) or as four corner radii (`[24, 24, 4, 4]`), and the `radial` record a `radial-repeat` group keeps, are part of the published document schema, so documents that use them (including ones from 0.26, which `vixl convert` refused) save, validate and convert. PPTX export draws those radii as outlines instead of failing.
+- `cut-paper` no longer flattens a drawing that reaches past its box: its grain and edge pass dropped the marker that
+  keeps an overflowing vector image unscaled, so a path's dome (a loaf top) was squeezed into the box.
+- `check` (bounds) reports a path or arc whose own geometry runs past its box but is drawn cut off there
+  (`code: "geometry-clipped"`, a `fix`), naming the edges and pointing to `path-fit` or a larger box.
+- Dotted strokes draw round dots: a dot that fell on a vertex lost its cap direction and drew a spur or half a dot, and a
+  flattened curve that closed a hair's breadth from its start put a spike at the seam of an inside or outside dashed stroke.
+- PowerPoint export keeps dashes, width profiles, tapers, extra `strokes` and markers: such a shape is exported as the
+  filled outlines every other renderer draws (it was a plain solid line). Alignment, caps and joins stay a native line.
+- Looks that read the backdrop measure every target of one `look` operation in one render, and rolled looks apply as
+  one operation per colour.
+- The `composition` check family, backtested on the eight craft-check pieces of 2026-10-13:
+  it now finds the judged spacing defect on four of the seven pieces the judges marked
+  (before: one). C07's 390 px empty band above the illustration (the major defect), C07's page dots floating
+  midway between the copy and the button, C03's "A novel" floating between the title and the tray, and C01's band
+  between the reflection and the title; C04, C05 and C08 are still missed, and C02 (no spacing complaint) stays
+  clean. It drops two findings no judge named (C04's 2 px drift, C05's "−9" bar label) and keeps two (C01's 700 px
+  sky above the moon, C06's script names 16 px off the centre axis). What changed:
+  - text is spaced by the top and bottom of its glyphs rather than its line box (it still aligns by its layout box);
+  - layers drawn fainter than 30% opacity, and gradient fills that run to two page edges over a fifth of the page,
+    are not blocks;
+  - a signed value or a share beside its data ("−9", "+6", "38%") is not a margin;
+  - `uneven_rhythm` also reports a small block (secondary text, a row of dots, a subtitle under a display title)
+    as far from the block above as from the one below, between blocks of other kinds; `repair-layout` repairs it
+    by moving the block one spacing unit from a neighbour (`float-to-above`, `float-to-below`).
+  The round-1 craft backtest keeps 12 of 21 judged defects caught with no false finding; it now reports the T03
+  subtitle that floats under the title and the T14 lyric frame's empty top as findings on other judged defects,
+  and no longer reports the faint T03 ripple as a crowded rule. `repair-layout` there resolves 17 of 23 findings
+  (was 19 of 22): the T07 badge name blocks are left alone, because pulling the last name up leaves the company
+  line floating. The 144 rolled house-style designs still get no composition finding.
+- The finishing pass's craft checklist (`vixl_reference("finishing")`) adds what the craft-check judges asked for:
+  secondary text readable at its real use size, glows and shadows only where they read as light, illustrations in
+  one consistent style with joined parts, and a motif that is not a stand-in such as a sunset, a plain disc or a
+  stock icon. SKILL.md and the getting-started guide list the same checklist.
+
+### Behaviour changes
+
+- New review findings: text that is small at its use size is reported as `legibility.use-size` (review, so `passed` is unchanged); on slides and diagrams it replaces the generic "only matters as a thumbnail" note. The values are house-style craft (`minimum_text`: `projected_points`, `distance_share_of_short_side`, `light_weight_step`, `contrast_step`, `most_extra`) and each purpose's `use`. To silence it, waive `legibility` on the layer, mark the layer `decorative`, or pass `thumbnail_width: null` (thumbnail uses only). The deck `min_font` projected default now reads `projected_points` (still 18 pt).
+- `layout-apply` sets minor text (labels, captions, body) at least at the use-size minimum for a regular face when no `base_size` is given: 36 px on a 1080 px slide (was as small as 17 px), 3% of a poster's short side (81 px on an 18×24 at 150 dpi, was about 30 px), 250 px on 3000 px cover art, 100 px on a 1600 px book cover, 30 px on a 1200 px wide portrait diagram. Pass `base_size` for the old type scale.
+- Text with `tracking` lays out narrower by one tracking amount per line: auto-sized boxes shrink, and centred or right-aligned tracked lines move by half or all of it. There is no setting for the old trailing space; to keep a box's previous width, widen it with `text-layout` or move the layer by the difference.
+- Plain text with layer `tracking` draws at the plain text's position (about 10–30 px higher than in 0.27 at display sizes, and with the plain line pitch for multi-line text). A first `text-style` on a plain layer stores `ink_box: true` and `line_height: 1.0` so it keeps the plain box and leading; set `line_height` with `text-style` for other leading.
+- Rich text whose ink reaches past its box (script faces, slanted or outlined letters) now draws that ink instead of cutting it off at the box edge.
+- **MCP calls without `document=` are refused (`ambiguous_document`) when the active document is not unambiguously this connection's** (see above). Migration: pass `document="name.vixl"` on every document tool call once more than one document is open; `vixl mcp --require-document` makes that mandatory from the start.
+- **Glows and shadows without a colour no longer read as dirt.** A shadow look (`soft-shadow`, `hard-shadow`) is now the colour of what it falls on, darker in the same hue, instead of black, and
+  `soft-shadow` is tighter and lighter (offset 1.5-4% and blur 3-8% of the layer's short side, opacity 0.14-0.30; it was
+  3-8%, 5-15% and 0.2-0.5). A glow look (`glow`, `neon`, `soft-halo`) is a lighter tint of the layer's
+  colour screened over the backdrop, so it only adds light, with opacity capped at 0.6 (a `soft-halo` core at 0.7); on a
+  ground lighter than that tint it keeps the layer's colour. An explicit `color` is kept exactly, and `layer-style` is
+  unchanged (drawn as given). Migration: pass `color` to the look for the old colour
+  (`{"type": "look", "look": "soft-shadow", "color": "#000000", "amount": 0.5}`), or set the shadow exactly with
+  `layer-style` (`{"color": "#000000", "dx": 0, "dy": 6, "blur": 10, "opacity": 0.35}`). Looks already applied keep
+  their stored styles. See [looks](docs/looks.md#behaviour).
+- **Dash patterns are fitted to corners** (`dash_fit`, default true): each length is stretched or squeezed by the same
+  small factor so the pattern divides every stretch between corners evenly, a dash is centred on every corner (sharp,
+  rounded or notched) and open paths start and end on a dash; a closed curve without corners is divided into whole
+  repeats. This applies to every dashed stroke in PNG, SVG, PDF and PowerPoint. Migration: set `dash_fit: false` on a
+  shape (or on one of its `strokes`) for the exact lengths and the old placement.
+- `composition` can report new `review` findings, and drops others: floating blocks (`uneven_rhythm`), bands
+  that a faint layer, an edge-to-edge gradient fill or a text layer's line box used to close, and edge bands of
+  1.75 times the opposite margin (was 2); margin drift starts above 2 px (was 1.5 px) and skips signed values and
+  shares. `profile="final"` fails on these like on any review finding. To keep a layout as it is, waive the
+  finding with a reason (`{"type": "waiver", "check": "composition", "reason": "…"}` or `layer-intent waive`); to
+  leave the family out, pass an explicit `checks` list without `composition`.
+
 ## 0.27.0
 
 A breaking release: a seven-tool MCP server, the compatibility machinery for older releases removed (use the [conversion kit](docs/converting.md) for documents and saved batches from 0.26 and earlier), a published `.vixl` format with SVG round trip and editable SVG, PDF and Figma import, flush-inside strokes on closed shapes, render-parity fixes and terminal summaries in the CLI.

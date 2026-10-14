@@ -109,6 +109,12 @@ content box, inset by `margin`; `box: "bounds"` uses the whole box. Both work ac
 Shapes, lines and pen paths support:
 
 - `dash`: positive dash/gap lengths, or `dashed`/`dotted`; `dash_offset` moves the pattern.
+  The pattern is fitted to the outline (`dash_fit`, default `true`): every length is stretched or
+  squeezed by the same small factor so the pattern divides each stretch between corners evenly, a
+  dash is centred on every corner (a sharp vertex, the middle of a rounded corner's arc, a notch) and
+  an open path starts and ends on a dash; a closed curve without corners (a circle) is divided into
+  whole repeats. `dash_fit: false` keeps the exact lengths. `dash_offset` still shifts a fitted pattern,
+  so marching ants keep moving. Dotted strokes draw round dots.
 - `line_cap`: `butt`, `round`, `square`; `line_join`: `miter`, `round`, `bevel`; `miter_limit`.
 - `stroke_align`: `inside`, `center`, `outside`, relative to the outline; meaningful for closed contours.
   Closed shapes (rectangles, rounded rectangles, capsules, ellipses, polygons, stars, shortcuts and
@@ -128,7 +134,9 @@ Shapes, lines and pen paths support:
 {"type":"shape","target":"tab","stroke":"white","stroke_width":3,"stroke_align":"inside","strokes":[{"color":"navy","width":2,"stroke_align":"outside"}]}
 ```
 
-These controls are shared by raster, SVG and PDF through filled vector stroke outlines.
+These controls are shared by raster, SVG and PDF through filled vector stroke outlines. PowerPoint
+gets the same outlines as filled shapes when a stroke has dashes, a width profile or tapers, extra
+`strokes` or markers (it has no fitted dashes); alignment, caps and joins stay a native line.
 Outside strokes and rounded caps may extend beyond the layer's layout box. `dash_offset`
 and `stroke_width` are numeric timeline properties. `trim_start`/`trim_end` reveal a
 percentage of the contour; they compose with dashes, rather than replacing the dash pattern.

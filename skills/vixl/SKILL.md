@@ -66,7 +66,9 @@ instead of improvising freehand shapes:
       default" below).
    2. **Critique** in a few lines against the craft checklist that `vixl_reference("finishing")` returns
       (one focal point; the accent colour used once or twice; no dead band; one left edge per column;
-      the motif names the subject; nothing reads as a placeholder), naming the layer for each miss.
+      the motif names the subject, not a sunset, plain disc or stock icon; nothing reads as a placeholder;
+      secondary text readable at real size; glows and shadows that read as light, not dirt; illustrations
+      in one style with joined parts), naming the layer for each miss.
    3. **Fix** everything the critique found in **one** batch (`check=true, preview=true`), not a string
       of nudges. With `check` the result lists every composition finding and `check.regions`, the two
       weakest regions (the most findings, else the densest text and the largest empty area); with
@@ -139,11 +141,11 @@ unchanged; `vixl reproduce --reference PNG` or `--lock FILE` verifies an approve
 **Composition is checked by default.** `vixl_check(checks=["composition"])` (CLI `vixl check --checks composition`)
 reports craft as `review` findings with a `code`: `dead_band` (an empty band much larger than the document's own
 gaps), `margin_drift` (stacked blocks a few pixels off one edge or centre axis), `uneven_rhythm` (a line further
-from the line it belongs with than from the next), `crowding` (a rule, band or heading under half a spacing unit
+from the line it belongs with than from the next, or a small block floating midway between two others), `crowding` (a rule, band or heading under half a spacing unit
 above text) and `clumped_scatter`. Each names its layers, `region`, measured `values` and `threshold`, in spacing
 units of half the body size. They do not fail a plain check but fail `profile="final"`: fix them, or waive a
-deliberate one with a reason (`{type: waiver, check: composition, reason}`). Marked decoration, backgrounds and
-bleeding art are not judged. Workflow `repair-layout` repairs them after any failures, when its `checks` include
+deliberate one with a reason (`{type: waiver, check: composition, reason}`). Marked decoration, backgrounds,
+edge-to-edge gradient fills, layers under 30% opacity and bleeding art are not judged; text is measured by its glyphs. Workflow `repair-layout` repairs them after any failures, when its `checks` include
 `composition` (the default set does): it snaps a drifting edge to the margin, re-spaces a stack, opens a crowded gap
 to a spacing unit, spreads a dead band over the other gaps (or moves the blocks beside it) and thins or re-seeds a
 clumped `pattern-scatter` tile. Each candidate is kept only if its finding is gone and no finding of any check is new,
@@ -327,7 +329,7 @@ Use submit/start/status for long jobs. An uncertain external generation request 
 not be blindly repeated; preserve its remote job identity.
 
 - **Named sizes** — `vixl_document(action='create', size="letter", bleed=true)` / `vixl new business-card --bleed`; 150 print, social, web, ad, video, slide, icon and logo sizes with dpi, bleed, safe area and guides.
-- **New documents** — every creation surface (`vixl new`, `Project.new()`, `vixl_document(action='create')`, compose) rolls and stores `design_defaults` (`seed`/`--seed`, `variety`/`--variety` reproduce them), gives the canvas the palette background (transparent for logos, icons and favicons; pass `background` to choose) and installs the rolled pairing. A `layout-apply` without `seed` then follows the whole stored direction.
+- **New documents** — every creation surface (`vixl new`, `Project.new()`, `vixl_document(action='create')`, compose) rolls and stores `design_defaults` (`seed`/`--seed`, `variety`/`--variety` reproduce them), gives the canvas the palette background (transparent for logos, icons and favicons; pass `background` to choose) and installs the rolled pairing. A `layout-apply` without `seed` then follows the whole stored direction. `house_style: "off"` (`--house-style off`, or `{"house_style": "off"}` in `.vixl/variety.json`) rolls nothing: a white canvas (transparent for marks), the workspace fonts else the bundled font, and a neutral direction (mono palette, light, no accent, motif, look or style) that layout-apply follows; craft rules still apply, and a roll still rolls on request.
 - **Layouts** — 53 principled, seed-varied layouts (`layout-apply`) that adapt to the canvas and set up contrast-checked color roles, a type scale and grids. Use them when a brief gives you free rein. They are fill-in-the-blank forms: `vixl layout show NAME` / `vixl_reference('layouts')` lists each layout's slots and what each needs. Fill them all; an unfilled slot renders as a `[Label]` blank that `check` reports as an error, and a slot the layout doesn't use is rejected rather than silently dropped. Templates work the same way.
 - **Typefaces** — the bundled font is a proofing fallback (`check` warns about it). Pick real type from a researched catalog of open-licensed families and curated heading/body pairings: `vixl font pairings --mood editorial` / `vixl_reference('fonts')`, then `vixl font pair NAME|random` / `font-pair` downloads, embeds and sets them as the document typography that layouts use; the result's `source` says whether each font came from the cache or a download (URL). `vixl font principles` explains how to combine fonts. Text without `font` uses the body face once the document has typography, text without `color` uses `@ink` (or black or white, whichever reads on the canvas), text without `size` uses the body size of the type scale (proportional to the canvas), and leading follows one line-height table (body 1.45, headings 1.1, display 1.0; `spacing` is line spacing and may be negative). Letter spacing is the layer's `tracking` (pixels), and `text_transform` (`uppercase`, `lowercase`, `capitalize`) cases the drawn text; both apply to keyed and `${variable}` text.
 - **Dice** — when the brief is thin, roll instead of defaulting: `vixl roll --for poster` / `vixl_reference('roll')` picks a pairing, a mood-consistent palette, a layout and its parameters from one seed, weighted by purpose (poster, social, slides, document, form, diagram, logo, motion; else the document's size) and gated by `variety` (low: safe pools only; medium: mostly safe, sometimes bold; high: every tier); layouts and templates accept `seed: "random"`. Roll a few, preview, keep the seed you like, and `--lock` choices you want fixed (`--lock tier=bold` explores a tier). `vixl house show PURPOSE` prints the purpose profile.
@@ -430,6 +432,9 @@ If found, prepend its folder to PATH for this session — see
 5. **Check without looking:** `vixl_check` / `vixl check` reports content cut off by the canvas,
    overlapping text (and decoration running through text, for review), low WCAG contrast, safe-area or reserved-zone violations (`safe_area="5%"`,
    `avoid=[[x,y,w,h]]`) and text too small at thumbnail width (on print sizes: below 6 pt). It lists only problems.
+   Secondary text too small, light or faint at the size the piece is really seen (cover art at 120 px, a book
+   cover at 160 px, a projected slide, a poster across a room) is a `use-size` review finding naming the
+   font size or weight it needs; mark ornaments `decorative: true`.
    Then run your own suite (`vixl_apply(workflow='check', request={suite: NAME})`, or `suites=true` on the apply) for
    this brief's requirements; see "Tests: why, when and how" above. Fix failures before step 6.
    **Measure, don't eyeball,** when precision matters: `vixl_check(action='measure')` / `vixl info` (colors,
@@ -533,6 +538,12 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   their centre line (`center`); `stroke_align` (`inside`, `center`, `outside`) overrides either, and PNG, SVG, PDF and
   PowerPoint put the stroke in the same place. A `rectangle` with a `radius` becomes a `rounded-rectangle` (reported
   under `normalized`).
+- **Dashes are fitted to corners** (`dash_fit`, default true): the pattern stretches slightly so every corner,
+  notch and open end lands on a dash. `dash_fit: false` keeps the exact lengths.
+- **A glow or shadow without a `color` takes it from what lies under the layer**: a shadow is the backdrop in shade
+  (small and light; never grey dirt), a glow a lighter tint of the layer's colour that only adds light, capped at
+  opacity 0.6. Give `color` for an exact colour. A `layer-style` is drawn exactly as given (unset: black shadow,
+  white glow), so prefer the looks for a clean default.
 - **Absolute `move` and `align`/`distribute` clear constraints** on that layer. Use `constrain`
   when layout should survive canvas resizes, artboards or text changes; use `align` for a one-off.
 - **One constraint per axis** (e.g. `left` *or* `center-x` *or* `right`). Anchors: `canvas`, a layer
@@ -552,7 +563,8 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   word off a paragraph's last line. Price lists: `tabs: [{at: "100%", align: "right", leader: "."}]` with `\t` in the
   text, or a `table` column `leader: "."`. Two-tone headlines: `layout-apply` `accent_words: ["Winter"]`.
 - **Variables:** `${name}` works in text, colors, gradient fills and image-asset IDs. Undefined
-  variables are errors. Swatches are `@name` in color fields.
+  variables are errors. Swatches are `@name` in color fields; `swatch` with `delete: true` removes one
+  (refused while used, listing the users; `detach: true` writes its color into them first).
 - **Through MCP/REST, operation `path` and `linked` fields are rejected (SVG path data on `shape`, `paint`, `text-layout` and
   `select` is allowed), and `font` takes only a registered
   font name or role (`heading`/`body`; install with `font pair`/`font install` first).** Import files with
@@ -565,7 +577,8 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   (`--tools ai`) for provider-backed `vixl_ai_*` tools. They share the workspace; edits made in one are
   seen by the other on its next call.
 - **Several documents can be open over MCP.** Pass `document="other.vixl"` to any tool to address one
-  without changing the active document.
+  without changing the active document. Once your connection has touched several open documents, a call
+  without `document=` is refused (`ambiguous_document`, naming them).
 - **MCP paths are relative to the server's `--workspace`** and must stay inside it; missing
   subdirectories are created by `vixl_document(action='create')` and the exports. Exports refuse to overwrite
   unless `overwrite: true`, and never overwrite `.vixl`. `vixl_export(kind='batch')` writes several files

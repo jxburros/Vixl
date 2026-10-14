@@ -130,6 +130,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | CLR-05 | Apply one of the 74 built-in palettes | `palette apply` | 1 · <1 | E | |
 | CLR-06 | Define brand swatches and use `@swatch` references | `swatch` | 1 · <1 | E | Modifiers like `lighten(@brand, 10%)`. |
 | CLR-07 | Find a color by name (CSS or xkcd) | `color names QUERY` | 1 · <1 | E | |
+| CLR-12 | Delete a stray swatch without breaking the layers that use it | `swatch` with `delete` (`detach` keeps their colors) | 1 · <1 | E | Unreleased; refused with the list of users unless `detach`; undo restores it. |
 
 ### Shapes, layout and placement
 
@@ -151,6 +152,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SHP-13 | Make a hug-content pill, badge, button or code window | `stack` with padding/background | 1 · <1 | E | Since 0.24 `gap` also takes shared spacing units (`"2u"`). |
 | SHP-14 | Find empty space, margins or a hit-test point | `vixl_check(action='spatial')` | 1 · <1 | E | |
 | SHP-15 | Set opacity or a blend mode | `opacity` (0–1), `blend` | 1 · <1 | E | |
+| SHP-24 | Draw a translucent pen stroke (a highlighter line, a soft overlay curve) | `pen` with `opacity` | 1 · <1 | E | Unreleased; `opacity` and `rotation` at creation or edit, same in PNG, SVG and PDF. |
 | SHP-16 | Pin a layer to an edge or another layer | `constrain` | 1 · <1 | E | One anchor per axis; cycles rejected. |
 | SHP-17 | Frame an image in an irregular silhouette (ellipse, star, hexagon, heart or an SVG outline) | `frame` with `frame_shape` or `outline` | 1 · <1 | E | Since 0.24 (#266); an embedded raster mask; the file stays rectangular with transparency outside. |
 | SHP-18 | Recompose a layout-generated design at a new aspect ratio | `adapt-layout` with `recompose: true` | 1 · <1 | E | Since 0.24; rebuilds generated layout layers from the saved recipe, replacing manual changes to them. |
@@ -232,7 +234,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | BRD-05 | Brand contrast floor with a large-text tier, so a display-only brand colour passes at 3:1 | `brand.json` `minimum_contrast: {text, large_text}` | 1 · <1 | E | #527; translucent black/white shadows no longer count as off-palette (#528). |
 | QA-34 | Find leftover template copy: lorem ipsum, TODO/TBD, "Headline here", unresolved `${name}` | `vixl_check` (placeholders, on by default) | 1 · <1 | E | `{{name}}` from other tools is review only; `layer-intent literal_text` exempts intended text. |
 | QA-41 | Find dead bands, two left margins, uneven gaps in a name block, a rule pressed onto the first row and a clumped scatter | `vixl_check` (composition, on by default), `check --checks composition` | 1 · <1 | E | Review findings with code, region, values and threshold; fail the `final` profile unless waived. Backtest on the round-1 documents: 12 of 21 judged composition defects caught, no false findings ([composition](guides.md#composition)). Before, only a critique of the render caught them. |
-| QA-42 | Repair those composition findings: snap the drifting edge, even the name block, open the gap under the rule, close the dead band | `vixl_apply(workflow='repair-layout')` (composition in `checks`, as by default) | 1–2 · <1 | E | Craft plan 2b; candidates ranked by least disruption, each kept only if no finding of any check is new. Backtest: 19 of 22 findings resolved (17 of the 20 on judged defects); a scatter without a `pattern-scatter` recipe is not auto-repairable ([layout repair](agent-trust.md#layout-repair)). Before, by hand. |
+| QA-42 | Repair those composition findings: snap the drifting edge, even the name block, open the gap under the rule, close the dead band | `vixl_apply(workflow='repair-layout')` (composition in `checks`, as by default) | 1–2 · <1 | E | Craft plan 2b; candidates ranked by least disruption, each kept only if no finding of any check is new. Backtest: 17 of 23 findings resolved (15 of the 20 on judged defects); a scatter without a `pattern-scatter` recipe is not auto-repairable ([layout repair](agent-trust.md#layout-repair)). Before, by hand. |
 | QA-43 | Critique in the fix call: the composition findings and a real-size look at the two weakest regions | `vixl_apply(check=true, preview=true)` (`check.regions`) | 1 · <1 | E | Craft plan 3b; regions carry the most findings, else the densest text and the largest empty area; two crops of at most 512 px a side, `preview={regions: 0}` for none. Before, a `vixl_check` and two `vixl_render(region)` calls. |
 | QA-35 | Check every artboard, page and comp in one call | `check --artboards all --pages all --comps …`, suite `sampling` | 1 · <1 | E | Findings name their variant; hidden pages need `include_hidden`. |
 | AGT-01 | Ask what to make and with which tools for a brief | `vixl_reference(brief)` | 1 · <1 | E | 20 kinds: poster, logo, character, comic, form … |
@@ -243,6 +245,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | AGT-35 | Rewrite saved MCP calls, batches or an MCP client config for the seven-tool server | `vixl convert-batch OLD.json`, `vixl.convert.convert_batch` | 1 · <1 | E | Maps every 0.26 tool and its parameters (steps, `options`, `create`, `workflow`) and drops `--tools core\|compact`, `--schema`; unmapped names are reported. |
 | AGT-36 | Read a short summary of a CLI result in a terminal, or the full JSON in a script | `vixl COMMAND` in a terminal; `--json`, `VIXL_JSON=1` or piped output for JSON | 1 · <1 | E | Since 0.27: `created a.vixl  800×600  bg #18283b`, `added text "title"`, `check passed (bounds, contrast) — 0 errors, 0 warnings`, a list of findings when a check fails. `VIXL_JSON=1` also turns errors into JSON. |
 | AGT-37 | Keep an agent's context small: seven tools, terse results, rare options on demand | `vixl mcp`; `verbose: true` for a full result; `vixl_reference(TOOL)` for rare options | config · 1 | E | Since 0.27 ([MCP tool surface](mcp-toolsets.md)): about 7,300 characters of tool list; imports, font installs, styles and rolls are steps in a `vixl_apply` batch; an unknown option fails with the exact schema. |
+| AGT-38 | Turn the house style off: new documents with no rolled direction and neutral layout defaults | `house_style: "off"` in `vixl_document` create and `vixl_apply(create=…)`, `vixl new --house-style off`, `.vixl/variety.json` | 1 · <1 | E | Craft rules still apply; the default stays on. |
 | AGT-06 | Read the house style: craft rules, tiers, variety levels or one purpose's profile | `vixl_reference('house-style')`, `vixl house show PURPOSE` | 1 · <1 | E | Purposes: poster, social, slides, document, form, diagram, logo, motion. |
 | BRD-53 | Validate a brand kit: missing font roles, unreadable fonts or logos, palette roles left to derivation, guidance colours the palette does not approve | `vixl brand validate`, `vixl brand show` | 1 · <1 | E | |
 | AGT-34 | Export the design catalogs (sizes, palettes, pairings, layouts, briefs, guidance, check IDs) for a host app | `vixl catalog export --out catalog.json` | 1 · <1 | E | Versioned JSON with a schema; also a release asset (#536). |
@@ -456,7 +459,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SOC-41 | Web hero or landing-page header | `web-hero`, `split-screen` layout | 12–20 · 2–3 | E | |
 | SOC-42 | Blog featured image | `blog-featured` size, layout, look | 10–15 · 2 | E | |
 | SOC-43 | LinkedIn/X/Facebook/YouTube banner | named size, `banner` layout | 10–18 · 2–3 | E | Safe zones for platform UI. |
-| SOC-44 | Podcast or album cover art | `album-art` size, illustration, type | 15–25 · 3 | E | |
+| SOC-44 | Podcast or album cover art | `album-art` size, illustration, type | 15–25 · 3 | E | `check` judges text at the 120 px app thumbnail (`use-size`). |
 | SOC-45 | Pinterest pin with long layout | `pinterest-long` size, `f-pattern` | 12–20 · 2–3 | E | |
 | SOC-46 | Post in a named design style (Bauhaus, vaporwave, Memphis …) | `vixl_reference('styles')` apply + check | 15–25 · 3 | E | |
 | SOC-47 | Compare a few rolled directions and pick one | `vixl_reference('roll')` ×3–5, previews | 10–15 · 2–3 | E | |
@@ -473,7 +476,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | --- | --- | --- | --- | --- | --- |
 | PRN-20 | Custom invitation (wedding, party) in Art Deco or minimal style | `centered-axis` / `quiet-invitation`, style | 15–25 · 3 | E | |
 | PRN-21 | Greeting card (front + inside as pages) | `greeting-card` size, pages | 15–25 · 3 | E | |
-| PRN-22 | Book cover (front only) | `book-6x9`, typography, illustration | 15–30 · 3–4 | E | Spine/back wrap is T3. |
+| PRN-22 | Book cover (front only) | `book-6x9` (print) or `ebook-cover` (shops), typography, illustration | 15–30 · 3–4 | E | Spine/back wrap is T3. `check` judges `ebook-cover` text at a 160 px shop thumbnail. |
 | PRN-23 | Letterhead and envelope | `letterhead`, `envelope-10` | 12–20 · 2–3 | E | |
 | PRN-24 | Business card front and back with bleed and CMYK PDF | pages, `--bleed`, `export --cmyk` | 15–25 · 3 | E | Vector DeviceCMYK pages. |
 | PRN-25 | Rack card or one-page flyer with photo | `rack-card`, `photo-caption` | 15–25 · 3 | E | |

@@ -213,9 +213,13 @@ def execute_design(project, op):
         require(layer["type"] == "text", "Styles require a text layer")
         layer[category + "_style"] = op["name"]
     elif kind == "swatch":
-        # Swatches may build on other swatches (lighten(@brand, 10%)); cycles fail the depth limit.
-        color(resolve_color(op["color"], state))
-        state.setdefault("swatches", {})[named(op["name"])] = op["color"]
+        if op.get("delete"):
+            delete_swatch(state, op["name"], op.get("detach", False))
+        else:
+            require("color" in op, "A swatch needs a color (or delete: true to remove it)", field="color")
+            # Swatches may build on other swatches (lighten(@brand, 10%)); cycles fail the depth limit.
+            color(resolve_color(op["color"], state))
+            state.setdefault("swatches", {})[named(op["name"])] = op["color"]
     elif kind == "artboard":
         name = named(op["name"])
         boards = state.setdefault("artboards", {})
@@ -468,6 +472,69 @@ def execute_design(project, op):
     else:
         return False
     return True
+
+
+# Keys whose strings are words, never colors: text content (and rich-text span text), names and ids.
+_NOT_COLORS = frozenset({"text", "name", "id"})
+
+
+def _reference(name):
+    return re.compile("@" + re.escape(name) + r"(?![\w-])")
+
+
+def swatch_uses(state, name):
+    """Every place the document refers to ``@name``: a list of (label, container, key), where the label names the
+    layer, swatch, style, variable or other record a reader would edit."""
+    pattern = _reference(name)
+    uses = []
+
+    def walk(value, label, container, key):
+        if isinstance(value, str):
+            if pattern.search(value):
+                uses.append((label, container, key))
+        elif isinstance(value, dict):
+            if isinstance(value.get("id"), str) and value["id"].startswith("lyr_"):
+                label = f"layer {value.get('name', value['id'])!r}"
+            for k, v in value.items():
+                if k not in _NOT_COLORS:
+                    walk(v, label, value, k)
+        elif isinstance(value, list):
+            for i, v in enumerate(value):
+                walk(v, label, value, i)
+
+    for top, value in state.items():
+        if isinstance(value, dict) and top not in ("canvas",):
+            for k, v in value.items():
+                if not (top == "swatches" and k == name):
+                    walk(v, f"{top}.{k}", value, k)
+        else:
+            walk(value, top, state, top)
+    return uses
+
+
+def delete_swatch(state, name, detach=False):
+    """Remove a swatch. While anything still refers to it the deletion is refused, naming each user, unless
+    ``detach`` writes the swatch's own definition into every reference, so each color stays as it renders now."""
+    swatches = state.get("swatches", {})
+    require(name in swatches, f"Unknown swatch: @{name}", field="name", suggestions=sorted(swatches)[:20])
+    value = swatches[name]
+    uses = swatch_uses(state, name)
+    users = list(dict.fromkeys(label for label, _, _ in uses))
+    require(
+        detach or not users,
+        f"Swatch @{name} is still used by {', '.join(users[:20])}{' …' if len(users) > 20 else ''}; recolor those "
+        f"first, or delete with detach: true to write its color ({value}) into each of them",
+        "swatch_in_use",
+        field="name",
+        used_by=users,
+        suggestions=[{"type": "swatch", "name": name, "delete": True, "detach": True}],
+    )
+    pattern = _reference(name)
+    for _, container, key in uses:
+        # Substituting the definition as written is how resolve_expression reads a reference, so every color
+        # renders as before and keeps any other swatch or variable it builds on.
+        container[key] = pattern.sub(lambda _: value, container[key])
+    del swatches[name]
 
 
 def resolve_color(value, state, variables=None):
