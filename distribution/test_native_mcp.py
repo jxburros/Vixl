@@ -49,10 +49,11 @@ async def verify(executable, workspace):
             await call("vixl_export", path="exported.png")
             await call("vixl_document", action="create", path="second.vixl", width=16, height=16)
             await call("vixl_document", action="open", path="new.vixl")
-            await call("vixl_document", target="photo")
+            await call("vixl_document", target="photo", document="new.vixl")
             await call("vixl_document", action="create", path="sprite.vixl", width=4, height=4)
             await call(
                 "vixl_apply",
+                document="sprite.vixl",
                 operations=[
                     {"type": "pixel-art", "name": "sprite", "width": 4, "height": 4},
                     {"type": "pixel-draw", "x": 0, "y": 0, "color": "#"},
@@ -61,18 +62,40 @@ async def verify(executable, workspace):
                     {"type": "frame-save", "name": "spark", "duration": 200},
                 ],
             )
-            await call("vixl_check", action="pixels", target="sprite")
-            await call("vixl_render", action="animation", name="idle")
-            await call("vixl_export", kind="animation", path="sprite.gif", format="gif", scale=2)
-            await call("vixl_export", kind="animation", path="sprite.png", format="sheet", scale=2)
+            await call("vixl_check", action="pixels", target="sprite", document="sprite.vixl")
+            await call("vixl_render", action="animation", name="idle", document="sprite.vixl")
+            await call(
+                "vixl_export",
+                kind="animation",
+                path="sprite.gif",
+                format="gif",
+                scale=2,
+                document="sprite.vixl",
+            )
+            await call(
+                "vixl_export",
+                kind="animation",
+                path="sprite.png",
+                format="sheet",
+                scale=2,
+                document="sprite.vixl",
+            )
             await call(
                 "vixl_apply",
+                document="sprite.vixl",
                 operations=[
                     {"type": "solid", "name": "a", "width": 1, "height": 1},
                     {"type": "solid", "name": "b", "width": 1, "height": 1, "y": 2},
                 ],
             )
-            await call("vixl_check", action="spacing", targets=["a", "b"], expected=1, tolerance=0)
+            await call(
+                "vixl_check",
+                action="spacing",
+                targets=["a", "b"],
+                expected=1,
+                tolerance=0,
+                document="sprite.vixl",
+            )
     assert Image.open(workspace / "exported.png").size == (2400, 1600)
     assert Image.open(workspace / "sprite.gif").n_frames == 2
     assert Image.open(workspace / "sprite.png").size == (16, 8)

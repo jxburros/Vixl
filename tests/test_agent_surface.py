@@ -111,6 +111,9 @@ def test_a_slow_apply_with_preview_becomes_a_job_whose_result_says_where_the_ima
 
     def slow(self, *args, **kwargs):
         time.sleep(0.6)
+        # The low inline_seconds that forces a job also makes the review budget 0.1 s, which a slow runner
+        # spends on the text alone and then skips the preview this test needs.
+        kwargs["budget"] = None
         return original(self, *args, **kwargs)
 
     monkeypatch.setattr(Session, "apply_reviewed", slow)
