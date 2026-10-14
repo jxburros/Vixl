@@ -73,7 +73,11 @@ def compile_design(cmd, args):
         p.add_argument("--kind", choices=["character", "paragraph"])
     elif cmd == "swatch":
         p.add_argument("name")
-        p.add_argument("color")
+        p.add_argument("color", nargs="?", help="color value; leave out with --delete")
+        p.add_argument("--delete", action="store_true", default=None,
+                       help="remove the swatch (refused while layers, swatches, styles or variables use it)")
+        p.add_argument("--detach", action="store_true", default=None,
+                       help="with --delete: write the swatch's color into everything that uses it first")
     elif cmd == "artboard":
         p.add_argument("name")
         p.add_argument("--preset")

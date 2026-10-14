@@ -108,7 +108,7 @@ SUMMARIES = {
     "preset-apply": "Add a saved effect preset to a layer, optionally overriding amounts.",
     "variable": "Set or delete a document variable used as ${name} (or ${name|upper|default:TEXT|map:NAME ...}) in text, colors and images.",
     "variable-map": "Define, extend or delete a named value map that ${name|map:NAME} placeholders look values up in.",
-    "swatch": "Define a named color (used as @name) that can build on other swatches.",
+    "swatch": "Define, change or delete a named color (used as @name) that can build on other swatches.",
     "palette-define": "Define a named palette of 2-256 colors.",
     "palette-apply": "Apply a palette: adds numbered swatches and assigns role swatches (background, ink, accent …).",
     "palette-generate": "Generate swatches from one color: a 50-950 scale or a harmony (complementary, triadic …).",
@@ -514,7 +514,11 @@ OVERRIDES = {
     "style-define": {"name": "Style name.", "kind": "character or paragraph.",
                      "settings": "Text properties: size, color, font, spacing, align …"},
     "style-apply": {"name": "Defined style name.", "kind": "character or paragraph."},
-    "swatch": {"name": "Swatch name (used as @name).", "color": "Color value; may use other swatches."},
+    "swatch": {"name": "Swatch name (used as @name).", "color": "Color value; may use other swatches.",
+               "delete": "true removes the swatch. Refused while layers, swatches, styles or variables still use it "
+                         "(the error lists them under used_by), unless detach is true.",
+               "detach": "With delete: write the swatch's color (its definition) into every place that uses it, so "
+                         "each renders as before, then remove it."},
     "artboard": {"name": "Artboard name.", "width": "Artboard width in pixels.", "height": "Artboard height in pixels.",
                  "x": "Viewport origin x on the canvas.", "y": "Viewport origin y on the canvas.",
                  "preset": "Named size for the artboard.", "variables": "Variable overrides for this artboard.",

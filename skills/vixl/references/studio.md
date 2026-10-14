@@ -57,6 +57,9 @@ segments) or explicit anchor nodes. Handle coordinates are absolute in the path'
 ],"stroke":"#006d77","stroke_width":4,"fill":"transparent"}
 ```
 
+`opacity` (0–1, or `"40%"`) and `rotation` (degrees) set the layer's opacity and rotation when the pen
+creates or edits a path, as on `shape`; PNG, SVG and PDF draw the same translucency.
+
 Use `target` instead of `name` to replace an existing path's geometry while preserving its
 layer ID, styles and history. `closed:true` closes an irregular shape; set a fill as needed.
 Shapes remain editable through resizing, masks, pathfinder, styles and SVG export. The pen

@@ -130,6 +130,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | CLR-05 | Apply one of the 74 built-in palettes | `palette apply` | 1 · <1 | E | |
 | CLR-06 | Define brand swatches and use `@swatch` references | `swatch` | 1 · <1 | E | Modifiers like `lighten(@brand, 10%)`. |
 | CLR-07 | Find a color by name (CSS or xkcd) | `color names QUERY` | 1 · <1 | E | |
+| CLR-12 | Delete a stray swatch without breaking the layers that use it | `swatch` with `delete` (`detach` keeps their colors) | 1 · <1 | E | Unreleased; refused with the list of users unless `detach`; undo restores it. |
 
 ### Shapes, layout and placement
 
@@ -151,6 +152,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SHP-13 | Make a hug-content pill, badge, button or code window | `stack` with padding/background | 1 · <1 | E | Since 0.24 `gap` also takes shared spacing units (`"2u"`). |
 | SHP-14 | Find empty space, margins or a hit-test point | `vixl_check(action='spatial')` | 1 · <1 | E | |
 | SHP-15 | Set opacity or a blend mode | `opacity` (0–1), `blend` | 1 · <1 | E | |
+| SHP-24 | Draw a translucent pen stroke (a highlighter line, a soft overlay curve) | `pen` with `opacity` | 1 · <1 | E | Unreleased; `opacity` and `rotation` at creation or edit, same in PNG, SVG and PDF. |
 | SHP-16 | Pin a layer to an edge or another layer | `constrain` | 1 · <1 | E | One anchor per axis; cycles rejected. |
 | SHP-17 | Frame an image in an irregular silhouette (ellipse, star, hexagon, heart or an SVG outline) | `frame` with `frame_shape` or `outline` | 1 · <1 | E | Since 0.24 (#266); an embedded raster mask; the file stays rectangular with transparency outside. |
 | SHP-18 | Recompose a layout-generated design at a new aspect ratio | `adapt-layout` with `recompose: true` | 1 · <1 | E | Since 0.24; rebuilds generated layout layers from the saved recipe, replacing manual changes to them. |
