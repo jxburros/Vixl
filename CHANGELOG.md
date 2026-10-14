@@ -107,6 +107,9 @@ fillable form, loop, mandala, flowchart):
   secondary text readable at its real use size, glows and shadows only where they read as light, illustrations in
   one consistent style with joined parts, and a motif that is not a stand-in such as a sunset, a plain disc or a
   stock icon. SKILL.md and the getting-started guide list the same checklist.
+- The documentation illustrations, galleries, README poster, emoji review sheets and the Ripple brand kit are
+  rebuilt with the current engine. `examples/build_documentation.py` saves its masters with `overwrite=True`, so it
+  runs again over the committed outputs.
 
 ### Behaviour changes
 
