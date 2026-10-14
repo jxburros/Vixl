@@ -194,6 +194,7 @@ vixl select none
 vixl mask create portrait
 vixl mask from-selection portrait
 vixl mask import portrait --path mask.png
+vixl mask gradient beam --start white --end black --direction horizontal   # fade the layer out
 vixl mask invert portrait
 vixl mask disable portrait
 vixl mask enable portrait

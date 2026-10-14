@@ -410,6 +410,8 @@ def star_field(project, op):
         layer["opacity"] = round(min(1.0, alpha), 3)
         ids.append(layer["id"])
     group = _group(project, op, ids, "stars")
+    # A star on the region's edge belongs to a sky that runs on past it: not a crop to report.
+    group["allow_crop"] = True
     _backdrop(project, group, op)
     note(project, f"star-field: {len(ids)} stars in {group['name']!r}, clear of {len(blocked)} avoided layer(s)")
     return {"group": group["id"], "stars": len(ids), "avoided": len(blocked)}

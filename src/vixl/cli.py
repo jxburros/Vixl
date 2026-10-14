@@ -964,6 +964,14 @@ def project_command(project, cmd, args, *, detail="compact"):
         else:
             project.save()
         return {"saved": str(project.path)}, False
+    if cmd == "export" and args and Path(next((x for x in args if not x.startswith("-")), "")).suffix.lower() in (
+            ".gif", ".apng", ".mp4", ".webm"):
+        # A motion format: the timeline (or the saved frames when there is no timeline), as vixl_export does.
+        out = next(x for x in args if not x.startswith("-"))
+        rest = [x for x in args if x != out]
+        frames = (project.state.get("animation") or {}).get("frames")
+        target = "export-animation" if frames and not project.state.get("timeline") else "export-timeline"
+        return project_command(project, target, ["--out", out, *rest], detail=detail)
     if cmd in ("render", "export"):
         a = output_options(args, cmd)
         if project.path is not None and getattr(project, "_disk_cache", None) is None:
@@ -1278,8 +1286,19 @@ def project_command(project, cmd, args, *, detail="compact"):
         check = None if a.check is None else (a.check or True)
         preview = {"max_width": a.preview_width, **({"isolate": a.isolate} if a.isolate else {})}
         suites = None if a.suites is None else (a.suites or True)
-        result, image = apply_reviewed(project, ops, dry_run=a.dry_run, detail=detail, check=check,
-                                       preview=preview if a.preview else None, suites=suites)
+        from .steps import is_step
+
+        batch = ops if isinstance(ops, list) else ops.get("operations", [ops]) if isinstance(ops, dict) else ops
+        if isinstance(batch, list) and any(is_step(op) for op in batch):
+            # Session steps (font-pair, import-image, roll …) run in the same all-or-nothing batch, as over MCP;
+            # their paths are read from the current directory.
+            from .interfaces import Session
+
+            result, image = Session(workspace=Path.cwd()).apply_steps_to(
+                project, batch, a.dry_run, detail, check=check, preview=preview if a.preview else None, suites=suites)
+        else:
+            result, image = apply_reviewed(project, ops, dry_run=a.dry_run, detail=detail, check=check,
+                                           preview=preview if a.preview else None, suites=suites)
         from .critique import take_previews
 
         crops = take_previews(result)

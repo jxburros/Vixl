@@ -992,6 +992,8 @@ def _quote_card(b):
     entries_h = b.stack_height([("title", b.get("title"), "quote"), ("body", b.get("subtitle"), "attribution")], width) + mark * 0.55
     y = b.T + max(0, (b.ch - entries_h) * 0.45)
     b.text(mark, "“", x if align == "left" else b.W / 2 - mark * 0.3, y - mark * 0.25, mark, name="quote-mark", color="@accent", align="left", display=True, line=LINE_HEIGHT["display"])
+    # An ornament, not a step of the type scale.
+    b.add({"type": "layer-intent", "target": b.name("quote-mark"), "role": "decoration"})
     y += mark * 0.55
     _, _, _, h = b.text("title", b.get("title"), x, y, width, name="quote", align=align, max_height=b.B - y - b.sizes["body"] * 3, line=LINE_HEIGHT["lead"])
     y += h + b.unit * 4
@@ -1205,7 +1207,28 @@ def _slide_title(b):
     bar = max(4, round(b.unit))
     b.rect("accent-bar", b.L, b.T + b.ch * 0.4, bar * 6, bar, "@accent")
     _, y, _, h = b.text("display", b.get("title"), b.L, b.T + b.ch * 0.4 + bar * 4, b.cw * 0.82, name="title", align="left", max_height=b.ch * 0.36)
-    b.text("subhead", b.get("subtitle"), b.L, y + h + b.unit * 3, b.cw * 0.7, name="subtitle", align="left", color="@muted")
+    top = y + h + b.unit * 3
+    footer = b.B - b.sizes["caption"] * 1.4 - (b.unit * 2 if (b.get("caption") or b.get("label")) else 0)
+    role = "subhead"
+    if b.get("subtitle"):
+        # A long subtitle under a two-line title ran off the slide. One that takes more than a line at the
+        # subhead step sets at the lead step; the bar and title then lift (not above the top margin) so it fits,
+        # and only then may it shrink.
+        def depth(step):
+            return b.measure(b.get("subtitle"), b.sizes[step], b.cw * 0.7,
+                             b.leading(b.sizes[step], LINE_HEIGHT["body"], b.font), "left", b.font)[1]
+
+        if depth("subhead") > b.sizes["subhead"] * 2 and "lead" in b.sizes:
+            role = "lead"
+        need = depth(role)
+        lift = min(max(0, top + need - footer), max(0, b.T + b.ch * 0.4 - b.T))
+        if lift:
+            for op in b.ops:
+                if op.get("name") in (b.name("accent-bar"), b.name("title")) and "y" in op:
+                    op["y"] = round(op["y"] - lift)
+            top -= lift
+    b.text(role, b.get("subtitle"), b.L, top, b.cw * 0.7, name="subtitle", align="left", color="@muted",
+           max_height=max(b.sizes["body"] * 1.5, footer - top))
     b.text("caption", b.get("caption") or b.get("label"), b.L, b.B - b.sizes["caption"] * 1.4, b.cw, name="footer", align="left", color="@muted")
 
 

@@ -357,7 +357,7 @@ Remove and Content-Aware Fill call the existing provider's inpainting capability
 
 ## Pen edits, markers and radial gradients
 
-Edit a pen in place with `{"type":"pen","target":"vine","points":[[10,10],[90,40]],"smooth":true}` (or `nodes` with Bézier handles). The target keeps its ID, effects and timeline references. Omit width and height to refit an auto-fitted pen in its original coordinate frame. A path shape's width/height define its coordinate frame, not a clipping mask: fill and stroke may extend beyond it, consistently for integer and fractional dimensions.
+Edit a pen in place with `{"type":"pen","target":"vine","points":[[10,10],[90,40]],"smooth":true}` (or `nodes` with Bézier handles). The target keeps its ID, effects and timeline references. Without `points` or `nodes`, `target` only restyles the path (`fill`, `stroke`, `opacity` …) and keeps its geometry. Omit width and height to refit an auto-fitted pen in its original coordinate frame. A path shape's width/height define its coordinate frame, not a clipping mask: fill and stroke may extend beyond it, consistently for integer and fractional dimensions.
 
 `marker_size` is the arrowhead's length and width in local pixels, not a stroke-width multiplier. Values of 1–5 are tiny and may be hidden within a thicker shaft; start with at least twice `stroke_width`. Markers follow the revealed endpoint when a stroke is trimmed.
 

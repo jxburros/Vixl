@@ -683,6 +683,10 @@ class Project:
         result.update(reports)
         if notes:
             result["normalized"] = notes
+        if detail == "brief":
+            from .changes import condense
+
+            condense(result)
         return result
 
     def undo(self, count=1):

@@ -488,10 +488,14 @@ def compile_command(tokens):
         return {**op, **{k: v for k, v in data.items() if v is not None}}
     elif cmd == "mask":
         p.add_argument(
-            "action", choices=["create", "from-selection", "invert", "enable", "disable", "delete", "import"]
+            "action", choices=["create", "from-selection", "gradient", "invert", "enable", "disable", "delete", "import"]
         )
         p.add_argument("target", nargs="?")
         p.add_argument("--path")
+        p.add_argument("--start", help="gradient: colour at the start (default white: shown)")
+        p.add_argument("--end", help="gradient: colour at the end (default black: hidden)")
+        p.add_argument("--direction", choices=["horizontal", "vertical", "radial", "angled"])
+        p.add_argument("--angle", type=float)
     elif cmd == "filter":
         p.add_argument("name")
         p.add_argument("--target")

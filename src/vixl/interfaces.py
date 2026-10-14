@@ -414,6 +414,16 @@ class Session:
     def apply_steps(self, operations, dry_run, detail, document, **review):
         """A batch that mixes operations with session steps (steps.py): every item applies, in order, to one
         candidate copy that replaces the document only when all succeeded. Workspace-scoped font steps run after."""
+        from .steps import is_step, workspace_scoped
+
+        if any(not (is_step(op) and workspace_scoped(op)) for op in operations):
+            with self.project(write=not dry_run, document=document) as p:
+                return self.apply_steps_to(p, operations, dry_run, detail, **review)
+        return self.apply_steps_to(None, operations, dry_run, detail, **review)
+
+    def apply_steps_to(self, p, operations, dry_run, detail, **review):
+        """apply_steps on a document the caller has loaded (``p``; None when every item is a workspace step):
+        the CLI runs ``vixl apply`` batches with steps through it and saves ``p`` itself."""
         from .checks import apply_reviewed
         from .service_fonts import checker
         from .steps import is_step, run, workspace_scoped
@@ -422,40 +432,39 @@ class Session:
         items = [(index, op) for index, op in enumerate(operations) if not (is_step(op) and workspace_scoped(op))]
         steps, result, image = [], {"success": True}, None
         if items:
-            with self.project(write=not dry_run, document=document) as p:
-                candidate = p.clone()
-                validate = checker(candidate, service_check)
-                segment = []
+            candidate = p.clone()
+            validate = checker(candidate, service_check)
+            segment = []
 
-                def flush(final=False):
-                    nonlocal result, image
-                    if not segment and not final:
-                        return
-                    start = segment[0][0] if segment else 0
-                    ops = [op for _, op in segment]
-                    try:
-                        if final:
-                            result, image = apply_reviewed(candidate, ops, detail=detail, validate=validate, **review)
-                        else:
-                            candidate.apply(ops, detail=detail, check=validate)
-                    except VixlError as exc:
-                        offset_indexes(exc, [index for index, _ in segment], start)
-                        raise
-                    segment.clear()
+            def flush(final=False):
+                nonlocal result, image
+                if not segment and not final:
+                    return
+                start = segment[0][0] if segment else 0
+                ops = [op for _, op in segment]
+                try:
+                    if final:
+                        result, image = apply_reviewed(candidate, ops, detail=detail, validate=validate, **review)
+                    else:
+                        candidate.apply(ops, detail=detail, check=validate)
+                except VixlError as exc:
+                    offset_indexes(exc, [index for index, _ in segment], start)
+                    raise
+                segment.clear()
 
-                for index, op in items:
-                    if not is_step(op):
-                        segment.append((index, op))
-                        continue
-                    flush()
-                    kind, value, expanded = run(self, candidate, op, index)
-                    if expanded is not None:
-                        segment.extend((index, item) for item in expanded)
-                    steps.append({"index": index, "type": kind, **({"result": value} if value is not None else {})})
-                flush(final=True)
-                result["dry_run"] = dry_run
-                if not dry_run:
-                    p.__dict__.update(candidate.__dict__)
+            for index, op in items:
+                if not is_step(op):
+                    segment.append((index, op))
+                    continue
+                flush()
+                kind, value, expanded = run(self, candidate, op, index)
+                if expanded is not None:
+                    segment.extend((index, item) for item in expanded)
+                steps.append({"index": index, "type": kind, **({"result": value} if value is not None else {})})
+            flush(final=True)
+            result["dry_run"] = dry_run
+            if not dry_run:
+                p.__dict__.update(candidate.__dict__)
         elif any(review.get(key) for key in ("check", "preview", "suites", "repair")):
             raise VixlError("invalid_operation", "check, preview, suites and repair need document operations; this "
                             "batch only changes workspace defaults", field="check")

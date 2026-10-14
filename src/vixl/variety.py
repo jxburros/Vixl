@@ -396,6 +396,25 @@ def _dot_column(builder, boxes, size, count=8):
     return best
 
 
+def default_look_targets(project, look):
+    """``[(layer, colour or None)]`` for a look asked for without a target (vixl_apply create's look): the
+    rolled look's rule over the whole document, so a grain finishes the background and a shadow the solid
+    shapes, instead of whichever layer happened to be added last."""
+    from types import SimpleNamespace
+
+    canvas = project.state["canvas"]
+    top = [layer for layer in project.state["layers"] if not layer.get("parent")]
+    background = next((layer for layer in top if layer.get("role") == "background" or layer["name"] == "background"),
+                      None)
+    if background is None and top and top[0]["type"] in ("solid", "gradient", "shape"):
+        bounds = top[0]
+        if bounds.get("width", 0) >= canvas["width"] and bounds.get("height", 0) >= canvas["height"]:
+            background = top[0]
+    builder = SimpleNamespace(unit=max(4, min(canvas["width"], canvas["height"]) * 0.01), W=canvas["width"],
+                              H=canvas["height"])
+    return _look_targets(project, builder, top, background, look)
+
+
 def _look_targets(project, builder, own, background, look):
     """Where a rolled look goes: texture looks on the background; shadow, outline and glow looks on the solid
     shapes (buttons, panels, blocks; not hairline rules or full-canvas fields), where they read as a finish

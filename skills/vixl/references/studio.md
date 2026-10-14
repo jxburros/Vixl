@@ -61,7 +61,9 @@ segments) or explicit anchor nodes. Handle coordinates are absolute in the path'
 creates or edits a path, as on `shape`; PNG, SVG and PDF draw the same translucency.
 
 Use `target` instead of `name` to replace an existing path's geometry while preserving its
-layer ID, styles and history. `closed:true` closes an irregular shape; set a fill as needed.
+layer ID, styles and history; without `points`/`nodes`, `target` only restyles it (fill, stroke, opacity).
+`closed:true` closes an irregular shape; set a fill as needed. A filled pen with neither `stroke` nor
+`stroke_width` has no outline (an unfilled one gets a 2 px black stroke so it shows).
 Shapes remain editable through resizing, masks, pathfinder, styles and SVG export. The pen
 supports up to 512 anchors; paths support 1,024 normalized commands and 32 KiB of source.
 

@@ -67,6 +67,21 @@ def test_unused_files_are_reported_as_an_info_finding(tmp_path):
     assert not [item for item in p.check(checks=["contrast"])["issues"] if "unused_assets" in item]
 
 
+def test_the_unused_files_note_keeps_a_profile_verdict(tmp_path):
+    p, _ = document(tmp_path / "doc.vixl")
+    # Review findings only (a bar under the text): they fail the final profile but no plain check.
+    p.apply([{"type": "move", "target": "t", "x": 60, "y": 60},
+             {"type": "shape", "shape": "rectangle", "name": "bar", "x": 50, "y": 70, "width": 200,
+              "height": 20, "fill": "#cccccc"},
+             {"type": "reorder", "target": "bar", "below": "t"}])
+    report = p.check(profile="final")
+    assert any("unused_assets" in item for item in report["issues"])
+    assert not any(item["action"] == "fix" for item in report["issues"])
+    assert report["profile"]["failing"] and not report["passed"]
+    assert report["outcome"]["validation"] == "failed"
+    assert report["by_action"]["informational"]  # the note is still indexed
+
+
 def test_save_alone_keeps_history_and_its_files(tmp_path):
     p, replaced = document(tmp_path / "doc.vixl")
     p.save()

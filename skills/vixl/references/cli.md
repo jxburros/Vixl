@@ -173,7 +173,7 @@ vixl select ellipse X Y W H
 vixl select color '#ffffff' --tolerance 15
 vixl select alpha LAYER
 vixl select all|none|invert
-vixl mask create|from-selection|invert|enable|disable|delete LAYER
+vixl mask create|from-selection|gradient|invert|enable|disable|delete LAYER   # gradient: --start white --end black --direction
 vixl mask import LAYER --path mask.png
 
 # Effects: vixl EFFECT [LAYER] AMOUNT
@@ -244,6 +244,7 @@ vixl export out.png|.jpg|.webp|.tiff|.avif [--quality 90] [--title T] [--max-byt
 #   title layer or role=title text, then the file name). --max-bytes: warns when a raster file is larger; a PNG over 1 MB warns and names texture looks.
 vixl render [F.vixl] --out preview.png [--set title=Hello]      # same options; never persists overrides
 vixl render --data rows.csv --out campaign_dir [--no-check]     # one PNG per CSV row: 0001.png …; rows with design problems carry a "check" report
+vixl export loop.gif|.apng|.mp4|.webm [--overwrite]           # the timeline (else the saved frames), as export-timeline
 vixl export-screens --out screens --scales 1 2 [--artboards square story]   # NAME@2x.png
 vixl export-animation --out sprite.gif --format gif|apng|webp|mp4|webm|sheet [--scale 8] [--columns 3] [--colors 64] \
      [--sampling nearest|smooth] [--animation NAME] [--quality 90]
@@ -266,6 +267,8 @@ JPEG flattens transparency onto `--background` (white).
 
 ```bash
 vixl apply ops.json [--dry-run]          # or: cat ops.json | vixl apply -
+# a batch may mix session steps (font-pair, import-image, roll …) with operations, as over MCP; paths are read
+# from the current directory
 vixl apply ops.json --check --preview p.png   # also check the result and write a 512 px preview
 #   --check lists the 'fix' findings, every composition finding and those on the layers the batch touched, plus check.regions
 #   (the two weakest regions); with --preview, real-size crops of them are written beside it as p-region1.png and p-region2.png

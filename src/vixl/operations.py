@@ -1022,9 +1022,18 @@ def execute(project, op):
     elif kind == "mask":
         action = op.get("action", "create")
         b = resolve_layout(project)[layer["id"]]
-        if action in ("create", "from-selection", "import"):
+        if action in ("create", "from-selection", "import", "gradient"):
             if action == "create":
                 mask = Image.new("L", tuple(b[2:]), 255)
+            elif action == "gradient":
+                from .design_render import gradient_image
+
+                settings = {"direction": "horizontal", "start": "white", "end": "black",
+                            **{k: op[k] for k in ("start", "end", "stops", "direction", "angle", "center", "falloff")
+                               if k in op}}
+                ramp = gradient_image(project, settings, (max(1, round(b[2])), max(1, round(b[3]))))
+                # Grey level times alpha: white shows the layer, black or a transparent stop hides it.
+                mask = Image.alpha_composite(Image.new("RGBA", ramp.size, "black"), ramp).convert("L")
             elif action == "from-selection":
                 mask = selection_image(project).crop((b[0], b[1], b[0] + b[2], b[1] + b[3]))
             else:

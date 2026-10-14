@@ -48,6 +48,8 @@ def schemas(add):
         oneOf=[
             {"required": ["nodes"], "not": {"required": ["points"]}},
             {"required": ["points"], "not": {"required": ["nodes"]}},
+            # Restyling a pen layer (fill, stroke, opacity …) keeps its geometry.
+            {"required": ["target"], "not": {"anyOf": [{"required": ["nodes"]}, {"required": ["points"]}]}},
         ],
     )
 
@@ -194,6 +196,8 @@ def execute(project, op):
         for key in ("fill", "stroke", "stroke_width", *TRIM_FIELDS):
             if key in op:
                 layer[key] = op[key]
+        if op.get("nodes") is None and op.get("points") is None:
+            return
         if "pen_origin" in layer and "width" not in op and "height" not in op:
             # Nodes stay in the frame the pen was drawn in; refit the box around the new path.
             old = layer["pen_origin"]
@@ -211,13 +215,19 @@ def execute(project, op):
             require_inside(op, *layer["path_view"])
             layer["pen_origin"] = [0, 0]
         return
+    require(op.get("nodes") is not None or op.get("points") is not None,
+            "pen needs nodes or points (or target to restyle an existing pen layer)", field="points")
     fields = {k: op[k] for k in ("name", "fill", "stroke", "stroke_width", *TRIM_FIELDS, "x", "y", "width", "height") if k in op}
+    # A filled path given no stroke has none; an unfilled one gets the default 2 px black line so it shows.
+    filled = op.get("fill") not in (None, "transparent", "none")
+    style = {"fill": "transparent"} if filled and "stroke" not in op and "stroke_width" not in op else {
+        "fill": "transparent", "stroke": "black", "stroke_width": 2}
     boxed = "width" in op or "height" in op
     if boxed:
         path, origin = pen_path(op), (0, 0)
     else:
         # Without a box, the layer fits its nodes (and stroke) instead of spanning the canvas.
-        path, origin, size = fit(op, op.get("stroke_width", 2))
+        path, origin, size = fit(op, op.get("stroke_width", style.get("stroke_width", 0)))
         fields.update(width=size[0], height=size[1])
         fields.pop("x", None)
         fields.pop("y", None)
@@ -227,9 +237,7 @@ def execute(project, op):
             "type": "shape",
             "shape": "path",
             "path": path,
-            "fill": "transparent",
-            "stroke": "black",
-            "stroke_width": 2,
+            **style,
             **fields,
         },
     )
