@@ -1,6 +1,8 @@
 # Containers, template variants and comic pages
 
-Containers are editable groups with semantic text and image slots. Their local layout can reflow at a new size, and named variants preserve the filled content. `vixl_workflow(action="resource-show", request={"kind":"containers","name":"profile"})` returns the resource's slots, defaults, bounds and variants. Use `kind: "templates"` to inspect a template's category, supported named sizes, slots and recommended looks.
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
+Containers are editable groups with semantic text and image slots. Their local layout can reflow at a new size, and named variants preserve the filled content. `vixl_apply(workflow='resource-get', request={"kind":"containers","name":"profile"})` returns the resource's slots, defaults, bounds and variants. Use `kind: "templates"` to inspect a template's category, supported named sizes, slots and recommended looks.
 
 ## Place, fill and rearrange
 
@@ -14,7 +16,7 @@ Containers are editable groups with semantic text and image slots. Their local l
 ]
 ```
 
-Import the image first with `vixl_import_image` and use its returned asset ID. Python and CLI calls can also supply an image path inside the workspace; services accept embedded assets only. Source images remain embedded, so resizing recrops from the source rather than a previously cropped thumbnail.
+Import the image first with `import-image` and use its returned asset ID. Python and CLI calls can also supply an image path inside the workspace; services accept embedded assets only. Source images remain embedded, so resizing recrops from the source rather than a previously cropped thumbnail.
 
 `container-variant` preserves the group identity, image source, supplied variables and direct edits to slot text. It recreates the arrangement's children; use `container-reflow` when existing child IDs need to stay unchanged. `container-swap` replaces the resource while carrying compatible named variables across. Resources with different base sizes require explicit dimensions. Changing a size updates the group's local layout box, wraps/fits opted-in text and recomputes image crops. It does not geometrically stretch the group. An impossible fit or min/max violation fails atomically.
 
@@ -35,11 +37,14 @@ Omitting a seed selects a fresh one. Placement reports its seed and selected var
 | `badge`, `ribbon` | label | default |
 | `photo-caption` | photo, caption | default |
 | `product-card` | photo, name, price, optional tag | left, centered, split |
-| `section-header` | eyebrow, title | default |
+| `section-header` | eyebrow, title (a rule closes it) | default |
+| `key-value-list` | title, items (one `label \| value \| share` per line) | default |
 
 The original headline, quote, feature and illustration containers remain available. Text and decorations use palette role swatches. Image-bearing resources show crossed neutral placeholders until filled. Both the normal blanks check and the `container-layout` suite report missing image slots; the container suite also reports sources with fewer pixels than the displayed image requires.
 
-Custom resources can declare `min_width`, `max_width`, `min_height`, `max_height` and named `variants`, each containing `operations` and optional `rules`. Local content supports `frame: [x, y, width, height]` in fractions of the container, plus `fit_text: true` and `min_size` on text operations. A text frame wraps and shrinks only as far as its minimum; overly long copy is rejected rather than clipped. Vertical, horizontal and grid rules continue to support padding, gaps, columns and hidden-member collapse.
+The section header's rule keeps at least one spacing unit (half the document's body size) between itself and the container's bottom edge at any height, so the row that follows never sits on it (the [craft plan](craft-plan.md) counts a gap under half a unit as crowding; one unit keeps clear of that threshold).
+
+Custom resources can declare `min_width`, `max_width`, `min_height`, `max_height` and named `variants`, each containing `operations` and optional `rules`. Local content supports `frame: [x, y, width, height]` in fractions of the container, plus `fit_text: true` and `min_size` on text operations, and `clear_below` (spacing units kept between an item and the container's bottom edge). A text frame wraps and shrinks only as far as its minimum; overly long copy is rejected rather than clipped. Vertical, horizontal and grid rules continue to support padding, gaps, columns and hidden-member collapse.
 
 An image operation inside a resource can declare:
 
@@ -48,6 +53,37 @@ An image operation inside a resource can declare:
 ```
 
 `cover` crops around the focal point, `contain` letterboxes with transparency, and `fill` stretches. `mask_shape` accepts supported shape silhouettes, with `rect`, `rounded` and `circle` aliases; rounded masks accept `radius`. Source resolution is independent of the cropped asset generated for rendering.
+
+## Key-value lists
+
+`key-value-list` sets rows of a label, a value and an optional share in aligned columns: labels flush left,
+values right-aligned on one edge and shares on another, with a hairline rule between rows. Right-aligned
+columns keep figures lined up even in fonts whose digits are proportional. Row padding and column gaps come
+from the spacing scale for the text size (one unit above and below each line, two units between columns),
+and every single-line row has the same height. The result is a group of ordinary text layers and rules that
+keeps its rows under `key_values`; `key-value-list` with `target` restyles it, resizes it or gives it new rows
+on the same layer IDs.
+
+```json
+[
+  {"type":"key-value-list","name":"shares","x":80,"y":80,"width":420,"number_format":"#,##0","shares":"auto",
+   "rows":[{"label":"Drip","value":15900},{"label":"Espresso","value":11960},{"label":"Cold brew","value":2510},{"label":"Tea","value":5260}]},
+  {"type":"key-value-list","target":"shares","font_size":22,"colors":["#0072b2","#e69f00","#009e73","#cc79a7"]}
+]
+```
+
+- Rows: `rows` as `{label, value, share}` objects or `[label, value, share]` lists, or `items` as text, one
+  `label | value | share` per line (the same convention as the `price-list` layout). Numbers take
+  `number_format`; `shares: "auto"` computes each value's share of the total.
+- `width`: values and shares move to its right edge and labels wrap to the room left; without it the list is
+  as wide as its widest row. `font_size` defaults to the document's body size.
+- Look: `font`, `value_font`, `text_color`, `share_color` (default: the muted text color, still 4.5:1),
+  `rules` (default true), `rule_color`, and `colors` for a swatch before each label.
+- A chart's `legend_values` legend is the same list (see [charts](charts.md)), so a chart and a separate
+  summary list of the same numbers line up.
+- The `key-value-list` container places one under a title; `container-fill` with new `items` rebuilds it, and
+  resizing the container widens the list to its frame and steps the text down (to `min_size`) until the rows
+  fit.
 
 ## Hug-content buttons and badges
 
@@ -67,6 +103,7 @@ Define the `action` variable before applying this example. Hug stacks measure vi
 - Print: `print-flyer`, `print-menu`, `print-certificate`, `print-invitation`, `print-postcard`, `print-poster`.
 - Business: `business-one-pager`, `business-case-study`, `business-invoice-header`, `business-report-cover`.
 - Slides: `slide-title`, `slide-section`, `slide-comparison`, `slide-timeline`, `slide-team`, `slide-stat`.
+- Promo video: `video-promo-kinetic`, `video-promo-editorial`, `video-promo-neon`, `video-promo-spotlight`, `video-promo-split`, `video-promo-stat`; add `-story` or `-wide` for portrait or widescreen. Six-second editable loops with distinct layouts and motion, using `title`, `subtitle`, `cta` and seeded colors. See the [preview pack](https://github.com/jxburros/VixlExamples/blob/main/promo/variety/README.md).
 - Short video: `video-tip`, `video-launch`, `video-event` (six-second seamless loops with `title`, `subtitle` and `cta` variables; see [animation authoring](animation-authoring.md#joint-pose-keys-and-short-templates)). They scale to any canvas and carry no container grid.
 
 Create the canvas at one of the template's declared sizes, then apply it. Its grid computes cells from the current canvas, including padding and gutters. `columns` changes the grid; cells smaller than a usable container are refused. Print canvas metadata is retained. Each template includes the `container-layout` check suite. Unfilled text remains an explicit placeholder.

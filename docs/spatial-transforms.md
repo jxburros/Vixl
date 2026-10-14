@@ -1,10 +1,15 @@
 # Precise transforms and spatial queries
 
+[Documentation home](README.md) · [Design tools](design-tools.md)
+
 Vector geometry keeps fractional pixel positions and dimensions. Shape, path, text, rich-text,
 solid, gradient and vector group sizes survive repeated scaling without integer rounding.
-SVG and PDF retain these coordinates; raster previews resample fractional placement. Images,
-pixel layers and form fields snap to whole pixels. `snap-to-pixel` controls a layer override or
-the document default:
+SVG and PDF retain these coordinates. In raster output, text, path shapes and unstroked ellipses,
+rounded rectangles and capsules without effects, a mask or paper texture are drawn from their outlines
+straight into the fractional position, turned, flipped or skewed too, so they stay as sharp as on
+whole pixels ([render parity](render-parity.md)); other layers are resampled into place, and
+reduced previews round to whole pixels. Images, pixel layers and form fields snap to whole pixels.
+`snap-to-pixel` controls a layer override or the document default:
 
 ```json
 {"type":"snap-to-pixel","target":"icon","value":true}
@@ -55,7 +60,7 @@ rejected. Form fields cannot skew or take a matrix. SVG/PDF export native transf
 
 ## Spatial API
 
-Use `Project.spatial(...)` or `vixl_spatial`. All returned geometry is in canvas space. Select
+Use `Project.spatial(...)` or `vixl_check(action='spatial')`. All returned geometry is in canvas space. Select
 by `target` name/ID/glob, `targets` list, `group:name` descendants, or selector objects in a
 `targets` list. `page` and `artboard` scope the query; `bounds` is `box` (default) or `ink`.
 The ink mode uses glyph outline bounds for text and rich-text, transformed into canvas

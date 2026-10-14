@@ -192,7 +192,7 @@ def test_document_independent_help_catalog_and_compact_cli(tmp_path):
         result = cli(cmd, "--help")
         assert result.returncode == 0 and b"No current project" not in result.stderr, (cmd, result.stderr)
     commands = json.loads(cli("commands", "--json").stdout)["commands"]
-    assert {"shape", "export", "palette", "models", "template"} <= set(commands)
+    assert {"shape", "export", "palette", "models", "template", "compact", "link-set"} <= set(commands)
     assert cli("template", "new", "logo", "-o", "logo.vixl").returncode == 0
     result = cli("apply", "-", input=b'{"operations":[{"type":"move","target":"mark","x":1}]}')
     compact = json.loads(result.stdout)
@@ -214,13 +214,13 @@ def test_mcp_resources_templates_font_and_vector_geometry(tmp_path):
     (tmp_path / "font.ttf").write_bytes(font.read_bytes())
 
     async def run():
-        await server.call_tool("vixl_template_create", {"path": "logo.vixl", "name": "logo"})
-        await server.call_tool("vixl_import_font", {"path": "font.ttf", "name": "brand"})
+        await server.call_tool("vixl_document", {"action": "create", "path": "logo.vixl", "template": "logo"})
+        await server.call_tool("vixl_apply", {"operations": [{"type": "import-font", "path": "font.ttf", "name": "brand"}]})
         await server.call_tool(
-            "vixl_operations_apply", {"operations": [{"type": "text", "text": "Vixl", "name": "label", "font": "brand", "size": 16}]}
+            "vixl_apply", {"operations": [{"type": "text", "text": "Vixl", "name": "label", "font": "brand", "size": 16}]}
         )
         await server.call_tool(
-            "vixl_operations_apply",
+            "vixl_apply",
             {
                 "operations": [
                     {
@@ -234,7 +234,7 @@ def test_mcp_resources_templates_font_and_vector_geometry(tmp_path):
                 ]
             },
         )
-        await server.call_tool("vixl_export_file", {"path": "logo.svg"})
+        await server.call_tool("vixl_export", {"path": "logo.svg"})
 
     asyncio.run(run())
     assert ET.fromstring((tmp_path / "logo.svg").read_bytes()).find(".//{*}path") is not None

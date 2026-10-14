@@ -1,7 +1,7 @@
 """One-line summaries, per-field descriptions and worked examples for every operation.
 
 ``schema.operation_schema`` merges these into each operation's JSON Schema, so
-``vixl_operation_schema`` answers "what does this do, what does each field take, and what does
+``vixl_reference('operations')`` answers "what does this do, what does each field take, and what does
 a working call look like" without a failed call or a docs lookup. Descriptions fill only gaps:
 a description written next to the field's definition wins. ``tests/test_operation_docs.py``
 fails when an operation, field or example is missing here.
@@ -10,7 +10,7 @@ fails when an operation, field or example is missing here.
 from copy import deepcopy
 
 SUMMARIES = {
-    "add": "Embed an image as a new raster layer (an embedded asset id from vixl_import_image, or a path in the CLI).",
+    "add": "Embed an image as a new raster layer (an embedded asset id from import-image, or a path in the CLI).",
     "solid": "Add a flat-color rectangle layer, by default covering the canvas (a background).",
     "gradient": "Add a linear, angled or radial gradient layer between two colors or several stops.",
     "text": "Add an editable text layer (auto-sized to its text).",
@@ -28,7 +28,7 @@ SUMMARIES = {
     "brush-define": "Save a custom brush as overrides on a built-in brush.",
     "pixel-art": "Add a pixel-art layer from character rows and a palette.",
     "pixel-draw": "Draw a pixel, line, rectangle or flood fill on a pixel layer.",
-    "pixel-palette": "Replace the palette of a pixel layer.",
+    "pixel-palette": "Replace colours of a pixel layer's palette, or turn its shading ramp and outline on or off.",
     "rich-text": "Create or replace a text layer from Markdown or spans, with paragraphs, lists and mixed styles.",
     "text-style": "Style part of a text layer: a matched phrase, a character range or paragraphs. To change the layer's content or overall color, size or font use text-set.",
     "text-layout": "Set a text layer's wrapping box, fit-to-box, warp (arc, flag, bulge) or path.",
@@ -168,12 +168,18 @@ SUMMARIES = {
     "table": "Draw a table from rows or a CSV as vector layers (aligned columns, header, rules), or restyle one with target.",
     "die-cut": "Add a sticker cut line: the union of the targets' ink outline, grown by a distance, as a stroked path.",
     "path-split": "Cut a filled path into two named parts along a polygon or line, optionally overlapping the cut.",
+    "key-value-list": "Draw a key-value list (labels left, values and shares right-aligned, rules between rows) as text layers, or restyle one with target.",
     "table-data": "Edit a table's rows in place (cells, rows, columns, CSV reload) and redraw it, keeping layer IDs.",
     "stack": "Lay a group out as a row or column that reflows and re-centres when a member is empty or hidden.",
     "diagram": "Draw a flowchart, dependency graph, org chart or mind map from nodes and edges, laid out automatically.",
     "diagram-from-text": "Draw a diagram from a short text format (A -> B: label, indentation for hierarchies, group lanes).",
     "diagram-set": "Change a diagram's nodes, edges or options and lay it out again in place, keeping layer IDs.",
     "text-flow": "Flow one story through linked text frames (columns, pages, shapes), reflow it and report overflow.",
+    "reflection": "Mirror what stands above a horizon into the water below it, with ripples, ripple bands and a fade (one raster layer that re-renders).",
+    "haze": "Add a soft glow band behind a light source (two radial gradients in a group).",
+    "star-field": "Scatter seeded stars and a few sparkles over a region, keeping clear of text (an editable group).",
+    "string-lights": "Hang bulbs or paper lanterns with glows evenly along a path or a sagging wire (an editable group).",
+    "bokeh": "Scatter soft out-of-focus light discs over a region (radial gradients in an editable group).",
 }
 
 # Every effect is also an operation type ({type: blur, amount: 6} equals {type: effect, name: blur ...}).
@@ -246,7 +252,7 @@ FIELDS = {
     "stroke_color": "Outline color of the text.",
     "background": "Background color (any color value or @swatch).",
     "path": "Workspace file path (CLI) or an SVG path 'M … C … Z' string where the operation draws one.",
-    "asset": "Embedded asset ID, as returned by vixl_import_image.",
+    "asset": "Embedded asset ID, as returned by import-image.",
     "size": "Size: a font size in pixels for text, or a named size / grid size where the operation says so.",
     "value": "The new value.",
     "points": "List of [x, y] points (pixels).",
@@ -264,7 +270,7 @@ FIELDS = {
     "angle": "Angle in degrees (0 points right; positive turns clockwise).",
     "colors": "Colors, each any color value or @swatch.",
     "spacing": "Spacing in pixels (line gap for text, step for placement).",
-    "preset": "Named preset: a size from vixl_sizes_list or a ready-made recipe.",
+    "preset": "Named preset: a size from vixl_reference('sizes') or a ready-made recipe.",
     "mode": "Mode: how the operation combines or behaves.",
     "effect": "Effect ID (from the layer's effect list), its 1-based index, or its name when used once in the stack.",
     "fit": "How an image fits its box: fill crops to cover; fit shows all of it.",
@@ -337,7 +343,7 @@ _DIAGRAM_FIELDS = {
     "layout": "Layout: auto (picks one from the graph), layered (flowcharts, dependencies), tree, radial, mindmap or grid.",
     "routing": "How edges run: orthogonal (right angles, default), curved or straight.",
     "lanes": "Layered layout: turn kind: group nodes into swimlanes (columns for TB, rows for LR) instead of cluster boxes.",
-    "theme": "Colors: light (default), dark or mono.",
+    "theme": "Colors: palette (the document's palette roles), light, dark or mono. Default: palette when the document defines the roles, else dark or light to suit its background.",
     "text_color": "Default label color for nodes and edges.",
     "node_color": "Default node fill; a node's own color wins.",
     "edge_color": "Default edge and arrowhead color; an edge's own color wins.",
@@ -381,8 +387,8 @@ OVERRIDES = {
              "crop": "Region of the source to show, {x, y, width, height} in source pixels.",
              "artboard": "Name of an artboard in the source to draw instead of the whole canvas.",
              "source_page": "Page of a multi-page source to draw, by name or number."},
-    "add": {"path": "Image file in the workspace (CLI and Python; services import with vixl_import_image).",
-            "asset": "Embedded asset ID from vixl_import_image.",
+    "add": {"path": "Image file in the workspace (CLI and Python; services import with import-image).",
+            "asset": "Embedded asset ID from import-image.",
             "name": "Layer name (defaults to the file name).",
             "linked": "Keep the layer linked to the file instead of embedding it.",
             "max_pixels": "Downsample the embedded copy to at most this many pixels; retain source provenance.",
@@ -448,7 +454,7 @@ OVERRIDES = {
     "constrain": {"constraints": "Anchors to expressions: {left|right|top|bottom|center-x|center-y: a number, "
                                  "'canvas.right-40', 'layer.left+8' or 'guide:name.center-x'}; one per axis."},
     "canvas": {"width": "Canvas width in pixels.", "height": "Canvas height in pixels.",
-               "size": "Named size from vixl_sizes_list (letter, instagram-post, favicon …).",
+               "size": "Named size from vixl_reference('sizes') (letter, instagram-post, favicon …).",
                "preset": "Same as size.", "dpi": "Dots per inch for print metadata (36-2400).",
                "orientation": "Swap a named size to portrait or landscape.",
                "bleed": "true adds the size's standard bleed, or a bleed amount."},
@@ -516,9 +522,9 @@ OVERRIDES = {
     "frame": {"fit": "fill crops the image to cover the frame; fit shows the whole image.",
               "max_pixels": "Downsample the embedded copy to at most this many pixels; retain source provenance.",
               "downsample": "placed@2x stores enough resolution to draw this frame at twice its placed size.",
-              "path": "Image file in the workspace (CLI and Python).", "asset": "Embedded asset ID from vixl_import_image."},
+              "path": "Image file in the workspace (CLI and Python).", "asset": "Embedded asset ID from import-image."},
     "replace-contents": {"path": "Image file in the workspace (CLI and Python).",
-                         "asset": "Embedded asset ID from vixl_import_image.", "variable": "Bind the image to this variable (replace it later by changing the variable).",
+                         "asset": "Embedded asset ID from import-image.", "variable": "Bind the image to this variable (replace it later by changing the variable).",
                          "fit": "fill crops to cover; fit shows all of the image."},
     "repeat": {"count": "Number of copies including the original.",
                "dx": "Horizontal offset between copies, in pixels.", "dy": "Vertical offset between copies, in pixels.",
@@ -531,6 +537,10 @@ OVERRIDES = {
     "comp-save": {"name": "Comp name."}, "comp-apply": {"name": "Saved comp name."},
     "text-layout": {"width": "Wrapping box width in pixels or a percentage.", "height": "Box height; omit it with a width and the box grows to the wrapped lines.",
                     "fit": "true shrinks the text to fit the box.", "warp": "none, arc, flag or bulge.",
+                    "wrap": "How lines break in the box: greedy fills each line; balance evens the line widths (same "
+                            "line count; for headings and short text); pretty fills lines but never leaves one word "
+                            "alone on a paragraph's last line (body text). Kept when the box changes; headings in new "
+                            "documents default to balance.",
                     "amount": "Warp strength as a fraction of the box height (default 0.2; negative bends the other way).", "path": "Points [[x, y] …] the text follows."},
     "guide": {"name": "Guide name.", "axis": "x (vertical line) or y (horizontal line) for an axis guide.",
               "position": "Axis guide position in pixels.",
@@ -564,7 +574,7 @@ OVERRIDES = {
     "frame-apply": {"name": "Saved frame name."}, "frame-delete": {"name": "Saved frame name."},
     "animation-set": {"loop": "Loop count (0 is forever).", "order": "Frame names in playback order."},
     "paint-layer": {"name": "Layer name.", "width": "Surface width.", "height": "Surface height."},
-    "paint": {"brush": "Brush name from vixl_brushes_list.", "points": "Stroke points [[x, y, pressure?] …].",
+    "paint": {"brush": "Brush name from vixl_reference('brushes').", "points": "Stroke points [[x, y, pressure?] …].",
               "path": "Stroke along an SVG path instead of points.", "pressure": "Pressure per point, 0-1.",
               "space": "canvas (default) or layer coordinates.", "size": "Brush size in pixels (default 1.5% of the layer's short side).",
               "color": "Paint color (default @ink, else black or white for the canvas).", "opacity": "Stroke opacity, 0-1.", "mode": "paint or erase.",
@@ -585,7 +595,7 @@ OVERRIDES = {
                        "fade": "true adds a fade.", "to": "Final value for presets that animate to one.",
                        "targets": "Layers to animate."},
     "marker": {"name": "Marker name.", "time": "Time of the marker.", "delete": "true removes it."},
-    "layout-apply": {"name": "Layout from vixl_layouts_list.",
+    "layout-apply": {"name": "Layout from vixl_reference('layouts').",
                      "seed": "Integer or 'random'; omitted uses a fresh seed unless document/workspace variety is fixed.",
                      "unfilled": "blank (default) shows [Label] placeholders that check flags; omit leaves them out.",
                      "palette": "Palette name or colors; roles are assigned by luminance and mode unless keep_order "
@@ -672,7 +682,9 @@ OVERRIDES = {
              "anchors": "Layer anchors that may snap."},
     "rich-text": {"markdown": "Markdown (bold, italic, headings, lists, [text]{color=…}).",
                   "spans": "Explicit spans [{text, bold, italic, color …}].", "name": "Layer name.",
-                  "size": "Base font size.", "color": "Base text color.", "fit": "Shrink text to fit the box."},
+                  "size": "Base font size.", "color": "Base text color.", "fit": "Shrink text to fit the box.",
+                  "wrap": "Line breaking in the box (with width): greedy, balance (even line widths, for headings) or "
+                          "pretty (no one-word last line, for body text)."},
     "text-style": {"match": "Text to find and style.", "occurrence": "Which match: a 1-based number, or 'all' (default).",
                    "paragraphs": "Paragraph indexes (0-based) the paragraph settings apply to, or 'all'.",
                    "start": "First character index.", "end": "Character index after the last.",
@@ -702,7 +714,7 @@ OVERRIDES = {
                          "scheme": "scale (default) for a 50-950 ramp, or a harmony: complementary, analogous, "
                                    "triadic, split-complementary, tetradic, square, monochromatic, tints, shades, tones.",
                          "count": "Colors for a harmony."},
-    "look": {"look": "Look name; vixl_guide or the look catalog lists them.",
+    "look": {"look": "Look name; vixl_reference or the look catalog lists them.",
              "color": "Main color of the look (glow color, shadow color, tint).",
              "amount": "Strength from subtle (0) to strong (1); default 0.5.", "targets": "Several layers instead of target.",
              "remove": "true takes the look off again."},
@@ -711,11 +723,16 @@ OVERRIDES = {
                       "start_angle": "Rotation of the first copy in degrees.", "mirror": "true adds a mirrored copy of "
                       "each (dihedral symmetry).", "group": "true (default) groups the copies.",
                       "name": "Name of the group of copies."},
-    "style-set": {"style": "Style name (or up to three names) from vixl_styles; null clears the tag.",
+    "style-set": {"style": "Style name (or up to three names) from vixl_reference('styles'); null clears the tag.",
                   "options": "Overrides for the style's check settings."},
 }
 
 EXAMPLES = {
+    "key-value-list": [
+        {"type": "key-value-list", "name": "shares", "x": 40, "y": 40, "width": 360,
+         "rows": [{"label": "Drip", "value": "15,900"}, {"label": "Espresso", "value": "11,960"},
+                  {"label": "Tea", "value": "5,260"}], "shares": "auto"},
+    ],
     "qr": [
         {"type": "qr", "name": "ticket-qr", "data": "https://example.com/t/123", "module": 6, "x": 40, "y": 40},
         {"type": "qr", "name": "logo-qr", "data": "https://example.com", "error": "H", "size": 240,
@@ -838,6 +855,23 @@ EXAMPLES = {
     "text-animate": [
         {"type": "text-animate", "target": "greeting", "preset": "fade-up", "unit": "char", "duration": "400ms", "stagger": "40ms"},
         {"type": "text-animate", "target": "greeting", "preset": "wave", "unit": "char", "stagger": "20%", "repeat": True},
+    ],
+    "reflection": [
+        {"type": "reflection", "horizon": 300, "targets": ["moon", "card"], "ripple": 0.4, "fade": 0.6, "seed": 3},
+    ],
+    "haze": [
+        {"type": "haze", "target": "moon", "color": "#ffd38a", "strength": 0.45},
+        {"type": "haze", "x": 400, "y": 300, "width": 600, "form": "band"},
+    ],
+    "star-field": [
+        {"type": "star-field", "region": [0, 0, 800, 300], "count": 80, "seed": 4},
+    ],
+    "string-lights": [
+        {"type": "string-lights", "from": [0, 60], "to": [800, 60], "sag": 50, "count": 9, "colors": ["#ffd77a", "#ff9f6b"]},
+        {"type": "string-lights", "from": [40, 40], "to": [760, 90], "bulb": "lantern", "size": 36, "spacing": 120},
+    ],
+    "bokeh": [
+        {"type": "bokeh", "region": [0, 0, 800, 600], "count": 12, "seed": 2},
     ],
 }
 

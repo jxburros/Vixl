@@ -19,13 +19,12 @@ import xml.etree.ElementTree as ET
 import numpy as np
 
 from .errors import require
-from .geometry import bezier_points, compact_number
+from .geometry import bezier_points, compact_number, stroke_inset
 from .model import finite
 
 TRIM = ("trim_start", "trim_end")
 CAPS = ("butt", "round", "square")
 CURVE_STEPS = 64
-SQUARE_JOINS = ("rectangle", "rounded-rectangle", "capsule")
 
 
 def schema():
@@ -125,9 +124,10 @@ def _transform(commands, scale, offset):
 @lru_cache(maxsize=64)
 def _outline(shape, path, width, height, inset, radius, sides, inner_radius):
     """The outline as ``((commands, length), …)``, one entry per contour, in its own units: the
-    path's viewBox for a ``path`` shape, else pixels of the ``width`` × ``height`` box, inset by
-    ``inset`` on every side."""
-    from .geometry import parse_path, shape_path
+    path's viewBox for a ``path`` shape, else pixels of the ``width`` × ``height`` box, moved
+    ``inset`` inward (a rectangle or ellipse in the box inset on every side, a polygon's edges
+    offset with mitred corners)."""
+    from .geometry import parse_path, path_polygons, shape_path
 
     if shape == "path":
         commands = parse_path(path)
@@ -136,13 +136,23 @@ def _outline(shape, path, width, height, inset, radius, sides, inner_radius):
     else:
         x0, y0, x1, y1 = inset, inset, width - inset, height - inset
         if x1 - x0 < 1e-3 or y1 - y0 < 1e-3:
-            return ()  # The stroke leaves no room inside the box: draw nothing, as untrimmed shapes do.
+            return ()  # The stroke reaches the middle of the shape: nothing is left to trim along.
         if shape in ("rectangle", "rounded-rectangle", "capsule", "ellipse"):
             radius = min(radius, (x1 - x0) / 2, (y1 - y0) / 2)
             commands = parse_path(_arc_path(shape, x0, y0, x1, y1, radius))
         else:
             outline, box = shape_path({"shape": shape, "sides": sides, "inner_radius": inner_radius})
-            commands = _transform(parse_path(outline), ((x1 - x0) / box[0], (y1 - y0) / box[1]), (x0, y0))
+            commands = _transform(parse_path(outline), (width / box[0], height / box[1]), (0, 0))
+            if inset:
+                from .vector_strokes import offset_polygon
+
+                polygons, commands = path_polygons(_d(commands)), []
+                for polygon in polygons:
+                    points = offset_polygon(polygon, -inset)
+                    if points:
+                        commands += [("M", points[0]), *(("L", p) for p in points[1:]), ("Z", ())]
+                if not commands:
+                    return ()
     return tuple((tuple(c), _length(c)) for c in _contours(commands))
 
 
@@ -158,16 +168,15 @@ def trim_geometry(layer, stroke_visible=True):
     view = tuple(layer.get("path_view", (layer["width"], layer["height"]))) if path else None
     w, h = layer["width"], layer["height"]
     radius = layer.get("radius", min(w, h) / (2 if shape == "capsule" else 5)) if shape in ("rounded-rectangle", "capsule") else 0
-    pad = width / 2 if stroke_visible else 0
     sides, inner = layer.get("sides", 5 if shape == "star" else 6), layer.get("inner_radius", 0.5)
     if path:  # In the path's own viewBox units, so cached apart from the layer's size.
         outline = stroke_outline = _outline("path", layer["path"], 0, 0, 0, 0, 0, 0)
     else:
-        # The box is inset by half the stroke, so the stroke stays inside the layer. Rectangles and
-        # ellipses draw their stroke inward from that edge, so its centerline is half a stroke further in.
-        outline = _outline(shape, None, w, h, pad, radius, sides, inner)
-        rounded = shape in ("rectangle", "rounded-rectangle", "capsule", "ellipse")
-        stroke_outline = _outline(shape, None, w, h, 2 * pad, max(radius - pad, 0), sides, inner) if rounded and pad else outline
+        # The fill covers the whole shape; the stroke runs inside it (geometry.stroke_inset), so its
+        # centre line is half a stroke in and a rounded corner's radius shrinks by as much.
+        inset, _ = stroke_inset(layer, stroke_visible)
+        outline = _outline(shape, None, w, h, 0, radius, sides, inner)
+        stroke_outline = _outline(shape, None, w, h, inset, max(radius - inset, 0), sides, inner) if inset else outline
     strokes = []
     for commands, length in stroke_outline:
         if length <= 0 or end <= start:
@@ -185,7 +194,7 @@ def trim_geometry(layer, stroke_visible=True):
         "strokes": strokes,
         "width": max(width, 0.25) if shape == "line" else width,
         "cap": cap,
-        "join": "round" if cap == "round" or (not path and shape not in SQUARE_JOINS) else "miter",
+        "join": "round" if cap == "round" else "miter",
         "line": shape == "line",
     }
 

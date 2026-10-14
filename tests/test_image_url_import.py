@@ -223,17 +223,20 @@ def test_mcp_rest_and_cli_url_imports(served, tmp_path):
     font = (Path(__import__("vixl").__file__).parent / "data" / "DejaVuSans.ttf").read_bytes()
     routes["/brand.ttf"] = httpx.Response(200, content=font)
     server = mcp_server(workspace=tmp_path)
-    call(server, "vixl_document_create", {"path": "d.vixl", "width": 64, "height": 64})
-    result = call(server, "vixl_import_image", {"url": "https://images.example/cat.png", "name": "cat",
-                                                 "credit": "Ana", "license": "CC BY 4.0"})
+    call(server, "vixl_document", {"action": "create", "path": "d.vixl", "width": 64, "height": 64})
+    def step(**fields):
+        return call(server, "vixl_apply", {"operations": [fields]})["steps"][0]["result"]
+
+    result = step(type="import-image", url="https://images.example/cat.png", name="cat", credit="Ana",
+                  license="CC BY 4.0")
     assert result["source"]["url"] == "https://images.example/cat.png" and result["credit"] == "Ana"
-    inspected = call(server, "vixl_document_inspect", {"target": "cat"})
+    inspected = call(server, "vixl_document", {"target": "cat"})
     assert inspected["source_url"] == "https://images.example/cat.png" and inspected["license"] == "CC BY 4.0"
     (tmp_path / "local.png").write_bytes(png())
-    result = call(server, "vixl_import_image", {"path": "local.png", "license": "CC0"})
+    result = step(type="import-image", path="local.png", license="CC0")
     assert result["source"]["path"] == "local.png" and result["license"] == "CC0"
-    call(server, "vixl_import_font", {"url": "https://fonts.example/brand.ttf", "name": "brand"})
-    call(server, "vixl_operations_apply", {"operations": [{"type": "text", "text": "Hi", "font": "brand"}]})
+    step(type="import-font", url="https://fonts.example/brand.ttf", name="brand")
+    call(server, "vixl_apply", {"operations": [{"type": "text", "text": "Hi", "font": "brand"}]})
 
     from fastapi.testclient import TestClient
 

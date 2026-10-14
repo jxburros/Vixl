@@ -66,7 +66,7 @@ with embedded fonts:
 ```
 
 An embedded font wins for its role and the pairing supplies the other, so a kit can embed only a
-heading font. `vixl_font_pair`/`vixl_font_install` with `scope: "workspace"` write these fields for you,
+heading font. `font-pair`/`font-install` with `scope: "workspace"` write these fields for you,
 and new documents embed the workspace fonts at creation (see [Typography](typography.md#workspace-default-fonts)).
 
 ### Font roles, text stages and extra colours
@@ -188,7 +188,7 @@ vixl brand show --preset embers
 vixl workflow brand-board --request board.json
 ```
 
-MCP: `vixl_workflow(action="brand-board", request={"output": "brand-guidelines.pdf"})`. Python:
+MCP: `vixl_apply(workflow='brand-board', request={"output": "brand-guidelines.pdf"})`. Python:
 `vixl.brand_board.build_document(workspace, preset=None)` returns the editable board and a report.
 
 Only data is accepted; brand files cannot name server filesystem paths. JSON is limited to 16 MiB.
@@ -201,7 +201,7 @@ vixl -p poster.vixl roll --apply --for poster --seed 42 \
   --set body='Doors at 6' --set cta='example.com' --set caption='All ages'
 ```
 
-MCP uses `vixl_roll(apply=true, slots={...})`. Font downloads and the layout commit together as
+MCP applies a roll with the `roll` step of `vixl_apply` (`vixl_reference('roll')` previews one). Font downloads and the layout commit together as
 one undo step; failures leave the document unchanged. Layout application returns `unfilled_slots`
 and full layout notes immediately, including for compact responses and dry runs.
 

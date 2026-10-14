@@ -128,7 +128,7 @@ def list_pairings(mood=None, best_for=None, family=None, relationship=None, *, f
     ]
     result = {"pairings": rows, "count": len(rows)}
     if not full:
-        result["detail"] = "vixl font pairing NAME (vixl_fonts view=pairing) explains why a pairing works"
+        result["detail"] = "vixl font pairing NAME (vixl_reference('fonts') view=pairing) explains why a pairing works"
     return result
 
 
@@ -166,7 +166,7 @@ def _weighted_choice(rng, weights):
 
 
 def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety="medium", recent=None,
-         house_style_version=None, recommend=None, content=None):
+         recommend=None, content=None):
     """Roll a coherent design direction from the house style: a tier, then pairing, mode, palette and layout.
 
     The variety level gates the tiers (low: safe only; medium: mostly safe; high: every tier) and the
@@ -176,18 +176,8 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
     ``looks`` and ``styles`` to names a brief recommends; they are favoured where the tier allows.
     ``content`` lists the copy slots that will be supplied (title, subtitle …): only layouts that place
     all of them are rolled. Every field that ``locks`` fixes is kept; the rest come from the seed, which is returned so
-    a direction worth keeping can be reproduced exactly. ``house_style_version=1`` replays the
-    0.20-0.22 roll for the same seed.
+    a direction worth keeping can be reproduced exactly.
     """
-    version = house_style_version or house_style.VERSION
-    require(version in house_style.versions(), f"house_style_version must be one of {house_style.versions()}",
-            field="house_style_version")
-    if version == 1:
-        from .legacy_roll import roll_v1
-
-        result = roll_v1(seed, purpose=purpose, mood=mood, canvas=canvas, locks=locks, variety=variety, recent=recent)
-        result["house_style_version"] = 1
-        return result
     from .layouts import ACCENTS, DENSITY_CHOICES, IMAGE_KEYS, LAYOUTS, RATIOS, places, slot_spec
     from .resources import PALETTES
     from .variety import VARIETIES, choose, dimensions, orientation, pick_tier, tier_pool
@@ -209,11 +199,9 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
     tuning = house_style.moods()
     wanted = {slug(m) for m in ([mood] if isinstance(mood, str) else mood or [])}
     tier = locks.get("tier") or pick_tier(rng, variety, wanted)
-    alignment = None
-    if version >= 3:
-        category = "mark" if goal == "logo" else "data" if goal in ("diagram", "form") else "design"
-        weights = house_style.data()["taste"]["alignment"][category]
-        alignment = locks.get("align") or random.Random(seed ^ 0xA11).choices(list(weights), weights=list(weights.values()))[0]
+    category = "mark" if goal == "logo" else "data" if goal in ("diagram", "form") else "design"
+    weights = house_style.data()["taste"]["alignment"][category]
+    alignment = locks.get("align") or random.Random(seed ^ 0xA11).choices(list(weights), weights=list(weights.values()))[0]
 
     def strength(meta):
         return tuning["match_weight"] if wanted & {slug(m) for m in meta.get("mood", [])} else 1
@@ -224,7 +212,7 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
     if "pairing" in locks:
         pairing = get_pairing(locks.pop("pairing"))
     else:
-        by_name = {item["name"]: item for item in pairings() if item.get("introduced", 1) <= version}
+        by_name = {item["name"]: item for item in pairings()}
         fits = (lambda name: contrast_of(by_name[name]) == contrast) if contrast else (lambda name: True)
         pool = tier_pool("pairings", tier, goal, lambda name: name in by_name and fits(name))
         require(pool, "No rollable pairing has the requested weight contrast", field="locks")
@@ -262,7 +250,7 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
         return not content or places(name, shape or "square", tuple(sorted(content)))
 
     layouts = tier_pool("layouts", tier, goal, lambda name: name in LAYOUTS and layout_fits(name))
-    if version >= 3 and recent and layouts == [recent[-1].get("layout")]:
+    if recent and layouts == [recent[-1].get("layout")]:
         alternatives = tier_pool("layouts", tier, goal, lambda name: name in LAYOUTS
                                  and name != recent[-1].get("layout") and layout_fits(name))
         layouts = alternatives or layouts
@@ -290,8 +278,13 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
     # Bold and expressive rolls set the headline large; quiet ones keep the measured headline (#285).
     expressive = bool(wanted & {slug(m) for m in tuning["expressive"]})
     direction["headline"] = "large" if direction["tier"] != "safe" or expressive else "measured"
-    if version >= 3:
-        direction.update(align=alignment, house_style_version=version)
+    direction["align"] = alignment
+    # A separate stream, so these details never change what the seed rolls for the fields above.
+    details, pick = house_style.details(), random.Random(seed ^ 0xC7A)
+    style, corner = locks.get("style", direction["style"]), locks.get("corner", direction["corner"])
+    pill = 1 if corner == "pill" else 0 if style in details["square_styles"] else details["cta_pill"][direction["tier"]]
+    direction["cta"] = "pill" if pick.random() < pill else "button"
+    direction["date"] = "highlight" if pick.random() < details["date_highlight"][direction["tier"]] else "plain"
     unknown = set(locks) - set(direction)
     require(not unknown, f"Unknown lock(s) {sorted(unknown)}; lockable: {', '.join(direction)}", field="locks")
     direction.update(locks)
@@ -330,8 +323,7 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
     }
     if "container" in locks:
         operation["direction"]["place_container"] = True
-    if version >= 3:
-        operation["align"] = direction["align"]
+    operation["align"] = direction["align"]
     tiers = {"pairing": house_style.tier_of("pairings", direction["pairing"], goal),
              "palette": house_style.tier_of("palettes", direction["palette"], goal),
              "layout": house_style.tier_of("layouts", direction["layout"], goal),
@@ -340,7 +332,6 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
     return {
         "seed": seed,
         "variety": variety,
-        "house_style_version": version,
         "purpose": goal,
         "tier": direction["tier"],
         "tiers": tiers,
@@ -538,7 +529,7 @@ def install_workspace(workspace, family, weight=400, italic=False, name=None, ro
 
 
 def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood=None, canvas=None,
-                  locks=None, apply=False, slots=None, unfilled=None, variety=None, house_style_version=None,
+                  locks=None, apply=False, slots=None, unfilled=None, variety=None,
                   recommend=None, kind=None):
     """Choose brand defaults and optionally commit the whole direction in one undo step.
 
@@ -574,15 +565,10 @@ def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood
     explicit_seed = seed is not None and seed != "random"
     seed, variety = seed_for(project, seed, variety, workspace)
     recent = [] if explicit_seed or variety == "fixed" else history(workspace)
-    from .variety import house_style_version as version_for
-
-    version = version_for(project, house_style_version, workspace)
     goal, source = house_style.resolve_purpose(purpose, project=project, kind=kind)
-    result = roll(seed, purpose=(purpose or kind) if version == 1 else goal or purpose, mood=mood, canvas=canvas, locks=choices,
-                  variety=variety, recent=recent, house_style_version=version, recommend=recommend,
-                  **({"content": tuple(slots or ())} if version > 1 else {}))
-    if version > 1:
-        result["purpose_source"] = source
+    result = roll(seed, purpose=goal or purpose, mood=mood, canvas=canvas, locks=choices,
+                  variety=variety, recent=recent, recommend=recommend, content=tuple(slots or ()))
+    result["purpose_source"] = source
     if kit.get("palette") and not (locks or {}).get("palette"):
         result["operation"]["colors"] = kit["palette"]
     unfilled = unfilled or ("omit" if slots else "blank")

@@ -1,11 +1,11 @@
 # Checked production for agents
 
-Mockups: `vixl_workflow("mockup", {"design": "poster.vixl", "mockup": "poster-wall", "output": "wall.vixl"})` places
+Mockups: `vixl_apply(workflow='mockup', request={"design": "poster.vixl", "mockup": "poster-wall", "output": "wall.vixl"})` places
 a design in a phone, laptop, browser, poster-wall, business-card or mug template as a live, corner-pinned link
 (a list of templates and `"output": "folder"` makes one each; `export: ["png"]` renders them). `mockup-list` lists
 templates and their slots; `mockup-save` adds the workspace's own. See `docs/linked-documents.md#mockups`.
 
-Discover actions with `vixl_workflow_schema()` or `vixl workflow schema`.
+Discover actions with `vixl_reference('workflows')` or `vixl workflow schema`.
 Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/main/docs/production.md).
 
 1. Inspect the base document and create explicit `suite-set` rules for its requirements.
@@ -15,8 +15,8 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    `count`, `text` (the drawn copy: `contains`, `forbid`/`pattern` regexes, `min_/max_characters`,
    `min_/max_words`, `case`, `brand`), `budget` (`max_layers`, `max_fonts`, `max_bytes`, `min_ppi`), `alpha`,
    `design`, `container`, `unchanged`, `pixels` (fields:
-   `vixl_workflow_schema().definitions.suite`; method: `vixl_guide("testing")`). Run suites with each
-   batch (`vixl_operations_apply(suites=true)`) and before every preview. `sampling` (or `check`'s request)
+   `vixl_reference('workflows').definitions.suite`; method: `vixl_reference("testing")`). Run suites with each
+   batch (`vixl_apply(suites=true)`) and before every preview. `sampling` (or `check`'s request)
    takes `artboards`/`pages`/`comps` (`"all"` or names) to cover every variant in one run; each result names
    its `variant`. `suite-infer` proposes an explained starter suite from an approved document (`apply: true`
    saves it to the library, `group` makes a group inherit it, `from_group` infers across members).
@@ -72,32 +72,32 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    file per row, or `combine` into one PDF); the `form-fill` job kind freezes the form and the data
    and deletes the data copy when done. See `docs/forms.md`.
 
-11. Print merge: `merge-impose` (`vixl_workflow("merge-impose", {template, data, sheet, output, sheet_document}, document=)`)
+11. Print merge: `merge-impose` (`vixl_apply(workflow='merge-impose', request={template, data, sheet, output, sheet_document}, document=)`)
    imposes a template and a CSV on print sheets: a vector-text PDF (selectable text) and/or an editable sheet `.vixl` of live
    `link` layers. Run it with `dry_run` first: the report names missing/unknown columns, overflowing text, tofu glyphs and the
    grid. `{"rerun": "sheet.vixl"}` repeats it after the data changes. See `docs/imposition.md`.
 12. Linked documents: a `link` layer shows another `.vixl` live (`fit`, `position`, `crop`, `artboard`, `source_page`,
-   `variables`); `vixl_workflow("links", {})` reports ok/stale/missing with each resolved `path`, `link-refresh`
+   `variables`); `vixl_apply(workflow='links', request={})` reports ok/stale/missing with each resolved `path`, `link-refresh`
    records the seen revision, `links-relink {from, to}` follows moved sources, `link-embed` freezes it. Keep sources
    beside the document so the folder can be copied (`check` notes sources outside it). Use it instead of exporting a PNG and importing it into a derived design. See
    `docs/linked-documents.md`.
-13. Logo packages: `vixl_workflow("logo-package", {output, source?, trace?, mark?, wordmark?, variants?, png_sizes?,
+13. Logo packages: `vixl_apply(workflow='logo-package', request={output, source?, trace?, mark?, wordmark?, variants?, png_sizes?,
    cmyk?, icons?, social?, proof?, zip?, overwrite?})` writes `source/` (.vixl per variant), `svg/` (strict), `pdf/` (RGB,
    `-cmyk` with `cmyk: true`), `png/` (`NAME-<width>w@1x|2x|3x.png`), `icons/` (favicon.ico, web manifest …),
    `social/` (avatar 800×800, og-image 1200×630), `usage.html` and `package.json`. Lockups need top-level `mark` and
    `wordmark` layers. Mono variants turn every visible colour into one ink, drop shadows/effects and silhouette
    images; `on-light`/`on-dark` fall back to the one-colour logo when the colour logo lacks 3:1 contrast. Read
    `report` and preview before handing it over. No EPS. Existing files are never replaced without `overwrite`.
-14. Brand boards: `vixl_workflow("brand-board", {output, preset?, title?, document?, overwrite?})` draws the
+14. Brand boards: `vixl_apply(workflow='brand-board', request={output, preset?, title?, document?, overwrite?})` draws the
    workspace `brand.json` (or a preset) as a guidelines document (.pdf, .pptx, .html or .vixl): cover, colour roles with
    contrast pairs, the text-stage ladder, logos with clear space and do/don't rules. `vixl brand validate` checks the
    brand first.
-15. Proof pages: `vixl_workflow("proof", {items: [path | {path, label?, before?, note?}], output: "proof.html",
+15. Proof pages: `vixl_apply(workflow='proof', request={items: [path | {path, label?, before?, note?}], output: "proof.html",
    decisions?, check?, title?})` writes one self-contained HTML page (no network; strict CSP). `.vixl` items show their
    `vixl_check` findings; `before` (another file, or a revision such as `previous`) adds a diff; `decisions: true` adds
    approve/reject and a button that downloads `<page>-decisions.json`, which the reviewer sends back. `vixl diff A B
    --out d.png` gives the same pixel diff on the command line.
-   Many documents at once: `vixl_workflow("check-all", {documents?: [globs], group?, profile?, fail_on?, waivers?,
+   Many documents at once: `vixl_apply(workflow='check-all', request={documents?: [globs], group?, profile?, fail_on?, waivers?,
    changed_since?, since_last?, outputs?: {json|markdown|junit|sarif|github|proof: path}})` (CLI `vixl check --all GLOB`
    or `--group NAME`, `--profile final`) checks them in parallel (findings plus attached suites, or the profile's
    checks and suites; group consistency on a group; each document's waivers apply) into one report: `status` per
@@ -105,14 +105,14 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    error) and `passed`. Every run is
    recorded in `.vixl-checks/history/`; `since_last` lists newly failing (with the cause: document or Vixl version),
    newly passing and still failing documents.
-16. App animation packages: `vixl_workflow("app-animation-package", {states, default_state, output, themes?, transitions?,
+16. App animation packages: `vixl_apply(workflow='app-animation-package', request={states, default_state, output, themes?, transitions?,
    format?})`. `states` maps names to `{source: "x.vixl", loop?, interruptible?, on_complete?, poster?, variables?, themes?}`;
    `themes` map names to variable overrides (default light and dark; bind colours in the sources to `${variables}`);
    `transitions` are `{from, event, to}`; `format` is `webp` (default), `gif` or `apng`; `output` must be a new directory.
    The package holds each editable master, an animation per state and theme, reduced-motion PNGs, a versioned
    `manifest.json` and a standalone `index.html` consumer. Sources must be self-contained: freeze external links
    (`link-embed`) and embed fonts first. Missing states and ambiguous transitions fail before anything is written.
-17. Screen capture: `vixl_workflow("screen-capture", {output: "shot.png", bbox?: [left, top, right, bottom], window?: HWND,
+17. Screen capture: `vixl_apply(workflow='screen-capture', request={output: "shot.png", bbox?: [left, top, right, bottom], window?: HWND,
    all_screens?, overwrite?})` grabs the local desktop (a rectangle, or a Windows window handle; not both) to a PNG. It
    needs an interactive desktop and any OS permission; it is not part of rendering.
 18. Source folders for Git review: CLI `vixl unpack design.vixl design-source` and `vixl pack design-source reviewed.vixl`
@@ -131,4 +131,6 @@ Production without suites still checks bounds and flow; clipping returns needs_r
 MCP desktop capture is disabled by default. Start the server with `--allow-screen-capture` or `VIXL_ALLOW_SCREEN_CAPTURE=1` to enable it for that server; this grants connected agents access to the interactive desktop. Capture output paths are relative to the workspace.
 
 Campaign runs with explicit `quality: "final"` default to the final check profile. Set `profile: "draft"`
-explicitly to keep draft blocking rules at full resolution; reports identify the effective profile.
+explicitly to keep draft blocking rules at full resolution; reports identify the effective profile. The `final`
+profile also checks `composition` and fails on `review` findings, so a `final` campaign or `check-all` run fails on
+unresolved composition findings unless they are waived with a reason or repaired (`repair-layout`).

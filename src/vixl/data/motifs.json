@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "about": "Concrete motifs a brief implies and what draws them. Each theme has keywords (whole words or phrases, accents ignored) and elements: the specific thing to draw, the placeholder it replaces, how to build it, and the catalog shapes, organic presets, object kinds and operations that do it. vixl_reference(brief) returns the matching themes as motifs; vixl_reference('motifs') returns them all.",
+  "themes": {
+    "coffee": {
+      "title": "Coffee, café or tea",
+      "keywords": ["coffee", "cafe", "espresso", "latte", "cappuccino", "flat white", "barista", "mocha", "cortado", "tea", "teahouse", "roastery", "bakery", "brunch"],
+      "elements": [
+        {"element": "a cup or mug with steam rising from it",
+         "instead_of": "a plain disc, ring or circle standing in for the drink",
+         "draw": "shape cup (a mug on its saucer) with shape steam above the rim, about 0.6 of the cup's height and narrower than it; group them and declare object cup, naming body and steam as parts",
+         "shapes": ["cup", "steam"], "object": "cup", "operations": ["shape", "group", "object"],
+         "example": [
+           {"type": "shape", "shape": "cup", "name": "cup", "x": 400, "y": 380, "width": 280, "height": 240, "fill": "#14263b"},
+           {"type": "shape", "shape": "steam", "name": "steam", "x": 450, "y": 220, "width": 120, "height": 150, "fill": "#14263b", "opacity": 0.6}
+         ]},
+        {"element": "coffee beans or a pastry beside the cup",
+         "instead_of": "scattered dots",
+         "draw": "a few beans as shape lens (rotated, two tones) or an organic blob for a bun; three to five, not a pattern",
+         "shapes": ["lens"], "operations": ["shape", "organic", "rotate"]},
+        {"element": "a warm window or lamp glow",
+         "instead_of": "a flat yellow rectangle",
+         "draw": "haze behind the lamp or window (form round for a lamp, band for a lit window row)",
+         "operations": ["haze"]}
+      ]
+    },
+    "coast": {
+      "title": "Sea, coast, harbor or lighthouse",
+      "keywords": ["sea", "ocean", "coast", "coastal", "seaside", "harbor", "harbour", "port", "quay", "pier", "beach", "lighthouse", "waves", "tide", "marina", "boat", "sailing", "nautical", "water", "waterline"],
+      "elements": [
+        {"element": "filled layered water: bands of sea in three or four tones, lighter at the horizon, darker in front",
+         "instead_of": "thin stroked wave lines, which read as unfinished next to filled shapes",
+         "draw": "organic preset water across the lower part of the canvas (width = canvas width; params.tones in the brand's blues back to front, or params.color); it fills its box edge to edge",
+         "organic_presets": ["water"], "object": "water", "operations": ["organic"],
+         "example": [
+           {"type": "organic", "preset": "water", "name": "sea", "x": 0, "y": 700, "width": 1080, "height": 380,
+            "params": {"tones": ["#a8d5c8", "#3f7f95", "#14263b"], "bands": 3}}
+         ]},
+        {"element": "a lighthouse standing in the sea, its base hidden behind the front band of water",
+         "instead_of": "a tower floating on a bar or platform in mid-air",
+         "draw": "shape lighthouse placed so its bottom sits inside the water; order it between the back and front water bands (reorder below the front band) so the sea overlaps its base",
+         "shapes": ["lighthouse"], "object": "tower", "operations": ["shape", "reorder", "object"]},
+        {"element": "a beam that fades into the distance from the lantern room",
+         "instead_of": "a hard-edged wedge or visible translucent bands",
+         "draw": "a pen wedge from the lantern with a gradient-overlay layer style running from the light colour to transparent, plus haze (form round) on the lantern itself",
+         "operations": ["pen", "layer-style", "haze"]},
+        {"element": "lights reflected in the water",
+         "instead_of": "rows of short dashes",
+         "draw": "reflection with horizon at the waterline once the scene above it is drawn; re-run it with target after editing the scene",
+         "operations": ["reflection"]}
+      ]
+    },
+    "lake": {
+      "title": "Lake, river or still water",
+      "keywords": ["lake", "river", "pond", "lagoon", "fjord", "canal", "waterfront", "lakeside", "riverside"],
+      "elements": [
+        {"element": "still filled water with a mirrored shoreline",
+         "instead_of": "an empty flat band or a few wave lines",
+         "draw": "organic preset water with low amplitude (params.amplitude 0.02, crest false), then reflection of the shoreline, trees or buildings with ripple 0.15 and fade 0.5",
+         "organic_presets": ["water"], "object": "water", "operations": ["organic", "reflection"]},
+        {"element": "trees or reeds on the shore",
+         "instead_of": "green triangles",
+         "draw": "organic presets pine, tree or grass, smaller and lighter toward the far shore",
+         "organic_presets": ["pine", "tree", "grass"], "operations": ["organic"]}
+      ]
+    },
+    "market": {
+      "title": "Winter, night or holiday market and festivals",
+      "keywords": ["market", "night market", "winter market", "christmas market", "holiday market", "festival", "lantern", "lanterns", "fairy lights", "string lights", "bazaar", "food stalls", "carnival"],
+      "elements": [
+        {"element": "strings of lights or paper lanterns sagging across the top, each with a glow",
+         "instead_of": "evenly spaced dots or circles on a straight line",
+         "draw": "string-lights from one edge to the other with a sag (bulb lantern for a lantern festival, globe for fairy lights; two strings at different depths, the back one smaller)",
+         "shapes": ["lantern"], "operations": ["string-lights"],
+         "example": [
+           {"type": "string-lights", "from": [-20, 120], "to": [1100, 150], "sag": 110, "count": 9, "bulb": "lantern", "size": 52,
+            "colors": ["#f4b942", "#e8743b", "#d9534f", "#f7d488"]}
+         ]},
+        {"element": "market stalls with striped or scalloped awnings and a warm glow under them",
+         "instead_of": "plain rectangles",
+         "draw": "a rectangle stall with a scalloped-border or banner awning, haze (form band) under the awning",
+         "shapes": ["rectangle", "scalloped-border", "banner"], "object": "building", "operations": ["shape", "haze"]},
+        {"element": "snowfall or a starry sky that keeps clear of the copy",
+         "instead_of": "random dots over the text",
+         "draw": "star-field (white, sparkles 0 for snow) over the sky region; it keeps clear of every text layer by default",
+         "operations": ["star-field"]},
+        {"element": "lights reflected on wet ground or water",
+         "instead_of": "nothing below the horizon",
+         "draw": "reflection under the stalls or quay, or bokeh for out-of-focus lights in the foreground",
+         "operations": ["reflection", "bokeh"]}
+      ]
+    },
+    "night-city": {
+      "title": "Night city or skyline",
+      "keywords": ["night city", "city", "skyline", "downtown", "urban", "rooftop", "neon", "nightlife", "metropolis", "city lights"],
+      "elements": [
+        {"element": "a skyline of varied buildings with irregular lit windows",
+         "instead_of": "a row of equal boxes (a placeholder skyline)",
+         "draw": "buildings of different widths and heights (rectangle, plus a few house or tower roofs), darker in front; windows as small rectangles repeated with repeat and some removed or dimmed so the pattern is irregular",
+         "shapes": ["rectangle", "house", "lighthouse"], "object": "building", "operations": ["shape", "repeat", "opacity"]},
+        {"element": "a sky with stars or a glow over the city",
+         "instead_of": "a flat dark fill",
+         "draw": "a vertical gradient sky, star-field in the upper part (it avoids the copy), and haze (form band) along the skyline for city glow",
+         "operations": ["gradient", "star-field", "haze"]},
+        {"element": "lights reflected in a river or on wet streets, and out-of-focus lights",
+         "instead_of": "dashes under each window",
+         "draw": "reflection with the horizon at the waterline or street edge; bokeh in a foreground corner",
+         "operations": ["reflection", "bokeh"]}
+      ]
+    },
+    "night-sky": {
+      "title": "Night sky, moon and stars",
+      "keywords": ["night sky", "stars", "starry", "moon", "moonlight", "galaxy", "constellation", "midnight", "astronomy", "stargazing"],
+      "elements": [
+        {"element": "a moon with a soft halo",
+         "instead_of": "a flat disc on its own",
+         "draw": "shape moon or ellipse, with haze (form round) behind it",
+         "shapes": ["moon", "ellipse"], "operations": ["shape", "haze"]},
+        {"element": "stars of varied size with a few sparkles, thinning toward the horizon",
+         "instead_of": "evenly spread identical dots, or stars on top of the text",
+         "draw": "star-field over the sky region (fade 0.5 thins it toward the horizon; it keeps clear of every text layer)",
+         "shapes": ["sparkle"], "operations": ["star-field"]}
+      ]
+    },
+    "music": {
+      "title": "Concert, open mic or club night",
+      "keywords": ["concert", "open mic", "gig", "live music", "band", "jazz", "club night", "karaoke", "dj", "stage"],
+      "elements": [
+        {"element": "a stage light or spotlight glow falling on the subject",
+         "instead_of": "decorative wave lines filling empty space",
+         "draw": "haze (form round) above the subject, string-lights across the top for a café or bar venue, bokeh for a crowd of lights",
+         "operations": ["haze", "string-lights", "bokeh"]},
+        {"element": "an instrument or microphone drawn as an object with its parts",
+         "instead_of": "a single silhouette with clipped or mismatched parts",
+         "draw": "build it from parts (capsule and rounded-rectangle for a microphone; the guitar, piano or drum kinds list their parts) and declare it as an object",
+         "shapes": ["capsule", "rounded-rectangle"], "object": "guitar", "operations": ["shape", "group", "object"]}
+      ]
+    }
+  }
+}

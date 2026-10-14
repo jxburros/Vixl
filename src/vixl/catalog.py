@@ -48,6 +48,8 @@ CHECK_INFO = {
     "diagram": ("Diagram nodes and edges: overlaps, crossings, labels and routing.", ("error", "warning")),
     "flow": ("Text flows: overset text, widows, orphans and broken frame chains.", ("error", "warning")),
     "codes": ("QR codes and barcodes: quiet zone, size, contrast and decodability.", ("error", "warning")),
+    "composition": ("Craft review: dead bands, margin drift, uneven rhythm, crowding under a rule or heading and "
+                    "clumped scatters, each with a code, region, measured values and threshold.", ("warning",)),
     "print": ("Print readiness: dpi, image resolution, ink limit, small type and the live area.",
               ("error", "warning")),
     "color_vision": ("Text and chart series that become hard to tell apart under color-vision deficiencies.",
@@ -113,7 +115,7 @@ def _palettes():
     for name, colors in PALETTES.items():
         modes = {}
         for mode in house_style.palette_modes(name):
-            roles = assign_roles({"palette": name, "mode": mode, "_house_style_version": house_style.VERSION},
+            roles = assign_roles({"palette": name, "mode": mode},
                                  random.Random(0))
             roles = {key: value for key, value in roles.items() if not key.startswith("_")}
             modes[mode] = {"roles": roles, "contrast": {
@@ -128,8 +130,7 @@ def _palettes():
                       "mood": list(meta.get(name, {}).get("mood", [])), "modes": modes})
     from .palette_roles import ROLES
 
-    return {"roles": list(ROLES), "house_style_version": house_style.VERSION,
-            "contrast_targets": house_style.craft("contrast"), "items": items}
+    return {"roles": list(ROLES), "contrast_targets": house_style.craft("contrast"), "items": items}
 
 
 def _typefaces():

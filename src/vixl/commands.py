@@ -147,6 +147,10 @@ def compile_command(tokens):
     tabled = compile_tables(cmd, args)
     if tabled is not None:
         return tabled
+    from .key_values import compile_command as compile_key_values
+    listed = compile_key_values(cmd, args)
+    if listed is not None:
+        return listed
     from .charts import compile_command as compile_charts
     charted = compile_charts(cmd, args)
     if charted is not None:
@@ -248,6 +252,8 @@ def compile_command(tokens):
             p.add_argument("--within", help="centre the text in this shape's content box (instead of --x/--y)")
             p.add_argument("--hide-if-empty", action=argparse.BooleanOptionalAction, default=None,
                            help="do not draw the text while it is empty after ${variable} substitution")
+            p.add_argument("--tabs", type=json.loads,
+                           help='JSON tab stops, e.g. [{"at": "100%%", "align": "right", "leader": "."}]')
         elif cmd == "gradient":
             p.add_argument("--start", default="black")
             p.add_argument("--end", default="white")
@@ -274,6 +280,8 @@ def compile_command(tokens):
                        help="draw the text in this case without changing it")
         p.add_argument("--hide-if-empty", action=argparse.BooleanOptionalAction, default=None,
                        help="do not draw the text while it is empty after ${variable} substitution")
+        p.add_argument("--tabs", type=json.loads,
+                       help='JSON tab stops ([] removes them), e.g. [{"at": "100%%", "align": "right", "leader": "."}]')
     elif cmd in (
         "remove",
         "hide",

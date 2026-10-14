@@ -281,8 +281,8 @@ def visible(value, project):
 def layer_outline(layer, project):
     """A shape layer's outline as flattened subpaths in the layer's own pixel space.
 
-    Primitive shapes are drawn the way the renderer draws them, including the inset that keeps a
-    stroke inside the box.
+    A stroked closed shape gives the line its stroke's centre runs along, half a stroke inside the
+    outline (the stroke sits inside, geometry.stroke_inset), so a path stroked on it looks the same.
     """
     path, scale, offset = layer_path(layer, project)
     return flatten(path, scale, offset)
@@ -298,17 +298,16 @@ def layer_path(layer, project):
     shape = layer.get("shape", "rectangle")
     width = layer.get("stroke_width", 1)
     pad = width / 2 if visible(layer.get("stroke", "transparent"), project) and width > 0 else 0
-    pad = min(pad, (min(w, h) - 1) / 4) if min(w, h) > 1 else 0
+    pad = min(pad, (min(w, h) - 1) / 2) if min(w, h) > 1 else 0
     unit = ((1.0, 1.0), (0.0, 0.0))
     if shape in ("rectangle", "rounded-rectangle", "capsule", "ellipse"):
-        i = 2 * pad
-        x0, y0, x1, y1 = i, i, w - i, h - i
+        x0, y0, x1, y1 = pad, pad, w - pad, h - pad
         if shape == "rectangle":
             return (f"M{x0} {y0} L{x1} {y0} L{x1} {y1} L{x0} {y1} Z", *unit)
         if shape == "ellipse":
             aspect = (y1 - y0) / (x1 - x0)
             return (wedge_path((x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2, 0, 360, aspect=aspect), *unit)
-        r = min(layer.get("radius", min(w, h) / (2 if shape == "capsule" else 5)), (x1 - x0) / 2, (y1 - y0) / 2)
+        r = max(0, min(layer.get("radius", min(w, h) / (2 if shape == "capsule" else 5)), w / 2, h / 2) - pad)
         k = r * 0.5523
         return (f"M{x0 + r} {y0} L{x1 - r} {y0} C{x1 - r + k} {y0} {x1} {y0 + r - k} {x1} {y0 + r} L{x1} {y1 - r} "
                 f"C{x1} {y1 - r + k} {x1 - r + k} {y1} {x1 - r} {y1} L{x0 + r} {y1} C{x0 + r - k} {y1} {x0} {y1 - r + k} "
@@ -318,6 +317,12 @@ def layer_path(layer, project):
     path, view = shape_path(layer)
     if shape in ("path", "arc"):
         return path, (w / view[0], h / view[1]), (0.0, 0.0)
+    if pad:
+        from .vector_strokes import inside_centre_line
+
+        centre = inside_centre_line(layer, pad)
+        if centre:
+            return centre, *unit
     return path, ((w - 2 * pad) / view[0], (h - 2 * pad) / view[1]), (pad, pad)
 
 
@@ -361,7 +366,7 @@ def size_of(w, h):
 def resolve(recipe, w, h):
     """The numbers one layer is perturbed with: preset values scaled to its size and to the
     recipe's ``amount``, then any explicit fields the recipe sets."""
-    preset = STRENGTHS[recipe.get("strength", "natural")]
+    preset = STRENGTHS[recipe.get("strength", IRREGULAR_STRENGTH)]
     amount = recipe.get("amount", 1.0)
     on = set(EFFECTS if recipe.get("only") is None else recipe["only"])
     size = size_of(w, h)
@@ -530,8 +535,7 @@ def execute_irregular(project, op):
     for index, layer in enumerate(layers):
         before = (layer.get("irregular") or {}).get("recipe")
         recipe = {**(before or {}), **{k: deepcopy(op[k]) for k in RECIPE_KEYS if k in op}}
-        # A new recipe records the strength it starts at; one made before that default keeps "natural".
-        recipe.setdefault("strength", "natural" if before else IRREGULAR_STRENGTH)
+        recipe.setdefault("strength", IRREGULAR_STRENGTH)
         restore(project, layer)
         layer["irregular"] = make_irregular(project, layer, recipe, index)
 
@@ -654,7 +658,7 @@ def mask_image(points, layer, size):
 
 
 def tear_numbers(recipe, w, h):
-    preset = TEAR_STRENGTHS[recipe.get("strength", "natural")]
+    preset = TEAR_STRENGTHS[recipe.get("strength", IRREGULAR_STRENGTH)]
     short = min(w, h)
     edges = recipe.get("edges", ["bottom"])
     edges = EDGES if "all" in edges else tuple(e for e in EDGES if e in edges)
@@ -704,7 +708,7 @@ def execute_tear(project, op):
         return
     require("seed" in op, "tear needs a seed: the same seed always gives the same edge", field="seed")
     recipe = {**(previous or {}).get("recipe", {}), **{k: deepcopy(op[k]) for k in TEAR_KEYS if k in op}}
-    recipe.setdefault("strength", "natural" if previous else IRREGULAR_STRENGTH)
+    recipe.setdefault("strength", IRREGULAR_STRENGTH)
     mode = previous["mode"] if previous else recipe.get("as") or ("mask" if layer else "path")
     require(not previous or op.get("as", mode) == mode, f"This tear is a {mode}; remove it before switching",
             field="as")
@@ -806,8 +810,7 @@ def schemas(add):
     seed = {"type": "integer", "minimum": 0,
             "description": "Required. The same seed always gives the same result; a new seed regrows it."}
     strength = {**enum("subtle", "natural", "rough"),
-                "description": "Preset magnitudes, scaled to each layer's size. Default subtle (layers irregular "
-                               "or torn before 0.23 keep natural)."}
+                "description": "Preset magnitudes, scaled to each layer's size. Default subtle."}
     unit = {"type": "number", "minimum": 0, "maximum": 1}
     add("irregular", {
         "targets": {"type": "array", "items": S, "minItems": 1, "maxItems": MAX_LAYERS,

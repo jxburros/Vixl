@@ -83,7 +83,9 @@ def test_repeat_svg_matches_png_geometry():
     svg = p.export(format="SVG")
     assert not ET.fromstring(svg).findall(".//{*}image")
     rendered = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=svg.decode())))
-    assert rendered.getchannel("A").getbbox() == p.render().getchannel("A").getbbox()
+    # Ignore faint resampling ringing: the stroke is inset in both, so the edges compare on solid ink.
+    solid = lambda image: image.getchannel("A").point(lambda a: 255 if a > 32 else 0).getbbox()  # noqa: E731
+    assert solid(rendered) == solid(p.render())
 
 
 def test_repeat_strokes_are_clipped_like_png():
@@ -93,7 +95,9 @@ def test_repeat_strokes_are_clipped_like_png():
              {"type": "repeat", "count": 3, "dx": 25}])
     svg = p.export(format="SVG")
     rendered = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=svg.decode())))
-    assert rendered.getchannel("A").getbbox() == p.render().getchannel("A").getbbox()
+    # Ignore faint resampling ringing: the stroke is inset in both, so the edges compare on solid ink.
+    solid = lambda image: image.getchannel("A").point(lambda a: 255 if a > 32 else 0).getbbox()  # noqa: E731
+    assert solid(rendered) == solid(p.render())
 
 
 def test_hidden_stroke_is_reported_inside_visible_paint_layer():

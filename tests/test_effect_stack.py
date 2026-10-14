@@ -1,8 +1,6 @@
 """The raster effect stack: effects in the layer's own frame (#203), lookup as an effect (#233),
 effect-move (#164), resampling without overshoot (#204) and white balance (#205)."""
 
-import json
-import zipfile
 
 import numpy as np
 import pytest
@@ -200,41 +198,6 @@ def test_lookup_orders_with_other_effects():  # #233 / #164
     assert p.render().getpixel((5, 5))[:3] == (0, 127, 127)  # invert, then darken
     p.apply({"type": "effect-move", "target": "s", "effect": "brightness", "to": "top"})
     assert p.render().getpixel((5, 5))[:3] == (128, 255, 255)  # darken, then invert
-
-
-def test_lookup_saved_as_a_layer_field_loads_as_an_effect(tmp_path):  # #233
-    p = lut_doc()
-    p.apply({"type": "lookup", "target": "s", "name": "invert", "amount": 0.75})
-    expected = p.render()
-    path = tmp_path / "old.vixl"
-    p.save(path)
-    # Rewrite the archive the way 0.20 stored a LUT: a layer field, not an effect.
-    with zipfile.ZipFile(path) as archive:
-        members = {name: archive.read(name) for name in archive.namelist()}
-    metadata = json.loads(members["project.json"])
-
-    def downgrade(state):
-        for layer in state["layers"]:
-            for effect in [e for e in layer.get("effects", []) if e["name"] == "lookup"]:
-                layer["effects"].remove(effect)
-                layer["lookup"] = {"name": effect["lut"], "amount": effect["amount"]}
-        return state
-
-    downgrade(metadata["state"])
-    for ident, node in metadata["nodes"].items():
-        node.pop("delta", None)
-        node["state"] = downgrade(p._state_at(ident))
-    members["project.json"] = json.dumps(metadata).encode()
-    with zipfile.ZipFile(path, "w") as archive:
-        for name, data in members.items():
-            archive.writestr(name, data)
-    loaded = Project.load(path)
-    layer = loaded.layer("s")
-    assert "lookup" not in layer and layer["effects"][-1]["name"] == "lookup"
-    assert loaded.render().tobytes() == expected.tobytes()
-    loaded.apply({"type": "effect-disable", "target": "s", "effect": "lookup"})
-    loaded.undo()
-    assert loaded.render().tobytes() == expected.tobytes()
 
 
 def stacked():

@@ -121,7 +121,7 @@ def test_objects_surface_in_cli_guide_capabilities_and_resources(tmp_path, monke
     from vixl.interfaces import mcp_server
 
     server = mcp_server(workspace=tmp_path)
-    error, text, _ = call(server, "vixl_resource_get", {"kind": "objects", "name": "puppy"})
+    error, text, _ = call(server, "vixl_reference", {"topic": "objects", "name": "puppy"})
     assert not error and json.loads(text)["value"]["kind"] == "dog"
 
 
@@ -296,10 +296,10 @@ def test_portable_object_file_round_trips_through_export_and_object_place(tmp_pa
     p = scene()
     p.save(tmp_path / "scene.vixl")
     server = mcp_server(tmp_path / "scene.vixl", workspace=tmp_path)
-    error, text, _ = call(server, "vixl_export_file", {"path": "guitar.vixl", "isolate": ["player/guitar"]})
+    error, text, _ = call(server, "vixl_export", {"path": "guitar.vixl", "isolate": ["player/guitar"]})
     assert not error, text
     assert json.loads(text)["objects"] == ["guitar"]
-    error, text, _ = call(server, "vixl_export_file", {"path": "bad.vixl"})
+    error, text, _ = call(server, "vixl_export", {"path": "bad.vixl"})
     assert error and "isolate" in text
     target = Project(500, 400, workspace=tmp_path)
     target.apply({"type": "object-place", "name": "axe", "source": "guitar.vixl", "x": 10, "y": 20})

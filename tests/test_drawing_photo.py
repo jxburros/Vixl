@@ -377,7 +377,7 @@ def test_the_default_line_colour_is_documented_and_settable(page, tmp_path):
 
 # The photographed sketch of the tool comparison (T11): desk strips, a corner gap, rays, mixed weights
 
-SKETCH = Path(__file__).resolve().parents[1] / "evals" / "tool-comparison" / "fixtures" / "sketch.jpg"
+SKETCH = Path(__file__).resolve().parent / "fixtures" / "t11-sketch.jpg"
 
 
 def sketch_rays(project):
@@ -392,7 +392,6 @@ def sketch_rays(project):
     return [min(a % 45, 45 - a % 45) for a in angles]
 
 
-@pytest.mark.skipif(not SKETCH.exists(), reason="the tool-comparison fixtures are not in this checkout")
 def test_the_t11_sketch_closes_its_house_corner_and_keeps_its_rays():
     p = Project(2000, 1450, "#ffffff")
     # Cropped to the ink, as clean did by default before it kept the paper's extent: the corner below is in

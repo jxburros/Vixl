@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="100">
+  <defs>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+    <clipPath id="window"><rect x="100" y="20" width="40" height="40"/></clipPath>
+  </defs>
+  <rect id="back" width="160" height="100" fill="#eeeeee"/>
+  <circle id="blurred" cx="40" cy="50" r="24" fill="#e76f51" filter="url(#soft)"/>
+  <circle id="clipped" cx="120" cy="40" r="30" fill="#264653" clip-path="url(#window)"/>
+  <rect id="plain" x="20" y="80" width="120" height="10" fill="#2a9d8f"/>
+</svg>

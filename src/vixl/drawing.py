@@ -786,15 +786,19 @@ def _curves(p, sides, closed):
     return [curved[k] and k not in straight for k in range(n)]
 
 
-def _spline(points, step=2.0):
+def _spline(points, step=2.0, closed=False):
     """Points about ``step`` apart along the Catmull–Rom spline through ``points``: the curve a
     smooth stroke draws (``trace.path_data``), for drawing it with straight segments."""
     p = np.asarray(points, float)
     if len(p) < 3:
         return p
+    n = len(p)
     out = [p[:1]]
-    for i in range(len(p) - 1):
-        p0, p1, p2, p3 = p[max(i - 1, 0)], p[i], p[i + 1], p[min(i + 2, len(p) - 1)]
+    for i in range(n if closed else n - 1):
+        if closed:
+            p0, p1, p2, p3 = p[(i - 1) % n], p[i], p[(i + 1) % n], p[(i + 2) % n]
+        else:
+            p0, p1, p2, p3 = p[max(i - 1, 0)], p[i], p[i + 1], p[min(i + 2, n - 1)]
         c1, c2 = p1 + (p2 - p0) / 6, p2 - (p3 - p1) / 6
         t = np.linspace(0, 1, max(1, math.ceil(np.linalg.norm(p2 - p1) / step)) + 1)[1:]
         out.append(bezier_points((p1, c1, c2, p2), t))
@@ -978,7 +982,7 @@ def schemas(add):
                 "straighten: angles ('drawn' keeps each line's angle, 'axes', '45', 'guides' or degrees), tolerance, "
                 "close_gaps (pixels or 'auto'), circles, polylines. smooth: amount, corners (keep, the default, leaves "
                 "straightened lines and polylines as they are; round smooths them too). restyle: width (pixels or 'uniform'), width_scale. "
-                "fill: gap, min_area, under, edge_closes. stroke: width, smooth, closed.")
+                "fill: gap, min_area, under, edge_closes, edge_reach. stroke: width, smooth, closed.")
     add("drawing", {"action": {"enum": list(ACTIONS)}, "name": S, "target": S, "asset": S, "path": S, "x": {}, "y": {},
                     "width": {}, "height": {}, "settings": {"type": "object", "description": settings},
                     "strokes": {"type": ["array", "string"], "items": S},
@@ -1508,7 +1512,86 @@ def _straighten(project, group, op, action):
         _rebuild(layer, updated[layer["id"]])
 
 
-FILL = {"gap": 6.0, "min_area": 64, "under": True, "edge_closes": False}
+FILL = {"gap": 6.0, "min_area": 64, "under": True, "edge_closes": False, "edge_reach": "auto"}
+EDGE_REACH = 0.15  # auto edge_reach: this share of the drawing's short side
+
+
+def _ray_to_edge(mask, start, direction, reach, skip):
+    """Where a straight line from ``start`` along ``direction`` leaves the drawing, if it does so
+    within ``reach`` pixels without meeting another line (after ``skip`` pixels of its own)."""
+    h, w = mask.shape
+    for t in np.arange(skip, reach + 1, 1.0):
+        x, y = start + direction * t
+        if not (0 <= x < w and 0 <= y < h):
+            return start + direction * t
+        if mask[int(y), int(x)]:
+            return None
+    return None
+
+
+def _end_direction(points, at_start, length):
+    """The outward direction of a line's end, over its last ``length`` pixels."""
+    p = np.asarray(points, float)
+    if not at_start:
+        p = p[::-1]
+    steps = np.linalg.norm(np.diff(p, axis=0), axis=1)
+    far = int(np.searchsorted(np.cumsum(steps), length)) + 1
+    v = p[0] - p[min(far, len(p) - 1)]
+    n = np.linalg.norm(v)
+    return v / n if n else v
+
+
+def edge_extensions(project, group, mask, gap, reach="auto"):
+    """Lines that stop short of the drawing's edge, carried on to it (straight, along their ends) so
+    the edge closes the regions they divide: a ground line drawn to within a few centimetres of the
+    paper's sides still separates sky from ground. Only lines whose connected drawing reaches the
+    edge at two or more ends count (a sun ray pointing at the edge does not cut the sky). Returns a
+    mask of the extensions, which are never drawn."""
+    from PIL import ImageDraw
+
+    h, w = mask.shape
+    reach = EDGE_REACH * min(w, h) if reach == "auto" else finite(reach, "edge_reach", 0, 100000)
+    out = np.zeros(mask.shape, bool)
+    if not reach or not mask.any():
+        return out
+    lines = [(np.asarray(record["points"], float), drawn_points(record), drawn_width(layer))
+             for layer in _children(project, group) if layer["visible"]
+             for record in layer.get("drawing_strokes", []) if not record["closed"] and len(record["points"]) >= 2]
+    if not lines:
+        lines = [(item["points"], item["points"], item["width"]) for item in strokes_from_mask(mask) if not item["closed"]]
+    parts, _ = label(dilate(mask, gap))
+    found = {}
+    for points, shown, width in lines:
+        length = max(12.0, 4 * width)
+        for at_start in (True, False):
+            end = points[0 if at_start else -1]
+            direction = _end_direction(points, at_start, length)
+            if not direction.any():
+                continue
+            # Start past whatever the drawn curve adds beyond the traced end (its cap, a spline's overshoot).
+            offsets = shown - end
+            near = offsets[np.linalg.norm(offsets, axis=1) <= length + 2 * width]
+            ahead = max(0.0, float((near @ direction).max())) if len(near) else 0.0
+            hit = _ray_to_edge(mask, end, direction, reach, ahead + width / 2 + 2)
+            if hit is not None:
+                part = parts[min(h - 1, max(0, int(end[1]))), min(w - 1, max(0, int(end[0])))]
+                found.setdefault(part, []).append((end, hit + direction * width, width))
+    canvas = Image.new("L", (w, h))
+    draw = ImageDraw.Draw(canvas)
+    for ends in found.values():
+        if len(ends) >= 2:
+            for start, stop, width in ends:
+                draw.line([tuple(start), tuple(stop)], fill=255, width=max(1, round(width)))
+    return np.asarray(canvas) > 127
+
+
+def bridges(mask, gap):
+    """Pixels a closing of the lines adds: the bridges over breaks of up to about 2 x ``gap`` and the
+    narrow necks between lines that nearly touch. Fills grow up to them first and split them halfway,
+    so a bridged break ends a fill on the straight line between the line ends instead of a bulge."""
+    if gap <= 0:
+        return np.zeros(mask.shape, bool)
+    return erode(dilate(mask, gap), gap) & ~mask
 
 
 def _fill(project, group, op):
@@ -1520,9 +1603,16 @@ def _fill(project, group, op):
     points = op.get("points")
     require(isinstance(points, list) and 1 <= len(points) <= 64,
             "fill takes points: [[x, y, color], …] (canvas positions inside the regions to colour)", field="points")
-    mask = line_mask(project, group)
+    mask = line_mask(project, group, as_drawn=True)
     gap = int(finite(settings["gap"], "gap", 0, 200))
+    soft = bridges(mask, gap)
+    if settings["edge_closes"] is True:
+        extended = edge_extensions(project, group, mask, gap, settings["edge_reach"])
+        mask, soft = mask | extended, soft | extended
     labels, info = regions(mask, gap, int(settings["min_area"]))
+    lines = mask & ~soft
+    widths = [drawn_width(layer) for layer in _children(project, group) if "drawing_strokes" in layer]
+    width = max(widths) if widths else 2 * float(distance(lines).max() or 1.5)
     content = _to_content(project, group, [p[:2] for p in points], op.get("space", "canvas"))
     count = len([layer for layer in _children(project, group) if layer.get("drawing_role") == "fill"])
     anchor = next((layer for layer in _children(project, group) if layer.get("drawing_role") in ("ink", "lines")
@@ -1540,8 +1630,7 @@ def _fill(project, group, op):
                 f"Point {point[:2]} is outside every closed shape (the lines do not enclose it; raise settings.gap to "
                 "bridge small breaks, or set settings.edge_closes: true to let the drawing's edge close a region such "
                 "as sky or ground)", field="points")
-        strokes = [r["width"] for layer in _children(project, group) for r in layer.get("drawing_strokes", [])]
-        area = grow_region(labels, region, mask, gap, (float(np.median(strokes)) / 2 + 1) if strokes else 3)
+        area = grow_region(labels, region, lines, gap, width, soft)
         loops = mask_contours(area, smooth=0.8, tolerance=0.8)
         count += 1
         cw, ch = group["content_width"], group["content_height"]
@@ -1552,22 +1641,11 @@ def _fill(project, group, op):
         _insert(project, layer, before=anchor if settings["under"] else group)
 
 
-def grow_region(labels, region, lines, gap, width=3):
-    """Grow region ``region`` of ``labels`` (found with gaps bridged) back out to its lines.
-    Every region grows through the non-line pixels at once, so neighbours meet halfway across
-    a bridged gap while each still fills its own corners; the edge is then tucked under the
-    lines (never past them)."""
-    ys, xs = np.nonzero(labels == region)
-    if not len(xs):
-        return labels == region
-    margin = 3 * gap + 12
-    y0, y1 = max(0, ys.min() - margin), min(labels.shape[0], ys.max() + margin + 1)
-    x0, x1 = max(0, xs.min() - margin), min(labels.shape[1], xs.max() + margin + 1)
-    grid = labels[y0:y1, x0:x1].copy()
-    free = ~lines[y0:y1, x0:x1]
-    grid[~free] = 0
-    for _ in range(margin):
-        empty = (grid == 0) & free
+def _compete(grid, passable, steps):
+    """Grow every labelled region of ``grid`` one pixel a step through ``passable`` pixels, all at
+    once, so neighbours meet halfway."""
+    for _ in range(steps):
+        empty = (grid == 0) & passable
         if not empty.any():
             break
         before = int(empty.sum())
@@ -1582,15 +1660,55 @@ def grow_region(labels, region, lines, gap, width=3):
             empty &= ~take
         if int(empty.sum()) == before:
             break
+
+
+def grow_region(labels, region, lines, gap, width=3, soft=None):
+    """Grow region ``region`` of ``labels`` (found with gaps bridged) back out to its lines.
+    Every region grows at once: through the open pixels, then through ``soft`` pixels (bridged
+    breaks and edge extensions), so neighbours meet halfway across a bridge, then into the lines to
+    their centre and a pixel past it. The fill sits under the near half of its line however the line
+    is anti-aliased, and never shows on the line's far side."""
+    ys, xs = np.nonzero(labels == region)
+    if not len(xs):
+        return labels == region
+    margin = 3 * gap + 12 + int(math.ceil(width))
+    y0, y1 = max(0, ys.min() - margin), min(labels.shape[0], ys.max() + margin + 1)
+    x0, x1 = max(0, xs.min() - margin), min(labels.shape[1], xs.max() + margin + 1)
+    grid = labels[y0:y1, x0:x1].copy()
+    line = lines[y0:y1, x0:x1]
+    bridge = soft[y0:y1, x0:x1] if soft is not None else np.zeros(line.shape, bool)
+    grid[line | bridge] = 0
+    _compete(grid, ~line & ~bridge, margin)
+    _compete(grid, ~line, margin)
+    _compete(grid, np.ones(line.shape, bool), int(math.ceil(width / 2)) + 1)
     grown = grid == region
-    grown |= dilate(grown, max(1, int(round(width)))) & ~free
+    grown |= dilate(grown, 1) & (line | bridge)
     result = np.zeros(labels.shape, bool)
     result[y0:y1, x0:x1] = grown
     return result
 
 
-def line_mask(project, group):
-    """The drawing's current lines in content coordinates (strokes, outline paths and visible ink)."""
+def line_mask_for_regions(project, group, gap=6):
+    """The lines a fill sees, with the edge extensions ``edge_closes`` adds: what the drawing report
+    lists regions from."""
+    mask = line_mask(project, group, as_drawn=True)
+    return mask | edge_extensions(project, group, mask, gap)
+
+
+def drawn_points(record):
+    """A stroke record's centre line as it renders: the spline through its points when it is smooth."""
+    points = np.asarray(record["points"], float)
+    if record.get("smooth", True) and len(points) >= 3:
+        points = _spline(points, closed=record["closed"])
+    if record["closed"] and len(points) > 2:
+        points = np.vstack([points, points[:1]])
+    return points
+
+
+def line_mask(project, group, as_drawn=False):
+    """The drawing's current lines in content coordinates (strokes, outline paths and visible ink).
+    ``as_drawn`` follows each stroke as it renders (its spline, at its layer's stroke width), which
+    is what fills have to meet; otherwise each record's traced polyline and width."""
     from PIL import ImageDraw
 
     cw, ch = group["content_width"], group["content_height"]
@@ -1601,10 +1719,14 @@ def line_mask(project, group):
             continue
         if "drawing_strokes" in layer:
             for record in layer["drawing_strokes"]:
-                pts = [tuple(p) for p in np.asarray(record["points"], float)]
-                if record["closed"] and len(pts) > 2:
-                    pts.append(pts[0])
-                width = max(1, round(record["width"]))
+                if as_drawn:
+                    pts = [tuple(p) for p in drawn_points(record)]
+                    width = max(1, round(drawn_width(layer)))
+                else:
+                    pts = [tuple(p) for p in np.asarray(record["points"], float)]
+                    if record["closed"] and len(pts) > 2:
+                        pts.append(pts[0])
+                    width = max(1, round(record["width"]))
                 if len(pts) >= 2:
                     draw.line(pts, fill=255, width=width, joint="curve")
                 for px, py in (pts[0], pts[-1]):
@@ -1624,6 +1746,12 @@ def line_mask(project, group):
             alpha = image.convert("RGBA").getchannel("A").resize((cw, ch))
             canvas.paste(255, mask=alpha.point(lambda a: 255 if a > 96 else 0))
     return np.asarray(canvas) > 127
+
+
+def drawn_width(layer):
+    """The width a stroke layer draws at, in the drawing's content pixels."""
+    view = layer.get("path_view") or [layer["width"], layer["height"]]
+    return float(layer.get("stroke_width") or 1) * layer["width"] / max(view[0], 1e-6)
 
 
 STROKE = {"width": None, "smooth": True, "closed": False}
@@ -1707,7 +1835,7 @@ def report(project, target):
     added = current & ~dilate(reference, tolerance)
     preserved = float(covered.sum() / max(1, reference.sum()))
     new = float(added.sum() / max(1, current.sum()))
-    _, info = regions(current, 6)
+    _, info = regions(line_mask_for_regions(project, group), 6)
     matrix = _content_matrix(project, group)
 
     def canvas(point):

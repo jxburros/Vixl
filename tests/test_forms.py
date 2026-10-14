@@ -446,23 +446,23 @@ def test_form_fill_combine_true_over_mcp(tmp_path):
     (tmp_path / "rows.csv").write_text("full_name,email\nAda,a@b.c\n")
     server = build_server(Session(workspace=tmp_path))
 
-    async def call(name, **arguments):
-        result = await server.call_tool(name, arguments)
+    async def call(tool, **arguments):
+        result = await server.call_tool(tool, arguments)
         content = result[0] if isinstance(result, tuple) else result
         return json.loads(content[0].text)
 
-    report = asyncio.run(call("vixl_workflow", action="form-fill", document="form.vixl",
+    report = asyncio.run(call("vixl_apply", workflow="form-fill", document="form.vixl",
                               request={"data": "rows.csv", "combine": True}))
     assert report["output"] == "rows-filled.pdf"
     with pytest.raises(Exception) as caught:
-        asyncio.run(call("vixl_workflow", action="form-fill", document="form.vixl",
+        asyncio.run(call("vixl_apply", workflow="form-fill", document="form.vixl",
                          request={"data": "rows.csv", "combine": 3}))
-    error = json.loads(str(caught.value).split("Error executing tool vixl_workflow: ")[-1])
+    error = json.loads(str(caught.value).split("Error executing tool vixl_apply: ")[-1])
     assert error["error"] == "invalid_request" and error["field"] == "combine" and error["suggestions"]
-    schema = asyncio.run(call("vixl_workflow_schema"))["actions"]["form-fill"]["properties"]
+    schema = asyncio.run(call("vixl_reference", topic="workflows"))["actions"]["form-fill"]["properties"]
     assert schema["combine"]["type"] == ["string", "boolean"] and schema["data"]["type"] == "string"
-    assert set(schema) == set(asyncio.run(call("vixl_workflow_schema"))["actions"]["form-fill"]["fields"])
-    field = asyncio.run(call("vixl_operation_schema", types=["field"]))["field"]["properties"]
+    assert set(schema) == set(asyncio.run(call("vixl_reference", topic="workflows"))["actions"]["form-fill"]["fields"])
+    field = asyncio.run(call("vixl_reference", topic="operations", name=["field"]))["field"]["properties"]
     for name in ("kind", "key", "label", "required", "max_length", "options", "format", "default", "size"):
         assert field[name].get("type") or field[name].get("anyOf"), name
         assert field[name]["description"], name

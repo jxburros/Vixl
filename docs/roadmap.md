@@ -2,7 +2,8 @@
 
 [Documentation home](README.md) · [House style decisions](house-style.md) · [Releases](releases.md) · [Changelog](../CHANGELOG.md)
 
-This plan orders the open issues after 0.24.0. Each issue was rated for **complexity** (C1 a few hours, C2 about a
+This plan ordered the open issues after 0.24.0. Releases 0.25.0 to 0.27.0 have shipped since: the "What … settled"
+sections record what each one settled, and the open work is under Craft and Later. Each issue was rated for **complexity** (C1 a few hours, C2 about a
 day, C3 several days, C4 one to two weeks, C5 several weeks or open-ended) and **payoff** (P1 cosmetic or rare, P2 a
 narrow workflow, P3 a common workflow, P4 changes results for most agents, P5 first impression or correctness of
 output). Issues that share a cause or a code path are grouped so they ship together, and each group names one
@@ -23,7 +24,7 @@ onto main, and closed the feature requests that 0.22.0 had already shipped.
 
 0.23.0 shipped the whole "defaults and speed" plan:
 
-- **House-style foundation:** the default-change policy and `house_style_version` stamp (#430), the sparse-brief
+- **House-style foundation:** the default-change policy (#430), the sparse-brief
   diversity and quality eval (#431), house style as data in `src/vixl/data/house-style.json` (#401), the purpose tier
   (#403) and safe, bold and avant-garde tiers gated by variety level (#405).
 - **Rolled defaults made visible:** #389, #390, #391, #392, #393, #394, #397, #398, #399 and #285.
@@ -54,18 +55,53 @@ onto main, and closed the feature requests that 0.22.0 had already shipped.
 - **Review semantics:** `check.passed` is false for any finding that needs a fix, grouped under `by_action` (#464).
 - **Emoji:** the offline VIXL Line library, custom packs and `emoji-*` workflows; see [Emojis](emojis.md).
 
+## What 0.25.0 settled
+
+0.25.0 shipped the checks, objects and content plan below:
+
+- **Checks and repair:** workspace-wide checks (`check --all`, run history, `--since-last`), outcome states, located
+  findings with suggested repairs, `repair-layout`, `protected-edit`, waivers and the `draft`/`review`/`final` profiles
+  (#518, #520, #524, #525, #562, #563, #566).
+- **Objects and accessibility:** declared objects with a kind taxonomy, isolated review and export, an editable object
+  library, object identity and alt text in the exports (#374, #375, #377, #381, #384, #386, #175).
+- **Content workflows:** `table` (#169), `deck-from-markdown` (#170), `mockup` (#172), `die-cut` and logo tracing
+  (#443, #444), and proportional `adapt-layout` with safe zones (#210).
+- **Brand and type:** text stages (#406), brand presets and compliance (#436, #555), `brand-board` (#581) and the
+  bundled Noto fallback faces (#419).
+- **Host integration:** `vixl catalog export` (#536) and per-call limits (#542).
+
+## What 0.26.0 settled
+
+0.26.0 added eighteen editable promo video templates, `path_view` for native path data (#610), archive load budgets
+(#635), `--out` and `-o` on every output command with a compact command index (#639), a generated interface
+capability matrix (#640) and native opaque blending (#585). Showcases and media moved to VixlExamples.
+
+## What 0.27.0 settled
+
+0.27.0 was a breaking release:
+
+- **One agent surface:** the MCP server went from 51 tools to seven, with a size ratchet ([MCP tool surface](mcp-toolsets.md)).
+- **An open format:** the published `.vixl` format and JSON Schema, SVG that re-imports as the same document (#334),
+  editable SVG, PDF and Figma import (Figma export is #662), and a conversion kit ([Converting](converting.md))
+  in place of the compatibility code for older releases.
+- **Rendering parity:** strokes inside and flush with closed shapes, in-place drawing of text and vector shapes, dithered
+  gradients ([Render parity](render-parity.md)); terminal summaries in the CLI.
+- **The craft plan, built:** see Craft below.
+
 ## Rules for every release below
 
-- **Default changes follow #430**: they apply to new documents only (new `design_defaults` carry
-  `house_style_version`), and each changelog line gives the override that restores the old result.
-- **Default changes are gated by #431**: `python -m evals.house_style --compare evals/house-style-baseline.json` runs
-  before and after, and a change may not lower quality or diversity at any variety level.
+- **Pre-release: breaking changes are allowed; note them in the changelog.** Default changes must still pass the
+  house-style quality/diversity eval (#431): `python -m evals.house_style --compare evals/house-style-baseline.json`
+  runs before and after, and a change may not lower quality or diversity at any variety level.
 - **Speed claims are tested**: a changelog figure is a `pytest -m perf` time budget (`tests/test_perf.py`), not an
   assertion.
 - **Docs are executable**: `tests/test_docs_executable.py` runs the `vixl …` commands and JSON operation blocks in
   `docs/` and `skills/`; new blocks are picked up automatically.
 
 ## 0.25.0: objects, data and documents
+
+This section is the original plan, kept for its ratings. Most of it shipped in 0.25.0 (see above), and tab stops
+shipped in 0.27.0; the changelog records which issues landed.
 
 ### Objects (#257)
 
@@ -95,7 +131,8 @@ P4 and P3.
 ### Data model (#213 → #169 → #214)
 
 Tab stops and decimal alignment first (#213, C3 P3): the table layer needs them. Then the table layer (#169, C4 P5),
-then the remainder of #214 (C4 P3). Add one named dataset (CSV or inline) that tables, charts and text bind to,
+then the remainder of #214 (C4 P3). The table layer and #213 have shipped: text takes left, right, centre and
+decimal tab stops with dot leaders, and table columns take a `leader` (craft plan 4b). Add one named dataset (CSV or inline) that tables, charts and text bind to,
 formatted with the merge-field filters that shipped in 0.22.0; it makes #214 mostly wiring.
 
 ### Markdown builds (#170 + #332)
@@ -120,18 +157,16 @@ Color emoji font support remains subject to the text engine's font format limits
 
 The [craft plan](craft-plan.md) orders the work on the quality of finished pieces that came out of the 2026-10-13
 blind re-judging: composition checks and repair, a finishing pass in the agent loop, typography, components,
-scene effects and tool finish, measured by re-judging the Vixl lane.
+scene effects and tool finish, measured by re-judging the Vixl lane. Every item is built in 0.27.0; none is judged yet,
+which is the open step (`python -m evals.craft_rerun`, [evals/README.md](../evals/README.md#craft-re-run)).
 
 ## Later
 
 | Issue | What | C | P | Note |
 | --- | --- | --- | --- | --- |
-| #210 | `adapt-layout` that needs no hand fixes | 4 | 4 | Reuse #407, #409 and #424; 0.24.0 added explicit `recompose: true` |
 | #171 | Translated variants with an overflow check | 3 | 3 | |
-| #172 | Device and print mockups | 3 | 3 | Procedural, licence-clean templates |
 | #266 | Non-rectangular canvas | 3 | 3 | Irregular image frames shipped in 0.24.0; a page clip shape in every exporter remains |
-| #218 | Drawing pipeline polish | 3 | 2 | Split into its six items first |
-| #334 | Editable round trip of Vixl's own SVG | 4 | 2 | 0.24.0 re-imports simple gradient rectangles and stroked paths |
+| #218 | Drawing pipeline polish | 3 | 2 | Partly shipped: the paper's extent and `edge_closes` in 0.25.0, fills registered to their lines in 0.27.0; split what remains |
 | #177 | Lottie export | 5 | 3 | After motion features settle |
 | #166 | PPTX font embedding | 4 | 3 | Re-scope: warnings and licences shipped; PDF is the fidelity route |
 | #214 | Remainder of a partly shipped issue: bind chart data across charts and into text | 3 | 3 | |

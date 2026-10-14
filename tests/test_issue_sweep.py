@@ -116,7 +116,7 @@ def test_mcp_screen_capture_requires_server_opt_in(tmp_path, monkeypatch, enable
     # Permission is fixed when the server starts, not by a later environment change.
     monkeypatch.setenv('VIXL_ALLOW_SCREEN_CAPTURE', '0' if enabled else '1')
     async def capture():
-        return await server.call_tool('vixl_workflow', {'action': 'screen-capture', 'request': {'output': 'shot.png'}})
+        return await server.call_tool('vixl_apply', {'workflow': 'screen-capture', 'request': {'output': 'shot.png'}})
     if not enabled:
         with pytest.raises(ToolError, match='allow-screen-capture'):
             asyncio.run(capture())

@@ -33,7 +33,7 @@ FIELD_TYPES = {
              "instagram-portrait …)."},
     "palette": {"type": "string", "description": "Layout palette for every slide (default: rolled once from seed)."},
     "seed": {"type": "integer", "default": 1, "description": "Layout seed shared by every slide."},
-    "fonts": {"type": "string", "description": "Font pairing to install and use (vixl_font_pair names, or random); "
+    "fonts": {"type": "string", "description": "Font pairing to install and use (font-pair names, or random); "
               "default: the workspace's brand.json fonts."},
     "export": {"type": "array", "items": {"type": "string", "enum": ["pptx", "pdf", "html", "png"]},
                "description": "Formats to export next to the deck (deck.pptx, deck.pdf, deck.html …)."},

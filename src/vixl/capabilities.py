@@ -4,7 +4,7 @@ import re
 
 from .model import Limits
 
-# topic -> (words that select it and its operations, guidance names readable with vixl_guide(brief=NAME))
+# topic -> (words that select it and its operations, guidance names readable with vixl_reference(NAME))
 TOPICS = {
     "text": ("text rich font layout stack container caption bubble", ["typography", "layout"]),
     "drawing": (
@@ -18,14 +18,17 @@ TOPICS = {
         ["looping-motion", "scatter", "natural-motion", "character-rigging", "motion", "cut-paper", "audio-composition"],
     ),
     "shapes": ("shape shapes heart bubble badge star content", []),
+    "atmosphere": ("atmosphere reflection haze star stars string lights bokeh water motif motifs",
+                   ["motifs", "natural-color-light"]),
     "film": ("film video audio caption", ["film-review", "audio-composition"]),
     "layout": (
         "layout container template stack fit align distribute spatial grid snap guide comic",
-        ["layout", "overall"],
+        ["layout", "overall", "finishing"],
     ),
     "color": ("palette color swatch look style lighting", ["color", "natural-color-light", "accessibility"]),
     "export": ("export film merge form", ["print"]),
-    "testing": ("test tests testing suite suites check assert verify qa baseline capture", ["testing", "accessibility"]),
+    "testing": ("test tests testing suite suites check assert verify qa baseline capture critique polish finishing",
+                ["testing", "finishing", "accessibility"]),
     "objects": ("object objects part parts kind subject isolate taxonomy mascot", ["multi-part-objects",
                                                                                   "anatomy-proportions"]),
     "accessibility": ("accessibility alt language reading", ["accessibility"]),
@@ -63,7 +66,7 @@ def lookup(topic=None, *, fields=False):
             "topics": {name: words for name, (words, _) in TOPICS.items()},
             "gotchas": GOTCHAS,
             "limits": {"operations_per_batch": Limits().max_operations},
-            "next": "vixl_capabilities(topic, fields=true), then vixl_operation_schema(types=[...]) for exact constraints.",
+            "next": "vixl_reference('capabilities', name=TOPIC, fields=true), then vixl_reference('operations', name=[...]) for exact constraints.",
         }
     words = re.findall(r"[a-z]+", topic.lower())
     requested = set(words)
@@ -106,11 +109,11 @@ def lookup(topic=None, *, fields=False):
             "Declare a group as one object: {type: object, target: GROUP, kind: dog}; name parts with {type: object, "
             "action: part, target: LAYER, part: leg, side: left}. Paths (dog/head, person/guitar/neck) work wherever a "
             "layer name does; edit-layers selects with where.object, where.object_kind and where.part. "
-            "vixl_document_inspect(object=NAME|'*') returns the object tree with missing required parts; "
-            "vixl_render_preview(isolate=[NAME] or ['object:KIND'], views=['parts'], exploded=true) shows each part; "
-            "vixl_export_file(isolate=[NAME]) exports it alone (.vixl: a portable object for object-place source=). "
-            "object-save/object-place reuse an editable object. vixl_resource_get(kind='objects', name=KIND) reads a "
-            "kind; vixl_resource_add(kind='objects') adds one.")
+            "vixl_document(action='inspect', object=NAME|'*') returns the object tree with missing required parts; "
+            "vixl_render(isolate=[NAME] or ['object:KIND'], views=['parts'], exploded=true) shows each part; "
+            "vixl_export(isolate=[NAME]) exports it alone (.vixl: a portable object for object-place source=). "
+            "object-save/object-place reuse an editable object. vixl_reference('objects', name=KIND) reads a "
+            "kind; vixl_apply(workflow='resource-save', request={kind: 'objects', name, value}) adds one.")
         extra["taxonomy"] = taxonomy()
     if "accessibility" in chosen:
         extra["accessibility"] = (
@@ -125,8 +128,8 @@ def lookup(topic=None, *, fields=False):
         extra["suite_rules"] = list(RULE_KINDS)
         extra["starter_suites"] = {name: suite["description"] for name, suite in SUITES.items()}
         extra["testing"] = ("Attach suites with suite-set (or workflow suite-use for a starter), run them with "
-                            "vixl_operations_apply(suites=true) or vixl_workflow('check', {suite}), and before every "
-                            "preview. vixl_workflow_schema().definitions.suite types every rule field.")
+                            "vixl_apply(suites=true) or vixl_apply(workflow='check', request={suite}), and before every "
+                            "preview. vixl_reference('workflows').definitions.suite types every rule field.")
     return {
         "topic": topic,
         "topics": chosen,
@@ -134,8 +137,8 @@ def lookup(topic=None, *, fields=False):
         "operations": operations,
         "workflows": {name: workflows[name]["summary"] for name in sorted(filter(relevant, workflows), key=score)},
         "guidance": list(dict.fromkeys(name for topic in chosen for name in TOPICS[topic][1])),
-        "read_guidance": "vixl_guide(brief=NAME) returns a guidance text",
+        "read_guidance": "vixl_reference(NAME) returns a guidance text",
         "gotchas": GOTCHAS,
         "limits": {"operations_per_batch": Limits().max_operations},
-        "next": "vixl_operation_schema(types=[...]) returns exact constraints and examples.",
+        "next": "vixl_reference('operations', name=[...]) returns exact constraints and examples.",
     }

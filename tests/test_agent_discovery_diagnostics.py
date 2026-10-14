@@ -7,7 +7,7 @@ from vixl import Project, VixlError
 from vixl.capabilities import lookup
 from vixl.diagnostics import timeline_report, validation_report
 from vixl.interfaces import Session
-from vixl.mcp_tools import build_server, service_operation_schema
+from vixl.mcp_tools import build_server
 from vixl.schema import operation_schema, validate_operation
 from vixl.validation import validate
 from vixl.workflows import dispatch
@@ -102,12 +102,12 @@ def test_discovery_parity_and_aliases(tmp_path):
     async def run():
         server = build_server(Session(workspace=tmp_path))
         tools = {t.name: t for t in await server.list_tools()}
-        assert "vixl_capabilities" in tools
-        args = tools["vixl_operations_apply"].inputSchema["properties"]["operations"]
+        assert "vixl_reference" in tools
+        args = tools["vixl_apply"].inputSchema["properties"]["operations"]
         assert args["maxItems"] == 10000
-        result = await server.call_tool("vixl_operation_schema", {"types": ["move_layer"]})
+        result = await server.call_tool("vixl_reference", {"topic": "operations", "name": ["move_layer"]})
         content = result[0] if isinstance(result, tuple) else result
         assert "move" in json.loads(content[0].text)
 
     asyncio.run(run())
-    assert "font" in json.dumps(service_operation_schema())
+    assert "font" in json.dumps(operation_schema())

@@ -1,28 +1,80 @@
-# MCP toolset evaluation
+# MCP tool surface
 
-`vixl mcp` serves `--tools core --schema slim` by default, the recommended configuration for most agents; `--tools compact --schema slim` is the smallest surface when tool-discovery context matters most. Keep one atomic editing tool and load exact operation fields on demand. This avoids splitting an edit across several transaction boundaries, while task-aware `vixl_capabilities` supplies relevant operations and gotchas.
+Every agent that connects to `vixl mcp` reads the tool list and the server instructions before it does anything, and
+pays for them in context on every turn. Vixl keeps that surface small by consolidation: seven verb tools, each with a
+handful of typed common fields and an `options` object, with the detail served on demand.
 
-Measured for 0.24.1 using serialized `tools/list` tool objects (compact JSON, including input schemas; characters, not model tokens):
+| Tool | Actions (`action`, or `kind` for exports) | What it covers |
+| --- | --- | --- |
+| `vixl_document` | `inspect` (default), `create`, `open`, `close`, `list`, `history`, `undo`, `redo`, `checkpoint`, `checkout`, `branch`, `begin`, `commit`, `rollback`, `compact`, `notes` | Documents, the workspace listing, history and human review notes. `create` takes a named `size`, `width`/`height`, a `purpose` or a `template`. |
+| `vixl_apply` | a batch (default), `create={…}`, `workflow=ACTION` | Atomic operation batches with `check`, `suites`, `preview`, `repair` and `dry_run`; a whole new piece in one call (`create`, formerly compose); every production workflow (`request`). |
+| `vixl_check` | `design` (default), `validate`, `measure`, `spacing`, `spatial`, `pixels` | Tests without looking: design checks with rule IDs and repairs, rule and suite validation, rendered colour samples, equal-gap pass/fail, spatial relations, pixel rows. |
+| `vixl_render` | `preview` (default), `compare`, `timeline`, `timeline-inspect`, `animation`, `animation-inspect` | Bounded PNG previews (`region`, `page`, `time`, `isolate`, `overlay`), revision comparison, motion contact sheets and summaries. |
+| `vixl_export` | `file` (default), `batch`, `animation`, `timeline`, `audio`, `icons`, `character` | Files: the format follows the extension, and the kind follows the extension and the document (`.wav` is audio, `.gif`/`.mp4` motion, `targets` a batch). |
+| `vixl_reference` | topics: `start` (default), `guide`, `operations`, `workflows`, `capabilities`, `sizes`, `layouts`, `fonts`, `brushes`, `styles`, `looks`, `color`, `roll`, `palettes`, `templates`, `guidance`, `objects`, `house-style`; or a tool name with actions (all but `vixl_job`), a kind of work, a guidance name (`checks`, `exports`, `batches` …) or a free-text brief | Catalogs, exact schemas and craft guidance, all from the one guidance registry (`guidance.py`). |
+| `vixl_job` | `status`, `result`, `cancel`, `list` | Calls that outlived the inline wait (about 40 s) or were sent with `as_job`. |
 
-| Toolset | Schema | Tools | Characters |
-| --- | --- | ---: | ---: |
-| all | full | 62 | 150,678 |
-| all | slim | 62 | 67,129 |
-| core | full | 51 | 144,057 |
-| core | slim | 51 | 60,508 |
-| compact | full | 13 | 107,674 |
-| compact | slim | 13 | 24,125 |
-| ai | full | 16 | 11,148 |
-| ai | slim | 16 | 11,148 |
+Saved calls, batches and client configurations for the earlier tools (51 in the default server, 64 names in all) convert
+with `vixl convert-batch` ([Converting](converting.md#convert-saved-tool-calls)).
 
-`vixl_compose` is in core and compact (about 3,500 characters): it runs create → fonts → layout → style → look → operations → check → preview → save → exports in one atomic call, so a new piece needs one tool call instead of five. Its `operations` are typed as plain objects (fields from `vixl_operation_schema`) so the operation schema is not advertised twice.
+`vixl mcp --tools ai` serves the provider-backed tools (`vixl_ai_*`, `vixl_models_list`) as a second server that
+shares `vixl_document`, `vixl_render` and `vixl_job`; see [interfaces](interfaces.md#mcp).
 
-Reproduce by constructing `build_server(Session(workspace=...), tools=MODE, schema=SCHEMA)`, awaiting `list_tools()`, and measuring `json.dumps([t.model_dump(exclude_none=True) for t in tools], separators=(',', ':'))`. Values change as tools evolve; the schema size tests guard against unbounded growth.
+## Detail on demand
 
-Recommendation: keep the default `--tools core --schema slim` (dedicated review, font, spatial and animation tools, operation fields on demand). Use `--tools compact --schema slim` when the tool list must be smallest. Provider-backed tools run separately with `--tools ai`. Clients that relied on the earlier default (0.21 and before) pass `--tools all --schema full` (or set `VIXL_MCP_TOOLS=all` and `VIXL_MCP_SCHEMA=full`). Compact callers access workflow actions and fetch exact fields through `vixl_operation_schema`; the canonical runtime validates the complete operation regardless of advertised schema mode.
+- **Operations.** `vixl_apply` advertises each item as `{type: string}` plus open fields. The exact JSON Schema of any
+  operation (fields, enums, requirements, a summary and examples) is `vixl_reference('operations', name=[types])`;
+  without a name it lists every operation by purpose.
+- **Session steps.** Work that needs the workspace rather than the document is a batch item too, so it joins the
+  same all-or-nothing batch: `import-image`, `import-document`, `import-font`, `font-pair`, `font-install`,
+  `style-use` and `roll`. Their schemas come from the same lookup.
+- **Options.** Each action is a typed function; its parameters beyond the advertised fields go in `options`, and an
+  argument a tool does not advertise is folded into `options` for you, so `vixl_render(max_width=200)` and
+  `vixl_render(options={max_width: 200})` are the same call. `vixl_reference('vixl_export')` lists every action of a
+  tool with its options (every tool but `vixl_job`, which has none); `vixl_reference('vixl_export', name='timeline')` one action.
+- **Errors teach.** An unknown or mistyped option fails with the closest names and the action's schema; an invalid
+  operation fails with the exact schema of each failing operation type, plus the usual `field`, `operation_index`
+  and `suggestions`. `vixl_job` and the `vixl_ai_*` tools have no `options`: an argument they do not take is ignored with
+  a warning that names the closest parameter.
+- **Prose.** Long explanations live in the guidance registry: `vixl_reference('batches')` (batches, values, steps,
+  create, workflows), `vixl_reference('checks')` (every check), `vixl_reference('exports')` (formats, CMYK, PDF,
+  slides, motion), `vixl_reference('finishing')`, `vixl_reference('testing')`, and `vixl_reference()` for the
+  start-here loop.
+- **Terse results.** Results drop large echoes by default (a new document reports its path, canvas, seed and the
+  fonts chosen, not the whole rolled direction); `verbose: true` on `vixl_document` and on a `vixl_apply` batch
+  returns the full payload. Previews still return images.
 
-The 0.21.0 review of the tool list removed one duplicate: the MCP text-adding tool did nothing a `text` operation in `vixl_operations_apply` does not (a registered font name works there too). The `vixl_guide("capabilities …")` alias of `vixl_capabilities` is gone as well. A call to the removed text tool fails with an error that names its replacement, `vixl_guide("capabilities …")` fails pointing to `vixl_capabilities(topic)`, a tool that another `--tools` mode serves names that mode, and a misspelled tool name gets the closest names. Tools that look alike but answer different questions now say so in their descriptions: `vixl_animation_inspect` / `vixl_animation_preview` cover frame-by-frame animation (saved frames), `vixl_timeline_inspect` / `vixl_timeline_preview` keyframed motion; `vixl_validate` checks rules and suites, `vixl_check` the rendered design; `vixl_measure_spacing` is a pass/fail gap check, `vixl_spatial` the open-ended layout query; `vixl_guide` says what to make and `vixl_capabilities` gives field-level reference. `vixl_operations_apply` takes `check` and `preview`, so the common apply → check → preview loop is one call.
+## Size and the ratchet
 
-Consolidation keeps aliases in one normalization registry, removes duplicate transform implementations, derives extension CLI flags from the canonical schema, and factors repeated constraints in the full MCP schema without dropping those constraints. Legacy spellings still normalize and are reported in results. Native JSON operation batches are shared by CLI, Python, REST and MCP; service filesystem restrictions remain explicit.
+Characters of the compact JSON of each tool object in `tools/list` (name, description and input schema), with an
+approximate token count of characters / 4:
 
-Recommendation: retain these selectable toolsets and on-demand schemas rather than add one MCP tool per operation. A focused-tool experiment should compare the same held-out briefs for invalid-field retries, calls, schema tokens and completion rate before adding tools. The core/slim default rests on discovery-size savings and the 0.20 live comparison (`eval-results/`), in which agents used core/slim; it does not by itself establish lower model error rates.
+| Server | Before (the 51-tool server) | After |
+| --- | ---: | ---: |
+| default (`core`, slim schemas) | 51 tools, 66,535 characters | 7 tools, 7,329 characters (~1,830 tokens) |
+| `compact`, slim | 13 tools, 26,462 characters | (removed) |
+| `all`, slim | 62 tools, 73,145 characters | (removed) |
+| `ai` | 16 tools, 12,016 characters | 14 tools, 9,438 characters (~2,360 tokens), without `--planner` |
+| server instructions | 3,979 characters | 735 characters (716 on the `ai` server) |
+
+The "before" figures are from Python 3.13; 3.11 and 3.12 sent docstring indentation as well and measured about 1,400
+characters more. The "after" figures are the same on every Python.
+
+The largest tools used to be the check (6.8k: a description listing every check), the batch (6.6k: the operation
+enum) and the file export (5.3k: 36 parameters); the largest now is `vixl_apply` at 1,832.
+
+`tests/mcp_surface_baseline.json` records, for both servers, the total, the instructions and every tool (characters,
+with token estimates). `tests/test_mcp_surface.py` fails when the total, the instructions or any single tool is larger
+than its baseline (a new tool counts as growth), when a tool exceeds the per-tool cap (2,000 characters), and when the
+default server is no longer the seven tools within 12,000 characters and 1,000 characters of instructions. A smaller
+surface needs nothing; lock the gain in so it cannot creep back:
+
+```bash
+python -m scripts.mcp_surface            # current sizes against the baseline; exit 1 on growth or a tool over the cap
+python -m scripts.mcp_surface --update   # rewrite the baseline with the current sizes; refuses when anything grew
+python -m scripts.mcp_surface --update --allow-growth   # a deliberate, reviewed increase
+```
+
+`--allow-growth` raises the baseline only: a tool over the 2,000-character cap still fails the test.
+
+The same numbers come from `vixl.mcp_tools.surface("default")` (or `"ai"`).

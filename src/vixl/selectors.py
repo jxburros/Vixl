@@ -301,7 +301,7 @@ def execute(project, op):
     record(project, "edit_layers", entry)
     if not matched:
         record(project, "warnings", "edit-layers matched no layers: check where (names are case-insensitive globs; "
-               "kind is the layer type; vixl_document_inspect lists the layers)")
+               "kind is the layer type; vixl_document(action='inspect') lists the layers)")
 
 
 def _restore(project, original):

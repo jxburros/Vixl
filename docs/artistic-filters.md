@@ -62,7 +62,9 @@ SVG preserves blur, brightness/contrast/saturation, grayscale, invert, sepia, du
 vixl export artwork.svg --svg-policy strict
 ```
 
-Python: `project.export("artwork.svg", svg_policy="strict")`. REST: `POST /export` with `{"format":"SVG","svg_policy":"strict"}`. MCP: `vixl_export_file(path="artwork.svg", svg_policy="strict")`.
+Python: `project.export("artwork.svg", svg_policy="strict")`. REST: `POST /export` with `{"format":"SVG","svg_policy":"strict"}`. MCP: `vixl_export(path="artwork.svg", svg_policy="strict")`.
+
+An SVG Vixl exports also carries the document it shows in `<metadata id="vixl-document">`, so importing it back restores the editable layers, text and effects ([SVG round trip](exporting.md#svg-round-trip)); `svg_document=False` leaves that out.
 
 The default `appearance` policy preserves unsupported appearances with raster fallbacks and records layer/effect details in SVG metadata. Fallbacks affect individual layers when compositing permits it. `strict` rejects **any embedded raster content** with `svg_raster_required` and `fallbacks` details, before writing the output file. SVG filters are allowed in strict mode; it does not mean paths-only output.
 

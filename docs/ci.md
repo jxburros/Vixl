@@ -5,7 +5,7 @@
 Design files change like code, so they can be reviewed like code. The repository root holds a composite
 GitHub Action (`action.yml`) that checks every matching `.vixl` document on a pull request with
 [`vixl check --all`](production.md#checking-many-documents), the same workspace report the CLI, MCP
-(`vixl_workflow` `check-all`) and Python use:
+(`vixl_apply(workflow='check-all')`) and Python use:
 
 1. installs Vixl (the version at the action's ref, or `vixl-version` from PyPI);
 2. checks each document (design checks plus the suites attached to it, and a shared check suite when given), in
@@ -37,7 +37,7 @@ jobs:
       security-events: write   # only for sarif: true
     steps:
       - uses: actions/checkout@v4
-      - uses: jxburros/Vixl@v0.26.0   # pin a release tag (or a commit SHA)
+      - uses: jxburros/Vixl@v0.27.0   # pin a release tag (or a commit SHA)
         with:
           paths: designs/**/*.vixl
           profile: final          # draft | review | final | a .vixl-checks.json profile (optional)
@@ -59,7 +59,7 @@ jobs:
 | `suite` | | A check-suite JSON file (see [design check suites](production.md#design-check-suites)) run on every document; suites attached to a document always run (with a `profile`, the suites the profile names) |
 | `fail-on` | (empty) | `error`: any error; `warning`: errors or warnings; `fix`: any finding whose action is `fix`; `review`: any fix or review finding; `never`: report only. Empty: the `profile`'s own `fail_on`, else `error`. A suite that does not pass fails at every level but `never` (under a profile, a suite that only needs review fails at `warning` and `review`) |
 | `profile` | | A [check profile](production.md#waivers-and-check-profiles) (`draft`, `review`, `final`, one in the repository's `.vixl-checks.json` or the group's `profiles`): every document is checked with its checks and suites (`vixl check --all --profile`) |
-| `vixl-version` | | Install `vixl-engine==VERSION` from PyPI (0.25.0 or later); empty installs the Vixl at the action's ref |
+| `vixl-version` | | Install `vixl-engine[pdf]==VERSION` from PyPI (0.25.0 or later); empty installs the Vixl at the action's ref |
 | `compare-base` | `false` | On pull requests, render the base version and report the changed share of pixels |
 | `changed-only` | `false` | On pull requests, check only the documents changed against the base branch |
 | `proof` | `false` | Write `.vixl-ci/proof.html` and upload `.vixl-ci/` (proof page, reports and diff images) |
@@ -69,6 +69,11 @@ jobs:
 | `python-version` | `3.12` | Python used to run Vixl |
 
 Outputs: `summary` (the Markdown summary file), `report`, `junit` and `sarif` (the paths of the files written).
+
+Run `vixl convert` once on documents saved by 0.26 or earlier ([Converting](converting.md#convert-a-document)): the
+action's Vixl reads current documents only, so a format-1 file (0.10 and earlier) is reported as could not be checked
+("Unsupported project format"), and a newer one draws with today's defaults unless the conversion writes its old look
+into its fields.
 
 A document that is new in the pull request shows `new` in the Changed column. The diff is a review aid, not a
 failure condition: a moved logo is meant to change pixels. To fail on visual change, run `vixl diff` yourself with
@@ -83,7 +88,7 @@ location and the layer names are logical locations.
 
 A [check profile](production.md#waivers-and-check-profiles) says how strict a run is: `draft` fails only on errors,
 `review` on any `fix` finding and on attached suites, `final` on `fix` and `review` findings with `color_vision`
-added. The repository's `.vixl-checks.json` adds or overrides profiles (and a project group's `profiles` override
+and `composition` added. The repository's `.vixl-checks.json` adds or overrides profiles (and a project group's `profiles` override
 both for its members), so a pull request can check sketches with `profile: draft` and a release branch with
 `profile: final` from the same documents. Without `fail-on`, the profile's level decides; an explicit `fail-on`
 overrides it.

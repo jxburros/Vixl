@@ -57,6 +57,21 @@ def test_overlap_check_on_dense_text():  # #327
     assert elapsed < 6
 
 
+def test_composition_check_on_scattered_labels():
+    import random
+
+    rng = random.Random(1)
+    p = Project(4000, 4000, "white")
+    p.apply([{"type": "text", "name": f"t{i}", "text": "Label", "size": 14, "color": "black",
+              "x": rng.randint(0, 3800), "y": rng.randint(0, 3900)} for i in range(1500)], detail="brief")
+    # The first version took over 10 minutes: free rectangles split by every scattered label, and every pair of
+    # labels compared for drift (now under half a second, with at most 12 findings of each kind).
+    elapsed, report = timed(lambda: p.check(checks=["composition"]))
+    drift = [x for x in report["issues"] if x.get("code") == "margin_drift"]
+    assert len(drift) == 12 and drift[-1].get("omitted", 0) > 0
+    assert elapsed < 8
+
+
 def test_a_100k_character_text_flow():  # #335
     p = Project(1900, 1900, "white")
     # Before 0.23: about 5 minutes for one 100,000-character word (now about 6 s).
@@ -100,3 +115,16 @@ def test_full_canvas_opaque_multiply():
     elapsed, results = timed(lambda: [composite(bottom, top, 'multiply') for _ in range(4)])
     assert all(result.getpixel((0, 0))[3] == 255 for result in results)
     assert elapsed < 1.5
+
+
+def test_full_canvas_dithered_linear_gradient():
+    from vixl.design_render import gradient_image
+
+    p = Project(2400, 2400, "white")
+    for direction in ("vertical", "horizontal"):
+        layer = {"type": "gradient", "direction": direction, "start": "#20242a", "end": "#2c3138"}
+        # Dithering every pixel took about 0.1 s; a linear ramp is one row of colours and a 64 px dither period,
+        # now under 10 ms.
+        elapsed, image = timed(lambda: gradient_image(p, layer, (2400, 2400)))
+        assert image.size == (2400, 2400)
+        assert elapsed < 0.1

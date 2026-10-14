@@ -2,15 +2,15 @@
 
 Read the built-in guidance resources `natural-color-light`, `anatomy-proportions`,
 `illustration-perspective`, `drawn-textures`, and `film-review` using
-`vixl_resource_get(kind="guidance", name=...)`. Each reference includes methods,
-limits and source citations. `vixl_color(action="natural", colors=["foliage", "dusk"])`
-returns an illustrative natural palette. Subjects: skin, foliage, sky, earth,
-water, stone. Times: day, dawn, dusk, night. These palettes are starting points,
+`vixl_reference('guidance', name=...)`. Each reference includes methods,
+limits and source citations. `vixl_reference('color', name=["water", "dusk"], action="natural")`
+returns an illustrative natural palette for a subject and time. Subjects: skin, foliage, sky, earth,
+water, stone. Times: day (the default), dawn, dusk, night. These palettes are starting points,
 not measured reflectance data or classifications of human appearance.
 
 ## Patterns, handmade texture and clone stamping
 
-Use `vixl_workflow(action="pattern-list", request={})` for the built-in list;
+Use `vixl_apply(workflow='pattern-list', request={})` for the built-in list;
 pass a document to include its custom patterns. Patterns include stripes, dots,
 halftone, hatching, grid, checker, noise, paper, fabric, wood, stone and scales.
 Scale, rotation, offset, spacing, two colors and seed control their appearance.

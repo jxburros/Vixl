@@ -125,7 +125,7 @@ def resolve_font(project, name):
             from .notices import warn
 
             warn(project, f"font role {role!r} has no typeface in this document, so text uses the bundled proofing "
-                          "font (DejaVu Sans); choose type with vixl_fonts then vixl_font_pair (or vixl_font_install)")
+                          "font (DejaVu Sans); choose type with vixl_reference('fonts') then font-pair (or font-install)")
     font = fonts.get(name, name)
     if font not in project.assets and Path(font).is_file():
         from .assets import read_bounded
@@ -194,12 +194,12 @@ def text_metrics(project, layer, variables=None):
         from .richtext import measure as measure_rich
 
         return measure_rich(project, layer, variables)
-    from .text import measure, font_data, UnsupportedText
+    from .text import measure, font_data, tab_stops, UnsupportedText
 
     try:
         # The same arguments as text.plan, so drawing the layer reuses this cached measurement.
         _, box = measure(font_data(project, layer), text, layer["size"], layer.get("spacing", 4),
-                         layer.get("align", "left"), None)
+                         layer.get("align", "left"), None, "greedy", tab_stops(layer, project))
         stroke = layer.get("stroke_width", 0)
         box = (box[0] - stroke, box[1] - stroke, box[2] + stroke, box[3] + stroke)
         return max(1, math.ceil(box[2] - box[0])), max(1, math.ceil(box[3] - box[1])), box
@@ -1019,18 +1019,38 @@ def draw_ink(project, layer, bounds, profile=None):
     return image
 
 
+def denoised_first(project, layer, bounds, image):
+    """Run the denoise effects that open an enlarged photo's stack on its own pixels, before it is
+    scaled up: upsampling smooths grain into blobs the noise estimate reads as detail, so a crop
+    shown larger kept its grain. Returns the image and the layer with the rest of its stack."""
+    effects = layer.get("effects", [])
+    lead = 0
+    while lead < len(effects) and (not effects[lead].get("enabled", True)
+                                   or (effects[lead]["name"] == "denoise" and not effects[lead].get("selection"))):
+        lead += 1
+    if not any(effect.get("enabled", True) for effect in effects[:lead]):
+        return image, layer
+    image = layer_effects(project, {**layer, "effects": effects[:lead]}, bounds, image)
+    return image, {**layer, "effects": effects[lead:]}
+
+
 def transform_layer_image(project, layer, bounds, image):
     """Apply the same geometry and appearance to a layer or an isolated group child."""
     kind = layer["type"]
     crisp = kind == "pixel" or (kind == "group" and pixel_group(project, layer))
     sampling = Image.Resampling.NEAREST if crisp else Image.Resampling.LANCZOS
+    stretched = False
     if kind == "group" and not layer.get("repeat") and image.size != (layer["content_width"], layer["content_height"]):
         # Children drawn outside the group's box scale and turn with the rest of it. Resample a
         # source box chosen so the scale is exactly the group's: its box lands where it would
         # without the overflow, which only adds whole output pixels around it.
         image = group_overflow_resize(layer, image, sampling)
     elif not layer.get("repeat") and not image.info.get("vixl_vector_overflow"):
-        image = resize(image, (max(1, math.ceil(layer["width"])), max(1, math.ceil(layer["height"]))), sampling)
+        size = (max(1, math.ceil(layer["width"])), max(1, math.ceil(layer["height"])))
+        if kind == "raster" and size[0] > image.width and size[1] > image.height:
+            image, layer = denoised_first(project, layer, bounds, image)
+        stretched = image.size != size
+        image = resize(image, size, sampling)
     from .affine import linear, precise
     # Effects run on the layer in its own frame, at its box size, before it is flipped, turned or
     # skewed: a blur, denoise or grain treats the content the same at any angle. Canvas-space
@@ -1046,16 +1066,35 @@ def transform_layer_image(project, layer, bounds, image):
         image = layer_effects(project, layer, bounds, image)
         profile.stage("effects", time.perf_counter() - started)
     turn = Image.Resampling.NEAREST if crisp else Image.Resampling.BICUBIC
+    # Vector content (text, path shapes, ellipses, rounded rectangles) that is turned, skewed or moved to a
+    # fractional place is drawn there from its outlines: resampling the drawn box softens every edge.
+    # ``drawing`` maps the drawn image's pixels to the current image's while every step so far was exact
+    # or redrawn; None once a step resampled or the layer has no outlines to redraw.
+    drawing, redraw = (None if crisp or stretched else np.eye(3)), None
+
+    def redrawn_to(size, transform):
+        nonlocal drawing, redraw
+        if drawing is not None and redraw is None:
+            redraw = vector_redraw(project, layer)
+        drawn = None if drawing is None else redrawn(redraw, size, svg_matrix(transform @ drawing), unturned)
+        drawing = None if drawn is None else transform @ drawing
+        return drawn
+
     if precise(layer):
         transform = linear(layer)
         out = np.abs(transform[:2, :2]) @ [image.width, image.height]
         size = tuple(max(1, math.ceil(v)) for v in out)
         transform[:2, 2] += np.array(size) / 2 - transform[:2, :2] @ [image.width / 2, image.height / 2]
-        image = warp(image, size, tuple(np.linalg.inv(transform)[:2].ravel()), turn)
+        drawn = redrawn_to(size, transform)
+        image = drawn if drawn is not None else warp(image, size, tuple(np.linalg.inv(transform)[:2].ravel()), turn)
     if not precise(layer) and layer.get("flip_x"):
         image = ImageOps.mirror(image)
+        if drawing is not None:
+            drawing = np.array([[-1.0, 0, image.width], [0, 1, 0], [0, 0, 1]]) @ drawing
     if not precise(layer) and layer.get("flip_y"):
         image = ImageOps.flip(image)
+        if drawing is not None:
+            drawing = np.array([[1.0, 0, 0], [0, -1, image.height], [0, 0, 1]]) @ drawing
     folded = False
     if not precise(layer) and layer.get("rotation", 0) % 360:
         turned = _turn(*image.size, -layer["rotation"])[4:]
@@ -1071,9 +1110,13 @@ def transform_layer_image(project, layer, bounds, image):
         if not crisp and (fx > 1e-8 or fy > 1e-8) and not (mask and mask.get("enabled", True)):
             # Turn and place in one resampling, as the canvas grid sees the layer: the same layer drawn
             # at another place in its group's tile (a reparented layer, a grown group) gives the same pixels.
-            image, folded = rotate(image, -layer["rotation"], turn, (target[0] + 2, target[1] + 2), (fx, fy)), True
+            size, shift = (target[0] + 2, target[1] + 2), (fx, fy)
+            folded = True
         else:
-            image = rotate(image, -layer["rotation"], turn, target)
+            size, shift = target, (0.0, 0.0)
+        a, b, c, d, e, f = _turn_data(*image.size, -layer["rotation"], size, shift)
+        drawn = redrawn_to(size, np.linalg.inv(np.array([[a, b, c], [d, e, f], [0.0, 0.0, 1.0]])))
+        image = drawn if drawn is not None else rotate(image, -layer["rotation"], turn, size, shift)
     if any(effect_margin(layer)) and (precise(layer) or layer.get("rotation", 0) % 360):
         # Blur room added in the layer's frame turns into wider corners than the spread needs: the
         # blur reaches its margin past the turned box, which lies inside its bounds widened by it.
@@ -1100,13 +1143,18 @@ def transform_layer_image(project, layer, bounds, image):
             )
         alpha = np.asarray(image.getchannel("A"), dtype=np.float32) * np.asarray(m, dtype=np.float32) / 255
         image.putalpha(Image.fromarray(np.uint8(alpha)))
-    if layer["opacity"] != 1:
-        image = with_opacity(image, layer["opacity"])
     # Carry fractional placement through rasterization instead of rounding the geometry.
     ox, oy = placement(image, bounds)
     # Use the same epsilon as ink_origin: affine arithmetic may land one ulp below an integer.
     fx, fy = max(0, ox - math.floor(ox + 1e-9)), max(0, oy - math.floor(oy + 1e-9))
-    if not crisp and not folded and (fx > 1e-8 or fy > 1e-8):
+    placed = None
+    if not folded and (fx > 1e-8 or fy > 1e-8):
+        placed = redrawn_to((image.width + 2, image.height + 2), np.array([[1.0, 0, 1 + fx], [0, 1, 1 + fy], [0, 0, 1]]))
+    if placed is not None:
+        image = placed
+    if layer["opacity"] != 1:
+        image = with_opacity(image, layer["opacity"])
+    if not crisp and not folded and placed is None and (fx > 1e-8 or fy > 1e-8):
         padded = Image.new("RGBA", (image.width + 2, image.height + 2))
         if snap_placement(project):
             # A reduced preview: round to the nearest whole pixel instead of resampling the layer.
@@ -1115,6 +1163,38 @@ def transform_layer_image(project, layer, bounds, image):
         padded.paste(image, (1, 1))
         image = warp(padded, padded.size, (1, 0, -fx, 0, 1, -fy), Image.Resampling.BICUBIC)
     return image
+
+
+def vector_redraw(project, layer):
+    """``design_render.vector_drawing`` for a layer whose drawn image reaches its place changed only by
+    geometry (flip, turn, skew, placement) and opacity: no effects, mask, paper texture or repeat; else None."""
+    mask = layer.get("mask")
+    if (snap_placement(project) or layer.get("repeat") or layer.get("cut_paper") or (mask and mask.get("enabled", True))
+            or any(effect.get("enabled", True) for effect in layer.get("effects") or [])):
+        return None
+    from .design_render import vector_drawing
+
+    return vector_drawing(project, layer)
+
+
+def redrawn(redraw, size, matrix, box):
+    """The layer's vector content drawn into ``size`` by ``matrix`` from its drawn image of size ``box``
+    (and cut a pixel past that box), or None to resample instead."""
+    if redraw is None:
+        return None
+    from .text import UnsupportedText
+    from .vector_raster import clip_to_box
+
+    matrix = tuple(float(v) for v in matrix)
+    try:
+        return clip_to_box(redraw(size, matrix), matrix, *box)
+    except UnsupportedText:
+        return None
+
+
+def svg_matrix(m):
+    """A 3 x 3 affine matrix in SVG's order (a, b, c, d, e, f)."""
+    return m[0, 0], m[1, 0], m[0, 1], m[1, 1], m[0, 2], m[1, 2]
 
 
 def snap_placement(project):
@@ -1184,13 +1264,8 @@ def rotate(image, angle, sampling, size=None, shift=(0.0, 0.0)):
     ``size`` gives a larger output instead, with the image's centre ``shift`` pixels right of and below
     the output's centre (a fractional placement folded into the same resampling)."""
     w, h = image.size
-    co, si, c, f, nw, nh = _turn(w, h, angle)
-    size = size or (nw, nh)
-
-    def apply(x, y, c=0.0, f=0.0):
-        return co * x + si * y + c, -si * x + co * y + f
-
-    c, f = apply(-(size[0] - w) / 2 - shift[0], -(size[1] - h) / 2 - shift[1], c, f)
+    size = size or _turn(w, h, angle)[4:]
+    co, si, c, _, _, f = _turn_data(w, h, angle, size, shift)
     if sampling != Image.Resampling.NEAREST:
         # The filter clamps to the image's edge pixels: art touching the edge would turn with a harder
         # edge than the same art drawn with room around it. Give it transparent room.
@@ -1198,6 +1273,17 @@ def rotate(image, angle, sampling, size=None, shift=(0.0, 0.0)):
         padded.paste(image, (2, 2))
         image, c, f = padded, c + 2, f + 2
     return warp(image, size, (co, si, c, -si, co, f), sampling)
+
+
+def _turn_data(w, h, angle, size, shift=(0.0, 0.0)):
+    """The ``Image.transform`` affine data of ``rotate``: output pixels of ``size`` to source pixels."""
+    co, si, c, f, _, _ = _turn(w, h, angle)
+
+    def apply(x, y, c=0.0, f=0.0):
+        return co * x + si * y + c, -si * x + co * y + f
+
+    c, f = apply(-(size[0] - w) / 2 - shift[0], -(size[1] - h) / 2 - shift[1], c, f)
+    return co, si, c, -si, co, f
 
 
 def _turn(w, h, angle):
@@ -2084,6 +2170,7 @@ def export(
     max_bytes=None,
     isolate=None,
     padding=None,
+    svg_document=True,
 ):
     """Render and encode. ``color_space='cmyk'`` separates JPEG/TIFF/PDF output (ICC profile
     bytes in ``icc_profile`` for press-accurate separation, else device-naive GCR with
@@ -2100,7 +2187,9 @@ def export(
     (default: the page's title layer, then the file name). ``max_bytes`` is a size budget: when the
     encoded file is larger, ``report['warnings']`` says so (the export still succeeds). ``isolate`` (layer
     names, object paths such as ``dog/head`` or ``object:KIND``) exports only those layers, cropped to their ink
-    plus ``padding`` pixels on a transparent canvas, in any format."""
+    plus ``padding`` pixels on a transparent canvas, in any format. SVG output embeds the document it shows (its layers,
+    and the images and fonts they use) so that importing the SVG gives back the same editable layers;
+    ``svg_document=False`` leaves it out."""
     require(isinstance(overwrite, bool), "overwrite must be true or false", field="overwrite")
     require(path is None or overwrite or not Path(path).exists(),
             "Export output already exists; pass overwrite=True to replace it", "output_exists", field="path")
@@ -2256,7 +2345,8 @@ def export(
         if requested_format in ("HTML", "HTM"):
             from .html_export import export_html
             export_svg = export_html
-        data = export_svg(project, scale=scale, variables=variables, artboard=artboard, comp=comp, svg_policy=svg_policy)
+        data = export_svg(project, scale=scale, variables=variables, artboard=artboard, comp=comp, svg_policy=svg_policy,
+                          **({"document": svg_document} if requested_format == "SVG" else {}))
         if path:
             Path(path).write_bytes(data)
         return data
@@ -2308,7 +2398,7 @@ def export(
     )
     require(fmt in ("PNG", "JPEG", "WEBP", "TIFF", "AVIF", "PDF", "ICO"),
             f"Unsupported export format {(Path(path).suffix if path and not format else format) or '(none)'!r}; use png, "
-            "jpg, webp, tiff, avif, pdf, ico, svg, pptx, psd or html (audio: vixl_export_audio, or a .wav path on the "
+            "jpg, webp, tiff, avif, pdf, ico, svg, pptx, psd or html (audio: vixl_export (.wav), or a .wav path on the "
             "CLI; animation: export-timeline)",
             field="format")
     from . import colors

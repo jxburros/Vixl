@@ -383,7 +383,7 @@ def encode_png(image, max_bytes):
 
 
 def preview_png(project, max_width=1024, max_height=1024, max_bytes=1_048_576, *, region=None, **options):
-    """The preview PNG every interface returns (vixl_render_preview, REST /preview, apply's ``preview``):
+    """The preview PNG every interface returns (vixl_render, REST /preview, apply's ``preview``):
     ``region`` accepts pixels or percentages; ``options`` are render_preview's."""
     from .errors import require
 

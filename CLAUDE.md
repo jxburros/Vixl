@@ -2,9 +2,11 @@
 
 Vixl is a layered-image engine (CLI, Python API, MCP server, REST) in `src/vixl`. Tests are in `tests/`,
 user docs in `docs/`, the agent skill in `skills/vixl/`. `CONTRIBUTING.md` has the full rules.
+Showcases, explorations, films, marketing media and published eval results live in the separate VixlExamples
+repository (https://github.com/jxburros/VixlExamples); add new ones there and link to them.
 
 ## Running tests
-- `pytest -n auto` runs the whole suite (about 3,800 tests). Iterate on one file first: `pytest -q tests/test_x.py`.
+- `pytest -n auto` runs the whole suite (about 4,900 tests). Iterate on one file first: `pytest -q tests/test_x.py`.
 - If `vixl` is editable-installed from another checkout, set `PYTHONPATH=$PWD/src` on the same command line.
 - `pytest -m perf` holds the speed claims as time budgets (`tests/test_perf.py`); `tests/test_docs_executable.py`
   (marker `docs`) runs the `vixl` commands and JSON blocks in `docs/` and `skills/`.
@@ -26,8 +28,7 @@ user docs in `docs/`, the agent skill in `skills/vixl/`. `CONTRIBUTING.md` has t
 - **Geometry.** One anchor table (`geometry.ANCHORS`, `canonical_anchor`), one Bezier evaluator (`geometry.bezier_points`),
   one number formatter (`geometry.compact_number`). Open shapes and paths with a stroke and no fill stay unfilled in
   every renderer: use `geometry.OPEN_SHAPES` and `default_fill(layer)`, do not re-derive it.
-- **Guidance.** Craft guidance texts live in one registry, `guidance.py`; `vixl_guide`, `vixl_resource_get` and
-  `vixl_capabilities` all read it. Do not add a second copy. Tool descriptions must not mention unknown `vixl_*` names
+- **Guidance.** Craft guidance texts live in one registry, `guidance.py`; `vixl_reference` reads it. Do not add a second copy. Tool descriptions must not mention unknown `vixl_*` names
   (a test checks docs and skills).
 - **Effects.** Effects run in the layer's own frame before flip/rotate/skew (`render.layer_effects`); LUT lookups are
   ordinary stack effects.
@@ -38,7 +39,7 @@ user docs in `docs/`, the agent skill in `skills/vixl/`. `CONTRIBUTING.md` has t
 2. Docs: the relevant `docs/*.md`, and `skills/vixl/SKILL.md` and `skills/vixl/references/*.md` when behaviour,
    fields or defaults change. Grep for removed names; do not leave stale text.
 3. `docs/use-cases.md`: add a row for a new use case, or move a row when its cost or blocked status changes.
-4. `CHANGELOG.md`: add to the current top section. Breaking changes need a migration hint.
+4. `CHANGELOG.md`: add to the current top section. Pre-release: breaking changes are allowed; note them in the changelog. Default changes must still pass the house-style quality/diversity eval.
 5. Goldens, if rendering changed (see above).
 6. Version bumps stay synchronized (`src/vixl/__init__.py`, plugin manifest, `.mcp.json`, README and install URLs, the
    action pin in `docs/ci.md`); see

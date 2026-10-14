@@ -84,7 +84,8 @@ shot assembly require the dependencies described in [production](production.md).
 - [Local artistic-filter gallery](artistic-filters.md): deterministic treatments of images.
 - [Drawing cleanup pipeline](drawing.md): preserve and build on a scan or photo.
 - [Organic forms gallery](organic.md): flowers, leaves, branching and generated textures.
-- [Explorations](../explorations/README.md): print poster, brand identity, kinetic launch,
+- [Scene atmosphere and motifs](atmosphere.md): a harbor at night with haze, stars, string lights and a reflection, all editable.
+- [Explorations](https://github.com/jxburros/VixlExamples/blob/main/explorations/README.md): print poster, brand identity, kinetic launch,
   pixel RPG, painting, photo lab, trading cards, infographic, campaign and character film.
 - [Studio demonstration](../examples/build_studio_demo.py): selections, containers, custom tests and collaboration.
 - [Production demonstration](../examples/build_production_demo.py): reusable recipes and checked outputs.

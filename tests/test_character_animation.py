@@ -145,7 +145,7 @@ def test_svg_export_honours_pivot():
     p = character()
     p.apply({"type": "rotate", "target": "arm", "value": -70})
     svg = p.export(format="SVG").decode()
-    match = re.search(r'data-layer="arm"><g transform="translate\(([-\d.]+) ([-\d.]+)\) rotate\(([-\d.]+)\) scale\(1 1\) translate\(([-\d.]+) ([-\d.]+)\)"', svg)
+    match = re.search(r'data-layer="arm" data-vixl-id="lyr_[0-9a-f]+"><g transform="translate\(([-\d.]+) ([-\d.]+)\) rotate\(([-\d.]+)\) scale\(1 1\) translate\(([-\d.]+) ([-\d.]+)\)"', svg)
     assert match, svg[:400]
     tx, ty, angle, ox, oy = map(float, match.groups())
     a = math.radians(angle)
@@ -261,6 +261,6 @@ def test_new_options_reach_cli_mcp_and_rest(tmp_path, monkeypatch, capsys):
     exported = client.post("/animation/export", json={"format": "gif", "scale": 2, "colors": 4})
     assert Image.open(io.BytesIO(exported.content)).size == (240, 120)
 
-    from vixl.mcp_tools import service_operation_schema
+    from vixl.mcp_actions import operation_variant
 
-    assert any("pivot" in v["properties"]["type"]["enum"] for v in service_operation_schema()["oneOf"])
+    assert operation_variant("pivot")["properties"]["type"]["const"] == "pivot"

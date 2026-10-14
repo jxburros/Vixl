@@ -234,16 +234,15 @@ class Slide:
 
             stroke_xml, stroke_alpha = self.color(layer.get("stroke", "transparent"), opacity)
             width = layer.get("stroke_width", 1)
-            # Vixl pads a stroked shape's box by half the stroke and strokes inside the padded box;
-            # PowerPoint centres strokes on the outline, so inset the outline to match (as the PDF
-            # writer does).
-            pad = width / 2 if stroke_alpha > 0 else 0
-            inset = {"rectangle": 2 * pad, "rounded-rectangle": 2 * pad, "capsule": 2 * pad, "ellipse": 2 * pad,
-                     "path": 0, "arc": 0}.get(layer["shape"], pad)
+            # PowerPoint centres strokes on the outline: move the outline to where the stroke's centre
+            # line runs (geometry.stroke_inset; half a stroke in for a closed shape's inside stroke).
+            from .geometry import stroke_inset
+
+            inset, _ = stroke_inset(layer, stroke_alpha > 0)
             rw, rh = rest_size(layer)
             if inset and min(rw, rh) - 2 * inset >= 1:
                 frame = (inset, inset, rw - 2 * inset, rh - 2 * inset)
-            geometry = self.geometry(layer, pad)
+            geometry = self.geometry(layer, inset if frame else 0)
             fill = self.fill(default_fill(layer), opacity)
             if layer["shape"] == "line":
                 fill = "<a:noFill/>"
@@ -261,7 +260,8 @@ class Slide:
         return (f'<p:sp><p:nvSpPr>{c_nv_pr(ident, layer)}<p:cNvSpPr/><p:nvPr/></p:nvSpPr>'
                 f'<p:spPr>{self.xfrm(layer, bounds, emu, frame=frame)}{geometry}{fill}{line}</p:spPr></p:sp>')
 
-    def geometry(self, layer, pad=0.0):
+    def geometry(self, layer, inset=0.0):
+        """Preset or custom geometry for a shape whose frame is ``inset`` from its box on every side."""
         from .geometry import parse_path, shape_path
 
         shape = layer["shape"]
@@ -269,8 +269,8 @@ class Slide:
         if shape == "rectangle":
             return '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
         if shape in ("rounded-rectangle", "capsule"):
-            radius = layer.get("radius", min(w, h) / (2 if shape == "capsule" else 5)) - pad
-            adj = max(0, min(50000, round(radius / max(1e-9, min(w, h) - 4 * pad) * 100000)))
+            radius = min(layer.get("radius", min(w, h) / (2 if shape == "capsule" else 5)), w / 2, h / 2) - inset
+            adj = max(0, min(50000, round(radius / max(1e-9, min(w, h) - 2 * inset) * 100000)))
             return f'<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val {adj}"/></a:avLst></a:prstGeom>'
         if shape == "ellipse":
             return '<a:prstGeom prst="ellipse"><a:avLst/></a:prstGeom>'
@@ -404,7 +404,7 @@ class Slide:
     def plain_paragraphs(self, layer, pt):
         from .design import resolve_color
         from .render import color
-        from .text import face, font_data, plan
+        from .text import face, font_data, leadered, lines, plan, tab_stops, wrap_mode
 
         data = font_data(self.view, layer)
         self.exporter.font(data)
@@ -426,10 +426,22 @@ class Slide:
         span = {"font": self.view.state.get("fonts", {}).get(font, font)}
         style = {"bold": self.exporter.is_bold(span), "italic": self.exporter.is_italic(span)}
         out = []
+        settings = layer.get("text_layout") or {}
+        wrap, tabs = wrap_mode(layer), tab_stops(layer, self.view)
+        stops = ""
+        if tabs:
+            kinds = {"left": "l", "right": "r", "center": "ctr", "decimal": "dec"}
+            stops = "<a:tabLst>" + "".join(f'<a:tab pos="{round(at * pt * 12700)}" algn="{kinds[kind]}"/>'
+                                           for at, kind, _ in tabs) + "</a:tabLst>"
         for text in layer["text"].split("\n"):
-            run = self.font_runs(text, data, size * pt, rgba, style, layer["opacity"]) if text else ""
+            # Balanced and runt-free breaks are Vixl's, so they are written as line breaks; greedy text
+            # is left for the application to wrap in the same box.
+            pieces = (lines(data, text, size, layer["width"], wrap, tabs)
+                      if wrap != "greedy" and "width" in settings and text else [text])
+            run = "<a:br/>".join(self.font_runs(leadered(data, piece, size, tabs), data, size * pt, rgba, style,
+                                                layer["opacity"]) if piece else "" for piece in pieces)
             out.append(f'<a:p><a:pPr algn="{align}"><a:lnSpc><a:spcPts val="{round(line * pt * 100)}"/></a:lnSpc>'
-                       f'<a:buNone/></a:pPr>{run}<a:endParaRPr lang="en-US" sz="{round(size * pt * 100)}" dirty="0"/></a:p>')
+                       f'<a:buNone/>{stops}</a:pPr>{run}<a:endParaRPr lang="en-US" sz="{round(size * pt * 100)}" dirty="0"/></a:p>')
         return out, first_top, pen_left
 
     def rich_paragraphs(self, layer, pt):
@@ -474,7 +486,15 @@ class Slide:
             spacing += f'<a:spcBef><a:spcPts val="{round(before * pt * 100)}"/></a:spcBef>'
             spacing += f'<a:spcAft><a:spcPts val="{round(after * pt * 100)}"/></a:spcAft>'
             runs = []
+            cuts = result.breaks.get(index, [])
+            offset = 0
             for span in paragraph:
+                pieces, start = [], offset
+                for cut in [c for c in cuts if offset < c < offset + len(span["text"])]:
+                    pieces.append((span["text"][start - offset:cut - offset].rstrip(" "), True))
+                    start = cut
+                pieces.append((span["text"][start - offset:], offset + len(span["text"]) in cuts))
+                offset += len(span["text"])
                 style = {"bold": span["fake_bold"] or self.exporter.is_bold(span), "italic": span["fake_italic"] or self.exporter.is_italic(span),
                          "underline": span["underline"], "strike": span["strike"], "baseline": span["baseline"],
                          "tracking": span["tracking"] * pt,
@@ -482,7 +502,13 @@ class Slide:
                 from .richtext import style_font_data
 
                 data = style_font_data(self.view, self.exporter.base_font(span["font"]), span["text"])
-                runs.append(self.font_runs(span["text"], data, span["size"] * scale * pt, span["color"], style, layer["opacity"]))
+                for text, broken in pieces:
+                    text = text.rstrip(" ") if broken else text
+                    if text:
+                        runs.append(self.font_runs(text, data, span["size"] * scale * pt, span["color"], style,
+                                                   layer["opacity"]))
+                    if broken:
+                        runs.append("<a:br/>")
             out.append(f'<a:p><a:pPr{attrs}>{spacing}{bullet}</a:pPr>{"".join(runs)}'
                        f'<a:endParaRPr lang="en-US" sz="{round(base * pt * 100)}" dirty="0"/></a:p>')
         first_top = 0.0

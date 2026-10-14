@@ -8,6 +8,7 @@ import tempfile
 
 from .effect_workflows import WORKFLOWS, SUITES
 from .containers import builtins as container_builtins
+from .promo_templates import builtins as promo_builtins
 
 from .fileio import file_lock
 
@@ -151,6 +152,8 @@ for name, title, subtitle, cta, preset in (
     item["roll"] = {"background": "background", "foreground": "ink"}
     item["proportional"] = True
     TEMPLATES[name] = item
+
+TEMPLATES.update(promo_builtins())
 CONTAINERS, MODULAR_TEMPLATES = container_builtins()
 TEMPLATES.update(MODULAR_TEMPLATES)
 BUILTINS = {"palettes": PALETTES, "templates": TEMPLATES, "guidance": GUIDANCE,
@@ -177,6 +180,10 @@ def proportional(project, item, operations):
                 operation[key] = round(operation[key] * factor)
         if isinstance(operation.get("size"), (int, float)):
             operation["size"] = max(6, round(operation["size"] * factor))
+        if operation.get("type") == "fit-text":
+            for key in ("minimum", "maximum"):
+                if isinstance(operation.get(key), (int, float)):
+                    operation[key] = max(6, round(operation[key] * factor))
         result.append(operation)
     return result
 
@@ -406,7 +413,7 @@ def execute_resource(project, op):
         explicit_palette = "palette" in op
         op = sparse_options(project, op)
         # Every template receives a reproducible direction; explicit and brand roles win.
-        role_options = {k: op[k] for k in ("palette", "mode", "direction", "_house_style_version") if k in op}
+        role_options = {k: op[k] for k in ("palette", "mode", "direction") if k in op}
         if explicit_palette:
             role_options["policy"] = "strict"
         if kit.get("palette") and not explicit_palette:

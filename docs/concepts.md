@@ -7,9 +7,14 @@
 ## Master and deliverable
 
 The `.vixl` file is your editable master, a portable ZIP archive holding document state,
-embedded assets and branching history. A PNG is a rendered deliverable; exporting it does
+embedded assets and branching history ([file format and JSON Schema](file-format.md)). A PNG is a rendered deliverable; exporting it does
 not replace the master. Retain both when handing off a project. Supported SVG, PDF and
 PowerPoint exports preserve some geometry and text, with explicit appearance fallbacks.
+Vixl's own SVG also carries its document, so importing it restores the same editable layers
+([SVG round trip](exporting.md#svg-round-trip)); other SVG, PDF pages and Figma frames import as
+editable layers ([importing SVG and PDF](exporting.md#importing-svg-and-pdf), [Figma](figma.md)).
+Documents saved by releases before 0.27 are brought up to date once with `vixl convert`
+([converting](converting.md)).
 To review a master in Git, `vixl unpack design.vixl design-source` writes its current state as a
 readable `project.json` with content-addressed assets, and `vixl pack` rebuilds a `.vixl` from it;
 undo history is not kept ([commands](commands.md#reviewing-editable-projects-in-git)).

@@ -25,7 +25,9 @@ TASK_DIR = Path(__file__).parent / "tasks"
 SYSTEM_PROMPT = (
     "You are a design agent working through Vixl's image-editing tools in a sandboxed workspace. "
     "Complete the user's brief end to end: create or open documents, apply operations, verify the "
-    "result with vixl_check and vixl_render_preview, fix problems, and export files when asked. "
+    "result with vixl_check and fix problems; for a design you make, finish with the finishing pass in "
+    "vixl_reference('finishing') (composition check, a short critique, one fix batch, a real-size look at two "
+    "regions with vixl_render), and export files when asked. "
     "Use workspace-relative paths. When the brief is fully done, reply with a one-line summary."
 )
 
@@ -257,10 +259,10 @@ def grade(task, workspace):
 class Tools:
     """Synchronous wrapper around an in-process Vixl MCP server."""
 
-    def __init__(self, workspace, schema="full", tools="all"):
+    def __init__(self, workspace):
         from vixl.interfaces import mcp_server
 
-        self.server = mcp_server(workspace=workspace, schema=schema, tools=tools)
+        self.server = mcp_server(workspace=workspace)
         self.font_cache = Path(workspace) / ".font-cache"
         self.loop = asyncio.new_event_loop()
         self.calls = 0
@@ -314,7 +316,7 @@ class ReferenceAgent:
             failed, blocks = tools.call(step["tool"], _fill(step.get("arguments", {}), saved))
             trace.append({"tool": step["tool"], "error": failed, "output": _text(blocks)[:500]})
             if step.get("save_as") and not failed:
-                # A later step can use a value only known at run time (an imported asset id): "${name.key}".
+                # A later step can use a value only known at run time (an imported asset id): "${name.key.key…}".
                 saved[step["save_as"]] = json.loads(blocks[0]["text"])
         return {"round_trips": len(task.get("reference", [])), "trace": trace, "usage": {}}
 
@@ -325,8 +327,11 @@ def _fill(value, saved):
     if isinstance(value, list):
         return [_fill(item, saved) for item in value]
     if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
-        name, _, key = value[2:-1].partition(".")
-        return saved[name][key]
+        name, *keys = value[2:-1].split(".")
+        found = saved[name]
+        for key in keys:
+            found = found[int(key)] if isinstance(found, list) else found[key]
+        return found
     return value
 
 
@@ -335,13 +340,14 @@ class ClaudeAgent:
 
     name = "claude"
 
-    def __init__(self, model="claude-opus-5-5", effort=None, max_turns=40, fallbacks=True, client=None):
+    def __init__(self, model="claude-opus-5-5", effort=None, max_turns=40, fallbacks=True, client=None,
+                 system=SYSTEM_PROMPT):
         if client is None:
             import anthropic
 
             client = anthropic.Anthropic()
         self.client, self.model, self.effort = client, model, effort
-        self.max_turns, self.fallbacks = max_turns, fallbacks
+        self.max_turns, self.fallbacks, self.system = max_turns, fallbacks, system
 
     def create(self, **arguments):
         if self.effort:
@@ -362,7 +368,7 @@ class ClaudeAgent:
             response = self.create(
                 model=self.model,
                 max_tokens=16000,
-                system=SYSTEM_PROMPT,
+                system=self.system,
                 tools=definitions,
                 messages=messages,
                 cache_control={"type": "ephemeral"},
@@ -397,11 +403,11 @@ def _text(blocks):
 # --- running ---------------------------------------------------------------------------------------
 
 
-def run_task(task, agent, schema="full", keep=None, tool_set="all"):
+def run_task(task, agent, keep=None):
     with tempfile.TemporaryDirectory(prefix=f"vixl-eval-{task['id']}-") as directory:
         workspace = Path(directory)
         prepare_workspace(task, workspace)
-        tools = Tools(workspace, schema=schema, tools=tool_set)
+        tools = Tools(workspace)
         started = time.monotonic()
         error = None
         try:
@@ -477,6 +483,6 @@ def markdown(results, summary, meta):
     return "\n".join(lines) + "\n"
 
 
-def run(tasks, agent, schema="full", keep=None, tool_set="all"):
-    results = [run_task(deepcopy(task), agent, schema, keep, tool_set) for task in tasks]
+def run(tasks, agent, keep=None):
+    results = [run_task(deepcopy(task), agent, keep) for task in tasks]
     return results, summarize(results)

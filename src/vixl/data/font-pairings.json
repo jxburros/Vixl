@@ -1579,8 +1579,7 @@
   "caution": "Keep sufficient size and weight contrast between heading and body.",
   "source": "https://fonts.google.com/",
   "safe": true,
-  "tier": "safe",
-  "introduced": 3
+  "tier": "safe"
  },
  {
   "name": "inter-tight-literata",
@@ -1605,8 +1604,7 @@
   "caution": "Keep sufficient size and weight contrast between heading and body.",
   "source": "https://fonts.google.com/",
   "safe": true,
-  "tier": "safe",
-  "introduced": 3
+  "tier": "safe"
  },
  {
   "name": "schibsted-noto-serif",
@@ -1631,8 +1629,7 @@
   "caution": "Keep sufficient size and weight contrast between heading and body.",
   "source": "https://fonts.google.com/",
   "safe": true,
-  "tier": "safe",
-  "introduced": 3
+  "tier": "safe"
  },
  {
   "name": "atkinson-source-serif",
@@ -1657,8 +1654,7 @@
   "caution": "Keep sufficient size and weight contrast between heading and body.",
   "source": "https://fonts.google.com/",
   "safe": true,
-  "tier": "safe",
-  "introduced": 3
+  "tier": "safe"
  },
  {
   "name": "anton-libre-franklin",
@@ -1684,8 +1680,7 @@
   "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
   "source": "https://fonts.google.com/",
   "safe": false,
-  "tier": "bold",
-  "introduced": 3
+  "tier": "bold"
  },
  {
   "name": "bebas-source-serif",
@@ -1711,8 +1706,7 @@
   "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
   "source": "https://fonts.google.com/",
   "safe": false,
-  "tier": "bold",
-  "introduced": 3
+  "tier": "bold"
  },
  {
   "name": "oswald-public-sans",
@@ -1738,8 +1732,7 @@
   "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
   "source": "https://fonts.google.com/",
   "safe": false,
-  "tier": "bold",
-  "introduced": 3
+  "tier": "bold"
  },
  {
   "name": "bungee-figtree",
@@ -1765,8 +1758,7 @@
   "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
   "source": "https://fonts.google.com/",
   "safe": false,
-  "tier": "bold",
-  "introduced": 3
+  "tier": "bold"
  },
  {
   "name": "barlow-condensed-newsreader",
@@ -1792,8 +1784,7 @@
   "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
   "source": "https://fonts.google.com/",
   "safe": false,
-  "tier": "bold",
-  "introduced": 3
+  "tier": "bold"
  },
  {
   "name": "big-shoulders-work-sans",
@@ -1819,8 +1810,7 @@
   "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
   "source": "https://fonts.google.com/",
   "safe": false,
-  "tier": "bold",
-  "introduced": 3
+  "tier": "bold"
  },
  {
   "name": "fraunces-atkinson",
@@ -1846,8 +1836,7 @@
   "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
   "source": "https://fonts.google.com/",
   "safe": false,
-  "tier": "bold",
-  "introduced": 3
+  "tier": "bold"
  },
  {
   "name": "archivo-black-karla",
@@ -1873,8 +1862,7 @@
   "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
   "source": "https://fonts.google.com/",
   "safe": false,
-  "tier": "bold",
-  "introduced": 3
+  "tier": "bold"
  },
  {
   "name": "monoton-space-grotesk",
@@ -1900,8 +1888,7 @@
   "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
   "source": "https://fonts.google.com/",
   "safe": false,
-  "tier": "avant-garde",
-  "introduced": 3
+  "tier": "avant-garde"
  },
  {
   "name": "grenze-ibm-plex-sans",
@@ -1927,8 +1914,7 @@
   "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
   "source": "https://fonts.google.com/",
   "safe": false,
-  "tier": "avant-garde",
-  "introduced": 3
+  "tier": "avant-garde"
  },
  {
   "name": "permanent-marker-geist",
@@ -1954,8 +1940,7 @@
   "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
   "source": "https://fonts.google.com/",
   "safe": false,
-  "tier": "avant-garde",
-  "introduced": 3
+  "tier": "avant-garde"
  },
  {
   "name": "shrikhand-source-code",
@@ -1981,7 +1966,6 @@
   "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
   "source": "https://fonts.google.com/",
   "safe": false,
-  "tier": "avant-garde",
-  "introduced": 3
+  "tier": "avant-garde"
  }
 ]

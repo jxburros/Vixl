@@ -189,7 +189,7 @@ def compile_feature(cmd, args):
         p.add_argument("--fps", type=float)
         p.add_argument("--loop", type=int)
         p.add_argument("--loop-mode", dest="loop_mode", choices=["seamless", "off"],
-                       help="seamless: loop without a jump (new house-style-3 short timelines); off: play once")
+                       help="seamless: loop without a jump (the default for short timelines); off: play once")
         p.add_argument("--close", action="store_true", default=None,
                        help="With seamless: end every track where it began")
         p.add_argument("--clear", action="store_true", default=None)

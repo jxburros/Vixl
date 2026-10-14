@@ -21,15 +21,15 @@ Where it appears:
 
 - **`vixl_check` / `vixl check` / `Project.check`**: validation fails on any `fix` finding; `review` findings
   (and unmeasured coverage) need review. A clean check is `validated`.
-- **`vixl_operations_apply` / `POST /operations`**: `completed` + `not_run` (`unvalidated`) unless `check` or
+- **`vixl_apply` / `POST /operations`**: `completed` + `not_run` (`unvalidated`) unless `check` or
   `suites` ran; then it merges their outcomes.
-- **Suites** (`vixl_workflow check`, `act`, `group-apply`): a failed error rule fails validation, a rule that
+- **Suites** (`vixl_apply(workflow='check')`, `act`, `group-apply`): a failed error rule fails validation, a rule that
   cannot be measured makes it `incomplete`, a failed warning rule needs review.
 - **Production** (`run`): each output has its own `outcome`; with no suites a clean output is `unvalidated`
   (only bounds and flow ran). The report's `outcome` is the worst state with a count per state.
 - **Jobs** (`status`): execution follows the job status; a production job's validation comes from its
   outputs. A job left `needs_review` by an uncertain remote request did not complete.
-- **Exports** (`vixl_export_file`, `vixl_export_batch`): always `unvalidated` (exports run no checks); export
+- **Exports** (`vixl_export`, `vixl_export(kind='batch')`): always `unvalidated` (exports run no checks); export
   warnings are review reasons; a batch reports each file and an overall summary.
 - **Proof pages**: each checked document shows its state next to the check badge, and the result lists it.
 
@@ -45,7 +45,7 @@ Each design-check finding carries:
   check measured one; `page` in a multi-page document.
 - `measured`: `{actual, expected, unit}` where the rule has a measurement.
 - `repair` on `fix` findings: `{kind, available, operations, reason}`. The operations are canonical, validate
-  against the operation schema and can be dry-run (`vixl_operations_apply(..., dry_run=true)`). Nothing is
+  against the operation schema and can be dry-run (`vixl_apply(..., dry_run=true)`). Nothing is
   applied. `available: false` explains the next step instead.
 
 | Rule | Measured | Suggested repair |
@@ -69,15 +69,17 @@ findings get a suggestion per check. `offset` and `limit` page the findings; `pa
 
 ## Visual feedback
 
-`vixl_operations_apply(check=..., preview={...})` takes two more preview options:
+`vixl_apply(check=..., preview={...})` takes three more preview options:
 
 - `overlay: true` outlines each fix finding on the returned PNG, labelled `index rule · layer ID`;
   `feedback.overlay` lists the same boxes in document pixels (`region`) and preview pixels (`box`), with
   `feedback.scale`, `size`, `bytes` and `max_bytes` (512 KB by default).
 - `focus: N` zooms the preview to listed finding `N` with a margin (a detail crop); without `overlay` it is a
   clean view of that spot.
+- `regions: 0`, `1` or `2` (default 2): with `check`, real-size crops of the weakest regions (the places carrying the most
+  findings) follow the preview as extra images; `0` leaves them out, and none are made for a `page` or `time` preview.
 
-`vixl_render_preview(overlay=true)` runs `vixl_check` and returns the same boxes beside the picture. The
+`vixl_render(overlay=true)` runs `vixl_check` and returns the same boxes beside the picture. The
 proof workflow takes `overlay: true` to mark the thumbnails of checked documents. Overlays are drawn on a
 copy of the preview: the document and its exports never change. The change summary is the apply result's
 `changes.layers`, keyed by layer ID.
@@ -88,10 +90,10 @@ copy of the preview: the document and its exports never change. The change summa
 repair for each fix finding, one candidate at a time, and keeps a repair only when its finding is gone and
 no other fix finding or suite failure appeared. Unfilled blanks are held. At most ten repairs run.
 
-- `vixl_operations_apply(repair=true)`: after the batch; kept repairs are one more undoable history entry.
+- `vixl_apply(repair=true)`: after the batch; kept repairs are one more undoable history entry.
 - `vixl_check(repair=true)` / `vixl check --repair` / `Project.check(repair=True)` / `Project.repair()`: the
   document is repaired and saved as one undoable step, then checked.
-- `vixl_workflow act {repair: true}`: when a suite fails, repairs the candidate (its `text-fit` and
+- `vixl_apply(workflow='act') {repair: true}`: when a suite fails, repairs the candidate (its `text-fit` and
   `contrast` rules and the bounds, contrast and safe-area findings) and commits only if every suite passes.
 - `group-apply {repair: true}`: repairs each member before its suites run; each document reports `repairs`.
 - Campaign `repair_actions: ["auto"]` runs the same map (named actions still work).
@@ -101,7 +103,7 @@ The report lists `applied` (rule, kind, operations, reason), `held`, `unrepaired
 
 ## Layout repair
 
-`vixl_workflow repair-layout` is a bounded search for failures with no single fix: text overflow, overlap,
+`vixl_apply(workflow='repair-layout')` is a bounded search for failures with no single fix: text overflow, overlap,
 spacing (suite `spacing` rules), safe area and contrast. For each failure it tries the built-in repair first,
 then other candidates (a taller or wider text box, moves clear of the other layer, equal gaps), applies each
 to a copy and accepts it only if the failure is gone, nothing new fails, no `protected` layer changes and no
@@ -113,13 +115,40 @@ infeasible request leaves the document unchanged and lists `unsatisfied` constra
 candidate with its result and reason, and the same input gives the same plan. Fix findings it does not
 address (fonts, blanks) are listed under `out_of_scope`.
 
+When `checks` include `composition` (the default set does), the [composition](guides.md#composition) review
+findings are repaired after the failures, with geometric candidates of their own:
+
+| Code | Candidates (least disruptive accepted wins) |
+| --- | --- |
+| `margin_drift` | snap the stray edges to the margin the most blocks share; or move the margin to the stray edge |
+| `uneven_rhythm` | move the middle line to the line it belongs with (or halfway, for lines of one size); close the stack up; snap the gaps to whole spacing units |
+| `crowding` | open the gap under the rule, band or heading to one spacing unit, or just past half a unit: push the text down (alone or with the rest of its column) or lift the rule (alone or with what is above it) |
+| `dead_band` | between blocks: spread the band over the frame's other gaps in proportion to their size, move the blocks below up (all the way to the typical gap, or half), or move the blocks above down by half; at an edge: spread the content into the band, or centre it in its frame |
+| `clumped_scatter` | a `pattern-scatter` tile is thinned in place or re-seeded from its recipe; any other scatter is listed as not auto-repairable |
+
+A composition candidate is accepted only if its finding is gone and no finding of any check (fix or review) is new,
+and while composition is checked no candidate for a failure may add a composition finding either. Moves never touch
+backgrounds or art that bleeds off the canvas; a drawing made of touching shapes moves whole or not at all, and a
+chip that hugs a line of text or a glow around a layer moves with it. Composition findings left over go under
+`reviews_remaining` with the reason (not auto-repairable, no candidate passed, or the search stopped); they never
+make a repair infeasible. A failure left unrepaired still keeps the whole plan uncommitted, composition repairs
+included (`selected` lists them; fix the failure, or name `checks` without its family). Each finding tried counts
+against `max_iterations`, so raise it for a page with many findings. To leave composition alone, name `checks`
+without it.
+
+On the [craft backtest](../evals/craft_backtest/README.md#repair) (`python -m evals.craft_backtest --repair`, the
+default checks, up to 20 iterations), the plan resolves 19 of the 22 composition findings (17 of the 20 that catch a
+defect the judges named) with no new finding of any check: every crowding and uneven-rhythm finding, 9 of 10 margin
+drifts and 3 of 5 dead bands. It leaves a band beside a drawing that spans it (T02), a band in the logo sheet's dark
+half (T04) and chart titles that would leave the safe area to meet the margin (T08).
+
 ```json
 {"checks": ["bounds", "overlap"], "protected": ["logo"], "minimum_size": 28, "dry_run": true}
 ```
 
 ## Protected edits
 
-`vixl_workflow protected-edit {operations, protect, regions, tolerance}` applies the operations to a copy and
+`vixl_apply(workflow='protected-edit') {operations, protect, regions, tolerance}` applies the operations to a copy and
 commits only when:
 
 - every protected layer (and everything in a protected group) keeps all its fields (`structural`), so a
@@ -135,7 +164,7 @@ report holds no layer contents or provider settings.
 
 ## Reproduction
 
-`vixl reproduce` (and `vixl_workflow reproduce`) reports how far reproduction is verified:
+`vixl reproduce` (and `vixl_apply(workflow='reproduce')`) reports how far reproduction is verified:
 
 | `reproduction` | Meaning |
 | --- | --- |

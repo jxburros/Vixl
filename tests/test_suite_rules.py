@@ -151,8 +151,8 @@ def test_mcp_apply_takes_suites(tmp_path):
         content = result[0] if isinstance(result, tuple) else result
         return json.loads("".join(getattr(item, "text", "") for item in content))
 
-    asyncio.run(call("vixl_document_create", {"path": "a.vixl", "width": 200, "height": 100}))
-    result = asyncio.run(call("vixl_operations_apply", {"suites": True, "operations": [
+    asyncio.run(call("vixl_document", {"action": "create", "path": "a.vixl", "width": 200, "height": 100}))
+    result = asyncio.run(call("vixl_apply", {"suites": True, "operations": [
         {"type": "shape", "name": "dot", "shape": "ellipse", "width": 20, "height": 20, "x": 0, "y": 0, "fill": "red"},
         {"type": "suite-set", "name": "brief", "suite": {"rules": [
             {"id": "centred", "kind": "balance", "tolerance": 0.1}]}}]}))
@@ -168,7 +168,7 @@ def test_guide_gives_every_kind_a_test_plan_and_a_testing_guidance():
     text = guide("testing")["text"]
     for word in ("Why", "When", "preview", "suite-set", "hierarchy", "relation", "never loosen"):
         assert word in text
-    assert any("Preview after tests pass" in step for step in guide()["start_here"])
+    assert any("Finishing pass after tests pass" in step for step in guide()["start_here"])
     found = lookup("testing")
     assert set(found["suite_rules"]) == set(RULE_FIELDS) and "testing" in found["guidance"]
     assert "suite-set" in found["operations"] and "check" in found["workflows"]

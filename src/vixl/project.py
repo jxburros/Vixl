@@ -28,19 +28,6 @@ NODE_KEYS = {"id", "parent", "operations", "label", "state", "delta", "squashed"
 ASSET_REFERENCE = re.compile(rb"(?:assets|masks|fonts|sources|emoji-sources)/[0-9a-f]{64}\.[a-z0-9]{2,5}")
 
 
-def upgrade_state(state):
-    """Bring a state saved by an earlier Vixl up to date in place (and return it): a layer's
-    ``lookup`` field becomes a ``lookup`` entry at the end of its effect stack, where it rendered."""
-    for layer in state.get("layers", []):
-        old = layer.pop("lookup", None)
-        if old:
-            layer.setdefault("effects", []).append({
-                "id": f"fx_lut_{layer['id']}", "name": "lookup", "lut": old["name"],
-                "amount": old.get("amount", 1), "enabled": True, "selection": None,
-            })
-    return state
-
-
 def swatch_user(error, operations, index):
     """For an unknown-swatch error, the first operation that uses the swatch: colors resolve when
     a later operation (or the final state check) reads them, not where the reference was written."""
@@ -86,9 +73,6 @@ def batch_error(errors):
 
 
 class Project:
-    # The older Vixl version that saved this document, kept across saves until the upgrade is accepted
-    # (vixl upgrade); see upgrade.py.
-    upgraded_from = None
 
     def __init__(self, width=None, height=None, background=None, *, purpose=None, seed=None, variety=None,
                  workspace_fonts=True, limits=None, workspace=None):
@@ -96,7 +80,7 @@ class Project:
 
         ``Project(width, height)`` alone is a plain transparent canvas, as before. Leaving out the size, or
         passing ``purpose``, ``seed`` or ``variety``, creates a design document exactly as ``vixl new`` and
-        ``vixl_document_create`` do (``creation.py``): the purpose's size (else 1080×1080), rolled
+        ``vixl_document(action='create')`` do (``creation.py``): the purpose's size (else 1080×1080), rolled
         ``design_defaults``, the palette background (transparent for marks) and the rolled font pairing
         (``workspace_fonts=False`` skips fonts). An unseeded roll is recorded in the workspace history
         only when ``workspace`` is given."""
@@ -174,7 +158,7 @@ class Project:
     @classmethod
     def new(cls, size=None, *, width=None, height=None, purpose=None, background=None, dpi=None, orientation=None,
             bleed=False, seed=None, variety=None, workspace=None, workspace_fonts=True, limits=None, report=None):
-        """The one creation path with every option ``vixl new`` and ``vixl_document_create`` take; ``report``
+        """The one creation path with every option ``vixl new`` and ``vixl_document(action='create')`` take; ``report``
         receives what creation chose (``creation``, ``workspace_fonts``)."""
         from .creation import create
 
@@ -726,10 +710,9 @@ class Project:
         return done
 
     def _restore(self, node):
-        # The head state stays as stored, so new deltas patch the stored revisions; the live state
-        # is brought up to date.
+        # The head state stays as stored, so new deltas patch the stored revisions.
         stored = self._state_at(node)
-        state = upgrade_state(deepcopy(stored))
+        state = deepcopy(stored)
         if node not in self._verified:
             # Archived history is untrusted until a revision is actually used.
             from .validation import check_state
@@ -775,7 +758,7 @@ class Project:
         if node == self.head:
             return self
         view = copy(self)
-        view.state = upgrade_state(self._state_at(node))
+        view.state = self._state_at(node)
         if node not in self._verified:
             from .validation import check_state
 
@@ -1004,7 +987,6 @@ class Project:
         return {
             "format_version": FORMAT_VERSION,
             "vixl_version": __version__,
-            **({"upgraded_from": self.upgraded_from} if self.upgraded_from else {}),
             "state": self.state,
             "nodes": self.nodes,
             "head": self.head,
@@ -1140,7 +1122,7 @@ class Project:
                 require(metadata.get("transaction") is None or isinstance(metadata["transaction"], dict),
                         "transaction must be an object or null", "invalid_project")
                 require(
-                    metadata.get("format_version") in (1, FORMAT_VERSION),
+                    metadata.get("format_version") == FORMAT_VERSION,
                     "Unsupported project format",
                     "invalid_project",
                 )
@@ -1156,11 +1138,6 @@ class Project:
                     "transaction",
                 ):
                     setattr(project, key, metadata[key])
-                from .upgrade import predates_render_changes
-
-                saved = metadata.get("vixl_version")
-                project.upgraded_from = metadata.get("upgraded_from") or (
-                    (saved or "unknown") if predates_render_changes(saved) else None)
                 project.assets = {n: archive.read(n) for n in names if n != "project.json"}
                 hashes = metadata["asset_hashes"]
                 require(set(hashes) == set(project.assets), "Asset manifest mismatch", "invalid_project")
@@ -1204,7 +1181,6 @@ class Project:
                 project.path = path
                 project._head_state = None
                 project._verified = set()
-                upgrade_state(project.state)
                 check_document(project)
                 project._revision = revision
                 return project

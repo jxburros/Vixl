@@ -2,7 +2,7 @@
 
 Service clients cannot make the server read a font file, so ``font`` accepts a font role
 (``heading``, ``body`` or another typography role), a text stage (``h1``, ``caption`` …), the bundled proofing font, or the name of a font already registered in the
-document (``vixl_font_install``, ``vixl_font_pair`` or ``vixl_import_font`` register one). The same
+document (``font-install``, ``font-pair`` or ``import-font`` register one). The same
 rule covers ``display_font``, the fonts set on rich-text spans and ``font=`` in rich-text Markdown.
 """
 
@@ -12,8 +12,8 @@ from .errors import VixlError
 
 ROLES = ("heading", "body", "DejaVuSans.ttf")
 FIELDS = ("font", "display_font")
-INSTALL = ("Install one with vixl_font_install or vixl_font_pair (or import a workspace font file with "
-           "vixl_import_font), then pass the registered name or a role (heading, body)")
+INSTALL = ("Install one with a font-install or font-pair step (or import a workspace font file with an "
+           "import-font step), then pass the registered name or a role (heading, body)")
 
 
 def allowed_fonts(project):

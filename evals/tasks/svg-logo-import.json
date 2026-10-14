@@ -26,22 +26,28 @@
   ],
   "reference": [
     {
-      "tool": "vixl_document_create",
+      "tool": "vixl_document",
       "arguments": {
+        "action": "create",
         "path": "design.vixl",
         "width": 100,
         "height": 100
       }
     },
     {
-      "tool": "vixl_import_document",
+      "tool": "vixl_apply",
       "arguments": {
-        "format": "svg",
-        "path": "logo.svg"
+        "operations": [
+          {
+            "type": "import-document",
+            "format": "svg",
+            "path": "logo.svg"
+          }
+        ]
       }
     },
     {
-      "tool": "vixl_operations_apply",
+      "tool": "vixl_apply",
       "arguments": {
         "operations": [
           {
@@ -53,7 +59,7 @@
       }
     },
     {
-      "tool": "vixl_export_file",
+      "tool": "vixl_export",
       "arguments": {
         "path": "logo.svg.png"
       }

@@ -30,7 +30,9 @@ a sheet of badges built from one template) stop going out of date.
 Rotation, flips, opacity, blend, masks, effects, layer styles, clipping, constraints and groups work on a
 link exactly as on an image layer (`rotate`, `flip`, `opacity`, `blur`, `group`, `align` …). `resize` and
 `scale` change the box, and `fit`/`position`/`crop` decide what happens inside it. The source is
-re-rendered at the size it is shown at, so text and vectors stay sharp when you enlarge a link.
+re-rendered at the size it is shown at, so text and vectors stay sharp when you enlarge a link. A photo in the source
+that is shown larger than its own pixels runs the `denoise` effects that open its stack at its own pixels before it
+is scaled up, so a linked crop of a corrected master shows the cleaned photo, not enlarged grain.
 
 A `link` operation with a `target` (CLI: `link-set LAYER`) changes `source`, `artboard`, `source_page`, `variables`,
 `fit`, `position` or `crop` (`null` clears an optional setting) and checks the result against the source; the layer's
@@ -43,7 +45,7 @@ source's `source_hash` (SHA-256) and `source_size` as of the last `link`, change
 Rendering always uses the source as it is on disk now, with no refresh needed. The recorded hash exists
 so you can tell what changed behind your back:
 
-- **`links`** (CLI), the `links` workflow action (MCP `vixl_workflow("links", {})`, REST
+- **`links`** (CLI), the `links` workflow action (MCP `vixl_apply(workflow='links', request={})`, REST
   `POST /workflow/links`) and `inspect` (`links` list) report every link with a `state`:
   `ok`, `stale` (the source changed since it was last recorded; the layer already draws the new version),
   `missing` (the error names the path it looked for), `cycle`, `forbidden` or `error` (an unreadable
@@ -56,7 +58,7 @@ so you can tell what changed behind your back:
   document's folder is an `info` finding (copying the folder elsewhere would break it).
 - Each listed link carries `path` (the resolved absolute file) and `resolved_from` (`document`,
   `workspace` or `absolute`: which folder it was found in).
-- Production runs (`vixl_workflow("run", …)`) include the revisions of linked sources in their
+- Production runs (`vixl_apply(workflow='run', request=…)`) include the revisions of linked sources in their
   fingerprints, so a changed source re-renders the variants that use it.
 
 ## Freezing a link
@@ -116,14 +118,14 @@ Linked files are an opt-in dependency, not an import (see the security notes in
 vixl link FILE.vixl [--name N] [--x X] [--y Y] [--width W] [--height H] [--fit fill|fit|stretch]
           [--position top-left|0.5,0.5] [--crop X,Y,W,H] [--artboard NAME] [--source-page P] [--set NAME=VALUE]…
 vixl link-set LAYER [--source F] [--fit …] [--position …] [--crop …] [--artboard …] [--source-page …]
-          [--set NAME=VALUE]… [--clear artboard|source_page|variables|crop]…
+          [--set NAME=VALUE]… [--clear artboard|source_page|variables|crop|corner_pin]…
 vixl link-refresh [LAYER]
 vixl link-embed LAYER
 vixl links-relink FROM TO        # rewrite a source prefix in every link
 vixl links                       # every link with its state
 ```
 
-Through MCP and REST the same operations go through `vixl_operations_apply` / `POST /operations`
+Through MCP and REST the same operations go through `vixl_apply` / `POST /operations`
 (`link`, `link-refresh`, `link-embed`, `links-relink`).
 
 ## Mockups
@@ -144,7 +146,7 @@ them out). Because the design is linked, editing it updates every mockup on its 
 `link-refresh` records the new version. `fit` (`fill`, the default, `fit` or `stretch`), `source_page` and
 `artboard` choose how and what of the design is shown. With several templates, `output` is a folder that
 receives `TEMPLATE.vixl` each; `export` writes images next to them through the same path as
-`vixl_export_batch`. Existing files are never replaced unless `overwrite: true`.
+`vixl_export(kind='batch')`. Existing files are never replaced unless `overwrite: true`.
 
 | Template | Scene | Slots |
 | --- | --- | --- |
@@ -170,8 +172,8 @@ is a link to the template with one CSV row as its `variables`.
 `Project(..., workspace=ROOT)`, `Project.sized(..., workspace=ROOT)` and
 `Project.load(path, workspace=ROOT)` expose the linked-source workspace publicly.
 The default is the current directory captured when the project is created or
-loaded. Relative links resolve against that fixed root, then the saved document's
-directory. Saving into a subdirectory or changing the process directory does not
+loaded. Relative links resolve against the saved document's directory first, then that
+fixed root. Saving into a subdirectory or changing the process directory does not
 change an existing project's workspace. When opening a master from another working
 directory, pass the original workspace explicitly; workspace paths are not embedded
 in portable documents.

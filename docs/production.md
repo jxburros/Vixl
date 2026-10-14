@@ -13,7 +13,7 @@ sequence and a reusable library component.
 ## Interfaces
 
 Canonical operations work through `Project.apply`, `vixl apply`, REST `/operations`,
-and `vixl_operations_apply`. `vixl schema` / `vixl_operation_schema` describe their fields.
+and `vixl_apply`. `vixl schema` / `vixl_reference('operations')` describe their fields.
 New commands have document-independent `--help`.
 
 Production workflows share one additional entry point:
@@ -24,15 +24,17 @@ vixl -p campaign.vixl workflow check --request checks.json --workspace .
 vixl -p campaign.vixl workflow run --request production.json --workspace .
 ```
 
-MCP: `vixl_workflow_schema()` and `vixl_workflow(action, request, document?)`.
+MCP: `vixl_reference('workflows')` and `vixl_apply(workflow=ACTION, request={…}, document?)`.
 Python: `vixl.workflows.dispatch(Session(...), action, request)` or the functions below.
 Every path is relative to the session's workspace and must stay within it. The CLI
 defaults the workspace to its current directory; use an explicit project path.
-The fixed-project REST service exposes `GET /workflow/schema` and
-`POST /workflow/check|act|plan|film-plan`. Filesystem/library/job actions require
+The fixed-project REST service exposes `GET /workflow/schema` and `POST /workflow/ACTION` for
+`check`, `act`, `plan`, `film-plan`, `lyric-video-plan`, `organic-catalog`, `form-fill`, `drawing-report`, `links`,
+`repair-layout`, `protected-edit` and the resource actions of the [studio guide](studio.md) (`resource-*`, `shape-save`,
+`suite-use`, `effect-run`, `palette-check`). Filesystem/library/job actions require
 CLI, Python or a workspace-scoped MCP session. This preserves REST's existing scope.
 
-`vixl_compose` (CLI `vixl compose --request req.json`) builds a new document in one atomic call (create, font pairing,
+`vixl_apply(create=…)` (CLI `vixl compose --request req.json`) builds a new document in one atomic call (create, font pairing,
 layout, style, look, operations, check, preview, save, exports); see [interfaces](interfaces.md#build-a-piece-in-one-call).
 To check documents in pull requests, see [CI](ci.md).
 
@@ -52,6 +54,8 @@ and hashes, loads the result as a project and writes it with one history entry. 
 never captures the screen. Request fields: `output` (.png), optional `bbox` `[left, top, right, bottom]`
 (negative monitor coordinates allowed), or on Windows `window` (an HWND) and `all_screens`, and
 `overwrite`. Headless sessions or a denied OS screen-recording permission fail with `capture_unavailable`.
+Over MCP the action is off until the server owner starts `vixl mcp` with `--allow-screen-capture` (or
+`VIXL_ALLOW_SCREEN_CAPTURE=1`).
 
 ```text
 vixl workflow screen-capture --request '{"output":"screen.png","bbox":[0,0,800,600]}' --workspace .
@@ -73,8 +77,8 @@ Attach a suite with an explicit `suite-set` operation:
 ```
 
 The tool surface describes this object, so no repository docs are needed to write one:
-`vixl_operation_schema(types=["suite-set"])` and `vixl_workflow_schema().definitions.suite` give every
-rule field a type, enum and one-line description (with an example), and `vixl_workflow_schema` does the
+`vixl_reference('operations', name=["suite-set"])` and `vixl_reference('workflows').definitions.suite` give every
+rule field a type, enum and one-line description (with an example), and `vixl_reference('workflows')` does the
 same for every action's request fields and for the `job`, `spec`, `recipe` and plugin `manifest` objects.
 The `check` action also accepts an inline suite object instead of a name.
 
@@ -100,7 +104,7 @@ Rules:
 | `pixels` | `region` [x,y,w,h], embedded baseline `asset`, `tolerance` (maximum RGBA channel difference, 0–255) |
 | `text-fit` | `target`, `minimum`; measures unwarped text with baked font size (a text-layout box wraps it; auto-sized text is measured as drawn, unwrapped); use `fit-text` first |
 | `alpha` | `minimum`/`maximum`: permitted fraction of pixels with alpha below 255 |
-| `spacing` | `targets` (2+ siblings), `axis`, optional `expected`, `tolerance` (default 1px); equal or exact gaps, as `vixl_measure_spacing` |
+| `spacing` | `targets` (2+ siblings), `axis`, optional `expected`, `tolerance` (default 1px); equal or exact gaps, as `vixl_check(action='spacing')` |
 | `relation` | `target`, `to` (a layer or `canvas`), and any of `position` (`left-of`, `right-of`, `above`, `below`, `inside`, `contains`, `overlapping`, `apart`), `align` (edges such as `left`, `center-x`, `top`), `minimum`/`maximum` (the gap, or the smallest margin when inside), `tolerance`, `bounds` box/ink |
 | `contrast` | `target`, `minimum` (default 4.5); WCAG ratio of the tenth-percentile glyph pixel against what is drawn under it (an outline style counts), as the `contrast` design check reads it |
 | `color` | `point` [x,y] or `region`, `expected` colour (any Vixl colour, including `@swatch`), `tolerance` (largest RGB channel difference, default 12) |
@@ -157,7 +161,7 @@ to it instead:
 - `suite-use` with `reference: true` attaches `{"extends": NAME, "rules": []}` to one document.
 
 Inherited suites run in workflow `check` (no `suite`), `run` (unless the spec lists `suites`),
-`group-apply` (unless the request lists `suites`) and `vixl_operations_apply(suites=true)`, and always
+`group-apply` (unless the request lists `suites`) and `vixl_apply(suites=true)`, and always
 use the library's current version: edit the library suite (`resource-save`) and every member's next
 check uses it, without touching member files. A member overrides a rule by `id`, or adds rules, with a
 suite that extends the library suite:
@@ -191,9 +195,9 @@ the rules every member proposes and passes, with each limit set to the strictest
 ### When to test
 
 A preview is a small downsampled picture; tests measure what it hides and keep measuring as edits accumulate.
-Write the brief's requirements as a suite before building (each `vixl_guide(kind)` answer lists a starter
-suite and rules to adapt under `tests`; `vixl_guide("testing")` is the method), run it with every batch
-(`vixl_operations_apply(..., check=true, suites=true)`, CLI `vixl apply ops.json --check --suites`, REST
+Write the brief's requirements as a suite before building (each `vixl_reference(kind)` answer lists a starter
+suite and rules to adapt under `tests`; `vixl_reference("testing")` is the method), run it with every batch
+(`vixl_apply(..., check=true, suites=true)`, CLI `vixl apply ops.json --check --suites`, REST
 `POST /operations` with `"suites": true`), and run `vixl_check` plus the suites before every preview and
 export. Fix the design when a rule fails; never loosen the rule.
 `suite-capture` creates an initial structural/pixel baseline, refusing to replace one:
@@ -258,7 +262,7 @@ checks. Three are built in:
 | --- | --- | --- | --- |
 | `draft` | `error`: only errors fail | | none |
 | `review` | `fix`: any finding whose action is fix fails (the plain `check` verdict) | | all attached |
-| `final` | `review`: fix and review findings fail | `color_vision` | all attached |
+| `final` | `review`: fix and review findings fail | `color_vision`, `composition` | all attached |
 
 `check --profile final` (`vixl_check(profile="final")`, `profile` on production `run`, on `group-apply` and on the
 [CI action](ci.md)) runs the profile's checks and suites; its `fail_on` decides `passed`, and the report's `profile`
@@ -272,6 +276,11 @@ built-in ones, in `.vixl-checks.json` at its root; a project group's `profiles` 
               "social": {"fail_on": "fix", "checks": ["bounds", "contrast", "safe_area", "legibility"]}},
  "waivers": [{"check": "safe_area", "target": "title-bar", "reason": "full-bleed bar by design", "expires": "2030-12-31"}]}
 ```
+
+`final` keeps `composition` even when a workspace narrows its `checks`, so unresolved [composition
+reviews](guides.md#composition) (dead bands, margin drift, uneven rhythm, crowding, clumped scatter) fail shipping
+until they are fixed or waived with a reason. Only a workspace that narrows `checks` and also sets `final.optional`
+replaces the built-in `optional` list (`color_vision`, `composition`); name `composition` in it to keep the gate.
 
 A profile has `fail_on`, `checks` (default: the standard checks), `optional` (opt-in checks added to them),
 `suites` (`"all"`, `"none"` or a list of names) and `description`. The report's `outcome` follows the profile: what
@@ -428,7 +437,8 @@ mode, ICC profile, the PDF colour spaces it uses, a document's canvas and dpi) a
 `vixl_check` findings (`check: false` skips them), with waived findings marked and the document's
 [waivers](#waivers-and-check-profiles) listed with their reasons and expiry dates. `before` adds a before/after pair with the changed share: it is
 another file, or a revision of a `.vixl` item (`previous`, `head~2`, a checkpoint or branch). Items are paths or
-`{path, label?, before?, note?}`; up to 200.
+`{path, label?, before?, note?}`; up to 200. `overlay: true` outlines each `fix` finding on a checked document's
+thumbnail, labelled with its rule and layer ID.
 
 The page is a single file that works offline: every image is a data URI, and its Content-Security-Policy allows only
 those images, inline styles and, with `decisions: true`, the one inline script it names by hash. That script adds
@@ -519,7 +529,7 @@ differently. Vixl does not schedule runs itself: run it from CI on a schedule (a
 
 The folder holds `source/` (an editable `.vixl` per lockup and variant), `svg/` (strict SVG: a variant with raster
 content is skipped and listed under `report.skipped`), `pdf/`, `png/`, `icons/`, `social/`, `usage.html` and
-`package.json` (the file list, settings and report). Files go through the same export path as `vixl_export_batch`.
+`package.json` (the file list, settings and report). Files go through the same export path as `vixl_export(kind='batch')`.
 Nothing is overwritten unless `overwrite: true`, and a failure removes the files the call wrote.
 
 Recolouring is a heuristic, and `report.variants` says what it did per variant: mono variants turn every visible
@@ -605,6 +615,11 @@ a worker again. Local production resumes. Cancellation is cooperative between ou
 frames and does not claim to cancel external inference. Encoding/audio mixing may finish
 their current bounded operation before cancellation is observed.
 
+Over MCP, `vixl_job(action='status' | 'result' | 'cancel', id=JOB, wait=SECONDS)` follows a durable job by its
+32-character id from `submit`, as `status` and `cancel` do; `resume` stays a workflow action. The same tool follows the
+in-memory job id (`{status: running, job}`) that any call returns when it runs past the inline limit (about 40 seconds)
+or is sent with `as_job: true` ([long calls](interfaces.md#long-calls-retries-and-progress)).
+
 Job kinds:
 
 - `production`: source, spec, output directory.
@@ -612,6 +627,8 @@ Job kinds:
 - `generate`: source, explicit provider, request (prompt, width, height, optional model,
   negative_prompt, seed, strength and generate mode), output `.vixl`.
 - `video`: explicit provider, request, output MP4/WebM (gateway contract below).
+- `lyric-video`: request, output MP4/WebM ([lyric videos](lyric-video.md)).
+- `form-fill`: source, request, output ([forms](forms.md)).
 
 An interrupted synchronous image request becomes `needs_review` and is never blindly
 repeated. Pollable video jobs keep their remote ID. Network failures back off; after
@@ -649,7 +666,8 @@ The mix is written at the highest source sample rate (up to 48 kHz; 48 kHz for s
 tracks), mono when every source is mono and unpanned; `sample_rate` (Hz) on the spec chooses
 another. The result reports `sample_rate` and `channels`.
 
-Limits: 100 shots, 1,000 captions, eight audio tracks, 3,600 frames, ten minutes, 60fps.
+Limits: 100 shots, 1,000 captions, eight audio tracks, ten minutes, 60fps, and 3,600 frames for ZIP output
+(MP4/WebM stream frames and have no frame cap).
 MP4/WebM, clip decoding and audio mixing require ffmpeg on PATH. ZIP exports stream PNG
 frames plus timing.json and do not support audio. Draft films cap dimensions at 640px;
 set their fps explicitly. Output is staged and published only after completion.

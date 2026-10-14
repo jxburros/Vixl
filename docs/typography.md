@@ -2,7 +2,7 @@
 
 [Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
 
-Vixl bundles DejaVu Sans only as a proofing fallback, so text renders before anyone has chosen type. Characters a font lacks fall back to the document's `font-fallbacks`, then to DejaVu Sans and the bundled Noto Sans, Noto Sans Symbols, Noto Sans Symbols 2 and Noto Sans Math, so mixed Latin, Greek, Cyrillic and symbol text draws without empty boxes offline (CJK needs an installed face in `font-fallbacks`). Design type comes from a researched catalog and is downloaded only when you ask. The default `fonts` check warns while any text still uses the fallback (a fix-level finding, so `check.passed` stays false until real type is installed), and an apply that asks for the `heading` or `body` role before the document has typography says so in its `warnings`. Pass `font_pairing` to `vixl_document_create` (or call `vixl_font_pair`) to give the roles real typefaces.
+Vixl bundles DejaVu Sans only as a proofing fallback, so text renders before anyone has chosen type. Characters a font lacks fall back to the document's `font-fallbacks`, then to DejaVu Sans and the bundled Noto Sans, Noto Sans Symbols, Noto Sans Symbols 2 and Noto Sans Math, so mixed Latin, Greek, Cyrillic and symbol text draws without empty boxes offline (CJK needs an installed face in `font-fallbacks`). Design type comes from a researched catalog and is downloaded only when you ask. The default `fonts` check warns while any text still uses the fallback (a fix-level finding, so `check.passed` stays false until real type is installed), and an apply that asks for the `heading` or `body` role before the document has typography says so in its `warnings`. Pass `font_pairing` to `vixl_document(action='create')` (or call `font-pair`) to give the roles real typefaces.
 
 ## The catalog
 
@@ -16,7 +16,7 @@ vixl font show "Space Grotesk"         # full entry plus the pairings that use i
 
 ## Pairings
 
-76 curated heading/body pairings: the original 60 plus 16 tiered ones from house style 3 (4 safe, 8 bold, 4 avant-garde; `tier` in each entry). They are described by their relationship (`contrast` of classification, `superfamily`, or `concord`), mood and best uses, a one-line reason they work, a caution and, where one exists, a published source. Single-family pairings get weight contrast from one family.
+76 curated heading/body pairings: the original 60 plus 16 tiered ones (4 safe, 8 bold, 4 avant-garde; `tier` in each entry). They are described by their relationship (`contrast` of classification, `superfamily`, or `concord`), mood and best uses, a one-line reason they work, a caution and, where one exists, a published source. Single-family pairings get weight contrast from one family.
 
 ```bash
 vixl font pairings --mood editorial --for reports
@@ -24,7 +24,7 @@ vixl font pairing dm-serif-dm-sans     # why it works, and the caution
 vixl font principles                   # the full guide on choosing and combining type
 ```
 
-The guide, `vixl font principles` (MCP: `vixl_fonts view=principles`), covers:
+The guide, `vixl font principles` (MCP: `vixl_reference('fonts', options={view: 'principles'})`), covers:
 
 - **Classification:** Vox-ATypI and the sans subclasses.
 - **Eight pairing principles:** contrast of classification without contrast of everything, matching x-height, shared construction or era, superfamilies, two families at most, fixed roles, and weight contrast.
@@ -98,15 +98,15 @@ vixl font list                         # registered fonts, the document typograp
 
 Installs fetch one static TTF per style from the Google Fonts CSS API (`fonts.gstatic.com`, HTTPS only, bounded size). Any Google Fonts family works, not only catalog entries. Files are validated and cached in `~/.cache/vixl/fonts` (set `VIXL_FONT_CACHE` to move it), then embedded in the document and registered as `family-weight` (for example `dm-serif-display-400`). A saved `.vixl` file therefore renders anywhere without the network. `font pair` and `--role` set `state.typography`, and layouts use it for headings and body unless you pass `font`/`display_font`. The structured operation is `{"type": "font-register", "name": "dm-sans-400", "role": "body"}`.
 
-Each install reports where the font came from, so agents and CI can verify offline behaviour: `source.origin` is `cache` (served from `source.cache_file` with no network) or `download` (with the Google Fonts stylesheet in `source.stylesheet` and the font file in `source.url`; `cache_file` is the copy it was stored as, or null when the cache is not writable). `source.cache_dir` is the cache directory and `source.cache_dir_from` says whether `VIXL_FONT_CACHE` or the default chose it. `family`, `weight`, `italic` and `name` give the resolved style, and `file` names the embedded asset (`fonts/<sha256>.ttf`), its byte size and hash. `font pair` returns this for both the heading and body fonts plus `origin` (`cache`, `download` or `mixed`); `vixl_roll` with `apply` returns the same under `fonts`. `source.bundled_fallback` is always false: a font that cannot be downloaded or found in the cache fails with `font_download_failed` (or `unknown_font`), and the bundled DejaVu Sans is never substituted silently. To run offline, pre-fill the cache (or set `VIXL_FONT_CACHE` to a directory holding `family-weight[-italic].ttf` files such as `inter-400.ttf`) and check for `origin: "cache"`.
+Each install reports where the font came from, so agents and CI can verify offline behaviour: `source.origin` is `cache` (served from `source.cache_file` with no network) or `download` (with the Google Fonts stylesheet in `source.stylesheet` and the font file in `source.url`; `cache_file` is the copy it was stored as, or null when the cache is not writable). `source.cache_dir` is the cache directory and `source.cache_dir_from` says whether `VIXL_FONT_CACHE` or the default chose it. `family`, `weight`, `italic` and `name` give the resolved style, and `file` names the embedded asset (`fonts/<sha256>.ttf`), its byte size and hash. `font pair` returns this for both the heading and body fonts plus `origin` (`cache`, `download` or `mixed`); an applied roll (the `roll` step of `vixl_apply`, `vixl roll --apply`) returns the same under `fonts`. `source.bundled_fallback` is always false: a font that cannot be downloaded or found in the cache fails with `font_download_failed` (or `unknown_font`), and the bundled DejaVu Sans is never substituted silently. To run offline, pre-fill the cache (or set `VIXL_FONT_CACHE` to a directory holding `family-weight[-italic].ttf` files such as `inter-400.ttf`) and check for `origin: "cache"`.
 
 ### Workspace default fonts
 
-A workspace can give every new document the same typography. `vixl_font_pair(pairing=..., scope="workspace")` (CLI `vixl font pair NAME --scope workspace`, REST `POST /typefaces/pair` with `"scope": "workspace"`) writes `pairing` into the workspace `brand.json`; `vixl_font_install(family=..., role="heading"|"body"|any role, scope="workspace")` (CLI `vixl font install FAMILY --role heading --scope workspace`) embeds that one style in `brand.json` under `fonts.<role>`, overriding the pairing for that role; without a role it becomes the heading font and the result says so under `normalized`. On the CLI, `--workspace DIR` writes the `brand.json` in DIR instead of the current directory (and implies `--scope workspace`). A workspace pairing replaces embedded `fonts.heading`/`fonts.body` entries (other roles stay), and the result lists them under `workspace.replaced`. Both fetch the fonts immediately, so an unknown family fails at once, and neither changes existing documents.
+A workspace can give every new document the same typography. A `{type: font-pair, pairing: …, scope: workspace}` step in `vixl_apply` (CLI `vixl font pair NAME --scope workspace`, REST `POST /typefaces/pair` with `"scope": "workspace"`) writes `pairing` into the workspace `brand.json`; `a font-install step` (CLI `vixl font install FAMILY --role heading --scope workspace`) embeds that one style in `brand.json` under `fonts.<role>`, overriding the pairing for that role; without a role it becomes the heading font and the result says so under `normalized`. On the CLI, `--workspace DIR` writes the `brand.json` in DIR instead of the current directory (and implies `--scope workspace`). A workspace pairing replaces embedded `fonts.heading`/`fonts.body` entries (other roles stay), and the result lists them under `workspace.replaced`. Both fetch the fonts immediately, so an unknown family fails at once, and neither changes existing documents.
 
-`vixl_document_create`, `Session.create` and `vixl new` then download (or reuse from the cache) and embed the workspace fonts as part of the creation step, and report them under `workspace_fonts` (`pairing`, and `applied.heading`/`applied.body` with each font's `name` and whether it came `from` the pairing or `fonts`). Fonts are embedded in each document, so files stay portable. Passing `font_pairing` to `vixl_document_create`, `workspace_fonts: false` (CLI `--no-workspace-fonts`) skips them. When a pairing cannot be fetched (offline, empty cache), the document is still created and `workspace_fonts.error` says why; run `vixl_font_pair` later. The CLI uses the `brand.json` beside the new document (`--scope workspace` writes it in the current directory).
+`vixl_document(action='create')`, `Session.create` and `vixl new` then download (or reuse from the cache) and embed the workspace fonts as part of the creation step, and report them under `workspace_fonts` (`pairing`, and `applied.heading`/`applied.body` with each font's `name` and whether it came `from` the pairing or `fonts`). Fonts are embedded in each document, so files stay portable. Passing `font_pairing` to `vixl_document(action='create')`, `workspace_fonts: false` (CLI `--no-workspace-fonts`) skips them. When a pairing cannot be fetched (offline, empty cache), the document is still created and `workspace_fonts.error` says why; run `font-pair` later. The CLI uses the `brand.json` beside the new document (`--scope workspace` writes it in the current directory).
 
-MCP: `vixl_fonts` (views `fonts`, `font`, `pairings`, `pairing`, `principles`), `vixl_font_pair`, `vixl_font_install`. REST: `GET /typefaces`, `GET /typefaces/pairings`, `POST /typefaces/pair`, `POST /typefaces/install`.
+MCP: `vixl_reference('fonts')` (a pairing or family as `name`, or `view` `fonts`, `font`, `pairings`, `pairing`, `principles`) and the `font-pair` and `font-install` steps of `vixl_apply`. REST: `GET /typefaces`, `GET /typefaces/pairings`, `POST /typefaces/pair`, `POST /typefaces/install`.
 
 ## Baselines
 
@@ -140,7 +140,7 @@ vixl roll --for poster --size instagram-post --mood warm
 vixl roll --seed 11 --lock palette=sage --lock pairing=dm-serif-dm-sans
 ```
 
-A roll picks a pairing first, then a palette whose mood fits it, a layout suited to the purpose and canvas, and the mode, type scale, density and accent. It returns the steps and a ready `layout-apply` operation. The same seed reproduces it. Roll several times, preview, and keep the one you like (MCP `vixl_roll`, REST `GET /roll`). With a document (`vixl -p DOC roll` or the session's current document) the preview uses its canvas, so it picks the same direction `--apply` will. `--apply` leaves slots you did not fill out (`--unfilled omit`, the default when you pass `--set`/`slots`), so the result passes `check` with no second layout pass; `--unfilled blank` keeps `[Label]` placeholders for slots to fill later.
+A roll picks a pairing first, then a palette whose mood fits it, a layout suited to the purpose and canvas, and the mode, type scale, density and accent. It returns the steps and a ready `layout-apply` operation. The same seed reproduces it. Roll several times, preview, and keep the one you like (MCP `vixl_reference('roll')`, REST `GET /roll`). With a document (`vixl -p DOC roll` or the session's current document) the preview uses its canvas, so it picks the same direction `--apply` will. `--apply` leaves slots you did not fill out (`--unfilled omit`, the default when you pass `--set`/`slots`), so the result passes `check` with no second layout pass; `--unfilled blank` keeps `[Label]` placeholders for slots to fill later.
 
 ## Emoji artwork
 
@@ -154,6 +154,56 @@ Tracking is letter spacing in local pixels after every character; negative value
 
 Width-only `text-layout` boxes grow vertically after `text-set` or variable substitution. Give both width and height to keep a fixed box and let overflow checks report copy that does not fit. Markdown text-flow retains its size-based line-height calculation when splitting across frames.
 
-`check` flags a wrapped display line that strands a word: text of 24 px or more whose paragraph wraps and whose last line is one word or under 20% of the longest line gets a `legibility` finding with `code: runt` and `action: review`. Widen the box, break the line yourself, or run `fit-text`.
+`check` flags a wrapped display line that strands a word: text of 24 px or more whose paragraph wraps and whose last line is one word or under 20% of the longest line gets a `legibility` finding with `code: runt` and `action: review`. Set the box's `wrap` (below), widen the box, break the line yourself, or run `fit-text`.
+
+## Line breaking
+
+`text-layout` (and `rich-text` with a width) takes `wrap`, how a box breaks its lines:
+
+- `greedy` fills each line before starting the next, the way the box always has.
+- `balance` sets the same number of lines as `greedy`, with widths as even as the words allow. Use it for headings,
+  titles and short text: "The gulls are sleeping on the silver / stone" becomes "The gulls are sleeping / on the
+  silver stone".
+- `pretty` is `greedy` that never leaves one word alone on a paragraph's last line: it moves the word before it down
+  when the line above keeps at least two words. Use it for body text and lyrics.
+
+```json
+[{"type": "text", "name": "headline", "text": "The gulls are sleeping on the silver stone", "size": 64, "x": 60, "y": 60},
+ {"type": "text-layout", "target": "headline", "width": 1080, "wrap": "balance"}]
+```
+
+Neither changes the line count, so a box keeps its height. A paragraph holding a word wider than the box keeps its
+greedy breaks, and lines you break yourself are never moved. The breaks are worked out once and shared: PNG, SVG and
+PDF draw the same lines, and PPTX writes balanced or runt-free lines with explicit line breaks (greedy text is left
+for PowerPoint to wrap, as before). `wrap` is kept when the box is resized with another `text-layout`; pass
+`"wrap": "greedy"` to go back (CLI: `vixl text-layout NAME --width 1080 --wrap balance`). `balanced`, `even` and `no-runts` are accepted and reported under `normalized`.
+
+**Headings balance by default.** A new `text-layout` box on a heading (a heading font role or stage, or text whose size
+reads as the h2 step or larger) and every layout headline take `wrap: "balance"`. Rich text keeps `greedy` unless you ask. Pass `wrap: "greedy"` on the
+`text-layout` for greedy breaks.
+
+## Tab stops and leaders
+
+A plain text layer takes `tabs`, a list of tab stops: each tab character (`\t`) in its text moves what follows to the
+next stop past the pen. A stop has `at` (pixels from the text's left edge, or a percentage of the text box width, of
+the canvas width without a box), `align` and an optional `leader`:
+
+- `left` (default) starts the text at the stop, `right` ends it there, `center` centres it on the stop, and `decimal`
+  puts its decimal point there (a figure without one ends where the point would be).
+- `leader` repeats across the gap before the stop, such as `"."` for a menu's dot leader. Leaders sit on a grid from
+  the line start, so the dots of stacked lines line up.
+
+```json
+[{"type": "text", "name": "menu", "text": "Espresso\t3.25\nFlat white\t4.50\nTea\t3", "size": 28, "x": 60, "y": 60,
+  "tabs": [{"at": "100%", "align": "right", "leader": "."}]},
+ {"type": "text-layout", "target": "menu", "width": 520}]
+```
+
+A line with a tab is set on one line and not wrapped; past the last stop a tab moves to the next multiple of four
+spaces. Without `tabs`, a tab is four spaces, as before. `text-set` with `"tabs": []` removes them; `tab_stops` is
+accepted, and the CLI takes the stops as JSON in `--tabs`. PNG, SVG and PDF draw the stops and leaders; PPTX writes native tab stops (left, right, centre, decimal) and
+the leader as characters before the tab, since PowerPoint has no leaders. Rich text keeps tabs as spaces. For a price
+list with several columns, a `table` with a decimal column and a column `leader` does the same
+([tables](charts.md#tables)).
 
 For social and poster purposes, automatic legibility checking and generated layout minor text use the house minimum (2.2% of the short canvas side). Explicit thumbnail widths remain a caller-selected viewing-context check. Print keeps the 6-point minimum and decks keep their profile checks. The contrast check treats bold text (font weight 700+) from 18.66 px (14 pt) as large, needing 3:1; regular text needs 24 px. Shared spacing expressions such as `2u` use half the body size per unit.

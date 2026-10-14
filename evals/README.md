@@ -45,7 +45,7 @@ python -m evals.run
 # Claude through the official Anthropic SDK (spends API credits)
 export ANTHROPIC_API_KEY=...        # or `ant auth login`
 python -m evals.run --agent claude
-python -m evals.run --agent claude --model claude-sonnet-5-5 --effort low --schema slim --tasks "photo-*"
+python -m evals.run --agent claude --model claude-sonnet-5-5 --effort low --tasks "photo-*"
 ```
 
 Results go to `eval-results/results.json` (full traces) and `eval-results/report.md`; `--keep`
@@ -60,8 +60,7 @@ and server-side refusal fallbacks (`fallbacks: "default"`) are enabled unless `-
 ## Using it
 
 Run the suite before and after changing tool descriptions, schemas, error messages, response
-formats or normalization rules, and compare success rate, round trips and tokens. Run it with
-`--schema full` and `--schema slim` to decide which mode suits a given model. When agents fail a
+formats or normalization rules, and compare success rate, round trips and tokens. When agents fail a
 task, read the trace in `results.json`: repeated tool errors usually point at a confusing schema
 or message, which is a product bug.
 
@@ -69,8 +68,47 @@ or message, which is a product bug.
 
 This suite measures agents using Vixl. To compare Vixl with the other ways an agent can make the
 same thing (HTML and SVG, Python libraries, free desktop tools, image generation, Claude Design),
-use the hand-run [tool comparison kit](tool-comparison/README.md): 16 briefs, judging notes with
+use the hand-run [tool comparison kit](https://github.com/jxburros/VixlExamples/blob/main/evals/tool-comparison/README.md): 16 briefs, judging notes with
 answer keys, fixtures and an output inspector.
+
+## Craft re-run
+
+The [craft plan](../docs/craft-plan.md) measures craft by re-running the Vixl lane of the tool comparison and
+judging it blind against the same web-code and Python runs. `evals/craft_rerun.py` makes that a routine:
+
+```text
+python -m evals.craft_rerun --dry-run                      # the plan and both prompts; no API calls, nothing written
+python -m evals.craft_rerun                                # all 16 briefs, rounds 1 and 2 (spends API credits)
+python -m evals.craft_rerun --tests T02,T08 --model claude-opus-5-5 --effort high
+python -m evals.craft_rerun --package-only --runs PATH     # package a finished re-run again
+```
+
+The kit lives in VixlExamples (`evals/tool-comparison/`): pass `--examples PATH`, set `VIXL_EXAMPLES`, or clone
+VixlExamples beside this repository. For each brief the script:
+
+1. makes a fresh workspace that mirrors the repository paths the brief uses: the brief, its fixtures (the song for
+   T14 and the photo for T10 are generated or copied here, never in the kit) and `skills/vixl/`;
+2. runs round 1 with the kit's own kickoff prompt and lane rule V, plus "Save your .vixl document(s) in the
+   workspace.", through the agent harness (`ClaudeAgent`, the in-process MCP
+   server); the run has no shell, so two text-file tools (`read_text_file`, `write_text_file`, text formats only)
+   stand in for "small scripts for reading inputs" and for writing `REPORT.md`;
+3. runs round 2 in a fresh session on the same workspace with the change request from `TESTS.md`;
+4. copies the run folder to `<kit>/runs-<date>-<version>/<test>/claude-V/` (round 2 in `round2/`), with the lane's
+   sources in `src/`: every `.vixl` document the agent left elsewhere in the workspace, `batches.json` (each
+   operation batch it applied), `trace.json` (every tool call) and `run.json` (model, effort, Vixl version, calls,
+   tokens, missing deliverables and any round-1 file that round 2 changed);
+5. copies the other lanes unchanged from the last blind re-judging (`rejudge-*/packages/<test>.zip` decoded with its
+   `sealed/key.csv`; `--fixed` takes another rejudge folder, or a `runs/` folder whose lanes are already built).
+
+Then it calls the kit's `rejudge.py` to build the blind packages in `<kit>/rejudge-<date>-<version>/` (zipped per
+test in `packages/`, the key in `sealed/key.csv`) and prints the prompt from `JUDGING.md` with the package paths.
+Packaging needs what `rejudge.py` needs: Pillow, pypdf, Playwright with Chromium, `pdftoppm`, LibreOffice and
+ffmpeg. Judge with three judges as in the kit's `rejudge-2026-10-12/README.md`.
+
+The script sends no nudges and keeps no time box beyond `--max-turns` (60 by default); `run.json` lists the
+deliverables each round did not produce. Commit the new runs folder in VixlExamples with its `.vixl` sources:
+VixlExamples does not ignore `*.vixl` (only this repository does), so no `.gitignore` exception is needed there.
+`tests/test_craft_rerun.py` exercises the layout, source capture and packaging call offline with a scripted agent.
 
 ## Adding tasks
 
@@ -80,19 +118,19 @@ it verifies that the reference passes and that an idle agent fails.
 
 ## Stored baseline and weekly comparison
 
-There are 26 briefs: the original eight plus layouts, font pairing, applied rolls, templates,
+There are 31 briefs: the original eight plus layouts, font pairing, applied rolls, templates,
 CMYK export, timelines, checked workflow edits, editable SVG imports, a fillable registration
 form, batch form filling with a bad row, and (added after the 0.20 tool comparison) a chart whose
 value is corrected in place, a three-slide deck exported to PPTX and PDF, a sketch photo
 vectorized as a drawing, an organic flower, a pathfinder badge with a see-through hole, a seamless
-spinner loop, a promo adapted to two sizes, and a `targets` fan-out edit in one atomic batch. Font tasks populate
+spinner loop, a promo adapted to two sizes, a `targets` fan-out edit in one atomic batch, and five object briefs (a potted
+cactus, a dog, a guitar, a person playing a guitar, and a pile of loose shapes declared one cat). Font tasks populate
 an isolated temporary font cache with the bundled DejaVu font under the requested pairing's
 cache names. This tests pairing installation/registration and agent tool usage offline, not the
 appearance or availability of Google Fonts. Live runs use the same fixtures for comparability.
 
 ```bash
-python -m evals.run --schema full --tools core --baseline evals/baseline.json
-python -m evals.run --schema slim --tools core --baseline evals/baseline.json
+python -m evals.run --baseline evals/baseline.json
 ```
 
 `baseline.json` stores required task passes, derived from working reference solutions. A missing
@@ -104,22 +142,13 @@ of Claude success rate. `state_field` checks inspect nested persisted document f
 checks can also require an image mode (for example CMYK).
 
 The Agent eval workflow runs every Monday at 15:00 UTC, checking the offline baseline and then
-running full/core and slim/core live evaluations if `ANTHROPIC_API_KEY` is configured. Missing
+running a live evaluation if `ANTHROPIC_API_KEY` is configured. Missing
 credentials are reported explicitly; no live score is claimed. Results and traces are retained
 as workflow artifacts. Set `model`/`effort` with a manual run to compare a specific model.
 
-Current deterministic tool-context measurements (compact JSON characters divided by four):
-
-| Schema / tool set | Tools | Estimated schema tokens |
-| --- | ---: | ---: |
-| full / all | 53 | 12,789 |
-| full / core | 42 | 11,644 |
-| slim / all | 53 | 8,043 |
-| slim / core | 42 | 6,898 |
-
-Both schema modes pass every reference task. `vixl mcp` and `python -m evals.run` default to
-`--tools core --schema slim`; pass `--tools all --schema full` to measure the old default.
-Reference replay cannot measure whether a model discovers the right operation fields.
+The agent sees the seven-tool server (about 1,800 estimated tokens of tool list; see
+[MCP tool surface](../docs/mcp-toolsets.md), whose ratchet keeps it from growing). Reference replay cannot measure
+whether a model discovers the right operation fields and options through `vixl_reference`; live runs can.
 
 ## House-style eval
 
@@ -132,7 +161,6 @@ so it measures installation, not typeface design).
 ```bash
 python -m evals.house_style                                   # every brief at low, medium and high
 python -m evals.house_style --compare evals/house-style-baseline.json   # exit 1 on a regression
-python -m evals.house_style --house-style 1                   # the 0.20-0.22 rolls, for a before/after
 python -m evals.house_style --limit 8 --levels medium         # a quick look
 ```
 
@@ -140,24 +168,31 @@ python -m evals.house_style --limit 8 --levels medium         # a quick look
 pairwise distance of 48 px renders (`image dist.`, dominated by light against dark); the same distance
 within one mode (`same-mode dist.`); and `structure dist.`, one minus the correlation of normalised
 lightness maps (the arrangement, whatever the colours). **Quality** is the share of designs with no `fix`
-finding from `check`, with their fonts installed and passing the contrast check. `--compare` fails when a
+finding from `check`, with no `composition` finding (`no composition`: dead bands, margin drift, uneven rhythm,
+crowding or clumped scatter, the craft the checks measure; see [the craft backtest](craft_backtest/README.md)), with
+their fonts installed and passing the contrast check. `--compare` fails when a
 quality share falls or a level's diversity falls by more than the baseline's tolerance; a deliberate
 change updates `house-style-baseline.json` in the same commit. `tests/test_house_style.py` runs four
 briefs at two levels as part of the test suite.
 
-Before and after the 0.23 house style (the same seeds; "before" is `--house-style 1`):
+Since the composition checks, every rolled design at every level is free of
+composition findings (`no composition` 1.0 at low, medium and high), so a default change that adds a dead band,
+two left margins or a crowded rule to rolled designs fails `--compare`. The baseline was refreshed with that column;
+the high level's diversity mean (3.73) had already fallen 0.08 below the stored 0.23 value (3.81) before the
+column was added, and the refreshed baseline records the current house style.
 
-| Level | palette | layout | mode | pairing | look | style | image | same-mode | structure | no fix |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| low, before | 3.83 | 3.66 | 0.98 | 3.92 | 1.00 | 1.57 | 0.372 | 0.056 | 1.006 | 1.0 |
-| low, after | 4.99 | 3.90 | 0.87 | 3.94 | 1.40 | 2.84 | 0.371 | 0.092 | 0.965 | 1.0 |
-| medium, before | 3.83 | 3.66 | 0.98 | 3.92 | 1.93 | 1.57 | 0.372 | 0.057 | 1.005 | 1.0 |
-| medium, after | 5.19 | 4.16 | 0.87 | 4.61 | 1.58 | 3.71 | 0.367 | 0.100 | 0.968 | 1.0 |
-| high, before | 3.83 | 3.66 | 0.99 | 3.92 | 1.92 | 1.58 | 0.386 | 0.059 | 1.003 | 1.0 |
-| high, after | 5.19 | 4.21 | 0.87 | 4.97 | 1.75 | 4.37 | 0.363 | 0.126 | 0.986 | 1.0 |
+## Craft backtest
 
-Fonts and contrast pass everywhere. On the 0.22.1 code itself one brief (a LinkedIn post) failed its
-legibility check at every level (no-fix share 0.979); the rolled-layout thumbnail fix brings it to 1.0.
-Mode and look entropy fall on purpose: documents, forms, slides and logos are mostly light and carry no
-finishing look (decisions D2 and F1), which also lowers the raw image distance. Within a mode, designs
-are about twice as far apart, and the entropies, same-mode and structure distances rise from low to high.
+`python -m evals.craft_backtest` runs the composition checks on reconstructions of the 16 round-1 Vixl documents
+of the tool comparison and scores them against the defects the blind judges named: per kind, how many expected
+defects it catches and misses, and how many findings match no judged defect. `tests/test_craft_backtest.py` pins
+the numbers. How each document was rebuilt, and why it is not the original, is in
+[craft_backtest/README.md](craft_backtest/README.md).
+
+## Render parity
+
+`python -m evals.render_parity` renders text, shapes, strokes, gradients, blends, blur, shadows, rotation and image
+scaling with Vixl and with headless Chromium (same font file, sizes and colours) and measures both, against each
+other and against exact supersampled references. It needs `pip install playwright` and writes images and a report
+to `render-parity-results/`. See [render_parity/README.md](render_parity/README.md) and the findings in
+[docs/render-parity.md](../docs/render-parity.md).

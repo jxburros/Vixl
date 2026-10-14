@@ -1,7 +1,6 @@
 {
   "name": "vixl-house-style",
-  "version": 3,
-  "description": "Vixl's built-in default brand. Craft is fixed and the same everywhere; taste is rolled from tiered pools, gated by the variety level and weighted by purpose. A workspace brand.json and explicit fields override it. Changing a value here changes new documents only: documents store their rolled design_defaults with the house_style_version that made them.",
+  "description": "Vixl's built-in default brand. Craft is fixed and the same everywhere; taste is rolled from tiered pools, gated by the variety level and weighted by purpose. A workspace brand.json and explicit fields override it.",
   "precedence": ["explicit field", "brand (brand.json)", "purpose profile", "document design_defaults", "seeded roll"],
   "craft": {
     "easing": {"entrance": "ease-out", "exit": "ease-in", "loop": "ease-in-out", "emphasis": "ease-in-out"},
@@ -17,6 +16,7 @@
     "spacing": {"unit": 0.5, "unit_of": "body size", "minimum_unit": 2, "steps": [1, 2, 3, 4, 6, 8]},
     "line_height": {"display": 1.0, "heading": 1.1, "lead": 1.35, "body": 1.45, "caption": 1.3},
     "line_length": {"min": 45, "max": 75},
+    "wrap": {"heading": "balance"},
     "minimum_text": {"minor_share_of_short_side": 0.022, "print_points": 6, "large_text_px": 24, "large_bold_text_px": 18.66},
     "base_size": {"screen_share_of_short_side": 0.026, "screen_minimum_px": 10, "print_points_per_inch_of_short_side": 1.25,
                   "print_minimum_points": 7.5, "print_maximum_points": 60},
@@ -47,6 +47,12 @@
   },
   "taste": {
     "alignment": {"design": {"left": 0.75, "right": 0.25}, "data": {"left": 0.75, "center": 0.25}, "mark": {"center": 1}},
+    "details": {
+      "summary": "How a roll sets a layout's call to action (a pill or the corner-styled button) and a date line (on an accent highlight or plain). The shares are per tier; square_styles keep square buttons, and a pill corner always gives a pill.",
+      "cta_pill": {"safe": 0.4, "bold": 0.6, "avant-garde": 0.6},
+      "date_highlight": {"safe": 0.35, "bold": 0.55, "avant-garde": 0.6},
+      "square_styles": ["swiss", "brutalist", "neo-brutalist", "bauhaus", "editorial", "vintage-letterpress", "art-deco", "pixel-art"]
+    },
     "tiers": ["safe", "bold", "avant-garde"],
     "tier_notes": {
       "safe": "Broad-use choices that suit most briefs.",
@@ -130,38 +136,38 @@
       "acid-violet": {"tier": "avant-garde", "family": "dark", "modes": ["dark"], "mood": ["loud", "futuristic", "edgy", "energetic"], "colors": ["#0d0221", "#241734", "#f2f2f2", "#c6ff00", "#ff2e88"]},
       "riso-pink-blue": {"tier": "avant-garde", "family": "duotone", "modes": ["light"], "mood": ["playful", "retro", "loud", "creative"], "colors": ["#fff4f0", "#ffe800", "#1b1b3a", "#ff48b0", "#0078bf"]},
       "vapor-night": {"tier": "avant-garde", "family": "dark", "modes": ["dark"], "mood": ["dreamy", "retro", "futuristic", "playful"], "colors": ["#1a0b2e", "#2d1b4e", "#fdf0ff", "#ff71ce", "#01cdfe"]},
-      "midnight": {"tier": "safe", "legacy": true, "mood": ["minimal", "corporate", "modern", "calm", "serious"]},
-      "slate": {"tier": "safe", "legacy": true, "mood": ["minimal", "corporate", "neutral", "modern", "tech"]},
-      "nordic": {"tier": "safe", "legacy": true, "mood": ["calm", "minimal", "cool", "modern"]},
-      "sage": {"tier": "safe", "legacy": true, "mood": ["calm", "natural", "organic", "minimal"]},
-      "coffee": {"tier": "safe", "legacy": true, "mood": ["warm", "cozy", "rustic", "crafted"]},
-      "winter": {"tier": "safe", "legacy": true, "mood": ["calm", "elegant", "soft", "muted"]},
-      "accessible-blue": {"tier": "safe", "legacy": true, "mood": ["corporate", "trustworthy", "clean", "academic"]},
-      "accessible-green": {"tier": "safe", "legacy": true, "mood": ["natural", "trustworthy", "clean"]},
-      "ocean": {"tier": "bold", "legacy": true, "mood": ["calm", "fresh", "clean", "friendly", "coastal"]},
-      "sunset": {"tier": "bold", "legacy": true, "mood": ["warm", "friendly", "energetic", "playful"]},
-      "forest": {"tier": "bold", "legacy": true, "mood": ["natural", "organic", "earthy", "calm"]},
-      "desert": {"tier": "bold", "legacy": true, "mood": ["warm", "earthy", "natural", "rustic", "vintage"]},
-      "berry": {"tier": "bold", "legacy": true, "mood": ["bold", "romantic", "dramatic", "luxurious"]},
-      "earth": {"tier": "bold", "legacy": true, "mood": ["natural", "earthy", "organic", "rustic"]},
-      "copper": {"tier": "bold", "legacy": true, "mood": ["warm", "vintage", "crafted", "luxurious"]},
-      "ice": {"tier": "bold", "legacy": true, "mood": ["cool", "clean", "tech", "fresh"]},
-      "rose": {"tier": "bold", "legacy": true, "mood": ["romantic", "elegant", "soft", "warm"]},
-      "gold": {"tier": "bold", "legacy": true, "mood": ["luxurious", "elegant", "classic", "formal"]},
-      "coral": {"tier": "bold", "legacy": true, "mood": ["playful", "friendly", "energetic", "bold"]},
-      "autumn": {"tier": "bold", "legacy": true, "mood": ["warm", "rustic", "vintage", "cozy"]},
-      "spring": {"tier": "bold", "legacy": true, "mood": ["soft", "friendly", "romantic", "warm"]},
-      "summer": {"tier": "bold", "legacy": true, "mood": ["energetic", "friendly", "playful", "bold"]},
-      "retro": {"tier": "bold", "legacy": true, "mood": ["retro", "bold", "vintage", "editorial"]},
-      "plum": {"tier": "bold", "legacy": true, "mood": ["elegant", "creative", "dreamy", "luxurious"]},
-      "peach": {"tier": "bold", "legacy": true, "mood": ["warm", "friendly", "soft", "playful"]},
-      "accessible-red": {"tier": "bold", "legacy": true, "mood": ["bold", "urgent", "energetic"]},
-      "mono": {"tier": "bold", "legacy": true, "mood": ["minimal", "brutalist", "neutral", "editorial", "serious"]},
-      "lavender": {"tier": "avant-garde", "legacy": true, "mood": ["dreamy", "playful", "creative", "soft"]},
-      "pastel": {"tier": "avant-garde", "legacy": true, "mood": ["playful", "soft", "friendly", "whimsical"]},
-      "neon": {"tier": "avant-garde", "legacy": true, "mood": ["bold", "energetic", "futuristic", "tech", "loud"]},
-      "mint": {"tier": "avant-garde", "legacy": true, "mood": ["fresh", "energetic", "playful", "natural"]},
-      "candy": {"tier": "avant-garde", "legacy": true, "mood": ["playful", "bold", "loud", "youthful"]}
+      "midnight": {"tier": "safe", "mood": ["minimal", "corporate", "modern", "calm", "serious"]},
+      "slate": {"tier": "safe", "mood": ["minimal", "corporate", "neutral", "modern", "tech"]},
+      "nordic": {"tier": "safe", "mood": ["calm", "minimal", "cool", "modern"]},
+      "sage": {"tier": "safe", "mood": ["calm", "natural", "organic", "minimal"]},
+      "coffee": {"tier": "safe", "mood": ["warm", "cozy", "rustic", "crafted"]},
+      "winter": {"tier": "safe", "mood": ["calm", "elegant", "soft", "muted"]},
+      "accessible-blue": {"tier": "safe", "mood": ["corporate", "trustworthy", "clean", "academic"]},
+      "accessible-green": {"tier": "safe", "mood": ["natural", "trustworthy", "clean"]},
+      "ocean": {"tier": "bold", "mood": ["calm", "fresh", "clean", "friendly", "coastal"]},
+      "sunset": {"tier": "bold", "mood": ["warm", "friendly", "energetic", "playful"]},
+      "forest": {"tier": "bold", "mood": ["natural", "organic", "earthy", "calm"]},
+      "desert": {"tier": "bold", "mood": ["warm", "earthy", "natural", "rustic", "vintage"]},
+      "berry": {"tier": "bold", "mood": ["bold", "romantic", "dramatic", "luxurious"]},
+      "earth": {"tier": "bold", "mood": ["natural", "earthy", "organic", "rustic"]},
+      "copper": {"tier": "bold", "mood": ["warm", "vintage", "crafted", "luxurious"]},
+      "ice": {"tier": "bold", "mood": ["cool", "clean", "tech", "fresh"]},
+      "rose": {"tier": "bold", "mood": ["romantic", "elegant", "soft", "warm"]},
+      "gold": {"tier": "bold", "mood": ["luxurious", "elegant", "classic", "formal"]},
+      "coral": {"tier": "bold", "mood": ["playful", "friendly", "energetic", "bold"]},
+      "autumn": {"tier": "bold", "mood": ["warm", "rustic", "vintage", "cozy"]},
+      "spring": {"tier": "bold", "mood": ["soft", "friendly", "romantic", "warm"]},
+      "summer": {"tier": "bold", "mood": ["energetic", "friendly", "playful", "bold"]},
+      "retro": {"tier": "bold", "mood": ["retro", "bold", "vintage", "editorial"]},
+      "plum": {"tier": "bold", "mood": ["elegant", "creative", "dreamy", "luxurious"]},
+      "peach": {"tier": "bold", "mood": ["warm", "friendly", "soft", "playful"]},
+      "accessible-red": {"tier": "bold", "mood": ["bold", "urgent", "energetic"]},
+      "mono": {"tier": "bold", "mood": ["minimal", "brutalist", "neutral", "editorial", "serious"]},
+      "lavender": {"tier": "avant-garde", "mood": ["dreamy", "playful", "creative", "soft"]},
+      "pastel": {"tier": "avant-garde", "mood": ["playful", "soft", "friendly", "whimsical"]},
+      "neon": {"tier": "avant-garde", "mood": ["bold", "energetic", "futuristic", "tech", "loud"]},
+      "mint": {"tier": "avant-garde", "mood": ["fresh", "energetic", "playful", "natural"]},
+      "candy": {"tier": "avant-garde", "mood": ["playful", "bold", "loud", "youthful"]}
     },
     "pairings": {
       "safe": ["source-serif-sans", "ibm-plex-serif-sans", "inter-single-ui", "public-sans-single", "inter-tight-inter",
@@ -455,14 +461,7 @@
       "treatments": {"medium": {"flat": 3, "gradient": 2, "split": 1}}
     }
   },
-  "legacy": {
-    "2": {"description": "0.23 roll: excludes pairings introduced in version 3 and keeps its original alignment and background mixing."},
-    "1": {
-      "summary": "The 0.20-0.22 rolls: safe pools only, two light rolls in three for every purpose, rolled looks at amount 0.1.",
-      "palettes": ["chalk-indigo", "linen-teal", "clay-navy", "cloud-blue", "oat-olive", "rose-charcoal", "mist-pine", "ivory-cobalt",
+  "safe_palettes": ["chalk-indigo", "linen-teal", "clay-navy", "cloud-blue", "oat-olive", "rose-charcoal", "mist-pine", "ivory-cobalt",
                    "sand-terracotta", "pearl-plum", "frost-slate", "warm-graphite", "cream-marigold", "sea-glass", "quiet-lilac",
-                   "paper-rust", "porcelain-ink", "sky-umber", "stone-berry", "almond-forest"],
-      "look_amount": 0.1
-    }
-  }
+                   "paper-rust", "porcelain-ink", "sky-umber", "stone-berry", "almond-forest"]
 }

@@ -26,6 +26,11 @@ fixing a number is one operation and nothing is recomputed by hand. Full referen
 - Colors and fonts come from the document: `colors` / `@swatch`, the active palette, `@accent`/`@ink`,
   the heading and body font roles. Set `number_format` (`#,##0`, `0.0%`, `$#,##0`) once for ticks,
   labels and the PPTX chart. `value_labels: "auto"` labels every value if the labels fit (shrinking them if needed), else whole series largest first, else every k-th value of the largest series; `true` labels everything.
+- Placement: without `x`/`y`/`width`/`height` a new chart fills the document's safe area, inset by two spacing
+  units, so it passes `safe_area` as created; give all four (`x: 0, y: 0` and the canvas size) for the full canvas.
+- `legend_values: true` draws the legend as a key-value list: swatch and name left, totals right-aligned and, for
+  pies and donuts, shares in their own column, ruled between rows (the auto labels around the ring are dropped;
+  `value_labels: "percent"` keeps them). Use it when names, numbers and percentages belong together.
 - `check` sees inside the chart (contrast, overlap, legibility). Raise `font_size` when the chart sits
   on a large canvas and the legibility check complains.
 - Export: PNG/SVG/PDF are vector layers as usual; **`.pptx` writes a native chart with the table
@@ -33,6 +38,23 @@ fixing a number is one operation and nothing is recomputed by hand. Full referen
   exceptions (see the export report's `charts` and `raster_fallbacks`).
 - Through MCP/REST a `csv` path must lie inside the workspace; fonts are registered names or the
   `heading`/`body` roles (`title_font`, `label_font`).
+
+## Key-value lists
+
+`key-value-list` sets label / value / share rows in aligned columns (labels left, figures right-aligned on shared
+edges, a hairline rule between rows, spacing from the spacing scale) as editable text layers. Use it for a
+summary beside a chart, a price list, stats or a schedule; the chart value legend uses the same geometry.
+
+```json
+{"type": "key-value-list", "name": "shares", "x": 80, "y": 80, "width": 420, "shares": "auto", "number_format": "#,##0",
+ "rows": [{"label": "Drip", "value": 15900}, {"label": "Espresso", "value": 11960}, {"label": "Tea", "value": 5260}]}
+```
+
+- Rows: `rows` (`{label, value, share}` or `[label, value, share]`) or `items` text (`label | value | share` per line).
+  `shares: "auto"` computes each share of the total; `width` pins the figures to its right edge and wraps labels.
+- Look: `font_size` (default: body size), `font`, `value_font`, `text_color`, `share_color`, `rules`, `rule_color`,
+  `colors` (a swatch per row). `key-value-list` with `target` restyles it on the same layer IDs.
+- The `key-value-list` container places one under a title (`variables: {title, items}`).
 
 ## Tables
 
@@ -48,7 +70,8 @@ schedules and spec sheets instead of one text layer per cell.
 ```
 
 - `columns[i]`: `width` (px, `auto`, `"1fr"`), `align` (`left`, `center`, `right`, `decimal`: prices share
-  their point), `format` (Excel-style). Rows grow to fit wrapped text; a table too narrow for its words warns.
+  their point), `format` (Excel-style), `leader` (`"."`: dots from each body cell to the next cell's text, for
+  menus; in PPTX they stop at the cell edge). Rows grow to fit wrapped text; a table too narrow for its words warns.
 - Look: `font_size`, `header_fill`, `header_color`, `text_color`, `fill`, `zebra`, `borders`
   (`horizontal`/`all`/`outer`/`header`/`none`), `border_color`, `border_width`, `padding`, `row_height`.
 - `table-data`: `set` (`row`: number from 1 or first-cell text; `column`: number or header), `append`,

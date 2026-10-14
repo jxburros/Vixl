@@ -15,8 +15,8 @@
 
 Precedence, highest first: an explicit field, the workspace ``brand.json``, the purpose profile,
 the document's stored ``design_defaults``, then a fresh seeded roll. The file is read-only at run
-time; changing it changes new documents only, because each document stores the rolled direction
-and the ``house_style_version`` that made it (see docs/house-style.md, "Changing defaults").
+time; a document stores the direction it was rolled with in ``design_defaults`` (see docs/house-style.md,
+"Changing defaults").
 
 This module only reads the data. The rolls that use it live in ``typefaces.roll`` and
 ``variety``. Other modules should call the small API here rather than copying values:
@@ -52,9 +52,6 @@ def data():
     return deepcopy(_data())
 
 
-VERSION = _data()["version"]
-
-
 def craft(key=None):
     """The fixed craft rules, or one of them (``contrast``, ``line_height``, ``corner_scale`` …)."""
     rules = _data()["craft"]
@@ -78,6 +75,12 @@ def level(variety):
 
 def moods():
     return deepcopy(_data()["taste"]["moods"])
+
+
+def details():
+    """How a roll sets layout details: ``cta_pill`` and ``date_highlight`` shares per tier, and
+    the ``square_styles`` that keep square buttons."""
+    return deepcopy(_data()["taste"]["details"])
 
 
 def entries(kind):
@@ -112,7 +115,7 @@ def names(kind, tier):
 
 
 def palette_colors():
-    """``{name: colors}`` for the palettes the house style defines (legacy palettes keep their own colors)."""
+    """``{name: colors}`` for the palettes the house style defines."""
     return {name: list(meta["colors"]) for name, meta in _data()["taste"]["palettes"].items() if "colors" in meta}
 
 
@@ -263,17 +266,13 @@ def profile(purpose=None):
     return merged
 
 
-def legacy(version):
-    """What an earlier house-style version rolled from, for documents and tests pinned to it."""
-    return deepcopy(_data()["legacy"].get(str(version)))
-
-
-def versions():
-    return sorted([int(v) for v in _data()["legacy"]] + [VERSION])
+def safe_palettes():
+    """The quiet palettes that layout-apply without a palette, templates and the safe tier draw from."""
+    return list(_data()["safe_palettes"])
 
 
 def show(purpose=None):
-    """A readable summary for ``vixl house show`` and ``vixl_resource_get(kind='house-style')``."""
+    """A readable summary for ``vixl house show`` and ``vixl_reference('house-style')``."""
     item = _data()
     if purpose:
         found = purpose_for(purpose)
@@ -281,13 +280,12 @@ def show(purpose=None):
 
         require(found, f"Unknown purpose {purpose!r}; purposes: {', '.join(PURPOSES)}", field="purpose",
                 allowed=list(PURPOSES))
-        return {"purpose": found, "version": VERSION, "profile": profile(found), "craft": craft(),
+        return {"purpose": found, "profile": profile(found), "craft": craft(),
                 "levels": {name: level(name) for name in item["taste"]["levels"]}}
     pools = {kind: {tier: len(names(kind, tier)) for tier in (*TIERS, "explicit")} for kind in KINDS}
-    return {"name": item["name"], "version": VERSION, "description": item["description"],
+    return {"name": item["name"], "description": item["description"],
             "precedence": item["precedence"], "craft": craft(),
             "levels": {name: level(name) for name in item["taste"]["levels"]},
             "pools": pools,
             "purposes": {name: item["purposes"][name]["summary"] for name in PURPOSES},
-            "versions": versions(),
-            "detail": "vixl house show PURPOSE (vixl_resource_get kind=house-style name=PURPOSE) gives one purpose profile"}
+            "detail": "vixl house show PURPOSE (vixl_reference('house-style', name=PURPOSE)) gives one purpose profile"}

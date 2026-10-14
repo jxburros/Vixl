@@ -84,7 +84,7 @@ as `master:NAME/layer` in renders and checks.
 ## Seeing pages
 
 - `vixl render --page 2 --out p2.png` (a number or name); `--page all` renders a labelled contact
-  sheet of every page (`--columns N`). Through MCP, `vixl_render_preview(page=…)`, where
+  sheet of every page (`--columns N`). Through MCP, `vixl_render(page=…)`, where
   `page="all"` returns the sheet — the quickest way for an agent to review a whole deck.
 - `vixl pages` / `inspect` list every page with its layer and word counts, master and notes.
 - `vixl export slide.png --pages all` writes one numbered file per page (`slide-01.png` …) — a
@@ -166,7 +166,7 @@ copy you share. See [presenter](presenter.md).
 
 ## A deck from Markdown
 
-The `deck-from-markdown` workflow action turns notes into a checked deck in one call (MCP `vixl_workflow`,
+The `deck-from-markdown` workflow action turns notes into a checked deck in one call (MCP `vixl_apply(workflow=…)`,
 CLI `vixl workflow deck-from-markdown --request req.json`, Python `vixl.workflows.dispatch`):
 
 ```json
@@ -184,7 +184,7 @@ CLI `vixl workflow deck-from-markdown --request req.json`, Python `vixl.workflow
 - Text in `<!-- comments -->`, or after a `Notes:` line, becomes the page's speaker notes.
 - Every page uses one master, `deck`, with the deck background and a `${page} / ${pages}` page number; every
   slide uses the same layout `seed` (default 1) and palette (`palette`, else the first slide's roll), and text
-  sizes stay above the deck check's 18 pt minimum. `fonts` installs a font pairing (as `vixl_font_pair`);
+  sizes stay above the deck check's 18 pt minimum. `fonts` installs a font pairing (as `font-pair`);
   otherwise the workspace's `brand.json` fonts are used, and without either the `fonts` check asks for a
   pairing.
 - The deck checks run at the end (`check: false` skips them); the result reports their `fix` and `review`

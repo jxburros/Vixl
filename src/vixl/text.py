@@ -482,28 +482,131 @@ def words_of(paragraph):
     return glued
 
 
-def lines(data, text, size, width=None):
+WRAPS = ("greedy", "balance", "pretty")
+
+
+def wrap_mode(layer):
+    """How a boxed text layer breaks its lines: ``greedy`` (fill each line), ``balance`` (lines of near-equal width,
+    same line count) or ``pretty`` (greedy, but no one-word last line)."""
+    return (layer.get("text_layout") or {}).get("wrap", "greedy")
+
+
+HEADING_ROLES = ("heading", "display", "h1", "h2", "h3")
+
+
+def is_heading(project, layer):
+    """Whether a text layer is a heading: it follows a heading font role or stage, or its size reads as one (the
+    title step, h2, and up)."""
+    from .type_roles import stage_for_size
+
+    if layer.get("font_role") in HEADING_ROLES:
+        return True
+    return not layer.get("font_role") and stage_for_size(project, float(layer.get("size", 0))) in HEADING_ROLES
+
+
+def document_wrap(project, heading):
+    """The wrap a new boxed text layer takes when none is given: the house style's heading wrap for headings,
+    else greedy."""
+    from . import house_style
+
+    rule = house_style.rule("wrap")
+    return rule["heading"] if heading else "greedy"
+
+
+def validate_tabs(tabs, field="tabs"):
+    """Check a text layer's ``tabs``: ``[{at, align?, leader?}]`` in increasing ``at``."""
+    require(isinstance(tabs, list) and len(tabs) <= 32, f"{field} must be a list of at most 32 tab stops", field=field)
+    for i, stop in enumerate(tabs):
+        where = f"{field}[{i}]"
+        require(isinstance(stop, dict) and "at" in stop and not set(stop) - {"at", "align", "leader"},
+                f"{where} must be {{at, align?, leader?}}", field=where)
+        at = stop["at"]
+        if isinstance(at, str):
+            require(re.fullmatch(r"\d+(\.\d+)?%", at.strip()) is not None,
+                    f"{where}.at must be pixels or a percentage such as '100%'", field=f"{where}.at")
+        else:
+            finite(at, f"{where}.at", 0, 16384)
+        require(stop.get("align", "left") in TAB_ALIGNS, f"{where}.align is one of {', '.join(TAB_ALIGNS)}",
+                field=f"{where}.align", allowed=list(TAB_ALIGNS))
+        leader = stop.get("leader", "")
+        require(isinstance(leader, str) and len(leader) <= 4 and "\t" not in leader and "\n" not in leader,
+                f"{where}.leader must be up to 4 characters, such as '.'", field=f"{where}.leader")
+
+
+def lines(data, text, size, width=None, wrap="greedy", tabs=None):
+    """The lines ``text`` sets in: its own line breaks, then wrapped at ``width``. With tab stops, tabs stay in the
+    text and a paragraph holding one is set on one line; without, a tab is four spaces."""
     result = []
-    for paragraph in text.expandtabs(4).split("\n"):
-        if width is None:
+    for paragraph in (text if tabs else text.expandtabs(4)).split("\n"):
+        if width is None or (tabs and "\t" in paragraph):
             result.append(paragraph)
             continue
-        line = ""
-        for word in words_of(paragraph):
-            proposed = line + word
-            if advance(data, proposed, size) <= width:
-                line = proposed
-                continue
-            if word.isspace():
-                # Preserve authored indentation; separators at a soft wrap belong to the
-                # preceding line and are trimmed when the following word wraps.
-                line = proposed
-                continue
-            if line:
-                result.append(line.rstrip(" "))
-            line = break_word(data, clusters(data, word), size, width, result)
-        result.append(line)
+        found = _greedy(data, paragraph, size, width)
+        if wrap != "greedy" and len(found) > 1:
+            found = _rewrap(data, paragraph, size, width, found, wrap)
+        result.extend(found)
     return result
+
+
+def _greedy(data, paragraph, size, width):
+    result = []
+    line = ""
+    for word in words_of(paragraph):
+        proposed = line + word
+        if advance(data, proposed, size) <= width:
+            line = proposed
+            continue
+        if word.isspace():
+            # Preserve authored indentation; separators at a soft wrap belong to the
+            # preceding line and are trimmed when the following word wraps.
+            line = proposed
+            continue
+        if line:
+            result.append(line.rstrip(" "))
+        line = break_word(data, clusters(data, word), size, width, result)
+    result.append(line)
+    return result
+
+
+def _rewrap(data, paragraph, size, width, greedy, wrap):
+    """Balance or de-runt a paragraph that greedy wrapping set on ``greedy`` lines. A paragraph with a word wider
+    than the box keeps its greedy lines (that word is broken, and moving lines around it helps nothing)."""
+    words = [token for token in words_of(paragraph) if not token.isspace()]
+    widest = max((advance(data, word, size) for word in words), default=0)
+    if widest > width:
+        return greedy
+    if wrap == "balance":
+        narrowest = narrowest_width(lambda limit: len(_greedy(data, paragraph, size, limit)), widest, width)
+        return _greedy(data, paragraph, size, narrowest) if narrowest < width else greedy
+    last = [token for token in words_of(greedy[-1]) if not token.isspace()]
+    before = words_of(greedy[-2])
+    kept = [token for token in before if not token.isspace()]
+    if len(last) != 1 or len(kept) < 3:
+        return greedy
+    moved = before[-1]
+    joined = moved + " " + greedy[-1]
+    if advance(data, joined, size) > width:
+        return greedy
+    return [*greedy[:-2], "".join(before[:-1]).rstrip(" "), joined]
+
+
+def narrowest_width(count_at, lowest, width):
+    """The narrowest wrapping width in [``lowest``, ``width``] that keeps the line count ``count_at(width)`` gives,
+    to half a pixel: wrapping there evens the lines out (balanced wrap). ``count_at(limit)`` counts the lines at a
+    width; line counts only grow as the width shrinks."""
+    target = count_at(width)
+    if target < 2 or lowest >= width:
+        return width
+    low, high = lowest, width
+    if count_at(low) <= target:
+        return low
+    while high - low > 0.5:
+        middle = (low + high) / 2
+        if count_at(middle) <= target:
+            high = middle
+        else:
+            low = middle
+    return high
 
 
 def break_word(data, pieces, size, width, result):
@@ -586,8 +689,90 @@ def _prefix_widths(data, text, size, offsets):
     return tuple(widths) if index == len(offsets) else None
 
 
+TAB_ALIGNS = ("left", "right", "center", "decimal")
+
+
+def tab_stops(layer, project=None):
+    """A text layer's tab stops as a hashable ``((at, align, leader), …)`` in pixels from its left edge, sorted, or
+    None. A percentage ``at`` is a share of the text box's width, or of the canvas width for text without a box."""
+    stops = layer.get("tabs")
+    if not stops:
+        return None
+    found = []
+    for stop in stops:
+        at = stop["at"]
+        if isinstance(at, str):
+            boxed = "width" in (layer.get("text_layout") or {})
+            basis = layer["width"] if boxed else project.state["canvas"]["width"] if project is not None else 0
+            at = float(at.strip().rstrip("%")) / 100 * float(basis)
+        found.append((float(at), stop.get("align", "left"), stop.get("leader", "")))
+    return tuple(sorted(found))
+
+
+def decimal_point(text):
+    """Characters before a figure's decimal point (a point followed by a digit), else the whole text."""
+    match = re.search(r"\.(?=\d)", text)
+    return match.start() if match else len(text)
+
+
+def set_line(data, line, size, tabs=None, leaders=None):
+    """``(glyphs, advance)`` of one line. Each tab moves the text after it to the next tab stop past the pen
+    (left, right, center or decimal aligned on the stop, never back over earlier text), and a stop's leader
+    repeats in the gap. Leaders sit on a grid from the line start, so the dots of stacked lines line up. Past
+    the last stop a tab advances to the next multiple of four spaces. ``leaders``, a list, receives each tab's
+    leader and how many times it repeats."""
+    if not tabs or "\t" not in line:
+        return shape(data, line, size)
+    segments = line.split("\t")
+    glyphs, pen = shape(data, segments[0], size)
+    interval = advance(data, "    ", size) or size
+    for segment in segments[1:]:
+        found, width = shape(data, segment, size)
+        stop = next((stop for stop in tabs if stop[0] > pen + 0.01), None)
+        at, align, leader = stop or ((math.floor(pen / interval) + 1) * interval, "left", "")
+        lead = {"left": 0.0, "right": width, "center": width / 2,
+                "decimal": advance(data, segment[:decimal_point(segment)], size)}[align]
+        start = max(pen, at - lead)
+        count = 0
+        if leader:
+            unit = advance(data, leader, size)
+            if unit > 0:
+                gap = size * 0.25
+                position = math.ceil((pen + gap) / unit) * unit
+                while position + unit <= start - gap + 0.01:
+                    dots, _ = shape(data, leader, size)
+                    for glyph in dots:
+                        glyph.x += position
+                    glyphs.extend(dots)
+                    position += unit
+                    count += 1
+        if leaders is not None:
+            leaders.append((leader, count))
+        for glyph in found:
+            glyph.x += start
+        glyphs.extend(found)
+        pen = start + width
+    return glyphs, pen
+
+
+def leadered(data, line, size, tabs):
+    """``line`` for an application that sets tab stops itself but draws no leaders (PowerPoint): each leader
+    Vixl draws is written out as characters before its tab, one repeat short so the tab still reaches its stop."""
+    if not tabs or "\t" not in line:
+        return line
+    leaders = []
+    set_line(data, line, size, tabs, leaders)
+    segments = line.split("\t")
+    out = segments[0]
+    for segment, (leader, count) in zip(segments[1:], leaders):
+        if count > 1:
+            out += " " + leader * (count - 1)
+        out += "\t" + segment
+    return out
+
+
 @lru_cache(maxsize=4096)
-def measure(data, text, size, spacing=4, align="left", width=None):
+def measure(data, text, size, spacing=4, align="left", width=None, wrap="greedy", tabs=None):
     """Glyph paths and ink box of shaped text. Cached: every render and check re-measures each
     text layer (auto-sized boxes, constraints), usually with the same font, text and size."""
     finite(size, "font size", 1, 4096)
@@ -595,7 +780,7 @@ def measure(data, text, size, spacing=4, align="left", width=None):
     factor = size / outline["head"].unitsPerEm
     ascent = outline["hhea"].ascent * factor
     line_height = (outline["hhea"].ascent - outline["hhea"].descent) * factor + spacing
-    shaped = [shape(data, line, size) for line in lines(data, text, size, width)]
+    shaped = [set_line(data, line, size, tabs) for line in lines(data, text, size, width, wrap, tabs)]
     widest = max((advance for _, advance in shaped), default=0)
     paths, bounds = [], []
     for i, (glyphs, advance) in enumerate(shaped):
@@ -640,7 +825,8 @@ def placed_glyphs(project, layer, layout=None):
     factor = size / outline["head"].unitsPerEm
     ascent = outline["hhea"].ascent * factor
     line_height = (outline["hhea"].ascent - outline["hhea"].descent) * factor + spacing
-    shaped = [shape(data, line, size) for line in lines(data, layer["text"], size, width)]
+    tabs = tab_stops(layer, project)
+    shaped = [set_line(data, line, size, tabs) for line in lines(data, layer["text"], size, width, wrap_mode(layer), tabs)]
     widest = max((advance for _, advance in shaped), default=0)
     result = []
     for i, (glyphs, advance) in enumerate(shaped):
@@ -675,18 +861,19 @@ def plan(project, layer):
     settings = layer.get("text_layout", {})
     size, spacing, align = layer["size"], layer.get("spacing", 4), layer.get("align", "left")
     width = layer["width"] if "width" in settings else None
+    wrap, tabs = settings.get("wrap", "greedy"), tab_stops(layer, project)
     stroke = layer.get("stroke_width", 0)
     if settings.get("fit") and width:
         low, high = 1, fit_ceiling(data, layer["text"], size, width - 2 * stroke)
         while low < high:
             middle = (low + high + 1) // 2
-            _, box = measure(data, layer["text"], middle, spacing, align, width)
+            _, box = measure(data, layer["text"], middle, spacing, align, width, wrap, tabs)
             if box[2] - box[0] + 2 * stroke <= width and box[3] - box[1] + 2 * stroke <= layer["height"]:
                 low = middle
             else:
                 high = middle - 1
         size = low
-    paths, box = measure(data, layer["text"], size, spacing, align, width)
+    paths, box = measure(data, layer["text"], size, spacing, align, width, wrap, tabs)
     box = (box[0] - stroke, box[1] - stroke, box[2] + stroke, box[3] + stroke)
     tw, th = max(1, math.ceil(box[2] - box[0])), max(1, math.ceil(box[3] - box[1]))
     limits = project.limits
@@ -873,29 +1060,31 @@ def append_paths(parent, layout, layer, project, motion=None):
         ET.SubElement(parent, "{http://www.w3.org/2000/svg}path", attrs)
 
 
-def render_text(project, layer):
+def render_text(project, layer, size=None, matrix=None):
+    """The text layer as an RGBA image of its box. ``size`` and ``matrix`` draw the same glyphs into an
+    image of ``size`` instead, mapped by the affine ``matrix`` (SVG order, from box pixels): the final
+    placement of a layer at a fractional position or angle, drawn from the outlines instead of resampled."""
     layout = plan(project, layer)
     if layer.get("_kinetic") and layout.shaped:
         from .kinetic import render_plain
 
         return render_plain(project, layer, layout, placed_glyphs(project, layer, layout))
+    width, height = size or (layout.width, layout.height)
     root = ET.Element(
         "{http://www.w3.org/2000/svg}svg",
-        {
-            "width": str(layout.width),
-            "height": str(layout.height),
-            "viewBox": f"0 0 {layout.width} {layout.height}",
-        },
+        {"width": str(width), "height": str(height), "viewBox": f"0 0 {width} {height}"},
     )
     from .emojis import EmojiArt
-    from .vector_raster import painted, rasterize
+    from .vector_raster import painted, placed, rasterize
+
+    parent = root if matrix is None else placed(root, matrix)
 
     stroked = layer.get("stroke_width", 0) > 0 and color_of(project, layer, "stroke_color", "black")[3] > 0
     if not stroked and not any(isinstance(path, EmojiArt) for path, _ in layout.paths):
         # One paint: rasterise the glyphs once as a stencil and paint it, so a recoloured label reuses them.
-        append_paths(root, layout, {**layer, "color": "black"}, project)
+        append_paths(parent, layout, {**layer, "color": "black"}, project)
         return painted(ET.tostring(root, encoding="unicode"), color_of(project, layer, "color", "white"))
-    append_paths(root, layout, layer, project)
+    append_paths(parent, layout, layer, project)
     return rasterize(ET.tostring(root, encoding="unicode"))
 
 

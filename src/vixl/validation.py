@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 
 from .errors import VixlError, require
-from .model import finite
+from .model import LAYER_ROLES, LAYER_TYPES, finite
 from .render import BLENDS, color, resolve_layout
 
 
@@ -56,7 +56,7 @@ def check_state(project, state):
         )
         require(layer["id"] not in ids, f"Duplicate layer id {layer['id']!r}", "invalid_project")
         require(layer["name"] not in names, f"Duplicate layer name {layer['name']!r}", "invalid_project")
-        require(layer.get("role", "content") in ("content", "decoration", "background", "title"), "Invalid layer role", "invalid_project")
+        require(layer.get("role", "content") in LAYER_ROLES, "Invalid layer role", "invalid_project")
         if "pen_origin" in layer:
             origin = layer["pen_origin"]
             require(isinstance(origin, list) and len(origin) == 2, "Invalid pen origin", "invalid_project")
@@ -71,23 +71,7 @@ def check_state(project, state):
         ids.add(layer["id"])
         names.add(layer["name"])
         require(
-            layer["type"]
-            in (
-                "raster",
-                "text",
-                "solid",
-                "gradient",
-                "shape",
-                "group",
-                "frame",
-                "adjustment",
-                "pathfinder",
-                "symbol",
-                "pixel",
-                "paint",
-                "field",
-                "link",
-            ),
+            layer["type"] in LAYER_TYPES,
             "Invalid layer type",
             "invalid_project",
         )
@@ -114,8 +98,9 @@ def check_state(project, state):
             if key in layer:
                 color(resolve_color(layer[key], state))
         if layer["type"] == "pixel":
-            from .pixel import validate_pixel
+            from .pixel import validate_finish, validate_pixel
 
+            validate_finish(layer)
             validate_pixel(layer, state)
         if layer["type"] == "paint":
             from .brushes import validate_paint
@@ -137,6 +122,10 @@ def check_state(project, state):
             from .tables import validate_table
 
             validate_table(layer, state)
+        if "key_values" in layer:
+            from .key_values import validate as validate_key_values
+
+            validate_key_values(layer, state)
         if "chart" in layer:
             from .charts import validate_chart
 
@@ -252,10 +241,9 @@ def check_document(project):
         check_state(project, project.transaction["state"])
         require(isinstance(project.transaction["operations"], list), "Invalid transaction")
     from copy import deepcopy
-    from .project import upgrade_state
 
     head = project._state_at(project.head)
-    check_state(project, upgrade_state(deepcopy(head)))
+    check_state(project, deepcopy(head))
     project._head_state = head
     project._verified = {project.head}
     resolve_layout(project)

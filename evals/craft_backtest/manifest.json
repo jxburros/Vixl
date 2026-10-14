@@ -1,0 +1,118 @@
+{
+  "description": "Craft backtest: the judges' defects for the Vixl lane of the round-1 tool comparison (rejudge-2026-10-12/scores, blind codes resolved with sealed/key.csv), split into composition matters (expected findings of the composition check family, with the region in the reconstructed document's pixels) and matters outside it. 'judges' lists who named the defect (1, 2, 3 or human). A defect with several codes is caught by a finding of any of them.",
+  "source": "VixlExamples evals/tool-comparison: runs/T??/claude-V and rejudge-2026-10-12/scores/T??.{1,2,3,human}.json",
+  "tests": {
+    "T01": {"lane_code": "ZUKB", "documents": ["T01-picture"], "expected": [], "out_of_scope": [
+      {"what": "A wave line runs behind the boat and shows through the sails", "kind": "overlap", "judges": ["1"], "document": "T01-picture", "region": [1400, 960, 300, 300]},
+      {"what": "Soft fade band under the horizon and lantern glow look smeared against the flat style", "kind": "finish", "judges": ["1", "2", "3"], "document": "T01-picture", "region": [0, 950, 2400, 150]},
+      {"what": "Beam bands turn greyish across the amber sky", "kind": "colour", "judges": ["1"], "document": "T01-picture", "region": [480, 300, 1920, 720]}
+    ]},
+    "T02": {"lane_code": "ABTC", "documents": ["T02-post"], "expected": [
+      {"id": "T02-pocket", "codes": ["dead_band"], "document": "T02-post", "region": [82, 476, 600, 174], "judges": ["2", "3"], "what": "Large empty pocket between the headline and the date, beside the microphone"},
+      {"id": "T02-bands", "codes": ["dead_band", "uneven_rhythm"], "document": "T02-post", "region": [82, 908, 916, 115], "judges": ["3"], "what": "Large uneven empty band between the logistics and the waves above the footer"}
+    ], "out_of_scope": [
+      {"what": "Microphone holder arms end in flat, clipped cuts; one grille line is heavier", "kind": "drawing", "judges": ["1"], "document": "T02-post", "region": [750, 340, 140, 160]},
+      {"what": "Lower half is weak: three generic wave strokes fill it and the URL is stranded", "kind": "motif", "judges": ["1", "2"], "document": "T02-post", "region": [63, 1023, 954, 220]},
+      {"what": "Light-weight address and entry lines are thin for phone viewing", "kind": "type", "judges": ["1"], "document": "T02-post", "region": [82, 812, 660, 100]}
+    ]},
+    "T03": {"lane_code": "WLRN", "documents": ["T03-poster"], "expected": [
+      {"id": "T03-bottom", "codes": ["dead_band"], "document": "T03-poster", "region": [37.5, 4910, 3300, 228], "judges": ["1"], "what": "Large empty dark area below the credit line (about 0.8 in)"},
+      {"id": "T03-list-axis", "codes": ["margin_drift"], "document": "T03-poster", "region": [965, 3977, 1444, 520], "judges": ["1"], "what": "The bullet list block sits slightly left of the centred axis used by everything else (measured in the PNG, the list's ink is centred within 1 px; the judge read the bullets as part of the block)"}
+    ], "out_of_scope": [
+      {"what": "Faint water ripple lines run through the highlight list; one sits on a baseline like an underline", "kind": "overlap", "judges": ["1", "2"], "document": "T03-poster", "region": [600, 3900, 2200, 1000]},
+      {"what": "Reflections are generic dash columns not tied to the lanterns; block skyline reads as placeholder", "kind": "motif", "judges": ["1", "2", "3"], "document": "T03-poster", "region": [0, 2170, 3375, 900]}
+    ]},
+    "T04": {"lane_code": "VTCH", "documents": ["T04-logo-sheet"], "expected": [
+      {"id": "T04-quadrant", "codes": ["dead_band"], "document": "T04-logo-sheet", "region": [1060, 1010, 540, 190], "judges": ["1"], "what": "Bottom-right quadrant of the navy half is empty below the stacked lockup"},
+      {"id": "T04-captions", "codes": ["margin_drift"], "document": "T04-logo-sheet", "region": [0, 0, 800, 1200], "judges": ["1"], "what": "Item labels sit at x 60 while the artwork starts at x 90 (and x 66): captions do not align to the artwork"}
+    ], "out_of_scope": [
+      {"what": "Beam wedges and flame read as a face or a bow tie", "kind": "motif", "judges": ["1"], "document": "T04-logo-sheet", "region": [60, 60, 230, 210]},
+      {"what": "Flame lobe ends in a flat cut", "kind": "drawing", "judges": ["1"]},
+      {"what": "Favicon at 16 px picks up fringe pixels and blurs into a cluster", "kind": "finish", "judges": ["1", "2", "3"]},
+      {"what": "App icon appears only on the cream half", "kind": "content", "judges": ["1"]}
+    ]},
+    "T05": {"lane_code": "BHPS", "documents": ["T05-slide-4"], "expected": [
+      {"id": "T05-footer", "codes": ["margin_drift"], "document": "T05-slide-4", "region": [1600, 900, 220, 80], "judges": ["1"], "what": "The page number's right edge sits about 20 pt in from the end of the footer rule on content slides"}
+    ], "out_of_scope": [
+      {"what": "Bullet column narrowed by the year panel wraps into one-word orphans", "kind": "type", "judges": ["1", "2", "3"], "document": "T05-slide-4", "region": [160, 330, 1100, 520]},
+      {"what": "Old-style figures do not share a baseline; the first number nearly reaches its card edge (slide 2)", "kind": "type", "judges": ["1", "2", "3"]},
+      {"what": "Short em dash and heavy middle dot in the fonts (slides 1 and 6)", "kind": "type", "judges": ["1"]},
+      {"what": "Plain chart: labels as large as data, nothing emphasised (slide 3)", "kind": "data", "judges": ["1"]},
+      {"what": "Fallback fonts in the PPTX render", "kind": "export", "judges": ["1"]}
+    ]},
+    "T06": {"lane_code": "MHMI", "documents": ["T06-form"], "expected": [
+      {"id": "T06-signature", "codes": ["dead_band"], "document": "T06-form", "region": [0, 2795, 2550, 240], "judges": ["1"], "what": "Dead band of about 0.8 in between the signature row and the footer rule"}
+    ], "out_of_scope": [
+      {"what": "Signature underline and taller date box mix two field styles", "kind": "form", "judges": ["1"], "document": "T06-form", "region": [225, 2560, 2100, 240]},
+      {"what": "Sample signature set at twice the size of other values", "kind": "sample", "judges": ["1", "2"]},
+      {"what": "Filled values light and small with tight left padding", "kind": "form", "judges": ["1"]}
+    ]},
+    "T07": {"lane_code": "EMLW", "documents": ["T07-badge-01", "T07-badge-03", "T07-badge-04", "T07-badge-06", "T07-print-page-2"], "expected": [
+      {"id": "T07-name-block", "codes": ["uneven_rhythm"], "document": "T07-badge-01", "region": [0, 241, 1200, 400], "judges": ["1"], "what": "Name-block rhythm is uneven: a big gap between first and last name and a smaller one to the company"},
+      {"id": "T07-badge-03", "codes": ["uneven_rhythm"], "document": "T07-badge-03", "region": [0, 241, 1200, 400], "judges": ["1"], "what": "The long last name sits tight to the company line, much tighter than the same gap on other badges"},
+      {"id": "T07-badge-04", "codes": ["uneven_rhythm"], "document": "T07-badge-04", "region": [0, 241, 1200, 400], "judges": ["2"], "what": "The large vertical gap between the long first and last names makes the block feel stretched"},
+      {"id": "T07-badge-06", "codes": ["dead_band"], "document": "T07-badge-06", "region": [0, 580, 1200, 140], "judges": ["1"], "what": "No company line and the block is not re-centred, so a dead band sits above the bar"},
+      {"id": "T07-sheet", "codes": ["dead_band"], "document": "T07-print-page-2", "region": [0, 936, 1224, 648], "judges": ["1"], "what": "The last two rows sit at the top of the three-row grid, so the page is not centred"}
+    ], "out_of_scope": [
+      {"what": "Badges butt together with no gutter or bleed", "kind": "print", "judges": ["1"], "document": "T07-print-page-2", "region": [36, 72, 1152, 864]}
+    ]},
+    "T08": {"lane_code": "RYGP", "documents": ["T08-infographic"], "expected": [
+      {"id": "T08-margins", "codes": ["margin_drift"], "document": "T08-infographic", "region": [60, 460, 1080, 1300], "judges": ["1"], "what": "Section headings and charts start at x 88 while the title, rule, callouts and footnote start at x 60: two left margins"},
+      {"id": "T08-bottom", "codes": ["dead_band"], "document": "T08-infographic", "region": [60, 1610, 1080, 190], "judges": ["1"], "what": "Dead band of about 150 px under the donut and 80 px below the footnote; the footnote floats"}
+    ], "out_of_scope": [
+      {"what": "'35,280 cups' fills the donut hole and nearly touches the ring", "kind": "chart", "judges": ["1"], "document": "T08-infographic", "region": [60, 1190, 1080, 520]},
+      {"what": "Donut legend far from the donut, values crammed against names and not in a column; percentages apart from names", "kind": "data", "judges": ["1", "2", "3"], "document": "T08-infographic", "region": [60, 1190, 1080, 520]},
+      {"what": "Bar chart legend centred while its heading is left-aligned", "kind": "chart", "judges": ["1"], "document": "T08-infographic", "region": [60, 460, 1080, 120]},
+      {"what": "Straight apostrophe in a display heading", "kind": "type", "judges": ["1"]}
+    ]},
+    "T09": {"lane_code": "WGJQ", "documents": ["T09-story"], "expected": [
+      {"id": "T09-upper", "codes": ["dead_band"], "document": "T09-story", "region": [0, 350, 1080, 200], "judges": ["3"], "what": "Large gap between the sun and the brand text leaves a weakly used upper band (story)"}
+    ], "out_of_scope": [
+      {"what": "Awkward line breaks split phrases ('Smoked maple / latte')", "kind": "type", "judges": ["1", "2"], "document": "T09-story", "region": [90, 1040, 900, 260]},
+      {"what": "Sun glow goes greyish on navy", "kind": "finish", "judges": ["1"], "document": "T09-story", "region": [600, 0, 480, 470]},
+      {"what": "Coral line wanders across the wave bands", "kind": "motif", "judges": ["1"], "document": "T09-story", "region": [0, 1550, 1080, 370]},
+      {"what": "Square: long menu line near the right edge and small (other size, not reconstructed)", "kind": "margin", "judges": ["1", "2", "3"]},
+      {"what": "Leaderboard: sun overlaps the hill band (other size, not reconstructed)", "kind": "overlap", "judges": ["1"]}
+    ]},
+    "T10": {"lane_code": "XMNM", "documents": ["T10-caption"], "expected": [], "out_of_scope": [
+      {"what": "Strong grain and crushed blacks in the Instagram crop; mild grain in the caption crop", "kind": "photo", "judges": ["1", "2", "3"], "document": "T10-caption", "region": [0, 0, 1600, 900]},
+      {"what": "Sun disc dull; magenta cast in the water", "kind": "photo", "judges": ["1", "3"]}
+    ]},
+    "T11": {"lane_code": "GNQS", "documents": ["T11-sketch"], "expected": [], "out_of_scope": [
+      {"what": "Fill slivers and halos where fills miss their strokes; a roof fill bulges past the wall", "kind": "drawing", "judges": ["1", "2", "3"], "document": "T11-sketch", "region": [500, 400, 1100, 800]},
+      {"what": "Kinked ground line, varying stroke weights, jittery canopy, 1 px edge line", "kind": "drawing", "judges": ["1", "2", "3"]}
+    ]},
+    "T12": {"lane_code": "FJPE", "documents": ["T12-last-frame"], "expected": [
+      {"id": "T12-bottom", "codes": ["dead_band"], "document": "T12-last-frame", "region": [0, 720, 1080, 360], "judges": ["1"], "what": "Three thin wave lines leave the bottom third mostly empty navy"}
+    ], "out_of_scope": [
+      {"what": "Beam is a blurred wedge of visible bands with a flat cut-off", "kind": "motif", "judges": ["1", "2", "3"], "document": "T12-last-frame", "region": [176, 260, 330, 110]},
+      {"what": "Sweep faked by squashing the wedge; GIF strokes thin", "kind": "motion", "judges": ["1", "2"]},
+      {"what": "Lighthouse floats on a short bar in mid-air, separated from the waves", "kind": "motif", "judges": ["1"], "document": "T12-last-frame", "region": [405, 270, 245, 330]}
+    ]},
+    "T13": {"lane_code": "KWNH", "documents": ["T13-sprite-sheet"], "expected": [], "out_of_scope": [
+      {"what": "Flat coat silhouette, barely any lantern sway, dull boots, no eye pixel", "kind": "sprite", "judges": ["1", "2", "3"], "document": "T13-sprite-sheet", "region": [0, 0, 192, 32]}
+    ]},
+    "T14": {"lane_code": "TMNV", "documents": ["T14-chorus-frame"], "expected": [], "out_of_scope": [
+      {"what": "Single-word second lines ('stone', 'alone')", "kind": "type", "judges": ["1", "2"]},
+      {"what": "Beam runs through the next-line text and has a flat cut-off; glow washes out the lantern", "kind": "overlap", "judges": ["1", "2", "3"], "document": "T14-chorus-frame", "region": [220, 220, 900, 260]},
+      {"what": "Island sits below the wave line, so the lighthouse looks pasted on", "kind": "motif", "judges": ["1"], "document": "T14-chorus-frame", "region": [1080, 420, 140, 180]},
+      {"what": "Large gap between the current line and the small next line: the pair reads loosely (a single gap between two lines; no kind of the family measures one gap)", "kind": "spacing", "judges": ["1"], "document": "T14-chorus-frame", "region": [120, 250, 1040, 230]}
+    ]},
+    "T15": {"lane_code": "KVXZ", "documents": ["T15-tile"], "expected": [
+      {"id": "T15-density", "codes": ["clumped_scatter"], "document": "T15-tile", "region": [0, 0, 1024, 1024], "judges": ["1", "3"], "what": "Uneven density: empty patches next to a column of three sea-foam kelps; diagonal bands and voids when repeated"}
+    ], "out_of_scope": [
+      {"what": "Wave tendril runs into a kelp frond; dots collide with shells and blades", "kind": "overlap", "judges": ["1", "2", "3"], "document": "T15-tile", "region": [0, 0, 1024, 1024]},
+      {"what": "Motifs cut by the mug label edge", "kind": "mockup", "judges": ["1", "2"]},
+      {"what": "Heavy blobby wave strokes against fine line work; jagged shell outlines", "kind": "finish", "judges": ["1", "3"]}
+    ]},
+    "T16": {"lane_code": "FKJR", "documents": ["T16-menu"], "expected": [
+      {"id": "T16-crowding", "codes": ["crowding"], "document": "T16-menu", "region": [190, 425, 895, 1150], "judges": ["1", "2", "3"], "what": "Amber rule sits directly under the heading and on top of the first item: heading, rule and first row crowd together"},
+      {"id": "T16-rule-edge", "codes": ["margin_drift"], "document": "T16-menu", "region": [180, 425, 40, 1150], "judges": ["1"], "what": "Heading rule starts a few points left of the heading and item text"},
+      {"id": "T16-rhythm", "codes": ["uneven_rhythm", "dead_band"], "document": "T16-menu", "region": [190, 425, 895, 1400], "judges": ["1"], "what": "Large gaps between sections against no gap between heading and items: the vertical rhythm is uneven"}
+    ], "out_of_scope": [
+      {"what": "Ragged price column (proportional digits; $1.00 indented)", "kind": "data", "judges": ["1"], "document": "T16-menu", "region": [990, 440, 100, 1350]},
+      {"what": "Full-page cream fill to the trim on a no-bleed desktop print", "kind": "print", "judges": ["1"]},
+      {"what": "Hours line wider than the menu column above it", "kind": "measure", "judges": ["1"], "document": "T16-menu", "region": [180, 1915, 920, 40]}
+    ]}
+  }
+}

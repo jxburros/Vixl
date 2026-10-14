@@ -147,7 +147,16 @@ def expand(containers, templates):
             [
                 text("eyebrow", [0.07, 0.14, 0.86, 0.14], 18, "@muted"),
                 text("title", [0.07, 0.38, 0.86, 0.34], 40),
-                shape("rule", [0.07, 0.87, 0.86, 0.012]),
+                # One spacing unit under the rule at any height: the crowding threshold is half.
+                shape("rule", [0.07, 0.87, 0.86, 0.012], clear_below=1),
+            ],
+        ),
+        "key-value-list": (
+            {"title": "[Heading]", "items": "[Label] | [Value]\n[Label] | [Value]\n[Label] | [Value]"},
+            [
+                text("title", [0.07, 0.08, 0.86, 0.2], 30),
+                {"type": "key-value-list", "name": "items", "items": "${items}", "font_size": 20,
+                 "frame": [0.07, 0.36, 0.86, 0.56], "min_size": 10},
             ],
         ),
     }
@@ -169,6 +178,9 @@ def expand(containers, templates):
             "rules": {"layout": "free", "padding": 0, "contain": True},
             "operations": ops,
         }
+    # A data list holds the caller's figures, so a roll never picks it as the document's component (and the
+    # rolled pool, which seeds draw from, stays as it was).
+    containers["key-value-list"]["safe"] = False
     # Variants retain identical variable names and semantic children, while changing placement.
     for name in ("testimonial", "feature-icon", "profile", "product-card"):
         original = containers[name]["operations"]

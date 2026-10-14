@@ -111,7 +111,7 @@ def schemas(add):
              "description": "Node IDs or {id, label, kind, color, text_color, icon, size, group}."}
     edges = {"type": "array", "maxItems": MAX_EDGES,
              "items": {"anyOf": [{"type": "array", "items": S, "minItems": 2, "maxItems": 3}, edge]},
-             "description": "{from, to, label, kind, from_port, to_port, color, arrow} or [from, to, label]."}
+             "description": "{from, to, label, kind, from_port, to_port, color, arrow, width} or [from, to, label]."}
     options = {
         "layout": enum(*LAYOUTS), "direction": enum(*L.DIRECTIONS), "routing": enum(*L.ROUTINGS), "lanes": B,
         "columns": POSITIVE_INT, "theme": enum(*THEMES), "font": S, "size": N, "text_color": S, "node_color": S,
@@ -226,7 +226,7 @@ def _edge(raw):
         raw = {"from": raw[0], "to": raw[1], **({"label": raw[2]} if len(raw) == 3 else {})}
     require(isinstance(raw, dict) and "from" in raw and "to" in raw, "Each edge needs from and to", field="edges")
     unknown = sorted(set(raw) - {"id", "from", "to", "label", "kind", "from_port", "to_port", "color", "arrow", "width"})
-    require(not unknown, f"Unknown edge field(s) {', '.join(unknown)}; use from, to, label, kind, from_port, to_port, color, arrow, id",
+    require(not unknown, f"Unknown edge field(s) {', '.join(unknown)}; use from, to, label, kind, from_port, to_port, color, arrow, width, id",
             field="edges")
     edge = {"from": _id(raw["from"], "from"), "to": _id(raw["to"], "to")}
     if raw.get("id") is not None:
@@ -321,7 +321,7 @@ def _new_spec(project, op):
     _options(project, op, spec)
     _merge(project, spec, op, None)
     # New diagrams record their look, so a later diagram-set keeps it: the document palette and mode unless a
-    # theme was chosen, and label leading from the line-height table. Older specs keep the light theme.
+    # theme was chosen, and label leading from the line-height table.
     spec.setdefault("theme", default_theme(project))
     spec.setdefault("line_height", LINE_HEIGHT["caption"])
     return spec
@@ -580,12 +580,13 @@ class _Text:
     """Measures label text through the document's own text engine, with a cache."""
 
     def __init__(self, project, font, line_height=None):
-        self.project, self.font, self.cache, self.line_height = project, font, {}, line_height
+        from .craft import LINE_HEIGHT
+
+        self.project, self.font, self.cache = project, font, {}
+        self.line_height = LINE_HEIGHT["caption"] if line_height is None else line_height
 
     def spacing(self, size):
-        """Label leading: the spec's line-height multiple (diagrams made since 0.23), else the older fixed rule."""
-        if self.line_height is None:
-            return max(0, round(size * 0.18))
+        """Label leading: the spec's line-height multiple."""
         from .craft import spacing_for
 
         return spacing_for(self.project, self.font, size, self.line_height)

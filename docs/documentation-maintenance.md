@@ -75,10 +75,14 @@ availability or output quality.
 
 ## Versions and navigation
 
-Keep README, the hub, release installation URLs and package version consistent. Latest
+Keep README, the hub, release installation URLs and package version consistent: the version
+in `src/vixl/__init__.py`, `.claude-plugin/plugin.json`, the `.mcp.json` tag URL, the install
+URLs in `README.md` and `getting-started.md`, the action pin in `ci.md` and the tag example in
+`releases.md` ([release steps](releases.md#maintaining-releases)). Latest
 `main` can contain source-only changes while the package version still matches a tag.
 Label these explicitly and link the changelog's Unreleased section. Coverage should show
-the release that shipped a feature, not retain stale “unreleased” labels.
+the release that shipped a feature, not retain stale “unreleased” labels;
+`tests/test_docs_coverage.py` fails when `coverage.md` has no `(X.Y)` row for the changelog's newest release.
 
 Every topical guide links back to the hub. Preserve its existing filename and section
 anchors when reorganizing navigation so external links continue to work. Add new guides

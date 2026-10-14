@@ -1,9 +1,9 @@
 # Marketing builds
 
-The [Vixl marketing pack](../marketing/README.md) is a complete example of programmatic creative
+The [Vixl marketing pack](https://github.com/jxburros/VixlExamples/blob/main/marketing/README.md), in the VixlExamples repository, is a complete example of programmatic creative
 production: social graphics, a carousel, a presentation, print handouts, a fillable brief, data and
 workflow graphics, checked campaign variants, a motion teaser and an app animation family.
-Its masters include embedded content and fonts. Build with `python marketing/build.py`, then run
+Its masters include embedded content and fonts. From a VixlExamples checkout, build with `python marketing/build.py`, then run
 `python marketing/verify.py` to inspect the delivered formats and source roundtrip.
 
 ## Reading profiles
@@ -28,7 +28,7 @@ Single-page `og-image` and `x-post` checks default to 600 px previews.
 The pack's deck uses the screen profile; use the projected profile and adjust type/word counts
 before using it on a distant screen. Its carousel uses the phone profile. The builder refuses
 exports with `fix` findings or failing saved suites, and retains the full reports next to the masters.
-Public copy comes from [`marketing/copy.json`](../marketing/copy.json). Installed registry counts
+Public copy comes from [`marketing/copy.json`](https://github.com/jxburros/VixlExamples/blob/main/marketing/copy.json). Installed registry counts
 are recorded automatically in the pack manifest as metadata.
 
 ## Decorative crops and embedded images
@@ -54,7 +54,7 @@ assets, while assets referenced by retained history stay available for undo.
 
 **Sources above the pixel limit.** With `max_pixels` or `downsample`, the source may be up to four times the pixel
 limit (160 MP under the default 40 MP `--max-pixels`, so a 108 MP camera file imports); it is shrunk while it is
-decoded. Without a `width` and `height` such a layer takes the embedded size. `vixl import`, `vixl_import_image` and
+decoded. Without a `width` and `height` such a layer takes the embedded size. `vixl import`, `import-image` and
 the REST import downsample a source above the limit to fit it on their own and report `downsampled` and a warning.
 A plain `add` of such a file fails with `resource_limit`, naming the size and both remedies (`max_pixels`, or a higher
 `--max-pixels`).

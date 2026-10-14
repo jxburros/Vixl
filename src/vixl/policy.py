@@ -32,8 +32,9 @@ BUILTIN = {
               "description": "Sketching: only errors fail; suites do not run."},
     "review": {"fail_on": "fix", "suites": "all",
                "description": "Work in progress: findings that need a fix fail, and every attached suite runs."},
-    "final": {"fail_on": "review", "optional": ["color_vision"], "suites": "all",
-              "description": "Shipping: fix and review findings fail, color-vision is checked and every suite runs."},
+    "final": {"fail_on": "review", "optional": ["color_vision", "composition"], "suites": "all",
+              "description": "Shipping: fix and review findings fail, color-vision and composition are checked and "
+                             "every suite runs; waive a deliberate finding with a reason."},
 }
 
 

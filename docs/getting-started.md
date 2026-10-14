@@ -27,14 +27,14 @@ vixl --version
 ```
 
 The core install is `python -m pip install -e .`; MCP is included. `server` adds REST and
-live review; `pdf` adds PDF page import. To update this checkout later, save your changes,
+live review; `pdf` adds PDF page import (as editable layers or one image). To update this checkout later, save your changes,
 run `git pull --ff-only`, and repeat the install. Pip installs use pip-managed updates;
 the bundled Windows updater is a separate installation mechanism.
 
 For reproducible work, install a tag rather than tracking `main`:
 
 ```bash
-python -m pip install 'https://github.com/jxburros/Vixl/archive/refs/tags/v0.26.0.tar.gz'
+python -m pip install 'https://github.com/jxburros/Vixl/archive/refs/tags/v0.27.0.tar.gz'
 ```
 
 Latest `main` may include changes beyond the tagged release while reporting the same
@@ -56,11 +56,29 @@ vixl -p hello.vixl render --out hello-preview.png
 vixl -p hello.vixl export hello.png
 ```
 
+In a terminal each command prints a short summary (`created hello.vixl  800×600  bg #18283b`,
+`check passed (bounds, contrast) — 0 errors, 0 warnings`, `exported hello.png (16.2 KB)`). When output is piped or
+redirected, or you pass `--json` or set `VIXL_JSON=1`, it prints the full JSON instead, so scripts and agents always
+get JSON.
+
 You now have an editable `hello.vixl` and a PNG export. Open the PNG to inspect the actual
 appearance. `check` covers the rules requested, not every possible design problem. The
 bundled DejaVu Sans font makes proofing work offline; for finished brand work, choose a
 font with `vixl font pairings` and install a pairing or import your licensed font. See
 [typography](typography.md).
+
+Passing checks make a design correct, not finished. Before you hand one over, make a finishing pass:
+check the composition (dead bands, two left margins, uneven gaps, crowded rules, clumped scatters), and
+`vixl guide finishing` prints the craft checklist (one focal point, an accent colour used once or twice,
+no dead band, one left edge per column, a motif that names the subject, nothing that reads as a
+placeholder). Fix what it turns up in one batch, then look at the export at its real size, not as a
+thumbnail.
+
+<!-- docs-test: continue -->
+```bash
+vixl -p hello.vixl check --checks composition
+vixl guide finishing
+```
 
 Editing commands autosave. To revise the headline and undo the change:
 
@@ -120,4 +138,6 @@ The [interface reference](interfaces.md) documents loading, history, errors and 
 Choose a [campaign](tutorials/campaign.md), [chart](tutorials/charts.md),
 [form or deck](tutorials/forms-and-decks.md), or [animation](tutorials/motion.md).
 For an existing image, start with `vixl -p hello.vixl add photo.jpg --name photo`, then use
-[design tools](design-tools.md) for positioning, masks and effects.
+[design tools](design-tools.md) for positioning, masks and effects. An SVG, a PDF page or a Figma
+frame comes in as editable layers with `vixl import` ([importing SVG and PDF](exporting.md#importing-svg-and-pdf),
+[Figma](figma.md)), and the `.vixl` format itself is documented in [file format](file-format.md).

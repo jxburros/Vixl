@@ -72,8 +72,10 @@ vixl -p slides.vixl export slides.pptx
 ```
 
 The cover and results page carry speaker notes. The deck check also examines presentation
-requirements such as minimum text size; the explanatory captions in this documentation
-example may need enlargement for projection. Inspect findings before using it as a real
+requirements such as minimum text size, and runs the default design checks, composition
+included: on this documentation example it reports one `composition` review, a `dead_band` below
+the cover panel, and no text-size findings. The explanatory captions may still need enlargement
+for a distant screen. Inspect findings before using it as a real
 presentation. [Slides](../slides.md#deck-checks) explains each rule and exemptions.
 
 Try the [PowerPoint](../assets/generated/slides.pptx) and [PDF](../assets/generated/slides.pdf).

@@ -144,7 +144,7 @@ def validate_user_kind(name, entry, workspace=None):
 
 
 def registry(workspace=None):
-    """Every kind: built in, then user and workspace additions (``vixl_resource_add(kind="objects")``). A library
+    """Every kind: built in, then user and workspace additions (``vixl_apply(workflow='resource-save', request={kind: 'objects', name, value})``). A library
     whose additions no longer fit the taxonomy falls back to the built-in kinds."""
     from .resources import catalog
 
@@ -209,8 +209,8 @@ def resolve_kind(name, kinds=None, field="kind"):
     close = list(dict.fromkeys(_index(kinds)[c] for c in close))
     raise VixlError("invalid_operation", f"Unknown object kind {name!r}" + (
         f"; did you mean {' or '.join(map(repr, close))}?" if close else
-        "; see vixl objects (vixl_capabilities(topic='objects')) or add a workspace kind with "
-        "vixl_resource_add(kind='objects')"), field=field, suggestions=close)
+        "; see vixl objects (vixl_reference('capabilities', name='objects')) or add a workspace kind with "
+        "vixl_apply(workflow='resource-save', request={kind: 'objects', name, value})"), field=field, suggestions=close)
 
 
 def chain(name, kinds=None):
@@ -581,7 +581,7 @@ def missing_parts(project, group, kinds=None, children=None):
 
 
 def tree(project, ref):
-    """The object tree for ``vixl_document_inspect(object=...)``: kind chain, bounds in canvas and group space,
+    """The object tree for ``vixl_document(action='inspect', object=...)``: kind chain, bounds in canvas and group space,
     parts with sides, bounds and layer counts, missing required parts, sub-objects, notes and references.
     ``ref='*'`` lists every object on the page as a compact outline."""
     from .design import descendants
@@ -607,7 +607,7 @@ def tree(project, ref):
                           "parts": len(object_parts(project, group, children)),
                           "sub_objects": [path_of(project, sub, index) for sub in sub_objects(project, group, children)]})
         return {"objects": items, "count": len(items),
-                "next": "vixl_document_inspect(object=NAME) returns one object's parts and sub-objects"}
+                "next": "vixl_document(action='inspect', object=NAME) returns one object's parts and sub-objects"}
     group = project.layer(ref)
     require(record(group) is not None, f"{group['name']!r} is not an object; declare it with "
             "{type: object, target: GROUP, kind: KIND}", field="object")
@@ -729,7 +729,7 @@ def schemas(add):
     }, ["name"])
     add("object-place", {
         "name": field(S, "Saved object to place (object-save), or with source the new object's name."),
-        "source": field(S, "A portable object .vixl file in the workspace (vixl_export_file(isolate=[OBJ], path=…vixl)) "
+        "source": field(S, "A portable object .vixl file in the workspace (vixl_export(isolate=[OBJ], path=…vixl)) "
                         "to place instead of a saved object."),
         "name_as": field(S, "Name of the placed object group; default the saved name (made unique)."),
         "x": field(N, "Left edge of the placed object on the page (default: where it was saved)."),
@@ -1087,14 +1087,14 @@ def export_object_document(project, refs, *, padding=None, limits=None):
     return document
 
 
-# What vixl_export_file passes when an option is left alone; a .vixl object export takes no other options.
+# What vixl_export passes when an option is left alone; a .vixl object export takes no other options.
 EXPORT_DEFAULTS = {"scale": 1, "background": "white", "sampling": "smooth", "svg_policy": "appearance",
                    "color_space": "rgb", "intent": "relative", "black_generation": 1.0, "fill_mode": "flatten",
                    "alpha": "auto", "proof": False, "fillable": False, "overwrite": False}
 
 
 def portable_bytes(project, options, report=None):
-    """The bytes of a portable object ``.vixl`` (``vixl_export_file(isolate=…, path=….vixl)``)."""
+    """The bytes of a portable object ``.vixl`` (``vixl_export(isolate=…, path=….vixl)``)."""
     import tempfile
 
     from .render import view_page

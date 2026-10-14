@@ -6,9 +6,13 @@ Run `pytest -q` and build the distributions before submitting a release change. 
 
 Commit messages, generated pull requests, issue text and generated artwork should describe the work without model signatures or authorship trailers. Keep comments that explain constraints, tradeoffs or non-obvious behavior; remove comments that only repeat the next statement. Provider configuration identifiers are functional data and should remain intact.
 
+Showcases, experiments, films, marketing media and published evaluation results belong in
+[VixlExamples](https://github.com/jxburros/VixlExamples), not here; link to them from the docs. Keep media in this repository only when
+tests, docs or packaging need it (`docs/assets`, `assets/`, `examples/`, `tests/fixtures`).
+
 ## Changing a default
 
-Defaults for sparse briefs live in the house style (`src/vixl/data/house-style.json`, read through `src/vixl/house_style.py`); read values from there instead of adding constants. A changed default affects new documents only: documents store their rolled `design_defaults` with the `house_style_version` that made them. Bump the version when a change alters what a seed rolls, keep what the old version rolled from under `legacy`, and add a changelog line under **Changed defaults** naming the override that restores the old result (an explicit field, a lock, or the previous `house_style_version`, such as `2` for 0.23 rolls). Compare `python -m evals.house_style --compare evals/house-style-baseline.json` before and after; quality must not fall. See [house style](docs/house-style.md#changing-defaults-h2).
+Defaults for sparse briefs live in the house style (`src/vixl/data/house-style.json`, read through `src/vixl/house_style.py`); read values from there instead of adding constants. Pre-release: breaking changes are allowed; note them in the changelog, and do not add version switches to the engine: documents saved with older behaviour are handled by the conversion kit (`src/vixl/convert/`, [converting](docs/converting.md)), which the engine never imports. Default changes must still pass the house-style quality/diversity eval. Compare `python -m evals.house_style --compare evals/house-style-baseline.json` before and after; quality must not fall. See [house style](docs/house-style.md#changing-defaults-h2).
 
 ## Visual regression tests
 
@@ -21,4 +25,4 @@ Defaults for sparse briefs live in the house style (`src/vixl/data/house-style.j
 
 ## Performance tests
 
-`tests/test_perf.py` (marker `perf`, so `pytest -m perf` runs only these) gives the paths that once grew with the document a time budget: one move on 4,096 layers, a batch of moves, the overlap check on dense text and a 100,000-character text flow. They run in the default suite and take a few seconds each. A budget is several times what the code needs on a loaded CI runner and far below what the old behaviour took; when a speed claim goes into the changelog, add or tighten a budget here instead of quoting a number. Caches that make these fast need a test that changes each input the cached value reads (see `tests/test_apply_speed.py`).
+`tests/test_perf.py` (marker `perf`, so `pytest -m perf` runs only these) gives the paths that once grew with the document a time budget: one move on 4,096 layers, a batch of moves, the overlap check on dense text, the composition check on 1,500 scattered labels, a poster's design check, re-rendering a large canvas of styled layers after a move, a full-canvas multiply, a dithered full-canvas gradient and a 100,000-character text flow. They run in the default suite and take a few seconds each. A budget is several times what the code needs on a loaded CI runner and far below what the old behaviour took; when a speed claim goes into the changelog, add or tighten a budget here instead of quoting a number. Caches that make these fast need a test that changes each input the cached value reads (see `tests/test_apply_speed.py`).

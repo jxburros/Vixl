@@ -3,7 +3,7 @@
 [Documentation home](README.md) · [Development plan](roadmap.md) · [House style decisions](house-style.md)
 
 This plan is about the quality of what agents make with Vixl: whether a finished piece reads as designed, not just
-correct. It comes from the [blind re-judging of the tool comparison](../eval-results/2026-10-13-blind-rejudging.md)
+correct. It comes from the [blind re-judging of the tool comparison](https://github.com/jxburros/VixlExamples/blob/main/eval-results/2026-10-13-blind-rejudging.md)
 and uses the same complexity (C1–C5) and payoff (P1–P5) ratings as the [development plan](roadmap.md).
 
 ## Where craft stands
@@ -30,6 +30,8 @@ The judges' reasons for picking another lane over Vixl fall into four groups, in
 
 ## Why it happens
 
+This is the state before 0.27.0; the [Status](#status) table below records what has landed since.
+
 - **The agent loop ends when the checks pass.** SKILL.md step 5 and `briefs.START_HERE` go from passing checks to a
   preview to export. No step asks for a critique or a polish pass, and the "Finish" step means "apply a look".
 - **The checks don't see composition.** The default `vixl_check` families cover bounds, overlap, contrast, safe area,
@@ -51,7 +53,7 @@ The judges' reasons for picking another lane over Vixl fall into four groups, in
 ## Goals
 
 Measured by re-running the Vixl lane of the tool comparison and judging it blind against the same web-code runs,
-with the [re-judging kit](../evals/tool-comparison/rejudge-2026-10-12/README.md):
+with the [re-judging kit](https://github.com/jxburros/VixlExamples/blob/main/evals/tool-comparison/rejudge-2026-10-12/README.md):
 
 - **Primary:** Vixl wins at least half of the "which would you publish?" calls against web code (today 11 of 27).
 - **Supporting:**
@@ -67,7 +69,7 @@ In order. Each item names the evidence it answers.
 
 | Item | What | C | P |
 | --- | --- | --- | --- |
-| 1a | **Keep the eval sources.** Commit the Vixl lane's `.vixl` documents for tool-comparison runs (a `.gitignore` exception for `evals/tool-comparison/runs/**`). Without them, editability can only be judged from output diffs, and the new checks below can't be backtested | 1 | 4 |
+| 1a | **Keep the eval sources.** Commit the Vixl lane's `.vixl` documents for tool-comparison runs (VixlExamples, where the kit lives, does not ignore `*.vixl`, so the re-run in 1c only has to keep them). Without them, editability can only be judged from output diffs, and the new checks below can't be backtested | 1 | 4 |
 | 1b | **Backtest set.** The 16 round-1 Vixl documents, each with the defects the judges named (from `rejudge-2026-10-12/scores/`) as expected findings. Every new check in workstream 2 reports how many of those it catches and how many false findings it adds | 2 | 5 |
 | 1c | **Craft re-run as a routine.** A script that re-runs the Vixl lane on the 16 briefs, packages it with `rejudge.py` beside the fixed other-lane runs, and prints the judge prompt, so a release can be judged in an afternoon | 2 | 4 |
 | 1d | **Craft in the agent evals.** Add the new composition findings (2a) to `evals/house_style.py`'s quality score, so `--compare` against the baseline catches craft regressions on every default change | 2 | 4 |
@@ -84,14 +86,14 @@ In order. Each item names the evidence it answers.
 
 | Item | What | C | P |
 | --- | --- | --- | --- |
-| 3a | **Rewrite the end of the loop** in SKILL.md, `briefs.START_HERE` and the guidance registry: checks pass → `check composition` → a short critique against a craft checklist → one fix batch → a real-size look at two regions with `vixl_render_preview` `region` → export. The checklist lives once in `guidance.py` (one focal point; accent color used once or twice; no dead band; one left edge per column; the motif names the subject; nothing reads as a placeholder) | 2 | 5 |
-| 3b | **Make the critique cheap:** `vixl_operations_apply` with `check=true` already returns findings and a preview, so return the composition findings with it, plus the two lowest-scoring regions as crops | 2 | 4 |
+| 3a | **Rewrite the end of the loop** in SKILL.md, `briefs.START_HERE` and the guidance registry: checks pass → `check composition` → a short critique against a craft checklist → one fix batch → a real-size look at two regions with `vixl_render` `region` → export. The checklist lives once in `guidance.py` (one focal point; accent color used once or twice; no dead band; one left edge per column; the motif names the subject; nothing reads as a placeholder) | 2 | 5 |
+| 3b | **Make the critique cheap:** `vixl_apply` with `check=true` already returns findings and a preview, so return the composition findings with it, plus the two lowest-scoring regions as crops | 2 | 4 |
 
 ### 4. Typography
 
 | Item | What | C | P |
 | --- | --- | --- | --- |
-| 4a | **Balanced wrap** (`wrap: "balance"`) for headings and short text, and a runt rule (no one-word last line) for body text on single layers. Default for headings in the next house style version, following the #430 policy (T09 story breaks, T14 "waves break / stone / alone") | 3 | 4 |
+| 4a | **Balanced wrap** (`wrap: "balance"`) for headings and short text, and a runt rule (no one-word last line) for body text on single layers. Default for headings in the house style, following the #430 policy (T09 story breaks, T14 "waves break / stone / alone") | 3 | 4 |
 | 4b | **Tab stops and dot leaders** (BLK-07): tab stops on text and a `leader` option on table columns, so menus and price lists stop drawing leaders by hand (T16) | 3 | 3 |
 | 4c | **Accent words in layouts:** a headline slot takes `accent: ["Winter"]` and styles the match with the accent swatch through the existing span styling (the two-tone headlines that won T09 and T03) | 2 | 3 |
 
@@ -108,7 +110,7 @@ In order. Each item names the evidence it answers.
 | Item | What | C | P |
 | --- | --- | --- | --- |
 | 6a | **Scene effects as single operations:** <br>• `reflection`: mirror, ripple and fade below a horizon (T03); <br>• `haze`: a soft glow band behind a light source; <br>• `star-field`: seeded particles that keep clear of text; <br>• `string-lights`: bulbs repeated along a path with glow (T02, T03); <br>• `bokeh` | 3 each | 4 |
-| 6b | **Specific motifs from the brief:** `vixl_guide` names the concrete elements a brief implies (a cup with steam, not a disc; a lighthouse in the sea, not on a bar) and the shape catalog or object kinds that draw them. Ties to #427 illustration defaults and the object work (#374–#381) | 3 | 4 |
+| 6b | **Specific motifs from the brief:** `vixl_reference` names the concrete elements a brief implies (a cup with steam, not a disc; a lighthouse in the sea, not on a bar) and the shape catalog or object kinds that draw them. Ties to #427 illustration defaults and the object work (#374–#381) | 3 | 4 |
 | 6c | **Filled layered water** as a scene preset, because line waves read as unfinished next to filled bands (T09, T12) | 2 | 3 |
 
 ### 7. Tool finish
@@ -123,6 +125,8 @@ In order. Each item names the evidence it answers.
 
 ## Order
 
+This was the planned order; every item has landed in 0.27.0 (see [Status](#status)).
+
 - **Next release:** 1a, 1b, 2a, 2c, 3a, 7a and 7d. Measurement, the new checks, the finishing pass and the two cheap
   tool fixes. Then run 1c and judge the Vixl lane again: this tells us how much the loop and checks alone recover.
 - **After that:** 2b, 3b, 4a, 5a and 5b. Repair, cheaper critique, balanced wrap and the data list.
@@ -131,6 +135,40 @@ In order. Each item names the evidence it answers.
 Related issues in the [development plan](roadmap.md): #210 (`adapt-layout` with no hand fixes), #213 (tab stops),
 #214 (data binding), #218 (drawing polish), #404 (accent count), #412 (expressive layouts) and #427 (illustration
 defaults).
+
+## Status
+
+Every item below is built; none is judged yet. The goals above are measured by a blind re-judging, which needs a
+paid agent run (`python -m evals.craft_rerun`, 1c) and judges, so no craft gain is claimed until then.
+
+| Item | State | Where |
+| --- | --- | --- |
+| 1a | Built: the re-run copies every `.vixl` document, its operation batches and the tool-call trace into `src/` beside each run's outputs, and the lane rule asks the agent to save its documents | `evals/craft_rerun.py` |
+| 1b | Built, as reconstructions: the round-1 sources were never committed, so the 16 documents (20 files) are rebuilt from each run's ops, its SVG or measurements of its published outputs, with the judges' 21 composition defects and 48 others as expected findings | `evals/craft_backtest/`, `python -m evals.craft_backtest` |
+| 1c | Built, not yet run: re-runs the Vixl lane on the 16 briefs, packages it with `rejudge.py` beside the fixed lanes and prints the judge prompt | `python -m evals.craft_rerun` ([evals/README.md](../evals/README.md#craft-re-run)) |
+| 1d | Built: `no_composition_findings` is part of the house-style quality score; it caught the first false finding of 2a during this work | `evals/house_style.py` |
+| 2a | Built: the `composition` family, a default family of review findings. Backtest: 12 of 21 judged defects caught, 0 false findings (dead band 5/10, margin drift 4/5, uneven rhythm 2/4, crowding 1/1, clumped scatter 0/1) | `src/vixl/composition.py`, [guides](guides.md) |
+| 2b | Built: `repair-layout` repairs composition findings; on the backtest it resolves 19 of 22 findings with no new finding | `src/vixl/composition_repair.py`, [agent trust](agent-trust.md) |
+| 2c | Built: the `final` profile runs `composition` | `src/vixl/policy.py` |
+| 3a | Built: the finishing pass ends the loop in SKILL.md, `START_HERE` and the MCP instructions; the checklist lives once, as guidance `finishing` | `src/vixl/guidance.py` |
+| 3b | Built: `check=true` returns every composition finding and the two weakest regions, with real-size crops when `preview` is also asked for | `src/vixl/critique.py` |
+| 4a | Built: `wrap: "balance"` and `"pretty"`; headings balance by default | [typography](typography.md#line-breaking) |
+| 4b | Built: tab stops with leaders on text, `leader` on table columns | [typography](typography.md) |
+| 4c | Built: `accent_words` on `layout-apply` | [sizes and layouts](sizes-and-layouts.md) |
+| 5a | Built: `key-value-list`, which chart `legend_values` also draws | [charts](charts.md), [containers](containers-and-templates.md) |
+| 5b | Built: one spacing unit of rule clearance (footer rules, `section-header`). T16's own crowding came from a table's header rule, which this does not change | [house style](house-style.md#current-defaults) |
+| 5c | Built: rolled `cta` pills and `date` highlights | [safe variety](safe-variety.md) |
+| 6a | Built: `reflection`, `haze`, `star-field`, `string-lights`, `bokeh` | [atmosphere](atmosphere.md) |
+| 6b | Built: `vixl_reference` returns `motifs` from one registry, with new catalog shapes (cup, steam, lighthouse, lantern) | `src/vixl/data/motifs.json` |
+| 6c | Built: organic preset `water` | [organic](organic.md) |
+| 7a | Built: progressive `pattern-scatter` (40 → 32 copies keeps all 32 in place) and `thin` | `src/vixl/scatter.py` |
+| 7b | Built: fills register to rendered strokes; `edge_closes` carries short lines to the edge (`edge_reach`) | [drawing](drawing.md) |
+| 7c | Built: an enlarged photo runs its leading `denoise` at its own pixels, so linked crops show the cleaned master | `src/vixl/render.py` |
+| 7d | Built: a new chart fills the safe area, inset by two spacing units | [charts](charts.md) |
+| 7e | Built: shading ramp and outline on new `pixel-art` | [pixel art](pixel-animation-spacing.md) |
+
+Known gaps from the backtest: dead bands crossed by thin lines (T12 waves, T03 ripples), space beside a lone footnote
+(T08) and clumping that is about similar motifs lining up rather than density (T15) are not caught yet.
 
 ## Rules
 

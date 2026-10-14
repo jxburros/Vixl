@@ -10,7 +10,7 @@ from functools import lru_cache
 from .errors import require
 
 KINDS = tuple(
-    "ring donut cloud teardrop crescent half-circle banner ribbon tag callout bracket brace wave zigzag blob curve cylinder cube document folder button toggle browser-window phone-frame tablet-frame burst starburst seal flower squircle superellipse lens vesica reuleaux quarter-circle semicircle ellipse-segment kite rhombus isosceles-triangle star-polygon hexagram octagram stairs steps frame corner-bracket L-shape T-shape notched-rectangle plus minus x saltire asterisk trefoil quatrefoil infinity gear cog ruler tick-strip sawtooth square-wave dashed-line checkmark x-mark lightning-bolt lightning sun moon flame map-pin house bell lock magnifier envelope play pause stop skip info question warning music-note sparkle star-rating flourish swash-underline scroll laurel wreath divider corner-ornament sunburst radial-burst motion-lines speed-lines confetti scribble squiggle ticket stamp postmark scalloped-border sticker".split()
+    "ring donut cloud teardrop crescent half-circle banner ribbon tag callout bracket brace wave zigzag blob curve cylinder cube document folder button toggle browser-window phone-frame tablet-frame burst starburst seal flower squircle superellipse lens vesica reuleaux quarter-circle semicircle ellipse-segment kite rhombus isosceles-triangle star-polygon hexagram octagram stairs steps frame corner-bracket L-shape T-shape notched-rectangle plus minus x saltire asterisk trefoil quatrefoil infinity gear cog ruler tick-strip sawtooth square-wave dashed-line checkmark x-mark lightning-bolt lightning sun moon flame map-pin house bell lock magnifier envelope play pause stop skip info question warning music-note sparkle star-rating flourish swash-underline scroll laurel wreath divider corner-ornament sunburst radial-burst motion-lines speed-lines confetti scribble squiggle ticket stamp postmark scalloped-border sticker cup steam lighthouse lantern".split()
 )
 PARAMETERS = (
     "corner_style",
@@ -59,7 +59,7 @@ PARAMETERS = (
     "pointer_side",
     "slant",
 )
-# Parameters each shape reads, for discovery (vixl_capabilities) and the ignored-field advisory. The shared
+# Parameters each shape reads, for discovery (vixl_reference('capabilities')) and the ignored-field advisory. The shared
 # lengths (thickness, depth ...) mean the same thing everywhere; the per-shape defaults are in path().
 SHAPE_PARAMETERS = {
     "heart": ("apex", "cleft", "tip"),
@@ -925,6 +925,45 @@ def path(layer):
             a = q * math.tau * p.get("count", 2)
             pts.append((q, 0.5 + 0.4 * math.sin(a) * (1 - q * 0.6)))
         return line(pts, max(1, t / 3))
+    if k == "cup":
+        # A mug on a saucer: body, a ring handle whose hole is wound the other way, and the saucer.
+        body = (
+            f"M{w * 0.1:g} {h * 0.12:g} L{w * 0.68:g} {h * 0.12:g} L{w * 0.65:g} {h * 0.72:g} "
+            f"C{w * 0.64:g} {h * 0.82:g} {w * 0.58:g} {h * 0.86:g} {w * 0.5:g} {h * 0.86:g} L{w * 0.28:g} {h * 0.86:g} "
+            f"C{w * 0.2:g} {h * 0.86:g} {w * 0.14:g} {h * 0.82:g} {w * 0.13:g} {h * 0.72:g} Z"
+        )
+        return " ".join([
+            body,
+            ellipse(w * 0.54, h * 0.24, w * 0.38, h * 0.4),
+            ellipse(w * 0.63, h * 0.33, w * 0.2, h * 0.22, True),
+            ellipse(0, h * 0.83, w * 0.8, h * 0.17),
+        ])
+    if k == "steam":
+        # Three rising wisps, drawn as filled outlines of a stroke so they scale and export like any shape.
+        wisps = []
+        for centre, phase, top in ((0.22, 0.0, 0.12), (0.5, 1.9, 0.0), (0.78, 3.4, 0.18)):
+            wisps.append(line([(centre + 0.09 * math.sin(phase + q * math.tau * 1.15), 1 - q * (1 - top))
+                               for q in (i / 48 for i in range(49))], max(1, mn * 0.07)))
+        return " ".join(wisps)
+    if k == "lighthouse":
+        return " ".join([
+            ellipse(w * 0.47, h * 0.015, w * 0.06, h * 0.05),
+            normalized([(0.5, 0.055), (0.66, 0.175), (0.34, 0.175)]),
+            normalized([(0.39, 0.17), (0.61, 0.17), (0.61, 0.315), (0.39, 0.315)]),
+            normalized([(0.57, 0.2), (0.43, 0.2), (0.43, 0.29), (0.57, 0.29)]),
+            normalized([(0.3, 0.31), (0.7, 0.31), (0.7, 0.37), (0.3, 0.37)]),
+            normalized([(0.36, 0.365), (0.64, 0.365), (0.72, 0.95), (0.28, 0.95)]),
+            normalized([(0.555, 0.8), (0.445, 0.8), (0.445, 0.93), (0.555, 0.93)]),
+            normalized([(0.18, 0.94), (0.82, 0.94), (0.82, 1), (0.18, 1)]),
+        ])
+    if k == "lantern":
+        return " ".join([
+            normalized([(0.48, 0), (0.52, 0), (0.52, 0.09), (0.48, 0.09)]),
+            normalized([(0.33, 0.07), (0.67, 0.07), (0.68, 0.085), (0.68, 0.15), (0.32, 0.15), (0.32, 0.085)]),
+            ellipse(w * 0.06, h * 0.12, w * 0.88, h * 0.76),
+            normalized([(0.34, 0.84), (0.66, 0.84), (0.66, 0.9), (0.65, 0.915), (0.35, 0.915), (0.34, 0.9)]),
+            normalized([(0.485, 0.9), (0.515, 0.9), (0.53, 1), (0.47, 1)]),
+        ])
     if k in PARAMETRIC_SHORTCUTS:
         return PARAMETRIC_SHORTCUTS[k](p, w, h)
     from .geometry import SHORTCUTS, parse_path

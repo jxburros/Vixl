@@ -12,7 +12,7 @@ When a person gives you a photo or scan of their drawing, keep their lines and b
 {"type": "drawing", "action": "stroke", "target": "house", "points": [[960, 330], [960, 230], [1010, 230]]}
 ```
 
-- `import` (MCP: import the image with `vixl_import_image` first, then pass `asset`) cleans the
+- `import` (MCP: import the image with `import-image` first, then pass `asset`) cleans the
   photo into `NAME/ink` over a hidden, aligned `NAME/original`. `clean` re-runs it (`sensitivity`,
   `weight`, `ink: "original"` keeps the pencil colour, `despeckle`, `deskew`). The desk around a
   photographed sheet of paper is left out (`sheet: false` keeps it, for a border drawn along the photo's edge), and a page
@@ -28,15 +28,19 @@ When a person gives you a photo or scan of their drawing, keep their lines and b
   Bézier path per connected part (`NAME/part-001` … in reading order) instead of one polyline layer; `path-split`
   (`polygon` or `line`, `overlap`, `names`) separates shapes that touch or cross. `drawing report` returns
   `fidelity` (`iou`, `mismatch`): aim for `iou` ≥ 0.99 when asked for an exact recreation.
-- Before `fill`, call `vixl_workflow("drawing-report", {"target": "house"})`: it lists closed
+- Before `fill`, call `vixl_apply(workflow='drawing-report', request={"target": "house"})`: it lists closed
   regions with a point inside each (`point` on the canvas, `group_point` in the drawing's own
   coordinates), the drawing group's `offset`, `scale` and `rotation`, and how much of the original line
   work is kept. `fill` and `stroke` points are canvas positions by default, wherever the drawing has been
   moved; pass `space: "group"` to give them in the drawing's own coordinates instead. Sky and ground that
   only the drawing's edge closes are listed under `edge_regions`; fill them with `settings: {"edge_closes": true}`.
+  When the ground line stops short of the paper's sides, `edge_closes` carries its ends on to the edge (not
+  drawn; `edge_reach`, default 15% of the short side, 0 for none), so sky and ground still separate: do not draw
+  extension strokes. Fills follow the strokes as they render and tuck under them to the line's centre, so no
+  paper shows between a fill and its line.
   `import`/`clean` keep the paper's extent; `settings.crop: true` crops to the ink.
 - After edits, check `preserved` (aim for ≥ 0.9 unless told to redraw) and look at
-  `vixl_workflow("drawing-compare", {"target": "house", "output": "compare.png"})` (original red,
+  `vixl_apply(workflow='drawing-compare', request={"target": "house", "output": "compare.png"})` (original red,
   result blue). `vixl_check(checks=["drawing"])` warns when original lines were lost.
 - Optional colouring with a provider: `vixl ai drawing-color house --prompt …` (CLI/Python).
 
@@ -64,12 +68,28 @@ Full reference: `docs/drawing.md`.
 
 For living things (flowers, trees, leaves, shells, creatures, coral, markings) use `organic`
 rather than hand-placing ellipses: `{"type": "organic", "preset": "sunflower", "name": "bloom",
-"seed": 7}`. `vixl organics` / workflow `organic-catalog` lists 18 generators, 19 rules and 33
+"seed": 7}`. `vixl organics` / workflow `organic-catalog` lists 19 generators, 19 rules and 34
 presets; `parts` compose your own. Regrow with a new `seed` and the same `target`. To keep a
 form inside a brand palette pass `fill` (every filled part), `stroke` and `stroke_width` (every
 line, extra outputs such as shell chambers and leaf veins included); `colors` names single
 parts and wins over `fill`. A regrow with `stroke`/`fill` restyles the same way as creating
 with them. Full reference: `docs/organic.md`.
+
+Water is the scene preset `water`: filled bands lighter at the horizon and darker in front, with crests, filling its
+box edge to edge (`{"type": "organic", "preset": "water", "name": "sea", "x": 0, "y": 700, "width": 1080, "height":
+380, "params": {"tones": ["#a8d5c8", "#3f7f95", "#14263b"]}}`). Use it instead of stroked wave lines; stand a
+lighthouse or pier in it by ordering it below the front band.
+
+## Scene atmosphere and motifs
+
+One operation each, deterministic for `seed`: `haze` (a glow band behind a light, `target` the light), `star-field`
+(stars and sparkles in a `region`, clear of every text layer), `string-lights` (bulbs or `bulb: lantern` evenly along
+`from`/`to`/`sag` or a `target` path, with glows), `bokeh` (soft light discs) and `reflection` (the layers above a
+`horizon` mirrored, rippled and faded below it; one raster layer that `{type: reflection, target: reflection}`
+re-renders after the scene changes). The first four make editable groups of vector shapes and gradients.
+`vixl_reference(brief)` returns `motifs` for a brief that implies a setting: the concrete things to draw (a cup with
+steam, a lighthouse in filled water, strung lanterns, an irregular skyline) and the catalog shapes (`cup`, `steam`,
+`lighthouse`, `lantern`), presets and operations that draw them. Full reference: `docs/atmosphere.md`.
 
 ## Imperfection: irregular and tear
 
@@ -104,6 +124,7 @@ targeting the torn layer (the `-face` layer for a free sheet). Reference: `docs/
 {"type": "scatter", "target": "bear", "preset": "fur", "seed": 2}
 {"type": "pattern-scatter", "source": ["leaf", "dot"], "width": 200, "height": 200, "count": 14, "seed": 11, "rotation_jitter": 180, "background": "#fff7ed", "pattern": "leaves", "name": "tile"}
 {"type": "pattern-scatter", "target": "tile"}                 # rebuild and re-wrap after editing a motif
+{"type": "pattern-scatter", "target": "tile", "thin": 0.8}    # drop the most crowded fifth, the rest stay put
 ```
 
 `scatter` copies motifs inside a layer's outline (Poisson-disc, no grid look) or `along` its edge
@@ -111,7 +132,10 @@ targeting the torn layer (the `-face` layer for a free sheet). Reference: `docs/
 jitter, `colors`/`tone_variation` and `exclude`. `merge: true` draws every copy as one path per tone
 (shape motifs), so large scatters stay within the layer limit. `pattern-scatter` makes a seamless
 tile: motifs crossing an edge get wrapped copies, the result reports `seam`, and `pattern` saves it
-for `pattern-fill` (`tile_variation` varies each repeat). Fur: `preset: fur`, the `plush` look or
+for `pattern-fill` (`tile_variation` varies each repeat). A lower
+`count` with the same seed keeps the first copies exactly in place, and `thin` (a share to keep, or
+`{count: N}`) removes the most crowded copies of an existing tile; use these for "fewer motifs" so the
+revision does not re-roll the pattern. `distribution: "poisson"` is the earlier layout. Fur: `preset: fur`, the `plush` look or
 the organic `fur-blob` preset; the `hand-made` look applies a removable irregular wobble.
 `repeat`/`radial-repeat` take `rotation_step`, `scale_step`, `opacity_step`, seeded jitter and
 `merge`. Reference: `docs/design-tools.md#scatter-and-seamless-pattern-tiles`.
@@ -134,10 +158,15 @@ shape's content box (`content_bounds`: a speech bubble's body, a badge, a frame 
 by `margin`; `text` with `within` centres new text there.
 
 `vixl_check(checks=["guides", "alignment"])` reports near misses with the fixing move;
-`vixl_render_preview(guides=true)` draws them. Full reference: `docs/guides.md`.
+`vixl_render(guides=true)` draws them. Full reference: `docs/guides.md`.
 
 
 ### Field-report corrections
+
+Shape strokes sit inside a closed shape's outline, flush with it: `stroke_align` defaults to `inside` for rectangles, rounded
+rectangles, capsules, ellipses, polygons, stars and catalog shapes (a 10 px stroke covers the 10 px inside the box edge, in PNG,
+SVG, PDF and PPTX alike) and to `center` for paths, arcs, lines and open shapes; set `stroke_align` to `center` or `outside` to
+change it. A `rectangle` created with a `radius` becomes a `rounded-rectangle`. Reference: `docs/vector-paths.md#strokes`.
 
 Edit pen target=NAME in place. marker_size is local pixels; choose at least twice the shaft width for a visible head. Radial gradients accept fractional center=[x,y]. Layouts emit layout-columns and layout-baseline guide grids. Path boxes are coordinate frames, not clips.
 

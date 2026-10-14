@@ -91,8 +91,6 @@ def font_standalone(cmd, args, project=None):
         p.add_argument("--lock", action="append", help="Keep a choice: layout=…, pairing=…, palette=…, mode=…")
         p.add_argument("--unfilled", choices=["omit", "blank"],
                        help="Unfilled slots: leave out (default with --set) or show as [Label] blanks")
-        p.add_argument("--house-style", type=int, dest="house_style",
-                       help="House-style version to roll with (default 3); 2 restores the 0.23 rolls, 1 the 0.20-0.22 rolls")
         a = p.parse_args(args)
         canvas = None
         if a.size:
@@ -107,8 +105,7 @@ def font_standalone(cmd, args, project=None):
         if "margin" in locks:
             locks["margin"] = float(locks["margin"])
         return typefaces.roll_document(project, seed=a.seed, purpose=a.purpose, mood=a.mood, canvas=canvas, locks=locks, apply=a.apply,
-                                     slots=pairs(a.set), unfilled=a.unfilled, variety=a.variety, workspace=Path.cwd(),
-                                     house_style_version=a.house_style)
+                                     slots=pairs(a.set), unfilled=a.unfilled, variety=a.variety, workspace=Path.cwd())
     p = Parser(prog="vixl font")
     p.add_argument("action", choices=FONT_STANDALONE)
     p.add_argument("family", nargs="?")

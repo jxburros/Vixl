@@ -1,6 +1,8 @@
 # Editable vector shapes, strokes and paths
 
-All examples are operations for `Project.apply`, the CLI edit command, or `vixl_operations_apply`.
+[Documentation home](README.md) · [Design tools](design-tools.md)
+
+All examples are operations for `Project.apply`, the CLI edit command, or `vixl_apply`.
 Changes participate in the same validation, atomic batches, save/load and undo history as
 other edits. `shape` with `target` updates a recipe without changing the layer ID.
 
@@ -8,7 +10,9 @@ other edits. `shape` with `target` updates a recipe without changing the layer I
 
 `radius` accepts pixels, a percentage of the shorter box edge, or four values in CSS order:
 top-left, top-right, bottom-right, bottom-left. Adjacent radii are reduced proportionally
-when they would overlap. `corner_style` is `round`, `chamfer`, or `inverted`.
+when they would overlap. `corner_style` is `round`, `chamfer`, or `inverted`. A `rectangle` created with a `radius`
+(or `border_radius`/`corner_radius`) becomes a `rounded-rectangle`, reported under `normalized`, so its corners are
+round in PNG, SVG, PDF and PowerPoint alike.
 
 ```json
 {"type":"shape","shape":"rounded-rectangle","name":"tab","width":240,"height":80,"radius":[24,24,0,0],"fill":"navy"}
@@ -41,6 +45,7 @@ parameters can be changed later. Paths and holes export as real vector geometry.
 | Symbols | `checkmark`, `x-mark`, `lightning`/`lightning-bolt`, `sun`, `flame`, `map-pin`, `house`, `bell`, `lock`, `magnifier`, `envelope`, `play`, `pause`, `stop`, `skip`, `info`, `question`, `warning`, `music-note`, `sparkle`, `star-rating` | `thickness` for line symbols; sun `count`/`ray_length`; rating `count`/`rating` with fractional stars |
 | Decoration | `flourish`, `swash-underline`, `scroll`, `laurel`/`wreath`, `divider`, `corner-ornament`, `sunburst`, `radial-burst`, `motion-lines`/`speed-lines`, `confetti`, `scribble`/`squiggle` | `count`, `thickness`; wave-like ornaments `amplitude`, `wavelength`, `phase`; `confetti` with `count` scatters that many slips at `seed`-chosen places and angles (without `count` it is one rounded slip) |
 | Print/craft | `ticket`, `stamp`/`postmark`, `scalloped-border`, `sticker` | `notch`, edge `count`/`depth`, `thickness`, `peel` |
+| Motifs | `cup` (a mug on its saucer), `steam` (three rising wisps), `lighthouse`, `lantern` (a paper lantern) | one outline each, with holes for the cup handle and the lighthouse window and door; see [scene atmosphere and motifs](atmosphere.md) |
 
 Image content can be placed in UI frames with the existing image `frame`, `replace-contents`
 and clipping operations; the decorative shape does not embed an additional hidden image slot.
@@ -74,7 +79,7 @@ a fraction up to 1 (of the dimension named) or a percentage.
 `tail_side`, `tail_position`, `tail_size`/`tail_width`, `body_ratio`, `lobe_balance` (heart
 `apex`), `points` (star `sides`) and `arm_width` (`thickness`) are accepted spellings, reported
 under `normalized`. A parameter a shape does not read (`cleft` on a rectangle) is reported under
-`warnings`. `vixl_capabilities("shapes")` lists every shape's parameters.
+`warnings`. `vixl_reference('capabilities', name="shapes")` lists every shape's parameters.
 
 ## Content boxes
 
@@ -105,7 +110,15 @@ Shapes, lines and pen paths support:
 
 - `dash`: positive dash/gap lengths, or `dashed`/`dotted`; `dash_offset` moves the pattern.
 - `line_cap`: `butt`, `round`, `square`; `line_join`: `miter`, `round`, `bevel`; `miter_limit`.
-- `stroke_align`: `center`, `inside`, `outside`. Alignment is meaningful for closed contours.
+- `stroke_align`: `inside`, `center`, `outside`, relative to the outline; meaningful for closed contours.
+  Closed shapes (rectangles, rounded rectangles, capsules, ellipses, polygons, stars, shortcuts and
+  catalog shapes) default to `inside`: the stroke's outer edge is the outline, so a 10 px stroke covers
+  the 10 px inside the box edge, the fill covers the whole shape under it, and a rounded corner keeps
+  the layer's `radius` on the outside (the inner edge's radius is `radius` minus the stroke, at least 0).
+  Paths, arcs, lines and open shapes default to `center`. An explicit value means the same with or
+  without other stroke fields, in every renderer and export (PNG, SVG, PDF, PowerPoint). A line's ends
+  sit half a stroke in from its box corners; a path stroked on its outline can reach half a stroke past
+  its box.
 - `strokes`: additional ordered `{color,width,stroke_align,...}` records, painted after the base stroke.
 - `width_profile`: increasing `[fraction,width_multiplier]` points from fraction 0 to 1.
   `taper_start` and `taper_end` are endpoint multipliers, interpolated to full width at the midpoint.
@@ -152,7 +165,7 @@ This layer's box is `0, 0, 352, 210`: the strokes draw at their literal coordina
 ## Indexed path editing
 
 `shape-to-path` converts parametric and organic shapes to editable Bézier paths while
-keeping identity, fill and stroke. `vixl_document_inspect` exposes `path_nodes`, an array of
+keeping identity, fill and stroke. `vixl_document(action='inspect')` exposes `path_nodes`, an array of
 contours with `closed`, and nodes containing `index`, `point`, and optional `in`/`out` handles.
 Coordinates are in the layer's local pixel space. Compound paths keep their separate contours.
 

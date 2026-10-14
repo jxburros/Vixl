@@ -8,7 +8,7 @@ vixl                      # interactive shell (don't use from an agent; use comm
 vixl COMMAND --help       # exact argument syntax for any editing command
 ```
 
-**Global options** (before or after the command): `--project/-p FILE`, `--json` (structured
+**Global options** (before or after the command): `--project/-p FILE`, `--json` (JSON results in a terminal, structured
 errors on stderr), `--allow-linked` (trust linked file references), `--plugins` (enable installed
 filter/provider entry points — trusted code), `--max-pixels N`, `--detail brief|compact|full`, `--version`.
 
@@ -16,7 +16,7 @@ Agent conventions:
 
 - Always pass `-p FILE.vixl`. Without it Vixl uses the project recorded by `vixl open` in
   `./.vixl-session.json`.
-- Add `--json` so errors are machine-readable: `{"error":"layer_not_found","message":…,"suggestions":[…]}`, exit 1.
+- Results are full JSON whenever stdout is not a terminal (an agent's shell is not); in a terminal they are a short summary unless `--json` or `VIXL_JSON=1` is set. Add `--json` (or set `VIXL_JSON=1`) so errors are machine-readable too, as `{"error":"layer_not_found","message":…,"suggestions":[…]}` on stderr, exit 1; without either an error is one `ERROR:` line.
 - Editing commands autosave and print a compact result (changed values keyed by layer ID); `--detail full` adds
   before/after snapshots.
 - Quote `#` colors (`'#ff8800'`), JSON arguments, and text.
@@ -66,9 +66,11 @@ set "PATH=%LOCALAPPDATA%\Programs\Vixl\bin;%PATH%"
 | `describe` | Document description |
 | `effects [LAYER]` | Effect stack with IDs/indices |
 | `manifest`, `dependencies`, `reproduce --check` | Assets, fonts, providers; can it re-render? |
-| `schema` | JSON Schema of all operations |
+| `schema [OPERATION…]` | JSON Schema of all operations, or of the named ones; `schema document` is the schema of a `.vixl` file's `project.json` |
 | `pixels [LAYER]` | Pixel layer as rows + palette |
 | `animation` | Frame names, sizes, durations |
+| `convert OLD.vixl [-o NEW.vixl] [--look preserve\|current] [--dry-run] [--report R.json]` | Rewrite a document saved by an earlier release for the current code (`convert DIR --out OUTDIR` for a folder, `convert-batch OLD-CALLS.json` for saved MCP calls); never overwrites without `--overwrite`. `convert --grayscale` is the unrelated stdin image filter (see Output) |
+| `compact [--dry-run] [--keep-fonts]` | Drop undo history, branches and the embedded files the design does not use |
 
 ## Creating layers
 
@@ -82,6 +84,7 @@ vixl shape rectangle|rounded-rectangle|ellipse|polygon|star|arc|line --name s --
      [--fill C] [--stroke C] [--stroke-width N] [--radius N] [--sides N] [--inner-radius 0.4] \
      [--line-cap butt|round|square] [--trim-start PCT] [--trim-end PCT]
      [--start-angle -90 --end-angle 70]   # arc: pie wedge / donut segment (0 = 3 o'clock, clockwise); --open: the curve only
+     # a closed shape's stroke sits inside its outline, flush with the box; paths, arcs and lines stroke on their centre line (stroke_align in apply JSON overrides)
 vixl frame --path portrait.jpg --name photo --width 400 --height 500 --fit fill|fit [--asset ID] [--frame-shape heart | --outline SVG]
 vixl pixel-art --name sprite --width 16 --height 16 [--palette '{".":"transparent","g":"#ffc44d"}'] [--background .]
 vixl pixel-art --name spark --rows '[".w.","www",".w."]' --palette '{".":"transparent","w":"#fff"}'
@@ -90,6 +93,16 @@ vixl symbol-instance Brandmark --name footer-logo --x 100 --y 800 --width 100 --
 vixl irregular hero eyes --seed 7 [--strength subtle|natural|rough] [--only wobble color] [--remove]  # opt-in imperfection
 vixl tear photo --seed 3 --edges bottom [--as mask|clip|path] [--strength rough] [--rim-width 5]      # torn edge
 ```
+
+Importing existing artwork (all add layers to the open document):
+
+```bash
+vixl import artwork.svg --svg-mode auto      # SVG as editable layers; a Vixl SVG restores its document. editable (default) errors on a feature it cannot edit, auto draws just that element as an image, appearance imports one image
+vixl import flyer.pdf --page 1               # a PDF page as editable text, paths and images (needs the pdf extra); --dpi applies only to --svg-mode appearance
+vixl import KEY --format figma --node 1:2 --rasterize-unsupported   # a Figma file URL or key, one frame, unmappable nodes as a PNG render; needs FIGMA_TOKEN or VIXL_FIGMA_TOKEN (docs/figma.md)
+```
+
+`import` also takes a photo path or an `https://` image URL with `--name`, `--credit` and `--license`.
 
 ## Layer management and transforms
 
@@ -125,7 +138,8 @@ vixl clip TARGET BASE ; vixl clip TARGET --release
 ```bash
 vixl text title --text 'Good evening' --size 80 --align center --color '#fff' --spacing 6
 vixl text title --stroke-width 2 --stroke-color black
-vixl text-layout title --width 600 --height 180 [--fit] [--warp arc|flag|bulge|none --amount 0.15] [--path '[[10,90],[300,20],[590,90]]']
+vixl text-layout title --width 600 --height 180 [--fit] [--wrap greedy|balance|pretty] [--warp arc|flag|bulge|none --amount 0.15] [--path '[[10,90],[300,20],[590,90]]']
+vixl text title --tabs '[{"at":"100%","align":"right","leader":"."}]'   # tab stops with a dot leader for \t in the text (price lists)
 vixl swatch brand '#e8885c'
 vixl style-define Heading --settings '{"size":80,"color":"@brand","stroke_width":1}'
 vixl style-define Caption --kind paragraph --settings '{"align":"center","spacing":8}'
@@ -235,12 +249,13 @@ vixl export-animation --out sprite.gif --format gif|apng|webp|mp4|webm|sheet [--
      # smooth: any scale (0.5, 1.5 …) re-rendered crisply; format follows the extension; --animation exports one
      # named animation (default: every saved frame); mp4/webm need ffmpeg
 vixl export - --format PNG > preview.png                        # to stdout
-cat photo.png | vixl convert --grayscale [--format PNG] > gray.png
+cat photo.png | vixl convert --grayscale [--format PNG] > gray.png   # stdin image filter; with a .vixl path, convert is the old-document converter
 vixl compare REF_A REF_B --out comparison.png                   # side-by-side history states
 ```
 
 `export-screens` requires at least one artboard; `export-animation` requires saved frames.
-`render --data`, `export-screens` and `export-animation` never overwrite existing outputs.
+`export`, `render` and `export-animation` refuse an existing file unless `--overwrite`; `render --data` and
+`export-screens` never overwrite existing outputs.
 `export --scale` above 1 re-renders text, shapes and vectors at the larger size (images resample);
 `--sampling nearest` enlarges pixels instead. `inspect` takes `LAYER` or `--target LAYER`.
 Profiles *contain* (never crop/stretch): `instagram` 1080² JPEG, `discord` 512² PNG, `print` TIFF @300 DPI.
@@ -251,9 +266,11 @@ JPEG flattens transparency onto `--background` (white).
 ```bash
 vixl apply ops.json [--dry-run]          # or: cat ops.json | vixl apply -
 vixl apply ops.json --check --preview p.png   # also check the result and write a 512 px preview
+#   --check lists the 'fix' findings, every composition finding and those on the layers the batch touched, plus check.regions
+#   (the two weakest regions); with --preview, real-size crops of them are written beside it as p-region1.png and p-region2.png
 vixl apply ops.json --check --suites         # also run every attached check suite (or name them)
 vixl run script.vixlscript               # one editing command per line, # comments; atomic
-vixl compose --request req.json [--preview p.png] [--workspace DIR]   # vixl_compose: create → … → exports, atomic
+vixl compose --request req.json [--preview p.png] [--workspace DIR]   # vixl_apply(create=…): create → … → exports, atomic
 vixl batch './photos/*.jpg' --run cleanup.vixlscript --output ./processed [--format png]
 vixl each layer --type raster --name 'card-*' -- saturation -10
 vixl transaction begin ; …edits… ; vixl transaction commit   # or rollback; one undo step
@@ -281,6 +298,7 @@ vixl pixel-draw sprite line 6 5 --x2 9 --y2 5 --color w
 vixl pixel-draw sprite rect 4 4 --width 8 --height 8 --color s
 vixl pixel-draw sprite fill 0 0 --color .
 vixl pixel-palette sprite --colors '{"g":"#ffdd66"}'
+vixl pixel-palette sprite --shading false --outline false   # flat sprite (new documents shade and outline)
 vixl frame-save idle [--duration 150] ; vixl frame-apply idle ; vixl frame-delete idle
 vixl animation-set --order idle blink --loop 0       # default animation: lists every saved frame
 vixl animation-set --name walk --order w1 w2 w3 w2 [--duration 100 | --durations 100 100 100 100] [--loop 0]
@@ -307,10 +325,9 @@ vixl ai remove --as removed ; vixl ai content-aware-fill --prompt '…' ; vixl a
 
 ```bash
 vixl -p F.vixl serve [--host 127.0.0.1] [--port 8765] [--token-env VIXL_API_TOKEN]
-vixl mcp --workspace DIR [--tools core|ai|compact|all] [--schema slim|full] [--require-document]   # MCP over stdio; default core + slim; core + ai run as two servers; --require-document (or VIXL_REQUIRE_DOCUMENT=1) makes document= mandatory
+vixl mcp --workspace DIR [--tools default|ai] [--planner] [--http [--host H --port N --token-env VAR]] [--require-document]   # MCP over stdio (or HTTP at /mcp): seven design tools; --tools ai runs the provider tools (vixl_ai_*) as a second server, --planner adds vixl_ai_plan to it; --require-document (or VIXL_REQUIRE_DOCUMENT=1) makes document= mandatory
 vixl update --check | vixl update | vixl update --rollback ; vixl updates status|on|off   # Windows installer only
 vixl cache info | vixl cache clear   # disk render cache (VIXL_RENDER_CACHE=off, VIXL_CACHE_MAX_MB=256); VIXL_PROFILE=1 adds render_profile to results
-vixl upgrade old.vixl [--report] [--pin-fills]   # document saved before 0.21: list layers that render differently; --pin-fills restores white open-shape fills
 ```
 
 ## Sizes, layouts, color, print, brushes and motion (0.13)
@@ -346,7 +363,7 @@ vixl -p promo.vixl export-timeline --out banner.gif --colors 64 --fps 12   # sma
 
 Times: ms, `1.5s`, `250ms`, `50%`, or a marker (`vixl marker reveal 1.2s`).
 
-`vixl new` documents roll house style 3, so a new timeline of 10 s or less loops seamlessly (and warns about loop
+A new timeline of 10 s or less loops seamlessly (and warns about loop
 seams); for a play-once sequence use `timeline set --duration 3s --loop 1`, or `timeline set --loop-mode off` once the
 timeline exists. Since 0.24.1 the other 0.24 fields have flags too: `animate --intent entrance|exit|loop|emphasis`,
 `timeline set --loop-mode seamless|off [--close]`, `frame --frame-shape heart` or `--outline 'M… Z'`,
@@ -357,9 +374,11 @@ timeline exists. Since 0.24.1 the other 0.24 fields have flags too: `animate --i
 
 Use `schema text shape` for focused schemas, inline JSON or stdin for workflow requests, and batches up to 64 MiB. Workspace resources use the CLI current directory. Ignore `.vixl-session.json` in Git. Multi-size copies: `adapt-layout --sizes instagram-post story --directory out --formats png`; review each output. Layout recomposition: `adapt-layout --size story --recompose` (or `--options '{"recompose": true}'` with `--sizes`).
 
+A document saved by 0.26 or earlier opens after `vixl convert OLD.vixl -o NEW.vixl [--look preserve|current] [--dry-run] [--report R.json]` (a folder: `vixl convert DIR --out OUTDIR`); saved MCP calls convert with `vixl convert-batch OLD.json`. Nothing is overwritten without `--overwrite`.
+
 For Git review, `unpack design.vixl design-source` writes current state as stable JSON (`project.json`, with asset hashes) plus asset files into a new folder; `pack design-source reviewed.vixl [--overwrite]` validates paths, sizes and hashes and writes a portable archive. History and history-only assets are intentionally omitted; registered fonts are kept. Keep the original for undo and commit external linked sources too.
 
-Emoji: `vixl emoji list|get|template|replace|install|settings|reset|requirements|destinations|export` (`vixl -p F.vixl emoji settings --mode font` prefers the font; bundled art is the default). House style: `vixl roll --house-style 2` replays a 0.23 roll (`1`: 0.20–0.22); documents keep the version they were created with.
+Emoji: `vixl emoji list|get|template|replace|install|settings|reset|requirements|destinations|export` (`vixl -p F.vixl emoji settings --mode font` prefers the font; bundled art is the default). House style: `vixl roll` rolls from the current house style.
 
 `screen-capture` is a shared workflow action with output PNG, optional desktop bbox, Windows window HWND/all_screens and overwrite. It needs an interactive desktop and any OS-required permission. `app-animation-package` takes named source states, a default state, themes, transitions and a new output directory; see production guidance.
 

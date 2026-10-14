@@ -20,7 +20,7 @@ Both are undone by normal history, regrown with a new `seed`, and removed with `
 
 ## When not to use it
 
-These rules are also the `imperfection` guidance, which `vixl_guide("imperfection")` returns and the
+These rules are also the `imperfection` guidance, which `vixl_reference("imperfection")` returns and the
 character, scene, pattern and hand-drawing guides point to.
 
 Use it on a few chosen things, not as a finish for the whole document. Imperfection helps where
@@ -59,13 +59,13 @@ vixl irregular leaves --seed 3 --only placement color     # micro variation for 
 
 `target` (or `targets`) names layers; a group stands for all the vector layers inside it, so one
 operation varies a whole set, each layer on its own stream of the seed. Over MCP send the JSON form
-through `vixl_operations_apply`; `vixl_operation_schema(types=["irregular", "tear"])` lists the
+through `vixl_apply`; `vixl_reference('operations', name=["irregular", "tear"])` lists the
 fields with their bounds and descriptions.
 
 | Field | Meaning |
 | --- | --- |
 | `seed` | **Required** (except with `remove`). Whole number; the same seed always gives the same result. |
-| `strength` | `subtle` (default), `natural` or `rough`: preset magnitudes, scaled to each layer's size. Layers made irregular before 0.23 keep `natural` when regrown. |
+| `strength` | `subtle` (default), `natural` or `rough`: preset magnitudes, scaled to each layer's size. A recipe stored without a strength (made before 0.23) reads as `subtle`; `vixl convert` writes the `natural` it was drawn at ([Converting](converting.md)). |
 | `amount` | 0–2 multiplier for the preset's magnitudes (default 1). It does not scale fields you set yourself. |
 | `only` | Switch on only these effects from the preset: `wobble`, `jitter`, `width`, `pressure`, `color`, `placement`. `[]` switches all off, leaving just the fields you set. |
 | `wobble` | Largest outline displacement in pixels, along the outline's normals. 0 turns it off. |
@@ -160,7 +160,7 @@ with the paper beneath showing as a pale **rim** and a few loose **fibres** on t
 | Field | Meaning |
 | --- | --- |
 | `seed` | **Required** (except with `remove`). |
-| `strength` | `subtle` (default), `natural` or `rough`; sets the defaults below from the box size. Tears made before 0.23 keep `natural`. |
+| `strength` | `subtle` (default), `natural` or `rough`; sets the defaults below from the box size. A tear stored without a strength (made before 0.23) reads as `subtle`; `vixl convert` writes `natural` into it. |
 | `edges` | Any of `top`, `right`, `bottom`, `left`, or `all`. Default `bottom`. Two torn edges that meet cut each other cleanly at the corner. |
 | `depth` | Deepest bite in pixels (kept under 45% of the shorter side). Default 1.5% / 3.5% / 7.5% of it. |
 | `length` | Width of the widest bays in pixels; finer octaves halve it. |

@@ -253,10 +253,10 @@ def test_mcp_surface_shares_the_contract(tmp_path):
 
     async def scenario():
         async with create_connected_server_and_client_session(server._mcp_server) as client:
-            await client.call_tool("vixl_document_open", {"path": "doc.vixl"})
-            applied = await client.call_tool("vixl_operations_apply", {
+            await client.call_tool("vixl_document", {"action": "open", "path": "doc.vixl"})
+            applied = await client.call_tool("vixl_apply", {
                 "operations": [{"type": "move", "target": "headline", "x": 0, "y": 0, "relative": True}]})
-            preview = await client.call_tool("vixl_render_preview", {"overlay": True, "max_width": 200})
+            preview = await client.call_tool("vixl_render", {"overlay": True, "max_width": 200})
             checked = await client.call_tool("vixl_check", {"checks": ["bounds"], "repair": True})
             return json.loads(applied.content[0].text), preview, json.loads(checked.content[0].text)
 

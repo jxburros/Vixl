@@ -1,1 +1,0 @@
-Create report.vixl at 800x500 with a white background. Add a bar chart named sales of units sold per quarter: Q1 120, Q2 150, Q3 90, Q4 180, with the title 'Units sold'. Then finance tells you Q3 was actually 130: correct that one number on the existing chart (it must stay an editable chart, not redrawn shapes). Export report.png.

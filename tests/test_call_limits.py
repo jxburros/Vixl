@@ -133,16 +133,16 @@ def test_mcp_applies_the_same_limits(tmp_path):
     session.call_limits = CallLimits(timeout=7, max_pages=2, max_concurrent=1)
     server, call = mcp(session)
     assert server.vixl_runtime.inline_seconds == 7
-    call("vixl_document_open", path="deck.vixl")
+    call("vixl_document", action="open", path="deck.vixl")
     with pytest.raises(Exception) as caught:
-        call("vixl_export_file", path="deck.pdf")
+        call("vixl_export", path="deck.pdf")
     assert '"limit_exceeded"' in str(caught.value) and "max_pages" in str(caught.value)
-    assert call("vixl_export_file", path="two.pdf", pages="1-2")["format"] == "PDF"
+    assert call("vixl_export", path="two.pdf", pages="1-2")["format"] == "PDF"
     held = GATE.acquire(tmp_path, 1)
     try:
         with pytest.raises(Exception, match="max_concurrent"):
             call("vixl_check")
-        assert call("vixl_document_inspect")  # light tools still answer
+        assert call("vixl_document")  # light tools still answer
     finally:
         GATE.release(held)
     assert call("vixl_check")["passed"] in (True, False)

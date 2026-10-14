@@ -37,28 +37,33 @@
   ],
   "reference": [
     {
-      "tool": "vixl_document_create",
+      "tool": "vixl_document",
       "arguments": {
+        "action": "create",
         "path": "design.vixl",
         "width": 800,
         "height": 800
       }
     },
     {
-      "tool": "vixl_roll",
+      "tool": "vixl_apply",
       "arguments": {
-        "seed": 12,
-        "locks": {
-          "layout": "hero-statement",
-          "pairing": "source-serif-sans",
-          "palette": "ocean"
-        },
-        "apply": true,
-        "slots": {
-          "title": "Launch",
-          "subtitle": "A new beginning",
-          "cta": "Learn more"
-        }
+        "operations": [
+          {
+            "type": "roll",
+            "seed": 12,
+            "locks": {
+              "layout": "hero-statement",
+              "pairing": "source-serif-sans",
+              "palette": "ocean"
+            },
+            "slots": {
+              "title": "Launch",
+              "subtitle": "A new beginning",
+              "cta": "Learn more"
+            }
+          }
+        ]
       }
     }
   ],

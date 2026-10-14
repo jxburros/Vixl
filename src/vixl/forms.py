@@ -90,7 +90,7 @@ def form_settings(state):
 
 
 def schemas(add):
-    # Types and prose for every setting, so agents can build forms from vixl_operation_schema alone.
+    # Types and prose for every setting, so agents can build forms from vixl_reference('operations') alone.
     # Cross-field rules (which kinds take which settings) are checked at run time (validate_field);
     # tools/list strips the descriptions to keep the inline catalog small.
     from .schema import COORD, SIZE

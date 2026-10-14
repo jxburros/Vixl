@@ -72,7 +72,7 @@ def test_polygon_sides_have_one_range(sides):
 
 def test_cli_errors_name_cli_commands_and_plain_causes(doc, tmp_path, capsys):
     code, _, err = cli(capsys, "-p", str(doc), "opacity", "a", "-0.1")
-    assert code == 1 and "vixl capabilities opacity" in err and "vixl_operation_schema" not in err
+    assert code == 1 and "vixl capabilities opacity" in err and "vixl_reference" not in err
     code, _, err = cli(capsys, "-p", str(tmp_path / "missing.vixl"), "layers")
     assert code == 1 and err.startswith("ERROR: No such file") and "Errno" not in err
     (tmp_path / "bin.json").write_bytes(b"\xff\xfe")
@@ -148,12 +148,12 @@ def test_mcp_argument_errors_use_the_json_error_shape(tmp_path):
     server = mcp_server(workspace=tmp_path)
 
     async def run():
-        return await server.call_tool("vixl_resource_get", {"name": "x"})
+        return await server.call_tool("vixl_job", {"wait": "soon"})
 
     with pytest.raises(Exception) as caught:
         asyncio.run(run())
     payload = json.loads(str(caught.value))
-    assert payload["error"] == "invalid_arguments" and payload["field"] == "kind" and "pydantic" not in str(caught.value)
+    assert payload["error"] == "invalid_arguments" and payload["field"] == "wait" and "pydantic" not in str(caught.value)
 
 
 def test_mcp_errors_name_mcp_tools(tmp_path):
@@ -162,17 +162,17 @@ def test_mcp_errors_name_mcp_tools(tmp_path):
     async def run(name, arguments):
         return await server.call_tool(name, arguments)
 
-    asyncio.run(run("vixl_document_create", {"path": "a.vixl", "width": 400, "height": 300}))
+    asyncio.run(run("vixl_document", {"action": "create", "path": "a.vixl", "width": 400, "height": 300}))
     with pytest.raises(Exception) as caught:
-        asyncio.run(run("vixl_operations_apply", {"operations": [
+        asyncio.run(run("vixl_apply", {"operations": [
             {"type": "layout-apply", "name": "zzzz-no-such-layout"}]}))
-    assert "vixl_layouts_list" in str(caught.value) and "vixl layout list" not in str(caught.value)
+    assert "vixl_reference('layouts')" in str(caught.value) and "vixl layout list" not in str(caught.value)
 
 
-def test_compact_toolset_texts_only_name_served_tools(tmp_path):
+def test_tool_texts_only_name_served_tools(tmp_path):
     import re
 
-    server = mcp_server(workspace=tmp_path, tools="compact")
+    server = mcp_server(workspace=tmp_path)
     listed = asyncio.run(server.list_tools())
     served = {tool.name for tool in listed}
     text = server.instructions + " ".join((tool.description or "") + json.dumps(tool.inputSchema) for tool in listed)

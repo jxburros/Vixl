@@ -440,7 +440,7 @@ class Style:
         self.scale = sorted({float(s["size"]) for s in state.get("character_styles", {}).values() if "size" in s})
         self.fs = int(round(recipe["font_size"])) if recipe.get("font_size") else self.snap(max(10, min(40, min(width, height) / 30)))
         self.pad = int(round(recipe["padding"] if "padding" in recipe else self.fs * 0.8))
-        if "padding" not in recipe and state.get("design_defaults", {}).get("house_style_version", 2) >= 3:
+        if "padding" not in recipe:
             from .craft import space
             self.pad = int(space(2, self.fs))
         override = recipe.get("background")
@@ -672,6 +672,26 @@ class Legend:
                   mid + lab["cap"] / 2, Z_LEGEND)
 
 
+class ValueLegend:
+    """The ``legend_values`` legend: a key-value list (``key_values.ValueList``) of swatch, name, total and, for
+    pies and donuts, share, with rules between rows, so names, numbers and percentages read as one list."""
+
+    def __init__(self, project, kit, style, entries, position, room):
+        from .key_values import ValueList
+
+        self.position = position
+        rows = ValueList(kit, style.fs, entries, swatch=True, ink=style.ink, share_ink=style.muted)
+        # Beside the plot the list takes at most about half the chart; above or below it, the full width.
+        limit = room * (0.5 if position in ("left", "right") else 1)
+        if rows.width > limit:
+            rows = ValueList(kit, style.fs, entries, width=limit, swatch=True, ink=style.ink, share_ink=style.muted)
+        self.rows, self.width, self.height = rows, rows.width, rows.height
+        self.rule = hex_color(mix(rgba(project.state, style.ink)[:3], style.bg, 0.25))
+
+    def emit(self, parts, ox, oy):
+        self.rows.emit(parts, ox, oy, prefix="legend-", rule_color=self.rule, z=Z_LEGEND, label="legend")
+
+
 def legend_position(recipe, count, radial):
     choice = recipe.get("legend", "auto")
     if choice is True:
@@ -768,9 +788,13 @@ class Cartesian:
         self.position = legend_position(recipe, self.m, False)
         self.legend = None
         if self.position:
-            entries = [(s["name"] + (f"  {format_number(totals['by_series'][s['name']], self.label_format)}"
-                                     if recipe.get("legend_values") else ""), self.colors[i]) for i, s in enumerate(self.series)]
-            self.legend = Legend(kit, style, entries, self.position, W - 2 * pad)
+            if recipe.get("legend_values"):
+                entries = [(s["name"], format_number(totals["by_series"][s["name"]], self.label_format), None,
+                            self.colors[i]) for i, s in enumerate(self.series)]
+                self.legend = ValueLegend(self.project, kit, style, entries, self.position, W - 2 * pad)
+            else:
+                self.legend = Legend(kit, style, [(s["name"], self.colors[i]) for i, s in enumerate(self.series)],
+                                     self.position, W - 2 * pad)
         top = header(kit, style, recipe, self.parts, (W, H))
         left, right, bottom = pad, W - pad, H - pad
         if self.legend and self.position == "top":
@@ -1129,7 +1153,7 @@ def radial(project, recipe, size, style, kit, parts, stats):
     fs, pad = style.fs, style.pad
     gap = max(3, round(fs * 0.45))
     colors = style.colors(len(categories))
-    shown, _, content = labels_mode(recipe, True)
+    shown, force, content = labels_mode(recipe, True)
     label_format = recipe.get("number_format") or auto_format([v for v in values if v is not None])
     shares = [(v or 0) / total for v in values]
     percent_format = "0%" if all(abs(s * 100 - round(s * 100)) < 0.05 for s in shares) else "0.0%"
@@ -1143,9 +1167,14 @@ def radial(project, recipe, size, style, kit, parts, stats):
     position = legend_position(recipe, len(categories), True)
     legend = None
     if position:
-        names = [(c + (f"  {format_number(values[i], label_format)}" if recipe.get("legend_values") else ""), colors[i])
-                 for i, c in enumerate(categories)]
-        legend = Legend(kit, style, names, position, W - 2 * pad)
+        if recipe.get("legend_values"):
+            entries = [(c, format_number(values[i] or 0, label_format), format_number(shares[i], percent_format), colors[i])
+                       for i, c in enumerate(categories)]
+            legend = ValueLegend(project, kit, style, entries, position, W - 2 * pad)
+            # The list pairs each name with its value and share, so automatic labels around the ring would repeat it.
+            shown = shown and force
+        else:
+            legend = Legend(kit, style, [(c, colors[i]) for i, c in enumerate(categories)], position, W - 2 * pad)
         if position == "top":
             legend_y, top = top, top + legend.height + gap
         elif position == "bottom":
@@ -1431,6 +1460,28 @@ def merge_options(recipe, op):
         recipe["legend"] = "none"
 
 
+def default_box(project, op):
+    """``(x, y, width, height)`` of a new chart: the explicit fields, and for the rest the canvas safe area inset
+    by one spacing step (two units, about one body size), so a chart placed without coordinates passes the
+    safe-area check. Without a safe area that is the whole canvas, as before."""
+    from .craft import body_size, space
+    from .sizes import safe_sides
+
+    canvas = project.state["canvas"]
+    W, H = canvas["width"], canvas["height"]
+    sides = safe_sides(canvas)
+    if not any(sides):
+        return op.get("x", 0), op.get("y", 0), op.get("width", W), op.get("height", H)
+    bleed = canvas.get("bleed", 0)
+    left, top, right, bottom = (bleed + side for side in sides)
+    pad = space(2, body_size(project))
+    x = op.get("x", left + pad)
+    y = op.get("y", top + pad)
+    width = op.get("width", max(1, round(W - right - pad - (x if isinstance(x, (int, float)) else left + pad))))
+    height = op.get("height", max(1, round(H - bottom - pad - (y if isinstance(y, (int, float)) else top + pad))))
+    return x, y, width, height
+
+
 def execute(project, op):
     from .operations import append_layer, default_name
 
@@ -1468,11 +1519,10 @@ def execute(project, op):
             size = (op.get("width", target["content_width"]), op.get("height", target["content_height"]))
             project.limits.size(*size)
         return redraw(project, target, recipe, size)
-    canvas = project.state["canvas"]
-    width, height = op.get("width", canvas["width"]), op.get("height", canvas["height"])
+    x, y, width, height = default_box(project, op)
     project.limits.size(width, height)
     group = new_layer(op["name"] if "name" in op else default_name(project, "chart"), "group", width, height,
-                      x=op.get("x", 0), y=op.get("y", 0), content_width=width, content_height=height)
+                      x=x, y=y, content_width=width, content_height=height)
     append_layer(project, group)
     redraw(project, group, recipe, (width, height))
 
@@ -1598,7 +1648,7 @@ def schemas(add):
                     "Series (pie: slice) colors, any color or @swatch; default: the document palette, then a color-blind-safe set."),
         "legend": d({"anyOf": [B, {"enum": list(LEGENDS)}]}, "auto (default: shown for 2+ series or any pie), none, "
                     "top, bottom, left or right."),
-        "legend_values": d(B, "Add each series' (pie: slice's) total to its legend entry."),
+        "legend_values": d(B, "Draw the legend as an aligned key-value list: swatch, name and total (pie and donut: also the share)."),
         "value_labels": d({"anyOf": [B, {"enum": list(LABEL_MODES)}]},
                           "auto (default: label what fits), true (label everything), false/none, or for pie/donut "
                           "value, percent or both."),
@@ -1628,7 +1678,8 @@ def schemas(add):
     }
     frame = {"target": d(S, "Existing chart group to restyle, resize or give new data; omit to draw a new chart."),
              "name": d(S, "Group name; the layers inside are named NAME/part."), "x": COORD, "y": COORD,
-             "width": d(SIZE, "Chart width (default: the canvas)."), "height": d(SIZE, "Chart height (default: the canvas).")}
+             "width": d(SIZE, "Chart width (default: the canvas safe area, inset two spacing units)."),
+             "height": d(SIZE, "Chart height (default: the canvas safe area, inset two spacing units).")}
     add("chart", {**frame, **data, **{k: (v if k == "kind" else nullable(v)) for k, v in options.items()}},
         description="Draw a data-bound chart (bars, lines, areas, pie, donut) as vector layers, or restyle one with target.")
     add("chart-data", {

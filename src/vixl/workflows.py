@@ -59,6 +59,7 @@ ACTIONS = {
     "replace-across": ({"name", "documents", "replace", "dry_run", "suites", "accept", "reject", "decisions", "review",
                         "overwrite", "journal"}, {"replace"}),
     "brand-board": (BRAND_BOARD_FIELDS, {"output"}),
+    "adapt-sizes": ({"sizes", "directory", "name", "options", "formats", "overwrite", "report"}, {"sizes"}),
 }
 
 
@@ -201,6 +202,13 @@ def dispatch(session, action, request, document=None):
             return studio_dispatch(session, action, request, document)
         except (KeyError, TypeError, ValueError, OverflowError) as exc:
             raise VixlError("invalid_request", f"Invalid {action} request: {exc}") from exc
+    if action == "adapt-sizes":
+        from .adapt import adapt_copies
+        from .mcp_tools import export_file
+
+        return adapt_copies(session, export_file, request["sizes"], request.get("directory", "."),
+                            request.get("name", "{name}-{size}"), request.get("options"), document,
+                            request.get("overwrite", False), request.get("formats"), request.get("report", "summary"))
     if action == "plan":
         return plan(request["spec"])
     if action == "organic-catalog":
@@ -212,7 +220,7 @@ def dispatch(session, action, request, document=None):
             return form_fill(session, request, document)
         except (KeyError, TypeError, ValueError, OverflowError) as exc:
             raise VixlError("invalid_request", f"Invalid form-fill request: {exc}",
-                            suggestions=["See vixl_workflow_schema actions['form-fill'].properties"]) from exc
+                            suggestions=["See vixl_reference('workflows') actions['form-fill'].properties"]) from exc
     if action == "proof":
         from .proof import proof_page
 

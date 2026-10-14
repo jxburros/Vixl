@@ -5,8 +5,8 @@
 Strokes live on paint layers as data (points, pressure, brush, size, color, seed), so they stay editable, undoable and resolution-independent.
 
 ```text
-vixl_brushes_list()
-vixl_operations_apply(operations=[
+vixl_reference('brushes')
+vixl_apply(operations=[
   {"type":"paint-layer","name":"sketch"},
   {"type":"paint","target":"sketch","brush":"ink","points":[[80,400],[240,300,0.5],[420,380,1],[600,320]],"size":10,"color":"@ink"},
   {"type":"paint","target":"sketch","brush":"watercolor","path":"M60 700 C300 560 700 820 1000 660","size":90,"color":"alpha(@accent, 0.8)","seed":3},
@@ -24,7 +24,7 @@ vixl_operations_apply(operations=[
 ## Timelines
 
 ```text
-vixl_operations_apply(operations=[
+vixl_apply(operations=[
   {"type":"timeline-set","duration":"4s","fps":30,"loop":0},
   {"type":"animate-preset","target":"headline","preset":"slide-in-up","duration":"0.8s"},
   {"type":"animate-preset","target":"cta","preset":"pop-in","start":"0.7s","duration":"0.5s"},
@@ -33,10 +33,10 @@ vixl_operations_apply(operations=[
   {"type":"animate-preset","target":"canvas","preset":"color-shift","to":"#1e1b4b","duration":"4s"},
   {"type":"marker","name":"reveal","time":"1.5s"}
 ])
-vixl_timeline_preview(count=8)          # contact sheet: check motion before exporting
-vixl_timeline_preview(time="reveal")
-vixl_export_timeline(path="promo.webp", scale=0.5)     # .gif .png(APNG) .webp .zip(frames) .mp4/.webm (ffmpeg)
-vixl_export_timeline(path="sprites.png", format="sheet", columns=6)
+vixl_render(action='timeline', count=8)          # contact sheet: check motion before exporting
+vixl_render(action='timeline', time="reveal")
+vixl_export(kind='timeline', path="promo.webp", scale=0.5)     # .gif .png(APNG) .webp .zip(frames) .mp4/.webm (ffmpeg)
+vixl_export(kind='timeline', path="sprites.png", format="sheet", columns=6)
 ```
 
 - Properties: `x`, `y`, `translate-x`, `translate-y`, `opacity`, `rotation`, `scale`, `scale-x`, `scale-y`, `width`, `height`, `size`, `spacing`, `color`, `fill`, `start`, `end`, `stroke_color`, `stroke`, `trim_start`, `trim_end`, `skew_x`, `skew_y`, `dash_offset`, `stroke_width`, `distort:amount` (and `distort:angle|phase|frequency|size`), `text`, `visible`, `effect:ID` (or `effect:1`), `joint:BONE` (written by `character-pose`), and canvas `background` (`target: "canvas"`).
@@ -53,15 +53,15 @@ vixl_export_timeline(path="sprites.png", format="sheet", columns=6)
 - In-memory formats (GIF/APNG/WebP/sheet) are bounded; use `scale`, lower `fps` or `start`/`end`, or export `frames`/MP4 for long, large animations.
 - `scale` (0.05–16) renders frames at the target size, so `scale=2` is crisp, not upscaled.
 - Props held by a moving part: `motion recipe:"attach"` with `follow` (or `to`) the part, `anchor` `[fx, fy]` in its box (`units:"px"` for pixels, or an anchor name; default: where the prop is now), `offset`, `rotation` (default true). It bakes per-frame translate/rotation keys through nested groups; re-run it after changing the part's animation. Timeline inspect lists `attachments`.
-- Loops: in a house-style-3 document a new timeline of 10 s or less starts seamless (`loop_mode: "off"` or `loop: 1` makes it play once; existing timelines keep their mode). `timeline-set loop_mode:"seamless"` warns about tracks that end differently from how they start; `close:true` (timeline-set/keyframe/animate/animate-preset/motion) appends the t=0 value at the end (entrances hold, then play back; rotation closes mod 360). `motion recipe:"spin"` with `symmetry:12` turns one ray period over the timeline for a seamless rotating sun; whole `turns` only. Matched speed at the seam holds for linear or ease-in-out segments only. `spin`, `attach`, `wiggle` and `line-boil` default to the rest of the timeline; in a seamless loop wiggle rounds `frequency` and line-boil its hold so whole cycles close the loop.
+- Loops: a new timeline of 10 s or less starts seamless (`loop_mode: "off"` or `loop: 1` makes it play once; existing timelines keep their mode). `timeline-set loop_mode:"seamless"` warns about tracks that end differently from how they start; `close:true` (timeline-set/keyframe/animate/animate-preset/motion) appends the t=0 value at the end (entrances hold, then play back; rotation closes mod 360). `motion recipe:"spin"` with `symmetry:12` turns one ray period over the timeline for a seamless rotating sun; whole `turns` only. Matched speed at the seam holds for linear or ease-in-out segments only. `spin`, `attach`, `wiggle` and `line-boil` default to the rest of the timeline; in a seamless loop wiggle rounds `frequency` and line-boil its hold so whole cycles close the loop.
 - Kinetic type: `{"type":"text-animate","target":"headline","preset":"fade-up","unit":"char","duration":"400ms","stagger":"40ms"}`. Presets `fade`, `fade-up`, `fade-down`, `slide-left`, `slide-right`, `pop`, `wave` (`repeat:true` ripples all timeline), `typewriter`, `color-sweep` (`from`); `unit` char/word/line; `stagger` ms or `"30%"` of `duration`; `direction` forward/reverse/center/edges/random (`seed`); `mode` in/out/in-out (default in-out in a seamless loop). One editable text layer; GIF/MP4 frames animate, stills/SVG/PDF/PPTX show the resting text. Not for warped or on-path text.
 - `animate`/`animate-preset` take `repeat` or `until`, `period`, and with `targets` a `stagger` (ms between targets): one operation for a typing-dots loop. In a seamless loop, staggered keys that would pass the loop end wrap around it instead of lengthening the timeline. Hold keys: `easing:"hold"`.
 - Generated motion (no expression language): `keyframes` with `sample: {fn: sin|cos|triangle|saw|square|noise, period, amplitude, offset, phase, step_ms or samples, duration, start}` writes a wave as keys (value = offset + amplitude × fn(phase + t/period)); `motion recipe:"wiggle"` oscillates a `property` by `amount` at `frequency` with `samples` keys; `recipe:"line-boil"` (`fps` 8-12, `variants` 3, `seed`, `strength`) makes wobbled copies of vector targets and cycles their visibility for hand-drawn line boil (animate the `NAME-boil` group for other motion).
 - `vixl_check` adds the `motion` check when a timeline exists: `loop-seam`, `empty-poster`, `text-hidden-at-poster`, plus legibility of frame 0, and from frames sampled every 100 ms: `moving-over-text`, `text-mostly-hidden`, `parts-drift`, and a rendered `loop-seam-render`. GIF/WebP/APNG timeline exports warn about loop seams too. Findings name layers; the `character` check adds `front-view-leg-swing` (a side-view gait on the front-facing standard character, whose own walk lifts the feet; `character-cycle view:"side"` swings limbs in the plane).
-- Poster frame: `vixl_export_timeline(poster="end")` puts that frame first in GIF/WebP/APNG (loop stays seamless) and warns when it is empty. `vixl_timeline_preview(thumbnail=360)` shows poster/middle/last at phone width; `times=[...]` picks frames; frame 0 is labelled "poster".
+- Poster frame: `vixl_export(kind='timeline', poster="end")` puts that frame first in GIF/WebP/APNG (loop stays seamless) and warns when it is empty. `vixl_render(action='timeline', thumbnail=360)` shows poster/middle/last at phone width; `times=[...]` picks frames; frame 0 is labelled "poster".
 - Export results report the written file: sheet `size`, and GIF/WebP/APNG `frames` after identical frames merged (`rendered_frames` = rendered).
 - GIF: `dither` auto/none/ordered/floyd (shared palette; ordered never shimmers), `max_bytes` soft target. Results include `bytes` and a `warnings` entry above 1 MB (not when `target_bytes`/`preset` set the size) or max_bytes that suggests MP4/WebP with a measured WebP size (gradient GIFs get it at any size). `target_bytes` fits timeline GIF/WebP/APNG to a size (colors or WebP quality, then fps, then scale; reports `chosen`), and `preset` `chat`/`web`/`email` sets fps, width, colors and target_bytes. `colors=64` (2–256) plus lower `fps` shrink GIFs a lot (728×90, 4 s banner: 190 KB default → 41 KB with `colors=32, fps=10`); prefer WebP/MP4 where accepted.
-- Frame snapshots (`frame-save`, `vixl_export_animation`) work at any canvas size within the pixel budget; `sampling="smooth"` allows scales like 0.5 or 1.5 for illustrated (non-pixel-art) frames.
+- Frame snapshots (`frame-save`, `vixl_export(kind='animation')`) work at any canvas size within the pixel budget; `sampling="smooth"` allows scales like 0.5 or 1.5 for illustrated (non-pixel-art) frames.
 
 
 ### Field-report corrections
@@ -71,3 +71,10 @@ Rig origins are character-local pixels; child origins come from the parent tip. 
 `character-pose` keys joint angles with `time`/`easing` (`{"type":"character-pose","target":"hero","angles":{"right-upper-arm":-60},"time":"0.5s"}`); unspecified joints keep their rest angles and the rig is solved on every frame, so limbs stay attached. Without `time` it is a static pose. Move the whole character with its group's tracks; avoid baking separate limb x/y/rotation keys alongside pose tracks. Six-second `video-tip`, `video-launch` and `video-event` templates (`vixl template new video-tip -o tip.vixl --set title=… --set subtitle=… --set cta=…`) are editable square loops with slide, zoom and fade emphasis; check a contact sheet and pick a visible poster time.
 
 Paint settings `drip` (0–4 brush sizes), `relief` (0–1) and `light_angle` (degrees, default -45) are independently optional. Existing jitter, size_jitter, wet_edges and texture controls remain independent. Drips follow gravity in local layer coordinates; rotate the paint layer to rotate the result.
+
+Promo video templates: `video-promo-kinetic`, `video-promo-editorial`, `video-promo-neon`,
+`video-promo-spotlight`, `video-promo-split`, `video-promo-stat`. Base names are square; suffix
+`-story` (1080×1920) or `-wide` (1920×1080) selects a native layout. Six-second editable loops
+accept `title`, `subtitle`, `cta`, and optional `background`, `foreground`, `accent`, `on_accent`
+color variables; otherwise colors use seeded palette roles. Check bounds, contrast and a contact
+sheet with supplied copy; use a visible poster near 2.5s (the loop begins on the background).

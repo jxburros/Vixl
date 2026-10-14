@@ -26,6 +26,7 @@ from .links import TYPES as LINK_TYPES
 from .codes import TYPES as CODE_TYPES
 from .charts import TYPES as CHART_TYPES
 from .tables import TYPES as TABLE_TYPES
+from .key_values import TYPES as KEY_VALUE_TYPES
 from .diecut import TYPES as DIECUT_TYPES
 from .path_split import TYPES as SPLIT_TYPES
 from .finishing import TYPES as FINISHING_TYPES
@@ -39,6 +40,7 @@ from .textures import TYPES as TEXTURE_TYPES
 from .audio import TYPES as AUDIO_TYPES
 from .captions import TYPES as CAPTION_TYPES
 from .scene import TYPES as SCENE_TYPES
+from .atmosphere import TYPES as ATMOSPHERE_TYPES
 from .vector_paths import TYPES as VECTOR_TYPES
 from .merging import TYPES as MERGE_TYPES
 from .objects import TYPES as OBJECT_TYPES
@@ -72,7 +74,7 @@ from .render import (
 COLOR_TYPES = ("palette-generate",)
 
 
-OPERATION_TYPES = list(EMOJI_TYPES + DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CODE_TYPES + CHART_TYPES + TABLE_TYPES + DIECUT_TYPES + SPLIT_TYPES + FINISHING_TYPES + DIAGRAM_TYPES + FLOW_TYPES + TRANSFORM_TYPES + MOTION_TYPES + CHARACTER_TYPES + COMIC_TYPES + TEXTURE_TYPES + AUDIO_TYPES + VECTOR_TYPES + CAPTION_TYPES + SCENE_TYPES + MERGE_TYPES + OBJECT_TYPES + ACCESSIBILITY_TYPES) + [
+OPERATION_TYPES = list(EMOJI_TYPES + DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CODE_TYPES + CHART_TYPES + TABLE_TYPES + KEY_VALUE_TYPES + DIECUT_TYPES + SPLIT_TYPES + FINISHING_TYPES + DIAGRAM_TYPES + FLOW_TYPES + TRANSFORM_TYPES + MOTION_TYPES + CHARACTER_TYPES + COMIC_TYPES + TEXTURE_TYPES + AUDIO_TYPES + VECTOR_TYPES + CAPTION_TYPES + SCENE_TYPES + ATMOSPHERE_TYPES + MERGE_TYPES + OBJECT_TYPES + ACCESSIBILITY_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -422,6 +424,9 @@ def execute(project, op):
     if kind in SCENE_TYPES:
         from .scene import execute as execute_scene
         return execute_scene(project, op)
+    if kind in ATMOSPHERE_TYPES:
+        from .atmosphere import execute as execute_atmosphere
+        return execute_atmosphere(project, op)
     if kind in CAPTION_TYPES:
         from .captions import execute as execute_caption
         return execute_caption(project, op)
@@ -473,6 +478,9 @@ def execute(project, op):
     if kind in TABLE_TYPES:
         from .tables import execute as execute_tables
         return execute_tables(project, op)
+    if kind in KEY_VALUE_TYPES:
+        from .key_values import execute as execute_key_values
+        return execute_key_values(project, op)
     if kind in DIECUT_TYPES:
         from .diecut import execute as execute_diecut
         return execute_diecut(project, op)
@@ -662,6 +670,8 @@ def execute(project, op):
             text_defaults(project, layer, op)
             if op.get("hide_if_empty"):
                 layer["hide_if_empty"] = True
+            if op.get("tabs"):
+                layer["tabs"] = deepcopy(op["tabs"])
             from .lettering import store
 
             store(layer, op)
@@ -793,6 +803,11 @@ def execute(project, op):
                     "hide_if_empty"):
             if key in op:
                 layer[key] = op[key]
+        if "tabs" in op:
+            if op["tabs"]:
+                layer["tabs"] = deepcopy(op["tabs"])
+            else:
+                layer.pop("tabs", None)
         if "spacing" in op:
             layer.pop("line_height", None)
         from .lettering import store

@@ -15,7 +15,7 @@ vixl -p poster.vixl check --checks style               # one finding per failed 
 vixl -p poster.vixl check --checks style --style brutalist swiss   # try other styles without tagging
 ```
 
-MCP: `vixl_styles(action="list|get|apply|check", name, query, palette)` and `vixl_check(checks=["style"], style=...)`.
+MCP: `vixl_reference('styles')` and `vixl_check(checks=["style"], style=...)`.
 Operation: `{"type": "style-set", "style": "swiss"}` (a name, up to three names, or `null` to clear), with
 optional `options` (below). Python: `vixl.styles` (`listing`, `describe`, `guidance_text`, `apply_operations`).
 
@@ -26,16 +26,16 @@ optional `options` (below). Python: `vixl.styles` (`listing`, `describe`, `guida
 | `summary`, `era`, `keywords`, `best_for` | What it is, where it comes from, how to find it, what it suits |
 | `principles` | 3-5 rules of the style |
 | `palettes` | 1-3 named swatch lists with a note (first swatch is the background); `palette_names` lists built-in palettes that fit |
-| `type` | Categories (from the font catalog), families, curated pairings (from `vixl_fonts`), weights, case, what to avoid |
+| `type` | Categories (from the font catalog), families, curated pairings (from `vixl_reference('fonts')`), weights, case, what to avoid |
 | `layout` | Grid, alignment, negative space, suggested `layout-apply` layouts |
 | `imagery` | Advice, suggested [looks](looks.md) and effects, what to avoid |
 | `do`, `dont` | Short lists |
 | `checks` | The premade rules, each with `id`, `kind`, `severity`, `summary`, `fix` and `params` |
 
-`styles apply NAME` (MCP `action="apply"`) is guidance as operations: it tags the document (`style-set`), stores a compact
+`styles apply NAME` (MCP: the `style-use` step of `vixl_apply`, with `name` and `palette`) is guidance as operations: it tags the document (`style-set`), stores a compact
 brief as design guidance (`guidance` with `style: "style"`, visible in `inspect`), and with `palette` also defines and applies
 the style's first palette, mapping background, ink and accent from its swatches. Nothing is downloaded: install the
-suggested fonts with `vixl_font_pair` or `vixl_font_install`.
+suggested fonts with `font-pair` or `font-install`.
 
 ## The catalog
 
@@ -110,7 +110,7 @@ Examples: Swiss holds to two typefaces, left-aligned text, 70% of elements on sh
 brutalist wants 700+ weight headlines, 7:1 contrast (a `design_check` over the existing `contrast` check), square corners and no gradients;
 minimalist wants 40% empty canvas, at most three colors, one typeface and 40 words; art deco wants 80% mirror symmetry and centered text.
 
-Typeface checks read each text layer's registered font name (`family-weight`, as `vixl_font_pair` registers them) and look the family up in
+Typeface checks read each text layer's registered font name (`family-weight`, as `font-pair` registers them) and look the family up in
 the catalog. Fonts with other names, or the bundled fallback, make type rules `skipped`, not failed.
 
 ## Relaxing or tightening a rule

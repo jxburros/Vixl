@@ -103,13 +103,13 @@ Python installations intentionally do not self-update or invoke pip. They return
 
 To publish a stable release:
 
-1. Update the single-sourced version in `src/vixl/__init__.py` (package/API versions derive from it), and the displayed document versions; update release notes/documentation as needed.
+1. Update the single-sourced version in `src/vixl/__init__.py` (package, API and bundle versions derive from it), then the places that repeat it: `.claude-plugin/plugin.json`, the tag URL in `.mcp.json`, the install URLs in `README.md` and `getting-started.md`, the release line in `README.md` and the documentation home, the action pin in [CI](ci.md), the tag in step 3 and the sample manifest in [file format](file-format.md); update release notes/documentation as needed.
 2. Run tests and review the PR's **Windows installer and releases** workflow. It runs a real silent installer, verifies PATH lookup, creates/exports a project using the frozen runtime, activates an explicit update before any normal launch with mocked network transport, checks corrupted-candidate recovery, and uninstalls while preserving a user project and existing PATH entries.
 3. Tag the reviewed commit with its exact version and push the tag:
 
    ```bash
-   git tag v0.26.0 <reviewed-commit>
-   git push origin v0.26.0
+   git tag v0.27.0 <reviewed-commit>
+   git push origin v0.27.0
    ```
 
 4. The tag workflow re-runs tests, checks tag/package-version consistency, builds the distributions, and creates a **draft** GitHub release. It uploads every artifact before publishing it as the latest stable release. No release becomes visible to the updater while files are still being uploaded.
@@ -121,7 +121,7 @@ Release assets:
 - `Vixl-Setup-VERSION-windows-x64.exe` — installer for people.
 - `vixl-VERSION-windows-x64.zip` — complete runtime used by the updater.
 - `vixl-update.json` — protocol/platform/version, asset filename, SHA-256 and byte size.
-- `SHA256SUMS.txt` — checksums of Windows release artifacts.
+- `SHA256SUMS.txt` — checksums of every release asset (the publish job rewrites it to cover the Windows files, the wheel, the source distribution, the `.mcpb` and the plugin ZIP).
 - Python wheel and source distribution — optional pip/developer installs.
 - `vixl-catalog.json` and `vixl-catalog.schema.json` — the design catalog bundle for host applications (`vixl catalog export`) and its JSON Schema.
 
@@ -146,11 +146,11 @@ other development assets out of it so each Python distribution stays below PyPI'
 After the first successful PyPI release:
 
 ```bash
-uvx --from vixl-engine vixl mcp --workspace . --tools core --schema slim
+uvx --from vixl-engine vixl mcp --workspace .
 pip install 'vixl-engine[server,pdf]'
 ```
 
-MCP is included in the base package. REST/view and PDF import remain optional extras.
+MCP is included in the base package (there is no `mcp` extra). The optional extras are `server` (REST and live review), `pdf` (PDF page import), `anthropic` (the Anthropic provider) and `dev` (tests and tooling).
 
 Build the Claude packages with `python distribution/package_extensions.py`. The release workflow
 attaches `vixl.mcpb` and `vixl-claude-code.zip` alongside Python and Windows artifacts. Both include

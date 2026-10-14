@@ -22,8 +22,10 @@ def test_png(name):
 
 @pytest.mark.parametrize("name", SVG_FIXTURES)
 def test_svg(name):
-    data = FIXTURES[name]().export(format="SVG")
-    check_text(f"{name}.svg", data.decode("utf-8") if isinstance(data, bytes) else data, "snapshot")
+    # The visible SVG: the embedded document (and the layer IDs that go with it, random per document) is covered by
+    # tests/test_svg_roundtrip.py.
+    data = FIXTURES[name]().export(format="SVG", svg_document=False)
+    check_text(f"{name}.svg", data.decode("utf-8"), "snapshot")
 
 
 @pytest.mark.parametrize("name", PDF_FIXTURES)

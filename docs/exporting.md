@@ -14,7 +14,7 @@ can substitute fonts, emphasize form fields or handle animation differently.
 | Photograph or flattened artwork | JPEG | Lossy RGB or CMYK; transparent pixels composite onto a background |
 | Smaller web artwork | WebP; AVIF where supported | Encoded image; confirm support in the consuming system |
 | Print raster | TIFF or JPEG with CMYK | Supply the printer's ICC profile for controlled separations |
-| Scalable supported geometry | SVG | Shapes/text/gradients and supported effects; appearance policy may embed raster fallbacks |
+| Scalable supported geometry | SVG | Shapes/text/gradients and supported effects; appearance policy may embed raster fallbacks; carries the editable document ([round trip](#svg-round-trip)) |
 | Print or selectable-text pages | PDF | Vector pages where supported; effects can fall back to raster; CMYK PDF stays vector (DeviceCMYK) |
 | Editable presentation | PPTX | Real text, supported shapes, images, notes; unsupported appearances become pictures |
 | Layered handoff to Photoshop and similar editors | PSD | One 8-bit RGBA pixel layer per layer with names, opacity, visibility, blend modes and layer groups, plus the flattened composite; text is pixels, not editable type |
@@ -72,9 +72,10 @@ RGBA8 sRGB; CMYK is an export setting, not an editing space. Spot colors and RAW
 are outside the implementation. A proof image helps assess separations but does not replace
 a printer proof. See [color and print](color-and-print.md) for ink limits and simulations.
 
-Latest source fixes raster PDF physical dimensions and TrimBox/BleedBox handling, including
-fractional bleed pixels. Verify the PDF's page dimensions and boxes when print precision
-matters, and record the source revision alongside your output.
+A document made from a print size exports a PDF page of exactly trim plus bleed on every side, with a
+TrimBox and BleedBox, including when the bleed is a fraction of a pixel (raster PDFs too). Verify the
+PDF's page dimensions and boxes when print precision matters, and record the source revision alongside
+your output.
 
 ## Pages, forms and motion
 
@@ -105,7 +106,7 @@ animations use `export-animation` instead. See [motion tutorial](tutorials/motio
 vixl -p poster.vixl export poster.psd
 ```
 
-`vixl_export_file(path="poster.psd")`, `Project.export("poster.psd")` and the REST export
+`vixl_export(path="poster.psd")`, `Project.export("poster.psd")` and the REST export
 (`format: "PSD"`) write an 8-bit RGB Photoshop file (version 1 PSD, PackBits-compressed
 channels) that opens in Photoshop, Photopea, GIMP, Affinity and Krita:
 
@@ -142,8 +143,8 @@ approve/reject decisions; `vixl diff A B` shows what changed between two exports
 
 ## Python export consistency
 
-`Project.export`, `Project.export_animation`, `export_timeline` and the MCP export
-tools protect existing files by default (`overwrite=False`). Pass `overwrite=True`
+`Project.export`, `Project.export_animation`, `export_timeline` and MCP `vixl_export`
+protect existing files by default (`overwrite=False`). Pass `overwrite=True`
 for repeatable builds that intentionally replace outputs; CLI render/export and
 saved-frame animation commands accept `--overwrite`.
 
@@ -168,4 +169,90 @@ every format; a `.vixl` path writes a portable object document for `object-place
 PSD keep declared [objects](objects.md) as named groups, and every format carries alt text and the document
 language ([accessibility](accessibility.md)).
 
-SVG export writes `multiply`, `screen`, `overlay`, `darken`, `lighten` and `difference` layers as native `mix-blend-mode` groups inside an isolated root, keeping every shape and text vector. `add`, `subtract` and other backdrop-dependent operations still rasterize the document and report the fallback; strict mode rejects them. Editable SVG import also accepts native gradient rectangles (unrounded, unstroked, translated only, user-space padded linear or radial gradients with 2–32 plain stops) and stroked paths that overflow their box. Arbitrary transforms, clipping, gradient-filled nonrectangular geometry and unsupported SVG features still require appearance/auto mode.
+SVG export writes `multiply`, `screen`, `overlay`, `darken`, `lighten` and `difference` layers as native `mix-blend-mode` groups inside an isolated root, keeping every shape and text vector. `add`, `subtract` and other backdrop-dependent operations still rasterize the document and report the fallback; strict mode rejects them.
+
+**Strokes land in the same place in every format.** A closed shape (rectangle, rounded rectangle, capsule, ellipse,
+polygon, star, shortcut or catalog shape) strokes `inside` by default: the stroke's outer edge is the outline, so a
+10 px stroke on a rectangle covers the 10 px just inside its box edge and the fill runs under it. Paths, arcs, lines and
+open shapes stroke `center`. An explicit `stroke_align` (`inside`, `center`, `outside`) means the same with or without
+dashes, width profiles or markers, in PNG, SVG, PDF and PPTX; a rounded corner keeps its `radius` on the outside. A
+`rectangle` created with a `radius` is stored as a `rounded-rectangle` (reported under `normalized`), so its corners are round in
+every output. See [vector shapes and strokes](vector-paths.md#strokes) and [render parity](render-parity.md).
+
+## SVG round trip
+
+An SVG Vixl exports carries the document it shows, so importing it back gives the same editable document: the same
+layers with their IDs and names, live text in its fonts, groups, effects, layer styles, masks and every other field.
+Use SVG as an interchange file without losing the master.
+
+```bash
+vixl new 1080x1350 -o poster.vixl
+vixl -p poster.vixl text add 'Spring fair' --name title --size 96
+vixl -p poster.vixl export poster.svg
+vixl new 1080x1350 -o copy.vixl
+vixl -p copy.vixl import poster.svg
+```
+
+- The SVG holds `<metadata id="vixl-document">` with the page's document JSON (the [file format](file-format.md)'s
+  `state`, a multi-page document's exported page as a single page) and a SHA-256 digest of the rest of the SVG.
+  Every layer's group also carries `data-vixl-id` (its layer ID) and `data-layer` (its name). Browsers and other
+  editors ignore the metadata; the SVG draws exactly as before.
+- Each file the page uses is stored once. An image the page shows as it is (its own size, no effects) is drawn by
+  an `<image>` holding the file's own bytes, and the metadata points at that element. Other files (images of hidden
+  layers, images drawn resized or with effects, masks, brushes, patterns) are stored in the metadata as base64.
+- Fonts are never stored in the SVG, only named: family, weight, style and source (a bundled face, a Google Fonts
+  family, or a file you imported). A blank document is a few KB, and a published SVG does not redistribute font
+  files. On import each font is found again: the same file already in the document, the bundled face, a font the
+  document registers under the same name (or with the same family and style), then the Google Fonts style from the
+  font cache, downloading it when the cache does not have it (`install_fonts=False` in Python keeps the import
+  offline). The result's `fonts` says how each registered font was found. A font none of these supplies (an
+  imported file you do not have registered) is drawn with the bundled DejaVu Sans and listed in `warnings`; the
+  import does not fail, and importing and registering the font under the same name restores it. Everything except
+  the font files round-trips exactly.
+- Importing into a document without layers takes the embedded canvas and resources too, so the result equals the
+  exported page. Importing into a document with layers places the layers as one group at their original position
+  (names the document already uses are prefixed with the group's name).
+- When the SVG was edited after export (the digest no longer matches), when its stored files exceeded 32 MiB and
+  were left out, or when the embedded document does not pass the checks a `.vixl` file must pass, the import reads
+  the SVG's visible elements instead and says why in `warnings`.
+- `svg_document=False` (Python, REST) leaves the metadata out, for example for a web asset. HTML exports and
+  presentation slides never carry it.
+
+## Importing SVG and PDF
+
+`vixl import FILE.svg` / `FILE.pdf` (MCP `import-document` step, REST `POST /import`, Python
+`vixl.imports.import_document`) adds the file's content to the current document as one revision. `svg_mode` chooses
+how, for SVG and PDF alike:
+
+| `svg_mode` | SVG | PDF |
+| --- | --- | --- |
+| `editable` (default) | Vixl's own SVG: the embedded document. Other SVG: editable layers; an unsupported element fails the import. | The page as editable layers; objects Vixl cannot represent become image layers. |
+| `auto` | As `editable`, but an unsupported element becomes an image layer of just that element (listed in `rasterized`); an unreadable stylesheet imports the whole SVG as one image. | As `editable`. |
+| `appearance` | The whole SVG as one image layer, its source kept in the archive. | The page as one image at `dpi` (default 144). |
+
+**Other SVG.** `rect`, `circle`, `ellipse`, `line`, `polyline`, `polygon` and `path` become path shape layers with
+their fill (nonzero or even-odd), stroke, stroke width, caps, joins, dashes and opacity; transforms are applied to
+the geometry. `<text>` and `<tspan>` become live text layers (size, colour, `text-anchor`, rotation, letter spacing;
+lines that share an `x` become one multi-line layer). A font family the document has registered (by registered name
+or by the font's own family name) is used, else the default face with a warning; a text with mixed span styles takes
+its first style. `<g>` elements with an `id`, `data-layer` or Inkscape label, or with opacity, become groups (a group
+of one layer passes its name and opacity to it). Linear and radial gradients become gradient layers on rectangles
+(and radial glows on circles) and gradient overlays on other shapes. Embedded PNG, JPEG and WebP `<image>` data
+becomes an image layer. `<use>` and `<symbol>` are expanded, and `<style>` rules with type, class and ID selectors
+apply. Filters, masks, clip paths, patterns, markers, skewed text and external references are not editable: `auto`
+draws each such element as an image layer. External resources are never fetched.
+
+**PDF.** A page's text objects become live text layers with their text, size, colour, position and rotation;
+consecutive lines of one style that share a left edge, centre or right edge become one multi-line layer, and a text
+outline pass becomes the layer's `stroke_color` and `stroke_width`. Fonts are matched by family name as for SVG
+(PDFs usually embed subsets, which are not registered). Path objects become path shape layers (fill and even-odd
+fill, stroke, width, caps, joins, dashes); a stroke painted right after a fill of the same path joins that layer, and
+so does one that runs half its width inside the fill's outline (how Vixl writes an inside stroke), which becomes
+`stroke_align: "inside"`.
+Image objects become image layers at their position, size and rotation. Shadings, clipped objects, patterns,
+mirrored text and other content Vixl cannot represent are drawn, run by run in stacking order, as image layers
+(listed in `rasterized`). Into a document without layers the page size becomes the canvas and a full-page backdrop
+its background (white otherwise). A PDF Vixl exported maps back to the pixels it was made at (it records `VixlDPI`);
+other PDFs map one point to one pixel, and `dpi` applies to `appearance` imports only. Rotated pages, form fields,
+annotations, blend modes and transparency groups are not read as such: rotated pages import as one image, and
+the others as what pdfium reports for each object.

@@ -169,6 +169,41 @@ def test_denoise_is_a_non_destructive_effect_on_an_image_layer(tmp_path):
     assert "<image" in p.export(format="SVG").decode()
 
 
+def high_pass(image):
+    """Mean grain left: luminance minus a 2 px blur of it, away from the borders."""
+    y = luma(image)
+    return float(np.abs(y - luma(image.convert("L").filter(ImageFilter.GaussianBlur(2))))[12:-12, 12:-12].mean())
+
+
+def test_a_crop_shown_larger_is_cut_from_the_cleaned_master(tmp_path):  # craft plan 7c: T10 grain in the crop
+    _, noisy = scene()
+    master = Project(SIZE, SIZE)
+    master.apply({"type": "add", "asset": add_image(master, noisy.convert("RGBA")), "name": "photo"})
+    master.apply([{"type": "denoise", "target": "photo", "luminance": 60, "chroma": 60},
+                  {"type": "white-balance", "target": "photo", "gains": [1.06, 0.94, 1.04]}])
+    master.save(tmp_path / "master.vixl")
+    clean = master.render().convert("RGB")
+    region = (96, 0, 192, 120)
+    expected = clean.crop(region).resize((128, 160), Image.Resampling.LANCZOS)
+    # A derived crop through a link, enlarged 1.33x: the master's own pixels, resampled.
+    crop = Project(128, 160)
+    crop.save(tmp_path / "instagram.vixl")
+    crop.apply({"type": "link", "source": "master.vixl", "name": "photo", "width": 128, "height": 160,
+                "crop": {"x": 96, "y": 0, "width": 96, "height": 120}})
+    linked = crop.render().convert("RGB")
+    assert np.abs(np.asarray(linked, np.float32) - np.asarray(expected, np.float32)).mean() < 1.5
+    assert high_pass(linked) < 1.3 * high_pass(expected)
+    # The same photo placed larger in one document is denoised at its own pixels before it is scaled up.
+    big = Project(SIZE * 4 // 3, SIZE * 4 // 3)
+    big.apply({"type": "add", "asset": add_image(big, noisy.convert("RGBA")), "name": "photo", "width": SIZE * 4 // 3,
+               "height": SIZE * 4 // 3})
+    big.apply({"type": "denoise", "target": "photo", "luminance": 60, "chroma": 60})
+    upscaled = clean.resize((SIZE * 4 // 3,) * 2, Image.Resampling.LANCZOS)
+    raw = noisy.resize((SIZE * 4 // 3,) * 2, Image.Resampling.LANCZOS)
+    assert high_pass(big.render().convert("RGB")) < 0.5 * high_pass(raw)
+    assert high_pass(big.render().convert("RGB")) < 1.3 * high_pass(upscaled.convert("RGB"))
+
+
 def test_amount_sets_both_strengths_and_bad_values_are_refused():
     assert denoise.settings({"name": "denoise"}) == (50.0, 50.0, 5)
     assert denoise.settings({"name": "denoise", "amount": 30}) == (30.0, 30.0, 5)

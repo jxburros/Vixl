@@ -29,7 +29,9 @@ DRINKS = {
 
 def make(kind="bar", data=SALES, width=900, height=560, background="#ffffff", **options):
     p = Project(width, height, background)
-    p.apply({"type": "chart", "name": "Sales", "kind": kind, "title": "Cups sold", **data, **options})
+    # The whole canvas, so parts' local coordinates are canvas pixels (a chart placed without them sits in the safe area).
+    p.apply({"type": "chart", "name": "Sales", "kind": kind, "title": "Cups sold", "x": 0, "y": 0, "width": width,
+             "height": height, **data, **options})
     return p
 
 
@@ -762,13 +764,17 @@ def test_service_operations_accept_charts(tmp_path):
     from vixl.interfaces import mcp_server
 
     async def run():
-        tools = {t.name: t for t in await mcp_server(workspace=tmp_path).list_tools()}
-        schema = tools["vixl_operations_apply"].inputSchema
-        jsonschema.validate({"operations": [
+        server = mcp_server(workspace=tmp_path)
+        tools = {t.name: t for t in await server.list_tools()}
+        schema = tools["vixl_apply"].inputSchema
+        operations = [
             {"type": "chart", "name": "c", "kind": "donut", "categories": ["a", "b"], "series": [{"name": "s", "values": [1, 2]}]},
-            {"type": "chart-data", "target": "c", "set": [{"category": "a", "value": 5}]}]}, schema)
-        with pytest.raises(jsonschema.ValidationError):
-            jsonschema.validate({"operations": [{"type": "chart", "kind": "radar"}]}, schema)
+            {"type": "chart-data", "target": "c", "set": [{"category": "a", "value": 5}]}]
+        jsonschema.validate({"operations": operations}, schema)
+        await server.call_tool("vixl_document", {"action": "create", "path": "c.vixl", "width": 400, "height": 300})
+        await server.call_tool("vixl_apply", {"operations": operations})
+        with pytest.raises(Exception, match="radar"):
+            await server.call_tool("vixl_apply", {"operations": [{"type": "chart", "kind": "radar"}]})
 
     asyncio.run(run())
 

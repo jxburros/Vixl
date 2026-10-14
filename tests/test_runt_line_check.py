@@ -15,7 +15,7 @@ def headline(width, size=54, text=None, **extra):
                  "spans": [{"text": "Local models, "}, {"text": "safe to share.", "color": "#FF2D55"}], **extra})
     else:
         p.apply({"type": "text", "name": "head", "text": text, "size": size, "color": "#F1EEE9", "x": 40, "y": 40})
-        p.apply({"type": "text-layout", "target": "head", "width": width})
+        p.apply({"type": "text-layout", "target": "head", "width": width, "wrap": "greedy"})
     return p
 
 
