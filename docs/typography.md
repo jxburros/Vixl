@@ -206,4 +206,20 @@ the leader as characters before the tab, since PowerPoint has no leaders. Rich t
 list with several columns, a `table` with a decimal column and a column `leader` does the same
 ([tables](charts.md#tables)).
 
+### Size at real use
+
+`check` also judges text at the size the piece is really seen and reports what is too small there as a `legibility` finding with `code: use-size` and `action: review`. The use comes from the named size, else from a custom canvas with exactly a named size's pixels (3000×3000 is cover art, 1600×2560 a book cover), else from the purpose in the house style:
+
+| Use | Where it comes from | Minimum |
+| --- | --- | --- |
+| cover art at 120 px wide | `album-art` (alias `podcast-cover`) | 10 px at that width |
+| shop thumbnail at 160 px wide | `ebook-cover` (alias `book-cover`) | 10 px at that width |
+| home-screen icon at 60 px, browser tab at 32 px | app-icon masters, `favicon` | 10 px at that width |
+| feed thumbnail at 320 px (600 for `og-image`, `x-post`) | the social purpose | 10 px at that width |
+| projected slide | the slides purpose, and landscape diagrams | 18 pt projected: 36 px on a 1080 px tall slide |
+| infographic thumbnail at 400 px wide | portrait and square diagrams | 10 px at that width |
+| poster read across a room | the poster purpose on poster and print sheets or custom canvases | 3% of the sheet's short side |
+
+The minimum grows for light weights (×1.2 at 300, ×1.4 at 200) and for faint colours (+15% per contrast point below the 4.6:1 secondary-text target), and shrinks for bold faces as WCAG's large-text rule does (×0.78 at 700). The finding names the layer, the use, the size it needs there and, when one would do, the weight that would pass at its current size. Decorative layers (`layer-intent decorative`) are skipped and waivers apply; `thumbnail_width: null` turns the thumbnail uses off, and an explicit `thumbnail_width` replaces their width. Documents, forms, logos and motion have no use size. The values live in the house style (`craft.minimum_text`, each purpose's `use`) and in `vixl sizes` (`use`).
+
 For social and poster purposes, automatic legibility checking and generated layout minor text use the house minimum (2.2% of the short canvas side). Explicit thumbnail widths remain a caller-selected viewing-context check. Print keeps the 6-point minimum and decks keep their profile checks. The contrast check treats bold text (font weight 700+) from 18.66 px (14 pt) as large, needing 3:1; regular text needs 24 px. Shared spacing expressions such as `2u` use half the body size per unit.

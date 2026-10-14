@@ -178,7 +178,9 @@ def check_deck(project, *, checks=None, safe_area=None, min_contrast=None, pages
     canvas = project.state["canvas"]
     profile = profile or ("phone" if canvas.get("size") in ("instagram-portrait", "instagram-square", "instagram-story") else "projected")
     require(profile in ("projected", "screen", "phone"), "deck profile must be projected, screen or phone", field="profile")
-    defaults = {"projected": (18, 60, 320), "screen": (14, 250, 1280), "phone": (12, 150, 540)}[profile]
+    from .house_style import rule
+
+    defaults = {"projected": (rule("minimum_text")["projected_points"], 60, 320), "screen": (14, 250, 1280), "phone": (12, 150, 540)}[profile]
     min_font = defaults[0] if min_font is None else min_font
     max_words = defaults[1] if max_words is None else max_words
     # The thumbnail legibility check judges a social post, not a projected slide: ``min_font``
