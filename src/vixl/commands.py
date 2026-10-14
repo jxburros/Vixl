@@ -214,6 +214,8 @@ def compile_command(tokens):
             p.add_argument("--trim-start", type=float, help="Draw the stroke from this percent of its length (animatable)")
             p.add_argument("--trim-end", type=float, help="Draw the stroke up to this percent of its length (animatable)")
             p.add_argument("--line-cap", choices=["butt", "round", "square"])
+            p.add_argument("--opacity", type=lambda v: v if v.endswith("%") else float(v), help="0-1 or a percentage")
+            p.add_argument("--rotation", type=float, help="degrees clockwise")
         else:
             p.add_argument("resource")
             p.add_argument("--target", required=cmd == "container-swap")

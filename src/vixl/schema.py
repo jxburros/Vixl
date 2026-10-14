@@ -30,7 +30,7 @@ OPACITY = {
 }
 # Layer-creating operations that also set the layer's opacity and rotation (the opacity and rotate
 # operations, in one step); with target they change the edited layer's.
-LAYER_FINISH = ("add", "solid", "gradient", "text", "shape")
+LAYER_FINISH = ("add", "solid", "gradient", "text", "shape", "pen")
 FINISH_FIELDS = {
     "opacity": OPACITY,
     "rotation": {"type": "number", "description": "Rotation in degrees, clockwise, around the layer's pivot "

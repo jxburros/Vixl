@@ -4,6 +4,9 @@
 
 ### Fixed and added
 
+- **Swatches can be deleted.** `{"type": "swatch", "name": "old", "delete": true}` (`vixl swatch old --delete`) removes a swatch. While layers, other swatches, character or paragraph styles, variables or artboards still use it (`@old`, `lighten(@old, 10%)`, gradient stops …), the deletion is refused with error `swatch_in_use` naming them under `used_by`; `detach: true` (`--detach`) first writes the swatch's color (its definition as written) into each use, so the design renders unchanged. Undo restores the swatch and its references. `color` is now required only when not deleting.
+- **`pen` takes `opacity` and `rotation`**, as `shape` does, when it creates or edits a path (`vixl pen … --opacity 40%`). Opacity is 0–1 or a percentage string; a bare number above 1 is an error. PNG, SVG and PDF draw the same translucency.
+
 ### Behaviour changes
 
 ## 0.27.0

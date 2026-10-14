@@ -144,6 +144,7 @@ vixl swatch brand '#e8885c'
 vixl style-define Heading --settings '{"size":80,"color":"@brand","stroke_width":1}'
 vixl style-define Caption --kind paragraph --settings '{"align":"center","spacing":8}'
 vixl style-apply title Heading ; vixl style-apply title Caption --kind paragraph
+vixl swatch brand --delete --detach   # Heading keeps the color; without --detach this is refused while @brand is used
 ```
 
 ## Layout

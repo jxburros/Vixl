@@ -223,9 +223,11 @@ vixl style-define Caption --kind paragraph --settings '{"align":"center","spacin
 vixl style-apply title Heading
 vixl style-apply title Caption --kind paragraph
 vixl swatch brand '#78bbdc'
+vixl swatch old-brand '#cc5500'
+vixl swatch old-brand --delete --detach  # without --detach: refused while anything uses @old-brand
 ```
 
-Swatch references use `@name` in color fields. Character styles support size, color, stroke width/color; paragraph styles support alignment and line spacing. Named styles remain linked and take precedence over the layer's corresponding local values. Redefining a style or swatch updates all uses on the next render, including constraint measurements. Resource names use letters, numbers, underscores and hyphens (maximum 100 characters).
+Swatch references use `@name` in color fields. Character styles support size, color, stroke width/color; paragraph styles support alignment and line spacing. Named styles remain linked and take precedence over the layer's corresponding local values. Redefining a style or swatch updates all uses on the next render, including constraint measurements. `{"type": "swatch", "name": "old-brand", "delete": true}` removes a swatch; while layers, other swatches, styles or variables still refer to it (as `@old-brand` or inside `lighten(@old-brand, 10%)`, gradients and styles), the deletion is refused with error `swatch_in_use` and their names under `used_by`. Add `"detach": true` to write the swatch's color (its definition as written) into each of them first, so nothing changes on screen. Undo restores the swatch and its references. Resource names use letters, numbers, underscores and hyphens (maximum 100 characters).
 
 ## Artboards, data sets, and image frames
 

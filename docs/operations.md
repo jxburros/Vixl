@@ -53,6 +53,7 @@ Common operation fields:
 | solid / gradient | name, width, height, color **or** start/end/direction/stops/angle; `target` edits an existing layer |
 | text | text, name, font, size, color, align, spacing, line_height, tabs, hide_if_empty, x/y; `target` edits an existing text layer |
 | shape | shape, name, width, height, x/y, fill, stroke, stroke_width, line_cap, trim_start/trim_end, radius, sides, inner_radius, path, opacity, rotation; `target` edits an existing shape. A `path` is in literal local pixels from the layer's x/y; without width/height its box reaches the path's farthest point ([vector paths](vector-paths.md#path-coordinates-and-the-layer-box)) |
+| pen | nodes **or** points; name, closed, smooth, tension, corners, fill, stroke, stroke_width, line_cap, trim_start/trim_end, width/height, x/y, opacity, rotation; `target` replaces an existing path's geometry ([studio](studio.md)) |
 | text-set | target; text, size, color, align, spacing, stroke_width/stroke_color, hide_if_empty, font — the whole layer; on rich text keeps formatting that still applies and reports what it drops under `warnings` ([rich text](rich-text.md#editing)) |
 | text-layout | target; width/height, fit, `wrap` (`greedy`, `balance` evens a heading's lines, `pretty` keeps one word off a paragraph's last line; the breaks are the same in PNG, SVG, PDF and PPTX), warp, amount, path |
 | stack | target (a group) **or** name + targets; direction, gap (pixels or spacing units such as `"2u"`, the default), padding, align, justify, width/height, hide_if_empty; `remove` releases it |
@@ -72,6 +73,7 @@ Common operation fields:
 | effect-move | target, effect; **one of** `to` (1-based position, `top` or `bottom`), `before` or `after` (another effect). One history entry; renders exactly as removing and re-adding in the new order |
 | lookup | target, name (a LUT defined with `lut`), amount 0–1: adds a `lookup` entry to the effect stack, which toggles, reorders, takes a selection and is removed like any effect |
 | variable | name, value; or delete: true |
+| swatch | name, color; or delete: true. Deleting a swatch that layers, swatches, styles or variables still use is refused with error `swatch_in_use`, listing them under `used_by`; `detach: true` first writes the swatch's color into each of them (the definition as written, so they render unchanged). Undo restores it |
 | preset-save / preset-apply | name, target; overrides for apply |
 | canvas | width, height, background; or `size`/`preset` (named size) with orientation, bleed, dpi; or dpi alone |
 | link | **source** (a workspace `.vixl`); name, x, y, width, height, fit (`fill`/`fit`/`stretch`), position, crop, artboard, source_page, variables. A live [linked document](linked-documents.md). With `target` instead of `source` it changes that link (`null` clears a setting) |
