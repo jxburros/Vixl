@@ -532,7 +532,6 @@ def execute(project, op):
     for layer in layers:
         if layer["type"] == "field":
             raise VixlError("invalid_operation", "Looks do not apply to form fields", field="target")
-    from .house_style import finish
 
     measured = {}
     if name in FINISHED and not op.get("remove") and op.get("color") is None:

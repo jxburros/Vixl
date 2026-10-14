@@ -1,7 +1,6 @@
 """Clean glow and shadow defaults, fitted dashes and drawings that keep their shape past the box (craft check
 2026-10-13: muddy glows and shadows on four pieces, broken dashes and a cut-off loaf on three)."""
 
-import io
 import math
 import zipfile
 

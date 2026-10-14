@@ -7,7 +7,7 @@ import json
 
 import pytest
 
-from vixl import Project, VixlError, creation, house_style
+from vixl import Project, VixlError, house_style
 from vixl.compose import compose
 from vixl.interfaces import Session, mcp_server
 from vixl.typefaces import roll_document
