@@ -730,6 +730,7 @@ def check_design(
 
     # Empty text (a lyric between lines, a cleared label) draws nothing to measure.
     texts = [item for item in content if is_text(item) and resolved[item["id"]].get("text", "").strip()]
+    contrasts = {}  # Text contrast (p10) by layer ID, measured once and shared with the use-size legibility test.
     if "contrast" in checks:
         from .measure import measure, top_level_contrast
 
@@ -756,6 +757,7 @@ def check_design(
                                           _bold(candidate, resolved[item["id"]]))
             # Outlined text reads through its outline when the fill blends into the backdrop.
             outline = result.get("outline")
+            contrasts[item["id"]] = max(result["p10"], outline["p10"] if outline else 0)
             if result["p10"] < threshold and not (outline and outline["p10"] >= threshold):
                 issue(
                     "contrast",
@@ -844,6 +846,10 @@ def check_design(
     purpose = candidate.state.get("design_defaults", {}).get("purpose") or purpose_for(c.get("size"))
     scale_minimum = (rule("minimum_text")["minor_share_of_short_side"] * min(width, height)
                      if purpose in ("social", "poster") and not physical else None)
+    from .sizes import use_size
+
+    requested_width, requested_minimum = thumbnail_width, min_thumbnail_text
+    use = use_size(c, purpose) if "legibility" in checks else None
     if "legibility" in checks and physical and thumbnail_width in ("auto", None):
         # Print is read at full size, not as a thumbnail: judge the printed point size.
         for item in texts:
@@ -882,6 +888,9 @@ def check_design(
             effective = size * text_scales[item["id"]] * scale
             if effective < min_thumbnail_text:
                 small.append((item, size, effective))
+        if not thumbnail_piece and use is not None and requested_width == "auto":
+            # The generic "if shown as a thumbnail" note gives way to the use-size test below.
+            small = []
         # One finding per chart: its labels share one size, so they are one fix (the chart's font_size).
         charts, single = {}, []
         for entry in small:
@@ -915,6 +924,10 @@ def check_design(
                 [item],
                 thumbnail_size=round(effective, 2),
             )
+
+    if use is not None and not (use["seen"] == "thumbnail" and requested_width is None):
+        _use_size(candidate, use, texts, resolved, local_bounds, text_scales, ancestors, contrasts, issues, issue,
+                  requested_width, requested_minimum)
 
     if "blanks" in checks:
         registry = candidate.state.get("blanks", {})
@@ -1085,6 +1098,145 @@ def _bold(project, layer):
 
     data = font_data(project, layer)
     return font_style(data[0] if isinstance(data, tuple) else data)[1] >= 700
+
+
+def _weight(project, layer):
+    from .text import font_data, font_style
+
+    data = font_data(project, layer)
+    return font_style(data[0] if isinstance(data, tuple) else data)[1]
+
+
+def weight_factor(weight):
+    """How much larger than a regular (400) face text in ``weight`` must be to read as well. Bold earns the
+    credit WCAG gives large bold text (18.66 / 24 px), reached at 700; light and thin faces need
+    ``light_weight_step`` more for every 100 below 400."""
+    from .house_style import rule
+
+    sizes = rule("minimum_text")
+    if weight >= 400:
+        credit = 1 - sizes["large_bold_text_px"] / sizes["large_text_px"]
+        return 1 - credit * (min(weight, 700) - 400) / 300
+    return 1 + sizes["light_weight_step"] * (400 - weight) / 100
+
+
+def contrast_factor(contrast):
+    """How much larger text of this contrast must be: none at the house secondary-text target (4.6:1) and
+    above, ``contrast_step`` more for every point below it."""
+    from .house_style import rule
+
+    target = rule("contrast")["secondary_text_target"]
+    return 1 + rule("minimum_text")["contrast_step"] * max(0.0, target - contrast)
+
+
+def use_scale(canvas, use, requested_width="auto", min_thumbnail_text=10):
+    """``(scale, minimum, context)`` for a use (``sizes.use_size``): a canvas font size times ``scale`` is its
+    size at the use, which a regular face at good contrast needs to be ``minimum``. A thumbnail is measured in
+    px at its width, a projected slide in px at 1080p, a sheet read across a room as a share of its short side."""
+    from .house_style import rule
+
+    sizes = rule("minimum_text")
+    width, height = canvas["width"], canvas["height"]
+    if use["seen"] == "thumbnail":
+        shown = use["width"]
+        if isinstance(requested_width, (int, float)) and not isinstance(requested_width, bool):
+            shown = requested_width
+        elif shown == "auto":
+            shown = 600 if canvas.get("size") in ("og-image", "x-post") else 320
+        return shown / width, min_thumbnail_text, f"at {shown:g} px wide ({use['as']})"
+    if use["seen"] == "projected":
+        # Slides export 540 pt tall (deck.points_per_pixel), so a 1080 px slide has two pixels to the point.
+        return 1080 / height, sizes["projected_points"] * 2, f"on a 1080 px tall slide ({use['as']})"
+    return 1 / min(width, height), sizes["distance_share_of_short_side"], f"of the sheet's short side ({use['as']})"
+
+
+def _use_size(candidate, use, texts, resolved, local_bounds, text_scales, ancestors, contrasts, issues, issue,
+              requested_width, min_thumbnail_text):
+    """Review findings for text that is too small, too light or too faint at the size the piece is really seen
+    (``sizes.use_size``): a thumbnail ``width`` px wide, a slide projected (px at 1080p) or a sheet read across a
+    room (a share of its short side). The minimum is scaled by ``weight_factor`` and ``contrast_factor``.
+    Decorative text and layers another legibility finding already names are skipped."""
+    from .accessibility import decorative
+    from .house_style import rule
+
+    sizes = rule("minimum_text")
+    seen = use["seen"]
+    scale, base, context = use_scale(candidate.state["canvas"], use, requested_width, min_thumbnail_text)
+
+    def shown_as(value):
+        return f"{value:.1%}" if seen == "distance" else f"{value:.1f} px"
+
+    earlier = [x for x in issues if x["check"] == "legibility" and x.get("code") not in ("measure", "runt")]
+    named = {name for x in earlier for name in x.get("layer_ids", ())}
+    # A chart with a finding already has its one fix (its font_size); its other labels are not reported again.
+    named_charts = {x["chart"] for x in earlier if x.get("chart")}
+    flagged = []
+    for item in texts:
+        layer = resolved[item["id"]]
+        if item["id"] in named or decorative(layer, resolved):
+            continue
+        if named_charts and any(x.get("chart") and x["name"] in named_charts for x in ancestors(item)):
+            continue
+        size = layer.get("size", 0)
+        if item.get("text_layout", {}).get("fit"):
+            size = min(size, local_bounds[item["id"]][3] / max(1, layer["text"].count("\n") + 1))
+        size *= text_scales[item["id"]]
+        at = size * scale
+        if at >= base * sizes["most_extra"]:
+            continue
+        weight = _weight(candidate, layer)
+        contrast = contrasts.get(item["id"])
+        if contrast is None and at < base * weight_factor(weight) * sizes["most_extra"]:
+            from .measure import measure
+
+            try:
+                contrast = contrasts[item["id"]] = measure(candidate, target=item["id"])["contrast"]["p10"]
+            except Exception:  # noqa: BLE001 - an unmeasurable layer is the contrast check's finding, not this one's.
+                contrast = None
+        extra = contrast_factor(contrast) if contrast is not None else 1.0
+        needed = base * min(sizes["most_extra"], weight_factor(weight) * extra)
+        if at < needed - 1e-9:
+            heavier = next((w for w in (500, 600, 700, 800, 900) if w > weight
+                            and base * min(sizes["most_extra"], weight_factor(w) * extra) <= at), None)
+            flagged.append((item, size, at, needed, weight, contrast, heavier))
+    if not flagged:
+        return
+    info = {k: v for k, v in use.items() if k != "by_pixels"}
+
+    def why(weight, contrast):
+        return f"weight {weight}" + (f" and {contrast:.1f}:1 contrast" if contrast is not None
+                                     and contrast_factor(contrast) > 1 else "")
+
+    charts, single = {}, []
+    for entry in flagged:
+        chart = next((x for x in ancestors(entry[0]) if x.get("chart")), None)
+        if chart is not None:
+            charts.setdefault(chart["id"], (chart, []))[1].append(entry)
+        else:
+            single.append(entry)
+    groups = [(f"chart {chart['name']!r} labels", entries, " (raise the chart's font_size)")
+              for chart, entries in charts.values()]
+    if len(single) > 3:
+        groups.append((f"{len(single)} text layers", single, ""))
+        single = []
+    for label, entries, fix in groups:
+        item, size, at, needed, weight, contrast, _ = min(entries, key=lambda entry: entry[2] / entry[3])
+        names = ", ".join(repr(entry[0]["name"]) for entry in entries[:6]) + (" …" if len(entries) > 6 else "")
+        issue("legibility", "warning",
+              f"{label} are too small to read {context}: the smallest, {item['name']!r}, is {shown_as(at)} "
+              f"where its {why(weight, contrast)} needs {shown_as(needed)} (font size {size * needed / at:.0f}+){fix}; "
+              f"{names}", [entry[0] for entry in entries], code="use-size", action="review", use=info,
+              font_size=round(size, 2), needed_size=round(size * needed / at, 2), at_use=round(at, 4),
+              needed_at_use=round(needed, 4))
+    for item, size, at, needed, weight, contrast, heavier in single:
+        issue("legibility", "warning",
+              f"{item['name']!r} is {shown_as(at)} {context}; at {why(weight, contrast)} it needs {shown_as(needed)} "
+              f"there: font size {size * needed / at:.0f}+"
+              + (f", or a weight of {heavier}+ at this size" if heavier else ""),
+              [item], code="use-size", action="review", use=info, font_size=round(size, 2),
+              needed_size=round(size * needed / at, 2), at_use=round(at, 4), needed_at_use=round(needed, 4),
+              weight=weight, **({"contrast": round(contrast, 2)} if contrast is not None else {}),
+              **({"heavier_weight": heavier} if heavier else {}))
 
 
 def _print_checks(candidate, c, resolved, local_bounds, bounds, layers, content, texts, text_scales, issue, ink_limit, min_ppi):

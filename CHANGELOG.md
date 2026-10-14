@@ -4,7 +4,13 @@
 
 ### Fixed and added
 
+- `check` judges secondary text at the size the piece is really seen: cover art at 120 px, book covers at a 160 px shop thumbnail, app icons at 60 px, social at its thumbnail width, portrait infographics at 400 px, slides projected (18 pt, 36 px at 1080p) and posters across a room (3% of the sheet's short side). Light weights and faint colours need more size, bold less. Findings (`legibility`, `code: use-size`, `action: review`) name the layer, the use and the font size or weight needed; decorative layers are skipped and waivers apply. The use comes from the named size, a custom canvas with a named size's exact pixels, or the house-style purpose (`use`).
+- New named size `ebook-cover` (1600×2560, aliases `book-cover`, `kindle-cover`); `podcast-cover` and `podcast-art` are aliases of `album-art`. `vixl sizes` lists each size's `use`.
+
 ### Behaviour changes
+
+- New review findings: text that is small at its use size is reported as `legibility.use-size` (review, so `passed` is unchanged); on slides and diagrams it replaces the generic "only matters as a thumbnail" note. The values are house-style craft (`minimum_text`: `projected_points`, `distance_share_of_short_side`, `light_weight_step`, `contrast_step`, `most_extra`) and each purpose's `use`. To silence it, waive `legibility` on the layer, mark the layer `decorative`, or pass `thumbnail_width: null` (thumbnail uses only). The deck `min_font` projected default now reads `projected_points` (still 18 pt).
+- `layout-apply` sets minor text (labels, captions, body) at least at the use-size minimum for a regular face when no `base_size` is given: 36 px on a 1080 px slide (was as small as 17 px), 3% of a poster's short side (81 px on an 18×24 at 150 dpi, was about 30 px), 250 px on 3000 px cover art, 100 px on a 1600 px book cover, 30 px on a 1200 px wide portrait diagram. Pass `base_size` for the old type scale.
 
 ## 0.27.0
 

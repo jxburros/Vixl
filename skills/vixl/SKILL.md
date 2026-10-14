@@ -430,6 +430,9 @@ If found, prepend its folder to PATH for this session — see
 5. **Check without looking:** `vixl_check` / `vixl check` reports content cut off by the canvas,
    overlapping text (and decoration running through text, for review), low WCAG contrast, safe-area or reserved-zone violations (`safe_area="5%"`,
    `avoid=[[x,y,w,h]]`) and text too small at thumbnail width (on print sizes: below 6 pt). It lists only problems.
+   Secondary text too small, light or faint at the size the piece is really seen (cover art at 120 px, a book
+   cover at 160 px, a projected slide, a poster across a room) is a `use-size` review finding naming the
+   font size or weight it needs; mark ornaments `decorative: true`.
    Then run your own suite (`vixl_apply(workflow='check', request={suite: NAME})`, or `suites=true` on the apply) for
    this brief's requirements; see "Tests: why, when and how" above. Fix failures before step 6.
    **Measure, don't eyeball,** when precision matters: `vixl_check(action='measure')` / `vixl info` (colors,
