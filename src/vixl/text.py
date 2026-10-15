@@ -772,15 +772,19 @@ def leadered(data, line, size, tabs):
 
 
 @lru_cache(maxsize=4096)
-def measure(data, text, size, spacing=4, align="left", width=None, wrap="greedy", tabs=None):
+def measure(data, text, size, spacing=4, align="left", width=None, wrap="greedy", tabs=None, tracking=0):
     """Glyph paths and ink box of shaped text. Cached: every render and check re-measures each
-    text layer (auto-sized boxes, constraints), usually with the same font, text and size."""
+    text layer (auto-sized boxes, constraints), usually with the same font, text and size.
+    ``tracking`` (warped text only; flat tracked text is set by the rich-text engine) adds px between
+    characters, with none after a line's last one."""
     finite(size, "font size", 1, 4096)
     outline = face(data)[0]
     factor = size / outline["head"].unitsPerEm
     ascent = outline["hhea"].ascent * factor
     line_height = (outline["hhea"].ascent - outline["hhea"].descent) * factor + spacing
     shaped = [set_line(data, line, size, tabs) for line in lines(data, text, size, width, wrap, tabs)]
+    if tracking:
+        shaped = [(glyphs, advance - trail) for glyphs, advance, trail in (tracked(*line, tracking) for line in shaped)]
     widest = max((advance for _, advance in shaped), default=0)
     paths, bounds = [], []
     for i, (glyphs, advance) in enumerate(shaped):
@@ -863,17 +867,18 @@ def plan(project, layer):
     width = layer["width"] if "width" in settings else None
     wrap, tabs = settings.get("wrap", "greedy"), tab_stops(layer, project)
     stroke = layer.get("stroke_width", 0)
+    tracking = bent_tracking(layer)
     if settings.get("fit") and width:
         low, high = 1, fit_ceiling(data, layer["text"], size, width - 2 * stroke)
         while low < high:
             middle = (low + high + 1) // 2
-            _, box = measure(data, layer["text"], middle, spacing, align, width, wrap, tabs)
+            _, box = measure(data, layer["text"], middle, spacing, align, width, wrap, tabs, tracking)
             if box[2] - box[0] + 2 * stroke <= width and box[3] - box[1] + 2 * stroke <= layer["height"]:
                 low = middle
             else:
                 high = middle - 1
         size = low
-    paths, box = measure(data, layer["text"], size, spacing, align, width, wrap, tabs)
+    paths, box = measure(data, layer["text"], size, spacing, align, width, wrap, tabs, tracking)
     box = (box[0] - stroke, box[1] - stroke, box[2] + stroke, box[3] + stroke)
     tw, th = max(1, math.ceil(box[2] - box[0])), max(1, math.ceil(box[3] - box[1]))
     limits = project.limits
@@ -888,7 +893,7 @@ def plan(project, layer):
     offset = (target_w - tw) / 2 if align == "center" else target_w - tw if align == "right" else 0
     positioned = [(p, (*m[:4], m[4] - box[0] + (offset if settings else 0), m[5] - box[1])) for p, m in paths]
     if settings.get("path"):
-        positioned = path_layout(data, layer["text"], size, settings["path"])
+        positioned = path_layout(data, layer["text"], size, settings["path"], tracking)
     if settings.get("warp", "none") != "none":
         from .emojis import EmojiArt
         require(not any(isinstance(path, EmojiArt) for path, _ in positioned),
@@ -924,10 +929,28 @@ def fit_span(top, bottom, height):
     return 0
 
 
-def path_layout(data, text, size, points):
+def bent(layer):
+    """Whether a text layer is set along a path or warped: drawn from bent outlines by ``plan``,
+    never by the rich-text engine."""
+    settings = layer.get("text_layout") or {}
+    return bool(settings.get("path")) or settings.get("warp", "none") != "none"
+
+
+def bent_tracking(layer):
+    """The layer's tracking where ``plan`` applies it itself (path and warped text), else 0."""
+    return float(layer.get("tracking") or 0) if bent(layer) else 0.0
+
+
+def tracked(glyphs, advance, tracking):
+    from .richtext import tracked as add_tracking
+
+    return add_tracking(glyphs, advance, tracking)
+
+
+def path_layout(data, text, size, points, tracking=0):
     segments = [(a, b, math.dist(a, b)) for a, b in zip(points, points[1:]) if a != b]
     require(segments, "Text path must have nonzero length")
-    glyphs, _ = shape(data, text.replace("\n", " "), size)
+    glyphs, _, _ = tracked(*shape(data, text.replace("\n", " "), size), tracking)
     factor = size / face(data)[0]["head"].unitsPerEm
     result = []
     for glyph in glyphs:
@@ -938,6 +961,8 @@ def path_layout(data, text, size, points):
                 dx, dy = (b[0] - a[0]) / length, (b[1] - a[1]) / length
                 factor = size / face(glyph.data)[0]["head"].unitsPerEm
                 path, _ = glyph_outline(glyph.data, glyph.name)
+                if not path:
+                    break  # A space: nothing to draw, and PDF export refuses an empty path.
                 x, y = a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])
                 result.append(
                     (

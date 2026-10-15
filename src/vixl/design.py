@@ -904,6 +904,14 @@ def validate_design(project, state):
                     field="wrap")
             require(layout.get("warp", "none") in ("none", "arc", "flag", "bulge"), "Invalid warp")
             finite(layout.get("amount", 0.2), "warp amount", -1, 1)
+            if layout.get("path") or layout.get("warp", "none") != "none":
+                from .richtext import active
+
+                # The rich-text engine sets flat lines only; refuse rather than drop the path or warp.
+                require(not active(layer),
+                        f"Text {layer['name']!r} has rich-text spans, which cannot be set along a path or warped; "
+                        "use layer-level tracking and text_transform, or remove the path or warp",
+                        field="text_layout")
             if "path" in layout:
                 require(2 <= len(layout["path"]) <= 1024, "Invalid text path")
                 for point in layout["path"]:
