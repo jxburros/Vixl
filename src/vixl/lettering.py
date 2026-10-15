@@ -80,9 +80,11 @@ def apply(layer):
     if layer.get("type") != "text" or not styled(layer):
         return layer
     from .richtext import active, paragraph_count, plain
+    from .text import bent
 
     mode = layer.get("text_transform", "none")
-    if layer.get("tracking") and not active(layer):
+    # Path and warped text keep the plain engine, which bends the glyphs and spaces them itself.
+    if layer.get("tracking") and not active(layer) and not bent(layer):
         previous = layer.get("rich") or {}
         rich = {"spans": [{"text": layer["text"]}], "paragraphs": [{} for _ in range(paragraph_count(layer["text"]))]}
         if previous.get("line_basis") == "size":

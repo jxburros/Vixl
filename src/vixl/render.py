@@ -194,12 +194,13 @@ def text_metrics(project, layer, variables=None):
         from .richtext import measure as measure_rich
 
         return measure_rich(project, layer, variables)
-    from .text import measure, font_data, tab_stops, UnsupportedText
+    from .text import bent_tracking, measure, font_data, tab_stops, UnsupportedText
 
     try:
         # The same arguments as text.plan, so drawing the layer reuses this cached measurement.
         _, box = measure(font_data(project, layer), text, layer["size"], layer.get("spacing", 4),
-                         layer.get("align", "left"), None, "greedy", tab_stops(layer, project))
+                         layer.get("align", "left"), None, "greedy", tab_stops(layer, project),
+                         bent_tracking(layer))
         stroke = layer.get("stroke_width", 0)
         box = (box[0] - stroke, box[1] - stroke, box[2] + stroke, box[3] + stroke)
         return max(1, math.ceil(box[2] - box[0])), max(1, math.ceil(box[3] - box[1])), box

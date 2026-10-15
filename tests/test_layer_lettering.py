@@ -128,3 +128,76 @@ def test_cli_flags():
     assert op["tracking"] == 4 and op["text_transform"] == "uppercase"
     op = compile_command(["text-set", "t", "--tracking", "0"])
     assert op["tracking"] == 0
+
+
+PATH = [[100, 520], [600, 240], [1100, 520]]
+
+
+def path_project(path=PATH, **fields):
+    p = Project(1200, 700, "#fff")
+    p.apply([{"type": "text", "name": "t", "text": "JEFFREY X GUNTLY", "size": 60, "color": "#000", **fields},
+             {"type": "text-layout", "target": "t", "width": 1200, "height": 700, "path": path}])
+    return p
+
+
+def ink(image):
+    return np.asarray(image.convert("L")) < 128
+
+
+def test_tracking_spaces_glyphs_along_a_text_path():
+    from vixl.text import plan
+
+    straight = [[50, 300], [1150, 300]]
+    plain, tracked = (plan(p, p.layer("t")).paths for p in (path_project(straight), path_project(straight, tracking=14)))
+    assert len(tracked) == len(plain) == 14  # Spaces draw nothing.
+    # Each glyph's character index in "JEFFREY X GUNTLY", spaces skipped.
+    for index, (_, before), (_, after) in zip((0, 1, 2, 3, 4, 5, 6, 8, 10, 11, 12, 13, 14, 15), plain, tracked):
+        assert after[4] == pytest.approx(before[4] + 14 * index, abs=0.01)
+        assert after[5] == pytest.approx(before[5], abs=0.01)
+
+
+def test_tracked_path_text_follows_the_path_in_png_svg_and_pdf(tmp_path):
+    import io
+
+    import pypdfium2
+    import resvg_py
+    from PIL import Image
+
+    p = path_project(tracking=14)
+    rows, cols = np.nonzero(ink(p.render()))
+    # On the path's arch, not flat at the layer's top-left corner.
+    assert rows.min() > 150 and cols.min() > 80 and rows.max() - rows.min() > 200
+    plain_rows, plain_cols = np.nonzero(ink(path_project().render()))
+    assert cols.max() - cols.min() > plain_cols.max() - plain_cols.min() + 100
+    reference = ink(p.render())
+    p.export(tmp_path / "t.svg")
+    p.export(tmp_path / "t.pdf")
+    svg = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=(tmp_path / "t.svg").read_text())))
+    page = pypdfium2.PdfDocument(str(tmp_path / "t.pdf"))[0]
+    pdf = page.render(scale=1200 / page.get_width()).to_pil()
+    for image in (svg, pdf):
+        drawn = ink(Image.alpha_composite(Image.new("RGBA", image.size, "white"), image.convert("RGBA")))
+        assert (drawn & reference).sum() > 0.8 * reference.sum()
+
+
+def test_tracking_widens_warped_text():
+    def warped(**fields):
+        p = Project(1200, 400, "#fff")
+        p.apply([{"type": "text", "name": "t", "text": "ARCHED", "size": 80, "color": "#000", **fields},
+                 {"type": "text-layout", "target": "t", "width": 1200, "height": 400, "warp": "arc", "amount": 0.4}])
+        return ink(p.render())
+
+    plain, tracked = np.nonzero(warped())[1], np.nonzero(warped(tracking=20))[1]
+    assert tracked.max() - tracked.min() >= plain.max() - plain.min() + 20 * 5 - 2
+    # Still bent: the arc lifts the ends above the middle.
+    assert np.nonzero(warped(tracking=20))[0].max() - np.nonzero(warped(tracking=20))[0].min() > 100
+
+
+def test_rich_spans_on_a_path_are_refused():
+    p = Project(1200, 700, "#fff")
+    p.apply([{"type": "text", "name": "t", "text": "BOLD plain", "size": 60, "color": "#000"},
+             {"type": "rich-text", "target": "t", "spans": [{"text": "BOLD", "bold": True}, {"text": " plain"}]}])
+    for layout in ({"path": PATH}, {"warp": "arc"}):
+        with pytest.raises(VixlError) as error:
+            p.apply({"type": "text-layout", "target": "t", "width": 1200, "height": 700, **layout})
+        assert error.value.code == "invalid_operation" and "path or warped" in str(error.value)

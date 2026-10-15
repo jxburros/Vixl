@@ -4,6 +4,13 @@
 
 ### Fixed and added
 
+- **`tracking` works on path and warped text.** A text layer with `tracking` and a `text-layout` `path` or `warp`
+  silently lost the path or warp and drew flat at the box's top-left corner, because tracked text was handed to the
+  rich-text engine, which sets flat lines only. Path and warped text now stay on the bending engine, which adds the
+  tracking between glyphs (PNG, SVG and PDF). Path text with a space also exported to PDF with an error
+  ("Path must contain 1–262144 characters"); spaces now draw nothing. **Breaking:** a `path` or `warp` on text with
+  rich-text spans, which was ignored the same way, now fails with `invalid_operation`.
+
 Found while making a batch of showcase pieces (event poster, report, deck, logo package, scene, business cards,
 fillable form, loop, mandala, flowchart):
 
