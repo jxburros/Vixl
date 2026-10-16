@@ -1351,7 +1351,7 @@ def sample_rows(project, sample):
 
 
 def check_form(candidate, resolved, local_bounds, projection, layers, issue, sample=None):
-    """The ``form`` check family (see docs/forms.md)."""
+    """The ``form`` check family (see docs/guides/output/forms.md)."""
     import numpy as np
 
     from .checks import _contains, _intersects

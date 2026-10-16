@@ -1,0 +1,179 @@
+# Linked documents
+
+[Documentation home](../../README.md) · [Getting started](../../getting-started.md) · [Visual gallery](../../gallery.md)
+
+A `link` layer shows another `.vixl` document inside this one, live. Nothing is flattened: each render
+opens the source, draws it, and places the result in the layer's box. Change the source and every
+document that links to it shows the change the next time it renders, so derived designs (an Instagram
+crop and a caption card cut from one photo edit, a pattern preview and a mug wrap built from one tile,
+a sheet of badges built from one template) stop going out of date.
+
+```json
+{"type": "link", "source": "tile.vixl", "name": "preview", "x": 100, "y": 100, "width": 600,
+ "fit": "fill", "position": "top-left"}
+```
+
+## The `link` layer
+
+| Field | Meaning |
+| --- | --- |
+| `source` | **Required** to create a link (or give `target` to change one). The linked `.vixl` file, relative to this document's folder or the workspace (see [Where links resolve](#where-links-resolve)). |
+| `name`, `x`, `y`, `width`, `height` | As for any layer. With neither size the layer takes the source's canvas size; with one, the other follows the source's aspect ratio. `x`/`y` accept `"center"`, `width`/`height` accept `"N%"`. |
+| `fit` | How the source fills the box: `fill` (default; scales to cover the box and crops the overflow, like a frame), `fit` (scales to sit inside and leaves the rest transparent) or `stretch` (distorts to the box). |
+| `position` | Where the content sits when it does not fill the box: `[x, y]` fractions (0 = left/top, 1 = right/bottom; default `[0.5, 0.5]`) or an anchor such as `top-left`. |
+| `crop` | `{x, y, width, height}` in the source's pixels: only that region is placed. |
+| `artboard` | Draw one of the source's [artboards](../shapes/design-tools.md) instead of its whole canvas. |
+| `source_page` | Draw one page (name or number) of a multi-page source. (`page` on an operation names the page of *this* document that it edits, so the linked page has its own field.) |
+| `corner_pin` | Four `[x, y]` corners in the layer's own pixels (top-left, top-right, bottom-right, bottom-left; a convex quadrilateral): the placed design is warped into them, as a screen seen at an angle or a card on a desk. `null` (or `--clear corner_pin`) removes it. Used by [mockups](#mockups). |
+| `variables` | Overrides for the source's `${variables}`. A value may itself contain `${name}`, which reads this document's variable. A value for an image variable names a workspace image file. |
+
+Rotation, flips, opacity, blend, masks, effects, layer styles, clipping, constraints and groups work on a
+link exactly as on an image layer (`rotate`, `flip`, `opacity`, `blur`, `group`, `align` …). `resize` and
+`scale` change the box, and `fit`/`position`/`crop` decide what happens inside it. The source is
+re-rendered at the size it is shown at, so text and vectors stay sharp when you enlarge a link. A photo in the source
+that is shown larger than its own pixels runs the `denoise` effects that open its stack at its own pixels before it
+is scaled up, so a linked crop of a corrected master shows the cleaned photo, not enlarged grain.
+
+A `link` operation with a `target` (CLI: `link-set LAYER`) changes `source`, `artboard`, `source_page`, `variables`,
+`fit`, `position` or `crop` (`null` clears an optional setting) and checks the result against the source; the layer's
+name, position and size have their own operations (`rename`, `move`, `resize`). A link layer stores the
+source's `source_hash` (SHA-256) and `source_size` as of the last `link`, change of `source` or
+`link-refresh`.
+
+## Keeping track of changes
+
+Rendering always uses the source as it is on disk now, with no refresh needed. The recorded hash exists
+so you can tell what changed behind your back:
+
+- **`links`** (CLI), the `links` workflow action (MCP `vixl_apply(workflow='links', request={})`, REST
+  `POST /workflow/links`) and `inspect` (`links` list) report every link with a `state`:
+  `ok`, `stale` (the source changed since it was last recorded; the layer already draws the new version),
+  `missing` (the error names the path it looked for), `cycle`, `forbidden` or `error` (an unreadable
+  source, or an artboard, page or crop the source no longer has). `size_changed` flags a source whose
+  canvas size differs from the recorded one.
+- **`link-refresh [TARGET]`** records the current revision and size of one link (or every link of the
+  active page) and re-checks it, so `stale` goes back to `ok`.
+- **`check`** gains a `links` check: broken links are errors (and are left out of the other checks so one
+  missing file does not hide the rest), stale or resized sources are warnings, and a source outside the
+  document's folder is an `info` finding (copying the folder elsewhere would break it).
+- Each listed link carries `path` (the resolved absolute file) and `resolved_from` (`document`,
+  `workspace` or `absolute`: which folder it was found in).
+- Production runs (`vixl_apply(workflow='run', request=…)`) include the revisions of linked sources in their
+  fingerprints, so a changed source re-renders the variants that use it.
+
+## Freezing a link
+
+`link-embed TARGET` replaces the link with an ordinary image layer holding exactly what the link drew
+(its fit, crop, rotation, effects and opacity, at the layer's size). The source path, hash and variables
+are kept as `provenance`. Use it before sending a document without its sources, or to stop following a
+source. Embedding needs the layer's styles and clipping removed (`rasterize` bakes them into the pixels instead;
+use `link-embed` rather than `rasterize` on a link: it also drops the link's fields).
+
+## Where links resolve
+
+Linked files are an opt-in dependency, not an import (see the security notes in
+[architecture](../../reference/architecture.md)):
+
+- A relative `source` resolves against the **folder of the document itself** first, then the **workspace**
+  (the folder `vixl mcp --workspace` serves, or the CLI's current folder). The `link` operation stores a
+  source inside the document's folder relative to that folder, and any other source relative to the
+  workspace, so a folder holding a document and its sources can be copied or moved as a whole and its links
+  keep working. Documents saved before 0.22 stored workspace-relative paths; they still resolve through the
+  workspace fallback.
+- **Saving to another folder** (`save NEW.vixl`, `Project.save(path)`) rewrites relative sources so they still
+  name the same files (one `links-relink` history entry). Merge-impose sheet documents store the template
+  relative to the sheet document's folder when it is inside it.
+- **`links-relink {from, to}`** rewrites every source that starts with `from` (a file or a folder prefix,
+  whole path segments) to start with `to`, on every page and master, and records each moved link's
+  revision: `{"type": "links-relink", "from": "old-templates", "to": "templates"}`. The new files must
+  exist.
+- Through **REST and MCP** a source must stay inside the workspace. Absolute paths, `..` escapes and
+  symlinks that lead outside are refused with a `forbidden` error, both when linking and when a
+  hand-edited document is rendered. Only `.vixl` files can be linked.
+- On the **CLI and Python API**, a source outside the workspace needs `--allow-linked`
+  (`Project.load(path, allow_linked=True)`). Without it the same `forbidden` error applies.
+- A linked document is read the way `Project.load` reads any archive: validated, never extracted, bounded
+  by the usual size limits. Its own links resolve the same way and obey the same rules.
+
+## Cycles and depth
+
+- A link that would lead back to the document that holds it, directly or through other links, is rejected
+  when you create it (`link_cycle`, naming the chain `a.vixl → b.vixl → a.vixl`). A cycle created by editing
+  the files is refused when drawn, so rendering never loops.
+- Chains of links are limited to **4 levels** (`link_depth`). Both checks look at the link graph, not at
+  what happens to be cached.
+
+## Export
+
+| Output | What a link becomes |
+| --- | --- |
+| PNG, JPEG, WebP, TIFF | The rendered pixels. |
+| PDF (`pdf_content` vector, and print-size documents) | The source's own PDF graphics: shapes, gradients and **real, selectable text** with embedded font subsets, clipped to the box and carried through the link's rotation and flips. A link with opacity, effects, a mask, a blend mode, a `corner_pin`, or a source that contains adjustment or blend layers is embedded as an image and listed under `raster_fallbacks`. |
+| SVG, HTML | An embedded bitmap listed in the SVG's `raster_fallbacks` metadata (`svg_policy: "strict"` refuses it). |
+| PPTX | A picture. |
+
+## Commands
+
+```text
+vixl link FILE.vixl [--name N] [--x X] [--y Y] [--width W] [--height H] [--fit fill|fit|stretch]
+          [--position top-left|0.5,0.5] [--crop X,Y,W,H] [--artboard NAME] [--source-page P] [--set NAME=VALUE]…
+vixl link-set LAYER [--source F] [--fit …] [--position …] [--crop …] [--artboard …] [--source-page …]
+          [--set NAME=VALUE]… [--clear artboard|source_page|variables|crop|corner_pin]…
+vixl link-refresh [LAYER]
+vixl link-embed LAYER
+vixl links-relink FROM TO        # rewrite a source prefix in every link
+vixl links                       # every link with its state
+```
+
+Through MCP and REST the same operations go through `vixl_apply` / `POST /operations`
+(`link`, `link-refresh`, `link-embed`, `links-relink`).
+
+## Mockups
+
+The `mockup` workflow action shows a design in context in one call: on a phone, a laptop or in a browser
+window, framed on a wall, as a business card on a desk or on a mug.
+
+```json
+{"design": "poster.vixl", "mockup": "poster-wall", "output": "poster-mockup.vixl"}
+{"design": "post.vixl", "mockup": ["phone", "laptop", "browser"], "output": "mockups", "export": ["png"]}
+```
+
+Each template is a scene plus one or more **slots**, each four corner points. The design goes into every
+slot as a live `link` layer named after the slot, warped by its `corner_pin` and clipped to the slot's
+surface shape (the screen, the paper), with a shading layer (`NAME-shade`, multiply) and a gloss layer
+(`NAME-gloss`, screen) over it where the template asks for them (`shade: false` and `gloss: false` leave
+them out). Because the design is linked, editing it updates every mockup on its next render, and
+`link-refresh` records the new version. `fit` (`fill`, the default, `fit` or `stretch`), `source_page` and
+`artboard` choose how and what of the design is shown. With several templates, `output` is a folder that
+receives `TEMPLATE.vixl` each; `export` writes images next to them through the same path as
+`vixl_export(kind='batch')`. Existing files are never replaced unless `overwrite: true`.
+
+| Template | Scene | Slots |
+| --- | --- | --- |
+| `phone` | A phone held upright, 9:19.5 screen with rounded corners | `screen` |
+| `laptop` | An open laptop from the front, 16:10 screen | `screen` |
+| `browser` | A desktop browser window with title and address bars | `page` |
+| `poster-wall` | A framed portrait poster with a white mat on a wall | `poster` |
+| `business-card` | A 3.5 × 2 in card on a desk, seen at an angle (a perspective slot) | `card` |
+| `mug` | A white mug; the print area is shaded like the curve of the cup | `print` |
+
+The templates are drawn with ordinary operations, so they are licence-clean and editable like any document.
+`mockup-list` lists them with their slots, together with the workspace's own: `mockup-save` stores a template
+(`{description, document: "scene.vixl"` or `width, height, background, operations`, `slots: [{name, corners,
+surface, radius, shade, gloss}]`, `overlay`: operations drawn above the slots`}`) in the workspace resource
+library. A curved surface such as the mug is a flat slot under cylindrical shading: the design is not bent.
+
+## Related
+
+[Data merge and imposition](imposition.md) builds sheets out of link layers: each cell of a printed sheet
+is a link to the template with one CSV row as its `variables`.
+# Python workspace roots
+
+`Project(..., workspace=ROOT)`, `Project.sized(..., workspace=ROOT)` and
+`Project.load(path, workspace=ROOT)` expose the linked-source workspace publicly.
+The default is the current directory captured when the project is created or
+loaded. Relative links resolve against the saved document's directory first, then that
+fixed root. Saving into a subdirectory or changing the process directory does not
+change an existing project's workspace. When opening a master from another working
+directory, pass the original workspace explicitly; workspace paths are not embedded
+in portable documents.

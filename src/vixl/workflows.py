@@ -96,7 +96,7 @@ def describe():
             for k, v in ACTIONS.items()
         },
         "definitions": {"suite": SUITE},
-        "help": "docs/production.md; all paths are workspace-relative; submit + start runs durable background work. "
+        "help": "docs/guides/automation/production.md; all paths are workspace-relative; submit + start runs durable background work. "
                 "definitions.suite is the check-suite object (attach it with the suite-set operation, or pass it "
                 "inline to check).",
     }

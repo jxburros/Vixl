@@ -1,7 +1,7 @@
-"""Rebuild docs/filter-gallery.png: one source artwork and every local artistic filter.
+"""Rebuild docs/assets/filter-gallery.png: one source artwork and every local artistic filter.
 
 Run from the repository root: python examples/build_filter_gallery.py [--output DIR]
-Offline and deterministic; uses the bundled font. Writes DIR/filter-gallery.png (default docs/).
+Offline and deterministic; uses the bundled font. Writes DIR/filter-gallery.png (default docs/assets/).
 """
 
 import argparse
@@ -80,5 +80,5 @@ def build(output):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", default="docs", help="directory for filter-gallery.png")
+    parser.add_argument("--output", default="docs/assets", help="directory for filter-gallery.png")
     build(parser.parse_args().output)

@@ -44,7 +44,7 @@ When a person gives you a photo or scan of their drawing, keep their lines and b
   result blue). `vixl_check(checks=["drawing"])` warns when original lines were lost.
 - Optional colouring with a provider: `vixl ai drawing-color house --prompt …` (CLI/Python).
 
-Full reference: `docs/drawing.md`.
+Full reference: `docs/guides/images/drawing.md`.
 
 ## Diagrams: flowcharts, dependency graphs, org charts, mind maps
 
@@ -62,7 +62,7 @@ Full reference: `docs/drawing.md`.
 - `layout`: `layered` (flows, dependencies), `tree`, `radial`, `mindmap`, `grid`; `direction` TB/LR/BT/RL; `routing`
   orthogonal/curved/straight; `lanes: true` for swimlanes. The diagram shrinks to fit the canvas (`fit`, `x/y/width/height`); given both `width` and `height` it fills that box (`fit: contain`), and without a `direction` a wide box gets a left-to-right flow.
 - Check with `vixl_check(checks=["diagram"])`: overlapping nodes, edges through nodes or drawn on top of each other, labels that do not fit or lack
-  contrast, text scaled below 9 px. Full reference: `docs/diagrams.md`.
+  contrast, text scaled below 9 px. Full reference: `docs/guides/shapes/diagrams.md`.
 
 ## Organic shapes
 
@@ -73,7 +73,7 @@ presets; `parts` compose your own. Regrow with a new `seed` and the same `target
 form inside a brand palette pass `fill` (every filled part), `stroke` and `stroke_width` (every
 line, extra outputs such as shell chambers and leaf veins included); `colors` names single
 parts and wins over `fill`. A regrow with `stroke`/`fill` restyles the same way as creating
-with them. Full reference: `docs/organic.md`.
+with them. Full reference: `docs/guides/shapes/organic.md`.
 
 Water is the scene preset `water`: filled bands lighter at the horizon and darker in front, with crests, filling its
 box edge to edge (`{"type": "organic", "preset": "water", "name": "sea", "x": 0, "y": 700, "width": 1080, "height":
@@ -89,7 +89,7 @@ One operation each, deterministic for `seed`: `haze` (a glow band behind a light
 re-renders after the scene changes). The first four make editable groups of vector shapes and gradients.
 `vixl_reference(brief)` returns `motifs` for a brief that implies a setting: the concrete things to draw (a cup with
 steam, a lighthouse in filled water, strung lanterns, an irregular skyline) and the catalog shapes (`cup`, `steam`,
-`lighthouse`, `lantern`), presets and operations that draw them. Full reference: `docs/atmosphere.md`.
+`lighthouse`, `lantern`), presets and operations that draw them. Full reference: `docs/guides/finishing/atmosphere.md`.
 
 ## Imperfection: irregular and tear
 
@@ -114,7 +114,7 @@ is `subtle` (the default), `natural` or `rough` (magnitudes scale with each laye
 ribbon, a `NAME-ink` sibling when the layer has a fill); regrow or `remove` always start from the
 kept source, so edits made since are replaced. `tear` `as`: `mask` (default with a target), `clip`
 (vector face the target is clipped to), `path` (free rim, face and fibre layers); regrow by
-targeting the torn layer (the `-face` layer for a free sheet). Reference: `docs/irregular.md`.
+targeting the torn layer (the `-face` layer for a free sheet). Reference: `docs/guides/finishing/irregular.md`.
 
 ## Scatter, seamless tiles and fur
 
@@ -138,7 +138,7 @@ for `pattern-fill` (`tile_variation` varies each repeat). A lower
 revision does not re-roll the pattern. `distribution: "poisson"` is the earlier layout. Fur: `preset: fur`, the `plush` look or
 the organic `fur-blob` preset; the `hand-made` look applies a removable irregular wobble.
 `repeat`/`radial-repeat` take `rotation_step`, `scale_step`, `opacity_step`, seeded jitter and
-`merge`. Reference: `docs/design-tools.md#scatter-and-seamless-pattern-tiles`.
+`merge`. Reference: `docs/guides/shapes/design-tools.md#scatter-and-seamless-pattern-tiles`.
 
 ## Guides, grids and placement
 
@@ -158,7 +158,7 @@ shape's content box (`content_bounds`: a speech bubble's body, a badge, a frame 
 by `margin`; `text` with `within` centres new text there.
 
 `vixl_check(checks=["guides", "alignment"])` reports near misses with the fixing move;
-`vixl_render(guides=true)` draws them. Full reference: `docs/guides.md`.
+`vixl_render(guides=true)` draws them. Full reference: `docs/guides/layout/guides.md`.
 
 
 ### Field-report corrections
@@ -168,7 +168,7 @@ rectangles, capsules, ellipses, polygons, stars and catalog shapes (a 10 px stro
 SVG, PDF and PPTX alike) and to `center` for paths, arcs, lines and open shapes; set `stroke_align` to `center` or `outside` to
 change it. A `rectangle` created with a `radius` becomes a `rounded-rectangle`. Dash patterns are fitted so every corner,
 notch and open end lands on a dash (`dash_fit`, default true; `false` keeps the exact lengths). Reference:
-`docs/vector-paths.md#strokes`.
+`docs/guides/shapes/vector-paths.md#strokes`.
 
 Edit pen target=NAME in place. marker_size is local pixels; choose at least twice the shaft width for a visible head. Radial gradients accept fractional center=[x,y]. Layouts emit layout-columns and layout-baseline guide grids. Path boxes are coordinate frames, not clips.
 

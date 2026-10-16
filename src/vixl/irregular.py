@@ -26,7 +26,7 @@ rather than stacking imperfections, and ``remove`` restores it.
 
 Presets (``subtle``, ``natural``, ``rough``) set magnitudes relative to each layer's size, so the
 same strength suits a button and a poster. This is a tool for chosen places, not a global
-finish: see docs/irregular.md for when not to use it.
+finish: see docs/guides/finishing/irregular.md for when not to use it.
 """
 
 from copy import deepcopy
@@ -879,7 +879,7 @@ def compile_command(cmd, args):
 
     if cmd == "irregular":
         p = Parser(prog="vixl irregular", description="Seeded, bounded imperfection for vector layers. Opt-in; see "
-                   "docs/irregular.md.")
+                   "docs/guides/finishing/irregular.md.")
         p.add_argument("target", nargs="*", help="Layers or groups (default: the active layer)")
         p.add_argument("--seed", type=int)
         p.add_argument("--strength", choices=list(STRENGTHS))
@@ -897,7 +897,7 @@ def compile_command(cmd, args):
         elif targets:
             data["targets"] = targets
         return {"type": "irregular", **data}
-    p = Parser(prog="vixl tear", description="A torn, ripped edge. See docs/irregular.md.")
+    p = Parser(prog="vixl tear", description="A torn, ripped edge. See docs/guides/finishing/irregular.md.")
     p.add_argument("target", nargs="?")
     p.add_argument("--name")
     p.add_argument("--seed", type=int)

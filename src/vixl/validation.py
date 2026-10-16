@@ -281,7 +281,7 @@ def assert_rule(project, rule):
         r"(canvas\.(?:width|height)|text\..+\.font-size|layer\..+\.(?:width|height|opacity))\s*(==|!=|>=|<=|>|<)\s*(-?\d+(?:\.\d+)?)",
         rule.strip(),
     )
-    require(match, "Unsupported assertion; see docs/commands.md", "invalid_assertion")
+    require(match, "Unsupported assertion; see docs/reference/commands.md", "invalid_assertion")
     path, op, expected = match.groups()
     if path.startswith("canvas."):
         actual = c[path.split(".")[1]]

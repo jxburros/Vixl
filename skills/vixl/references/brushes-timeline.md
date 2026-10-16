@@ -66,7 +66,7 @@ vixl_export(kind='timeline', path="sprites.png", format="sheet", columns=6)
 
 ### Field-report corrections
 
-Rig origins are character-local pixels; child origins come from the parent tip. Pivots are local fractions and explicit pivots survive rigging. wave is a character-cycle. Bind sibling part roots (each may be a group). For mixed entrances use text mode=in/preset close=false plus one shared parent fade-out. See docs/animation-authoring.md for WebP alpha and quality limits.
+Rig origins are character-local pixels; child origins come from the parent tip. Pivots are local fractions and explicit pivots survive rigging. wave is a character-cycle. Bind sibling part roots (each may be a group). For mixed entrances use text mode=in/preset close=false plus one shared parent fade-out. See docs/guides/motion/animation-authoring.md for WebP alpha and quality limits.
 
 `character-pose` keys joint angles with `time`/`easing` (`{"type":"character-pose","target":"hero","angles":{"right-upper-arm":-60},"time":"0.5s"}`); unspecified joints keep their rest angles and the rig is solved on every frame, so limbs stay attached. Without `time` it is a static pose. Move the whole character with its group's tracks; avoid baking separate limb x/y/rotation keys alongside pose tracks. Six-second `video-tip`, `video-launch` and `video-event` templates (`vixl template new video-tip -o tip.vixl --set title=… --set subtitle=… --set cta=…`) are editable square loops with slide, zoom and fade emphasis; check a contact sheet and pick a visible poster time.
 

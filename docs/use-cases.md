@@ -1,6 +1,6 @@
 # Use-case catalog
 
-[Documentation home](README.md) · [Visual gallery](gallery.md) · [Coverage and limitations](coverage.md)
+[Documentation home](README.md) · [Visual gallery](gallery.md) · [Coverage and limitations](reference/coverage.md)
 
 A running list of the things people and agents make with Vixl, grouped by how much work each one
 takes **today**. It is meant to grow: add a row whenever you find a new use case, and move a row
@@ -38,7 +38,7 @@ many clients share one server. Minutes are typical agent wall time on a shared c
 
 ### Requirement tags
 
-`[AI]` needs a configured provider ([providers](providers.md)). `[ffmpeg]` needs ffmpeg on `PATH`
+`[AI]` needs a configured provider ([providers](reference/providers.md)). `[ffmpeg]` needs ffmpeg on `PATH`
 for MP4/WebM/audio mux. `[server]` needs the `server` extra (REST, live view). `[Figma]` needs the user's own read-only Figma token in `FIGMA_TOKEN` and network access. `[pdf]` needs the
 `pdf` extra for PDF page import (editable or as an image). No tag means the core install, offline.
 
@@ -87,12 +87,12 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DOC-34 | Import a camera photo above the pixel limit (108 MP) | `import-image`, or `add` with `max_pixels` | 1 · <2 | E | Since 0.23; downsampled to the limit, sources up to 4× it. |
 | DOC-35 | Edit a document of thousands of layers one operation at a time, or send a 10,000-operation batch | `vixl_apply` | 1 · <1 | E | Since 0.23 an edit lays out only the layers it depends on; was seconds per edit and minutes per batch (#284, #300). |
 | DOC-36 | Unpack a `.vixl` into a readable source folder for Git review, and pack it back | `vixl unpack`, `vixl pack`, `vixl.project_folder` | 1–2 · <1 | E | Since 0.24 (#511); current state and registered fonts only, no undo history; packing validates paths, sizes and hashes. |
-| DOC-38 | Re-import Vixl's own SVG as the same editable document (layers, names, live text, groups, effects) | `import-document` svg | 1 · <1 | E | The SVG carries its document; an SVG edited elsewhere imports element by element ([SVG round trip](exporting.md#svg-round-trip), #334). |
+| DOC-38 | Re-import Vixl's own SVG as the same editable document (layers, names, live text, groups, effects) | `import-document` svg | 1 · <1 | E | The SVG carries its document; an SVG edited elsewhere imports element by element ([SVG round trip](guides/output/exporting.md#svg-round-trip), #334). |
 | DOC-39 | Import a third-party SVG (shapes, text, groups, gradients, images, class styles) as editable layers | `import-document` svg | 1 · <1 | E | `<text>` stays live; filters, masks and clip paths need `svg_mode=auto`, which draws just those elements as images. |
 | DOC-40 | Import a PDF page as editable text, paths and images | `import-document` pdf | 1 · <1 | E | `[pdf]`. Vixl's own PDFs come back at their pixel size; shadings and clipped content become image layers; fonts match by family name. |
-| DOC-41 | Read, generate or validate a `.vixl` file without Vixl | [file format](file-format.md), `vixl schema document` | 1 · <1 | E | JSON Schema of `project.json`, checked against every `.vixl` in the repository. |
-| DOC-42 | Import a Figma frame or page as editable layers, live text and stacks `[Figma]` | `import-document` format=figma, `vixl import URL --format figma`, `import_document(format="figma")`, REST `POST /import?format=figma` | 1 · <1 | E | [Mapping and known losses](figma.md); the `report` lists every unmapped feature. Export back to Figma: #662. |
-| DOC-43 | Open a document saved by an earlier release (format 1, pre-0.21 lookups, house-style versions, inset strokes) with its old look | `vixl convert OLD.vixl -o NEW.vixl`, `vixl convert DIR --out OUTDIR`, `vixl.convert.convert_file` | 1 · <1 | E | [Conversion kit](converting.md): `--look preserve` writes formerly implicit behaviour into fields, `--look current` reports what changes; the report lists every change and what was not converted. |
+| DOC-41 | Read, generate or validate a `.vixl` file without Vixl | [file format](reference/file-format.md), `vixl schema document` | 1 · <1 | E | JSON Schema of `project.json`, checked against every `.vixl` in the repository. |
+| DOC-42 | Import a Figma frame or page as editable layers, live text and stacks `[Figma]` | `import-document` format=figma, `vixl import URL --format figma`, `import_document(format="figma")`, REST `POST /import?format=figma` | 1 · <1 | E | [Mapping and known losses](guides/images/figma.md); the `report` lists every unmapped feature. Export back to Figma: #662. |
+| DOC-43 | Open a document saved by an earlier release (format 1, pre-0.21 lookups, house-style versions, inset strokes) with its old look | `vixl convert OLD.vixl -o NEW.vixl`, `vixl convert DIR --out OUTDIR`, `vixl.convert.convert_file` | 1 · <1 | E | [Conversion kit](reference/converting.md): `--look preserve` writes formerly implicit behaviour into fields, `--look current` reports what changes; the report lists every change and what was not converted. |
 | DOC-37 | Capture the desktop, a rectangle or a Windows window to PNG | `vixl_apply(workflow='screen-capture')` | 1 · <1 | E | Since 0.24 (#259); interactive local desktop only; OS screen permission may be needed. |
 
 ### Text and typography
@@ -118,7 +118,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | TXT-16 | Break a heading into lines of even width, or keep one word off a paragraph's last line | `text-layout` `wrap: balance` / `pretty` | 1 · <1 | E | Craft plan 4a (T09, T14). Headings and layout headlines balance by default; the breaks are shared by PNG, SVG, PDF and PPTX. Before, a runt needed a hand line break. |
 | BLK-07 | Tab stops and dot leaders in text (menus, price lists, contents pages) | `text` `tabs: [{at, align, leader}]` with `\t`; `table` column `leader` | 1 · <1 | E | Moved from Blocked (craft plan 4b, #213; T16): left, right, centre and decimal stops with leaders in PNG, SVG and PDF; native tab stops in PPTX with the leader written as characters. Before, leaders were drawn by hand. |
 | TXT-17 | Two-tone headline: one or two words of a layout headline in the accent color | `layout-apply` `accent_words` | 1 · <1 | E | Craft plan 4c (T03, T09); before, a `text-style` match per word after the layout, with the box height fixed by hand. |
-| TXT-21 | Export the font drawn in a document as TTF, OTF or WOFF, or embed it for its own text | `vixl_export` `.ttf`/`.otf`/`.woff`, `font-build` | 1 · <1 | E | Unreleased; see [making a font](custom-fonts.md). WOFF2 needs `brotli`. |
+| TXT-21 | Export the font drawn in a document as TTF, OTF or WOFF, or embed it for its own text | `vixl_export` `.ttf`/`.otf`/`.woff`, `font-build` | 1 · <1 | E | Unreleased; see [making a font](guides/text/custom-fonts.md). WOFF2 needs `brotli`. |
 
 ### Color
 
@@ -234,8 +234,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | QA-33 | Check a draft loosely and a final strictly | `check --profile` (draft, review, final), `.vixl-checks.json` | 1 · <1 | E | Also on production `run`, `group-apply`, `vixl check --all --profile` and the CI action (#563). |
 | BRD-05 | Brand contrast floor with a large-text tier, so a display-only brand colour passes at 3:1 | `brand.json` `minimum_contrast: {text, large_text}` | 1 · <1 | E | #527; translucent black/white shadows no longer count as off-palette (#528). |
 | QA-34 | Find leftover template copy: lorem ipsum, TODO/TBD, "Headline here", unresolved `${name}` | `vixl_check` (placeholders, on by default) | 1 · <1 | E | `{{name}}` from other tools is review only; `layer-intent literal_text` exempts intended text. |
-| QA-41 | Find dead bands, two left margins, uneven gaps in a name block, a rule pressed onto the first row and a clumped scatter | `vixl_check` (composition, on by default), `check --checks composition` | 1 · <1 | E | Review findings with code, region, values and threshold; fail the `final` profile unless waived. Backtest on the round-1 documents: 12 of 21 judged composition defects caught, no false findings ([composition](guides.md#composition)). Before, only a critique of the render caught them. |
-| QA-42 | Repair those composition findings: snap the drifting edge, even the name block, open the gap under the rule, close the dead band | `vixl_apply(workflow='repair-layout')` (composition in `checks`, as by default) | 1–2 · <1 | E | Craft plan 2b; candidates ranked by least disruption, each kept only if no finding of any check is new. Backtest: 17 of 23 findings resolved (15 of the 20 on judged defects); a scatter without a `pattern-scatter` recipe is not auto-repairable ([layout repair](agent-trust.md#layout-repair)). Before, by hand. |
+| QA-41 | Find dead bands, two left margins, uneven gaps in a name block, a rule pressed onto the first row and a clumped scatter | `vixl_check` (composition, on by default), `check --checks composition` | 1 · <1 | E | Review findings with code, region, values and threshold; fail the `final` profile unless waived. Backtest on the round-1 documents: 12 of 21 judged composition defects caught, no false findings ([composition](guides/layout/guides.md#composition)). Before, only a critique of the render caught them. |
+| QA-42 | Repair those composition findings: snap the drifting edge, even the name block, open the gap under the rule, close the dead band | `vixl_apply(workflow='repair-layout')` (composition in `checks`, as by default) | 1–2 · <1 | E | Craft plan 2b; candidates ranked by least disruption, each kept only if no finding of any check is new. Backtest: 17 of 23 findings resolved (15 of the 20 on judged defects); a scatter without a `pattern-scatter` recipe is not auto-repairable ([layout repair](reference/agent-trust.md#layout-repair)). Before, by hand. |
 | QA-43 | Critique in the fix call: the composition findings and a real-size look at the two weakest regions | `vixl_apply(check=true, preview=true)` (`check.regions`) | 1 · <1 | E | Craft plan 3b; regions carry the most findings, else the densest text and the largest empty area; two crops of at most 512 px a side, `preview={regions: 0}` for none. Before, a `vixl_check` and two `vixl_render(region)` calls. |
 | QA-35 | Check every artboard, page and comp in one call | `check --artboards all --pages all --comps …`, suite `sampling` | 1 · <1 | E | Findings name their variant; hidden pages need `include_hidden`. |
 | AGT-01 | Ask what to make and with which tools for a brief | `vixl_reference(brief)` | 1 · <1 | E | 20 kinds: poster, logo, character, comic, form … |
@@ -245,7 +245,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | AGT-05 | Check the installed version and update it | `vixl --version`, `vixl update` | 1 · <1 | E | Verified Windows updater with rollback. |
 | AGT-35 | Rewrite saved MCP calls, batches or an MCP client config for the seven-tool server | `vixl convert-batch OLD.json`, `vixl.convert.convert_batch` | 1 · <1 | E | Maps every 0.26 tool and its parameters (steps, `options`, `create`, `workflow`) and drops `--tools core\|compact`, `--schema`; unmapped names are reported. |
 | AGT-36 | Read a short summary of a CLI result in a terminal, or the full JSON in a script | `vixl COMMAND` in a terminal; `--json`, `VIXL_JSON=1` or piped output for JSON | 1 · <1 | E | Since 0.27: `created a.vixl  800×600  bg #18283b`, `added text "title"`, `check passed (bounds, contrast) — 0 errors, 0 warnings`, a list of findings when a check fails. `VIXL_JSON=1` also turns errors into JSON. |
-| AGT-37 | Keep an agent's context small: seven tools, terse results, rare options on demand | `vixl mcp`; `verbose: true` for a full result; `vixl_reference(TOOL)` for rare options | config · 1 | E | Since 0.27 ([MCP tool surface](mcp-toolsets.md)): about 7,300 characters of tool list; imports, font installs, styles and rolls are steps in a `vixl_apply` batch; an unknown option fails with the exact schema. |
+| AGT-37 | Keep an agent's context small: seven tools, terse results, rare options on demand | `vixl mcp`; `verbose: true` for a full result; `vixl_reference(TOOL)` for rare options | config · 1 | E | Since 0.27 ([MCP tool surface](reference/mcp-toolsets.md)): about 7,300 characters of tool list; imports, font installs, styles and rolls are steps in a `vixl_apply` batch; an unknown option fails with the exact schema. |
 | AGT-38 | Turn the house style off: new documents with no rolled direction and neutral layout defaults | `house_style: "off"` in `vixl_document` create and `vixl_apply(create=…)`, `vixl new --house-style off`, `.vixl/variety.json` | 1 · <1 | E | Craft rules still apply; the default stays on. |
 | AGT-06 | Read the house style: craft rules, tiers, variety levels or one purpose's profile | `vixl_reference('house-style')`, `vixl house show PURPOSE` | 1 · <1 | E | Purposes: poster, social, slides, document, form, diagram, logo, motion. |
 | BRD-53 | Validate a brand kit: missing font roles, unreadable fonts or logos, palette roles left to derivation, guidance colours the palette does not approve | `vixl brand validate`, `vixl brand show` | 1 · <1 | E | |
@@ -400,7 +400,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | AGT-11 | Display a design inline in a notebook | `Project.show()` | 1–2 · <1 | E | |
 | BLK-10 | Lookups or case changes inside a data merge | `${name\|upper}`, `${role\|map:colors}`, `variable-map` | 2–4 · 1 | E | Since 0.22. |
 | QA-22 | Proof page for human sign-off with approve/reject | `vixl_apply(workflow='proof')` | 1–2 · 1 | E | Since 0.22; offline HTML, decisions download as JSON. |
-| QA-23 | Check `.vixl` files in pull requests | GitHub Action (`action.yml`), `vixl diff` | 1 · CI | E | Since 0.22; see [CI](ci.md). Runs `vixl check --all`: annotations, JUnit and SARIF upload. |
+| QA-23 | Check `.vixl` files in pull requests | GitHub Action (`action.yml`), `vixl diff` | 1 · CI | E | Since 0.22; see [CI](guides/automation/ci.md). Runs `vixl check --all`: annotations, JUnit and SARIF upload. |
 | QA-29 | Check every document in a folder or project group into one report | `vixl_apply(workflow='check-all')`, `vixl check --all GLOB` / `--group NAME` | 1 · 1 | E | Parallel; JSON, Markdown, JUnit, SARIF, annotations, proof page. |
 | QA-30 | List documents that newly fail after an upgrade or an edit | `vixl check --all --since-last` | 1 · 1 | E | Compares with the previous recorded run; scheduling is up to CI. |
 | QA-31 | Check that a campaign's sizes agree: logo placement, type ratios, swatches, prices and names | `vixl_apply(workflow='group-check')`, facts in brand.json or the group | 1–3 · 1 | E | Majority or a reference member. |
@@ -515,7 +515,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | --- | --- | --- | --- | --- | --- |
 | ILL-30 | Static character or mascot built from named parts | `character` kind, groups with pivots, `object` kind person + named parts, `inspect object=` | 20–35 · 3–5 | E | Missing required parts are listed; review with `isolate` `views: [parts]`. |
 | ILL-31 | Landscape scene with depth (sky, sun, hills, plants) | `scene` kind, organic, gradients | 20–30 · 3–4 | E | |
-| ILL-32 | Botanical illustration with several organic forms | `organic` ×n, repeat, irregular, `object` kind (flower, tree, cactus …) | 10–18 · 2–3 | E | Every organic preset maps to a kind ([objects](objects.md)). |
+| ILL-32 | Botanical illustration with several organic forms | `organic` ×n, repeat, irregular, `object` kind (flower, tree, cactus …) | 10–18 · 2–3 | E | Every organic preset maps to a kind ([objects](guides/shapes/objects.md)). |
 | ILL-52 | Object from a kind scaffold (dog, guitar, person with a guitar) | `vixl_reference(brief)` → shapes → `group` → `object` + parts → `inspect object=` → isolated preview | 15–30 · 3–4 | E | Parts, connections and layering from the taxonomy. |
 | ILL-53 | Reusable editable object (mascot placed recoloured in several documents) | `object-save`/`object-place` with `recolor`, or `vixl_export(isolate, path=….vixl)` + `object-place source` | 4–8 · 1–2 | E | Copies are independent, with new IDs. |
 | ILL-33 | Painted texture or brush illustration (dozens of strokes) | `paint` with brushes | 15–30 · 3–4 | E | Strokes stay editable. |
@@ -690,7 +690,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | AGT-33 | Compare Vixl with other tools on the 16 briefs | [`evals/tool-comparison` kit](https://github.com/jxburros/VixlExamples/blob/main/evals/tool-comparison/README.md) in VixlExamples | 1 day | E | |
 | AGT-38 | Re-run the Vixl lane of the tool comparison and package it for blind judging | `python -m evals.craft_rerun` (`--dry-run` first) | 1 day with judges | E | Craft plan 1c; spends API credits; packaging needs the VixlExamples kit, Playwright, LibreOffice and ffmpeg ([evals](../evals/README.md#craft-re-run)). |
 | AGT-39 | Score the composition checks and `repair-layout` against the defects the judges named | `python -m evals.craft_backtest` (`--repair`) | minutes | E | Craft plan 1b; offline, on the 16 reconstructed round-1 documents. |
-| AGT-40 | Measure raster output against headless Chromium and exact references | `python -m evals.render_parity` | 1–2 h | E | Needs `pip install playwright`; findings in [render parity](render-parity.md). |
+| AGT-40 | Measure raster output against headless Chromium and exact references | `python -m evals.render_parity` | 1–2 h | E | Needs `pip install playwright`; findings in [render parity](project/render-parity.md). |
 | PIX-50 | Complete small game art set (characters, tiles, UI, title screen) | pixel tools, timelines, sheets | days | E | |
 | MOT-50 | Music video beyond lyrics (scenes, characters, camera, audio) | film spec, rigs, parallax | days | E | No nested compositions or motion-path editor. |
 | DEK-50 | Course slide library (100+ slides) on shared masters and components | pages, library components, group apply | days | E | |
@@ -719,7 +719,7 @@ note the version.
 | BLK-20 | Imposition for saddle-stitched booklets (reader → printer spreads) | Not implemented | Order pages by hand. |
 | BLK-21 | Dielines, folds and packaging nets | Not implemented as a feature | Draw with guides and paths. |
 | BLK-23 | Live (active/scripted) SVG content | Not implemented; static SVG only | – |
-| BLK-25 | Hard memory cap or execution timeout per call | Partial: servers bound each call's megapixels, export pages and per-workspace concurrency, and detach calls over a timeout into jobs (#542); no hard memory cap or kill | [Per-call limits](interfaces.md#per-call-limits); OS/container limits for memory. |
+| BLK-25 | Hard memory cap or execution timeout per call | Partial: servers bound each call's megapixels, export pages and per-workspace concurrency, and detach calls over a timeout into jobs (#542); no hard memory cap or kill | [Per-call limits](reference/interfaces.md#per-call-limits); OS/container limits for memory. |
 | BLK-26 | Export a Vixl design to Figma as editable layers | Not implemented (import only; export is tracked in #662) | Export SVG or PDF and open it in Figma; import back with `vixl import --format figma` (DOC-42). |
 
 ## Cost notes
@@ -780,5 +780,5 @@ Add new ideas here when you are unsure of the tier, then move them into a table.
 | Task | Interface | Calls | Status | Notes |
 | --- | --- | --- | --- | --- |
 | Place native-coordinate path art in a display box | `shape` with `path_view` | 1 | E | Preserves path data; shared render/export mapping (#610). |
-| Choose an integration interface | [Capability matrix](interfaces.md#capability-matrix) | 0 | E | Generated workflow registry and REST allow-list (#640). |
+| Choose an integration interface | [Capability matrix](reference/interfaces.md#capability-matrix) | 0 | E | Generated workflow registry and REST allow-list (#640). |
 | Render final campaign outputs under a severity profile | workflow `run` | 1 | E | Explicit final quality selects final checks; profile override supported (#563). |

@@ -1,6 +1,6 @@
 # Animate designs and pixel sprites
 
-[Documentation home](../README.md) · [Timeline reference](../brushes-and-animation.md)
+[Documentation home](../README.md) · [Timeline reference](../guides/motion/brushes-and-animation.md)
 
 ![Actual animated Vixl layer translating along its track](../assets/generated/motion.webp)
 
@@ -33,7 +33,7 @@ New design documents start seamless loops; this card travels once, so `timeline 
 Translation adds to the resting layout, which makes it useful with constraints. Use a
 `pivot` at a joint before rotating a limb. Check start, midpoint and end, and inspect
 additional poses where easing, overlap or overshoot could matter. A resting-state bounds
-check alone cannot certify the whole animation. [Production suites](../production.md)
+check alone cannot certify the whole animation. [Production suites](../guides/automation/production.md)
 support explicit time coverage for automated review.
 
 ### Static poses
@@ -57,8 +57,8 @@ vixl -p motion.vixl export-timeline --out motion.mp4 --fps 24
 ```
 
 The MP4 command needs ffmpeg; retain WebP or frame exports when that dependency is absent.
-For audio, shots, crossfades or lyric synchronization, see [films](../production.md#films-scenes-shots-captions-and-sound)
-and [lyric videos](../lyric-video.md).
+For audio, shots, crossfades or lyric synchronization, see [films](../guides/automation/production.md#films-scenes-shots-captions-and-sound)
+and [lyric videos](../guides/motion/lyric-video.md).
 
 ## Pixel frames use a different model
 
@@ -72,4 +72,4 @@ python examples/build_sprite.py --output examples/output/docs-sprite
 It creates a `.vixl` master, GIF, APNG and sprite sheets from a 12×12 editable grid. Nearest
 sampling and integer scaling keep edges crisp; smooth sampling blurs the intended pixels.
 Use keyframe timelines for continuous movement and named pixel frames for discrete sprite
-poses. [Pixel animation](../pixel-animation-spacing.md) documents both inspection and export.
+poses. [Pixel animation](../guides/motion/pixel-animation-spacing.md) documents both inspection and export.

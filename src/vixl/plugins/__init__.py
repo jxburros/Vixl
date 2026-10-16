@@ -11,7 +11,7 @@ below, so a plugin can later ship separately without core changes:
 - ``hooks``: {hook point: ["module:function", ...]}; see ``HOOKS`` for each point's call signature.
 - ``requires``: other plugins this one imports.
 
-All plugins are built in for now: ``BUILTIN`` lists them in registration order. ``docs/plugins.md`` has the
+All plugins are built in for now: ``BUILTIN`` lists them in registration order. ``docs/reference/plugins.md`` has the
 criteria for making a new feature a plugin, and ``tests/test_plugins.py`` holds the core to the boundary
 (the remaining direct imports are listed there with the reason for each).
 
@@ -191,7 +191,7 @@ def describe():
 
 
 def markdown_table():
-    """The docs table of built-in plugins (docs/plugins.md), generated from the manifests."""
+    """The docs table of built-in plugins (docs/reference/plugins.md), generated from the manifests."""
     lines = ["| Plugin | Kind | What it adds | Operations and workflow actions |", "| --- | --- | --- | --- |"]
     for row in describe():
         names = [f"`{name}`" for name in row["operations"] + row["workflows"]]

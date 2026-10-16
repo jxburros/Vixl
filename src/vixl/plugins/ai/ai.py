@@ -86,7 +86,7 @@ def image_response(payload, project):
 
 
 class HTTPProvider:
-    """JSON gateway protocol documented in docs/providers.md; supports all AI capabilities."""
+    """JSON gateway protocol documented in docs/reference/providers.md; supports all AI capabilities."""
 
     def __init__(self, name, config):
         self.name, self.config = name, config

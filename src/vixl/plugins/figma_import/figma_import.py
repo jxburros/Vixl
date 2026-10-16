@@ -8,7 +8,7 @@ Two layers, kept apart so the mapping runs offline:
   ``import_figma_document`` applies that to a project without any network access.
 
 Every lossy decision is recorded as ``{node_id, name, type, what_was_lost}`` in the report.
-Mapping rules are documented in docs/figma.md.
+Mapping rules are documented in docs/guides/images/figma.md.
 """
 
 import json

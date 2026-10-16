@@ -975,7 +975,7 @@ def regions(mask, gap=4, min_area=64):
 def schemas(add):
     from ...schema import S
 
-    settings = ("Per-action settings (see docs/drawing.md). import/clean: ink (line colour, default #1d1d1f), sheet, "
+    settings = ("Per-action settings (see docs/guides/images/drawing.md). import/clean: ink (line colour, default #1d1d1f), sheet, "
                 "perspective, deskew, crop, weight, threshold. vectorize: mode, width (pixels or 'uniform'), color; outline "
                 "mode also curves (fit Bézier curves), tolerance, corner_threshold, split ('components': one layer per "
                 "connected part, in reading order), min_area. "

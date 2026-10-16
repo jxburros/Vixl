@@ -1,9 +1,9 @@
-"""Rebuild docs/drawing-pipeline.png: a photographed sketch, cleaned, finished and compared.
+"""Rebuild docs/assets/drawing-pipeline.png: a photographed sketch, cleaned, finished and compared.
 
 Run from the repository root: python examples/build_drawing_pipeline.py [--output DIR]
 Offline and deterministic. The "photo" is synthesized here with a fixed seed (pen lines with a
 gentle wobble, a gap at the floor corner and in the ground line, dust, uneven light and paper
-grain), so no fixture or camera is needed. Writes DIR/drawing-pipeline.png (default docs/).
+grain), so no fixture or camera is needed. Writes DIR/drawing-pipeline.png (default docs/assets/).
 """
 
 import argparse
@@ -112,5 +112,5 @@ def build(output):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", default="docs", help="directory for drawing-pipeline.png")
+    parser.add_argument("--output", default="docs/assets", help="directory for drawing-pipeline.png")
     build(parser.parse_args().output)

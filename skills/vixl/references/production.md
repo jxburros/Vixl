@@ -3,10 +3,10 @@
 Mockups: `vixl_apply(workflow='mockup', request={"design": "poster.vixl", "mockup": "poster-wall", "output": "wall.vixl"})` places
 a design in a phone, laptop, browser, poster-wall, business-card or mug template as a live, corner-pinned link
 (a list of templates and `"output": "folder"` makes one each; `export: ["png"]` renders them). `mockup-list` lists
-templates and their slots; `mockup-save` adds the workspace's own. See `docs/linked-documents.md#mockups`.
+templates and their slots; `mockup-save` adds the workspace's own. See `docs/guides/output/linked-documents.md#mockups`.
 
 Discover actions with `vixl_reference('workflows')` or `vixl workflow schema`.
-Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/main/docs/production.md).
+Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/main/docs/guides/automation/production.md).
 
 1. Inspect the base document and create explicit `suite-set` rules for its requirements.
    Use `suite-capture` for protected layer structures/pixel regions. Do not overwrite
@@ -67,20 +67,20 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    line's hide time); `end_at_audio` ends the last line with the song. `section_styles` (`{chorus: {size, color, x, y}}`) restyles
    the lyric per section; `sample_rate` sets the audio rate (default the song's). `segments: 10000` renders in
    parts that a re-run resumes; long songs also run as the `lyric-video` job kind. See
-   `docs/lyric-video.md`.
+   `docs/guides/motion/lyric-video.md`.
 10. Form filling: `form-fill` fills the open form from `values` (one copy) or a `data` CSV (one
    file per row, or `combine` into one PDF); the `form-fill` job kind freezes the form and the data
-   and deletes the data copy when done. See `docs/forms.md`.
+   and deletes the data copy when done. See `docs/guides/output/forms.md`.
 
 11. Print merge: `merge-impose` (`vixl_apply(workflow='merge-impose', request={template, data, sheet, output, sheet_document}, document=)`)
    imposes a template and a CSV on print sheets: a vector-text PDF (selectable text) and/or an editable sheet `.vixl` of live
    `link` layers. Run it with `dry_run` first: the report names missing/unknown columns, overflowing text, tofu glyphs and the
-   grid. `{"rerun": "sheet.vixl"}` repeats it after the data changes. See `docs/imposition.md`.
+   grid. `{"rerun": "sheet.vixl"}` repeats it after the data changes. See `docs/guides/output/imposition.md`.
 12. Linked documents: a `link` layer shows another `.vixl` live (`fit`, `position`, `crop`, `artboard`, `source_page`,
    `variables`); `vixl_apply(workflow='links', request={})` reports ok/stale/missing with each resolved `path`, `link-refresh`
    records the seen revision, `links-relink {from, to}` follows moved sources, `link-embed` freezes it. Keep sources
    beside the document so the folder can be copied (`check` notes sources outside it). Use it instead of exporting a PNG and importing it into a derived design. See
-   `docs/linked-documents.md`.
+   `docs/guides/output/linked-documents.md`.
 13. Logo packages: `vixl_apply(workflow='logo-package', request={output, source?, trace?, mark?, wordmark?, variants?, png_sizes?,
    cmyk?, icons?, social?, proof?, zip?, overwrite?})` writes `source/` (.vixl per variant), `svg/` (strict), `pdf/` (RGB,
    `-cmyk` with `cmyk: true`), `png/` (`NAME-<width>w@1x|2x|3x.png`), `icons/` (favicon.ico, web manifest …),
@@ -126,7 +126,7 @@ material visual changes and unresolved/unsupported measurements.
 
 ### Field-report corrections
 
-Production without suites still checks bounds and flow; clipping returns needs_review and a clean output is completed but `unvalidated`. With spec `profile` ("final"), every variant must pass that check profile (its checks, suites and fail_on), which also counts as validation. For variable reflow, define an action that reapplies the layout with replace=true and stable seed/prefix, then include it in recipe/actions. Generated layer IDs and manual edits can change. Unchanged, checksum-verified output can bypass repeated checks. See docs/production.md.
+Production without suites still checks bounds and flow; clipping returns needs_review and a clean output is completed but `unvalidated`. With spec `profile` ("final"), every variant must pass that check profile (its checks, suites and fail_on), which also counts as validation. For variable reflow, define an action that reapplies the layout with replace=true and stable seed/prefix, then include it in recipe/actions. Generated layer IDs and manual edits can change. Unchanged, checksum-verified output can bypass repeated checks. See docs/guides/automation/production.md.
 
 MCP desktop capture is disabled by default. Start the server with `--allow-screen-capture` or `VIXL_ALLOW_SCREEN_CAPTURE=1` to enable it for that server; this grants connected agents access to the interactive desktop. Capture output paths are relative to the workspace.
 

@@ -1,4 +1,4 @@
-"""Rebuild docs/organic-gallery.png: every organic preset at its defaults, labelled, on cream.
+"""Rebuild docs/assets/organic-gallery.png: every organic preset at its defaults, labelled, on cream.
 
 Run from the repository root: python examples/build_organic_gallery.py [--output DIR]
 Offline and deterministic (fixed seed); uses the bundled font. Writes DIR/organic-gallery.png.
@@ -46,5 +46,5 @@ def build(output):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", default="docs", help="directory for organic-gallery.png")
+    parser.add_argument("--output", default="docs/assets", help="directory for organic-gallery.png")
     build(parser.parse_args().output)

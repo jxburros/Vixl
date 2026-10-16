@@ -1,6 +1,6 @@
 # Troubleshooting
 
-[Documentation home](README.md) · [Commands](commands.md) · [Coverage and limits](coverage.md)
+[Documentation home](README.md) · [Commands](reference/commands.md) · [Coverage and limits](reference/coverage.md)
 
 Start with `vixl --version`, the exact command and its structured error (a terminal shows a one-line
 `ERROR:` with the suggestions; `--json` or `VIXL_JSON=1` prints the full JSON). For source installs,
@@ -9,30 +9,30 @@ document before changing anything.
 
 | Symptom | Cause to check | Next step |
 | --- | --- | --- |
-| `vixl` is not found | Terminal/client PATH or inactive virtual environment | Activate the environment or reopen the terminal; Windows users see [PATH repair](releases.md#using-the-current-terminal) |
+| `vixl` is not found | Terminal/client PATH or inactive virtual environment | Activate the environment or reopen the terminal; Windows users see [PATH repair](reference/releases.md#using-the-current-terminal) |
 | Old version after updating | Another executable on PATH or a running old session | Check executable location, run its `--version`, restart the client/session |
 | Server/view or PDF import is unavailable | Missing optional dependency | Install `.[server]` or `.[pdf]` in the same environment as Vixl |
 | Command edits the wrong file | Directory-default project selection | Pass `-p file.vixl` explicitly; MCP tools accept `document=` |
 | Unknown operation/field | Wrong spelling or syntax from another release | Inspect `vixl schema` and command `--help` (MCP: the error carries the schema, or `vixl_reference('operations', name=[…])`); follow the error's field and suggestions |
-| `Unknown tool: vixl_…`, or `vixl mcp --tools core` is refused | A saved call, prompt or client configuration from before 0.27 names a removed tool or flag; the server has seven tools (`--tools` is `default` or `ai`) | `vixl convert-batch OLD.json` rewrites it ([Converting](converting.md#convert-saved-tool-calls)) |
-| MCP call fails with “Create or open a document first” or `document_required` | This client has no active document, or the server runs with `--require-document` | `vixl_document(action='create')` or `open`, or pass `document=` on every call ([interfaces](interfaces.md#several-agents-on-one-server)) |
-| MCP call fails with `ambiguous_document` | Several documents are open and this connection (shared by subagents, for example) has touched more than one of them, or none | Pass `document=` with one of the paths the error lists, or close the ones you are done with ([interfaces](interfaces.md#several-agents-on-one-server)) |
-| MCP call answers `{"status": "running", "job": …}` | It outlived the inline wait (about 40 s) or was sent with `as_job`; the work carries on | `vixl_job(action='result', id=…, wait=30)`; do not resend it ([long calls](interfaces.md#long-calls-retries-and-progress)) |
-| Call refused with `limit_exceeded` | The server was started with per-call limits | Lower `scale`, export fewer pages or wait for a running job ([per-call limits](interfaces.md#per-call-limits)) |
+| `Unknown tool: vixl_…`, or `vixl mcp --tools core` is refused | A saved call, prompt or client configuration from before 0.27 names a removed tool or flag; the server has seven tools (`--tools` is `default` or `ai`) | `vixl convert-batch OLD.json` rewrites it ([Converting](reference/converting.md#convert-saved-tool-calls)) |
+| MCP call fails with “Create or open a document first” or `document_required` | This client has no active document, or the server runs with `--require-document` | `vixl_document(action='create')` or `open`, or pass `document=` on every call ([interfaces](reference/interfaces.md#several-agents-on-one-server)) |
+| MCP call fails with `ambiguous_document` | Several documents are open and this connection (shared by subagents, for example) has touched more than one of them, or none | Pass `document=` with one of the paths the error lists, or close the ones you are done with ([interfaces](reference/interfaces.md#several-agents-on-one-server)) |
+| MCP call answers `{"status": "running", "job": …}` | It outlived the inline wait (about 40 s) or was sent with `as_job`; the work carries on | `vixl_job(action='result', id=…, wait=30)`; do not resend it ([long calls](reference/interfaces.md#long-calls-retries-and-progress)) |
+| Call refused with `limit_exceeded` | The server was started with per-call limits | Lower `scale`, export fewer pages or wait for a running job ([per-call limits](reference/interfaces.md#per-call-limits)) |
 | Layer not found | Typo, renamed layer or wrong active page | Inspect layers/pages; use the immutable layer ID when names can change |
 | “Unknown swatch” / undefined variable | `@name` or `${name}` has no definition | Define it first, or use a literal; inspect the reported operation index |
 | Image/font file denied through a service | Services restrict operation file paths | Import with an `import-image` or `import-font` step in `vixl_apply`, or the REST `/assets` and `/fonts` endpoints; reuse embedded asset IDs |
 | Effect changes only part of a layer | Selection was active when effect was added | Clear selection before adding whole-layer effects; edit/remove the old masked effect |
 | Layer stops responding to canvas resize | Absolute move/align cleared constraints | Reapply intended constraints, then preview the new canvas |
 | Text is cut off or too small | Copy exceeded box or fit reduced size | Inspect resolved bounds, use a suitable text-layout box and review at destination size |
-| `check` lists `composition.*` review findings, or `--profile final` fails on them | A dead band, drifting margin, uneven rhythm, crowding under a rule or heading, or a clumped scatter ([composition](guides.md#composition)) | `vixl_apply(workflow='repair-layout')` repairs most ([layout repair](agent-trust.md#layout-repair)); otherwise fix the layout, or waive a deliberate finding with a reason |
+| `check` lists `composition.*` review findings, or `--profile final` fails on them | A dead band, drifting margin, uneven rhythm, crowding under a rule or heading, or a clumped scatter ([composition](guides/layout/guides.md#composition)) | `vixl_apply(workflow='repair-layout')` repairs most ([layout repair](reference/agent-trust.md#layout-repair)); otherwise fix the layout, or waive a deliberate finding with a reason |
 | Layout contains `[Label]` placeholders | Unfilled template/layout slots | Discover slots, fill all required copy and reapply with the same seed |
 | Pixel sprite looks blurred | Smooth resampling | Use nearest sampling and integer scaling |
 | Strict SVG fails | Content needs a raster fallback | Read the layer/effect details; simplify or use appearance export |
 | Export refuses a destination | Existing file or protected extension | Use a fresh filename; MCP needs `overwrite=true` for allowed export overwrite |
 | Movie/audio export fails | ffmpeg unavailable or input invalid | Check `ffmpeg -version`; try WebP or frame output to isolate encoding |
-| Figma import fails with `figma_token_missing`, `figma_forbidden`, `figma_not_found` or `figma_rate_limited` | No or invalid `FIGMA_TOKEN`, no access to the file, a wrong key or node id, or Figma's rate limit (`retry_after_s`) | Set `FIGMA_TOKEN` (or `VIXL_FIGMA_TOKEN`) in the process environment; import one frame with `--node` ([Figma errors](figma.md#errors)) |
-| Provider command fails | Missing config/key, unsupported model/capability or service error | Check [provider discovery](providers.md); image generators and vision providers have different abilities |
+| Figma import fails with `figma_token_missing`, `figma_forbidden`, `figma_not_found` or `figma_rate_limited` | No or invalid `FIGMA_TOKEN`, no access to the file, a wrong key or node id, or Figma's rate limit (`retry_after_s`) | Set `FIGMA_TOKEN` (or `VIXL_FIGMA_TOKEN`) in the process environment; import one frame with `--node` ([Figma errors](guides/images/figma.md#errors)) |
+| Provider command fails | Missing config/key, unsupported model/capability or service error | Check [provider discovery](reference/providers.md); image generators and vision providers have different abilities |
 
 ## Interpret checks
 
@@ -42,7 +42,7 @@ export formats, every animation frame or artistic quality. Every finding carries
 Each finding also has a stable `rule` (`bounds.text-overflow`, `contrast.text-contrast` …),
 `layer_ids`, its measured `actual` and `expected` values and, for fix findings, a suggested
 `repair` you can dry-run; `outcome` keeps validation (fix findings) apart from review. See
-[outcomes, diagnostics and repair](agent-trust.md).
+[outcomes, diagnostics and repair](reference/agent-trust.md).
 Since 0.24 `passed` is false whenever a `fix` finding remains, including warnings from the
 legibility, fonts, content, guides, alignment, blanks, placeholders and brand checks unless the finding
 is marked `review` (such as a body-measure or underfilled-canvas note); `review` and
@@ -60,8 +60,8 @@ vixl -p flyer.vixl check --checks print
 ```
 
 Respond to findings by changing the design or explicitly revising requirements with a
-reason. Do not lower thresholds simply to make a report pass. [Studio](studio.md) and
-[production](production.md) describe reusable contracts and coverage.
+reason. Do not lower thresholds simply to make a report pass. [Studio](guides/automation/studio.md) and
+[production](guides/automation/production.md) describe reusable contracts and coverage.
 
 ## Find out why a render is slow
 
@@ -89,7 +89,7 @@ vixl cache info
 ```
 
 The disk cache (`vixl cache info`, `vixl cache clear`, `VIXL_RENDER_CACHE=off`, `VIXL_CACHE_MAX_MB`) is described
-under [production](production.md#persistent-rendering-cache-and-library). Long timeline exports report per-frame
+under [production](guides/automation/production.md#persistent-rendering-cache-and-library). Long timeline exports report per-frame
 timing in their progress (`vixl_job` status): `timing.elapsed_s`, `timing.eta_s`, and the frame's `setup_ms`
 (sampling the timeline) and `raster_ms`.
 
@@ -106,7 +106,7 @@ vixl -p campaign.vixl transaction rollback
 
 Use the command matching your situation; rollback requires an open transaction. Keep
 backups of masters. Windows runtime rollback is separate (`vixl update --rollback`);
-see [releases](releases.md). Restart interrupted durable job workers and inspect job
+see [releases](reference/releases.md). Restart interrupted durable job workers and inspect job
 status rather than blindly repeating an uncertain external generation request.
 
 ## Report a reproducible issue
@@ -115,4 +115,4 @@ Include version/commit, operating system, interface, command or operation JSON, 
 structured error, expected result and a small non-sensitive document/input that reproduces
 the problem. For visual differences include preview and export settings. Do not include
 provider credentials or private form data. Source tests run with `python -m pytest -q`
-after installing `.[dev]`; [architecture](architecture.md) explains module boundaries.
+after installing `.[dev]`; [architecture](reference/architecture.md) explains module boundaries.

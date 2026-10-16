@@ -115,7 +115,7 @@ def test_docs_and_skills_name_only_real_mcp_tools():  # #252
     # The conversion kit's table of earlier tool names, and only where it is defined, documented and tested.
     from vixl.convert.batches import TOOLS as earlier
 
-    conversion = {root / "docs" / "converting.md", root / "src" / "vixl" / "convert" / "batches.py",
+    conversion = {root / "docs" / "reference" / "converting.md", root / "src" / "vixl" / "convert" / "batches.py",
                   root / "tests" / "test_convert.py"}
 
     def allowed(name, path):

@@ -27,10 +27,10 @@ DOCUMENTS = sorted(FIXTURES.glob("*/*.vixl"))
 
 # A pixel differs when a channel moves by more than DIFFERENT levels. At most SHARE % of pixels may differ, and the
 # mean difference stays under MEAN levels. Anti-aliased edges, the in-place drawing and gradient dithering of render
-# parity (docs/render-parity.md) move single edge pixels and flat ramps by a few levels, which these numbers absorb;
+# parity (docs/project/render-parity.md) move single edge pixels and flat ramps by a few levels, which these numbers absorb;
 # a lost fill, a moved stroke, a cut-off line or a colour shift of a whole area does not fit in them.
 DIFFERENT, SHARE, MEAN = 32, 0.5, 2.0
-# Measured differences with no stored field behind them (docs/converting.md, "What is not converted"): (share, mean).
+# Measured differences with no stored field behind them (docs/reference/converting.md, "What is not converted"): (share, mean).
 EXCEPTIONS = {
     "irregular": (2.5, MEAN),  # irregular ink ribbons are drawn in place since render parity (0.8 % from afaee33)
     ("v0.10.0", "text"): (5.0, 5.0),  # glyphs sit about a pixel higher than 0.10 set them (since 0.20)
@@ -508,7 +508,7 @@ def test_convert_batch_cli_writes_a_new_file(tmp_path, monkeypatch):
 def test_docs_describe_every_rule_and_the_generated_tool_table():
     from vixl.convert.batches import markdown_table
 
-    text = (ROOT / "docs" / "converting.md").read_text(encoding="utf-8")
+    text = (ROOT / "docs" / "reference" / "converting.md").read_text(encoding="utf-8")
     for rule, _ in RULES:
         assert f"| `{rule}` |" in text, rule
     table = text.split("<!-- conversion-table: start -->\n")[1].split("\n<!-- conversion-table: end -->")[0]

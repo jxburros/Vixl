@@ -236,7 +236,7 @@ def describe(name):
 
 
 def markdown_table():
-    """The tool table of docs/converting.md (a test compares them)."""
+    """The tool table of docs/reference/converting.md (a test compares them)."""
     rows = ["| Earlier tool | Now |", "| --- | --- |"]
     rows += [f"| `{name}` | {describe(name)} |" for name in TOOLS]
     return "\n".join(rows)

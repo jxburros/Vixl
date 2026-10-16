@@ -203,7 +203,7 @@ Non-loopback hosts require a bearer token from `VIXL_API_TOKEN` (or `--token-env
 | `POST /import?format=svg\|pdf\|figma` | raw bytes (Figma: the URL or file key); `name`, `page`, `dpi`, `svg_mode`, `node_id`, `rasterize_unsupported` | Editable layers (`svg_mode=appearance`: one image) |
 | `POST /fonts?name=brand` | raw TTF/OTF bytes (≤16 MiB) | Registered font |
 | `GET /resources/{kind}` · `GET\|POST /resources/{kind}/{name}` | POST `{"value":…}` | Names · one entry · save |
-| `POST /workflow/{action}` · `GET /workflow/schema` | the action's request | Workflows allowed on a fixed document (`docs/interfaces.md#capability-matrix` lists them) |
+| `POST /workflow/{action}` · `GET /workflow/schema` | the action's request | Workflows allowed on a fixed document (`docs/reference/interfaces.md#capability-matrix` lists them) |
 | `GET /limits` · `GET /jobs` · `GET /jobs/{id}?wait=20` · `GET /jobs/{id}/result` | | Per-call limits · detached calls (a call over `--call-timeout` answers `202` with a job) |
 | `POST /ai/{command}` | `{"args":["--prompt","forest","--provider","local"]}` | CLI-style AI call |
 | `POST /export` | `{"format":"PDF","color_space":"cmyk","ink_limit":300}`, `ICO`+`icon_sizes`, `icc_profile_base64`, `proof`, `simulate`, `dpi`, `time` | File bytes |
@@ -276,7 +276,7 @@ except VixlError as e:
 Python is a trusted local API: `path`, `font` and `linked` fields work. Enable plugins with
 `vixl.plugins.enable_plugins()`.
 
-See `docs/interfaces.md#capability-matrix` for the generated interface comparison. REST permits only its
+See `docs/reference/interfaces.md#capability-matrix` for the generated interface comparison. REST permits only its
 fixed-document workflow allow-list; CLI, MCP and Python Session workflows expose the workspace registry.
 MCP screen capture is opt-in. Service timeouts detach work, not kill it. Archive opening defaults to at most
 160 million cumulative image pixels and 64 font assets, configurable through Python `Limits`.

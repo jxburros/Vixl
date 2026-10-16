@@ -2,7 +2,7 @@
 
 Use the canonical operation schema for CLI, Python, REST and MCP changes. Keep historical spellings in `normalize.py`; aliases must validate and execute through the same implementation as their canonical operation. New operations need a short description, typed and described fields, and regression coverage of their public behavior.
 
-Run `pytest -q` and build the distributions before submitting a release change. Keep the package, plugin manifests and versioned installation URLs synchronized; document user-visible changes in `CHANGELOG.md`. Release automation publishes only after Linux and Windows verification and installer checks succeed. See [the release process](docs/releases.md).
+Run `pytest -q` and build the distributions before submitting a release change. Keep the package, plugin manifests and versioned installation URLs synchronized; document user-visible changes in `CHANGELOG.md`. Release automation publishes only after Linux and Windows verification and installer checks succeed. See [the release process](docs/reference/releases.md).
 
 Commit messages, generated pull requests, issue text and generated artwork should describe the work without model signatures or authorship trailers. Keep comments that explain constraints, tradeoffs or non-obvious behavior; remove comments that only repeat the next statement. Provider configuration identifiers are functional data and should remain intact.
 
@@ -13,14 +13,14 @@ tests, docs or packaging need it (`docs/assets`, `assets/`, `examples/`, `tests/
 ## New features: core or plugin
 
 Optional features live in built-in plugins under `src/vixl/plugins/` and join the core through the registry in
-`vixl.plugins`. Before adding a feature, go through the parameters in [plugins](docs/plugins.md#is-a-new-feature-a-plugin)
+`vixl.plugins`. Before adding a feature, go through the parameters in [plugins](docs/reference/plugins.md#is-a-new-feature-a-plugin)
 and state the decision in the pull request. The core never imports a plugin module; `tests/test_plugins.py` checks
 this and lists the remaining exceptions. Large data that only some features use is a content pack in
 [VixlExamples](https://github.com/jxburros/VixlExamples/tree/main/packs), downloaded on first use by `vixl.packs`.
 
 ## Changing a default
 
-Defaults for sparse briefs live in the house style (`src/vixl/data/house-style.json`, read through `src/vixl/house_style.py`); read values from there instead of adding constants. Pre-release: breaking changes are allowed; note them in the changelog, and do not add version switches to the engine: documents saved with older behaviour are handled by the conversion kit (`src/vixl/convert/`, [converting](docs/converting.md)), which the engine never imports. Default changes must still pass the house-style quality/diversity eval. Compare `python -m evals.house_style --compare evals/house-style-baseline.json` before and after; quality must not fall. See [house style](docs/house-style.md#changing-defaults-h2).
+Defaults for sparse briefs live in the house style (`src/vixl/data/house-style.json`, read through `src/vixl/house_style.py`); read values from there instead of adding constants. Pre-release: breaking changes are allowed; note them in the changelog, and do not add version switches to the engine: documents saved with older behaviour are handled by the conversion kit (`src/vixl/convert/`, [converting](docs/reference/converting.md)), which the engine never imports. Default changes must still pass the house-style quality/diversity eval. Compare `python -m evals.house_style --compare evals/house-style-baseline.json` before and after; quality must not fall. See [house style](docs/project/house-style.md#changing-defaults-h2).
 
 ## Visual regression tests
 

@@ -99,7 +99,7 @@ Importing existing artwork (all add layers to the open document):
 ```bash
 vixl import artwork.svg --svg-mode auto      # SVG as editable layers; a Vixl SVG restores its document. editable (default) errors on a feature it cannot edit, auto draws just that element as an image, appearance imports one image
 vixl import flyer.pdf --page 1               # a PDF page as editable text, paths and images (needs the pdf extra); --dpi applies only to --svg-mode appearance
-vixl import KEY --format figma --node 1:2 --rasterize-unsupported   # a Figma file URL or key, one frame, unmappable nodes as a PNG render; needs FIGMA_TOKEN or VIXL_FIGMA_TOKEN (docs/figma.md)
+vixl import KEY --format figma --node 1:2 --rasterize-unsupported   # a Figma file URL or key, one frame, unmappable nodes as a PNG render; needs FIGMA_TOKEN or VIXL_FIGMA_TOKEN (docs/guides/images/figma.md)
 ```
 
 `import` also takes a photo path or an `https://` image URL with `--name`, `--credit` and `--license`.

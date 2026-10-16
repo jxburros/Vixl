@@ -7,7 +7,7 @@
 Vixl can build charts from text and shapes. This example is a horizontal bar chart with
 ordinary editable layers; it does not require a chart-specific operation or an AI provider.
 The numbers are illustrative, not Vixl performance measurements. The `chart` operation draws bar,
-line, pie and other charts from a table in one step, with scale, labels and legend ([Charts](../charts.md));
+line, pie and other charts from a table in one step, with scale, labels and legend ([Charts](../guides/output/charts.md));
 this tutorial maps data to geometry by hand so each step is visible.
 
 ## Map data to geometry
@@ -85,5 +85,5 @@ they cannot disagree. For example, replacing Draft's count with 30:
 
 Use SVG for supported scalable geometry, PNG for consistent pixels, or reuse the same
 operations on a slide page. The [generated deck](../assets/generated/slides.pptx) uses
-these counts with actual editable PowerPoint shapes and text. See [export behavior](../exporting.md)
-for appearance fallbacks and [color checks](../color-and-print.md) for accessible palettes.
+these counts with actual editable PowerPoint shapes and text. See [export behavior](../guides/output/exporting.md)
+for appearance fallbacks and [color checks](../guides/finishing/color-and-print.md) for accessible palettes.

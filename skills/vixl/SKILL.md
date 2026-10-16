@@ -208,7 +208,7 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
   `decorative: true`); `{type: accessibility, lang, title, page_alt, page_lang, reading_order}`;
   `vixl_check(checks=["accessibility"])` bundles contrast and colour vision with missing alt, language, small
   text, colour-only charts and reading order. HTML, SVG, PPTX and PDF carry alt and language (no tagged PDF
-  structure tree). See [objects](../../docs/objects.md) and [accessibility](../../docs/accessibility.md).
+  structure tree). See [objects](../../docs/guides/shapes/objects.md) and [accessibility](../../docs/guides/output/accessibility.md).
 
 ## New in 0.24: reliability and reusable delivery
 
@@ -222,7 +222,7 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
   [cli](references/cli.md).
 - **Documents from earlier releases** — this release opens only current documents: run `vixl convert OLD.vixl -o NEW.vixl`
   once (`--look preserve` keeps the old look, `--look current` lists what changes; the report names every change), and
-  `vixl convert-batch OLD.json` for saved tool calls from the 51-tool server. See `docs/converting.md`.
+  `vixl convert-batch OLD.json` for saved tool calls from the 51-tool server. See `docs/reference/converting.md`.
 - **App delivery** — `vixl_apply(workflow='app-animation-package', request={states, default_state, output, themes?, transitions?, format?})`
   writes named states, light/dark variables, transitions, reduced-motion PNGs, editable masters, a manifest and an HTML
   consumer. `screen-capture` (`{output, bbox? | window?, all_screens?}`) is an explicit local desktop capture, not
@@ -254,7 +254,7 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
 - **`vixl diff A B --out d.png`** — pixel-diff two documents or images (changed pixels, fraction, region).
 - **Memes** — `meme-top-bottom`, `meme-caption-above`, `meme-comparison`, `meme-labelled`, `meme-reaction`,
   `meme-four-panel` layouts (`images` takes one asset per panel); `vixl_reference("meme")`. Bring your own images.
-- **CI** — the repository's GitHub Action checks `.vixl` files on pull requests (`docs/ci.md` in the Vixl repository).
+- **CI** — the repository's GitHub Action checks `.vixl` files on pull requests (`docs/guides/automation/ci.md` in the Vixl repository).
 
 ## New since 0.17
 
@@ -378,7 +378,7 @@ A Figma file or frame imports as editable layers, live text, stacks and gradient
 (`node_id` picks one frame, `rasterize_unsupported` draws nodes with no editable equivalent as images; CLI
 `vixl import URL --format figma [--node 1:2] [--rasterize-unsupported]`, Python `import_document(project, b"URL", "figma")`, REST
 `POST /import?format=figma`); the user's read-only token is the `FIGMA_TOKEN` (or `VIXL_FIGMA_TOKEN`) environment variable of
-the process that runs Vixl, and the result's `report` lists what could not map. See [Import from Figma](../../docs/figma.md).
+the process that runs Vixl, and the result's `report` lists what could not map. See [Import from Figma](../../docs/guides/images/figma.md).
 
 ## 1. Pick the interface
 
@@ -661,7 +661,7 @@ syntax via `vixl COMMAND --help`.
 Use `--out`/`-o` for CLI destinations and command-specific help for options; `help --full` retains the detailed
 index. For native path artwork, set `shape.path_view: [source_width, source_height]` to scale unchanged data
 into a display box. Explicit campaign `quality: "final"` also selects final checks unless `profile` overrides it.
-Consult the capability matrix in `docs/interfaces.md` before choosing REST versus a workspace MCP session.
+Consult the capability matrix in `docs/reference/interfaces.md` before choosing REST versus a workspace MCP session.
 
 Promo video templates: `video-promo-kinetic`, `video-promo-editorial`, `video-promo-neon`,
 `video-promo-spotlight`, `video-promo-split`, `video-promo-stat`. Base names are square; suffix

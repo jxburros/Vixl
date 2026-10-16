@@ -162,7 +162,7 @@ Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--p
            import FIGMA_URL_OR_KEY --format figma [--node 1:2] [--rasterize-unsupported]
 
 Options: --project/-p FILE, --json, --allow-linked, --plugins, --max-pixels N, --detail brief|compact|full, --version
-Use vixl commands --json for a complete inventory; vixl COMMAND --help works without a document. See docs/commands.md.
+Use vixl commands --json for a complete inventory; vixl COMMAND --help works without a document. See docs/reference/commands.md.
 """
 
 
@@ -856,7 +856,7 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("--credit", help="attribution kept with an image, e.g. 'Photo: Ana Ruiz / Unsplash'")
         p.add_argument("--license", help="license or usage terms of an image, e.g. 'CC BY 4.0'")
         p.add_argument("--format", choices=["figma"], help="figma: PATH is a Figma file URL or key (or exported file "
-                       "JSON); reads FIGMA_TOKEN, see docs/figma.md")
+                       "JSON); reads FIGMA_TOKEN, see docs/guides/images/figma.md")
         p.add_argument("--node", help="figma: import this node id (1:2) instead of the first page")
         p.add_argument("--rasterize-unsupported", action="store_true", help="figma: import a PNG render of nodes "
                        "that have no editable equivalent")

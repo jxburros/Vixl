@@ -73,7 +73,7 @@ answer keys, fixtures and an output inspector.
 
 ## Craft re-run
 
-The [craft plan](../docs/craft-plan.md) measures craft by re-running the Vixl lane of the tool comparison and
+The [craft plan](../docs/project/craft-plan.md) measures craft by re-running the Vixl lane of the tool comparison and
 judging it blind against the same web-code and Python runs. `evals/craft_rerun.py` makes that a routine:
 
 ```text
@@ -147,7 +147,7 @@ credentials are reported explicitly; no live score is claimed. Results and trace
 as workflow artifacts. Set `model`/`effort` with a manual run to compare a specific model.
 
 The agent sees the seven-tool server (about 1,800 estimated tokens of tool list; see
-[MCP tool surface](../docs/mcp-toolsets.md), whose ratchet keeps it from growing). Reference replay cannot measure
+[MCP tool surface](../docs/reference/mcp-toolsets.md), whose ratchet keeps it from growing). Reference replay cannot measure
 whether a model discovers the right operation fields and options through `vixl_reference`; live runs can.
 
 ## House-style eval
@@ -195,4 +195,4 @@ the numbers. How each document was rebuilt, and why it is not the original, is i
 scaling with Vixl and with headless Chromium (same font file, sizes and colours) and measures both, against each
 other and against exact supersampled references. It needs `pip install playwright` and writes images and a report
 to `render-parity-results/`. See [render_parity/README.md](render_parity/README.md) and the findings in
-[docs/render-parity.md](../docs/render-parity.md).
+[docs/project/render-parity.md](../docs/project/render-parity.md).

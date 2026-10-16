@@ -1,4 +1,4 @@
-"""Built-in plugins: valid manifests, declared dependencies, and the core/plugin boundary (docs/plugins.md)."""
+"""Built-in plugins: valid manifests, declared dependencies, and the core/plugin boundary (docs/reference/plugins.md)."""
 
 import ast
 from pathlib import Path
@@ -91,7 +91,7 @@ def test_core_reaches_plugins_only_through_the_registry():
     edges = core_edges()
     unexpected = sorted(edges - KNOWN_COUPLINGS.keys())
     assert not unexpected, ("Core modules import plugin modules directly; use a registry role or hook "
-                            f"(docs/plugins.md) or justify the import in KNOWN_COUPLINGS: {unexpected}")
+                            f"(docs/reference/plugins.md) or justify the import in KNOWN_COUPLINGS: {unexpected}")
     stale = sorted(KNOWN_COUPLINGS.keys() - edges)
     assert not stale, f"These couplings are gone; remove them from KNOWN_COUPLINGS: {stale}"
 
@@ -154,7 +154,7 @@ def test_every_operation_and_action_is_reachable_through_its_plugin():
 
 
 def test_docs_table_matches_the_registry():
-    text = (SRC.parent / "docs" / "plugins.md").read_text(encoding="utf-8")
+    text = (SRC.parent / "docs" / "reference" / "plugins.md").read_text(encoding="utf-8")
     assert plugins.markdown_table() in text
 
 
