@@ -249,6 +249,7 @@ Vixl is pre-release with no users to protect, so code that existed only to repro
 
 ### Fixed
 
+- The Claude Desktop bundle (`vixl.mcpb`) starts again: its launch arguments still ended with `--tools core --schema slim`, which `vixl mcp` stopped accepting in this release, so the server exited at startup. The bundle now launches `vixl mcp --workspace ${user_config.workspace}`, like `.mcp.json`, and a test runs the bundled arguments through the real `vixl mcp` parser.
 - MCP tool descriptions are the same on every Python: 3.11 and 3.12 kept docstring indentation (8 extra spaces per continuation line, sent to every client); they are now cleaned at registration.
 - Footer-rule clearance no longer pushes the cta button out of the safe area on small banners.
 - Dark-mode ink reaches the 7:1 target on saturated palettes (candy came out at 6.99:1): when the ink steps run out, it snaps to pure white or black, which the background wash was sized for.

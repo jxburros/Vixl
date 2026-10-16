@@ -388,6 +388,38 @@ def test_agent_bundles_include_skill_references(tmp_path):
                 assert config["mcpServers"]["vixl"]["args"][1].endswith(f"/v{__version__}.tar.gz")
 
 
+def test_bundled_server_arguments_are_accepted_by_vixl_mcp(tmp_path, monkeypatch):
+    import importlib.util
+    import zipfile
+
+    from vixl import cli, interfaces
+
+    location = Path(__file__).parents[1] / "distribution/package_extensions.py"
+    spec = importlib.util.spec_from_file_location("package_extensions", location)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    mcpb, plugin = module.build(tmp_path / "dist")
+    with zipfile.ZipFile(mcpb) as archive:
+        desktop = json.loads(archive.read("manifest.json"))["server"]["mcp_config"]
+    with zipfile.ZipFile(plugin) as archive:
+        code = json.loads(archive.read(".mcp.json"))["mcpServers"]["vixl"]
+
+    served = []
+
+    class Server:
+        def run(self):
+            served.append(True)
+
+    monkeypatch.setattr(interfaces, "mcp_server", lambda path=None, limits=None, **kwargs: Server())
+    for config in (desktop, code):
+        assert config["command"] == "uvx"
+        args = config["args"]
+        # `uvx --from SOURCE vixl mcp ...`: everything after `mcp` goes to the real argument parser.
+        assert args[2:4] == ["vixl", "mcp"]
+        cli.dispatch(["mcp", *(str(tmp_path) if a == "${user_config.workspace}" else a for a in args[4:])])
+    assert len(served) == 2
+
+
 def test_brand_checks_canvas_gradients_and_hidden_required_elements(tmp_path):
     kit = {"palette": {"ink": "black"}, "required_elements": ["logo"]}
     (tmp_path / "brand.json").write_text(json.dumps(kit))
