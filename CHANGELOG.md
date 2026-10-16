@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Making fonts
+
+- **Draw a font and export it.** A document can hold a font design: `font-design` names it (family, style,
+  designer, license …) and sets its metrics in canvas pixels (`em`, `ascent`, `descent`, `x_height`, `cap_height`,
+  `side_bearing`, `space`) and kerning pairs. `font-grid` lays out one cell per character with metric guides, and
+  shapes drawn in a cell become that glyph; `font-glyph` maps a character (or a code point such as `U+E001`) to a
+  cell or to named layers instead. Fills, strokes (outlined), pen paths, pathfinder results and plain text layers
+  are merged into one outline per glyph, keeping counters as holes.
+- **`export` writes `.ttf`, `.otf` (CFF) and `.woff`** (`.woff2` with the optional `brotli` package) over the CLI,
+  Python, MCP (`vixl_export`) and REST (`format` `TTF`/`OTF`/`WOFF`/`WOFF2`), with the glyph count, characters and
+  warnings in the result. `font-build` embeds the font in the document and registers it, so text layers can be set
+  in it at once. See [making a font](docs/custom-fonts.md).
+
 ### Fixed and added
 
 Found while making a batch of showcase pieces (event poster, report, deck, logo package, scene, business cards,

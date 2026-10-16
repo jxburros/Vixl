@@ -19,6 +19,7 @@ can substitute fonts, emphasize form fields or handle animation differently.
 | Editable presentation | PPTX | Real text, supported shapes, images, notes; unsupported appearances become pictures |
 | Layered handoff to Photoshop and similar editors | PSD | One 8-bit RGBA pixel layer per layer with names, opacity, visibility, blend modes and layer groups, plus the flattened composite; text is pixels, not editable type |
 | Interactive form | Fillable PDF | AcroForm widgets over artwork; RGB output; verify target PDF viewer |
+| A font drawn in the document | TTF, OTF, WOFF (WOFF2 with `brotli`) | The document's font design as an installable font; see [making a font](custom-fonts.md) |
 | Icons | ICO or icon set | Multiple destination sizes; inspect the smallest icons |
 | Motion | WebP, GIF, APNG, sheet or frame ZIP | Offline timeline export; GIF has limited colors |
 | Encoded video / audio workflows | MP4 / WebM | ffmpeg required; external generated video also needs a configured gateway |

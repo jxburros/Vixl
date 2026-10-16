@@ -387,6 +387,7 @@ OPERATION_GROUPS = {
                        "animation-set"],
     "Document and checks": ["canvas", "variable", "artboard", "guidance", "font-register", "font-fallbacks", "layer-intent", "suite-set",
                             "suite-capture", "recipe-set", "action-define", "action-apply", "comp-save", "comp-apply"],
+    "Make a font": ["font-design", "font-grid", "font-glyph", "font-build"],
 }
 
 

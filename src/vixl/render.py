@@ -2273,6 +2273,14 @@ def export(
         if path:
             Path(path).write_bytes(data)
         return data
+    font_format = (format or suffix.lstrip(".")).lower()
+    if font_format in ("ttf", "otf", "woff", "woff2"):
+        require(not (pages or page is not None or artwork or isolate), "A font export writes the document's font "
+                "design (font-design, font-glyph); page, pages, isolate, profile, artboard, comp, proof, simulate and "
+                "CMYK do not apply", field="format")
+        from .fontmaker import export_font
+
+        return export_font(project, path, font_format, report)
     if (format or "").upper() == "PSD" or suffix == ".psd":
         require(not (pages or artwork), "PSD export writes one page in RGB; profile, artboard, "
                 "comp, proof, simulate, CMYK and pages do not apply", field="format")
@@ -2398,8 +2406,8 @@ def export(
     )
     require(fmt in ("PNG", "JPEG", "WEBP", "TIFF", "AVIF", "PDF", "ICO"),
             f"Unsupported export format {(Path(path).suffix if path and not format else format) or '(none)'!r}; use png, "
-            "jpg, webp, tiff, avif, pdf, ico, svg, pptx, psd or html (audio: vixl_export (.wav), or a .wav path on the "
-            "CLI; animation: export-timeline)",
+            "jpg, webp, tiff, avif, pdf, ico, svg, pptx, psd or html (fonts: ttf, otf, woff, woff2; audio: vixl_export "
+            "(.wav), or a .wav path on the CLI; animation: export-timeline)",
             field="format")
     from . import colors
 

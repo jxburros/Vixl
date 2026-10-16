@@ -826,6 +826,10 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
             "ICO": "image/x-icon",
             "PPTX": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             "PSD": "image/vnd.adobe.photoshop",
+            "TTF": "font/ttf",
+            "OTF": "font/otf",
+            "WOFF": "font/woff",
+            "WOFF2": "font/woff2",
         }
         require(fmt in media, "Unsupported export format")
         body = dict(body)

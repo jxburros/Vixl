@@ -425,6 +425,8 @@ def _operation_schema():
     emoji_schemas(add)
     from .authoring import schemas as authoring_schemas
     authoring_schemas(add)
+    from .fontmaker import schemas as font_schemas
+    font_schemas(add)
     from .containers import schemas as container_schemas
     container_schemas(add)
     from .stacks import schemas as stack_schemas

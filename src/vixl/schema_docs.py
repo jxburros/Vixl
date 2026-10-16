@@ -116,6 +116,10 @@ SUMMARIES = {
     "guidance": "Store or remove a written design guide (brand voice, rules) in the document.",
     "brand-preset": "Use a named preset of the workspace brand (brand.json presets) for this document: its palette, "
                     "fonts, stages and rules apply to layouts, templates and the brand check; none returns to the base brand.",
+    "font-design": "Name the font drawn in this document and set its metrics in canvas pixels (em, ascent, descent, x-height, cap height, side bearing, space) and kerning pairs.",
+    "font-glyph": "Make a character's glyph from named layers or from the layers drawn in its cell (origin on the baseline, advance width); remove drops it.",
+    "font-grid": "Lay out one glyph cell per character with ascent, cap-height, x-height, baseline and descent guides; shapes drawn in a cell become its glyph.",
+    "font-build": "Build the document's font design and register it under a name so text layers can use it (export .ttf, .otf or .woff to write it out).",
     "font-register": "Register an imported font by name, and optionally make it the font of a role (heading, body, any named role such as accent) or a text stage (display, h1–h3, subtitle, lead, body, caption, citation, label).",
     "style-define": "Define a named character or paragraph style.",
     "style-apply": "Apply a named character or paragraph style to a text layer.",

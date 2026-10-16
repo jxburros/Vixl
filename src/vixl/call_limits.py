@@ -36,6 +36,7 @@ FLAGS = {"timeout": "--call-timeout", "max_megapixels": "--max-megapixels", "max
          "max_concurrent": "--max-concurrent"}
 # Formats whose export is one raster image per page (PDF only when it is written as images).
 VECTOR_FORMATS = ("SVG", "HTML", "HTM", "PPTX")
+FONT_FORMATS = ("TTF", "OTF", "WOFF", "WOFF2")
 
 
 @dataclass(frozen=True)
@@ -136,6 +137,8 @@ def check_export(limits, project, fmt, options):
     if limits.max_pages is None and limits.max_megapixels is None:
         return
     fmt = (fmt or "PNG").upper()
+    if fmt in FONT_FORMATS:
+        return  # a font file renders no pages
     count = export_pages(project, fmt, options)
     if limits.max_pages is not None and count > limits.max_pages:
         raise exceeded("max_pages", count, limits.max_pages,
