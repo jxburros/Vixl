@@ -9,7 +9,7 @@ from PIL import Image
 import pytest
 
 from vixl import Project, VixlError
-from vixl.ai import ai_command, encoded, generate, plan
+from vixl.plugins.ai.ai import ai_command, encoded, generate, plan
 from vixl.interfaces import create_app
 
 
@@ -129,10 +129,10 @@ def test_reasoning_dryrun_and_restricted_plan(project_path):
 
 
 def test_ai_inpaint_outpaint_mask_and_regenerate(project_path, monkeypatch):
-    import vixl.ai
+    import vixl.plugins.ai.ai
 
     backend = FakeProvider()
-    monkeypatch.setattr(vixl.ai, "provider", lambda _: backend)
+    monkeypatch.setattr(vixl.plugins.ai.ai, "provider", lambda _: backend)
     p = Project.load(project_path)
     p.apply({"type": "select", "shape": "rect", "x": 0, "y": 0, "width": 4, "height": 4})
     before = p.render()
@@ -160,10 +160,10 @@ def test_ai_inpaint_outpaint_mask_and_regenerate(project_path, monkeypatch):
 
 
 def test_ai_segmentation_and_background_removal(project_path, monkeypatch):
-    import vixl.ai
+    import vixl.plugins.ai.ai
 
     backend = FakeProvider()
-    monkeypatch.setattr(vixl.ai, "provider", lambda _: backend)
+    monkeypatch.setattr(vixl.plugins.ai.ai, "provider", lambda _: backend)
     p = Project.load(project_path)
     ai_command(p, "select", ["object", "left half"])
     assert p.image(p.state["selection"], "L").getpixel((12, 2)) == 0
@@ -212,10 +212,10 @@ def test_real_mcp_stdio_handshake_and_tools(project_path):
 
 
 def test_ai_regeneration_replaces_pixels_and_preserves_id(project_path, monkeypatch):
-    import vixl.ai
+    import vixl.plugins.ai.ai
 
     backend = FakeProvider()
-    monkeypatch.setattr(vixl.ai, "provider", lambda _: backend)
+    monkeypatch.setattr(vixl.plugins.ai.ai, "provider", lambda _: backend)
     p = Project.load(project_path)
     ai_command(p, "generate", ["--prompt", "blue", "--as", "art"])
     ident = p.layer()["id"]
@@ -231,9 +231,9 @@ def test_ai_regeneration_replaces_pixels_and_preserves_id(project_path, monkeypa
 
 
 def test_ai_transaction_rollback_does_not_corrupt_prior_history(project_path, monkeypatch):
-    import vixl.ai
+    import vixl.plugins.ai.ai
 
-    monkeypatch.setattr(vixl.ai, "provider", lambda _: FakeProvider())
+    monkeypatch.setattr(vixl.plugins.ai.ai, "provider", lambda _: FakeProvider())
     p = Project.load(project_path)
     nodes = deepcopy(p.nodes)
     state = deepcopy(p.state)

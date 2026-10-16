@@ -8,7 +8,7 @@ from PIL import Image
 import pytest
 
 from vixl import Project, VixlError
-from vixl.ai import (
+from vixl.plugins.ai.ai import (
     AnthropicProvider,
     BFLProvider,
     GeminiProvider,

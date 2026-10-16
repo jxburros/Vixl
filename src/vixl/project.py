@@ -592,10 +592,10 @@ class Project:
                 error = VixlError("invalid_operation", f"Malformed operation: {exc}")
                 raise located(error, index, operation, len(operations)) from exc
         calls.progress(len(operations), len(operations), "checking")
-        if candidate.state.get("diagrams"):
-            from .diagrams import refresh as refresh_diagrams
+        from .plugins import hooks as plugin_hooks
 
-            refresh_diagrams(candidate)
+        for refresh_plugin in plugin_hooks("after-apply"):
+            refresh_plugin(candidate)
         reflowed = []
         if candidate.state.get("flows"):
             from .textflow import refresh as refresh_flows
@@ -654,10 +654,8 @@ class Project:
 
             if result["unfilled_slots"]:
                 result["next_steps"] = next_steps(candidate)
-        if any(op["type"].startswith("diagram") for op in operations):
-            from .diagrams import report as diagram_report
-
-            result["diagram"] = diagram_report(candidate, operations)
+        for report_plugin in plugin_hooks("apply-report"):
+            report_plugin(candidate, operations, result)
         if candidate.state.get("flows") and (reflowed or any(op["type"] == "text-flow" for op in operations)):
             from .textflow import report as flow_report, warnings as flow_warnings
 

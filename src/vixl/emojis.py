@@ -118,21 +118,29 @@ def scan(text, overrides=None):
 
 
 @lru_cache(maxsize=1)
-def _archive(mtime, size):
+def _archive(path, mtime, size):
     # ZipFile serializes seeks on its shared stream. Reuse its index across the thousands
     # of small assets; reopening the archive for every glyph made full-pack exports quadratic.
-    return zipfile.ZipFile(DATA / "artwork.zip")
+    return zipfile.ZipFile(path)
 
 
 @lru_cache(maxsize=512)
-def _bundled(key, kind, mtime, size):
-    return _archive(mtime, size).read(f"{kind}/{key}.{kind}")
+def _bundled(key, kind, path, mtime, size):
+    return _archive(path, mtime, size).read(f"{kind}/{key}.{kind}")
+
+
+def archive_path(download=True):
+    """The artwork archive: the emojis content pack, downloaded from VixlExamples on first use (see packs)."""
+    from .packs import path
+
+    return path("emojis", download)
 
 
 def bundled(key, kind="svg"):
     require(key in _entries() and kind in ("svg", "vixl"), "Unknown bundled emoji or format")
-    stat = (DATA / "artwork.zip").stat()
-    return _bundled(key, kind, stat.st_mtime_ns, stat.st_size)
+    path = archive_path()
+    stat = path.stat()
+    return _bundled(key, kind, str(path), stat.st_mtime_ns, stat.st_size)
 
 
 def artwork(project, key, kind="svg"):
@@ -448,7 +456,17 @@ def with_emojis(project, data, text):
         ):
             if font_supports(fonts, text[a:b]):
                 continue
-        selected[text[a:b]] = base64.b64encode(artwork(project, key)).decode()
+        try:
+            art = artwork(project, key)
+        except VixlError as exc:
+            if exc.code != "pack_unavailable":
+                raise
+            # Without the artwork pack the sequence is drawn from the fonts, like emoji mode font.
+            from .notices import warn
+
+            warn(project, str(exc))
+            continue
+        selected[text[a:b]] = base64.b64encode(art).decode()
     if not selected:
         return data
     from .text import face, primary_font_data, UnsupportedText

@@ -8,7 +8,7 @@ import pytest
 
 from vixl import Project, VixlError
 from vixl import objects
-from vixl.organic import PRESETS
+from vixl.plugins.organic.organic import PRESETS
 
 
 def scene():
@@ -62,7 +62,7 @@ def test_every_organic_preset_has_a_kind_and_character_parts_map_onto_person():
     assert all(kind in kinds for kind in mapping.values())
     assert objects.descends(mapping["flower"], "botanical") and objects.descends(mapping["octopus"], "cephalopod")
     assert kinds[mapping["spots"]].get("parent") == "texture" and kinds[mapping["scales"]].get("parent") == "texture"
-    from vixl.characters import PARTS
+    from vixl.plugins.characters.characters import PARTS
 
     person = {part["name"] for part in objects.describe("person")["parts"]}
     for part, (name, side) in objects.character_parts().items():

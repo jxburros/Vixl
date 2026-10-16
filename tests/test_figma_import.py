@@ -16,7 +16,7 @@ import pytest
 
 from vixl import Project
 from vixl.errors import VixlError
-from vixl.figma_import import (FigmaClient, build, font_resolver, gradient_settings, import_figma_document,
+from vixl.plugins.figma_import.figma_import import (FigmaClient, build, font_resolver, gradient_settings, import_figma_document,
                                import_source, parse_source, rounded_rect_path, token_from_env)
 from vixl.fonts import import_font
 from vixl.model import Limits

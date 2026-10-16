@@ -96,7 +96,7 @@ def stream_info(path):
 
 @needs_ffmpeg
 def test_timeline_and_film_keep_source_rate(tmp_path):
-    from vixl.film import export as film_export
+    from vixl.plugins.film.film import export as film_export
     from vixl.timeline import export_timeline
     p = Project(64, 64)
     p.apply([{"type": "timeline-set", "duration": 400, "fps": 10}, {"type": "audio-track", "name": "s", "synth": "piano", "duration": 300}])

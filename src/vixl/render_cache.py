@@ -30,7 +30,8 @@ PACKAGES = (
 def environment():
     from . import __version__
 
-    modules = b"".join(p.read_bytes() for p in sorted(Path(__file__).parent.glob("*.py")))
+    # Built-in plugins live in subpackages; their code changes rendering as much as the top level does.
+    modules = b"".join(p.read_bytes() for p in sorted(Path(__file__).parent.rglob("*.py")))
     if getattr(sys, "frozen", False):
         # Frozen code can have virtual .py paths. Include the shipped engine binary instead.
         from .production import file_digest

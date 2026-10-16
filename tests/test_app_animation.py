@@ -71,7 +71,7 @@ def test_sample_consumer_obeys_transitions_and_reduced_motion(tmp_path):
     import re
     import shutil
     import subprocess
-    from vixl.app_animation import CONSUMER
+    from vixl.plugins.app_animation.app_animation import CONSUMER
     if not shutil.which('node'):
         pytest.skip('Node is unavailable for the browser-consumer logic test')
     def state(loop=True):

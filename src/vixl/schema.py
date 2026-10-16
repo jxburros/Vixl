@@ -425,14 +425,12 @@ def _operation_schema():
     emoji_schemas(add)
     from .authoring import schemas as authoring_schemas
     authoring_schemas(add)
-    from .fontmaker import schemas as font_schemas
-    font_schemas(add)
+    from .plugins import schemas as plugin_schemas
+    plugin_schemas(add)
     from .containers import schemas as container_schemas
     container_schemas(add)
     from .stacks import schemas as stack_schemas
     stack_schemas(add)
-    from .organic import schemas as organic_schemas
-    organic_schemas(add)
     from .irregular import schemas as irregular_schemas
     irregular_schemas(add)
     from .guides import schemas as guide_schemas
@@ -443,28 +441,18 @@ def _operation_schema():
     page_schemas(add)
     from .forms import schemas as form_schemas
     form_schemas(add)
-    from .drawing import schemas as drawing_schemas
-    drawing_schemas(add)
     from .selectors import schemas as selector_schemas
     selector_schemas(add)
     from .links import schemas as link_schemas
     link_schemas(add)
     from .codes import schemas as code_schemas
     code_schemas(add)
-    from .charts import schemas as chart_schemas
-    chart_schemas(add)
-    from .tables import schemas as table_schemas
-    table_schemas(add)
-    from .key_values import schemas as key_value_schemas
-    key_value_schemas(add)
     from .diecut import schemas as diecut_schemas
     diecut_schemas(add)
     from .path_split import schemas as split_schemas
     split_schemas(add)
     from .finishing import schemas as finishing_schemas
     finishing_schemas(add)
-    from .diagrams import schemas as diagram_schemas
-    diagram_schemas(add)
     from .textflow import schemas as flow_schemas
     flow_schemas(add)
     add(
@@ -475,9 +463,6 @@ def _operation_schema():
     from .scene import schemas as scene_schemas
 
     scene_schemas(add)
-    from .atmosphere import schemas as atmosphere_schemas
-
-    atmosphere_schemas(add)
     from .captions import schemas as caption_schemas
 
     caption_schemas(add)
@@ -490,16 +475,12 @@ def _operation_schema():
     from .audio import schemas as audio_schemas
 
     audio_schemas(add)
-    from .comics import schemas as comic_schemas
     from .textures import schemas as texture_schemas
 
-    comic_schemas(add)
     texture_schemas(add)
     from .motion import schemas as motion_schemas
-    from .characters import schemas as character_schemas
 
     motion_schemas(add)
-    character_schemas(add)
     from .objects import schemas as object_schemas
     from .accessibility import schemas as accessibility_schemas
 

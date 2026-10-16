@@ -264,7 +264,7 @@ run("work", path="card.vixl", size="instagram-post", layout={"name": "hero-state
     exports=["card.png"], preview=True)   # result dict; preview PNG bytes under "preview_png"
 from vixl.image_diff import diff_files   # vixl diff
 diff_files("before.png", "after.vixl", "diff.png")     # changed_pixels, changed_fraction, changed_region
-from vixl.proof import proof_page        # workflow proof
+from vixl.plugins.workspace_qa.proof import proof_page        # workflow proof
 proof_page(["card.vixl", {"path": "card.png", "before": "old.png"}], "proof.html", decisions=True)
 
 try:

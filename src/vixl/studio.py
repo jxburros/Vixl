@@ -1,4 +1,4 @@
-"""Consolidated resource, reuse, testing and collaborative production commands."""
+"""Consolidated resource, reuse and testing commands (branches, groups and suite inference: plugins.teamwork)."""
 
 from copy import deepcopy
 
@@ -10,20 +10,9 @@ ACTIONS = {
     "resource-save": ({"kind", "name", "value"}, {"kind", "name", "value"}),
     "shape-save": ({"target", "name"}, {"target", "name"}),
     "suite-use": ({"name", "as", "reference"}, {"name"}),
-    "suite-infer": ({"name", "apply", "replace", "group", "from_group"}, set()),
     "effect-run": ({"name", "variables", "dry_run"}, {"name"}),
     "palette-check": ({"palette", "colors", "tolerance", "max_fraction", "alpha_min", "region"}, set()),
-    "branch-list": (set(), set()),
-    "group-list": (set(), set()),
-    "branch-fork": ({"branch", "output", "author"}, {"branch", "output"}),
-    "branch-status": ({"branch"}, {"branch"}),
-    "branch-merge": ({"branch", "resolutions", "dry_run", "expected_head"}, {"branch"}),
-    "group-define": ({"name", "documents", "shared", "facts", "profiles", "suites"}, {"name", "documents"}),
-    "group-show": ({"name"}, {"name"}),
-    "group-apply": ({"name", "operations", "suites", "profile", "dry_run", "repair", "accept", "reject", "decisions",
-                     "review", "overwrite"}, {"name"}),
     "group-check": ({"name", "documents", "reference", "checks", "layers", "facts", "required", "tolerance"}, set()),
-    "group-recover": ({"name"}, {"name"}),
     "plugin-list": (set(), set()),
     "plugin-install": ({"manifest", "replace"}, {"manifest"}),
     "plugin-remove": ({"name"}, {"name"}),
@@ -44,22 +33,10 @@ REST_ACTIONS = {
 def dispatch(session, action, request, document=None):
     from .resources import catalog, get, register
 
-    if action.startswith("branch-"):
-        from .collaboration import dispatch as collaborate
-
-        return collaborate(session, action, request, document)
     if action == "group-check":
         from .group_consistency import run as group_check
 
         return group_check(session, request)
-    if action.startswith("group-"):
-        from .project_groups import dispatch as groups
-
-        return groups(session, action, request)
-    if action == "suite-infer":
-        from .suite_infer import dispatch as infer
-
-        return infer(session, request, document)
     if action.startswith("plugin-"):
         from .plugins import package
 

@@ -2291,7 +2291,7 @@ vixl.mask.*
 vixl.effect.*
 vixl.text.*
 vixl.render.*
-vixl.ai.*
+vixl.plugins.ai.ai.*
 vixl.history.*
 vixl.validate.*
 ```

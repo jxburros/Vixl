@@ -180,10 +180,10 @@ def test_photo_preview_is_bounded_and_document_unchanged(tmp_path):
 
 
 def test_typed_ai_preserves_arguments_and_undo(tmp_path, monkeypatch):
-    import vixl.ai
+    import vixl.plugins.ai.ai
 
     backend = FakeProvider()
-    monkeypatch.setattr(vixl.ai, "provider", lambda _: backend)
+    monkeypatch.setattr(vixl.plugins.ai.ai, "provider", lambda _: backend)
     session = Session(workspace=tmp_path)
     session.create("a.vixl", 16, 16)
     server = __import__("vixl.mcp_tools", fromlist=["build_server"]).build_server(session, tools="ai")
@@ -274,11 +274,11 @@ def test_workspace_export_profile_with_filename_format(tmp_path):
 
 
 def test_mcp_splits_into_design_and_ai_servers(tmp_path, monkeypatch):
-    import vixl.ai
+    import vixl.plugins.ai.ai
     from vixl.mcp_tools import SHARED_TOOLS, TOOLS, build_server
 
     backend = FakeProvider()
-    monkeypatch.setattr(vixl.ai, "provider", lambda _: backend)
+    monkeypatch.setattr(vixl.plugins.ai.ai, "provider", lambda _: backend)
 
     async def names(server):
         return {t.name for t in await server.list_tools()}

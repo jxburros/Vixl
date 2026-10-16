@@ -26,7 +26,7 @@ def _shown(item, index):
 
 
 def _edge(mask):
-    from .drawing import erode
+    from .plugins.drawing.drawing import erode
 
     return mask & ~erode(mask, 1)
 
@@ -46,7 +46,7 @@ def _gap(a, b):
 
 
 def _components(masks, tolerance):
-    from .drawing import dilate
+    from .plugins.drawing.drawing import dilate
 
     count = len(masks)
     parent = list(range(count))

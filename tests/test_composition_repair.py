@@ -4,7 +4,7 @@ with the finding gone and nothing new, plus dry runs, protected layers and what 
 import pytest
 
 from vixl import Project
-from vixl.layout_repair import repair_layout
+from vixl.plugins.layout_repair.layout_repair import repair_layout
 
 from test_composition import card, doc, scatter, text
 

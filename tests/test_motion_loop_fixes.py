@@ -8,7 +8,7 @@ from PIL import Image
 import pytest
 
 from vixl.animation import size_warnings
-from vixl.characters import findings as character_findings
+from vixl.plugins.characters.characters import findings as character_findings
 from vixl.motion import findings as motion_findings
 from vixl.project import Project
 from vixl.spatial import canvas_boxes

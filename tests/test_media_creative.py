@@ -8,8 +8,9 @@ import pytest
 
 from vixl.errors import VixlError
 from vixl.project import Project
-from vixl import film, natural_guidance as guidance, textures
-from vixl.media_analysis import analyze_samples, audio_analyze, video_sample
+from vixl import natural_guidance as guidance, textures
+from vixl.plugins.film import film
+from vixl.plugins.film.media_analysis import analyze_samples, audio_analyze, video_sample
 
 
 def image_shots(tmp_path):
@@ -200,7 +201,7 @@ def test_workflow_discovery_and_resource_reading(tmp_path):
 
 @pytest.mark.skipif(not shutil.which("ffmpeg") or not shutil.which("ffprobe"),reason="ffmpeg needed")
 def test_clip_scrubbing_and_interval_synth_audio(tmp_path):
-    from vixl.media_analysis import probe
+    from vixl.plugins.film.media_analysis import probe
     spec = image_shots(tmp_path)
     spec["audio"] = [{"synth": "sine", "duration": 1600}]
     film.export(spec, tmp_path, tmp_path / "sound.mp4")

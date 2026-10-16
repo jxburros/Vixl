@@ -14,7 +14,7 @@ from vixl.briefs import guide
 from vixl.guidance import GUIDANCE, motif_registry, motifs
 from vixl.objects import registry
 from vixl.operations import OPERATION_TYPES
-from vixl.organic import PRESETS
+from vixl.plugins.organic.organic import PRESETS
 from vixl.schema import operation_schema, validate_operation
 
 

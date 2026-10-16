@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from vixl import Project
-from vixl.charts import format_number, nice_scale
+from vixl.plugins.charts.charts import format_number, nice_scale
 from vixl.commands import compile_command
 from vixl.errors import VixlError
 from vixl.model import Limits
@@ -578,7 +578,7 @@ def test_checks_see_inside_the_chart():
 
 
 def test_chart_contrast_matches_the_general_measurement():
-    from vixl.charts import chart_contrast
+    from vixl.plugins.charts.charts import chart_contrast
     from vixl.checks import canvas_projection
     from vixl.render import resolve_layout, resolved_layers
 

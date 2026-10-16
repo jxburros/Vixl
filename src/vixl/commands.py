@@ -107,18 +107,14 @@ def compile_command(tokens):
     rich = compile_rich(cmd, args)
     if rich is not None:
         return rich
-    from .diagrams import compile_command as compile_diagram
-    diagram = compile_diagram(cmd, args)
-    if diagram is not None:
-        return diagram
+    from .plugins import compile_command as compile_plugin
+    plugin = compile_plugin(cmd, args)
+    if plugin is not None:
+        return plugin
     from .textflow import compile_command as compile_flow
     flow = compile_flow(cmd, args)
     if flow is not None:
         return flow
-    from .drawing import compile_command as compile_drawing
-    sketch = compile_drawing(cmd, args)
-    if sketch is not None:
-        return sketch
     from .forms import compile_command as compile_forms
     form = compile_forms(cmd, args)
     if form is not None:
@@ -143,22 +139,6 @@ def compile_command(tokens):
     diecut = compile_diecut(cmd, args)
     if diecut is not None:
         return diecut
-    from .tables import compile_command as compile_tables
-    tabled = compile_tables(cmd, args)
-    if tabled is not None:
-        return tabled
-    from .key_values import compile_command as compile_key_values
-    listed = compile_key_values(cmd, args)
-    if listed is not None:
-        return listed
-    from .charts import compile_command as compile_charts
-    charted = compile_charts(cmd, args)
-    if charted is not None:
-        return charted
-    from .organic import compile_command as compile_organic
-    organic = compile_organic(cmd, args)
-    if organic is not None:
-        return organic
     from .irregular import compile_command as compile_irregular
     irregular = compile_irregular(cmd, args)
     if irregular is not None:

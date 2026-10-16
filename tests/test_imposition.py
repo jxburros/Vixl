@@ -12,7 +12,7 @@ import pytest
 
 from vixl import Project
 from vixl.errors import VixlError
-from vixl.imposition import cell_geometry, layout, mark_shapes, sheet_spec, slots
+from vixl.plugins.imposition.imposition import cell_geometry, layout, mark_shapes, sheet_spec, slots
 from vixl.interfaces import Session, mcp_server
 from vixl.workflows import describe, dispatch
 

@@ -15,7 +15,7 @@ from vixl.workflows import dispatch
 from vixl.resources import get, register, create_template, BUILTINS
 from vixl.imports import import_document
 from vixl.palette_checks import measure
-from vixl.collaboration import merge_states
+from vixl.plugins.teamwork.collaboration import merge_states
 
 
 @pytest.fixture
@@ -410,7 +410,7 @@ def test_plugin_lifecycle_dependencies_collisions_and_no_partial_install(session
 
 
 def test_python_plugins_require_optin_validate_output_and_isolate_failure(session, monkeypatch):
-    import vixl.plugins as plugins
+    import vixl.plugins.external as plugins
 
     def handler(document, options):
         document["layers"].clear()
@@ -490,7 +490,7 @@ def test_cli_creative_tools_and_workflow_discovery():
 
 
 def test_group_publication_failure_rolls_back_and_crash_journal_recovers(session, monkeypatch):
-    import vixl.project_groups as groups
+    import vixl.plugins.teamwork.project_groups as groups
 
     session.create("second.vixl", 20, 20)
     dispatch(

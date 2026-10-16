@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from vixl import Project, VixlError
-from vixl.atmosphere import _boxes
+from vixl.plugins.atmosphere.atmosphere import _boxes
 from vixl.geometry import bezier_points
 from vixl.targets import mode
 

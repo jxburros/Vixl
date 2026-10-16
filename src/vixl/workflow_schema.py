@@ -6,8 +6,6 @@ alone. They are descriptive: ``workflows.dispatch`` and the owning modules still
 
 from copy import deepcopy
 
-from .brand_board import field_types as _brand_board_types
-from .logo_package import field_types as _logo_package_types
 
 STR = {"type": "string"}
 PATH = {"type": "string", "description": "Workspace-relative path."}
@@ -22,8 +20,6 @@ REPAIR = {"anyOf": [{"type": "boolean"}, {"type": "array", "items": {
                    "colour toward the role ink, nudge inside the safe area; unfilled blanks are held for review) to "
                    "the candidate; kept only if the suites then pass. true for every kind, or a list of kinds."}
 
-LOGO_PACKAGE_TYPES = _logo_package_types()
-BRAND_BOARD_TYPES = _brand_board_types()
 COVERAGE_AXIS = {"anyOf": [{"type": "string", "enum": ["all"]},
                            {"type": "array", "items": {"type": ["string", "integer"]}, "minItems": 1}]}
 
@@ -479,8 +475,6 @@ ACTION_FIELDS = {
                      "description": "Longest side of each embedded image, px (shown small, enlarged on click)."},
         "overwrite": {"type": "boolean", "default": False, "description": "Replace an existing page."},
     },
-    "logo-package": LOGO_PACKAGE_TYPES,
-    "brand-board": BRAND_BOARD_TYPES,
     "resource-list": {},
     "resource-get": {"name": {"type": "string", "description": "Resource name from resource-list."}},
     "resource-save": {"name": {"type": "string", "description": "Name for the saved resource."},
@@ -815,9 +809,9 @@ SUMMARIES = {
 
 
 def summary(action):
-    if action == "screen-capture":
-        return "Explicitly capture the local desktop, a pixel rectangle, or a Windows HWND to a PNG."
-    if action == "app-animation-package":
-        return "Package named animation states, theme variants, reduced-motion images, editable masters and a sample consumer."
     from .emoji_workflows import SUMMARIES as EMOJI_SUMMARIES
+    from .plugins import workflow_actions, workflow_summary
+
+    if action in workflow_actions() and workflow_summary(action):
+        return workflow_summary(action)
     return EMOJI_SUMMARIES.get(action, SUMMARIES.get(action, ""))

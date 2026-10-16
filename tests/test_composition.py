@@ -262,7 +262,7 @@ def test_an_edge_band_counts_at_one_and_three_quarter_times_the_opposite_margin(
 
 
 def test_a_small_block_floating_midway_is_uneven_rhythm_and_repairable():
-    from vixl.layout_repair import repair_layout
+    from vixl.plugins.layout_repair.layout_repair import repair_layout
 
     ops = [text("title", 100, 80, size=96), text("note", 100, 330), panel("tray", 520, 380)]
     p = doc(*ops)

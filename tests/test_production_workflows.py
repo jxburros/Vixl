@@ -353,7 +353,7 @@ def test_video_gateway_polls_same_remote_job(tmp_path, monkeypatch):
 
 
 def test_film_crossfade_frames_and_atomic_cancellation(tmp_path):
-    from vixl.film import export, frames
+    from vixl.plugins.film.film import export, frames
 
     Image.new("RGBA", (32, 32), "red").save(tmp_path / "red.png")
     Image.new("RGBA", (32, 32), "blue").save(tmp_path / "blue.png")
@@ -467,7 +467,7 @@ def test_row_inputs_override_artboard_defaults(tmp_path):
 def test_film_camera_captions_and_video_audio_codec(tmp_path, monkeypatch):
     import shutil
     import wave
-    from vixl.film import frames, export
+    from vixl.plugins.film.film import frames, export
 
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
@@ -553,7 +553,7 @@ def test_template_typed_inputs_motion_and_suites(tmp_path, monkeypatch):
 
 
 def test_cancelled_image_result_is_preserved_and_resume_does_not_regenerate(tmp_path, monkeypatch):
-    from vixl import ai
+    from vixl.plugins.ai import ai
 
     p = document()
     p.save(tmp_path / "source.vixl")
@@ -587,7 +587,7 @@ def test_cancelled_image_result_is_preserved_and_resume_does_not_regenerate(tmp_
 
 
 def test_film_job_freezes_inputs_and_recovers_publication(tmp_path, monkeypatch):
-    from vixl import film
+    from vixl.plugins.film import film
 
     Image.new("RGB", (16, 16), "red").save(tmp_path / "shot.png")
     queue = Queue(tmp_path)
@@ -685,7 +685,7 @@ def test_protected_group_includes_child_content():
 
 
 def test_malformed_plans_and_template_metadata_fail_with_structured_errors(tmp_path, monkeypatch):
-    from vixl.film import plan as film_plan
+    from vixl.plugins.film.film import plan as film_plan
     from vixl.resources import register
 
     monkeypatch.setenv("VIXL_RESOURCES", str(tmp_path / "resources.json"))

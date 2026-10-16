@@ -399,7 +399,7 @@ def test_csv_failed_row_does_not_publish_partial_output(tmp_path):
 
 @pytest.mark.parametrize("action", ["remove", "content-aware-fill", "select-subject"])
 def test_ai_edit_operations_use_provider_and_preserve_selection_boundary(action, monkeypatch):
-    from vixl import ai
+    from vixl.plugins.ai import ai
 
     calls = []
 

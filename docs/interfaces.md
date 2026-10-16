@@ -14,7 +14,7 @@ See [design tools and template production](design-tools.md) for groups, clipping
 | Capability | REST | MCP | CLI | Python |
 | --- | --- | --- | --- | --- |
 | Documents per session | One fixed document | Multiple, inside the workspace | One active document; workspace workflows | Multiple Project instances; Session for workflows |
-| Workflows | `act`, `check`, `drawing-report`, `effect-run`, `film-plan`, `form-fill`, `links`, `lyric-video-plan`, `organic-catalog`, `palette-check`, `plan`, `protected-edit`, `repair-layout`, `resource-get`, `resource-list`, `resource-save`, `shape-save`, `suite-use` | All 81 registered actions | All 81 registered actions | All 81 registered actions via workflows.dispatch(Session, ...) |
+| Workflows | `act`, `check`, `drawing-report`, `effect-run`, `film-plan`, `form-fill`, `links`, `lyric-video-plan`, `organic-catalog`, `palette-check`, `plan`, `protected-edit`, `repair-layout`, `resource-get`, `resource-list`, `resource-save`, `shape-save`, `suite-use` | All 82 registered actions | All 82 registered actions | All 82 registered actions via workflows.dispatch(Session, ...) |
 | AI tools | Configured local providers via /ai | Configured local providers; a second server, vixl mcp --tools ai | Configured local providers | Configured local providers |
 | Linked files outside workspace | Forbidden | Forbidden | Explicit --allow-linked | Explicit allow_linked=True |
 | Screen capture | Unavailable | Disabled by default; --allow-screen-capture or VIXL_ALLOW_SCREEN_CAPTURE=1 | Explicit screen-capture workflow | Explicit screen-capture workflow |
@@ -358,7 +358,7 @@ project's workflow routes include `lyric-video-plan`, `organic-catalog`, `form-f
 
 Python: `project.export("deck.pptx")`, `project.export("form.pdf", fillable=True)`,
 `project.render(page=2)`, `vixl.forms.fill` / `fill_data`, `vixl.deck.check_deck` /
-`contact_sheet`, `vixl.drawing` (`clean`, `report`, `compare`, `ai_color`), `vixl.lyrics`
+`contact_sheet`, `vixl.plugins.drawing.drawing` (`clean`, `report`, `compare`, `ai_color`), `vixl.plugins.lyrics.lyrics`
 (`parse_lrc`, `plan`, `build`, `export`).
 
 Linked documents and print merge are ordinary operations and one workflow action each: `link` (create, or change with a `target`),

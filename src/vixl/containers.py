@@ -513,7 +513,7 @@ def reflow(project, target):
                 if layer["y"] + layer["height"] > limit:
                     layer["y"] = max(0, round(limit - layer["height"]))
         if frame and layer.get("key_values") and layer["type"] == "group":
-            from .key_values import fit
+            from .plugins.charts.key_values import fit
 
             # The list spans its frame's width and steps its text down (to min_size) until its rows fit the height.
             fit(project, layer, layer["width"], layer["height"], spec.get("min_size", 12))

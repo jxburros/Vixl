@@ -162,6 +162,6 @@ each stays whole when moved apart (see [vector paths](vector-paths.md#constructi
 `vixl ai drawing-color DRAWING --prompt TEXT [--strength 0.6] [--provider NAME]` sends the drawing
 as drawn so far (fills and lines on white) to an image-to-image provider and places the result as
 `NAME/color` under the drawing's own fills and lines, so every line stays exactly as drawn and the
-preservation report is unchanged. Python: `vixl.drawing.ai_color(project, "house", prompt,
+preservation report is unchanged. Python: `vixl.plugins.drawing.drawing.ai_color(project, "house", prompt,
 backend)`. It needs a configured provider that supports image-to-image (see
 [providers](providers.md)).

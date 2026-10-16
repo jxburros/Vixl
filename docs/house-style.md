@@ -350,7 +350,7 @@ Decision: Not free, not just one either.  It should be most likely to have one a
 
 ### D6. Chart colours
 Today charts take colours from the document palette first, then colour-blind-safe defaults
-(`src/vixl/charts.py:34,475-486`).
+(`src/vixl/plugins/charts/charts.py:34,475-486`).
 - [X] Palette first (brand consistency, today)
 - [ ] Colour-blind-safe first for more than two series, with the palette accent for the highlight
 
@@ -359,7 +359,7 @@ Today charts take colours from the document palette first, then colour-blind-saf
 Decision:
 
 ### D7. Diagram colours
-Today diagrams use a fixed light theme that ignores the palette and dark mode (`src/vixl/diagrams.py:35,60-79`).
+Today diagrams use a fixed light theme that ignores the palette and dark mode (`src/vixl/plugins/diagrams/diagrams.py:35,60-79`).
 - [X] Follow the palette and mode, like charts
 - [ ] Keep the fixed themes
 
@@ -752,7 +752,7 @@ These are tracked in #388. Fix them whatever the decisions above turn out to be.
 - #394: Document creation differs by surface: CLI `vixl new` and Python don't roll `design_defaults` (`src/vixl/cli.py:423-468`).
 - #395: Plain `text` ignores the document's typography and renders in the fallback font (`src/vixl/render.py:114-115`).
 - #396: Python `render.export` defaults to `alpha="keep"`; the CLI and MCP default to `auto` (`src/vixl/render.py:1410`).
-- #397: Diagrams ignore the palette and dark mode (`src/vixl/diagrams.py:35,60-79`).
+- #397: Diagrams ignore the palette and dark mode (`src/vixl/plugins/diagrams/diagrams.py:35,60-79`).
 - #398: Simple templates use fixed text sizes and positions on every canvas (`src/vixl/resources.py:80-98`).
 - #399: Brief recommendations name expressive options while the attached roll is safe-only (`src/vixl/briefs.py:414-419`).
 

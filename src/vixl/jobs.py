@@ -28,7 +28,7 @@ class Queue:
         self.limits = limits or Limits()
 
     def resolve(self, value):
-        from .film import local_path
+        from .assets import local_path
 
         return local_path(self.workspace, value)
 
@@ -56,7 +56,7 @@ class Queue:
     def submit(self, payload):
         from .project import Project
         from .production import plan
-        from .film import plan as film_plan
+        from .plugins.film.film import plan as film_plan
 
         bounded_object(
             payload, {"kind", "source", "spec", "output", "provider", "request"}, "Unknown job field"
@@ -96,7 +96,7 @@ class Queue:
 
             finite(payload["request"]["duration"], "video duration", 0.1, 600)
         if kind == "lyric-video":
-            from .lyrics import plan as lyric_plan
+            from .plugins.lyrics.lyrics import plan as lyric_plan
 
             require(isinstance(payload["request"], dict), "Lyric video job request must be an object")
             payload["request"] = {**payload["request"], "output": payload["output"]}
@@ -281,7 +281,7 @@ class Queue:
 
     @staticmethod
     def video_backend(name):
-        from .ai import provider, HTTPProvider
+        from .plugins.ai.ai import provider, HTTPProvider
 
         backend = provider(name)
         require(
@@ -437,7 +437,7 @@ class Queue:
                     elif kind == "form-fill":
                         self.form_fill_step(job, limits, progress)
                     elif kind == "lyric-video":
-                        from .lyrics import export as lyric_export
+                        from .plugins.lyrics.lyrics import export as lyric_export
 
                         checkpoint = self.checkpoint_path(job)
                         built = self.directory / ident / "build.vixl"
@@ -454,7 +454,7 @@ class Queue:
                             publish_file(target, built)
                             job["result"]["build"] = payload["request"]["build"]
                     elif kind == "film":
-                        from .film import export
+                        from .plugins.film.film import export
 
                         checkpoint = self.checkpoint_path(job)
                         if not checkpoint.exists():
@@ -469,7 +469,7 @@ class Queue:
                             job["result"] = result
                         self.publish_checkpoint(job)
                     else:
-                        from .ai import generate, provider
+                        from .plugins.ai.ai import generate, provider
 
                         checkpoint = self.checkpoint_path(job)
                         if not checkpoint.exists():

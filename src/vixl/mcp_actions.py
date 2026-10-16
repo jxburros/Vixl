@@ -1054,7 +1054,7 @@ def export_character_library(
     target: Annotated[str, Field(description="The character to save")], document: Document = None,
 ):
     """Save one reusable character and its assets to a new .vixl library; load it with character-load source=path."""
-    from .characters import export_character
+    from .plugins.characters.characters import export_character
 
     session = ctx.session
     destination = session.resolve(path)

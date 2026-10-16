@@ -66,7 +66,7 @@ def test_motion_review_flags_instant_linear_starts():
 
 
 def test_character_saved_instances_independent_and_portable(tmp_path):
-    from vixl.characters import findings
+    from vixl.plugins.characters.characters import findings
     p = hero()
     p.apply([{'type': 'character-save', 'target': 'hero', 'name': 'hero-template'}, {'type': 'character-load', 'template': 'hero-template', 'name': 'friend', 'x': 300, 'scale': .7, 'colors': {'skin': '#7c5036'}}])
     a, b = p.layer('hero')['character'], p.layer('friend')['character']
@@ -80,7 +80,7 @@ def test_character_saved_instances_independent_and_portable(tmp_path):
 
 
 def test_joint_limits_and_ik_keep_chain_connected():
-    from vixl.characters import pose
+    from vixl.plugins.characters.characters import pose
     p = hero()
     p.apply({'type': 'character-pose', 'target': 'hero', 'angles': {'left-upper-arm': 200}})
     assert p.layer('hero')['character']['bones']['left-upper-arm']['angle'] == 100
@@ -232,7 +232,7 @@ def test_audio_marker_sync_import_and_roundtrip(tmp_path):
 
 
 def test_film_styled_caption_and_synth_score(tmp_path):
-    from vixl.film import plan, frames
+    from vixl.plugins.film.film import plan, frames
     from PIL import Image
     Image.new('RGB', (120, 80), '#203040').save(tmp_path / 'source.png')
     spec = {'width': 120, 'height': 80, 'fps': 10, 'shots': [{'source': 'source.png', 'duration': 500}], 'captions': [{'text': 'Hi', 'start': 0, 'end': 500, 'x': 5, 'y': 10, 'size': 14, 'style': {'bold': True}, 'box': True, 'animation': 'fade'}], 'audio': [{'synth': 'pop', 'duration': 200, 'start': 100, 'fade_out': 50}]}
@@ -245,7 +245,7 @@ def test_film_styled_caption_and_synth_score(tmp_path):
 @pytest.mark.skipif(not shutil.which('ffmpeg'), reason='ffmpeg is optional')
 def test_timeline_video_includes_synthesized_audio(tmp_path):
     from vixl.timeline import export_timeline
-    from vixl.film import audio_duration
+    from vixl.plugins.film.film import audio_duration
     p = ball()
     p.apply([{'type': 'timeline-set', 'duration': 300, 'fps': 10}, {'type': 'audio-track', 'name': 'score', 'synth': 'piano', 'duration': 300}])
     output = tmp_path / 'sound.mp4'
@@ -255,7 +255,7 @@ def test_timeline_video_includes_synthesized_audio(tmp_path):
 
 
 def test_cross_document_character_asset(tmp_path):
-    from vixl.characters import export_character
+    from vixl.plugins.characters.characters import export_character
     p = hero()
     export_character(p, 'hero', tmp_path / 'hero.vixl')
     other = Project(400, 400)

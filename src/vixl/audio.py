@@ -265,7 +265,7 @@ def _source_format(track, root, project):
     if "asset" in track:
         require(project is not None and track["asset"] in project.assets, "Missing audio asset")
         return wav_format(project.assets[track["asset"]])
-    from .film import local_path
+    from .assets import local_path
     require(root is not None, "Audio sources need a workspace")
     source = local_path(root, track["source"])
     if source.suffix.lower() == ".wav":
@@ -276,7 +276,7 @@ def _source_format(track, root, project):
             raise VixlError("invalid_audio", "Audio must be a readable PCM WAV file") from exc
     import shutil
     require(shutil.which("ffmpeg"), "Compressed audio import needs ffmpeg", "missing_dependency")
-    from .media_analysis import probe
+    from .plugins.film.media_analysis import probe
     info, _ = probe(source)
     streams = [stream for stream in info.get("streams", []) if stream.get("codec_type") == "audio"]
     require(streams, "Media has no audio stream")
@@ -318,7 +318,7 @@ def mix_tracks(tracks, duration, *, root=None, project=None, rate=None, channels
             require(project is not None and track["asset"] in project.assets, "Missing audio asset")
             data = read_audio(project.assets[track["asset"]], rate, channels)
         else:
-            from .film import local_path
+            from .assets import local_path
             from .assets import read_bounded
             require(root is not None, "Audio sources need a workspace")
             source = local_path(root, track["source"])
@@ -380,7 +380,7 @@ def execute(project, op):
     validate_track(track)
     if "source" in track:
         # Imports become embedded assets; saved projects remain portable.
-        from .film import local_path
+        from .assets import local_path
         from .assets import read_bounded
         root = getattr(project, "_workspace", None)
         require(root is not None, "Set the project workspace before importing audio; synth and asset tracks need no workspace")

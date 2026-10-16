@@ -189,7 +189,7 @@ vixl workflow brand-board --request board.json
 ```
 
 MCP: `vixl_apply(workflow='brand-board', request={"output": "brand-guidelines.pdf"})`. Python:
-`vixl.brand_board.build_document(workspace, preset=None)` returns the editable board and a report.
+`vixl.plugins.brand_kit.brand_board.build_document(workspace, preset=None)` returns the editable board and a report.
 
 Only data is accepted; brand files cannot name server filesystem paths. JSON is limited to 16 MiB.
 The policy stays in the workspace while fonts, logos and colors are embedded in each document.

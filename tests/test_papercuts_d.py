@@ -94,7 +94,7 @@ def test_form_tooltips_drop_required_markers_and_can_be_explicit():  # #222
 
 
 def test_chart_colors_overridden_by_series_colors_warn_and_axis_headroom_is_tight():  # #214
-    from vixl.charts import nice_scale
+    from vixl.plugins.charts.charts import nice_scale
 
     p = Project(600, 400, "white")
     p.apply([{"type": "chart", "name": "c", "kind": "bar", "categories": ["a", "b"],

@@ -5,7 +5,7 @@ import pytest
 from PIL import Image
 
 from vixl import Project
-import vixl.film as film
+import vixl.plugins.film.film as film
 
 
 def soft_pixels(image):

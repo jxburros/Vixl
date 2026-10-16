@@ -9,7 +9,7 @@ import pytest
 
 from vixl import Project
 from vixl.errors import VixlError
-from vixl.lyrics import background_for, build, parse_lrc, timing, validate_template
+from vixl.plugins.lyrics.lyrics import background_for, build, parse_lrc, timing, validate_template
 
 needs_ffmpeg = pytest.mark.skipif(not (shutil.which("ffmpeg") and shutil.which("ffprobe")), reason="ffmpeg not installed")
 
@@ -258,7 +258,7 @@ def test_cut_and_slide_animations(workspace):
 
 @needs_ffmpeg
 def test_export_draft_mp4_with_audio(workspace):
-    from vixl.lyrics import export
+    from vixl.plugins.lyrics.lyrics import export
 
     result = export(request(build="b.vixl", output="song.mp4", quality="draft", fps=8, start=1000, end=4000, check=True), workspace)
     assert result["video"]["frames"] == 24
@@ -272,7 +272,7 @@ def test_export_draft_mp4_with_audio(workspace):
 
 @needs_ffmpeg
 def test_streamed_video_has_no_3600_frame_cap(tmp_path):
-    from vixl.film import export as film_export, plan as film_plan
+    from vixl.plugins.film.film import export as film_export, plan as film_plan
 
     p = Project(16, 16, "black")
     p.apply([{"type": "solid", "name": "dot", "color": "white", "width": 4, "height": 4},
@@ -367,7 +367,7 @@ def test_empty_timestamp_clears_the_next_line_preview(workspace):
 
 @needs_ffmpeg
 def test_identical_consecutive_lines_hold_instead_of_fading_again(workspace):
-    from vixl.lyrics import plan
+    from vixl.plugins.lyrics.lyrics import plan
 
     report = build(request(build="b.vixl", lead=100, animation={"duration": 200}), workspace)
     first, second = report["lines"][3], report["lines"][4]
@@ -441,7 +441,7 @@ def test_export_keeps_hand_edits_to_the_build(workspace):
     import numpy as np
     from PIL import Image
 
-    from vixl.lyrics import export
+    from vixl.plugins.lyrics.lyrics import export
 
     fields = dict(build="b.vixl", quality="draft", fps=4, start=1000, end=2000)
     first = export(request(**fields, output="one.mp4"), workspace)
@@ -484,7 +484,7 @@ def test_export_keeps_hand_edits_to_the_build(workspace):
 
 @needs_ffmpeg
 def test_export_rebuilds_an_unedited_or_unrecorded_build_only_when_allowed(workspace):
-    from vixl.lyrics import export
+    from vixl.plugins.lyrics.lyrics import export
 
     fields = dict(build="b.vixl", quality="draft", fps=4, start=1000, end=2000)
     export(request(**fields, output="a.mp4"), workspace)
@@ -512,7 +512,7 @@ def test_export_rebuilds_an_unedited_or_unrecorded_build_only_when_allowed(works
 
 @needs_ffmpeg
 def test_build_record_tracks_edits_and_the_workflow_schema_lists_the_new_fields(workspace):
-    from vixl.lyrics import _fingerprint, plan
+    from vixl.plugins.lyrics.lyrics import _fingerprint, plan
     from vixl.workflows import describe
 
     build(request(build="b.vixl"), workspace)
@@ -560,7 +560,7 @@ def test_section_text_layers_take_over_for_their_section(workspace):
 
 @needs_ffmpeg
 def test_section_styles_restyle_the_lyric_and_survive_rebuilds(workspace):
-    from vixl.lyrics import export
+    from vixl.plugins.lyrics.lyrics import export
     from vixl.timeline import project_at
 
     styles = {"chorus": {"size": 20, "color": "#ff0000", "y": 40}}
@@ -589,7 +589,7 @@ def test_section_styles_restyle_the_lyric_and_survive_rebuilds(workspace):
     ({"chorus": {"size": 0}}, "1–4096"),
 ])
 def test_section_styles_are_checked(workspace, styles, words):
-    from vixl.lyrics import plan
+    from vixl.plugins.lyrics.lyrics import plan
 
     with pytest.raises(VixlError, match=words):
         plan(request(section_styles=styles), workspace)
@@ -602,7 +602,7 @@ def test_section_text_layers_must_be_text():
 
 
 def test_fit_warnings_flag_lines_too_wide_for_an_unwrapped_lyric():
-    from vixl.lyrics import fit_warnings
+    from vixl.plugins.lyrics.lyrics import fit_warnings
 
     lines = parse_lrc(LRC)["lines"]
     p = Project(160, 90, "#101018")
@@ -616,7 +616,7 @@ def test_fit_warnings_flag_lines_too_wide_for_an_unwrapped_lyric():
 
 @needs_ffmpeg
 def test_plan_reports_lines_too_wide_for_an_unwrapped_lyric(tmp_path):
-    from vixl.lyrics import plan
+    from vixl.plugins.lyrics.lyrics import plan
 
     (tmp_path / "song.lrc").write_text(LRC, encoding="utf-8")
     write_audio(tmp_path / "song.wav")
@@ -647,7 +647,7 @@ def test_a_template_without_backgrounds_gets_one_note_instead_of_a_warning_per_s
 
 @needs_ffmpeg
 def test_plan_reports_the_background_note_once(tmp_path):
-    from vixl.lyrics import plan
+    from vixl.plugins.lyrics.lyrics import plan
 
     (tmp_path / "song.lrc").write_text(LRC + "[00:10.00][Bridge]\n", encoding="utf-8")
     write_audio(tmp_path / "song.wav")
@@ -703,7 +703,7 @@ def test_replay_restarts_a_cue_layers_own_keys_in_each_window(workspace):
 
 @needs_ffmpeg
 def test_plan_exposes_cue_and_section_windows_and_line_phases(workspace):
-    from vixl.lyrics import plan
+    from vixl.plugins.lyrics.lyrics import plan
 
     report = plan(request(lead=0, animation={"in": "fade-in", "out": "fade-out", "duration": 200}), workspace)
     assert report["cues"] == {"cue-fire": [[8100, 12000]]}
@@ -740,7 +740,7 @@ def test_each_cue_layer_can_have_its_own_animation(workspace):
 
 @needs_ffmpeg
 def test_per_cue_overrides_are_checked_and_part_of_the_build(workspace):
-    from vixl.lyrics import export, plan
+    from vixl.plugins.lyrics.lyrics import export, plan
 
     cue_template(workspace)
     with pytest.raises(VixlError) as error:
@@ -780,7 +780,7 @@ def test_lead_in_and_tail_pad_the_video_and_move_every_line():
 
 
 def test_film_spec_starts_the_song_after_the_lead_in():
-    from vixl.lyrics import film_spec
+    from vixl.plugins.lyrics.lyrics import film_spec
 
     report = {"start": 0, "end": 9000, "video_ms": 9000, "lead_in": 2000, "width": 16, "height": 16, "fps": 10}
     spec = film_spec({"build": "b.vixl", "audio": "song.wav"}, report)
@@ -791,7 +791,7 @@ def test_film_spec_starts_the_song_after_the_lead_in():
 
 @needs_ffmpeg
 def test_end_card_and_hidden_intro_warnings(workspace):
-    from vixl.lyrics import plan
+    from vixl.plugins.lyrics.lyrics import plan
 
     template(workspace / "style.vixl", operations=[
         {"type": "text", "name": "outro", "text": "Thanks", "size": 12, "color": "white", "x": 10, "y": 50}])
@@ -815,7 +815,7 @@ def test_end_card_and_hidden_intro_warnings(workspace):
 
 
 def test_camera_poses_follow_the_whole_video_in_every_window():
-    from vixl.lyrics import camera_window
+    from vixl.plugins.lyrics.lyrics import camera_window
 
     camera = {"from": [0.5, 0.5, 1], "to": [0.3, 0.5, 2]}
     assert camera_window(camera, 0, 10_000, 10_000, 10) == camera  # a full render keeps the requested poses
@@ -829,8 +829,8 @@ def test_camera_poses_follow_the_whole_video_in_every_window():
 
 @needs_ffmpeg
 def test_segmented_export_resumes_and_joins_with_the_audio(workspace):
-    from vixl.film import export_segments
-    from vixl.lyrics import export
+    from vixl.plugins.film.film import export_segments
+    from vixl.plugins.lyrics.lyrics import export
 
     result = export(request(build="b.vixl", output="song.mp4", quality="draft", fps=4, segments=2000, end=7000), workspace)
     assert result["video"]["segments"] == {"parts": 4, "reused": 0, "rendered": 4, "frames_per_part": 8}
@@ -861,7 +861,7 @@ def test_segmented_export_resumes_and_joins_with_the_audio(workspace):
 
 
 def test_video_verification_reports_mismatches_and_skips_without_ffprobe(tmp_path, monkeypatch):
-    import vixl.film as film
+    import vixl.plugins.film.film as film
 
     rendered = {"width": 160, "height": 90, "fps": 24, "frames": 5170, "sample_rate": 48000, "channels": 2}
     probe = {"streams": [{"codec_type": "video", "codec_name": "h264", "width": 160, "height": 90,

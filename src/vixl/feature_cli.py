@@ -76,7 +76,7 @@ def standalone(cmd, args):
 
         return catalog()
     if cmd == "organics":
-        from .organic import catalog
+        from .plugins.organic.organic import catalog
 
         return catalog()
     from .timeline import EASINGS, PRESETS
@@ -331,7 +331,7 @@ def project_feature(project, cmd, args):
         require(not args, "Use links to list the linked documents and their state (link-refresh updates them)")
         return report(project), False
     if cmd == "drawing" and args[:1] in (["report"], ["compare"]):
-        from .drawing import compare, report
+        from .plugins.drawing.drawing import compare, report
 
         p = Parser(prog=f"vixl drawing {args[0]}")
         p.add_argument("target")

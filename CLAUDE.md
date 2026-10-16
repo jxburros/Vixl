@@ -15,6 +15,20 @@ repository (https://github.com/jxburros/VixlExamples); add new ones there and li
   `VIXL_UPDATE_GOLDEN=1 pytest tests/visual`, review `git diff --stat` and the PNGs, and commit them with the change.
   Failures write reference/actual/diff images to `tests/visual/_failures/`. Never update goldens to silence an unexplained diff.
 
+## Plugin or core? Decide before adding a feature
+Before adding a feature, check the parameters in `docs/plugins.md` ("Is a new feature a plugin?") and say in the PR
+which way it went. In short:
+- **Core** if the renderer, document model or an exporter must know about it, other core modules need it, it changes
+  what every document gets (a default, normalization or always-on check), or it is part of the create/apply/check/
+  render/export loop.
+- **Plugin** (`src/vixl/plugins/<name>/`, registered in `BUILTIN`) if it is self-contained, writes ordinary layers
+  so documents still work without it, serves a particular domain, or brings its own heavy dependency, tool or
+  network access. Reach it through registry roles and hooks; never import a plugin from the core (`tests/test_plugins.py`
+  fails on new direct imports). A missing hook point goes into `vixl.plugins.HOOKS`.
+- **Content pack** (VixlExamples `packs/`, fetched by `vixl.packs`, pinned by commit and SHA-256) for large data only
+  some features use.
+All plugins are built in for now. Features that extend an existing plugin go in that plugin's package.
+
 ## Conventions
 - **Schema.** Operation schemas live in `schema.py` and friends. Shared constants (`S`, `N`, `B`, ...) are never
   mutated: give a field its own description with `schema.field(base, "text")`. Every field needs a type and a
@@ -22,7 +36,7 @@ repository (https://github.com/jxburros/VixlExamples); add new ones there and li
 - **Aliases.** Historical spellings and forgiving input (camelCase, `rect`, `font_size`, `"50%"`, `"none"`) are handled
   in `normalize.py` and reported under `normalized`. Opacity is 0-1 everywhere; use `normalize.opacity`.
   Remove duplicate concepts, not leniency.
-- **Targets.** `targets.py` classifies every operation as `EACH` (per-layer, fans out over `targets` inside one atomic
+- **Targets.** `targets.py` classifies every operation (plugin operations included) as `EACH` (per-layer, fans out over `targets` inside one atomic
   batch), `JOINT` (group, align, distribute, pathfinder ...) or one. When you add an operation, add it to the right set
   and regenerate the table in `docs/operations.md` from `vixl.targets.markdown_table()`; a test compares them.
 - **Geometry.** One anchor table (`geometry.ANCHORS`, `canonical_anchor`), one Bezier evaluator (`geometry.bezier_points`),
