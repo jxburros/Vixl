@@ -29,6 +29,7 @@ def _scale_layer(layer, s):
         for key in ("tail_width", "padding"):
             if key in layer["bubble"]:
                 layer["bubble"][key] *= s
+    _scale_path_view(layer, s)
     for key in ("x", "y"):
         if key in layer:
             layer[key] = layer[key] * s
@@ -53,6 +54,16 @@ def _scale_layer(layer, s):
     if "stroke_width" in layer:
         value = layer["stroke_width"] * s
         layer["stroke_width"] = round(value) if layer.get("type") == "text" else value
+    if layer.get("type") == "shape":
+        # Styled stroke lengths are pixels too (the dashed/dotted presets follow the stroke width).
+        if isinstance(layer.get("marker_size"), (int, float)):
+            layer["marker_size"] *= s
+        for settings in [layer, *layer.get("strokes", [])]:
+            for key in ("width", "dash_offset") if settings is not layer else ("dash_offset",):
+                if isinstance(settings.get(key), (int, float)):
+                    settings[key] *= s
+            if isinstance(settings.get("dash"), list):
+                settings["dash"] = [value * s for value in settings["dash"]]
     rich = layer.get("rich")
     if rich:
         for span in rich["spans"]:
@@ -104,6 +115,26 @@ def _scale_layer(layer, s):
                 constraints[anchor] = f"{match[1]}{float(match[2]) * s:+g}"
     for operand in layer.get("operands", []):
         _scale_layer(operand, s)
+
+
+def _scale_path_view(layer, s):
+    """Scale a stroked path's data and ``path_view`` along with its box.
+
+    A native path stroke is measured in ``path_view`` units (``vector_strokes.native_stroke_margin``,
+    the SVG and PDF exports), while styled strokes are measured in box pixels. Growing only the box
+    would widen a native stroke by ``s`` before ``stroke_width`` is scaled too (``s * s`` in all);
+    scaling the view with the box keeps every renderer's stroke at ``stroke_width * s``. Unstroked
+    paths keep their data: the view only maps their geometry."""
+    if layer.get("type") != "shape" or layer.get("shape") != "path" or not isinstance(layer.get("path"), str):
+        return
+    if layer.get("stroke", "transparent") == "transparent" or layer.get("stroke_width", 1) <= 0:
+        return
+    from .geometry import compact_number, parse_path
+
+    view = layer.get("path_view", (layer["width"], layer["height"]))
+    layer["path"] = " ".join(command + " ".join(compact_number(v * s, 4) for v in values)
+                             for command, values in parse_path(layer["path"]))
+    layer["path_view"] = [view[0] * s, view[1] * s]
 
 
 def _snap_edges(layer, source, s):
