@@ -46,6 +46,14 @@
 
 ### Fixed and added
 
+- **`render --scale N` widens a path's stroke N times, not N * N.** A native path stroke is measured in
+  `path_view` units, and the scaled copy grew the path's box (which already widens the stroke) and then multiplied
+  `stroke_width` as well: a 10 px outline came out 90 px wide at `--scale 3`. The scaled copy now scales a stroked
+  path's data and `path_view` with its box, so PNG, raster PDF and the SVG export agree. It also scales the
+  styled-stroke lengths it missed for every shape (`dash` lists, `dash_offset`, `marker_size` and the `strokes`
+  widths and dashes), which kept their design pixel sizes in a scaled render. Reduced previews used the same copy
+  and drew path strokes too thin.
+
 Found while making a batch of showcase pieces (event poster, report, deck, logo package, scene, business cards,
 fillable form, loop, mandala, flowchart):
 
