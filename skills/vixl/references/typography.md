@@ -56,6 +56,41 @@ A workspace can give every new document the same typography. A `{type: font-pair
 
 MCP: `vixl_reference('fonts')` (views `fonts`, `font`, `pairings`, `pairing`, `principles`), `font-pair`, `font-install`. REST: `GET /typefaces`, `GET /typefaces/pairings`, `POST /typefaces/pair`, `POST /typefaces/install`.
 
+## Making a font
+
+To make a typeface or an icon font, draw the glyphs as layers and let the document's font design map them:
+
+1. `font-design` with `family` (required to build) and `em` (pixels per em, default 200; ascent 0.8 em, descent
+   0.2 em, x-height 0.5 em, cap height 0.7 em unless set).
+2. `font-grid` with `chars` (`"ABC…"` or `uppercase`, `lowercase`, `letters`, `digits`, `punctuation`, `ascii`):
+   one cell per character, `advance` wide (default 0.6 em), with `font-rN-cap`, `font-rN-x`, `font-rN-baseline` …
+   guides. Read the cells' `origin` (baseline start) from `state.font_design.glyphs`.
+3. Draw each glyph inside its cell with shapes, paths and stroked lines (several per `vixl_apply` batch). Every
+   visible vector layer centred in the cell belongs to the glyph; the glyph is the union of their fills and outlined
+   strokes. Cut counters with path holes or `pathfinder` `subtract`, not with a light shape on top.
+4. Proof: `font-build` (registers the family with spaces as hyphens), a text layer with that `font`, `vixl_render`.
+5. Tune `font-glyph` `advance` per character and `font-design` `kerning` (`{"AV": -12}` in pixels), then export
+   `NAME.otf`, `.ttf` or `.woff`.
+
+Icons need no grid: `font-glyph` with `char: "U+E001"` and `target` uses the named layers, sitting on their
+bottom edge with a side bearing each side.
+
+```json
+[
+  {"type": "font-design", "family": "Block Sans", "em": 200},
+  {"type": "font-grid", "chars": "LT"},
+  {"type": "shape", "shape": "rectangle", "name": "l-stem", "x": 70, "y": 70, "width": 28, "height": 140, "fill": "black"},
+  {"type": "shape", "shape": "rectangle", "name": "l-foot", "x": 70, "y": 186, "width": 80, "height": 24, "fill": "black"},
+  {"type": "shape", "shape": "rectangle", "name": "t-bar", "x": 225, "y": 70, "width": 110, "height": 24, "fill": "black"},
+  {"type": "shape", "shape": "rectangle", "name": "t-stem", "x": 266, "y": 70, "width": 28, "height": 140, "fill": "black"},
+  {"type": "font-design", "kerning": {"LT": -30}},
+  {"type": "font-build"},
+  {"type": "text", "text": "TLT", "font": "Block-Sans", "size": 120, "x": 50, "y": 320, "color": "black"}
+]
+```
+
+Details, limits and the export formats: [making a font](../../../docs/custom-fonts.md).
+
 ## Rolling a direction
 
 When a brief leaves the look open, roll instead of settling for defaults:

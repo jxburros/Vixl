@@ -85,6 +85,7 @@ def preview(
 
 
 EXPORT_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico", ".html", ".htm", ".pptx", ".psd",
+                   ".ttf", ".otf", ".woff", ".woff2",
                    ".vixl")
 
 
@@ -95,7 +96,8 @@ def export_file(session, path, overwrite=False, document=None, **options):
         destination = session.resolve(path)
         require(
             destination.suffix.lower() in EXPORT_SUFFIXES,
-            "Choose a PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF, ICO, HTML, PPTX or PSD filename (or .vixl with isolate)",
+            "Choose a PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF, ICO, HTML, PPTX or PSD filename, a TTF, OTF, WOFF or WOFF2 "
+            "font (the document's font design), or .vixl with isolate",
             field="path",
         )
         require(destination.suffix.lower() != ".vixl" or options.get("isolate"),

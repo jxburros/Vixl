@@ -872,7 +872,8 @@ Overwrite = Annotated[bool, Field(description="Replace an existing file")]
 def export_one(
     ctx,
     path: Annotated[str, Field(description="Workspace file; the format follows the extension (.png .jpg .webp .tif "
-                                           ".avif .svg .pdf .ico .html .pptx .psd, .vixl with isolate)")],
+                                           ".avif .svg .pdf .ico .html .pptx .psd, .vixl with isolate; .ttf .otf .woff .woff2 "
+                                           "write the font design)")],
     overwrite: Overwrite = False,
     quality: Annotated[int | None, Field(ge=1, le=100)] = None,
     scale: Annotated[float, Field(ge=0.01, le=16)] = 1,

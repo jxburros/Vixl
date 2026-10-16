@@ -118,6 +118,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | TXT-16 | Break a heading into lines of even width, or keep one word off a paragraph's last line | `text-layout` `wrap: balance` / `pretty` | 1 · <1 | E | Craft plan 4a (T09, T14). Headings and layout headlines balance by default; the breaks are shared by PNG, SVG, PDF and PPTX. Before, a runt needed a hand line break. |
 | BLK-07 | Tab stops and dot leaders in text (menus, price lists, contents pages) | `text` `tabs: [{at, align, leader}]` with `\t`; `table` column `leader` | 1 · <1 | E | Moved from Blocked (craft plan 4b, #213; T16): left, right, centre and decimal stops with leaders in PNG, SVG and PDF; native tab stops in PPTX with the leader written as characters. Before, leaders were drawn by hand. |
 | TXT-17 | Two-tone headline: one or two words of a layout headline in the accent color | `layout-apply` `accent_words` | 1 · <1 | E | Craft plan 4c (T03, T09); before, a `text-style` match per word after the layout, with the box height fixed by hand. |
+| TXT-21 | Export the font drawn in a document as TTF, OTF or WOFF, or embed it for its own text | `vixl_export` `.ttf`/`.otf`/`.woff`, `font-build` | 1 · <1 | E | Unreleased; see [making a font](custom-fonts.md). WOFF2 needs `brotli`. |
 
 ### Color
 
@@ -332,6 +333,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | BRD-51 | Logo package: colour/mono/reversed variants, lockups, SVG/PDF/PNG, icons, social images, usage sheet | `vixl_apply(workflow='logo-package')` | 1–3 · 1–3 | E | Since 0.22; recolouring is heuristic and reported; no EPS. |
 | BRD-52 | Brand guidelines document: palette with contrast pairs, the text-stage ladder, logos with clear space, do/don't rules | `vixl_apply(workflow='brand-board')` | 1–2 · <1 | E | Drawn from `brand.json` (or a preset); PDF, PPTX, HTML or editable `.vixl`. |
 | BRD-11 | Custom emoji pack: replace or add `:shortcodes:`, check platform requirements, export PNG/SVG with editable masters | `vixl emoji`, `emoji-replace`, `emoji-template`, `emoji-requirements`, `emoji-export` | 3–8 · 1–2 | E | Since 0.24; Discord/Slack upload instructions and an offline preview; CC BY-SA 4.0 licences travel with the pack. |
+| BRD-55 | Icon font: drawn icons on Private Use Area code points (U+E001 …) | shapes or paths, `font-design`, `font-glyph` per icon, `vixl_export` `.ttf`/`.woff` | 4–8 · 1–2 | E | Unreleased; glyphs merge each icon's shapes into one monochrome outline. |
 
 ### Data and diagrams
 
@@ -493,6 +495,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | BRD-21 | Emblem or badge logo | `emblem` layout, shapes, path text | 15–25 · 3 | E | |
 | BRD-22 | Simple logo (mark + wordmark, horizontal) | pen/shapes, pathfinder, `logo-horizontal` | 20–35 · 3–4 | E | Full kit is BRD-40. |
 | BRD-23 | Logo lockup variants (stacked, horizontal, mark) via artboards | `artboard`, symbols | 15–25 · 3 | E | |
+| TXT-22 | A display typeface (A–Z, digits, punctuation) drawn as shapes and paths, kerned and exported | `font-design`, `font-grid`, batched shapes per glyph, `font-build` to proof, `vixl_export` `.otf` | 15–40 · 4–8 | E | Unreleased; a scan of hand lettering goes through `drawing vectorize` first. |
 
 ### Data, diagrams and documents
 

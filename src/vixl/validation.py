@@ -188,6 +188,9 @@ def check_state(project, state):
 
     validate_objects(project, state)
     validate_accessibility(project, state)
+    from .fontmaker import validate as validate_font_design
+
+    validate_font_design(project, state)
     require(not (ids & names), "Layer names cannot collide with IDs", "invalid_project")
     require(
         state["active_layer"] is None or state["active_layer"] in ids,

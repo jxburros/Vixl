@@ -458,6 +458,8 @@ If found, prepend its folder to PATH for this session — see
    check does) and runs every attached suite, `final` also fails on `review` findings and adds the `color_vision` and
    `composition` checks; a workspace `.vixl-checks.json` defines more.
    A `.psd` path writes a layered Photoshop handoff file (one pixel layer per layer, groups kept, text as pixels).
+   A `.ttf`, `.otf` or `.woff` path writes the font drawn in the document (`font-design`, `font-grid`,
+   `font-glyph`; see [typography](references/typography.md#making-a-font)).
 
 ## 3. Minimal examples
 

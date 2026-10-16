@@ -408,6 +408,10 @@
      "type": "object",
      "description": "Document language and title."
     },
+    "font_design": {
+     "type": "object",
+     "description": "Custom font being drawn: family, metrics in pixels, kerning and glyphs (char → layers, origin, advance)."
+    },
     "page_accessibility": {
      "type": "object",
      "description": "Page language and reading order."

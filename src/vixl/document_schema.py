@@ -331,6 +331,7 @@ STATE_FIELDS = {
     "actions": (OBJECT, "Recorded actions (operation lists) by name."),
     "recipe": (OBJECT, "Automation recipe."),
     "accessibility": (OBJECT, "Document language and title."),
+    "font_design": (OBJECT, "Custom font being drawn: family, metrics in pixels, kerning and glyphs (char → layers, origin, advance)."),
     "page_accessibility": (OBJECT, "Page language and reading order."),
     "form": (OBJECT, "Form settings (title, language, submit)."),
     "merged_branches": (ARRAY, "Branches merged into this document."),
