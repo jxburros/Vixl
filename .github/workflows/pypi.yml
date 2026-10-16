@@ -25,7 +25,7 @@ jobs:
         run: python -c "import os; from vixl import __version__; assert os.environ['RELEASE_TAG'] == 'v' + __version__"
       - run: python -m build && python -m twine check dist/*.whl dist/*.tar.gz
       - run: python distribution/package_extensions.py
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: pypi-and-agent-bundles
           path: dist/*
