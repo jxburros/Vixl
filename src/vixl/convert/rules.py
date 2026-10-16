@@ -310,7 +310,7 @@ def chart_padding(ctx, state):
     spacing units. Charts redraw from their recipe on every chart edit."""
     if ctx.house_style >= 3:
         return
-    from ..charts import Style
+    from ..plugins.charts.charts import Style
 
     for layer in layers(state):
         recipe = layer.get("chart")

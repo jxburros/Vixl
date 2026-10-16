@@ -47,7 +47,7 @@ offline with `python examples/build_documentation.py`.
 | Motion | [Characters, rigs and scene authoring](animation-authoring.md), [Brushes and timelines](brushes-and-animation.md), [pixel animation](pixel-animation-spacing.md), [lyric video](lyric-video.md), [video templates](animation-authoring.md#joint-pose-keys-and-short-templates), [app animation packages](animation-authoring.md#app-animation-packages) |
 | Automation and collaboration | [Production workflows](production.md) (proof pages, logo packages), [outcomes, diagnostics and repair](agent-trust.md), [studio and custom tests](studio.md), [checking designs in CI](ci.md), [Git-reviewable source folders](commands.md#reviewing-editable-projects-in-git), [local screen capture](commands.md#local-desktop-capture) |
 | AI | [Provider setup and capability matrix](providers.md) |
-| Integration | [Capability discovery](agent-discovery.md), [MCP tool surface](mcp-toolsets.md), [Python, REST and MCP](interfaces.md), [agent skill](../skills/vixl/SKILL.md) |
+| Integration | [Capability discovery](agent-discovery.md), [MCP tool surface](mcp-toolsets.md), [Python, REST and MCP](interfaces.md), [agent skill](../skills/vixl/SKILL.md), [plugins and content packs](plugins.md) |
 | Installation | [Releases, updates and rollback](releases.md) |
 
 ## Work with an agent

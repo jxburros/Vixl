@@ -239,7 +239,7 @@ def validate(kind, value):
     elif kind == "guidance":
         require(isinstance(value, str) and 0 < len(value) <= 100000, "Guidance needs 1–100000 characters")
     elif kind == "mockups":
-        from .mockups import validate as validate_mockup
+        from .plugins.brand_kit.mockups import validate as validate_mockup
         validate_mockup(value)
     elif kind == "objects":
         from .objects import validate_entry

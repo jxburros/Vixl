@@ -6,7 +6,7 @@ import httpx
 from PIL import Image
 import pytest
 
-from vixl.ai import HTTPProvider, OpenAIProvider, Automatic1111Provider, ComfyUIProvider, encoded, provider
+from vixl.plugins.ai.ai import HTTPProvider, OpenAIProvider, Automatic1111Provider, ComfyUIProvider, encoded, provider
 from vixl import VixlError
 
 

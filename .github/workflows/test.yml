@@ -5,6 +5,9 @@ on:
   pull_request:
 permissions:
   contents: read
+env:
+  # Tests marked emoji_pack fail instead of skipping when the emoji artwork pack cannot be fetched.
+  VIXL_REQUIRE_PACKS: '1'
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -33,6 +36,11 @@ jobs:
         if: runner.os == 'Linux' && matrix.python == '3.13'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - run: python -m pip install -e ".[dev]"
+      # Content packs (the emoji artwork) are fetched once by tests/conftest.py; the key follows the pins.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/vixl/packs
+          key: vixl-packs-${{ hashFiles('src/vixl/packs.py') }}
       - run: pytest -q -n auto
       - run: python -m pip wheel . --no-deps --wheel-dir dist
       - uses: actions/upload-artifact@v4
@@ -49,6 +57,11 @@ jobs:
           python-version: '3.11'
       - run: python -m pip install "uv>=0.5"
       - run: uv pip install --system --resolution lowest-direct -e ".[dev]"
+      # Content packs (the emoji artwork) are fetched once by tests/conftest.py; the key follows the pins.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/vixl/packs
+          key: vixl-packs-${{ hashFiles('src/vixl/packs.py') }}
       - run: pytest -q -n auto
   visual:
     runs-on: ubuntu-latest
@@ -58,6 +71,11 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -e ".[dev]"
+      # Content packs (the emoji artwork) are fetched once by tests/conftest.py; the key follows the pins.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/vixl/packs
+          key: vixl-packs-${{ hashFiles('src/vixl/packs.py') }}
       - run: pytest -q -n auto -m visual tests/visual
       - uses: actions/upload-artifact@v4
         if: failure()

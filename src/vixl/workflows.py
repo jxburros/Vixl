@@ -6,16 +6,8 @@ from .emoji_workflows import ACTIONS as EMOJI_ACTIONS
 
 from .automation import bounded_object
 from .errors import require, VixlError
-from .imposition import ACTIONS as IMPOSITION_ACTIONS, FIELD_TYPES as IMPOSITION_FIELD_TYPES
 from .links import ACTIONS as LINK_ACTIONS
-from .mockups import ACTIONS as MOCKUP_ACTIONS, FIELD_TYPES as MOCKUP_FIELD_TYPES
-from .deck_markdown import ACTIONS as DECK_ACTIONS, FIELD_TYPES as DECK_FIELD_TYPES
-from .lyrics import REQUEST_FIELDS as LYRIC_FIELDS
-from . import media_analysis, natural_guidance
-from .logo_package import FIELDS as LOGO_PACKAGE_FIELDS
-from .brand_board import FIELDS as BRAND_BOARD_FIELDS
-from .screen_capture import FIELDS as CAPTURE_FIELDS
-from .app_animation import FIELDS as APP_ANIMATION_FIELDS
+from . import natural_guidance, plugins
 
 ACTIONS = {
     "check": ({"suite", "suites", "mode", "variables", "artboard", "page", "comp", "artboards", "pages", "comps",
@@ -35,44 +27,18 @@ ACTIONS = {
     "resume": ({"id"}, {"id"}),
     "work": ({"workers"}, set()),
     "start": ({"workers"}, set()),
-    "film-plan": ({"spec"}, {"spec"}),
-    "film-export": ({"spec", "output"}, {"spec", "output"}),
-    "organic-catalog": (set(), set()),
-    "lyric-video-plan": (LYRIC_FIELDS, {"audio", "lyrics", "template"}),
-    "lyric-video-build": (LYRIC_FIELDS, {"audio", "lyrics", "template", "build"}),
-    "lyric-video-export": (LYRIC_FIELDS, {"audio", "lyrics", "template", "build", "output"}),
     "form-fill": ({"data", "values", "output", "name", "format", "combine", "mode", "skip_invalid", "dry_run", "check",
                    "unknown", "dpi"}, set()),
-    "drawing-report": ({"target"}, {"target"}),
-    "drawing-compare": ({"target", "output"}, {"target", "output"}),
-    "proof": ({"items", "output", "title", "check", "decisions", "max_size", "overwrite", "overlay"}, {"items", "output"}),
-    "logo-package": (LOGO_PACKAGE_FIELDS, {"output"}),
-    "repair-layout": ({"checks", "suites", "protected", "minimum_size", "max_candidates", "max_iterations",
-                       "time_budget", "dry_run"}, set()),
-    "protected-edit": ({"operations", "protect", "regions", "tolerance", "structural", "pixels", "dry_run"},
-                       {"operations"}),
-    "reproduce": ({"reference", "tolerance", "max_fraction", "lock", "write_lock", "overwrite"}, set()),
-    "check-all": ({"documents", "group", "checks", "suite", "suites", "fail_on", "profile", "waivers", "workers",
-                   "changed_since", "base",
-                   "work", "since_last", "history", "group_checks", "reference", "facts", "outputs", "overwrite"},
-                  set()),
-    "replace-across": ({"name", "documents", "replace", "dry_run", "suites", "accept", "reject", "decisions", "review",
-                        "overwrite", "journal"}, {"replace"}),
-    "brand-board": (BRAND_BOARD_FIELDS, {"output"}),
     "adapt-sizes": ({"sizes", "directory", "name", "options", "formats", "overwrite", "report"}, {"sizes"}),
 }
 
 
 ACTIONS.update(EMOJI_ACTIONS)
-ACTIONS["screen-capture"] = (set(CAPTURE_FIELDS), {"output"})
-ACTIONS["app-animation-package"] = (set(APP_ANIMATION_FIELDS), {"states", "default_state", "output"})
 ACTIONS.update(natural_guidance.ACTIONS)
-ACTIONS.update(media_analysis.ACTIONS)
 ACTIONS.update(STUDIO_ACTIONS)
 ACTIONS.update(LINK_ACTIONS)
-ACTIONS.update(IMPOSITION_ACTIONS)
-ACTIONS.update(MOCKUP_ACTIONS)
-ACTIONS.update(DECK_ACTIONS)
+# Built-in plugins (vixl.plugins) add their own workflow actions.
+ACTIONS.update({action: spec for action, (_, spec) in plugins.workflow_actions().items()})
 FILL_FORMATS = ("pdf", "png", "jpeg", "jpg", "webp", "tiff", "svg")
 
 PATH = {"type": "string", "description": "Workspace-relative path."}
@@ -105,38 +71,18 @@ ACTION_FIELD_TYPES = {
     },
 }
 
-ACTION_FIELD_TYPES["merge-impose"] = IMPOSITION_FIELD_TYPES
-ACTION_FIELD_TYPES["deck-from-markdown"] = DECK_FIELD_TYPES
-for _action, (_fields, _) in MOCKUP_ACTIONS.items():
-    ACTION_FIELD_TYPES[_action] = {key: MOCKUP_FIELD_TYPES[key] for key in _fields}
-ACTION_FIELD_TYPES["screen-capture"] = CAPTURE_FIELDS
-ACTION_FIELD_TYPES["app-animation-package"] = APP_ANIMATION_FIELDS
-for _module in (media_analysis, natural_guidance):
+for _module in (natural_guidance,):
     for _action in _module.ACTIONS:
         ACTION_FIELD_TYPES[_action] = _module.FIELD_TYPES
 
-
-LYRIC_TYPES = {
-    "build": {**PATH, "description": "The built timeline document (.vixl); an editable keyframed copy of the template. "
-              "Export renders an existing build as it is, hand edits included, while it still matches the request."},
-    "rebuild": {"type": "boolean", "description": "Export only: build the document again from the template and LRC, "
-                "replacing an existing build and discarding hand edits in it."},
-    "animation": {"type": "object", "description": "Lyric entry and exit: in, out, duration (ms), distance (px)."},
-    "cue_animation": {"type": "object", "description": "How cue-* layers enter, leave and move while their words are sung: "
-                      "in, out (as animation; default none, a cut), duration, distance, motion (none or sweep: a swing about "
-                      "the layer's pivot), amount (degrees, default 12), period (ms for a back-and-forth, default 2800), "
-                      "replay (true: the cue layer's own template keys restart at each window), and cues: per-layer "
-                      "overrides of any of these keyed by cue layer name, e.g. {\"cue-cell\": {\"in\": \"slide-in-down\"}}."},
-}
-for _action in ("lyric-video-plan", "lyric-video-build", "lyric-video-export"):
-    ACTION_FIELD_TYPES[_action] = LYRIC_TYPES
 
 
 def field_types(action):
     from .workflow_schema import properties
 
     fields = ACTIONS[action][0]
-    types = {**properties(action, fields), **ACTION_FIELD_TYPES.get(action, {})}
+    plugin_types = plugins.workflow_field_types(action) if action in plugins.workflow_actions() else {}
+    types = {**properties(action, fields), **plugin_types, **ACTION_FIELD_TYPES.get(action, {})}
     return {field: types[field] for field in sorted(fields) if field in types}
 
 
@@ -163,39 +109,21 @@ def dispatch(session, action, request, document=None):
     allowed, required = ACTIONS[action]
     bounded_object(request, allowed, "Unknown workflow request field")
     require(required <= request.keys(), "Missing workflow fields", required=sorted(required))
-    if action == "screen-capture":
-        from .screen_capture import capture
-        return capture(session, request)
-    if action == "app-animation-package":
-        from .app_animation import package
-        return package(session, request)
     # replace-across's replace is its list of rules; elsewhere replace is a flag.
     for field in ("dry_run",) if action == "replace-across" else ("dry_run", "replace"):
         if field in request:
             require(type(request[field]) is bool, f"{field} must be boolean")
+    if action in plugins.workflow_actions():
+        return plugins.dispatch_workflow(session, action, request, document)
     if action in EMOJI_ACTIONS:
         from .emoji_workflows import dispatch as emoji_dispatch
         return emoji_dispatch(session, action, request, document)
     if action in natural_guidance.ACTIONS:
         return natural_guidance.dispatch(session, action, request, document)
-    if action in media_analysis.ACTIONS:
-        return media_analysis.dispatch(session, action, request, document)
     if action in LINK_ACTIONS:
         from .links import dispatch as links_dispatch
 
         return links_dispatch(session, request, document)
-    if action in IMPOSITION_ACTIONS:
-        from .imposition import dispatch as merge_dispatch
-
-        return merge_dispatch(session, request, document)
-    if action in DECK_ACTIONS:
-        from .deck_markdown import dispatch as deck_dispatch
-
-        return deck_dispatch(session, action, request, document)
-    if action in MOCKUP_ACTIONS:
-        from .mockups import dispatch as mockup_dispatch
-
-        return mockup_dispatch(session, action, request, document)
     if action in STUDIO_ACTIONS:
         from .studio import dispatch as studio_dispatch
         try:
@@ -211,108 +139,12 @@ def dispatch(session, action, request, document=None):
                             request.get("overwrite", False), request.get("formats"), request.get("report", "summary"))
     if action == "plan":
         return plan(request["spec"])
-    if action == "organic-catalog":
-        from .organic import catalog
-
-        return catalog()
     if action == "form-fill":
         try:
             return form_fill(session, request, document)
         except (KeyError, TypeError, ValueError, OverflowError) as exc:
             raise VixlError("invalid_request", f"Invalid form-fill request: {exc}",
                             suggestions=["See vixl_reference('workflows') actions['form-fill'].properties"]) from exc
-    if action == "proof":
-        from .proof import proof_page
-
-        for field in ("check", "decisions", "overwrite", "overlay"):
-            require(type(request.get(field, False)) is bool, f"{field} must be boolean", field=field)
-        result = proof_page(request["items"], request["output"], resolve=session.resolve,
-                            title=request.get("title"), check=request.get("check", True),
-                            decisions=request.get("decisions", False), max_size=request.get("max_size", 1200),
-                            overwrite=request.get("overwrite", False), limits=session.limits,
-                            overlay=request.get("overlay", False))
-        result["output"] = session.relative(Path(result["output"]))
-        return result
-    if action == "repair-layout":
-        from .layout_repair import repair_layout
-
-        dry_run = request.get("dry_run", True)
-        with session.project(write=not dry_run, document=document) as project:
-            return repair_layout(project, checks=request.get("checks"), suites=request.get("suites", []),
-                                 protected=request.get("protected", []), minimum_size=request.get("minimum_size"),
-                                 max_candidates=request.get("max_candidates", 24),
-                                 max_iterations=request.get("max_iterations", 4),
-                                 time_budget=request.get("time_budget", 20), dry_run=dry_run)
-    if action == "protected-edit":
-        from .interfaces import service_check
-        from .protected_edit import protected_edit
-
-        for field in ("structural", "pixels"):
-            require(type(request.get(field, True)) is bool, f"{field} must be boolean", field=field)
-        dry_run = request.get("dry_run", False)
-        with session.project(write=not dry_run, document=document) as project:
-            return protected_edit(project, request["operations"], protect=request.get("protect", []),
-                                  regions=request.get("regions", []), tolerance=request.get("tolerance", 0),
-                                  structural=request.get("structural", True), pixels=request.get("pixels", True),
-                                  dry_run=dry_run, check=service_check)
-    if action == "reproduce":
-        from .reproduce import read_lock, reproduce, write_lock
-
-        require(type(request.get("overwrite", False)) is bool, "overwrite must be boolean", field="overwrite")
-        with session.project(document=document) as project:
-            result = {}
-            if request.get("write_lock"):
-                write_lock(project, session.resolve(request["write_lock"]), overwrite=request.get("overwrite", False))
-                result["lock_written"] = request["write_lock"]
-            result.update(reproduce(
-                project, reference=session.resolve(request["reference"]) if request.get("reference") else None,
-                tolerance=request.get("tolerance", 0), max_fraction=request.get("max_fraction", 0.0),
-                locked=read_lock(session.resolve(request["lock"])) if request.get("lock") else None,
-                limits=session.limits))
-            if result.get("reference"):
-                result["reference"]["path"] = request["reference"]
-            return result
-    if action == "check-all":
-        from .workspace_checks import run as check_all
-
-        return check_all(session, request)
-    if action == "replace-across":
-        from .replace_across import run as replace_across
-
-        return replace_across(session, request)
-    if action == "logo-package":
-        from .logo_package import build
-
-        return build(session, request, document)
-    if action == "brand-board":
-        from .brand_board import build as build_board
-
-        return build_board(session, request, document)
-    if action in ("drawing-report", "drawing-compare"):
-        from .drawing import compare, report
-
-        with session.project(document=document) as project:
-            result = report(project, request["target"])
-            if action == "drawing-compare":
-                destination = session.resolve(request["output"])
-                require(destination.suffix.lower() == ".png" and not destination.exists(),
-                        "Choose a new .png output", field="output")
-                compare(project, request["target"]).save(destination)
-                result["output"] = session.relative(destination)
-            return result
-    if action.startswith("lyric-video-"):
-        from . import lyrics
-
-        step = {"lyric-video-plan": lyrics.plan, "lyric-video-build": lyrics.build, "lyric-video-export": lyrics.export}[action]
-        return step(request, session.workspace, session.limits)
-    if action.startswith("film-"):
-        from .film import plan as film_plan, export
-
-        if action == "film-plan":
-            return film_plan(request["spec"], session.limits)
-        return export(
-            request["spec"], session.workspace, session.resolve(request["output"]), limits=session.limits
-        )
     if action in ("submit", "status", "cancel", "resume", "work", "start"):
         from .jobs import Queue
 

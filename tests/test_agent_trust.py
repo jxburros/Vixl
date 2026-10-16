@@ -12,10 +12,10 @@ from vixl import Project
 from vixl.checks import apply_reviewed
 from vixl.errors import VixlError
 from vixl.interfaces import Session
-from vixl.layout_repair import repair_layout
+from vixl.plugins.layout_repair.layout_repair import repair_layout
 from vixl.outcomes import make, merge, summarize
-from vixl.protected_edit import protected_edit
-from vixl.reproduce import lock, reproduce
+from vixl.plugins.workspace_qa.protected_edit import protected_edit
+from vixl.plugins.workspace_qa.reproduce import lock, reproduce
 from vixl.schema import validate_operation
 from vixl.workflows import dispatch
 
@@ -269,7 +269,7 @@ def test_mcp_surface_shares_the_contract(tmp_path):
 
 
 def test_proof_page_overlay_and_outcome(tmp_path):
-    from vixl.proof import proof_page
+    from vixl.plugins.workspace_qa.proof import proof_page
 
     overflowing().save(tmp_path / "doc.vixl")
     plain = proof_page(["doc.vixl"], "plain.html", resolve=lambda v: tmp_path / v)

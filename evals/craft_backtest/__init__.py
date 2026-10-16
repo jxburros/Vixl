@@ -117,7 +117,7 @@ def repair(checks=None, max_iterations=20, max_candidates=200, time_budget=300):
     """Run ``repair-layout`` on every backtest document that has composition findings and count the findings it
     resolves while adding no fix or review finding of any check. ``checks`` defaults to vixl_check's default set,
     so bounds, overlap, safe area and the rest guard every repair."""
-    from vixl.layout_repair import repair_layout
+    from vixl.plugins.layout_repair.layout_repair import repair_layout
 
     verdicts = {(f["document"], f["code"], tuple(f["layers"])): f["verdict"] for f in run()["findings"]}
     rows, totals = [], {"findings": 0, "resolved": 0, "caught": 0, "caught_resolved": 0, "new": 0}

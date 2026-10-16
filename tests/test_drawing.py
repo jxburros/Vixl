@@ -6,7 +6,7 @@ import pytest
 from PIL import Image, ImageDraw, ImageFilter
 
 from vixl import Project
-from vixl import drawing
+from vixl.plugins.drawing import drawing
 from vixl.errors import VixlError
 from vixl.trace import simplify
 
@@ -364,7 +364,7 @@ def test_cli_workflow_and_ai_colour(sketch, tmp_path):
             self.request = request
             return {"image": encoded(Image.new("RGBA", (request["width"], request["height"]), "skyblue")), "seed": 7}
 
-    from vixl.ai import encoded
+    from vixl.plugins.ai.ai import encoded
 
     provider = Provider()
     p = Project.load(path)

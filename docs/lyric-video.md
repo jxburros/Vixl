@@ -21,7 +21,7 @@ vixl workflow lyric-video-build  --request request.json --workspace .   # write 
 vixl workflow lyric-video-export --request request.json --workspace .   # build (or reuse the build), then render the video
 ```
 
-Python: `vixl.lyrics.parse_lrc`, `plan`, `build` and `export`. MCP: `vixl_apply(workflow=…)` with the same
+Python: `vixl.plugins.lyrics.lyrics.parse_lrc`, `plan`, `build` and `export`. MCP: `vixl_apply(workflow=…)` with the same
 actions. REST: `POST /workflow/lyric-video-plan` (build and export stay CLI/MCP/jobs only). A full
 song is a multi-minute render, so long exports usually go through a durable job, the request of workflow `submit`
 (`vixl workflow submit --request job.json --workspace .`, or `vixl_apply(workflow='submit', request=…)`; follow it with
@@ -46,11 +46,12 @@ job, submit a `film` job with the built document as its one shot and the song as
 
 ## Worked example
 
-`examples/lyric-video/` holds original lyrics (`lighthouse.lrc`) and a script that builds a styled template,
-synthesizes a melody and renders the video:
+[`showcases/lyric-video/`](https://github.com/jxburros/VixlExamples/tree/main/showcases/lyric-video) in
+VixlExamples holds original lyrics (`lighthouse.lrc`) and a script that builds a styled template, synthesizes a
+melody and renders the video. From the root of a VixlExamples checkout:
 
 ```bash
-python examples/lyric-video/build_lyric_video.py --draft
+python showcases/lyric-video/build_lyric_video.py --draft
 ```
 
 `request.json` for your own song:

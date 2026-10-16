@@ -7,7 +7,7 @@ from vixl import Project
 from vixl.errors import VixlError
 from vixl.interfaces import Session
 from vixl.links import corner_pin, perspective_coefficients
-from vixl.mockups import BUILTINS
+from vixl.plugins.brand_kit.mockups import BUILTINS
 from vixl.workflows import dispatch
 
 

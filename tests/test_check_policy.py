@@ -156,7 +156,7 @@ def test_waiver_command_line(tmp_path):
 
 
 def test_proof_page_lists_waivers(tmp_path):
-    from vixl.proof import proof_page
+    from vixl.plugins.workspace_qa.proof import proof_page
 
     p = ghost(tmp_path)
     p.apply({"type": "waiver", "check": "contrast", "target": "ghost", "reason": "ghost numeral", "expires": FUTURE})
@@ -234,7 +234,7 @@ def test_check_command_line_profile(tmp_path):
 
 
 def test_check_all_fails_at_the_profile_level_and_review():
-    from vixl.workspace_checks import failing
+    from vixl.plugins.workspace_qa.workspace_checks import failing
 
     record = {"issues": [{"check": "bounds", "severity": "warning", "action": "review", "message": "bar is cut off"},
                          {"check": "contrast", "severity": "info", "action": "informational", "message": "faint",
@@ -342,7 +342,7 @@ def test_translucent_layer_style_shadows_are_not_off_brand(tmp_path):
 
 
 def test_check_all_applies_waivers_and_outcome_accepts_them(tmp_path):
-    from vixl.workspace_checks import markdown
+    from vixl.plugins.workspace_qa.workspace_checks import markdown
 
     p = ghost(tmp_path)
     p.apply({"type": "waiver", "check": "contrast", "target": "ghost", "reason": "ghost numeral", "expires": FUTURE})

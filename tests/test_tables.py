@@ -48,7 +48,7 @@ def test_table_is_a_group_of_ordinary_vector_layers():
 
 def test_decimal_alignment_lines_up_the_points_of_a_price_list():
     p = make(columns=[{}, {"align": "decimal"}])
-    from vixl.charts import Kit, Style
+    from vixl.plugins.charts.charts import Kit, Style
 
     style = Style(p, {}, 900, 700)
     kit = Kit(p, {}, style)

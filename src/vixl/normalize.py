@@ -383,18 +383,9 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
         # The flag agents guess for faint decorative text: a contrast waiver on the layer.
         op["waive"] = ["contrast"] if op.pop("allow_low_contrast") else []
         note("allow_low_contrast → waive: ['contrast'] (replaces the layer's waivers)")
-    if kind in ("chart", "chart-data"):
-        from .charts import normalize as normalize_chart
+    from .plugins import normalize as normalize_plugin
 
-        op = normalize_chart(op, note)
-    if kind in ("table", "table-data"):
-        from .tables import normalize as normalize_table
-
-        op = normalize_table(op, note)
-    if kind == "key-value-list":
-        from .key_values import normalize as normalize_key_values
-
-        op = normalize_key_values(op, note)
+    op = normalize_plugin(kind, op, note)
     if kind == "layout-apply":
         # accent names the accent device (rule, bar …); a list there is the headline's accent words.
         if isinstance(op.get("accent"), list) and "accent_words" not in op:

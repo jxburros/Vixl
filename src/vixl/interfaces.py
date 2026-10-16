@@ -539,7 +539,7 @@ class Session:
             return import_image(p, data, name, source=source, credit=credit, license=license)
 
     def ai(self, command, args, document=None):
-        from .ai import ai_command
+        from .plugins.ai.ai import ai_command
 
         require(command in ("ask", "generate", "ai", "select", "detect", "ocr"), "Unsupported AI command")
         require(isinstance(args, list) and all(isinstance(x, str) for x in args), "AI args must be strings")

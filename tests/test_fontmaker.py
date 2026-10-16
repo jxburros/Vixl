@@ -125,7 +125,7 @@ def test_explicit_layers_text_sources_and_private_use_code_points(tmp_path):
 
 
 def test_a_cell_takes_its_vector_layers_and_skips_others():
-    from vixl.fontmaker import glyph_outlines
+    from vixl.plugins.fontmaker.fontmaker import glyph_outlines
 
     p = Project(400, 300)
     p.apply([{"type": "font-design", "family": "Cells", "em": 100},
@@ -221,7 +221,7 @@ def test_font_design_survives_save_and_invalid_records_are_refused(tmp_path):
     loaded = Project.load(tmp_path / "doc.vixl")
     assert loaded.state["font_design"]["kerning"] == {"VO": -10}
     assert TTFont(BytesIO(loaded.export(tmp_path / "again.ttf")))["glyf"]["O"].numberOfContours == 2
-    from vixl.fontmaker import validate
+    from vixl.plugins.fontmaker.fontmaker import validate
 
     state = {"font_design": {"glyphs": {"AB": {}}}}
     with pytest.raises(VixlError, match="glyph"):

@@ -13,11 +13,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 from vixl import Project, VixlError
-from vixl.ai import encoded, make_provider, plan
+from vixl.plugins.ai.ai import encoded, make_provider, plan
 from vixl.fonts import import_font
 from vixl.geometry import EXTRA_SHAPES
 from vixl.interfaces import Session, create_app, mcp_server
-from vixl.models import catalog_provider, discovery_command, discover, load_config, route, save_provider
+from vixl.plugins.ai.models import catalog_provider, discovery_command, discover, load_config, route, save_provider
 from vixl.resources import catalog, create_template, get, register
 
 

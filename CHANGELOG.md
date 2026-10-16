@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+### Built-in plugins and content packs
+
+- **Optional features are built-in plugins.** 21 feature packages moved to `src/vixl/plugins/<name>/`: charts and
+  tables, hand drawing, diagrams, comics, atmosphere, organic shapes, characters, the font maker, film, lyric videos,
+  print imposition, the brand kit (logo package, brand board, mockups), Markdown to deck, teamwork (branches,
+  document groups, suite inference), workspace QA (check-all, replace-across, protected edits, proofs,
+  reproducibility), layout repair, app animation packages, screen capture, Figma import, PDF import and the AI
+  providers. Each has a `PLUGIN` manifest, and the core reaches its operations, CLI shorthand, workflow actions and
+  hooks (`normalize`, `validate-layer`, `validate-state`, `check`, `after-apply`, `apply-report`, `export-format`,
+  `import-format`) through one registry, `vixl.plugins`. All of them still ship with Vixl and are always on; the
+  operations, actions and results are unchanged. [Plugins](docs/plugins.md) lists them, the hook points, and the
+  parameters for deciding whether a new feature is core, a plugin or a content pack. `tests/test_plugins.py` fails
+  when the core imports a plugin module outside the listed exceptions.
+- **Breaking (Python API):** the moved modules are now imported from their plugin package, for example
+  `vixl.plugins.charts.charts`, `vixl.plugins.lyrics.lyrics`, `vixl.plugins.drawing.drawing`,
+  `vixl.plugins.workspace_qa.proof` or `vixl.plugins.ai.ai`. `vixl.plugins.enable_plugins()` and the other
+  third-party extension functions are unchanged (they now live in `vixl.plugins.external`). `studio.py` stays in the
+  core; its branch, group and suite-inference actions moved to the `teamwork` plugin.
+- **The emoji artwork is a downloadable content pack.** The 20 MB `artwork.zip` moved to
+  [VixlExamples](https://github.com/jxburros/VixlExamples/tree/main/packs/emojis) with its sources and build
+  scripts, so the wheel is about 20 MB smaller. Vixl downloads it the first time it draws or exports an emoji,
+  checks it against a pinned SHA-256 and caches it in `~/.cache/vixl/packs/` (`VIXL_PACK_DIR`). `vixl emoji
+  artwork [--download] [--from FILE]` (workflow `emoji-artwork`) shows or installs it; `VIXL_PACK_DOWNLOAD=off`
+  forbids downloads and `VIXL_EMOJIS_PACK` points at a local copy. Without the pack, text still renders and draws
+  emojis from the fonts with a warning. The catalog stays in the package, so search and detection work offline.
+- The lyric video and cut-paper demonstrations moved from `examples/` to VixlExamples `showcases/`.
+- The render cache fingerprint now covers code in subpackages (the plugins and the converter), not only the
+  top-level modules.
+
 ### Making fonts
 
 - **Draw a font and export it.** A document can hold a font design: `font-design` names it (family, style,

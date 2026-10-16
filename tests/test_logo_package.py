@@ -7,7 +7,7 @@ import pytest
 from vixl import Project
 from vixl.errors import VixlError
 from vixl.interfaces import Session
-from vixl.logo_package import recolor
+from vixl.plugins.brand_kit.logo_package import recolor
 from vixl.workflows import describe, dispatch
 
 

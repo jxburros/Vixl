@@ -195,7 +195,7 @@ def test_production_reuse_skips_checks_and_detects_output_tampering(tmp_path, mo
 
 
 def test_small_explicit_chart_range_has_multiple_ticks():
-    from vixl.charts import nice_scale
+    from vixl.plugins.charts.charts import nice_scale
     assert len(nice_scale(0, 0.01, 2, fixed_max=0.01)[3]) >= 2
 
 
@@ -440,7 +440,7 @@ def test_new_house_short_timelines_are_seamless_and_easing_follows_intent():
 
 def test_shared_spacing_units_for_stacks_and_charts():
     from vixl.craft import body_size, space
-    from vixl.charts import Style
+    from vixl.plugins.charts.charts import Style
     p = Project.sized('instagram-square', 'white', seed=1, workspace_fonts=False)
     p.apply([{'type': 'text', 'name': 'a', 'text': 'One', 'size': 30},
              {'type': 'text', 'name': 'b', 'text': 'Two', 'size': 30},

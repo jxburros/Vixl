@@ -5,7 +5,7 @@ import pytest
 from PIL import Image, ImageDraw, ImageFilter
 
 from vixl import Project
-from vixl import drawing
+from vixl.plugins.drawing import drawing
 from vixl.errors import VixlError
 
 

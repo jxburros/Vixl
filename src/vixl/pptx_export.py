@@ -140,14 +140,14 @@ class Slide:
                 reason = "skew" if layer.get("skew_x") or layer.get("skew_y") else "affine transform"
             if reason is None and layer["type"] == "group":
                 if "chart" in layer:
-                    from .chart_pptx import shapes as chart_shapes
+                    from .plugins.charts.chart_pptx import shapes as chart_shapes
 
                     native = chart_shapes(self, layer, bounds, emu, layers, index)
                     if native is not None:
                         out.extend(native)
                         continue
                 if "table" in layer:
-                    from .table_pptx import shapes as table_shapes
+                    from .plugins.charts.table_pptx import shapes as table_shapes
 
                     native = table_shapes(self, layer, bounds, emu, layers, index)
                     if native is not None:
@@ -811,7 +811,7 @@ def package(project, exporter, slides, notes, cx, cy):
         overrides.append((f"/ppt/slides/slide{i}.xml", "application/vnd.openxmlformats-officedocument.presentationml.slide+xml"))
         overrides.append((f"/ppt/notesSlides/notesSlide{i}.xml",
                           "application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml"))
-    from .chart_pptx import content_types as chart_types, files as chart_files
+    from .plugins.charts.chart_pptx import content_types as chart_types, files as chart_files
 
     chart_default, chart_overrides = chart_types(exporter)
     types = (f'{XML}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'

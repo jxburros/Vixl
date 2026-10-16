@@ -15,7 +15,7 @@ from vixl import Project
 from vixl.errors import VixlError
 from vixl.interfaces import Session
 from vixl.workflows import dispatch
-from vixl.workspace_checks import render
+from vixl.plugins.workspace_qa.workspace_checks import render
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -143,7 +143,7 @@ def test_report_formats_annotations_junit_and_sarif(workspace):
 
 
 def test_annotation_values_are_escaped():
-    from vixl.workspace_checks import annotations
+    from vixl.plugins.workspace_qa.workspace_checks import annotations
 
     text = annotations({"documents": [{"path": "a,b:c.vixl", "status": "failed", "findings": [
         {"check": "bounds", "severity": "error", "message": "50% off\nnext line"}]}]})
@@ -169,7 +169,7 @@ def test_second_run_names_exactly_the_changed_document_as_newly_failing(workspac
 
 
 def test_version_change_is_reported_as_the_cause(workspace):
-    from vixl.workspace_checks import since_last
+    from vixl.plugins.workspace_qa.workspace_checks import since_last
 
     previous = {"time": "t", "vixl_version": "0.1.0",
                 "documents": {"a.vixl": {"status": "passed", "failing": False, "sha256": "x", "findings": []}}}
@@ -289,7 +289,7 @@ def test_replace_dry_run_lists_every_match_and_apply_is_recoverable(workspace, m
     assert len(by_doc) == 10 and dry["matches"] == 6 + 10
     assert [m["after"] for m in by_doc["docs/d1.vixl"]["matches"] if m["kind"] == "text"] == ["Vixl Studio launch"]
     assert by_doc["docs/d0.vixl"]["count"] == 1  # only the color
-    import vixl.project_groups as groups
+    import vixl.plugins.teamwork.project_groups as groups
 
     publish = groups.publish_file
 

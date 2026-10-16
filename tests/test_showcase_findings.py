@@ -247,7 +247,7 @@ Cauca,51,85.2
 
 
 def test_deck_from_markdown_fits_the_cover_and_keeps_one_type_scale(tmp_path):
-    from vixl.deck_markdown import run
+    from vixl.plugins.deck_markdown.deck_markdown import run
     from vixl.interfaces import Session
 
     (tmp_path / "deck.md").write_text(DECK, encoding="utf-8")

@@ -130,10 +130,12 @@ def import_document(project, data, format, name="import", page=1, dpi=None, svg_
     page (number or name) and ``options`` are ``node_id``, ``rasterize_unsupported`` and ``install_fonts``. For SVG,
     ``install_fonts`` (default true) lets the fonts of Vixl's own SVG, which it names instead of storing, be
     downloaded from Google Fonts when the font cache does not have them."""
-    if format.lower() == "figma":
-        from .figma_import import import_source
+    from .plugins import first as plugin_first
 
-        return import_source(project, data, page=page, **options)
+    if format.lower() == "figma":
+        imported = plugin_first("import-format", project, data, "figma", page=page, **options)
+        require(imported is not None, "Figma import is not available (plugin figma_import)", field="format")
+        return imported
     install_fonts = options.pop("install_fonts", True) if format.lower() == "svg" else True
     require(not options, f"Unknown import option(s): {', '.join(sorted(options))}")
     require(len(data) <= project.limits.max_asset_bytes, "Import exceeds byte limit", "resource_limit")
@@ -142,9 +144,9 @@ def import_document(project, data, format, name="import", page=1, dpi=None, svg_
     if format.lower() == "svg":
         return _import_svg(project, data, name, svg_mode, install_fonts)
     require(format.lower() == "pdf", "Import format must be svg, pdf or figma")
-    from .pdf_import import import_pdf
-
-    return import_pdf(project, data, name=name, page=page, dpi=dpi, mode=svg_mode)
+    imported = plugin_first("import-format", project, data, "pdf", name=name, page=page, dpi=dpi, mode=svg_mode)
+    require(imported is not None, "PDF import is not available (plugin pdf_import)", field="format")
+    return imported
 
 
 def _import_svg(project, data, name, svg_mode, install_fonts=True):

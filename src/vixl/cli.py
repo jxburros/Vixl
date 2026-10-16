@@ -108,7 +108,7 @@ Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG [--isola
            compose --request FILE [--preview P.png] (create → layout → look → operations → check → exports, atomic),
            each layer --name PATTERN -- COMMAND, preset save|apply|show NAME,
            transaction begin|commit|rollback, assert RULE, validate [PROFILE]
-Emoji:     emoji list|get|template|settings|replace|install|reset|destinations|requirements|export (emoji --help)
+Emoji:     emoji list|get|template|settings|replace|install|reset|artwork|destinations|requirements|export (emoji --help)
 Resources: commands, shapes, sizes [--category print], palette list|show|add|apply,
            template list|show|add|new|apply, layout list|show|apply NAME [--seed N|random] [--set title=…],
            guidance list|show|add|apply|import|remove, providers, models,
@@ -457,13 +457,13 @@ def _dispatch(argv):
         from .workflows import cli
         return cli(args, options, limits), options.json
     if cmd == "check":
-        from .workspace_checks import cli as check_all_cli, wants_cli
+        from .plugins.workspace_qa.workspace_checks import cli as check_all_cli, wants_cli
 
         if wants_cli(args):
             report = check_all_cli(args, options, limits)
             return report, options.json and isinstance(report, dict)
     if cmd == "merge":
-        from .imposition import cli as merge_cli
+        from .plugins.imposition.imposition import cli as merge_cli
         return merge_cli(args, options, limits), options.json
     if cmd == "diff":
         from .image_diff import cli as diff_cli
@@ -561,7 +561,7 @@ def _dispatch(argv):
         if not needs_project:
             return result, options.json
     if cmd in ("providers", "models"):
-        from .models import discovery_command
+        from .plugins.ai.models import discovery_command
 
         return discovery_command(cmd, args), options.json
     if cmd == "cache":
@@ -893,7 +893,7 @@ def project_command(project, cmd, args, *, detail="compact"):
         return feature
     if cmd in ("inspect", "status", "describe"):
         if cmd == "describe" and args == ["image"]:
-            from .ai import ai_command
+            from .plugins.ai.ai import ai_command
 
             return ai_command(project, "ai", ["describe"])
         if args[:1] == ["--target"] or (args and args[0].startswith("--target=")):
@@ -927,7 +927,7 @@ def project_command(project, cmd, args, *, detail="compact"):
     if cmd in ("dependencies", "reproduce"):
         result = dependencies(project)
         if cmd == "reproduce":
-            from .reproduce import read_lock, reproduce, write_lock
+            from .plugins.workspace_qa.reproduce import read_lock, reproduce, write_lock
 
             p = Parser(prog="vixl reproduce", description="Render and report the reproduction level reached: "
                        "renderable, environment-matched (--lock) or reference-verified (--reference or --lock)")
@@ -1424,7 +1424,7 @@ def project_command(project, cmd, args, *, detail="compact"):
     if cmd in ("ai", "ask", "generate", "detect", "ocr", "OCR") or (
         cmd == "select" and args and args[0] == "object"
     ):
-        from .ai import ai_command
+        from .plugins.ai.ai import ai_command
 
         return ai_command(project, cmd, args, detail=detail)
     return project.apply(compile_command([cmd, *args]), detail=detail), True

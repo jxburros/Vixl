@@ -234,7 +234,7 @@ def check(candidate, resolved, layers, texts, bounds, text_scales, issue):
     for item, size in small[:20]:
         issue("accessibility", "warning", f"{item['name']!r} is {size}; enlarge it for readers with low vision",
               [item], action="review", code="text-size")
-    from .charts import series_colors
+    from .plugins.charts.charts import series_colors
 
     for group, series in series_colors(candidate, resolved):
         if group.get("color_vision_safe") or len(series) < 2:

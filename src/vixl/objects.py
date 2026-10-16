@@ -885,7 +885,7 @@ def save(project, op):
 
 def _from_file(project, source):
     """A saved-object record read from a portable object document in the workspace."""
-    from .film import local_path
+    from .assets import local_path
     from .project import Project
 
     root = getattr(project, "_workspace", None)

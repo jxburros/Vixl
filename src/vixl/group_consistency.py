@@ -547,7 +547,7 @@ def facts_for(session, group=None, request_facts=None):
 
 def run(session, request):
     """The ``group-check`` workflow action."""
-    from .workspace_checks import members, load_projects
+    from .plugins.workspace_qa.workspace_checks import members, load_projects
     from .brand import load
 
     paths, group = members(session, request)

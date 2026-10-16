@@ -5,7 +5,7 @@ from pathlib import Path
 
 from vixl import Project
 from vixl.production import Library, capture_recipe, run
-from vixl.film import export as export_film
+from vixl.plugins.film.film import export as export_film
 from vixl.timeline import export_timeline
 
 

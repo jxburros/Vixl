@@ -9,7 +9,7 @@ import math
 from pathlib import Path
 
 from vixl import Project, __version__
-from vixl.organic import PRESETS
+from vixl.plugins.organic.organic import PRESETS
 
 CREAM = "#f6f1e7"
 INK = "#2a2620"

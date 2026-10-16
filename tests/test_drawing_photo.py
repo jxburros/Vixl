@@ -9,7 +9,8 @@ import numpy as np
 import pytest
 from PIL import Image, ImageDraw, ImageFilter
 
-from vixl import Project, drawing, gaps, paper
+from vixl import Project
+from vixl.plugins.drawing import drawing, gaps, paper
 from vixl.errors import VixlError
 
 PAGE = (700, 500)

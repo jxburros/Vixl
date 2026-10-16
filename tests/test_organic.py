@@ -7,7 +7,7 @@ import pytest
 
 from vixl import Project
 from vixl.errors import VixlError
-from vixl.organic import PRESETS, build_parts, catalog
+from vixl.plugins.organic.organic import PRESETS, build_parts, catalog
 from vixl import trace
 
 

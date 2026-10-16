@@ -66,6 +66,8 @@ FIELDS = {
     },
     "name": S("Optional custom emoji name for destination exports."),
     "license": S("Artwork license; defaults to unspecified for original user art."),
+    "download": B("emoji-artwork: download the artwork pack now if it is missing; default false (status only)."),
+    "pack": S("emoji-artwork: install the artwork pack from this local copy of artwork.zip (checked by SHA-256)."),
 }
 ACTIONS = {
     "emoji-list": ({"query", "group", "offset", "limit"}, set()),
@@ -78,6 +80,7 @@ ACTIONS = {
     "emoji-pack-install": ({"source"}, {"source"}),
     "emoji-settings": ({"mode"}, set()),
     "emoji-reset": ({"emoji"}, set()),
+    "emoji-artwork": ({"download", "pack"}, set()),
 }
 SUMMARIES = {
     "emoji-list": "Search Unicode 17 artwork, 100 VIXL originals and document custom emojis, with pagination.",
@@ -90,6 +93,7 @@ SUMMARIES = {
     "emoji-pack-install": "Install every entry in a VIXL emoji pack as one undoable atomic document edit.",
     "emoji-settings": "Inspect emoji rendering preferences or switch between VIXL and font preference.",
     "emoji-reset": "Restore one bundled emoji or remove all document overrides.",
+    "emoji-artwork": "Show or install the emoji artwork pack, which Vixl otherwise downloads on first use.",
 }
 
 
@@ -113,6 +117,14 @@ def dispatch(session, action, request, document=None):
             "checked": "2026-10-08",
             "help": "Profiles describe static custom emoji uploads; slot counts and permissions depend on the destination.",
         }
+    if action == "emoji-artwork":
+        from . import packs
+
+        if "pack" in request:
+            return packs.install("emojis", session.resolve(request["pack"]))
+        if request.get("download") and not packs.status("emojis")["installed"]:
+            return packs.install("emojis")
+        return packs.status("emojis")
     if action == "emoji-template":
         output = session.resolve(request["output"])
         require(output.suffix.lower() == ".vixl", "Emoji template output must end in .vixl")
@@ -265,6 +277,9 @@ def cli(args, options, limits):
     p.add_argument("--mode", choices=["vixl", "font"])
     p = sub.add_parser("reset")
     p.add_argument("--emoji")
+    p = sub.add_parser("artwork")
+    p.add_argument("--download", action="store_true", default=None)
+    p.add_argument("--from", dest="pack")
     a = parser.parse_args(args)
     request = {k: v for k, v in vars(a).items() if k not in ("command", "workspace") and v is not None}
     action = "emoji-pack-install" if a.command == "install" else "emoji-" + a.command

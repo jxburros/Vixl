@@ -217,3 +217,11 @@ def decode_message(exc):
     if isinstance(exc, Image.UnidentifiedImageError):
         return "Cannot decode image: not a supported image format (PNG, JPEG, WebP, GIF, TIFF, AVIF, BMP or ICO)"
     return "Cannot decode image: " + re.sub(r"\s*<[^<>]* at 0x[0-9a-f]+>", "", str(exc)).strip()
+
+
+def local_path(root, value):
+    """``value`` resolved inside the workspace ``root`` (media sources, job outputs); refuses paths outside it."""
+    require(isinstance(value, str) and value, "Expected workspace path")
+    path = (Path(root) / value).resolve()
+    require(path.is_relative_to(Path(root).resolve()), "Film source is outside workspace", "forbidden")
+    return path

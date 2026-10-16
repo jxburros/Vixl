@@ -6,7 +6,7 @@ import pytest
 from PIL import Image
 
 from vixl import Project
-from vixl.deck_markdown import classify, split
+from vixl.plugins.deck_markdown.deck_markdown import classify, split
 from vixl.errors import VixlError
 from vixl.interfaces import Session
 from vixl.workflows import dispatch

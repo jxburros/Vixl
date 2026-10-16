@@ -1,7 +1,9 @@
 # Emoji workflows
 
 The full authoring guide is `docs/emojis.md` in the Vixl repository. Unicode 17 includes
-3,953 offline SVGs and editable VIXL masters, including tones, flags and joined sequences.
+3,953 SVGs and editable VIXL masters, including tones, flags and joined sequences. The artwork is a
+content pack Vixl downloads and caches on first use; `emoji-artwork` shows it or fetches it now
+(`download: true`), or installs a local copy (`pack`). Without it, emojis draw from the fonts with a warning.
 VIXL Line 2 adds 100 originals (4,053 total entries): 24 faces, 44 reactions and 32 everyday
 symbols. Search groups `VIXL Faces`, `VIXL Reactions` and `VIXL Everyday`;
 built-in shortcodes such as `:approved:`, `:support:` and

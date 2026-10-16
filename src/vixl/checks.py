@@ -842,7 +842,7 @@ def check_design(
             measured = top_level_contrast(candidate, top) if top else {}
         except Exception:  # noqa: BLE001 - measure each layer separately and report its own failure.
             measured = {}
-        from .charts import chart_contrast
+        from .plugins.charts.charts import chart_contrast
 
         measured.update(chart_contrast(candidate, resolved, local_bounds, bounds, [x for x in texts if x.get("parent")]))
         for item in texts:
@@ -1109,15 +1109,11 @@ def check_design(
 
         check_connected(candidate, issue, connect_tolerance, targets, resolved)
 
-    if "drawing" in checks:
-        from .drawing import check_drawings
+    from .plugins import hooks as plugin_hooks
 
-        check_drawings(candidate, list(resolved.values()), issue)
-
-    if "diagram" in checks and candidate.state.get("diagrams"):
-        from .diagrams import check_diagrams
-
-        check_diagrams(candidate, resolved, local_bounds, projection, issue)
+    for check_plugin in plugin_hooks("check"):
+        check_plugin(checks, candidate=candidate, resolved=resolved, local_bounds=local_bounds,
+                     projection=projection, issue=issue)
 
     if "flow" in checks and candidate.state.get("flows"):
         from .textflow import check_flows
@@ -1150,12 +1146,10 @@ def check_design(
         check_links(candidate, [resolved[i] for i in resolved if resolved[i]["type"] == "link" and visible(resolved[i])],
                     issue)
 
-    for name in ("motion", "character", "captions"):
+    for name in ("motion", "captions"):
         if name in checks:
             if name == "motion":
                 from .motion import findings
-            elif name == "character":
-                from .characters import findings
             else:
                 from .captions import findings
             for finding in findings(candidate):
@@ -1434,7 +1428,7 @@ def _series_color_vision(candidate, resolved, issue):
     from PIL import Image
 
     from . import colors
-    from .charts import series_colors
+    from .plugins.charts.charts import series_colors
 
     def distance(a, b):
         return math.dist(colors.srgb_to_oklab(tuple(v / 255 for v in a)), colors.srgb_to_oklab(tuple(v / 255 for v in b)))

@@ -12,12 +12,12 @@ import tempfile
 import time
 import types
 
-from vixl import film
+from vixl.plugins.film import film
 from vixl.project import Project
 
 
 def benchmark(revision):
-    source = subprocess.check_output(["git", "show", f"{revision}:src/vixl/film.py"], text=True)
+    source = subprocess.check_output(["git", "show", f"{revision}:src/vixl/plugins/film/film.py"], text=True)
     baseline = types.ModuleType("vixl._baseline_film")
     baseline.__package__ = "vixl"
     exec(compile(source, "baseline_film.py", "exec"), baseline.__dict__)

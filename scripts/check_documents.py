@@ -31,7 +31,7 @@ def main(argv=None):
         sys.stdout.reconfigure(errors="replace")  # a Windows console cannot print every finding
     try:
         from vixl.interfaces import Session
-        from vixl.workspace_checks import markdown, run
+        from vixl.plugins.workspace_qa.workspace_checks import markdown, run
     except ImportError:
         print("This script needs vixl-engine 0.25 or later (vixl check --all)", file=sys.stderr)
         return 2

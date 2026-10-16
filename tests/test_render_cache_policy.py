@@ -162,7 +162,7 @@ def test_moving_frames_are_stored_only_when_requested_again(tmp_path, monkeypatc
 
 
 def test_film_frames_share_one_source_cache_and_store_no_one_use_frames(tmp_path, monkeypatch):
-    import vixl.film as film
+    import vixl.plugins.film.film as film
 
     moving(tmp_path / "doc.vixl")
     spec = {"width": 320, "height": 180, "fps": 12, "shots": [{"source": "doc.vixl", "duration": 1000}]}
@@ -209,7 +209,7 @@ def test_a_continuously_moving_film_writes_no_frame_pngs(tmp_path):
     the adaptive frame policy every frame was stored as a mostly-unique grain PNG."""
     import time
 
-    import vixl.film as film
+    import vixl.plugins.film.film as film
 
     moving(tmp_path / "doc.vixl")
     spec = {"width": 320, "height": 180, "fps": 24, "shots": [{"source": "doc.vixl", "duration": 2000}]}

@@ -6,6 +6,7 @@ import re
 
 from .errors import VixlError, require
 from .model import LAYER_ROLES, LAYER_TYPES, finite
+from .plugins import hooks as plugin_hooks
 from .render import BLENDS, color, resolve_layout
 
 
@@ -118,22 +119,8 @@ def check_state(project, state):
             from .links import validate as validate_link
 
             validate_link(layer, state)
-        if "table" in layer and layer["type"] == "group":
-            from .tables import validate_table
-
-            validate_table(layer, state)
-        if "key_values" in layer:
-            from .key_values import validate as validate_key_values
-
-            validate_key_values(layer, state)
-        if "chart" in layer:
-            from .charts import validate_chart
-
-            validate_chart(layer, state)
-        if "drawing" in layer or "drawing_strokes" in layer:
-            from .drawing import validate as validate_drawing
-
-            validate_drawing(layer, state, project)
+        for validate_plugin_layer in plugin_hooks("validate-layer"):
+            validate_plugin_layer(layer, state, project)
         if layer["type"] == "text":
             require(isinstance(layer["text"], str) and len(layer["text"]) <= 100000, "Invalid text")
             finite(layer["size"], "font size", 1, 4096)
@@ -174,9 +161,8 @@ def check_state(project, state):
     validate_style_tag(state)
     from .automation import validate_state
     validate_state(state)
-    from .diagrams import validate as validate_diagrams
-
-    validate_diagrams(state)
+    for validate_plugin_state in plugin_hooks("validate-state"):
+        validate_plugin_state(project, state)
     from .textflow import validate as validate_flows
 
     validate_flows(state)
@@ -188,9 +174,6 @@ def check_state(project, state):
 
     validate_objects(project, state)
     validate_accessibility(project, state)
-    from .fontmaker import validate as validate_font_design
-
-    validate_font_design(project, state)
     require(not (ids & names), "Layer names cannot collide with IDs", "invalid_project")
     require(
         state["active_layer"] is None or state["active_layer"] in ids,

@@ -4,7 +4,8 @@ import numpy as np
 import pytest
 from PIL import Image, ImageDraw
 
-from vixl import Project, drawing
+from vixl import Project
+from vixl.plugins.drawing import drawing
 from vixl.commands import compile_command
 from vixl.errors import VixlError
 from vixl.schema import validate_operation

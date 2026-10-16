@@ -7,7 +7,7 @@ import pytest
 
 from vixl import Project
 from vixl.errors import VixlError
-from vixl.imposition import template_variables
+from vixl.plugins.imposition.imposition import template_variables
 from vixl.interfaces import Session
 from vixl.render import resolved_layers
 from vixl.variables import placeholders, substitute, with_maps

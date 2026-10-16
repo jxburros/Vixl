@@ -20,6 +20,9 @@ from vixl.interfaces import Session
 from vixl.model import Limits
 from vixl.text import clusters, font_data, glyph_coverage, lines, shape
 
+# Most tests here draw or export the artwork (the emojis content pack; see tests/conftest.py).
+pytestmark = pytest.mark.emoji_pack
+
 
 def text_document(text="Hello 😀 👋🏽 🧑‍🚀 🇬🇧", rich=False):
     p = Project(600, 140, background="white")
@@ -73,7 +76,7 @@ def test_complete_stable_unicode_catalog_includes_every_qualified_sequence_and_c
     assert set(expected) == unicode_entries and len(expected) == 3953
     assert data["unicode_count"] == 3953 and data["original_count"] == 100
     assert data["original_groups"] == {"VIXL Reactions": 44, "VIXL Faces": 24, "VIXL Everyday": 32}
-    with zipfile.ZipFile(emojis.DATA / "artwork.zip") as z:
+    with zipfile.ZipFile(emojis.archive_path()) as z:
         for e in data["entries"]:
             assert emojis.scan(e["emoji"]) == [(0, len(e["emoji"]), e["id"])]
             assert len(z.read("svg/" + e["id"] + ".svg")) > 100

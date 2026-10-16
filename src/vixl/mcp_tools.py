@@ -164,7 +164,7 @@ def decode_upload(data_base64, limit):
 
 
 def typed_ai(session, command, words=(), document=None, **options):
-    from .ai import ai_execute
+    from .plugins.ai.ai import ai_execute
 
     defaults = dict(
         words=list(words),
@@ -446,7 +446,7 @@ def build_server(session, *, planner=False, tools="default", allow_screen_captur
         provider: str | None = None, capability: str | None = None, refresh: bool = False
     ) -> dict:
         """Discover authenticated model IDs and supported capabilities; keys stay in server environment variables."""
-        from .models import configured, DEFAULTS, CAPABILITIES, refresh as refresh_models
+        from .plugins.ai.models import configured, DEFAULTS, CAPABILITIES, refresh as refresh_models
 
         require(capability is None or capability in CAPABILITIES, "Unknown model capability")
         settings = configured()

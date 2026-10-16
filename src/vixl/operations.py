@@ -14,38 +14,30 @@ from .creative import TYPES as CREATIVE_TYPES
 from .containers import TYPES as CONTAINER_TYPES
 from .inplace import IN_PLACE_TYPES
 from .stacks import TYPES as STACK_TYPES, POSITIONING as STACK_POSITIONING
-from .organic import TYPES as ORGANIC_TYPES
 from .irregular import TYPES as IRREGULAR_TYPES
 from .guides import TYPES as GUIDE_TYPES
 from .richtext import TYPES as RICH_TYPES
 from .pages import TYPES as PAGE_TYPES
 from .forms import TYPES as FORM_TYPES
-from .drawing import TYPES as DRAWING_TYPES
 from .selectors import TYPES as SELECTOR_TYPES
 from .links import TYPES as LINK_TYPES
 from .codes import TYPES as CODE_TYPES
-from .charts import TYPES as CHART_TYPES
-from .tables import TYPES as TABLE_TYPES
-from .key_values import TYPES as KEY_VALUE_TYPES
 from .diecut import TYPES as DIECUT_TYPES
 from .path_split import TYPES as SPLIT_TYPES
 from .finishing import TYPES as FINISHING_TYPES
-from .diagrams import TYPES as DIAGRAM_TYPES
 from .textflow import TYPES as FLOW_TYPES
 from .transforms import TYPES as TRANSFORM_TYPES
 from .motion import TYPES as MOTION_TYPES
-from .characters import TYPES as CHARACTER_TYPES
-from .comics import TYPES as COMIC_TYPES
 from .textures import TYPES as TEXTURE_TYPES
 from .audio import TYPES as AUDIO_TYPES
 from .captions import TYPES as CAPTION_TYPES
 from .scene import TYPES as SCENE_TYPES
-from .atmosphere import TYPES as ATMOSPHERE_TYPES
 from .vector_paths import TYPES as VECTOR_TYPES
 from .merging import TYPES as MERGE_TYPES
 from .objects import TYPES as OBJECT_TYPES
 from .accessibility import TYPES as ACCESSIBILITY_TYPES
-from .fontmaker import TYPES as FONT_TYPES
+
+from . import plugins
 
 from copy import deepcopy
 import hashlib
@@ -75,7 +67,7 @@ from .render import (
 COLOR_TYPES = ("palette-generate",)
 
 
-OPERATION_TYPES = list(EMOJI_TYPES + DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CODE_TYPES + CHART_TYPES + TABLE_TYPES + KEY_VALUE_TYPES + DIECUT_TYPES + SPLIT_TYPES + FINISHING_TYPES + DIAGRAM_TYPES + FLOW_TYPES + TRANSFORM_TYPES + MOTION_TYPES + CHARACTER_TYPES + COMIC_TYPES + TEXTURE_TYPES + AUDIO_TYPES + VECTOR_TYPES + CAPTION_TYPES + SCENE_TYPES + ATMOSPHERE_TYPES + MERGE_TYPES + OBJECT_TYPES + ACCESSIBILITY_TYPES + FONT_TYPES) + [
+OPERATION_TYPES = list(EMOJI_TYPES + tuple(plugins.operation_types()) + DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CODE_TYPES + DIECUT_TYPES + SPLIT_TYPES + FINISHING_TYPES + FLOW_TYPES + TRANSFORM_TYPES + MOTION_TYPES + TEXTURE_TYPES + AUDIO_TYPES + VECTOR_TYPES + CAPTION_TYPES + SCENE_TYPES + MERGE_TYPES + OBJECT_TYPES + ACCESSIBILITY_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -419,15 +411,14 @@ def execute(project, op):
         if "opacity" in op:
             execute(project, {"type": "opacity", "target": ident, "value": op["opacity"]})
         return result
+    if kind in plugins.operation_types():
+        return plugins.execute(project, op, kind)
     if kind in MERGE_TYPES:
         from .merging import execute as execute_merge
         return execute_merge(project, op)
     if kind in SCENE_TYPES:
         from .scene import execute as execute_scene
         return execute_scene(project, op)
-    if kind in ATMOSPHERE_TYPES:
-        from .atmosphere import execute as execute_atmosphere
-        return execute_atmosphere(project, op)
     if kind in CAPTION_TYPES:
         from .captions import execute as execute_caption
         return execute_caption(project, op)
@@ -437,18 +428,12 @@ def execute(project, op):
     if kind in AUDIO_TYPES:
         from .audio import execute as execute_audio
         return execute_audio(project, op)
-    if kind in COMIC_TYPES:
-        from .comics import execute as execute_comic
-        return execute_comic(project, op)
     if kind in TEXTURE_TYPES:
         from .textures import execute as execute_texture
         return execute_texture(project, op)
     if kind in MOTION_TYPES:
         from .motion import execute as execute_motion
         return execute_motion(project, op)
-    if kind in CHARACTER_TYPES:
-        from .characters import execute as execute_character
-        return execute_character(project, op)
     if kind in OBJECT_TYPES:
         from .objects import execute as execute_object
         return execute_object(project, op)
@@ -473,15 +458,6 @@ def execute(project, op):
     if kind in SELECTOR_TYPES:
         from .selectors import execute as execute_selectors
         return execute_selectors(project, op)
-    if kind in CHART_TYPES:
-        from .charts import execute as execute_charts
-        return execute_charts(project, op)
-    if kind in TABLE_TYPES:
-        from .tables import execute as execute_tables
-        return execute_tables(project, op)
-    if kind in KEY_VALUE_TYPES:
-        from .key_values import execute as execute_key_values
-        return execute_key_values(project, op)
     if kind in DIECUT_TYPES:
         from .diecut import execute as execute_diecut
         return execute_diecut(project, op)
@@ -503,12 +479,6 @@ def execute(project, op):
     if kind in FINISHING_TYPES:
         from .finishing import execute as execute_finishing
         return execute_finishing(project, op)
-    if kind in DRAWING_TYPES:
-        from .drawing import execute as execute_drawing
-        return execute_drawing(project, op)
-    if kind in DIAGRAM_TYPES:
-        from .diagrams import execute as execute_diagram
-        return execute_diagram(project, op)
     if kind in FLOW_TYPES:
         from .textflow import execute as execute_flow
         return execute_flow(project, op)
@@ -518,15 +488,9 @@ def execute(project, op):
     if kind in GUIDE_TYPES:
         from .guides import execute as execute_guides
         return execute_guides(project, op)
-    if kind in ORGANIC_TYPES:
-        from .organic import execute as execute_organic
-        return execute_organic(project, op)
     if kind in IRREGULAR_TYPES:
         from .irregular import execute as execute_irregular
         return execute_irregular(project, op)
-    if kind in FONT_TYPES:
-        from .fontmaker import execute as execute_font
-        return execute_font(project, op)
     if kind in AUTHORING_TYPES:
         from .authoring import execute as execute_authoring
         return execute_authoring(project, op)

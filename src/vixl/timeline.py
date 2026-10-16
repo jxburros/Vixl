@@ -956,7 +956,7 @@ def project_at(project, time, prune=False):
             cow.writable(target)
         apply_frame(candidate, timeline, time)
     if poses:
-        from .characters import pose
+        from .plugins.characters.characters import pose
         for target, angles in poses.items():
             group = cow.writable(target)
             for bone in group["character"]["bones"].values():

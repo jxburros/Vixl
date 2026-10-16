@@ -189,7 +189,6 @@ def outward_normals(points, closed):
 
 def _poisson(rng, inside, bounds, spacing, count):
     """Bridson Poisson-disc samples inside ``bounds`` (x0, y0, x1, y1) where ``inside(x, y)``."""
-    from .organic import _poisson as bridson
 
     x0, y0, x1, y1 = bounds
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
@@ -197,7 +196,7 @@ def _poisson(rng, inside, bounds, spacing, count):
     cells = (2 * extent / (spacing / math.sqrt(2)) + 1) ** 2
     require(cells <= MAX_POISSON_CELLS, f"spacing {spacing:g} is too small for a region this size; use at least "
             f"{2 * extent * math.sqrt(2) / math.sqrt(MAX_POISSON_CELLS):.1f} px", "resource_limit", field="spacing")
-    samples = bridson(rng, spacing, count, lambda q: inside(q[0] + cx, q[1] + cy), extent)
+    samples = poisson_disc(rng, spacing, count, lambda q: inside(q[0] + cx, q[1] + cy), extent)
     return [(float(x + cx), float(y + cy)) for x, y in samples]
 
 
@@ -1307,3 +1306,41 @@ def compile_command(cmd, args):
     if isinstance(op.get("source"), list) and len(op["source"]) == 1:
         op["source"] = op["source"][0]
     return op
+
+
+def poisson_disc(rng, radius, count, inside, extent=1.0):
+    """Bridson Poisson-disc samples within ``inside`` (a predicate on the −extent…extent square)."""
+    cell = radius / math.sqrt(2)
+    size = int(math.ceil(2 * extent / cell)) + 1
+    grid = -np.ones((size, size), dtype=int)
+    points, active = [], []
+
+    def put(q):
+        points.append(q)
+        active.append(len(points) - 1)
+        gx, gy = int((q[0] + extent) / cell), int((q[1] + extent) / cell)
+        grid[min(size - 1, gy), min(size - 1, gx)] = len(points) - 1
+
+    for _ in range(200):
+        q = rng.uniform(-extent, extent, 2)
+        if inside(q):
+            put(q)
+            break
+    while active and len(points) < count:
+        index = active[rng.integers(len(active))]
+        base = points[index]
+        for _ in range(30):
+            angle, distance = rng.uniform(0, math.tau), rng.uniform(radius, 2 * radius)
+            q = base + distance * np.array([math.cos(angle), math.sin(angle)])
+            if np.any(np.abs(q) > extent) or not inside(q):
+                continue
+            gx, gy = int((q[0] + extent) / cell), int((q[1] + extent) / cell)
+            near = grid[max(0, gy - 2):gy + 3, max(0, gx - 2):gx + 3]
+            if all(math.dist(q, points[i]) >= radius for i in near[near >= 0]):
+                put(q)
+                break
+        else:
+            active.remove(index)
+    return np.array(points[:count])
+
+

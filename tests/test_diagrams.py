@@ -10,9 +10,9 @@ import numpy as np
 import pytest
 
 from vixl import Project
-from vixl import diagram_layout as L
+from vixl.plugins.diagrams import diagram_layout as L
 from vixl.commands import compile_command
-from vixl.diagrams import ICONS, parse_text
+from vixl.plugins.diagrams.diagrams import ICONS, parse_text
 from vixl.errors import VixlError
 
 FLOW = """

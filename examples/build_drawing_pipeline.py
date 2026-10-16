@@ -13,7 +13,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-from vixl import Project, __version__, drawing
+from vixl import Project, __version__
+from vixl.plugins.drawing import drawing
 from vixl.assets import add_image
 
 PANEL_W, PANEL_H = 640, 480

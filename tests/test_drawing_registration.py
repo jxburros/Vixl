@@ -4,7 +4,8 @@ break, and a ground line that stops short of the paper's sides still divides sky
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-from vixl import Project, drawing
+from vixl import Project
+from vixl.plugins.drawing import drawing
 
 SKY, GROUND, ROOF, LEAF = (217, 236, 242), (168, 213, 200), (226, 114, 91), (90, 143, 90)
 
