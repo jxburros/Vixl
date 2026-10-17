@@ -12,10 +12,11 @@ from pathlib import Path
 import re
 import uuid
 import zipfile
+import zlib
 
 from . import __version__, calls
 from .assets import decode, read_bounded
-from .errors import VixlError, memory_guard, require
+from .errors import VixlError, friendly, memory_guard, require
 from .history import diff, patch
 from .model import Limits, new_state, uid
 from .render import LayerCache
@@ -51,6 +52,34 @@ def located(error, index, operation, count):
         if count > 1:
             error.args = (f"operations[{index}] ({kind}): {error}",)
     return error
+
+
+def internal_error(exc, operation):
+    """The VixlError for a Python exception an operation's executor let escape: the schema accepted the
+    operation, so it is either an unchecked field value or a Vixl bug. The traceback goes to the debug log; the
+    error names the exception and is marked ``internal`` so it reads differently from a validation error."""
+    import logging
+
+    logging.getLogger("vixl.project").debug("Operation %r raised %s", operation.get("type"),
+                                            type(exc).__name__, exc_info=exc)
+    text = str(exc).strip()
+    message = f"Malformed operation ({type(exc).__name__}: {text})" if text else \
+        f"Malformed operation ({type(exc).__name__})"
+    if isinstance(exc, KeyError) or not text:
+        message += "; this may be a Vixl bug, please report it with the operation"
+    return VixlError("invalid_operation", message, internal=True, exception=type(exc).__name__)
+
+
+def shown_filename(exc, operation):
+    """The operation's own ``path`` (as the caller wrote it) when the OS error is about that file, else None."""
+    written = operation.get("path")
+    if not isinstance(written, str) or exc.filename is None:
+        return None
+    try:
+        same = Path(written).resolve() == Path(os.fsdecode(exc.filename)).resolve()
+    except (OSError, ValueError, TypeError, RuntimeError):
+        return None
+    return written if same else None
 
 
 # Error codes of a malformed operation: the schema phase collects every one of them in a batch.
@@ -511,11 +540,22 @@ class Project:
         )
 
     @memory_guard
-    def apply(self, operations, *, dry_run=False, detail="full", check=None):
+    def apply(self, operations, *, dry_run=False, detail="full", check=None, validator=None):
+        """Apply a batch atomically. ``check`` (true, a check name or a list, as in MCP ``vixl_apply``) runs the
+        design check on the result and attaches it as ``result["check"]``. ``validator`` is called with each
+        validated operation before anything executes and raises VixlError to refuse it (the service's font and
+        path policy)."""
+        require(not callable(check), "check runs the design check after the batch (true, a check name or a "
+                "list); pass a per-operation validator function as validator=", "invalid_input", field="check")
+        if check:
+            from .checks import apply_reviewed
+
+            return apply_reviewed(self, operations, dry_run=dry_run, detail=detail, check=check,
+                                  validate=validator)[0]
         from .model import seeded_ids
 
         with seeded_ids(self._id_seed(operations)):
-            return self._apply(operations, dry_run=dry_run, detail=detail, check=check)
+            return self._apply(operations, dry_run=dry_run, detail=detail, validator=validator)
 
     def _id_seed(self, operations):
         """The same for a dry run and the apply that follows it: the revision, the layers that exist, the open
@@ -529,7 +569,7 @@ class Project:
         digest.update(json.dumps(operations, sort_keys=True, default=str).encode())
         return digest.hexdigest()
 
-    def _apply(self, operations, *, dry_run=False, detail="full", check=None):
+    def _apply(self, operations, *, dry_run=False, detail="full", validator=None):
         require(detail in ("brief", "compact", "full"), "Unknown response detail; use brief, compact or full")
         from .operations import execute
 
@@ -554,8 +594,8 @@ class Project:
         for index, operation in enumerate(operations):
             try:
                 validated.append(validate_operation(operation, notes, index if len(operations) > 1 else None))
-                if check:
-                    check(validated[-1])
+                if validator:
+                    validator(validated[-1])
             except VixlError as exc:
                 if exc.code not in INVALID_CODES:
                     raise located(exc, index, operation, len(operations)) from exc
@@ -564,7 +604,7 @@ class Project:
             raise batch_error(invalid)
         operations = validated
         candidate = self.clone()
-        candidate._service = bool(check)
+        candidate._service = bool(validator)
         candidate._resource_budget = self.limits.max_operations - len(operations)
         from . import notices
 
@@ -595,9 +635,11 @@ class Project:
             except VixlError as exc:
                 index = swatch_user(exc, operations, index)
                 raise located(exc, index, operations[index], len(operations)) from exc
-            except (KeyError, TypeError, ValueError, OverflowError, IndexError, AttributeError, ZeroDivisionError) as exc:
-                error = VixlError("invalid_operation", f"Malformed operation: {exc}")
+            except OSError as exc:
+                error = friendly(exc, relative_to=Path.cwd(), filename=shown_filename(exc, operation))
                 raise located(error, index, operation, len(operations)) from exc
+            except (KeyError, TypeError, ValueError, OverflowError, IndexError, AttributeError, ZeroDivisionError) as exc:
+                raise located(internal_error(exc, operation), index, operation, len(operations)) from exc
         calls.progress(len(operations), len(operations), "checking")
         from .plugins import hooks as plugin_hooks
 
@@ -951,7 +993,7 @@ class Project:
         return run_suite(self, suite, **options)
 
     @memory_guard
-    def act(self, operations, *, suites=None, dry_run=False, check=None, repair=None):
+    def act(self, operations, *, suites=None, dry_run=False, validator=None, repair=None):
         """Apply and measure one candidate. Failed contracts leave the document unchanged. ``repair`` (true or
         a list of repair kinds) applies the built-in repair map to the candidate when a suite fails (its
         text-fit and contrast rules, and fix findings of the bounds, contrast and safe-area checks) and keeps
@@ -959,7 +1001,7 @@ class Project:
         from .outcomes import from_suite, merge
 
         candidate = self.clone()
-        result = candidate.apply(operations, detail="compact", check=check)
+        result = candidate.apply(operations, detail="compact", validator=validator)
         require(candidate.state.get("suites", {}) == self.state.get("suites", {}),
                 "Checked actions cannot rewrite suites; edit contracts explicitly with apply")
         reports = {name: candidate.check_suite(name) for name in (suites or [])}
@@ -1206,3 +1248,6 @@ class Project:
             raise VixlError("invalid_project", "Not a Vixl document: the file is not a ZIP archive") from exc
         except (TypeError, ValueError, RecursionError, AttributeError, IndexError, ZeroDivisionError) as exc:
             raise VixlError("invalid_project", f"Malformed Vixl archive: {exc}") from exc
+        except (RuntimeError, NotImplementedError, EOFError, zlib.error, zipfile.LargeZipFile) as exc:
+            # zipfile raises these for an encrypted member, an unknown compression method or a truncated stream.
+            raise VixlError("invalid_project", "Malformed Vixl archive: unsupported or encrypted ZIP member") from exc

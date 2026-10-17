@@ -233,7 +233,7 @@ def edit(session, project, rules, image_cache):
     if operations:
         from ...service_fonts import checker
 
-        project.apply(operations, check=checker(project, service_check), detail="compact")
+        project.apply(operations, validator=checker(project, service_check), detail="compact")
     return matches
 
 

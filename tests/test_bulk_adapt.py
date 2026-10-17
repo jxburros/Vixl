@@ -123,7 +123,7 @@ def test_edit_layers_reports_normalized_spellings_and_follows_service_rules():
 
     with pytest.raises(VixlError, match="Filesystem fields"):
         p.apply([{"type": "edit-layers", "where": {"name": "price-1"}, "do": {"type": "text-set", "font": "/etc/x.ttf"}}],
-                check=service_check)
+                validator=service_check)
 
 
 def test_edit_layers_across_pages_and_restores_the_active_page():

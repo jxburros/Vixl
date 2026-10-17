@@ -42,7 +42,7 @@ import uuid
 from pydantic import Field
 
 from .calls import CALL, UNKNOWN, CallState
-from .errors import VixlError, for_surface, memory_guard, require
+from .errors import VixlError, for_surface, friendly, memory_guard, require
 
 DEFAULT_INLINE_SECONDS = 40
 DEFAULT_WORKERS = 32
@@ -307,6 +307,10 @@ class Runtime:
                     result = memory_guard(fn)(*args, **kwargs)
             except VixlError as exc:
                 raise self.tool_error(self.compact_json(for_surface(exc.as_dict(), "mcp"))) from exc
+            except (OSError, ValueError, UnicodeError) as exc:
+                # Shown relative to the workspace: a raw OSError names the absolute path.
+                error = friendly(exc, relative_to=self.session.workspace)
+                raise self.tool_error(self.compact_json(for_surface(error.as_dict(), "mcp"))) from exc
             warning = self.ignored(fn.__name__, state)
             profiled = profiling.attach(result, run)
             if isinstance(result, list) and result and isinstance(result[0], dict):

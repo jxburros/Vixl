@@ -55,7 +55,7 @@ def run(project, name, options=None, *, dry_run=False):
         operations = handler(deepcopy(project.inspect()), deepcopy(options or {}))
     except Exception as exc:
         raise VixlError("plugin_failed", f"Plugin {name} failed: {exc}") from exc
-    return project.apply(operations, check=service_check, detail="compact", dry_run=dry_run)
+    return project.apply(operations, validator=service_check, detail="compact", dry_run=dry_run)
 
 
 def package(session, action, request):

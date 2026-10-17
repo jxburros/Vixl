@@ -701,6 +701,7 @@ def execute(project, op):
         if op.get("delete"):
             project.state["variables"].pop(op["name"], None)
         else:
+            require("value" in op, "variable needs a value, or delete: true to remove it", field="value")
             require(isinstance(op["value"], (str, int, float, bool)), "Variables must be scalar values")
             project.state["variables"][op["name"]] = op["value"]
         return

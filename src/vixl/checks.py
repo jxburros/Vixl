@@ -1751,7 +1751,7 @@ def apply_reviewed(project, operations, *, dry_run=False, detail="brief", check=
     ``overlay`` draws the fix findings' boxes labelled with rule and layer ID, ``focus`` (an index into the
     listed findings) zooms to one. A dry run checks and previews the candidate without saving it. ``budget``
     (seconds) skips the review when the edit alone used it up, so a slow batch never also waits for a check.
-    ``validate`` is Project.apply's per-operation ``check``. ``suites`` (true, a name or a list) also runs the
+    ``validate`` is Project.apply's per-operation ``validator``. ``suites`` (true, a name or a list) also runs the
     document's attached check suites (``suite_summary``), including any the batch itself attached. ``repair``
     (true or a list of repair kinds) applies the built-in repair map after the batch (repair.auto_repair) as a
     second, separately undoable history entry. Every result has an ``outcome``. Returns
@@ -1761,7 +1761,7 @@ def apply_reviewed(project, operations, *, dry_run=False, detail="brief", check=
 
     if not check and not preview and not suites and not repair:
         # An empty list is the review of a batch whose items were all session steps (Session.apply_steps).
-        result = project.apply(operations, dry_run=dry_run, detail=detail, check=validate) if operations else \
+        result = project.apply(operations, dry_run=dry_run, detail=detail, validator=validate) if operations else \
             {"success": True}
         result["outcome"] = apply_outcome(result)
         return result, None
@@ -1769,7 +1769,7 @@ def apply_reviewed(project, operations, *, dry_run=False, detail="brief", check=
     started = time.monotonic()
     before = {layer["id"]: layer for layer in deepcopy(project.state["layers"])}
     target = project.clone() if dry_run else project  # The candidate a dry run checks and previews, then drops.
-    result = target.apply(operations, detail=detail, check=validate) if operations else {"success": True}
+    result = target.apply(operations, detail=detail, validator=validate) if operations else {"success": True}
     result["dry_run"] = dry_run
     skipped, image = [], None
     for part, wanted in (("repair", repair), ("check", check), ("suites", suites), ("preview", preview)):
