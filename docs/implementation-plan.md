@@ -38,6 +38,19 @@ render change, and the house-style quality and diversity eval for every default 
 
 ### Step 0: housekeeping (no code, about a day)
 
+Done on 2026-10-17:
+
+- **Closed as completed:** #709, #586, #567, #577, #542, #443, #384, #386, #526, #406, #407, #555, #175, #445, #191,
+  #614.
+- **Closed as not planned:** #166.
+- **New follow-up issues:** #717 (parallel frame ranges), #718 (`logo.variants`), #719 (tagged PDF structure tree),
+  #720 (field-report residuals), #721 (colour font files), #722 (emoji pack destinations).
+- **Trackers:** each now opens with a status block listing its open and done children.
+- **#578:** re-scoped in a comment.
+- **#213 and #524:** their remaining step is on this branch, and both close when it merges.
+
+The original step 0 list:
+
 Close these with the evidence given in their sections, and open the named follow-up issues for any remainder:
 
 - **Fixed or shipped:** #709, #586 (open "render timeline frame ranges in parallel"), #567, #577, #542, #443, #384,
