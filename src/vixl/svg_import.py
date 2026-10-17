@@ -527,8 +527,8 @@ def _similarity(matrix):
 
 
 class Converter:
-    def __init__(self, data, project, name, *, fallback=False):
-        self.project, self.name, self.fallback = project, name, fallback
+    def __init__(self, data, project, name, *, fallback=False, namespace=False):
+        self.project, self.name, self.fallback, self.namespace = project, name, fallback, namespace
         self.operations, self.warnings, self.rasterized = [], [], []
         self.used = {layer["name"] for layer in project.state["layers"]} | {layer["id"] for layer in
                                                                              project.state["layers"]}
@@ -592,6 +592,12 @@ class Converter:
     def label(self, node):
         return (node.get("data-layer") or node.get("{http://www.inkscape.org/namespaces/inkscape}label")
                 or node.get("id"))
+
+    def layer_label(self, node):
+        """The node's label as a layer name: prefixed with ``name`` under ``namespace``, so operation lists built
+        separately (before any of them is applied) cannot collide."""
+        label = self.label(node)
+        return f"{self.name} {label}" if label and self.namespace else label
 
     def attributes(self, node):
         """Presentation attributes, then matching stylesheet rules, then the style attribute (CSS cascade)."""
@@ -704,7 +710,7 @@ class Converter:
         a group layer; one layer keeps the label as its name and takes the opacity."""
         if not names:
             return []
-        label = self.label(node) if depth else None
+        label = self.layer_label(node) if depth else None
         if len(names) == 1:
             if label and depth and self.renamable(names[0]):
                 self.rename(names[0], self.unique(label))
@@ -750,7 +756,7 @@ class Converter:
         return 1
 
     def new_name(self, node, kind):
-        label = self.label(node)
+        label = self.layer_label(node)
         name = self.unique(label or f"{self.name}-{kind}")
         if not label:
             self.auto_named.add(name)
@@ -1209,7 +1215,7 @@ class Converter:
                 groups[-1].append(line)
             else:
                 groups.append([line])
-        label = self.label(node)
+        label = self.layer_label(node)
         for index, group in enumerate(groups):
             names.append(self.text_layer(node, label if index == 0 else None, group, matrix, scale, opacity))
         if len(names) > 1 and label:
@@ -1316,10 +1322,11 @@ class Converter:
         return [name]
 
 
-def svg_operations(data, project, name, *, fallback=False, report=None):
+def svg_operations(data, project, name, *, fallback=False, report=None, namespace=False):
     """Operations that rebuild an SVG's elements as editable layers (images it embeds are added to ``project``'s
     assets). ``fallback`` draws an unsupported element as an image layer instead of failing; ``report`` (a dict)
-    receives ``warnings`` and ``rasterized`` elements."""
+    receives ``warnings`` and ``rasterized`` elements. ``namespace`` prefixes the SVG's own layer labels with
+    ``name`` (unlabelled elements are always named ``name-kind``)."""
     require(len(data) <= min(project.limits.max_asset_bytes, 16 * 1024 * 1024), "SVG exceeds byte limit",
             "resource_limit")
     try:
@@ -1330,7 +1337,7 @@ def svg_operations(data, project, name, *, fallback=False, report=None):
     require(b"<!DOCTYPE" not in data.upper() and b"<!ENTITY" not in data.upper(),
             "SVG declarations/entities are unsupported", "unsupported_svg")
     try:
-        converter = Converter(data, project, name, fallback=fallback)
+        converter = Converter(data, project, name, fallback=fallback, namespace=namespace)
     except ET.ParseError as exc:
         raise VixlError("invalid_svg", str(exc)) from exc
     converter.convert()

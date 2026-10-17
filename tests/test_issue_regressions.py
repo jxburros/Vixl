@@ -349,6 +349,27 @@ def test_own_svg_simple_gradients_roundtrip_editably(direction, extra):
     assert np.max(np.abs(np.asarray(p.render(), dtype=int) - np.asarray(q.render(), dtype=int))) <= 1
 
 
+def test_svg_operations_twice_into_one_page():
+    """#703: two op lists built from one labelled SVG before either is applied keep their names apart."""
+    from vixl.svg import export_svg
+    from vixl.imports import svg_operations
+    art = Project(120, 80)
+    art.apply([{'type': 'shape', 'shape': 'rect', 'name': 'v', 'x': 10, 'y': 10, 'width': 40, 'height': 30,
+                'fill': 'red'},
+               {'type': 'shape', 'shape': 'ellipse', 'name': 'i stem', 'x': 60, 'y': 20, 'width': 30,
+                'height': 30, 'fill': 'blue'}])
+    svg = export_svg(art)
+    page = Project(240, 160)
+    first = svg_operations(svg, page, 'left')
+    second = svg_operations(svg, page, 'right')
+    page.apply(first + second)
+    names = [layer['name'] for layer in page.state['layers']]
+    assert len(names) == len(set(names)) == 4
+    assert sorted(n for n in names if n.startswith('left')) == ['left i stem', 'left v']
+    assert sorted(n for n in names if n.startswith('right')) == ['right i stem', 'right v']
+    assert svg_operations(svg, Project(240, 160), 'raw', namespace=False)[0]['name'] in ('v', 'i stem')
+
+
 def test_own_svg_stroked_path_roundtrip_editably():
     from vixl.svg import export_svg
     from vixl.imports import svg_operations

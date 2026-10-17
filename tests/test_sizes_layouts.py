@@ -56,6 +56,33 @@ def test_sized_documents_record_print_metadata_and_guides(tmp_path):
     assert set(loaded.state["guides"]) == {"safe-left"}
 
 
+def _live_area_issues(p):
+    return [i for i in p.check(checks=["print", "safe_area"])["issues"]
+            if i["check"] == "safe_area" or "live area" in i["message"]]
+
+
+def test_text_on_safe_guides_passes_print_check_with_half_pixel_bleed():
+    # #699: a 37.5 px bleed put the safe guides at 93.5; they now round inward to whole pixels.
+    p = Project.sized("business-card", bleed=True)
+    guides = {k: v["position"] for k, v in p.state["guides"].items()}
+    assert guides["trim-left"] == 37.5 and guides["trim-right"] == 1087.5  # the physical page stays exact
+    assert (guides["safe-left"], guides["safe-top"], guides["safe-right"], guides["safe-bottom"]) == (94, 94, 1031, 581)
+    p.apply([
+        {"type": "text", "name": "name", "text": "Name", "size": 40},
+        {"type": "constrain", "target": "name", "constraints": {"left": "guide:safe-left.left",
+                                                                 "top": "guide:safe-top.top"}},
+        {"type": "text", "name": "title", "text": "Title", "size": 40},
+        {"type": "constrain", "target": "title", "constraints": {"right": "guide:safe-right.right",
+                                                                  "bottom": "guide:safe-bottom.bottom"}},
+        # Placed on the old half-pixel guide: still inside within the tolerance.
+        {"type": "text", "name": "old", "text": "Old", "size": 40, "x": 93.5, "y": 300},
+    ])
+    assert _live_area_issues(p) == []
+    p.apply({"type": "move", "target": "old", "x": 92})
+    assert {i["layers"][0] for i in _live_area_issues(p)} == {"old"}
+    assert {i["check"] for i in _live_area_issues(p)} == {"print", "safe_area"}
+
+
 def test_canvas_operation_and_artboards_accept_named_sizes():
     p = Project(10, 10)
     p.apply({"type": "canvas", "size": "postcard", "orientation": "portrait", "bleed": True})
