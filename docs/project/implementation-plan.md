@@ -66,6 +66,22 @@ Close these with the evidence given in their sections, and open the named follow
 
 ### Step 1: 0.27.1, release blockers and quick correctness
 
+Done on 2026-10-17, on branch `claude/vibrant-meitner-eaeb0d`: every item below, each with its regression test and a
+changelog entry. PR #664 was superseded by applying its change directly. Where the work departed from the plan:
+
+- #699: the tolerance grows the live area by 0.5 px and then rounds out to whole pixels, because layer bounds are
+  whole pixels and text on an old 93.5 guide would otherwise still fail. `layouts.py`, `adapt.py` and the charts and
+  deck plugins still compute `bleed + safe` themselves; switching them to `sizes.live_insets` changes layout output
+  and is left for later.
+- #669: a `<use>` is charged with its full nested expansion (memoized), not the shallow element count, which still
+  took about 10 s to fail.
+- #667: `check_document` checks the starting snapshot's layer count, not a full `check_state`, so valid files with
+  older revisions are not refused.
+- #671: the draw budget is scoped per top-level render, not per outermost `entering()`.
+- #688: `check=` takes a check name or list, as MCP does, rather than a dict of options.
+- Left open: `jobs.py` still returns the absolute workspace from the CLI job queue's worker launch (#676), and
+  `assets.read_bounded` reads `limit + 1` bytes at once, a 256 MiB peak at the default limit (#667).
+
 - **#694:** the 0.27.0 `.mcpb` cannot start because it passes the removed flags `--tools core --schema slim`. Rebase
   and merge PR #664, and add a test that parses every shipped manifest's launch arguments with the real CLI parser.
 - **Docs and changelog fixes:** #691 and #690.

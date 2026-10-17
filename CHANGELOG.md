@@ -22,6 +22,9 @@
   characters.
 - **`vixl.imports.svg_operations` prefixes layer names with `name`.** Pass `namespace=False` to keep the SVG's own
   labels.
+- **`Project.apply(check=…)` runs the design check (breaking, Python API).** The per-operation validator function
+  that `check` used to take is now `validator=` (also on `Project.act` and the workspace-qa `protected_edit`);
+  passing a function as `check` is an error that names `validator=`.
 - **Several defaults draw differently** (review findings, glows and shadows, dash fitting, tracked text): each entry
   under Behaviour changes below names its override.
 
@@ -100,9 +103,27 @@
   alternatives that start with the same character. `(a|aa)+`, `(a?a?)+` and `(.|a)+` are now rejected; `(?:ab|cd)+`
   is still fine. Vixl matches a pattern against at most 1,024 characters, and a longer value is refused as
   `too_long`.
+- **MCP and REST errors no longer reveal where the workspace is on disk.** File errors show paths relative to the
+  workspace (a file outside it by its name only), MCP turns OS and value errors into tool errors instead of raw
+  exceptions, REST answers an `OSError` with JSON, and `vixl_document list` reports the workspace as `"."`. A path
+  with a NUL byte is `invalid_input`.
+- **Encrypted, method-99 and truncated `.vixl` archives fail as `invalid_project`.** The message is "unsupported or
+  encrypted ZIP member", instead of a raw `RuntimeError`, `NotImplementedError` or zlib error escaping
+  `Project.load`.
 
 ### Fixed and added
 
+- **Breaking (Python API): `Project.apply(check=…)` now runs the design check, as `vixl_apply(check=true)` does.**
+  `check=True`, a check name or a list attaches the findings as `result["check"]` with an `outcome`. The
+  per-operation validator function that `check` used to take is now `validator=`, on `Project.act` and the
+  workspace-qa plugin's `protected_edit` too. Passing a function as `check` is an error that names `validator=`.
+- **A missing or unreadable file in `Project.apply` is a VixlError.** It is `not_found` or `io_error` naming the
+  operation's own `path`, instead of a raw `FileNotFoundError` with the absolute path.
+- **Errors from inside an operation say what went wrong.** `brush-define` with an unknown `base` names the built-in
+  brushes and suggests the closest one. Any other Python exception from an operation reads `Malformed operation
+  (KeyError: …)` instead of `Malformed operation: '…'`, is marked `internal: true` with the exception type, and logs
+  its traceback at debug level on `vixl.project`. `variable` without a `value` now asks for one instead of failing
+  with a bare KeyError.
 - **The Claude Desktop bundle starts again.** `vixl.mcpb` launched the server with `--tools core --schema slim`,
   flags that 0.27 removed, so Desktop could not start Vixl. It now passes only `--workspace`. The bundle and
   `.mcp.json` share one argument list, and a test parses the launch arguments of every shipped configuration and

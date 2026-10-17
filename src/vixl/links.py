@@ -54,7 +54,7 @@ _LOCK = threading.RLock()
 _SOURCES = OrderedDict()  # (path, allow_linked) -> (stamp, revision, Project, asset bytes)
 _RENDERS = []  # one LayerCache of drawn sources, created on first use (render.py imports this module lazily)
 _CHAIN = ContextVar("vixl_link_chain", default=())
-_DRAWS = ContextVar("vixl_link_draws", default=None)
+_DRAWS = ContextVar("link_draws", default=None)
 
 
 def schemas(add):
