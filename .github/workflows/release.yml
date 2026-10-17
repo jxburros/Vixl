@@ -43,7 +43,7 @@ jobs:
           python -m vixl catalog export --out dist/vixl-catalog.json
           python -m vixl catalog schema --out dist/vixl-catalog.schema.json
           python -c "import json, jsonschema; jsonschema.validate(json.load(open('dist/vixl-catalog.json')), json.load(open('dist/vixl-catalog.schema.json')))"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: python-distributions
           path: |
@@ -68,7 +68,7 @@ jobs:
       - name: Verify installation, PATH, native updates, and uninstall
         shell: pwsh
         run: ./distribution/test_windows_install.ps1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-release
           path: dist/release/*
