@@ -16,6 +16,12 @@
   version; the new one takes only `on` or `off` (`house_style: "off"` in `.vixl/variety.json` for a workspace).
 - **MCP calls on a connection with several open documents need `document=`.** A call without it now fails with
   `ambiguous_document`; see Behaviour changes below.
+- **Form field patterns with ambiguous repeats are refused (breaking).** A pattern such as `(a|aa)+` or `(a?a?)+`
+  now fails validation, and a value longer than 1,024 characters in a field with a pattern is refused as
+  `too_long`; see Security below. Rewrite the pattern so the alternatives inside a repeat start with different
+  characters.
+- **`vixl.imports.svg_operations` prefixes layer names with `name`.** Pass `namespace=False` to keep the SVG's own
+  labels.
 - **Several defaults draw differently** (review findings, glows and shadows, dash fitting, tracked text): each entry
   under Behaviour changes below names its override.
 
@@ -71,7 +77,52 @@
   warnings in the result. `font-build` embeds the font in the document and registers it, so text layers can be set
   in it at once. See [making a font](docs/guides/text/custom-fonts.md).
 
+### Security
+
+- **A crafted history delta can no longer make the loader copy a layer hundreds of thousands of times.** A list
+  delta must name each layer once, hold no more items than the layer limit, change only layers in its order and name
+  only layers it keeps or adds. All of this is checked before anything is copied. A revision is at most 64 deltas
+  from its snapshot, and that snapshot is checked against the layer limit before the head state is rebuilt. A file
+  that breaks a rule is refused with `invalid_project`.
+- **Linked documents have a draw budget.** One render draws linked documents at most 4,096 times, counting nested
+  links, and refuses more with `resource_limit` (field `links`), so many links with different crops can no longer
+  multiply the work.
+- **SVG import stops a `<use>` fan-out before doing the work.** Each reference is charged with the number of
+  elements it expands to before it is walked, and every element walked counts. An import that would visit more than
+  four times the batch limit of elements (40,000 by default) or produce more than one batch of layers fails at once
+  with `resource_limit`, in every `svg_mode`. A 1 KB file whose nested `<use>` references expand to 100,000 shapes
+  used to run for minutes; it now fails in milliseconds.
+- **`svg_mode: "auto"` draws at most 64 unsupported elements as images.** Each fallback renders the whole canvas, so
+  an SVG with more fails with `resource_limit` and suggests `svg_mode: "appearance"`. The SVG's definitions are now
+  copied once per import instead of once per element.
+- **Form field patterns refuse ambiguous repeats that can freeze a viewer (breaking).** Inside an unbounded repeat,
+  a pattern can no longer have optional or variable counts, a part or alternative that matches nothing, or
+  alternatives that start with the same character. `(a|aa)+`, `(a?a?)+` and `(.|a)+` are now rejected; `(?:ab|cd)+`
+  is still fine. Vixl matches a pattern against at most 1,024 characters, and a longer value is refused as
+  `too_long`.
+
 ### Fixed and added
+
+- **The Claude Desktop bundle starts again.** `vixl.mcpb` launched the server with `--tools core --schema slim`,
+  flags that 0.27 removed, so Desktop could not start Vixl. It now passes only `--workspace`. The bundle and
+  `.mcp.json` share one argument list, and a test parses the launch arguments of every shipped configuration and
+  every `vixl mcp` command in the docs.
+- **Checking a link graph visits each document once.** The cycle and depth check, and the source fingerprint used
+  for caching, used to walk every link layer at every level. Five documents with a fan-out of 20 took about 22 s to
+  render; they now take under a second, and adding a link to such a document is just as quick.
+- **`vixl convert DIR` skips the workspace settings folder.** A workspace's `.vixl/` folder (rolls and variety
+  settings) matched `*.vixl` and stopped the whole folder conversion with an error. Folder conversion now skips
+  folders and dot-folders, and reports a file it cannot read under `failed` while converting the rest.
+- **Safe guides on print sizes with bleed now sit on whole pixels.** A 1/8 in bleed is 37.5 px at 300 dpi, which put
+  the business card's `safe-left`/`safe-top` guides at 93.5, so text anchored there failed the print live-area
+  check. The safe guides now round inward (94, and 1031 on the right), and the trim guides stay exactly on the trim.
+  The print live-area check and the canvas safe-area check allow 0.5 px, so text on an older document's half-pixel
+  guide still passes.
+- **`vixl.imports.svg_operations` now prefixes layer names with `name`.** The SVG's own labels become
+  `"<name> <label>"`, so two lists built from the same SVG before either is applied can be joined and applied in one
+  batch. `vixl import` and the MCP import keep their current names.
+- The MCP configuration examples use `C:\Users\you\...` instead of a real user's path, and a test keeps personal
+  paths out of the docs.
 
 - **A group of path shapes is measured for the safe area by what its members draw.** A `path` shape in absolute
   canvas coordinates (no `x`/`y`) keeps a box from (0, 0), and the group fitted around such shapes did too, so
