@@ -46,6 +46,11 @@
 
 ### Fixed and added
 
+- Overlap findings (`overlap.text-text`, `overlap.text-object`) now suggest the next step as data: `repair` carries
+  `kind: "workflow"` and `workflow: {name: "repair-layout", request: {checks, dry_run: true}}` instead of only a
+  sentence (#524). The agent eval harness records `retries`, calls that repeat a tool right after it returned an
+  error, per task and as `mean_retries`.
+- A test holds that a tab-stop row with a dot leader extracts from the PDF as one line of text (#213).
 - **`render --scale N` widens a path's stroke N times, not N * N.** A native path stroke is measured in
   `path_view` units, and the scaled copy grew the path's box (which already widens the stroke) and then multiplied
   `stroke_width` as well: a 10 px outline came out 90 px wide at `--scale 3`. The scaled copy now scales a stroked

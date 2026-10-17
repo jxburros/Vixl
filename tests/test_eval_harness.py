@@ -8,7 +8,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from evals.harness import (  # noqa: E402
-    ClaudeAgent, ReferenceAgent, grade, load_tasks, markdown, over_budget, prepare_workspace, run,
+    ClaudeAgent, ReferenceAgent, grade, load_tasks, markdown, over_budget, prepare_workspace, retries, run,
 )
 
 TASKS = load_tasks()
@@ -160,3 +160,10 @@ def test_new_checks_reject_the_shortcut(name):
         shortcut.append({"tool": "vixl_apply", "arguments": {"operations": [{"type": "show", "target": "dot5"}]}})
     result = run([{**task, "reference": shortcut}], ReferenceAgent())[0][0]
     assert not result["passed"]
+
+
+def test_retries_count_a_repeated_tool_after_an_error():
+    trace = [{"tool": "vixl_apply", "error": True}, {"tool": "vixl_apply", "error": False},
+             {"tool": "vixl_check", "error": True}, {"tool": "vixl_render", "error": False},
+             {"tool": "vixl_render", "error": False}]
+    assert retries(trace) == 1 and retries([]) == 0

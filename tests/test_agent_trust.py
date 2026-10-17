@@ -165,6 +165,8 @@ def test_findings_have_rules_layers_measurements_and_valid_repairs():
     overlap = by_rule(report)["overlap.text-text"]
     assert set(overlap["layer_ids"]) == {p.layer("one")["id"], p.layer("two")["id"]} and len(overlap["region"]) == 4
     assert overlap["repair"]["available"] is False and overlap["repair"]["reason"]
+    assert overlap["repair"]["kind"] == "workflow"
+    assert overlap["repair"]["workflow"] == {"name": "repair-layout", "request": {"checks": ["overlap"], "dry_run": True}}
     contrast = rules["contrast.text-contrast"]
     assert contrast["measured"]["actual"] < contrast["measured"]["expected"] == contrast["required"]
     assert rules["safe_area.outside"]["measured"]["expected"] == rules["safe_area.outside"]["safe_area"]
