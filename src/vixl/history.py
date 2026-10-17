@@ -10,6 +10,7 @@ A delta is always a tagged object, so raw document values are never mistaken for
 from copy import deepcopy
 
 from .errors import VixlError
+from .model import MAX_LAYERS
 
 KEY_FIELDS = ("id", "name")
 
@@ -73,15 +74,17 @@ def diff(before, after):
     return {"$": "v", "v": deepcopy(after)}
 
 
-def patch(value, delta):
-    """Apply a delta produced by ``diff``. Malformed deltas raise invalid_project."""
+def patch(value, delta, *, max_items=MAX_LAYERS):
+    """Apply a delta produced by ``diff``. Malformed deltas raise invalid_project.
+
+    ``max_items`` bounds every keyed list a delta builds (layers, children), checked before anything is copied."""
     try:
-        return _patch(value, delta)
+        return _patch(value, delta, max_items)
     except (KeyError, TypeError, ValueError, AttributeError, RecursionError) as exc:
         raise VixlError("invalid_project", f"Malformed history delta: {exc}") from exc
 
 
-def _patch(value, delta):
+def _patch(value, delta, max_items):
     if delta is None:
         return deepcopy(value)
     if not isinstance(delta, dict):
@@ -95,9 +98,11 @@ def _patch(value, delta):
         removed = delta.get("x", [])
         if not isinstance(removed, list):
             raise TypeError("deleted keys must be a list")
+        removed = set(removed)
         result = {k: deepcopy(v) for k, v in value.items() if k not in removed}
         for key, child in delta["s"].items():
-            result[key] = _patch(value[key], child) if key in value and child["$"] != "v" else _patch(None, child)
+            result[key] = (_patch(value[key], child, max_items) if key in value and child["$"] != "v"
+                           else _patch(None, child, max_items))
         if "o" in delta:
             order = delta["o"]
             if not isinstance(order, list) or len(order) != len(result) or set(order) != set(result):
@@ -111,11 +116,23 @@ def _patch(value, delta):
         if not isinstance(value, list):
             raise TypeError("list delta requires a list")
         old = {item[field]: item for item in value}
+        # A crafted delta could name one key many times and make each name a fresh copy; check the
+        # whole order before copying anything.
+        if len(order) > max_items:
+            raise ValueError(f"invalid list delta: more than {max_items} items")
+        keys = set(order)
+        if len(keys) != len(order):
+            raise ValueError("invalid list delta: list delta repeats a key")
+        if not set(changes) <= keys:
+            raise ValueError("invalid list delta: a change names a key not in the order")
+        if any(key not in old and key not in changes for key in order):
+            raise ValueError("invalid list delta: a key is neither kept nor added")
         result = []
         for key in order:
             if key in changes:
                 child = changes[key]
-                result.append(_patch(old[key], child) if child["$"] != "v" else _patch(None, child))
+                result.append(_patch(old[key], child, max_items) if child["$"] != "v"
+                              else _patch(None, child, max_items))
             else:
                 result.append(deepcopy(old[key]))
         return result

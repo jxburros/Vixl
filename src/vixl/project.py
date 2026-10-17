@@ -22,6 +22,7 @@ from .render import LayerCache
 
 # Every Nth revision on a chain stores a full snapshot; the others store a delta from the parent.
 SNAPSHOT_INTERVAL = 32
+MAX_DELTA_CHAIN = SNAPSHOT_INTERVAL * 2
 FORMAT_VERSION = 2
 DECODED_BUDGET = 256 * 1024 * 1024
 NODE_KEYS = {"id", "parent", "operations", "label", "state", "delta", "squashed"}
@@ -435,9 +436,15 @@ class Project:
                 "Invalid history chain",
                 "invalid_project",
             )
+            # Writes snapshot every SNAPSHOT_INTERVAL revisions, so only a crafted file has a longer chain.
+            require(
+                len(chain) <= MAX_DELTA_CHAIN,
+                f"History delta chain is longer than {MAX_DELTA_CHAIN} revisions",
+                "invalid_project",
+            )
         state = deepcopy(self.nodes[cursor]["state"])
         for delta in reversed(chain):
-            state = patch(state, delta)
+            state = patch(state, delta, max_items=self.limits.max_layers)
         return state
 
     def _node(self, ident, parent, operations, label, state, parent_state):

@@ -101,7 +101,10 @@ Linked files are an opt-in dependency, not an import (see the security notes in
   when you create it (`link_cycle`, naming the chain `a.vixl → b.vixl → a.vixl`). A cycle created by editing
   the files is refused when drawn, so rendering never loops.
 - Chains of links are limited to **4 levels** (`link_depth`). Both checks look at the link graph, not at
-  what happens to be cached.
+  what happens to be cached, and visit each document once however many links lead to it.
+- One render draws linked documents at most **4,096 times**, counting nested links (`resource_limit`, field
+  `links`). Copies of a source at the same size are drawn once and reused; copies with different crops or sizes
+  each count. Embed some copies with `link-embed`, or link fewer, when a design reaches the limit.
 
 ## Export
 
