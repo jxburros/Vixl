@@ -149,3 +149,18 @@ def test_repeated_group_coverage_and_geometry_limit_are_explicit():
     assert layer_canvas_surface(p, layer).tobytes() == p.render().tobytes()
     result = p.check(checks=["bounds"])
     assert any(i["check"] == "coverage" and i["layers"] == ["label"] for i in result["issues"])
+
+
+def test_group_of_absolute_paths_is_measured_by_its_members_ink():
+    p = Project(3600, 4200, "white")
+    p.apply([
+        {"type": "shape", "name": "a", "shape": "path", "fill": "#336699", "path": "M600 500 L1900 700 L1200 2000 Z"},
+        {"type": "shape", "name": "b", "shape": "path", "fill": "#993366", "path": "M800 900 L1700 1100 L1000 1800 Z"},
+        {"type": "group", "name": "art", "targets": ["a", "b"]},
+    ])
+    assert p.layer("art")["x"] == 0 and p.layer("art")["y"] == 0
+    report = p.check(profile="final")
+    assert not [i for i in report["issues"] if i["check"] == "safe_area"]
+    p.apply({"type": "move", "target": "art", "x": -500, "y": 0})
+    flagged = [i for i in p.check(checks=["safe_area"])["issues"] if i["layers"] == ["art"]]
+    assert flagged and flagged[0]["bounds"][:2] == [100, 500]

@@ -339,6 +339,28 @@ def canvas_projection(resolved, local_bounds):
             "geometry_bounds": drawn}
 
 
+def member_geometry(resolved, geometry):
+    """``geometry`` with every group's box replaced by the union of what its visible members draw, clipped to
+    the group's own box. Path shapes in absolute canvas coordinates keep a box from (0, 0), and so does the group
+    fitted around them; judged by that box, the group would reach the canvas corner however small its ink."""
+    children = {}
+    for item in resolved.values():
+        if item.get("parent") in resolved and item["visible"] and item["opacity"] > 0 and item["type"] != "adjustment":
+            children.setdefault(item["parent"], []).append(item["id"])
+
+    def measure(ident, seen=()):
+        layer = resolved[ident]
+        if layer["type"] != "group" or layer.get("repeat") or ident in seen or not children.get(ident):
+            return geometry[ident]
+        boxes = [measure(child, (*seen, ident)) for child in children[ident]]
+        gx, gy, gw, gh = geometry[ident]
+        left, top = max(gx, min(b[0] for b in boxes)), max(gy, min(b[1] for b in boxes))
+        right, bottom = min(gx + gw, max(b[0] + b[2] for b in boxes)), min(gy + gh, max(b[1] + b[3] for b in boxes))
+        return geometry[ident] if right <= left or bottom <= top else (left, top, right - left, bottom - top)
+
+    return {ident: measure(ident) for ident in geometry}
+
+
 def overlap_candidates(boxes, texts, width, height):
     """Index pairs (i < j), in order, whose boxes meet on the canvas and of which at least one is
     text: a sweep along x, so a document of thousands of shapes is not compared pair by pair."""
@@ -885,10 +907,11 @@ def check_design(
         if safe_area is not None or canvas_safe:
             left, top, right, bottom = _insets(safe_area, width, height) if safe_area is not None else canvas_safe
             safe = (left, top, width - left - right, height - top - bottom)
+            drawn = member_geometry(resolved, geometry)
             for item in content:
-                box = outward(geometry[item["id"]])
+                box = outward(drawn[item["id"]])
                 if not _contains(safe, box):
-                    x, y, w, h = geometry[item["id"]]
+                    x, y, w, h = drawn[item["id"]]
                     # Artwork running off the canvas is bleed, not a safe-area mistake.
                     crop = intentional_crop(item) or (
                         item["type"] in ("shape", "gradient") and (x < 0 or y < 0 or x + w > width or y + h > height))

@@ -104,16 +104,16 @@ composition repairs it selected and checks again.
 | Kind | findings | resolved |
 |---|---:|---:|
 | dead_band | 6 | 3 |
-| margin_drift | 10 | 9 |
+| margin_drift | 10 | 10 |
 | uneven_rhythm | 3 | 1 |
 | crowding | 4 | 4 |
 | clumped_scatter | 0 | 0 |
-| all | 23 | 17 |
+| all | 23 | 18 |
 
-15 of the 20 findings that catch a judged defect are resolved, with no new finding. Left over: the T02 band beside
+16 of the 20 findings that catch a judged defect are resolved, with no new finding. Left over: the T02 band beside
 the microphone (the drawing spans the band, and moving the blocks below it would run them into its base), the band in
-the T04 logo sheet's dark half, the T08 chart titles, which would leave the safe area to meet the margin, and the
-name blocks of T07 badges 01 and 03: pulling the last name up to the first leaves the company line floating midway
+the T04 logo sheet's dark half, and the name blocks of T07 badges 01 and 03: pulling the last name up to the first
+leaves the company line floating midway
 between the name and the role bar (a floating block is an `uneven_rhythm` finding since the craft-check backtest),
 and closing up the whole stack opens a dead band above the bar.
 `tests/test_craft_backtest.py` pins these numbers too.

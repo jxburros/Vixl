@@ -2521,7 +2521,7 @@ TXT rows, CHANGELOG; goldens regenerated with `VIXL_UPDATE_GOLDEN=1 pytest tests
 ### #653 Layout: fill vertically, adapt-layout re-composes per format, flex-like stack and grid
 
 **Status:** Partly done. Vertical fill: `dead_band` and underfilled-canvas review findings, `repair-layout`
-spreads dead bands (craft 2b, 17 of 23 backtest findings resolved). `adapt-layout` proportional mode with safe
+spreads dead bands (craft 2b, 18 of 23 backtest findings resolved). `adapt-layout` proportional mode with safe
 zones (#210) and `recompose: true` re-applies a stored layout recipe (`adapt.py:49`, default false). Stacks have
 `direction`, `gap` (incl. `2u`), `padding`, `align`/`justify` start|center|end, `size: hug` (`stacks.py:15-55`).
 
