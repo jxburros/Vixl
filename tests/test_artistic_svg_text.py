@@ -145,6 +145,20 @@ def test_shaped_path_text_and_registered_embedded_font(tmp_path):
     assert visual_error(p.render(), rendered) < 0.2
 
 
+@pytest.mark.parametrize("warp", [{}, {"warp": "arc"}])
+def test_path_text_with_spaces_exports_vector_pdf(warp):
+    # A space has an empty outline; laid out on a path it must not become an empty PDF path.
+    p = Project(400, 200)
+    p.apply(
+        [
+            {"type": "text", "name": "t", "text": "A B", "size": 40, "x": 0, "y": 0},
+            {"type": "text-layout", "target": "t", "width": 400, "height": 200, "path": [[20, 150], [380, 150]], **warp},
+        ]
+    )
+    pdf = p.export(format="PDF")
+    assert pdf.startswith(b"%PDF") and b"/Subtype /Image" not in pdf
+
+
 @pytest.mark.parametrize(
     "effect",
     [

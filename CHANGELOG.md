@@ -56,6 +56,9 @@
 
 ### Fixed and added
 
+- **Vector PDF export of text on a path no longer fails on spaces.** `path_layout` kept the empty outline of a
+  space glyph, and the PDF writer rejected it as an empty path ("Path must contain 1–262144 characters"). Empty
+  outlines are now skipped, as straight-line layout already did; this also covers path text with a `warp`.
 - Overlap findings (`overlap.text-text`, `overlap.text-object`) now suggest the next step as data: `repair` carries
   `kind: "workflow"` and `workflow: {name: "repair-layout", request: {checks, dry_run: true}}` instead of only a
   sentence (#524). The agent eval harness records `retries`, calls that repeat a tool right after it returned an

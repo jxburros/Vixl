@@ -938,6 +938,8 @@ def path_layout(data, text, size, points):
                 dx, dy = (b[0] - a[0]) / length, (b[1] - a[1]) / length
                 factor = size / face(glyph.data)[0]["head"].unitsPerEm
                 path, _ = glyph_outline(glyph.data, glyph.name)
+                if not path:
+                    break
                 x, y = a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])
                 result.append(
                     (
