@@ -22,7 +22,8 @@ from pathlib import Path
 import re
 
 from .errors import VixlError, require
-from .form_rules import EMAIL, MAX_MESSAGE, MAX_PATTERN, check_pattern, date_picture, pattern_matches
+from .form_rules import (EMAIL, MAX_MESSAGE, MAX_PATTERN, MAX_VALUE as MAX_PATTERN_VALUE, check_pattern,
+                         date_picture, pattern_matches)
 from .model import finite, new_layer
 
 TYPES = ("field", "field-set", "form")
@@ -575,8 +576,12 @@ def coerce(record, raw, group=None, rules=True):
         raise FieldValueError("invalid_format", "Only the digits 0–9 are allowed")
     if fmt == "email" and not re.fullmatch(EMAIL, text):
         raise FieldValueError("invalid_format", "The value is not an email address")
-    if rules and record.get("pattern") and not pattern_matches(record["pattern"], text):
-        raise FieldValueError("invalid_format", "The value does not match the field's pattern")
+    if rules and record.get("pattern"):
+        if len(text) > MAX_PATTERN_VALUE:
+            raise FieldValueError("too_long", f"A field with a pattern holds at most {MAX_PATTERN_VALUE} characters "
+                                  "(set max_length to match)")
+        if not pattern_matches(record["pattern"], text):
+            raise FieldValueError("invalid_format", "The value does not match the field's pattern")
     return text, text
 
 

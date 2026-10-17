@@ -11,7 +11,7 @@ import pytest
 from vixl import Project
 from vixl.commands import compile_command
 from vixl.errors import VixlError
-from vixl.form_rules import check_pattern, scripts
+from vixl.form_rules import MAX_VALUE, check_pattern, pattern_matches, scripts
 from vixl.forms import FieldValueError, coerce, fill, with_values
 
 
@@ -172,11 +172,31 @@ def test_portable_patterns_are_accepted(pattern):
     ("(a+)+$", "unbounded repeat"), ("(\\w+\\s?)*", "unbounded repeat"), ("(?=a)b", "look-around"),
     ("(a)\\1", "back-references"), ("(?i)abc", "flags"), ("(?P<n>a)", "named groups"), ("\\Aabc\\Z", "\\A"),
     ("a{1,5000}", "1000"), ("(a", "valid"), ("", "1–200"), ("x" * 201, "1–200"), ("a++", "possessive"),
+    ("(a|aa)+", "unbounded repeat"), ("(a|a)+", "unbounded repeat"), ("(\\d|\\d\\d)+", "unbounded repeat"),
+    ("(a?a?)+", "unbounded repeat"), ("(.|a)+", "unbounded repeat"), ("(x|y|xz)+", "unbounded repeat"),
+    ("(?:a{0,3}b)*", "unbounded repeat"), ("(?:)*", "unbounded repeat"), ("(?:-|[\\w-]x)+", "unbounded repeat"),
 ])
 def test_unsafe_patterns_are_rejected(pattern, reason):
     with pytest.raises(VixlError) as error:
         check_pattern(pattern)
     assert reason in str(error.value) and error.value.as_dict()["field"] == "pattern"
+
+
+@pytest.mark.parametrize("pattern", [r"(?:ab|cd|e)+", r"(?:[a-c]x|[d-f]y)+", r"(?:-|\w-)+", r"(?:\w\s|-)+"])
+def test_alternatives_that_start_apart_are_accepted(pattern):
+    check_pattern(pattern)
+
+
+def test_pattern_match_input_is_bounded():
+    with pytest.raises(VixlError) as error:
+        pattern_matches(r"\d*\d*x", "1" * (MAX_VALUE + 1))
+    assert error.value.code == "invalid_input" and "max_length" in str(error.value)
+    assert pattern_matches(r"\d*", "1" * MAX_VALUE)
+    p = contract()
+    record = p.layer("code")["field"]
+    with pytest.raises(FieldValueError) as caught:
+        coerce({**record, "max_length": MAX_VALUE * 2}, "A" * (MAX_VALUE + 1))
+    assert caught.value.code == "too_long"
 
 
 def test_pattern_rules_validate_fills_defaults_and_samples():

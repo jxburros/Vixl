@@ -19,6 +19,7 @@ EMAIL = r"[^@\s]+@[^@\s]+"
 MAX_PATTERN = 200
 MAX_MESSAGE = 200
 MAX_REPEAT = 1000
+MAX_VALUE = 1024  # longest text matched against a pattern; bounds polynomial backtracking such as \d*\d*x
 DATE_TOKENS = {"YYYY": "yyyy", "MM": "mm", "M": "m", "DD": "dd", "D": "d"}
 DATE_PICTURE = re.compile(r"(?:YYYY|MM|M|DD|D|[-/. ,])+")
 UNSAFE = ("ASSERT", "ASSERT_NOT", "GROUPREF", "GROUPREF_EXISTS", "ATOMIC_GROUP", "POSSESSIVE_REPEAT")
@@ -29,7 +30,9 @@ def check_pattern(pattern):
     take exponential time. A pattern must match the whole value; it can use classes, groups,
     alternation, ``{n,m}`` counts and ``^``/``$``, but no flags, named groups, look-around,
     back-references, possessive or atomic syntax, ``\\A``/``\\Z``, counts above 1000, or an
-    unbounded repeat of something that itself repeats such as ``(a+)+``."""
+    unbounded repeat of something ambiguous: a body that can match empty, a variable count such as
+    ``(a+)+`` or ``(a?a?)+``, or alternatives that can start with the same character such as
+    ``(a|aa)+`` or ``(.|a)+``."""
     def reject(reason):
         raise VixlError("invalid_operation", f"pattern {reason}", field="pattern",
                         suggestions=["Use a plain pattern such as [A-Z]{2}-[0-9]{4}"])
@@ -44,6 +47,9 @@ def check_pattern(pattern):
     if tree.state.flags & ~re.UNICODE or tree.state.groupdict:
         reject("cannot use inline flags or named groups")
 
+    def width(items):
+        return sre.SubPattern(tree.state, list(items)).getwidth()[0]
+
     def walk(items, unbounded):
         for op, value in items:
             name = str(op)
@@ -55,22 +61,90 @@ def check_pattern(pattern):
                 low, high, body = value
                 if high != sre.MAXREPEAT and high > MAX_REPEAT:
                     reject(f"cannot repeat more than {MAX_REPEAT} times")
-                if unbounded and high > 1:
-                    reject("cannot repeat something that is inside an unbounded repeat, like (a+)+")
+                if unbounded and (high > 1 or low != high):
+                    reject("cannot repeat something that is inside an unbounded repeat, like (a+)+ or (a?)+")
+                if high == sre.MAXREPEAT and width(body) == 0:
+                    reject("cannot have an unbounded repeat of something that can match nothing, like (a?)*")
                 walk(body, unbounded or high == sre.MAXREPEAT)
             elif name == "SUBPATTERN":
                 if value[1] or value[2]:
                     reject("cannot use inline flags")
                 walk(value[3], unbounded)
             elif name == "BRANCH":
+                if unbounded:
+                    ambiguous(value[1])
                 for branch in value[1]:
                     walk(branch, unbounded)
+
+    def ambiguous(branches):
+        # Inside an unbounded repeat, alternatives must be told apart by their first character, or the
+        # matcher can split the same text between them in exponentially many ways.
+        if any(width(branch) == 0 for branch in branches):
+            reject("cannot have an alternative that can match nothing inside an unbounded repeat, like (a|aa)+")
+        seen = set()
+        for branch in branches:
+            chars = first(branch)
+            if chars is None or chars & seen:
+                reject("cannot have alternatives that start alike inside an unbounded repeat, like (a|ab)+ or "
+                       "(.|a)+; make each start with a different character")
+            seen |= chars
 
     walk(tree, False)
 
 
+CATEGORIES = {"CATEGORY_DIGIT": frozenset(range(48, 58)), "CATEGORY_SPACE": frozenset(b" \t\n\r\f\v"),
+              "CATEGORY_WORD": frozenset(b"_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")}
+
+
+def first(items):
+    """The characters a match of ``items`` can start with, or None for "any" (``.``, negated sets): a
+    conservative answer, so a None means the caller treats it as overlapping everything."""
+    chars = set()
+    for op, value in items:
+        name = str(op)
+        if name == "LITERAL":
+            return chars | {value}
+        if name == "IN":
+            for member, argument in value:
+                kind = str(member)
+                if kind == "LITERAL":
+                    chars.add(argument)
+                elif kind == "RANGE":
+                    chars |= set(range(argument[0], argument[1] + 1))
+                elif kind == "CATEGORY" and str(argument) in CATEGORIES:
+                    chars |= CATEGORIES[str(argument)]
+                else:
+                    return None
+            return chars
+        if name == "AT":
+            continue
+        if name == "SUBPATTERN":
+            inner = first(value[3])
+        elif name == "BRANCH":
+            inner = set()
+            for branch in value[1]:
+                part = first(branch)
+                if part is None:
+                    return None
+                inner |= part
+        elif name in ("MAX_REPEAT", "MIN_REPEAT"):
+            inner = first(value[2])
+        else:
+            return None
+        if inner is None:
+            return None
+        chars |= inner
+        if sre.SubPattern(sre.State(), [(op, value)]).getwidth()[0]:
+            return chars
+    return chars
+
+
 def pattern_matches(pattern, text):
-    """Whether the whole of ``text`` matches ``pattern`` (ASCII classes, as in JavaScript)."""
+    """Whether the whole of ``text`` matches ``pattern`` (ASCII classes, as in JavaScript). Text longer
+    than ``MAX_VALUE`` is refused rather than matched."""
+    if len(text) > MAX_VALUE:
+        raise VixlError("invalid_input", f"A field with a pattern holds at most {MAX_VALUE} characters; set its "
+                        f"max_length to {MAX_VALUE} or less", field="max_length", max_length=MAX_VALUE)
     return re.fullmatch(pattern, text, re.ASCII) is not None
 
 
