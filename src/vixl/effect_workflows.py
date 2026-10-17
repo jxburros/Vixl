@@ -185,7 +185,7 @@ def apply(project, value, variables=None, dry_run=False):
     validate(value)
     return project.apply(
         substitute(value["operations"], {**value.get("defaults", {}), **(variables or {})}),
-        check=service_check,
+        validator=service_check,
         detail="compact",
         dry_run=dry_run,
     )

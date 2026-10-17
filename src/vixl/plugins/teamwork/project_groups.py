@@ -125,7 +125,7 @@ def apply_group(session, name, group, paths, request):
             candidate = Project.load(target, limits=session.limits)
             candidate._workspace = original._workspace = session.workspace
             require(candidate.transaction is None, "Commit group member transactions first")
-            result = candidate.apply(operations, check=checker(candidate, service_check), detail="compact")
+            result = candidate.apply(operations, validator=checker(candidate, service_check), detail="compact")
             # repair: the built-in repair map (repair.auto_repair) on this member before its suites run.
             repairs = candidate.repair(kinds=request["repair"], checks=["bounds", "contrast", "safe_area"],
                                        suites=suites) if request.get("repair") else None

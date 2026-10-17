@@ -179,6 +179,7 @@ class Session:
                 del seen[next(iter(seen))]
 
     def resolve(self, path):
+        require("\0" not in str(path), "Path contains a NUL byte", "invalid_input", field="path")
         resolved = (self.workspace / path).resolve()
         require(resolved.is_relative_to(self.workspace), "Path is outside the workspace", "forbidden", field="path")
         return resolved
@@ -446,7 +447,7 @@ class Session:
                     if final:
                         result, image = apply_reviewed(candidate, ops, detail=detail, validate=validate, **review)
                     else:
-                        candidate.apply(ops, detail=detail, check=validate)
+                        candidate.apply(ops, detail=detail, validator=validate)
                 except VixlError as exc:
                     offset_indexes(exc, [index for index, _ in segment], start)
                     raise
@@ -702,6 +703,13 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
         from .errors import friendly
 
         return JSONResponse(friendly(exc).as_dict(), status_code=400)
+
+    @app.exception_handler(OSError)
+    async def os_error(request: Request, exc: OSError):
+        from .errors import friendly
+
+        error = friendly(exc, relative_to=session.workspace)  # Never the absolute path on the server.
+        return JSONResponse(error.as_dict(), status_code=404 if error.code == "not_found" else 400)
 
     @app.get("/view")
     def viewer():

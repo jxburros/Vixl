@@ -100,7 +100,9 @@ Rules agents trip over:
   (WinAnsi characters); restricted or non-TrueType fonts fall back to Helvetica with a warning.
 - Validation rules reach the fillable PDF as standard field actions a viewer enforces: `format`
   `email`/`digits`, number `{decimals, min, max}`, the date `format.display`, and `pattern` (a
-  regex the whole value must match; no flags, look-around, back-references or `(a+)+`), with
+  regex the whole value must match; no flags, look-around or back-references, and nothing ambiguous
+  inside an unbounded repeat: no `(a+)+`, `(a?)+` or alternatives that start alike such as `(a|aa)+`;
+  values over 1,024 characters are refused), with
   `message` for the text a viewer shows. Pages with fields get `/Tabs /S`.
 - Check with `vixl_check(checks=["form"], sample="worst")`; each overflow says what it measured
   (`measured`: sample, font, sizes, box and rendered width) and the `max_length_that_fits` to set.

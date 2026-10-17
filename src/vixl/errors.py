@@ -66,25 +66,50 @@ def memory_guard(function):
     return guarded
 
 
-def friendly(exc):
+def shown_path(filename, relative_to=None):
+    """``filename`` as an error message may show it: relative to ``relative_to`` (a workspace) when it lies inside,
+    otherwise only its basename, so a message never reveals where the workspace sits on disk. Unchanged without
+    ``relative_to``."""
+    import os
+    from pathlib import Path
+
+    if relative_to is None or not isinstance(filename, (str, bytes, os.PathLike)):
+        return filename
+    path = Path(os.fsdecode(filename))
+    try:
+        root = Path(relative_to).resolve()
+        return (path if path.is_absolute() else root / path).resolve().relative_to(root).as_posix()
+    except (ValueError, OSError, RuntimeError):
+        return path.name
+
+
+def friendly(exc, relative_to=None, filename=None):
     """A VixlError for an exception raised by the OS, the JSON decoder or Python itself, with a message a person
-    can act on instead of a Python repr. VixlErrors pass through."""
+    can act on instead of a Python repr. VixlErrors pass through. ``relative_to`` (a workspace) shows the file
+    relative to it, or only its basename when it lies outside; ``filename`` (the path as the caller wrote it)
+    replaces the exception's own."""
     import json
 
     if isinstance(exc, VixlError):
         return exc
+    name = getattr(exc, "filename", None)
+    if name is not None:
+        name = filename if filename is not None else shown_path(name, relative_to)
     if isinstance(exc, FileNotFoundError):
-        return VixlError("not_found", f"No such file: {exc.filename}" if exc.filename else "No such file")
+        return VixlError("not_found", f"No such file: {name}" if name else "No such file")
     if isinstance(exc, IsADirectoryError):
-        return VixlError("io_error", f"{exc.filename} is a folder, not a file")
+        return VixlError("io_error", f"{name} is a folder, not a file")
     if isinstance(exc, PermissionError):
-        return VixlError("io_error", f"Permission denied: {exc.filename}" if exc.filename else "Permission denied")
+        return VixlError("io_error", f"Permission denied: {name}" if name else "Permission denied")
     if isinstance(exc, UnicodeDecodeError):
         return VixlError("invalid_input", f"The input is not UTF-8 text (byte {exc.start}); save JSON as UTF-8")
     if isinstance(exc, json.JSONDecodeError):
         return VixlError("invalid_json", f"Invalid JSON at line {exc.lineno}, column {exc.colno}: {exc.msg}")
     if isinstance(exc, OSError):
-        return VixlError("io_error", exc.strerror or str(exc))
+        # str(exc) of an OSError without strerror can hold an absolute path.
+        hidden = relative_to is not None or filename is not None
+        return VixlError("io_error", exc.strerror or ("Input/output error" if hidden else str(exc)))
     if isinstance(exc, MemoryError):
         return VixlError("resource_limit", OUT_OF_MEMORY)
     return VixlError("invalid_input", str(exc))
+

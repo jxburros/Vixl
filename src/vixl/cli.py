@@ -388,6 +388,32 @@ def dispatch(argv):
         CLI_NOTES.reset(token)
 
 
+def mcp_parser():
+    """The `vixl mcp` argument parser; shipped launch configurations are tested against it."""
+    p = Parser(prog="vixl mcp")
+    p.add_argument("--workspace", help="Directory containing documents, imports and exports")
+    p.add_argument("--allow-screen-capture", action="store_true", default=None,
+                   help="Allow MCP tools to capture the local desktop; also VIXL_ALLOW_SCREEN_CAPTURE=1")
+    p.add_argument("--planner", action="store_true", help="With --tools ai: expose the vixl_ai_plan tool")
+    p.add_argument("--tools", choices=["default", "ai"], default="default",
+                   help="default: the design tools; ai: the provider-backed tools (run as a second server)")
+    p.add_argument(
+        "--require-document",
+        action="store_true",
+        default=None,
+        help="Every document tool call must pass document= (no shared active document); "
+        "also VIXL_REQUIRE_DOCUMENT=1",
+    )
+    p.add_argument("--http", action="store_true", help="Serve Streamable HTTP at /mcp")
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--port", type=int, default=8766)
+    p.add_argument("--token-env", default="VIXL_API_TOKEN")
+    from .call_limits import add_arguments
+
+    add_arguments(p)
+    return p
+
+
 def _dispatch(argv):
     global_parser = Parser(add_help=False, allow_abbrev=False)
     global_parser.add_argument("--project", "-p")
@@ -712,28 +738,9 @@ def _dispatch(argv):
     if cmd == "mcp":
         from .interfaces import mcp_server
 
-        p = Parser(prog="vixl mcp")
-        p.add_argument("--workspace", help="Directory containing documents, imports and exports")
-        p.add_argument("--allow-screen-capture", action="store_true", default=None,
-                       help="Allow MCP tools to capture the local desktop; also VIXL_ALLOW_SCREEN_CAPTURE=1")
-        p.add_argument("--planner", action="store_true", help="With --tools ai: expose the vixl_ai_plan tool")
-        p.add_argument("--tools", choices=["default", "ai"], default="default",
-                       help="default: the design tools; ai: the provider-backed tools (run as a second server)")
-        p.add_argument(
-            "--require-document",
-            action="store_true",
-            default=None,
-            help="Every document tool call must pass document= (no shared active document); "
-            "also VIXL_REQUIRE_DOCUMENT=1",
-        )
-        p.add_argument("--http", action="store_true", help="Serve Streamable HTTP at /mcp")
-        p.add_argument("--host", default="127.0.0.1")
-        p.add_argument("--port", type=int, default=8766)
-        p.add_argument("--token-env", default="VIXL_API_TOKEN")
-        from .call_limits import add_arguments, from_arguments
+        from .call_limits import from_arguments
 
-        add_arguments(p)
-        a = p.parse_args(args)
+        a = mcp_parser().parse_args(args)
         # Explicit workspaces can start empty. Existing --project configurations still work.
         path = current_path(options.project) if options.project or not a.workspace else None
         server = mcp_server(path, limits, workspace=a.workspace, planner=a.planner, tools=a.tools,

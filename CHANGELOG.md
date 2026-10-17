@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+### Upgrading from 0.27
+
+- **Python imports of the moved feature modules (breaking).** Import charts, drawing, lyrics, workspace QA, the AI
+  providers and the other moved features from their plugin package (`vixl.plugins.charts.charts`,
+  `vixl.plugins.ai.ai` …); see Built-in plugins below. The operations, CLI commands and MCP calls are unchanged.
+- **Emoji artwork is downloaded on first use.** Offline machines and CI that draw or export emojis: run `vixl emoji
+  artwork --download` once (or `--from FILE`, or point `VIXL_EMOJIS_PACK` at a local copy); with
+  `VIXL_PACK_DOWNLOAD=off` and no pack, emojis are drawn from the fonts with a warning.
+- **Documentation paths changed.** Update bookmarks and links into `docs/` (for example `docs/commands.md` is now
+  `docs/reference/commands.md`).
+- **`vixl new --house-style` is back, as an on/off switch.** 0.27 removed the flag that pinned a house-style
+  version; the new one takes only `on` or `off` (`house_style: "off"` in `.vixl/variety.json` for a workspace).
+- **MCP calls on a connection with several open documents need `document=`.** A call without it now fails with
+  `ambiguous_document`; see Behaviour changes below.
+- **Form field patterns with ambiguous repeats are refused (breaking).** A pattern such as `(a|aa)+` or `(a?a?)+`
+  now fails validation, and a value longer than 1,024 characters in a field with a pattern is refused as
+  `too_long`; see Security below. Rewrite the pattern so the alternatives inside a repeat start with different
+  characters.
+- **`vixl.imports.svg_operations` prefixes layer names with `name`.** Pass `namespace=False` to keep the SVG's own
+  labels.
+- **`Project.apply(check=…)` runs the design check (breaking, Python API).** The per-operation validator function
+  that `check` used to take is now `validator=` (also on `Project.act` and the workspace-qa `protected_edit`);
+  passing a function as `check` is an error that names `validator=`.
+- **Several defaults draw differently** (review findings, glows and shadows, dash fitting, tracked text): each entry
+  under Behaviour changes below names its override.
+
 ### Documentation layout
 
 - **`docs/` is organized by kind of page.** The top level keeps the learning path (hub, getting started, concepts,
@@ -54,15 +80,78 @@
   warnings in the result. `font-build` embeds the font in the document and registers it, so text layers can be set
   in it at once. See [making a font](docs/guides/text/custom-fonts.md).
 
+### Security
+
+- **A crafted history delta can no longer make the loader copy a layer hundreds of thousands of times.** A list
+  delta must name each layer once, hold no more items than the layer limit, change only layers in its order and name
+  only layers it keeps or adds. All of this is checked before anything is copied. A revision is at most 64 deltas
+  from its snapshot, and that snapshot is checked against the layer limit before the head state is rebuilt. A file
+  that breaks a rule is refused with `invalid_project`.
+- **Linked documents have a draw budget.** One render draws linked documents at most 4,096 times, counting nested
+  links, and refuses more with `resource_limit` (field `links`), so many links with different crops can no longer
+  multiply the work.
+- **SVG import stops a `<use>` fan-out before doing the work.** Each reference is charged with the number of
+  elements it expands to before it is walked, and every element walked counts. An import that would visit more than
+  four times the batch limit of elements (40,000 by default) or produce more than one batch of layers fails at once
+  with `resource_limit`, in every `svg_mode`. A 1 KB file whose nested `<use>` references expand to 100,000 shapes
+  used to run for minutes; it now fails in milliseconds.
+- **`svg_mode: "auto"` draws at most 64 unsupported elements as images.** Each fallback renders the whole canvas, so
+  an SVG with more fails with `resource_limit` and suggests `svg_mode: "appearance"`. The SVG's definitions are now
+  copied once per import instead of once per element.
+- **Form field patterns refuse ambiguous repeats that can freeze a viewer (breaking).** Inside an unbounded repeat,
+  a pattern can no longer have optional or variable counts, a part or alternative that matches nothing, or
+  alternatives that start with the same character. `(a|aa)+`, `(a?a?)+` and `(.|a)+` are now rejected; `(?:ab|cd)+`
+  is still fine. Vixl matches a pattern against at most 1,024 characters, and a longer value is refused as
+  `too_long`.
+- **MCP and REST errors no longer reveal where the workspace is on disk.** File errors show paths relative to the
+  workspace (a file outside it by its name only), MCP turns OS and value errors into tool errors instead of raw
+  exceptions, REST answers an `OSError` with JSON, and `vixl_document list` reports the workspace as `"."`. A path
+  with a NUL byte is `invalid_input`.
+- **Encrypted, method-99 and truncated `.vixl` archives fail as `invalid_project`.** The message is "unsupported or
+  encrypted ZIP member", instead of a raw `RuntimeError`, `NotImplementedError` or zlib error escaping
+  `Project.load`.
+
 ### Fixed and added
+
+- **Breaking (Python API): `Project.apply(check=…)` now runs the design check, as `vixl_apply(check=true)` does.**
+  `check=True`, a check name or a list attaches the findings as `result["check"]` with an `outcome`. The
+  per-operation validator function that `check` used to take is now `validator=`, on `Project.act` and the
+  workspace-qa plugin's `protected_edit` too. Passing a function as `check` is an error that names `validator=`.
+- **A missing or unreadable file in `Project.apply` is a VixlError.** It is `not_found` or `io_error` naming the
+  operation's own `path`, instead of a raw `FileNotFoundError` with the absolute path.
+- **Errors from inside an operation say what went wrong.** `brush-define` with an unknown `base` names the built-in
+  brushes and suggests the closest one. Any other Python exception from an operation reads `Malformed operation
+  (KeyError: …)` instead of `Malformed operation: '…'`, is marked `internal: true` with the exception type, and logs
+  its traceback at debug level on `vixl.project`. `variable` without a `value` now asks for one instead of failing
+  with a bare KeyError.
+- **The Claude Desktop bundle starts again.** `vixl.mcpb` launched the server with `--tools core --schema slim`,
+  flags that 0.27 removed, so Desktop could not start Vixl. It now passes only `--workspace`. The bundle and
+  `.mcp.json` share one argument list, and a test parses the launch arguments of every shipped configuration and
+  every `vixl mcp` command in the docs.
+- **Checking a link graph visits each document once.** The cycle and depth check, and the source fingerprint used
+  for caching, used to walk every link layer at every level. Five documents with a fan-out of 20 took about 22 s to
+  render; they now take under a second, and adding a link to such a document is just as quick.
+- **`vixl convert DIR` skips the workspace settings folder.** A workspace's `.vixl/` folder (rolls and variety
+  settings) matched `*.vixl` and stopped the whole folder conversion with an error. Folder conversion now skips
+  folders and dot-folders, and reports a file it cannot read under `failed` while converting the rest.
+- **Safe guides on print sizes with bleed now sit on whole pixels.** A 1/8 in bleed is 37.5 px at 300 dpi, which put
+  the business card's `safe-left`/`safe-top` guides at 93.5, so text anchored there failed the print live-area
+  check. The safe guides now round inward (94, and 1031 on the right), and the trim guides stay exactly on the trim.
+  The print live-area check and the canvas safe-area check allow 0.5 px, so text on an older document's half-pixel
+  guide still passes.
+- **`vixl.imports.svg_operations` now prefixes layer names with `name`.** The SVG's own labels become
+  `"<name> <label>"`, so two lists built from the same SVG before either is applied can be joined and applied in one
+  batch. `vixl import` and the MCP import keep their current names.
+- The MCP configuration examples use `C:\Users\you\...` instead of a real user's path, and a test keeps personal
+  paths out of the docs.
 
 - **A group of path shapes is measured for the safe area by what its members draw.** A `path` shape in absolute
   canvas coordinates (no `x`/`y`) keeps a box from (0, 0), and the group fitted around such shapes did too, so
   `check` (for example `--profile final`) reported `safe_area.outside` on the group from the canvas corner although
   its ink sat well inside. The safe-area check now judges a group by the union of its visible members' drawn
   bounds, clipped to the group's box, as it already did for a single path shape. Chart groups padded past their ink
-  benefit too: on the craft backtest `repair-layout` now snaps the T08 chart titles to the margin, resolving 18 of
-  23 composition findings (was 17).
+  benefit too: on the craft backtest `repair-layout` now snaps the chart titles of the report brief to the margin,
+  resolving 18 of 23 composition findings (was 17).
 
 - **Vector PDF export of text on a path no longer fails on spaces.** `path_layout` kept the empty outline of a
   space glyph, and the PDF writer rejected it as an empty path ("Path must contain 1–262144 characters"). Empty
@@ -174,11 +263,11 @@ fillable form, loop, mandala, flowchart):
   - `uneven_rhythm` also reports a small block (secondary text, a row of dots, a subtitle under a display title)
     as far from the block above as from the one below, between blocks of other kinds; `repair-layout` repairs it
     by moving the block one spacing unit from a neighbour (`float-to-above`, `float-to-below`).
-  The round-1 craft backtest keeps 12 of 21 judged defects caught with no false finding; it now reports the T03
-  subtitle that floats under the title and the T14 lyric frame's empty top as findings on other judged defects,
-  and no longer reports the faint T03 ripple as a crowded rule. `repair-layout` there resolves 17 of 23 findings
-  (was 19 of 22): the T07 badge name blocks are left alone, because pulling the last name up leaves the company
-  line floating. The 144 rolled house-style designs still get no composition finding.
+  The round-1 craft backtest keeps 12 of 21 judged defects caught with no false finding; it now reports a
+  subtitle that floats under its title and a lyric frame's empty top as findings on other judged defects, and no
+  longer reports a faint ripple as a crowded rule. `repair-layout` there resolves 17 of 23 findings (was 19 of
+  22): the name blocks of an event badge are left alone, because pulling the last name up leaves the company line
+  floating. The 144 rolled house-style designs still get no composition finding.
 - The finishing pass's craft checklist (`vixl_reference("finishing")`) adds what the craft-check judges asked for:
   secondary text readable at its real use size, glows and shadows only where they read as light, illustrations in
   one consistent style with joined parts, and a motif that is not a stand-in such as a sunset, a plain disc or a
@@ -220,14 +309,30 @@ fillable form, loop, mandala, flowchart):
 
 A breaking release: a seven-tool MCP server, the compatibility machinery for older releases removed (use the [conversion kit](docs/reference/converting.md) for documents and saved batches from 0.26 and earlier), a published `.vixl` format with SVG round trip and editable SVG, PDF and Figma import, flush-inside strokes on closed shapes, render-parity fixes and terminal summaries in the CLI.
 
-Work from the [craft plan](docs/project/craft-plan.md). Craft claims here wait for a blind re-judging; nothing below claims a craft gain on its own.
+The craft work follows the [craft plan](docs/project/craft-plan.md). Craft claims here wait for a blind re-judging; nothing below claims a craft gain on its own.
+
+### Upgrading from 0.26
+
+Run `vixl convert` once on documents saved by 0.26 or earlier (`vixl convert DIR --out OUTDIR` for a folder) and `vixl convert-batch` on saved MCP calls, batches and client configurations; then check each item below.
+
+- **MCP: 51 tools became seven (breaking).** Saved calls, prompts and batches that name an earlier tool: `vixl convert-batch OLD.json` rewrites them for `vixl_document`, `vixl_apply`, `vixl_check`, `vixl_render`, `vixl_export`, `vixl_reference` and `vixl_job`.
+- **MCP flags and variables removed (breaking).** Drop `--tools core|compact|all`, `--schema full|slim`, `VIXL_MCP_TOOLS` and `VIXL_MCP_SCHEMA` from client configurations (`vixl convert-batch` rewrites a configuration file); `--tools ai` stays.
+- **MCP results are terse (breaking).** Pass `verbose: true` on `vixl_document` or on a `vixl_apply` batch for the full payload.
+- **Format 2 only (breaking).** Format-1 archives and pre-0.21 `lookup` fields no longer open: `vixl convert OLD.vixl`.
+- **`vixl upgrade` removed (breaking).** Use `vixl convert`; the `upgrade` option on open and the `upgraded_from` field are gone too.
+- **The `mcp` pip extra removed (breaking).** Install `vixl-engine`; MCP is a base dependency.
+- **Closed-shape strokes sit inside the outline (breaking).** `vixl convert` (default `--look preserve`) keeps an old document's look; in new batches set `stroke_align: "center"` where a centred stroke is wanted. See Look changes.
+- **A new chart starts inside the safe area (breaking).** Pass `"x": 0, "y": 0` and the canvas `width` and `height` for the old full-canvas placement.
+- **House-style versioning removed (breaking).** Remove `house_style` version numbers from `.vixl/variety.json` (`vixl convert DIR` does it), the `--house-style` version flag and the version argument on `roll()`.
+- **Pre-0.23 fallbacks removed (breaking).** Irregular and tear recipes without a strength, and diagrams without `line_height`, take today's defaults: `vixl convert` writes the old values into the document.
+- **Changed defaults** (balanced headings, progressive `pattern-scatter`, shaded pixel sprites, rolled pills and date highlights, rule clearance): each names its override under Changed defaults; `vixl convert --look preserve` writes the earlier behaviour where a field can hold it.
 
 ### Conversion kit
 
 - `vixl convert OLD.vixl [-o NEW.vixl] [--look preserve|current] [--dry-run] [--report R.json]` (and `vixl convert DIR --out OUTDIR`, `vixl.convert.convert_file`) turns documents saved by earlier releases into current ones: format-1 archives, the pre-0.21 `lookup` field, `upgraded_from`, house-style versions, pre-0.21 open-shape fills and temperature/tint scale, pre-0.24 text boxes, recipes without a strength, line height, padding, wrap or distribution, and closed-shape strokes for the flush stroke rule. `preserve` (default) writes the old implicit behaviour into fields so the document looks and edits as before; `current` lets today's defaults apply and lists what changes. Every undo revision is converted, the result is opened and schema-checked before it is written, and nothing is overwritten without `--overwrite`. See [Converting](docs/reference/converting.md).
 - `vixl convert OLD.svg` rebuilds the editable document from an SVG with a version-1 Vixl payload, which now imports as plain SVG.
 - `vixl convert-batch OLD.json` rewrites saved MCP calls (all 64 earlier tool names), operation batches and MCP client configurations (`--tools core|compact|all`, `--schema`) for the seven-tool server.
-- Migration from the breaking changes below: run `vixl convert` once on documents from 0.26 or earlier; `vixl upgrade` is `vixl convert`. The kit lives in `src/vixl/convert/`, which the engine never imports.
+- Migration from the breaking changes below: run `vixl convert` once on documents from 0.26 or earlier; it replaces the removed `vixl upgrade`. The kit lives in `src/vixl/convert/`, which the engine never imports.
 - The published schema describes the `tear` layer record and allows only format 2.
 
 ### MCP surface consolidated (breaking)
@@ -265,8 +370,11 @@ Vixl is pre-release with no users to protect, so code that existed only to repro
 - Text, path shapes, ellipses, rounded rectangles and capsules at fractional positions, or turned, flipped or skewed, are drawn from their outlines straight into place instead of being resampled: `baseline_y` and centred text stay as sharp as on whole pixels and no longer gain about 6% ink. Layers with effects, masks or paper texture are unchanged.
 - Gradients are dithered below one level, so subtle ramps no longer show 8-bit bands; flat and end colours stay exact. A full-canvas 2400×2400 linear gradient takes about 8 ms (3 ms before dithering); radial and angled ones about 0.15 s.
 - Unstroked ellipses, rounded rectangles and capsules are rasterized by resvg instead of Pillow supersampling; edge pixels change by a few levels.
-- Look change: a closed shape's stroke now sits inside its outline and flush with it. `stroke_align` defaults to `inside` for rectangles, rounded rectangles, capsules, ellipses, polygons, stars, shortcuts and catalog shapes, and to `center` for paths, arcs, lines and open shapes; an explicit value means the same with or without dashes, profiles or markers, in PNG, SVG, PDF and PowerPoint. A 10 px stroke on a rectangle or ellipse now covers 0-10 px in from the box edge (it covered 5-15 px), the fill covers the whole shape under the stroke, and a rounded corner keeps `radius` on the outside (inner radius `radius` minus the stroke). Polygon and star strokes keep their outer edge on the outline with mitred corners (their centre line used to sit half a stroke in, with round joins), and styled or catalog strokes that defaulted to centred now default to inside. To keep an old document's look, shrink a plain stroked rectangle's, rounded rectangle's, capsule's or ellipse's box by half the stroke on every side (`x`, `y` + 5 px and `width`, `height` − 10 px for a 10 px stroke; `radius` unchanged, written out when it was the default), leave polygons and stars as they are (outer corners become sharp), and set `stroke_align: "center"` where a styled or catalog stroke relied on the centred default. A `rectangle` given a `radius` (or `border_radius`/`corner_radius`) becomes a `rounded-rectangle`, reported under `normalized`, so its corners are round in every output (PNG rounded them and the exports did not). PDF import joins a fill and the stroke drawn half its width inside it into one layer with `stroke_align: "inside"`.
 - New `python -m evals.render_parity` measures raster output against headless Chromium and exact references (eval-only; `pip install playwright`). Findings: [Render parity](docs/project/render-parity.md).
+
+### Look changes (breaking)
+
+- A closed shape's stroke now sits inside its outline and flush with it. `stroke_align` defaults to `inside` for rectangles, rounded rectangles, capsules, ellipses, polygons, stars, shortcuts and catalog shapes, and to `center` for paths, arcs, lines and open shapes; an explicit value means the same with or without dashes, profiles or markers, in PNG, SVG, PDF and PowerPoint. A 10 px stroke on a rectangle or ellipse now covers 0-10 px in from the box edge (it covered 5-15 px), the fill covers the whole shape under the stroke, and a rounded corner keeps `radius` on the outside (inner radius `radius` minus the stroke). Polygon and star strokes keep their outer edge on the outline with mitred corners (their centre line used to sit half a stroke in, with round joins), and styled or catalog strokes that defaulted to centred now default to inside. To keep an old document's look, shrink a plain stroked rectangle's, rounded rectangle's, capsule's or ellipse's box by half the stroke on every side (`x`, `y` + 5 px and `width`, `height` − 10 px for a 10 px stroke; `radius` unchanged, written out when it was the default), leave polygons and stars as they are (outer corners become sharp), and set `stroke_align: "center"` where a styled or catalog stroke relied on the centred default. A `rectangle` given a `radius` (or `border_radius`/`corner_radius`) becomes a `rounded-rectangle`, reported under `normalized`, so its corners are round in every output (PNG rounded them and the exports did not). PDF import joins a fill and the stroke drawn half its width inside it into one layer with `stroke_align: "inside"`.
 
 ### CLI output
 
@@ -278,7 +386,7 @@ Vixl is pre-release with no users to protect, so code that existed only to repro
 - MCP tool descriptions are the same on every Python: 3.11 and 3.12 kept docstring indentation (8 extra spaces per continuation line, sent to every client); they are now cleaned at registration.
 - Footer-rule clearance no longer pushes the cta button out of the safe area on small banners.
 - Dark-mode ink reaches the 7:1 target on saturated palettes (candy came out at 6.99:1): when the ink steps run out, it snaps to pure white or black, which the background wash was sized for.
-- Strokes land in the same place in PNG, SVG, PDF and PowerPoint: the SVG export stroked rectangles, ellipses and polygons a stroke width away from the other renderers (where strokes now go: see Rendering parity). PNG no longer cuts the outer half of a path's stroke at the layer box. Render parity finding 15.
+- Strokes land in the same place in PNG, SVG, PDF and PowerPoint: the SVG export stroked rectangles, ellipses and polygons a stroke width away from the other renderers (where strokes now go: see Look changes). PNG no longer cuts the outer half of a path's stroke at the layer box. Render parity finding 15.
 - `paint` with an SVG `path` (instead of `points`) works through MCP and REST, like `path` on `shape` and `text-layout`; services refused it as a filesystem path.
 - `vixl commands --json` lists `compact` and `link-set`; `vixl help --full` shows the Figma import flags and `vixl canvas --help` all five forms (`resize`, `size`, `preset`, `dpi`, `background`).
 - Field descriptions that still named house-style versions, a chart's whole-canvas default, the diagram theme default or the old `marker_size` multiplier now describe the current behaviour.
@@ -312,19 +420,19 @@ Vixl is pre-release with no users to protect, so code that existed only to repro
 
 ### Components, layout details and chart placement
 
-- **`key-value-list`**: a label, a value and an optional share per row in aligned columns: labels flush left, values and shares right-aligned on shared edges, a hairline rule between rows, row padding and column gaps from the spacing scale and one height for every single-line row. Rows come as `rows` or as `items` text (`label | value | share` per line); `shares: "auto"` computes each value's share of the total, `number_format` formats numbers, `colors` adds swatches, and `target` restyles the list on the same layer IDs. The container library gains a `key-value-list` container (a title over a list that widens to its frame and steps its text down to fit). Craft plan 5a (T08).
+- **`key-value-list`**: a label, a value and an optional share per row in aligned columns: labels flush left, values and shares right-aligned on shared edges, a hairline rule between rows, row padding and column gaps from the spacing scale and one height for every single-line row. Rows come as `rows` or as `items` text (`label | value | share` per line); `shares: "auto"` computes each value's share of the total, `number_format` formats numbers, `colors` adds swatches, and `target` restyles the list on the same layer IDs. The container library gains a `key-value-list` container (a title over a list that widens to its frame and steps its text down to fit).
 - **Chart value legends are key-value lists**: `legend_values` now sets swatch and name, the total and (pie and donut) the share in aligned, ruled columns, with the same geometry as `key-value-list`, instead of appending the total to each name. On a pie or donut the automatic percentage labels around the ring are left out because the list carries them; `value_labels: "percent"` (or `value`, `both`, `true`) keeps them.
-- **A new chart starts inside the safe area** (craft plan 7d): a `chart` drawn without `x`, `y`, `width` or `height` fills the canvas safe area inset by two spacing units, so it no longer fails `check` (`safe_area`) as created. Pass `"x": 0, "y": 0` and the canvas `width` and `height` for the old full-canvas placement; a canvas without a safe area keeps it.
+- **A new chart starts inside the safe area (breaking)**: a `chart` drawn without `x`, `y`, `width` or `height` fills the canvas safe area inset by two spacing units, so it no longer fails `check` (`safe_area`) as created. Pass `"x": 0, "y": 0` and the canvas `width` and `height` for the old full-canvas placement; a canvas without a safe area keeps it.
 
-### Typography (craft plan 4a–4c)
+### Typography
 
-- `text-layout` takes `wrap` (also `rich-text` with a width): `balance` sets a heading's lines at even widths in the same line count, `pretty` keeps one word off a paragraph's last line, `greedy` is the old behaviour. The breaks are worked out once, so PNG, SVG, PDF and PPTX show the same lines (PPTX writes them as line breaks). A wrap is kept when the box is resized. The `runt` check names the fix. Aliases such as `balanced` and `no-runts` are reported under `normalized` (T09, T14).
-- Tab stops on plain text: `tabs: [{at, align, leader}]` on `text`/`text-set` (CLI `--tabs`), with `left`, `right`, `center` and `decimal` stops at pixels or a percentage of the box, and leaders such as `"."` that line up across lines. PPTX writes native tab stops and the leader as characters. `table` columns take `leader` for menus and price lists; in a native PPTX table it stops at the cell edge (#213, BLK-07, T16).
-- `layout-apply` takes `accent_words: ["Winter"]`: whole-word, any-case matches in the headline are set in `@accent-text` through rich-text spans, and the headline box is measured as rich text so it still fits. A word that is not in the headline is a warning and is listed under the layout's `accent_words.missing`; `accent` given a list is read as `accent_words` (T03, T09).
+- `text-layout` takes `wrap` (also `rich-text` with a width): `balance` sets a heading's lines at even widths in the same line count, `pretty` keeps one word off a paragraph's last line, `greedy` is the old behaviour. The breaks are worked out once, so PNG, SVG, PDF and PPTX show the same lines (PPTX writes them as line breaks). A wrap is kept when the box is resized. The `runt` check names the fix. Aliases such as `balanced` and `no-runts` are reported under `normalized`.
+- Tab stops on plain text: `tabs: [{at, align, leader}]` on `text`/`text-set` (CLI `--tabs`), with `left`, `right`, `center` and `decimal` stops at pixels or a percentage of the box, and leaders such as `"."` that line up across lines. PPTX writes native tab stops and the leader as characters. `table` columns take `leader` for menus and price lists; in a native PPTX table it stops at the cell edge (#213).
+- `layout-apply` takes `accent_words: ["Winter"]`: whole-word, any-case matches in the headline are set in `@accent-text` through rich-text spans, and the headline box is measured as rich text so it still fits. A word that is not in the headline is a warning and is listed under the layout's `accent_words.missing`; `accent` given a list is read as `accent_words`.
 
 ### Scene atmosphere and motifs
 
-- **Scene effects as single operations** (craft plan 6a): `haze` (a soft glow band or halo behind a light, placed
+- **Scene effects as single operations**: `haze` (a soft glow band or halo behind a light, placed
   directly below it), `star-field` (seeded stars and sparkles that keep clear of every text layer and thin toward the
   horizon), `string-lights` (bulbs, pears or paper lanterns hung evenly along a sagging wire or an existing path, each
   with a lit core and a glow) and `bokeh` (soft out-of-focus discs) build editable groups of vector shapes and radial
@@ -332,7 +440,7 @@ Vixl is pre-release with no users to protect, so code that existed only to repro
   with seeded ripples, ripple bands, a vertical smear and a fade; it is one raster layer that keeps its settings, so
   `{type: reflection, target: reflection}` re-renders it after the scene changes. All five are deterministic for a
   `seed`. See [scene atmosphere and motifs](docs/guides/finishing/atmosphere.md).
-- **Motifs from the brief** (6b): `vixl_reference(brief)` returns `motifs` when a brief implies a setting (coffee and cafés,
+- **Motifs from the brief**: `vixl_reference(brief)` returns `motifs` when a brief implies a setting (coffee and cafés,
   sea and coast, lakes, markets and festivals, night city, night sky, concerts): the concrete things to draw (a cup with
   steam rather than a disc, a lighthouse standing in the sea rather than on a bar), the placeholder each replaces, and
   the shapes, organic presets, object kinds and operations that draw them. `vixl_reference('motifs')` lists every theme;
@@ -340,25 +448,25 @@ Vixl is pre-release with no users to protect, so code that existed only to repro
   setting ("a lighthouse at dusk") now matches the `scene` kind with its motifs instead of the bare object guide.
 - **Motif shapes**: catalog shapes `cup` (a mug on its saucer, with a handle hole), `steam`, `lighthouse` (with a
   lantern window and a door) and `lantern`.
-- **Filled layered water** (6c): organic preset `water` draws bands of sea in related tones, lighter at the horizon and
+- **Filled layered water**: organic preset `water` draws bands of sea in related tones, lighter at the horizon and
   darker in front, each with a crest, filling its box edge to edge (`params.tones` back to front, or `params.color`).
   The new organic generator `band` (a filled band under a wavy edge) builds it. Sea, coast and lake motifs point to it.
 
-### Tool finish (craft plan 7)
+### Tool finish
 
-- **`pattern-scatter` thins in place.** In new documents a tile is laid out progressively, so the same seed with a lower `count` keeps the first copies exactly where they were (with the same motif, size and turn) and drops the rest, and `count` places exactly that many copies. `thin` (a share to keep, `{keep}` or `{count}`) removes the most crowded copies of an existing tile and keeps the survivors; the tile remembers it until `count`, `seed`, `spacing`, `distribution` or its size change. T15's round 2 kept 7 % of the pattern on 0.26.
-- **Drawing fills register to their lines** (#218). Fills follow strokes as they render (a smoothed stroke's curve, at its layer's width), tuck under each line to its centre, and meet a neighbour on the straight line across a bridged break, so no paper halo shows along a line and no fill bulges through an open corner (T11). With `edge_closes`, lines that stop short of the paper's sides are carried on to the edge without being drawn (`edge_reach`, default 15% of the short side, 0 for none), so a short ground line still divides sky from ground; `drawing report` lists the regions the same way.
-- **Crops take the cleaned master.** A photo shown larger than its own pixels (a linked Instagram or caption crop of a corrected master, or a photo scaled up in its document) runs its leading `denoise` effects at its own pixels before it is scaled, so the enlargement shows the denoised master instead of grain (T10).
-- **Pixel sprites get a shading ramp and an outline** (T13). New `pixel-art` layers draw a 1 px outline in the darkest palette colour and a hue-shifted shadow and light band on each colour area, within 16 opaque colours and binary alpha, following any ramp the artist drew. The stored rows and palette are unchanged, so palette swaps carry into the ramp; `pixels` also returns the drawn result. `pixel-palette` turns `shading` and `outline` on or off on an existing layer.
+- **`pattern-scatter` thins in place.** In new documents a tile is laid out progressively, so the same seed with a lower `count` keeps the first copies exactly where they were (with the same motif, size and turn) and drops the rest, and `count` places exactly that many copies. `thin` (a share to keep, `{keep}` or `{count}`) removes the most crowded copies of an existing tile and keeps the survivors; the tile remembers it until `count`, `seed`, `spacing`, `distribution` or its size change. In the tool-comparison re-run, a revision round on 0.26 kept 7 % of the pattern.
+- **Drawing fills register to their lines** (#218). Fills follow strokes as they render (a smoothed stroke's curve, at its layer's width), tuck under each line to its centre, and meet a neighbour on the straight line across a bridged break, so no paper halo shows along a line and no fill bulges through an open corner. With `edge_closes`, lines that stop short of the paper's sides are carried on to the edge without being drawn (`edge_reach`, default 15% of the short side, 0 for none), so a short ground line still divides sky from ground; `drawing report` lists the regions the same way.
+- **Crops take the cleaned master.** A photo shown larger than its own pixels (a linked Instagram or caption crop of a corrected master, or a photo scaled up in its document) runs its leading `denoise` effects at its own pixels before it is scaled, so the enlargement shows the denoised master instead of grain.
+- **Pixel sprites get a shading ramp and an outline**. New `pixel-art` layers draw a 1 px outline in the darkest palette colour and a hue-shifted shadow and light band on each colour area, within 16 opaque colours and binary alpha, following any ramp the artist drew. The stored rows and palette are unchanged, so palette swaps carry into the ramp; `pixels` also returns the drawn result. `pixel-palette` turns `shading` and `outline` on or off on an existing layer.
 
 ### Composition checks
 
-- A `composition` check family, on by default, reports craft problems as `review` findings (craft plan 2a): `dead_band` (an empty band much larger than the document's own gaps, between blocks or against an edge), `margin_drift` (stacked blocks whose left edges, right edges of right-aligned text or centre axes are within two spacing units but not equal), `uneven_rhythm` (a stack whose middle line sits further from the line above it, which it matches in size, than from the next, or lines of one size spaced unevenly), `crowding` (a rule, band or heading less than half a spacing unit above text) and `clumped_scatter` (a `pattern-scatter` or `scatter` whose motif coverage bunches over the tile). Each finding has a stable `code` (rule `composition.dead_band` …), `layer_ids`, the `region` it concerns, `measured` actual against expected, the `values` it measured, the `threshold` it applied and the `spacing_unit` (half the body size). Select it alone with `vixl check --checks composition` or `vixl_check(checks=["composition"])`. Backgrounds, marked decoration, bleeding art, glows and the insides of charts and scatters are not judged as blocks; waive a deliberate finding with `layer-intent waive` or the `waiver` operation (`check: composition`) and a reason.
+- A `composition` check family, on by default, reports craft problems as `review` findings: `dead_band` (an empty band much larger than the document's own gaps, between blocks or against an edge), `margin_drift` (stacked blocks whose left edges, right edges of right-aligned text or centre axes are within two spacing units but not equal), `uneven_rhythm` (a stack whose middle line sits further from the line above it, which it matches in size, than from the next, or lines of one size spaced unevenly), `crowding` (a rule, band or heading less than half a spacing unit above text) and `clumped_scatter` (a `pattern-scatter` or `scatter` whose motif coverage bunches over the tile). Each finding has a stable `code` (rule `composition.dead_band` …), `layer_ids`, the `region` it concerns, `measured` actual against expected, the `values` it measured, the `threshold` it applied and the `spacing_unit` (half the body size). Select it alone with `vixl check --checks composition` or `vixl_check(checks=["composition"])`. Backgrounds, marked decoration, bleeding art, glows and the insides of charts and scatters are not judged as blocks; waive a deliberate finding with `layer-intent waive` or the `waiver` operation (`check: composition`) and a reason.
 - Text set in a chip that hugs it (a highlighted date line, a pill or a button, wider than tall) aligns and spaces by the chip's edges, so the rolled highlighted dates are not read as margin drift.
 - Backtest on reconstructions of the 16 round-1 Vixl documents (`python -m evals.craft_backtest`, 20 documents, 21 composition defects the blind judges named): 12 caught, 9 missed, 0 false findings, 2 findings on judged defects outside composition. By kind: dead band 5 of 10, margin drift 4 of 5, uneven rhythm 2 of 4, crowding 1 of 1, clumped scatter 0 of 1. The 144 rolled house-style designs of `evals.house_style` get no composition finding.
-- `evals.house_style` scores the share of designs with no composition finding (`no_composition_findings`), so `--compare` against the baseline catches a default change that adds dead bands, drift or crowding to rolled designs (craft plan 1d).
+- `evals.house_style` scores the share of designs with no composition finding (`no_composition_findings`), so `--compare` against the baseline catches a default change that adds dead bands, drift or crowding to rolled designs.
 
-### Composition repair and the critique in the fix call (craft plan 2b, 3b)
+### Composition repair and the critique in the fix call
 
 - Workflow `repair-layout` repairs composition findings when its `checks` include `composition` (the default set does), after the failures: it snaps drifting edges to the margin, moves a line to the line it belongs with or evens a stack, opens a crowded gap under a rule or heading, spreads a dead band over the frame's other gaps (or moves the blocks beside it), centres or spreads content into an edge band, and thins or re-seeds a clumped `pattern-scatter` tile. Every candidate is a relative move or a recipe rebuild, kept only if its finding is gone and no fix or review finding of any check is new, ranked by least disruption as before. Drawings made of touching shapes move whole, chips and glows move with their layer, and backgrounds and bleeding art stay put. Leftovers go under `reviews_remaining` with the reason (a scatter without a recipe is not auto-repairable) and never make a repair infeasible. Composition findings use `max_iterations` like failures. Leave them alone with `checks` that omit `composition`.
 - `margin_drift` findings list their stray layers in `values.stray_ids`.
@@ -372,16 +480,16 @@ These defaults apply to every document: house-style versioning is removed (see a
 
 House-style eval (`python -m evals.house_style --compare evals/house-style-baseline.json`, baseline recorded before these defaults): no regressions. Quality is unchanged at every level (no fix finding, no composition finding, fonts and contrast all 1.0); the rolled-choice entropies are identical; image distance moves by at most 0.0004, same-mode distance rises by up to 0.0014, and layout-structure distance falls by up to 0.0035 (0.9666 → 0.9631 at low), inside the eval's tolerance.
 
-- **Pills and highlighted dates are rolled** (craft plan 5c, T02 and T09): a roll's direction now carries `cta` (`pill` or `button`) and `date` (`highlight` or `plain`), drawn from the seed by tier (pills about two in five safe rolls and three in five bold ones, never for square-cornered styles, always for a pill corner; highlights a little less often) on a separate stream, so every other rolled choice is unchanged for the same seed. Layouts set a `pill` call to action with fully rounded ends whatever the corner style, and put the composition's date line (a short label, caption, subtitle or body that reads as a date) in `@on-accent` on an `@accent` highlight that keeps the column edge. Override per document with `--lock cta=button --lock date=plain`, or `direction: {"cta": "button", "date": "plain"}` on `layout-apply`.
-- **Rules keep a spacing unit from the copy** (craft plan 5b, T16): the safe compositions' footer rule keeps one spacing unit above the last line (copy too tall for that is set smaller), and the `section-header` container's rule keeps one unit from the container's bottom edge at any height (`clear_below`, a new container item setting in spacing units). One unit is the smallest step of the spacing scale and twice the half-unit gap the craft plan counts as crowding.
-- **Headings wrap balanced** (craft plan 4a): a new `text-layout` box on a heading (a heading font role or stage, or text whose size reads as the h2 step or larger) and every layout headline get `wrap: "balance"`. Pass `wrap: "greedy"` on the `text-layout` for the old breaks.
-- **`pattern-scatter` lays tiles out progressively** (7a): `distribution: "progressive"` ; a seed now lays out a different tile than before. Pass `distribution: "poisson"` for the earlier layout.
-- **Pixel sprites are shaded and outlined** (7e): `pixel-art` defaults to `shading: true` and `outline: true`. Pass `shading: false` and `outline: false` for the flat sprite.
+- **Pills and highlighted dates are rolled**: a roll's direction now carries `cta` (`pill` or `button`) and `date` (`highlight` or `plain`), drawn from the seed by tier (pills about two in five safe rolls and three in five bold ones, never for square-cornered styles, always for a pill corner; highlights a little less often) on a separate stream, so every other rolled choice is unchanged for the same seed. Layouts set a `pill` call to action with fully rounded ends whatever the corner style, and put the composition's date line (a short label, caption, subtitle or body that reads as a date) in `@on-accent` on an `@accent` highlight that keeps the column edge. Override per document with `--lock cta=button --lock date=plain`, or `direction: {"cta": "button", "date": "plain"}` on `layout-apply`.
+- **Rules keep a spacing unit from the copy**: the safe compositions' footer rule keeps one spacing unit above the last line (copy too tall for that is set smaller), and the `section-header` container's rule keeps one unit from the container's bottom edge at any height (`clear_below`, a new container item setting in spacing units). One unit is the smallest step of the spacing scale and twice the half-unit gap the `crowding` finding reports.
+- **Headings wrap balanced**: a new `text-layout` box on a heading (a heading font role or stage, or text whose size reads as the h2 step or larger) and every layout headline get `wrap: "balance"`. Pass `wrap: "greedy"` on the `text-layout` for the old breaks.
+- **`pattern-scatter` lays tiles out progressively**: `distribution: "progressive"`; a seed now lays out a different tile than before. Pass `distribution: "poisson"` for the earlier layout.
+- **Pixel sprites are shaded and outlined**: `pixel-art` defaults to `shading: true` and `outline: true`. Pass `shading: false` and `outline: false` for the flat sprite.
 
 ### Behaviour changes
 
 - Plain `check` runs one more default family. Its findings are `review`, so the plain verdict (`passed`, which fails on `fix`) does not change; a run that gates on review findings (`--profile final`, `fail_on: review`) now also fails on unresolved composition findings. Turn the family off for one run with an explicit `checks` list without `composition`, or waive a finding with a reason.
-- The built-in `final` profile adds `composition` to its checks (craft plan 2c), even where a workspace narrows its `checks`, so shipping fails on unresolved composition reviews unless they are waived with a reason. A workspace `.vixl-checks.json` that sets `final.optional` replaces this list.
+- The built-in `final` profile adds `composition` to its checks, even where a workspace narrows its `checks`, so shipping fails on unresolved composition reviews unless they are waived with a reason. A workspace `.vixl-checks.json` that sets `final.optional` replaces this list.
 - An enlarged photo layer with `denoise` first in its stack now draws less grain in every document, existing ones included (the earlier result was a defect, so there is no switch).
 
 ## 0.26.0

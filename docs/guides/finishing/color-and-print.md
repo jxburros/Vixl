@@ -54,7 +54,8 @@ Start print work from a physical size so the canvas carries dpi, bleed and a saf
 
 ```bash
 vixl new letter --bleed -o flyer.vixl          # 2625 × 3375 px: 8.5 × 11 in at 300 dpi + ⅛ in (37.5 px) bleed
-# The bleed is kept to the half pixel, so trim + 2 × bleed is exactly the physical size.
+# The bleed is kept to the half pixel, so trim + 2 × bleed is exactly the physical size. The trim-* guides sit
+# exactly on the trim (37.5); the safe-* guides round inward to whole pixels (37.5 + 56 = 93.5 becomes 94).
 vixl new business-card --bleed --landscape -o card.vixl
 ```
 

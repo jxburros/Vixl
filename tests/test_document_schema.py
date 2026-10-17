@@ -26,13 +26,36 @@ NOT_LAYER_FIELDS = {
 NOT_STATE_FIELDS = {}
 
 
-def _manifests():
-    old = ROOT / "tests" / "fixtures" / "convert"  # documents saved by older releases: test_convert converts them
-    for path in sorted(ROOT.glob("**/*.vixl")):
-        if {".git", ".claude", "_failures"} & set(path.relative_to(ROOT).parts) or old in path.parents:
+def _documents(root):
+    """Tracked ``.vixl`` files. Without git, every ``.vixl`` file outside dot-folders: an MCP client opened on the
+    repository makes the ``.vixl/`` workspace settings folder, and untracked output is not a fixture."""
+    import subprocess
+
+    try:
+        listed = subprocess.run(["git", "ls-files", "-z", "--", "*.vixl"], cwd=root, capture_output=True,
+                                check=True).stdout.decode("utf-8").split("\0")
+        paths = [root / name for name in listed if name]
+    except (OSError, subprocess.CalledProcessError):
+        paths = [path for path in root.glob("**/*.vixl")
+                 if not any(part.startswith(".") for part in path.relative_to(root).parts[:-1])]
+    return sorted(path for path in paths if path.is_file())
+
+
+def _manifests(root=ROOT):
+    old = root / "tests" / "fixtures" / "convert"  # documents saved by older releases: test_convert converts them
+    for path in _documents(root):
+        if {".git", ".claude", "_failures"} & set(path.relative_to(root).parts) or old in path.parents:
             continue
         with zipfile.ZipFile(path) as archive:
-            yield path.relative_to(ROOT), json.loads(archive.read("project.json"))
+            yield path.relative_to(root), json.loads(archive.read("project.json"))
+
+
+def test_manifest_scan_skips_the_workspace_settings_folder(tmp_path):
+    (tmp_path / ".vixl").mkdir()
+    (tmp_path / ".vixl" / "rolls.json").write_text("{}")
+    (tmp_path / "dist" / ".vixl").mkdir(parents=True)
+    Project(20, 20, "white").save(tmp_path / "poster.vixl")
+    assert [str(path) for path, _ in _manifests(tmp_path)] == ["poster.vixl"]
 
 
 def test_shipped_schema_is_generated_from_the_model():

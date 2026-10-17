@@ -508,3 +508,60 @@ def test_preview_exports_and_production_follow_linked_sources(tmp_path):
     changed = run(host, spec, tmp_path / "campaign")
     assert changed["results"][0]["status"] == "completed"
     assert changed["results"][0]["output"] != first["results"][0]["output"]
+
+
+def fanned(tmp_path, levels, fan, crop=False):
+    """doc0 is a tile; each doc{i} links ``fan`` times to doc{i-1}. With ``crop`` every link shows a
+    different-sized region, so each draws its source at its own scale."""
+    make_tile(tmp_path / "doc0.vixl")
+    for level in range(1, levels):
+        doc = Project(200, 100, "#ffffff")
+        doc.save(tmp_path / f"doc{level}.vixl")
+        doc.apply([{"type": "link", "source": f"doc{level - 1}.vixl", "name": f"l{i}", "x": (i % 5) * 40,
+                    "y": (i // 5) * 25, "width": 40, "height": 20,
+                    **({"crop": {"x": 0, "y": 0, "width": 50 + i, "height": 25 + i}} if crop else {})}
+                   for i in range(fan)])
+        doc.save()
+    return tmp_path / f"doc{levels - 1}.vixl"
+
+
+def test_wide_link_fanout_is_linear(tmp_path, monkeypatch):
+    import time
+
+    top = fanned(tmp_path, 5, 20)
+    opened, inside = [], []
+    real_open, real_check = links.open_source, links._check_chain
+
+    def counting_open(project, path, source):
+        if inside:
+            opened[-1].append(path)
+        return real_open(project, path, source)
+
+    def counting_check(*args):
+        inside.append(True)
+        opened.append([])
+        try:
+            return real_check(*args)
+        finally:
+            inside.pop()
+
+    monkeypatch.setattr(links, "open_source", counting_open)
+    monkeypatch.setattr(links, "_check_chain", counting_check)
+    start = time.perf_counter()
+    image = Project.load(top).render()
+    elapsed = time.perf_counter() - start
+    assert image.size == (200, 100)
+    # The link-graph walk once took fan ** depth steps per draw: about 22 s here.
+    assert elapsed < 8
+    assert opened and all(len(paths) == len(set(paths)) for paths in opened)
+
+
+def test_link_draw_budget(tmp_path, monkeypatch):
+    top = fanned(tmp_path, 3, 12, crop=True)
+    monkeypatch.setattr(links, "MAX_LINK_DRAWS", 60)  # 12 + 12 * 12 distinct draws
+    links._RENDERS.clear()
+    with pytest.raises(VixlError) as error:
+        Project.load(top).render()
+    assert error.value.code == "resource_limit" and error.value.details.get("field") == "links"
+    monkeypatch.setattr(links, "MAX_LINK_DRAWS", 4096)
+    assert Project.load(top).render().size == (200, 100)

@@ -263,7 +263,7 @@ def test_services_cannot_read_slot_paths_even_inside_workspace(tmp_path):
                 "resource": "profile",
                 "variables": {"photo": "secret.png"},
             },
-            check=service_check,
+            validator=service_check,
         )
     assert not p.state["layers"]
 

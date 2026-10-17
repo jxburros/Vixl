@@ -174,6 +174,8 @@ Every document tool also accepts `document` (workspace path) to address a docume
 - Tool errors carry JSON: `{"error","message","field","operation_index","operation_type","allowed"?,"suggestions"?,"schema"?}`
   — e.g. `layer_not_found` with `suggestions: ["title"]`, or an invalid operation with the `schema` of its type.
   Correct the named field and retry; nothing was changed by a failed call.
+  File paths in errors are relative to the workspace. `"internal": true` (with `exception`) marks a Python
+  exception from inside an operation rather than a validation error: check the values, then report it.
 
 ## REST API
 
@@ -236,6 +238,8 @@ p = Project.new("letter", house_style="off")               # no rolled direction
 p = Project.load("poster.vixl", limits=Limits(max_pixels=16_000_000), allow_linked=False)
 
 p.apply([{"type": "text", "name": "title", "text": "Hi", "size": 64}], dry_run=False, detail="compact")
+p.apply(ops, check=True)    # also runs the design check: result["check"], as vixl_apply(check=true); or check names
+p.apply(ops, validator=fn)  # fn(op) for each validated operation before the batch runs; raise VixlError to refuse
 p.import_image("photo.jpg", name="hero", credit="Photo: Ana Ruiz", license="CC0")   # or data=bytes
 p.import_image(url="https://images.example.com/cat.jpg", name="cat", license="CC BY 4.0")  # https, public hosts only
 p.inspect()                 # dict; p.inspect("title") for one layer

@@ -478,7 +478,7 @@ def adapt_copies(session, export_file, sizes, directory=".", name="{name}-{size}
     for index, (spec, label, destination) in enumerate(plan):
         calls.check_cancelled()
         candidate = base.clone()
-        outcome = candidate.apply([{"type": "adapt-layout", **spec, **options}], detail="brief", check=service_check)
+        outcome = candidate.apply([{"type": "adapt-layout", **spec, **options}], detail="brief", validator=service_check)
         report_row = outcome["adapt_layout"][0]
         session.make_parent(destination)
         candidate.save(destination, overwrite=overwrite)

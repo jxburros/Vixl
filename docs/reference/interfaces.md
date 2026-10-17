@@ -40,6 +40,13 @@ project.save()
 
 `Project.apply(..., detail="compact")` returns changed fields keyed by stable layer ID; the Python API keeps `detail="full"` as its compatibility default.
 
+`Project.apply(operations, *, dry_run=False, detail="full", check=None, validator=None)`: `check` means what it means
+in MCP `vixl_apply`: `check=True` (or a check name or a list of names) runs the design check on the result and attaches
+it as `result["check"]`, with an `outcome`. `validator` is a function called with each validated operation before the
+batch runs; it raises `VixlError` to refuse one (the services pass their path and font policy here). A function passed
+as `check` is an error that names `validator=`. A file an operation cannot read raises `VixlError` (`not_found` or
+`io_error`) naming the operation's own `path`, not a raw `OSError`.
+
 `Project.import_image(path=None, *, url=None, data=None, name="image", credit=None, license=None)` embeds an image from a file, bytes or an `https://` URL as a new layer and returns its id, size, bounds, `asset` and `source` (see [Import existing artwork](#import-existing-artwork)).
 
 `Project.save(path=None, *, overwrite=False)` writes the document. Saving to the file it was loaded from or last saved to always works; another existing `.vixl` is refused with `output_exists` unless `overwrite=True`, as `vixl new`, `vixl save` and exports do.
@@ -89,7 +96,7 @@ REST sessions fix the project path when launched. Operation `path` and `linked` 
 The Windows installer includes MCP. The Python base package includes MCP. Give Vixl an existing workspace directory that contains the images/documents the model should edit:
 
 ```powershell
-vixl mcp --workspace "C:\Users\jeffr\Pictures\Vixl"
+vixl mcp --workspace "C:\Users\you\Pictures\Vixl"
 ```
 
 The workspace can start without any `.vixl` documents. MCP defaults to stdio using the official SDK; stdout contains protocol messages only. Configure your client to start it (escape Windows backslashes in JSON):
@@ -99,7 +106,7 @@ The workspace can start without any `.vixl` documents. MCP defaults to stdio usi
   "mcpServers": {
     "vixl": {
       "command": "vixl",
-      "args": ["mcp", "--workspace", "C:\\Users\\jeffr\\Pictures\\Vixl"]
+      "args": ["mcp", "--workspace", "C:\\Users\\you\\Pictures\\Vixl"]
     }
   }
 }
@@ -107,7 +114,7 @@ The workspace can start without any `.vixl` documents. MCP defaults to stdio usi
 
 Several agents sharing one server (common with subagents of one session) are the usual source of mistakes: see [several agents on one server](#several-agents-on-one-server) for `--require-document` and per-client documents.
 
-If the client cannot find `vixl` on PATH, use the absolute executable path, normally `C:\Users\jeffr\AppData\Local\Programs\Vixl\bin\vixl.exe` for the Windows installer. Restart the client after installing/updating or changing its configuration. On macOS/Linux, use your installed `vixl` executable and a workspace such as `/home/you/Pictures/Vixl`.
+If the client cannot find `vixl` on PATH, use the absolute executable path, normally `%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe` (`C:\Users\you\AppData\Local\Programs\Vixl\bin\vixl.exe`) for the Windows installer. Restart the client after installing/updating or changing its configuration. On macOS/Linux, use your installed `vixl` executable and a workspace such as `/home/you/Pictures/Vixl`.
 
 ### The tool surface
 
@@ -130,11 +137,11 @@ results (`--planner` adds `vixl_ai_plan`).
   "mcpServers": {
     "vixl": {
       "command": "vixl",
-      "args": ["mcp", "--workspace", "C:\\Users\\jeffr\\Pictures\\Vixl"]
+      "args": ["mcp", "--workspace", "C:\\Users\\you\\Pictures\\Vixl"]
     },
     "vixl-ai": {
       "command": "vixl",
-      "args": ["mcp", "--workspace", "C:\\Users\\jeffr\\Pictures\\Vixl", "--tools", "ai"]
+      "args": ["mcp", "--workspace", "C:\\Users\\you\\Pictures\\Vixl", "--tools", "ai"]
     }
   }
 }

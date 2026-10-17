@@ -211,3 +211,134 @@ def test_release_checksums_cover_every_published_asset():
     publish = workflow.split("\n  publish:", 1)[1]
     checksum = publish.index("sha256sum -- * > SHA256SUMS.txt")
     assert publish.index("name: windows-release") < checksum < publish.index("gh release upload")
+
+
+def test_brush_define_unknown_base_names_known_brushes():  # #687
+    with pytest.raises(VixlError) as raised:
+        Project(40, 40).apply({"type": "brush-define", "name": "mine", "base": "nonexistent-brush"})
+    error = raised.value
+    assert error.code == "invalid_operation" and error.details["field"] == "base"
+    assert "round" in error.details["suggestions"] and "Malformed" not in str(error)
+    with pytest.raises(VixlError, match="Did you mean 'pencil'"):
+        Project(40, 40).apply({"type": "brush-define", "name": "mine", "base": "pencl"})
+
+
+def test_internal_errors_are_marked_and_logged(monkeypatch, caplog):  # #687
+    import logging
+
+    from vixl import operations
+
+    def broken(project, op):
+        raise KeyError("missing-field")
+
+    monkeypatch.setattr(operations, "execute", broken)
+    with caplog.at_level(logging.DEBUG, logger="vixl.project"), pytest.raises(VixlError) as raised:
+        Project(40, 40).apply({"type": "solid", "color": "red"})
+    error = raised.value
+    assert error.details["internal"] is True and error.details["exception"] == "KeyError"
+    assert str(error).startswith("Malformed operation (KeyError: 'missing-field')") and "Vixl bug" in str(error)
+    record = next(r for r in caplog.records if r.name == "vixl.project")
+    assert record.exc_info and record.exc_info[0] is KeyError
+
+
+def _minimal_value(schema):
+    for key in ("const", "default"):
+        if key in schema:
+            return schema[key]
+    if schema.get("examples"):
+        return schema["examples"][0]
+    if schema.get("enum"):
+        return schema["enum"][0]
+    for key in ("anyOf", "oneOf"):
+        if key in schema:
+            return _minimal_value(schema[key][0])
+    kind = schema.get("type")
+    kind = kind[0] if isinstance(kind, list) else kind
+    if kind == "string":
+        return "card"
+    if kind in ("number", "integer"):
+        low = schema.get("minimum", schema.get("exclusiveMinimum", 0))
+        return max(low + 1, 1) if kind == "integer" else max(low + 10, 10)
+    if kind == "boolean":
+        return True
+    if kind == "array":
+        return [_minimal_value(schema.get("items", {})) for _ in range(schema.get("minItems", 0))]
+    if kind == "object":
+        required = schema.get("required", [])
+        return {key: _minimal_value(value) for key, value in schema.get("properties", {}).items() if key in required}
+    return None
+
+
+def test_minimal_operations_never_fail_with_an_internal_error():  # #687
+    """Every operation with only its required fields (values from the schema's const, default, examples or enum)
+    either applies or fails with a validation error: never a bare Python exception."""
+    from vixl.schema import operation_schema, validate_operation
+
+    stage = Project(200, 120, "#ffffff")
+    stage.apply([{"type": "shape", "shape": "rectangle", "name": "card", "x": 10, "y": 10, "width": 80,
+                  "height": 40, "fill": "#336699"},
+                 {"type": "text", "text": "Hello", "name": "title", "size": 20, "x": 10, "y": 60}])
+    internal, applied = [], 0
+    for variant in operation_schema()["properties"]["operations"]["items"]["oneOf"]:
+        op = {"type": variant["properties"]["type"]["const"]}
+        op.update({field: _minimal_value(variant["properties"][field])
+                   for field in variant.get("required", []) if field != "type"})
+        try:
+            validate_operation(json.loads(json.dumps(op)))
+        except VixlError:
+            continue
+        applied += 1
+        try:
+            stage.clone().apply(op, detail="brief")
+        except VixlError as exc:
+            if exc.details.get("internal") or str(exc).startswith("Malformed operation: '"):
+                internal.append(f"{op}: {exc}")
+    assert applied > 150 and not internal, "\n".join(internal)
+
+
+def test_missing_file_is_a_vixl_error_without_absolute_path(tmp_path, monkeypatch):  # #688
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(VixlError) as raised:
+        Project(40, 40).apply({"type": "add", "path": "nope.png"})
+    error = raised.value
+    assert error.code == "not_found" and "nope.png" in str(error) and str(tmp_path) not in str(error)
+    assert error.details["operation_type"] == "add"
+
+
+def test_apply_check_true_attaches_a_check_report():  # #688
+    project = Project(120, 80, "#ffffff")
+    result = project.apply({"type": "text", "text": "Hello", "name": "title", "size": 18, "x": 10, "y": 10},
+                           check=True)
+    assert result["success"] and "issues" in result["check"] and result["outcome"]
+    assert project.layer("title")
+    result = project.apply({"type": "move", "target": "title", "x": 20}, check="bounds", dry_run=True)
+    assert result["dry_run"] and "check" in result and project.layer("title")["x"] == 10
+    with pytest.raises(VixlError, match="Unknown check"):
+        project.apply({"type": "move", "target": "title", "x": 30}, check="nonsense")
+
+
+def test_apply_check_callable_points_to_validator():  # #688
+    project = Project(40, 40)
+    with pytest.raises(VixlError, match="validator=") as raised:
+        project.apply({"type": "solid", "color": "red"}, check=lambda op: None)
+    assert raised.value.details["field"] == "check" and not project.state["layers"]
+    seen = []
+    project.apply({"type": "solid", "color": "red"}, validator=seen.append)
+    assert [op["type"] for op in seen] == ["solid"]
+
+
+def test_rest_os_error_is_json_without_absolute_path(tmp_path, monkeypatch):  # #676
+    from fastapi.testclient import TestClient
+
+    from vixl.interfaces import Session, create_app
+
+    def missing(self, *args, **kwargs):
+        raise FileNotFoundError(2, "No such file or directory", str(tmp_path / "assets" / "gone.png"))
+
+    path = tmp_path / "doc.vixl"
+    Project(40, 30).save(path)
+    monkeypatch.setattr(Session, "inspect", missing)
+    with TestClient(create_app(path)) as client:
+        response = client.get("/document")
+    assert response.status_code == 404
+    assert response.json() == {"error": "not_found", "message": "No such file: assets/gone.png"}

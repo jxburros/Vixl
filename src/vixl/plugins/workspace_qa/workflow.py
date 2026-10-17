@@ -42,7 +42,7 @@ def dispatch(session, action, request, document=None):
             return protected_edit(project, request["operations"], protect=request.get("protect", []),
                                   regions=request.get("regions", []), tolerance=request.get("tolerance", 0),
                                   structural=request.get("structural", True), pixels=request.get("pixels", True),
-                                  dry_run=dry_run, check=service_check)
+                                  dry_run=dry_run, validator=service_check)
     if action == "reproduce":
         from .reproduce import read_lock, reproduce, write_lock
 
