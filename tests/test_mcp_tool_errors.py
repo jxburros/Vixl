@@ -62,3 +62,12 @@ def test_unadvertised_arguments_fold_into_options(tmp_path):
         return Image.open(BytesIO(base64.b64decode(content[0].data))).size
 
     assert size({"max_width": 20}) == size({"options": {"max_width": 20}}) == (20, 10)
+
+
+def test_mcp_missing_import_reports_relative_path(tmp_path):  # #676
+    server = build_server(Session(workspace=tmp_path))
+    asyncio.run(server.call_tool("vixl_document", {"action": "create", "path": "a.vixl", "width": 20, "height": 20}))
+    message = call_error(server, "vixl_apply", operations=[{"type": "import-image", "path": "art/missing.png"}])
+    error = payload(message)
+    assert error["error"] == "not_found" and "art/missing.png" in error["message"]
+    assert str(tmp_path) not in message and "Errno" not in message

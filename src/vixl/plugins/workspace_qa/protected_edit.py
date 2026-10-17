@@ -67,7 +67,7 @@ def _pixels(before, after, mask, tolerance):
 
 
 def protected_edit(project, operations, *, protect=(), regions=(), tolerance=0, structural=True, pixels=True,
-                   dry_run=False, check=None):
+                   dry_run=False, validator=None):
     """Apply ``operations`` to a copy, verify the protections and commit only when all hold. Returns
     ``{committed, dry_run, guarantees, violations, outcome, changed_layers}``."""
     from ...assurance import region_box
@@ -88,7 +88,7 @@ def protected_edit(project, operations, *, protect=(), regions=(), tolerance=0, 
     before = np.asarray(project.render().convert("RGBA")) if pixels else None
     masks = {ident: _coverage(project, ident) for ident in named} if pixels else {}
     candidate = project.clone()
-    result = candidate.apply(operations, detail="compact", check=check)
+    result = candidate.apply(operations, detail="compact", validator=validator)
     guarantees, review = [], []
     if structural:
         for ident, snapshot in baseline.items():

@@ -519,9 +519,9 @@ def test_json_block_validates_and_applies(block, offline, monkeypatch):
     project = Project(*(size or (1200, 800)), "#ffffff", workspace=str(workspace))
     try:
         project.apply(operations)
-    except FileNotFoundError:
-        pass  # a placeholder input path (assets/….png) the reader supplies
     except VixlError as exc:
+        if exc.code == "not_found" and str(exc).split(": ")[-1].startswith("assets/"):
+            return  # a placeholder input path (assets/….png) the reader supplies
         if exc.code not in CONTEXT_ERRORS and not CONTEXT_MESSAGES.search(str(exc)):
             pytest.fail(f"{block.id}: applying the block to a fresh document failed\n{exc.code}: {exc}")
 

@@ -40,6 +40,13 @@ project.save()
 
 `Project.apply(..., detail="compact")` returns changed fields keyed by stable layer ID; the Python API keeps `detail="full"` as its compatibility default.
 
+`Project.apply(operations, *, dry_run=False, detail="full", check=None, validator=None)`: `check` means what it means
+in MCP `vixl_apply`: `check=True` (or a check name or a list of names) runs the design check on the result and attaches
+it as `result["check"]`, with an `outcome`. `validator` is a function called with each validated operation before the
+batch runs; it raises `VixlError` to refuse one (the services pass their path and font policy here). A function passed
+as `check` is an error that names `validator=`. A file an operation cannot read raises `VixlError` (`not_found` or
+`io_error`) naming the operation's own `path`, not a raw `OSError`.
+
 `Project.import_image(path=None, *, url=None, data=None, name="image", credit=None, license=None)` embeds an image from a file, bytes or an `https://` URL as a new layer and returns its id, size, bounds, `asset` and `source` (see [Import existing artwork](#import-existing-artwork)).
 
 `Project.save(path=None, *, overwrite=False)` writes the document. Saving to the file it was loaded from or last saved to always works; another existing `.vixl` is refused with `output_exists` unless `overwrite=True`, as `vixl new`, `vixl save` and exports do.

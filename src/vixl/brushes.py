@@ -17,7 +17,7 @@ import threading
 import numpy as np
 from PIL import Image, ImageFilter
 
-from .errors import require
+from .errors import VixlError, require
 from .model import finite, new_layer
 
 BRUSH_TYPES = ("paint-layer", "paint", "paint-clear", "brush-define")
@@ -483,7 +483,15 @@ def execute_brush(project, op):
 
         name = named(op["name"])
         require(name not in BRUSHES, "Built-in brush names are reserved; choose another name")
-        custom = {"base": op.get("base", "round"), **deepcopy(op.get("settings", {}))}
+        base = op.get("base", "round")
+        if base not in BRUSHES:
+            import difflib
+
+            close = difflib.get_close_matches(str(base), BRUSHES, 1, 0.5)
+            hint = f"Did you mean {close[0]!r}? " if close else ""
+            raise VixlError("invalid_operation", f"Unknown base brush {base!r}. {hint}Use one of the built-in "
+                            f"brushes: {', '.join(sorted(BRUSHES))}", field="base", suggestions=sorted(BRUSHES))
+        custom = {"base": base, **deepcopy(op.get("settings", {}))}
         if op.get("description"):
             custom["description"] = op["description"]
         state.setdefault("brushes", {})[name] = custom

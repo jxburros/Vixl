@@ -183,7 +183,7 @@ def dispatch(session, action, request, document=None):
         from .interfaces import service_check
 
         with session.project(write=not request.get("dry_run", False), document=document) as project:
-            return project.act(check=service_check, **request)
+            return project.act(validator=service_check, **request)
     # Release the session/document lock before long read-only production runs.
     with session.project(document=document) as project:
         project = project.clone()

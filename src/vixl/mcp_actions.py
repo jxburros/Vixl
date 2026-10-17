@@ -313,7 +313,7 @@ def document_list(
         key=lambda p: p.name,
     )
     return {
-        "workspace": str(session.workspace),
+        "workspace": ".",  # Paths are relative to it; the absolute location stays private to the server.
         **session.open_documents(),
         "entries": [{"path": session.relative(p), **({"directory": True} if p.is_dir() else {})}
                     for p in entries[offset: offset + limit]],

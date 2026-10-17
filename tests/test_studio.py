@@ -51,7 +51,7 @@ def test_wand_contiguity_tolerance_alpha_and_combination():
             image.putpixel((x, y), (250, 0, 0, 255))
     image.putpixel((2, 2), (245, 1, 0, 255))
     p.apply({"type": "add", "asset": add_image(p, image)})
-    p.apply({"type": "select", "shape": "wand", "x": 1, "y": 1, "tolerance": 6}, check=service_check)
+    p.apply({"type": "select", "shape": "wand", "x": 1, "y": 1, "tolerance": 6}, validator=service_check)
     assert (selection_pixels(p) > 0).sum() == 4
     p.apply({"type": "select", "shape": "wand", "x": 1, "y": 1, "tolerance": 6, "contiguous": False})
     assert (selection_pixels(p) > 0).sum() == 8
@@ -72,7 +72,7 @@ def test_wand_contiguity_tolerance_alpha_and_combination():
 def test_lasso_and_path_masks(shape, geometry):
     p = Project(10, 10)
     p.apply({"type": "solid", "color": "red"})
-    p.apply({"type": "select", "shape": shape, **geometry}, check=service_check)
+    p.apply({"type": "select", "shape": shape, **geometry}, validator=service_check)
     p.apply({"type": "mask", "action": "from-selection"})
     assert p.render().getpixel((2, 2))[3] == 255
     assert p.render().getpixel((8, 8))[3] == 0
@@ -87,7 +87,7 @@ def test_pen_handles_freehand_edit_undo_roundtrip(tmp_path):
             "nodes": [{"point": [5, 5], "out": [5, 50]}, {"point": [50, 5], "in": [50, 50]}],
             "stroke": "red",
         },
-        check=service_check,
+        validator=service_check,
     )
     # The box fits the nodes and stroke; the path is stored relative to it.
     layer = p.layer()

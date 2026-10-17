@@ -67,7 +67,7 @@ def _targets(session, exports, overwrite, path):
 def _apply(project, operations, validate, detail="brief"):
     if not operations:
         return None
-    return project.apply(operations, detail=detail, check=validate)
+    return project.apply(operations, detail=detail, validator=validate)
 
 
 def _brief(result):

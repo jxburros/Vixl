@@ -904,9 +904,9 @@ def plan(project, prompt, backend, apply=False, *, detail="full", model=None):
             "unsafe_plan",
         )
 
-    preview = project.apply(ops, dry_run=True, detail=detail, check=safe)
+    preview = project.apply(ops, dry_run=True, detail=detail, validator=safe)
     if apply:
-        project.apply(ops, check=safe)
+        project.apply(ops, validator=safe)
     return {"proposal": ops, "applied": apply, "preview": preview}
 
 
