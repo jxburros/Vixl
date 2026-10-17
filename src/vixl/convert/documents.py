@@ -10,7 +10,7 @@ import tempfile
 import zipfile
 
 from .. import __version__
-from ..errors import VixlError, require
+from ..errors import VixlError, friendly, require
 from . import rules as rule_table
 from .strokes import engine_model
 
@@ -333,11 +333,15 @@ def convert_directory(source, out, *, look="preserve", dry_run=False, overwrite=
             "Write converted documents to a folder outside the source folder", field="out")
     reports, failed = [], []
     for path in sorted(source.rglob("*.vixl")):
-        target = out / path.relative_to(source)
+        relative = path.relative_to(source)
+        # A workspace's `.vixl/` settings folder matches the pattern too; it and other dot-folders hold no documents.
+        if not path.is_file() or any(part.startswith(".") for part in relative.parts[:-1]):
+            continue
         try:
-            reports.append(convert_file(path, target, look=look, dry_run=dry_run, overwrite=overwrite,
+            reports.append(convert_file(path, out / relative, look=look, dry_run=dry_run, overwrite=overwrite,
                                         history=history, saved_by=saved_by, stroke_model=stroke_model))
-        except VixlError as exc:
+        except (VixlError, OSError) as exc:
+            exc = friendly(exc)
             failed.append({"source": str(path), "error": exc.code, "message": str(exc)})
     settings = source / ".vixl" / "variety.json"
     extra = []
