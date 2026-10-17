@@ -228,6 +228,18 @@ def check_document(project):
         require(isinstance(project.transaction["operations"], list), "Invalid transaction")
     from copy import deepcopy
 
+    # Bound the snapshot the head chain starts from before reconstructing it: patching copies it once per
+    # delta. Only the size is checked here; an old revision need not meet every rule of the current format.
+    cursor = project.head
+    while "state" not in project.nodes[cursor]:
+        cursor = project.nodes[cursor]["parent"]
+    base = project.nodes[cursor]["state"]
+    require(
+        isinstance(base, dict) and isinstance(base.get("layers"), list)
+        and len(base["layers"]) <= project.limits.max_layers,
+        "Invalid history snapshot",
+        "invalid_project",
+    )
     head = project._state_at(project.head)
     check_state(project, deepcopy(head))
     project._head_state = head

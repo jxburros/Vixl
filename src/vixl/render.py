@@ -2070,16 +2070,19 @@ def render_region(project, region, background="transparent"):
 def render(project, variables=None, artboard=None, comp=None, page=None, region=None):
     """The document as an image; ``region`` (left, top, width, height, whole pixels inside the canvas)
     returns that crop, drawing only that part when nothing in the document reads the whole canvas."""
-    profile = PROFILE.get()
-    if profile is None:
-        return _render(project, variables, artboard, comp, page, region)
-    import time
+    from .links import draw_scope
 
-    started = time.perf_counter()
-    try:
-        return _render(project, variables, artboard, comp, page, region)
-    finally:
-        profile.phase("render", time.perf_counter() - started)
+    profile = PROFILE.get()
+    with draw_scope():
+        if profile is None:
+            return _render(project, variables, artboard, comp, page, region)
+        import time
+
+        started = time.perf_counter()
+        try:
+            return _render(project, variables, artboard, comp, page, region)
+        finally:
+            profile.phase("render", time.perf_counter() - started)
 
 
 def _render(project, variables=None, artboard=None, comp=None, page=None, region=None):

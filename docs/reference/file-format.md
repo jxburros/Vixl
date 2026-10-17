@@ -176,7 +176,10 @@ it.
 When it opens a document Vixl checks the archive before decoding anything: at most 256 MiB on disk and expanded,
 10,000 members, 64 MiB per asset, 64 fonts and 160 million decoded pixels across all images; at most 4,096 layers per
 page, canvases up to 16,384 px a side and 40 million pixels. Then it validates the state and verifies that the
-history is acyclic and every reference resolves.
+history is acyclic and every reference resolves. History is checked before it is rebuilt: the snapshot a revision
+starts from holds at most 4,096 layers, a revision is at most 64 deltas from its nearest snapshot (Vixl itself
+stores a snapshot every 32), and a list delta names each layer once, names no layer it neither keeps nor adds, and
+holds no more items than the layer limit. A file that breaks one of these is refused with `invalid_project`.
 
 ## Documents from earlier releases
 

@@ -42,6 +42,9 @@ TYPES = ("link", "link-refresh", "link-embed", "links-relink")
 ACTIONS = {"links": (set(), set())}
 FITS = ("fill", "fit", "stretch")
 MAX_DEPTH = 4
+# Linked sources drawn during one top-level render, counting nested links; distinct crops and scales of one
+# source each draw it again, so the render cache alone does not bound the work.
+MAX_LINK_DRAWS = 4096
 MAX_SOURCE_PATH = 500
 MAX_RENDER_SCALE = 8
 OK, STALE, MISSING, ERROR, CYCLE, FORBIDDEN = "ok", "stale", "missing", "error", "cycle", "forbidden"
@@ -51,6 +54,7 @@ _LOCK = threading.RLock()
 _SOURCES = OrderedDict()  # (path, allow_linked) -> (stamp, revision, Project, asset bytes)
 _RENDERS = []  # one LayerCache of drawn sources, created on first use (render.py imports this module lazily)
 _CHAIN = ContextVar("vixl_link_chain", default=())
+_DRAWS = ContextVar("vixl_link_draws", default=None)
 
 
 def schemas(add):
@@ -386,14 +390,15 @@ def bases(project):
     return list(dict.fromkeys(found)) or [Path.cwd().resolve()]
 
 
-def locate(project, source, suffix=".vixl"):
+def locate(project, source, suffix=".vixl", roots=None):
     """The absolute path of a linked file, which must lie in the workspace (or next to the document)
-    unless the project allows linked files (CLI/Python ``allow_linked``; never true for services)."""
+    unless the project allows linked files (CLI/Python ``allow_linked``; never true for services).
+    ``roots`` is ``bases(project)`` when the caller already has it."""
     require(isinstance(source, str) and source.strip() and len(source) <= MAX_SOURCE_PATH and "\0" not in source,
             "A link needs a source path", field="source")
     require(not suffix or source.lower().endswith(suffix), f"Linked sources are {suffix} documents; got {source!r}",
             field="source")
-    roots = bases(project)
+    roots = bases(project) if roots is None else roots
     given = Path(source)
     candidates = [given.resolve()] if given.is_absolute() else [(root / given).resolve() for root in roots]
     path = next((item for item in candidates if item.exists()), candidates[0])
@@ -519,25 +524,73 @@ def _check_chain(project, path, source, chain):
         names = " → ".join(item.name for item in stack if item)
         raise VixlError(code, message.format(names=names), source=source, chain=[str(item) for item in stack if item])
 
+    # path -> the longest chain of documents below it, for documents already walked. A walked document has no
+    # cycle below it and cannot reach the current stack (that would have been a cycle when it was walked), so
+    # each document is opened and expanded once per check however many links lead to it.
+    below = {}
+
+    def depth_fail(stack):
+        fail("link_depth", f"Linked documents nest more than {MAX_DEPTH} levels deep: {{names}}",
+             stack[:MAX_DEPTH + 2])
+
     def walk(host, stack):
         if len(stack) - 1 > MAX_DEPTH:
-            fail("link_depth", f"Linked documents nest more than {MAX_DEPTH} levels deep: {{names}}", stack)
+            depth_fail(stack)
+        longest = ()
         try:
             child, _ = open_source(host, stack[-1], source)
         except VixlError:
-            return  # a missing or unreadable source is reported when it is drawn
-        for _, layer in link_layers(child.state):
+            below[stack[-1]] = longest
+            return longest  # a missing or unreadable source is reported when it is drawn
+        roots = bases(child)
+        targets = {}
+        for name in dict.fromkeys(layer["source"] for _, layer in link_layers(child.state)):
             try:
-                target = locate(child, layer["source"])
+                targets.setdefault(locate(child, name, roots=roots))
             except VixlError:
                 continue
+        for target in targets:
             if target in stack:
                 fail("link_cycle", "Linked documents form a cycle: {names}", (*stack, target))
-            walk(child, (*stack, target))
+            if target in below:
+                tail = below[target]
+                if len(stack) + len(tail) > MAX_DEPTH:
+                    depth_fail((*stack, target, *tail))
+            else:
+                tail = walk(child, (*stack, target))
+            if len(tail) + 1 > len(longest):
+                longest = (target, *tail)
+        below[stack[-1]] = longest
+        return longest
 
     if path in chain:
         fail("link_cycle", "Linked documents form a cycle: {names}", (*chain, path))
     walk(project, (*chain, path))
+
+
+@contextmanager
+def draw_scope():
+    """Count linked-source draws against ``MAX_LINK_DRAWS`` for everything inside: the outermost scope
+    (a top-level render, or a link drawn outside one) starts the count and nested scopes share it."""
+    if _DRAWS.get() is not None:
+        yield
+        return
+    token = _DRAWS.set([0])
+    try:
+        yield
+    finally:
+        _DRAWS.reset(token)
+
+
+def count_draw(source):
+    counter = _DRAWS.get()
+    if counter is None:
+        return
+    counter[0] += 1
+    require(counter[0] <= MAX_LINK_DRAWS,
+            f"Drawing this document draws linked documents more than {MAX_LINK_DRAWS} times (counting nested "
+            "links); link fewer copies, or embed some with link-embed", "resource_limit", field="links",
+            source=source)
 
 
 @contextmanager
@@ -653,10 +706,12 @@ def link_image(project, layer):
     """The linked document drawn into the layer's box (before the layer's own transform)."""
     from PIL import Image
 
-    prepared = prepare(project, layer)
-    dest, box, scale = placement(layer, prepared.size)
-    with entering(project, prepared.path, layer["source"]):
-        image = _rendered(project, prepared, scale)
+    with draw_scope():
+        count_draw(layer["source"])
+        prepared = prepare(project, layer)
+        dest, box, scale = placement(layer, prepared.size)
+        with entering(project, prepared.path, layer["source"]):
+            image = _rendered(project, prepared, scale)
     sx, sy = image.width / prepared.size[0], image.height / prepared.size[1]
     region = (max(0.0, box[0] * sx), max(0.0, box[1] * sy), min(float(image.width), box[2] * sx),
               min(float(image.height), box[3] * sy))
@@ -702,15 +757,21 @@ def _rendered(project, prepared, scale):
 def pdf_link(builder, layer, bounds, matrix):
     """Draw a link into a PDF page as vector artwork. Returns ``None`` when drawn, or the reason the
     link has to be an image instead (opacity, or a source with layers that depend on their backdrop)."""
+    if layer["opacity"] != 1:
+        return "linked document with opacity"
+    if layer.get("corner_pin"):
+        return "corner-pinned linked document"
+    with draw_scope():
+        count_draw(layer["source"])
+        return _pdf_link(builder, layer, bounds, matrix)
+
+
+def _pdf_link(builder, layer, bounds, matrix):
     from .pdf_export import PageBuilder, _fmt, affine, layer_matrix, matrix_ops
     from .render import color, resolve_layout, resolved_layers
     from .design import resolve_color
     import numpy as np
 
-    if layer["opacity"] != 1:
-        return "linked document with opacity"
-    if layer.get("corner_pin"):
-        return "corner-pinned linked document"
     prepared = prepare(builder.view, layer)
     view = prepared.view
     layers = resolved_layers(view)
@@ -819,15 +880,22 @@ def fingerprint(project):
     found = {}
 
     def walk(host, depth):
-        for _, layer in link_layers(host.state):
+        roots = bases(host)
+        for source in dict.fromkeys(layer["source"] for _, layer in link_layers(host.state)):
             try:
-                path = locate(host, layer["source"])
-                child, revision = open_source(host, path, layer["source"])
+                path = locate(host, source, roots=roots)
             except VixlError:
-                found.setdefault(layer["source"], None)
+                found.setdefault(source, None)
                 continue
-            name = stored_source(host, path)
-            if name in found or depth >= MAX_DEPTH:
+            name = _stored(path, roots)
+            if name in found:
+                continue
+            try:
+                child, revision = open_source(host, path, source)
+            except VixlError:
+                found.setdefault(source, None)
+                continue
+            if depth >= MAX_DEPTH:
                 continue
             found[name] = revision
             walk(child, depth + 1)
