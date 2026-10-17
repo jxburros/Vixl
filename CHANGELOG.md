@@ -56,6 +56,14 @@
 
 ### Fixed and added
 
+- **A group of path shapes is measured for the safe area by what its members draw.** A `path` shape in absolute
+  canvas coordinates (no `x`/`y`) keeps a box from (0, 0), and the group fitted around such shapes did too, so
+  `check` (for example `--profile final`) reported `safe_area.outside` on the group from the canvas corner although
+  its ink sat well inside. The safe-area check now judges a group by the union of its visible members' drawn
+  bounds, clipped to the group's box, as it already did for a single path shape. Chart groups padded past their ink
+  benefit too: on the craft backtest `repair-layout` now snaps the T08 chart titles to the margin, resolving 18 of
+  23 composition findings (was 17).
+
 - **Vector PDF export of text on a path no longer fails on spaces.** `path_layout` kept the empty outline of a
   space glyph, and the PDF writer rejected it as an empty path ("Path must contain 1–262144 characters"). Empty
   outlines are now skipped, as straight-line layout already did; this also covers path text with a `warp`.

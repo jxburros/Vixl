@@ -52,8 +52,8 @@ def test_repair_layout_resolves_composition_findings_on_the_backtest():
 
     result = repair()
     totals = result["totals"]
-    assert (totals["findings"], totals["resolved"], totals["caught"], totals["caught_resolved"]) == (23, 17, 20, 15)
+    assert (totals["findings"], totals["resolved"], totals["caught"], totals["caught_resolved"]) == (23, 18, 20, 16)
     assert totals["new"] == 0
     assert {code: row["resolved"] for code, row in result["by_code"].items()} == {
-        "dead_band": 3, "margin_drift": 9, "uneven_rhythm": 1, "crowding": 4, "clumped_scatter": 0}
-    assert "17 of 23 composition findings resolved" in repair_table(result)
+        "dead_band": 3, "margin_drift": 10, "uneven_rhythm": 1, "crowding": 4, "clumped_scatter": 0}
+    assert "18 of 23 composition findings resolved" in repair_table(result)
