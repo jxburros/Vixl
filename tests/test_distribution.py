@@ -83,7 +83,7 @@ def test_shipped_launch_args_parse(tmp_path):
     for where, args in sources:
         assert "mcp" in args, where
         rest = args[args.index("mcp") + 1:]
-        rest = [re.sub(r"\$\{[^}]*\}", str(workspace), item) for item in rest]
+        rest = [re.sub(r"\$\{[^}]*\}", lambda _: str(workspace), item) for item in rest]
         try:
             parsed = mcp_parser().parse_args(rest)
         except Exception as error:
