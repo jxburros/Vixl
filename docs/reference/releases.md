@@ -103,7 +103,7 @@ Python installations intentionally do not self-update or invoke pip. They return
 
 To publish a stable release:
 
-1. Update the single-sourced version in `src/vixl/__init__.py` (package, API and bundle versions derive from it), then the places that repeat it: `.claude-plugin/plugin.json`, the tag URL in `.mcp.json`, the install URLs in `README.md` and `getting-started.md`, the release line in `README.md` and the documentation home, the action pin in [CI](../guides/automation/ci.md), the tag in step 3 and the sample manifest in [file format](file-format.md); update release notes/documentation as needed.
+1. Update the single-sourced version in `src/vixl/__init__.py` (package, API and bundle versions derive from it), then the places that repeat it: `.claude-plugin/plugin.json`, the tag URL in `.mcp.json`, the install URLs in `README.md` and `getting-started.md`, the release line in `README.md` and the documentation home, the action pin in [CI](../guides/automation/ci.md), the tag in step 3 and the sample manifest in [file format](file-format.md); update release notes (see [release notes](#release-notes)) and documentation as needed.
 2. Run tests and review the PR's **Windows installer and releases** workflow. It runs a real silent installer, verifies PATH lookup, creates/exports a project using the frozen runtime, activates an explicit update before any normal launch with mocked network transport, checks corrupted-candidate recovery, and uninstalls while preserving a user project and existing PATH entries.
 3. Tag the reviewed commit with its exact version and push the tag:
 
@@ -127,6 +127,16 @@ Release assets:
 
 An update trusts HTTPS and access control of the official GitHub repository. The manifest and artifact have the same trust root; checksums detect corruption or mismatched downloads but do not defend against compromise of the repository's release permissions. A separate signed-manifest trust system and Authenticode signing are future hardening options.
 
+### Release notes
+
+Each release gets a `CHANGELOG.md` section, written as an edit pass over the entries collected under Unreleased:
+
+- A section that marks anything "(breaking)" opens with `### Upgrading from X.Y`: one bullet per breaking change, saying what to do (the command, field or flag that restores or replaces the old behaviour).
+- Entries describe behaviour for users. No internal plan IDs (craft plan steps, eval brief numbers such as `T08`); link a planning page once at most. Issue numbers (`#213`) are fine.
+- Remove claims that later entries contradict before tagging.
+
+`tests/test_docs_coverage.py` checks the first two rules on released sections.
+
 ## Python and agent bundles
 
 `.github/workflows/pypi.yml` builds and tests wheels/source distributions and agent bundles.
@@ -143,7 +153,7 @@ Keep repository artwork, explorations and
 other development assets out of it so each Python distribution stays below PyPI's
 100 MB per-file limit.
 
-After the first successful PyPI release:
+Install from PyPI (PyPI carries 0.24.1 and later):
 
 ```bash
 uvx --from vixl-engine vixl mcp --workspace .

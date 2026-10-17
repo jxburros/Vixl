@@ -10,7 +10,8 @@ build/
 .vixl-jobs/
 .vixl-cache/
 .vixl-cache.usage.json
-.vixl/rolls.json
+# Workspace settings and roll state (an MCP client opened on the repository creates it)
+.vixl/
 *.vixl.lock
 *.vixl
 !examples/after-hours.vixl

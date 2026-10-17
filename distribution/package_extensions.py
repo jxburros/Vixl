@@ -7,6 +7,17 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def source_url(version=None):
+    if version is None:
+        from vixl import __version__ as version
+    return f"https://github.com/jxburros/Vixl/archive/refs/tags/v{version}.tar.gz"
+
+
+def launch_args(workspace, version=None):
+    """uvx arguments that start the MCP server; the bundle and .mcp.json both use them."""
+    return ["--from", source_url(version), "vixl", "mcp", "--workspace", workspace]
+
+
 def build(output=None):
     from vixl import __version__
 
@@ -34,18 +45,7 @@ def build(output=None):
             "entry_point": "server.py",
             "mcp_config": {
                 "command": "uvx",
-                "args": [
-                    "--from",
-                    f"https://github.com/jxburros/Vixl/archive/refs/tags/v{__version__}.tar.gz",
-                    "vixl",
-                    "mcp",
-                    "--workspace",
-                    "${user_config.workspace}",
-                    "--tools",
-                    "core",
-                    "--schema",
-                    "slim",
-                ],
+                "args": launch_args("${user_config.workspace}"),
             },
         },
         "compatibility": {"platforms": ["darwin", "win32", "linux"]},

@@ -89,7 +89,7 @@ REST sessions fix the project path when launched. Operation `path` and `linked` 
 The Windows installer includes MCP. The Python base package includes MCP. Give Vixl an existing workspace directory that contains the images/documents the model should edit:
 
 ```powershell
-vixl mcp --workspace "C:\Users\jeffr\Pictures\Vixl"
+vixl mcp --workspace "C:\Users\you\Pictures\Vixl"
 ```
 
 The workspace can start without any `.vixl` documents. MCP defaults to stdio using the official SDK; stdout contains protocol messages only. Configure your client to start it (escape Windows backslashes in JSON):
@@ -99,7 +99,7 @@ The workspace can start without any `.vixl` documents. MCP defaults to stdio usi
   "mcpServers": {
     "vixl": {
       "command": "vixl",
-      "args": ["mcp", "--workspace", "C:\\Users\\jeffr\\Pictures\\Vixl"]
+      "args": ["mcp", "--workspace", "C:\\Users\\you\\Pictures\\Vixl"]
     }
   }
 }
@@ -107,7 +107,7 @@ The workspace can start without any `.vixl` documents. MCP defaults to stdio usi
 
 Several agents sharing one server (common with subagents of one session) are the usual source of mistakes: see [several agents on one server](#several-agents-on-one-server) for `--require-document` and per-client documents.
 
-If the client cannot find `vixl` on PATH, use the absolute executable path, normally `C:\Users\jeffr\AppData\Local\Programs\Vixl\bin\vixl.exe` for the Windows installer. Restart the client after installing/updating or changing its configuration. On macOS/Linux, use your installed `vixl` executable and a workspace such as `/home/you/Pictures/Vixl`.
+If the client cannot find `vixl` on PATH, use the absolute executable path, normally `%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe` (`C:\Users\you\AppData\Local\Programs\Vixl\bin\vixl.exe`) for the Windows installer. Restart the client after installing/updating or changing its configuration. On macOS/Linux, use your installed `vixl` executable and a workspace such as `/home/you/Pictures/Vixl`.
 
 ### The tool surface
 
@@ -130,11 +130,11 @@ results (`--planner` adds `vixl_ai_plan`).
   "mcpServers": {
     "vixl": {
       "command": "vixl",
-      "args": ["mcp", "--workspace", "C:\\Users\\jeffr\\Pictures\\Vixl"]
+      "args": ["mcp", "--workspace", "C:\\Users\\you\\Pictures\\Vixl"]
     },
     "vixl-ai": {
       "command": "vixl",
-      "args": ["mcp", "--workspace", "C:\\Users\\jeffr\\Pictures\\Vixl", "--tools", "ai"]
+      "args": ["mcp", "--workspace", "C:\\Users\\you\\Pictures\\Vixl", "--tools", "ai"]
     }
   }
 }

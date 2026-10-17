@@ -213,6 +213,20 @@ def test_workspace_variety_settings_lose_the_house_style_pin(tmp_path):
     assert result["summary"]["by_change"] == {}
 
 
+def test_folder_conversion_skips_the_workspace_settings_folder(tmp_path):
+    """`.vixl/` (where a workspace keeps rolls and variety settings) matches `*.vixl` but holds no documents."""
+    source = tmp_path / "workspace"
+    (source / ".vixl").mkdir(parents=True)
+    (source / ".vixl" / "rolls.json").write_text("{}")
+    (source / ".cache" / "old.vixl").parent.mkdir()
+    (source / ".cache" / "old.vixl").write_bytes(b"not a document")
+    Project(40, 30, "white").save(source / "poster.vixl")
+    result = convert_directory(source, tmp_path / "out")
+    assert result["failed"] == []
+    assert result["summary"]["converted"] == 1
+    assert (tmp_path / "out" / "poster.vixl").is_file()
+
+
 def test_cli_converts_and_summarizes(tmp_path, monkeypatch, capsys):
     from vixl.cli import main
     from vixl.cli_summary import summarize
