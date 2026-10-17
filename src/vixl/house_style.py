@@ -15,7 +15,7 @@
 
 Precedence, highest first: an explicit field, the workspace ``brand.json``, the purpose profile,
 the document's stored ``design_defaults``, then a fresh seeded roll. The file is read-only at run
-time; a document stores the direction it was rolled with in ``design_defaults`` (see docs/house-style.md,
+time; a document stores the direction it was rolled with in ``design_defaults`` (see docs/project/house-style.md,
 "Changing defaults").
 
 This module only reads the data. The rolls that use it live in ``typefaces.roll`` and

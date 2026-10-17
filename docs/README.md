@@ -12,12 +12,12 @@ the result and export. Text, geometry, masks, effects and history stay in the `.
 2. [Understand the document](concepts.md): layers, coordinates, constraints, assets and history.
 3. [Explore the visual gallery](gallery.md): actual Vixl output with editable masters and recipes.
    The [use-case catalog](use-cases.md) lists what you can make, grouped by how long each takes.
-4. [Choose an export format](exporting.md): images, vectors, print, decks, forms and motion.
+4. [Choose an export format](guides/output/exporting.md): images, vectors, print, decks, forms and motion.
 5. [Resolve common problems](troubleshooting.md): installation, text, checks, imports and providers.
 
 Current tagged release: **0.27.0**. See the [release notes](../CHANGELOG.md#0270)
 for the features and behavior changes in this version.
-See [installation and updating](releases.md) for Windows, source and agent bundles.
+See [installation and updating](reference/releases.md) for Windows, source and agent bundles.
 
 ## Learn by making
 
@@ -32,46 +32,57 @@ offline with `python examples/build_documentation.py`.
 | Produce registration materials and presentations | [Forms and decks](tutorials/forms-and-decks.md) | Field validation, fillable PDF, pages, notes, PowerPoint |
 | Add movement | [Motion and pixel art](tutorials/motion.md) | Keyframes, frame previews, animated WebP, sprite frames |
 
+## How the documentation is organized
+
+| Folder | What is in it | Read it when |
+| --- | --- | --- |
+| This folder | [Getting started](getting-started.md), [concepts](concepts.md), [gallery](gallery.md), [use-case catalog](use-cases.md), [troubleshooting](troubleshooting.md) | You are new, or looking for what Vixl can make |
+| [`tutorials/`](tutorials/) | Four end-to-end walkthroughs that build a complete artifact | You learn by doing |
+| [`guides/`](guides/README.md) | Task-oriented guides for one feature area each, grouped by layout, shapes, finishing, text, images, motion, output and automation | You know what you want to make |
+| [`reference/`](reference/README.md) | Commands, operations, file format, interfaces, providers, plugins, architecture, coverage, releases | You need exact syntax, fields or limits |
+| [`project/`](project/README.md) | House-style decisions, plans, the original specification, render parity, brand voice and how to maintain these docs | You work on Vixl itself |
+| [`assets/`](assets/) | Generated visuals, editable masters, JSON recipes and gallery images used by the pages | You rebuild or reuse a picture |
+
 ## Find a feature
 
 | Area | Guides and references |
 | --- | --- |
-| Documents and authoring | [Concepts](concepts.md), [the `.vixl` file format](file-format.md), [converting documents and tool calls from earlier releases](converting.md), [authoring](authoring.md), [commands](commands.md), [operation semantics](operations.md) |
-| Starting points | [Safe design variety](safe-variety.md), [House style decisions](house-style.md), [Development plan](roadmap.md), [Implementation plan](implementation-plan.md), [Craft plan](craft-plan.md), [Containers and templates](containers-and-templates.md), [Sizes and layouts](sizes-and-layouts.md), [palettes, templates and resources](agent-resources.md), [brands](brands.md), [design styles](styles.md) |
-| Text and emoji | [Typography](typography.md), [making a font](custom-fonts.md), [rich text](rich-text.md), [text flow](text-flow.md), [emoji library and custom packs](emojis.md) |
-| Shapes and layout | [Objects: kinds, parts, isolated review and export](objects.md), [Vector paths and strokes](vector-paths.md), [Spatial queries and transforms](spatial-transforms.md), [Design tools](design-tools.md), [organic shapes](organic.md), [diagrams and flowcharts](diagrams.md), [guides and grids](guides.md), [spacing](pixel-animation-spacing.md) |
-| Finishing and imperfection | [Looks](looks.md), [scene atmosphere and motifs](atmosphere.md), [irregularity and torn edges](irregular.md) |
-| Images and drawing | [Import from Figma](figma.md), [SVG and PDF import as editable layers](exporting.md#importing-svg-and-pdf), [Materials and media review](media-craft.md), [Drawing cleanup](drawing.md), [artistic filters](artistic-filters.md), [brushes](brushes-and-animation.md), [irregular image frames and paint drips](design-tools.md#irregular-image-frames-and-paint-simulation) |
-| Output | [Export guide](exporting.md) (including the [SVG round trip](exporting.md#svg-round-trip)), [accessibility](accessibility.md), [color and print](color-and-print.md), [slides](slides.md), [marketing build options](marketing-builds.md) (deck legibility profiles, image downsampling), [HTML presenter](presenter.md), [forms](forms.md) |
-| Data and reuse | [Charts](charts.md), [linked documents](linked-documents.md), [data merge and print imposition](imposition.md), [QR codes and barcodes](codes.md) |
-| Motion | [Characters, rigs and scene authoring](animation-authoring.md), [Brushes and timelines](brushes-and-animation.md), [pixel animation](pixel-animation-spacing.md), [lyric video](lyric-video.md), [video templates](animation-authoring.md#joint-pose-keys-and-short-templates), [app animation packages](animation-authoring.md#app-animation-packages) |
-| Automation and collaboration | [Production workflows](production.md) (proof pages, logo packages), [outcomes, diagnostics and repair](agent-trust.md), [studio and custom tests](studio.md), [checking designs in CI](ci.md), [Git-reviewable source folders](commands.md#reviewing-editable-projects-in-git), [local screen capture](commands.md#local-desktop-capture) |
-| AI | [Provider setup and capability matrix](providers.md) |
-| Integration | [Capability discovery](agent-discovery.md), [MCP tool surface](mcp-toolsets.md), [Python, REST and MCP](interfaces.md), [agent skill](../skills/vixl/SKILL.md), [plugins and content packs](plugins.md) |
-| Installation | [Releases, updates and rollback](releases.md) |
+| Documents and authoring | [Concepts](concepts.md), [the `.vixl` file format](reference/file-format.md), [converting documents and tool calls from earlier releases](reference/converting.md), [CLI authoring and checks](reference/authoring.md), [commands](reference/commands.md), [operation semantics](reference/operations.md) |
+| Starting points | [Safe design variety](guides/layout/safe-variety.md), [House style decisions](project/house-style.md), [Implementation plan](project/implementation-plan.md), [Containers and templates](guides/layout/containers-and-templates.md), [Sizes and layouts](guides/layout/sizes-and-layouts.md), [palettes, templates and resources](guides/layout/agent-resources.md), [brands](guides/layout/brands.md), [design styles](guides/layout/styles.md), [guides and grids](guides/layout/guides.md) |
+| Text and emoji | [Typography](guides/text/typography.md), [making a font](guides/text/custom-fonts.md), [rich text](guides/text/rich-text.md), [text flow](guides/text/text-flow.md), [emoji library and custom packs](guides/text/emojis.md) |
+| Shapes and objects | [Objects: kinds, parts, isolated review and export](guides/shapes/objects.md), [Vector paths and strokes](guides/shapes/vector-paths.md), [Spatial queries and transforms](guides/shapes/spatial-transforms.md), [Design tools](guides/shapes/design-tools.md), [organic shapes](guides/shapes/organic.md), [diagrams and flowcharts](guides/shapes/diagrams.md) |
+| Finishing and imperfection | [Looks](guides/finishing/looks.md), [scene atmosphere and motifs](guides/finishing/atmosphere.md), [irregularity and torn edges](guides/finishing/irregular.md), [color and print](guides/finishing/color-and-print.md) |
+| Images and drawing | [Import from Figma](guides/images/figma.md), [SVG and PDF import as editable layers](guides/output/exporting.md#importing-svg-and-pdf), [Materials and media review](guides/images/media-craft.md), [Drawing cleanup](guides/images/drawing.md), [artistic filters](guides/images/artistic-filters.md), [irregular image frames and paint drips](guides/shapes/design-tools.md#irregular-image-frames-and-paint-simulation) |
+| Output | [Export guide](guides/output/exporting.md) (including the [SVG round trip](guides/output/exporting.md#svg-round-trip)), [accessibility](guides/output/accessibility.md), [slides](guides/output/slides.md), [marketing build options](guides/output/marketing-builds.md) (deck legibility profiles, image downsampling), [HTML presenter](guides/output/presenter.md), [forms](guides/output/forms.md) |
+| Data and reuse | [Charts](guides/output/charts.md), [linked documents](guides/output/linked-documents.md), [data merge and print imposition](guides/output/imposition.md), [QR codes and barcodes](guides/output/codes.md) |
+| Motion | [Characters, rigs and scene authoring](guides/motion/animation-authoring.md), [Brushes and timelines](guides/motion/brushes-and-animation.md), [pixel animation and spacing](guides/motion/pixel-animation-spacing.md), [lyric video](guides/motion/lyric-video.md), [video templates](guides/motion/animation-authoring.md#joint-pose-keys-and-short-templates), [app animation packages](guides/motion/animation-authoring.md#app-animation-packages) |
+| Automation and collaboration | [Production workflows](guides/automation/production.md) (proof pages, logo packages), [outcomes, diagnostics and repair](reference/agent-trust.md), [studio and custom tests](guides/automation/studio.md), [checking designs in CI](guides/automation/ci.md), [Git-reviewable source folders](reference/commands.md#reviewing-editable-projects-in-git), [local screen capture](reference/commands.md#local-desktop-capture) |
+| AI | [Provider setup and capability matrix](reference/providers.md) |
+| Integration | [Capability discovery](reference/agent-discovery.md), [MCP tool surface](reference/mcp-toolsets.md), [Python, REST and MCP](reference/interfaces.md), [agent skill](../skills/vixl/SKILL.md), [plugins and content packs](reference/plugins.md) |
+| Installation | [Releases, updates and rollback](reference/releases.md) |
 
 ## Work with an agent
 
 Use `vixl mcp --workspace .`: seven tools, with operation fields and rarer options looked up through
-`vixl_reference` ([MCP tool surface](mcp-toolsets.md)). Give the agent a brief with
+`vixl_reference` ([MCP tool surface](reference/mcp-toolsets.md)). Give the agent a brief with
 dimensions, audience, copy, assets, brand rules and required outputs. Ask it to inspect and
-preview before handing off the editable master and exports. [Interface setup](interfaces.md)
-includes client JSON, authentication and HTTP transport; [studio](studio.md) covers review,
+preview before handing off the editable master and exports. [Interface setup](reference/interfaces.md)
+includes client JSON, authentication and HTTP transport; [studio](guides/automation/studio.md) covers review,
 tests and independent branch documents.
 
 AI generation, semantic selection and natural-language planning use configured external
 providers. Layouts, charts, paint, effects, forms and the gallery work without AI credentials.
-See the [provider matrix](providers.md#capability-matrix) before choosing a service.
+See the [provider matrix](reference/providers.md#capability-matrix) before choosing a service.
 
 ## Development and deeper examples
 
-- [Architecture and resource limits](architecture.md) and [implementation coverage](coverage.md).
+- [Architecture and resource limits](reference/architecture.md) and [implementation coverage](reference/coverage.md).
 - [Examples](../examples/) and [explorations](https://github.com/jxburros/VixlExamples/blob/main/explorations/README.md): longer creative projects.
 - [Agent evaluations](../evals/README.md): briefs and grading contracts.
-- [Render parity](render-parity.md): raster quality measured against Chromium and exact references.
-- [Documentation maintenance](documentation-maintenance.md): rebuilding visuals and verifying examples.
-- [Brand voice](brand-voice.md): how Vixl's own copy and marketing sound.
+- [Render parity](project/render-parity.md): raster quality measured against Chromium and exact references.
+- [Documentation maintenance](project/documentation-maintenance.md): rebuilding visuals and verifying examples.
+- [Brand voice](project/brand-voice.md): how Vixl's own copy and marketing sound.
 - [Changelog](../CHANGELOG.md): shipped changes and source-only additions.
-- [Original product specification](product-spec.md): design context; use coverage for implemented behavior.
+- [Original product specification](project/product-spec.md): design context; use coverage for implemented behavior.
 
 [Back to the project](../README.md)

@@ -11,7 +11,7 @@ output such as leaf veins), grouped when there are several.
 
 Geometry is built in a unit frame (about −1…1, y down, forms grow upward from a base at +y),
 then fitted into the layer box. ``blend``, ``occlude`` and ``intersect`` run last, in pixels.
-See docs/organic.md for the vocabulary and the research it is based on.
+See docs/guides/shapes/organic.md for the vocabulary and the research it is based on.
 """
 
 from copy import deepcopy
@@ -1963,7 +1963,7 @@ def catalog():
         "rules": {name: {"description": text} for name, (_, text) in RULES.items()},
         "frame": "Unit frame about −1…1, y down. Forms grow upward from a base at +y; copies attach by their base.",
         "post_rules": list(POST_RULES),
-        "docs": "docs/organic.md",
+        "docs": "docs/guides/shapes/organic.md",
     }
 
 

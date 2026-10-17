@@ -201,7 +201,7 @@ COMMON = {
     "start": {"type": "boolean", "default": False, "description": "Start a background worker after submitting."},
 }
 
-# Lyric-video request fields (docs/lyric-video.md); identical for plan, build and export.
+# Lyric-video request fields (docs/guides/motion/lyric-video.md); identical for plan, build and export.
 LYRIC = {
     "audio": {**PATH, "description": "The song (any ffmpeg-readable audio)."},
     "lyrics": {**PATH, "description": "Timed LRC file."},
@@ -261,7 +261,7 @@ LYRIC = {
 }
 
 PRODUCTION_SPEC = {
-    "type": "object", "description": "Variant plan; see docs/production.md.",
+    "type": "object", "description": "Variant plan; see docs/guides/automation/production.md.",
     "properties": {
         "version": {"type": "integer", "enum": [1], "description": "Spec format version."},
         "rows": {"type": "array", "items": {"type": "object"}, "maxItems": 10000,
@@ -290,7 +290,7 @@ PRODUCTION_SPEC = {
     },
 }
 FILM_SPEC = {
-    "type": "object", "description": "Shot sequence; see docs/production.md.",
+    "type": "object", "description": "Shot sequence; see docs/guides/automation/production.md.",
     "properties": {
         "version": {"type": "integer", "enum": [1], "description": "Spec format version."},
         "width": {"type": "integer", "minimum": 1, "description": "Frame width in pixels."},
@@ -355,7 +355,7 @@ RECIPE = {
 }
 MANIFEST = {
     "type": "object", "required": ["api_version", "name", "version", "resources"],
-    "description": "Plugin pack: resources namespaced by the pack name (docs/studio.md).",
+    "description": "Plugin pack: resources namespaced by the pack name (docs/guides/automation/studio.md).",
     "properties": {
         "api_version": {"type": "integer", "enum": [1], "description": "Plugin API version (1)."},
         "name": {"type": "string", "description": "Pack name; resource names must start with '<name>-'."},

@@ -89,7 +89,7 @@ bottom edge with a side bearing each side.
 ]
 ```
 
-Details, limits and the export formats: [making a font](../../../docs/custom-fonts.md).
+Details, limits and the export formats: [making a font](../../../docs/guides/text/custom-fonts.md).
 
 ## Rolling a direction
 

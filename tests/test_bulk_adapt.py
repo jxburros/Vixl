@@ -408,6 +408,6 @@ def test_brief_result_fields_are_the_documented_ones():
     fields = set(next(iter(added.values())))
     assert {"added", "name", "type", "bounds", "baseline", "ink_bounds"} <= fields
     root = Path(__file__).resolve().parents[1]
-    for doc in ("docs/interfaces.md", "docs/operations.md", "skills/vixl/references/mcp-rest-python.md"):
+    for doc in ("docs/reference/interfaces.md", "docs/reference/operations.md", "skills/vixl/references/mcp-rest-python.md"):
         brief = next(line for line in (root / doc).read_text().split("\n\n") if "brief" in line and "`added`" in line)
         assert all(f"`{field}`" in brief for field in fields), (doc, sorted(f for f in fields if f"`{f}`" not in brief))

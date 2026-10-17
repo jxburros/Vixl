@@ -1,4 +1,4 @@
-"""Rebuild docs/irregular-gallery.png: irregular strengths side by side, then the tear variants.
+"""Rebuild docs/assets/irregular-gallery.png: irregular strengths side by side, then the tear variants.
 
 Run from the repository root: python examples/build_irregular_gallery.py [--output DIR]
 Offline and deterministic (fixed seeds); uses the bundled font. Writes DIR/irregular-gallery.png.
@@ -73,5 +73,5 @@ def build(output):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", default="docs", help="directory for irregular-gallery.png")
+    parser.add_argument("--output", default="docs/assets", help="directory for irregular-gallery.png")
     build(parser.parse_args().output)

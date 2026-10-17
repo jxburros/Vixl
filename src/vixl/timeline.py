@@ -1802,7 +1802,7 @@ def schemas(add):
     )
     close = {"type": "boolean", "description": "Close the loop: append each touched track's t=0 value at the timeline end so the track ends where it began. "
              "Entrance/exit presets hold their final value and play back over the same length. Rotation is closed modulo 360. "
-             "The speed at the seam is matched only for eased (ease-in-out) or constant-speed segments; see docs/animation-authoring.md."}
+             "The speed at the seam is matched only for eased (ease-in-out) or constant-speed segments; see docs/guides/motion/animation-authoring.md."}
     repeat = {"type": "integer", "minimum": 1, "maximum": 1000, "description": "Play this many cycles back to back (one cycle every period ms; default the cycle's own length). "
               "animate repeats from the same from value each cycle; presets such as pulse/float repeat in place."}
     until = {**time, "description": "Repeat whole cycles until this time instead of a count."}

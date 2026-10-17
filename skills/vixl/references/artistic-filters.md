@@ -2,7 +2,7 @@
 
 Vixl has 19 built-in artistic filters (since 0.12). They use local Pillow/NumPy algorithms, require no AI provider, and never download models or contact a service. Filters remain editable in the effect stack; undo/redo, presets, selections, adjustment layers, REST and MCP use the same implementations.
 
-![Original artwork and all 19 local treatments](../../../docs/filter-gallery.png)
+![Original artwork and all 19 local treatments](../../../docs/assets/filter-gallery.png)
 
 ## Quick start
 
@@ -62,7 +62,7 @@ vixl export artwork.svg --svg-policy strict
 
 Python: `project.export("artwork.svg", svg_policy="strict")`. REST: `POST /export` with `{"format":"SVG","svg_policy":"strict"}`. MCP: `vixl_export(path="artwork.svg", svg_policy="strict")`.
 
-An SVG Vixl exports also carries the document it shows in `<metadata id="vixl-document">`, so importing it back restores the editable layers, text and effects ([SVG round trip](https://github.com/jxburros/Vixl/blob/main/docs/exporting.md#svg-round-trip)); `svg_document=False` leaves that out.
+An SVG Vixl exports also carries the document it shows in `<metadata id="vixl-document">`, so importing it back restores the editable layers, text and effects ([SVG round trip](https://github.com/jxburros/Vixl/blob/main/docs/guides/output/exporting.md#svg-round-trip)); `svg_document=False` leaves that out.
 
 The default `appearance` policy preserves unsupported appearances with raster fallbacks and records layer/effect details in SVG metadata. Fallbacks affect individual layers when compositing permits it. `strict` rejects **any embedded raster content** with `svg_raster_required` and `fallbacks` details, before writing the output file. SVG filters are allowed in strict mode; it does not mean paths-only output.
 

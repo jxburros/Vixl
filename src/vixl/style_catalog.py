@@ -1,6 +1,6 @@
 """Curated catalog of design styles: principles, palettes, type, layout, imagery and checks.
 
-Each entry distills what the movement or genre is known for (sources in docs/styles.md) into
+Each entry distills what the movement or genre is known for (sources in docs/guides/layout/styles.md) into
 guidance an agent can act on, plus a few *premade checks*: parameterised rules that
 ``vixl.styles`` evaluates on the open document. Checks are optional and advisory; a style that
 fits the brief better with one rule relaxed can override it (``style-set`` ``options``).

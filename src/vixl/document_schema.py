@@ -1,4 +1,4 @@
-"""The published JSON Schema of a ``.vixl`` document's ``project.json`` (see docs/file-format.md).
+"""The published JSON Schema of a ``.vixl`` document's ``project.json`` (see docs/reference/file-format.md).
 
 The schema is generated from this module's field registries and the model's own constants (layer types, roles,
 blend modes, canvas keys, history node keys, page fields), and shipped as ``data/vixl-document.schema.json``.
@@ -203,7 +203,7 @@ LAYER_FIELDS = {
     "text_transform": (STRING, "text: none, uppercase, lowercase or capitalize, applied when drawing."),
     "tabs": (ARRAY, "text: tab stops [{at, align, leader}]."),
     "stage": (STRING, "text: type stage (display, h1 … caption) it was set with."),
-    "rich": (OBJECT, "Rich text: spans, paragraphs and their styles (see docs/rich-text.md)."),
+    "rich": (OBJECT, "Rich text: spans, paragraphs and their styles (see docs/guides/text/rich-text.md)."),
     "character_style": (STRING, "text: named character style applied (state.character_styles)."),
     "paragraph_style": (STRING, "text: named paragraph style applied (state.paragraph_styles)."),
     "literal_text": (BOOLEAN, "Intent: the text is literal (not copy to check or rewrite)."),
@@ -462,7 +462,7 @@ def document_schema():
         "title": "Vixl document (project.json)",
         "description": "The JSON member project.json of a .vixl archive (a ZIP file). Other members are the "
                        "binary assets it references: " + ", ".join(f"{f}/<sha256>.<ext>" for f in ARCHIVE_FOLDERS)
-                       + ". See docs/file-format.md.",
+                       + ". See docs/reference/file-format.md.",
         "type": "object",
         "properties": {
             "format_version": {"const": FORMAT_VERSION, "description": f"Archive format version: {FORMAT_VERSION}. "

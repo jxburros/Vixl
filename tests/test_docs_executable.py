@@ -61,8 +61,8 @@ SHELL_LANGS = {"bash", "sh", "shell", "console", "zsh"}
 TIMEOUT = 120
 
 SKIP_FILES = {
-    "docs/product-spec.md": "the original design specification; its command sketches predate the CLI "
-                            "(docs/coverage.md describes what is implemented)",
+    "docs/project/product-spec.md": "the original design specification; its command sketches predate the CLI "
+                            "(docs/reference/coverage.md describes what is implemented)",
 }
 # First word after `vixl` and its global options -> why the command is not run.
 SKIP_COMMANDS = {

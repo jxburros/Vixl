@@ -7,7 +7,7 @@
 
 ``look="preserve"`` (default) keeps the old look by writing formerly implicit behaviour into explicit fields;
 ``look="current"`` only removes what the current code no longer reads and reports what will look different.
-The engine never imports this package: migration logic lives here, not in the runtime. See docs/converting.md.
+The engine never imports this package: migration logic lives here, not in the runtime. See docs/reference/converting.md.
 """
 
 from .batches import TOOLS, convert_batch, convert_batch_file

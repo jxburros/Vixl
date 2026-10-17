@@ -14,7 +14,7 @@ bullet or numbered lists. Write Markdown, then restyle parts:
 Bold/italic use installed variants (`font install Inter --weight 700`) or are synthesized.
 `text-set` changes the whole layer (text, color, size, font); `text-style` styles parts of it. `text-set --text`
 on a rich layer keeps bullets, spacing and span styles where the structure still applies and lists what it
-dropped under `warnings`; `rich-text --target` rebuilds formatted content. Full syntax: `docs/rich-text.md`.
+dropped under `warnings`; `rich-text --target` rebuilds formatted content. Full syntax: `docs/guides/text/rich-text.md`.
 
 Tracking (letter spacing, px; on the layer with `text-set`, or on spans with `text-style`) goes between letters, not
 after a line's last one, so centred tracked text is centred on its ink, and adding it does not move plain text.
@@ -38,7 +38,7 @@ frame's size changes.
   Fix overflow with `add-frame`, bigger frames or a smaller `size`.
 - Edit the story with `text-flow set` / `action: "style"` (`match`, `format`); `text-set` on a frame is overwritten.
 - `action`: `create`, `set`, `add-frame`, `link`, `unlink`, `reflow`, `style`, `delete`. Frames may follow a `shape`
-  (`mode: "bands"` or `"inscribed"`). Full reference: `docs/text-flow.md`.
+  (`mode: "bands"` or `"inscribed"`). Full reference: `docs/guides/text/text-flow.md`.
 
 ## Pages, masters and decks
 
@@ -64,7 +64,7 @@ A document becomes multi-page with the first `page add`; each page has its own l
   HTML options (`presenter={"theme": "dark|light|auto", "slide_images": "svg|png", "notes": false,
   "start": 3}`; CLI `--presenter-theme --slide-images --no-notes --start-slide`). Notes are inside
   the file, so pass `notes: false` for a copy to share; `presenter: false` gives a single image.
-  Details: `docs/presenter.md`.
+  Details: `docs/guides/output/presenter.md`.
   A PPTX does not embed fonts: its `warnings` name each font to install where the deck is shown
   (or send the PDF, which embeds them); `font_embedding` gives each one's fsType permission
   (`installable`, `editable`, `preview-print`, `restricted`) and `license` (`OFL` fonts install freely).
@@ -74,7 +74,7 @@ A document becomes multi-page with the first `page add`; each page has its own l
 
 - Notes to a deck in one call: `vixl_apply(workflow='deck-from-markdown', request={"markdown": "notes.md", "output": "deck.vixl", "export": ["pptx"]})`. `#`/`##` headings start slides; title, section, quote and content layouts are chosen per slide; fenced `csv` → table, fenced `chart` → chart, `![](img.png)` → frame; `<!-- -->` or `Notes:` → speaker notes; deck checks are reported. Re-run after edits: only changed slides are rebuilt.
 
-Full reference: `docs/slides.md` (HTML presentations: `docs/presenter.md`).
+Full reference: `docs/guides/output/slides.md` (HTML presentations: `docs/guides/output/presenter.md`).
 
 ## Forms
 
@@ -112,7 +112,7 @@ Rules agents trip over:
   `rows-filled.pdf`; `dry_run`, `skip_invalid`; field types in `vixl_reference('workflows')`).
 - Filled values never touch the document; errors name rows and keys, never values.
 
-Full reference: `docs/forms.md`.
+Full reference: `docs/guides/output/forms.md`.
 
 
 ### Field-report corrections

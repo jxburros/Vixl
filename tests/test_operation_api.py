@@ -198,8 +198,8 @@ def test_every_operation_declares_its_targets_mode_and_the_docs_table_is_generat
     # A required target accepts targets instead.
     validate_operation({"type": "layer-intent", "targets": ["a"], "allow_crop": True})
     validate_operation({"type": "shape", "targets": ["a", "b"], "fill": "red"})
-    docs = (Path(__file__).parents[1] / "docs/operations.md").read_text(encoding="utf-8")
-    assert markdown_table() in docs, "regenerate the table in docs/operations.md with vixl.targets.markdown_table()"
+    docs = (Path(__file__).parents[1] / "docs/reference/operations.md").read_text(encoding="utf-8")
+    assert markdown_table() in docs, "regenerate the table in docs/reference/operations.md with vixl.targets.markdown_table()"
 
 
 # --- #251: the path box ---------------------------------------------------------------------

@@ -1,6 +1,6 @@
 # Emoji workflows
 
-The full authoring guide is `docs/emojis.md` in the Vixl repository. Unicode 17 includes
+The full authoring guide is `docs/guides/text/emojis.md` in the Vixl repository. Unicode 17 includes
 3,953 SVGs and editable VIXL masters, including tones, flags and joined sequences. The artwork is a
 content pack Vixl downloads and caches on first use; `emoji-artwork` shows it or fetches it now
 (`download: true`), or installs a local copy (`pack`). Without it, emojis draw from the fonts with a warning.

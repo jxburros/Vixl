@@ -2,7 +2,7 @@
 
 A rule reads the saved release and the mode from the context and records what it did with ``ctx.change`` and what it
 could not do (or, in ``current`` mode, what will look different) with ``ctx.warn``. ``RULES`` is the ordered table;
-``docs/converting.md`` describes every rule ID (a test keeps them in step).
+``docs/reference/converting.md`` describes every rule ID (a test keeps them in step).
 """
 
 from copy import deepcopy

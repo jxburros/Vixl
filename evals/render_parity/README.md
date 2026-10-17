@@ -1,7 +1,7 @@
 # Render parity
 
 Measures Vixl's raster output against Chromium and, where geometry has a closed form, against an
-exact supersampled reference. Findings and what was fixed: [docs/render-parity.md](../../docs/render-parity.md).
+exact supersampled reference. Findings and what was fixed: [docs/project/render-parity.md](../../docs/project/render-parity.md).
 
 ```bash
 pip install playwright            # eval-only dependency; do not add it to the package

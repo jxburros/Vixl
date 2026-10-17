@@ -127,7 +127,7 @@ def test_skill_and_docs_carry_the_start_here_recipe():
     skill = (ROOT / "skills/vixl/SKILL.md").read_text()
     assert "Start here" in skill and "vixl_reference" in skill and "layout-apply" in skill
     assert skill.index("layout-apply") < skill.index("font-pair") < skill.index("vixl_check")
-    for path in ("docs/styles.md", "docs/looks.md"):
+    for path in ("docs/guides/layout/styles.md", "docs/guides/finishing/looks.md"):
         assert (ROOT / path).exists()
 
 

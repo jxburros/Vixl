@@ -2,7 +2,7 @@
 
 Use `chart` for any bar, line, area, pie or donut instead of drawing shapes and computing heights,
 totals and percentages yourself. The chart is a group of ordinary vector layers bound to a table;
-fixing a number is one operation and nothing is recomputed by hand. Full reference: `docs/charts.md`.
+fixing a number is one operation and nothing is recomputed by hand. Full reference: `docs/guides/output/charts.md`.
 
 ```json
 {"type": "chart", "name": "sales", "kind": "stacked-bar", "x": 60, "y": 80, "width": 1000, "height": 560,

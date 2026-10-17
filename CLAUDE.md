@@ -16,7 +16,7 @@ repository (https://github.com/jxburros/VixlExamples); add new ones there and li
   Failures write reference/actual/diff images to `tests/visual/_failures/`. Never update goldens to silence an unexplained diff.
 
 ## Plugin or core? Decide before adding a feature
-Before adding a feature, check the parameters in `docs/plugins.md` ("Is a new feature a plugin?") and say in the PR
+Before adding a feature, check the parameters in `docs/reference/plugins.md` ("Is a new feature a plugin?") and say in the PR
 which way it went. In short:
 - **Core** if the renderer, document model or an exporter must know about it, other core modules need it, it changes
   what every document gets (a default, normalization or always-on check), or it is part of the create/apply/check/
@@ -38,7 +38,7 @@ All plugins are built in for now. Features that extend an existing plugin go in 
   Remove duplicate concepts, not leniency.
 - **Targets.** `targets.py` classifies every operation (plugin operations included) as `EACH` (per-layer, fans out over `targets` inside one atomic
   batch), `JOINT` (group, align, distribute, pathfinder ...) or one. When you add an operation, add it to the right set
-  and regenerate the table in `docs/operations.md` from `vixl.targets.markdown_table()`; a test compares them.
+  and regenerate the table in `docs/reference/operations.md` from `vixl.targets.markdown_table()`; a test compares them.
 - **Geometry.** One anchor table (`geometry.ANCHORS`, `canonical_anchor`), one Bezier evaluator (`geometry.bezier_points`),
   one number formatter (`geometry.compact_number`). Open shapes and paths with a stroke and no fill stay unfilled in
   every renderer: use `geometry.OPEN_SHAPES` and `default_fill(layer)`, do not re-derive it.
@@ -56,8 +56,8 @@ All plugins are built in for now. Features that extend an existing plugin go in 
 4. `CHANGELOG.md`: add to the current top section. Pre-release: breaking changes are allowed; note them in the changelog. Default changes must still pass the house-style quality/diversity eval.
 5. Goldens, if rendering changed (see above).
 6. Version bumps stay synchronized (`src/vixl/__init__.py`, plugin manifest, `.mcp.json`, README and install URLs, the
-   action pin in `docs/ci.md`); see
-   `docs/releases.md`. The self-updater and release manifest path (`src/vixl/updater*`, `distribution/`) must stay stable.
+   action pin in `docs/guides/automation/ci.md`); see
+   `docs/reference/releases.md`. The self-updater and release manifest path (`src/vixl/updater*`, `distribution/`) must stay stable.
 
 ## Rules
 - Do not put model names, signatures or authorship trailers in code, docs, generated artwork or commit/PR text

@@ -4,14 +4,14 @@
 
 You need Python 3.11+ or the Windows installer. A graphical display, AI account and GPU
 are unnecessary for this tutorial. Commands below use a terminal; Python offers the same
-operation engine. For an agent client, use the [MCP configuration guide](interfaces.md#mcp).
+operation engine. For an agent client, use the [MCP configuration guide](reference/interfaces.md#mcp).
 
 ## Install
 
 On Windows, install the latest executable from [GitHub Releases](https://github.com/jxburros/Vixl/releases/latest),
 then open a terminal and run `vixl --version`. The installer includes Python and automatic
 updates. `vixl update --check` checks availability; `vixl update` installs it. See
-[release instructions](releases.md) for PATH repair and rollback.
+[release instructions](reference/releases.md) for PATH repair and rollback.
 
 For a source install on macOS, Linux or Windows:
 
@@ -65,7 +65,7 @@ You now have an editable `hello.vixl` and a PNG export. Open the PNG to inspect 
 appearance. `check` covers the rules requested, not every possible design problem. The
 bundled DejaVu Sans font makes proofing work offline; for finished brand work, choose a
 font with `vixl font pairings` and install a pairing or import your licensed font. See
-[typography](typography.md).
+[typography](guides/text/typography.md).
 
 Passing checks make a design correct, not finished. Before you hand one over, make a finishing pass:
 check the composition (dead bands, two left margins, uneven gaps, crowded rules, clumped scatters), and
@@ -112,7 +112,7 @@ vixl -p batch.vixl export batch.png
 
 Dry-run reports proposed changes without saving. A failed batch commits none of its
 changes. Get allowed fields with `vixl schema` and individual command help with
-`vixl text --help`; [operations](operations.md) explains normalization and validation.
+`vixl text --help`; [operations](reference/operations.md) explains normalization and validation.
 
 ## The same design in Python
 
@@ -132,13 +132,13 @@ project.export("python-hello.png")
 
 Python edits remain in memory until you call `save` (which, like exports, refuses to replace another existing file
 unless you pass `overwrite=True`); `render()` returns a Pillow RGBA image.
-The [interface reference](interfaces.md) documents loading, history, errors and services.
+The [interface reference](reference/interfaces.md) documents loading, history, errors and services.
 
 ## Continue
 
 Choose a [campaign](tutorials/campaign.md), [chart](tutorials/charts.md),
 [form or deck](tutorials/forms-and-decks.md), or [animation](tutorials/motion.md).
 For an existing image, start with `vixl -p hello.vixl add photo.jpg --name photo`, then use
-[design tools](design-tools.md) for positioning, masks and effects. An SVG, a PDF page or a Figma
-frame comes in as editable layers with `vixl import` ([importing SVG and PDF](exporting.md#importing-svg-and-pdf),
-[Figma](figma.md)), and the `.vixl` format itself is documented in [file format](file-format.md).
+[design tools](guides/shapes/design-tools.md) for positioning, masks and effects. An SVG, a PDF page or a Figma
+frame comes in as editable layers with `vixl import` ([importing SVG and PDF](guides/output/exporting.md#importing-svg-and-pdf),
+[Figma](guides/images/figma.md)), and the `.vixl` format itself is documented in [file format](reference/file-format.md).

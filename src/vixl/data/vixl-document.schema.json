@@ -2,7 +2,7 @@
  "$schema": "https://json-schema.org/draft/2020-12/schema",
  "$id": "https://github.com/jxburros/Vixl/blob/main/src/vixl/data/vixl-document.schema.json",
  "title": "Vixl document (project.json)",
- "description": "The JSON member project.json of a .vixl archive (a ZIP file). Other members are the binary assets it references: assets/<sha256>.<ext>, masks/<sha256>.<ext>, fonts/<sha256>.<ext>, sources/<sha256>.<ext>, emoji-sources/<sha256>.<ext>. See docs/file-format.md.",
+ "description": "The JSON member project.json of a .vixl archive (a ZIP file). Other members are the binary assets it references: assets/<sha256>.<ext>, masks/<sha256>.<ext>, fonts/<sha256>.<ext>, sources/<sha256>.<ext>, emoji-sources/<sha256>.<ext>. See docs/reference/file-format.md.",
  "type": "object",
  "properties": {
   "format_version": {
@@ -1178,7 +1178,7 @@
     },
     "rich": {
      "type": "object",
-     "description": "Rich text: spans, paragraphs and their styles (see docs/rich-text.md)."
+     "description": "Rich text: spans, paragraphs and their styles (see docs/guides/text/rich-text.md)."
     },
     "character_style": {
      "type": "string",

@@ -462,7 +462,7 @@ def _node_expression(text, line):
 
 
 def parse_text(text):
-    """Nodes, edges and options from the simple text format (see docs/diagrams.md)."""
+    """Nodes, edges and options from the simple text format (see docs/guides/shapes/diagrams.md)."""
     require(isinstance(text, str) and len(text) <= 100000, "text must be up to 100000 characters", field="text")
     nodes, edges, options = {}, [], {}
     order = []

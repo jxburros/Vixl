@@ -113,7 +113,7 @@ def test_interface_matrix_matches_enforced_registry():
     from vixl.interface_capabilities import REST_WORKFLOWS, markdown_table
     from vixl.workflows import ACTIONS
     assert REST_WORKFLOWS <= ACTIONS.keys()
-    text = (Path(__file__).resolve().parents[1] / 'docs/interfaces.md').read_text()
+    text = (Path(__file__).resolve().parents[1] / 'docs/reference/interfaces.md').read_text()
     actual = text.split('<!-- interface-capabilities:start -->\n')[1].split('\n<!-- interface-capabilities:end -->')[0]
     assert actual == markdown_table()
 

@@ -7,17 +7,17 @@
 ## Master and deliverable
 
 The `.vixl` file is your editable master, a portable ZIP archive holding document state,
-embedded assets and branching history ([file format and JSON Schema](file-format.md)). A PNG is a rendered deliverable; exporting it does
+embedded assets and branching history ([file format and JSON Schema](reference/file-format.md)). A PNG is a rendered deliverable; exporting it does
 not replace the master. Retain both when handing off a project. Supported SVG, PDF and
 PowerPoint exports preserve some geometry and text, with explicit appearance fallbacks.
 Vixl's own SVG also carries its document, so importing it restores the same editable layers
-([SVG round trip](exporting.md#svg-round-trip)); other SVG, PDF pages and Figma frames import as
-editable layers ([importing SVG and PDF](exporting.md#importing-svg-and-pdf), [Figma](figma.md)).
+([SVG round trip](guides/output/exporting.md#svg-round-trip)); other SVG, PDF pages and Figma frames import as
+editable layers ([importing SVG and PDF](guides/output/exporting.md#importing-svg-and-pdf), [Figma](guides/images/figma.md)).
 Documents saved by releases before 0.27 are brought up to date once with `vixl convert`
-([converting](converting.md)).
+([converting](reference/converting.md)).
 To review a master in Git, `vixl unpack design.vixl design-source` writes its current state as a
 readable `project.json` with content-addressed assets, and `vixl pack` rebuilds a `.vixl` from it;
-undo history is not kept ([commands](commands.md#reviewing-editable-projects-in-git)).
+undo history is not kept ([commands](reference/commands.md#reviewing-editable-projects-in-git)).
 
 The public interfaces share canonical JSON operations. A CLI command compiles to the same
 operation engine used by `Project.apply`, MCP and REST. Their persistence differs: CLI and
@@ -32,7 +32,7 @@ names could change during a long automation. Most operations use the active laye
 `target` is omitted, so explicit targets make scripts easier to understand. Operations on
 existing layers also take `targets`, a list: per-layer operations (opacity, move, effects …)
 apply to each, joint ones (group, align, distribute) treat them together; see
-[operations](operations.md). Opacity is always 0–1 (`"70%"` also works).
+[operations](reference/operations.md). Opacity is always 0–1 (`"70%"` also works).
 
 The canvas origin is top-left. Positive x moves right; positive y moves down. Positions
 and dimensions are pixels. Print metadata adds physical dimensions and dpi; it does not
@@ -77,13 +77,13 @@ reflow. Absolute movement or alignment clears constraints on that layer.
 Use one anchor per axis. Constraints may reference canvas edges, sibling layers or guides;
 cyclic dependencies fail validation. Guides are metadata and do not appear in normal exports.
 Named layouts create ordinary layers, color roles, grids and type scales; fill their required
-copy slots before checking. [Sizes and layouts](sizes-and-layouts.md) explains seeds and slots.
+copy slots before checking. [Sizes and layouts](guides/layout/sizes-and-layouts.md) explains seeds and slots.
 
 ## Assets, masks and effects
 
 Imported images, fonts and masks can be embedded, making the master portable. The source
 photo is not overwritten. Linked files are a separate, explicitly trusted mode; see
-[architecture](architecture.md) for loading and service restrictions.
+[architecture](reference/architecture.md) for loading and service restrictions.
 
 Effects remain in a stack that can be edited, disabled or removed. A mask controls layer
 visibility: white reveals, black hides. Selection state affects an effect **when it is
@@ -119,13 +119,13 @@ Atomic operation batches create an all-or-nothing change. A checkpoint names a r
 undo/redo moves through history; branches retain alternate directions. Persistent
 transactions combine CLI commands into one committed edit. Shared-file locks serialize
 writes, but transactions do not isolate independent clients: use separate branch documents
-for simultaneous work. [Studio](studio.md) explains branch merging and project groups.
+for simultaneous work. [Studio](guides/automation/studio.md) explains branch merging and project groups.
 
 Inspect answers “what is in the document?” Checks answer “does it satisfy these rules?”
 Preview answers “does it look right?” Use all three. Bounds checks cannot establish
 legibility, provider quality or an artistic outcome; saved suites cover their declared
-rules and sample times. [Production workflows](production.md) explains coverage and repairs.
+rules and sample times. [Production workflows](guides/automation/production.md) explains coverage and repairs.
 
 Defaults include 40 MP per canvas/layer, 16,384 px per side, 4,096 layers and 10,000 operations
-per batch. See [architecture](architecture.md#resource-policy) for the complete resource policy
-and [coverage](coverage.md) for unsupported features.
+per batch. See [architecture](reference/architecture.md#resource-policy) for the complete resource policy
+and [coverage](reference/coverage.md) for unsupported features.

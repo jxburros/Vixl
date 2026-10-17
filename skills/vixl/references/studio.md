@@ -231,7 +231,7 @@ Durable backups and a journal
 support `group-recover` after interruption; recovery refuses to overwrite later edits. Publication
 is sequential, so this is not a cross-file filesystem transaction for readers ignoring locks.
 `group-list` discovers groups. `group-show` reports membership/shared values, whether recovery is required and
-the [waivers](https://github.com/jxburros/Vixl/blob/main/docs/production.md#waivers-and-check-profiles) of each member. Files live
+the [waivers](https://github.com/jxburros/Vixl/blob/main/docs/guides/automation/production.md#waivers-and-check-profiles) of each member. Files live
 under `.vixl-groups/`; keep journals/backups until recovery finishes.
 
 `shared.waivers` (`[{check or rule, reason, expires}]`) are written into every member as document waivers by

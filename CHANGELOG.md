@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Documentation layout
+
+- **`docs/` is organized by kind of page.** The top level keeps the learning path (hub, getting started, concepts,
+  gallery, use-case catalog, troubleshooting). Feature guides moved to `docs/guides/<area>/` (`layout`, `shapes`,
+  `finishing`, `text`, `images`, `motion`, `output`, `automation`), syntax and format pages to `docs/reference/`,
+  and decisions, plans and maintenance to `docs/project/`. Gallery images and the loose pictures moved into
+  `docs/assets/`. Each folder has a `README.md` index. Pages keep their filenames and anchors, but paths changed:
+  update bookmarks and external links (for example `docs/commands.md` is now `docs/reference/commands.md`).
+  Internal links, code comments, tests, example scripts and the skill references were updated to match.
+
 ### Built-in plugins and content packs
 
 - **Optional features are built-in plugins.** 21 feature packages moved to `src/vixl/plugins/<name>/`: charts and
@@ -12,7 +22,7 @@
   providers. Each has a `PLUGIN` manifest, and the core reaches its operations, CLI shorthand, workflow actions and
   hooks (`normalize`, `validate-layer`, `validate-state`, `check`, `after-apply`, `apply-report`, `export-format`,
   `import-format`) through one registry, `vixl.plugins`. All of them still ship with Vixl and are always on; the
-  operations, actions and results are unchanged. [Plugins](docs/plugins.md) lists them, the hook points, and the
+  operations, actions and results are unchanged. [Plugins](docs/reference/plugins.md) lists them, the hook points, and the
   parameters for deciding whether a new feature is core, a plugin or a content pack. `tests/test_plugins.py` fails
   when the core imports a plugin module outside the listed exceptions.
 - **Breaking (Python API):** the moved modules are now imported from their plugin package, for example
@@ -42,7 +52,7 @@
 - **`export` writes `.ttf`, `.otf` (CFF) and `.woff`** (`.woff2` with the optional `brotli` package) over the CLI,
   Python, MCP (`vixl_export`) and REST (`format` `TTF`/`OTF`/`WOFF`/`WOFF2`), with the glyph count, characters and
   warnings in the result. `font-build` embeds the font in the document and registers it, so text layers can be set
-  in it at once. See [making a font](docs/custom-fonts.md).
+  in it at once. See [making a font](docs/guides/text/custom-fonts.md).
 
 ### Fixed and added
 
@@ -182,7 +192,7 @@ fillable form, loop, mandala, flowchart):
   unchanged (drawn as given). Migration: pass `color` to the look for the old colour
   (`{"type": "look", "look": "soft-shadow", "color": "#000000", "amount": 0.5}`), or set the shadow exactly with
   `layer-style` (`{"color": "#000000", "dx": 0, "dy": 6, "blur": 10, "opacity": 0.35}`). Looks already applied keep
-  their stored styles. See [looks](docs/looks.md#behaviour).
+  their stored styles. See [looks](docs/guides/finishing/looks.md#behaviour).
 - **Dash patterns are fitted to corners** (`dash_fit`, default true): each length is stretched or squeezed by the same
   small factor so the pattern divides every stretch between corners evenly, a dash is centred on every corner (sharp,
   rounded or notched) and open paths start and end on a dash; a closed curve without corners is divided into whole
@@ -197,13 +207,13 @@ fillable form, loop, mandala, flowchart):
 
 ## 0.27.0
 
-A breaking release: a seven-tool MCP server, the compatibility machinery for older releases removed (use the [conversion kit](docs/converting.md) for documents and saved batches from 0.26 and earlier), a published `.vixl` format with SVG round trip and editable SVG, PDF and Figma import, flush-inside strokes on closed shapes, render-parity fixes and terminal summaries in the CLI.
+A breaking release: a seven-tool MCP server, the compatibility machinery for older releases removed (use the [conversion kit](docs/reference/converting.md) for documents and saved batches from 0.26 and earlier), a published `.vixl` format with SVG round trip and editable SVG, PDF and Figma import, flush-inside strokes on closed shapes, render-parity fixes and terminal summaries in the CLI.
 
-Work from the [craft plan](docs/craft-plan.md). Craft claims here wait for a blind re-judging; nothing below claims a craft gain on its own.
+Work from the [craft plan](docs/project/craft-plan.md). Craft claims here wait for a blind re-judging; nothing below claims a craft gain on its own.
 
 ### Conversion kit
 
-- `vixl convert OLD.vixl [-o NEW.vixl] [--look preserve|current] [--dry-run] [--report R.json]` (and `vixl convert DIR --out OUTDIR`, `vixl.convert.convert_file`) turns documents saved by earlier releases into current ones: format-1 archives, the pre-0.21 `lookup` field, `upgraded_from`, house-style versions, pre-0.21 open-shape fills and temperature/tint scale, pre-0.24 text boxes, recipes without a strength, line height, padding, wrap or distribution, and closed-shape strokes for the flush stroke rule. `preserve` (default) writes the old implicit behaviour into fields so the document looks and edits as before; `current` lets today's defaults apply and lists what changes. Every undo revision is converted, the result is opened and schema-checked before it is written, and nothing is overwritten without `--overwrite`. See [Converting](docs/converting.md).
+- `vixl convert OLD.vixl [-o NEW.vixl] [--look preserve|current] [--dry-run] [--report R.json]` (and `vixl convert DIR --out OUTDIR`, `vixl.convert.convert_file`) turns documents saved by earlier releases into current ones: format-1 archives, the pre-0.21 `lookup` field, `upgraded_from`, house-style versions, pre-0.21 open-shape fills and temperature/tint scale, pre-0.24 text boxes, recipes without a strength, line height, padding, wrap or distribution, and closed-shape strokes for the flush stroke rule. `preserve` (default) writes the old implicit behaviour into fields so the document looks and edits as before; `current` lets today's defaults apply and lists what changes. Every undo revision is converted, the result is opened and schema-checked before it is written, and nothing is overwritten without `--overwrite`. See [Converting](docs/reference/converting.md).
 - `vixl convert OLD.svg` rebuilds the editable document from an SVG with a version-1 Vixl payload, which now imports as plain SVG.
 - `vixl convert-batch OLD.json` rewrites saved MCP calls (all 64 earlier tool names), operation batches and MCP client configurations (`--tools core|compact|all`, `--schema`) for the seven-tool server.
 - Migration from the breaking changes below: run `vixl convert` once on documents from 0.26 or earlier; `vixl upgrade` is `vixl convert`. The kit lives in `src/vixl/convert/`, which the engine never imports.
@@ -232,11 +242,11 @@ Vixl is pre-release with no users to protect, so code that existed only to repro
 
 ### Open format, SVG round trip, PDF and Figma import
 
-- The `.vixl` format is published: [File format](docs/file-format.md) and a JSON Schema for `project.json` (`src/vixl/data/vixl-document.schema.json`, `vixl schema document`, `vixl.document_schema.validate_manifest`), checked against every `.vixl` in the repository and against the fields the code reads and writes.
+- The `.vixl` format is published: [File format](docs/reference/file-format.md) and a JSON Schema for `project.json` (`src/vixl/data/vixl-document.schema.json`, `vixl schema document`, `vixl.document_schema.validate_manifest`), checked against every `.vixl` in the repository and against the fields the code reads and writes.
 - SVG export carries its document in `<metadata id="vixl-document">` with `data-vixl-id` on each layer group, so importing Vixl's own SVG restores the same editable layers, live text, groups and effects (#334). The metadata names fonts instead of storing their files (family, weight, style, and whether bundled, Google Fonts or an imported file), so a blank document's SVG is a few KB instead of hundreds and published SVGs do not redistribute fonts; the import finds each font again (the same file in the document, the bundled face, a font registered under the same name, the font cache, then a Google Fonts download unless `install_fonts=False`) and draws a font it cannot find with the bundled face, with a warning. An image shown at its own size is stored once, in the visible `<image>`, which the metadata points at. `svg_document=False` leaves the metadata out, for example for a web asset; HTML exports never carry it.
 - SVG import reads other SVG as editable layers: live `<text>`, groups, gradients, embedded images, `<use>`, class stylesheets, even-odd fills, dashes and rounded rectangles. `svg_mode="auto"` draws only unsupported elements (filters, masks, clip paths) as images instead of the whole file.
 - PDF import is editable by default: live text, vector paths and images, with shadings and clipped content as image layers. Vixl PDFs record `VixlDPI` and come back at their pixel size. `svg_mode="appearance"` gives the previous one-image import; `dpi` applies only to that mode.
-- `vixl import SOURCE --format figma` (also `import_document(format="figma")` and `POST /import?format=figma`) imports a Figma file, page or frame (`--node`) as editable layers: groups, auto-layout stacks, rectangles and paths, linear/radial gradients, image fills, live text with style runs, strokes, drop shadows, blur, blend modes and rotation. The token comes only from `FIGMA_TOKEN` or `VIXL_FIGMA_TOKEN` and is never stored. Every unmapped feature is listed in the result's `report`; `--rasterize-unsupported` imports a PNG render of nodes with no editable equivalent. Figma API errors (`figma_token_missing`, `figma_forbidden`, `figma_not_found`, `figma_rate_limited` with `retry_after_s`) return JSON with suggestions. See [Figma import](docs/figma.md); export is tracked in #662.
+- `vixl import SOURCE --format figma` (also `import_document(format="figma")` and `POST /import?format=figma`) imports a Figma file, page or frame (`--node`) as editable layers: groups, auto-layout stacks, rectangles and paths, linear/radial gradients, image fills, live text with style runs, strokes, drop shadows, blur, blend modes and rotation. The token comes only from `FIGMA_TOKEN` or `VIXL_FIGMA_TOKEN` and is never stored. Every unmapped feature is listed in the result's `report`; `--rasterize-unsupported` imports a PNG render of nodes with no editable equivalent. Figma API errors (`figma_token_missing`, `figma_forbidden`, `figma_not_found`, `figma_rate_limited` with `retry_after_s`) return JSON with suggestions. See [Figma import](docs/guides/images/figma.md); export is tracked in #662.
 - REST `POST /import` takes `page` as text (a Figma page name or number); a non-numeric `page` for SVG/PDF is a 400 instead of a 422.
 
 ### Rendering parity
@@ -245,7 +255,7 @@ Vixl is pre-release with no users to protect, so code that existed only to repro
 - Gradients are dithered below one level, so subtle ramps no longer show 8-bit bands; flat and end colours stay exact. A full-canvas 2400×2400 linear gradient takes about 8 ms (3 ms before dithering); radial and angled ones about 0.15 s.
 - Unstroked ellipses, rounded rectangles and capsules are rasterized by resvg instead of Pillow supersampling; edge pixels change by a few levels.
 - Look change: a closed shape's stroke now sits inside its outline and flush with it. `stroke_align` defaults to `inside` for rectangles, rounded rectangles, capsules, ellipses, polygons, stars, shortcuts and catalog shapes, and to `center` for paths, arcs, lines and open shapes; an explicit value means the same with or without dashes, profiles or markers, in PNG, SVG, PDF and PowerPoint. A 10 px stroke on a rectangle or ellipse now covers 0-10 px in from the box edge (it covered 5-15 px), the fill covers the whole shape under the stroke, and a rounded corner keeps `radius` on the outside (inner radius `radius` minus the stroke). Polygon and star strokes keep their outer edge on the outline with mitred corners (their centre line used to sit half a stroke in, with round joins), and styled or catalog strokes that defaulted to centred now default to inside. To keep an old document's look, shrink a plain stroked rectangle's, rounded rectangle's, capsule's or ellipse's box by half the stroke on every side (`x`, `y` + 5 px and `width`, `height` − 10 px for a 10 px stroke; `radius` unchanged, written out when it was the default), leave polygons and stars as they are (outer corners become sharp), and set `stroke_align: "center"` where a styled or catalog stroke relied on the centred default. A `rectangle` given a `radius` (or `border_radius`/`corner_radius`) becomes a `rounded-rectangle`, reported under `normalized`, so its corners are round in every output (PNG rounded them and the exports did not). PDF import joins a fill and the stroke drawn half its width inside it into one layer with `stroke_align: "inside"`.
-- New `python -m evals.render_parity` measures raster output against headless Chromium and exact references (eval-only; `pip install playwright`). Findings: [Render parity](docs/render-parity.md).
+- New `python -m evals.render_parity` measures raster output against headless Chromium and exact references (eval-only; `pip install playwright`). Findings: [Render parity](docs/project/render-parity.md).
 
 ### CLI output
 
@@ -310,7 +320,7 @@ Vixl is pre-release with no users to protect, so code that existed only to repro
   gradients that every exporter draws natively. `reflection` mirrors the layers above a `horizon` into the water below,
   with seeded ripples, ripple bands, a vertical smear and a fade; it is one raster layer that keeps its settings, so
   `{type: reflection, target: reflection}` re-renders it after the scene changes. All five are deterministic for a
-  `seed`. See [scene atmosphere and motifs](docs/atmosphere.md).
+  `seed`. See [scene atmosphere and motifs](docs/guides/finishing/atmosphere.md).
 - **Motifs from the brief** (6b): `vixl_reference(brief)` returns `motifs` when a brief implies a setting (coffee and cafés,
   sea and coast, lakes, markets and festivals, night city, night sky, concerts): the concrete things to draw (a cup with
   steam rather than a disc, a lighthouse standing in the sea rather than on a bar), the placeholder each replaces, and
@@ -475,7 +485,7 @@ Checks that cover a whole workspace, outcome states agents can trust, repairs, w
 - `object-save` and `object-place` place independent editable copies (`recolor` by part, size, tracks kept) (#381).
 - Object identity in exports: SVG `data-vixl-object`/`-kind`/`-part` and `<title>`, PowerPoint named groups with `descr`, PSD group names; `vixl manifest` lists objects (#384).
 - Accessibility: `layer-intent` gains `alt` and `decorative`; the `accessibility` operation sets `lang`, `title`, `page_alt`, `page_lang` and `reading_order`; HTML, the presenter, SVG, PowerPoint (including native charts) and PDF (`/Lang`, `/Alt`, `/Artifact`) carry them; `check --checks accessibility` covers contrast, colour vision, missing alt text, language, small text, colour-only charts and reading order. A tagged PDF structure tree is not written yet (#175, #561).
-- New guides `docs/objects.md` and `docs/accessibility.md`, five object eval briefs and an `object` harness check (#386).
+- New guides `docs/guides/shapes/objects.md` and `docs/guides/output/accessibility.md`, five object eval briefs and an `object` harness check (#386).
 
 ### Content workflows
 
@@ -506,7 +516,7 @@ Checks that cover a whole workspace, outcome states agents can trust, repairs, w
 ### Voice and marketing
 
 - Vixl now describes itself one way: **"Ideas become editable."** and *a design engine for AI agents. Programmable, editable, checked.* The README, `pyproject.toml`, CLI help, plugin and desktop-extension listings, docs introductions and the skill use it in place of "programmable design studio", "image-document engine" and "headless application designed for autonomous AI agents".
-- The marketing pack's artwork, deck notes, captions, alt text, campaign rows and demo script are rewritten in a more casual voice and rebuilt. The rules are in [Brand voice](docs/brand-voice.md).
+- The marketing pack's artwork, deck notes, captions, alt text, campaign rows and demo script are rewritten in a more casual voice and rebuilt. The rules are in [Brand voice](docs/project/brand-voice.md).
 - A second promo film, [*It does that?*](promo/it-does-that/README.md), shows nine less obvious features: sketch to vectors, a CSV-to-print badge run with unique QR codes, emoji masters, mirrored radial repeats, pixel sprites, fillable forms, text to diagram, seeded plants and a soundtrack written as `audio-track` layers. Every shot runs the feature in the build; scenes and the score are editable `.vixl` masters.
 
 ### Speed
@@ -667,7 +677,7 @@ Defaults and speed. What Vixl makes from a sparse brief now looks designed: the 
 - **22 new palettes**: dark (night-teal, ink-gold, midnight-coral, forest-night, plum-night, graphite-lime), saturated (cobalt-tangerine, tomato-sky, fuchsia-mint, lemon-ink), duotone (duo-blue-orange, duo-red-cream, duo-green-pink) and earthy (terracotta-sage, ochre-umber, moss-clay, rust-indigo) safe palettes; bold electric-sand and jade-night; avant-garde acid-violet, riso-pink-blue and vapor-night. The curated legacy palettes joined the tiers with mood metadata (midnight, slate, nordic … safe; sunset, coral, retro … bold; neon, candy, pastel … avant-garde). Every rollable palette passes the role-assignment contrast pass in each mode it rolls in (#426, #391).
 - **Brief recommendations agree with the attached roll**: `vixl_guide(kind)` rolls with the kind's recommended layouts, looks and styles favoured where the level allows their tier, and `recommendations` says what was rolled, whether it is recommended, and which recommendations are opt-in alternatives with their tiers (#399).
 - **House-style eval**: `python -m evals.house_style` rolls 48 sparse briefs across the eight purposes at each variety level and scores diversity (entropy per dimension, pairwise image and layout-structure distance) and quality (no `fix` findings, fonts installed, contrast); `--compare evals/house-style-baseline.json` fails on a regression, and `--house-style 1` measures the old rolls. A fast subset runs in the test suite (#431).
-- **Default-change policy** in CONTRIBUTING.md and docs/house-style.md: new documents only, a version stamp, and a restore path in the changelog (#430).
+- **Default-change policy** in CONTRIBUTING.md and docs/project/house-style.md: new documents only, a version stamp, and a restore path in the changelog (#430).
 - **`creation` in create results** (MCP, CLI, Python `report=`, compose): the size and why (`argument`, `purpose` or `default`), the background and why (`argument`, `palette` or `mark`), and whether the pairing was installed (#394, #411, #413, #418).
 - **Craft and purposes in one data file**: the craft defaults (line-height table, spacing unit, safe area, stroke width, neutral fill and fill roles, corner scale and house corner, irregularity strength, base-size rule, headline measure) and the purpose sizes, marks and aliases moved from `vixl/craft.py` and `vixl/sizes.py` into `src/vixl/data/house-style.json`, read through `vixl.house_style` (`rule`, `canonical_purpose`, `purpose_names`, `purpose_size`, `is_mark`). `vixl.craft` keeps its helpers and read-only names (`LINE_HEIGHT`, `CORNERS`, `SAFE_AREA` …) that reflect the data; `sizes.PURPOSE_SIZES`, `PURPOSE_ALIASES`, `MARK_PURPOSES`, `MARK_CATEGORIES` and `DEFAULT_SIZE` are gone (use `house_style.purpose_size`, `house_style.is_mark` and `sizes.default_size()`) (#401).
 - **One purpose vocabulary for creation and rolls**: `vixl new --purpose`, `vixl_document_create(purpose=…)` and `Project(purpose=…)` accept every name a roll does (the eight purposes, their aliases, brief kinds, named sizes and size categories) and map it to the same profile: `--purpose emblem` and `vixl roll --for emblem` both mean the logo profile, and creation reports the canonical `purpose`. Each profile carries its default `size`, aliases with their own size (`story`, `web`, `email`, `icon`, `favicon` …) and a `mark` flag; `thumbnail` and `banner` are new creation names (YouTube thumbnail and web banner sizes) (#401).
@@ -682,7 +692,7 @@ Defaults and speed. What Vixl makes from a sparse brief now looks designed: the 
 - **Colours outside sRGB are reported**: `color info`/`convert` (and `vixl_color`) add `clipped` (`chroma` or `clamp`) and a warning, for example for `oklch(70% 0.4 30)` (#363).
 - **The diagram check reports edges drawn on top of each other** (a pair that reads as one line or a two-headed arrow); edges from one source or into one target may still share a trunk (#346).
 - **`vixl layers --full`**: `vixl layers` now abbreviates long path data, path nodes and point lists to their size and a pointer to `vixl inspect LAYER`; `--full` prints them (#292).
-- **Executable documentation**: `tests/test_docs_executable.py` (`pytest -m docs`, part of the normal run) runs the `vixl …` commands of every shell block in `docs/` and `skills/` in a temporary workspace and validates, then applies, every JSON operation block. New blocks are picked up automatically; `<!-- docs-test: continue | save FILE | skip REASON -->` steers walkthroughs (see `docs/documentation-maintenance.md`).
+- **Executable documentation**: `tests/test_docs_executable.py` (`pytest -m docs`, part of the normal run) runs the `vixl …` commands of every shell block in `docs/` and `skills/` in a temporary workspace and validates, then applies, every JSON operation block. New blocks are picked up automatically; `<!-- docs-test: continue | save FILE | skip REASON -->` steers walkthroughs (see `docs/project/documentation-maintenance.md`).
 
 ### Performance
 
@@ -718,13 +728,13 @@ Defaults and speed. What Vixl makes from a sparse brief now looks designed: the 
 - `rgb()` colours with channels outside 0–255 are clamped to hex in operations and reported under `normalized` (#365).
 - The docs list the text metrics (`ink_bounds`, `baseline`, …) that `detail: "brief"` returns for new text layers (#347).
 - A crisp scaled raster export (`scale` above 1) records the dpi of the requested scale (canvas dpi × scale) rather than the canvas dpi.
-- **`vixl guide NAME x|y POSITION`** and `vixl guide NAME --kind …` add a guide again; since the craft guide took the `guide` command they returned "No kind of work matches" (docs/guides.md, docs/design-tools.md).
+- **`vixl guide NAME x|y POSITION`** and `vixl guide NAME --kind …` add a guide again; since the craft guide took the `guide` command they returned "No kind of work matches" (docs/guides/layout/guides.md, docs/guides/shapes/design-tools.md).
 - **`vixl capabilities pen`** lists `pen`, then shape and path operations, instead of leading with `oil-paint`: matches rank by the word that matched. The `pen --nodes` help and schema say that `in`/`out` handles are positions in the anchors' coordinates, not offsets (#324).
 - Documentation examples run top to bottom: the presenter export examples write different files, the `tear` examples remove a mask before switching to a clip, and the CLI reference creates a guide before constraining to it.
 
 ## 0.22.1
 
-A bug-fix release from the 0.22.0 QA pass (#276): exports agree with the raster renderer, documents that apply can always render again, the logo package ships usable files, new text is readable by default, and errors name what to do on the interface you are using. The house-style decision record (`docs/house-style.md`), the 0.22.0 QA report (`qa-reports/v0.22.0/`) and a development plan (`docs/roadmap.md`) are now on main.
+A bug-fix release from the 0.22.0 QA pass (#276): exports agree with the raster renderer, documents that apply can always render again, the logo package ships usable files, new text is readable by default, and errors name what to do on the interface you are using. The house-style decision record (`docs/project/house-style.md`), the 0.22.0 QA report (`qa-reports/v0.22.0/`) and a development plan (`docs/project/roadmap.md`) are now on main.
 
 ### Changed defaults
 
@@ -768,7 +778,7 @@ A bug-fix release from the 0.22.0 QA pass (#276): exports agree with the raster 
 
 ### Documentation
 
-- Per-operation caps (nested groups, repeat, scatter, pen points, effects, frames, timeline, dpi, sides) in [architecture](docs/architecture.md#resource-policy) (#348).
+- Per-operation caps (nested groups, repeat, scatter, pen points, effects, frames, timeline, dpi, sides) in [architecture](docs/reference/architecture.md#resource-policy) (#348).
 - `animate-preset` `amount` per preset (#340); lyric templates define their variables first (#343); CMYK PDF is vector (#337); the active document is per client on Streamable HTTP (#344); the slides quickstart's `shape` command (#373).
 
 ## 0.22.0
@@ -795,7 +805,7 @@ Bigger documents, layer merging, scatter and pattern tiles, kinetic type, QR cod
 - `vixl_compose` (MCP, CLI `vixl compose`, Python `vixl.compose.run`, REST `POST /compose` as a dry run) builds a piece in one atomic call: create, font pairing (or the workspace default fonts), layout, style, look, operations, check, preview, save and exports. Nothing is saved or exported unless every step succeeds; errors name the failing `step`. In the core and compact toolsets (compact now has 13 tools) (#181).
 - `logo-package` workflow: full-colour, mono black, mono white, on-light and on-dark variants, optional mark/horizontal/stacked lockups, strict SVG, RGB and optional CMYK PDF, PNG at 1x/2x/3x, an icon set with favicon, social avatar and Open Graph images, a usage sheet, editable sources and an optional zip. Raster logos can be traced. Recolouring is heuristic and reported; EPS is not produced (#260).
 - `proof` workflow: one self-contained offline HTML page with thumbnails, click-to-enlarge, format/size/colour metadata, `vixl_check` findings, optional before/after diffs, and approve/reject decisions downloaded as JSON (#173).
-- `vixl diff A B` pixel-diffs two documents or images (changed pixels, fraction, region), with an optional diff image and a `--max-fraction` exit code. A composite GitHub Action (`action.yml`, [docs/ci.md](docs/ci.md)) checks `.vixl` files in pull requests, diffs them against the base branch, writes a job summary and can upload a proof page (#174).
+- `vixl diff A B` pixel-diffs two documents or images (changed pixels, fraction, region), with an optional diff image and a `--max-fraction` exit code. A composite GitHub Action (`action.yml`, [docs/guides/automation/ci.md](docs/guides/automation/ci.md)) checks `.vixl` files in pull requests, diffs them against the base branch, writes a job summary and can upload a proof page (#174).
 - Meme layouts `meme-top-bottom`, `meme-caption-above`, `meme-comparison`, `meme-labelled`, `meme-reaction`, `meme-four-panel`; `layout-apply` takes `images` (one asset per panel) and `uppercase`; a `meme` brief and guidance with a GIF recipe (#193).
 - New documents embed the workspace default fonts from `brand.json` and report them under `workspace_fonts` (`workspace_fonts: false` / `--no-workspace-fonts` skips them); `vixl_font_pair` and `vixl_font_install` take `scope: "workspace"` to set them (#183).
 
@@ -868,7 +878,7 @@ Bigger documents, layer merging, scatter and pattern tiles, kinetic type, QR cod
 - Zoomed film camera shots render at the zoom instead of enlarging output pixels (#232); imported and lyric-video audio is no longer resampled to 24 kHz with linear interpolation and forced to stereo (#207).
 - The pattern guide uses `pattern-scatter`, so motifs crossing a tile edge wrap (#216).
 - One parser for `${...}` placeholders replaces three copies; the remaining local Bezier evaluators and number formatters use `geometry.bezier_points` / `compact_number`, with a guard test (#215, #255).
-- docs/coverage.md covers 0.20 and 0.21 and no longer lists shipped skew/matrix transforms, form validation actions or font fallback as missing.
+- docs/reference/coverage.md covers 0.20 and 0.21 and no longer lists shipped skew/matrix transforms, form validation actions or font fallback as missing.
 
 ## 0.21.0
 
@@ -891,7 +901,7 @@ A breaking "correctness and consolidation" release. Duplicate concepts are gone 
 
 ### Agent interface and validation
 
-- Every operation schema carries `x-targets`. About 90 per-layer operations take `targets` and fan out over them in one atomic batch with one history entry and the original `operation_index` on errors; group, align, distribute and pathfinder keep joint semantics (#188). The table in `docs/operations.md` is generated and tested.
+- Every operation schema carries `x-targets`. About 90 per-layer operations take `targets` and fan out over them in one atomic batch with one history entry and the original `operation_index` on errors; group, align, distribute and pathfinder keep joint semantics (#188). The table in `docs/reference/operations.md` is generated and tested.
 - `vixl_operations_apply`, REST `/operations` and the CLI take `operations_path` (a workspace-relative `.json` or `.jsonl`; JSONL errors cite line numbers), `check` and `preview` options, so one call can edit, check and look (#184, #180). Findings are bounded to fix-level findings and touched layers.
 - Schema descriptions are no longer overwritten by shared constants (#224). Anchor synonyms (`bottom-center`, `top-center`, `center-left` ...) normalize and are reported. `"none"` is accepted for fills, strokes and colours and stored as `transparent`.
 - New fields: `opacity` and `rotation` at creation and on edits of shape/text/solid/gradient/add; `space: "canvas"` on shape/text/solid/gradient edits of grouped layers; pivot `units: "canvas"`; group `above`/`below` (#244, partial).
@@ -927,7 +937,7 @@ A breaking "correctness and consolidation" release. Duplicate concepts are gone 
 - `animate` and `animate-preset` take `repeat`/`until`, `period` and `stagger`; the `spin` motion recipe takes `turns` and `symmetry` (#185).
 - `export_timeline` takes `poster` (time, marker, `"end"` or a percentage) for GIF/APNG/WebP and rotates frames so the poster is first while the loop stays seamless (#189). `vixl_timeline_preview(times=[...], thumbnail=360)` shows poster, middle and last frames at phone width (#253); `timeline-sheet --thumbnail` on the CLI.
 - GIF `dither` (`auto`, `none`, `ordered`, `floyd`) on a shared palette and a soft `max_bytes`; big or gradient GIFs suggest MP4 or WebP (#246, partial). Sheet results report the real sheet size, and GIF/WebP/APNG report frames and durations read from the written file (#208).
-- Keyframe easing, extend, hold and trim semantics are documented in the schema descriptions and `docs/brushes-and-animation.md` (#254); easing and presets are enums (#243).
+- Keyframe easing, extend, hold and trim semantics are documented in the schema descriptions and `docs/guides/motion/brushes-and-animation.md` (#254); easing and presets are enums (#243).
 
 ### Guidance
 
@@ -1036,7 +1046,7 @@ A breaking "correctness and consolidation" release. Duplicate concepts are gone 
 
 - `organic` presets follow `stroke` and `stroke_width` on every output (shell chambers, leaf veins, feather barbs), including when regrowing, and take `fill`.
 - `shape: arc` draws pie wedges, donut segments and rings (`start_angle`, `end_angle`, `inner_radius`) in PNG, SVG, vector PDF and PPTX; `vixl.wedge.wedge_path` is the reusable geometry.
-- Opt-in imperfection ([docs](docs/irregular.md)): `irregular` (seeded wobble, vertex jitter, stroke-weight and pressure variation, color drift, micro placement) and `tear` (fractal torn edge with a paper rim and fibres, as a mask, clip or path), for characters, hand-made looks and ripped paper, not for logos or anything that must align.
+- Opt-in imperfection ([docs](docs/guides/finishing/irregular.md)): `irregular` (seeded wobble, vertex jitter, stroke-weight and pressure variation, color drift, micro placement) and `tear` (fractal torn edge with a paper rim and fibres, as a mask, clip or path), for characters, hand-made looks and ripped paper, not for logos or anything that must align.
 - `look` applies one of 14 named finishes (glow, drop shadow, grain, paper texture ...) in one operation; `radial-repeat` makes rosettes and mandalas in one step.
 
 ### Photos, drawings and previews
@@ -1052,21 +1062,21 @@ A breaking "correctness and consolidation" release. Duplicate concepts are gone 
 
 ### Diagrams and text flow
 
-- `diagram`, `diagram-set` and `diagram-from-text` ([docs](docs/diagrams.md)) draw flowcharts, dependency graphs, org charts and mind maps as editable vector layers: layered, tree, radial, mind-map and grid layouts, orthogonal, curved or straight routing, swimlanes, fit-to-canvas, and node kinds (process, decision, terminator, I/O, note, group). Re-layout keeps layer IDs stable; `diagram-from-text` takes `A -> B: label`, `A{Question?}`, indentation hierarchies and `group Lane: A, B`; `check --checks diagram` reports overlapping nodes, edges through nodes and unreadable labels.
-- `text-flow` ([docs](docs/text-flow.md)) flows one story through linked text frames (columns, pages, shape-following bands) with keep-together, orphan and widow rules, rich-text spans preserved, automatic reflow when the text or frames change, overflow reported in results (`remaining_chars`) and a `flow` check. Frames are ordinary text layers holding their slice, so every export works unchanged. Limits: lanes do not nest, `${variables}` are not expanded while flowing, and a direct edit to a frame's text is overwritten at the next reflow.
+- `diagram`, `diagram-set` and `diagram-from-text` ([docs](docs/guides/shapes/diagrams.md)) draw flowcharts, dependency graphs, org charts and mind maps as editable vector layers: layered, tree, radial, mind-map and grid layouts, orthogonal, curved or straight routing, swimlanes, fit-to-canvas, and node kinds (process, decision, terminator, I/O, note, group). Re-layout keeps layer IDs stable; `diagram-from-text` takes `A -> B: label`, `A{Question?}`, indentation hierarchies and `group Lane: A, B`; `check --checks diagram` reports overlapping nodes, edges through nodes and unreadable labels.
+- `text-flow` ([docs](docs/guides/text/text-flow.md)) flows one story through linked text frames (columns, pages, shape-following bands) with keep-together, orphan and widow rules, rich-text spans preserved, automatic reflow when the text or frames change, overflow reported in results (`remaining_chars`) and a `flow` check. Frames are ordinary text layers holding their slice, so every export works unchanged. Limits: lanes do not nest, `${variables}` are not expanded while flowing, and a direct edit to a frame's text is overwritten at the next reflow.
 
 ### Charts
 
-- `chart` and `chart-data` ([docs](docs/charts.md)): bar, stacked, 100 %, horizontal, line, area, pie and donut charts from an inline table or a workspace CSV, drawn as a group of vector layers. Editing the data keeps layer IDs (the group stores totals, shares and scale), `check` sees inside charts, and PPTX export writes native, editable charts with an embedded data table.
+- `chart` and `chart-data` ([docs](docs/guides/output/charts.md)): bar, stacked, 100 %, horizontal, line, area, pie and donut charts from an inline table or a workspace CSV, drawn as a group of vector layers. Editing the data keeps layer IDs (the group stores totals, shares and scale), `check` sees inside charts, and PPTX export writes native, editable charts with an embedded data table.
 
 ### Linked documents and data merge
 
-- Linked-document layers ([docs](docs/linked-documents.md)): `link`, `link-refresh`, `link-embed`, `vixl links` and the `links` check draw another `.vixl` live with fit, position, crop, artboard, page and variables. Changes to the source show at the next render, with stale and missing reporting, cycle and depth checks, vector text in PDF, and links confined to the workspace over MCP and REST.
-- `merge-impose` / `vixl merge` ([docs](docs/imposition.md)): CSV rows laid out on print sheets with gutters, bleed, crop and registration marks and slug text, as a vector-text PDF and an editable sheet of live links. Rows are validated first and the merge can be rerun. Vector PDF export with many glyphs is several times faster.
+- Linked-document layers ([docs](docs/guides/output/linked-documents.md)): `link`, `link-refresh`, `link-embed`, `vixl links` and the `links` check draw another `.vixl` live with fit, position, crop, artboard, page and variables. Changes to the source show at the next render, with stale and missing reporting, cycle and depth checks, vector text in PDF, and links confined to the workspace over MCP and REST.
+- `merge-impose` / `vixl merge` ([docs](docs/guides/output/imposition.md)): CSV rows laid out on print sheets with gutters, bleed, crop and registration marks and slug text, as a vector-text PDF and an editable sheet of live links. Rows are validated first and the merge can be rerun. Vector PDF export with many glyphs is several times faster.
 
 ### HTML presenter
 
-- `export deck.html` of a multi-page document is a self-contained slide presentation ([docs](docs/presenter.md)) with inline vector slides, keyboard, click, swipe and `#3` navigation, an overview grid, CSS transitions from the page settings, one-slide-per-page printing and a speaker view with notes and timer. `--presenter`, `--no-presenter`, `--presenter-theme`, `--slide-images svg|png`, `--start-slide` and `--no-notes` configure it; slides SVG cannot express are listed under `raster_fallbacks`.
+- `export deck.html` of a multi-page document is a self-contained slide presentation ([docs](docs/guides/output/presenter.md)) with inline vector slides, keyboard, click, swipe and `#3` navigation, an overview grid, CSS transitions from the page settings, one-slide-per-page printing and a speaker view with notes and timer. `--presenter`, `--no-presenter`, `--presenter-theme`, `--slide-images svg|png`, `--start-slide` and `--no-notes` configure it; slides SVG cannot express are listed under `raster_fallbacks`.
 
 ### MCP server and agent experience
 
@@ -1075,7 +1085,7 @@ A breaking "correctness and consolidation" release. Duplicate concepts are gone 
 - Apply results carry `warnings` for text cut off by the canvas or overflowing its box and for fields that were accepted but changed nothing; schema errors end with a pointer to `vixl_operation_schema` and list the accepted fields. `document_create` and exports create missing directories; `vixl_export_batch` writes several targets in one call.
 - Every operation has a one-line description, typed and described fields and, for the common ones, examples; every workflow action has a summary and typed, described fields, and the check-suite object is typed. A lint test enforces this. The MCP `tools/list` inline operation schema grew from about 35.7k to about 49k characters with the new operations (`--schema slim` advertises names only).
 - `vixl_guide` maps a brief (icon, character, scene, pattern, mandala, logo, diagram ...) to operations, layouts, looks and styles, and the server instructions and skill open with a start-here recipe. Image slots list `fill_with` options and `layout-apply` returns `next_steps`; `layout-apply` and `palette-apply` explain how roles were assigned and take `keep_order` and `roles`; check findings carry `action` (`fix`, `review`, `informational`) and `layer-intent allow_crop` marks an intentional crop.
-- Design styles ([docs](docs/styles.md)): 28 styles (swiss, brutalist, art deco, kawaii ...) with guidance and premade checks, `style-set`, `check --checks style` and `vixl_styles`.
+- Design styles ([docs](docs/guides/layout/styles.md)): 28 styles (swiss, brutalist, art deco, kawaii ...) with guidance and premade checks, `style-set`, `check --checks style` and `vixl_styles`.
 
 ## 0.18.0
 
@@ -1087,30 +1097,30 @@ A breaking "correctness and consolidation" release. Duplicate concepts are gone 
 
 ### Lyric videos
 
-- **`lyric-video` workflow** ([docs](docs/lyric-video.md)): a song, a user-timed LRC file and a styled template become a synced MP4/WebM. `lyric-video-plan` validates and returns the timed lines, sections, frame count and warnings; `lyric-video-build` writes an ordinary, editable keyframed document; `lyric-video-export` renders it with the song as the audio track. Sections switch `bg-<section>` layers, `cue-<words>` layers appear while a line contains those words, and `lyric-next`, `section-label` and `intro` are filled in. Available through the CLI, MCP, the `lyric-video` durable job kind (inputs frozen at submission) and REST (`lyric-video-plan`). `vixl.lyrics` exposes `parse_lrc`, `plan`, `build` and `export`.
+- **`lyric-video` workflow** ([docs](docs/guides/motion/lyric-video.md)): a song, a user-timed LRC file and a styled template become a synced MP4/WebM. `lyric-video-plan` validates and returns the timed lines, sections, frame count and warnings; `lyric-video-build` writes an ordinary, editable keyframed document; `lyric-video-export` renders it with the song as the audio track. Sections switch `bg-<section>` layers, `cue-<words>` layers appear while a line contains those words, and `lyric-next`, `section-label` and `intro` are filled in. Available through the CLI, MCP, the `lyric-video` durable job kind (inputs frozen at submission) and REST (`lyric-video-plan`). `vixl.lyrics` exposes `parse_lrc`, `plan`, `build` and `export`.
 - **MP4/WebM have no 3,600-frame cap.** Streamed video is bounded only by the 10-minute duration; buffered formats (GIF, APNG, WebP, sheets, PNG sequences, film ZIPs) keep the cap. Frames are piped to ffmpeg as raw pixels instead of PNG, film frames whose animated state is unchanged reuse the previous render, and keyframe tracks hold up to 8,192 keys with binary-search sampling.
 - `vixl.film.audio_duration` reads an audio file's length with ffprobe. Design checks skip empty text layers instead of warning that they cannot be measured.
 
 ### Organic shapes
 
-- **`organic`** ([docs](docs/organic.md)): living forms as ordered parts, each a **generator** (superformula, blob, leaf with margins and venation, petal, log/Archimedean spiral, Raup shell, tapered tentacle with curl, wave and elbow joints, Honda/Leonardo branching, L-systems, Vogel phyllotaxis, relaxed Voronoi cells, Gray–Scott reaction–diffusion, scales, segmented bodies, feather, ellipse/egg/teardrop, growth rings, any SVG path) followed by composable **rules** (radial symmetry with alternating whorls and fans, mirroring with fluctuating asymmetry, placement along a spine or at another part's anchors, Poisson-disc scatter, golden-angle and grid placement, noise, D'Arcy Thompson warps, jitter, smoothing, clipping, size gradients, and pixel-space smooth union, paint-order occlusion and intersection). 32 presets (flower, sunflower, rose, tree, pine, fern, vine, starfish, jellyfish, octopus, shell, snail, caterpillar, mushroom, feather, coral, cactus, giraffe, spots …) take parameters and per-part colors. Results are vector path layers that regrow in place with a new seed. `vixl organics` and the `organic-catalog` workflow action list everything.
+- **`organic`** ([docs](docs/guides/shapes/organic.md)): living forms as ordered parts, each a **generator** (superformula, blob, leaf with margins and venation, petal, log/Archimedean spiral, Raup shell, tapered tentacle with curl, wave and elbow joints, Honda/Leonardo branching, L-systems, Vogel phyllotaxis, relaxed Voronoi cells, Gray–Scott reaction–diffusion, scales, segmented bodies, feather, ellipse/egg/teardrop, growth rings, any SVG path) followed by composable **rules** (radial symmetry with alternating whorls and fans, mirroring with fluctuating asymmetry, placement along a spine or at another part's anchors, Poisson-disc scatter, golden-angle and grid placement, noise, D'Arcy Thompson warps, jitter, smoothing, clipping, size gradients, and pixel-space smooth union, paint-order occlusion and intersection). 32 presets (flower, sunflower, rose, tree, pine, fern, vine, starfish, jellyfish, octopus, shell, snail, caterpillar, mushroom, feather, coral, cactus, giraffe, spots …) take parameters and per-part colors. Results are vector path layers that regrow in place with a new seed. `vixl organics` and the `organic-catalog` workflow action list everything.
 - Path layers accept up to 8,192 commands and 256 KiB, and `line_cap` (round caps and joins for organic strokes).
 
 ### Guides, grids and placement
 
-- **Guides beyond right angles** ([docs](docs/guides.md)): guides can be angled `line`s, `ray`s, `segment`s, `point`s, `circle`s and curved `path`s. `grid --kind` generates baseline, thirds, golden-section, harmonic-armature, golden-spiral, polar, isometric, triangular, hex, oblique and 1–3 point perspective systems (each also takes a `region`); grids and guides can be deleted.
+- **Guides beyond right angles** ([docs](docs/guides/layout/guides.md)): guides can be angled `line`s, `ray`s, `segment`s, `point`s, `circle`s and curved `path`s. `grid --kind` generates baseline, thirds, golden-section, harmonic-armature, golden-spiral, polar, isometric, triangular, hex, oblique and 1–3 point perspective systems (each also takes a `region`); grids and guides can be deleted.
 - **`place`** puts layers on any guide: at a fraction along it, spread evenly or at a fixed spacing, at intersections of two guides, with an anchor of the layer on the guide, turned to the tangent or normal. It works inside scaled and rotated groups. **`snap`** moves near misses onto guides, points and intersections and straightens near-miss angles.
 - **`guides` and `alignment` checks** report anchors a few pixels off a guide (with the fixing move), rotations a few degrees off a guide's angle, and sibling layers almost aligned or almost parallel. Previews draw guides (`render_preview(guides=True)`, MCP `guides`, CLI `render --show-guides`); `vixl guides` lists them. Constraints read point and circle guides and horizontal/vertical lines.
 - `checks.canvas_projection` is the shared canvas-space projection of layer bounds (design checks, guide checks and form export use it).
 
 ### Rich text
 
-- **Rich text in one text box** ([docs](docs/rich-text.md)): `rich-text` creates or replaces content from Markdown (bold, italic, underline, strike, highlight, super/subscript, `[text]{color=… size=… font=…}`, headings, nested bullet and numbered lists) or explicit spans and paragraph settings; `text-style` styles a matched word, a character range or whole paragraphs of any text layer. Paragraphs carry list type and level, alignment including justify, spacing before and after, indent and line height; wrapped list lines hang under their text. Bold and italic use installed variants (`inter-700`, `inter-400-italic`, or `font_variants`) and are synthesized otherwise. Fit-to-box shrinks every size together. The same shaped layout draws PNG and vector SVG (and feeds PDF and PPTX export).
+- **Rich text in one text box** ([docs](docs/guides/text/rich-text.md)): `rich-text` creates or replaces content from Markdown (bold, italic, underline, strike, highlight, super/subscript, `[text]{color=… size=… font=…}`, headings, nested bullet and numbered lists) or explicit spans and paragraph settings; `text-style` styles a matched word, a character range or whole paragraphs of any text layer. Paragraphs carry list type and level, alignment including justify, spacing before and after, indent and line height; wrapped list lines hang under their text. Bold and italic use installed variants (`inter-700`, `inter-400-italic`, or `font_variants`) and are synthesized otherwise. Fit-to-box shrinks every size together. The same shaped layout draws PNG and vector SVG (and feeds PDF and PPTX export).
 - Shaped glyphs record the characters they come from (ligatures included), for text extraction.
 
 ### Pages, slides and decks
 
-- **Multi-page documents** ([docs](docs/slides.md)): `page add|select|remove|move|set` turns a document into ordered pages with their own layers (sharing canvas, fonts, swatches, styles and guides), speaker notes, per-page backgrounds and variables, hidden pages and transitions; `master add|select|remove|set` holds layers drawn underneath every page that uses them. Any operation takes a `page` field. `${page}`, `${pages}` and `${page_name}` are built in. Undo, save/load, validation and `inspect` cover pages.
+- **Multi-page documents** ([docs](docs/guides/output/slides.md)): `page add|select|remove|move|set` turns a document into ordered pages with their own layers (sharing canvas, fonts, swatches, styles and guides), speaker notes, per-page backgrounds and variables, hidden pages and transitions; `master add|select|remove|set` holds layers drawn underneath every page that uses them. Any operation takes a `page` field. `${page}`, `${pages}` and `${page_name}` are built in. Undo, save/load, validation and `inspect` cover pages.
 - **Vector PDF export** for paged documents (and any document with `--pdf-content vector`): real, selectable and searchable text in embedded TrueType subsets with Unicode maps (plain and rich text, synthetic bold and italic), vector shapes, paths and gradient shadings, images as images, and per-layer raster fallbacks for what PDF cannot draw the same way, listed with reasons. Text runs are written one line at a time so viewers extract lines and words correctly. TrimBox/BleedBox for bleed, raster pages and CMYK on request, byte-identical output.
 - **PowerPoint export** (`export deck.pptx`): one editable slide per page with text boxes and real runs (fonts, sizes, colours, bold/italic/underline/strike/highlight, super/subscript, bullets and numbering, spacing), title placeholders, preset and custom-geometry shapes with fills, gradients and outlines, groups, pictures, speaker notes, hidden slides and transitions. Positions match Vixl's render, checked against LibreOffice.
 - **Deck checks** (`check --checks deck`): the design checks on every page (repeated findings merged) plus title placement across pages, a consistent type scale, words per page, minimum projected type size in points, missing speaker notes and empty pages.
@@ -1118,7 +1128,7 @@ A breaking "correctness and consolidation" release. Duplicate concepts are gone 
 
 ### Forms
 
-- **Fillable forms** ([docs](docs/forms.md)): `field` layers (text, multiline, number, date, checkbox, radio, dropdown, signature) with keys, accessible labels, required/read-only flags, defaults, formats, options, comb cells, overflow rules and a drawn appearance; `field-set` and `form` (tab order, title, language). Fields render in PNG, SVG, PDF and previews with their current values, and `render --show-fields` / `show_fields` outlines them with keys and tab numbers.
+- **Fillable forms** ([docs](docs/guides/output/forms.md)): `field` layers (text, multiline, number, date, checkbox, radio, dropdown, signature) with keys, accessible labels, required/read-only flags, defaults, formats, options, comb cells, overflow rules and a drawn appearance; `field-set` and `form` (tab order, title, language). Fields render in PNG, SVG, PDF and previews with their current values, and `render --show-fields` / `show_fields` outlines them with keys and tab numbers.
 - **Fillable PDF export** (`export form.pdf --fillable`, `fillable=True`): AcroForm text, button, choice and signature fields over the vector page artwork, with generated appearances (no `NeedAppearances`), `/TU` names, `/DA` Helvetica entry, reading or explicit tab order, title and language — no actions, hex strings only, byte-identical output, multi-page forms.
 - **Filling**: `form fill --set …` or `--data rows.csv` (one file per row with name templates, or `--combine` into one PDF), `vixl.forms.fill` / `fill_data`, MCP `vixl_export_file(values=…, fill_mode=…)`, the `form-fill` workflow action and durable job. Every row is validated first (`missing_required`, `unknown_key`, `invalid_option`, `invalid_number`, `invalid_date`, `too_long`, `invalid_format`, `overflow`), with `--dry-run` and `--skip-invalid`; editable mode prefills a fillable PDF. Filled values never reach the document, its history, the render cache or error messages, and jobs delete their copy of the data. Field values are `${key}` variables in text layers.
 - **`form` checks** (a default check): names, overlaps, rotation, page and trim bounds, tab order, encodable defaults, box and mark sizes, non-text contrast, layers above fields, and `--sample worst|rows.csv` overflow checks. `inspect`, `field list` and MCP inspect summarize fields with their rectangles in points.
@@ -1126,7 +1136,7 @@ A breaking "correctness and consolidation" release. Duplicate concepts are gone 
 
 ### Hand drawings
 
-- **Build on a hand drawing** ([docs](docs/drawing.md)): `drawing import` turns a photo or scan into clean lines — the sheet of paper found and the desk around it left out (its edge is never traced as ink), paper lighting and shadows divided out, dust removed, a tilted page corrected, cropped, the pencil's grain and (optionally) colour kept — over a hidden, aligned copy of the photo. `vectorize` traces editable centre-line strokes with each line's width (or outline shapes that keep pressure); `straighten` makes nearly straight lines straight, keeps drawn corners but sharpens them, keeps curves (lobes, arcs, waves) as drawn — in a stroke with both, only the straight sides change — rounds nearly round shapes into circles, snaps sides to angles or the document's guides and joins ends that nearly meet; `smooth`, `restyle` and `stroke` (new lines in the same hand) edit strokes; `fill` colours enclosed regions under the lines, bridging small breaks without crossing a line.
+- **Build on a hand drawing** ([docs](docs/guides/images/drawing.md)): `drawing import` turns a photo or scan into clean lines — the sheet of paper found and the desk around it left out (its edge is never traced as ink), paper lighting and shadows divided out, dust removed, a tilted page corrected, cropped, the pencil's grain and (optionally) colour kept — over a hidden, aligned copy of the photo. `vectorize` traces editable centre-line strokes with each line's width (or outline shapes that keep pressure); `straighten` makes nearly straight lines straight, keeps drawn corners but sharpens them, keeps curves (lobes, arcs, waves) as drawn — in a stroke with both, only the straight sides change — rounds nearly round shapes into circles, snaps sides to angles or the document's guides and joins ends that nearly meet; `smooth`, `restyle` and `stroke` (new lines in the same hand) edit strokes; `fill` colours enclosed regions under the lines, bridging small breaks without crossing a line.
 - **Preservation is measured**: `drawing report` / the `drawing-report` workflow action give the share of the original lines still covered and the share that is new, `drawing compare` overlays the original on the result, and the opt-in `drawing` check warns when original line work is lost. `ai drawing-color` adds image-to-image colouring under the drawing's own lines.
 
 ### Tool comparison kit
@@ -1278,7 +1288,7 @@ Fixes for the problems found while building the ten projects in `explorations/`.
 - Expose production through `vixl workflow`, Python and workspace MCP, with fixed-project
   REST checks/actions/planning. Keep the inline MCP operation schema below its existing
   size budget by hoisting shared constraints and moving field prose to schema discovery.
-- Add an offline production example and [workflow reference](docs/production.md).
+- Add an offline production example and [workflow reference](docs/guides/automation/production.md).
 
 ## 0.13.0
 - **Color language.** Every color field accepts CSS Color 4/5 notations (`lab()`, `lch()`, `oklab()`, `oklch()`, `hwb()`, `color(display-p3|rec2020|srgb-linear|xyz …)`, `color-mix()`), `cmyk()`/`device-cmyk()`, `gray()`, `kelvin()`, 148 CSS and 938 public-domain (CC0) xkcd survey color names, and modifiers (`lighten`, `darken`, `saturate`, `desaturate`, `mix`, `tint`, `shade`, `tone`, `alpha`, `rotate`, `complement`, `invert`, `grayscale`, `readable`). Swatches work inside expressions and may build on other swatches. Out-of-gamut colors are mapped by OKLCH chroma reduction.
@@ -1290,7 +1300,7 @@ Fixes for the problems found while building the ten projects in `explorations/`.
 - **Animation timelines.** `timeline-set`, `keyframe`, `keyframe-remove`, `animate`, `animate-preset` (22 presets) and `marker` animate any layer property (position, translate, scale, rotation, opacity, size, colors in OKLab, text, visibility, effect amounts) and the canvas background with 30+ easings. Frames render with `render --time`, contact sheets show motion at a glance, and `export-timeline` writes GIF, APNG, animated WebP, sprite sheets, PNG-sequence ZIPs, or MP4/WebM with ffmpeg.
 - **Interfaces.** New MCP tools `vixl_sizes_list`, `vixl_layouts_list`, `vixl_brushes_list`, `vixl_color`, `vixl_timeline_inspect`, `vixl_timeline_preview`, `vixl_export_timeline` and `vixl_export_icons`; preview/export/check tools gain time, proof, simulation and print options. REST adds `/sizes`, `/layouts`, `/brushes`, `/color`, `/timeline`, `/timeline/frame` and `/timeline/export`.
 - **Fixes.** Project lock files are removed after use (filelock 3.21+ is now required). Model routing consults a saved catalog before loading an optional SDK, and the native Anthropic adapter test skips without the `anthropic` extra. CSS color names keep priority even after Pillow caches parsed names. Swatch definitions may reference other swatches.
-- **Docs.** The provider documentation records that the adapters have been used successfully against real services. New guides cover [sizes and layouts](docs/sizes-and-layouts.md), [color and print](docs/color-and-print.md) and [brushes and animation](docs/brushes-and-animation.md), and the agent skill gains matching references.
+- **Docs.** The provider documentation records that the adapters have been used successfully against real services. New guides cover [sizes and layouts](docs/guides/layout/sizes-and-layouts.md), [color and print](docs/guides/finishing/color-and-print.md) and [brushes and animation](docs/guides/motion/brushes-and-animation.md), and the agent skill gains matching references.
 
 ## 0.12.1
 - Reject inaccessible pending runtimes without crashing the launcher, including Windows access-denied errors during file inspection. Preserve the active runtime even when no previous version exists, retain the underlying error/path in update status, and keep update settings available without starting the engine.

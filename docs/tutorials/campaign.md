@@ -1,6 +1,6 @@
 # Create a reusable campaign
 
-[Documentation home](../README.md) · [Export guide](../exporting.md)
+[Documentation home](../README.md) · [Export guide](../guides/output/exporting.md)
 
 ![Original campaign with Open Studio headline](../assets/generated/campaign.png)
 
@@ -51,7 +51,7 @@ Longer text needs a defined box. Fit the campaign title before trying long varia
 
 Apply this as an operation file, then inspect at the smallest intended display size.
 Automatic fitting can reduce type size enough to affect readability; review every important
-copy length. Choose typography through [font pairings](../typography.md) for finished work.
+copy length. Choose typography through [font pairings](../guides/text/typography.md) for finished work.
 
 ## Produce several outputs
 
@@ -71,12 +71,12 @@ vixl -p campaign.vixl render --data campaigns.csv --out campaign-output
 
 Inspect the output report and files. Variables must exist and rows must fit; data rendering
 can run checks. For named output variants, saved suites, contact sheets and resumable jobs,
-use [checked production](../production.md), rather than an untracked shell loop.
+use [checked production](../guides/automation/production.md), rather than an untracked shell loop.
 
 ## Hand off
 
 Share the [editable master](../assets/generated/campaign.vixl), a preview, required exports,
 fonts/license information and the content data. Keep source artwork and export settings
 alongside it. To review changes in Git, commit the folder that `vixl unpack campaign.vixl campaign-source`
-writes and rebuild with `vixl pack` ([source folders](../production.md#source-folders-for-git-review)). [Brands](../brands.md) shows how to reuse colors, logos, fonts and contrast rules
-across documents; [design tools](../design-tools.md) covers frames and image replacement.
+writes and rebuild with `vixl pack` ([source folders](../guides/automation/production.md#source-folders-for-git-review)). [Brands](../guides/layout/brands.md) shows how to reuse colors, logos, fonts and contrast rules
+across documents; [design tools](../guides/shapes/design-tools.md) covers frames and image replacement.

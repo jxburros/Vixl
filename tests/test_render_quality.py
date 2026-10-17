@@ -1,4 +1,4 @@
-"""Raster quality measured against exact references (see docs/render-parity.md): vector layers placed at
+"""Raster quality measured against exact references (see docs/project/render-parity.md): vector layers placed at
 fractional positions or turned are drawn from their outlines, and gradients are dithered."""
 
 import math

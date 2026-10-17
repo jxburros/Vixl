@@ -11,7 +11,7 @@ from vixl.guides import GRID_KINDS, intersections, nearest, point_at
 
 
 def test_cli_guide_with_an_axis_or_guide_options_adds_a_guide_instead_of_craft_guidance(tmp_path, monkeypatch):
-    """`vixl guide margin x 64` (docs/guides.md) was answered by the craft guide (`vixl guide BRIEF`)."""
+    """`vixl guide margin x 64` (docs/guides/layout/guides.md) was answered by the craft guide (`vixl guide BRIEF`)."""
     from vixl.cli import dispatch
 
     monkeypatch.chdir(tmp_path)

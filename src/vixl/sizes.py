@@ -478,7 +478,7 @@ def validate_canvas(canvas):
 
 # What a new document is for, when the caller names a purpose instead of a size, lives in the house style
 # (data/house-style.json: each purpose profile's ``size``, its aliases' ``sizes`` and the ``mark`` flag;
-# docs/house-style.md, decisions B5 and B8). The helpers below read it through ``vixl.house_style``.
+# docs/project/house-style.md, decisions B5 and B8). The helpers below read it through ``vixl.house_style``.
 # Countries whose locales use US Letter paper; everywhere else uses A4.
 LETTER_COUNTRIES = frozenset({"US", "CA", "MX", "PH", "CL", "CO", "VE", "PR", "GT", "CR", "PA", "DO", "SV", "NI", "BO"})
 

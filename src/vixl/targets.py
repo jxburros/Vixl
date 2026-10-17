@@ -10,7 +10,7 @@ depends on the operation, and the schema says which (``x-targets`` on each varia
 - ``one``: the operation takes a single layer (``rename``, ``select-layer`` ...); ``targets`` with
   one entry is read as ``target``, and a longer list is an error that says so.
 
-The docs table in docs/operations.md is generated from the schema by ``markdown_table``.
+The docs table in docs/reference/operations.md is generated from the schema by ``markdown_table``.
 """
 
 from .errors import VixlError, require

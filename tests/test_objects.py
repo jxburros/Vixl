@@ -158,7 +158,7 @@ def test_object_takes_targets_and_is_classified_each():
     assert p.layer("neck")["object_part"]["name"] == "body"
     from pathlib import Path
 
-    docs = (Path(__file__).resolve().parent.parent / "docs" / "operations.md").read_text(encoding="utf-8")
+    docs = (Path(__file__).resolve().parent.parent / "docs" / "reference" / "operations.md").read_text(encoding="utf-8")
     assert markdown_table() in docs
 
 

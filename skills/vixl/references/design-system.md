@@ -63,8 +63,8 @@ indexes or colors; `layout-apply colors: {…}`). `palette-generate` only adds n
 
 `look` applies a named finish in one operation (clean-flat, subtle-grain, light-paper, glow, neon, soft-shadow, hard-shadow, outline, gradient, soft-halo, grain,
 paper, film, duotone, risograph, sketch, watercolor, halftone, hand-made, plush); `radial-repeat` makes rosettes and mandalas;
-`vixl_reference('styles')` serves 28 design styles with premade checks. See [looks](../../../docs/looks.md) and
-[styles](../../../docs/styles.md).
+`vixl_reference('styles')` serves 28 design styles with premade checks. See [looks](../../../docs/guides/finishing/looks.md) and
+[styles](../../../docs/guides/layout/styles.md).
 
 ## Color language
 

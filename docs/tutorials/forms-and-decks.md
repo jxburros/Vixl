@@ -1,6 +1,6 @@
 # Create forms and presentations
 
-[Documentation home](../README.md) · [Field reference](../forms.md) · [Page reference](../slides.md)
+[Documentation home](../README.md) · [Field reference](../guides/output/forms.md) · [Page reference](../guides/output/slides.md)
 
 ## Make a registration form
 
@@ -53,7 +53,7 @@ vixl -p registration.vixl form fill --data attendees.csv --combine attendees.pdf
 
 Preflight validates rows before publication. Check long names, non-Latin text and the
 target viewer. Interactive entry uses PDF's Helvetica entry font; flattened fills use
-the field's font. [Forms](../forms.md) covers overflow, dates, radio groups, signatures,
+the field's font. [Forms](../guides/output/forms.md) covers overflow, dates, radio groups, signatures,
 privacy behavior and the workflow contract. A signature field is a signing location;
 Vixl does not perform certificate-based signing.
 
@@ -76,7 +76,7 @@ requirements such as minimum text size, and runs the default design checks, comp
 included: on this documentation example it reports one `composition` review, a `dead_band` below
 the cover panel, and no text-size findings. The explanatory captions may still need enlargement
 for a distant screen. Inspect findings before using it as a real
-presentation. [Slides](../slides.md#deck-checks) explains each rule and exemptions.
+presentation. [Slides](../guides/output/slides.md#deck-checks) explains each rule and exemptions.
 
 Try the [PowerPoint](../assets/generated/slides.pptx) and [PDF](../assets/generated/slides.pdf).
 Ordinary chart bars and labels remain editable in PowerPoint. Supported PDF text is
