@@ -1,5 +1,6 @@
 """Balanced and runt-free wrapping, tab stops with leaders, table leaders and layout accent words (craft plan 4a–4c)."""
 
+import io
 import re
 import zipfile
 
@@ -166,6 +167,15 @@ def test_tab_stops_in_pptx(tmp_path):
     assert xml.count('algn="dec"') == 3 and "<a:tabLst>" in xml
     texts = re.findall(r"<a:t>([^<]*)</a:t>", xml)
     assert texts[0].startswith("Latte ....") and texts[0].endswith("\t4.50")
+
+
+def test_tab_row_extracts_as_text_from_pdf():
+    pypdf = pytest.importorskip("pypdf")
+    p = menu([{"at": 300, "align": "decimal", "leader": "."}])
+    reader = pypdf.PdfReader(io.BytesIO(p.export(format="PDF")))
+    lines = reader.pages[0].extract_text().splitlines()
+    assert re.fullmatch(r"Latte \.+ 4\.50", lines[0])
+    assert re.fullmatch(r"Flat white \.+ 12\.25", lines[1])
 
 
 def test_tab_stop_validation_and_removal():

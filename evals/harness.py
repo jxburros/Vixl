@@ -431,6 +431,7 @@ def run_task(task, agent, keep=None):
             "round_trips": outcome["round_trips"],
             "tool_calls": tools.calls,
             "tool_errors": tools.errors,
+            "retries": retries(outcome.get("trace", [])),
             "tool_result_tokens_estimate": tools.result_chars // 4,
             "usage": outcome.get("usage", {}),
             "seconds": round(time.monotonic() - started, 2),
@@ -439,6 +440,12 @@ def run_task(task, agent, keep=None):
             "final": outcome.get("final"),
             "trace": outcome.get("trace", []),
         }
+
+
+def retries(trace):
+    """Calls that repeat the previous call's tool right after it returned an error: the agent retrying a
+    rejected request (#524 measures whether diagnostics let it fix the request in one go)."""
+    return sum(1 for before, after in zip(trace, trace[1:]) if before.get("error") and after.get("tool") == before.get("tool"))
 
 
 def over_budget(results, budgets):
@@ -458,6 +465,7 @@ def summarize(results):
         "mean_tool_calls": round(sum(r["tool_calls"] for r in results) / count, 2),
         "max_tool_calls": max((r["tool_calls"] for r in results), default=0),
         "tool_error_rate": round(sum(r["tool_errors"] for r in results) / max(1, sum(r["tool_calls"] for r in results)), 3),
+        "mean_retries": round(sum(r.get("retries", 0) for r in results) / count, 2),
         "mean_tool_result_tokens": round(sum(r["tool_result_tokens_estimate"] for r in results) / count),
         **{f"total_{key}": value for key, value in total.items()},
     }
@@ -469,7 +477,7 @@ def markdown(results, summary, meta):
         "",
         f"Success **{summary['passed']}/{summary['tasks']}** ({summary['success_rate']:.0%}) · "
         f"round trips {summary['mean_round_trips']} · tool calls {summary['mean_tool_calls']} · "
-        f"tool error rate {summary['tool_error_rate']:.1%} · tool result tokens ≈{summary['mean_tool_result_tokens']}/task",
+        f"tool error rate {summary['tool_error_rate']:.1%} · retries {summary['mean_retries']} · tool result tokens ≈{summary['mean_tool_result_tokens']}/task",
         "",
         "| Task | Result | Round trips | Tool calls | Tool errors | Input tok | Output tok | Failed checks |",
         "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",

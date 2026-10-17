@@ -11,6 +11,7 @@ first of several candidates (#518). Campaign ``repair_actions`` run through ``ca
 | ``contrast.text-contrast``, suite ``contrast`` | text colour moved toward the role ink (``@ink``, else black or white) |
 | ``safe_area.outside``, ``bounds.cut-off`` (text) | a relative ``move`` back inside the safe area or canvas |
 | ``blanks.unfilled`` | held for review: the copy is never guessed |
+| ``overlap.text-text``, ``overlap.text-object``, suite ``spacing`` | none mechanical: points at the ``repair-layout`` workflow |
 """
 
 import math
@@ -22,6 +23,8 @@ SUGGEST_LIMIT = 10  # Fix findings a check annotates with a repair; the rest say
 MAX_REPAIRS = 10
 INK_STEPS = (0.25, 0.5, 0.75, 1.0)
 FIT_TEXT_MINIMUM = 12  # fit-text's own default smallest size.
+# Rules with no single mechanical fix that the repair-layout workflow searches candidates for.
+LAYOUT_RULES = ("overlap.text-text", "overlap.text-object", "suite.spacing")
 
 
 def kind_for(rule):
@@ -203,6 +206,21 @@ def _nudge(project, finding, layer):
                       f"{'safe area' if finding.get('safe_area') else 'canvas'}, keeping its anchor"}
 
 
+def _layout_workflow(finding):
+    from .plugins import workflow_actions
+
+    reason = "no mechanical repair for this rule"
+    if "repair-layout" not in workflow_actions():
+        return unavailable(f"{reason}; see the message for the next step")
+    request = {"checks": [finding.get("check") or finding["rule"].split(".")[0]], "dry_run": True}
+    if finding.get("suite"):
+        request = {"suites": [finding["suite"]], "dry_run": True}
+    return {"kind": "workflow", "available": False, "operations": [],
+            "workflow": {"name": "repair-layout", "request": request},
+            "reason": f"{reason}; vixl_apply(workflow='repair-layout') tries ranked moves and resizes (a dry run "
+                      "plans without saving)"}
+
+
 def suggest(project, finding):
     """The built-in repair for one finding: ``{kind, available, operations, reason}``. The operations are
     canonical and validate against the operation schema; nothing is applied."""
@@ -210,6 +228,8 @@ def suggest(project, finding):
 
     rule = finding.get("rule") or finding.get("check", "")
     kind = kind_for(rule)
+    if kind is None and rule in LAYOUT_RULES:
+        return _layout_workflow(finding)
     if kind is None:
         return unavailable("no mechanical repair for this rule; see the message for the next step")
     if kind == "hold":
