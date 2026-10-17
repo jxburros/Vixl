@@ -40,6 +40,11 @@ SVG_NS = "http://www.w3.org/2000/svg"
 XLINK = "{http://www.w3.org/1999/xlink}href"
 XML_NS = "{http://www.w3.org/XML/1998/namespace}"
 MAX_ELEMENTS = 20000
+# Untrusted SVG work caps. ``<use>`` re-walks its target for every reference, so a small file can fan out
+# exponentially; the walk is charged as it goes (up to ``EXPANSION`` times the operation budget). Each raster fallback
+# renders the whole canvas, so ``auto`` mode draws at most ``MAX_RASTERIZED`` elements as images.
+EXPANSION = 4
+MAX_RASTERIZED = 64
 
 # ---------------------------------------------------------------------------------------------------------------
 # Vixl's own SVG: the embedded document
@@ -530,6 +535,9 @@ class Converter:
     def __init__(self, data, project, name, *, fallback=False):
         self.project, self.name, self.fallback = project, name, fallback
         self.operations, self.warnings, self.rasterized = [], [], []
+        self.budget, self.expanded, self.rasters = project.limits.max_operations, 0, 0
+        self._definitions = None  # the SVG's defs and stylesheets, copied once for every raster fallback
+        self._sizes = {}  # element -> elements it expands to, <use> references included
         self.used = {layer["name"] for layer in project.state["layers"]} | {layer["id"] for layer in
                                                                              project.state["layers"]}
         self.anchored = []  # text operations whose x depends on their measured width (text-anchor, rotation)
@@ -639,6 +647,7 @@ class Converter:
         if foreign(node.tag) or not isinstance(node.tag, str) or tag in DEFINITIONS:
             return []
         require(depth <= 64, "SVG structure exceeds limits", "resource_limit")
+        self.charge(1)
         before, anchored = len(self.operations), len(self.anchored)
         try:
             return self._walk(node, tag, matrix, inherited, depth, clips, use_depth)
@@ -648,6 +657,35 @@ class Converter:
             del self.operations[before:]
             del self.anchored[anchored:]
             return self.rasterize(node, matrix, inherited, str(exc))
+
+    def charge(self, count, ahead=0):
+        """Count elements walked (``<use>`` expansion included) and fail as soon as the import outgrows its budget,
+        or would with ``ahead`` more. ``resource_limit`` is never caught by the raster fallback."""
+        self.expanded += count
+        limit = EXPANSION * self.budget
+        if self.expanded + ahead > limit or len(self.operations) > self.budget:
+            raise VixlError("resource_limit", f"SVG expands to more than {limit} elements or {self.budget} layers; "
+                            "flatten its <use> references or import with svg_mode='appearance'", field="svg")
+
+    def expansion(self, node, depth=0, active=frozenset()):
+        """How many elements walking ``node`` visits, ``<use>`` targets expanded. Memoized and capped just past the
+        budget, so it costs at most one pass over the tree; a reference cycle is left to the walk, which refuses it."""
+        if node in self._sizes:
+            return self._sizes[node]
+        limit = EXPANSION * self.budget + 1
+        total = 1
+        if depth <= 64:
+            if local(node.tag) == "use":
+                href = (node.get("href") or node.get(XLINK) or "").strip()
+                target = self.ids.get(href[1:]) if href.startswith("#") else None
+                if target is not None and target not in active:
+                    total += self.expansion(target, depth + 1, active | {target})
+            for child in node:
+                if total > limit:
+                    break
+                total += self.expansion(child, depth + 1, active)
+        self._sizes[node] = total = min(total, limit)
+        return total
 
     def _walk(self, node, tag, matrix, inherited, depth, clips, use_depth):
         if tag not in GEOMETRY:
@@ -775,6 +813,7 @@ class Converter:
                                "height", "preserveAspectRatio", "overflow", "class", "style", "id")})
             proxy.extend(list(target))
             target = proxy
+        self.charge(0, ahead=self.expansion(target))
         names = self.walk(target, matrix, props, depth + 1, clips, use_depth + 1)
         return self.group(node, names, opacity, depth)
 
@@ -1285,14 +1324,20 @@ class Converter:
         from .assets import add_image
         from .imports import render_svg, sanitize_svg
 
+        self.rasters += 1
+        if self.rasters > MAX_RASTERIZED:
+            raise VixlError("resource_limit", f"SVG has more than {MAX_RASTERIZED} elements Vixl cannot edit; import "
+                            "it with svg_mode='appearance' (one image layer)", field="svg", limit=MAX_RASTERIZED)
         width, height = self.size
         root = ET.Element(f"{{{SVG_NS}}}svg", {"width": str(width), "height": str(height),
                                                "viewBox": f"0 0 {width} {height}"})
-        definitions = ET.SubElement(root, f"{{{SVG_NS}}}defs")
-        for element in self.root.iter():
-            if local(element.tag) in ("style",) or (element.get("id") and local(element.tag) in DEFINITIONS
-                                                    and local(element.tag) not in ("title", "desc", "metadata")):
-                definitions.append(deepcopy(element))
+        if self._definitions is None:
+            self._definitions = ET.Element(f"{{{SVG_NS}}}defs")
+            for element in self.root.iter():
+                if local(element.tag) in ("style",) or (element.get("id") and local(element.tag) in DEFINITIONS
+                                                        and local(element.tag) not in ("title", "desc", "metadata")):
+                    self._definitions.append(deepcopy(element))
+        root.append(self._definitions)
         a, b, c, d, e, f = matrix
         wrapper = ET.SubElement(root, f"{{{SVG_NS}}}g", {
             "transform": f"matrix({a:.12g} {b:.12g} {c:.12g} {d:.12g} {e:.12g} {f:.12g})",

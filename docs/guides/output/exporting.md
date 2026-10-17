@@ -243,6 +243,12 @@ becomes an image layer. `<use>` and `<symbol>` are expanded, and `<style>` rules
 apply. Filters, masks, clip paths, patterns, markers, skewed text and external references are not editable: `auto`
 draws each such element as an image layer. External resources are never fetched.
 
+Untrusted SVG is charged while it is read, so a small file cannot run for minutes. An import that would walk more
+than four times the batch limit of elements (40,000 by default, `<use>` copies counted where they expand) or make
+more than one batch of layers fails at once with `resource_limit`, before the work is done. `auto` draws at most 64
+elements as image layers; an SVG with more fails with `resource_limit`: import it with `svg_mode: "appearance"`
+instead, which draws the whole file as one image.
+
 **PDF.** A page's text objects become live text layers with their text, size, colour, position and rotation;
 consecutive lines of one style that share a left edge, centre or right edge become one multi-line layer, and a text
 outline pass becomes the layer's `stroke_color` and `stroke_width`. Fonts are matched by family name as for SVG

@@ -153,8 +153,13 @@ that do not run JavaScript show the fields without enforcement, so Vixl still va
 A `pattern` matches the whole value and means the same to Python and to a viewer's JavaScript
 (`\d` and `\w` are ASCII in both). Up to 200 characters; classes, groups, alternation, `{n,m}`
 counts up to 1,000, `^` and `$`. Not allowed: flags, named groups, look-around, back-references,
-possessive or atomic syntax, `\A`/`\Z`, and an unbounded repeat of something that repeats, such
-as `(a+)+` (it can freeze a viewer). Worst-case samples need not match the pattern.
+possessive or atomic syntax, `\A`/`\Z`, and an unbounded repeat (`+`, `*`, `{n,}`) of anything
+ambiguous, because it can freeze a viewer: a part that repeats or is optional, such as `(a+)+` or
+`(a?a?)+`; a body that can match nothing; or alternatives that can start with the same character,
+such as `(a|aa)+`, `(.|a)+` or `(x|xy)+`. `(?:ab|cd)+` is fine: each alternative starts
+differently. Vixl matches a pattern against at most 1,024 characters; a longer value is refused
+(`too_long`), so keep `max_length` at 1,024 or less on a field with a pattern. Worst-case samples
+need not match the pattern.
 
 ```json
 {"type": "field", "name": "part", "kind": "text", "label": "Part number", "pattern": "[A-Z]{2}-[0-9]{4}",
