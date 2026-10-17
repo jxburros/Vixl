@@ -6,6 +6,7 @@ plus the metadata the canvas keeps (dpi, bleed and safe insets) for guides, chec
 print export.
 """
 
+import math
 from difflib import get_close_matches
 
 from .errors import VixlError, require
@@ -62,6 +63,18 @@ def safe_sides(canvas):
     """The canvas safe area as (left, top, right, bottom) pixel insets from the trim edge."""
     safe = canvas.get("safe", 0)
     return tuple(safe.get(side, 0) for side in SIDES) if isinstance(safe, dict) else (safe,) * 4
+
+
+# How far (px) a layer may sit outside the whole-pixel live area: documents made before the safe guides were rounded
+# have them on half pixels (bleed + safe inset, e.g. 37.5 + 56 = 93.5).
+LIVE_TOLERANCE = 0.5
+
+
+def live_insets(canvas):
+    """The live (safe) area as whole-pixel (left, top, right, bottom) insets from the canvas edge: bleed plus the
+    safe inset, rounded inward. A half-pixel bleed (37.5 px) would otherwise put the safe guides on half pixels."""
+    bleed = canvas.get("bleed", 0)
+    return tuple(math.ceil(round(bleed + side, 6)) for side in safe_sides(canvas))
 
 
 SIZES = {
@@ -391,7 +404,8 @@ def size_guides(info):
             guides[name] = {"axis": axis, "position": position, "generated": "size"}
     if safe:
         sides = safe_sides({"safe": safe})
-        left, top, right, bottom = (bleed + v for v in sides)
+        # Trim guides stay exact (they are the physical page); safe guides round inward to whole pixels.
+        left, top, right, bottom = live_insets({"bleed": bleed, "safe": safe})
         if left + right < w and top + bottom < h:
             for (name, axis, position), side in zip((
                 ("safe-left", "x", left),

@@ -104,6 +104,14 @@ def _intersects(a, b):
     return a[0] < b[0] + b[2] and b[0] < a[0] + a[2] and a[1] < b[1] + b[3] and b[1] < a[1] + a[3]
 
 
+def _tolerant(box, amount):
+    """``box`` grown by ``amount`` on every side, then out to whole pixels, the grid layer bounds are measured on:
+    with the 0.5 px live-area tolerance, a layer on an old half-pixel guide (93.5, measured from 93) still fits."""
+    x, y, w, h = box
+    left, top = math.floor(x - amount + 1e-6), math.floor(y - amount + 1e-6)
+    return left, top, math.ceil(x + w + amount - 1e-6) - left, math.ceil(y + h + amount - 1e-6) - top
+
+
 def _contains(outer, inner):
     return (
         outer[0] <= inner[0]
@@ -900,17 +908,19 @@ def check_design(
                 )
 
     # Without an explicit safe_area the canvas's own (size-preset) safe area applies, from the trim edge.
-    from .sizes import safe_sides
+    from .sizes import LIVE_TOLERANCE, live_insets, safe_sides
 
-    canvas_safe = tuple(c.get("bleed", 0) + v for v in safe_sides(c)) if any(safe_sides(c)) else None
+    canvas_safe = live_insets(c) if any(safe_sides(c)) else None
     if "safe_area" in checks and (safe_area is not None or canvas_safe or avoid):
         if safe_area is not None or canvas_safe:
             left, top, right, bottom = _insets(safe_area, width, height) if safe_area is not None else canvas_safe
             safe = (left, top, width - left - right, height - top - bottom)
+            # The canvas's own safe area allows the live-area tolerance; an explicit safe_area is exact.
+            within = _tolerant(safe, LIVE_TOLERANCE) if safe_area is None else safe
             drawn = member_geometry(resolved, geometry)
             for item in content:
                 box = outward(drawn[item["id"]])
-                if not _contains(safe, box):
+                if not _contains(within, box):
                     x, y, w, h = drawn[item["id"]]
                     # Artwork running off the canvas is bleed, not a safe-area mistake.
                     crop = intentional_crop(item) or (
@@ -1397,15 +1407,15 @@ def _print_checks(candidate, c, resolved, local_bounds, bounds, layers, content,
         points = resolved[item["id"]].get("size", 0) * text_scales[item["id"]] * 72 / dpi
         if points < 6:
             issue("print", "warning", f"{item['name']!r} is {points:.1f} pt; most print needs 6 pt or more", [item], points=round(points, 2))
-    from .sizes import safe_sides
+    from .sizes import LIVE_TOLERANCE, live_insets, safe_sides
 
     bleed, sides = c.get("bleed", 0), safe_sides(c)
     if any(sides) or bleed:
-        left, top, right, bottom = (bleed + v for v in sides)
+        left, top, right, bottom = live_insets(c)
         live = (left, top, width - left - right, height - top - bottom)
         inset = f"{left}px" if len({left, top, right, bottom}) == 1 else f"{left}/{top}/{right}/{bottom}px left/top/right/bottom"
         for item in texts:
-            if not _contains(live, bounds[item["id"]]):
+            if not _contains(_tolerant(live, LIVE_TOLERANCE), bounds[item["id"]]):
                 issue("print", "error", f"{item['name']!r} is outside the live area ({inset} from the edge) and may be trimmed", [item], live_area=list(live))
     if bleed:
         for item in layers:

@@ -43,12 +43,15 @@ def transform(value):
     return result
 
 
-def svg_operations(data, project, name):
+def svg_operations(data, project, name, *, namespace=True):
     """Operations that rebuild an SVG's elements as editable layers (see ``svg_import``); unsupported elements
-    fail with ``unsupported_svg``."""
+    fail with ``unsupported_svg``. Every layer name starts with ``name``: the SVG's own labels become
+    ``"<name> <label>"`` and unlabelled elements ``"<name>-<kind>"``, so the result can be concatenated with another
+    call's (made with a different ``name``) and applied in one batch. ``namespace=False`` keeps the SVG's labels
+    as they are."""
     from .svg_import import svg_operations as convert
 
-    return convert(data, project, name)
+    return convert(data, project, name, namespace=namespace)
 
 
 def _gradient_rect(attrs, props, matrix, gradients, name, opacity):
