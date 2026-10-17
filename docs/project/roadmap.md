@@ -11,6 +11,9 @@ addition that costs little while that code is open.
 
 The order is a recommendation. Re-rate an issue when it is picked up; move it when its cost or value changes.
 
+The [implementation plan](implementation-plan.md) covers every issue open on 2026-10-16, with its status, cause, steps,
+tests and ratings, and a release order across all of them.
+
 ## What 0.22.1 settled
 
 0.22.1 fixed the highest-payoff QA findings: export parity (#279, #305, #309, #318, #330), renderability after apply

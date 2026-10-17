@@ -46,7 +46,8 @@ Each design-check finding carries:
 - `measured`: `{actual, expected, unit}` where the rule has a measurement.
 - `repair` on `fix` findings: `{kind, available, operations, reason}`. The operations are canonical, validate
   against the operation schema and can be dry-run (`vixl_apply(..., dry_run=true)`). Nothing is
-  applied. `available: false` explains the next step instead.
+  applied. `available: false` explains the next step instead; a finding that only a layout search can fix
+  carries `kind: "workflow"` and `workflow: {name, request}`, a dry-run `vixl_apply(workflow=...)` call.
 
 | Rule | Measured | Suggested repair |
 | --- | --- | --- |
@@ -57,7 +58,7 @@ Each design-check finding carries:
 | `contrast.unmeasurable` | | none: move the text onto the canvas, then recheck |
 | `safe_area.outside` | layer box vs safe area | `move` back inside the safe area |
 | `safe_area.reserved-zone` | | none |
-| `overlap.text-text`, `overlap.text-object` | overlapping pixels | none mechanical; `repair-layout` tries moves |
+| `overlap.text-text`, `overlap.text-object` | overlapping pixels | none mechanical; points at a dry-run `repair-layout`, which tries moves |
 | `overlap.decoration-text` (review) | decoration pixels inside the text's glyph area | none: move the decoration, or `layer-intent allow_overlap` |
 | `blanks.unfilled` | | held for review: copy is never guessed |
 

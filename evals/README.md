@@ -31,6 +31,7 @@ per task, runs an agent, grades the workspace, and records:
 | success | every check passed |
 | round trips | model calls (one per assistant turn) |
 | tool calls / tool errors | MCP calls made, and how many returned an error |
+| retries | calls that repeat the previous call's tool right after it returned an error |
 | tool result tokens | approximate size of what the tools sent back (chars ÷ 4) |
 | input / output tokens | from the API's usage, including cache reads |
 
