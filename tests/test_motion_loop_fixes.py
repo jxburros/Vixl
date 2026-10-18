@@ -225,8 +225,15 @@ def test_webp_loop_count_matches_gif_and_apng(tmp_path):
     p.apply({'type': 'animate', 'target': 'b', 'property': 'translate-x', 'from': 0, 'to': 40})
     for name in ('l.gif', 'l.png', 'l.webp'):
         export_timeline(p, tmp_path / name)
-    assert plays(tmp_path / 'l.gif') == 2  # NETSCAPE: repetitions after the first play
-    assert plays(tmp_path / 'l.png') == 3 and plays(tmp_path / 'l.webp') == 3  # total plays
+    # A timeline's loop counts plays: 2 plays twice in every format.
+    assert plays(tmp_path / 'l.gif') == 1  # NETSCAPE: repetitions after the first play
+    assert plays(tmp_path / 'l.png') == 2 and plays(tmp_path / 'l.webp') == 2  # total plays
+    p.apply({'type': 'timeline-set', 'loop': 1})
+    for name in ('once.gif', 'once.png', 'once.webp'):
+        export_timeline(p, tmp_path / name)
+    assert plays(tmp_path / 'once.gif') is None  # no NETSCAPE block: a GIF plays once
+    assert plays(tmp_path / 'once.png') == 1 and plays(tmp_path / 'once.webp') == 1
+    p.apply({'type': 'timeline-set', 'loop': 2})
     p.apply({'type': 'move', 'target': 'b', 'x': 0})
     p.apply({'type': 'frame-save', 'name': 'a'})
     p.apply({'type': 'move', 'target': 'b', 'x': 20})

@@ -203,3 +203,28 @@ def test_pptx_outlines_follow_the_same_inset(tmp_path):
     assert 'fmla="val 21429"' in pptx_frame(tmp_path, build("rounded-rectangle"), "radius")[1]
     for align, frame in (("center", (50, 50, 100, 80)), ("outside", (45, 45, 110, 90))):
         assert pptx_frame(tmp_path, build("rectangle", stroke_align=align), align)[0] == frame, align
+
+
+@pytest.mark.parametrize("join", ["miter", "round", "bevel"])
+def test_curved_stroke_outlines_do_not_fold_back(join):
+    # Both edges of a stroke round a flattened circle stay parallel to it: one point per vertex, every point half
+    # a stroke from the centre line. Folded-back points doubled the outline and padded the arc length that
+    # dashes are fitted to.
+    import math
+
+    from vixl.geometry import path_polygons
+    from vixl.shape_catalog import ellipse
+    from vixl.vector_strokes import stroke_outline
+
+    circle = path_polygons(ellipse(0, 0, 40, 40))[0]
+    outline = stroke_outline(circle, 4, closed=True, join=join)
+    contours = [[tuple(map(float, point.split())) for point in re.findall(r"[-\d.e]+ [-\d.e]+", part)]
+                for part in outline.split("Z") if part.strip()]
+    assert len(contours) == 2
+    for contour in contours:
+        radius = 22 if math.dist(contour[0], (20, 20)) > 20 else 18
+        assert len(contour) <= len(circle)
+        assert all(abs(math.dist(point, (20, 20)) - radius) < 0.02 for point in contour)
+        turns = [math.atan2(b[1] - 20, b[0] - 20) - math.atan2(a[1] - 20, a[0] - 20) for a, b in zip(contour, contour[1:])]
+        steps = [(turn + math.pi) % math.tau - math.pi for turn in turns]
+        assert all(step >= -1e-9 for step in steps) or all(step <= 1e-9 for step in steps)

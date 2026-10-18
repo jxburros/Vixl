@@ -156,6 +156,10 @@ def unit(a, b):
     return ((b[0] - a[0]) / d, (b[1] - a[1]) / d) if d > 1e-12 else (1, 0)
 
 
+# How far (px) a round join may bulge past its mitre point and still be drawn as the mitre point.
+FLAT = 0.01
+
+
 def _parallel(points, distances, closed, join, miter_limit):
     out = []
     for i, p in enumerate(points):
@@ -172,9 +176,14 @@ def _parallel(points, distances, closed, join, miter_limit):
         intersection = (a[0] + before[0] * t, a[1] + before[1] * t)
         outer = turn * d < 0
         reach = math.dist(p, intersection)
-        inner_limit = max(abs(d), min(math.dist(points[i - 1], p),
-                                     math.dist(p, points[(i + 1) % len(points)])))
-        if (not outer and reach <= inner_limit) or (outer and join == "miter" and reach <= abs(d) * miter_limit):
+        shorter = min(math.dist(points[i - 1], p), math.dist(p, points[(i + 1) % len(points)]))
+        inner_limit = max(abs(d), shorter)
+        # On a flattened curve every vertex turns a little: inside, the offset edges meet within the
+        # neighbouring segments (|t| is how far along them); outside, a round join bulges past the mitre
+        # point by less than ``FLAT`` px. Either way one point is exact, where two would fold back.
+        gentle = abs(t) <= shorter or (outer and join == "round" and reach - abs(d) <= FLAT)
+        if (not outer and (reach <= inner_limit or gentle)) or (outer and (gentle or join == "miter"
+                                                                            and reach <= abs(d) * miter_limit)):
             out.append(intersection)
         elif outer and join == "round" and abs(d) > 1e-12:
             start, end = math.atan2(a[1] - p[1], a[0] - p[0]), math.atan2(b[1] - p[1], b[0] - p[0])
@@ -207,8 +216,10 @@ def stroke_outline(
 ):
     from .shape_catalog import poly
 
-    points = [p for i, p in enumerate(points) if i == 0 or p != points[i - 1]]
-    if closed and len(points) > 1 and points[0] == points[-1]:
+    # Flattened curves can end a hair's breadth from where the next begins (or the contour closes):
+    # such a sliver has no direction, and its offset would kink the outline.
+    points = [p for i, p in enumerate(points) if i == 0 or math.dist(p, points[i - 1]) > 1e-9]
+    if closed and len(points) > 1 and math.dist(points[0], points[-1]) <= 1e-9:
         points = points[:-1]
     if len(points) < 2 or width <= 0:
         return ""

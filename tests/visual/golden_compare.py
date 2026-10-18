@@ -8,6 +8,7 @@ actual output (and, for images, a diff) is written to ``tests/visual/_failures``
 import difflib
 import io
 import os
+import re
 from pathlib import Path
 
 import numpy as np
@@ -22,6 +23,17 @@ FAILURES = Path(os.environ.get("VIXL_VISUAL_FAILURES") or HERE / "_failures")
 PIXEL_THRESHOLD = 3
 MAX_PERCENT = 0.05
 MAX_DIFF = 48
+SVG_PATH = re.compile(r'(<path\b[^>]*\bd=")([^"]*)(")')
+SVG_NUMBER = re.compile(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?")
+
+
+def _canonical_svg_paths(text):
+    return SVG_PATH.sub(
+        lambda match: match.group(1)
+        + SVG_NUMBER.sub(lambda number: f"{float(number.group()):.6g}", match.group(2))
+        + match.group(3),
+        text,
+    )
 
 
 def updating():
@@ -97,7 +109,10 @@ def check_text(name, text, suffix):
         return
     assert path.exists(), f"No reference {path}. Generate it with VIXL_UPDATE_GOLDEN=1 pytest tests/visual"
     expected = path.read_text(encoding="utf-8")
-    if expected != text:
+    compared_expected, compared_text = expected, text
+    if name.endswith(".svg"):
+        compared_expected, compared_text = _canonical_svg_paths(expected), _canonical_svg_paths(text)
+    if compared_expected != compared_text:
         actual_path = _fail_path(f"{name}.actual.{suffix}")
         actual_path.write_text(text, encoding="utf-8", newline="\n")
         lines = list(difflib.unified_diff(expected.splitlines(), text.splitlines(), "reference", "actual", lineterm="", n=1))

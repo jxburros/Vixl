@@ -9,10 +9,16 @@ import io
 import pytest
 from PIL import Image
 
-from golden_compare import check_png, check_text, pdf_to_image, pptx_snapshot
+from golden_compare import _canonical_svg_paths, check_png, check_text, pdf_to_image, pptx_snapshot
 from visual_fixtures import FIXTURES, PDF_FIXTURES, PPTX_FIXTURES, SVG_FIXTURES
 
 pytestmark = pytest.mark.visual
+
+
+def test_svg_path_snapshot_ignores_final_digit_float_drift():
+    expected = '<path d="M92.57538 4"/>'
+    actual = '<path d="M92.57537 4"/>'
+    assert _canonical_svg_paths(expected) == _canonical_svg_paths(actual)
 
 
 @pytest.mark.parametrize("name", sorted(FIXTURES))
