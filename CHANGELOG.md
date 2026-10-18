@@ -118,6 +118,15 @@
 
 ### Fixed and added
 
+- **A timeline with `loop: 1` plays once.** GIF, WebP and APNG timeline exports played it twice: the encoders
+  read `loop` as repetitions after the first play while the timeline, its checks and the docs count plays. A
+  timeline's `loop` is now the number of plays in every format (GIF writes no NETSCAPE block for one play, and
+  `loop: 2` writes one repetition). Pixel `animation-set` loops still count repetitions.
+- **Curved strokes are outlined without folding back.** On a flattened curve the inner edge of a stroke (and the
+  outer edge of a round join) added two points per vertex that doubled back on each other, so SVG and PDF
+  outlines of stroked circles, rounded corners and arcs were about twice as large as needed and dashes were
+  fitted to a padded length (a dotted ring could get a few dots too many). A sliver segment where a flattened
+  curve closes no longer kinks the outline at the seam.
 - **Breaking (Python API): `Project.apply(check=…)` now runs the design check, as `vixl_apply(check=true)` does.**
   `check=True`, a check name or a list attaches the findings as `result["check"]` with an `outcome`. The
   per-operation validator function that `check` used to take is now `validator=`, on `Project.act` and the

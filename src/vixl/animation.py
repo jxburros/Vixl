@@ -294,7 +294,7 @@ def gif_bytes(images, duration, loop, colors=256, dither="none"):
         save_all=True,
         append_images=frames[1:],
         duration=duration,
-        loop=loop,
+        **({} if loop is None else {"loop": loop}),  # without a NETSCAPE block a GIF plays once
         disposal=1 if opaque else 2,
         transparency=0,
         optimize=opaque,
@@ -303,9 +303,9 @@ def gif_bytes(images, duration, loop, colors=256, dither="none"):
 
 
 def webp_plays(loop):
-    """The WebP ANIM loop count for a Vixl ``loop`` (additional repetitions, 0 = forever): WebP counts
-    total plays, as APNG does, while GIF's NETSCAPE count is the repetitions."""
-    return loop + 1 if loop else 0
+    """The WebP ANIM loop count for a Vixl ``loop`` (additional repetitions, 0 = forever, None = play
+    once): WebP counts total plays, as APNG does, while GIF's NETSCAPE count is the repetitions."""
+    return 1 if loop is None else loop + 1 if loop else 0
 
 
 def save_webp(images, durations, loop, **options):

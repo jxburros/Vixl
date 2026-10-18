@@ -1658,14 +1658,18 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     else:
         images = list(frames)
 
+        # A timeline's loop counts plays (1 plays once, 0 forever); the encoders take repetitions after
+        # the first play, None for none.
+        repeats = None if loop == 1 else loop - 1 if loop else 0
+
         def encode(frames, durations, tone):
             buffer = io.BytesIO()
             if format == "gif":
-                buffer.write(gif_bytes(frames, durations, loop, tone, dither))
+                buffer.write(gif_bytes(frames, durations, repeats, tone, dither))
             elif format == "apng":
-                frames[0].save(buffer, format="PNG", save_all=True, append_images=frames[1:], duration=durations, loop=loop + 1 if loop else 0, disposal=0, blend=0)
+                frames[0].save(buffer, format="PNG", save_all=True, append_images=frames[1:], duration=durations, loop=loop, disposal=0, blend=0)
             else:
-                buffer.write(save_webp(frames, durations, loop, quality=tone, method=4))
+                buffer.write(save_webp(frames, durations, repeats, quality=tone, method=4))
             return buffer.getvalue()
 
         tone = colors if format == "gif" else quality if format == "webp" else None
@@ -1676,7 +1680,7 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
             colors = chosen.get("colors", colors)
             fps, w, h = chosen["fps"], images[0].width, images[0].height
             if not chosen["fits"]:
-                instead = (f"; or {alternatives(chosen['bytes'], lambda: webp_trial(images, durations, loop))}"
+                instead = (f"; or {alternatives(chosen['bytes'], lambda: webp_trial(images, durations, repeats))}"
                            if format == "gif" else "")
                 warnings.append(f"target_bytes {target_bytes:,} not reached after {chosen['tries']} tries; wrote the smallest "
                                 f"({chosen['bytes']:,} bytes). Shorten the range or crop the canvas{instead}.")
@@ -1704,7 +1708,7 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
         count = rendered
     used_dither = ("ordered" if gradients else "none") if dither == "auto" else dither
     warnings += size_warnings(format, data, max_bytes, gradients,
-                              webp=lambda: webp_trial(images, trial_durations, loop) if format == "gif" else None,
+                              webp=lambda: webp_trial(images, trial_durations, repeats) if format == "gif" else None,
                               dither=used_dither, budget=target_bytes)
     return {
         "output": str(path),
@@ -1808,7 +1812,7 @@ def schemas(add):
     until = {**time, "description": "Repeat whole cycles until this time instead of a count."}
     period = {"type": "number", "minimum": 10, "description": "With repeat/until: ms from one cycle's start to the next (default the cycle length; larger leaves a gap)."}
     stagger = {"type": "number", "minimum": 0, "description": "With targets: each target starts this many ms after the previous one."}
-    add("timeline-set", {"duration": time, "fps": {"type": "number", "minimum": 1, "maximum": 60}, "loop": {"type": "integer", "minimum": 0, "maximum": 65535}, "clear": B,
+    add("timeline-set", {"duration": time, "fps": {"type": "number", "minimum": 1, "maximum": 60}, "loop": {"type": "integer", "minimum": 0, "maximum": 65535, "description": "How many times GIF, WebP and APNG exports play: 1 plays once, 0 forever."}, "clear": B,
                          "loop_mode": {"enum": ["seamless", "off"], "description": "seamless: the timeline is meant to loop without a jump. Plays forever unless loop is given, warns for every track whose end value differs from its start, and makes animate-preset entrances close themselves."},
                          "close": {"type": "boolean", "description": "With loop_mode seamless: append the start value at the end of every track that does not already end where it began."}})
     targets = {"type": "array", "items": S, "minItems": 1, "uniqueItems": True}
