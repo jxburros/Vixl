@@ -1,10 +1,23 @@
 # Vixl documentation
 
-Vixl creates and edits layered designs through commands, Python, MCP or REST. There is no
-desktop canvas to learn: create a document, apply operations, inspect it, check it, preview
-the result and export. Text, geometry, masks, effects and history stay in the `.vixl` master.
+Your agent makes the poster, and you keep the layers. Vixl creates and edits layered designs through MCP,
+commands, Python or REST. There is no desktop canvas to learn: create a document, apply operations, inspect it,
+check it, preview the result and export. Text, geometry, masks, effects and history stay in the `.vixl` master.
 
 ![The create, apply, inspect, check, preview and export loop](assets/generated/workflow.png)
+
+## Work with an agent
+
+Use `vixl mcp --workspace .`: seven tools, with operation fields and rarer options looked up through
+`vixl_reference` ([MCP tool surface](reference/mcp-toolsets.md)). Give the agent a brief with
+dimensions, audience, copy, assets, brand rules and required outputs. Ask it to inspect and
+preview before handing off the editable master and exports. [Interface setup](reference/interfaces.md)
+includes client JSON, authentication and HTTP transport; [studio](guides/automation/studio.md) covers review,
+tests and independent branch documents.
+
+AI generation, semantic selection and natural-language planning use configured external
+providers. Layouts, charts, paint, effects, forms and the gallery work without AI credentials.
+See the [provider matrix](reference/providers.md#capability-matrix) before choosing a service.
 
 ## Start here
 
@@ -15,8 +28,8 @@ the result and export. Text, geometry, masks, effects and history stay in the `.
 4. [Choose an export format](guides/output/exporting.md): images, vectors, print, decks, forms and motion.
 5. [Resolve common problems](troubleshooting.md): installation, text, checks, imports and providers.
 
-Current tagged release: **0.27.0**. See the [release notes](../CHANGELOG.md#0270)
-for the features and behavior changes in this version.
+Pre-1.0 and in Beta: breaking changes are allowed and noted in the [changelog](../CHANGELOG.md). Current tagged
+release: **0.27.0** ([release notes](../CHANGELOG.md#0270)).
 See [installation and updating](reference/releases.md) for Windows, source and agent bundles.
 
 ## Learn by making
@@ -45,6 +58,8 @@ offline with `python examples/build_documentation.py`.
 
 ## Find a feature
 
+The full index, by area. If you have a goal rather than a feature, start from the [use-case catalog](use-cases.md).
+
 | Area | Guides and references |
 | --- | --- |
 | Documents and authoring | [Concepts](concepts.md), [the `.vixl` file format](reference/file-format.md), [converting documents and tool calls from earlier releases](reference/converting.md), [CLI authoring and checks](reference/authoring.md), [commands](reference/commands.md), [operation semantics](reference/operations.md) |
@@ -60,19 +75,6 @@ offline with `python examples/build_documentation.py`.
 | AI | [Provider setup and capability matrix](reference/providers.md) |
 | Integration | [Capability discovery](reference/agent-discovery.md), [MCP tool surface](reference/mcp-toolsets.md), [Python, REST and MCP](reference/interfaces.md), [agent skill](../skills/vixl/SKILL.md), [plugins and content packs](reference/plugins.md) |
 | Installation | [Releases, updates and rollback](reference/releases.md) |
-
-## Work with an agent
-
-Use `vixl mcp --workspace .`: seven tools, with operation fields and rarer options looked up through
-`vixl_reference` ([MCP tool surface](reference/mcp-toolsets.md)). Give the agent a brief with
-dimensions, audience, copy, assets, brand rules and required outputs. Ask it to inspect and
-preview before handing off the editable master and exports. [Interface setup](reference/interfaces.md)
-includes client JSON, authentication and HTTP transport; [studio](guides/automation/studio.md) covers review,
-tests and independent branch documents.
-
-AI generation, semantic selection and natural-language planning use configured external
-providers. Layouts, charts, paint, effects, forms and the gallery work without AI credentials.
-See the [provider matrix](reference/providers.md#capability-matrix) before choosing a service.
 
 ## Development and deeper examples
 
