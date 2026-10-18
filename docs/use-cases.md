@@ -67,7 +67,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 
 | ID | Use case | Main route | Calls · min | Ev. | Notes |
 | --- | --- | --- | --- | --- | --- |
-| DOC-01 | Create a blank document at a named size (letter, instagram-post, youtube-thumbnail …) | `vixl_document(action='create', size=…)`, `vixl new NAME` | 1 · <1 | E | 150 named sizes with trim/safe guides; `vixl_reference('sizes')` to browse. |
+| DOC-01 | Create a blank document at a named size (letter, instagram-post, youtube-thumbnail …) | `vixl_document(action='create', size=…)`, `vixl new NAME` | 1 · <1 | E | 151 named sizes with trim/safe guides; `vixl_reference('sizes')` to browse. |
 | DOC-33 | Start a designed document from only a purpose (or nothing): size, palette background, design defaults and real fonts | `vixl_document(action='create', purpose=…)`, `vixl new --purpose slides`, `Project(purpose=…)` | 1 · <1 | E | Since 0.23; same result on every surface for the same `seed`. Fonts install from the cache or network. |
 | DOC-02 | Create a print document with bleed and dpi | `vixl new letter --bleed --dpi 300` | 1 · <1 | E | Print sizes carry physical units, bleed and safe area. |
 | DOC-03 | Open and inspect a `.vixl` (layers, bounds, fonts, effects) | `vixl_document(action='open')`, `vixl_document(action='inspect')` | 2 · <1 | E | `--detail brief|compact|full` controls response size. |

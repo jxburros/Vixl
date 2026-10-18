@@ -37,6 +37,11 @@
   `docs/assets/`. Each folder has a `README.md` index. Pages keep their filenames and anchors, but paths changed:
   update bookmarks and external links (for example `docs/commands.md` is now `docs/reference/commands.md`).
   Internal links, code comments, tests, example scripts and the skill references were updated to match.
+- **README and docs home lead with the agent.** "Start with an agent" now comes before the install and the CLI
+  walkthrough, the "What you can make" table is nine starting points instead of a link catalog, and the maturity
+  line (pre-1.0, Beta, breaking changes noted here) reads the same everywhere. `docs/reference/coverage.md` opens
+  with what works today and its boundaries; the per-release table moved below as history. A test now fails when the
+  catalog counts or the tool-list size quoted in the docs drift from the code (151 named sizes, not 150).
 
 ### Built-in plugins and content packs
 

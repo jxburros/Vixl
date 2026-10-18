@@ -12,11 +12,12 @@ real thing: layers, live text, fonts, a history you can rewind, and a `.vixl` ma
 still change next week. It checks contrast, spacing and bleed before export, so nobody finds
 out at the print shop.
 
-Works through MCP, CLI, Python or REST. No windows required.
+It runs through MCP, CLI, Python or REST, so there is no canvas to open. People can drive the same
+interfaces; the product is built for the agent at the keyboard.
 
-Current tagged release: **0.27.0**. See the [changelog](CHANGELOG.md#0270) for release notes.
-Run `vixl --version` to check your runtime;
-record the Git commit when using a source checkout.
+Pre-1.0 and in Beta: breaking changes are allowed and noted in the [changelog](CHANGELOG.md#0270).
+Current tagged release: **0.27.0**. Run `vixl --version` to check your runtime; record the Git commit when using a
+source checkout.
 
 **[Documentation home](docs/README.md)** · [Getting started](docs/getting-started.md) ·
 [Visual gallery](docs/gallery.md) · [Use cases](docs/use-cases.md) · [Command reference](docs/reference/commands.md) ·
@@ -33,25 +34,53 @@ record the Git commit when using a source checkout.
 - **Checked.** Contrast, spacing, bounds, fonts, trim and bleed are measured, your brief can be saved as
   a test suite, and you preview the render before anything is exported.
 
+## Start with an agent
+
+After you [install](#install), point your agent at a workspace folder and give it a brief:
+
+```bash
+vixl mcp --workspace .
+```
+
+Then ask for something with a deadline in it: "A 1080x1350 launch poster for the Saturday market, our brand
+colours, headline *Fresh Saturday*, and a version for stories." The agent creates the document, applies
+operations, checks contrast and spacing, looks at the render, and hands you the `.vixl` master plus exports.
+Change the headline next week and nothing is redrawn.
+
+For a pinned tagged runtime with uv:
+
+```bash
+uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.27.0.tar.gz vixl mcp --workspace .
+```
+
+The workspace must exist. The server offers seven tools (`vixl_document`, `vixl_apply`, `vixl_check`,
+`vixl_render`, `vixl_export`, `vixl_reference`, `vixl_job`) in about 7,300 characters of tool list; agents
+look up operation fields and rarer options on demand with `vixl_reference`
+([MCP tool surface](docs/reference/mcp-toolsets.md)). Use `--tools ai` for a second server with the provider-backed
+tools, or `--http` for Streamable HTTP.
+[Interface setup](docs/reference/interfaces.md) includes client JSON, multi-document sessions,
+REST authentication, imports and live human review (`vixl -p hello.vixl view`).
+
+The [Vixl agent skill](skills/vixl/SKILL.md) teaches the inspect → apply → check → finishing pass
+(critique, one fix batch, a real-size look) → export loop, recipes and operation details. Copy its folder to your agent's skills
+directory. AI functions use explicitly configured providers; Vixl contains no model weights.
+
 ## What you can make
 
-| Goal | Examples and guides |
+Each row is a place to start; the [use-case catalog](docs/use-cases.md) and the
+[documentation home](docs/README.md) list the rest, grouped by how long each takes.
+
+| Goal | Start here |
 | --- | --- |
-| Designs from Figma | [Import a Figma file or frame as editable layers and live text](docs/guides/images/figma.md) with your own read-only token |
-| Open format, SVG and PDF round trips | [The `.vixl` file format and its JSON Schema](docs/reference/file-format.md), [SVG that re-imports as the same editable document](docs/guides/output/exporting.md#svg-round-trip), [editable SVG and PDF import](docs/guides/output/exporting.md#importing-svg-and-pdf), [converting documents and tool calls from earlier releases](docs/reference/converting.md) |
-| Posters, social graphics and branded variants | [Campaign tutorial](docs/tutorials/campaign.md), [sizes/layouts](docs/guides/layout/sizes-and-layouts.md), [brands](docs/guides/layout/brands.md), [design styles](docs/guides/layout/styles.md), [safe variety](docs/guides/layout/safe-variety.md) and [house style](docs/project/house-style.md), [finishing looks](docs/guides/finishing/looks.md), [color and print](docs/guides/finishing/color-and-print.md), [CSV merge to print sheets](docs/guides/output/imposition.md), [linked documents](docs/guides/output/linked-documents.md) |
-| Charts, diagrams and infographics | [Editable chart tutorial](docs/tutorials/charts.md), [data-bound charts](docs/guides/output/charts.md), [flowcharts and diagrams](docs/guides/shapes/diagrams.md), [QR codes and barcodes](docs/guides/output/codes.md), [design tools](docs/guides/shapes/design-tools.md) |
-| Photo edits, drawings and painted artwork | [Filters](docs/guides/images/artistic-filters.md), [drawing cleanup](docs/guides/images/drawing.md), [brushes](docs/guides/motion/brushes-and-animation.md), [organic shapes](docs/guides/shapes/organic.md), [irregularity and torn edges](docs/guides/finishing/irregular.md), [irregular image frames and paint drips](docs/guides/shapes/design-tools.md#irregular-image-frames-and-paint-simulation) |
-| Presentations, carousels and booklets | [Forms and decks tutorial](docs/tutorials/forms-and-decks.md), [slides/pages](docs/guides/output/slides.md), [HTML presenter](docs/guides/output/presenter.md), [rich text](docs/guides/text/rich-text.md), [text flow](docs/guides/text/text-flow.md) |
-| Registration forms and filled copies | [Forms](docs/guides/output/forms.md), including fillable PDFs and CSV-driven output |
-| Motion, sprites and lyric videos | [Character rigs, audio and cameras](docs/guides/motion/animation-authoring.md), [six-second video templates](docs/guides/motion/animation-authoring.md#joint-pose-keys-and-short-templates), [app animation packages](docs/guides/motion/animation-authoring.md#app-animation-packages), [Motion tutorial](docs/tutorials/motion.md), [pixel animation](docs/guides/motion/pixel-animation-spacing.md), [lyric videos](docs/guides/motion/lyric-video.md) |
-| Checked production and collaboration | [Production workflows](docs/guides/automation/production.md), [studio](docs/guides/automation/studio.md), [checking designs in CI](docs/guides/automation/ci.md), [outcomes, diagnostics and repair](docs/reference/agent-trust.md), [accessibility](docs/guides/output/accessibility.md), [marketing build options](docs/guides/output/marketing-builds.md), [CLI authoring and checks](docs/reference/authoring.md), [agent resources](docs/guides/layout/agent-resources.md), [Git-reviewable source folders](docs/reference/commands.md#reviewing-editable-projects-in-git), [local screen capture](docs/reference/commands.md#local-desktop-capture) |
-| Reusable containers, templates and comics | [Container and template library](docs/guides/layout/containers-and-templates.md) |
-| Editable emoji libraries and custom packs | [Emoji catalog, templates, replacements and Discord/Slack exports](docs/guides/text/emojis.md) |
-| Vector drawing and precise placement | [Vector paths and shape catalog](docs/guides/shapes/vector-paths.md), [spatial queries and transforms](docs/guides/shapes/spatial-transforms.md), [guides and grids](docs/guides/layout/guides.md), [objects with named parts](docs/guides/shapes/objects.md) |
-| Texture, lighting and media review | [Creative media workflows](docs/guides/images/media-craft.md), [scene atmosphere and motifs](docs/guides/finishing/atmosphere.md) |
-| Agent discovery and bounded diagnostics | [Agent workflow guide](docs/reference/agent-discovery.md), [MCP tool surface](docs/reference/mcp-toolsets.md) |
-| AI generation and vision | [Provider setup and capabilities](docs/reference/providers.md); external services required |
+| Posters, social graphics and branded variants | [Campaign tutorial](docs/tutorials/campaign.md), [sizes and layouts](docs/guides/layout/sizes-and-layouts.md), [brands](docs/guides/layout/brands.md) |
+| Charts, diagrams and infographics | [Editable chart tutorial](docs/tutorials/charts.md), [flowcharts and diagrams](docs/guides/shapes/diagrams.md) |
+| Decks and booklets that open in PowerPoint | [Forms and decks tutorial](docs/tutorials/forms-and-decks.md), [slides](docs/guides/output/slides.md) |
+| Fillable PDF forms, filled from a CSV | [Forms](docs/guides/output/forms.md) |
+| Print-ready files, checked before the print shop | [Color and print](docs/guides/finishing/color-and-print.md), [checking designs in CI](docs/guides/automation/ci.md), [outcomes and repair](docs/reference/agent-trust.md) |
+| Designs from Figma, SVG and PDF, and back again | [Figma import](docs/guides/images/figma.md), [SVG and PDF import](docs/guides/output/exporting.md#importing-svg-and-pdf), [the `.vixl` file format](docs/reference/file-format.md) |
+| Motion, sprites and lyric videos | [Motion tutorial](docs/tutorials/motion.md), [lyric videos](docs/guides/motion/lyric-video.md) |
+| Photo edits, drawings and painted artwork | [Filters](docs/guides/images/artistic-filters.md), [drawing cleanup](docs/guides/images/drawing.md), [brushes](docs/guides/motion/brushes-and-animation.md) |
+| AI generation and vision | [Provider setup](docs/reference/providers.md); external services required |
 
 ## Install
 
@@ -84,9 +113,9 @@ adds REST/live review, and `pdf` adds PDF page import. Pip installs use pip-mana
 updates. [Installation and releases](docs/reference/releases.md) covers pinned versions, Windows
 rollback, agent bundles and packaging.
 
-## Make your first design
+## Or drive it yourself
 
-Six commands, one checked design, still fully editable:
+Six commands, one checked design, still fully editable. The agent runs the same operations:
 
 ```bash
 vixl new 800x600 --background '#18283b' -o hello.vixl
@@ -102,32 +131,6 @@ Editing commands autosave; pass `-p` explicitly in scripts. Inspect the preview 
 handoff. The [first-design walkthrough](docs/getting-started.md) explains undo,
 checkpoints, JSON batches and Python. Use the bundled font for proofing; choose suitable
 [typography](docs/guides/text/typography.md) for finished work.
-
-## Connect an agent
-
-Point your agent at a workspace folder and let it work:
-
-```bash
-vixl mcp --workspace .
-```
-
-For a pinned tagged runtime with uv:
-
-```bash
-uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.27.0.tar.gz vixl mcp --workspace .
-```
-
-The workspace must exist. The server offers seven tools (`vixl_document`, `vixl_apply`, `vixl_check`,
-`vixl_render`, `vixl_export`, `vixl_reference`, `vixl_job`) in about 7,300 characters of tool list; agents
-look up operation fields and rarer options on demand with `vixl_reference`
-([MCP tool surface](docs/reference/mcp-toolsets.md)). Use `--tools ai` for a second server with the provider-backed
-tools, or `--http` for Streamable HTTP.
-[Interface setup](docs/reference/interfaces.md) includes client JSON, multi-document sessions,
-REST authentication, imports and live human review (`vixl -p hello.vixl view`).
-
-The [Vixl agent skill](skills/vixl/SKILL.md) teaches the inspect → apply → check → finishing pass
-(critique, one fix batch, a real-size look) → export loop, recipes and operation details. Copy its folder to your agent's skills
-directory. AI functions use explicitly configured providers; Vixl contains no model weights.
 
 ## Use Python
 
