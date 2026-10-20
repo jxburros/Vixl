@@ -57,6 +57,8 @@
   arriving through another package.
 - **The source distribution includes the tests**, `docs/`, `skills/` and the changelog, so `pytest` runs from an
   unpacked sdist. CI now fails if the wheel exceeds 8 MB or the sdist 15 MB.
+- **`uv.lock` pins the development environment.** `uv sync --extra dev` installs it; a CI job tests from it and
+  the lint job checks it matches `pyproject.toml`. Installs from PyPI still resolve the declared ranges.
 
 ### Agent cost and reference
 

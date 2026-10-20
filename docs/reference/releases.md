@@ -197,7 +197,10 @@ Each release gets a `CHANGELOG.md` section, written as an edit pass over the ent
   `tests/test_dependencies.py` keeps it that way.
 - The wheel stays under 8 MB (a CI step fails above that) and the source distribution under 15 MB. The sdist carries
   `tests/`, `docs/`, `skills/` and `CHANGELOG.md`, because tests read them; media and showcases live in VixlExamples.
-- A `uv.lock` for the development environment is not committed yet (open; it overlaps render reproducibility).
+- `uv.lock` pins the development environment (`uv sync --extra dev`). The `locked` CI job runs the tests from it,
+  the lint job fails when it no longer matches `pyproject.toml` (`uv lock --check`; run `uv lock` after changing a
+  dependency), and Dependabot proposes updates. The test matrix still installs fresh resolutions, so the published
+  ranges stay tested. Render reproducibility for documents (#512) is a separate question.
 
 ### Release rhythm and soak
 
