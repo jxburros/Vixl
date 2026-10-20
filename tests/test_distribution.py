@@ -2,12 +2,26 @@ from pathlib import Path
 import tomllib
 
 
-def test_source_distribution_includes_only_package_sources_and_metadata():
+def test_source_distribution_carries_the_sources_tests_and_what_tests_read():
+    """Tests read docs/, skills/ and the changelog, so the sdist ships them (large media stay in VixlExamples)."""
     root = Path(__file__).resolve().parent.parent
     config = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
-    includes = config["tool"]["hatch"]["build"]["targets"]["sdist"]["include"]
-    assert set(includes) == {"/src/vixl", "/pyproject.toml", "/README.md", "/LICENSE"}
+    sdist = config["tool"]["hatch"]["build"]["targets"]["sdist"]
+    includes = sdist["include"]
+    assert set(includes) == {"/src/vixl", "/tests", "/docs", "/skills", "/CHANGELOG.md", "/pyproject.toml",
+                             "/README.md", "/LICENSE"}
     assert all((root / path.lstrip("/")).exists() for path in includes)
+    assert "/tests/visual/_failures" in sdist["exclude"]
+
+
+def test_included_directories_stay_small_enough_for_the_sdist_cap():
+    """CI builds the sdist and fails above 15 MB; this catches the growth earlier, without building."""
+    root = Path(__file__).resolve().parent.parent
+    total = 0
+    for name in ("src/vixl", "tests", "docs", "skills"):
+        total += sum(path.stat().st_size for path in (root / name).rglob("*")
+                     if path.is_file() and "_failures" not in path.parts and "__pycache__" not in path.parts)
+    assert total < 40 * 1024 * 1024, f"{total / 1e6:.1f} MB of uncompressed sdist content"
 
 
 def _package_extensions():

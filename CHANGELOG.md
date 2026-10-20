@@ -28,6 +28,13 @@
 - **Several defaults draw differently** (review findings, glows and shadows, dash fitting, tracked text): each entry
   under Behaviour changes below names its override.
 
+### Packaging
+
+- **`pydantic` is a declared dependency** (`>=2.11,<3`, the floor `mcp` requires). Installs no longer rely on it
+  arriving through another package.
+- **The source distribution includes the tests**, `docs/`, `skills/` and the changelog, so `pytest` runs from an
+  unpacked sdist. CI now fails if the wheel exceeds 8 MB or the sdist 15 MB.
+
 ### Documentation layout
 
 - **`docs/` is organized by kind of page.** The top level keeps the learning path (hub, getting started, concepts,
