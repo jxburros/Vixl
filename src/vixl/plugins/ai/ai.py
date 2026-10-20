@@ -10,6 +10,7 @@ import json
 import os
 import time
 import io
+import ipaddress
 from urllib.parse import urlparse
 
 import httpx
@@ -85,6 +86,28 @@ def image_response(payload, project):
     return decode(data, project.limits)
 
 
+def loopback_host(host):
+    host = (host or "").lower().rstrip(".")
+    if host == "localhost" or host.endswith(".localhost"):
+        return True
+    try:
+        return ipaddress.ip_address(host.strip("[]")).is_loopback
+    except ValueError:
+        return False
+
+
+def require_secure_url(name, url, config):
+    """Plain ``http://`` would send the provider's key and the document's images in cleartext: allow it only for
+    a loopback server or with ``allow_insecure: true`` in the provider config."""
+    parsed = urlparse(url)
+    if parsed.scheme.lower() != "http" or loopback_host(parsed.hostname) or config.get("allow_insecure") is True:
+        return
+    raise VixlError("provider_not_configured",
+                    f"Provider {name} uses plain http:// to {parsed.hostname}, which sends its key and images in "
+                    "cleartext; use https:// or set allow_insecure: true in the provider config",
+                    field="url")
+
+
 class HTTPProvider:
     """JSON gateway protocol documented in docs/reference/providers.md; supports all AI capabilities."""
 
@@ -96,6 +119,7 @@ class HTTPProvider:
             f"Configure a valid URL for provider {name}",
             "provider_not_configured",
         )
+        require_secure_url(name, self.url, config)
         self.headers = {}
         if config.get("key_env", self.default_key_env):
             env = config.get("key_env", self.default_key_env)
@@ -114,6 +138,9 @@ class HTTPProvider:
         return self.request_url(method, self.url.rstrip("/") + route, headers=self.headers, **kwargs)
 
     def request_url(self, method, url, *, headers=None, **kwargs):
+        from ...fetch import network_allowed
+
+        network_allowed(f"Provider {self.name}")
         try:
             with httpx.Client(timeout=self.config.get("timeout", 120), follow_redirects=False) as client:
                 with client.stream(method, url, headers=headers or {}, **kwargs) as response:
@@ -669,6 +696,7 @@ class AnthropicProvider:
             # Without a key the SDK resolves ANTHROPIC_AUTH_TOKEN or an `ant auth login` profile.
             options = {"timeout": config.get("timeout", 120), "max_retries": config.get("max_retries", 2)}
             if config.get("url"):
+                require_secure_url(name, config["url"], config)
                 options["base_url"] = config["url"]
             client = anthropic.Anthropic(api_key=key, **options) if key else anthropic.Anthropic(**options)
         self.client = client
@@ -743,6 +771,9 @@ class AnthropicProvider:
     def call(self, arguments):
         import anthropic
 
+        from ...fetch import network_allowed
+
+        network_allowed(f"Provider {self.name}")
         try:
             if self.config.get("fallbacks", True):
                 return self.client.beta.messages.create(
