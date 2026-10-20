@@ -420,7 +420,7 @@ vixl -p poster.vixl import https://images.example.com/cat.jpg --name cat --credi
 ```
 
 MCP: an `import-document` step in `vixl_apply` (`format="svg"`, `path="logo.svg"`), with `data_base64` instead of `path` when there is no file.
-REST: `POST /import?format=svg` with raw bytes (`name` and `svg_mode` are query parameters too). PDF additionally accepts a one-based `page` (a non-numeric `page` is a 400); it imports the page
+REST: `POST /import?format=svg` with raw bytes (`name` and `svg_mode` are query parameters too, and so are `font_map`, repeated as `font_map=SRC=NAME` (or one JSON object), and `install_fonts` for SVG and PDF; an unregistered target fails with `missing_font` on `font_map`). PDF additionally accepts a one-based `page` (a non-numeric `page` is a 400); it imports the page
 as editable layers (text, paths, images), or with `svg_mode=appearance` as one image at `dpi` (36–600).
 Figma files import with `format=figma` (an `import-document` step with `source` set to the URL or file key, CLI `import URL --format figma`, Python `import_document(project, b"URL", "figma")`,
 REST `POST /import?format=figma` with the URL or file key as the body, `page` (a name or number), `node_id` and `rasterize_unsupported` as query parameters) using `FIGMA_TOKEN` from the environment; see

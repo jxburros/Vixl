@@ -71,6 +71,7 @@ A document becomes multi-page with the first `page add`; each page has its own l
   The deck's PDF pages and PPTX slides are the same size (7.5 in tall for a screen canvas, so
   1920×1080 is 13.33 × 7.5 in); `dpi` sets both. The result's `page_size` shows it.
 - Name each slide's title layer `title` so it becomes the PowerPoint title placeholder.
+- `font_map` (`--font-map SRC=NAME`, REST `font_map=SRC=NAME`) also maps the font families of a plain SVG import.
 - Re-importing a PDF (`import-document`, `vixl import FILE.pdf`) keeps text live. A PDF embeds only font subsets, so
   each PDF font is found again: `font_map` (`{"Literata": "literata-400", "Literata Bold": "literata-700"}`, CLI
   `--font-map SRC=NAME`; targets must be registered), a registered font of that family and style, then for a PDF

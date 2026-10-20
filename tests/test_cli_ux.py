@@ -120,9 +120,27 @@ def test_help_shows_text_option_and_short_check_lines(workspace, capsys):
     "vixl_render(region=[x, y, w, h], max_width=w)",
     "vixl_apply(workflow='repair-layout')",
     "vixl_document(action='inspect', layer=NAME)",
+    "vixl_document(action='create', path='a.vixl', size='a4')",
+    "vixl_document(action='open')",
+    "vixl_document(action='notes')",
+    "vixl_document(action='commit')",
+    "vixl_document(action='list')",
+    "vixl_document(action='close')",
 ])
 def test_cli_hints_name_no_mcp_tools(hint):
     assert "vixl_" not in for_surface(hint, "cli")
+
+
+def test_cli_hints_rewrite_document_actions_to_their_commands():  # #693
+    rewritten = {
+        "vixl_document(action='create', path='a.vixl')": "vixl new",
+        "vixl_document(action='open')": "vixl open FILE",
+        "vixl_document(action='notes')": "vixl notes",
+        "vixl_document(action='checkout', ref='x')": "vixl checkout",
+        "vixl_document(action='rollback')": "vixl transaction rollback",
+    }
+    for hint, command in rewritten.items():
+        assert for_surface(hint, "cli") == command
 
 
 def test_cli_error_output_names_no_mcp_tools(workspace, monkeypatch):

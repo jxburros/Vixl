@@ -563,8 +563,9 @@ def _similarity(matrix):
 
 
 class Converter:
-    def __init__(self, data, project, name, *, fallback=False, namespace=False):
+    def __init__(self, data, project, name, *, fallback=False, namespace=False, font_map=None):
         self.project, self.name, self.fallback, self.namespace = project, name, fallback, namespace
+        self.font_map = font_map or {}
         self.operations, self.warnings, self.rasterized = [], [], []
         self.budget, self.expanded, self.rasters = project.limits.max_operations, 0, 0
         self._definitions = None  # the SVG's defs and stylesheets, copied once for every raster fallback
@@ -1303,7 +1304,7 @@ class Converter:
         families = [f.strip().strip("'\"") for f in (family or "").split(",") if f.strip()]
         bold = str(weight).strip() in ("bold", "bolder", "600", "700", "800", "900")
         italic = str(style).strip() in ("italic", "oblique")
-        name, unknown = match_font(self.project, families, bold, italic)
+        name, unknown = match_font(self.project, families, bold, italic, font_map=self.font_map)
         if unknown:
             self.warnings.append(font_warning(unknown))
         return name
@@ -1398,11 +1399,12 @@ class Converter:
         return [name]
 
 
-def svg_operations(data, project, name, *, fallback=False, report=None, namespace=False):
+def svg_operations(data, project, name, *, fallback=False, report=None, namespace=False, font_map=None):
     """Operations that rebuild an SVG's elements as editable layers (images it embeds are added to ``project``'s
     assets). ``fallback`` draws an unsupported element as an image layer instead of failing; ``report`` (a dict)
     receives ``warnings`` and ``rasterized`` elements. ``namespace`` prefixes the SVG's own layer labels with
-    ``name`` (unlabelled elements are always named ``name-kind``)."""
+    ``name`` (unlabelled elements are always named ``name-kind``). ``font_map`` maps font families the SVG
+    names to fonts registered in ``project`` (see ``match_font``)."""
     require(len(data) <= min(project.limits.max_asset_bytes, 16 * 1024 * 1024), "SVG exceeds byte limit",
             "resource_limit")
     try:
@@ -1413,7 +1415,7 @@ def svg_operations(data, project, name, *, fallback=False, report=None, namespac
     require(b"<!DOCTYPE" not in data.upper() and b"<!ENTITY" not in data.upper(),
             "SVG declarations/entities are unsupported", "unsupported_svg")
     try:
-        converter = Converter(data, project, name, fallback=fallback, namespace=namespace)
+        converter = Converter(data, project, name, fallback=fallback, namespace=namespace, font_map=font_map)
     except ET.ParseError as exc:
         raise VixlError("invalid_svg", str(exc)) from exc
     converter.convert()

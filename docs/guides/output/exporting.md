@@ -264,6 +264,10 @@ other PDFs map one point to one pixel, and `dpi` applies to `appearance` imports
 annotations, blend modes and transparency groups are not read as such: rotated pages import as one image, and
 the others as what pdfium reports for each object.
 
+### SVG fonts
+
+An SVG that is not Vixl's own names fonts by family. `font_map` (CLI `--font-map SRC=NAME`, REST `font_map=SRC=NAME`) maps those families to registered fonts or roles, first, exactly as for PDF, and fails with `missing_font` for an unregistered target. Vixl's own SVG names its fonts by identity and ignores `font_map`; `install_fonts` (default true) applies to it and never downloads with `VIXL_OFFLINE=1`.
+
 ### PDF fonts
 
 A PDF embeds only the glyphs it uses (a subset), so its fonts cannot be registered as they are. Each PDF font is

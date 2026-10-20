@@ -82,3 +82,20 @@ def checker(project, check):
             allowed.add(operation["name"])
 
     return bound
+
+
+def checked_font_map(project, font_map):
+    """``font_map`` (``{source family: registered name}``, SVG and PDF import) validated: string keys, each value
+    a font name ``project`` can use, as a service client may."""
+    from .errors import require
+
+    if not font_map:
+        return {}
+    require(isinstance(font_map, dict) and all(isinstance(key, str) and key.strip() and isinstance(value, str)
+                                               for key, value in font_map.items()),
+            "font_map maps source font family names to registered font names", field="font_map")
+    allowed = allowed_fonts(project)
+    for value in font_map.values():
+        if value not in allowed:
+            raise missing_font("font_map", value, allowed)
+    return dict(font_map)

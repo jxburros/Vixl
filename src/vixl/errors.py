@@ -37,6 +37,12 @@ _FOR_CLI = (
     (r"vixl_reference\(\)", "vixl guide"),
     (r"vixl_apply\(workflow='([\w-]+)'[^()]*\)", r"vixl workflow \1"),
     (r"vixl_document\(action='(inspect|layers|history|undo|redo|checkpoint|compact)'[^()]*\)", r"vixl \1"),
+    (r"vixl_document\(action='create'[^()]*\)", "vixl new"),
+    (r"vixl_document\(action='open'[^()]*\)", "vixl open FILE"),
+    (r"vixl_document\(action='(checkout|branch|notes)'[^()]*\)", r"vixl \1"),
+    (r"vixl_document\(action='(begin|commit|rollback)'[^()]*\)", r"vixl transaction \1"),
+    (r"vixl_document\(action='list'[^()]*\)", "ls"),
+    (r"vixl_document\(action='close'[^()]*\)", "nothing (the CLI keeps no open documents)"),
     (r"vixl_(check|render|export|apply)(?:\([^()]*\))?", r"vixl \1"),
 )
 

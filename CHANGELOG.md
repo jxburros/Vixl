@@ -167,6 +167,7 @@
 
 ### Security
 
+- **Follow-ups to #677, #693 and #712.** `vixl_ai_analyze` results and the REST analyze calls (`POST /ai/detect`, `/ai/ocr`, `/ai/ai describe`) now name the provider-written text (`description`, `text`, `lines`, `objects[].label`) under `untrusted`. SVG import applies `font_map` to the fonts an SVG names, and REST `POST /import` takes `font_map` (`SRC=NAME`, repeatable) and `install_fonts`, validated like the PDF path (`missing_font` on `font_map`); `vixl import FILE.svg --font-map` works. CLI error hints rewrite `vixl_document(action=…)` for `create`, `open`, `notes`, `checkout`, `branch`, `begin`/`commit`/`rollback`, `list` and `close`. `docs/use-cases.md` had two AGT-38 rows; the house-style one is now AGT-42.
 - **A crafted history delta can no longer make the loader copy a layer hundreds of thousands of times.** A list
   delta must name each layer once, hold no more items than the layer limit, change only layers in its order and name
   only layers it keeps or adds. All of this is checked before anything is copied. A revision is at most 64 deltas

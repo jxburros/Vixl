@@ -48,3 +48,21 @@ def mark(result):
     if found:
         result["untrusted"] = found
     return result
+
+
+# vixl_ai_analyze (describe, detect, ocr) results are provider-written; these are the keys they use.
+ANALYSIS = {
+    "description": ("description",),
+    "text": ("text",),
+    "lines": ("lines",),
+    "objects": ("objects[].label",),
+}
+
+
+def mark_analysis(result):
+    """``result`` of an AI analyze call with ``untrusted`` naming the provider-written text it holds."""
+    if isinstance(result, dict):
+        found = [path for key, listed in ANALYSIS.items() if key in result for path in listed]
+        if found:
+            result["untrusted"] = found
+    return result

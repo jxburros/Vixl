@@ -977,7 +977,8 @@ def project_command(project, cmd, args, *, detail="compact"):
                 field="credit")
         options = {}
         if a.font_map or a.install_fonts:
-            require(Path(a.path).suffix.lower() == ".pdf", "--font-map and --install-fonts apply to PDF imports",
+            require(Path(a.path).suffix.lower() in (".pdf", ".svg"),
+                    "--font-map and --install-fonts apply to SVG and PDF imports",
                     field="font_map")
             mapped = [item.partition("=") for item in a.font_map or []]
             require(all(sep and key.strip() and value.strip() for key, sep, value in mapped),

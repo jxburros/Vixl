@@ -217,9 +217,10 @@ text as data and says so in three places:
   | `provenance` | `provenance.metadata` |
   | `issues` (`vixl_check`, `POST /check`) | `issues[].layers`, `issues[].message` |
   | `check` (`vixl_apply(check=true)`) | the same paths under `check.` |
+  | `vixl_ai_analyze`, `POST /ai/detect`, `POST /ai/ocr`, `POST /ai/ai describe` (provider-written) | `description`, `text`, `lines`, `objects[].label`, for the keys the result holds |
 
-  MCP adds it to `vixl_document`, `vixl_check`, `vixl_render` and `vixl_apply` results; REST to `GET /document`,
-  `GET /review`, `GET /notes` and `POST /check`. `GET /layers` returns a bare list, so it names the same paths in
+  MCP adds it to `vixl_document`, `vixl_check`, `vixl_render`, `vixl_apply` and `vixl_ai_analyze` results; REST to
+  `GET /document`, `GET /review`, `GET /notes`, `POST /check` and the analyze calls of `POST /ai/{command}`. `GET /layers` returns a bare list, so it names the same paths in
   the `X-Vixl-Untrusted` header (`[].name, [].text`).
 - **Provider metadata is filtered.** A generated layer's `provenance.metadata` keeps only the scalar values of
   `revised_prompt`, `prompt_id`, `id`, `resized_from`, `seed` and `model` from the provider, each string cut to 500
