@@ -116,6 +116,7 @@ class Builder:
         require(isinstance(base, (int, float)) and 4 <= base <= 1000, "base_size must be 4–1000 pixels")
         self.base = base
         self.sizes = {role: max(6, round(base * self.ratio**step)) for role, step in ROLE_STEPS.items()}
+        modular = dict(self.sizes)
         if layout.get("safe_composition") or op.get("direction"):
             # Safe compositions and rolled directions keep minor text readable at thumbnail size, judged
             # at the width the legibility check uses for this canvas.
@@ -127,7 +128,7 @@ class Builder:
                                     short * rule("minimum_text")["minor_share_of_short_side"]
                                     if purpose in ("social", "poster") else 0))
             self.sizes = {role: max(minimum, value) for role, value in self.sizes.items()}
-        # Roles a poster's distance minimum raised, which the document records as its type scale (#680).
+        # Roles a poster's minimums raised, which the document records as its type scale (#680).
         self.raised = {}
         if "base_size" not in op:
             # Minor text is set at least as large as the legibility check's use size asks of a regular face
@@ -140,11 +141,12 @@ class Builder:
             if use:
                 scale, least, _ = use_scale(c, use)
                 floor = math.ceil(least / scale * fit)
-                if use["seen"] == "distance":
-                    self.raised = {role: floor for role, value in self.sizes.items() if value < floor}
                 self.sizes = {role: max(floor, value) for role, value in self.sizes.items()}
+                if use["seen"] == "distance":
+                    # This minimum, or the thumbnail one of a roll above (the larger on a big sheet).
+                    self.raised = {role: value for role, value in self.sizes.items() if value > modular[role]}
                 if "body" in self.raised:
-                    # The minimum flattens caption, body and lead to one size; the roles above body step up
+                    # The minimums flatten caption, body and lead to one size; the roles above body step up
                     # from the raised body by the scale's ratio, so the poster keeps the hierarchy of the same
                     # design at social size (a lead line reads as lead, not as body; #680).
                     for role, step in ROLE_STEPS.items():
@@ -153,8 +155,8 @@ class Builder:
                             self.sizes[role] = self.raised[role] = stepped
         # The spacing unit: half the body size (craft spacing), scaled by density. A sheet read across a room
         # sets its body at a share of the short side, and spaces it by that body, which the document records
-        # too, so the composition check measures the same gaps at every scale (#680). A thumbnail minimum
-        # (which on a wide banner is large next to the height) raises the type but not the spacing.
+        # too, so the composition check measures the same gaps at every scale (#680). Elsewhere a thumbnail
+        # minimum (which on a wide banner is large next to the height) raises the type but not the spacing.
         body = self.sizes["body"] if "body" in self.raised else base
         self.unit = spacing_unit(body * DENSITY_SPACING[density])
         direction = op.get("direction") or {}
@@ -599,15 +601,32 @@ class Builder:
                              stroke_width=self.outline_width(), decoration=True)
         return None
 
-    def stack(self, entries, x, y, width, gap=None, align=None):
-        """Lay out (role, key|text, name) entries top-down with rhythm gaps; returns bottom y."""
+    def _stack_gaps(self, gap, gaps):
+        """The gap above each entry name: ``gap`` (three units by default), or the ``gaps`` override for the
+        names that group with the entry above or stand apart from it. An explicit ``gap`` field wins."""
         gap = gap if gap is not None else self.unit * 3
         if "gap" in self.op:
             from .craft import resolve_space
-            gap = resolve_space(self.op["gap"], self.base)
+            return resolve_space(self.op["gap"], self.base), {}
+        return gap, gaps or {}
+
+    def lockup_gaps(self, *grouped):
+        """A headline lockup's rhythm for ``stack``: the label and the ``grouped`` lines (a subtitle) sit two
+        units from the headline, and the call to action five units below, so proximity says what belongs
+        together instead of every entry floating at one equal gap."""
+        return {"headline": self.unit * 2, **{name: self.unit * 2 for name in grouped}, "cta": self.unit * 5}
+
+    def stack(self, entries, x, y, width, gap=None, align=None, gaps=None):
+        """Lay out (role, key|text, name) entries top-down with rhythm gaps; returns bottom y. ``gaps`` maps an
+        entry name to the gap above it (a subtitle tight under its headline, a call to action set apart)."""
+        gap, gaps = self._stack_gaps(gap, gaps)
+        placed = False
         for role, text, name in entries:
             if not text:
                 continue
+            if placed:
+                y += gaps.get(name, gap)
+            placed = True
             if role == "button":
                 anchor = x if (align or self.align) == "left" else x + width if (align or self.align) == "right" else x + width / 2
                 _, _, _, h = self.button(text, anchor, y, align=align)
@@ -615,21 +634,22 @@ class Builder:
                 color = "@accent-text" if name == "label" else "@muted" if role == "caption" else "@ink"
                 limit = max(self.unit * 4, (self.B - y) * 0.75) if role in ("display", "headline", "title") else None
                 _, _, _, h = self.text(role, text, x, y, width, align=align, name=name, color=color, max_height=limit)
-            y += h + gap
-        return y - gap
+            y += h
+        return y
 
-    def stack_height(self, entries, width, gap=None):
-        gap = gap if gap is not None else self.unit * 3
-        if "gap" in self.op:
-            from .craft import resolve_space
-            gap = resolve_space(self.op["gap"], self.base)
+    def stack_height(self, entries, width, gap=None, gaps=None):
+        gap, gaps = self._stack_gaps(gap, gaps)
         total = 0
-        for role, text, _ in entries:
+        placed = False
+        for role, text, name in entries:
             if not text:
                 continue
+            if placed:
+                total += gaps.get(name, gap)
+            placed = True
             if role == "button":
                 _, th = self.measure(text, self.sizes["body"], None, 0)
-                total += th + 2 * round(self.sizes["body"] * 0.6) + gap
+                total += th + 2 * round(self.sizes["body"] * 0.6)
             else:
                 size = self.sizes[role]
                 heavy = role in ("display", "headline", "title")
@@ -640,8 +660,8 @@ class Builder:
                                     self.align, self.display_font if heavy else self.font)
                 if heavy:
                     h = min(h, self.ch * 0.55)
-                total += h + gap
-        return max(0, total - gap)
+                total += h
+        return max(0, total)
 
     def label_text(self):
         label = self.get("label")
@@ -806,12 +826,13 @@ def _hero_statement(b):
     width = b.cw if b.orientation in ("portrait", "tall") else b.cw * b.rng.choice([0.72, 0.8, 0.9])
     x = b.L if b.align == "left" else b.R - width if b.align == "right" else b.L + (b.cw - width) / 2
     entries = [("caption", b.label_text(), "label"), ("display", b.get("title"), "headline"), ("lead", b.get("subtitle"), "subtitle"), ("button", b.get("cta"), "cta")]
-    height = b.stack_height(entries, width)
+    gaps = b.lockup_gaps("subtitle")
+    height = b.stack_height(entries, width, gaps=gaps)
     anchor = b.rng.choice(["upper", "lower", "center"])
     y = b.T + b.ch * 0.08 if anchor == "upper" else b.B - height - b.ch * 0.06 if anchor == "lower" else b.T + (b.ch - height) * 0.42
     y = min(max(b.T, y), max(b.T, b.B - height))
     b.accent_device(x, y, width, height)
-    b.stack(entries, x, y, width)
+    b.stack(entries, x, y, width, gaps=gaps)
     if b.get("caption"):
         b.text("caption", b.get("caption"), b.L, b.B - b.sizes["caption"] * 1.4, b.cw, name="caption", color="@muted", align="left" if b.align != "left" else "right")
 
@@ -891,22 +912,25 @@ def _centered_axis(b):
     width = b.cw * (0.86 if b.orientation in ("portrait", "tall") else 0.7)
     x = b.L + (b.cw - width) / 2
     entries = [("caption", b.label_text(), "label"), ("headline", b.get("title"), "headline"), ("lead", b.get("subtitle"), "subtitle")]
-    height = b.stack_height(entries, width) + b.unit * 8
+    # The divider closes the headline (two units under it) and opens the subtitle; the call to action stands
+    # six units apart, so neither the divider nor the subtitle floats midway between equal gaps.
+    gaps = b.lockup_gaps()
+    height = b.stack_height(entries[:2], width, gaps=gaps) + b.unit * 5.5 + b.stack_height(entries[2:], width)
     cta = b.get("cta")
     if cta:
-        height += b.sizes["body"] * 2.4 + b.unit * 3
+        height += b.sizes["body"] * 2.4 + b.unit * 6
     y = b.T + max(0, (b.ch - height) * 0.44)  # Optical center sits slightly above the middle.
-    bottom = b.stack(entries[:2], x, y, width, align="center")
+    bottom = b.stack(entries[:2], x, y, width, align="center", gaps=gaps)
     divider = max(b.unit * 6, round(width * 0.12))
     ornament = b.rng.choice(["rule", "dot", "diamond"])
-    oy = bottom + b.unit * 3
+    oy = bottom + b.unit * 2
     if ornament == "rule":
         b.rect("divider", b.W / 2 - divider / 2, oy, divider, max(2, round(b.unit / 2)), "@accent")
     else:
         d = b.unit * 1.6
         b.rect("divider", b.W / 2 - d / 2, oy - d / 2, d, d, "@accent", shape="ellipse" if ornament == "dot" else "diamond")
-    y = oy + b.unit * 4
-    y = b.stack(entries[2:], x, y, width, align="center") + b.unit * 4
+    y = oy + b.unit * 3.5
+    y = b.stack(entries[2:], x, y, width, align="center") + b.unit * 6
     if cta:
         b.button(cta, b.W / 2, y, align="center")
 
@@ -924,14 +948,15 @@ def _asymmetric_balance(b):
     below = b.B - (cy + d / 2 + gap)
     width = b.cw * (0.62 if b.orientation != "tall" else 0.9)
     entries_probe = [("caption", b.label_text(), "label"), ("headline", b.get("title"), "headline"), ("body", b.get("subtitle"), "subtitle"), ("button", b.get("cta"), "cta")]
-    if b.stack_height(entries_probe, width) > below:
+    gaps = b.lockup_gaps("subtitle")
+    if b.stack_height(entries_probe, width, gaps=gaps) > below:
         width = max(b.cw * 0.4, beside)
     x = b.L if left else b.R - width
     align = "left" if left else "right"
     entries = [("caption", b.label_text(), "label"), ("headline", b.get("title"), "headline"), ("body", b.get("subtitle"), "subtitle"), ("button", b.get("cta"), "cta")]
-    height = b.stack_height(entries, width)
+    height = b.stack_height(entries, width, gaps=gaps)
     y = max(b.T, b.B - height)
-    b.stack(entries, x, y, width, align=align)
+    b.stack(entries, x, y, width, align=align, gaps=gaps)
     if b.get("caption"):
         b.text("caption", b.get("caption"), b.L if not left else b.R - b.cw * 0.3, b.T, b.cw * 0.3, name="caption", color="@muted", align="right" if left else "left")
 

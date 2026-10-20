@@ -774,7 +774,7 @@ and #370 (layouts fail their own safe-area check).
   as `2u`; a unit is half the body size, rounded, at least 2 px. New short timelines are seamless loops.
 - **Minor text and contrast.** Social and poster minor text is at least 2.2% of the short side (3% on a poster
   read across a room, where the roles above body step up from the raised body by the scale's ratio, the type
-  scale records the raised roles and the spacing unit follows the raised body),
+  scale records the raised roles and the spacing unit follows the raised body, in rolls as in direct layouts),
   and bold text (700+) counts as large for contrast from 18.66 px; regular text from 24 px.
 - **Layout details (craft plan 5b, 5c).** A roll also sets `cta` (`pill` or `button`) and `date` (`highlight` or
   `plain`) from a separate stream of the seed; see [safe variety](../guides/layout/safe-variety.md). Footer rules in the safe

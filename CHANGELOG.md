@@ -518,9 +518,16 @@ fillable form, loop, mandala, flowchart):
   or subtitle was set at body size and the composition check took stacked lines of one size for siblings (a hero
   statement's floating subtitle lost its `uneven_rhythm` finding). Layouts now step every role above body up from
   the raised body by the scale's ratio (lead, subhead, title, headline and display grow on such posters; the raised
-  sizes are recorded in the type scale), so the poster is the same design as at social size. Social, slide and
-  thumbnail minimums, layouts given an explicit `base_size`, and rolled directions (whose larger thumbnail minimum
-  sets minor text on a big sheet) are unchanged.
+  sizes are recorded in the type scale), so the poster is the same design as at social size. Rolled posters get the
+  same treatment: there the thumbnail minimum (85 px on an 18×24 sheet) is the larger one, and it now counts as a
+  raise, so a roll records the raised body, spaces by it and steps the roles above it. Social, slide and thumbnail
+  minimums on other canvases, and layouts given an explicit `base_size`, are unchanged.
+- **Headline lockups group by proximity.** `hero-statement`, `asymmetric-balance` and `centered-axis` (and
+  `banner` on portrait canvases, which uses it) stacked label, headline, subtitle and call to action at one equal
+  three-unit gap, so the subtitle (or the divider ornament) floated midway and `uneven_rhythm` flagged it at many
+  seeds. The label and subtitle now sit two units from the headline, the divider two units under it, and the call
+  to action five (six on `centered-axis`) units below. `Builder.stack` takes `gaps` per entry name, and
+  `Builder.lockup_gaps` holds this rhythm; an explicit `gap` still sets one gap for every entry.
 - **Creating a document never touches the network.** The rolled font pairing is recorded in
   `design_defaults.fonts` (`pending: true`) and installed by the first batch that sets text, from the font cache
   else Google Fonts, so an empty document embeds no fonts (about 1 KB instead of the pairing's size) and
