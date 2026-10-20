@@ -180,7 +180,7 @@ Tracking is letter spacing in local pixels between characters (never after the l
 
 Width-only `text-layout` boxes grow vertically after `text-set` or variable substitution. Give both width and height to keep a fixed box and let overflow checks report copy that does not fit. Markdown text-flow retains its size-based line-height calculation when splitting across frames.
 
-`check` flags a wrapped display line that strands a word: text of 24 px or more whose paragraph wraps and whose last line is one word or under 20% of the longest line gets a `legibility` finding with `code: runt` and `action: review`. Set the box's `wrap` (below), widen the box, break the line yourself, or run `fit-text`.
+`check` flags a wrapped display line that strands a word: text of 24 px or more whose paragraph wraps and whose last line is under 20% of the longest line, or is one word under half the longest line in a paragraph with more words than lines, gets a `legibility` finding with `code: runt` and `action: review`. A two-word title set one word per line is not a runt: there is nothing to rebalance. Set the box's `wrap` (below), widen the box, break the line yourself, or run `fit-text`.
 
 ## Line breaking
 

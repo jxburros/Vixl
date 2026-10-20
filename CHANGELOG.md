@@ -246,6 +246,27 @@
   font cache first; with `VIXL_OFFLINE=1`, or when a download fails, nothing changes and the error names the
   families. The catalog adds Noto Sans Thai, Noto Sans KR and Noto Sans TC (107 families). `font-fallbacks` accepts
   the entries already in the document's list, so a list can be extended.
+- **The event poster's call to action and caption no longer collide (#710).** Both were placed on the bottom margin
+  independently, so on a square card the caption ran across the button (`overlap.text-text`, a 1.29:1 contrast
+  error). The footer is now measured first: the button and the caption share one row when the caption fits beside
+  the button, otherwise the caption takes the bottom row with the button above it, and the details stop above the
+  footer. `Builder.footer` and `Builder.button_size` hold this for other layouts.
+- **Posters are spaced like the same design at social size (#680).** On a sheet read across a room (an 18×24
+  poster) the use-size minimum raises minor text to 3% of the short side, but the spacing unit and the document's
+  type scale kept the smaller canvas body, so a poster's gaps were tight next to its type and the composition check
+  judged them against another body (a headline counted as a heading at poster size and as lead copy at social
+  size). Layouts now record the raised roles in the type scale and space by the raised body there; social, slide
+  and thumbnail minimums are unchanged.
+- **A roll applied with more slots than any layout places keeps the previewed layout (#700).** `roll --apply` with
+  every slot failed with "No rollable layout … places all of …" and no suggestions, while the preview with the same
+  seed picked a layout. The roll now keeps that layout, so the apply fails with its `unused_slot` error and
+  `suggestions` (the slots it uses); the roll's `direction.pool` is `content` or `preview`. If no layout fits at
+  all, the error's `suggestions` name up to three layouts with the supplied slots each places (probed with the new
+  `layouts.placeable`).
+- **A two-word display title set one word per line is no longer a runt (#713).** `legibility.runt` flagged any
+  one-word last line, so "Coffee, together." on two full-width lines was a review finding with `share: 1.0`. A lone
+  last word now counts only when the paragraph has more words than lines and the word is under half the longest
+  line; a last line under 20% of the longest is still flagged whatever its word count.
 - **A timeline with `loop: 1` plays once.** GIF, WebP and APNG timeline exports played it twice: the encoders
   read `loop` as repetitions after the first play while the timeline, its checks and the docs count plays. A
   timeline's `loop` is now the number of plays in every format (GIF writes no NETSCAPE block for one play, and
@@ -422,6 +443,8 @@ fillable form, loop, mandala, flowchart):
 
 - New review findings: text that is small at its use size is reported as `legibility.use-size` (review, so `passed` is unchanged); on slides and diagrams it replaces the generic "only matters as a thumbnail" note. The values are house-style craft (`minimum_text`: `projected_points`, `distance_share_of_short_side`, `light_weight_step`, `contrast_step`, `most_extra`) and each purpose's `use`. To silence it, waive `legibility` on the layer, mark the layer `decorative`, or pass `thumbnail_width: null` (thumbnail uses only). The deck `min_font` projected default now reads `projected_points` (still 18 pt).
 - `layout-apply` sets minor text (labels, captions, body) at least at the use-size minimum for a regular face when no `base_size` is given: 36 px on a 1080 px slide (was as small as 17 px), 3% of a poster's short side (81 px on an 18×24 at 150 dpi, was about 30 px), 250 px on 3000 px cover art, 100 px on a 1600 px book cover, 30 px on a 1200 px wide portrait diagram. Pass `base_size` for the old type scale.
+- On a poster read across a room, `layout-apply` records the roles that minimum raised in the document's type scale (`body` 81 px on an 18×24 at 150 dpi, was 47) and spaces the layout by the raised body (a 40 px spacing unit, was 23), so gaps grow with the type. Pass `base_size` for the old type scale and spacing.
+- The `event-poster` footer is measured before the details are placed: the button and the caption sit side by side on the bottom margin when the caption fits beside the button, otherwise the caption is set left-aligned on the bottom row under the button. The details may sit slightly higher or smaller than before to leave that room.
 - Text with `tracking` lays out narrower by one tracking amount per line: auto-sized boxes shrink, and centred or right-aligned tracked lines move by half or all of it. There is no setting for the old trailing space; to keep a box's previous width, widen it with `text-layout` or move the layer by the difference.
 - Plain text with layer `tracking` draws at the plain text's position (about 10–30 px higher than in 0.27 at display sizes, and with the plain line pitch for multi-line text). A first `text-style` on a plain layer stores `ink_box: true` and `line_height: 1.0` so it keeps the plain box and leading; set `line_height` with `text-style` for other leading.
 - Rich text whose ink reaches past its box (script faces, slanted or outlined letters) now draws that ink instead of cutting it off at the box edge.

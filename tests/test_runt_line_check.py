@@ -45,3 +45,16 @@ def test_short_last_line_under_a_fifth_is_flagged_even_with_two_words():
 
 def test_body_text_is_exempt():
     assert not runts(headline(250, size=16, text="Local models, safe to share."))
+
+
+def test_two_word_display_title_on_two_lines_is_not_a_runt():  # #713
+    from vixl.text_metrics import drawn_lines
+
+    p = headline(560, size=96, text="Coffee, together.")
+    assert [text for _, text, _ in drawn_lines(p, p.layer("head"))] == ["Coffee,", "together."]
+    assert not runts(p)
+
+
+def test_long_headline_with_orphan_still_flagged():  # #713
+    [finding] = runts(headline(820, size=54, text="Local models you can run at home, safe to share with everyone."))
+    assert len(finding["line"].split()) == 1 and finding["share"] < 0.5
