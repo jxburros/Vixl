@@ -118,6 +118,10 @@
 
 ### Fixed and added
 
+- **A two-word display title set one word per line is no longer a runt (#713).** `legibility.runt` flagged any
+  one-word last line, so "Coffee, together." on two full-width lines was a review finding with `share: 1.0`. A lone
+  last word now counts only when the paragraph has more words than lines and the word is under half the longest
+  line; a last line under 20% of the longest is still flagged whatever its word count.
 - **A timeline with `loop: 1` plays once.** GIF, WebP and APNG timeline exports played it twice: the encoders
   read `loop` as repetitions after the first play while the timeline, its checks and the docs count plays. A
   timeline's `loop` is now the number of plays in every format (GIF writes no NETSCAPE block for one play, and

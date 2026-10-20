@@ -105,7 +105,7 @@ A roll draws from Vixl's house style: it first draws a tier (`safe`, `bold` or `
 
 ### Field-report corrections
 
-`check` reports `code: runt` (review) when wrapped display text (24 px+) leaves one word, or under 20% of the longest line, alone on its last line; set `wrap`, widen the box or break the line.
+`check` reports `code: runt` (review) when wrapped display text (24 px+) leaves under 20% of the longest line, or one word under half of it (when the paragraph has more words than lines), alone on its last line; set `wrap`, widen the box or break the line.
 
 ### Line breaking, tab stops and accent words
 
