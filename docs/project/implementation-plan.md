@@ -123,6 +123,32 @@ The original step 2 list:
 
 ### Step 3: check noise, layout and agent cost
 
+Done on 2026-10-20, on branch `claude/elegant-gates-y1yy4m`: every item below, each with its regression tests and
+changelog entries; the house-style eval and the craft backtest are unchanged and no golden changed. Where the work
+departed from the plan:
+
+- #680 is only partly fixed: on posters the spacing unit and the recorded type scale now follow the raised body, and
+  every text-only poster layout keeps its findings at seed 7. At other seeds, hero-statement and centered-axis still
+  lose the `uneven_rhythm` finding at poster scale, because the poster minimum flattens lead, body and caption to one
+  size. Rescaling the roles above body changes every poster and needs its own eval run, so keep the issue open.
+- #710: the footer helper is used only by `event-poster` (no other layout puts a button and a caption on the bottom
+  margin); details sit 4 units above the footer, not 8, which avoided a new dead band.
+- #701: the owner decision was taken as recommended: `quality: "final"` keeps implying the final profile, and held
+  outputs are reported under `withheld` with a `message`. Production `checks` has one shape (breaking).
+- #702: the optional rule-level `pages` field is not built.
+- #698: `edges` is an effect field, not a look option (looks have no per-look options).
+- #684: `font-cover` is a session step like `font-install`, not an operation. The weights of the three new catalog
+  faces (Noto Sans Thai, KR, TC) need `scripts/verify_fonts.py --check` once online.
+- #712: SVG import and REST `POST /import` do not take `font_map` yet.
+- #693: `vixl new` requires `-o` (breaking). `vixl_document(action=…)` hints are not yet rewritten for the CLI.
+- #637: font assets are not pruned at save; deferring the pairing install already keeps an empty document under 10 KB.
+  The render-purity part waits for #632.
+- #686: `docs/project/` stays the contributor area, and `docs/reference/coverage.md` stays with the user docs. SKILL.md
+  went from 67 KB to 9.4 KB, with a 10,500-byte ratchet. CLAUDE.md checklist item 3 could also name
+  `docs/project/use-case-evidence.md` (an owner edit).
+
+The original step 3 list:
+
 - **Check noise:** #713, #701 (its overlap false positive), #702. These run the craft backtest and the house-style eval.
 - **Layout and roll:** #710, #680, #700.
 - **Agent cost and reference:** #679, #689. Then #693 and #637 (CLI and surprise defaults), then #686 (docs
