@@ -106,9 +106,9 @@ changelog entries. Where the work departed from the plan:
   the keys, and the release workflow refuses to publish a new version until then (steps in
   [Releases](../reference/releases.md#update-signing)). The optional Authenticode check is not done.
 - #677: MPO is left out of the decoder allow-list (Pillow opens camera MPO files through JPEG). `vixl_ai_analyze`
-  results are not marked untrusted yet.
-- #682: shapely stays required (recorded in [Releases](../reference/releases.md)); the `uv.lock` lockfile is left
-  open because it needs network access to resolve.
+  results were marked untrusted in a follow-up.
+- #682: shapely stays required (recorded in [Releases](../reference/releases.md)). `uv.lock` pins the development
+  environment; a `locked` CI job tests from it, the lint job runs `uv lock --check`, and Dependabot updates it.
 - #683, #692 part A and #678: the rule against authorship trailers is kept, with a `commit-msg` hook sample and an
   advisory CI check; DCO or CLA, private vulnerability reporting, branch protection and the #692 part B history purge
   stay owner decisions.
@@ -135,14 +135,16 @@ departed from the plan:
   margin); details sit 4 units above the footer, not 8, which avoided a new dead band.
 - #701: the owner decision was taken as recommended: `quality: "final"` keeps implying the final profile, and held
   outputs are reported under `withheld` with a `message`. Production `checks` has one shape (breaking).
-- #702: the optional rule-level `pages` field is not built.
+- #702: suite rules take an optional `pages` field (added in a follow-up).
 - #698: `edges` is an effect field, not a look option (looks have no per-look options).
 - #684: `font-cover` is a session step like `font-install`, not an operation. The weights of the three new catalog
-  faces (Noto Sans Thai, KR, TC) need `scripts/verify_fonts.py --check` once online.
-- #712: SVG import and REST `POST /import` do not take `font_map` yet.
-- #693: `vixl new` requires `-o` (breaking). `vixl_document(action=…)` hints are not yet rewritten for the CLI.
-- #637: font assets are not pruned at save; deferring the pairing install already keeps an empty document under 10 KB.
-  The render-purity part waits for #632.
+  faces (Noto Sans Thai, KR, TC) were verified with `scripts/verify_fonts.py --check` (107 families, no errors).
+- #712: SVG import and REST `POST /import` take `font_map` too (a follow-up); `install_fonts` has no effect on plain
+  editable SVG, which has no downloading resolver.
+- #693: `vixl new` requires `-o` (breaking). `vixl_document(action=…)` hints are rewritten for the CLI (a follow-up).
+- #637: `save(prune_fonts=True)` and `vixl save --prune-fonts` drop fonts no revision draws. It is opt-in, because a
+  font chosen from outside the document (export variables, merge rows, linking documents) looks unused from inside
+  it. The render-purity part waits for #632.
 - #686: `docs/project/` stays the contributor area, and `docs/reference/coverage.md` stays with the user docs. SKILL.md
   went from 67 KB to 9.4 KB, with a 10,500-byte ratchet. CLAUDE.md checklist item 3 could also name
   `docs/project/use-case-evidence.md` (an owner edit).

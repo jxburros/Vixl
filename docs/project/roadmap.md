@@ -2,7 +2,7 @@
 
 [Documentation home](../README.md) · [House style decisions](house-style.md) · [Releases](../reference/releases.md) · [Changelog](../../CHANGELOG.md)
 
-This plan ordered the open issues after 0.24.0. Releases 0.25.0 to 0.27.0 have shipped since: the "What … settled"
+This plan ordered the open issues after 0.24.0. Releases 0.25.0 to 0.28.0 have shipped since: the "What … settled"
 sections record what each one settled, and the open work is under Craft and Later. Each issue was rated for **complexity** (C1 a few hours, C2 about a
 day, C3 several days, C4 one to two weeks, C5 several weeks or open-ended) and **payoff** (P1 cosmetic or rare, P2 a
 narrow workflow, P3 a common workflow, P4 changes results for most agents, P5 first impression or correctness of
@@ -92,6 +92,21 @@ capability matrix (#640) and native opaque blending (#585). Showcases and media 
 - **Rendering parity:** strokes inside and flush with closed shapes, in-place drawing of text and vector shapes, dithered
   gradients ([Render parity](render-parity.md)); terminal summaries in the CLI.
 - **The craft plan, built:** see Craft below.
+
+## What 0.28.0 settled
+
+0.28.0 completed steps 2 and 3 of the [implementation plan](implementation-plan.md):
+
+- **Security and hygiene:** a network policy (`VIXL_OFFLINE`, `VIXL_FETCH_HOSTS`, fail-closed fetches behind a proxy),
+  REST and token hardening, https-only remote AI providers, restricted image decoders, `untrusted` document text in
+  results, SHA-pinned workflows with an approved publish step, signed Windows updates, governance files and a
+  development lockfile (#668, #672, #673, #674, #675, #677, #621, #624, #682, #683, #678, #692 part A).
+- **Checks, layout and cost:** per-page suite rules, reported production holds, the event-poster footer, poster type
+  and spacing at use size, runt and overlap noise, roll fallbacks, capped brief apply results, the CLI's schema and
+  suggestions, deferred font installs, a 9 KB agent skill (#679, #680, #684, #686, #689, #693, #637, #698, #700, #701,
+  #702, #710, #711, #712, #713).
+- **Before it:** built-in plugins and the emoji content pack, making fonts, use-size legibility and the docs
+  reorganization.
 
 ## Rules for every release below
 
