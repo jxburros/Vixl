@@ -41,6 +41,13 @@
   `defaults_omitted`; numbers are rounded to 2 decimals and a text layer keeps only `ink_bounds` and `baseline`. The
   same batch now returns about 6,000 characters; `detail: "compact"` still lists everything. The CLI summary counts
   the omitted layers.
+- **`vixl_reference('layouts')` no longer documents a `content` option.** `layout-apply` rejected it as an unknown
+  field; the options now describe `slots` (each slot is a top-level field such as `title` or `label`) and the
+  catalog carries a working `example`. A test holds every published option to the operation's schema.
+- **`vixl_reference('capabilities', name='charts')` lists the chart operations.** Topic matching folds plurals
+  (`charts` finds `chart`, `suites` the testing topic), and plugins contribute topics through a new manifest key,
+  `capabilities`; the charts plugin adds `charts` (chart, chart-data, table, table-data, key-value-list) with a
+  `charts` guidance text (`vixl_reference('charts')`).
 
 ### Documentation layout
 

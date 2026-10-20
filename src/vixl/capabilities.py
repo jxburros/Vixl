@@ -52,6 +52,27 @@ GOTCHAS = [
 ]
 
 
+def stem(word):
+    """``word`` without a plural ending ("charts" -> "chart", "boxes" -> "box", "suites" -> "suite"), applied to
+    both the request and each vocabulary so whole words match in either number."""
+    if len(word) > 4 and word.endswith("es") and word[:-2].endswith(("x", "z", "ch", "sh", "ss")):
+        return word[:-2]
+    if len(word) > 3 and word.endswith("s") and not word.endswith("ss"):
+        return word[:-1]
+    return word
+
+
+def topics():
+    """TOPICS plus the topics plugins contribute through their manifest's ``capabilities`` key."""
+    from .plugins import manifests
+
+    merged = dict(TOPICS)
+    for manifest in manifests():
+        for name, (vocabulary, guidance) in manifest.get("capabilities", {}).items():
+            merged[name] = (vocabulary, list(guidance))
+    return merged
+
+
 def lookup(topic=None, *, fields=False):
     from .schema import operation_schema
     from .workflows import describe
@@ -61,28 +82,30 @@ def lookup(topic=None, *, fields=False):
         for entry in operation_schema()["properties"]["operations"]["items"]["oneOf"]
     }
     workflows = describe()["actions"]
+    known = topics()
     if not topic:
         return {
-            "topics": {name: words for name, (words, _) in TOPICS.items()},
+            "topics": {name: words for name, (words, _) in known.items()},
             "gotchas": GOTCHAS,
             "limits": {"operations_per_batch": Limits().max_operations},
             "next": "vixl_reference('capabilities', name=TOPIC, fields=true), then vixl_reference('operations', name=[...]) for exact constraints.",
         }
-    words = re.findall(r"[a-z]+", topic.lower())
+    words = [stem(word) for word in re.findall(r"[a-z]+", topic.lower())]
     requested = set(words)
     chosen = [
-        name for name, (vocabulary, _) in TOPICS.items() if name in requested or requested & set(vocabulary.split())
+        name for name, (vocabulary, _) in known.items()
+        if stem(name) in requested or requested & {stem(word) for word in vocabulary.split()}
     ]
     # Rank by the word that matched: the asked-for words first, then each topic's words in their listed order, so
     # "pen" lists pen, shape and path operations before oil-paint (matched only through the topic's "paint").
-    order = list(dict.fromkeys(words + [word for name in chosen for word in TOPICS[name][0].split()]))
+    order = list(dict.fromkeys(words + [stem(word) for name in chosen for word in known[name][0].split()]))
     rank = {word: index for index, word in enumerate(order)}
 
     def relevant(name):
-        return bool(set(name.split("-")) & rank.keys())
+        return bool({stem(part) for part in name.split("-")} & rank.keys())
 
     def score(name):
-        return (name not in requested, min(rank[part] for part in name.split("-") if part in rank))
+        return (stem(name) not in requested, min(rank[stem(part)] for part in name.split("-") if stem(part) in rank))
 
     operations = {
         name: {
@@ -136,7 +159,7 @@ def lookup(topic=None, *, fields=False):
         **extra,
         "operations": operations,
         "workflows": {name: workflows[name]["summary"] for name in sorted(filter(relevant, workflows), key=score)},
-        "guidance": list(dict.fromkeys(name for topic in chosen for name in TOPICS[topic][1])),
+        "guidance": list(dict.fromkeys(name for topic in chosen for name in known[topic][1])),
         "read_guidance": "vixl_reference(NAME) returns a guidance text",
         "gotchas": GOTCHAS,
         "limits": {"operations_per_batch": Limits().max_operations},

@@ -71,8 +71,12 @@ catalog, stay in `src/vixl/data/`.
        "workflows": [],                  # modules with ACTIONS, dispatch(...), optional FIELD_TYPES and SUMMARIES
        "hooks": {},                      # {"hook point": ["module:function", ...]}
        "requires": [],                   # other plugins this one imports
+       "capabilities": {},               # {"topic": ("words that select it", ["guidance names"])}
    }
    ```
+
+   `capabilities` adds topics to `vixl_reference('capabilities')` (the charts plugin adds `charts`). The guidance
+   names must exist in the one guidance registry, `src/vixl/guidance.py`; add the text there, not in the plugin.
 
 2. Add the name to `BUILTIN` in `src/vixl/plugins/__init__.py`. The order there is the registration order.
 3. Classify each new operation in `targets.py` (`EACH`, `JOINT` or one), as for any operation.
