@@ -80,6 +80,23 @@ class _Document:
         self.path, self.project, self.stamp = path, project, stamp
 
 
+def broad_workspace(folder):
+    """Whether ``folder`` is the home folder or a filesystem root: too much to hand an agent by accident."""
+    folder = Path(folder).resolve()
+    try:
+        home = Path.home().resolve()
+    except (RuntimeError, OSError):
+        home = None
+    return folder == home or folder == Path(folder.anchor)
+
+
+def refuse_broad_workspace(folder):
+    """Refuse the home folder or a filesystem root as a workspace nobody chose (the current directory)."""
+    require(not broad_workspace(folder), f"Refusing {folder} as the workspace: it is the home folder or a "
+            "filesystem root, and no workspace was given. Pass --workspace DIR (Session(workspace=DIR)) or start "
+            "in a project folder", "unsafe_workspace", field="workspace")
+
+
 class Session:
     """Workspace-scoped documents kept loaded between calls.
 
@@ -101,6 +118,8 @@ class Session:
         self.limits = limits or Limits()
         self.workspace = Path(workspace or (Path(path).resolve().parent if path else Path.cwd())).resolve()
         require(self.workspace.is_dir(), "Workspace must be an existing directory")
+        if workspace is None and path is None:
+            refuse_broad_workspace(self.workspace)
         self.require_document = require_document
         self._path = None  # The server-wide default: the document it started with, or set outside MCP.
         self._client_paths = WeakKeyDictionary()

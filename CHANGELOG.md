@@ -34,6 +34,11 @@
 - **`vixl new` needs `-o FILE` (breaking, CLI).** It no longer writes `untitled.vixl` silently; pass `-o FILE` (or
   `-p FILE`). **`vixl schema` without arguments lists the operations** by purpose with one-line summaries (16 KB
   instead of 900 KB); scripts that read the whole JSON Schema use `vixl schema --all`.
+- **New documents install their font pairing with the first text, not at creation.** `creation.fonts` reports
+  `pending: true`; the pairing appears in the first apply that sets text (`font_install` in its result). Code that
+  read `typography` or the embedded fonts right after creating a document applies its text first, or runs
+  `font-pair`. **`vixl mcp` and a Python `Session()` refuse the home folder or a filesystem root as an implicit
+  workspace** (`unsafe_workspace`): pass `--workspace DIR` (`Session(workspace=DIR)`).
 - **Service and network policy (breaking for some setups).** `VIXL_API_TOKEN` must be at least 24 characters;
   AI providers on another host need `https://` or `"allow_insecure": true`; behind a proxy without local DNS, set
   `VIXL_PROXY_RESOLVES=1` for URL imports to work; REST `/check`, `/measure` and `/spacing` reject unknown fields.
@@ -394,6 +399,18 @@ fillable form, loop, mandala, flowchart):
 
 ### Behaviour changes
 
+- **Creating a document never touches the network.** The rolled font pairing is recorded in
+  `design_defaults.fonts` (`pending: true`) and installed by the first batch that sets text, from the font cache
+  else Google Fonts, so an empty document embeds no fonts (about 1 KB instead of the pairing's size) and
+  `vixl new` works offline without a timeout. A batch that chooses its own fonts skips it; a failed install
+  warns once in the apply result (`font_install`) and is not retried by that document, and the process does not
+  retry the network for ten minutes (the flag is now thread-safe). `vixl new` prints the seed and the font status.
+  `VIXL_AUTO_FONTS` (`cache`, `off`) is documented in the README, getting started and troubleshooting.
+- **An implicit MCP workspace is never the home folder or a filesystem root.** `vixl mcp` without `--workspace`
+  or `-p` uses the remembered document's folder and refuses those folders; `Session()` without a path or
+  workspace refuses them as its current directory. `vixl mcp` prints its workspace on stderr at start-up.
+- A weekly `docs-online` workflow runs the docs-executable tests with the network and automatic fonts on
+  (`VIXL_DOCS_ONLINE=1`), so the download paths the regular suite stubs are exercised.
 - New review findings: text that is small at its use size is reported as `legibility.use-size` (review, so `passed` is unchanged); on slides and diagrams it replaces the generic "only matters as a thumbnail" note. The values are house-style craft (`minimum_text`: `projected_points`, `distance_share_of_short_side`, `light_weight_step`, `contrast_step`, `most_extra`) and each purpose's `use`. To silence it, waive `legibility` on the layer, mark the layer `decorative`, or pass `thumbnail_width: null` (thumbnail uses only). The deck `min_font` projected default now reads `projected_points` (still 18 pt).
 - `layout-apply` sets minor text (labels, captions, body) at least at the use-size minimum for a regular face when no `base_size` is given: 36 px on a 1080 px slide (was as small as 17 px), 3% of a poster's short side (81 px on an 18×24 at 150 dpi, was about 30 px), 250 px on 3000 px cover art, 100 px on a 1600 px book cover, 30 px on a 1200 px wide portrait diagram. Pass `base_size` for the old type scale.
 - Text with `tracking` lays out narrower by one tracking amount per line: auto-sized boxes shrink, and centred or right-aligned tracked lines move by half or all of it. There is no setting for the old trailing space; to keep a box's previous width, widen it with `text-layout` or move the layer by the difference.

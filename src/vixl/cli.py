@@ -799,6 +799,12 @@ def _dispatch(argv):
         tls = service_setup(a)
         # Explicit workspaces can start empty. Existing --project configurations still work.
         path = current_path(options.project) if options.project or not a.workspace else None
+        if not a.workspace and not options.project:
+            from .interfaces import refuse_broad_workspace
+
+            refuse_broad_workspace(Path(path).parent)  # the remembered document's folder, which nobody chose here
+        workspace_shown = Path(a.workspace or Path(path).parent).resolve()
+        print(f"vixl mcp: workspace {workspace_shown}", file=sys.stderr)
         server = mcp_server(path, limits, workspace=a.workspace, planner=a.planner, tools=a.tools,
                             require_document=a.require_document, call_limits=from_arguments(a),
                             allow_screen_capture=a.allow_screen_capture)

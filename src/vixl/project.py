@@ -569,7 +569,9 @@ class Project:
         digest.update(json.dumps(operations, sort_keys=True, default=str).encode())
         return digest.hexdigest()
 
-    def _apply(self, operations, *, dry_run=False, detail="full", validator=None):
+    def _apply(self, operations, *, dry_run=False, detail="full", validator=None, base=None):
+        """``base`` (a clone of this document with its pending fonts installed) replaces this document as the
+        starting point of the candidate; the result is committed to this document as usual."""
         require(detail in ("brief", "compact", "full"), "Unknown response detail; use brief, compact or full")
         from .operations import execute
 
@@ -603,7 +605,7 @@ class Project:
         if invalid:
             raise batch_error(invalid)
         operations = validated
-        candidate = self.clone()
+        candidate = (base or self).clone()
         candidate._service = bool(validator)
         candidate._resource_budget = self.limits.max_operations - len(operations)
         from . import notices
@@ -612,7 +614,12 @@ class Project:
         candidate._reports = {}  # What operations such as edit-layers and adapt-layout report back.
         candidate._name_hints = {}  # Default layer names handed out in this batch (operations.default_name).
         remembered = self._remembered_inspect()
-        before = remembered or candidate.inspect()
+        before = remembered or (self if base is not None else candidate).inspect()
+        from .creation import install_pending_fonts, pending_fonts, wants_fonts
+
+        font_install = candidate.__dict__.pop("_font_install", None)
+        if font_install is None and pending_fonts(candidate) and wants_fonts(operations):
+            font_install = install_pending_fonts(candidate)  # a new document's pairing, before its first text
         for index, operation in enumerate(operations):
             calls.check_cancelled()  # A cancelled batch leaves the document untouched: nothing is committed yet.
             calls.progress(index, len(operations), operation["type"])
@@ -641,6 +648,17 @@ class Project:
             except (KeyError, TypeError, ValueError, OverflowError, IndexError, AttributeError, ZeroDivisionError) as exc:
                 raise located(internal_error(exc, operation), index, operation, len(operations)) from exc
         calls.progress(len(operations), len(operations), "checking")
+        if pending_fonts(candidate) and any(layer["type"] == "text" for layer in candidate.state["layers"]):
+            from .creation import has_own_fonts
+
+            if has_own_fonts(candidate):
+                install_pending_fonts(candidate)  # records that the document chose its own fonts
+            elif base is None:
+                # The batch made text without a text operation (a container, a template): install the pairing
+                # and run it again, so the text is set in it.
+                base = self.clone()
+                base._font_install = install_pending_fonts(base)
+                return self._apply(operations, dry_run=dry_run, detail=detail, validator=validator, base=base)
         from .plugins import hooks as plugin_hooks
 
         for refresh_plugin in plugin_hooks("after-apply"):
@@ -728,6 +746,10 @@ class Project:
             result["warnings"] = [*result.get("warnings", []), *warnings]
         notes = [*notes, *interpreted, *reports.pop("normalized", [])]
         result.update(reports)
+        if font_install is not None:
+            result["font_install"] = font_install
+            if font_install.get("warning"):
+                result["warnings"] = [*result.get("warnings", []), font_install["warning"]]
         if notes:
             result["normalized"] = notes
         if detail == "brief":

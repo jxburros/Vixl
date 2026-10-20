@@ -139,12 +139,16 @@ def test_rolled_pairing_is_installed_from_the_cache_without_network(tmp_path, mo
     report = {}
     p = Project.new(seed=8, report=report)
     fonts = report["creation"]["fonts"]
-    assert fonts["installed"] and fonts["origin"] == "cache" and fonts["pairing"] == pairing
-    assert p.state["typography"]["heading"] and p.state["typography"]["body"] and len(p.nodes) == 1
-    p.apply({"type": "layout-apply", "name": "quiet-editorial", "title": "Real fonts", "unfilled": "omit"})
+    # Creation only records the pairing (#637); the first batch with text installs it.
+    assert fonts["pending"] and not fonts["installed"] and fonts["pairing"] == pairing
+    assert "typography" not in p.state and len(p.nodes) == 1
+    result = p.apply({"type": "layout-apply", "name": "quiet-editorial", "title": "Real fonts", "unfilled": "omit"})
+    assert result["font_install"]["installed"] and result["font_install"]["origin"] == "cache"
+    assert p.state["typography"]["heading"] and p.state["typography"]["body"]
+    assert p.state["design_defaults"]["fonts"] == {"pairing": pairing, "installed": True, "origin": "cache"}
     assert not [i for i in p.check(checks=["fonts"])["issues"] if i["check"] == "fonts"]
     made = cli("new", "--seed", "8", "-o", "cli.vixl")
-    assert made["creation"]["fonts"]["installed"]
+    assert made["creation"]["fonts"]["pending"]
     assert not cli("new", "--seed", "8", "--no-fonts", "-o", "bare.vixl")["creation"].get("fonts")
 
 
@@ -165,11 +169,16 @@ def test_offline_creation_warns_once_and_falls_back_quickly(tmp_path, monkeypatc
     monkeypatch.setattr(creation, "network_client", offline)
     first, second = {}, {}
     p = Project.new(seed=2, report=first)
-    Project.new(seed=3, report=second)
+    q = Project.new(seed=3, report=second)
+    assert attempts == [] and first["creation"]["fonts"]["pending"]  # creating never touches the network
+    one = p.apply({"type": "text", "text": "Hello"})["font_install"]
+    two = q.apply({"type": "text", "text": "Hello"})["font_install"]
     assert attempts == [1]
-    assert not first["creation"]["fonts"]["installed"] and "warning" in first["creation"]["fonts"]
-    assert "warning" not in second["creation"]["fonts"] and second["creation"]["fonts"]["next_step"]
-    assert "typography" not in p.state and len(p.nodes) == 1
+    assert not one["installed"] and "warning" in one
+    assert "warning" not in two and two["next_step"]
+    assert "typography" not in p.state and not p.state["design_defaults"]["fonts"].get("pending")
+    p.apply({"type": "text", "text": "Again"})
+    assert attempts == [1]  # a failed install is not retried
     monkeypatch.setenv("VIXL_AUTO_FONTS", "off")
     assert Project.new(seed=2, report=first) and first["creation"]["fonts"]["reason"] == "VIXL_AUTO_FONTS=off"
 
@@ -207,9 +216,9 @@ def test_sparse_layout_apply_inherits_the_whole_stored_direction(tmp_path, monke
     rolled = Project(1080, 1080, workspace=tmp_path)
     roll = roll_document(rolled, seed=23, apply=True, slots={"title": "Same direction"})
     created = Project(1080, 1080, seed=23)
-    assert created.state["typography"] == rolled.state["typography"]
     created.apply({"type": "layout-apply", "name": roll["direction"]["layout"], "title": "Same direction",
                    "unfilled": "omit"})
+    assert created.state["typography"] == rolled.state["typography"]  # installed by the first text (#637)
     same = ("margin", "density", "palette", "mode", "type_scale", "accent", "seed")
     assert {k: created.state["layout"][k] for k in same} == {k: rolled.state["layout"][k] for k in same}
     assert created.state["layout"]["direction"]["corner"] == roll["direction"]["corner"]

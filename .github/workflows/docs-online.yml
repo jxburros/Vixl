@@ -1,0 +1,22 @@
+name: Docs online
+# The docs-executable tests with the network and automatic fonts on, so the download paths that the regular
+# suite stubs (font pairings on the first text, content packs) are exercised against the real sources.
+on:
+  schedule:
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    env:
+      VIXL_DOCS_ONLINE: '1'
+      VIXL_AUTO_FONTS: 'on'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -e ".[dev]"
+      - run: pytest -q -n auto -m docs

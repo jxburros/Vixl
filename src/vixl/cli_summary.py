@@ -91,7 +91,21 @@ def created(result, command):
     line = f"{verb} {os.path.basename(str(result['path']))}  {canvas_text(result['canvas'])}".rstrip()
     if result.get("layers"):
         line += f"  {plural(result['layers'], 'layer')}"
-    return [line]
+    seed = (result.get("design_defaults") or {}).get("seed")
+    if seed is not None:
+        line += f"  seed {seed}"
+    fonts = (result.get("creation") or {}).get("fonts")
+    return [line, *([f"fonts: {font_status(fonts)}"] if fonts else [])]
+
+
+def font_status(fonts):
+    """What a new document's fonts are: installed, waiting for the first text, or the fallback and why."""
+    pairing = fonts.get("pairing")
+    if fonts.get("installed"):
+        return f"{pairing} ({fonts.get('origin', 'installed')})"
+    if fonts.get("pending"):
+        return f"{pairing} (installed with the first text; VIXL_AUTO_FONTS=cache|off to change)"
+    return f"fallback ({fonts.get('reason', 'no pairing')})" if pairing or fonts.get("reason") else "fallback"
 
 
 def state(result, command):
