@@ -67,6 +67,15 @@ Defaults for sparse briefs live in the house style (`src/vixl/data/house-style.j
   This is a convention; branch protection and required reviews are the maintainer's setting.
 - Release rhythm, soak and candidate builds are in [releases](docs/reference/releases.md#release-rhythm-and-soak).
 
+## Documentation layout
+
+User pages live in `docs/` (learning path, `tutorials/`, `guides/`, `reference/`); planning and decision records,
+measurements and maintenance notes live in `docs/project/` and stay out of the user starting points. For a new use
+case, add or move its row in `docs/use-cases.md` (use case, route, calls and minutes, notes) and record a measured
+figure's source in `docs/project/use-case-evidence.md`. The agent skill's entry point `skills/vixl/SKILL.md` stays
+under 10,500 bytes (`tests/test_agent_adoption.py`); put details in `skills/vixl/references/*.md` and link them from
+its feature map. See [documentation maintenance](docs/project/documentation-maintenance.md).
+
 ## Visual regression tests
 
 `tests/visual` renders a small set of fixture documents (shapes, paths, text, gradients, effects, raster resampling, blends, groups, charts, organic shapes) and compares them with reference files in `tests/visual/golden`: PNG renders for every fixture, SVG and PPTX structural text snapshots, and PDF exports rendered to PNG with pypdfium2. Image comparison has a tolerance (a pixel differs when a channel moves by more than 3; the test fails when more than 0.05% of pixels differ or any channel moves by more than 48), so anti-aliasing noise does not fail the suite but a changed colour, shape or position does.

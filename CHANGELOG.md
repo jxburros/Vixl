@@ -105,6 +105,21 @@
   line (pre-1.0, Beta, breaking changes noted here) reads the same everywhere. `docs/reference/coverage.md` opens
   with what works today and its boundaries; the per-release table moved below as history. A test now fails when the
   catalog counts or the tool-list size quoted in the docs drift from the code (151 named sizes, not 150).
+- **The agent skill's entry point is about 9 KB (was 67 KB).** `skills/vixl/SKILL.md` keeps the start-here path,
+  the core loop, the top gotchas, the interfaces and a feature map of reference files. The rest moved, unchanged in
+  substance, to `references/`: the full loop and one-call builds (`workflow.md`), tests, outcomes and composition
+  checks (`testing.md`), objects and accessibility (`objects.md`), workspace, brands and imports (`workspace.md`),
+  every gotcha (`gotchas.md`) and the per-release summaries (`whats-new.md`); minimal examples went to
+  `recipes.md`, the operation map to `operations.md`, and the studio habits to `studio.md`. A test keeps the entry
+  point at 10,500 bytes or less and checks that every reference file exists and is linked from it.
+- **The finishing checklist lives only in the guidance registry.** The skill, getting started and the craft plan
+  point at `vixl_reference('finishing')` / `vixl guide finishing` instead of repeating its items; a test fails when a
+  page copies more than two of them.
+- **Planning and decision records are out of the user path.** The docs hub's "Starting points" no longer lists the
+  house style decisions or the implementation plan; a Contributors row and section (and the README) point at
+  `docs/project/`. The use-case catalog keeps the reader's table; evidence codes, measured sources and the
+  maintenance rules moved to `docs/project/use-case-evidence.md`. The longest paragraphs in the architecture and
+  commands references are split by topic.
 
 ### Built-in plugins and content packs
 

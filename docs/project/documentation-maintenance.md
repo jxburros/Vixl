@@ -12,10 +12,15 @@ Documentation is organized by purpose, one folder per kind of page:
 | `docs/reference/` | Syntax, formats, interfaces, coverage, releases | A reader looks it up rather than reads it through |
 | `docs/project/` | Decisions, plans, measurements, maintenance | Only people working on Vixl need it |
 | `docs/assets/` | Generated visuals, gallery images, editable masters and recipes | A page embeds or links it |
+| `skills/vixl/SKILL.md` | The agent skill's entry point: start-here path, core loop, top gotchas, feature map | Every agent needs it on every task (kept under 10,500 bytes by a test) |
+| `skills/vixl/references/` | Agent reference pages, opened on demand from the feature map | An agent needs it for one kind of work |
 
 Keep feature details in their existing guide and link to them from tutorials rather than
 copying a second full reference. A new page goes into its folder's `README.md` index and the
-hub's feature table in the same change.
+hub's feature table in the same change. The use-case catalog keeps the reader's table (use case, route, time,
+notes); where each figure comes from goes into [use-case evidence](use-case-evidence.md). Guidance that several
+pages need, such as the finishing checklist, lives once in the guidance registry (`src/vixl/guidance.py`); pages
+link to it (`vixl guide finishing`) instead of copying it.
 
 ## Rebuild the visual examples
 

@@ -74,11 +74,8 @@ off every download. See
 
 Passing checks make a design correct, not finished. Before you hand one over, make a finishing pass:
 check the composition (dead bands, two left margins, uneven gaps, crowded rules, clumped scatters), and
-`vixl guide finishing` prints the craft checklist (one focal point, an accent colour used once or twice,
-no dead band, one left edge per column, a motif that names the subject, nothing that reads as a
-placeholder, secondary text readable at real size, glows and shadows that read as light, illustrations in one
-style with joined parts). Fix what it turns up in one batch, then look at the export at its real size, not as a
-thumbnail.
+walk the finishing checklist that `vixl guide finishing` prints (`vixl_reference('finishing')` over MCP). Fix
+what it turns up in one batch, then look at the export at its real size, not as a thumbnail.
 
 <!-- docs-test: continue -->
 ```bash

@@ -63,7 +63,7 @@ The full index, by area. If you have a goal rather than a feature, start from th
 | Area | Guides and references |
 | --- | --- |
 | Documents and authoring | [Concepts](concepts.md), [the `.vixl` file format](reference/file-format.md), [converting documents and tool calls from earlier releases](reference/converting.md), [CLI authoring and checks](reference/authoring.md), [commands](reference/commands.md), [operation semantics](reference/operations.md) |
-| Starting points | [Safe design variety](guides/layout/safe-variety.md), [House style decisions](project/house-style.md), [Implementation plan](project/implementation-plan.md), [Containers and templates](guides/layout/containers-and-templates.md), [Sizes and layouts](guides/layout/sizes-and-layouts.md), [palettes, templates and resources](guides/layout/agent-resources.md), [brands](guides/layout/brands.md), [design styles](guides/layout/styles.md), [guides and grids](guides/layout/guides.md) |
+| Starting points | [Safe design variety and the house style](guides/layout/safe-variety.md), [Containers and templates](guides/layout/containers-and-templates.md), [Sizes and layouts](guides/layout/sizes-and-layouts.md), [palettes, templates and resources](guides/layout/agent-resources.md), [brands](guides/layout/brands.md), [design styles](guides/layout/styles.md), [guides and grids](guides/layout/guides.md) |
 | Text and emoji | [Typography](guides/text/typography.md), [making a font](guides/text/custom-fonts.md), [rich text](guides/text/rich-text.md), [text flow](guides/text/text-flow.md), [emoji library and custom packs](guides/text/emojis.md) |
 | Shapes and objects | [Objects: kinds, parts, isolated review and export](guides/shapes/objects.md), [Vector paths and strokes](guides/shapes/vector-paths.md), [Spatial queries and transforms](guides/shapes/spatial-transforms.md), [Design tools](guides/shapes/design-tools.md), [organic shapes](guides/shapes/organic.md), [diagrams and flowcharts](guides/shapes/diagrams.md) |
 | Finishing and imperfection | [Looks](guides/finishing/looks.md), [scene atmosphere and motifs](guides/finishing/atmosphere.md), [irregularity and torn edges](guides/finishing/irregular.md), [color and print](guides/finishing/color-and-print.md) |
@@ -75,16 +75,18 @@ The full index, by area. If you have a goal rather than a feature, start from th
 | AI | [Provider setup and capability matrix](reference/providers.md) |
 | Integration | [Capability discovery](reference/agent-discovery.md), [MCP tool surface](reference/mcp-toolsets.md), [Python, REST and MCP](reference/interfaces.md), [agent skill](../skills/vixl/SKILL.md), [plugins and content packs](reference/plugins.md) |
 | Installation | [Releases, updates and rollback](reference/releases.md) |
+| Contributors and project records | [Project documentation](project/README.md): [house style decisions](project/house-style.md), [development plan](project/roadmap.md), [craft plan](project/craft-plan.md), [implementation plan](project/implementation-plan.md), [use-case evidence](project/use-case-evidence.md), [render parity](project/render-parity.md), [documentation maintenance](project/documentation-maintenance.md), [brand voice](project/brand-voice.md), [original specification](project/product-spec.md) |
 
-## Development and deeper examples
+## Deeper examples
 
 - [Architecture and resource limits](reference/architecture.md) and [implementation coverage](reference/coverage.md).
 - [Examples](../examples/) and [explorations](https://github.com/jxburros/VixlExamples/blob/main/explorations/README.md): longer creative projects.
-- [Agent evaluations](../evals/README.md): briefs and grading contracts.
-- [Render parity](project/render-parity.md): raster quality measured against Chromium and exact references.
-- [Documentation maintenance](project/documentation-maintenance.md): rebuilding visuals and verifying examples.
-- [Brand voice](project/brand-voice.md): how Vixl's own copy and marketing sound.
 - [Changelog](../CHANGELOG.md): shipped changes and source-only additions.
-- [Original product specification](project/product-spec.md): design context; use coverage for implemented behavior.
+
+## Contributors
+
+Working on Vixl itself? [CONTRIBUTING](../CONTRIBUTING.md) has the rules, and [project documentation](project/README.md)
+holds the decision records, plans, the use-case evidence, render parity, brand voice, documentation maintenance and the
+original product specification. [Agent evaluations](../evals/README.md) hold the briefs and grading contracts.
 
 [Back to the project](../README.md)

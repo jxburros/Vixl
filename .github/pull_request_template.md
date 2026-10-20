@@ -10,7 +10,7 @@
 
 - [ ] Code plus a regression test that fails without it
 - [ ] Docs (`docs/`, and `skills/vixl/SKILL.md` and `skills/vixl/references/` when behaviour, fields or defaults change)
-- [ ] `docs/use-cases.md` row added or moved
+- [ ] `docs/use-cases.md` row added or moved (measured figures: `docs/project/use-case-evidence.md`)
 - [ ] `CHANGELOG.md` entry in the top section
 - [ ] Goldens regenerated and reviewed, if rendering changed (`VIXL_UPDATE_GOLDEN=1 pytest tests/visual`)
 - [ ] Version bumps kept in sync, if this is a release change (see docs/reference/releases.md)
