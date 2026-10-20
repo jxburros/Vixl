@@ -29,7 +29,8 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    `motion-apply` produce editable staggered/relative animation tracks.
 3. Workflow `act` accepts operations, suites, dry_run and repair. It returns measurements and
    commits only if checks pass (`repair: true` first tries the built-in repair map on the candidate).
-   `check` reports failed or needs_review; neither is a pass. Every result has an `outcome`.
+   `check` reports failed or needs_review; neither is a pass. Over pages, a rule about a layer on another page
+   is `not_applicable` there and counts for nothing. Every result has an `outcome`.
 4. Workflow `capture` saves a `.vixl` recipe from explicit typed inputs and text/color
    bindings. Include defaults and difficult examples. Image slots use embedded asset IDs.
 5. Workflow `plan` accepts a spec with rows, matrix, artboards, format and quality.
@@ -131,6 +132,8 @@ Production without suites still checks bounds and flow; clipping returns needs_r
 MCP desktop capture is disabled by default. Start the server with `--allow-screen-capture` or `VIXL_ALLOW_SCREEN_CAPTURE=1` to enable it for that server; this grants connected agents access to the interactive desktop. Capture output paths are relative to the workspace.
 
 Campaign runs with explicit `quality: "final"` default to the final check profile. Set `profile: "draft"`
-explicitly to keep draft blocking rules at full resolution; reports identify the effective profile. The `final`
+explicitly to keep draft blocking rules at full resolution; reports identify the effective profile. Held outputs are
+never written: the run reports `withheld` (count, profile, fail_on, variants, top blocking `rules`) and a `message`.
+Each result's `checks` is `{suites: {name: suite report}, design: report or null, placeholders: report or null}`. The `final`
 profile also checks `composition` and fails on `review` findings, so a `final` campaign or `check-all` run fails on
 unresolved composition findings unless they are waived with a reason or repaired (`repair-layout`).

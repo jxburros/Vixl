@@ -218,6 +218,60 @@ def check_profile(spec):
     return spec.get("profile") or ("final" if spec.get("quality") == "final" else None)
 
 
+def check_reports(checks):
+    """Every report one output's ``checks`` holds: its suite reports, then the design and placeholders reports
+    that ran. ``checks`` is ``{"suites": {name: suite report}, "design": report or None, "placeholders": report or
+    None}``."""
+    return [*(checks.get("suites") or {}).values(),
+            *(checks[key] for key in ("design", "placeholders") if checks.get(key) is not None)]
+
+
+def checks_passed(checks):
+    return all(report["passed"] for report in check_reports(checks))
+
+
+def blocking_rules(checks):
+    """The rule ids that held one output back: failing or unmeasured suite rules, the design findings that reach
+    the profile's ``fail_on`` (or every fix finding without a profile), its failed suites, and leftover
+    placeholders."""
+    from .policy import failing
+
+    found = []
+    for report in (checks.get("suites") or {}).values():
+        found += [r["id"] for r in report.get("results", []) if r["status"] in ("failed", "needs_review")]
+    for key in ("design", "placeholders"):
+        report = checks.get(key)
+        if report is None or report.get("passed", True):
+            continue
+        issues = report.get("issues", [])
+        profile = report.get("profile")
+        indexes = profile["failing"] if profile else failing(report, "fix")
+        found += [issues[i].get("rule") or issues[i].get("check") for i in indexes if i < len(issues)]
+        found += [f"suite {name}" for name in (profile or {}).get("failed_suites", [])]
+    return found
+
+
+def withheld_summary(results, profile):
+    """Why outputs were withheld: how many, the effective profile and its fail_on, and the rules that blocked most
+    often, with a message that says what to do."""
+    from collections import Counter
+
+    rules = Counter(rule for result in results for rule in dict.fromkeys(blocking_rules(result.get("checks") or {})))
+    designs = [((r.get("checks") or {}).get("design") or {}).get("profile") for r in results]
+    fail_on = next((item.get("fail_on") for item in designs if item), None)
+    count = len(results)
+    noun = "variant" if count == 1 else "variants"
+    if profile:
+        advice = "set profile: review" if profile == "final" else "choose a profile that reports these findings"
+        message = (f"{count} {noun} withheld by profile {profile}" + (f" (fail_on {fail_on})" if fail_on else "")
+                   + f"; no output was written for them. Fix the findings, waive them with a reason, or {advice}")
+    else:
+        message = (f"{count} {noun} withheld: their checks did not pass, so no output was written for them. Fix the "
+                   "findings listed under each result's checks, or waive them with a reason")
+    return {"count": count, "profile": profile, "fail_on": fail_on, "variants": [r["id"] for r in results][:50],
+            "rules": [{"rule": rule, "variants": n} for rule, n in rules.most_common(5)], "message": message}
+
+
 def render_variant(project, spec, variant, directory, prior=None, cancelled=lambda: False):
     from .assurance import effective
     from .render_cache import enable, environment, user_cache_dir
@@ -254,7 +308,8 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
     leftovers = placeholder_report(candidate, variant)
     if not leftovers["passed"]:
         # An undefined variable or leftover template copy in this row: report it naming the variant, before rendering.
-        return {**variant, "status": "needs_review", "checks": {"placeholders": leftovers}, "repairs": [],
+        return {**variant, "status": "needs_review",
+                "checks": {"suites": {}, "design": None, "placeholders": leftovers}, "repairs": [],
                 "outcome": leftovers["outcome"]}
     profile = check_profile(spec)
     # A profile chooses the design checks and its own suites unless the spec names suites; without one every
@@ -262,7 +317,8 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
     suites = spec.get("suites", [] if profile else list(effective(candidate)))
 
     def evaluate():
-        checks = {name: candidate.check_suite(name) for name in suites}
+        checks = {"suites": {name: candidate.check_suite(name) for name in suites}, "design": None,
+                  "placeholders": None}
         if profile:
             checks["design"] = candidate.check(profile=profile)
         elif not suites:
@@ -274,7 +330,7 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
     # Named document actions and ``auto`` (the built-in repair map) share one repair loop.
     repairs, checks, repair_details = campaign(candidate, spec.get("repair_actions", []), evaluate)
     extra = {"repair_operations": [op for report in repair_details for op in report["operations"]]} if repair_details else {}
-    if not all(r["passed"] for r in checks.values()):
+    if not checks_passed(checks):
         return {**variant, "status": "needs_review", "checks": checks, "repairs": repairs, **extra,
                 "outcome": variant_outcome(checks, suites, "completed", profile)}
     settings = plan({k: v for k, v in spec.items() if k not in ("rows", "matrix", "artboards")})
@@ -359,12 +415,13 @@ def variant_outcome(checks, suites, execution, profile=None):
     bounds and flow checks ran, so a clean output is completed but unvalidated (a failure still fails it)."""
     from .outcomes import from_findings, from_suite, make, merge
 
-    parts = [from_suite(checks[name], name) for name in suites if name in checks]
-    if profile and checks.get("design", {}).get("outcome"):
-        parts.append(checks["design"]["outcome"])
+    reports = checks.get("suites") or {}
+    design = checks.get("design")
+    parts = [from_suite(reports[name], name) for name in suites if name in reports]
+    if profile and (design or {}).get("outcome"):
+        parts.append(design["outcome"])
     if parts:
         return merge(*parts, execution=execution)
-    design = checks.get("design")
     if design and not design.get("passed", True):
         return from_findings(design.get("issues", []), execution)
     return make(execution, "not_run", ["no suites: only the default bounds and flow checks ran"])
@@ -458,6 +515,11 @@ def run(project, spec, directory, *, cancelled=lambda: False, progress=lambda va
             if all(r["status"] in ("completed", "reused") for r in report["results"])
             else "needs_review"
         )
+        withheld = [r for r in report["results"] if r["status"] == "needs_review"]
+        if withheld:
+            # An output held for review is never written; say so at the job level so an empty directory is explained.
+            report["withheld"] = withheld_summary(withheld, check_profile(spec))
+            report["message"] = report["withheld"]["message"]
         from .outcomes import summarize
 
         report["outcome"] = summarize(r.get("outcome") or {"state": "pending"} for r in report["results"])

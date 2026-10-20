@@ -366,3 +366,32 @@ def test_actions_cover_suites_decks_and_the_cli(tmp_path, capsys, monkeypatch):
     main(["-p", "c.vixl", "check", "--checks", "bounds"])
     out = json.loads(capsys.readouterr().out)
     assert [i["action"] for i in out["issues"] if i["layers"] == ["moon"]] == ["informational"]
+
+
+def button_card(label_x, button_on_top=False):
+    """A 200 px button and a centred label whose 400 px text box overhangs it on both sides."""
+    p = Project(600, 300, "white")
+    button = {"type": "shape", "name": "button", "shape": "rectangle", "x": 200, "y": 100, "width": 200,
+              "height": 80, "fill": "#1d4ed8"}
+    label = [{"type": "text", "name": "label", "text": "Book now", "size": 28, "x": label_x, "y": 120,
+              "color": "white", "align": "center"},
+             {"type": "text-layout", "target": "label", "width": 400, "height": 60}]
+    p.apply(label + [button] if button_on_top else [button] + label)
+    return p
+
+
+def overlap_rules(p):
+    return [i["rule"] for i in p.check(checks=["overlap"])["issues"]]
+
+
+def test_a_label_whose_box_overhangs_its_button_but_whose_glyphs_sit_inside_is_no_overlap():
+    assert overlap_rules(button_card(100)) == []
+
+
+def test_a_label_crossing_part_of_a_button_still_warns():
+    # About a quarter of the glyphs run past the button's edge (#710's caption over the CTA).
+    assert overlap_rules(button_card(170)) == ["overlap.text-object"]
+
+
+def test_a_button_painted_over_its_label_still_warns():
+    assert "overlap.text-object" in overlap_rules(button_card(100, button_on_top=True))

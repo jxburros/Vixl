@@ -188,7 +188,7 @@ def failing(record, level):
                 continue
             if record.get("profile") and suite["status"] != "missing" and not suite_fails(suite["status"], level):
                 continue
-            rules = [r["id"] for r in suite["rules"] if r["status"] not in ("passed", "waived")]
+            rules = [r["id"] for r in suite["rules"] if r["status"] not in ("passed", "waived", "not_applicable")]
             messages.append(f"suite {name}: {suite['status']}" + (f" ({', '.join(rules)})" if rules else ""))
     return messages
 
@@ -243,7 +243,7 @@ def check_document(session, relative, request, suite=None, keep=False, group=Non
                  if key in issue} for issue in issues],
         suites={name: {"status": result["status"], "errors": result["errors"],
                        "needs_review": result["needs_review"],
-                       "rules": [{key: rule.get(key) for key in ("id", "status", "severity", "message") if
+                       "rules": [{key: rule.get(key) for key in ("id", "status", "severity", "message", "reason") if
                                   rule.get(key) is not None} for rule in result["results"]]}
                 for name, result in suites.items()},
     )
@@ -625,7 +625,7 @@ def _level(severity):
 def _suite_findings(entry):
     for name, suite in entry.get("suites", {}).items():
         for rule in suite["rules"]:
-            if rule["status"] not in ("passed", "waived"):
+            if rule["status"] not in ("passed", "waived", "not_applicable"):
                 severity = "error" if rule["status"] == "failed" and rule.get("severity", "error") == "error" else "warning"
                 yield name, rule, severity
 
@@ -662,11 +662,13 @@ def junit(result):
                 for rule in suite_result["rules"]:
                     case = ET.SubElement(suite, "testcase", classname=f"{entry['path']}.suite.{name}", name=rule["id"])
                     cases += 1
-                    if rule["status"] not in ("passed", "waived") and level != "never":
+                    if rule["status"] not in ("passed", "waived", "not_applicable") and level != "never":
                         fails += 1
                         node = ET.SubElement(case, "failure", message=(rule.get("message") or rule["status"])[:500],
                                              type=rule["status"])
                         node.text = json.dumps(rule)
+                    elif rule["status"] == "not_applicable":
+                        ET.SubElement(case, "skipped", message=rule.get("reason", "not applicable"))
         suite.set("tests", str(cases))
         suite.set("failures", str(fails))
         suite.set("errors", str(errs))

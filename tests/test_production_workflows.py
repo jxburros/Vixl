@@ -187,6 +187,21 @@ def test_recipe_invalid_values_and_failed_checks_do_not_publish(tmp_path):
     result = run(p, {"rows": [{"title": "Fine"}, {"title": 123}]}, tmp_path)
     assert [r["status"] for r in result["results"]] == ["needs_review", "failed"]
     assert not list(tmp_path.glob("*.png"))
+    # The held output is explained at the job level, naming the rule that blocked it (#701).
+    assert result["withheld"]["count"] == 1 and result["withheld"]["profile"] is None
+    assert result["withheld"]["rules"] == [{"rule": "logo", "variants": 1}]
+    assert result["message"].startswith("1 variant withheld")
+    # One shape for every output's checks: suite reports under suites, design and placeholders reports beside them.
+    checks = result["results"][0]["checks"]
+    assert set(checks) == {"suites", "design", "placeholders"} and checks["design"] is None
+    assert checks["suites"]["quality"]["results"][0]["id"] == "logo" and checks["placeholders"] is None
+
+
+def test_a_clean_run_reports_nothing_withheld_and_keeps_the_checks_shape(tmp_path):
+    result = run(document(), {"rows": [{}]}, tmp_path)
+    assert result["status"] == "completed" and "withheld" not in result and "message" not in result
+    checks = result["results"][0]["checks"]
+    assert checks["suites"] == {} and checks["design"]["passed"] and checks["placeholders"] is None
 
 
 def test_bounded_repair_retains_suite(tmp_path):

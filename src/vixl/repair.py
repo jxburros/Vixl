@@ -386,14 +386,16 @@ def campaign(candidate, actions, evaluate):
     checks = evaluate()
     repairs, details = [], []
     from .assurance import digest
+    from .production import checks_passed
 
     for action in actions:
-        if all(r["passed"] for r in checks.values()):
+        if checks_passed(checks):
             break
         contract = digest(candidate.state.get("suites", {}))
         if action == "auto":
-            names = [name for name in checks if name in candidate.state.get("suites", {})]
-            report = auto_repair(candidate, checks=["bounds"] if "design" in checks else False, suites=names)
+            names = [name for name in checks["suites"] if name in candidate.state.get("suites", {})]
+            report = auto_repair(candidate, checks=["bounds"] if checks.get("design") is not None else False,
+                                 suites=names)
             details.append(report)
         else:
             candidate.apply({"type": "action-apply", "name": action}, detail="compact")

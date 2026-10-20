@@ -95,9 +95,24 @@ def check_all(project, *, artboards=None, pages=None, comps=None, include_hidden
     combos = variants(project, artboards, pages, comps, include_hidden=include_hidden,
                       artboard=options.pop("artboard", None), page=options.pop("page", None),
                       comp=options.pop("comp", None))
+    from .pages import on_other_page
+    from .render import view_page
+
     issues, summary, checked, waivers = [], [], None, {}
+    targets = options.pop("targets", None)
+    targets = [targets] if isinstance(targets, str) else targets
     for combo in combos:
-        report = check_design(project, **options, **combo)
+        wanted, skipped = targets, []
+        if targets and project.state.get("pages"):
+            # A target on another page does not apply to this page; one missing everywhere still raises.
+            view = view_page(project, combo["page"]) if combo["page"] is not None else project
+            skipped = [ref for ref in targets if on_other_page(project, view, ref)]
+            wanted = [ref for ref in targets if ref not in skipped]
+        if skipped and not wanted:
+            summary.append({**public(project, combo), "passed": True, "errors": 0, "warnings": 0, "issues": 0,
+                            "status": "not_applicable", "skipped_targets": skipped})
+            continue
+        report = check_design(project, **options, **combo, **({"targets": wanted} if wanted else {}))
         checked = checked or report.get("checked")
         # The same waivers apply to every variant: list each once, with its matches summed.
         for state, entries in (report.get("waivers") or {}).items():
@@ -111,7 +126,8 @@ def check_all(project, *, artboards=None, pages=None, comps=None, include_hidden
         for item in report.get("issues", []):
             issues.append({**item, "variant": where, "message": f"[{name}] {item['message']}"})
         summary.append({**where, "passed": report["passed"], "errors": report["errors"],
-                        "warnings": report["warnings"], "issues": len(report.get("issues", []))})
+                        "warnings": report["warnings"], "issues": len(report.get("issues", [])),
+                        **({"skipped_targets": skipped} if skipped else {})})
     result = {**tally(issues), "issues": issues}
     if checked:
         result["checked"] = checked

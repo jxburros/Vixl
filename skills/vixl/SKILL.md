@@ -119,7 +119,8 @@ likeness, mood). `vixl_reference("testing")` is the full method; every `vixl_ref
 | Holds on every format | add `sampling: {artboards: "all", pages: "all"}` (results name their `variant`) |
 
 Each result carries the measurement (gaps, margins, ratio, centre, colour), so a failure says what to
-change. A rule that cannot be measured (a missing layer) is `needs_review`, never a pass, and a
+change. A rule that cannot be measured (a missing layer) is `needs_review`, never a pass; a rule about a layer
+on another page is `not_applicable` on the pages that lack it (neutral, not counted). A
 passing suite proves only its own rules. Rule fields: `vixl_reference('workflows').definitions.suite`.
 From an approved design, `vixl_apply(workflow='suite-infer', request={name})` proposes an explained, tolerant suite to
 review; library suites a group or brand.json lists under `suites` are inherited by every member, and
@@ -665,7 +666,8 @@ syntax via `vixl COMMAND --help`.
 
 Use `--out`/`-o` for CLI destinations and command-specific help for options; `help --full` retains the detailed
 index. For native path artwork, set `shape.path_view: [source_width, source_height]` to scale unchanged data
-into a display box. Explicit campaign `quality: "final"` also selects final checks unless `profile` overrides it.
+into a display box. Explicit campaign `quality: "final"` also selects final checks unless `profile` overrides it; outputs held
+for review are not written, and the run's `withheld` and `message` say how many and which rules blocked them.
 Consult the capability matrix in `docs/reference/interfaces.md` before choosing REST versus a workspace MCP session.
 
 Promo video templates: `video-promo-kinetic`, `video-promo-editorial`, `video-promo-neon`,

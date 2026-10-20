@@ -425,6 +425,32 @@ def master_content(project, name):
     return state["masters"][name]["content"]
 
 
+def document_layer_refs(project):
+    """The name and ID of every layer anywhere in the document: each page (hidden ones too), each master and the
+    live content."""
+    project = getattr(project, "_document", None) or project
+    state = project.state
+    contents = [state] + [page.get("content") or {} for page in state.get("pages") or []]
+    contents += [master.get("content") or {} for master in (state.get("masters") or {}).values()]
+    return {ref for content in contents for layer in content.get("layers") or []
+            for ref in (layer.get("name"), layer.get("id")) if ref}
+
+
+def on_other_page(project, view, ref):
+    """True when the layer ``ref`` is missing from this page view but exists elsewhere in the document (another
+    page or a master), so a rule or target naming it does not apply to this page. A name missing everywhere is
+    False: a typo still surfaces as an error."""
+    if not has_pages(project.state) or not isinstance(ref, str) or ref == "canvas":
+        return False
+    try:
+        view.layer(ref)
+        return False
+    except VixlError:
+        pass
+    refs = document_layer_refs(project)
+    return ref in refs or ref.split("/", 1)[0] in refs
+
+
 def page_project(project, page=None):
     """A render-only copy showing one page: its master's layers underneath its own, its
     background, and its variables (with ``page``, ``pages`` and ``page_name`` filled in)."""
