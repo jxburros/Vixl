@@ -30,7 +30,7 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
 3. Workflow `act` accepts operations, suites, dry_run and repair. It returns measurements and
    commits only if checks pass (`repair: true` first tries the built-in repair map on the candidate).
    `check` reports failed or needs_review; neither is a pass. Over pages, a rule about a layer on another page
-   is `not_applicable` there and counts for nothing. Every result has an `outcome`.
+   is `not_applicable` there and counts for nothing, as is a rule limited by its `pages` field to other pages. Every result has an `outcome`.
 4. Workflow `capture` saves a `.vixl` recipe from explicit typed inputs and text/color
    bindings. Include defaults and difficult examples. Image slots use embedded asset IDs.
 5. Workflow `plan` accepts a spec with rows, matrix, artboards, format and quality.

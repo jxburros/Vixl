@@ -24,7 +24,7 @@ COVERAGE_AXIS = {"anyOf": [{"type": "string", "enum": ["all"]},
                            {"type": "array", "items": {"type": ["string", "integer"]}, "minItems": 1}]}
 
 # Check suite (assert-rule format). Rule fields per kind live in assurance.RULE_FIELDS; each
-# rule needs a unique id and a kind, and may set severity.
+# rule needs a unique id and a kind, and may set severity and pages.
 RULE_KINDS = ("container", "palette", "assert", "design", "property", "gap", "unchanged", "pixels", "text-fit", "alpha",
               "spacing", "relation", "contrast", "color", "ink", "balance", "hierarchy", "count", "focal", "text", "budget")
 RULE_PROPERTIES = {
@@ -39,6 +39,9 @@ RULE_PROPERTIES = {
                             "patterns, character and word limits) or budget (layers, fonts, bytes, image ppi)."},
     "severity": {"type": "string", "enum": ["error", "warning"], "default": "error",
                  "description": "A failed warning needs review instead of failing the suite."},
+    "pages": {**COVERAGE_AXIS, "description": "Limit the rule to these pages (names, ids or 1-based numbers; "
+                                              "default every page). On other pages it reads not_applicable with a "
+                                              "reason; an unknown page reads needs_review."},
     "expression": {"type": "string",
                    "description": "assert: bounded assertion, e.g. 'layer.logo.bounds within canvas', "
                                   "'canvas.width >= 1080', 'text.title.font-size >= 24', 'layer.logo.opacity == 1'."},
@@ -723,7 +726,7 @@ SUMMARIES = {
     "pattern-check": "Measure edge discontinuity in a pattern tile before repeating it.",
     "check": "Run an attached, inherited or inline check suite (or every one) against the document, optionally over "
              "every artboard, page and comp; returns passed/failed/needs_review per rule (not_applicable for a rule "
-             "about a layer on another page).",
+             "about a layer on another page, or one limited to other pages).",
     "act": "Apply operations to a candidate, run suites, and commit only when every suite passes.",
     "capture": "Turn the open document into a portable recipe document with typed inputs; writes a new .vixl.",
     "plan": "Expand a production spec into its full variant list without rendering.",

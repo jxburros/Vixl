@@ -276,6 +276,10 @@
   waiver, outcome, JUnit failure or SARIF finding (JUnit marks it skipped). A name that exists nowhere stays
   `needs_review`. `check` with `targets` over `pages` leaves a target on another page out for that page and lists it
   under the variant's `skipped_targets` instead of raising.
+- **Suite rules can be limited to pages (#702).** A rule's new `pages` field (page names, ids or 1-based numbers,
+  like the `pages` coverage axis) runs it only there; on other pages its result is `not_applicable` with
+  `reason: "rule limited to pages …"`. Without a page axis the rule follows the current page. A page that does not
+  exist makes the rule `needs_review`, so a typo never switches it off.
 - **Withheld production outputs are reported (#701).** `quality: "final"` still implies the `final` check profile,
   which fails on review findings, and a held output is still not written, but the run no longer leaves an empty
   folder unexplained: the report and `production.json` gain `withheld` (count, effective profile and `fail_on`, the
