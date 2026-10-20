@@ -92,6 +92,29 @@ changelog entry. PR #664 was superseded by applying its change directly. Where t
 
 ### Step 2: security and project hygiene
 
+Done on 2026-10-20, on branch `claude/elegant-gates-y1yy4m`: every item below, each with its regression tests and
+changelog entries. Where the work departed from the plan:
+
+- #668: REST `/check` still accepts `repair` and `waivers`, because the docs promise the same options as `vixl_check`.
+- #674: the failure throttle is one instance per app (REST and MCP HTTP never share a process).
+- #672: there is no `vixl doctor`; the network policy is reported by `GET /limits`.
+- #673: the protected environment is named `release`. A read-only `plan` job decides whether a version is already
+  published, so ordinary pushes to main do not wait for approval.
+- #621: signing runs in `distribution/sign_manifest.py` inside the protected job (the Windows job cannot see the
+  key), the signature is a hex Ed25519 file verified by the dependency-free `updater_sign.py`, and new launchers
+  enforce it at once while older ones keep updating on the SHA-256. `TRUSTED_KEYS` is empty until the owner creates
+  the keys, and the release workflow refuses to publish a new version until then (steps in
+  [Releases](../reference/releases.md#update-signing)). The optional Authenticode check is not done.
+- #677: MPO is left out of the decoder allow-list (Pillow opens camera MPO files through JPEG). `vixl_ai_analyze`
+  results are not marked untrusted yet.
+- #682: shapely stays required (recorded in [Releases](../reference/releases.md)); the `uv.lock` lockfile is left
+  open because it needs network access to resolve.
+- #683, #692 part A and #678: the rule against authorship trailers is kept, with a `commit-msg` hook sample and an
+  advisory CI check; DCO or CLA, private vulnerability reporting, branch protection and the #692 part B history purge
+  stay owner decisions.
+
+The original step 2 list:
+
 - **Batch A2, service and network policy:** #668, #674, #675, #672, #624.
 - **Batch A3, release chain:** #673, then #621. Signing needs the protected `publish` environment from #673.
 - **Batch A4, agent trust:** #677.
