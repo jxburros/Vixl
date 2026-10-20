@@ -243,7 +243,7 @@ carries the new layer's `id`, `name` and `asset`). CLI equivalents: `vixl import
 | step | fields | notes |
 | --- | --- | --- |
 | `import-image` | `path` *or* `data_base64` *or* `url`, `name` (default `image`), `credit`, `license` | Embeds an image as a new layer. A name that exists already is an error: name it when a layout has an `image` layer. |
-| `import-document` | `path` *or* `data_base64` (SVG, PDF) *or* `source` (Figma URL or key); `format` (`svg`, `pdf`, `figma`), `name`, `page`, `dpi`, `svg_mode` (`editable`, `auto`, `appearance`), `node_id`, `rasterize_unsupported` | Editable layers; `report` lists what a Figma import could not map. See SKILL.md and `docs/guides/images/figma.md`. |
+| `import-document` | `path` *or* `data_base64` (SVG, PDF) *or* `source` (Figma URL or key); `format` (`svg`, `pdf`, `figma`), `name`, `page`, `dpi`, `svg_mode` (`editable`, `auto`, `appearance`), `node_id`, `rasterize_unsupported`, `font_map` (PDF: `{family: registered name}`), `install_fonts` | Editable layers; `report` lists what a Figma import could not map, `fonts` how each PDF font was matched. See SKILL.md and `docs/guides/images/figma.md`. |
 | `import-font` | **`name`**, `path` *or* `url` | Registers a TTF/OTF under that name. |
 | `font-pair` | `pairing` (name or `random`), `seed`, `mood`, `best_for`, `scope` (`document`, `workspace`) | Installs and sets the heading and body fonts. |
 | `font-install` | **`family`**, `weight`, `italic`, `name`, `role`, `scope` | One Google Fonts style, optionally as a role's font. |

@@ -371,7 +371,8 @@ re-importing it restores the same layers, live text, groups and effects (fonts a
 bundled, cached, same-named registered or Google Fonts face again; any other font falls back to the bundled face with a
 warning). Other SVG becomes shapes, live text
 (`<text>`), groups (`<g>`), gradients and images; a PDF page becomes live text, paths and images (shadings and
-clipped content as image layers). With the default `svg_mode="editable"` an unsupported SVG feature returns an
+clipped content as image layers; its fonts are found again from `font_map`, registered fonts or the font cache, and
+the result's `fonts` says how). With the default `svg_mode="editable"` an unsupported SVG feature returns an
 error; `"auto"` draws just those elements as images (at most 64; more fails with `resource_limit`); `"appearance"` imports the whole SVG or PDF page as one image
 (`dpi` sets a PDF page's resolution).
 A Figma file or frame imports as editable layers, live text, stacks and gradients with `format="figma"` and `source` set to the URL or key

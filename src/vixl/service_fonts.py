@@ -54,16 +54,21 @@ def check_fonts(operation, allowed):
                 field=field,
                 allowed=sorted(name for name in allowed if not name.startswith("fonts/")),
             )
-        close = difflib.get_close_matches(font, sorted(allowed), 3, 0.5)
-        raise VixlError(
-            "missing_font",
-            f"{field} {font!r} is not registered in this document"
-            + (f"; did you mean {' or '.join(map(repr, close))}?" if close else "")
-            + f". Registered: {', '.join(sorted(n for n in allowed if not n.startswith('fonts/'))) or 'none'}. {INSTALL}.",
-            field=field,
-            allowed=sorted(name for name in allowed if not name.startswith("fonts/")),
-            suggestions=close,
-        )
+        raise missing_font(field, font, allowed)
+
+
+def missing_font(field, font, allowed):
+    """The ``missing_font`` error for a font name that is not a role or registered in the document."""
+    close = difflib.get_close_matches(font, sorted(allowed), 3, 0.5)
+    return VixlError(
+        "missing_font",
+        f"{field} {font!r} is not registered in this document"
+        + (f"; did you mean {' or '.join(map(repr, close))}?" if close else "")
+        + f". Registered: {', '.join(sorted(n for n in allowed if not n.startswith('fonts/'))) or 'none'}. {INSTALL}.",
+        field=field,
+        allowed=sorted(name for name in allowed if not name.startswith("fonts/")),
+        suggestions=close,
+    )
 
 
 def checker(project, check):

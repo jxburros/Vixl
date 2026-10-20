@@ -219,6 +219,18 @@ class FontSet:
         for entry in self.fonts.values():
             _write_font(writer, entry)
 
+    def manifest(self):
+        """``{BaseFont: {family, weight, italic, sha256}}`` of each written font. The sha256 is of the whole font file,
+        which the PDF does not hold (it embeds subsets), so a PDF import can find the same face again."""
+        from .text import font_style
+
+        result = {}
+        for key, entry in self.fonts.items():
+            if "base" in entry:
+                family, weight, italic = font_style(entry["data"])
+                result[entry["base"]] = {"family": family, "weight": weight, "italic": italic, "sha256": key}
+        return result
+
 
 def _postscript_name(font):
     name = font["name"].getDebugName(6) or font["name"].getDebugName(4) or "Font"
@@ -238,7 +250,7 @@ def _write_font(writer, entry):
     font = TTFont(io.BytesIO(data), recalcTimestamp=False)
     gids = sorted(entry["glyphs"]) or [0]
     tag = "".join(chr(65 + b % 26) for b in hashlib.sha256((data[:64] + str(gids).encode())).digest()[:6])
-    base = f"{tag}+{_postscript_name(font)}"
+    base = entry["base"] = f"{tag}+{_postscript_name(font)}"
     options = subset.Options()
     options.retain_gids = True
     options.notdef_outline = True

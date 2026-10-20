@@ -64,7 +64,13 @@ def import_document(session, project, *, path: str | None = None, data_base64: s
                     node_id: Annotated[str | None, Field(description="figma: the frame or node to import (1:2 or 1-2)")] = None,
                     rasterize_unsupported: Annotated[bool, Field(
                         description="figma: import a PNG render of nodes Vixl cannot keep editable; otherwise they "
-                                    "are skipped and listed in the report")] = False):
+                                    "are skipped and listed in the report")] = False,
+                    font_map: Annotated[dict[str, str] | None, Field(
+                        description="pdf: PDF font family to registered font name, e.g. {Literata: literata-400, "
+                                    "'Literata Bold': literata-700}")] = None,
+                    install_fonts: Annotated[bool | None, Field(
+                        description="Allow downloading from Google Fonts a font the document and the font cache lack "
+                                    "(default: true for Vixl's own SVG, false for PDF)")] = None):
     """Import an SVG (Vixl's own round-trips losslessly), one PDF page as editable text, paths and images, or a Figma
     file, frame or node as editable layers (from a URL or key with the server's Figma token, or an exported file
     JSON); svg_mode=appearance imports one image instead. External or active SVG is rejected."""
@@ -85,7 +91,10 @@ def import_document(session, project, *, path: str | None = None, data_base64: s
     require(source is None and node_id is None and not rasterize_unsupported,
             "source, node_id and rasterize_unsupported are Figma import options", field="source")
     require(isinstance(page, int), "A PDF page is a number", field="page")
-    return read(project, _upload(session, path, data_base64), format, name, page, dpi, svg_mode)
+    options = {"install_fonts": install_fonts} if install_fonts is not None else {}
+    if font_map:
+        options["font_map"] = font_map
+    return read(project, _upload(session, path, data_base64), format, name, page, dpi, svg_mode, **options)
 
 
 def import_font(session, project, *, name: Annotated[str, Field(description="The font name text operations use")],

@@ -373,6 +373,23 @@ def cache_location():
     return _cache_dir(), "VIXL_FONT_CACHE" if os.environ.get("VIXL_FONT_CACHE") else "default"
 
 
+def cached_font(family, weight=400, italic=False):
+    """The bytes of one Google Fonts style from the font cache, or None; never touches the network."""
+    from .fonts import validate_font
+
+    if not isinstance(family, str) or not re.fullmatch(r"[A-Za-z0-9 ]{1,80}", family):
+        return None
+    entry = find_font(family)
+    family = entry["family"] if entry else family
+    cached = _cache_dir() / f"{slug(family)}-{weight}{'-italic' if italic else ''}.ttf"
+    try:
+        data = cached.read_bytes()
+        validate_font(data)
+    except (OSError, VixlError):
+        return None
+    return data
+
+
 def fetch_font(family, weight=400, italic=False, *, client=None, source=None):
     """Return TTF bytes for one static style of a Google Fonts family, using the user cache.
     A ``source`` dict is filled with where the bytes came from: ``origin`` (``cache`` or
