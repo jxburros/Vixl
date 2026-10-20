@@ -124,13 +124,13 @@ The original step 2 list:
 ### Step 3: check noise, layout and agent cost
 
 Done on 2026-10-20, on branch `claude/elegant-gates-y1yy4m`: every item below, each with its regression tests and
-changelog entries; the house-style eval and the craft backtest are unchanged and no golden changed. Where the work
+changelog entries; the house-style eval shows no regression, the craft backtest is unchanged and no golden changed. Where the work
 departed from the plan:
 
-- #680 is only partly fixed: on posters the spacing unit and the recorded type scale now follow the raised body, and
-  every text-only poster layout keeps its findings at seed 7. At other seeds, hero-statement and centered-axis still
-  lose the `uneven_rhythm` finding at poster scale, because the poster minimum flattens lead, body and caption to one
-  size. Rescaling the roles above body changes every poster and needs its own eval run, so keep the issue open.
+- #680: on posters, directly applied and rolled, the spacing unit and the recorded type scale follow the raised
+  body and the roles above body step up from it. Headline lockups (`hero-statement`, `asymmetric-balance`,
+  `centered-axis`) now group by proximity instead of one equal gap. `f-pattern` and `story-vertical` can still
+  float an entry between two others at some seeds; they do not use the stack helper and are left for a follow-up.
 - #710: the footer helper is used only by `event-poster` (no other layout puts a button and a caption on the bottom
   margin); details sit 4 units above the footer, not 8, which avoided a new dead band.
 - #701: the owner decision was taken as recommended: `quality: "final"` keeps implying the final profile, and held

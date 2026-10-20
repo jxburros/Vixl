@@ -351,6 +351,38 @@ def test_text_only_layouts_keep_findings_at_poster_scale(name, seed, monkeypatch
     assert styles["lead"]["size"] > 1.15 * styles["body"]["size"]
 
 
+@pytest.mark.parametrize("name", ["hero-statement", "asymmetric-balance", "centered-axis"])
+def test_headline_lockups_group_by_proximity(name):
+    # Equal three-unit gaps left the subtitle (or the divider, or the headline) midway between its neighbours at
+    # most seeds; the lockup rhythm keeps related lines close and sets the call to action apart.
+    from vixl.layouts import LAYOUTS
+
+    copy = {key: value for key, value in LAYOUTS[name]["examples"].items() if key not in ("image", "images")}
+    for seed in (1, 2, 3, 4):
+        p = Project.new(width=1080, height=1440, purpose="poster", house_style="off")
+        _scale_findings(p, name, copy, seed)
+        assert not [x["message"] for x in p.check()["issues"] if x.get("code") == "uneven_rhythm"], seed
+
+
+@pytest.mark.parametrize("seed", [1001, 1005, 2003])
+def test_rolled_posters_keep_their_hierarchy_and_spacing(seed, tmp_path):  # #680
+    # A roll's thumbnail minimum (85 px on an 18x24 sheet) is larger than the distance one (81 px); it flattens
+    # caption, body and lead too, so the roll records and spaces by the raised body and steps the roles up.
+    from vixl.typefaces import roll_document
+
+    p = Project.sized("poster-18x24")
+    result = roll_document(p, workspace=tmp_path, seed=seed, purpose="poster", variety="high", apply=True,
+                           slots={"title": "Marathon 2027", "subtitle": "Run the river route", "cta": "Sign up"})
+    short = min(p.state["canvas"]["width"], p.state["canvas"]["height"])
+    styles = p.state["character_styles"]
+    assert styles["body"]["size"] >= 0.03 * short
+    assert styles["lead"]["size"] > 1.15 * styles["body"]["size"], result["direction"]["layout"]
+    assert not [(layer["name"], layer["size"]) for layer in p.state["layers"]
+                if layer["type"] in ("text", "rich-text") and layer.get("size") and layer["size"] < 0.03 * short]
+    assert not [x["code"] for x in p.check()["issues"]
+                if x["check"] == "composition" and x.get("action") != "informational"]
+
+
 def test_a_large_custom_poster_canvas_is_judged_across_a_room():  # #680
     # No named size: the poster purpose's distance rule (3% of the short side, 81 px here) still applies.
     p = Project.new(width=2700, height=3600, purpose="poster", house_style="off")
