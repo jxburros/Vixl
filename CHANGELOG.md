@@ -31,6 +31,9 @@
   default) keeps only a text layer's `ink_bounds` and `baseline`, rounds numbers to 2 decimals and lists at most 25
   added and 50 changed or removed layers; read `line_bounds`, `baselines`, `ascent`, `descent`, `cap_height`,
   `x_height` and the omitted layers with `detail: "compact"` or an inspect. See Agent cost and reference below.
+- **`vixl new` needs `-o FILE` (breaking, CLI).** It no longer writes `untitled.vixl` silently; pass `-o FILE` (or
+  `-p FILE`). **`vixl schema` without arguments lists the operations** by purpose with one-line summaries (16 KB
+  instead of 900 KB); scripts that read the whole JSON Schema use `vixl schema --all`.
 
 ### Agent cost and reference
 
@@ -48,6 +51,22 @@
   (`charts` finds `chart`, `suites` the testing topic), and plugins contribute topics through a new manifest key,
   `capabilities`; the charts plugin adds `charts` (chart, chart-data, table, table-data, key-value-list) with a
   `charts` guidance text (`vixl_reference('charts')`).
+
+### CLI output
+
+- **The CLI names the file it edits.** Edit, check, render and export results carry the document's `path`, and the
+  terminal summary starts with its name (`hello.vixl: added text "Hi"`); the first command that edits the
+  remembered document without `-p` prints `note: editing hello.vixl (the current document; -p FILE chooses
+  another)` on stderr.
+- **Did-you-mean suggestions.** A mistyped command (`vixl rendr`: did you mean render?), option (`--colour`: did
+  you mean --color?) or `vixl schema` operation name is answered with the closest real ones, also as
+  `suggestions` in `--json` errors.
+- **Errors name the file and folder.** Invalid JSON reads `ops.json: line 2 column 1: Expecting ',' delimiter`;
+  an export into a missing folder reads `Folder does not exist: out`, and a missing file whose folder is missing
+  says so. Hints written for MCP (`vixl_reference(...)`, `vixl_check`, `vixl_render`, `vixl_apply(workflow=…)`)
+  are spelled as CLI commands in CLI errors.
+- **Help.** `vixl text --help` shows `--text TEXT` (accepted beside the TEXT argument), and `vixl check --help`
+  lists the check names once, wrapped, instead of a 618-character line.
 
 ### Documentation layout
 

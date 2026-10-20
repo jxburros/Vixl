@@ -26,7 +26,7 @@ omitted, defaults to the active layer. Colors accept CSS names, `#rgb`, `#rrggbb
 accept pixels, `"center"` or `"N%"`; `width`/`height` accept pixels or `"N%"` (of the canvas, or of
 the parent group) on creation ops, `move`, `resize`, `select` and `text-layout`.
 
-The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://operations` / `vixl_reference('operations', name=[…])`.
+The authoritative schema is always `vixl schema OPERATION` (bare `vixl schema` lists names) / `GET /schema` / `vixl://operations` / `vixl_reference('operations', name=[…])`.
 
 ## Creating layers
 

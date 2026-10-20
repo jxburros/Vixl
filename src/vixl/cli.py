@@ -15,7 +15,7 @@ from .fileio import file_lock
 from . import __version__
 from .assets import read_bounded
 from .cli_summary import command_of, human_output, wants_json
-from .commands import Parser, compile_command, compile_script, dimensions, normalize, pairs
+from .commands import TOP_LEVEL_COMMANDS, Parser, compile_command, compile_script, dimensions, normalize, pairs
 from .errors import VixlError, for_surface, friendly, require
 from .model import Limits
 
@@ -260,6 +260,31 @@ def current_path(explicit=None):
         raise VixlError("no_project", "No current project. Use vixl new SIZE -o FILE or vixl open FILE.")
 
 
+def ambient_note(explicit, path, human):
+    """Once per remembered document, tell a person in a terminal which file a command without -p edits."""
+    if explicit or not human:
+        return
+    try:
+        record = json.loads(session_path().read_text())
+        if record.get("noted"):
+            return
+        session_path().write_text(json.dumps({**record, "noted": True}))
+    except (OSError, ValueError, AttributeError):
+        return
+    print(f"note: editing {Path(path).name} (the current document; -p FILE chooses another)", file=sys.stderr)
+
+
+def typo_hint(cmd):
+    """A did-you-mean for a command word that is no command or operation, or None."""
+    from .commands import close_matches
+    from .operations import OPERATION_TYPES
+    from .render import EFFECTS
+
+    if cmd in TOP_LEVEL_COMMANDS or cmd in OPERATION_TYPES or cmd in EFFECTS:
+        return None
+    return close_matches(cmd, [*TOP_LEVEL_COMMANDS, *OPERATION_TYPES]) or None
+
+
 def has_document(explicit=None):
     """Whether a command has a document to read: ``-p`` or a session's existing current file."""
     try:
@@ -286,6 +311,10 @@ def read_json(path):
     require(len(text.encode("utf-8")) <= limit, "JSON input exceeds the 64 MiB batch limit", "resource_limit")
     try:
         return json.loads(text)
+    except json.JSONDecodeError as exc:
+        source = "inline JSON" if inline else "stdin" if path == "-" else str(path)
+        raise VixlError("invalid_json", f"{source}: line {exc.lineno} column {exc.colno}: {exc.msg}",
+                        **({} if inline or path == "-" else {"path": str(path)})) from exc
     except ValueError as exc:
         raise VixlError("invalid_json", str(exc)) from exc
 
@@ -530,9 +559,7 @@ def _dispatch(argv):
                     | set(EFFECTS)
                     | {"filter"}
                     | {"workflow"}
-                    | set(
-                        "pack unpack new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert convert-batch render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates cache commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house brand emoji capabilities catalog objects compact link-set".split()
-                    )
+                    | set(TOP_LEVEL_COMMANDS)
                 )
             }
         ), options.json
@@ -630,7 +657,8 @@ def _dispatch(argv):
         p.add_argument("--overwrite", action="store_true", help="Replace an existing document explicitly")
         p.add_argument("--background", help="Canvas colour (default: the rolled palette background; transparent "
                        "for logos, icons and favicons)")
-        p.add_argument("--out", "-o", default=options.project or "untitled.vixl")
+        p.add_argument("--out", "-o", default=options.project,
+                       help="The document to create (required; -p FILE also names it)")
         p.add_argument("--dpi", type=float)
         p.add_argument("--seed", type=int, help="Reproduce the design defaults of an earlier roll")
         p.add_argument("--variety", choices=["low", "medium", "high", "fixed"])
@@ -648,6 +676,7 @@ def _dispatch(argv):
         negative = next((arg for arg in args if re.fullmatch(r"-\d+(\.\d+)?[xX×]-?\d+(\.\d+)?", arg)), None)
         require(negative is None, f"Dimensions must be 1–16384 pixels; got {negative}", "resource_limit", field="size")
         a = p.parse_args(args)
+        require(a.out, "Name the document to create: vixl new SIZE -o FILE.vixl", "usage_error", field="out")
         require(not Path(a.out).exists() or a.overwrite, "Project already exists; use --overwrite to replace it")
         require(not Path(a.out).is_dir(), "Output must be a file")
         named_size = a.size is not None and not re.fullmatch(r"\d+[xX×]\d+", a.size.strip())
@@ -693,16 +722,25 @@ def _dispatch(argv):
         if args == ["document"]:
             from .document_schema import document_schema
             return document_schema(), options.json
+        if args == ["--all"]:
+            return operation_schema(), options.json
+        if not args:
+            return schema_listing(), options.json
         schema = operation_schema()
-        if args:
-            from .normalize import _canonical_type
+        from .commands import close_matches
+        from .normalize import _canonical_type
 
-            variants = {v["properties"]["type"]["const"]: v
-                        for v in schema["properties"]["operations"]["items"]["oneOf"]}
-            names = [_canonical_type(name, set(variants)) for name in args]
-            require(all(name in variants for name in names), "Unknown operation type; use vixl schema for the full list")
-            return {name: variants[name] for name in names}, options.json
-        return schema, options.json
+        variants = {v["properties"]["type"]["const"]: v
+                    for v in schema["properties"]["operations"]["items"]["oneOf"]}
+        names = [_canonical_type(name, set(variants)) for name in args]
+        unknown = [name for name in names if name not in variants]
+        if unknown:
+            close = close_matches(unknown[0], variants)
+            raise VixlError("invalid_operation", f"Unknown operation type {unknown[0]!r}"
+                            + (f"; did you mean {' or '.join(close)}?" if close else "")
+                            + " vixl schema lists every operation", field="type",
+                            **({"suggestions": close} if close else {}))
+        return {name: variants[name] for name in names}, options.json
     if cmd == "batch":
         return batch(args, limits, options.allow_linked), options.json
     if cmd == "convert-batch" or cmd == "convert" and args and not {"--grayscale", "--format"} & set(args):
@@ -754,7 +792,14 @@ def _dispatch(argv):
         return None, options.json
     if "--help" in args or "-h" in args:
         return command_help(cmd, args), options.json
-    path = current_path(options.project)
+    try:
+        path = current_path(options.project)
+    except VixlError as exc:
+        close = typo_hint(cmd)
+        if close:
+            raise VixlError("unknown_command", f"Unknown command: {cmd}. Did you mean {' or '.join(close)}? "
+                            "Run vixl --help.", suggestions=close) from exc
+        raise
     if cmd in ("serve", "view"):
         from .interfaces import serve
 
@@ -780,7 +825,26 @@ def _dispatch(argv):
         result, changed = project_command(project, cmd, args, detail=options.detail)
         if changed:
             project.save()
+    if isinstance(result, dict) and (changed or cmd in ("check", "render", "export")):
+        result.setdefault("path", str(path))  # the document the command read or edited
+    ambient_note(options.project, path, human_output(argv, sys.stderr))
     return result, options.json
+
+
+def schema_listing():
+    """``vixl schema`` without arguments: every operation by purpose with a one-line summary (the full JSON Schema
+    is ``vixl schema --all``, about 900 KB)."""
+    from .briefs import operations_index
+
+    def line(summary):
+        text = re.split(r"(?<=[.;:])\s|\s\(", summary, maxsplit=1)[0].rstrip(".;:")
+        return text if len(text) <= 64 else text[:63].rsplit(" ", 1)[0] + "…"
+
+    groups = {title: {name: line(text) for name, text in names.items()} if isinstance(names, dict) else names
+              for title, names in operations_index().items()}
+    return {"groups": groups, "count": sum(len(names) for names in groups.values()),
+            "next": "vixl schema OPERATION… for fields, types and examples; vixl schema --all for the whole JSON "
+                    "Schema; vixl schema document for the .vixl file format"}
 
 
 def command_help(cmd, args):
@@ -788,8 +852,9 @@ def command_help(cmd, args):
 
     manual = {
         "open": "open FILE",
-        "schema": "schema [OPERATION…]  (no argument: the whole operation-batch schema; "
-                  "schema particles pivot: just those operations' fields, types and descriptions; aliases accepted; "
+        "schema": "schema [OPERATION…] | schema --all | schema document  (no argument: every operation by purpose "
+                  "with a one-line summary; schema particles pivot: just those operations' fields, types and "
+                  "descriptions, aliases accepted; --all: the whole operation-batch JSON Schema; "
                   "schema document: the JSON Schema of a .vixl file's project.json)",
         "canvas": "canvas resize WxH | size NAME [--landscape] [--bleed] | preset NAME | dpi N | background COLOR",
         "save": "save [FILE]",
@@ -991,6 +1056,8 @@ def project_command(project, cmd, args, *, detail="compact"):
         require(not (cmd == "export" and a.out and a.path),
                 "Choose a positional output or --out, not both", "usage_error")
         require(destination, "Provide output filename or --out FILE")
+        require(destination == "-" or Path(destination).parent.is_dir(),
+                f"Folder does not exist: {Path(destination).parent}", "not_found", field="path")
         require(destination == "-" or a.data or a.overwrite or not Path(destination).exists(),
                 "Export output already exists; use --overwrite to replace it", "output_exists")
         require(
@@ -1146,12 +1213,9 @@ def project_command(project, cmd, args, *, detail="compact"):
             raise VixlError("spacing_mismatch", "Requested spacing is inconsistent", measurement=result)
         return result, False
     if cmd == "check":
-        p = Parser(prog="vixl check")
-        p.add_argument(
-            "--checks",
-            nargs="+",
-            choices=check_names(),
-        )
+        p = Parser(prog="vixl check", epilog="CHECK is one of: " + ", ".join(check_names()))
+        p.add_argument("--checks", nargs="+", choices=check_names(), metavar="CHECK",
+                       help="run only these checks (listed below)")
         p.add_argument("--connect-tolerance", type=float, default=2,
                        help="connected check: pixels of gap still counted as touching (default 2)")
         p.add_argument("--style", nargs="+", help="style checks: evaluate this style (or styles) instead of the document's tag")

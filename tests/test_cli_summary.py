@@ -126,11 +126,11 @@ def test_terminal_prints_summary(document, monkeypatch):
     code, out, _ = run_in_terminal(monkeypatch, ["-p", str(document), "layers"])
     assert code == 0 and out.startswith("2 layers\n") and "title" in out
     code, out, _ = run_in_terminal(monkeypatch, ["-p", str(document), "check"])
-    assert out.startswith("check ") and "—" in out
+    assert out.startswith("d.vixl: check ") and "—" in out
     code, out, _ = run_in_terminal(monkeypatch, ["-p", str(document), "export", "o.png"])
-    assert out.startswith("exported o.png (")
+    assert out.startswith("d.vixl: exported o.png (")
     code, out, _ = run_in_terminal(monkeypatch, ["-p", str(document), "text", "add", "Hi", "--name", "t2"])
-    assert code == 0 and out.startswith('added text "t2"')
+    assert code == 0 and out.startswith('d.vixl: added text "t2"')
 
 
 def test_json_flag_and_env_override_terminal(document, monkeypatch):

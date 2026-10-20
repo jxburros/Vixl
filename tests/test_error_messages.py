@@ -341,4 +341,5 @@ def test_rest_os_error_is_json_without_absolute_path(tmp_path, monkeypatch):  # 
     with TestClient(create_app(path)) as client:
         response = client.get("/document")
     assert response.status_code == 404
-    assert response.json() == {"error": "not_found", "message": "No such file: assets/gone.png"}
+    assert response.json() == {"error": "not_found", "field": "path",
+                               "message": "No such file: assets/gone.png (the folder assets does not exist)"}

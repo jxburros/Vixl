@@ -159,7 +159,7 @@ Every document tool also accepts `document` (workspace path) to address a docume
 
 ### Resource
 
-`vixl://operations` — the full operation JSON Schema (same as `vixl schema`). Usually unnecessary:
+`vixl://operations` — the full operation JSON Schema (same as `vixl schema --all`). Usually unnecessary:
 `vixl_reference("operations", name=[…])` returns the types you need.
 
 ### MCP-specific restrictions

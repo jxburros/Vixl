@@ -111,7 +111,7 @@ vixl -p batch.vixl export batch.png
 ```
 
 Dry-run reports proposed changes without saving. A failed batch commits none of its
-changes. Get allowed fields with `vixl schema` and individual command help with
+changes. List the operations with `vixl schema`, get one operation's fields with `vixl schema text`, and individual command help with
 `vixl text --help`; [operations](reference/operations.md) explains normalization and validation.
 
 ## The same design in Python

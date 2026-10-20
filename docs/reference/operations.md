@@ -8,7 +8,7 @@ See [spacing checks and pixel animation](../guides/motion/pixel-animation-spacin
 
 See [design tools and template production](../guides/shapes/design-tools.md) for groups, clipping, shapes, styles, artboards, CSV rendering, measurements, and the other design operations.
 
-`vixl schema` or REST `GET /schema` returns the full Draft 2020-12 JSON Schema (`vixl schema OPERATION` one operation's fields; `vixl schema document` the schema of a `.vixl` file's `project.json`, see [file format](file-format.md)). MCP exposes the operation schema at `vixl://operations` and per operation through `vixl_reference('operations', name=[…])`. Every editing operation is schema-checked before I/O, then validated against the document and resource limits.
+`vixl schema --all` or REST `GET /schema` returns the full Draft 2020-12 JSON Schema (`vixl schema` lists the operations by purpose; `vixl schema OPERATION` one operation's fields; `vixl schema document` the schema of a `.vixl` file's `project.json`, see [file format](file-format.md)). MCP exposes the operation schema at `vixl://operations` and per operation through `vixl_reference('operations', name=[…])`. Every editing operation is schema-checked before I/O, then validated against the document and resource limits.
 
 ```json
 {"operations":[

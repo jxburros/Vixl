@@ -119,6 +119,13 @@ DERIVED = {"bounds", "canvas_bounds", "content_bounds", "ink_bounds", "line_boun
 OMITTED = ("layers_omitted", "changed_omitted", "removed_omitted")  # brief detail's counts past its caps
 
 
+def named(result, lines):
+    """``lines`` with the first prefixed by the document's file name, so a command never edits an unnamed file."""
+    if lines and isinstance(result.get("path"), str):
+        lines[0] = f"{os.path.basename(result['path'])}: {lines[0]}"
+    return lines
+
+
 def edit(result, command):
     changes = result.get("changes") or {}
     layers = changes.get("layers") or {}
@@ -150,7 +157,7 @@ def edit(result, command):
         lines.insert(0, f"applied {plural(count, 'operation')}")
     if result.get("dry_run"):
         lines[0] = f"dry run: {lines[0]}"
-    return [*lines, *notes_of(result)]
+    return named(result, [*lines, *notes_of(result)])
 
 
 def check(result, command):
@@ -163,7 +170,7 @@ def check(result, command):
     issues = sorted(result.get("issues") or [], key=lambda issue: rank.get(issue.get("severity"), 2))
     rows = [f"  {issue.get('severity', '?'):<7} {', '.join(issue.get('layers') or ['-']):<16} {issue.get('message', '')}"
             for issue in issues]
-    return [head, *tail(rows, [])]
+    return named(result, [head, *tail(rows, [])])
 
 
 def written(result, command):
@@ -171,7 +178,16 @@ def written(result, command):
     line = f"{verb} {result['output']}"
     if isinstance(result.get("bytes"), int):
         line += f" ({size(result['bytes'])})"
-    return [line, *notes_of(result)]
+    return named(result, [line, *notes_of(result)])
+
+
+def schema_groups(result, command):
+    """``vixl schema`` without arguments: each purpose with its operation names."""
+    rows = []
+    for title, names in result["groups"].items():
+        words = ", ".join(names)
+        rows.append(f"{title}: {words if len(words) <= 100 else words[:99].rsplit(', ', 1)[0] + ', …'}")
+    return [f"{result['count']} operations", *rows, result["next"]]
 
 
 def layer_table(items, command):
@@ -275,6 +291,8 @@ def summarize(result, command=None):
             lines = created(result, command)
         elif "canvas" in result and isinstance(result.get("layers"), list):
             lines = state(result, command)
+        elif isinstance(result.get("groups"), dict) and "next" in result and command == "schema":
+            lines = schema_groups(result, command)
         elif "changes" in result and "success" in result:
             lines = edit(result, command)
         elif "passed" in result and "issues" in result:

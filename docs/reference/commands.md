@@ -64,7 +64,7 @@ See [spacing checks and pixel animation](../guides/motion/pixel-animation-spacin
 
 See [design tools and template production](../guides/shapes/design-tools.md) for groups, clipping, shapes, styles, artboards, CSV rendering, measurements, and the other design operations.
 
-Global options can appear before or after the command: `--project FILE` / `-p FILE`, `--json`, `--allow-linked`, `--plugins`, `--max-pixels N`, `--detail brief|compact|full`, `--version`. The default project is stored in the current directory's `.vixl-session.json`. Use explicit paths in CI and concurrent workflows. `vixl COMMAND --help` prints syntax for editing commands.
+Global options can appear before or after the command: `--project FILE` / `-p FILE`, `--json`, `--allow-linked`, `--plugins`, `--max-pixels N`, `--detail brief|compact|full`, `--version`. The default project is stored in the current directory's `.vixl-session.json` (written by `vixl new` and `vixl open`); a command without `-p` edits it, its terminal summary starts with the file name (`hello.vixl: added text "Hi"`), the first such command prints `note: editing hello.vixl` on stderr, and edit, check, render and export results carry its `path`. `vixl new` needs `-o FILE` (or `-p FILE`). Use explicit paths in CI and concurrent workflows. A mistyped command or option is answered with the closest real ones (`vixl rendr`: did you mean render?; `--colour`: did you mean --color?). `vixl COMMAND --help` prints syntax for editing commands.
 
 **Output.** In a terminal a command prints a short human summary (`created a.vixl  800×600  bg #18283b`, `added text "title"`, `check failed (16 checks) — 1 error, 0 warnings` with one line per finding, `exported hello.png (16.2 KB)`); a result with no dedicated summary lists its main fields. When stdout is not a terminal (a pipe, a file, CI), or `--json` is given, or `VIXL_JSON=1` is set, the command prints the full JSON result exactly as before. Exit codes do not change. Errors are one `ERROR:` line on stderr (with suggestions appended in a terminal), or the JSON error with `--json` or `VIXL_JSON=1`.
 
@@ -354,7 +354,7 @@ vixl sizes [--category print|stationery|social|icons|logos|…] [--search TEXT]
 vixl sizes show NAME [--dpi N] [--landscape|--portrait] [--bleed]
 vixl new [NAME|WxH] [--purpose social|poster|slides|print|logo|icon|favicon|…] [--seed N]
     [--variety low|medium|high|fixed] [--house-style on|off] [--background COLOR] [--no-fonts] [--dpi N]
-    [--landscape|--portrait] [--bleed [AMOUNT]] [-o FILE] [--overwrite]   # e.g. new letter --bleed; no size: the
+    [--landscape|--portrait] [--bleed [AMOUNT]] -o FILE [--overwrite]   # e.g. new letter --bleed -o a.vixl; no size: the
     # purpose's size, else 1080x1080; --house-style off: no rolled direction (white canvas, neutral layout defaults)
 vixl canvas size NAME [--dpi N] [--landscape] [--bleed] | canvas dpi N
 
@@ -431,7 +431,7 @@ vixl catalog export --out catalog.json --section sizes --section checks
 
 ## Large batches and focused schemas
 
-`vixl apply operations.json` accepts JSON input up to 64 MiB; the same bound applies to inline JSON and stdin. Operation-count and document resource limits still apply, and a failing batch is atomic. `vixl --json schema text shape` returns only the requested operation schemas. Bare `schema` returns the full catalog; `vixl schema document` returns the JSON Schema of a `.vixl` file's `project.json` ([file format](file-format.md)).
+`vixl apply operations.json` accepts JSON input up to 64 MiB; the same bound applies to inline JSON and stdin. Operation-count and document resource limits still apply, and a failing batch is atomic. `vixl --json schema text shape` returns only the requested operation schemas (a misspelt name suggests the closest ones). Bare `schema` lists every operation by purpose with a one-line summary (about 16 KB); `vixl schema --all` returns the full JSON Schema (about 900 KB); `vixl schema document` returns the JSON Schema of a `.vixl` file's `project.json` ([file format](file-format.md)).
 
 Workflow request arguments accept a JSON file, `-` for stdin, or an inline JSON object. CLI workspace resources resolve from the current directory. Add `.vixl-session.json` to your repository's `.gitignore`; it records the local current-document session and is not a project source file. Shared MCP servers require an explicit document when closing a session with several documents open.
 

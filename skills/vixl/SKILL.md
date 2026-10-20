@@ -654,7 +654,7 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 | AI (provider) | generate/inpaint/img2img, extend (outpaint), upscale, regenerate, background-remove, select object/subject, remove, content-aware-fill, describe/detect/OCR, natural-language plan |
 
 When unsure of a field, get the authoritative schema: MCP `vixl_reference('operations', name=[…])`
-(also resource `vixl://operations`); CLI `vixl schema` (`vixl schema OPERATION` for one; `vixl schema document` for the `.vixl` file format); REST `GET /schema`; per-command
+(also resource `vixl://operations`); CLI `vixl schema OPERATION` (bare `vixl schema` lists the operations; `--all` is the whole 900 KB schema; `vixl schema document` for the `.vixl` file format); REST `GET /schema`; per-command
 syntax via `vixl COMMAND --help`.
 
 ## Interface and output contracts
