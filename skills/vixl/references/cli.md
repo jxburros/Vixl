@@ -328,8 +328,8 @@ vixl ai remove --as removed ; vixl ai content-aware-fill --prompt '…' ; vixl a
 ## Services and updates
 
 ```bash
-vixl -p F.vixl serve [--host 127.0.0.1] [--port 8765] [--token-env VIXL_API_TOKEN]
-vixl mcp --workspace DIR [--tools default|ai] [--planner] [--http [--host H --port N --token-env VAR]] [--require-document]   # MCP over stdio (or HTTP at /mcp): seven design tools; --tools ai runs the provider tools (vixl_ai_*) as a second server, --planner adds vixl_ai_plan to it; --require-document (or VIXL_REQUIRE_DOCUMENT=1) makes document= mandatory
+vixl -p F.vixl serve [--host 127.0.0.1] [--port 8765] [--token-env VIXL_API_TOKEN] [--tls-cert C --tls-key K] [--offline]   # token 24+ chars; --offline (VIXL_OFFLINE=1) turns off URL imports, font downloads and providers
+vixl mcp --workspace DIR [--tools default|ai] [--planner] [--http [--host H --port N --token-env VAR --tls-cert C --tls-key K]] [--require-document] [--offline]   # MCP over stdio (or HTTP at /mcp): seven design tools; --tools ai runs the provider tools (vixl_ai_*) as a second server, --planner adds vixl_ai_plan to it; --require-document (or VIXL_REQUIRE_DOCUMENT=1) makes document= mandatory
 vixl update --check | vixl update | vixl update --rollback ; vixl updates status|on|off   # Windows installer only
 vixl cache info | vixl cache clear   # disk render cache (VIXL_RENDER_CACHE=off, VIXL_CACHE_MAX_MB=256); VIXL_PROFILE=1 adds render_profile to results
 ```

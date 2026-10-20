@@ -601,7 +601,10 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   `--overwrite`; `render --data` and `export-screens` never overwrite, so choose fresh names.
 - **Pixel art:** export with `--sampling nearest` (`sampling:"nearest"` in MCP) or it will be smoothed.
 - **AI features need a configured provider** (`~/.config/vixl/providers.json`). There is no
-  offline fallback; if no provider is configured, say so instead of retrying.
+  offline fallback; if no provider is configured, say so instead of retrying. A provider on another host needs
+  `https://` (or `allow_insecure: true`).
+- **`network_disabled` means `VIXL_OFFLINE=1`** (or `--offline`): URL imports, font downloads and providers are off
+  on purpose. Use workspace files and cached fonts; do not retry.
 - **Small accent text uses `@accent-text`**, not `@accent` (fills and large type only need 3:1; small
   text needs 4.5:1). Layouts already do this.
 - **Character rigs:** set each limb's `pivot` at its joint (`{"type":"pivot","target":"arm","value":"top"}`)

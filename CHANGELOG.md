@@ -27,6 +27,10 @@
   passing a function as `check` is an error that names `validator=`.
 - **Several defaults draw differently** (review findings, glows and shadows, dash fitting, tracked text): each entry
   under Behaviour changes below names its override.
+- **Service and network policy (breaking for some setups).** `VIXL_API_TOKEN` must be at least 24 characters;
+  AI providers on another host need `https://` or `"allow_insecure": true`; behind a proxy without local DNS, set
+  `VIXL_PROXY_RESOLVES=1` for URL imports to work; REST `/check`, `/measure` and `/spacing` reject unknown fields.
+  See Security below.
 
 ### Documentation layout
 
@@ -115,6 +119,31 @@
 - **Encrypted, method-99 and truncated `.vixl` archives fail as `invalid_project`.** The message is "unsupported or
   encrypted ZIP member", instead of a raw `RuntimeError`, `NotImplementedError` or zlib error escaping
   `Project.load`.
+- **REST `/check` reads a form `sample` only inside the workspace.** A path outside it (`../rows.csv`,
+  `/etc/hostname`) answers `403 forbidden` and a missing one `404` without the server path; MCP and REST now share
+  this check. `/check`, `/measure` and `/spacing` refuse fields they do not read with `400`, naming them.
+- **Bearer tokens: no more 500s, a minimum length and a failure throttle (breaking for short tokens).** A token with
+  non-ASCII characters is a plain `401`. `VIXL_API_TOKEN` must be at least 24 characters, or `serve`, `view` and
+  `mcp --http` refuse to start. After 20 failed tokens from one address within a minute, REST and MCP HTTP answer
+  `429` with `Retry-After` and stop comparing until the oldest failure is a minute old.
+- **Remote binds over plain HTTP warn, and the servers can serve HTTPS.** `serve`, `view` and `mcp --http` print a
+  stderr warning when they bind beyond loopback without TLS, since the token travels in cleartext; `--tls-cert` and
+  `--tls-key` serve HTTPS directly.
+- **AI providers refuse plain `http://` to other hosts (breaking for remote `http://` providers).** A provider URL
+  must be `https://` unless it is loopback (`localhost`, `127.0.0.0/8`, `::1`); set `"allow_insecure": true` in the
+  provider entry for a trusted LAN server. This covers HTTP gateways, ComfyUI, Automatic1111 and the Anthropic
+  provider's `url`.
+- **URL fetches fail closed behind a proxy (breaking for proxied sandboxes without DNS).** When an environment proxy
+  applies and Vixl cannot resolve the host itself, the download is refused with `fetch_failed` instead of skipping
+  the address check; set `VIXL_PROXY_RESOLVES=1` where only the proxy can resolve names. Internal names
+  (`localhost`, `*.local`, `*.internal`, `*.svc`, names without a dot) are refused before resolution.
+- **More IPv6 forms are recognized as non-public.** IPv4-translated addresses (`::ffff:0:127.0.0.1`), deprecated
+  site-local `fec0::/10`, SRv6 `5f00::/16` and the documentation ranges no longer pass the URL fetch address check.
+- **No-network mode and a host allow-list.** `VIXL_OFFLINE=1` (or `--offline` on `vixl mcp`, `serve` and `view`)
+  refuses URL imports, font downloads, content packs, the Figma import and AI provider calls with
+  `network_disabled`; automatic fonts at creation use the cache and say why. `VIXL_FETCH_HOSTS` (hosts and
+  `*.suffix` patterns) limits explicit URL imports and their redirects to the listed hosts. `GET /limits` reports
+  the policy under `network`.
 
 ### Fixed and added
 

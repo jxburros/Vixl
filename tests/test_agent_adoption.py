@@ -147,14 +147,14 @@ def test_cli_roll_apply_and_review_notes(tmp_path, monkeypatch):
 def test_viewer_refresh_and_notes_are_shared_with_mcp(tmp_path):
     path = tmp_path / "design.vixl"
     Project(100, 100).save(path)
-    with TestClient(create_app(path, token="secret")) as client:
+    with TestClient(create_app(path, token="secret-token-of-24-chars")) as client:
         viewer = client.get("/view")
         assert viewer.status_code == 200 and "Connecting…" in viewer.text
         assert 'rel="icon"' in viewer.text and 'alt="Vixl"' in viewer.text
         assert viewer.text.count("data:image/svg+xml;base64,") == 2
         assert "__VIXL_" not in viewer.text
         assert client.get("/review").status_code == 401
-        client.headers["Authorization"] = "Bearer secret"
+        client.headers["Authorization"] = "Bearer secret-token-of-24-chars"
         head = client.get("/review").json()["head"]
         p = Project.load(path)
         p.apply({"type": "solid", "color": "red", "name": "red"})
@@ -191,10 +191,10 @@ def rpc(response):
 
 def test_streamable_http_initialization_and_tool_call(tmp_path):
     server = mcp_server(workspace=tmp_path)
-    with TestClient(mcp_http_app(server, token="secret")) as client:
+    with TestClient(mcp_http_app(server, token="secret-token-of-24-chars")) as client:
         assert client.post("/mcp").status_code == 401
         client.headers.update(
-            {"Authorization": "Bearer secret", "Accept": "application/json, text/event-stream"}
+            {"Authorization": "Bearer secret-token-of-24-chars", "Accept": "application/json, text/event-stream"}
         )
         response = client.post(
             "/mcp",
