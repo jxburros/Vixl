@@ -824,9 +824,9 @@ def package(project, exporter, slides, notes, cx, cy):
         ("rId1", f"{REL}/officeDocument", "ppt/presentation.xml"),
         ("rId2", f"{DOC_REL}/metadata/core-properties", "docProps/core.xml"),
         ("rId3", f"{REL}/extended-properties", "docProps/app.xml")])))
-    from .accessibility import document_title, language
+    from .accessibility import document_title, language, resolved_text
 
-    title = document_title(project.state) or ""
+    title = resolved_text(project, document_title(project.state)) or ""
     for layer in project.state["layers"] if not title else []:
         if layer["type"] == "text" and layer.get("visible", True):
             title = layer.get("text", "")[:200]

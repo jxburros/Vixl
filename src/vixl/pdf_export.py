@@ -718,11 +718,11 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
             fallbacks[label] = builder.fallbacks
     fonts.write(writer)
     writer.add({"Type": Name("Pages"), "Kids": kids, "Count": len(kids)}, pages_ref)
-    from .accessibility import document_title as declared_title, language
+    from .accessibility import document_title as declared_title, language, resolved_text
 
     lang = lang or language(project.state)
     if title is None:
-        title = declared_title(project.state)
+        title = resolved_text(project, declared_title(project.state))
     if title is None:
         # The first page's title layer (a role or an exact name, else the largest top text), then the file name.
         from .deck import document_title

@@ -154,6 +154,10 @@
 
 ### Fixed and added
 
+- **HTML export resolves variables in title, alt text and caption (#711).** `${name}` in the document title, the page
+  description, layer alt text and the hidden caption was written literally; they now use the same values as the image,
+  including an export-time `variables=` override and the artboard's visible layers. SVG, PDF, PowerPoint and presenter
+  titles and descriptions resolve too; `$${name}` stays literal.
 - **A timeline with `loop: 1` plays once.** GIF, WebP and APNG timeline exports played it twice: the encoders
   read `loop` as repetitions after the first play while the timeline, its checks and the docs count plays. A
   timeline's `loop` is now the number of plays in every format (GIF writes no NETSCAPE block for one play, and

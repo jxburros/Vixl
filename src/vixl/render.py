@@ -278,7 +278,7 @@ def _needs_variables(layer):
     """Whether resolving ``layer`` can read the document's variables or form fields."""
     return (layer["type"] in ("text", "field", "symbol") or layer.get("code") or layer.get("asset_variable")
             or layer.get("character_style") or layer.get("paragraph_style")
-            or any(isinstance(layer.get(key), str) and "${" in layer[key] for key in ("asset", *COLOR_KEYS))
+            or any(isinstance(layer.get(key), str) and "${" in layer[key] for key in ("asset", "alt", *COLOR_KEYS))
             or (layer.get("repeat") and "${" in repr(layer["repeat"])))
 
 
@@ -335,7 +335,7 @@ def _resolved_layers(project, variables=None, subset=None):
         for category in ("character", "paragraph"):
             if layer.get(category + "_style"):
                 layer.update(deepcopy(project.state[category + "_styles"][layer[category + "_style"]]))
-        for key in ("text", "asset"):
+        for key in ("text", "asset", "alt"):
             if key in layer:
                 layer[key] = substitute(layer[key], variables)
         if layer.get("code"):

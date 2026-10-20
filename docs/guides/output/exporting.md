@@ -23,7 +23,7 @@ can substitute fonts, emphasize form fields or handle animation differently.
 | Icons | ICO or icon set | Multiple destination sizes; inspect the smallest icons |
 | Motion | WebP, GIF, APNG, sheet or frame ZIP | Offline timeline export; GIF has limited colors |
 | Encoded video / audio workflows | MP4 / WebM | ffmpeg required; external generated video also needs a configured gateway |
-| Browser presentation of artwork | HTML | Standalone appearance export; see [studio](../automation/studio.md#svg-import-and-html-export) |
+| Browser presentation of artwork | HTML | Standalone appearance export; title, alt and caption use the same resolved variables as the image; see [studio](../automation/studio.md#svg-import-and-html-export) |
 | Logo hand-off | The `logo-package` workflow | Variants, lockups, SVG/PDF/PNG 1x–3x, icons, social images, usage sheet, zip; see [logo packages](../automation/production.md#logo-packages) |
 | Legacy print (EPS) | Not produced | Vixl does not write EPS; give the printer the PDF (or the SVG) |
 

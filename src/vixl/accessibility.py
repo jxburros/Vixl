@@ -139,6 +139,23 @@ def page_alt(view_state):
     return (view_state.get("page_accessibility") or {}).get("alt") or None
 
 
+def resolved_text(project, value, variables=None):
+    """``value`` with the document's variables (and an export-time override already merged into ``project``) filled
+    in, so a title or alt text shows what the image shows. A literal ``$${name}`` stays ``${name}``."""
+    if not isinstance(value, str) or "${" not in value:
+        return value
+    from .render import document_variables
+    from .variables import substitute
+
+    return substitute(value, {**document_variables(project), **(variables or {})})
+
+
+def resolved_title_alt(project):
+    """The document title and the page description with variables resolved: ``(title, alt)``, each None if unset."""
+    title, alt = document_title(project.state), page_alt(project.state)
+    return resolved_text(project, title), resolved_text(project, alt)
+
+
 def decorative(layer, index=None):
     """Marked decorative, or role decoration/background (the layer or a group above it)."""
     cursor = layer
