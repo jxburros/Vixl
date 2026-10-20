@@ -241,6 +241,61 @@ def glyph_coverage(project, layer):
     }
 
 
+def layer_coverage(project, layer):
+    """``glyph_coverage`` of a text layer as it is drawn: its text with the document's variables filled in, and
+    rich text checked span by span against each span's font. Shared by the checks and the apply-time advisory."""
+    from .render import document_variables
+    from .richtext import active, glyph_coverage as rich_coverage
+    from .variables import layer_text
+
+    view = {**layer, "text": layer_text(layer, document_variables(project))}
+    return (rich_coverage if active(view) else glyph_coverage)(project, view)
+
+
+def uncovered(project, layer):
+    """The characters of a text layer that no available font draws (they render as empty boxes, tofu)."""
+    return layer_coverage(project, layer)["missing"]
+
+
+# Scripts the bundled fonts do not cover, with the catalog family that does (vixl font show "Noto Sans JP").
+# Han alone is ambiguous between Chinese and Japanese; with kana present it is Japanese.
+SCRIPT_FONTS = {
+    "Devanagari": "Noto Sans Devanagari", "Han": "Noto Sans SC", "Hiragana/Katakana": "Noto Sans JP",
+    "Hangul": "Noto Sans KR", "Thai": "Noto Sans Thai", "Arabic": "Noto Sans Arabic",
+}
+SCRIPT_RANGES = (
+    ("Devanagari", 0x0900, 0x097F), ("Devanagari", 0xA8E0, 0xA8FF), ("Thai", 0x0E00, 0x0E7F),
+    ("Hangul", 0x1100, 0x11FF), ("Hangul", 0x3130, 0x318F), ("Hangul", 0xA960, 0xA97F), ("Hangul", 0xAC00, 0xD7FF),
+    ("Hiragana/Katakana", 0x3040, 0x30FF), ("Hiragana/Katakana", 0x31F0, 0x31FF),
+    ("Hiragana/Katakana", 0xFF66, 0xFF9F), ("Han", 0x2E80, 0x2FDF), ("Han", 0x3000, 0x303F),
+    ("Han", 0x3400, 0x4DBF), ("Han", 0x4E00, 0x9FFF), ("Han", 0xF900, 0xFAFF), ("Han", 0xFF00, 0xFF65),
+    ("Han", 0x20000, 0x3134F), ("Arabic", 0x0600, 0x06FF), ("Arabic", 0x0750, 0x077F), ("Arabic", 0xFB50, 0xFDFF),
+    ("Arabic", 0xFE70, 0xFEFF),
+)
+
+
+def script_of(char):
+    """The script name of ``char`` from ``SCRIPT_RANGES``, or None for a script Vixl has no catalog face for."""
+    code = ord(char)
+    return next((name for name, low, high in SCRIPT_RANGES if low <= code <= high), None)
+
+
+def scripts_of(chars):
+    """``{script: [chars]}`` for ``chars``, in first-seen order; characters of other scripts go under ``None``."""
+    found = {}
+    for char in chars:
+        found.setdefault(script_of(char), []).append(char)
+    return found
+
+
+def cover_families(scripts):
+    """The catalog families that draw ``scripts`` (a Japanese face covers Han when kana are present too)."""
+    scripts = [name for name in scripts if name in SCRIPT_FONTS]
+    if "Hiragana/Katakana" in scripts and "Han" in scripts:
+        scripts.remove("Han")
+    return list(dict.fromkeys(SCRIPT_FONTS[name] for name in scripts))
+
+
 def font_runs(fonts, content):
     if len(fonts) == 1:
         return [(fonts[0], content)] if content else []  # One font draws every cluster.

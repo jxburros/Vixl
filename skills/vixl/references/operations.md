@@ -238,7 +238,7 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 
 Besides operations, a `vixl_apply` batch takes steps that need the workspace or the network. They run in order inside
 the same all-or-nothing batch, so a later operation can use what an earlier step made (an `import-image` result, `steps[i].result`,
-carries the new layer's `id`, `name` and `asset`). CLI equivalents: `vixl import`, `vixl font install|pair`, `vixl roll --apply`.
+carries the new layer's `id`, `name` and `asset`). CLI equivalents: `vixl import`, `vixl font install|pair|cover`, `vixl roll --apply`.
 
 | step | fields | notes |
 | --- | --- | --- |
@@ -247,6 +247,7 @@ carries the new layer's `id`, `name` and `asset`). CLI equivalents: `vixl import
 | `import-font` | **`name`**, `path` *or* `url` | Registers a TTF/OTF under that name. |
 | `font-pair` | `pairing` (name or `random`), `seed`, `mood`, `best_for`, `scope` (`document`, `workspace`) | Installs and sets the heading and body fonts. |
 | `font-install` | **`family`**, `weight`, `italic`, `name`, `role`, `scope` | One Google Fonts style, optionally as a role's font. |
+| `font-cover` | `text`, `scripts` (`Devanagari`, `Han`, `Hiragana/Katakana`, `Hangul`, `Thai`, `Arabic`), `weight` | Installs the Noto face for each script no font draws and appends it to `font-fallbacks`; default: every text layer's characters. Refuses offline when a face is not cached. |
 | `style-use` | **`name`**, `palette` | Tags the document with a catalog style (and applies its first palette). |
 | `roll` | `purpose`, `mood`, `seed`, `variety`, `locks`, `slots`, `unfilled` | Rolls a direction and applies fonts and layout. |
 

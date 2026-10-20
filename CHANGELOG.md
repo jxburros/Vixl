@@ -154,6 +154,15 @@
 
 ### Fixed and added
 
+- **Text in scripts no font draws warns at apply time, and `font-cover` fixes it in one step (#684).** The bundled
+  fonts cover Latin, Greek, Cyrillic, Arabic, Hebrew and symbols, so Devanagari, Chinese, Japanese, Korean and Thai
+  drew as empty boxes while the apply returned no warning (only `check` flagged them). An apply that adds or changes
+  such text now returns one warning per layer naming the scripts, a sample of the characters and the fix. The new
+  `font-cover` session step (CLI `vixl font cover [--text T] [--script NAME]`) installs the catalog Noto face for
+  each uncovered script (Noto Sans JP, SC, KR, Devanagari or Thai) and appends it to `font-fallbacks`. It uses the
+  font cache first; with `VIXL_OFFLINE=1`, or when a download fails, nothing changes and the error names the
+  families. The catalog adds Noto Sans Thai, Noto Sans KR and Noto Sans TC (107 families). `font-fallbacks` accepts
+  the entries already in the document's list, so a list can be extended.
 - **A timeline with `loop: 1` plays once.** GIF, WebP and APNG timeline exports played it twice: the encoders
   read `loop` as repetitions after the first play while the timeline, its checks and the docs count plays. A
   timeline's `loop` is now the number of plays in every format (GIF writes no NETSCAPE block for one play, and

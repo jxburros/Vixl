@@ -124,6 +124,19 @@ def font_install(session, project, *, family: Annotated[str, Field(description="
     return install_font(project, family, weight, italic, name, role)
 
 
+def font_cover(session, project, *, text: Annotated[str | None, Field(
+                   description="Cover the characters of this text (default: every text layer's)")] = None,
+               scripts: Annotated[list[str] | None, Field(
+                   description="Scripts to cover: Devanagari, Han, Hiragana/Katakana, Hangul, Thai, Arabic (or "
+                               "japanese, chinese, korean, hindi)")] = None,
+               weight: Annotated[int, Field(ge=100, le=900)] = 400):
+    """Install the catalog Noto face for each script no available font draws (CJK, Devanagari, Thai ...) and append
+    it to font-fallbacks; uses the font cache first and refuses, naming the families, when downloads are off."""
+    from .typefaces import cover_fonts
+
+    return cover_fonts(project, text, scripts, weight)
+
+
 def style_use(session, project, *, name: Annotated[str, Field(description="A style (vixl_reference('styles'))")],
               palette: Annotated[bool, Field(description="Also define and apply the style's first palette")] = False):
     """Tag the document with a catalog style, store its brief as design guidance and optionally apply its palette."""
@@ -146,7 +159,7 @@ def roll(session, project, *, purpose: str | None = None, mood: str | None = Non
 
 
 STEPS = {"import-image": import_image, "import-document": import_document, "import-font": import_font,
-         "font-pair": font_pair, "font-install": font_install, "style-use": style_use, "roll": roll}
+         "font-pair": font_pair, "font-install": font_install, "font-cover": font_cover, "style-use": style_use, "roll": roll}
 
 
 def step_type(kind):

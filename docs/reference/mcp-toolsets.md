@@ -27,7 +27,7 @@ shares `vixl_document`, `vixl_render` and `vixl_job`; see [interfaces](interface
   without a name it lists every operation by purpose.
 - **Session steps.** Work that needs the workspace rather than the document is a batch item too, so it joins the
   same all-or-nothing batch: `import-image`, `import-document`, `import-font`, `font-pair`, `font-install`,
-  `style-use` and `roll`. Their schemas come from the same lookup.
+  `font-cover`, `style-use` and `roll`. Their schemas come from the same lookup.
 - **Options.** Each action is a typed function; its parameters beyond the advertised fields go in `options`, and an
   argument a tool does not advertise is folded into `options` for you, so `vixl_render(max_width=200)` and
   `vixl_render(options={max_width: 200})` are the same call. `vixl_reference('vixl_export')` lists every action of a

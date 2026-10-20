@@ -3620,6 +3620,117 @@
   "notes": "Noto's Devanagari sans, harmonized with Noto Sans."
  },
  {
+  "family": "Noto Sans Thai",
+  "category": "sans-serif",
+  "classification": "thai sans (loopless)",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": false,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (Noto)",
+  "mood": [
+   "neutral",
+   "clear",
+   "global"
+  ],
+  "best_for": [
+   "thai",
+   "thai ui"
+  ],
+  "avoid": "Loopless Thai reads as modern display; for long Thai body text a looped face such as Noto Serif Thai reads more conventionally. Pair with Noto Sans for Latin.",
+  "notes": "Noto's Thai sans, harmonized with Noto Sans (SIL Open Font License); the font-cover fallback for Thai."
+ },
+ {
+  "family": "Noto Sans KR",
+  "category": "sans-serif",
+  "classification": "gothic (Korean sans)",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": false,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (Source Han Sans)",
+  "mood": [
+   "neutral",
+   "clear",
+   "global"
+  ],
+  "best_for": [
+   "korean",
+   "cjk ui"
+  ],
+  "avoid": "Large file sizes.",
+  "notes": "Korean member of Noto Sans CJK (Source Han Sans, SIL Open Font License); the font-cover fallback for Hangul."
+ },
+ {
+  "family": "Noto Sans TC",
+  "category": "sans-serif",
+  "classification": "hei (Chinese sans)",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": false,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (Source Han Sans)",
+  "mood": [
+   "neutral",
+   "clear",
+   "global"
+  ],
+  "best_for": [
+   "traditional chinese",
+   "cjk ui"
+  ],
+  "avoid": "Large file sizes.",
+  "notes": "Traditional Chinese member of Noto Sans CJK (Source Han Sans, SIL Open Font License)."
+ },
+ {
   "family": "Noto Serif JP",
   "category": "serif",
   "classification": "mincho (Japanese serif)",

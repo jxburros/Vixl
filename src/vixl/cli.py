@@ -116,8 +116,9 @@ Resources: commands, shapes, sizes [--category print], palette list|show|add|app
 Type:      fonts [--category serif] [--mood M], font show FAMILY, font pairings [--mood M] [--for poster],
            font pairing NAME, font principles, font install FAMILY [--weight 700] [--role heading|body], font pair NAME|random,
            font use NAME --role heading|body, font list|import, --scope workspace [--workspace DIR] (install/pair: brand.json
-           default for new documents; install's role defaults to heading)
-Finish:    look LAYER NAME [--color C] [--amount 0-1] [--remove]  (clean-flat, subtle-grain, light-paper, glow, neon,
+           default for new documents; install's role defaults to heading),
+           font cover [--text T] [--script Thai] (install Noto fallbacks for CJK, Devanagari, Thai ... text)
+Finish:   look LAYER NAME [--color C] [--amount 0-1] [--remove]  (clean-flat, subtle-grain, light-paper, glow, neon,
            soft-shadow, hard-shadow, outline, gradient, soft-halo, grain, paper, film, duotone, risograph, sketch,
            watercolor, halftone, hand-made, plush), looks (catalog),
            radial-repeat LAYER --count N [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--name N]
