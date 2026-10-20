@@ -40,11 +40,13 @@ Amount has filter-specific units. Values outside these ranges are rejected atomi
 | find-edges | Colored edge detection on black | 100 (0–100% mix) | — |
 | emboss | Raised relief appearance | 100 (0–100% mix) | — |
 | oil-paint | Local mode smoothing and reduced colors | 3 (1–6 integer neighborhood radius) | — |
-| watercolor | Smoothed, reduced and lightened colors with blotchy density, a darker rim inside every edge and paper variation | 100 (0–100% mix) | `seed` 0 |
+| watercolor | Smoothed, reduced and lightened colors with blotchy density, a darker rim inside every edge and paper variation | 100 (0–100% mix) | `seed` 0, `edges` auto |
 | swirl | Twist around the image center | 90 (−720–720 degrees) | `radius` 0.8 (0.01–1 fraction of the shorter dimension) |
 | ripple | Concentric displacement waves | 8 (0–64 pixels) | `radius` 32 (1–256 pixel wavelength) |
 | wave | Horizontal sinusoidal displacement | 8 (0–64 pixels) | `radius` 32 (1–256 pixel wavelength) |
 | glass | Smooth seeded refractive distortion | 6 (0–64 pixels) | `radius` 12 (1–256 pixel texture size); `seed` 0 |
+
+Watercolor takes `edges`: `auto` (default; a side of the layer that reaches the canvas edge stays open instead of pooling), `shape` (also leaves box edges open) or `box` (rim every edge of the layer's box). A rim is never more than 35% darker than the wash.
 
 Duotone CLI colors use `--shadow-color` and `--highlight-color`; JSON uses underscores. `effect set` accepts amount, radius, seed and the duotone colors. Settings and seeds are saved in `.vixl` projects. Glass/watercolor reproduce the same output for a fixed seed and imaging-library environment. These are Vixl treatments, not replicas of proprietary Photoshop algorithms.
 

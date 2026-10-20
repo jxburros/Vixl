@@ -115,7 +115,7 @@ def reading_text(view, variables=None):
     """(title, other lines) of a page as a reader meets it: its title, then the page description (accessibility
     page_alt), then the rest of its own text and the alt text of its images in reading order (the page's explicit
     reading_order, else top to bottom). Master layers and footer-like layers are chrome and are left out."""
-    from .accessibility import page_alt, reading_order
+    from .accessibility import page_alt, reading_order, resolved_text
     from .deck import CHROME_NAME, _master_ids, _visible, title_layer
     from .render import resolve_layout, resolved_layers
     from .spatial import canvas_boxes
@@ -135,7 +135,7 @@ def reading_text(view, variables=None):
         readable.append(item)
     lines = [(item.get("text") or "").strip() if item["type"] == "text" else item["alt"]
              for item in reading_order(view.state, readable, canvas)]
-    summary = page_alt(view.state)
+    summary = resolved_text(view, page_alt(view.state), variables)
     return (" ".join(title["text"].split()) if title else ""), ([summary] if summary else []) + lines
 
 
@@ -212,9 +212,9 @@ def export_presenter(project, *, pages=None, options=None, variables=None, svg_p
         require(size <= project.limits.max_project_bytes, "The presentation exceeds the size limit; use fewer pages, "
                 "slide_images=svg or a smaller scale", "resource_limit")
 
-    from .accessibility import document_title, language
+    from .accessibility import document_title, language, resolved_text
 
-    title = opts["title"] or document_title(state) or next((t for t in titles if t), "") or "Presentation"
+    title = opts["title"] or resolved_text(project, document_title(state), variables) or next((t for t in titles if t), "") or "Presentation"
     css = style(state["canvas"])
     deck = hashlib.sha256("".join(slides).encode("utf-8", "replace")).hexdigest()[:12]
     policy = ("default-src 'none'; img-src data:; style-src 'sha256-%s'; script-src 'sha256-%s'; base-uri 'none'; "

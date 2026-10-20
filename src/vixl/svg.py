@@ -604,12 +604,12 @@ def export_svg(project, *, scale=1, variables=None, artboard=None, comp=None, sv
     )
     exporter = Exporter(candidate, root)
     exporter.with_ids = document
-    from .accessibility import document_title, page_alt, page_language
+    from .accessibility import page_language, resolved_title_alt
 
     lang = page_language(candidate.state)
     if lang:
         root.set("{http://www.w3.org/XML/1998/namespace}lang", lang)
-    title, summary = document_title(candidate.state), page_alt(candidate.state)
+    title, summary = resolved_title_alt(candidate)
     for position, (tag, text) in enumerate((("title", title), ("desc", summary))):
         if text:
             element = ET.Element(f"{{{NS}}}{tag}")

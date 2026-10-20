@@ -284,7 +284,7 @@ def _canonical_type(kind, known):
 # What an adjustment layer's effects entries may hold.
 ADJUSTMENT_FIELDS = frozenset({"name", "amount", "value", "seed", "radius", "strength", "shadow_color",
                                "highlight_color", "black", "white", "points", "enabled", "luminance", "chroma",
-                               "search"})
+                               "search", "edges"})
 
 # Colour fields where "none" means no paint, spelled "transparent" from here on.
 COLOR_FIELDS = ("fill", "stroke", "color", "stroke_color", "background", "start", "end", "highlight")
