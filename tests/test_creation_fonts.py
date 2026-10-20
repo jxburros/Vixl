@@ -124,8 +124,14 @@ def test_an_empty_new_document_is_small(auto_fonts, tmp_path, monkeypatch):
     assert (tmp_path / "empty.vixl").stat().st_size < 10_000
 
 
+def fake_home(monkeypatch, folder):
+    # Path.home() reads USERPROFILE on Windows and HOME elsewhere.
+    monkeypatch.setenv("HOME", str(folder))
+    monkeypatch.setenv("USERPROFILE", str(folder))
+
+
 def test_session_refuses_home_or_root_as_an_implicit_workspace(tmp_path, monkeypatch):
-    monkeypatch.setenv("HOME", str(tmp_path))
+    fake_home(monkeypatch, tmp_path)
     monkeypatch.chdir(tmp_path)
     with pytest.raises(VixlError) as caught:
         Session()
@@ -141,7 +147,7 @@ def test_session_refuses_home_or_root_as_an_implicit_workspace(tmp_path, monkeyp
 
 
 def test_mcp_refuses_home_as_the_workspace_of_a_remembered_document(tmp_path, monkeypatch):
-    monkeypatch.setenv("HOME", str(tmp_path))
+    fake_home(monkeypatch, tmp_path)
     monkeypatch.chdir(tmp_path)
     Project(20, 20).save(tmp_path / "doc.vixl")
     dispatch(["open", "doc.vixl"])
