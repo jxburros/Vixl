@@ -15,3 +15,5 @@ To bump locally, obtain the pinned toolkit at `.toolkit`, run `node .toolkit/src
 Validation for this migration: shared engine syntax/test suite and workflow lint; manifest/embedded-version validation is run against the prepared changes. Hosted/native consumer release dry runs and actual publication have not been performed from these unmerged branches. No release/tag was created by this migration.
 
 The current checked-in `TRUSTED_KEYS` in `src/vixl/updater_sign.py` is empty. Existing mandatory signing checks intentionally continue to block releases until the owner provisions and reviews an updater trust root. PyPI remains in the local `pypi.yml` workflow and consumes the already-built distributions.
+
+Hosted validation note (2026-10-20): GitHub reported that an Actions budget prevented some jobs from starting. Other repositories also reported dependency advisories in unchanged dependency graphs. These gates remain enforced; the migration does not claim an end-to-end native release where those checks are blocked.
