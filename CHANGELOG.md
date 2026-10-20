@@ -27,6 +27,20 @@
   passing a function as `check` is an error that names `validator=`.
 - **Several defaults draw differently** (review findings, glows and shadows, dash fitting, tracked text): each entry
   under Behaviour changes below names its override.
+- **Brief apply results are capped and trimmed (breaking for code that reads them).** `detail: "brief"` (the MCP
+  default) keeps only a text layer's `ink_bounds` and `baseline`, rounds numbers to 2 decimals and lists at most 25
+  added and 50 changed or removed layers; read `line_bounds`, `baselines`, `ascent`, `descent`, `cap_height`,
+  `x_height` and the omitted layers with `detail: "compact"` or an inspect. See Agent cost and reference below.
+
+### Agent cost and reference
+
+- **A large batch no longer floods the agent's context.** A brief apply result listed every added layer with every
+  text metric: 1,000 text layers returned 443,000 characters (about 110k tokens). Brief now lists the first 25 added
+  layers (50 changed, 50 removed) and counts the rest under `changes.layers_omitted` / `changed_omitted` /
+  `removed_omitted` (`{count, by_parent, sample, more}`); per-layer `defaults` records past 25 are counted under
+  `defaults_omitted`; numbers are rounded to 2 decimals and a text layer keeps only `ink_bounds` and `baseline`. The
+  same batch now returns about 6,000 characters; `detail: "compact"` still lists everything. The CLI summary counts
+  the omitted layers.
 
 ### Documentation layout
 

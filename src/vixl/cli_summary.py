@@ -116,6 +116,9 @@ DERIVED = {"bounds", "canvas_bounds", "content_bounds", "ink_bounds", "line_boun
            "parent", "group", "grouped"}
 
 
+OMITTED = ("layers_omitted", "changed_omitted", "removed_omitted")  # brief detail's counts past its caps
+
+
 def edit(result, command):
     changes = result.get("changes") or {}
     layers = changes.get("layers") or {}
@@ -128,11 +131,16 @@ def edit(result, command):
             lines.append(f"removed \"{delta.get('name', 'layer')}\"")
         else:
             changed.append(delta)
-    if changed:
+    omitted = {key: (changes.get(key) or {}).get("count", 0) for key in OMITTED}
+    if omitted["layers_omitted"]:
+        lines.append(f"added {plural(omitted['layers_omitted'], 'more layer')}")
+    if omitted["removed_omitted"]:
+        lines.append(f"removed {plural(omitted['removed_omitted'], 'more layer')}")
+    if changed or omitted["changed_omitted"]:
         fields = list(dict.fromkeys(field for delta in changed for field in changed_fields(delta)))
         detail = f": {', '.join(fields[:6])}" if fields else ""
-        lines.append(f"changed {plural(len(changed), 'layer')}{detail}")
-    others = [key for key in changes if key not in ("layers", "active_layer")]
+        lines.append(f"changed {plural(len(changed) + omitted['changed_omitted'], 'layer')}{detail}")
+    others = [key for key in changes if key not in ("layers", "active_layer", *OMITTED)]
     if others:
         lines.append(f"changed {', '.join(others[:5])}")
     if not lines:
