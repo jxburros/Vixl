@@ -883,7 +883,7 @@ def command_help(cmd, args):
                   "descriptions, aliases accepted; --all: the whole operation-batch JSON Schema; "
                   "schema document: the JSON Schema of a .vixl file's project.json)",
         "canvas": "canvas resize WxH | size NAME [--landscape] [--bleed] | preset NAME | dpi N | background COLOR",
-        "save": "save [FILE]",
+        "save": "save [FILE] [--prune-fonts]",
         "inspect": "inspect [LAYER] | inspect --object NAME|PATH|*",
         "status": "status",
         "session": "session --project FILE (NDJSON operations or command argv requests on stdin)",
@@ -1064,18 +1064,24 @@ def project_command(project, cmd, args, *, detail="compact"):
         parser = Parser(prog="vixl save")
         parser.add_argument("path", nargs="?")
         parser.add_argument("--out")
+        parser.add_argument("--prune-fonts", action="store_true",
+                            help="Unregister fonts no revision draws and leave their files out (undo is kept)")
         a = parser.parse_args(args)
         require(not (a.path and a.out), "Choose a positional output or --out, not both", "usage_error")
         destination = a.out or a.path
+        pruned = project.prune_fonts(dry_run=True) if a.prune_fonts else None
         if destination:
             require(
                 not Path(destination).exists() or Path(destination).resolve() == project.path,
                 "Destination already exists",
             )
-            project.save(destination)
+            project.save(destination, prune_fonts=a.prune_fonts)
             remember(destination)
         else:
-            project.save()
+            project.save(prune_fonts=a.prune_fonts)
+        if pruned is not None:
+            pruned.pop("dry_run")
+            return {"saved": str(project.path), "pruned": pruned}, False
         return {"saved": str(project.path)}, False
     if cmd == "export" and args and Path(next((x for x in args if not x.startswith("-")), "")).suffix.lower() in (
             ".gif", ".apng", ".mp4", ".webm"):

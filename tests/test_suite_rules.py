@@ -211,6 +211,38 @@ def test_a_waiver_does_not_claim_a_not_applicable_result():
     assert report["results"][0]["status"] == "not_applicable" and report["passed"]
 
 
+def test_a_rule_limited_to_pages_is_not_applicable_on_the_others():
+    p = booklet()
+    for pages in (["page-2"], [2], "page-2", ["2"]):
+        suite = {"rules": [{"id": "no-text", "kind": "count", "layer_type": "text", "maximum": 0, "pages": pages}]}
+        validate_suite(suite)
+        report = p.check_suite(suite, pages="all")
+        by_page = {r["variant"]["page"]: r for r in report["results"]}
+        assert by_page["page-1"]["status"] == "not_applicable"
+        assert by_page["page-1"]["reason"].startswith("rule limited to pages ")
+        assert by_page["page-2"]["status"] == "failed" and report["status"] == "failed"
+        groups = {g["page"]: g["status"] for g in report["groups"]}
+        assert groups == {"page-1": "passed", "page-2": "failed"}
+    only_first = p.check_suite({"rules": [{"id": "no-text", "kind": "count", "layer_type": "text", "maximum": 0,
+                                           "pages": ["page-2"]}]}, pages=["page-1"])
+    assert only_first["status"] == "passed" and only_first["results"][0]["status"] == "not_applicable"
+    # Without a page axis the rule follows the document's current page (page-2, the last one added).
+    current = p.check_suite({"rules": [{"id": "no-text", "kind": "count", "layer_type": "text", "maximum": 0,
+                                        "pages": ["page-1"]}]})
+    assert current["results"][0]["status"] == "not_applicable" and current["passed"]
+
+
+def test_a_rule_limited_to_an_unknown_page_needs_review_and_bad_pages_are_rejected():
+    p = booklet()
+    report = p.check_suite({"rules": [{"id": "fit", "kind": "text-fit", "target": "title", "pages": ["pgae-1"]}]},
+                           pages="all")
+    assert report["status"] == "needs_review"
+    assert all(r["status"] == "needs_review" and "pgae-1" in r["message"] for r in report["results"])
+    for bad in (True, {}, [], [None], [1.5]):
+        with pytest.raises(VixlError):
+            validate_suite({"rules": [{"id": "fit", "kind": "text-fit", "target": "title", "pages": bad}]})
+
+
 def test_checking_targets_over_pages_skips_a_target_on_another_page():
     p = booklet()
     report = p.check(pages=["page-1", "page-2"], targets=["series"])

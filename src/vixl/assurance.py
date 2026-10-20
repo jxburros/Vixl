@@ -64,11 +64,13 @@ def validate_suite(suite):
     ids = set()
     for rule in rules:
         require(isinstance(rule, dict) and rule.get("kind") in RULE_FIELDS, "Unknown check kind")
-        require(not set(rule) - RULE_FIELDS[rule["kind"]] - {"kind", "id", "severity"}, "Unknown check field")
+        require(not set(rule) - RULE_FIELDS[rule["kind"]] - COMMON_FIELDS, "Unknown check field")
         ident = rule.get("id")
         require(isinstance(ident, str) and ident and ident not in ids, "Check IDs must be unique")
         ids.add(ident)
         require(rule.get("severity", "error") in ("error", "warning"), "Invalid check severity")
+        if "pages" in rule:
+            _validate_pages(rule["pages"], f"rule {ident!r}: pages")
         if "tolerance" in rule:
             finite(rule["tolerance"], "tolerance", 0, 1e9)
         if not extends:
@@ -78,10 +80,8 @@ def validate_suite(suite):
     require(isinstance(sampling, dict) and set(sampling) <= SAMPLING_FIELDS, "Invalid sampling")
     for axis in ("artboards", "pages", "comps"):
         value = sampling.get(axis)
-        require(value is None or value == "all" or (
-            isinstance(value, list) and 0 < len(value) <= 500
-            and all(isinstance(v, (str, int)) and not isinstance(v, bool) for v in value)),
-            f"sampling {axis} is 'all' or a list of names", field=axis)
+        require(value is None or value == "all" or _name_list(value),
+                f"sampling {axis} is 'all' or a list of names", field=axis)
     require(type(sampling.get("include_hidden", False)) is bool, "sampling include_hidden is true or false")
     require(sampling.get("mode", "still") in ("still", "sampled", "all", "times"), "Invalid sampling mode")
     count = sampling.get("count", 8)
@@ -92,6 +92,34 @@ def validate_suite(suite):
             "Explicit sampling needs 1–3600 times",
         )
     require(len(json.dumps(suite, allow_nan=False)) <= 1024 * 1024, "Suite too large", "resource_limit")
+
+
+# Fields every rule kind may carry besides its own.
+COMMON_FIELDS = {"kind", "id", "severity", "pages"}
+
+
+def _name_list(value):
+    return (isinstance(value, list) and 0 < len(value) <= 500
+            and all(isinstance(v, (str, int)) and not isinstance(v, bool) for v in value))
+
+
+def _validate_pages(value, where):
+    # Like the coverage axes: 'all', one page, or a list of page names, ids or 1-based numbers.
+    single = isinstance(value, (str, int)) and not isinstance(value, bool)
+    require(single or _name_list(value), f"{where} is 'all', a page name or number, or a list of them",
+            field="pages")
+
+
+def rule_pages(project, rule):
+    """The page ids a rule is limited to (its ``pages`` field), or None when it runs on every page. Unknown pages
+    raise, so a typo reads as needs_review rather than silently skipping the rule."""
+    from .pages import find_page
+
+    value = rule.get("pages")
+    if value is None or value == "all":
+        return None
+    refs = value if isinstance(value, list) else [value]
+    return {find_page(project.state, ref, "pages")["id"] for ref in refs}
 
 
 def _validate_fields(rule):
@@ -229,7 +257,7 @@ def rule_result(project, rule):
         return report["passed"], report
     if kind == "palette":
         from .palette_checks import measure
-        report = measure(project, **{k: v for k, v in rule.items() if k not in ("kind", "id", "severity")})
+        report = measure(project, **{k: v for k, v in rule.items() if k not in COMMON_FIELDS})
         return report["passed"], report
     if kind == "assert":
         from .validation import assert_rule
@@ -722,7 +750,7 @@ def run_suite(project, suite, *, variables=None, artboard=None, mode=None, page=
     ``variant`` and ``groups`` gives each variant's status."""
     from .coverage import coverage_record, label, public, requested, variants
     from .design_render import artboard_project
-    from .pages import on_other_page
+    from .pages import active_page, on_other_page
     from .render import view_page
     from .timeline import project_at
 
@@ -745,6 +773,14 @@ def run_suite(project, suite, *, variables=None, artboard=None, mode=None, page=
         elsewhere = {rule["id"]: [ref for ref in rule_layers(rule) if on_other_page(project, view, ref)]
                      for rule in suite["rules"]}
         views.append((combo, candidate, _times(candidate, sampling, mode), elsewhere))
+    # Rules limited to some pages (rule-level pages): each holds its page ids, or the error naming an unknown page.
+    scoped = {}
+    for rule in suite["rules"]:
+        if rule.get("pages") is not None:
+            try:
+                scoped[rule["id"]] = rule_pages(project, rule)
+            except VixlError as exc:
+                scoped[rule["id"]] = exc
     total = sum(len(times) for _, _, times, _ in views) * len(suite["rules"])
     require(total <= 50000, "Check workload exceeds limit", "resource_limit")
     from .checks import missing_glyphs
@@ -753,9 +789,23 @@ def run_suite(project, suite, *, variables=None, artboard=None, mode=None, page=
     for combo, candidate, times, elsewhere in views:
         where = {"variant": public(project, combo)} if multi else {}
         start = len(results)
+        page_id = combo["page"] if combo["page"] is not None else (active_page(project.state) or {}).get("id")
         for time in times:
             frame = candidate if time is None else project_at(candidate, time)
             for rule in suite["rules"]:
+                limit = scoped.get(rule["id"])
+                if isinstance(limit, VixlError):
+                    results.append({"id": rule["id"], "status": "needs_review",
+                                    "severity": rule.get("severity", "error"), "time": time, **where,
+                                    "message": str(limit)})
+                    continue
+                if limit is not None and page_id not in limit:
+                    named = rule["pages"] if isinstance(rule["pages"], list) else [rule["pages"]]
+                    results.append({"id": rule["id"], "status": "not_applicable",
+                                    "severity": rule.get("severity", "error"), "time": time, **where,
+                                    "reason": "rule limited to pages " + ", ".join(map(str, named)),
+                                    "pages": named})
+                    continue
                 if elsewhere.get(rule["id"]):
                     results.append({"id": rule["id"], "status": "not_applicable",
                                     "severity": rule.get("severity", "error"), "time": time, **where,

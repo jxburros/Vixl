@@ -68,7 +68,7 @@ A slow render? `check --checks cost` names the costly layer; `VIXL_PROFILE=1` ad
 | --- | --- |
 | `new 1920x1080 -o F.vixl [--background COLOR]` | Create (refuses to overwrite); also selects it |
 | `open F.vixl` | Select as default project for this directory |
-| `save [COPY.vixl]` | Save / save-as |
+| `save [COPY.vixl] [--prune-fonts]` | Save / save-as; `--prune-fonts` leaves out fonts no revision draws (undo kept) |
 | `status` | Canvas, active layer, head, branch, transaction flag |
 | `inspect [LAYER]` | Full JSON state (or one layer) incl. `resolved_bounds` |
 | `layers [--full]` | Layer list (long path data abbreviated unless `--full`) |

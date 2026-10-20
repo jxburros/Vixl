@@ -4,8 +4,10 @@ A document keeps every asset some revision references, so undo can bring it back
 image, or a font from an earlier pairing, stays in the file until history no longer needs it.
 ``unused_assets`` reports what the current state does not use; ``compact`` is the explicit,
 reported way to drop it. It discards undo history, so nothing calls it implicitly.
+``prune_fonts`` keeps the history and drops only fonts no revision draws (opt-in at save).
 """
 
+from copy import deepcopy
 import json
 
 from .errors import require
@@ -116,4 +118,71 @@ def check_note(project, report):
     # its own fail_on (recomputing them here turned a failing final profile into a pass).
     counts = tally(report["issues"])
     report.update({key: counts[key] for key in ("errors", "warnings", "info", "by_action")})
+    return report
+
+
+def prune_fonts(project, *, dry_run=False):
+    """Unregister the fonts no revision draws and drop their files, keeping undo history.
+
+    A font counts as drawn when any revision (the current state, undo and redo history, branches and
+    checkpoints) uses it from a layer, role, style, fallback list, master or page, as ``unused_assets`` measures
+    it. Such fonts are removed from every revision, so undo still restores the same design and the font files
+    lose their last reference. Fonts drawn only in an earlier revision stay; ``compact`` drops those together
+    with the history. Names used from outside the document (export-time variables, data rows, recipe inputs,
+    documents that link this one) are invisible here, which is why nothing calls this implicitly:
+    ``save(prune_fonts=True)`` or ``vixl save --prune-fonts`` asks for it."""
+    from .history import diff
+    from .project import ASSET_REFERENCE
+
+    require(not project.transaction, "Commit or roll back the open transaction before pruning fonts",
+            field="prune_fonts")
+    states = {ident: project._state_at(ident) for ident in project.nodes}
+    registered, drawn = {}, set()
+    for state in (*states.values(), project.state):
+        registered.update(state.get("fonts", {}))
+        drawn |= _current_references(state)[1]
+    unused = set(registered) - drawn
+
+    def strip(state):
+        if not unused & set(state.get("fonts", {})):
+            return state
+        fonts = {name: asset for name, asset in state["fonts"].items() if name not in unused}
+        return {**{k: v for k, v in state.items() if k != "fonts"}, **({"fonts": fonts} if fonts else {})}
+
+    stripped = {ident: strip(state) for ident, state in states.items()}
+    current = strip(project.state)
+    # A file another name, a layer or any other revision still refers to stays.
+    body = json.dumps([current, list(stripped.values())], separators=(",", ":")).encode()
+    referenced = {name.decode() for name in ASSET_REFERENCE.findall(body)}
+    dropped = sorted({registered[name] for name in unused} - referenced)
+    report = {"dry_run": dry_run, "fonts_unregistered": sorted(unused),
+              "assets_dropped": [{"asset": asset, "kind": "font", "bytes": len(project.assets[asset])}
+                                 for asset in dropped if asset in project.assets]}
+    report["bytes_dropped"] = sum(item["bytes"] for item in report["assets_dropped"])
+    if dry_run or not unused:
+        return report
+    # Parents before children, so each delta is taken against the parent's rewritten state.
+    order, seen = [], set()
+    for ident in project.nodes:
+        chain = []
+        while ident is not None and ident not in seen:
+            chain.append(ident)
+            ident = project.nodes[ident]["parent"]
+        seen.update(chain)
+        order.extend(reversed(chain))
+    nodes = {}
+    for ident in order:
+        node = project.nodes[ident]
+        replacement = {k: v for k, v in node.items() if k not in ("state", "delta")}
+        if "state" in node:
+            replacement["state"] = stripped[ident]
+        else:
+            replacement["delta"] = diff(stripped[node["parent"]], stripped[ident])
+        nodes[ident] = replacement
+    # New objects only: a save works on a shallow copy, and a refused save must leave the document intact.
+    project.nodes = {ident: nodes[ident] for ident in project.nodes}
+    project.state = current
+    if project.head is not None:
+        project._head_state = deepcopy(stripped[project.head])
+    project.assets = {asset: data for asset, data in project.assets.items() if asset not in dropped}
     return report

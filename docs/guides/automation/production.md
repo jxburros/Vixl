@@ -159,6 +159,17 @@ typo still surfaces. Design checks with `targets` over pages work the same way: 
 for that page and listed under the variant's `skipped_targets` (a page with none of the targets is
 `status: "not_applicable"`).
 
+To hold a rule to some pages only, give it `pages` (page names, ids or 1-based numbers, or one of them):
+
+```json
+{"rules": [{"id": "cover-title", "kind": "text-fit", "target": "title", "minimum": 24, "pages": ["Cover", 2]}],
+ "sampling": {"pages": "all"}}
+```
+
+On every other page the rule is `not_applicable` with `reason: "rule limited to pages Cover, 2"` and does not count.
+Without a page axis it follows the document's current page. A page that does not exist makes the rule
+`needs_review` on every page, so a misspelt page name never silently switches the rule off.
+
 ### Library suites shared by a group or the workspace
 
 `suite-use` copies a library suite into one document. To hold many documents to one contract, refer

@@ -43,7 +43,8 @@ likeness, mood). `vixl_reference("testing")` is the full method; every `vixl_ref
 
 Each result carries the measurement (gaps, margins, ratio, centre, colour), so a failure says what to
 change. A rule that cannot be measured (a missing layer) is `needs_review`, never a pass; a rule about a layer
-on another page is `not_applicable` on the pages that lack it (neutral, not counted). A
+on another page is `not_applicable` on the pages that lack it (neutral, not counted), and so is a rule whose
+`pages` field (names or 1-based numbers) leaves the page out; an unknown page name is `needs_review`. A
 passing suite proves only its own rules. Rule fields: `vixl_reference('workflows').definitions.suite`.
 From an approved design, `vixl_apply(workflow='suite-infer', request={name})` proposes an explained, tolerant suite to
 review; library suites a group or brand.json lists under `suites` are inherited by every member, and
