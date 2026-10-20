@@ -981,7 +981,6 @@ Authoring reliability and reusable delivery. This release fixes the field-report
 - `adapt-layout` recomposition is explicit (`recompose: true`) because rebuilding generated layout layers can replace manual changes. The proportional default remains available.
 - Source-folder unpacking excludes history-only assets but retains registered fonts. Packing validates paths, sizes and hashes. App packages require embedded sources; freeze external links first.
 
-
 ### Added
 
 - **VIXL Line emoji library.** Complete offline Unicode Emoji 17.0 coverage: 3,953 SVG fallback images and editable VIXL vector masters, with 5,225 qualification variants. VIXL Line 2 adds softly geometric contours to the restrained palette and navy outlines adapted from OpenMoji 17, plus 100 originals: 24 faces and moods, 44 reactions and gestures, and 32 everyday symbols. Category packs and transparent 512 px images prepare artwork for messaging and future sticker integrations. Manifests separate Unicode mappings from custom shortcodes; editable masters retain attribution through pack installation and re-export. CC BY-SA 4.0 licenses are bundled in exports.
@@ -1720,7 +1719,6 @@ Fixes for the problems found while building the ten projects in `explorations/`.
 - Add authenticated model discovery, capability routing, and native Anthropic/Gemini plus OpenAI-compatible Mistral/Meta adapters. Midjourney is supported only through a user-configured HTTP gateway.
 - Cover new features with offline regression tests; live paid-provider inference requires user credentials and is not exercised by CI.
 
-
 Vixl's main users are AI agents; this release targets long agent sessions, fewer round trips and fewer tokens.
 
 **Long sessions**
@@ -1798,3 +1796,8 @@ Vixl's main users are AI agents; this release targets long agent sessions, fewer
 ## 0.6.0
 
 - Initial programmable image engine with editable projects, CLI/shell, automation, AI provider adapters, REST, and MCP.
+
+### Release infrastructure migration — 2026-10-20
+
+- Adopt the unified release manifest, version-advance validation, manual main-only planning, complete artifact staging, and verified draft publisher. Preserve local packaging, existing updater trust, and distribution identities.
+- Validation: shared engine tests, workflow lint, and prepared manifest/version checks. Native/hosted consumer release dry runs and publication remain unverified until the migration is merged and credentials/settings are checked.

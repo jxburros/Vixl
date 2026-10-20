@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "apps": {
+    "vixl": {
+      "title": "Vixl",
+      "version": "0.28.0"
+    }
+  }
+}
