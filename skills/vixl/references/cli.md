@@ -14,8 +14,8 @@ filter/provider entry points — trusted code), `--max-pixels N`, `--detail brie
 
 Agent conventions:
 
-- Always pass `-p FILE.vixl`. Without it Vixl uses the project recorded by `vixl open` in
-  `./.vixl-session.json`.
+- Always pass `-p FILE.vixl`. Without it Vixl uses the project recorded by `vixl new`/`vixl open` in
+  `./.vixl-session.json`; results then carry its `path`. `vixl new` needs `-o FILE` (or `-p FILE`).
 - Results are full JSON whenever stdout is not a terminal (an agent's shell is not); in a terminal they are a short summary unless `--json` or `VIXL_JSON=1` is set. Add `--json` (or set `VIXL_JSON=1`) so errors are machine-readable too, as `{"error":"layer_not_found","message":…,"suggestions":[…]}` on stderr, exit 1; without either an error is one `ERROR:` line.
 - Editing commands autosave and print a compact result (changed values keyed by layer ID); `--detail full` adds
   before/after snapshots.
@@ -66,7 +66,7 @@ set "PATH=%LOCALAPPDATA%\Programs\Vixl\bin;%PATH%"
 | `describe` | Document description |
 | `effects [LAYER]` | Effect stack with IDs/indices |
 | `manifest`, `dependencies`, `reproduce --check` | Assets, fonts, providers; can it re-render? |
-| `schema [OPERATION…]` | JSON Schema of all operations, or of the named ones; `schema document` is the schema of a `.vixl` file's `project.json` |
+| `schema [OPERATION…]` | Without a name, every operation by purpose with a one-line summary; with names, their JSON Schema; `schema --all` is the whole schema (900 KB); `schema document` is the schema of a `.vixl` file's `project.json` |
 | `pixels [LAYER]` | Pixel layer as rows + palette |
 | `animation` | Frame names, sizes, durations |
 | `convert OLD.vixl [-o NEW.vixl] [--look preserve\|current] [--dry-run] [--report R.json]` | Rewrite a document saved by an earlier release for the current code (`convert DIR --out OUTDIR` for a folder, `convert-batch OLD-CALLS.json` for saved MCP calls); never overwrites without `--overwrite`. `convert --grayscale` is the unrelated stdin image filter (see Output) |

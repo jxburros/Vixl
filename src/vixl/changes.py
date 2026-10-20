@@ -1,6 +1,9 @@
 """Small, stable-ID edit summaries; full snapshots remain an explicit option."""
 
 TEXT_METRICS = ("ink_bounds", "line_bounds", "baseline", "baselines", "ascent", "descent", "cap_height", "x_height", "metrics_space")
+# Brief detail keeps the metrics needed to align text; detail=compact or an inspect gives the rest.
+BRIEF_TEXT_METRICS = ("ink_bounds", "baseline")
+BRIEF_DECIMALS = 2
 
 
 def compact_changes(before, after):
@@ -104,7 +107,8 @@ def compact_changes(before, after):
 def brief_changes(before, after):
     """The leanest summary: which layers were added, removed or changed and where they ended up
     (``bounds``), without new field values. The caller knows what it asked for; read a layer
-    with vixl_document(action='inspect'), or use detail=compact for the new values."""
+    with vixl_document(action='inspect'), or use detail=compact for the new values. Numbers are
+    rounded to BRIEF_DECIMALS and a text layer carries only BRIEF_TEXT_METRICS."""
     changes, other = {}, []
     current = {layer["id"]: layer for layer in after["layers"]}
     for key, value in compact_changes(before, after).items():
@@ -112,16 +116,17 @@ def brief_changes(before, after):
             layers = {}
             for ident, delta in value.items():
                 if delta.get("added"):
-                    layers[ident] = {k: delta[k] for k in ("added", "name", "type", "bounds", "content_bounds", *TEXT_METRICS)
+                    layers[ident] = {k: delta[k] for k in ("added", "name", "type", "bounds", "content_bounds", *BRIEF_TEXT_METRICS)
                                      if k in delta}
                 elif delta.get("removed"):
                     layers[ident] = delta
                 else:
                     layers[ident] = {"changed": sorted(k for k in delta if k not in ("bounds", "canvas_bounds", "content_bounds",
                                                                                      "path_nodes", *TEXT_METRICS)),
-                                     **{key: delta[key] for key in (*TEXT_METRICS, "content_bounds") if key in delta},
+                                     **{key: delta[key] for key in (*BRIEF_TEXT_METRICS, "content_bounds") if key in delta},
                                      **({"bounds": delta["bounds"]} if "bounds" in delta else {})}
                 layers[ident].update(_grouped(current.get(ident), current))
+                layers[ident] = _rounded(layers[ident])
             changes["layers"] = layers
         elif key in ("canvas", "active_layer", "page", "selection"):
             changes[key] = value
@@ -134,7 +139,22 @@ def brief_changes(before, after):
     return changes
 
 
+def _rounded(value):
+    """``value`` with every float rounded to BRIEF_DECIMALS (a float that rounds to a whole number becomes an int)."""
+    if isinstance(value, float):
+        number = round(value, BRIEF_DECIMALS)
+        return int(number) if number.is_integer() else number
+    if isinstance(value, list | tuple):
+        return [_rounded(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _rounded(item) for key, item in value.items()}
+    return value
+
+
 CONDENSE = 12  # brief detail lists at most this many new children of one group (a star field adds hundreds)
+BRIEF_LIMIT = 25  # brief detail lists at most this many added layers in all (a batch can add thousands)
+BRIEF_LIMIT_CHANGED = 50  # and at most this many changed, and this many removed, layers
+MORE = "detail='compact' or vixl_document(action='layers')"
 
 
 def condense(result):
@@ -158,7 +178,34 @@ def condense(result):
         if isinstance(record, dict) and len(record.get("members", {})) > CONDENSE:
             names = list(record.pop("members"))
             record.update(member_count=len(names), members_sample=names[:5])
+    if layers:
+        _cap(result["changes"], layers)
+    if len(result.get("defaults") or []) > BRIEF_LIMIT:
+        # One record per layer that took a house default (stage, line height, fill).
+        result["defaults_omitted"] = len(result["defaults"]) - BRIEF_LIMIT
+        result["defaults"] = result["defaults"][:BRIEF_LIMIT]
     return result
+
+
+def _cap(changes, layers):
+    """Keep the first BRIEF_LIMIT added and BRIEF_LIMIT_CHANGED changed and removed layers; the rest are
+    counted under ``layers_omitted``, ``changed_omitted`` and ``removed_omitted``."""
+    kinds = {"added": [], "changed": [], "removed": []}
+    for ident, entry in layers.items():
+        kinds["added" if entry.get("added") else "removed" if entry.get("removed") else "changed"].append(ident)
+    for kind, limit, key in (("added", BRIEF_LIMIT, "layers_omitted"), ("changed", BRIEF_LIMIT_CHANGED, "changed_omitted"),
+                             ("removed", BRIEF_LIMIT_CHANGED, "removed_omitted")):
+        dropped = kinds[kind][limit:]
+        if not dropped:
+            continue
+        by_parent = {}
+        for ident in dropped:
+            parent = layers[ident].get("parent_name") or layers[ident].get("parent") or "(top)"
+            by_parent[parent] = by_parent.get(parent, 0) + 1
+        sample = [layers[ident].get("name", ident) for ident in dropped[:5]]
+        for ident in dropped:
+            del layers[ident]
+        changes[key] = {"count": len(dropped), "by_parent": by_parent, "sample": sample, "more": MORE}
 
 
 def _grouped(layer, layers):

@@ -1992,6 +1992,8 @@ def catalog():
             for name, item in LAYOUTS.items()
         },
         "detail": "vixl layout show NAME (vixl_reference('layouts', name=…)) gives principles and each slot's meaning",
+        "example": {"type": "layout-apply", "name": "event-poster", "title": "Night Market", "label": "Saturday 7 pm",
+                    "seed": 7},
         "options": {
             "seed": "Integer or 'random'; omitted seeds are fresh unless document/workspace variety is fixed. "
             "Unspecified palette, mode, type scale, density, alignment and accent are rolled from the seed",
@@ -2007,7 +2009,8 @@ def catalog():
             "density": "airy, balanced or dense (margins and scale)",
             "align": "left, center or right where the layout allows",
             "accent": ", ".join(ACCENTS),
-            "content": "Slots differ per layout; see slots. Supplying a slot the layout does not use is an error",
+            "slots": "Pass each slot as a top-level field (title, subtitle, label, body, cta, caption, items, image); see "
+            "slots per layout. A slot the layout does not use is an error (unused_slot)",
             "prefix": "Prefix for created layer names",
             "replace": "Remove layers created by the previous layout first",
         },

@@ -125,6 +125,19 @@ def test_manifest_is_complete_and_matches_the_package(name):
     assert not re.search(r"^\s*(import|from)\s", source, re.M), "A plugin __init__ holds only its manifest"
 
 
+def test_plugin_capability_topics_are_merged_with_guidance():
+    from vixl.capabilities import lookup
+    from vixl.guidance import GUIDANCE
+
+    for m in plugins.manifests():
+        for topic, (vocabulary, guidance) in m.get("capabilities", {}).items():
+            assert vocabulary.split() and set(guidance) <= set(GUIDANCE), (m["name"], topic)
+    found = lookup("charts")
+    assert found["topics"] == ["charts"] and found["guidance"] == ["charts"]
+    assert {"chart", "chart-data", "table"} <= set(found["operations"])
+    assert "charts" in lookup()["topics"]
+
+
 def test_every_plugin_package_is_registered():
     packages = {p.parent.name for p in PLUGIN_ROOT.glob("*/__init__.py")}
     assert packages == set(plugins.BUILTIN)

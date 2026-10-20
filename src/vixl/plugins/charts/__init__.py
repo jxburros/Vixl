@@ -9,4 +9,5 @@ PLUGIN = {
     "operations": ["charts", "tables", "key_values"],
     "commands": ["tables", "key_values", "charts"],
     "hooks": {"normalize": ["hooks:normalize"], "validate-layer": ["hooks:validate_layer"]},
+    "capabilities": {"charts": ("chart table data graph plot bar pie line series key value list", ["charts"])},
 }

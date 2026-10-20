@@ -27,6 +27,18 @@
   passing a function as `check` is an error that names `validator=`.
 - **Several defaults draw differently** (review findings, glows and shadows, dash fitting, tracked text): each entry
   under Behaviour changes below names its override.
+- **Brief apply results are capped and trimmed (breaking for code that reads them).** `detail: "brief"` (the MCP
+  default) keeps only a text layer's `ink_bounds` and `baseline`, rounds numbers to 2 decimals and lists at most 25
+  added and 50 changed or removed layers; read `line_bounds`, `baselines`, `ascent`, `descent`, `cap_height`,
+  `x_height` and the omitted layers with `detail: "compact"` or an inspect. See Agent cost and reference below.
+- **`vixl new` needs `-o FILE` (breaking, CLI).** It no longer writes `untitled.vixl` silently; pass `-o FILE` (or
+  `-p FILE`). **`vixl schema` without arguments lists the operations** by purpose with one-line summaries (16 KB
+  instead of 900 KB); scripts that read the whole JSON Schema use `vixl schema --all`.
+- **New documents install their font pairing with the first text, not at creation.** `creation.fonts` reports
+  `pending: true`; the pairing appears in the first apply that sets text (`font_install` in its result). Code that
+  read `typography` or the embedded fonts right after creating a document applies its text first, or runs
+  `font-pair`. **`vixl mcp` and a Python `Session()` refuse the home folder or a filesystem root as an implicit
+  workspace** (`unsafe_workspace`): pass `--workspace DIR` (`Session(workspace=DIR)`).
 - **Service and network policy (breaking for some setups).** `VIXL_API_TOKEN` must be at least 24 characters;
   AI providers on another host need `https://` or `"allow_insecure": true`; behind a proxy without local DNS, set
   `VIXL_PROXY_RESOLVES=1` for URL imports to work; REST `/check`, `/measure` and `/spacing` reject unknown fields.
@@ -45,6 +57,39 @@
   arriving through another package.
 - **The source distribution includes the tests**, `docs/`, `skills/` and the changelog, so `pytest` runs from an
   unpacked sdist. CI now fails if the wheel exceeds 8 MB or the sdist 15 MB.
+
+### Agent cost and reference
+
+- **A large batch no longer floods the agent's context.** A brief apply result listed every added layer with every
+  text metric: 1,000 text layers returned 443,000 characters (about 110k tokens). Brief now lists the first 25 added
+  layers (50 changed, 50 removed) and counts the rest under `changes.layers_omitted` / `changed_omitted` /
+  `removed_omitted` (`{count, by_parent, sample, more}`); per-layer `defaults` records past 25 are counted under
+  `defaults_omitted`; numbers are rounded to 2 decimals and a text layer keeps only `ink_bounds` and `baseline`. The
+  same batch now returns about 6,000 characters; `detail: "compact"` still lists everything. The CLI summary counts
+  the omitted layers.
+- **`vixl_reference('layouts')` no longer documents a `content` option.** `layout-apply` rejected it as an unknown
+  field; the options now describe `slots` (each slot is a top-level field such as `title` or `label`) and the
+  catalog carries a working `example`. A test holds every published option to the operation's schema.
+- **`vixl_reference('capabilities', name='charts')` lists the chart operations.** Topic matching folds plurals
+  (`charts` finds `chart`, `suites` the testing topic), and plugins contribute topics through a new manifest key,
+  `capabilities`; the charts plugin adds `charts` (chart, chart-data, table, table-data, key-value-list) with a
+  `charts` guidance text (`vixl_reference('charts')`).
+
+### CLI output
+
+- **The CLI names the file it edits.** Edit, check, render and export results carry the document's `path`, and the
+  terminal summary starts with its name (`hello.vixl: added text "Hi"`); the first command that edits the
+  remembered document without `-p` prints `note: editing hello.vixl (the current document; -p FILE chooses
+  another)` on stderr.
+- **Did-you-mean suggestions.** A mistyped command (`vixl rendr`: did you mean render?), option (`--colour`: did
+  you mean --color?) or `vixl schema` operation name is answered with the closest real ones, also as
+  `suggestions` in `--json` errors.
+- **Errors name the file and folder.** Invalid JSON reads `ops.json: line 2 column 1: Expecting ',' delimiter`;
+  an export into a missing folder reads `Folder does not exist: out`, and a missing file whose folder is missing
+  says so. Hints written for MCP (`vixl_reference(...)`, `vixl_check`, `vixl_render`, `vixl_apply(workflow=…)`)
+  are spelled as CLI commands in CLI errors.
+- **Help.** `vixl text --help` shows `--text TEXT` (accepted beside the TEXT argument), and `vixl check --help`
+  lists the check names once, wrapped, instead of a 618-character line.
 
 ### Documentation layout
 
@@ -441,6 +486,18 @@ fillable form, loop, mandala, flowchart):
 
 ### Behaviour changes
 
+- **Creating a document never touches the network.** The rolled font pairing is recorded in
+  `design_defaults.fonts` (`pending: true`) and installed by the first batch that sets text, from the font cache
+  else Google Fonts, so an empty document embeds no fonts (about 1 KB instead of the pairing's size) and
+  `vixl new` works offline without a timeout. A batch that chooses its own fonts skips it; a failed install
+  warns once in the apply result (`font_install`) and is not retried by that document, and the process does not
+  retry the network for ten minutes (the flag is now thread-safe). `vixl new` prints the seed and the font status.
+  `VIXL_AUTO_FONTS` (`cache`, `off`) is documented in the README, getting started and troubleshooting.
+- **An implicit MCP workspace is never the home folder or a filesystem root.** `vixl mcp` without `--workspace`
+  or `-p` uses the remembered document's folder and refuses those folders; `Session()` without a path or
+  workspace refuses them as its current directory. `vixl mcp` prints its workspace on stderr at start-up.
+- A weekly `docs-online` workflow runs the docs-executable tests with the network and automatic fonts on
+  (`VIXL_DOCS_ONLINE=1`), so the download paths the regular suite stubs are exercised.
 - New review findings: text that is small at its use size is reported as `legibility.use-size` (review, so `passed` is unchanged); on slides and diagrams it replaces the generic "only matters as a thumbnail" note. The values are house-style craft (`minimum_text`: `projected_points`, `distance_share_of_short_side`, `light_weight_step`, `contrast_step`, `most_extra`) and each purpose's `use`. To silence it, waive `legibility` on the layer, mark the layer `decorative`, or pass `thumbnail_width: null` (thumbnail uses only). The deck `min_font` projected default now reads `projected_points` (still 18 pt).
 - `layout-apply` sets minor text (labels, captions, body) at least at the use-size minimum for a regular face when no `base_size` is given: 36 px on a 1080 px slide (was as small as 17 px), 3% of a poster's short side (81 px on an 18×24 at 150 dpi, was about 30 px), 250 px on 3000 px cover art, 100 px on a 1600 px book cover, 30 px on a 1200 px wide portrait diagram. Pass `base_size` for the old type scale.
 - On a poster read across a room, `layout-apply` records the roles that minimum raised in the document's type scale (`body` 81 px on an 18×24 at 150 dpi, was 47) and spaces the layout by the raised body (a 40 px spacing unit, was 23), so gaps grow with the type. Pass `base_size` for the old type scale and spacing.

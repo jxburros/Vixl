@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from vixl import Project, briefs
-from vixl.capabilities import TOPICS, lookup
+from vixl.capabilities import lookup, topics
 from vixl.checks import apply_reviewed
 from vixl.guidance import GUIDANCE
 from vixl.interfaces import create_app, mcp_server
@@ -157,7 +157,7 @@ def test_every_guidance_name_resolves_through_guide_resources_and_capabilities(t
     from vixl.resources import catalog, get
 
     assert set(GUIDANCE) <= set(catalog("guidance"))
-    named = {name for _, names in TOPICS.values() for name in names}
+    named = {name for _, names in topics().values() for name in names}
     named |= {name for entry in briefs.KINDS.values() for name in entry.get("guidance", [])}
     assert named <= set(GUIDANCE), named - set(GUIDANCE)
     for name in named:

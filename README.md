@@ -130,7 +130,9 @@ In a terminal each command prints a short summary; piped output, `--json` and `V
 Editing commands autosave; pass `-p` explicitly in scripts. Inspect the preview before
 handoff. The [first-design walkthrough](docs/getting-started.md) explains undo,
 checkpoints, JSON batches and Python. Use the bundled font for proofing; choose suitable
-[typography](docs/guides/text/typography.md) for finished work.
+[typography](docs/guides/text/typography.md) for finished work. A new document installs its rolled font pairing
+with its first text (from the font cache, else Google Fonts); `VIXL_AUTO_FONTS=cache|off` or `VIXL_OFFLINE=1`
+keeps that off the network.
 
 ## Use Python
 

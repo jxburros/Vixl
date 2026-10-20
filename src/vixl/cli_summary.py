@@ -91,7 +91,21 @@ def created(result, command):
     line = f"{verb} {os.path.basename(str(result['path']))}  {canvas_text(result['canvas'])}".rstrip()
     if result.get("layers"):
         line += f"  {plural(result['layers'], 'layer')}"
-    return [line]
+    seed = (result.get("design_defaults") or {}).get("seed")
+    if seed is not None:
+        line += f"  seed {seed}"
+    fonts = (result.get("creation") or {}).get("fonts")
+    return [line, *([f"fonts: {font_status(fonts)}"] if fonts else [])]
+
+
+def font_status(fonts):
+    """What a new document's fonts are: installed, waiting for the first text, or the fallback and why."""
+    pairing = fonts.get("pairing")
+    if fonts.get("installed"):
+        return f"{pairing} ({fonts.get('origin', 'installed')})"
+    if fonts.get("pending"):
+        return f"{pairing} (installed with the first text; VIXL_AUTO_FONTS=cache|off to change)"
+    return f"fallback ({fonts.get('reason', 'no pairing')})" if pairing or fonts.get("reason") else "fallback"
 
 
 def state(result, command):
@@ -116,6 +130,16 @@ DERIVED = {"bounds", "canvas_bounds", "content_bounds", "ink_bounds", "line_boun
            "parent", "group", "grouped"}
 
 
+OMITTED = ("layers_omitted", "changed_omitted", "removed_omitted")  # brief detail's counts past its caps
+
+
+def named(result, lines):
+    """``lines`` with the first prefixed by the document's file name, so a command never edits an unnamed file."""
+    if lines and isinstance(result.get("path"), str):
+        lines[0] = f"{os.path.basename(result['path'])}: {lines[0]}"
+    return lines
+
+
 def edit(result, command):
     changes = result.get("changes") or {}
     layers = changes.get("layers") or {}
@@ -128,11 +152,16 @@ def edit(result, command):
             lines.append(f"removed \"{delta.get('name', 'layer')}\"")
         else:
             changed.append(delta)
-    if changed:
+    omitted = {key: (changes.get(key) or {}).get("count", 0) for key in OMITTED}
+    if omitted["layers_omitted"]:
+        lines.append(f"added {plural(omitted['layers_omitted'], 'more layer')}")
+    if omitted["removed_omitted"]:
+        lines.append(f"removed {plural(omitted['removed_omitted'], 'more layer')}")
+    if changed or omitted["changed_omitted"]:
         fields = list(dict.fromkeys(field for delta in changed for field in changed_fields(delta)))
         detail = f": {', '.join(fields[:6])}" if fields else ""
-        lines.append(f"changed {plural(len(changed), 'layer')}{detail}")
-    others = [key for key in changes if key not in ("layers", "active_layer")]
+        lines.append(f"changed {plural(len(changed) + omitted['changed_omitted'], 'layer')}{detail}")
+    others = [key for key in changes if key not in ("layers", "active_layer", *OMITTED)]
     if others:
         lines.append(f"changed {', '.join(others[:5])}")
     if not lines:
@@ -142,7 +171,7 @@ def edit(result, command):
         lines.insert(0, f"applied {plural(count, 'operation')}")
     if result.get("dry_run"):
         lines[0] = f"dry run: {lines[0]}"
-    return [*lines, *notes_of(result)]
+    return named(result, [*lines, *notes_of(result)])
 
 
 def check(result, command):
@@ -155,7 +184,7 @@ def check(result, command):
     issues = sorted(result.get("issues") or [], key=lambda issue: rank.get(issue.get("severity"), 2))
     rows = [f"  {issue.get('severity', '?'):<7} {', '.join(issue.get('layers') or ['-']):<16} {issue.get('message', '')}"
             for issue in issues]
-    return [head, *tail(rows, [])]
+    return named(result, [head, *tail(rows, [])])
 
 
 def written(result, command):
@@ -163,7 +192,16 @@ def written(result, command):
     line = f"{verb} {result['output']}"
     if isinstance(result.get("bytes"), int):
         line += f" ({size(result['bytes'])})"
-    return [line, *notes_of(result)]
+    return named(result, [line, *notes_of(result)])
+
+
+def schema_groups(result, command):
+    """``vixl schema`` without arguments: each purpose with its operation names."""
+    rows = []
+    for title, names in result["groups"].items():
+        words = ", ".join(names)
+        rows.append(f"{title}: {words if len(words) <= 100 else words[:99].rsplit(', ', 1)[0] + ', …'}")
+    return [f"{result['count']} operations", *rows, result["next"]]
 
 
 def layer_table(items, command):
@@ -267,6 +305,8 @@ def summarize(result, command=None):
             lines = created(result, command)
         elif "canvas" in result and isinstance(result.get("layers"), list):
             lines = state(result, command)
+        elif isinstance(result.get("groups"), dict) and "next" in result and command == "schema":
+            lines = schema_groups(result, command)
         elif "changes" in result and "success" in result:
             lines = edit(result, command)
         elif "passed" in result and "issues" in result:

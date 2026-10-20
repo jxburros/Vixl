@@ -68,7 +68,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | ID | Use case | Main route | Calls · min | Ev. | Notes |
 | --- | --- | --- | --- | --- | --- |
 | DOC-01 | Create a blank document at a named size (letter, instagram-post, youtube-thumbnail …) | `vixl_document(action='create', size=…)`, `vixl new NAME` | 1 · <1 | E | 151 named sizes with trim/safe guides; `vixl_reference('sizes')` to browse. |
-| DOC-33 | Start a designed document from only a purpose (or nothing): size, palette background, design defaults and real fonts | `vixl_document(action='create', purpose=…)`, `vixl new --purpose slides`, `Project(purpose=…)` | 1 · <1 | E | Since 0.23; same result on every surface for the same `seed`. Fonts install from the cache or network. |
+| DOC-33 | Start a designed document from only a purpose (or nothing): size, palette background, design defaults and real fonts | `vixl_document(action='create', purpose=…)`, `vixl new --purpose slides`, `Project(purpose=…)` | 1 · <1 | E | Since 0.23; same result on every surface for the same `seed`. Fonts install from the cache or network with the first text. |
 | DOC-02 | Create a print document with bleed and dpi | `vixl new letter --bleed --dpi 300` | 1 · <1 | E | Print sizes carry physical units, bleed and safe area. |
 | DOC-03 | Open and inspect a `.vixl` (layers, bounds, fonts, effects) | `vixl_document(action='open')`, `vixl_document(action='inspect')` | 2 · <1 | E | `--detail brief|compact|full` controls response size. |
 | DOC-04 | Rename, hide, show, raise, lower, duplicate or delete a layer | `vixl_apply` | 1 · <1 | E | Works on `targets` lists in one atomic batch. |
@@ -102,7 +102,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | TXT-01 | Add a text layer with size, color and position | `text` operation | 1 · <1 | E | Registered font names work in the batch. |
 | TXT-02 | Change the words of an existing text layer | `text-set` | 1 · <1 | E | Keeps rich-text lists and spacing (fixed in 0.20). |
 | TXT-03 | Browse fonts by category or mood | `vixl_reference('fonts')` | 1 · <1 | E | |
-| TXT-04 | Install a curated heading/body font pairing | `font-pair` | 1–2 · <1 | E | Bundled DejaVu is a proofing fallback only. Since 0.23 creation installs the rolled pairing (0 extra calls) when the font cache or network is available. |
+| TXT-04 | Install a curated heading/body font pairing | `font-pair` | 1–2 · <1 | E | Bundled DejaVu is a proofing fallback only. Since 0.23 a new document installs its rolled pairing (0 extra calls) when the font cache or network is available: at its first text, not at creation. |
 | TXT-05 | Install one Google font or import a local font file | `font-install`, `import-font` | 1 · <1 | E | |
 | TXT-06 | Generate a modular type scale | `type-scale --base 16 --ratio golden` | 1 · <1 | E | |
 | TXT-07 | Read text metrics (ink box, baseline, cap height, x-height) | `vixl_check(action='measure')`, `info --target TEXT` | 1 · <1 | E | |

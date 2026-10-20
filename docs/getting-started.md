@@ -57,15 +57,19 @@ vixl -p hello.vixl render --out hello-preview.png
 vixl -p hello.vixl export hello.png
 ```
 
-In a terminal each command prints a short summary (`created hello.vixl  800×600  bg #18283b`,
-`check passed (bounds, contrast) — 0 errors, 0 warnings`, `exported hello.png (16.2 KB)`). When output is piped or
+In a terminal each command prints a short summary (`created hello.vixl  800×600  bg #18283b  seed 1234`
+and the fonts it chose, `hello.vixl: check passed (bounds, contrast) — 0 errors, 0 warnings`,
+`hello.vixl: exported hello.png (16.2 KB)`). When output is piped or
 redirected, or you pass `--json` or set `VIXL_JSON=1`, it prints the full JSON instead, so scripts and agents always
 get JSON.
 
 You now have an editable `hello.vixl` and a PNG export. Open the PNG to inspect the actual
 appearance. `check` covers the rules requested, not every possible design problem. The
 bundled DejaVu Sans font makes proofing work offline; for finished brand work, choose a
-font with `vixl font pairings` and install a pairing or import your licensed font. See
+font with `vixl font pairings` and install a pairing or import your licensed font. A new document rolls a
+pairing and installs it with its first text, from the font cache or by downloading it from Google Fonts;
+`VIXL_AUTO_FONTS=cache` uses the cache only, `VIXL_AUTO_FONTS=off` never installs it, and `VIXL_OFFLINE=1` turns
+off every download. See
 [typography](guides/text/typography.md).
 
 Passing checks make a design correct, not finished. Before you hand one over, make a finishing pass:
@@ -112,7 +116,7 @@ vixl -p batch.vixl export batch.png
 ```
 
 Dry-run reports proposed changes without saving. A failed batch commits none of its
-changes. Get allowed fields with `vixl schema` and individual command help with
+changes. List the operations with `vixl schema`, get one operation's fields with `vixl schema text`, and individual command help with
 `vixl text --help`; [operations](reference/operations.md) explains normalization and validation.
 
 ## The same design in Python

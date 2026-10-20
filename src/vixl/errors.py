@@ -26,8 +26,18 @@ _FOR_MCP = (
 _FOR_CLI = (
     (r"vixl_reference\('operations', name=\['([\w-]+)'\]\)", r"vixl capabilities \1"),
     (r"vixl_reference\('operations', name=\[(?:…|\.\.\.)\]\)", "vixl schema"),
+    (r"vixl_reference\('operations'(?:, name=[^()]*)?\)", "vixl schema"),
     (r"vixl_reference\('layouts', name=…\)", "vixl layout show NAME"),
     (r"vixl_reference\('layouts'\)", "vixl layout list"),
+    (r"vixl_reference\('capabilities', name='([\w-]+)'[^()]*\)", r"vixl capabilities \1"),
+    (r"vixl_reference\('capabilities'[^()]*\)", "vixl capabilities"),
+    (r"vixl_reference\('(fonts|sizes|styles|looks|brushes|roll)'[^()]*\)", r"vixl \1"),
+    (r"vixl_reference\('workflows'[^()]*\)", "vixl workflow --help"),
+    (r"vixl_reference\('([\w-]+)'[^()]*\)", r"vixl guide \1"),
+    (r"vixl_reference\(\)", "vixl guide"),
+    (r"vixl_apply\(workflow='([\w-]+)'[^()]*\)", r"vixl workflow \1"),
+    (r"vixl_document\(action='(inspect|layers|history|undo|redo|checkpoint|compact)'[^()]*\)", r"vixl \1"),
+    (r"vixl_(check|render|export|apply)(?:\([^()]*\))?", r"vixl \1"),
 )
 
 
@@ -83,6 +93,30 @@ def shown_path(filename, relative_to=None):
         return path.name
 
 
+def _missing_folder(filename):
+    """The folder of ``filename`` when that folder is what is missing, else None."""
+    import os
+    from pathlib import Path
+
+    if not isinstance(filename, (str, bytes, os.PathLike)):
+        return None
+    parent = Path(os.fsdecode(filename)).parent
+    try:
+        return None if str(parent) in ("", ".") or parent.exists() else str(parent)
+    except OSError:
+        return None
+
+
+def _inside(folder, root):
+    """``folder`` relative to ``root`` when it lies inside, else None (a message never names folders outside)."""
+    from pathlib import Path
+
+    try:
+        return Path(folder).resolve().relative_to(Path(root).resolve()).as_posix()
+    except (ValueError, OSError, RuntimeError):
+        return None
+
+
 def friendly(exc, relative_to=None, filename=None):
     """A VixlError for an exception raised by the OS, the JSON decoder or Python itself, with a message a person
     can act on instead of a Python repr. VixlErrors pass through. ``relative_to`` (a workspace) shows the file
@@ -96,6 +130,10 @@ def friendly(exc, relative_to=None, filename=None):
     if name is not None:
         name = filename if filename is not None else shown_path(name, relative_to)
     if isinstance(exc, FileNotFoundError):
+        folder = _missing_folder(getattr(exc, "filename", None))
+        shown = folder if folder is None or relative_to is None else _inside(folder, relative_to)
+        if name and shown:
+            return VixlError("not_found", f"No such file: {name} (the folder {shown} does not exist)", field="path")
         return VixlError("not_found", f"No such file: {name}" if name else "No such file")
     if isinstance(exc, IsADirectoryError):
         return VixlError("io_error", f"{name} is a folder, not a file")

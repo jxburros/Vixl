@@ -8,8 +8,11 @@ A new document gets, in this order:
 3. reproducible ``design_defaults`` rolled from ``seed``/``variety`` (and ``purpose``);
 4. a canvas background: the given one, else transparent for marks (logos, icons, favicons), else the rolled
    palette's background role;
-5. the rolled font pairing, from the font cache first and then the network, when ``workspace_fonts`` and no
-   brand fonts apply. Without either, the document keeps the proofing fallback and the report says why.
+5. the rolled font pairing, when ``workspace_fonts`` and no brand fonts apply. It is recorded, not installed:
+   ``design_defaults.fonts`` holds ``{pairing, installed: false, pending: true}`` and the first batch that sets
+   text installs it (``install_pending_fonts``, from the font cache first and then the network), so creating a
+   document never touches the network and an empty document embeds no fonts. If the install fails the document
+   keeps the proofing fallback and the apply result says why.
 
 With the house style off (``house_style="off"``, or ``"house_style": "off"`` in ``.vixl/variety.json``), steps 3-5
 roll nothing: ``design_defaults`` records ``house_style: "off"`` and a neutral direction (``house_style.neutral``),
@@ -18,18 +21,40 @@ text uses the workspace default fonts, else the bundled font. The craft rules (s
 sizes) apply either way.
 
 Everything is folded into the document's first revision, so the first edit stays the first undoable step.
-``VIXL_AUTO_FONTS`` set to ``cache`` never downloads during creation, and ``off`` skips step 5.
+``VIXL_AUTO_FONTS`` set to ``cache`` never downloads the pairing, and ``off`` skips step 5; ``VIXL_OFFLINE=1``
+also keeps it to the cache.
 """
 
 import os
 import random
+import threading
+import time
 
 from .errors import VixlError, require
 
-# After one failed automatic download, later creations in this process use the cache only, so an
-# offline machine pays the network timeout at most once.
+# After one failed automatic download, later installs in this process use the cache only for OFFLINE_TTL
+# seconds, so an offline machine pays the network timeout at most once in that time. Guarded by _offline_lock:
+# the MCP and REST servers create documents from several threads.
 _offline = False
+_offline_since = 0.0
+_offline_lock = threading.Lock()
+OFFLINE_TTL = 600
 CONNECT_TIMEOUT = 3
+
+
+def network_failed():
+    """Whether an automatic download failed in the last OFFLINE_TTL seconds."""
+    global _offline
+    with _offline_lock:
+        if _offline and time.monotonic() - _offline_since > OFFLINE_TTL:
+            _offline = False
+        return _offline
+
+
+def mark_network_failed():
+    global _offline, _offline_since
+    with _offline_lock:
+        _offline, _offline_since = True, time.monotonic()
 
 
 def resolve_size(width=None, height=None, size=None, purpose=None):
@@ -127,7 +152,7 @@ def design(project, *, size=None, size_from="argument", purpose=None, background
                   else "the house style is off: text uses the bundled font until you choose a pairing")
         created["fonts"] = {"installed": False, "reason": reason}
     elif workspace_fonts:
-        created["fonts"] = install_rolled_pairing(project, defaults)
+        created["fonts"] = defer_rolled_pairing(project, defaults)
     report["creation"] = created
     _fold(project, label)
     return report
@@ -157,10 +182,66 @@ def neutral_background(project):
     return (for_project(project).get("palette") or {}).get("background") or neutral()["background"]
 
 
+def defer_rolled_pairing(project, defaults):
+    """Record the rolled pairing for the first batch that sets text (``install_pending_fonts``) instead of
+    installing it now. Returns what creation reports under ``creation.fonts``."""
+    pairing = defaults.get("direction", {}).get("pairing")
+    typography = project.state.get("typography") or {}
+    if not pairing or pairing == "workspace-brand" or (typography.get("heading") and typography.get("body")):
+        return {"installed": False, "reason": "the workspace fonts apply"} if typography else {"installed": False}
+    if os.environ.get("VIXL_AUTO_FONTS", "on").strip().lower() == "off":
+        return {"pairing": pairing, "installed": False, "reason": "VIXL_AUTO_FONTS=off", "next_step": _hint(pairing)}
+    defaults["fonts"] = {"pairing": pairing, "installed": False, "pending": True}
+    return {"pairing": pairing, "installed": False, "pending": True,
+            "reason": "installed by the first batch that sets text (from the font cache, else downloaded)"}
+
+
+# Operations that set text, so a pending pairing is installed before they run. Anything else that turns out to
+# have made text (a container, a template) installs it afterwards and runs the batch again.
+TEXT_OPERATIONS = {"text", "rich-text", "text-layout", "text-set", "text-flow", "layout-apply", "template-apply",
+                   "caption", "chart", "table", "key-value-list", "comic-layout", "bubble", "speech-bubble"}
+FONT_OPERATIONS = {"font-register", "font-pair", "font-install", "typography", "roll", "style-use"}
+
+
+def pending_fonts(project):
+    """The pairing a new document recorded for its first text, or None."""
+    record = (project.state.get("design_defaults") or {}).get("fonts") or {}
+    return record.get("pairing") if record.get("pending") else None
+
+
+def wants_fonts(operations):
+    """Whether a batch sets text and does not choose fonts itself (then the pending pairing is installed first)."""
+    kinds = {op.get("type") for op in operations}
+    return bool(kinds & TEXT_OPERATIONS) and not kinds & FONT_OPERATIONS
+
+
+def has_own_fonts(project):
+    typography = project.state.get("typography") or {}
+    return bool(typography.get("heading") and typography.get("body"))
+
+
+def install_pending_fonts(project):
+    """Install the pending pairing (``install_rolled_pairing``) and record the outcome in
+    ``design_defaults.fonts``; it is never attempted again automatically. Returns the outcome."""
+    defaults = project.state["design_defaults"]
+    pairing = defaults["fonts"]["pairing"]
+    if has_own_fonts(project):
+        outcome = {"pairing": pairing, "installed": False, "reason": "the document chose its own fonts"}
+    else:
+        outcome = install_rolled_pairing(project, {"direction": {"pairing": pairing}})
+    defaults = project.state["design_defaults"]  # install_rolled_pairing may replace the state
+    defaults["fonts"] = {key: outcome[key] for key in ("pairing", "installed", "origin", "reason") if key in outcome}
+    return outcome
+
+
+def _hint(pairing):
+    return (f"Install them with a font-pair step ({{type: font-pair, pairing: '{pairing}'}} in vixl_apply) or vixl "
+            f"font pair {pairing}; until then text uses the proofing fallback.")
+
+
 def install_rolled_pairing(project, defaults):
-    """Embed the rolled pairing as the document typography: from the font cache, else (once per process)
-    from the network. Returns what happened; creation never fails for want of fonts."""
-    global _offline
+    """Embed the rolled pairing as the document typography: from the font cache, else (once per OFFLINE_TTL)
+    from the network. Returns what happened; it never fails for want of fonts."""
     import httpx
 
     from .typefaces import pair_fonts
@@ -170,8 +251,7 @@ def install_rolled_pairing(project, defaults):
     if not pairing or pairing == "workspace-brand" or (typography.get("heading") and typography.get("body")):
         return {"installed": False, "reason": "the workspace fonts apply"} if typography else {"installed": False}
     mode = os.environ.get("VIXL_AUTO_FONTS", "on").strip().lower()
-    hint = (f"Install them with a font-pair step ({{type: font-pair, pairing: '{pairing}'}} in vixl_apply) or vixl font pair {pairing}; until then text uses "
-            "the proofing fallback.")
+    hint = _hint(pairing)
     if mode == "off":
         return {"pairing": pairing, "installed": False, "reason": "VIXL_AUTO_FONTS=off", "next_step": hint}
 
@@ -182,7 +262,8 @@ def install_rolled_pairing(project, defaults):
 
     attempts = [lambda: httpx.Client(transport=httpx.MockTransport(refuse))]
     network_off = offline()
-    if mode != "cache" and not _offline and not network_off:
+    failed_before = network_failed()
+    if mode != "cache" and not failed_before and not network_off:
         attempts.append(network_client)
     error = None
     for connect in attempts:
@@ -198,12 +279,12 @@ def install_rolled_pairing(project, defaults):
         return {"pairing": pairing, "installed": True, "origin": installed["origin"],
                 "heading": installed["heading"]["name"], "body": installed["body"]["name"]}
     if len(attempts) > 1 and error.code == "font_download_failed":
-        _offline = True
+        mark_network_failed()
         return {"pairing": pairing, "installed": False, "reason": "not in the font cache and the download failed",
                 "warning": f"Fonts were not installed: {error}. Later documents in this session will not retry "
                            "the network.", "next_step": hint}
     reason = "not in the font cache" + (" and VIXL_OFFLINE=1" if network_off and mode != "cache" else
-                                        "" if mode == "cache" or _offline else f" ({error})")
+                                        "" if mode == "cache" or failed_before else f" ({error})")
     return {"pairing": pairing, "installed": False, "reason": reason, "next_step": hint}
 
 

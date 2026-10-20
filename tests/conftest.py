@@ -1,9 +1,11 @@
 import os
 import tempfile
 
-# Document creation installs the rolled font pairing from the cache or the network. Tests never download:
-# the ones that exercise automatic fonts set VIXL_AUTO_FONTS themselves and stub the font source.
-os.environ["VIXL_AUTO_FONTS"] = "off"
+# The first text in a new document installs the rolled font pairing from the cache or the network. Tests never
+# download: the ones that exercise automatic fonts set VIXL_AUTO_FONTS themselves and stub the font source. The
+# weekly docs-online workflow sets VIXL_DOCS_ONLINE=1 to keep its own VIXL_AUTO_FONTS and use the real sources.
+if not os.environ.get("VIXL_DOCS_ONLINE"):
+    os.environ["VIXL_AUTO_FONTS"] = "off"
 # Exports of saved documents use the per-user disk render cache: keep the suite's entries out of the real one.
 os.environ["VIXL_RENDER_CACHE"] = tempfile.mkdtemp(prefix="vixl-render-cache-")
 
