@@ -172,8 +172,9 @@ def run(project, profile, *, group=None, **options):
             suites[name] = {"status": "missing", "note": f"The profile names suite {name!r}, which is not attached"}
             continue
         result = project.check_suite(name)
+        not_passed = [r for r in result["results"] if r["status"] not in ("passed", "waived", "not_applicable")]
         suites[name] = {"status": result["status"], "errors": result["errors"], "needs_review": result["needs_review"],
-                        "not_passed": [r for r in result["results"] if r["status"] not in ("passed", "waived")][:20]}
+                        "not_passed": not_passed[:20]}
         if result.get("waivers"):
             suites[name]["waivers"] = result["waivers"]
     failed_suites = [name for name, item in suites.items()

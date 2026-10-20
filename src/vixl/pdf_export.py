@@ -12,6 +12,7 @@ Every page of a multi-page document becomes a PDF page (hidden pages are left ou
 """
 
 import io
+import json
 import math
 from pathlib import Path
 
@@ -718,11 +719,11 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
             fallbacks[label] = builder.fallbacks
     fonts.write(writer)
     writer.add({"Type": Name("Pages"), "Kids": kids, "Count": len(kids)}, pages_ref)
-    from .accessibility import document_title as declared_title, language
+    from .accessibility import document_title as declared_title, language, resolved_text
 
     lang = lang or language(project.state)
     if title is None:
-        title = declared_title(project.state)
+        title = resolved_text(project, declared_title(project.state))
     if title is None:
         # The first page's title layer (a role or an exact name, else the largest top text), then the file name.
         from .deck import document_title
@@ -733,8 +734,12 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
             title = None
         title = (title or (Path(path).stem if path else ""))[:200]
     # VixlDPI: the pixels per inch the pages were laid out at, so a PDF import maps them back to the same pixels.
+    # VixlFonts: JSON {BaseFont: {family, weight, italic, sha256}}, so it can find the full faces behind the subsets.
+    manifest = fonts.manifest()
     info = writer.add({"Title": Text(title) if title else None, "Producer": Text("Vixl"),
-                       "VixlDPI": Text(compact_number(dpi, 6))})
+                       "VixlDPI": Text(compact_number(dpi, 6)),
+                       "VixlFonts": Text(json.dumps(manifest, sort_keys=True, separators=(",", ":"))) if manifest
+                       else None})
     catalog = {"Type": Name("Catalog"), "Pages": pages_ref}
     if title:
         catalog["ViewerPreferences"] = {"DisplayDocTitle": True}

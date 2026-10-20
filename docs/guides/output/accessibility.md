@@ -34,6 +34,8 @@ field. A group's alt text covers the layers inside it.
 - `title` is the document title of HTML, PDF, SVG and PowerPoint exports (default: the page's title layer).
 - `page_alt` describes the active page as one picture (the whole artwork of a one-page document) and
   `page_lang` gives a page in another language. Both are kept per page.
+- `title`, `page_alt`, layer `alt` and the HTML caption may contain `${variables}`; exports fill them with the same
+  values as the image, including a `variables=` override (`$${name}` stays literal).
 - `reading_order: [layers…]` sets the order a reader meets the active page's text and described images; an
   empty list returns to top-to-bottom order. The HTML presenter's reading text follows it. PowerPoint and PDF
   readers follow the stacking order, so reorder the layers when those exports matter.

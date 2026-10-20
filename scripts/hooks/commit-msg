@@ -1,0 +1,12 @@
+#!/bin/sh
+# Strip authorship trailers from the commit message (CONTRIBUTING.md: no model signatures or authorship trailers).
+# Install: cp scripts/hooks/commit-msg .git/hooks/commit-msg && chmod +x .git/hooks/commit-msg
+#   or: git config core.hooksPath scripts/hooks
+file="$1"
+[ -f "$file" ] || exit 0
+tmp="$file.stripped"
+grep -v -i -E '^[[:space:]]*(Co-Authored-By|Claude-Session):' "$file" > "$tmp"
+# Drop blank lines left at the end of the message.
+awk '{ lines[NR] = $0 } END { n = NR; while (n > 0 && lines[n] ~ /^[[:space:]]*$/) n--; for (i = 1; i <= n; i++) print lines[i] }' "$tmp" > "$file"
+rm -f "$tmp"
+exit 0

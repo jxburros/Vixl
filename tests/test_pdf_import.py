@@ -175,3 +175,195 @@ def test_out_of_range_page_leaves_the_document_untouched():
     with pytest.raises(VixlError, match="out of range"):
         import_document(p, Project(20, 20, "red").export(format="PDF"), "pdf", page=2)
     assert p.head == head and not p.state["layers"]
+
+
+# --- #712: reuse or map fonts instead of substituting the default face ------------------------------------------
+
+NOTO = ROOT / "src" / "vixl" / "data" / "NotoSans-Regular.ttf"
+SAMPLE = "Literata here Obscura"
+
+
+def synthetic(family, weight=400, italic=False):
+    sys.path.insert(0, str(ROOT / "tests"))
+    try:
+        from font_helper import make_font
+    finally:
+        sys.path.pop(0)
+    return make_font(SAMPLE, family, weight, italic)
+
+
+def text_pdf(faces):
+    """A Vixl PDF with one text layer per ``(registered name, font bytes)``."""
+    from vixl.fonts import register_font_data
+
+    p = Project(320, 40 * len(faces) + 20, "#ffffff")
+    for index, (name, data) in enumerate(faces):
+        register_font_data(p, data, name)
+        p.apply({"type": "text", "name": f"t{index}", "text": "Literata here", "font": name, "size": 20, "x": 8,
+                 "y": 8 + 40 * index})
+    return p.export(format="PDF")
+
+
+def font_layers(project):
+    return {layer["text"]: layer.get("font") for layer in project.state["layers"] if layer["type"] == "text"}
+
+
+def test_own_pdf_lists_its_full_fonts():
+    data = text_pdf([("noto", NOTO.read_bytes())])
+    import hashlib
+    import json
+
+    document = pdfium.PdfDocument(data)
+    try:
+        listed = json.loads(document.get_metadata_value("VixlFonts"))
+    finally:
+        document.close()
+    (base, entry), = listed.items()
+    assert base.endswith("+NotoSans-Regular") and len(base.split("+")[0]) == 6
+    assert entry == {"family": "Noto Sans", "weight": 400, "italic": False,
+                     "sha256": hashlib.sha256(NOTO.read_bytes()).hexdigest()}
+
+
+def test_font_from_the_cache_is_reused_without_a_warning_or_network(tmp_path, monkeypatch):
+    import httpx
+
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    (cache / "noto-sans-400.ttf").write_bytes(NOTO.read_bytes())
+    monkeypatch.setenv("VIXL_FONT_CACHE", str(cache))
+    monkeypatch.setattr(httpx.Client, "send", lambda *a, **k: (_ for _ in ()).throw(AssertionError("network used")))
+    data = text_pdf([("noto", NOTO.read_bytes())])
+    target = Project(10, 10)
+    head = target.head
+    result = import_document(target, data, "pdf")
+    assert not result.get("warnings")
+    assert result["fonts"] == [{"source": "NotoSans-Regular", "used": "noto-sans-400", "how": "cache"}]
+    assert target.state["fonts"]["noto-sans-400"].startswith("fonts/")
+    assert set(font_layers(target).values()) == {target.state["fonts"]["noto-sans-400"]}
+    target.undo(1)  # the registration and the layers are one revision
+    assert target.head == head and not target.state["layers"] and not target.state.get("fonts")
+
+
+def test_same_face_already_embedded_in_the_document_is_reused(tmp_path, monkeypatch):
+    from vixl.fonts import register_font_data
+
+    monkeypatch.setenv("VIXL_FONT_CACHE", str(tmp_path / "empty"))
+    face = synthetic("Literata")
+    target = Project(10, 10)
+    register_font_data(target, face, "my-serif")
+    result = import_document(target, text_pdf([("lit", face)]), "pdf")
+    assert not result.get("warnings")
+    assert result["fonts"] == [{"source": "Literata-Regular", "used": "my-serif", "how": "registered"}]
+    assert set(target.state["fonts"]) == {"my-serif"}  # nothing registered twice
+    # A file the document holds without a registration (a fallback face, say) is found by its SHA-256.
+    import hashlib
+
+    other = Project(10, 10)
+    other.assets[f"fonts/{hashlib.sha256(face).hexdigest()}.ttf"] = face
+    result = import_document(other, text_pdf([("lit", face)]), "pdf")
+    assert result["fonts"] == [{"source": "Literata-Regular", "used": "literata-400", "how": "registered"}]
+    assert other.state["fonts"]["literata-400"] == f"fonts/{hashlib.sha256(face).hexdigest()}.ttf"
+
+
+def test_font_map_maps_bold_and_italic(tmp_path, monkeypatch):
+    from vixl.fonts import register_font_data
+
+    monkeypatch.setenv("VIXL_FONT_CACHE", str(tmp_path / "empty"))
+    data = text_pdf([("r", synthetic("Literata")), ("b", synthetic("Literata", 700)),
+                     ("i", synthetic("Literata", 400, True))])
+    target = Project(10, 10)
+    for name, weight, italic in (("two-r", 400, False), ("two-b", 700, False), ("two-i", 400, True)):
+        register_font_data(target, synthetic("Serif Two", weight, italic), name)
+    result = import_document(target, data, "pdf", font_map={"Literata": "two-r", "Literata Bold": "two-b",
+                                                            "Literata Italic": "two-i"})
+    assert not result.get("warnings")
+    used = {item["source"]: (item["used"], item["how"]) for item in result["fonts"]}
+    assert used == {"Literata-Regular": ("two-r", "mapped"), "Literata-Bold": ("two-b", "mapped"),
+                    "Literata-Italic": ("two-i", "mapped")}
+    fonts = target.state["fonts"]
+    texts = sorted((layer["y"], layer["font"]) for layer in target.state["layers"] if layer["type"] == "text")
+    assert [font for _, font in texts] == [fonts["two-r"], fonts["two-b"], fonts["two-i"]]
+
+
+def test_unmapped_family_still_warns_and_is_listed_as_default(tmp_path, monkeypatch):
+    import httpx
+
+    monkeypatch.setenv("VIXL_FONT_CACHE", str(tmp_path / "empty"))
+    monkeypatch.setattr(httpx.Client, "send", lambda *a, **k: (_ for _ in ()).throw(AssertionError("network used")))
+    target = Project(10, 10)
+    result = import_document(target, text_pdf([("obscura", synthetic("Obscura"))]), "pdf")
+    assert result["fonts"] == [{"source": "Obscura-Regular", "used": None, "how": "default"}]
+    assert any("Obscura" in w and "not registered" in w for w in result["warnings"])
+
+
+def test_install_fonts_honours_offline_mode_and_degrades_to_a_warning(tmp_path, monkeypatch):
+    import httpx
+
+    monkeypatch.setenv("VIXL_FONT_CACHE", str(tmp_path / "empty"))
+    monkeypatch.setenv("VIXL_OFFLINE", "1")
+    monkeypatch.setattr(httpx.Client, "send", lambda *a, **k: (_ for _ in ()).throw(AssertionError("network used")))
+    target = Project(10, 10)
+    result = import_document(target, text_pdf([("noto", NOTO.read_bytes())]), "pdf", install_fonts=True)
+    assert result["fonts"][0]["how"] == "default"
+    assert any("network_disabled" in w for w in result["warnings"])
+
+
+def test_install_fonts_downloads_only_when_asked(tmp_path, monkeypatch):
+    from vixl import typefaces
+
+    monkeypatch.setenv("VIXL_FONT_CACHE", str(tmp_path / "empty"))
+    calls = []
+
+    def fetch(family, weight=400, italic=False, *, client=None, source=None):
+        calls.append((family, weight, italic))
+        return NOTO.read_bytes(), family
+
+    monkeypatch.setattr(typefaces, "fetch_font", fetch)
+    data = text_pdf([("noto", NOTO.read_bytes())])
+    import_document(Project(10, 10), data, "pdf")
+    assert calls == []
+    target = Project(10, 10)
+    result = import_document(target, data, "pdf", install_fonts=True)
+    assert calls == [("Noto Sans", 400, False)]
+    assert result["fonts"][0] == {"source": "NotoSans-Regular", "used": "noto-sans-400", "how": "installed"}
+    assert not result.get("warnings")
+
+
+def test_font_map_targets_must_be_registered():
+    target = Project(10, 10)
+    with pytest.raises(VixlError) as caught:
+        import_document(target, text_pdf([("noto", NOTO.read_bytes())]), "pdf", font_map={"Noto Sans": "nope"})
+    assert caught.value.code == "missing_font" and caught.value.details["field"] == "font_map"
+
+
+def test_import_document_step_takes_font_options(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    from vixl import steps
+
+    assert {"font_map", "install_fonts"} <= set(steps.step_schema("import-document")["properties"])
+    monkeypatch.setenv("VIXL_FONT_CACHE", str(tmp_path / "empty"))
+    pdf = tmp_path / "in.pdf"
+    pdf.write_bytes(text_pdf([("obscura", synthetic("Obscura"))]))
+    target = Project(10, 10)
+    session = SimpleNamespace(resolve=lambda path: tmp_path / path, limits=target.limits)
+    kind, result, _ = steps.run(session, target, {"type": "import-document", "path": "in.pdf",
+                                                  "font_map": {"Obscura": "heading"}}, 0)
+    assert result["fonts"] == [{"source": "Obscura-Regular", "used": "heading", "how": "mapped"}]
+    assert not [w for w in result.get("warnings", []) if "not registered" in w]
+
+
+def test_cli_font_map(tmp_path, monkeypatch):
+    from vixl.cli import dispatch
+    from vixl.fonts import register_font_data
+
+    monkeypatch.setenv("VIXL_FONT_CACHE", str(tmp_path / "empty"))
+    pdf = tmp_path / "in.pdf"
+    pdf.write_bytes(text_pdf([("obscura", synthetic("Obscura"))]))
+    doc = tmp_path / "doc.vixl"
+    p = Project(10, 10)
+    register_font_data(p, NOTO.read_bytes(), "body-face")
+    p.save(doc)
+    dispatch(["--project", str(doc), "import", str(pdf), "--font-map", "Obscura=body-face"])
+    saved = Project.load(doc)
+    assert set(font_layers(saved).values()) == {saved.state["fonts"]["body-face"]}

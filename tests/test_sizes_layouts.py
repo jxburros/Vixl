@@ -26,6 +26,31 @@ def test_named_print_sizes_resolve_with_dpi_bleed_and_orientation():
         resolve("favicon", dpi=300)
 
 
+FOOTER_CTAS = {"short": "RSVP", "long": "Drop in · Free entry"}
+FOOTER_CAPTIONS = {"short": "example.com/market", "long": "Illustrative QA event · No booking required"}
+
+
+@pytest.mark.parametrize("caption", sorted(FOOTER_CAPTIONS))
+@pytest.mark.parametrize("cta", sorted(FOOTER_CTAS))
+@pytest.mark.parametrize("size", ["instagram-post", "instagram-story", "youtube-thumbnail", "poster-18x24"])
+def test_event_poster_footer_never_collides(size, cta, caption):  # #710
+    p = Project.sized(size, seed=7)
+    p.apply({"type": "layout-apply", "name": "event-poster", "seed": 7, "title": "Coffee, together.",
+             "label": "SATURDAY · 10 AM",
+             "body": "A neighborhood coffee tasting\nMaple Street Café · 120 Maple St\nTry three roasts. Meet your neighbors.",
+             "cta": FOOTER_CTAS[cta], "caption": FOOTER_CAPTIONS[caption]})
+    issues = p.check()["issues"]
+    assert not [i for i in issues if i["check"] == "overlap" and i.get("code") == "text-text"]
+    assert not [i for i in issues if i["check"] == "overlap" and {"cta-button", "caption"} <= set(i["layers"])]
+    assert not [i for i in issues if i["check"] == "contrast" and "caption" in i["layers"]]
+    box = {name: p.inspect(name)["resolved_bounds"] for name in ("cta-button", "caption", "detail-3")}
+    button, text = box["cta-button"], box["caption"]
+    # Beside the button or on the row below it, under the details and on the canvas.
+    assert text[0] >= button[0] + button[2] or text[1] >= button[1] + button[3]
+    assert min(button[1], text[1]) >= box["detail-3"][1] + box["detail-3"][3]
+    assert max(button[1] + button[3], text[1] + text[3]) <= p.state["canvas"]["height"]
+
+
 def test_every_catalog_size_fits_default_limits():
     from vixl.model import Limits
 

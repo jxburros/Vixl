@@ -39,5 +39,8 @@ else:
         "asset": bundle.name,
         "sha256": hashlib.sha256(bundle.read_bytes()).hexdigest(),
         "size": bundle.stat().st_size,
+        # Launchers whose updater revision (updater.LAUNCHER) is lower ask for a new installer instead.
+        "min_launcher": 1,
     }
+    # The publish job signs these exact bytes (distribution/sign_manifest.py); do not rewrite the file after that.
     (output / "vixl-update.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")

@@ -80,6 +80,23 @@ class _Document:
         self.path, self.project, self.stamp = path, project, stamp
 
 
+def broad_workspace(folder):
+    """Whether ``folder`` is the home folder or a filesystem root: too much to hand an agent by accident."""
+    folder = Path(folder).resolve()
+    try:
+        home = Path.home().resolve()
+    except (RuntimeError, OSError):
+        home = None
+    return folder == home or folder == Path(folder.anchor)
+
+
+def refuse_broad_workspace(folder):
+    """Refuse the home folder or a filesystem root as a workspace nobody chose (the current directory)."""
+    require(not broad_workspace(folder), f"Refusing {folder} as the workspace: it is the home folder or a "
+            "filesystem root, and no workspace was given. Pass --workspace DIR (Session(workspace=DIR)) or start "
+            "in a project folder", "unsafe_workspace", field="workspace")
+
+
 class Session:
     """Workspace-scoped documents kept loaded between calls.
 
@@ -101,6 +118,8 @@ class Session:
         self.limits = limits or Limits()
         self.workspace = Path(workspace or (Path(path).resolve().parent if path else Path.cwd())).resolve()
         require(self.workspace.is_dir(), "Workspace must be an existing directory")
+        if workspace is None and path is None:
+            refuse_broad_workspace(self.workspace)
         self.require_document = require_document
         self._path = None  # The server-wide default: the document it started with, or set outside MCP.
         self._client_paths = WeakKeyDictionary()
@@ -488,6 +507,11 @@ class Session:
             return p.measure(**options)
 
     def check(self, document=None, **options):
+        # A form sample is read from disk: confine it to the workspace for every service (MCP and REST).
+        sample = options.get("sample")
+        if sample not in (None, "worst"):
+            require(isinstance(sample, str), "sample must be 'worst' or a workspace CSV path", field="sample")
+            options["sample"] = str(self.resolve(sample))
         # repair writes (one undoable batch); a plain check only reads.
         with self.project(write=bool(options.get("repair")), document=document) as p:
             return p.check(**options)
@@ -549,6 +573,10 @@ class Session:
             result, changed = ai_command(p, command, args)
             if changed:
                 p.save()
+            if command in ("detect", "ocr") or (command == "ai" and args[:1] == ["describe"]):
+                from .untrusted import mark_analysis
+
+                mark_analysis(result)
             return result
 
 
@@ -581,7 +609,7 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     bounds each call: a timeout after which a call answers 202 with a job, an export page and megapixel cap
     and the heavy calls running at once in the workspace."""
     try:
-        from fastapi import FastAPI, Request
+        from fastapi import FastAPI, Query, Request
         from fastapi.responses import JSONResponse, Response
         from starlette.middleware.trustedhost import TrustedHostMiddleware
     except ImportError as exc:
@@ -592,7 +620,11 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     import functools
 
     from .call_limits import GATE, CallLimits, RestJobs, check_export, detached
+    from .untrusted import mark
 
+    require_token(token)
+    failures = Failures()
+    CHECK_FIELDS, MEASURE_FIELDS, SPACING_FIELDS = route_fields()
     call_limits = call_limits if call_limits is not None else CallLimits.configure()
     session = Session(path, call_limits.apply_to(limits or Limits()))
     session.call_limits = call_limits
@@ -631,8 +663,10 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
 
     @app.middleware("http")
     async def guard(request: Request, call_next):
-        if request.url.path != "/view" and token and not hmac.compare_digest(request.headers.get("authorization", ""), "Bearer " + token):
-            return JSONResponse({"error": "unauthorized"}, status_code=401, headers={"WWW-Authenticate": "Bearer"})
+        if request.url.path != "/view" and token:  # /view is a static shell; its data calls carry the token.
+            refused = authorize(request, token, JSONResponse, failures)
+            if refused is not None:
+                return refused
         origin = request.headers.get("origin")
         if origin and origin != str(request.base_url).rstrip("/"):
             return JSONResponse({"error": "cross_origin_forbidden"}, status_code=403)
@@ -670,8 +704,10 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
 
     @app.get("/limits")
     def server_limits():
+        from .fetch import policy
+
         return {**call_limits.describe(), "max_pixels": session.limits.max_pixels,
-                "max_dimension": session.limits.max_dimension}
+                "max_dimension": session.limits.max_dimension, "network": policy()}
 
     @app.get("/jobs")
     def job_list():
@@ -728,13 +764,13 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     def review():
         from .review import notes
         with session.project() as project:
-            return {"head": project.head, "layers": project.inspect()["layers"],
-                    "history": session.history()["nodes"], **notes(session.path)}
+            return mark({"head": project.head, "layers": project.inspect()["layers"],
+                         "history": session.history()["nodes"], **notes(session.path)})
 
     @app.get("/notes")
     def review_notes():
         from .review import notes
-        return notes(session.path)
+        return mark(notes(session.path))
 
     @app.post("/notes")
     def add_note(body: dict):
@@ -987,11 +1023,12 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
 
     @app.get("/document")
     def document():
-        return session.inspect()
+        return mark(session.inspect())
 
     @app.get("/layers")
     def layers():
-        return session.inspect()["layers"]
+        # A bare list has no room for the key; the header names the same paths.
+        return JSONResponse(session.inspect()["layers"], headers={"X-Vixl-Untrusted": "[].name, [].text"})
 
     @app.post("/operations")
     @limited
@@ -1031,12 +1068,14 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
 
     @app.post("/spacing")
     def spacing(body: dict):
-        return session.measure_spacing(**fixed(body))
+        known_fields(fixed(body), SPACING_FIELDS, "spacing")
+        return session.measure_spacing(**body)
 
     @app.post("/check")
     @limited
     def check(body: dict):
-        return session.check(**fixed(body))
+        known_fields(fixed(body), CHECK_FIELDS, "check")
+        return mark(session.check(**body))
 
     @app.post("/preview")
     @limited
@@ -1132,7 +1171,8 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
 
     @app.post("/measure")
     def measure(body: dict):
-        return session.measure(**fixed(body))
+        known_fields(fixed(body), MEASURE_FIELDS, "measure")
+        return session.measure(**body)
 
     @app.post("/validate")
     @limited
@@ -1151,7 +1191,9 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     @app.post("/import")
     async def import_document(request: Request, format: str, name: str = "import", page: str = "1", dpi: int = 144,
                               svg_mode: str = "editable", node_id: str | None = None,
-                              rasterize_unsupported: bool = False):
+                              rasterize_unsupported: bool = False,
+                              font_map: list[str] | None = Query(None),
+                              install_fonts: bool | None = None):
         from .imports import import_document as execute_import
         from starlette.concurrency import run_in_threadpool
         data = await request.body()
@@ -1159,6 +1201,12 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
         figma = format.lower() == "figma"
         require(figma or page.isdigit(), "page must be a number", field="page")
         options = {"node_id": node_id, "rasterize_unsupported": rasterize_unsupported} if figma else {}
+        if font_map or install_fonts is not None:
+            require(not figma, "font_map and install_fonts apply to SVG and PDF import", field="font_map")
+        if font_map:
+            options["font_map"] = parse_font_map(font_map)
+        if install_fonts is not None:
+            options["install_fonts"] = install_fonts
         def apply_import():
             with session.project(write=True) as project:
                 return execute_import(project, data, format, name, int(page) if page.isdigit() else page, dpi,
@@ -1185,12 +1233,28 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     return app
 
 
-def serve(path, host="127.0.0.1", port=8765, token=None, limits=None, *, open_browser=False, call_limits=None):
-    require(
-        host in ("127.0.0.1", "localhost", "::1") or token,
-        "Non-loopback serving requires VIXL_API_TOKEN",
-        "authentication_required",
-    )
+LOOPBACK = ("127.0.0.1", "localhost", "::1")
+
+
+def serving_policy(host, token, tls):
+    """Refuse a remote bind without a token; warn on stderr when a remote bind sends the token over plain HTTP.
+    Returns the uvicorn TLS options."""
+    import sys
+
+    require_token(token)
+    require(host in LOOPBACK or token, "Non-loopback serving requires VIXL_API_TOKEN", "authentication_required")
+    certfile, keyfile = tls or (None, None)
+    require(bool(certfile) == bool(keyfile), "Pass both --tls-cert and --tls-key", field="tls")
+    if host not in LOOPBACK and not certfile:
+        print(f"Serving plain HTTP on {host}; the bearer token is sent in cleartext. Put a TLS reverse proxy in "
+              "front, or pass --tls-cert and --tls-key (docs/reference/interfaces.md).", file=sys.stderr)
+    return {"ssl_certfile": certfile, "ssl_keyfile": keyfile} if certfile else {}
+
+
+def serve(path, host="127.0.0.1", port=8765, token=None, limits=None, *, open_browser=False, call_limits=None,
+          tls=None):
+    """``tls`` is ``(certfile, keyfile)`` to serve HTTPS directly."""
+    ssl = serving_policy(host, token, tls)
     try:
         import uvicorn
     except ImportError as exc:
@@ -1200,17 +1264,19 @@ def serve(path, host="127.0.0.1", port=8765, token=None, limits=None, *, open_br
         import asyncio
         import webbrowser
 
+        scheme = "https" if ssl else "http"
+
         class ViewerServer(uvicorn.Server):
             async def startup(self, sockets=None):
                 await super().startup(sockets=sockets)
                 if self.started:
                     local_host = "127.0.0.1" if host == "0.0.0.0" else "::1" if host == "::" else host
                     address = f"[{local_host}]" if ":" in local_host else local_host
-                    await asyncio.to_thread(webbrowser.open, f"http://{address}:{port}/view")
+                    await asyncio.to_thread(webbrowser.open, f"{scheme}://{address}:{port}/view")
 
-        ViewerServer(uvicorn.Config(app, host=host, port=port)).run()
+        ViewerServer(uvicorn.Config(app, host=host, port=port, **ssl)).run()
     else:
-        uvicorn.run(app, host=host, port=port)
+        uvicorn.run(app, host=host, port=port, **ssl)
 
 
 def require_document_default():
@@ -1248,13 +1314,17 @@ def mcp_http_app(server, *, token=None):
     from starlette.responses import JSONResponse
     from mcp.server.transport_security import TransportSecuritySettings
 
+    require_token(token)
+    failures = Failures()
     # Our guard handles both public, token-protected hosts and loopback DNS rebinding.
     server.settings.transport_security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
     app = server.streamable_http_app()
 
     async def guard(request, call_next):
-        if token and not hmac.compare_digest(request.headers.get("authorization", ""), "Bearer " + token):
-            return JSONResponse({"error": "unauthorized"}, status_code=401, headers={"WWW-Authenticate": "Bearer"})
+        if token:
+            refused = authorize(request, token, JSONResponse, failures)
+            if refused is not None:
+                return refused
         origin = request.headers.get("origin")
         if origin and origin != str(request.base_url).rstrip("/"):
             return JSONResponse({"error": "cross_origin_forbidden"}, status_code=403)
@@ -1266,12 +1336,121 @@ def mcp_http_app(server, *, token=None):
     return app
 
 
-def serve_mcp(server, host="127.0.0.1", port=8766, token=None):
-    require(host in ("127.0.0.1", "localhost", "::1") or token,
-            "Non-loopback serving requires VIXL_API_TOKEN", "authentication_required")
+def serve_mcp(server, host="127.0.0.1", port=8766, token=None, *, tls=None):
+    ssl = serving_policy(host, token, tls)
     import uvicorn
-    uvicorn.run(mcp_http_app(server, token=token), host=host, port=port)
+    uvicorn.run(mcp_http_app(server, token=token), host=host, port=port, **ssl)
 
+
+MIN_TOKEN_LENGTH = 24
+
+
+def require_token(token):
+    """A configured bearer token must be long enough that guessing it is not practical."""
+    if token:
+        require(len(token) >= MIN_TOKEN_LENGTH, f"VIXL_API_TOKEN must be at least {MIN_TOKEN_LENGTH} characters",
+                "authentication_required", field="token",
+                suggestions=['Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'])
+
+
+def token_matches(header, token):
+    """Constant-time bearer check on bytes: a non-ASCII header is a mismatch, not an error."""
+    return hmac.compare_digest(header.encode("utf-8", "surrogateescape"), ("Bearer " + token).encode("utf-8"))
+
+
+class Failures:
+    """Failed bearer attempts per client address: after ``LIMIT`` failures within ``WINDOW`` seconds the address
+    is answered 429 without comparing, until the oldest failure leaves the window. Each REST or MCP HTTP app
+    keeps one."""
+
+    LIMIT, WINDOW, MAX_CLIENTS = 20, 60.0, 1024
+
+    def __init__(self):
+        self._seen = OrderedDict()  # Client address -> deque of failure times, least recently failed first.
+        self._lock = RLock()
+
+    def _recent(self, client, now):
+        times = self._seen.get(client)
+        while times and now - times[0] > self.WINDOW:
+            times.popleft()
+        return times
+
+    def retry_after(self, client, now=None):
+        """Whole seconds until ``client`` may try again, or 0."""
+        import math
+        import time
+
+        now = time.monotonic() if now is None else now
+        with self._lock:
+            times = self._recent(client, now)
+            if not times or len(times) < self.LIMIT:
+                return 0
+            return max(1, math.ceil(self.WINDOW - (now - times[0])))
+
+    def failed(self, client, now=None):
+        from collections import deque
+        import time
+
+        now = time.monotonic() if now is None else now
+        with self._lock:
+            times = self._recent(client, now)
+            if times is None:
+                times = self._seen[client] = deque(maxlen=self.LIMIT)
+            self._seen.move_to_end(client)
+            times.append(now)
+            while len(self._seen) > self.MAX_CLIENTS:
+                self._seen.popitem(last=False)
+
+
+def authorize(request, token, response, failures):
+    """None when the request carries the bearer token; otherwise the 401 (or, once throttled, 429) response."""
+    client = request.client.host if request.client else "unknown"
+    wait = failures.retry_after(client)
+    if wait:
+        return response({"error": "too_many_attempts", "message": "Too many failed bearer tokens; retry later"},
+                        status_code=429, headers={"Retry-After": str(wait)})
+    if token_matches(request.headers.get("authorization", ""), token):
+        return None
+    failures.failed(client)
+    return response({"error": "unauthorized"}, status_code=401, headers={"WWW-Authenticate": "Bearer"})
+
+
+def route_fields():
+    """The body fields REST ``/check``, ``/measure`` and ``/spacing`` accept, from the functions they call."""
+    import inspect
+
+    from .checks import check_design
+    from .measure import measure
+    from .spacing import measure_spacing
+
+    def named(*functions):
+        return {name for function in functions for name, parameter in inspect.signature(function).parameters.items()
+                if parameter.kind not in (parameter.VAR_KEYWORD, parameter.VAR_POSITIONAL)} - {"self", "project"}
+
+    # ``repairs`` is check_design's internal switch for repair suggestions; vixl_check does not offer it either.
+    return named(Project.check, check_design) - {"repairs"}, named(measure), named(measure_spacing)
+
+
+
+def parse_font_map(items):
+    """``font_map`` query values, each ``SRC=NAME`` or one JSON object, as ``{source family: registered name}``."""
+    import json
+
+    mapped = {}
+    for item in items:
+        if item.lstrip().startswith("{"):
+            try:
+                loaded = json.loads(item)
+            except ValueError as exc:
+                raise VixlError("invalid_request", f"font_map is not valid JSON: {exc}", field="font_map") from exc
+            require(isinstance(loaded, dict), "font_map JSON must be an object", field="font_map")
+            mapped.update(loaded)
+            continue
+        key, sep, value = item.partition("=")
+        require(sep and key.strip() and value.strip(), "Use font_map=SRC=NAME, e.g. font_map=Literata=literata-400",
+                field="font_map")
+        mapped[key.strip()] = value.strip()
+    return mapped
 
 
 def known_fields(body, allowed, route):

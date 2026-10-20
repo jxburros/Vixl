@@ -71,6 +71,15 @@ A document becomes multi-page with the first `page add`; each page has its own l
   The deck's PDF pages and PPTX slides are the same size (7.5 in tall for a screen canvas, so
   1920×1080 is 13.33 × 7.5 in); `dpi` sets both. The result's `page_size` shows it.
 - Name each slide's title layer `title` so it becomes the PowerPoint title placeholder.
+- `font_map` (`--font-map SRC=NAME`, REST `font_map=SRC=NAME`) also maps the font families of a plain SVG import.
+- Re-importing a PDF (`import-document`, `vixl import FILE.pdf`) keeps text live. A PDF embeds only font subsets, so
+  each PDF font is found again: `font_map` (`{"Literata": "literata-400", "Literata Bold": "literata-700"}`, CLI
+  `--font-map SRC=NAME`; targets must be registered), a registered font of that family and style, then for a PDF
+  Vixl exported (it lists each face's family, style and SHA-256 in `VixlFonts`) the same file in the document or the
+  font cache. `install_fonts: true` (`--install-fonts`) may download what is still missing, unless `VIXL_OFFLINE=1`;
+  nothing is downloaded by default. The result's `fonts` lists `{source, used, how}` (`mapped`, `registered`,
+  `cache`, `installed`, `default`) and only `default` entries warn. For the exact look import with
+  `svg_mode: "appearance"`, or keep the `.vixl` or SVG master.
 
 - Notes to a deck in one call: `vixl_apply(workflow='deck-from-markdown', request={"markdown": "notes.md", "output": "deck.vixl", "export": ["pptx"]})`. `#`/`##` headings start slides; title, section, quote and content layouts are chosen per slide; fenced `csv` → table, fenced `chart` → chart, `![](img.png)` → frame; `<!-- -->` or `Notes:` → speaker notes; deck checks are reported. Re-run after edits: only changed slides are rebuilt.
 

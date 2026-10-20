@@ -1,16 +1,39 @@
 """Human command syntax compiles into canonical operation dictionaries."""
 
 import argparse
+import difflib
 import json
 import re
 import shlex
+import sys
 from pathlib import Path
 
 from .errors import VixlError, require
 from .constants import ARTISTIC_DEFAULTS, EFFECTS
 
 
+# Top-level CLI commands besides the operation shorthand (``vixl commands`` lists both; typos are matched against both).
+TOP_LEVEL_COMMANDS = tuple(
+    "pack unpack new session open save status inspect describe layers effects manifest dependencies reproduce schema "
+    "check batch convert convert-batch render export export-screens export-animation spacing pixels animation info "
+    "sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert "
+    "validate preset ai ask generate detect ocr serve view notes import mcp update updates cache commands shapes "
+    "palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings "
+    "timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose "
+    "house brand emoji capabilities catalog objects compact link-set".split()
+)
+
+
+def close_matches(word, candidates, count=3):
+    return difflib.get_close_matches(str(word), sorted(set(candidates)), count, 0.6)
+
+
 class Parser(argparse.ArgumentParser):
+    def __init__(self, *args, **kwargs):
+        if sys.version_info >= (3, 14):
+            kwargs.setdefault("suggest_on_error", True)
+        super().__init__(*args, **kwargs)
+
     def add_argument(self, *args, **kwargs):
         if "--out" in args or "--output" in args:
             # Keep destinations stable for existing command implementations.
@@ -26,7 +49,14 @@ class Parser(argparse.ArgumentParser):
         return super().parse_known_args(args, namespace)
 
     def error(self, message):
-        raise VixlError("usage_error", message)
+        suggestions = []
+        if message.startswith("unrecognized arguments:"):
+            flags = [token.split("=", 1)[0] for token in message.split(":", 1)[1].split() if token.startswith("--")]
+            options = [option for option in self._option_string_actions if option.startswith("--")]
+            suggestions = list(dict.fromkeys(match for flag in flags for match in close_matches(flag, options)))
+            if suggestions:
+                message += f" (did you mean {' or '.join(suggestions)}?)"
+        raise VixlError("usage_error", message, **({"suggestions": suggestions} if suggestions else {}))
 
 
 def dimensions(value):
@@ -223,6 +253,7 @@ def compile_command(tokens):
         p.add_argument("--target", help=f"edit this existing {cmd} layer in place instead of adding one")
         if cmd == "text":
             p.add_argument("text", nargs="?", help="the text; optional with --target")
+            p.add_argument("--text", dest="text_option", metavar="TEXT", help="the text (instead of the TEXT argument)")
             p.add_argument("--font", help="registered font name, heading, body, or a font file")
             p.add_argument("--size", type=int)
             p.add_argument("--align", choices=["left", "center", "right"])
@@ -532,7 +563,12 @@ def compile_command(tokens):
         return {"type": f"preset-{action}", **{k: v for k, v in data.items() if v is not None}}
     else:
         return compile_schema_command(cmd, args)
-    return {**op, **{k: v for k, v in vars(p.parse_args(args)).items() if v is not None}}
+    data = {k: v for k, v in vars(p.parse_args(args)).items() if v is not None}
+    if "text_option" in data:
+        require("text" not in data, "Give the text once: as the TEXT argument or with --text", "usage_error",
+                field="text")
+        data["text"] = data.pop("text_option")
+    return {**op, **data}
 
 
 def compile_script(path):
@@ -565,7 +601,12 @@ def compile_schema_command(kind, args):
     variants = operation_schema()["properties"]["operations"]["items"]["oneOf"]
     spec = next((v for v in variants if v["properties"]["type"]["const"] == kind), None)
     if spec is None:
-        raise VixlError("unknown_command", f"Unknown editing command: {kind}. Run vixl --help.")
+        from .operations import OPERATION_TYPES
+
+        close = close_matches(kind, [*TOP_LEVEL_COMMANDS, *OPERATION_TYPES])
+        hint = f" Did you mean {' or '.join(close)}?" if close else ""
+        raise VixlError("unknown_command", f"Unknown command: {kind}.{hint} Run vixl --help.",
+                        **({"suggestions": close} if close else {}))
     parser = Parser(prog=f"vixl {kind}", description=spec.get("description"),
                     epilog="Arrays and objects use JSON. Full contract: vixl schema. Operations also work in vixl apply batches.")
     def parse_value(value, constraint):

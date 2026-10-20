@@ -92,6 +92,29 @@ changelog entry. PR #664 was superseded by applying its change directly. Where t
 
 ### Step 2: security and project hygiene
 
+Done on 2026-10-20, on branch `claude/elegant-gates-y1yy4m`: every item below, each with its regression tests and
+changelog entries. Where the work departed from the plan:
+
+- #668: REST `/check` still accepts `repair` and `waivers`, because the docs promise the same options as `vixl_check`.
+- #674: the failure throttle is one instance per app (REST and MCP HTTP never share a process).
+- #672: there is no `vixl doctor`; the network policy is reported by `GET /limits`.
+- #673: the protected environment is named `release`. A read-only `plan` job decides whether a version is already
+  published, so ordinary pushes to main do not wait for approval.
+- #621: signing runs in `distribution/sign_manifest.py` inside the protected job (the Windows job cannot see the
+  key), the signature is a hex Ed25519 file verified by the dependency-free `updater_sign.py`, and new launchers
+  enforce it at once while older ones keep updating on the SHA-256. `TRUSTED_KEYS` is empty until the owner creates
+  the keys, and the release workflow refuses to publish a new version until then (steps in
+  [Releases](../reference/releases.md#update-signing)). The optional Authenticode check is not done.
+- #677: MPO is left out of the decoder allow-list (Pillow opens camera MPO files through JPEG). `vixl_ai_analyze`
+  results were marked untrusted in a follow-up.
+- #682: shapely stays required (recorded in [Releases](../reference/releases.md)). `uv.lock` pins the development
+  environment; a `locked` CI job tests from it, the lint job runs `uv lock --check`, and Dependabot updates it.
+- #683, #692 part A and #678: the rule against authorship trailers is kept, with a `commit-msg` hook sample and an
+  advisory CI check; DCO or CLA, private vulnerability reporting, branch protection and the #692 part B history purge
+  stay owner decisions.
+
+The original step 2 list:
+
 - **Batch A2, service and network policy:** #668, #674, #675, #672, #624.
 - **Batch A3, release chain:** #673, then #621. Signing needs the protected `publish` environment from #673.
 - **Batch A4, agent trust:** #677.
@@ -99,6 +122,34 @@ changelog entry. PR #664 was superseded by applying its change directly. Where t
 - **Governance:** #683, the policy half of #692, and the process half of #678.
 
 ### Step 3: check noise, layout and agent cost
+
+Done on 2026-10-20, on branch `claude/elegant-gates-y1yy4m`: every item below, each with its regression tests and
+changelog entries; the house-style eval shows no regression, the craft backtest is unchanged and no golden changed. Where the work
+departed from the plan:
+
+- #680: on posters, directly applied and rolled, the spacing unit and the recorded type scale follow the raised
+  body and the roles above body step up from it. Headline lockups (`hero-statement`, `asymmetric-balance`,
+  `centered-axis`) now group by proximity instead of one equal gap. `f-pattern` and `story-vertical` can still
+  float an entry between two others at some seeds; they do not use the stack helper and are left for a follow-up.
+- #710: the footer helper is used only by `event-poster` (no other layout puts a button and a caption on the bottom
+  margin); details sit 4 units above the footer, not 8, which avoided a new dead band.
+- #701: the owner decision was taken as recommended: `quality: "final"` keeps implying the final profile, and held
+  outputs are reported under `withheld` with a `message`. Production `checks` has one shape (breaking).
+- #702: suite rules take an optional `pages` field (added in a follow-up).
+- #698: `edges` is an effect field, not a look option (looks have no per-look options).
+- #684: `font-cover` is a session step like `font-install`, not an operation. The weights of the three new catalog
+  faces (Noto Sans Thai, KR, TC) were verified with `scripts/verify_fonts.py --check` (107 families, no errors).
+- #712: SVG import and REST `POST /import` take `font_map` too (a follow-up); `install_fonts` has no effect on plain
+  editable SVG, which has no downloading resolver.
+- #693: `vixl new` requires `-o` (breaking). `vixl_document(action=…)` hints are rewritten for the CLI (a follow-up).
+- #637: `save(prune_fonts=True)` and `vixl save --prune-fonts` drop fonts no revision draws. It is opt-in, because a
+  font chosen from outside the document (export variables, merge rows, linking documents) looks unused from inside
+  it. The render-purity part waits for #632.
+- #686: `docs/project/` stays the contributor area, and `docs/reference/coverage.md` stays with the user docs. SKILL.md
+  went from 67 KB to 9.4 KB, with a 10,500-byte ratchet. CLAUDE.md checklist item 3 could also name
+  `docs/project/use-case-evidence.md` (an owner edit).
+
+The original step 3 list:
 
 - **Check noise:** #713, #701 (its overlap false positive), #702. These run the craft backtest and the house-style eval.
 - **Layout and roll:** #710, #680, #700.

@@ -10,6 +10,8 @@ below, so a plugin can later ship separately without core changes:
   request, document)`` and optionally ``FIELD_TYPES`` ({action: {field: schema}}) and ``SUMMARIES``.
 - ``hooks``: {hook point: ["module:function", ...]}; see ``HOOKS`` for each point's call signature.
 - ``requires``: other plugins this one imports.
+- ``capabilities``: {topic: (words that select it, [guidance names])}, merged into the topics of
+  ``vixl_reference('capabilities')``; the guidance texts live in the core registry, ``vixl.guidance``.
 
 All plugins are built in for now: ``BUILTIN`` lists them in registration order. ``docs/reference/plugins.md`` has the
 criteria for making a new feature a plugin, and ``tests/test_plugins.py`` holds the core to the boundary
@@ -59,7 +61,7 @@ HOOKS = {
     "export-format": "fn(project, path, format, report, **options) -> data, or None when the format is not the plugin's",
     "import-format": "fn(project, data, format, **options) -> result, or None when the format is not the plugin's",
 }
-MANIFEST_KEYS = {"name", "title", "summary", "kind", "modules", "requires", *ROLES, "hooks"}
+MANIFEST_KEYS = {"name", "title", "summary", "kind", "modules", "requires", *ROLES, "hooks", "capabilities"}
 KINDS = ("operations", "workflows", "importer", "provider")
 
 

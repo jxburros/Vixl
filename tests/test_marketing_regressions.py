@@ -108,8 +108,8 @@ def test_text_metrics_describe_ink_lines_and_baselines(kind):
     assert layer["line_bounds"][3] > layer["ink_bounds"][3]
     assert layer["ink_bounds"][0] >= 30 and layer["ink_bounds"][1] >= 40
     added = next(iter(result["changes"]["layers"].values()))
-    assert added["baseline"] == layer["baseline"]
-    assert added["ink_bounds"] == layer["ink_bounds"]
+    assert added["baseline"] == pytest.approx(layer["baseline"], abs=0.005)  # brief rounds to 2 decimals
+    assert added["ink_bounds"] == pytest.approx(layer["ink_bounds"], abs=0.005)
 
 
 def test_relative_python_link_is_stable_after_save_and_cwd_changes(tmp_path, monkeypatch):

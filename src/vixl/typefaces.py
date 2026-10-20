@@ -175,10 +175,12 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
     that mood and shifts expressive moods toward the bold tiers. ``recommend`` maps ``layouts``,
     ``looks`` and ``styles`` to names a brief recommends; they are favoured where the tier allows.
     ``content`` lists the copy slots that will be supplied (title, subtitle …): only layouts that place
-    all of them are rolled. Every field that ``locks`` fixes is kept; the rest come from the seed, which is returned so
+    all of them are rolled. When none does, the roll keeps the layout it would pick with no content (the
+    preview's), so applying it reports the slots it leaves out as ``unused_slot`` (#700); ``direction.pool``
+    says which pool the layout came from. Every field that ``locks`` fixes is kept; the rest come from the seed, which is returned so
     a direction worth keeping can be reproduced exactly.
     """
-    from .layouts import ACCENTS, DENSITY_CHOICES, IMAGE_KEYS, LAYOUTS, RATIOS, places, slot_spec
+    from .layouts import ACCENTS, DENSITY_CHOICES, IMAGE_KEYS, LAYOUTS, RATIOS, placeable, places, slot_spec
     from .resources import PALETTES
     from .variety import VARIETIES, choose, dimensions, orientation, pick_tier, tier_pool
 
@@ -234,7 +236,7 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
     shape = orientation(*canvas) if canvas else None
     layout_meta = house_style.entries("layouts")
 
-    def layout_fits(name):
+    def layout_fits(name, content=content):
         if alignment and goal != "logo" and not LAYOUTS[name].get("safe_composition") and alignment not in LAYOUTS[name].get("aligns", ["left"]):
             return False
         meta = layout_meta.get(name, {})
@@ -249,14 +251,35 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
             return False  # an image slot nobody fills would ship as a blank
         return not content or places(name, shape or "square", tuple(sorted(content)))
 
-    layouts = tier_pool("layouts", tier, goal, lambda name: name in LAYOUTS and layout_fits(name))
-    if recent and layouts == [recent[-1].get("layout")]:
-        alternatives = tier_pool("layouts", tier, goal, lambda name: name in LAYOUTS
-                                 and name != recent[-1].get("layout") and layout_fits(name))
-        layouts = alternatives or layouts
-    require(layouts or "layout" in locks,
-            f"No rollable layout{' for ' + goal if goal else ''} places all of {', '.join(content or ())} on this canvas; "
-            "lock a layout (locks={layout: NAME}) or supply other slots", field="slots")
+    def layout_pool(content):
+        layouts = tier_pool("layouts", tier, goal, lambda name: name in LAYOUTS and layout_fits(name, content))
+        if recent and layouts == [recent[-1].get("layout")]:
+            alternatives = tier_pool("layouts", tier, goal, lambda name: name in LAYOUTS
+                                     and name != recent[-1].get("layout") and layout_fits(name, content))
+            layouts = alternatives or layouts
+        return layouts
+
+    layouts, pool = layout_pool(content), "content" if content else None
+    if not layouts and content and "layout" not in locks:
+        # No layout places all the copy: keep the preview's layout (the draws so far do not depend on content),
+        # so applying it reports the slots it leaves out as unused_slot, with suggestions (#700).
+        layouts, pool = layout_pool(None), "preview"
+    if not layouts and "layout" not in locks:
+        nearest = []
+        if content:
+            keys = tuple(sorted(content))
+            candidates = tier_pool("layouts", tier, goal, lambda name: name in LAYOUTS) or [
+                name for name in LAYOUTS if goal in layout_meta.get(name, {}).get("purposes", [])]
+            for name in candidates:
+                found = placeable(name, shape or "square", keys)
+                if found:
+                    nearest.append((-len(found), name, sorted(found)))
+            nearest = [{"layout": name, "places": found} for _, name, found in sorted(nearest)[:3]]
+        raise VixlError("invalid_operation",
+                        f"No rollable layout{' for ' + goal if goal else ''} "
+                        + (f"places all of {', '.join(content)} " if content else "fits ")
+                        + "on this canvas; lock a layout (locks={layout: NAME}) or supply other slots",
+                        field="slots", suggestions=nearest)
     layouts = layouts or [locks["layout"]]
     layout_prefer = set(profile["layouts"]["prefer"]) | set(recommend.get("layouts", []))
     layout_weights = {name: (profile["layouts"]["weight"] if name in layout_prefer else 1) * strength(layout_meta.get(name, {}))
@@ -272,6 +295,7 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
         "accent": rng.choice(ACCENTS),
         "layout_seed": rng.randrange(2**32),
         **dimensions(rng, pairing, variety, tier=tier, purpose=goal, moods=wanted, recommend=recommend),
+        **({"pool": pool} if pool else {}),
         "tier": tier,
         "purpose": goal,
     }
@@ -319,7 +343,7 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
         "accent": direction["accent"],
         "direction": {key: value for key, value in direction.items()
                       if key not in ("layout", "palette", "mode", "type_scale", "density", "accent", "layout_seed", "pairing",
-                                     "tier", "purpose")},
+                                     "tier", "purpose", "pool")},
     }
     if "container" in locks:
         operation["direction"]["place_container"] = True
@@ -373,6 +397,23 @@ def cache_location():
     return _cache_dir(), "VIXL_FONT_CACHE" if os.environ.get("VIXL_FONT_CACHE") else "default"
 
 
+def cached_font(family, weight=400, italic=False):
+    """The bytes of one Google Fonts style from the font cache, or None; never touches the network."""
+    from .fonts import validate_font
+
+    if not isinstance(family, str) or not re.fullmatch(r"[A-Za-z0-9 ]{1,80}", family):
+        return None
+    entry = find_font(family)
+    family = entry["family"] if entry else family
+    cached = _cache_dir() / f"{slug(family)}-{weight}{'-italic' if italic else ''}.ttf"
+    try:
+        data = cached.read_bytes()
+        validate_font(data)
+    except (OSError, VixlError):
+        return None
+    return data
+
+
 def fetch_font(family, weight=400, italic=False, *, client=None, source=None):
     """Return TTF bytes for one static style of a Google Fonts family, using the user cache.
     A ``source`` dict is filled with where the bytes came from: ``origin`` (``cache`` or
@@ -398,6 +439,10 @@ def fetch_font(family, weight=400, italic=False, *, client=None, source=None):
     axis = f"ital,wght@1,{weight}" if italic else f"wght@{weight}"
     url = f"{CSS_API}?family={quote_plus(family)}:{axis}"
     own = client is None
+    if own:  # A caller's client is the caller's to gate (creation.network_client, or an offline stub).
+        from .fetch import network_allowed
+
+        network_allowed(f"Downloading {family} from Google Fonts")
     client = client or httpx.Client(timeout=30, follow_redirects=False, headers={"User-Agent": "vixl"})
     try:
         css = _get(client, url).decode("utf-8", "replace")
@@ -453,6 +498,85 @@ def install_font(project, family, weight=400, italic=False, name=None, role=None
     return {"name": name, "family": family, "weight": weight, "italic": italic, **({"role": role} if role else {}),
             "source": {**found, "cache_dir": str(cache_dir), "cache_dir_from": chosen_by, "bundled_fallback": False},
             "file": {"asset": asset, "bytes": len(data), "sha256": digest}}
+
+
+SCRIPT_ALIASES = {"devanagari": "Devanagari", "hindi": "Devanagari", "han": "Han", "chinese": "Han",
+                  "hiragana/katakana": "Hiragana/Katakana", "hiragana": "Hiragana/Katakana",
+                  "katakana": "Hiragana/Katakana", "kana": "Hiragana/Katakana", "japanese": "Hiragana/Katakana",
+                  "hangul": "Hangul", "korean": "Hangul", "thai": "Thai", "arabic": "Arabic"}
+
+
+def cover_fonts(project, text=None, scripts=None, weight=400, *, client=None):
+    """Install the catalog Noto face for each script that no available font draws and append it to the document's
+    font fallbacks. The scripts come from ``scripts`` (Devanagari, Han, Hiragana/Katakana, Hangul,
+    Thai, Arabic, or a language name such as japanese), else from the characters of ``text`` the document cannot draw,
+    else from every text layer's. Faces come from the font cache first; a download honours the network policy
+    (``VIXL_OFFLINE``), and when one is not allowed or fails nothing is changed and the error names the families."""
+    from .text import SCRIPT_FONTS, cover_families, glyph_coverage, scripts_of, uncovered
+
+    if scripts:
+        require(isinstance(scripts, (list, tuple)) and all(isinstance(item, str) for item in scripts),
+                "scripts is a list of script names", field="scripts")
+        unknown = [item for item in scripts if item.lower() not in SCRIPT_ALIASES]
+        require(not unknown, f"Unknown script(s) {', '.join(map(repr, unknown))}; use "
+                f"{', '.join(SCRIPT_FONTS)} (or japanese, chinese, korean, hindi)", field="scripts")
+        wanted = list(dict.fromkeys(SCRIPT_ALIASES[item.lower()] for item in scripts))
+        missing = []
+    else:
+        if text is not None:
+            missing = glyph_coverage(project, {"text": text})["missing"]
+        else:
+            missing = sorted({char for layer in project.state["layers"] if layer["type"] == "text"
+                              for char in uncovered(project, layer)})
+        wanted = [name for name in scripts_of(missing) if name]
+    families = cover_families(wanted)
+    result = {"scripts": wanted, "families": families, "installed": [],
+              "font_fallbacks": list(project.state.get("font_fallbacks", []))}
+    other = scripts_of(missing).get(None)
+    if other:
+        result["uncovered"] = "".join(other[:24])
+        result["note"] = ("Vixl has no catalog face for some characters; import a font that draws them and add it "
+                          "with font-fallbacks")
+    if not families:
+        return result
+    candidate = project.clone()
+    registered = dict(candidate.state.get("fonts", {}))
+    installed, unavailable, error = [], [], None
+    for family in families:
+        try:
+            installed.append(install_font(candidate, family, weight, client=client))
+        except VixlError as exc:
+            if exc.code not in ("network_disabled", "font_download_failed"):
+                raise
+            unavailable.append(family)
+            error = error or exc
+    if unavailable:
+        offline = error.code == "network_disabled"
+        raise VixlError(error.code, f"font-cover needs {', '.join(unavailable)}, which "
+                        f"{'is' if len(unavailable) == 1 else 'are'} not in the font cache, and "
+                        + ("network access is off (VIXL_OFFLINE=1)" if offline else f"the download failed ({error})")
+                        + "; nothing was changed", field="scripts", families=unavailable,
+                        suggestions=[f"Allow the download once (vixl font install {unavailable[0]!r}) so the cache "
+                                     "has it, or import a font file that covers these scripts and add it with "
+                                     "font-fallbacks"])
+    current = list(candidate.state.get("font_fallbacks", []))
+    fallbacks = list(current)
+    for item in installed:
+        asset, previous = item["file"]["asset"], registered.get(item["name"])
+        if asset in fallbacks:
+            continue
+        # A face installed again with other bytes (a newer upstream file) replaces its old entry, not a second one.
+        if previous in fallbacks:
+            fallbacks[fallbacks.index(previous)] = item["name"]
+        else:
+            fallbacks.append(item["name"])
+    if fallbacks != current:
+        candidate.apply({"type": "font-fallbacks", "fonts": fallbacks}, detail="compact")
+    project.__dict__.update(candidate.__dict__)
+    result["installed"] = [{key: item[key] for key in ("name", "family", "weight")} | {
+        "origin": item["source"].get("origin")} for item in installed]
+    result["font_fallbacks"] = list(project.state.get("font_fallbacks", []))
+    return result
 
 
 def origin_of(*installed):

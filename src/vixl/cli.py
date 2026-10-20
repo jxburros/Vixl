@@ -15,7 +15,7 @@ from .fileio import file_lock
 from . import __version__
 from .assets import read_bounded
 from .cli_summary import command_of, human_output, wants_json
-from .commands import Parser, compile_command, compile_script, dimensions, normalize, pairs
+from .commands import TOP_LEVEL_COMMANDS, Parser, compile_command, compile_script, dimensions, normalize, pairs
 from .errors import VixlError, for_surface, friendly, require
 from .model import Limits
 
@@ -116,8 +116,9 @@ Resources: commands, shapes, sizes [--category print], palette list|show|add|app
 Type:      fonts [--category serif] [--mood M], font show FAMILY, font pairings [--mood M] [--for poster],
            font pairing NAME, font principles, font install FAMILY [--weight 700] [--role heading|body], font pair NAME|random,
            font use NAME --role heading|body, font list|import, --scope workspace [--workspace DIR] (install/pair: brand.json
-           default for new documents; install's role defaults to heading)
-Finish:    look LAYER NAME [--color C] [--amount 0-1] [--remove]  (clean-flat, subtle-grain, light-paper, glow, neon,
+           default for new documents; install's role defaults to heading),
+           font cover [--text T] [--script Thai] (install Noto fallbacks for CJK, Devanagari, Thai ... text)
+Finish:   look LAYER NAME [--color C] [--amount 0-1] [--remove]  (clean-flat, subtle-grain, light-paper, glow, neon,
            soft-shadow, hard-shadow, outline, gradient, soft-halo, grain, paper, film, duotone, risograph, sketch,
            watercolor, halftone, hand-made, plush), looks (catalog),
            radial-repeat LAYER --count N [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--name N]
@@ -157,7 +158,7 @@ Cache:     cache info | cache clear (the disk render cache; VIXL_RENDER_CACHE=of
 Services:  serve | view [--host 127.0.0.1] [--port 8765], notes list|add|resolve
            mcp [--workspace DIR] [--http] [--tools default|ai] [--planner] [--require-document]
            per-call limits (serve, view, mcp): [--call-timeout S] [--max-megapixels N] [--max-pages N] [--max-concurrent N]
-Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144]
+Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144] [--font-map SRC=NAME]
            import PHOTO.jpg | https://HOST/photo.jpg [--name N] [--credit TEXT] [--license TEXT]
            import FIGMA_URL_OR_KEY --format figma [--node 1:2] [--rasterize-unsupported]
 
@@ -260,6 +261,31 @@ def current_path(explicit=None):
         raise VixlError("no_project", "No current project. Use vixl new SIZE -o FILE or vixl open FILE.")
 
 
+def ambient_note(explicit, path, human):
+    """Once per remembered document, tell a person in a terminal which file a command without -p edits."""
+    if explicit or not human:
+        return
+    try:
+        record = json.loads(session_path().read_text())
+        if record.get("noted"):
+            return
+        session_path().write_text(json.dumps({**record, "noted": True}))
+    except (OSError, ValueError, AttributeError):
+        return
+    print(f"note: editing {Path(path).name} (the current document; -p FILE chooses another)", file=sys.stderr)
+
+
+def typo_hint(cmd):
+    """A did-you-mean for a command word that is no command or operation, or None."""
+    from .commands import close_matches
+    from .operations import OPERATION_TYPES
+    from .render import EFFECTS
+
+    if cmd in TOP_LEVEL_COMMANDS or cmd in OPERATION_TYPES or cmd in EFFECTS:
+        return None
+    return close_matches(cmd, [*TOP_LEVEL_COMMANDS, *OPERATION_TYPES]) or None
+
+
 def has_document(explicit=None):
     """Whether a command has a document to read: ``-p`` or a session's existing current file."""
     try:
@@ -286,6 +312,10 @@ def read_json(path):
     require(len(text.encode("utf-8")) <= limit, "JSON input exceeds the 64 MiB batch limit", "resource_limit")
     try:
         return json.loads(text)
+    except json.JSONDecodeError as exc:
+        source = "inline JSON" if inline else "stdin" if path == "-" else str(path)
+        raise VixlError("invalid_json", f"{source}: line {exc.lineno} column {exc.colno}: {exc.msg}",
+                        **({} if inline or path == "-" else {"path": str(path)})) from exc
     except ValueError as exc:
         raise VixlError("invalid_json", str(exc)) from exc
 
@@ -408,10 +438,27 @@ def mcp_parser():
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8766)
     p.add_argument("--token-env", default="VIXL_API_TOKEN")
+    service_arguments(p)
     from .call_limits import add_arguments
 
     add_arguments(p)
     return p
+
+
+def service_arguments(parser):
+    """Flags shared by ``vixl mcp``, ``serve`` and ``view``: no-network mode and direct TLS."""
+    parser.add_argument("--offline", action="store_true",
+                        help="Turn off every network access (URL imports, font downloads, providers); "
+                        "also VIXL_OFFLINE=1")
+    parser.add_argument("--tls-cert", help="Serve HTTPS with this PEM certificate (with --tls-key)")
+    parser.add_argument("--tls-key", help="The PEM private key for --tls-cert")
+
+
+def service_setup(args):
+    """Apply ``--offline`` for the whole process; return the ``tls`` pair (or None)."""
+    if args.offline:
+        os.environ["VIXL_OFFLINE"] = "1"
+    return (args.tls_cert, args.tls_key) if args.tls_cert or args.tls_key else None
 
 
 def _dispatch(argv):
@@ -530,9 +577,7 @@ def _dispatch(argv):
                     | set(EFFECTS)
                     | {"filter"}
                     | {"workflow"}
-                    | set(
-                        "pack unpack new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert convert-batch render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates cache commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house brand emoji capabilities catalog objects compact link-set".split()
-                    )
+                    | set(TOP_LEVEL_COMMANDS)
                 )
             }
         ), options.json
@@ -630,7 +675,8 @@ def _dispatch(argv):
         p.add_argument("--overwrite", action="store_true", help="Replace an existing document explicitly")
         p.add_argument("--background", help="Canvas colour (default: the rolled palette background; transparent "
                        "for logos, icons and favicons)")
-        p.add_argument("--out", "-o", default=options.project or "untitled.vixl")
+        p.add_argument("--out", "-o", default=options.project,
+                       help="The document to create (required; -p FILE also names it)")
         p.add_argument("--dpi", type=float)
         p.add_argument("--seed", type=int, help="Reproduce the design defaults of an earlier roll")
         p.add_argument("--variety", choices=["low", "medium", "high", "fixed"])
@@ -648,6 +694,7 @@ def _dispatch(argv):
         negative = next((arg for arg in args if re.fullmatch(r"-\d+(\.\d+)?[xX×]-?\d+(\.\d+)?", arg)), None)
         require(negative is None, f"Dimensions must be 1–16384 pixels; got {negative}", "resource_limit", field="size")
         a = p.parse_args(args)
+        require(a.out, "Name the document to create: vixl new SIZE -o FILE.vixl", "usage_error", field="out")
         require(not Path(a.out).exists() or a.overwrite, "Project already exists; use --overwrite to replace it")
         require(not Path(a.out).is_dir(), "Output must be a file")
         named_size = a.size is not None and not re.fullmatch(r"\d+[xX×]\d+", a.size.strip())
@@ -693,16 +740,25 @@ def _dispatch(argv):
         if args == ["document"]:
             from .document_schema import document_schema
             return document_schema(), options.json
+        if args == ["--all"]:
+            return operation_schema(), options.json
+        if not args:
+            return schema_listing(), options.json
         schema = operation_schema()
-        if args:
-            from .normalize import _canonical_type
+        from .commands import close_matches
+        from .normalize import _canonical_type
 
-            variants = {v["properties"]["type"]["const"]: v
-                        for v in schema["properties"]["operations"]["items"]["oneOf"]}
-            names = [_canonical_type(name, set(variants)) for name in args]
-            require(all(name in variants for name in names), "Unknown operation type; use vixl schema for the full list")
-            return {name: variants[name] for name in names}, options.json
-        return schema, options.json
+        variants = {v["properties"]["type"]["const"]: v
+                    for v in schema["properties"]["operations"]["items"]["oneOf"]}
+        names = [_canonical_type(name, set(variants)) for name in args]
+        unknown = [name for name in names if name not in variants]
+        if unknown:
+            close = close_matches(unknown[0], variants)
+            raise VixlError("invalid_operation", f"Unknown operation type {unknown[0]!r}"
+                            + (f"; did you mean {' or '.join(close)}?" if close else "")
+                            + " vixl schema lists every operation", field="type",
+                            **({"suggestions": close} if close else {}))
+        return {name: variants[name] for name in names}, options.json
     if cmd == "batch":
         return batch(args, limits, options.allow_linked), options.json
     if cmd == "convert-batch" or cmd == "convert" and args and not {"--grayscale", "--format"} & set(args):
@@ -741,20 +797,34 @@ def _dispatch(argv):
         from .call_limits import from_arguments
 
         a = mcp_parser().parse_args(args)
+        tls = service_setup(a)
         # Explicit workspaces can start empty. Existing --project configurations still work.
         path = current_path(options.project) if options.project or not a.workspace else None
+        if not a.workspace and not options.project:
+            from .interfaces import refuse_broad_workspace
+
+            refuse_broad_workspace(Path(path).parent)  # the remembered document's folder, which nobody chose here
+        workspace_shown = Path(a.workspace or Path(path).parent).resolve()
+        print(f"vixl mcp: workspace {workspace_shown}", file=sys.stderr)
         server = mcp_server(path, limits, workspace=a.workspace, planner=a.planner, tools=a.tools,
                             require_document=a.require_document, call_limits=from_arguments(a),
                             allow_screen_capture=a.allow_screen_capture)
         if a.http:
             from .interfaces import serve_mcp
-            serve_mcp(server, a.host, a.port, os.environ.get(a.token_env))
+            serve_mcp(server, a.host, a.port, os.environ.get(a.token_env), tls=tls)
         else:
             server.run()
         return None, options.json
     if "--help" in args or "-h" in args:
         return command_help(cmd, args), options.json
-    path = current_path(options.project)
+    try:
+        path = current_path(options.project)
+    except VixlError as exc:
+        close = typo_hint(cmd)
+        if close:
+            raise VixlError("unknown_command", f"Unknown command: {cmd}. Did you mean {' or '.join(close)}? "
+                            "Run vixl --help.", suggestions=close) from exc
+        raise
     if cmd in ("serve", "view"):
         from .interfaces import serve
 
@@ -762,12 +832,13 @@ def _dispatch(argv):
         p.add_argument("--host", default="127.0.0.1")
         p.add_argument("--port", type=int, default=8765)
         p.add_argument("--token-env", default="VIXL_API_TOKEN")
+        service_arguments(p)
         from .call_limits import add_arguments, from_arguments
 
         add_arguments(p)
         a = p.parse_args(args)
         serve(path, a.host, a.port, os.environ.get(a.token_env), limits, open_browser=cmd == "view",
-              call_limits=from_arguments(a))
+              call_limits=from_arguments(a), tls=service_setup(a))
         return None, options.json
     with file_lock(str(path)):
         project = Project.load(path, limits=limits, allow_linked=options.allow_linked)
@@ -780,7 +851,26 @@ def _dispatch(argv):
         result, changed = project_command(project, cmd, args, detail=options.detail)
         if changed:
             project.save()
+    if isinstance(result, dict) and (changed or cmd in ("check", "render", "export")):
+        result.setdefault("path", str(path))  # the document the command read or edited
+    ambient_note(options.project, path, human_output(argv, sys.stderr))
     return result, options.json
+
+
+def schema_listing():
+    """``vixl schema`` without arguments: every operation by purpose with a one-line summary (the full JSON Schema
+    is ``vixl schema --all``, about 900 KB)."""
+    from .briefs import operations_index
+
+    def line(summary):
+        text = re.split(r"(?<=[.;:])\s|\s\(", summary, maxsplit=1)[0].rstrip(".;:")
+        return text if len(text) <= 64 else text[:63].rsplit(" ", 1)[0] + "…"
+
+    groups = {title: {name: line(text) for name, text in names.items()} if isinstance(names, dict) else names
+              for title, names in operations_index().items()}
+    return {"groups": groups, "count": sum(len(names) for names in groups.values()),
+            "next": "vixl schema OPERATION… for fields, types and examples; vixl schema --all for the whole JSON "
+                    "Schema; vixl schema document for the .vixl file format"}
 
 
 def command_help(cmd, args):
@@ -788,11 +878,12 @@ def command_help(cmd, args):
 
     manual = {
         "open": "open FILE",
-        "schema": "schema [OPERATION…]  (no argument: the whole operation-batch schema; "
-                  "schema particles pivot: just those operations' fields, types and descriptions; aliases accepted; "
+        "schema": "schema [OPERATION…] | schema --all | schema document  (no argument: every operation by purpose "
+                  "with a one-line summary; schema particles pivot: just those operations' fields, types and "
+                  "descriptions, aliases accepted; --all: the whole operation-batch JSON Schema; "
                   "schema document: the JSON Schema of a .vixl file's project.json)",
         "canvas": "canvas resize WxH | size NAME [--landscape] [--bleed] | preset NAME | dpi N | background COLOR",
-        "save": "save [FILE]",
+        "save": "save [FILE] [--prune-fonts]",
         "inspect": "inspect [LAYER] | inspect --object NAME|PATH|*",
         "status": "status",
         "session": "session --project FILE (NDJSON operations or command argv requests on stdin)",
@@ -867,6 +958,10 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("--node", help="figma: import this node id (1:2) instead of the first page")
         p.add_argument("--rasterize-unsupported", action="store_true", help="figma: import a PNG render of nodes "
                        "that have no editable equivalent")
+        p.add_argument("--font-map", action="append", metavar="SRC=NAME", help="pdf: use registered font NAME for the "
+                       "PDF font family SRC ('Literata Bold=literata-700' for a style); repeatable")
+        p.add_argument("--install-fonts", action="store_true", help="pdf: allow downloading from Google Fonts a font "
+                       "that neither the document nor the font cache has")
         a = p.parse_args(args)
         if a.format == "figma" or re.match(r"(?i)https://(www\.)?figma\.com/", a.path):
             source = Path(a.path).read_bytes() if Path(a.path).is_file() else a.path.encode()
@@ -880,8 +975,18 @@ def project_command(project, cmd, args, *, detail="compact"):
                                      name=a.name or "image", credit=a.credit, license=a.license), True
         require(a.credit is None and a.license is None, "--credit and --license apply to image imports",
                 field="credit")
+        options = {}
+        if a.font_map or a.install_fonts:
+            require(Path(a.path).suffix.lower() in (".pdf", ".svg"),
+                    "--font-map and --install-fonts apply to SVG and PDF imports",
+                    field="font_map")
+            mapped = [item.partition("=") for item in a.font_map or []]
+            require(all(sep and key.strip() and value.strip() for key, sep, value in mapped),
+                    "Use --font-map SRC=NAME, e.g. --font-map Literata=literata-400", field="font_map")
+            options = {"font_map": {key.strip(): value.strip() for key, _, value in mapped}, "install_fonts": a.install_fonts}
         return import_document(project, read_bounded(a.path, project.limits.max_asset_bytes),
-                               Path(a.path).suffix.lstrip("."), a.name or "import", a.page, a.dpi, a.svg_mode), True
+                               Path(a.path).suffix.lstrip("."), a.name or "import", a.page, a.dpi, a.svg_mode,
+                               **options), True
     if cmd == "notes":
         from .review import notes
         p = Parser(prog="vixl notes")
@@ -959,18 +1064,24 @@ def project_command(project, cmd, args, *, detail="compact"):
         parser = Parser(prog="vixl save")
         parser.add_argument("path", nargs="?")
         parser.add_argument("--out")
+        parser.add_argument("--prune-fonts", action="store_true",
+                            help="Unregister fonts no revision draws and leave their files out (undo is kept)")
         a = parser.parse_args(args)
         require(not (a.path and a.out), "Choose a positional output or --out, not both", "usage_error")
         destination = a.out or a.path
+        pruned = project.prune_fonts(dry_run=True) if a.prune_fonts else None
         if destination:
             require(
                 not Path(destination).exists() or Path(destination).resolve() == project.path,
                 "Destination already exists",
             )
-            project.save(destination)
+            project.save(destination, prune_fonts=a.prune_fonts)
             remember(destination)
         else:
-            project.save()
+            project.save(prune_fonts=a.prune_fonts)
+        if pruned is not None:
+            pruned.pop("dry_run")
+            return {"saved": str(project.path), "pruned": pruned}, False
         return {"saved": str(project.path)}, False
     if cmd == "export" and args and Path(next((x for x in args if not x.startswith("-")), "")).suffix.lower() in (
             ".gif", ".apng", ".mp4", ".webm"):
@@ -991,6 +1102,8 @@ def project_command(project, cmd, args, *, detail="compact"):
         require(not (cmd == "export" and a.out and a.path),
                 "Choose a positional output or --out, not both", "usage_error")
         require(destination, "Provide output filename or --out FILE")
+        require(destination == "-" or Path(destination).parent.is_dir(),
+                f"Folder does not exist: {Path(destination).parent}", "not_found", field="path")
         require(destination == "-" or a.data or a.overwrite or not Path(destination).exists(),
                 "Export output already exists; use --overwrite to replace it", "output_exists")
         require(
@@ -1146,12 +1259,9 @@ def project_command(project, cmd, args, *, detail="compact"):
             raise VixlError("spacing_mismatch", "Requested spacing is inconsistent", measurement=result)
         return result, False
     if cmd == "check":
-        p = Parser(prog="vixl check")
-        p.add_argument(
-            "--checks",
-            nargs="+",
-            choices=check_names(),
-        )
+        p = Parser(prog="vixl check", epilog="CHECK is one of: " + ", ".join(check_names()))
+        p.add_argument("--checks", nargs="+", choices=check_names(), metavar="CHECK",
+                       help="run only these checks (listed below)")
         p.add_argument("--connect-tolerance", type=float, default=2,
                        help="connected check: pixels of gap still counted as touching (default 2)")
         p.add_argument("--style", nargs="+", help="style checks: evaluate this style (or styles) instead of the document's tag")

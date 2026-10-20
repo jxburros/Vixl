@@ -1,6 +1,8 @@
 """Managed-install updater. Standard library only: also bundled in the stable launcher.
 
-Trust root: HTTPS GitHub releases in jxburros/Vixl. Projects cannot supply update URLs.
+Trust root: the Ed25519 keys pinned in updater_sign.TRUSTED_KEYS sign each release's vixl-update.json, which names
+the runtime's SHA-256. Downloads come over HTTPS from GitHub releases in jxburros/Vixl; projects cannot supply
+update URLs.
 """
 
 from contextlib import contextmanager
@@ -19,12 +21,22 @@ import urllib.parse
 import urllib.request
 import zipfile
 
+try:
+    from . import updater_sign
+except ImportError:  # the stable launcher freezes both modules at top level, outside the vixl package
+    import updater_sign
+
 REPOSITORY = "jxburros/Vixl"
 API = f"https://api.github.com/repos/{REPOSITORY}/releases/latest"
 PROTOCOL = 1
 INTERVAL = 24 * 60 * 60
 MAX_DOWNLOAD = 256 * 1024 * 1024
 MAX_EXPANDED = 1024 * 1024 * 1024
+MANIFEST = "vixl-update.json"
+SIGNATURE = "vixl-update.json.sig"
+# Revision of this update code. A release whose manifest sets a higher `min_launcher` (for example after a key
+# rotation that older launchers cannot verify) asks for a new installer instead of half-updating.
+LAUNCHER = 1
 
 
 class UpdateError(Exception):
@@ -259,16 +271,35 @@ def download(url, destination, limit=MAX_DOWNLOAD):
     return digest.hexdigest(), count
 
 
-def json_download(url):
+def bytes_download(url, limit=1024 * 1024):
     with tempfile.TemporaryDirectory(prefix="vixl-release-") as tmp:
-        dest = Path(tmp) / "response.json"
-        download(url, dest, 1024 * 1024)
-        try:
-            result = json.loads(dest.read_bytes())
-            require(isinstance(result, dict), "Invalid GitHub release metadata")
-            return result
-        except ValueError as exc:
-            raise UpdateError("Invalid GitHub release metadata") from exc
+        dest = Path(tmp) / "response"
+        download(url, dest, limit)
+        return dest.read_bytes()
+
+
+def json_download(url):
+    try:
+        result = json.loads(bytes_download(url))
+        require(isinstance(result, dict), "Invalid GitHub release metadata")
+        return result
+    except ValueError as exc:
+        raise UpdateError("Invalid GitHub release metadata") from exc
+
+
+def signed_manifest(data, signature):
+    """Verify the exact downloaded bytes before parsing them; the signature covers every field."""
+    require(
+        updater_sign.TRUSTED_KEYS,
+        "This Vixl build has no update signing key; install the latest release from GitHub to update",
+    )
+    require(updater_sign.trusted(data, signature), "Update signature invalid; current version kept")
+    try:
+        manifest = json.loads(data)
+    except ValueError as exc:
+        raise UpdateError("Invalid update metadata") from exc
+    require(isinstance(manifest, dict), "Invalid update metadata")
+    return manifest
 
 
 def latest():
@@ -283,11 +314,14 @@ def latest():
     version(release_version)
     names = {a.get("name") for a in release.get("assets", []) if isinstance(a, dict)}
     bundle = f"vixl-{release_version}-windows-x64.zip"
-    require({bundle, "vixl-update.json"} <= names, "This release does not contain a Windows update")
+    require({bundle, MANIFEST} <= names, "This release does not contain a Windows update")
+    require(SIGNATURE in names, "Update signature missing; current version kept")
     base = f"https://github.com/{REPOSITORY}/releases/download/{tag}/"
-    manifest = json_download(base + "vixl-update.json")
+    manifest = signed_manifest(bytes_download(base + MANIFEST, 64 * 1024), bytes_download(base + SIGNATURE, 1024))
+    minimum = manifest.get("min_launcher", 1)
     require(
-        manifest.get("protocol") == PROTOCOL
+        type(minimum) is int and minimum <= LAUNCHER
+        and manifest.get("protocol") == PROTOCOL
         and manifest.get("version") == release_version
         and manifest.get("platform") == "windows-x64"
         and manifest.get("asset") == bundle,

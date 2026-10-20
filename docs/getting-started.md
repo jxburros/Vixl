@@ -31,10 +31,11 @@ live review; `pdf` adds PDF page import (as editable layers or one image). To up
 run `git pull --ff-only`, and repeat the install. Pip installs use pip-managed updates;
 the bundled Windows updater is a separate installation mechanism.
 
-For reproducible work, install a tag rather than tracking `main`:
+For reproducible work, install an exact release rather than tracking `main` (a published PyPI version cannot be
+replaced):
 
 ```bash
-python -m pip install 'https://github.com/jxburros/Vixl/archive/refs/tags/v0.27.0.tar.gz'
+python -m pip install 'vixl-engine==0.28.0'
 ```
 
 Latest `main` may include changes beyond the tagged release while reporting the same
@@ -56,24 +57,25 @@ vixl -p hello.vixl render --out hello-preview.png
 vixl -p hello.vixl export hello.png
 ```
 
-In a terminal each command prints a short summary (`created hello.vixl  800×600  bg #18283b`,
-`check passed (bounds, contrast) — 0 errors, 0 warnings`, `exported hello.png (16.2 KB)`). When output is piped or
+In a terminal each command prints a short summary (`created hello.vixl  800×600  bg #18283b  seed 1234`
+and the fonts it chose, `hello.vixl: check passed (bounds, contrast) — 0 errors, 0 warnings`,
+`hello.vixl: exported hello.png (16.2 KB)`). When output is piped or
 redirected, or you pass `--json` or set `VIXL_JSON=1`, it prints the full JSON instead, so scripts and agents always
 get JSON.
 
 You now have an editable `hello.vixl` and a PNG export. Open the PNG to inspect the actual
 appearance. `check` covers the rules requested, not every possible design problem. The
 bundled DejaVu Sans font makes proofing work offline; for finished brand work, choose a
-font with `vixl font pairings` and install a pairing or import your licensed font. See
+font with `vixl font pairings` and install a pairing or import your licensed font. A new document rolls a
+pairing and installs it with its first text, from the font cache or by downloading it from Google Fonts;
+`VIXL_AUTO_FONTS=cache` uses the cache only, `VIXL_AUTO_FONTS=off` never installs it, and `VIXL_OFFLINE=1` turns
+off every download. See
 [typography](guides/text/typography.md).
 
 Passing checks make a design correct, not finished. Before you hand one over, make a finishing pass:
 check the composition (dead bands, two left margins, uneven gaps, crowded rules, clumped scatters), and
-`vixl guide finishing` prints the craft checklist (one focal point, an accent colour used once or twice,
-no dead band, one left edge per column, a motif that names the subject, nothing that reads as a
-placeholder, secondary text readable at real size, glows and shadows that read as light, illustrations in one
-style with joined parts). Fix what it turns up in one batch, then look at the export at its real size, not as a
-thumbnail.
+walk the finishing checklist that `vixl guide finishing` prints (`vixl_reference('finishing')` over MCP). Fix
+what it turns up in one batch, then look at the export at its real size, not as a thumbnail.
 
 <!-- docs-test: continue -->
 ```bash
@@ -111,7 +113,7 @@ vixl -p batch.vixl export batch.png
 ```
 
 Dry-run reports proposed changes without saving. A failed batch commits none of its
-changes. Get allowed fields with `vixl schema` and individual command help with
+changes. List the operations with `vixl schema`, get one operation's fields with `vixl schema text`, and individual command help with
 `vixl text --help`; [operations](reference/operations.md) explains normalization and validation.
 
 ## The same design in Python

@@ -92,7 +92,11 @@ look lands where it shows: texture looks on the background, the house offset sha
 shadow, outline and glow looks on the solid shapes (buttons, panels, blocks), never on hairline
 rules. Weight contrast describes the actual heading/body weights in the chosen pairing. A roll
 applied with `slots` only picks layouts that place all of the supplied copy and leaves out layouts
-whose image slot nobody fills.
+whose image slot nobody fills. When no layout places all of it, the roll keeps the layout the same seed
+previews without slots, so applying it fails with the layout's `unused_slot` error, whose `suggestions` list
+the slots it does use; drop those it leaves out and apply again. The roll's `direction.pool` says which pool
+the layout came from (`content`, or `preview` for that fallback). If no layout fits at all (locks rule every
+one out), the error's `suggestions` name up to three layouts with the supplied slots each places.
 
 ## New documents
 
@@ -109,11 +113,15 @@ Every surface creates documents the same way: `vixl new`, Python `Project()`, `P
 - **Background.** Without `background`, the canvas takes the rolled palette's background role. Logo, icon and
   favicon sizes and mark purposes (the `logo` profile is flagged `mark`; its aliases mark, emblem, badge,
   monogram, icon, app-icon and favicon with it) stay transparent. `background="transparent"` (`--background transparent`) keeps the old default.
-- **Fonts.** Embeds the workspace default fonts (`brand.json`). Otherwise it installs the rolled pairing, from
-  the font cache first and then the network. Offline, creation stays fast: it reports the pairing under
-  `creation.fonts` with a `next_step`, warns once, and does not retry the network in that process.
+- **Fonts.** Embeds the workspace default fonts (`brand.json`). Otherwise it records the rolled pairing
+  (`creation.fonts` and `design_defaults.fonts`: `{pairing, installed: false, pending: true}`) and the first batch
+  that sets text installs it, from the font cache first and then the network, and reports it under the apply
+  result's `font_install`. Creating a document never touches the network, and an empty document embeds no fonts
+  (about 1 KB). A batch that chooses its own fonts (`font-pair`, `font-install`, `roll`) skips the pairing.
+  Offline, the first text stays fast: `font_install` carries a `warning` and a `next_step`, the network is not
+  retried for ten minutes in that process, and that document does not try again (run `font-pair` later).
   `workspace_fonts=false` (`--no-fonts`) embeds no fonts. The environment variable `VIXL_AUTO_FONTS=cache`
-  never downloads, and `VIXL_AUTO_FONTS=off` skips the pairing.
+  never downloads, `VIXL_AUTO_FONTS=off` skips the pairing, and `VIXL_OFFLINE=1` keeps every download off.
 
 **House style off.** `house_style: "off"` (`vixl new --house-style off`, `house_style="off"` in Python, MCP and
 REST compose, or `{"house_style": "off"}` in `.vixl/variety.json`) skips the roll: the document gets a white

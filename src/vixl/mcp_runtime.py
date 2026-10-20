@@ -60,6 +60,8 @@ JOB_TOOLS = {"vixl_apply", "vixl_check", "vixl_export"}
 # Tools whose results are pictures: they are never detached into a job, which keeps JSON only.
 PICTURES = {"vixl_render"}
 NO_EXTRAS = {"vixl_job"}
+# Tools whose results can hold text taken from the document or a provider; they name it under ``untrusted``.
+UNTRUSTED = {"vixl_document", "vixl_check", "vixl_render", "vixl_apply"}
 
 RequestId = Annotated[str | None, Field(max_length=64, description="Retry key: a repeat returns the first result")]
 AsJob = Annotated[bool, Field(description="Return a job id at once; poll vixl_job")]
@@ -285,8 +287,16 @@ class Runtime:
             hints.append(f"{key!r} (did you mean {close[0]!r}?)" if close else repr(key))
         return f"{name} ignored unknown argument(s): {', '.join(hints)}. Parameters: {', '.join(sorted(known))}"
 
-    def label(self, result, state):
-        """Name the document a result is about, unless the tool already did."""
+    def label(self, result, state, name=None):
+        """Name the document a result is about, unless the tool already did, and name its untrusted text."""
+        if name in UNTRUSTED:
+            from .untrusted import mark
+
+            mark(result)
+        elif name == "vixl_ai_analyze":
+            from .untrusted import mark_analysis
+
+            mark_analysis(result)
         if state.document is None or "document" in result or "documents" in result:
             return
         try:
@@ -315,12 +325,12 @@ class Runtime:
             profiled = profiling.attach(result, run)
             if isinstance(result, list) and result and isinstance(result[0], dict):
                 # A JSON result with images after it (vixl_apply preview=…): shape the JSON part.
-                self.label(result[0], state)
+                self.label(result[0], state, fn.__name__)
                 if warning:
                     result[0]["warnings"] = [*result[0].get("warnings", []), warning]
                 return [self.compact_json(result[0]), *result[1:]]
             if isinstance(result, dict):
-                self.label(result, state)
+                self.label(result, state, fn.__name__)
                 if warning:
                     result["warnings"] = [*result.get("warnings", []), warning]
                 return self.compact_json(result)

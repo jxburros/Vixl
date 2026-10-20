@@ -151,6 +151,25 @@ Every combination is checked. Each suite result and each design finding names it
 from export are skipped unless `include_hidden` is set. The 50,000-evaluation cap counts every
 variant × time × rule.
 
+In a multi-page document a rule names layers that live on one page. On a page that lacks a layer the rule
+references (`target`, `to`, `before`, `after`, `targets`) while another page or a master has it, the rule does not
+run: its result is `not_applicable` with `reason: "layer on another page"` and the `layers` it missed, and it counts
+neither as a failure nor as a review (nor towards a waiver). A name that exists on no page stays `needs_review`, so a
+typo still surfaces. Design checks with `targets` over pages work the same way: a target on another page is left out
+for that page and listed under the variant's `skipped_targets` (a page with none of the targets is
+`status: "not_applicable"`).
+
+To hold a rule to some pages only, give it `pages` (page names, ids or 1-based numbers, or one of them):
+
+```json
+{"rules": [{"id": "cover-title", "kind": "text-fit", "target": "title", "minimum": 24, "pages": ["Cover", 2]}],
+ "sampling": {"pages": "all"}}
+```
+
+On every other page the rule is `not_applicable` with `reason: "rule limited to pages Cover, 2"` and does not count.
+Without a page axis it follows the document's current page. A page that does not exist makes the rule
+`needs_review` on every page, so a misspelt page name never silently switches the rule off.
+
 ### Library suites shared by a group or the workspace
 
 `suite-use` copies a library suite into one document. To hold many documents to one contract, refer
@@ -395,6 +414,26 @@ built-in repair map instead (fit-text, contrast ink, safe-area nudge; see
 [outcomes, diagnostics and repair](../../reference/agent-trust.md#built-in-repairs)); its operations are reported under
 `repair_operations`.
 Failed/unmeasurable outputs are held for review; successful outputs remain available.
+
+A held output is never written, and the run says so instead of leaving an empty directory unexplained: the report
+(and `production.json`) gains `withheld` (`count`, the effective `profile` and its `fail_on`, the held `variants`,
+and the `rules` that blocked most often, each with the number of variants it held) and a `message` such as
+`3 variants withheld by profile final (fail_on review); no output was written for them. Fix the findings, waive them
+with a reason, or set profile: review`. A run that holds nothing has neither field. Because `quality: "final"`
+implies the `final` profile, which fails on review findings, this is the usual reason a final run writes nothing.
+
+Each result's `checks` has one shape:
+
+```json
+{"suites": {"delivery": {"status": "passed", "results": []}},
+ "design": {"passed": true, "issues": []},
+ "placeholders": null}
+```
+
+`suites` maps each suite that ran to its suite report (`results`, one per rule); `design` is the design check report
+(`issues`; with a profile it carries `profile`), or `null` when suites alone checked the output; `placeholders` is the
+placeholders report of a row that left template copy or an undefined variable (the run stops there for that
+variant), otherwise `null`.
 
 Image formats: PNG, JPG, WebP, SVG. For animation use `kind:"timeline"` with
 GIF, WebP, MP4, WebM or ZIP; optional `fps` overrides timeline settings.

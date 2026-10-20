@@ -5,6 +5,58 @@ Vixl is a headless design engine for AI agents; people can drive the same interf
 Each recipe is a single atomic batch where possible. Use them with MCP `vixl_apply`,
 `vixl apply ops.json`, REST `POST /operations`, or `Project.apply`. Always preview afterwards.
 
+## Minimal examples
+
+**MCP**
+
+```text
+vixl_document(action='list')                                   # see files; paths are relative to the workspace
+vixl_document(action='create', path="poster.vixl", width=1080, height=1350, background="#101828")
+vixl_apply(operations=[
+  {"type":"import-image","path":"photos/portrait.jpg","name":"portrait"},   # a step: same atomic batch
+  {"type":"resize","target":"portrait","width":1080,"keep_aspect":true},
+  {"type":"align","target":"portrait","alignment":"top"},
+  {"type":"gradient","name":"fade","width":1080,"height":600,"y":750,
+   "stops":[{"offset":0,"color":"#10182800"},{"offset":1,"color":"#101828"}]},
+  {"type":"text","name":"title","text":"AFTER HOURS","size":120,"color":"#f6ecd7"},
+  {"type":"constrain","target":"title","constraints":{"center-x":"canvas.center-x","bottom":"canvas.bottom-120"}},
+  {"type":"layer-style","target":"title","name":"drop-shadow","settings":{"blur":8,"dy":6,"opacity":0.6}}
+])
+vixl_check(safe_area="5%")                              # overlap, contrast, bounds, legibility
+vixl_render()
+vixl_export(path="poster.png")
+# or check and look in the same call as an edit:
+vixl_apply(operations=[{"type":"move","target":"title","y":900}], check=true, preview=true)
+```
+
+**MCP, from a brief** ("make a launch post for our spring collection")
+
+```text
+vixl_document(action='create', path="spring.vixl", size="instagram-portrait")
+vixl_apply(operations=[{"type":"font-pair","pairing":"random","mood":"friendly"},   # heading + body typography
+  {"type":"layout-apply","name":"split-screen","title":"Spring collection",
+  "subtitle":"New colors, same perfect fit.","label":"Just landed","cta":"Shop now","palette":"spring","seed":11}])
+vixl_apply(operations=[{"type":"import-image","path":"photos/spring.jpg","name":"hero"}])   # steps[0].result.asset: "assets/…"
+vixl_apply(operations=[{"type":"replace-contents","target":"image","asset":"assets/…"},
+  {"type":"remove","target":"hero"}])                         # the photo now fills the layout's frame
+vixl_check() ; vixl_render() ; vixl_export(path="spring.png")   # check fails while blanks remain
+```
+
+**CLI** (quote `#` colors; every edit autosaves)
+
+```bash
+vixl new 1080x1350 --background '#101828' -o poster.vixl
+vixl -p poster.vixl add photos/portrait.jpg --name portrait
+vixl -p poster.vixl resize portrait --width 1080
+vixl -p poster.vixl text add 'AFTER HOURS' --name title --size 120 --color '#f6ecd7'
+vixl -p poster.vixl constrain title --center-x canvas --bottom canvas.bottom-120
+vixl -p poster.vixl layer-style title drop-shadow --settings '{"blur":8,"dy":6,"opacity":0.6}'
+vixl -p poster.vixl render --out preview.png
+vixl -p poster.vixl export poster.png
+```
+
+Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (atomic, one undo step).
+
 ## Poster / social graphic with responsive layout
 
 ```json

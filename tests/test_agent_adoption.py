@@ -5,6 +5,7 @@ import base64
 from copy import deepcopy
 import json
 from pathlib import Path
+import re
 
 import pytest
 from fastapi.testclient import TestClient
@@ -147,14 +148,14 @@ def test_cli_roll_apply_and_review_notes(tmp_path, monkeypatch):
 def test_viewer_refresh_and_notes_are_shared_with_mcp(tmp_path):
     path = tmp_path / "design.vixl"
     Project(100, 100).save(path)
-    with TestClient(create_app(path, token="secret")) as client:
+    with TestClient(create_app(path, token="secret-token-of-24-chars")) as client:
         viewer = client.get("/view")
         assert viewer.status_code == 200 and "Connecting…" in viewer.text
         assert 'rel="icon"' in viewer.text and 'alt="Vixl"' in viewer.text
         assert viewer.text.count("data:image/svg+xml;base64,") == 2
         assert "__VIXL_" not in viewer.text
         assert client.get("/review").status_code == 401
-        client.headers["Authorization"] = "Bearer secret"
+        client.headers["Authorization"] = "Bearer secret-token-of-24-chars"
         head = client.get("/review").json()["head"]
         p = Project.load(path)
         p.apply({"type": "solid", "color": "red", "name": "red"})
@@ -191,10 +192,10 @@ def rpc(response):
 
 def test_streamable_http_initialization_and_tool_call(tmp_path):
     server = mcp_server(workspace=tmp_path)
-    with TestClient(mcp_http_app(server, token="secret")) as client:
+    with TestClient(mcp_http_app(server, token="secret-token-of-24-chars")) as client:
         assert client.post("/mcp").status_code == 401
         client.headers.update(
-            {"Authorization": "Bearer secret", "Accept": "application/json, text/event-stream"}
+            {"Authorization": "Bearer secret-token-of-24-chars", "Accept": "application/json, text/event-stream"}
         )
         response = client.post(
             "/mcp",
@@ -380,12 +381,30 @@ def test_agent_bundles_include_skill_references(tmp_path):
                 assert archive.read(manifest["icon"]).startswith(b"\x89PNG\r\n\x1a\n")
                 assert "${user_config.workspace}" in manifest["server"]["mcp_config"]["args"]
                 from vixl import __version__
-                source = f"https://github.com/jxburros/Vixl/archive/refs/tags/v{__version__}.tar.gz"
-                assert manifest["server"]["mcp_config"]["args"][1] == source
+                assert manifest["server"]["mcp_config"]["args"][1] == f"vixl-engine=={__version__}"
             else:
                 config = json.loads(archive.read(".mcp.json"))
                 from vixl import __version__
-                assert config["mcpServers"]["vixl"]["args"][1].endswith(f"/v{__version__}.tar.gz")
+                assert config["mcpServers"]["vixl"]["args"][1] == f"vixl-engine=={__version__}"
+
+
+SKILL = Path(__file__).parents[1] / "skills/vixl/SKILL.md"
+
+
+def test_skill_entry_point_stays_small():
+    # Every agent session loads SKILL.md; details belong in references/*.md, which agents open on demand.
+    assert len(SKILL.read_text(encoding="utf-8").encode()) <= 10_500
+
+
+def test_skill_links_only_existing_references():
+    text = SKILL.read_text(encoding="utf-8")
+    linked = set(re.findall(r"\]\((references/[^)#\s]+\.md)", text))
+    assert len(linked) >= 15
+    missing = sorted(path for path in linked if not (SKILL.parent / path).is_file())
+    assert not missing, missing
+    # Every reference file is reachable from the entry point.
+    present = {f"references/{path.name}" for path in (SKILL.parent / "references").glob("*.md")}
+    assert present <= linked, sorted(present - linked)
 
 
 def test_brand_checks_canvas_gradients_and_hidden_required_elements(tmp_path):

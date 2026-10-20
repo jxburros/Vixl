@@ -247,6 +247,83 @@ def test_friendly_shows_a_file_outside_the_workspace_by_basename_only(tmp_path):
 
     inside = FileNotFoundError(2, "No such file or directory", str(tmp_path / "art" / "a.png"))
     outside = FileNotFoundError(2, "No such file or directory", "/srv/private/b.png")
-    assert str(friendly(inside, relative_to=tmp_path)) == "No such file: art/a.png"
+    assert str(friendly(inside, relative_to=tmp_path)) == "No such file: art/a.png (the folder art does not exist)"
     assert str(friendly(outside, relative_to=tmp_path)) == "No such file: b.png"
-    assert str(friendly(outside)) == "No such file: /srv/private/b.png"  # The CLI shows what the user typed.
+    assert str(friendly(outside)).startswith("No such file: /srv/private/b.png")  # The CLI shows what the user typed.
+
+
+EPS = (b"%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 16 16\n%%EndComments\n"
+       b"newpath 0 0 moveto 16 16 lineto stroke showpage\n%%EOF\n")
+
+
+def test_eps_bytes_are_not_decoded():  # #677
+    # A fresh interpreter: another test may already have loaded every Pillow plugin into this one.
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    import vixl
+
+    script = (
+        "import sys\n"
+        "from vixl.assets import decode, image_size\n"
+        "from vixl.errors import VixlError\n"
+        "from vixl.model import Limits\n"
+        "for read in (lambda: decode(sys.stdin.buffer.read(), Limits()), lambda: image_size(EPS, Limits())):\n"
+        "    try:\n"
+        "        read()\n"
+        "    except VixlError as exc:\n"
+        "        assert exc.code == 'invalid_image', exc.code\n"
+        "    else:\n"
+        "        raise SystemExit('decoded EPS')\n"
+        "assert 'PIL.EpsImagePlugin' not in sys.modules, 'EPS decoder loaded'\n"
+        "print('ok')\n"
+    ).replace("EPS,", repr(EPS) + ",")
+    env = {**__import__("os").environ, "PYTHONPATH": str(Path(vixl.__file__).parent.parent)}
+    done = subprocess.run([sys.executable, "-c", script], input=EPS, capture_output=True, env=env, timeout=60)
+    assert done.returncode == 0 and done.stdout.strip() == b"ok", done.stderr.decode()
+
+
+def test_no_unrestricted_image_open():  # #677
+    """Every ``Image.open`` in src/vixl names its formats; untrusted bytes go through ``assets.open_image``."""
+    import ast
+    from pathlib import Path
+
+    import vixl
+
+    src = Path(vixl.__file__).parent
+    offenders = []
+    for path in sorted(src.rglob("*.py")):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "open"
+                    and isinstance(node.func.value, ast.Name) and node.func.value.id.endswith("Image")
+                    and not any(keyword.arg == "formats" for keyword in node.keywords)):
+                offenders.append(f"{path.relative_to(src)}:{node.lineno}")
+    assert not offenders, f"Image.open without formats= (use assets.open_image): {offenders}"
+
+
+def test_pillow_global_unchanged_during_decode(monkeypatch):  # #677
+    import io
+    import threading
+
+    from PIL import Image
+
+    from vixl.assets import decode
+
+    stream = io.BytesIO()
+    Image.new("RGB", (64, 48), "red").save(stream, format="PNG")
+    before = Image.MAX_IMAGE_PIXELS
+    seen = []
+    real_open = Image.open
+
+    def watched(*args, **kwargs):
+        seen.append(Image.MAX_IMAGE_PIXELS)
+        return real_open(*args, **kwargs)
+
+    monkeypatch.setattr(Image, "open", watched)
+    # A downsampling decode reads sources up to 4x the 40 MP limit, above Pillow's own 89 MP default.
+    worker = threading.Thread(target=lambda: seen.append(decode(stream.getvalue(), Limits(), target_pixels=1000).size))
+    worker.start()
+    worker.join()
+    assert seen[-1] == (64, 48) and seen[:-1] and set(seen[:-1]) == {before}
+    assert Image.MAX_IMAGE_PIXELS == before

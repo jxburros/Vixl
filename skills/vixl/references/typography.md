@@ -1,10 +1,10 @@
 # Typography: catalog, pairings and installs
 
-Vixl bundles DejaVu Sans only as a proofing fallback, so text renders before anyone has chosen type; missing glyphs fall back to `font-fallbacks`, then DejaVu Sans and bundled Noto Sans, Symbols, Symbols 2 and Math (Latin, Greek, Cyrillic, symbols; not CJK). Design type comes from a researched catalog and is downloaded only when you ask. The default `fonts` check warns while any text still uses the fallback.
+Vixl bundles DejaVu Sans only as a proofing fallback, so text renders before anyone has chosen type; missing glyphs fall back to `font-fallbacks`, then DejaVu Sans and bundled Noto Sans, Symbols, Symbols 2 and Math (Latin, Greek, Cyrillic, Arabic, Hebrew, symbols; not CJK, Devanagari or Thai). Text in those scripts draws as empty boxes, and the apply says so in `warnings` with the fix: a `{type: font-cover}` step (CLI `vixl font cover`) installs the catalog Noto face for each uncovered script (Noto Sans JP, SC, KR, Devanagari, Thai) and appends it to `font-fallbacks`; it uses the font cache first and, with downloads off (`VIXL_OFFLINE=1`), refuses and names the families. `text` or `scripts` narrow it. Design type comes from a researched catalog and is downloaded only when you ask. The default `fonts` check warns while any text still uses the fallback.
 
 ## The catalog
 
-104 open-licensed (OFL, Apache, UFL) Google Fonts families: neo-grotesque, grotesque, geometric and humanist sans; old-style, transitional, didone, slab and glyphic serifs; monospace, display, handwriting and blackletter; and Noto families for Japanese, Chinese, Arabic and Devanagari. Each entry records its classification, verified weights and italics, x-height, width, stroke contrast, era, mood, suitable roles, best uses, misuse cautions and a note on its character. Every family, weight and italic was checked against the Google Fonts CSS API. `scripts/verify_fonts.py --check src/vixl/data/fonts.json src/vixl/data/font-pairings.json` repeats the check.
+107 open-licensed (OFL, Apache, UFL) Google Fonts families: neo-grotesque, grotesque, geometric and humanist sans; old-style, transitional, didone, slab and glyphic serifs; monospace, display, handwriting and blackletter; and Noto families for Japanese, Simplified and Traditional Chinese, Korean, Arabic, Devanagari and Thai. Each entry records its classification, verified weights and italics, x-height, width, stroke contrast, era, mood, suitable roles, best uses, misuse cautions and a note on its character. Every family, weight and italic was checked against the Google Fonts CSS API. `scripts/verify_fonts.py --check src/vixl/data/fonts.json src/vixl/data/font-pairings.json` repeats the check.
 
 ```bash
 vixl fonts --category serif            # or a classification: --category didone
@@ -105,7 +105,7 @@ A roll draws from Vixl's house style: it first draws a tier (`safe`, `bold` or `
 
 ### Field-report corrections
 
-`check` reports `code: runt` (review) when wrapped display text (24 px+) leaves one word, or under 20% of the longest line, alone on its last line; set `wrap`, widen the box or break the line.
+`check` reports `code: runt` (review) when wrapped display text (24 px+) leaves under 20% of the longest line, or one word under half of it (when the paragraph has more words than lines), alone on its last line; set `wrap`, widen the box or break the line.
 
 ### Line breaking, tab stops and accent words
 

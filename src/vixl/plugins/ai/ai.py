@@ -7,15 +7,16 @@ from ...animation import ANIMATION_TYPES
 from copy import deepcopy
 import base64
 import json
+import math
 import os
 import time
-import io
+import ipaddress
 from urllib.parse import urlparse
 
 import httpx
 from PIL import Image, ImageOps
 
-from ...assets import add_image, decode, png_bytes, read_bounded
+from ...assets import add_image, decode, open_image, png_bytes, read_bounded
 from ...commands import Parser, dimensions
 from ...errors import VixlError, require
 from ...render import resolve_layout, stored_origin
@@ -85,6 +86,28 @@ def image_response(payload, project):
     return decode(data, project.limits)
 
 
+def loopback_host(host):
+    host = (host or "").lower().rstrip(".")
+    if host == "localhost" or host.endswith(".localhost"):
+        return True
+    try:
+        return ipaddress.ip_address(host.strip("[]")).is_loopback
+    except ValueError:
+        return False
+
+
+def require_secure_url(name, url, config):
+    """Plain ``http://`` would send the provider's key and the document's images in cleartext: allow it only for
+    a loopback server or with ``allow_insecure: true`` in the provider config."""
+    parsed = urlparse(url)
+    if parsed.scheme.lower() != "http" or loopback_host(parsed.hostname) or config.get("allow_insecure") is True:
+        return
+    raise VixlError("provider_not_configured",
+                    f"Provider {name} uses plain http:// to {parsed.hostname}, which sends its key and images in "
+                    "cleartext; use https:// or set allow_insecure: true in the provider config",
+                    field="url")
+
+
 class HTTPProvider:
     """JSON gateway protocol documented in docs/reference/providers.md; supports all AI capabilities."""
 
@@ -96,6 +119,7 @@ class HTTPProvider:
             f"Configure a valid URL for provider {name}",
             "provider_not_configured",
         )
+        require_secure_url(name, self.url, config)
         self.headers = {}
         if config.get("key_env", self.default_key_env):
             env = config.get("key_env", self.default_key_env)
@@ -114,6 +138,9 @@ class HTTPProvider:
         return self.request_url(method, self.url.rstrip("/") + route, headers=self.headers, **kwargs)
 
     def request_url(self, method, url, *, headers=None, **kwargs):
+        from ...fetch import network_allowed
+
+        network_allowed(f"Provider {self.name}")
         try:
             with httpx.Client(timeout=self.config.get("timeout", 120), follow_redirects=False) as client:
                 with client.stream(method, url, headers=headers or {}, **kwargs) as response:
@@ -195,9 +222,7 @@ class OpenAIProvider(HTTPProvider):
             if request.get("source_image"):
                 files = {"image": ("source.png", base64.b64decode(request["source_image"]), "image/png")}
                 if request.get("mask"):
-                    from io import BytesIO
-
-                    mask = Image.open(BytesIO(base64.b64decode(request["mask"]))).convert("L")
+                    mask = open_image(base64.b64decode(request["mask"])).convert("L")
                     # Vixl uses white=edit. OpenAI uses alpha=0 for editable areas.
                     converted = Image.new("RGBA", mask.size, "white")
                     converted.putalpha(ImageOps.invert(mask))
@@ -669,13 +694,14 @@ class AnthropicProvider:
             # Without a key the SDK resolves ANTHROPIC_AUTH_TOKEN or an `ant auth login` profile.
             options = {"timeout": config.get("timeout", 120), "max_retries": config.get("max_retries", 2)}
             if config.get("url"):
+                require_secure_url(name, config["url"], config)
                 options["base_url"] = config["url"]
             client = anthropic.Anthropic(api_key=key, **options) if key else anthropic.Anthropic(**options)
         self.client = client
         self.model = config.get("model", "claude-opus-5-5")
 
     def prepare(self, source):
-        image = Image.open(io.BytesIO(base64.b64decode(source))).convert("RGB")
+        image = open_image(base64.b64decode(source)).convert("RGB")
         scale = min(1.0, self.MAX_EDGE / max(image.size))
         if scale < 1:
             image = image.resize(
@@ -743,6 +769,9 @@ class AnthropicProvider:
     def call(self, arguments):
         import anthropic
 
+        from ...fetch import network_allowed
+
+        network_allowed(f"Provider {self.name}")
         try:
             if self.config.get("fallbacks", True):
                 return self.client.beta.messages.create(
@@ -910,6 +939,26 @@ def plan(project, prompt, backend, apply=False, *, detail="full", model=None):
     return {"proposal": ops, "applied": apply, "preview": preview}
 
 
+# Provider metadata a layer's provenance keeps. A provider's payload is untrusted text that later reaches agents in
+# tool results, so only these keys with scalar values survive, each string cut to METADATA_TEXT characters.
+METADATA_KEYS = ("revised_prompt", "prompt_id", "id", "resized_from", "seed", "model")
+METADATA_TEXT = 500
+
+
+def provenance_metadata(metadata):
+    """The allow-listed scalar entries of a provider's ``metadata``; everything else is dropped."""
+    kept = {}
+    if not isinstance(metadata, dict):
+        return kept
+    for key in METADATA_KEYS:
+        value = metadata.get(key)
+        if isinstance(value, str):
+            kept[key] = value[:METADATA_TEXT]
+        elif isinstance(value, bool) or isinstance(value, int) or isinstance(value, float) and math.isfinite(value):
+            kept[key] = value
+    return kept
+
+
 def generate(project, request, backend, name="generated", replace=None):
     from ...operations import execute
     from ...validation import check_state
@@ -928,7 +977,7 @@ def generate(project, request, backend, name="generated", replace=None):
     response = backend.invoke(capability, request)
     require(response.get("image"), "Provider returned no image", "provider_error")
     image = image_response(response["image"], candidate)
-    metadata = dict(response.get("metadata") or {})
+    metadata = provenance_metadata(response.get("metadata"))
     if image.size != (request["width"], request["height"]) and getattr(backend, "fit_output", False):
         # Preset-size services (Gemini aspect ratios, FLUX multiples of 16): fit, and say so.
         metadata["resized_from"] = list(image.size)

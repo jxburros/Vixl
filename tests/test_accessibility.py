@@ -110,6 +110,22 @@ def test_html_carries_language_title_and_alt():
     assert 'alt="Une affiche"' in html and "Une fougère" in html
 
 
+def test_html_resolves_variables_in_title_alt_and_caption():
+    p = Project(400, 300, "white")
+    p.apply([{"type": "variable", "name": "headline", "value": "Tom & <Jerry>"},
+             {"type": "text", "name": "t", "text": "${headline} / $${headline}", "size": 24, "x": 10, "y": 10}])
+    photo(p, "photo")
+    p.apply([{"type": "accessibility", "title": "${headline}", "page_alt": "About ${headline}"},
+             {"type": "layer-intent", "target": "photo", "alt": "Picture of ${headline}"}])
+    for options, value in (({}, "Tom &amp; &lt;Jerry&gt;"), ({"variables": {"headline": "Override"}}, "Override")):
+        html = p.export(format="HTML", **options).decode()
+        assert f"<title>{value}</title>" in html and f'alt="About {value}"' in html
+        assert f"<figcaption>{value} / ${{headline}} · Picture of {value}</figcaption>" in html
+        assert "${headline}" not in html.replace("/ ${headline}", "")
+    svg = p.export(format="SVG", variables={"headline": "Override"}).decode()
+    assert "<title>Override</title>" in svg and "<desc>About Override</desc>" in svg and "Picture of Override" in svg
+
+
 def test_presenter_deck_uses_language_headings_alt_and_reading_order():
     p = Project(960, 540, "white")
     p.apply([{"type": "page", "action": "add", "name": "one"},

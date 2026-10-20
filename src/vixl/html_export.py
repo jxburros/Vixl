@@ -5,22 +5,24 @@ from html import escape
 
 
 def export_html(project, **options):
-    from .accessibility import document_title, page_alt, page_language
+    from .accessibility import page_language, resolved_title_alt
+    from .design_render import artboard_project
+    from .render import resolved_layers
     from .svg import export_svg
 
     svg = export_svg(project, **options, document=False)
-    texts = [
-        layer.get("text", "")
-        for layer in project.state["layers"]
-        if layer.get("visible", True) and layer["type"] == "text"
-    ]
-    described = [layer["alt"] for layer in project.state["layers"] if layer.get("visible", True) and layer.get("alt")]
-    heading = document_title(project.state) or (texts[0][:200] if texts else "Vixl artwork")
-    summary = page_alt(project.state)
+    # The same artboard, comp and variables as the image, so the text shown to a reader matches what it shows.
+    candidate = artboard_project(project, options.get("artboard"), options.get("comp"), options.get("variables"))
+    layers = [layer for layer in resolved_layers(candidate) if layer.get("visible", True)]
+    texts = [layer.get("text", "") for layer in layers if layer["type"] == "text"]
+    described = [layer["alt"] for layer in layers if layer.get("alt")]
+    title_text, page_text = resolved_title_alt(candidate)
+    heading = title_text or (texts[0][:200] if texts else "Vixl artwork")
+    summary = page_text
     title = escape(heading)
     alt = escape(summary or heading)
     description = escape(" · ".join(texts + described)[:4000] or "Exported Vixl design")
-    lang = escape(page_language(project.state) or "en")
+    lang = escape(page_language(candidate.state) or "en")
     uri = "data:image/svg+xml;base64," + base64.b64encode(svg).decode("ascii")
     return f'''<!doctype html>
 <html lang="{lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

@@ -278,7 +278,7 @@ def _needs_variables(layer):
     """Whether resolving ``layer`` can read the document's variables or form fields."""
     return (layer["type"] in ("text", "field", "symbol") or layer.get("code") or layer.get("asset_variable")
             or layer.get("character_style") or layer.get("paragraph_style")
-            or any(isinstance(layer.get(key), str) and "${" in layer[key] for key in ("asset", *COLOR_KEYS))
+            or any(isinstance(layer.get(key), str) and "${" in layer[key] for key in ("asset", "alt", *COLOR_KEYS))
             or (layer.get("repeat") and "${" in repr(layer["repeat"])))
 
 
@@ -335,7 +335,7 @@ def _resolved_layers(project, variables=None, subset=None):
         for category in ("character", "paragraph"):
             if layer.get(category + "_style"):
                 layer.update(deepcopy(project.state[category + "_styles"][layer[category + "_style"]]))
-        for key in ("text", "asset"):
+        for key in ("text", "asset", "alt"):
             if key in layer:
                 layer[key] = substitute(layer[key], variables)
         if layer.get("code"):
@@ -1222,6 +1222,12 @@ def layer_effects(project, layer, bounds, image):
             # Keep the emboss light where it is on an upright layer, however this one is turned:
             # pass the canvas offset of the neighbour it subtracts (down-left) in the layer's frame.
             effect = {**effect, "_light": tuple(np.linalg.solve(frame, [-1.0, 1.0]))}
+        if effect["name"] == "watercolor" and not turned:
+            # The canvas edge is not the edge of the wash: tell the filter which sides of the box reach it.
+            canvas = project.state["canvas"]
+            effect = {**effect, "_open": (bounds[0] <= 0, bounds[1] <= 0,
+                                          bounds[0] + bounds[2] >= canvas["width"],
+                                          bounds[1] + bounds[3] >= canvas["height"])}
         changed = apply_effect(image, effect, project)
         if effect.get("selection"):
             mask = project.image(effect["selection"], "L")

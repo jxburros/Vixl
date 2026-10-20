@@ -838,7 +838,7 @@ def render(project, layer, size=None, matrix=None):
         project.limits.size(*size)
         root = ET.Element(SVG + "svg", attrs)
         append_svg(root, result, layer, project, motion=moves)
-        image = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode")))).convert("RGBA")
+        image = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode"))), formats=["PNG"]).convert("RGBA")
         image.info["vixl_vector_overflow"] = True
         return image
     if max(reach) > 0:
@@ -862,7 +862,7 @@ def render(project, layer, size=None, matrix=None):
 
             parent = placed(root, matrix, ns=SVG)
         append_svg(ET.SubElement(parent, SVG + "g", {"transform": inner}), result, layer, project)
-        image = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode")))).convert("RGBA")
+        image = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode"))), formats=["PNG"]).convert("RGBA")
         image.info["vixl_vector_overflow"] = True
         return image
     width, height = size or (width, height)
@@ -875,7 +875,7 @@ def render(project, layer, size=None, matrix=None):
 
         append_svg(placed(root, matrix, ns=SVG), result, layer, project)
     data = resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode"))
-    return Image.open(io.BytesIO(data)).convert("RGBA")
+    return Image.open(io.BytesIO(data), formats=["PNG"]).convert("RGBA")
 
 
 def active(layer):

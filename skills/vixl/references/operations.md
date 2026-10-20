@@ -26,7 +26,35 @@ omitted, defaults to the active layer. Colors accept CSS names, `#rgb`, `#rrggbb
 accept pixels, `"center"` or `"N%"`; `width`/`height` accept pixels or `"N%"` (of the canvas, or of
 the parent group) on creation ops, `move`, `resize`, `select` and `text-layout`.
 
-The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://operations` / `vixl_reference('operations', name=[…])`.
+The authoritative schema is always `vixl schema OPERATION` (bare `vixl schema` lists names) / `GET /schema` / `vixl://operations` / `vixl_reference('operations', name=[…])`.
+
+## Operations by need
+
+| Need | Operations / commands |
+| --- | --- |
+| Start | named sizes (`canvas` `size`, `vixl new NAME`, `vixl_document(action='create', size=)`), `layout-apply`, `type-scale`, `palette-generate`, `guidance` |
+| New layers | `add` (image), `solid`, `gradient` (linear/angled/radial, multi-stop, `falloff` curves for soft halos), `text`, `shape` (`solid`/`gradient`/`shape`/`text` with `target` edit that layer in place instead of adding one), `frame` (image box with fill/fit), `pixel-art`, `paint-layer`, `adjustment`, `symbol-instance` |
+| Transform | `move`, `resize`, `scale`, `rotate`, `skew`, `transform` (affine), `distort` (envelope, corner-pin), `flip`, `crop`, `opacity`, `blend`, `hide`/`show` |
+| Stacking | `raise`, `lower`, `top`, `bottom`, `reorder` (`above`/`below`), `group`/`ungroup`, `reparent` (into/out of a group, keeps position), `clip` |
+| Objects | `object` (kind, named parts, sub-objects, paths like `dog/head`), `object-save`/`object-place`, `inspect object=`, `isolate` with `views: [parts]`, isolated `export` |
+| Layout | `align` (to canvas/selection/layer), `distribute`, `constrain`/`unconstrain`, `stack` (auto-layout column/row that re-flows around hidden or empty members; text `hide_if_empty`), `guide`, `grid`, `canvas` (resize/preset), `artboard` |
+| Color & filters | 27 built-in effects (brightness … white-balance … auto-contrast), `effect-set/enable/disable/remove/move`, `lut` + `lookup` (a stack effect), `preset-save/apply` |
+| Selections & masks | `select` (rect/ellipse/color/alpha/all/none/invert, add/subtract/intersect, feather), `mask` (create/from-selection/import/gradient/invert/enable/disable/delete; `gradient` fades a layer out, which a `gradient-overlay` style cannot: its transparent stops show the layer's own fill) |
+| Typography | `text`, `text-set` (`tabs`), `text-layout` (box, fit, wrap, warp, path), `style-define`/`style-apply`, `swatch` |
+| Decoration | `layer-style` (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay), `look` (named finishes: clean-flat, subtle-grain, light-paper, glow, neon, soft-shadow, hard-shadow, outline, gradient, soft-halo, grain, paper, film, duotone, risograph, sketch, watercolor, halftone, hand-made, plush), `repeat`, `repeat-blend`, `radial-repeat` (copies around a center, optional mirror, per-step/jitter, `merge`), `scatter`, `pattern-scatter`, `pathfinder` |
+| Templates | `variable`, `replace-contents`, `comp-save`/`comp-apply`, CSV `render --data`, `export-screens` |
+| Painting | `paint` (17 brushes, points or SVG path, pressure, erase), `paint-clear`, `brush-define` |
+| Motion | `timeline-set` (`loop_mode`), `keyframe`, `keyframes` (or `sample` a wave), `keyframe-remove`, `animate`, `animate-preset`, `text-animate` (per char/word/line), `motion` (wiggle, line-boil …), `character-pose` (`time` keys), `audio-track`, `marker`; `vixl_render(action='timeline')`, `vixl_export(kind='timeline')` |
+| Pixel art & sprite frames | `pixel-art`, `pixel-draw`, `pixel-palette`, `frame-save/apply/delete`, `animation-set` (`name`+`order`: named animations, each exportable alone with `animation=`), `frames-edit` (one edit applied to every saved frame), `export-animation` (GIF/APNG/WebP/MP4/sheet) |
+| Color & print | color language in every color field, `vixl_reference('color')`, CMYK/PDF/ICO export, `vixl_export(kind='icons')`, proof/simulate previews, `print`/`color_vision` checks |
+| History | undo/redo (a count larger than the history goes as far as it can and says so), checkpoint, branch, checkout, compare, transactions |
+| Styles | `vixl_reference('styles')` (28 design styles: principles, palettes, type, layout, imagery, do/don't), `style-set` tags the document, `check --checks style` evaluates the style's premade rules |
+| QA | check (bounds/overlap/contrast/safe area/legibility/composition; opt-in print, color_vision, style, connected (floating parts of a grouped object), cost (layers that take over 10× the median to draw, naming the blur radius or stroke points), accessibility (alt text, language, small text, colour-only charts, reading order, plus contrast and colour vision); every finding has an `action`: fix / review / informational), inspect, measure (sample/histogram/contrast), spacing, validate/assert, render preview (zoomable, time, proof, simulate, isolate one object), compare revisions |
+| AI (provider) | generate/inpaint/img2img, extend (outpaint), upscale, regenerate, background-remove, select object/subject, remove, content-aware-fill, describe/detect/OCR, natural-language plan |
+
+When unsure of a field, get the authoritative schema: MCP `vixl_reference('operations', name=[…])`
+(also resource `vixl://operations`); CLI `vixl schema OPERATION` (bare `vixl schema` lists the operations; `--all` is the whole 900 KB schema; `vixl schema document` for the `.vixl` file format); REST `GET /schema`; per-command
+syntax via `vixl COMMAND --help`.
 
 ## Creating layers
 
@@ -238,15 +266,16 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 
 Besides operations, a `vixl_apply` batch takes steps that need the workspace or the network. They run in order inside
 the same all-or-nothing batch, so a later operation can use what an earlier step made (an `import-image` result, `steps[i].result`,
-carries the new layer's `id`, `name` and `asset`). CLI equivalents: `vixl import`, `vixl font install|pair`, `vixl roll --apply`.
+carries the new layer's `id`, `name` and `asset`). CLI equivalents: `vixl import`, `vixl font install|pair|cover`, `vixl roll --apply`.
 
 | step | fields | notes |
 | --- | --- | --- |
 | `import-image` | `path` *or* `data_base64` *or* `url`, `name` (default `image`), `credit`, `license` | Embeds an image as a new layer. A name that exists already is an error: name it when a layout has an `image` layer. |
-| `import-document` | `path` *or* `data_base64` (SVG, PDF) *or* `source` (Figma URL or key); `format` (`svg`, `pdf`, `figma`), `name`, `page`, `dpi`, `svg_mode` (`editable`, `auto`, `appearance`), `node_id`, `rasterize_unsupported` | Editable layers; `report` lists what a Figma import could not map. See SKILL.md and `docs/guides/images/figma.md`. |
+| `import-document` | `path` *or* `data_base64` (SVG, PDF) *or* `source` (Figma URL or key); `format` (`svg`, `pdf`, `figma`), `name`, `page`, `dpi`, `svg_mode` (`editable`, `auto`, `appearance`), `node_id`, `rasterize_unsupported`, `font_map` (PDF: `{family: registered name}`), `install_fonts` | Editable layers; `report` lists what a Figma import could not map, `fonts` how each PDF font was matched. See SKILL.md and `docs/guides/images/figma.md`. |
 | `import-font` | **`name`**, `path` *or* `url` | Registers a TTF/OTF under that name. |
 | `font-pair` | `pairing` (name or `random`), `seed`, `mood`, `best_for`, `scope` (`document`, `workspace`) | Installs and sets the heading and body fonts. |
 | `font-install` | **`family`**, `weight`, `italic`, `name`, `role`, `scope` | One Google Fonts style, optionally as a role's font. |
+| `font-cover` | `text`, `scripts` (`Devanagari`, `Han`, `Hiragana/Katakana`, `Hangul`, `Thai`, `Arabic`), `weight` | Installs the Noto face for each script no font draws and appends it to `font-fallbacks`; default: every text layer's characters. Refuses offline when a face is not cached. |
 | `style-use` | **`name`**, `palette` | Tags the document with a catalog style (and applies its first palette). |
 | `roll` | `purpose`, `mood`, `seed`, `variety`, `locks`, `slots`, `unfilled` | Rolls a direction and applies fonts and layout. |
 

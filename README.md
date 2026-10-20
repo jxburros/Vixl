@@ -16,7 +16,7 @@ It runs through MCP, CLI, Python or REST, so there is no canvas to open. People 
 interfaces; the product is built for the agent at the keyboard.
 
 Pre-1.0 and in Beta: breaking changes are allowed and noted in the [changelog](CHANGELOG.md#0270).
-Current tagged release: **0.27.0**. Run `vixl --version` to check your runtime; record the Git commit when using a
+Current tagged release: **0.28.0**. Run `vixl --version` to check your runtime; record the Git commit when using a
 source checkout.
 
 **[Documentation home](docs/README.md)** · [Getting started](docs/getting-started.md) ·
@@ -47,14 +47,14 @@ colours, headline *Fresh Saturday*, and a version for stories." The agent create
 operations, checks contrast and spacing, looks at the render, and hands you the `.vixl` master plus exports.
 Change the headline next week and nothing is redrawn.
 
-For a pinned tagged runtime with uv:
+For a pinned release with uv (an exact PyPI version, which cannot be replaced once published):
 
 ```bash
-uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.27.0.tar.gz vixl mcp --workspace .
+uvx --from vixl-engine==0.28.0 vixl mcp --workspace .
 ```
 
 The workspace must exist. The server offers seven tools (`vixl_document`, `vixl_apply`, `vixl_check`,
-`vixl_render`, `vixl_export`, `vixl_reference`, `vixl_job`) in about 7,300 characters of tool list; agents
+`vixl_render`, `vixl_export`, `vixl_reference`, `vixl_job`) in about 7,700 characters of tool list; agents
 look up operation fields and rarer options on demand with `vixl_reference`
 ([MCP tool surface](docs/reference/mcp-toolsets.md)). Use `--tools ai` for a second server with the provider-backed
 tools, or `--http` for Streamable HTTP.
@@ -130,7 +130,9 @@ In a terminal each command prints a short summary; piped output, `--json` and `V
 Editing commands autosave; pass `-p` explicitly in scripts. Inspect the preview before
 handoff. The [first-design walkthrough](docs/getting-started.md) explains undo,
 checkpoints, JSON batches and Python. Use the bundled font for proofing; choose suitable
-[typography](docs/guides/text/typography.md) for finished work.
+[typography](docs/guides/text/typography.md) for finished work. A new document installs its rolled font pairing
+with its first text (from the font cache, else Google Fonts); `VIXL_AUTO_FONTS=cache|off` or `VIXL_OFFLINE=1`
+keeps that off the network.
 
 ## Use Python
 
@@ -174,9 +176,9 @@ without AI credentials or network access. Every new visual has an editable maste
 operation recipe; see [documentation maintenance](docs/project/documentation-maintenance.md).
 Showcases, explorations, the marketing pack, promo films and evaluation results live in
 [VixlExamples](https://github.com/jxburros/VixlExamples), and
-[agent evaluations](evals/README.md) measure design tasks. The [development plan](docs/project/roadmap.md) and
-the [craft plan](docs/project/craft-plan.md) order the open work, [render parity](docs/project/render-parity.md) measures raster
-output against Chromium, and [brand voice](docs/project/brand-voice.md) describes how Vixl's own copy sounds.
+[agent evaluations](evals/README.md) measure design tasks. Contributors: [CONTRIBUTING](CONTRIBUTING.md) has the rules,
+and the [project documentation](docs/project/README.md) holds the development and craft plans, decision records,
+render parity and brand voice.
 
 Vixl edits in RGBA8 sRGB and exports supported vectors or documented raster fallbacks.
 CMYK is an export setting. RAW development, spot-color editing, PSD/XCF import
@@ -191,7 +193,8 @@ icons, an animated wordmark, usage guidance and editable masters.
 
 Vixl is source-available under the [PolyForm Small Business License 1.0.0](LICENSE): free for
 individuals and for companies with fewer than 100 people and under US$1M (2019) revenue; larger
-companies need a commercial licence from the licensor. Copies of Vixl must carry the licence and
+companies need a commercial licence from the licensor (to ask about one, open an issue or contact
+[@jxburros](https://github.com/jxburros) on GitHub). Copies of Vixl must carry the licence and
 its `Required Notice:` lines. If Vixl helped make your work, please credit it ("Made with Vixl").
 
 Bundled assets keep their own terms: DejaVu Sans ([font licence](src/vixl/data/FONT-LICENSE.txt)), the Noto Sans,

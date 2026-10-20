@@ -86,7 +86,7 @@ In order. Each item names the evidence it answers.
 
 | Item | What | C | P |
 | --- | --- | --- | --- |
-| 3a | **Rewrite the end of the loop** in SKILL.md, `briefs.START_HERE` and the guidance registry: checks pass → `check composition` → a short critique against a craft checklist → one fix batch → a real-size look at two regions with `vixl_render` `region` → export. The checklist lives once in `guidance.py` (one focal point; accent color used once or twice; no dead band; one left edge per column; the motif names the subject; nothing reads as a placeholder) | 2 | 5 |
+| 3a | **Rewrite the end of the loop** in SKILL.md, `briefs.START_HERE` and the guidance registry: checks pass → `check composition` → a short critique against a craft checklist → one fix batch → a real-size look at two regions with `vixl_render` `region` → export. The checklist lives once in `guidance.py` (`vixl guide finishing`) | 2 | 5 |
 | 3b | **Make the critique cheap:** `vixl_apply` with `check=true` already returns findings and a preview, so return the composition findings with it, plus the two lowest-scoring regions as crops | 2 | 4 |
 
 ### 4. Typography

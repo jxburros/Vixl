@@ -7,15 +7,16 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def source_url(version=None):
+def package_spec(version=None):
+    """The exact PyPI release. A published PyPI version cannot be replaced, unlike a tag archive."""
     if version is None:
         from vixl import __version__ as version
-    return f"https://github.com/jxburros/Vixl/archive/refs/tags/v{version}.tar.gz"
+    return f"vixl-engine=={version}"
 
 
 def launch_args(workspace, version=None):
     """uvx arguments that start the MCP server; the bundle and .mcp.json both use them."""
-    return ["--from", source_url(version), "vixl", "mcp", "--workspace", workspace]
+    return ["--from", package_spec(version), "vixl", "mcp", "--workspace", workspace]
 
 
 def build(output=None):
@@ -60,7 +61,7 @@ def build(output=None):
         archive.writestr(
             "README.md",
             "Install uv first. Open vixl.mcpb in Claude Desktop and choose a workspace. "
-            "The first launch installs the versioned GitHub source release; PyPI setup is not required. "
+            "The first launch installs this exact vixl-engine version from PyPI. "
             "The bundled skill is reference material; Desktop uses the MCP server instructions.\n",
         )
     with zipfile.ZipFile(output / "vixl-claude-code.zip", "w", zipfile.ZIP_DEFLATED) as archive:

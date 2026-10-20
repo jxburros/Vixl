@@ -14,7 +14,7 @@ import json
 import re
 from pathlib import Path
 
-from .assets import read_bounded
+from .assets import open_image, read_bounded
 from .errors import VixlError, require
 
 FIELDS = ("name", "palette", "pairing", "fonts", "logos", "minimum_contrast", "required_elements", "stages",
@@ -794,9 +794,7 @@ def report(workspace=None, preset=None):
 
 
 def _report_kit(kit, where, errors, warnings):
-    import io
 
-    from PIL import Image
 
     from .fonts import validate_font
     from .type_roles import STAGES
@@ -827,7 +825,7 @@ def _report_kit(kit, where, errors, warnings):
     for spec in kit.get("logos", []):
         logo_names.add(spec["name"])
         try:
-            with Image.open(io.BytesIO(embedded(spec["data_base64"]))) as image:
+            with open_image(embedded(spec["data_base64"])) as image:
                 image.verify()
         except Exception:  # Any decoder failure means the embedded logo is unusable.
             errors.append(f"{where}logo {spec['name']!r} is not a readable image")

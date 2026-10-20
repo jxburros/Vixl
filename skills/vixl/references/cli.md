@@ -14,8 +14,8 @@ filter/provider entry points — trusted code), `--max-pixels N`, `--detail brie
 
 Agent conventions:
 
-- Always pass `-p FILE.vixl`. Without it Vixl uses the project recorded by `vixl open` in
-  `./.vixl-session.json`.
+- Always pass `-p FILE.vixl`. Without it Vixl uses the project recorded by `vixl new`/`vixl open` in
+  `./.vixl-session.json`; results then carry its `path`. `vixl new` needs `-o FILE` (or `-p FILE`).
 - Results are full JSON whenever stdout is not a terminal (an agent's shell is not); in a terminal they are a short summary unless `--json` or `VIXL_JSON=1` is set. Add `--json` (or set `VIXL_JSON=1`) so errors are machine-readable too, as `{"error":"layer_not_found","message":…,"suggestions":[…]}` on stderr, exit 1; without either an error is one `ERROR:` line.
 - Editing commands autosave and print a compact result (changed values keyed by layer ID); `--detail full` adds
   before/after snapshots.
@@ -53,20 +53,29 @@ rem cmd
 set "PATH=%LOCALAPPDATA%\Programs\Vixl\bin;%PATH%"
 ```
 
+### Install check and slow renders
+
+Check availability first: `vixl --version` (CLI) or call `vixl_document(action='list')` (MCP). Install from
+source with `pip install -e ".[server]"` (Python ≥ 3.11; add the `pdf` extra for PDF import); Windows users use the installer.
+Set `VIXL_NO_UPDATE=1` in automation so the Windows auto-updater never runs mid-task.
+A slow render? `check --checks cost` names the costly layer; `VIXL_PROFILE=1` adds a `render_profile`
+(per-layer times, cache hits) to every result. `vixl cache info|clear` manages the disk render cache
+(`VIXL_RENDER_CACHE=off`, `VIXL_CACHE_MAX_MB`).
+
 ## Documents and inspection
 
 | Command | Effect |
 | --- | --- |
 | `new 1920x1080 -o F.vixl [--background COLOR]` | Create (refuses to overwrite); also selects it |
 | `open F.vixl` | Select as default project for this directory |
-| `save [COPY.vixl]` | Save / save-as |
+| `save [COPY.vixl] [--prune-fonts]` | Save / save-as; `--prune-fonts` leaves out fonts no revision draws (undo kept) |
 | `status` | Canvas, active layer, head, branch, transaction flag |
 | `inspect [LAYER]` | Full JSON state (or one layer) incl. `resolved_bounds` |
 | `layers [--full]` | Layer list (long path data abbreviated unless `--full`) |
 | `describe` | Document description |
 | `effects [LAYER]` | Effect stack with IDs/indices |
 | `manifest`, `dependencies`, `reproduce --check` | Assets, fonts, providers; can it re-render? |
-| `schema [OPERATION…]` | JSON Schema of all operations, or of the named ones; `schema document` is the schema of a `.vixl` file's `project.json` |
+| `schema [OPERATION…]` | Without a name, every operation by purpose with a one-line summary; with names, their JSON Schema; `schema --all` is the whole schema (900 KB); `schema document` is the schema of a `.vixl` file's `project.json` |
 | `pixels [LAYER]` | Pixel layer as rows + palette |
 | `animation` | Frame names, sizes, durations |
 | `convert OLD.vixl [-o NEW.vixl] [--look preserve\|current] [--dry-run] [--report R.json]` | Rewrite a document saved by an earlier release for the current code (`convert DIR --out OUTDIR` for a folder, `convert-batch OLD-CALLS.json` for saved MCP calls); never overwrites without `--overwrite`. `convert --grayscale` is the unrelated stdin image filter (see Output) |
@@ -328,8 +337,8 @@ vixl ai remove --as removed ; vixl ai content-aware-fill --prompt '…' ; vixl a
 ## Services and updates
 
 ```bash
-vixl -p F.vixl serve [--host 127.0.0.1] [--port 8765] [--token-env VIXL_API_TOKEN]
-vixl mcp --workspace DIR [--tools default|ai] [--planner] [--http [--host H --port N --token-env VAR]] [--require-document]   # MCP over stdio (or HTTP at /mcp): seven design tools; --tools ai runs the provider tools (vixl_ai_*) as a second server, --planner adds vixl_ai_plan to it; --require-document (or VIXL_REQUIRE_DOCUMENT=1) makes document= mandatory
+vixl -p F.vixl serve [--host 127.0.0.1] [--port 8765] [--token-env VIXL_API_TOKEN] [--tls-cert C --tls-key K] [--offline]   # token 24+ chars; --offline (VIXL_OFFLINE=1) turns off URL imports, font downloads and providers
+vixl mcp --workspace DIR [--tools default|ai] [--planner] [--http [--host H --port N --token-env VAR --tls-cert C --tls-key K]] [--require-document] [--offline]   # MCP over stdio (or HTTP at /mcp): seven design tools; --tools ai runs the provider tools (vixl_ai_*) as a second server, --planner adds vixl_ai_plan to it; --require-document (or VIXL_REQUIRE_DOCUMENT=1) makes document= mandatory
 vixl update --check | vixl update | vixl update --rollback ; vixl updates status|on|off   # Windows installer only
 vixl cache info | vixl cache clear   # disk render cache (VIXL_RENDER_CACHE=off, VIXL_CACHE_MAX_MB=256); VIXL_PROFILE=1 adds render_profile to results
 ```

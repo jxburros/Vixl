@@ -395,6 +395,18 @@ def test_explicit_final_quality_selects_final_profile_unless_overridden(tmp_path
     result = dispatch(session, 'run', {'spec': {'rows': [{}], 'quality': 'final'}, 'output': 'quality-final'})
     assert result['profile'] == 'final'
     assert result['results'][0]['status'] == 'needs_review'
+    # A withheld output is reported at the job level, never dropped silently (#701).
+    withheld = result['withheld']
+    assert withheld['count'] == 1 and withheld['profile'] == 'final' and withheld['fail_on'] == 'review'
+    assert withheld['variants'] == [result['results'][0]['id']] and withheld['rules']
+    assert result['message'] == withheld['message'] and 'withheld by profile final' in result['message']
+    assert 'profile: review' in result['message']
+    manifest = json.loads((tmp_path / 'quality-final' / 'production.json').read_text())
+    assert manifest['message'] == result['message'] and manifest['withheld']['count'] == 1
+    assert not list((tmp_path / 'quality-final').glob('*.png'))
+    checks = result['results'][0]['checks']
+    assert set(checks) == {'suites', 'design', 'placeholders'} and checks['placeholders'] is None
+    assert checks['suites'] == {} and checks['design']['profile']['name'] == 'final'
     override = dispatch(session, 'run', {'spec': {'rows': [{}], 'quality': 'final', 'profile': 'draft'},
                                          'output': 'quality-override'})
     assert override['profile'] == 'draft'

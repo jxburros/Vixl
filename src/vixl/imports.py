@@ -132,27 +132,40 @@ def import_document(project, data, format, name="import", page=1, dpi=None, svg_
     PDF: see ``pdf_import``. Figma: ``data`` is a file URL or key, or exported file JSON; ``page`` is the Figma
     page (number or name) and ``options`` are ``node_id``, ``rasterize_unsupported`` and ``install_fonts``. For SVG,
     ``install_fonts`` (default true) lets the fonts of Vixl's own SVG, which it names instead of storing, be
-    downloaded from Google Fonts when the font cache does not have them."""
+    downloaded from Google Fonts when the font cache does not have them (never with ``VIXL_OFFLINE``). ``font_map``
+    maps the font families an SVG names to registered fonts (Vixl's own SVG names its fonts by identity and ignores
+    it); for PDF, it maps the PDF's font
+    families to registered fonts (``{"Literata": "literata-400"}``) and ``install_fonts`` (default false) lets a face
+    that is neither in the document nor in the font cache be downloaded."""
     from .plugins import first as plugin_first
 
     if format.lower() == "figma":
         imported = plugin_first("import-format", project, data, "figma", page=page, **options)
         require(imported is not None, "Figma import is not available (plugin figma_import)", field="format")
         return imported
-    install_fonts = options.pop("install_fonts", True) if format.lower() == "svg" else True
+    pdf = format.lower() == "pdf"
+    install_fonts = options.pop("install_fonts", True if format.lower() == "svg" else False)
+    font_map = options.pop("font_map", None)
     require(not options, f"Unknown import option(s): {', '.join(sorted(options))}")
+    require(pdf or format.lower() == "svg" or not font_map, "font_map applies to SVG and PDF import",
+            field="font_map")
+    if font_map:
+        from .service_fonts import checked_font_map
+
+        font_map = checked_font_map(project, font_map)
     require(len(data) <= project.limits.max_asset_bytes, "Import exceeds byte limit", "resource_limit")
     require(svg_mode in ("editable", "appearance", "auto"), "SVG mode must be editable, appearance or auto",
             field="svg_mode")
     if format.lower() == "svg":
-        return _import_svg(project, data, name, svg_mode, install_fonts)
+        return _import_svg(project, data, name, svg_mode, install_fonts, font_map)
     require(format.lower() == "pdf", "Import format must be svg, pdf or figma")
-    imported = plugin_first("import-format", project, data, "pdf", name=name, page=page, dpi=dpi, mode=svg_mode)
+    imported = plugin_first("import-format", project, data, "pdf", name=name, page=page, dpi=dpi, mode=svg_mode,
+                            font_map=font_map, install_fonts=bool(install_fonts))
     require(imported is not None, "PDF import is not available (plugin pdf_import)", field="format")
     return imported
 
 
-def _import_svg(project, data, name, svg_mode, install_fonts=True):
+def _import_svg(project, data, name, svg_mode, install_fonts=True, font_map=None):
     if svg_mode == "appearance":
         return svg_appearance(project, data, name)
     from .svg_import import embedded_payload, embedded_project, import_embedded, svg_operations as convert
@@ -170,7 +183,7 @@ def _import_svg(project, data, name, svg_mode, install_fonts=True):
     candidate = project.clone()
     report = {}
     try:
-        operations = convert(data, candidate, name, fallback=svg_mode == "auto", report=report)
+        operations = convert(data, candidate, name, fallback=svg_mode == "auto", report=report, font_map=font_map)
         result = candidate.apply(operations, detail="compact")
     except VixlError as exc:
         if svg_mode == "auto" and exc.code == "unsupported_svg":
@@ -266,7 +279,7 @@ def render_svg(root, width, height):
         encoded = resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode"),
                     width=width, height=height, skip_system_fonts=True,
                     font_files=[str(Path(__file__).parent / "data" / "DejaVuSans.ttf")])
-        return Image.open(io.BytesIO(encoded)).convert("RGBA")
+        return Image.open(io.BytesIO(encoded), formats=["PNG"]).convert("RGBA")
     except Exception as exc:
         raise VixlError("invalid_svg", f"Cannot render SVG: {exc}") from exc
 

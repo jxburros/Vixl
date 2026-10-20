@@ -79,7 +79,7 @@ pages), `max_pages` (export a page range, then the next) or `max_concurrent` (wa
 
 | Form | Parameters | Returns / notes |
 | --- | --- | --- |
-| batch (default) | **`operations`** (1–10000 objects) or `operations_path` (workspace `.json`/`.jsonl`), `dry_run`, `check`, `suites`, `preview`, `repair`, `detail="brief"\|"compact"\|"full"` (or `verbose`), `document`, `request_id`, `as_job` | Atomic. Items are operations (fields: `vixl_reference("operations", name=[…])`) or session steps that run in the same all-or-nothing batch: `import-image` {`path` \| `data_base64` (base64 or `data:` URL) \| `url` (public `https://`), `name`, `credit`, `license`; returns `{id, name, width, height, bounds, asset, source}` under `steps`}, `import-document` {`path` \| `data_base64` \| `source` (a Figma URL or key), `format` svg\|pdf\|figma, `page`, `dpi`, `svg_mode` editable\|appearance\|auto, Figma `node_id` and `rasterize_unsupported`; the Figma token comes from `FIGMA_TOKEN`/`VIXL_FIGMA_TOKEN` only}, `import-font` {`name`, `path` \| `url`}, `font-pair` {`pairing` (default random), `mood`, `best_for`, `seed`, `scope`}, `font-install` {`family`, `weight`, `italic`, `name`, `role`, `scope`}, `style-use` {`name`, `palette`}, `roll` {`purpose`, `mood`, `seed`, `variety`, `locks`, `slots`, `unfilled`}; `scope: "workspace"` writes `brand.json` instead. `check=true` (or check names) adds vixl_check's findings for the touched layers plus every `fix` and every composition finding, and `check.regions`: the two weakest regions; `suites=true` (or names) runs the document's attached check suites and lists the rules that did not pass; `preview=true` (or `{page, region, max_width, time, isolate, overlay, focus, regions}`) adds a 512 px PNG and, with `check`, real-size crops of those regions after it (`regions: 0` leaves them out). Brief (default): per layer ID, new layers as `added`, `name`, `type`, `bounds` (plus a shape's `content_bounds` and a text layer's metrics: `ink_bounds`, `line_bounds`, `baseline`, `baselines`, `ascent`, `descent`, `cap_height`, `x_height`, `metrics_space`), changed layers as `{changed: [fields], bounds}`; compact adds the new values; full: before/after snapshots. `warnings` and `normalized` appear when relevant. An invalid item's error carries its exact schema. |
+| batch (default) | **`operations`** (1–10000 objects) or `operations_path` (workspace `.json`/`.jsonl`), `dry_run`, `check`, `suites`, `preview`, `repair`, `detail="brief"\|"compact"\|"full"` (or `verbose`), `document`, `request_id`, `as_job` | Atomic. Items are operations (fields: `vixl_reference("operations", name=[…])`) or session steps that run in the same all-or-nothing batch: `import-image` {`path` \| `data_base64` (base64 or `data:` URL) \| `url` (public `https://`), `name`, `credit`, `license`; returns `{id, name, width, height, bounds, asset, source}` under `steps`}, `import-document` {`path` \| `data_base64` \| `source` (a Figma URL or key), `format` svg\|pdf\|figma, `page`, `dpi`, `svg_mode` editable\|appearance\|auto, Figma `node_id` and `rasterize_unsupported`; the Figma token comes from `FIGMA_TOKEN`/`VIXL_FIGMA_TOKEN` only}, `import-font` {`name`, `path` \| `url`}, `font-pair` {`pairing` (default random), `mood`, `best_for`, `seed`, `scope`}, `font-install` {`family`, `weight`, `italic`, `name`, `role`, `scope`}, `style-use` {`name`, `palette`}, `roll` {`purpose`, `mood`, `seed`, `variety`, `locks`, `slots`, `unfilled`}; `scope: "workspace"` writes `brand.json` instead. `check=true` (or check names) adds vixl_check's findings for the touched layers plus every `fix` and every composition finding, and `check.regions`: the two weakest regions; `suites=true` (or names) runs the document's attached check suites and lists the rules that did not pass; `preview=true` (or `{page, region, max_width, time, isolate, overlay, focus, regions}`) adds a 512 px PNG and, with `check`, real-size crops of those regions after it (`regions: 0` leaves them out). Brief (default): per layer ID, new layers as `added`, `name`, `type`, `bounds` (plus a shape's `content_bounds` and a text layer's `ink_bounds` and `baseline`), changed layers as `{changed: [fields], bounds}`, numbers rounded to 2 decimals; at most 25 added and 50 changed/removed layers, the rest counted under `changes.layers_omitted` / `changed_omitted` / `removed_omitted` `{count, by_parent, sample}`; compact adds the new values; full: before/after snapshots. `warnings` and `normalized` appear when relevant. An invalid item's error carries its exact schema. |
 | `create={…}` | **`create`** {`path`, `size` or `width`/`height` or `purpose`, `background`, `variety`, `dpi`, `orientation`, `bleed`, `seed`, `house_style` (`on`/`off`), `font_pairing`, `layout` ({name, …slots}), `style`, `look` ({look, target?, …} or a list)}, `operations` or `operations_path`, `check=True`, `strict=False`, `preview`, `exports` (paths or export targets), `overwrite`, `dry_run` | A whole new piece in one atomic call: create → fonts → layout → style → look → operations → check → preview → save → exports. Nothing is saved or exported unless every step succeeds; errors keep the normal schema plus `step`. Layout `image`/`images` accept workspace paths and https URLs; `style` fills open layout `align`/`palette`/`mode` and, without `font_pairing`, installs the style's first pairing. Like `create` it makes the new document active (`active_document: true`, with a warning naming the one it replaced) |
 | `workflow=ACTION` | **`workflow`**, `request` (the action's fields: `vixl_reference("workflows", name=ACTION)`), `document` | Production actions: suites (`check`, `act`, `suite-use`, `suite-infer`), resources (`resource-list/get/save`), libraries, branches and groups, `check-all`, `replace-across`, `merge-impose`, `form-fill`, `repair-layout`, `protected-edit`, `adapt-sizes` (**`sizes`** 1–16, `directory`, `name="{name}-{size}"`, `options`, `formats`, `overwrite`, `report`: each size a saved, re-laid-out copy), film and lyric video, `logo-package`, `brand-board`, `proof`, emoji and mockup actions, `submit`/`status` for durable jobs |
 
@@ -159,7 +159,7 @@ Every document tool also accepts `document` (workspace path) to address a docume
 
 ### Resource
 
-`vixl://operations` — the full operation JSON Schema (same as `vixl schema`). Usually unnecessary:
+`vixl://operations` — the full operation JSON Schema (same as `vixl schema --all`). Usually unnecessary:
 `vixl_reference("operations", name=[…])` returns the types you need.
 
 ### MCP-specific restrictions
@@ -180,8 +180,10 @@ Every document tool also accepts `document` (workspace path) to address a docume
 ## REST API
 
 Start: `vixl -p poster.vixl serve [--host 127.0.0.1] [--port 8765]`. OpenAPI docs at `/docs`.
-Non-loopback hosts require a bearer token from `VIXL_API_TOKEN` (or `--token-env NAME`); send
-`Authorization: Bearer …`. One fixed project per server.
+Non-loopback hosts require a bearer token of at least 24 characters from `VIXL_API_TOKEN` (or `--token-env NAME`);
+send `Authorization: Bearer …`. 20 bad tokens from one address within 60 s answer 429 with `Retry-After`. A remote
+bind over plain HTTP warns on stderr: use a TLS proxy or `--tls-cert`/`--tls-key`. `--offline` (`VIXL_OFFLINE=1`)
+refuses URL imports, font downloads and providers with `network_disabled`. One fixed project per server.
 
 | Route | Body / query | Result |
 | --- | --- | --- |
@@ -193,7 +195,7 @@ Non-loopback hosts require a bearer token from `VIXL_API_TOKEN` (or `--token-env
 | `POST /measure` | `{"point":[x,y]}` / `{"region":[…],"foreground":…}` / `{"target":…}` | Measurements |
 | `POST /spacing` | same keys as `vixl_check(action='spacing')` | Spacing report |
 | `POST /validate` | `{"profile":…,"rules":[…]}` | Checks |
-| `POST /check` | same keys as `vixl_check` | Design issues |
+| `POST /check` | same keys as `vixl_check`; `sample` is `"worst"` or a workspace CSV path; unknown keys are a 400 | Design issues |
 | `POST /preview` | `{"max_width":…,"max_height":…,"max_bytes":…,"region":[…],"isolate":[…]}` | PNG |
 | `POST /compose` | vixl_apply(create=…) fields without `path`, `exports` or `operations_path` | Dry run: steps, check findings, `preview_base64` (the server serves one fixed document, so nothing is saved) |
 | `POST /compare` | `{"before":"previous","after":"head","mode":"side-by-side","isolate":[…]}` | Summary + `image_base64` |
@@ -202,7 +204,7 @@ Non-loopback hosts require a bearer token from `VIXL_API_TOKEN` (or `--token-env
 | `POST /animation/export` | `{"format":"gif"\|"apng"\|"webp"\|"mp4"\|"webm"\|"sheet","animation":"walk","scale":8,"sampling":…,"colors":…,"quality":…,"columns":…}` | Animation bytes (mp4/webm need ffmpeg) |
 | `GET /history` · `POST /history/{action}` | `{"ref":…,"count":1}` | History graph / new head |
 | `POST /assets?name=photo` | raw image bytes, or empty with `url=https://…`; optional `credit`, `license` | New layer |
-| `POST /import?format=svg\|pdf\|figma` | raw bytes (Figma: the URL or file key); `name`, `page`, `dpi`, `svg_mode`, `node_id`, `rasterize_unsupported` | Editable layers (`svg_mode=appearance`: one image) |
+| `POST /import?format=svg\|pdf\|figma` | raw bytes (Figma: the URL or file key); `name`, `page`, `dpi`, `svg_mode`, `node_id`, `rasterize_unsupported`, `font_map` (repeat `SRC=NAME`), `install_fonts` | Editable layers (`svg_mode=appearance`: one image) |
 | `POST /fonts?name=brand` | raw TTF/OTF bytes (≤16 MiB) | Registered font |
 | `GET /resources/{kind}` · `GET\|POST /resources/{kind}/{name}` | POST `{"value":…}` | Names · one entry · save |
 | `POST /workflow/{action}` · `GET /workflow/schema` | the action's request | Workflows allowed on a fixed document (`docs/reference/interfaces.md#capability-matrix` lists them) |
@@ -214,8 +216,9 @@ Non-loopback hosts require a bearer token from `VIXL_API_TOKEN` (or `--token-env
 | `GET /timeline` · `GET /timeline/frame?time=1.5s` | | Tracks · PNG frame |
 | `POST /timeline/export` | `{"format":"gif","fps":15,"scale":0.5}` | Animation bytes |
 
-Errors: HTTP 400 with `{"error":CODE,"message":…}` (401 without the token, 403 for `forbidden`, 413 for oversized
-bodies and `limit_exceeded`, 429 with `Retry-After` for `max_concurrent`).
+Errors: HTTP 400 with `{"error":CODE,"message":…}` (401 without the token, 403 for `forbidden`, 404 for a missing
+workspace file, 413 for oversized bodies and `limit_exceeded`, 429 with `Retry-After` for `max_concurrent` or
+repeated bad tokens).
 `path`/`linked` operation fields are rejected and `font` takes only a registered name or role, as with MCP.
 
 ```bash

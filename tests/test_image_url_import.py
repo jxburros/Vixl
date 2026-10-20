@@ -31,7 +31,8 @@ def png(color="red", size=(8, 6)):
 def offline(monkeypatch):
     for name in PROXY_VARS:
         monkeypatch.delenv(name, raising=False)
-    monkeypatch.delenv(fetch.ALLOW_PRIVATE_ENV, raising=False)
+    for name in (fetch.ALLOW_PRIVATE_ENV, fetch.OFFLINE_ENV, fetch.FETCH_HOSTS_ENV, fetch.PROXY_RESOLVES_ENV):
+        monkeypatch.delenv(name, raising=False)
     dns = {"images.example": [PUBLIC], "fonts.example": [PUBLIC], "cdn.example": [PUBLIC],
            "internal.example": ["10.0.0.7"], "mixed.example": [PUBLIC, "127.0.0.1"]}
 
@@ -189,8 +190,106 @@ def test_proxy_mode_keeps_the_host_name_and_still_checks_resolution(served, monk
 def test_public_address_classification():
     assert fetch.public_address("8.8.8.8") and fetch.public_address("2606:4700::1111")
     for address in ("127.0.0.1", "10.0.0.1", "172.16.0.1", "192.168.1.1", "169.254.169.254", "::1", "fe80::1",
-                    "fc00::1", "::", "::ffff:10.0.0.1", "::127.0.0.1", "2002:7f00:1::", "ff02::1", "not-an-ip"):
+                    "fc00::1", "::", "::ffff:10.0.0.1", "::127.0.0.1", "2002:7f00:1::", "ff02::1", "not-an-ip",
+                    # IPv4-translated loopback, deprecated site-local, SRv6 SIDs and documentation ranges (#675).
+                    "::ffff:0:127.0.0.1", "::ffff:0:7f00:1", "::ffff:0:10.0.0.1", "fec0::1", "5f00::1",
+                    "2001:db8::1", "3fff::1"):
         assert not fetch.public_address(address), address
+    assert fetch.public_address("::ffff:0:8.8.8.8") and fetch.public_address("2a00:1450::1")
+
+
+def test_proxy_with_failed_dns_fails_closed(served, monkeypatch):
+    seen, routes = served
+    routes["/x.png"] = httpx.Response(200, content=png())
+    monkeypatch.setenv("HTTPS_PROXY", "http://proxy.invalid:3128")
+    with pytest.raises(VixlError) as caught:
+        Project(16, 16).import_image(url="https://unresolvable.example/x.png")
+    assert caught.value.code == "fetch_failed" and fetch.PROXY_RESOLVES_ENV in str(caught.value) and not seen
+    monkeypatch.setenv(fetch.PROXY_RESOLVES_ENV, "1")  # The explicit opt-in: the proxy alone resolves names.
+    assert Project(16, 16).import_image(url="https://unresolvable.example/x.png")["width"] == 8
+    assert seen[-1].url.host == "unresolvable.example"
+
+
+@pytest.mark.parametrize("host", ["localhost", "printer", "router.local", "api.svc", "db.svc.cluster.local",
+                                  "metadata.google.internal", "app.localhost", "printer."])
+def test_internal_names_refused_before_resolution(served, offline, monkeypatch, host):
+    asked = []
+    monkeypatch.setattr(fetch, "resolve", lambda name, port: asked.append(name) or [PUBLIC])
+    monkeypatch.setenv("HTTPS_PROXY", "http://proxy.invalid:3128")
+    monkeypatch.setenv(fetch.PROXY_RESOLVES_ENV, "1")
+    with pytest.raises(VixlError) as caught:
+        Project(16, 16).import_image(url=f"https://{host}/x.png")
+    assert caught.value.code == "unsafe_url" and not asked and not served[0]
+    monkeypatch.setenv(fetch.ALLOW_PRIVATE_ENV, "1")  # The intranet escape hatch covers names too.
+    served[1]["/x.png"] = httpx.Response(200, content=png())
+    assert Project(16, 16).import_image(url=f"https://{host}/x.png")["width"] == 8
+
+
+def test_host_allow_list(served, monkeypatch):
+    seen, routes = served
+    routes["/x.png"] = httpx.Response(200, content=png())
+    routes["/hop"] = httpx.Response(302, headers={"location": "https://images.example/x.png"})
+    monkeypatch.setenv(fetch.FETCH_HOSTS_ENV, "cdn.example, *.assets.example")
+    assert Project(16, 16).import_image(url="https://cdn.example/x.png")["width"] == 8
+    for url in ("https://images.example/x.png", "https://cdn.example/hop", "https://assets.example/x.png"):
+        before = len(seen)
+        with pytest.raises(VixlError) as caught:
+            Project(16, 16).import_image(url=url)
+        assert caught.value.code == "unsafe_url" and fetch.FETCH_HOSTS_ENV in str(caught.value), url
+        assert len(seen) - before == (1 if url.endswith("/hop") else 0)
+    assert fetch.host_listed("a.b.assets.example", fetch.fetch_hosts())
+    # Hosts Vixl chose itself (content packs, Figma images) are not explicit imports.
+    assert fetch.fetch_bounded("https://images.example/x.png", 10_000, allow_list=False)[1]["bytes"] > 0
+
+
+def offline_entry_points(tmp_path, monkeypatch):
+    """Each network entry point, called the way Vixl calls it, with no font cache."""
+    from vixl import creation, typefaces
+    from vixl.plugins.ai.ai import HTTPProvider
+    from vixl.plugins.figma_import.figma_import import FigmaClient
+
+    monkeypatch.setenv("VIXL_FONT_CACHE", str(tmp_path / "fonts"))
+    yield "image url", lambda: Project(16, 16).import_image(url="https://images.example/x.png")
+    yield "font url", lambda: __import__("vixl.fonts", fromlist=["x"]).import_font(
+        Project(16, 16), "https://fonts.example/f.ttf", "f")
+    yield "pack", lambda: fetch.fetch_bounded("https://cdn.example/pack.zip", 1000, allow_list=False)
+    yield "google fonts", lambda: typefaces.fetch_font("Inter", 400)
+    yield "auto fonts", creation.network_client
+    yield "provider", lambda: HTTPProvider("local", {"url": "http://127.0.0.1:9000"}).invoke("describe", {})
+    yield "figma", lambda: FigmaClient("t").get("/v1/files/abc")
+
+
+def test_offline_mode_blocks_every_network_entry(served, monkeypatch, tmp_path):
+    seen, _ = served
+    monkeypatch.setenv(fetch.OFFLINE_ENV, "1")
+    for name, entry in offline_entry_points(tmp_path, monkeypatch):
+        with pytest.raises(VixlError) as caught:
+            entry()
+        assert caught.value.code == "network_disabled", name
+    assert not seen
+
+
+def test_offline_mode_keeps_svg_font_installs_and_creation_local(monkeypatch, tmp_path):
+    from vixl import creation
+    from vixl.svg_import import google_font
+
+    called = []
+    monkeypatch.setenv("VIXL_FONT_CACHE", str(tmp_path / "fonts"))
+    monkeypatch.setenv("VIXL_AUTO_FONTS", "on")
+    monkeypatch.setenv(fetch.OFFLINE_ENV, "1")
+    monkeypatch.setattr(creation, "_offline", False)
+    monkeypatch.setattr(creation, "network_client", lambda: called.append(1))
+    assert google_font("Inter", 400, False, install=True) == (None, None)
+    result = creation.install_rolled_pairing(Project(16, 16), {"direction": {"pairing": "source-serif-sans"}})
+    assert result["installed"] is False and "VIXL_OFFLINE" in result["reason"]
+    assert not called and creation._offline is False
+
+
+def test_network_policy_is_reported(monkeypatch):
+    monkeypatch.setenv(fetch.OFFLINE_ENV, "1")
+    monkeypatch.setenv(fetch.FETCH_HOSTS_ENV, "cdn.example")
+    report = fetch.policy()
+    assert report["offline"] is True and report["fetch_hosts"] == ["cdn.example"]
 
 
 def test_path_and_bytes_imports_take_credit_and_license(tmp_path):

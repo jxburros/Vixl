@@ -186,10 +186,10 @@ def test_rest_routes_name_unknown_fields_and_ask_for_a_bearer_token(tmp_path):
 
     path = tmp_path / "doc.vixl"
     Project(40, 30).save(path)
-    with TestClient(create_app(path, token="secret")) as client:
+    with TestClient(create_app(path, token="secret-token-of-24-chars")) as client:
         denied = client.post("/export", json={})
         assert denied.status_code == 401 and denied.headers["WWW-Authenticate"] == "Bearer"
-        client.headers["Authorization"] = "Bearer secret"
+        client.headers["Authorization"] = "Bearer secret-token-of-24-chars"
         for route, body in (("/export", {"format": "PNG", "bogus": 1}), ("/compare", {"bogus": "x"}),
                             ("/preview", {"bogus": 1})):
             response = client.post(route, json=body)
@@ -341,4 +341,5 @@ def test_rest_os_error_is_json_without_absolute_path(tmp_path, monkeypatch):  # 
     with TestClient(create_app(path)) as client:
         response = client.get("/document")
     assert response.status_code == 404
-    assert response.json() == {"error": "not_found", "message": "No such file: assets/gone.png"}
+    assert response.json() == {"error": "not_found", "field": "path",
+                               "message": "No such file: assets/gone.png (the folder assets does not exist)"}

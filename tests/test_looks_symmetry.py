@@ -140,9 +140,42 @@ def test_watercolor_pools_pigment_at_the_edges_of_a_flat_shape():  # #352
     project.apply({"type": "look", "target": "card", "look": "watercolor"})
     wet = np.asarray(project.render().convert("RGB"), dtype=np.int16)
     edge, centre = wet[42, 100:300].mean(axis=0), wet[100:140, 150:250].reshape(-1, 3).mean(axis=0)
-    assert centre.sum() > edge.sum() + 60  # a darker rim around a lighter wash
+    assert centre.sum() > edge.sum() + 40  # a darker rim around a lighter wash (#698 caps it at 35% below the wash)
     assert wet[60:180, 70:330].reshape(-1, 3).std(axis=0).mean() > 4  # blotchy, not flat
     assert np.abs(wet - plain).max(axis=2)[40:200, 50:350].mean() > 15
+
+
+def _ground(edges=None, fill="#4a5360"):
+    project = Project(400, 300, "#0d0e11")
+    project.apply({"type": "rect", "name": "ground", "x": 0, "y": 0, "width": 400, "height": 300, "fill": fill})
+    effect = {"type": "effect", "target": "ground", "effect": "watercolor", "amount": 55}
+    project.apply({**effect, **({"edges": edges} if edges else {})})
+    return np.asarray(project.render().convert("RGB"), dtype=np.float32)
+
+
+def test_watercolor_does_not_pool_on_canvas_edges():  # #698
+    wet = _ground()
+    interior = wet[100:200, 100:300].mean()
+    for strip in (wet[100:200, :10], wet[100:200, -10:], wet[-10:, 100:300], wet[:10, 100:300]):
+        assert abs(strip.mean() - interior) < 0.15 * interior
+
+
+def test_watercolor_edges_box_keeps_the_rim_on_canvas_edges():  # #698
+    wet = _ground("box")
+    assert wet[100:200, :10].mean() < 0.9 * wet[100:200, 100:300].mean()
+
+
+def test_watercolor_rim_of_a_dark_fill_stays_near_the_wash():  # #698
+    wet = _ground("box", fill="#101820")
+    wash = wet[100:200, 100:300].mean()
+    assert wet[100:200, :10].mean() >= 0.65 * wash - 8  # the paper grain is +-6
+
+
+def test_watercolor_edges_rejects_unknown_values():  # #698
+    project = Project(100, 100, "white")
+    project.apply({"type": "rect", "name": "r", "x": 0, "y": 0, "width": 100, "height": 100, "fill": "#444"})
+    with pytest.raises(VixlError):
+        project.apply({"type": "effect", "target": "r", "effect": "watercolor", "edges": "sideways"})
 
 
 @pytest.mark.parametrize("look", ["duotone", "risograph"])

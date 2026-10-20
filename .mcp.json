@@ -4,7 +4,7 @@
       "command": "uvx",
       "args": [
         "--from",
-        "https://github.com/jxburros/Vixl/archive/refs/tags/v0.27.0.tar.gz",
+        "vixl-engine==0.28.0",
         "vixl",
         "mcp",
         "--workspace",

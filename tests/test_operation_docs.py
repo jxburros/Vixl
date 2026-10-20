@@ -165,3 +165,29 @@ def test_operation_schema_tool_serves_summaries_and_examples_but_tools_list_stay
     assert any(example["direction"] == "radial" for example in schema["gradient"]["examples"])
     assert {e["name"] for e in schema["layer-style"]["examples"]} >= {"drop-shadow", "outer-glow"}
     assert "blur" in schema["blur"]["description"].lower()
+
+
+# Reference topics that publish ``options`` for an operation: every option is a field the operation accepts (#689).
+OPTION_ALLOWLIST = {"layout-apply": {"slots"}}  # describes the per-layout slot fields, not one field
+
+
+def _published_options():
+    from vixl.layouts import catalog as layout_catalog
+
+    return {"layout-apply": layout_catalog()["options"]}
+
+
+@pytest.mark.parametrize("kind", sorted(_published_options()))
+def test_reference_options_are_operation_fields(kind):
+    catalog = {entry["properties"]["type"]["const"]: entry
+               for entry in operation_schema()["properties"]["operations"]["items"]["oneOf"]}
+    options = set(_published_options()[kind]) - OPTION_ALLOWLIST.get(kind, set())
+    assert options <= set(catalog[kind]["properties"]), options - set(catalog[kind]["properties"])
+
+
+def test_layout_reference_example_applies():
+    from vixl.layouts import catalog as layout_catalog
+
+    example = layout_catalog()["example"]
+    validate_operation(example)
+    assert Project(1080, 1350).apply(example, detail="brief")["success"]

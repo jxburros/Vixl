@@ -387,3 +387,23 @@ Call `vixl.plugins.run(project, name, options, dry_run=False)`. The snapshot is 
 returned operations are validated and applied atomically. Load/runtime exceptions become
 structured errors. Python extensions are trusted code, not sandboxed. Services and project
 archives cannot opt into or invoke them. Use declarative packs for portable agent extensions.
+
+## Habits for briefs, branches and many documents
+
+Use `vixl_reference('workflows')` to discover the consolidated resource/test/effect/group/branch APIs and
+run them with `vixl_apply(workflow=ACTION, request={…})`.
+
+For each new brief, inspect starter suites with resource-list/get and create a custom suite
+for its actual requirements (see Tests above). Run it with every batch (`suites=true`), before every
+preview and before export. Freeze allowed colors in
+palette regression rules; choose antialias tolerances before checking, not to hide violations.
+Use container-reflow after changing copy, then check container-layout. Fork one document per
+agent, edit independently, preview branch-merge, resolve conflicts explicitly, then merge.
+
+Across many documents (`vixl_apply(workflow=…)` actions; see the references): `check-all` checks globs or a group in
+parallel into one report (status per document, `failing` at `fail_on`, history with `since_last`; JSON, Markdown,
+JUnit, SARIF or GitHub annotations via `outputs`); `group-check` reports members whose logo placement, type ratios,
+swatches, layers or declared copy facts (prices, names, dates) differ from the majority or a `reference`;
+`replace-across` finds and replaces text, colors, fonts and images (dry run first); `group-apply` and
+`replace-across` take `review` (a before/after page) and publish only `accept`ed members or the approved items of
+the page's `decisions` file.

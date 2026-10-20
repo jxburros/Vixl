@@ -16,6 +16,10 @@ OUTSIDE_FRACTION = 0.25
 INNER_RADIUS_SHAPES = ("star", "arc")
 
 
+def _listed(items):
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
+
+
 def _names(shapes):
     return " and ".join(repr(shape) for shape in shapes)
 
@@ -26,10 +30,11 @@ def advise(candidate, before, after, operations):
     for index, operation in enumerate(operations):
         where = f"operations[{index}]" if len(operations) > 1 else "operation"
         warnings.extend(f"{where}: {text}" for text in ignored_fields(candidate, operation))
-    try:
-        warnings.extend(placement(candidate, before, after))
-    except Exception:  # noqa: BLE001 - an advisory must never fail an edit that already succeeded
-        pass
+    for check in (placement, uncovered_scripts):
+        try:
+            warnings.extend(check(candidate, before, after))
+        except Exception:  # noqa: BLE001 - an advisory must never fail an edit that already succeeded
+            pass
     unique = list(dict.fromkeys(warnings))
     if len(unique) > MAX_WARNINGS:
         unique = unique[:MAX_WARNINGS] + [f"... and {len(unique) - MAX_WARNINGS} more; run vixl_check for the full list"]
@@ -89,6 +94,38 @@ def ignored_fields(candidate, op):
         if op.get("margin") and op.get("alignment") in ("center", "center-x", "center-y"):
             found.append(f"align: margin has no effect on {op['alignment']!r}")
     return found
+
+
+def uncovered_scripts(candidate, before, after):
+    """Changed text layers with characters no available font draws (they render as empty boxes): one warning per
+    layer naming the scripts and the fix. The bundled fonts cover Latin, Greek, Cyrillic, Arabic, Hebrew, symbols
+    and math, not CJK, Devanagari or Thai."""
+    from .render import resolving
+    from .text import cover_families, scripts_of, uncovered
+
+    layers = [layer for layer in touched(before, after) if layer["type"] == "text"][:MAX_LAYERS]
+    if not layers:
+        return []
+    state = {layer["id"]: layer for layer in candidate.state["layers"]}
+    warnings = []
+    with resolving(candidate):
+        for item in layers:
+            layer = state.get(item["id"])
+            missing = uncovered(candidate, layer) if layer is not None else []
+            if not missing:
+                continue
+            found = scripts_of(missing)
+            names = [f"{name} ({''.join(chars[:6])})" for name, chars in found.items() if name]
+            if None in found:
+                names.append(f"other ({''.join(found[None][:6])})")
+            families = cover_families(found)
+            fix = (f"font-cover installs {_listed(families)} and adds them as font fallbacks in one step "
+                   f"({{type: font-cover}}, or vixl font cover); or font-install family {families[0]!r} then "
+                   "{type: font-fallbacks, fonts: [its registered name]}") if families else (
+                "install or import a font that covers them, then list it in {type: font-fallbacks, fonts: [...]}")
+            warnings.append(f"text {item['name']!r} has characters no available font draws: {_listed(names)}; "
+                            f"they render as empty boxes. {fix}")
+    return warnings
 
 
 def touched(before, after):

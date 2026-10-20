@@ -54,16 +54,21 @@ def check_fonts(operation, allowed):
                 field=field,
                 allowed=sorted(name for name in allowed if not name.startswith("fonts/")),
             )
-        close = difflib.get_close_matches(font, sorted(allowed), 3, 0.5)
-        raise VixlError(
-            "missing_font",
-            f"{field} {font!r} is not registered in this document"
-            + (f"; did you mean {' or '.join(map(repr, close))}?" if close else "")
-            + f". Registered: {', '.join(sorted(n for n in allowed if not n.startswith('fonts/'))) or 'none'}. {INSTALL}.",
-            field=field,
-            allowed=sorted(name for name in allowed if not name.startswith("fonts/")),
-            suggestions=close,
-        )
+        raise missing_font(field, font, allowed)
+
+
+def missing_font(field, font, allowed):
+    """The ``missing_font`` error for a font name that is not a role or registered in the document."""
+    close = difflib.get_close_matches(font, sorted(allowed), 3, 0.5)
+    return VixlError(
+        "missing_font",
+        f"{field} {font!r} is not registered in this document"
+        + (f"; did you mean {' or '.join(map(repr, close))}?" if close else "")
+        + f". Registered: {', '.join(sorted(n for n in allowed if not n.startswith('fonts/'))) or 'none'}. {INSTALL}.",
+        field=field,
+        allowed=sorted(name for name in allowed if not name.startswith("fonts/")),
+        suggestions=close,
+    )
 
 
 def checker(project, check):
@@ -77,3 +82,20 @@ def checker(project, check):
             allowed.add(operation["name"])
 
     return bound
+
+
+def checked_font_map(project, font_map):
+    """``font_map`` (``{source family: registered name}``, SVG and PDF import) validated: string keys, each value
+    a font name ``project`` can use, as a service client may."""
+    from .errors import require
+
+    if not font_map:
+        return {}
+    require(isinstance(font_map, dict) and all(isinstance(key, str) and key.strip() and isinstance(value, str)
+                                               for key, value in font_map.items()),
+            "font_map maps source font family names to registered font names", field="font_map")
+    allowed = allowed_fonts(project)
+    for value in font_map.values():
+        if value not in allowed:
+            raise missing_font("font_map", value, allowed)
+    return dict(font_map)

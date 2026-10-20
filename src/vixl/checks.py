@@ -142,14 +142,10 @@ def glyph_area(mask, origin, halo=0.1):
 def glyph_reports(project, layers):
     """``(layer, {"missing", "fallback"})`` for resolved text layers whose characters need a
     fallback font or that no available font covers. Text is read with the project's variables."""
-    from .text import glyph_coverage
-    from .render import document_variables
-    from .richtext import active, glyph_coverage as rich_coverage
-    from .variables import layer_text
+    from .text import layer_coverage
 
     for item in layers:
-        view = {**item, "text": layer_text(item, document_variables(project))}
-        report = (rich_coverage if active(view) else glyph_coverage)(project, view)
+        report = layer_coverage(project, item)
         if report["missing"] or report["fallback"]:
             yield item, report
 
@@ -392,6 +388,11 @@ def overlap_candidates(boxes, texts, width, height):
         if texts[index]:
             open_text.append(entry)
     return sorted(set(pairs))
+
+
+# Text whose glyphs lie at least this much on a shape or image painted beneath it sits on that panel, even when
+# the text box overhangs it; a caption that crosses only part of a button stays an overlap.
+INK_INSIDE = 0.98
 
 
 def paint_order(resolved):
@@ -784,6 +785,24 @@ def check_design(
 
         if "overlap" in checks:
             drawable = [item for item in content if item["type"] != "group"]
+            stacked = paint_order(resolved)
+
+            def ink_within(inner, outer):
+                """The fraction of ``inner``'s drawn pixels that land on ``outer``'s drawn pixels."""
+                mi, mo = alpha(inner), alpha(outer)
+                total = int(mi.sum())
+                if not total:
+                    return 0.0
+                ix, iy = max(0, ink(inner)[0]), max(0, ink(inner)[1])
+                ox, oy = max(0, ink(outer)[0]), max(0, ink(outer)[1])
+                left, top = max(ix, ox), max(iy, oy)
+                right = min(ix + mi.shape[1], ox + mo.shape[1])
+                bottom = min(iy + mi.shape[0], oy + mo.shape[0])
+                if left >= right or top >= bottom:
+                    return 0.0
+                covered = np.logical_and(mi[top - iy:bottom - iy, left - ix:right - ix],
+                                         mo[top - oy:bottom - oy, left - ox:right - ox])
+                return int(covered.sum()) / total
 
             def decoration_over_text(decor, text):
                 """Decoration may sit under or around text (a panel, a frame, a rule), but its painted pixels
@@ -835,6 +854,9 @@ def check_design(
                     other = second if texts[0] is first else first
                     if _contains(outward(geometry[other["id"]]), outward(geometry[texts[0]["id"]])):
                         continue  # A label inside its button or panel.
+                    if stacked.get(other["id"], -1) < stacked.get(texts[0]["id"], -1) and \
+                            ink_within(texts[0], other) >= INK_INSIDE:
+                        continue  # Its box overhangs the panel beneath it, but the glyphs sit inside it.
                 left, top = max(0, a[0], b[0]), max(0, a[1], b[1])
                 right = min(width, a[0] + a[2], b[0] + b[2])
                 bottom = min(height, a[1] + a[3], b[1] + b[3])

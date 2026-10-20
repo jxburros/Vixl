@@ -111,7 +111,7 @@ def install(name, source=None):
             f"download {url(name)} and pass it as the source", "pack_unavailable")
     from .fetch import fetch_bounded
 
-    data, _ = fetch_bounded(url(name), spec["bytes"] + 1024 * 1024, label=f"{name} pack")
+    data, _ = fetch_bounded(url(name), spec["bytes"] + 1024 * 1024, label=f"{name} pack", allow_list=False)
     with tempfile.NamedTemporaryFile(delete=False) as staged:
         staged.write(data)
     try:

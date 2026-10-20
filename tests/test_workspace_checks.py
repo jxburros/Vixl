@@ -142,6 +142,29 @@ def test_report_formats_annotations_junit_and_sarif(workspace):
         dispatch(workspace, "check-all", {"documents": ["*.vixl"], "outputs": {"json": "out/r.json"}})
 
 
+def test_a_suite_rule_for_another_page_is_skipped_not_failed_in_reports(workspace):
+    p = Project(400, 300, "white")
+    p.apply([{"type": "page", "action": "add", "name": "page-1"},
+             {"type": "text", "name": "title", "text": "Hello", "size": 32, "x": 20, "y": 20, "color": "#111111"},
+             {"type": "page", "action": "add", "name": "page-2"},
+             {"type": "text", "name": "series", "text": "Series", "size": 32, "x": 20, "y": 20, "color": "#111111"},
+             {"type": "suite-set", "name": "booklet", "suite": {
+                 "rules": [{"id": "series-fits", "kind": "text-fit", "target": "series"}],
+                 "sampling": {"pages": "all"}}}])
+    p.save(workspace.resolve("book.vixl"))
+    result = dispatch(workspace, "check-all", {"documents": ["book.vixl"], "history": False, "checks": ["bounds"],
+                                               "outputs": {"junit": "out/junit.xml", "sarif": "out/vixl.sarif"}})
+    suite = result["documents"][0]["suites"]["booklet"]
+    assert suite["status"] == "passed"
+    assert [r["status"] for r in suite["rules"]] == ["not_applicable", "passed"]
+    root = ET.fromstring(workspace.resolve("out/junit.xml").read_bytes())
+    cases = [case for case in root.iter("testcase") if case.get("name") == "series-fits"]
+    assert [case.find("skipped") is not None for case in cases] == [True, False]
+    assert not any(case.find("failure") is not None for case in cases)
+    sarif = json.loads(workspace.resolve("out/vixl.sarif").read_text())
+    assert not [item for item in sarif["runs"][0]["results"] if "series-fits" in item["ruleId"]]
+
+
 def test_annotation_values_are_escaped():
     from vixl.plugins.workspace_qa.workspace_checks import annotations
 
