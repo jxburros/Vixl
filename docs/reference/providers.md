@@ -95,7 +95,7 @@ Generation request:
 {"image":"BASE64_PNG", "provider":"your-service", "model":"your-model", "seed":42, "metadata":{}}
 ```
 
-The returned image must match requested dimensions. Vixl clips inpaint/outpaint layers to the selection mask even if a provider changes protected pixels. The request, returned seed/model, source, mask and metadata are retained for regeneration. Providers should return only provenance in `metadata`, never credentials. Credentials remain environment-only in Vixl's adapters.
+The returned image must match requested dimensions. Vixl clips inpaint/outpaint layers to the selection mask even if a provider changes protected pixels. The request, returned seed/model, source, mask and metadata are retained for regeneration. Providers should return only provenance in `metadata`, never credentials. Vixl keeps only the scalar values of `revised_prompt`, `prompt_id`, `id`, `resized_from`, `seed` and `model` from it, each string cut to 500 characters, and drops every other key: the metadata ends up in tool results that agents read, so it is untrusted text ([agent trust](agent-trust.md#untrusted-document-text)). Credentials remain environment-only in Vixl's adapters.
 
 Vision requests carry `source_image`, width/height, and a `label` for segmentation or a `query` for detection. `/segment` and `/background-remove` return `{"mask":"BASE64_PNG"}` with the exact input dimensions (white = selected foreground). `/describe`, `/detect`, and `/ocr` return a JSON object. Their content is provider-defined.
 

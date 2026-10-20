@@ -232,7 +232,7 @@ def trimmed_image(project, layer):
                 "stroke-linecap": geometry["cap"], "stroke-linejoin": geometry["join"],
             })
     data = resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode"))
-    return Image.open(io.BytesIO(data)).convert("RGBA")
+    return Image.open(io.BytesIO(data), formats=["PNG"]).convert("RGBA")
 
 
 def require_shape(layer, prop):

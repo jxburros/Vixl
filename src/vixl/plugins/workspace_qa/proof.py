@@ -11,11 +11,11 @@ images, inline styles and the one inline script whose hash it names.
 
 import base64
 import hashlib
-import io
 from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
 
+from ...assets import open_image
 from ...errors import VixlError, require
 from ...image_diff import RASTER, VISUAL, load_visual
 from ...model import Limits
@@ -91,7 +91,6 @@ def _pdf_metadata(data):
 def describe(path, limits, *, check=True, max_size=1200, overlay=False):
     """Thumbnail, metadata and (for documents) check findings of one file. ``overlay`` outlines the fix
     findings on the thumbnail with their rule and layer ID (feedback.draw_overlay)."""
-    from PIL import Image
 
     suffix = path.suffix.lower()
     data = path.read_bytes() if suffix != ".vixl" else None
@@ -150,7 +149,7 @@ def describe(path, limits, *, check=True, max_size=1200, overlay=False):
             record["note"] = exc.args[0]
         return record
     if suffix in RASTER:
-        with Image.open(io.BytesIO(data)) as source:
+        with open_image(data) as source:
             meta.update(size=f"{source.width} × {source.height} px", color=source.mode)
             if source.info.get("dpi"):
                 meta["dpi"] = round(float(source.info["dpi"][0]))

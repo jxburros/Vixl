@@ -118,7 +118,7 @@ If the client cannot find `vixl` on PATH, use the absolute executable path, norm
 
 ### The tool surface
 
-`vixl mcp` serves seven tools in about 7,300 characters of tool list (51 tools and 67k characters before 0.27):
+`vixl mcp` serves seven tools in about 7,700 characters of tool list (51 tools and 67k characters before 0.27):
 `vixl_document`, `vixl_apply`, `vixl_check`, `vixl_render`, `vixl_export`, `vixl_reference` and `vixl_job`. Each
 advertises a few typed fields plus `options`; the exact fields of every operation, every action's options and the
 long explanations come from `vixl_reference`, and a validation error returns the schema it failed. An argument a tool

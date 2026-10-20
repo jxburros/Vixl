@@ -597,12 +597,14 @@ def signature_image(uri):
 
     from PIL import Image
 
+    from .assets import open_image
+
     match = re.fullmatch(r"data:image/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/=\s]+)", uri)
     if not match or len(match[2]) > MAX_SIGNATURE_IMAGE * 4 // 3 + 4:
         raise FieldValueError("invalid_format", "A signature image is a data:image/png (or jpeg, webp) base64 URI of up "
                               "to 4 MB")
     try:
-        image = Image.open(io.BytesIO(base64.b64decode(match[2], validate=False)))
+        image = open_image(base64.b64decode(match[2], validate=False), ("PNG", "JPEG", "WEBP"))
         require(image.width * image.height <= 25_000_000, "Signature image is too large")
         image.load()
         return image.convert("RGBA")
