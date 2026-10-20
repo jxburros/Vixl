@@ -365,7 +365,7 @@ the result; `workspace_fonts: false` skips). `vixl brand validate` flags missing
 Set the workspace typography with a `font-pair` or `font-install` step and `scope: "workspace"`.
 Use a `roll` step in `vixl_apply` (CLI `roll --apply --set title=...`) to apply a whole direction, and
 `vixl_reference('roll')` to see one without applying it;
-`layout apply` returns unfilled slots immediately. Check and fill them before export. A roll with `slots` omits the slots you did not fill (`unfilled: "omit"`), so it passes `check`; pass `unfilled: "blank"` to keep `[Label]` placeholders instead.
+`layout apply` returns unfilled slots immediately. Check and fill them before export. A roll with `slots` omits the slots you did not fill (`unfilled: "omit"`), so it passes `check`; pass `unfilled: "blank"` to keep `[Label]` placeholders instead. When no layout places every slot you pass, the roll keeps the previewed layout and the apply fails with `unused_slot`: drop the slots its `suggestions` leave out and apply again.
 An `import-document` step (`vixl_apply`) imports SVG and PDF as editable layers. Vixl's own SVG export carries its document, so
 re-importing it restores the same layers, live text, groups and effects (fonts are named, not stored: the import finds a
 bundled, cached, same-named registered or Google Fonts face again; any other font falls back to the bundled face with a

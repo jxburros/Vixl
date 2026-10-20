@@ -129,6 +129,12 @@
   judged them against another body (a headline counted as a heading at poster size and as lead copy at social
   size). Layouts now record the raised roles in the type scale and space by the raised body there; social, slide
   and thumbnail minimums are unchanged.
+- **A roll applied with more slots than any layout places keeps the previewed layout (#700).** `roll --apply` with
+  every slot failed with "No rollable layout … places all of …" and no suggestions, while the preview with the same
+  seed picked a layout. The roll now keeps that layout, so the apply fails with its `unused_slot` error and
+  `suggestions` (the slots it uses); the roll's `direction.pool` is `content` or `preview`. If no layout fits at
+  all, the error's `suggestions` name up to three layouts with the supplied slots each places (probed with the new
+  `layouts.placeable`).
 - **A two-word display title set one word per line is no longer a runt (#713).** `legibility.runt` flagged any
   one-word last line, so "Coffee, together." on two full-width lines was a review finding with `share: 1.0`. A lone
   last word now counts only when the paragraph has more words than lines and the word is under half the longest

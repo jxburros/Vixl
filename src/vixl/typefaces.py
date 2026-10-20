@@ -175,10 +175,12 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
     that mood and shifts expressive moods toward the bold tiers. ``recommend`` maps ``layouts``,
     ``looks`` and ``styles`` to names a brief recommends; they are favoured where the tier allows.
     ``content`` lists the copy slots that will be supplied (title, subtitle …): only layouts that place
-    all of them are rolled. Every field that ``locks`` fixes is kept; the rest come from the seed, which is returned so
+    all of them are rolled. When none does, the roll keeps the layout it would pick with no content (the
+    preview's), so applying it reports the slots it leaves out as ``unused_slot`` (#700); ``direction.pool``
+    says which pool the layout came from. Every field that ``locks`` fixes is kept; the rest come from the seed, which is returned so
     a direction worth keeping can be reproduced exactly.
     """
-    from .layouts import ACCENTS, DENSITY_CHOICES, IMAGE_KEYS, LAYOUTS, RATIOS, places, slot_spec
+    from .layouts import ACCENTS, DENSITY_CHOICES, IMAGE_KEYS, LAYOUTS, RATIOS, placeable, places, slot_spec
     from .resources import PALETTES
     from .variety import VARIETIES, choose, dimensions, orientation, pick_tier, tier_pool
 
@@ -234,7 +236,7 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
     shape = orientation(*canvas) if canvas else None
     layout_meta = house_style.entries("layouts")
 
-    def layout_fits(name):
+    def layout_fits(name, content=content):
         if alignment and goal != "logo" and not LAYOUTS[name].get("safe_composition") and alignment not in LAYOUTS[name].get("aligns", ["left"]):
             return False
         meta = layout_meta.get(name, {})
@@ -249,14 +251,35 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
             return False  # an image slot nobody fills would ship as a blank
         return not content or places(name, shape or "square", tuple(sorted(content)))
 
-    layouts = tier_pool("layouts", tier, goal, lambda name: name in LAYOUTS and layout_fits(name))
-    if recent and layouts == [recent[-1].get("layout")]:
-        alternatives = tier_pool("layouts", tier, goal, lambda name: name in LAYOUTS
-                                 and name != recent[-1].get("layout") and layout_fits(name))
-        layouts = alternatives or layouts
-    require(layouts or "layout" in locks,
-            f"No rollable layout{' for ' + goal if goal else ''} places all of {', '.join(content or ())} on this canvas; "
-            "lock a layout (locks={layout: NAME}) or supply other slots", field="slots")
+    def layout_pool(content):
+        layouts = tier_pool("layouts", tier, goal, lambda name: name in LAYOUTS and layout_fits(name, content))
+        if recent and layouts == [recent[-1].get("layout")]:
+            alternatives = tier_pool("layouts", tier, goal, lambda name: name in LAYOUTS
+                                     and name != recent[-1].get("layout") and layout_fits(name, content))
+            layouts = alternatives or layouts
+        return layouts
+
+    layouts, pool = layout_pool(content), "content" if content else None
+    if not layouts and content and "layout" not in locks:
+        # No layout places all the copy: keep the preview's layout (the draws so far do not depend on content),
+        # so applying it reports the slots it leaves out as unused_slot, with suggestions (#700).
+        layouts, pool = layout_pool(None), "preview"
+    if not layouts and "layout" not in locks:
+        nearest = []
+        if content:
+            keys = tuple(sorted(content))
+            candidates = tier_pool("layouts", tier, goal, lambda name: name in LAYOUTS) or [
+                name for name in LAYOUTS if goal in layout_meta.get(name, {}).get("purposes", [])]
+            for name in candidates:
+                found = placeable(name, shape or "square", keys)
+                if found:
+                    nearest.append((-len(found), name, sorted(found)))
+            nearest = [{"layout": name, "places": found} for _, name, found in sorted(nearest)[:3]]
+        raise VixlError("invalid_operation",
+                        f"No rollable layout{' for ' + goal if goal else ''} "
+                        + (f"places all of {', '.join(content)} " if content else "fits ")
+                        + "on this canvas; lock a layout (locks={layout: NAME}) or supply other slots",
+                        field="slots", suggestions=nearest)
     layouts = layouts or [locks["layout"]]
     layout_prefer = set(profile["layouts"]["prefer"]) | set(recommend.get("layouts", []))
     layout_weights = {name: (profile["layouts"]["weight"] if name in layout_prefer else 1) * strength(layout_meta.get(name, {}))
@@ -272,6 +295,7 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
         "accent": rng.choice(ACCENTS),
         "layout_seed": rng.randrange(2**32),
         **dimensions(rng, pairing, variety, tier=tier, purpose=goal, moods=wanted, recommend=recommend),
+        **({"pool": pool} if pool else {}),
         "tier": tier,
         "purpose": goal,
     }
@@ -319,7 +343,7 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
         "accent": direction["accent"],
         "direction": {key: value for key, value in direction.items()
                       if key not in ("layout", "palette", "mode", "type_scale", "density", "accent", "layout_seed", "pairing",
-                                     "tier", "purpose")},
+                                     "tier", "purpose", "pool")},
     }
     if "container" in locks:
         operation["direction"]["place_container"] = True

@@ -2244,9 +2244,9 @@ PROBE_CANVAS = {"wide": (1500, 500), "landscape": (1200, 800), "square": (900, 9
 
 
 @lru_cache(maxsize=1024)
-def places(name, shape, keys):
-    """Whether layout ``name`` places every copy slot in ``keys`` on a canvas of this ``shape`` (a roll
-    only picks layouts that use all the copy it was given). Probed once per combination."""
+def placeable(name, shape, keys):
+    """The copy slots in ``keys`` that layout ``name`` places on a canvas of this ``shape``, as a frozenset, or
+    None when the layout cannot be built with that copy. Probed once per combination."""
     from .project import Project
 
     width, height = PROBE_CANVAS.get(shape, PROBE_CANVAS["square"])
@@ -2257,8 +2257,15 @@ def places(name, shape, keys):
     try:
         builder = _build(project, LAYOUTS[name], op, 0, 1.0)
     except Exception:  # noqa: BLE001 - any failure to build this copy means the roll must not pick the layout
-        return False
-    return set(keys) <= builder.read
+        return None
+    return frozenset(keys) & frozenset(builder.read)
+
+
+def places(name, shape, keys):
+    """Whether layout ``name`` places every copy slot in ``keys`` on a canvas of this ``shape`` (a roll
+    only picks layouts that use all the copy it was given)."""
+    found = placeable(name, shape, tuple(keys))
+    return found is not None and set(keys) <= found
 
 
 def _build(project, layout, op, seed, fit):

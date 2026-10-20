@@ -92,7 +92,11 @@ look lands where it shows: texture looks on the background, the house offset sha
 shadow, outline and glow looks on the solid shapes (buttons, panels, blocks), never on hairline
 rules. Weight contrast describes the actual heading/body weights in the chosen pairing. A roll
 applied with `slots` only picks layouts that place all of the supplied copy and leaves out layouts
-whose image slot nobody fills.
+whose image slot nobody fills. When no layout places all of it, the roll keeps the layout the same seed
+previews without slots, so applying it fails with the layout's `unused_slot` error, whose `suggestions` list
+the slots it does use; drop those it leaves out and apply again. The roll's `direction.pool` says which pool
+the layout came from (`content`, or `preview` for that fallback). If no layout fits at all (locks rule every
+one out), the error's `suggestions` name up to three layouts with the supplied slots each places.
 
 ## New documents
 

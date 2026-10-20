@@ -103,3 +103,51 @@ def test_cli_roll_unfilled_flag(tmp_path, monkeypatch):
     result, _ = dispatch(["-p", "design.vixl", "roll", "--seed", "3", "--lock", "layout=hero-statement",
                           "--set", "title=Hello"])
     assert result["operation"]["unfilled"] == "omit"
+
+
+ALL_SLOTS = {"title": "Hi", "subtitle": "x", "label": "y", "cta": "Go", "body": "b", "caption": "c", "items": "a"}
+
+
+def portrait():
+    p = Project(1080, 1350)
+    p.state["typography"] = {"body": "DejaVuSans.ttf", "heading": "DejaVuSans.ttf"}
+    return p
+
+
+def test_apply_with_slots_no_layout_places_keeps_the_previewed_layout():  # #700
+    preview = roll_document(portrait(), seed=11, purpose="social", mood="friendly")
+    chosen = preview["direction"]["layout"]
+    p = portrait()
+    with pytest.raises(VixlError) as raised:
+        roll_document(p, seed=11, purpose="social", mood="friendly", apply=True, slots=ALL_SLOTS)
+    assert raised.value.code == "unused_slot" and chosen in str(raised.value)
+    assert raised.value.details["suggestions"] and set(raised.value.details["suggestions"]) <= set(ALL_SLOTS)
+    assert p.state["layers"] == []  # nothing was applied
+    # The roll itself names the pool it fell back to.
+    direction = roll_document(portrait(), seed=11, purpose="social", mood="friendly", slots=ALL_SLOTS)["direction"]
+    assert direction["layout"] == chosen and direction["pool"] == "preview"
+
+
+def test_a_content_set_some_layout_places_still_picks_one_that_places_it():  # #700
+    from vixl.layouts import places
+
+    p = portrait()
+    result = roll_document(p, seed=11, purpose="social", mood="friendly", apply=True, slots={"title": "Hi", "cta": "Go"})
+    assert result["direction"]["pool"] == "content" and "pool" not in result["operation"]["direction"]
+    assert places(result["direction"]["layout"], "portrait", ("cta", "title"))
+    assert {"headline", "cta"} <= {layer["name"] for layer in p.state["layers"]}
+
+
+def test_a_roll_no_layout_fits_names_the_nearest_layouts(monkeypatch):  # #700
+    from vixl import variety
+    from vixl.typefaces import roll
+
+    pool = variety.tier_pool
+    # No rollable layout in any pool (as when locks rule every one out).
+    monkeypatch.setattr(variety, "tier_pool", lambda kind, *rest: [] if kind == "layouts" else pool(kind, *rest))
+    with pytest.raises(VixlError) as raised:
+        roll(11, purpose="social", canvas=(1080, 1350), content=("title", "items"))
+    assert raised.value.details["field"] == "slots"
+    suggestions = raised.value.details["suggestions"]
+    assert 0 < len(suggestions) <= 3 and all({"layout", "places"} <= set(entry) for entry in suggestions)
+    assert all("title" in entry["places"] for entry in suggestions)
