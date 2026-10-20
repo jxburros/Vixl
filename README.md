@@ -47,10 +47,10 @@ colours, headline *Fresh Saturday*, and a version for stories." The agent create
 operations, checks contrast and spacing, looks at the render, and hands you the `.vixl` master plus exports.
 Change the headline next week and nothing is redrawn.
 
-For a pinned tagged runtime with uv:
+For a pinned release with uv (an exact PyPI version, which cannot be replaced once published):
 
 ```bash
-uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.27.0.tar.gz vixl mcp --workspace .
+uvx --from vixl-engine==0.27.0 vixl mcp --workspace .
 ```
 
 The workspace must exist. The server offers seven tools (`vixl_document`, `vixl_apply`, `vixl_check`,

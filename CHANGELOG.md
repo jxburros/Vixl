@@ -115,6 +115,16 @@
 - **Encrypted, method-99 and truncated `.vixl` archives fail as `invalid_project`.** The message is "unsupported or
   encrypted ZIP member", instead of a raw `RuntimeError`, `NotImplementedError` or zlib error escaping
   `Project.load`.
+- **Releases wait for an approval, and CI runs only reviewed action code (#673).** Every `uses:` in the workflows
+  and in the Vixl GitHub Action names a full commit SHA, and `scripts/check_workflow_pins.py` fails CI on a tag or
+  branch reference. The release workflow's publish job runs in a protected `release` environment that a maintainer
+  approves, and it is the only job with write permissions; a push that changes no version skips it without asking.
+  The action passes `fail-on`, `profile`, its own path and the base commit to its scripts through environment
+  variables instead of pasting them into shell lines. `pip-audit` over the runtime dependencies now fails CI (the
+  audit of the extras stays advisory).
+- **The MCP launch pins an exact PyPI release (#673).** `.mcp.json`, the Claude Desktop `.mcpb` and the README run
+  `uvx --from vixl-engine==0.27.0 …` instead of a GitHub tag archive, which could be moved to other code; a
+  published PyPI version cannot be replaced. The getting-started install pin is `vixl-engine==0.27.0` too.
 
 ### Fixed and added
 

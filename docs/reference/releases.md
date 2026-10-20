@@ -99,11 +99,11 @@ Python installations intentionally do not self-update or invoke pip. They return
 
 ## Maintaining releases
 
-`.github/workflows/release.yml` builds and tests Windows installers on pull requests that change packaging (`distribution/`, `src/vixl/__init__.py`, the updater, `pyproject.toml` or the workflow itself), on version changes pushed to `main` and on version tags; the push and tag runs also run the full test suite on Linux and Windows before anything is published. Test artifacts can be downloaded from the successful Actions run. Normal CI (`test.yml`) tests Python 3.11–3.14 on Linux, macOS and Windows on every pull request, runs `ruff check`, the golden-image suite, MP4/WebM tests with ffmpeg in one Linux job, and an advisory `pip-audit` job that reports vulnerable dependencies without failing the run. Dependabot proposes pip and GitHub Actions updates weekly. To exercise the installer on a pull request that does not touch those paths, run the workflow manually (`workflow_dispatch`).
+`.github/workflows/release.yml` builds and tests Windows installers on pull requests that change packaging (`distribution/`, `src/vixl/__init__.py`, the updater, `pyproject.toml` or the workflow itself), on version changes pushed to `main` and on version tags; the push and tag runs also run the full test suite on Linux and Windows before anything is published. Test artifacts can be downloaded from the successful Actions run. Normal CI (`test.yml`) tests Python 3.11–3.14 on Linux, macOS and Windows on every pull request, runs `ruff check`, the golden-image suite, MP4/WebM tests with ffmpeg in one Linux job, and two `pip-audit` jobs: the one over the runtime dependencies (the base install, no extras) fails the run on a known vulnerability, and the one over the extras and dev tools only reports. Every `uses:` in the workflows and in `action.yml` names a full 40-character commit SHA with the release in a comment (`# v4.4.0`); `scripts/check_workflow_pins.py`, run by the lint job, fails on a tag or branch reference. Dependabot proposes pip and GitHub Actions updates weekly, SHA pins included. To exercise the installer on a pull request that does not touch those paths, run the workflow manually (`workflow_dispatch`).
 
 To publish a stable release:
 
-1. Update the single-sourced version in `src/vixl/__init__.py` (package, API and bundle versions derive from it), then the places that repeat it: `.claude-plugin/plugin.json`, the tag URL in `.mcp.json`, the install URLs in `README.md` and `getting-started.md`, the release line in `README.md` and the documentation home, the action pin in [CI](../guides/automation/ci.md), the tag in step 3 and the sample manifest in [file format](file-format.md); update release notes (see [release notes](#release-notes)) and documentation as needed.
+1. Update the single-sourced version in `src/vixl/__init__.py` (package, API and bundle versions derive from it), then the places that repeat it: `.claude-plugin/plugin.json`, the PyPI pin `vixl-engine==X.Y.Z` in `.mcp.json` (the `.mcpb` derives it), the install pins in `README.md` and `getting-started.md`, the release line in `README.md` and the documentation home, the action pin in [CI](../guides/automation/ci.md), the tag in step 3 and the sample manifest in [file format](file-format.md); update release notes (see [release notes](#release-notes)) and documentation as needed.
 2. Run tests and review the PR's **Windows installer and releases** workflow. It runs a real silent installer, verifies PATH lookup, creates/exports a project using the frozen runtime, activates an explicit update before any normal launch with mocked network transport, checks corrupted-candidate recovery, and uninstalls while preserving a user project and existing PATH entries.
 3. Tag the reviewed commit with its exact version and push the tag:
 
@@ -112,9 +112,22 @@ To publish a stable release:
    git push origin v0.27.0
    ```
 
-4. The tag workflow re-runs tests, checks tag/package-version consistency, builds the distributions, and creates a **draft** GitHub release. It uploads every artifact before publishing it as the latest stable release. No release becomes visible to the updater while files are still being uploaded.
+4. The tag workflow re-runs tests, checks tag/package-version consistency and builds the distributions. The publish job then waits in the protected `release` environment until a required reviewer approves the deployment (Actions run, **Review deployments**). Approve only a run whose commit and version you reviewed. After approval it creates a **draft** GitHub release. It uploads every artifact before publishing it as the latest stable release. No release becomes visible to the updater while files are still being uploaded.
 
-The workflow uses GitHub's built-in token with `contents: write` and `actions: write` only in the publish job. The latter starts Python publication after a release from main. No personal token or certificate secret is required. If publication fails after draft creation, inspect that draft and the workflow logs; do not mutate assets of an already published version. Publish a new version for fixes. Release tags and assets are treated as immutable by convention.
+The workflow's top-level permission is `contents: read`. Only the publish job, inside the `release` environment, gets GitHub's built-in token with `contents: write` and `actions: write`; the latter starts Python publication after a release from main. A `plan` job with read-only permissions first checks whether the version is already published, so a push to main that only edits `CHANGELOG.md` skips the publish job instead of asking for an approval. No personal token is required. If publication fails after draft creation, inspect that draft and the workflow logs; do not mutate assets of an already published version. Publish a new version for fixes. Release tags and assets are treated as immutable by convention.
+
+### Repository setup (owner, once)
+
+The workflow expects these settings; it cannot create them. Until the environment has a required reviewer, GitHub
+creates it on first use without protection and the publish job runs unapproved.
+
+1. **Settings → Environments → New environment**, named `release`.
+2. Under **Deployment protection rules**, turn on **Required reviewers** and add the maintainers who may approve a
+   release. Turn on **Prevent self-review** when more than one maintainer can approve.
+3. Under **Deployment branches and tags**, choose **Selected branches and tags** and add the branch `main` and the
+   tag pattern `v*`.
+4. The PyPI environment `pypi` (see [Python and agent bundles](#python-and-agent-bundles)) can carry the same
+   reviewer rule; a release from main already passed the `release` approval before it starts `pypi.yml`.
 
 Release assets:
 
@@ -165,8 +178,10 @@ MCP is included in the base package (there is no `mcp` extra). The optional extr
 Build the Claude packages with `python distribution/package_extensions.py`. The release workflow
 attaches `vixl.mcpb` and `vixl-claude-code.zip` alongside Python and Windows artifacts. Both include
 the skill and all its reference files. Both require [uv](https://docs.astral.sh/uv/getting-started/installation/).
-Both bundles install from the versioned GitHub source archive, so they work independently of
-PyPI publisher setup. Their tag must exist before installation.
+Both bundles start `uvx --from vixl-engine==VERSION`, the exact PyPI release. PyPI never lets a published
+version be replaced, so the pin cannot be pointed at other code later the way a tag archive can. That version
+must be on PyPI before the bundles work; the release workflow starts PyPI publication right after the GitHub
+release. Where PyPI is unavailable, pin a commit instead: `uvx --from git+https://github.com/jxburros/Vixl@<commit-sha> vixl mcp`.
 Open the `.mcpb` in Claude Desktop and select the workspace folder. Desktop loads the MCP server
 instructions; the included skill files are reference material, not an automatically installed Desktop skill.
 
@@ -179,7 +194,7 @@ For Claude Code, this repository is also a plugin marketplace:
 
 For local development, `claude --plugin-dir /absolute/path/to/Vixl` loads the same skill and MCP
 configuration. The server operates in the client's current directory. The `.mcp.json` config uses
-a versioned GitHub source URL; when testing unpublished code, replace that URL with
+the pinned PyPI version; when testing unpublished code, replace `vixl-engine==VERSION` with
 `--from /absolute/path/to/Vixl` in a local copy of the config.
 
 

@@ -48,6 +48,21 @@ def test_ci_script_checks_diffs_against_base_summarizes_and_fails_on_level(tmp_p
     assert passing.returncode == 0, passing.stdout + passing.stderr
 
 
+def test_inputs_never_interpolated_in_run():  # #673
+    """Expressions in `run:` are pasted into the script before bash parses it; pass values through `env:`."""
+    import yaml
+
+    for path in [ROOT / "action.yml", *sorted((ROOT / ".github/workflows").glob("*.yml"))]:
+        document = yaml.safe_load(path.read_text(encoding="utf-8"))
+        jobs = document["jobs"].values() if "jobs" in document else [document["runs"]]
+        for job in jobs:
+            for step in job.get("steps", []):
+                script = step.get("run", "")
+                assert "${{ inputs." not in script and "${{ github.event." not in script, (path.name, script)
+                if path.name == "action.yml":
+                    assert "${{" not in script, script
+
+
 def test_action_declares_its_inputs_and_runs_the_engine():
     text = (ROOT / "action.yml").read_text(encoding="utf-8")
     for name in ("paths", "group", "checks", "suite", "fail-on", "profile", "vixl-version", "compare-base", "changed-only", "proof",

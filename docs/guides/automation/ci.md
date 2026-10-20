@@ -49,6 +49,12 @@ jobs:
           sarif: true             # findings in the Security tab and on the pull request
 ```
 
+A tag such as `v0.27.0` is easy to read but can be moved to other code. For a pin nothing can change, use the
+release's full commit SHA with the version in a comment, `uses: jxburros/Vixl@<40-character-sha>  # v0.27.0`, and
+let Dependabot (`package-ecosystem: github-actions`) propose updates. The action itself pins `setup-python`,
+`upload-artifact` and `upload-sarif` by commit SHA, and passes every input to its scripts through environment
+variables, never by pasting `${{ inputs.* }}` into a shell line.
+
 ## Inputs
 
 | Input | Default | Meaning |

@@ -2,7 +2,7 @@
 
 Use the canonical operation schema for CLI, Python, REST and MCP changes. Keep historical spellings in `normalize.py`; aliases must validate and execute through the same implementation as their canonical operation. New operations need a short description, typed and described fields, and regression coverage of their public behavior.
 
-Run `pytest -q` and build the distributions before submitting a release change. Keep the package, plugin manifests and versioned installation URLs synchronized; document user-visible changes in `CHANGELOG.md`. Release automation publishes only after Linux and Windows verification and installer checks succeed. See [the release process](docs/reference/releases.md).
+Run `pytest -q` and build the distributions before submitting a release change. Keep the package, plugin manifests and versioned installation pins (`vixl-engine==X.Y.Z`) synchronized; document user-visible changes in `CHANGELOG.md`. Release automation publishes only after Linux and Windows verification and installer checks succeed, and only after a maintainer approves the publish job in the protected `release` environment. Pin every GitHub Action by full commit SHA (`scripts/check_workflow_pins.py` checks) and pass `${{ }}` values to `run:` scripts through `env:`. See [the release process](docs/reference/releases.md).
 
 Opening the repository in an MCP client starts `vixl mcp --workspace .` from `.mcp.json`, which creates the workspace settings folder `.vixl/` (rolls and variety settings) at the root. It is git-ignored, and the tests and `vixl convert` skip it; delete it whenever you like.
 
