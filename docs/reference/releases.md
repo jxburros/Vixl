@@ -137,6 +137,32 @@ Each release gets a `CHANGELOG.md` section, written as an edit pass over the ent
 
 `tests/test_docs_coverage.py` checks the first two rules on released sections.
 
+### Dependencies
+
+- `pydantic` is declared (`>=2.11,<3`): the MCP modules import it directly. The floor is what `mcp>=1.21.1` itself
+  requires (2.12 on Python 3.14); the `minimum-versions` CI job installs the lowest declared versions to keep every
+  floor true.
+- `shapely` stays a required dependency. Vector boolean operations, path splitting, outline strokes and scatter are
+  part of the create/apply loop, and an optional extra would turn them into `missing_dependency` errors. It is
+  imported inside the functions that use it, so start-up and plain rendering do not load it;
+  `tests/test_dependencies.py` keeps it that way.
+- The wheel stays under 8 MB (a CI step fails above that) and the source distribution under 15 MB. The sdist carries
+  `tests/`, `docs/`, `skills/` and `CHANGELOG.md`, because tests read them; media and showcases live in VixlExamples.
+- A `uv.lock` for the development environment is not committed yet (open; it overlaps render reproducibility).
+
+### Release rhythm and soak
+
+- Pull requests stay near 800 changed lines and soak before merging (see CONTRIBUTING.md, "Change size and release
+  rhythm"). `pr-size.yml` warns about size; `pr-hygiene.yml` warns about authorship trailers. Both are advisory.
+- Cut releases on a steady cadence, weekly at most while the surface is moving, rather than after a large pile of
+  unreleased changes.
+- Before a stable tag, let a candidate soak for at least 48 hours: build the distributions and the `.mcpb` from the
+  candidate commit, install them and run the packaging tests and `test_native_*` scripts against the installed
+  bundle. A release candidate may be published to TestPyPI first.
+- A breaking release opens with `### Upgrading from X.Y` (see [release notes](#release-notes)).
+- Open maintainer decisions: requiring approval through a GitHub Environment for `release.yml`, branch protection
+  with a required review, and CODEOWNERS for `fetch.py`, `interfaces.py`, `updater*`, `distribution/` and `.github/`.
+
 ## Python and agent bundles
 
 `.github/workflows/pypi.yml` builds and tests wheels/source distributions and agent bundles.
