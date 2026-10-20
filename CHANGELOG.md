@@ -27,6 +27,9 @@
   passing a function as `check` is an error that names `validator=`.
 - **Several defaults draw differently** (review findings, glows and shadows, dash fitting, tracked text): each entry
   under Behaviour changes below names its override.
+- **Production `checks` has one shape (breaking).** Each result's `checks` is now `{"suites": {name: suite report},
+  "design": report or null, "placeholders": report or null}`; suite reports used to sit beside `design` and
+  `placeholders` under their own names. Read `checks["suites"][name]` where you read `checks[name]`.
 
 ### Documentation layout
 
@@ -118,6 +121,22 @@
 
 ### Fixed and added
 
+- **Suites run per page no longer ask for review of layers on other pages (#702).** Over `pages`, every rule ran on
+  every page, and a rule about a page-2 layer read as `needs_review` ("Layer 'series' does not exist") on page 1, so a
+  clean booklet looked unfinished. A rule whose layer is missing from a page but exists on another page or a master is
+  now `not_applicable` there (`reason: "layer on another page"`, the `layers` it missed); it counts towards no tally,
+  waiver, outcome, JUnit failure or SARIF finding (JUnit marks it skipped). A name that exists nowhere stays
+  `needs_review`. `check` with `targets` over `pages` leaves a target on another page out for that page and lists it
+  under the variant's `skipped_targets` instead of raising.
+- **Withheld production outputs are reported (#701).** `quality: "final"` still implies the `final` check profile,
+  which fails on review findings, and a held output is still not written, but the run no longer leaves an empty
+  folder unexplained: the report and `production.json` gain `withheld` (count, effective profile and `fail_on`, the
+  held variants and the rules that blocked most often) and a `message` that says what to do.
+- **A label whose box overhangs its button is not an overlap (#701).** `overlap.text-object` skipped text only when
+  the other layer's box held the text's box, so a centred label in a wide text box over a narrower button was a
+  warning. Text over a shape or image painted beneath it is now skipped when at least 98% of its glyph pixels land on
+  that layer; text crossing part of a button, or covered by a layer above it, is still reported. Craft backtest and
+  house-style eval unchanged.
 - **A timeline with `loop: 1` plays once.** GIF, WebP and APNG timeline exports played it twice: the encoders
   read `loop` as repetitions after the first play while the timeline, its checks and the docs count plays. A
   timeline's `loop` is now the number of plays in every format (GIF writes no NETSCAPE block for one play, and

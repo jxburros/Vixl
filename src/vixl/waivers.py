@@ -277,7 +277,7 @@ def apply_suite(project, report, suite_name=None, now=None):
     if not entries:
         return report
     for result in report["results"]:
-        if result["status"] == "passed":
+        if result["status"] in ("passed", "not_applicable"):
             continue
         found = [entry for entry in entries if entry["record"]["rule"] == result["id"]]
         active = [entry for entry in found if not entry["expired"]]

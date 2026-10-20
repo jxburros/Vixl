@@ -204,6 +204,21 @@ def region_box(project, region):
     return x, y, w, h
 
 
+# Rule kinds whose ``target`` is a glob or a container query rather than one layer.
+_PATTERN_TARGETS = {"count", "container", "design", "palette", "assert", "budget", "text"}
+
+
+def rule_layers(rule):
+    """The layer names a rule references: ``target``, ``before``, ``after``, ``to`` (unless it is the canvas) and
+    ``targets``."""
+    names = [rule.get(key) for key in ("before", "after", "to")]
+    if rule.get("kind") not in _PATTERN_TARGETS:
+        names.append(rule.get("target"))
+    targets = rule.get("targets")
+    names += targets if isinstance(targets, list) else []
+    return [name for name in dict.fromkeys(names) if isinstance(name, str) and name != "canvas"]
+
+
 def rule_result(project, rule):
     from .render import resolved_layers, resolve_layout
 
@@ -707,6 +722,7 @@ def run_suite(project, suite, *, variables=None, artboard=None, mode=None, page=
     ``variant`` and ``groups`` gives each variant's status."""
     from .coverage import coverage_record, label, public, requested, variants
     from .design_render import artboard_project
+    from .pages import on_other_page
     from .render import view_page
     from .timeline import project_at
 
@@ -725,18 +741,26 @@ def run_suite(project, suite, *, variables=None, artboard=None, mode=None, page=
     for combo in combos:
         view = view_page(project, combo["page"]) if combo["page"] is not None else project
         candidate = artboard_project(view.clone(), combo["artboard"], combo["comp"], variables)
-        views.append((combo, candidate, _times(candidate, sampling, mode)))
-    total = sum(len(times) for _, _, times in views) * len(suite["rules"])
+        # A rule about a layer on another page does not apply to this one (it is not a finding to review).
+        elsewhere = {rule["id"]: [ref for ref in rule_layers(rule) if on_other_page(project, view, ref)]
+                     for rule in suite["rules"]}
+        views.append((combo, candidate, _times(candidate, sampling, mode), elsewhere))
+    total = sum(len(times) for _, _, times, _ in views) * len(suite["rules"])
     require(total <= 50000, "Check workload exceeds limit", "resource_limit")
     from .checks import missing_glyphs
 
     results, groups = [], []
-    for combo, candidate, times in views:
+    for combo, candidate, times, elsewhere in views:
         where = {"variant": public(project, combo)} if multi else {}
         start = len(results)
         for time in times:
             frame = candidate if time is None else project_at(candidate, time)
             for rule in suite["rules"]:
+                if elsewhere.get(rule["id"]):
+                    results.append({"id": rule["id"], "status": "not_applicable",
+                                    "severity": rule.get("severity", "error"), "time": time, **where,
+                                    "reason": "layer on another page", "layers": elsewhere[rule["id"]]})
+                    continue
                 try:
                     passed, detail = rule_result(frame, rule)
                     status = "passed" if passed else "needs_review" if passed is None else "failed"
@@ -757,7 +781,7 @@ def run_suite(project, suite, *, variables=None, artboard=None, mode=None, page=
                            "status": "failed" if errors else "needs_review" if review else "passed",
                            "errors": errors, "needs_review": review})
     errors, review = _tally(results)
-    times = views[0][2] if len(views) == 1 else list(dict.fromkeys(t for _, _, ts in views for t in ts))
+    times = views[0][2] if len(views) == 1 else list(dict.fromkeys(t for _, _, ts, _ in views for t in ts))
     from .outcomes import from_suite
     from .waivers import apply_suite
 

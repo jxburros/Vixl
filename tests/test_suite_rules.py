@@ -172,3 +172,50 @@ def test_guide_gives_every_kind_a_test_plan_and_a_testing_guidance():
     found = lookup("testing")
     assert set(found["suite_rules"]) == set(RULE_FIELDS) and "testing" in found["guidance"]
     assert "suite-set" in found["operations"] and "check" in found["workflows"]
+
+
+def booklet():
+    p = Project(400, 300, "white")
+    p.apply([{"type": "page", "action": "add", "name": "page-1"},
+             {"type": "text", "name": "title", "text": "Hello", "size": 32, "x": 20, "y": 20},
+             {"type": "page", "action": "add", "name": "page-2"},
+             {"type": "text", "name": "series", "text": "Series", "size": 32, "x": 20, "y": 20}])
+    return p
+
+
+def test_a_rule_about_a_layer_on_another_page_is_not_applicable_there():
+    p = booklet()
+    suite = {"rules": [{"id": "fit", "kind": "text-fit", "target": "series"},
+                       {"id": "apart", "kind": "relation", "target": "title", "to": "canvas", "position": "inside"}]}
+    report = p.check_suite(suite, pages=["page-1"])
+    assert report["status"] == "passed" and report["needs_review"] == 0
+    fit = next(r for r in report["results"] if r["id"] == "fit")
+    assert fit["status"] == "not_applicable" and fit["reason"] == "layer on another page"
+    assert fit["layers"] == ["series"] and report["outcome"]["validation"] == "passed"
+    every = p.check_suite(suite, pages="all")
+    statuses = {(r["id"], r["variant"]["page"]): r["status"] for r in every["results"]}
+    assert statuses[("fit", "page-2")] == "passed" and statuses[("apart", "page-2")] == "not_applicable"
+    assert every["status"] == "passed" and all(g["status"] == "passed" for g in every["groups"])
+
+
+def test_a_rule_about_a_layer_missing_everywhere_still_needs_review():
+    p = booklet()
+    report = p.check_suite({"rules": [{"id": "fit", "kind": "text-fit", "target": "seires"}]}, pages=["page-1"])
+    assert report["status"] == "needs_review" and report["results"][0]["status"] == "needs_review"
+
+
+def test_a_waiver_does_not_claim_a_not_applicable_result():
+    p = booklet()
+    p.apply([{"type": "waiver", "rule": "fit", "reason": "known"}])
+    report = p.check_suite({"rules": [{"id": "fit", "kind": "text-fit", "target": "series"}]}, pages=["page-1"])
+    assert report["results"][0]["status"] == "not_applicable" and report["passed"]
+
+
+def test_checking_targets_over_pages_skips_a_target_on_another_page():
+    p = booklet()
+    report = p.check(pages=["page-1", "page-2"], targets=["series"])
+    first = next(v for v in report["variants"] if v["page"] == "page-1")
+    assert first["status"] == "not_applicable" and first["skipped_targets"] == ["series"]
+    assert all(issue["variant"]["page"] == "page-2" for issue in report["issues"])
+    with pytest.raises(VixlError):
+        p.check(pages=["page-1"], targets=["seires"])

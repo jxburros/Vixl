@@ -722,11 +722,13 @@ SUMMARIES = {
     "pattern-list": "List built-in and document-defined repeatable textures and patterns.",
     "pattern-check": "Measure edge discontinuity in a pattern tile before repeating it.",
     "check": "Run an attached, inherited or inline check suite (or every one) against the document, optionally over "
-             "every artboard, page and comp; returns passed/failed/needs_review per rule.",
+             "every artboard, page and comp; returns passed/failed/needs_review per rule (not_applicable for a rule "
+             "about a layer on another page).",
     "act": "Apply operations to a candidate, run suites, and commit only when every suite passes.",
     "capture": "Turn the open document into a portable recipe document with typed inputs; writes a new .vixl.",
     "plan": "Expand a production spec into its full variant list without rendering.",
-    "run": "Render every variant of a production spec into a folder, checking suites and resuming if rerun.",
+    "run": "Render every variant of a production spec into a folder, checking suites and resuming if rerun. Each "
+           "result's checks is {suites, design, placeholders}; withheld and message explain outputs held for review.",
     "preview": "Write a draft (640 px) or final PNG of the document, optionally at a timeline time.",
     "library-save": "Save the open document as a reusable component in a library folder.",
     "library-search": "List library components matching a query.",
