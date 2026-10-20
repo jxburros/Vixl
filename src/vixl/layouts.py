@@ -143,6 +143,14 @@ class Builder:
                 if use["seen"] == "distance":
                     self.raised = {role: floor for role, value in self.sizes.items() if value < floor}
                 self.sizes = {role: max(floor, value) for role, value in self.sizes.items()}
+                if "body" in self.raised:
+                    # The minimum flattens caption, body and lead to one size; the roles above body step up
+                    # from the raised body by the scale's ratio, so the poster keeps the hierarchy of the same
+                    # design at social size (a lead line reads as lead, not as body; #680).
+                    for role, step in ROLE_STEPS.items():
+                        stepped = round(self.sizes["body"] * self.ratio**step)
+                        if step > 0 and stepped > self.sizes[role]:
+                            self.sizes[role] = self.raised[role] = stepped
         # The spacing unit: half the body size (craft spacing), scaled by density. A sheet read across a room
         # sets its body at a share of the short side, and spaces it by that body, which the document records
         # too, so the composition check measures the same gaps at every scale (#680). A thumbnail minimum

@@ -501,6 +501,14 @@ fillable form, loop, mandala, flowchart):
 
 ### Behaviour changes
 
+- **Poster type keeps its hierarchy above the raised body (#680).** On a sheet read across a room (an 18×24
+  poster) the use-size minimum raises caption, body and often lead to the same 3% of the short side, so a lead line
+  or subtitle was set at body size and the composition check took stacked lines of one size for siblings (a hero
+  statement's floating subtitle lost its `uneven_rhythm` finding). Layouts now step every role above body up from
+  the raised body by the scale's ratio (lead, subhead, title, headline and display grow on such posters; the raised
+  sizes are recorded in the type scale), so the poster is the same design as at social size. Social, slide and
+  thumbnail minimums, layouts given an explicit `base_size`, and rolled directions (whose larger thumbnail minimum
+  sets minor text on a big sheet) are unchanged.
 - **Creating a document never touches the network.** The rolled font pairing is recorded in
   `design_defaults.fonts` (`pending: true`) and installed by the first batch that sets text, from the font cache
   else Google Fonts, so an empty document embeds no fonts (about 1 KB instead of the pairing's size) and

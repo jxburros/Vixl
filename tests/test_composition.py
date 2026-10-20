@@ -291,22 +291,47 @@ def _poster_layouts():
                   if entry["tier"] != "explicit" and "poster" in entry["purposes"])
 
 
-def _scale_findings(project, name, copy):
+def _scale_findings(project, name, copy, seed):
     from vixl.errors import VixlError
 
     try:
-        project.apply({"type": "layout-apply", "name": name, "seed": 7, **copy})
+        project.apply({"type": "layout-apply", "name": name, "seed": seed, **copy})
     except VixlError as error:  # an example slot this layout leaves out on the canvas
         if error.code != "unused_slot":
             raise
-        project.apply({"type": "layout-apply", "name": name, "seed": 7,
+        project.apply({"type": "layout-apply", "name": name, "seed": seed,
                        **{key: value for key, value in copy.items() if key in error.details["suggestions"]}})
+    return _scale_rules(project)
+
+
+def _scale_rules(project):
     return {f"{x['check']}.{x['code']}" for x in project.check()["issues"]
             if x["check"] == "composition" or x.get("code") == "use-size"}
 
 
-@pytest.mark.parametrize("name", _poster_layouts())
-def test_text_only_layouts_keep_findings_at_poster_scale(name):  # #680
+# The thresholds a finding has to reach to be reported, loosened 3% to tell a finding the poster lost from one
+# that sat on the threshold at social size (where a pixel of rounding moves it either way).
+_REPORT_AT_LEAST = ("dead_band_share", "dead_band_units", "dead_band_gap_ratio", "edge_band_ratio",
+                    "rhythm_ratio", "rhythm_units", "float_units")
+
+
+def _marginal_rules(project, monkeypatch):
+    with monkeypatch.context() as patch:
+        for key in _REPORT_AT_LEAST:
+            patch.setitem(THRESHOLDS, key, THRESHOLDS[key] * 0.97)
+        return _scale_rules(project)
+
+
+# Every text-only poster layout at seed 7, and a sample of them (the ones whose stacked lead, body and caption
+# the poster minimum used to flatten among them) at more seeds.
+_SCALE_SAMPLE = ("asymmetric-note", "big-number", "centered-axis", "event-poster", "hero-statement",
+                 "minimal-mark", "quiet-invitation", "typographic-poster")
+_SCALE_CASES = [(name, 7) for name in _poster_layouts()] + [
+    (name, seed) for seed in (1, 3, 4, 5) for name in _SCALE_SAMPLE]
+
+
+@pytest.mark.parametrize(("name", "seed"), _SCALE_CASES)
+def test_text_only_layouts_keep_findings_at_poster_scale(name, seed, monkeypatch):  # #680
     from vixl.layouts import LAYOUTS
 
     copy = {key: value for key, value in LAYOUTS[name]["examples"].items() if key not in ("image", "images")}
@@ -314,12 +339,16 @@ def test_text_only_layouts_keep_findings_at_poster_scale(name):  # #680
     small = Project.new(width=1080, height=1440, purpose="poster", house_style="off")
     poster = Project.new("poster-18x24", purpose="poster", house_style="off")
     assert small.state["design_defaults"]["purpose"] == "poster"
-    assert _scale_findings(poster, name, copy) >= _scale_findings(small, name, copy)
+    lost = _scale_findings(small, name, copy, seed) - _scale_findings(poster, name, copy, seed)
+    assert not lost - _marginal_rules(poster, monkeypatch)
     short = min(poster.state["canvas"]["width"], poster.state["canvas"]["height"])
     assert not [(layer["name"], layer["size"]) for layer in poster.state["layers"]
                 if layer["type"] in ("text", "rich-text") and layer.get("size") and layer["size"] < 0.03 * short]
+    styles = poster.state["character_styles"]
     # The document records the body the layout set (the checks read it for stages and the spacing unit).
-    assert poster.state["character_styles"]["body"]["size"] >= 0.03 * short
+    assert styles["body"]["size"] >= 0.03 * short
+    # The roles above body step up from the raised body, so lead copy does not read as body copy.
+    assert styles["lead"]["size"] > 1.15 * styles["body"]["size"]
 
 
 def test_a_large_custom_poster_canvas_is_judged_across_a_room():  # #680
