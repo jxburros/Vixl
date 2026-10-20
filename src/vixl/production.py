@@ -11,7 +11,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-from .assets import read_bounded
+from .assets import open_image, read_bounded
 from .assurance import digest
 from .automation import validate_inputs
 from .errors import VixlError, require
@@ -475,7 +475,7 @@ def contact_sheet(directory, report):
     sheet = Image.new("RGB", (800, ((len(results) + 3) // 4) * 180), "#eeeeee")
     draw = ImageDraw.Draw(sheet)
     for i, result in enumerate(results):
-        with Image.open(directory / result["output"]) as image:
+        with open_image(directory / result["output"]) as image:
             image.thumbnail((190, 145))
             x, y = (i % 4) * 200, (i // 4) * 180
             sheet.paste(image.convert("RGB"), (x + 5, y + 5))

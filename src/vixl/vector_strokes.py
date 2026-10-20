@@ -751,7 +751,7 @@ def render(project, layer, size=None, matrix=None):
                 parent, "path", d=path, fill=hex_of((*rgba[:3], 1)), attrib={"fill-opacity": str(rgba[3])}
             )
     image = Image.open(
-        io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode")))
+        io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode"))), formats=["PNG"]
     ).convert("RGBA")
     image.info["vixl_vector_overflow"] = True
     return image

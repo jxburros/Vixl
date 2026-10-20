@@ -54,7 +54,7 @@ uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.27.0.tar.gz vix
 ```
 
 The workspace must exist. The server offers seven tools (`vixl_document`, `vixl_apply`, `vixl_check`,
-`vixl_render`, `vixl_export`, `vixl_reference`, `vixl_job`) in about 7,300 characters of tool list; agents
+`vixl_render`, `vixl_export`, `vixl_reference`, `vixl_job`) in about 7,700 characters of tool list; agents
 look up operation fields and rarer options on demand with `vixl_reference`
 ([MCP tool surface](docs/reference/mcp-toolsets.md)). Use `--tools ai` for a second server with the provider-backed
 tools, or `--http` for Streamable HTTP.

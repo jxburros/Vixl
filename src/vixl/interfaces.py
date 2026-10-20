@@ -597,6 +597,7 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     import functools
 
     from .call_limits import GATE, CallLimits, RestJobs, check_export, detached
+    from .untrusted import mark
 
     require_token(token)
     failures = Failures()
@@ -740,13 +741,13 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     def review():
         from .review import notes
         with session.project() as project:
-            return {"head": project.head, "layers": project.inspect()["layers"],
-                    "history": session.history()["nodes"], **notes(session.path)}
+            return mark({"head": project.head, "layers": project.inspect()["layers"],
+                         "history": session.history()["nodes"], **notes(session.path)})
 
     @app.get("/notes")
     def review_notes():
         from .review import notes
-        return notes(session.path)
+        return mark(notes(session.path))
 
     @app.post("/notes")
     def add_note(body: dict):
@@ -999,11 +1000,12 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
 
     @app.get("/document")
     def document():
-        return session.inspect()
+        return mark(session.inspect())
 
     @app.get("/layers")
     def layers():
-        return session.inspect()["layers"]
+        # A bare list has no room for the key; the header names the same paths.
+        return JSONResponse(session.inspect()["layers"], headers={"X-Vixl-Untrusted": "[].name, [].text"})
 
     @app.post("/operations")
     @limited
@@ -1050,7 +1052,7 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     @limited
     def check(body: dict):
         known_fields(fixed(body), CHECK_FIELDS, "check")
-        return session.check(**body)
+        return mark(session.check(**body))
 
     @app.post("/preview")
     @limited

@@ -578,7 +578,7 @@ def apply_workflow(
                 "or VIXL_ALLOW_SCREEN_CAPTURE=1", "permission_denied")
     result = dispatch(ctx.session, workflow, request, document)
     if workflow in ("film-preview", "video-sample", "audio-analyze"):
-        from PIL import Image as PILImage
+        from .assets import open_image
 
         paths = result.get("images", []) if isinstance(result, dict) else []
         if isinstance(result, dict) and not paths:
@@ -586,7 +586,7 @@ def apply_workflow(
         images = []
         for path in paths[:8]:
             if isinstance(path, str) and path.lower().endswith((".png", ".jpg", ".jpeg", ".webp")):
-                with PILImage.open(ctx.session.resolve(path)) as source:
+                with open_image(ctx.session.resolve(path)) as source:
                     images.append(image(encode_png(source.convert("RGB"), 524288)))
         if images:
             return [result, *images]

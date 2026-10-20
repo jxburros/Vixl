@@ -266,7 +266,7 @@ def render_svg(root, width, height):
         encoded = resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode"),
                     width=width, height=height, skip_system_fonts=True,
                     font_files=[str(Path(__file__).parent / "data" / "DejaVuSans.ttf")])
-        return Image.open(io.BytesIO(encoded)).convert("RGBA")
+        return Image.open(io.BytesIO(encoded), formats=["PNG"]).convert("RGBA")
     except Exception as exc:
         raise VixlError("invalid_svg", f"Cannot render SVG: {exc}") from exc
 

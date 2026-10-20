@@ -7,16 +7,16 @@ from ...animation import ANIMATION_TYPES
 from copy import deepcopy
 import base64
 import json
+import math
 import os
 import time
-import io
 import ipaddress
 from urllib.parse import urlparse
 
 import httpx
 from PIL import Image, ImageOps
 
-from ...assets import add_image, decode, png_bytes, read_bounded
+from ...assets import add_image, decode, open_image, png_bytes, read_bounded
 from ...commands import Parser, dimensions
 from ...errors import VixlError, require
 from ...render import resolve_layout, stored_origin
@@ -222,9 +222,7 @@ class OpenAIProvider(HTTPProvider):
             if request.get("source_image"):
                 files = {"image": ("source.png", base64.b64decode(request["source_image"]), "image/png")}
                 if request.get("mask"):
-                    from io import BytesIO
-
-                    mask = Image.open(BytesIO(base64.b64decode(request["mask"]))).convert("L")
+                    mask = open_image(base64.b64decode(request["mask"])).convert("L")
                     # Vixl uses white=edit. OpenAI uses alpha=0 for editable areas.
                     converted = Image.new("RGBA", mask.size, "white")
                     converted.putalpha(ImageOps.invert(mask))
@@ -703,7 +701,7 @@ class AnthropicProvider:
         self.model = config.get("model", "claude-opus-5-5")
 
     def prepare(self, source):
-        image = Image.open(io.BytesIO(base64.b64decode(source))).convert("RGB")
+        image = open_image(base64.b64decode(source)).convert("RGB")
         scale = min(1.0, self.MAX_EDGE / max(image.size))
         if scale < 1:
             image = image.resize(
@@ -941,6 +939,26 @@ def plan(project, prompt, backend, apply=False, *, detail="full", model=None):
     return {"proposal": ops, "applied": apply, "preview": preview}
 
 
+# Provider metadata a layer's provenance keeps. A provider's payload is untrusted text that later reaches agents in
+# tool results, so only these keys with scalar values survive, each string cut to METADATA_TEXT characters.
+METADATA_KEYS = ("revised_prompt", "prompt_id", "id", "resized_from", "seed", "model")
+METADATA_TEXT = 500
+
+
+def provenance_metadata(metadata):
+    """The allow-listed scalar entries of a provider's ``metadata``; everything else is dropped."""
+    kept = {}
+    if not isinstance(metadata, dict):
+        return kept
+    for key in METADATA_KEYS:
+        value = metadata.get(key)
+        if isinstance(value, str):
+            kept[key] = value[:METADATA_TEXT]
+        elif isinstance(value, bool) or isinstance(value, int) or isinstance(value, float) and math.isfinite(value):
+            kept[key] = value
+    return kept
+
+
 def generate(project, request, backend, name="generated", replace=None):
     from ...operations import execute
     from ...validation import check_state
@@ -959,7 +977,7 @@ def generate(project, request, backend, name="generated", replace=None):
     response = backend.invoke(capability, request)
     require(response.get("image"), "Provider returned no image", "provider_error")
     image = image_response(response["image"], candidate)
-    metadata = dict(response.get("metadata") or {})
+    metadata = provenance_metadata(response.get("metadata"))
     if image.size != (request["width"], request["height"]) and getattr(backend, "fit_output", False):
         # Preset-size services (Gemini aspect ratios, FLUX multiples of 16): fit, and say so.
         metadata["resized_from"] = list(image.size)

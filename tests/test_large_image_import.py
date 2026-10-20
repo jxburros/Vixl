@@ -9,19 +9,26 @@ from vixl import Project, VixlError
 from vixl.image_import import import_image
 from vixl.model import Limits
 
-# Pillow's decompression-bomb guard is lowered so a small file stands in for a 108 MP camera image: the source is
-# 600,000 pixels, more than twice Pillow's cap (its hard error) and twice the document's 300,000-pixel limit.
+# A small file stands in for a 108 MP camera image: the source is 600,000 pixels, twice the document's 300,000-pixel
+# limit. Pillow's own decompression-bomb guard is raised once at import to cover such sources (see
+# test_pillow_guard_covers_a_downsampling_import).
 SIZE = (1000, 600)
 
 
 @pytest.fixture
-def huge(tmp_path, monkeypatch):
+def huge(tmp_path):
     stream = BytesIO()
     Image.new("RGB", SIZE, "#3366cc").save(stream, format="PNG")
     path = tmp_path / "huge.png"
     path.write_bytes(stream.getvalue())
-    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 250_000)
     return path
+
+
+def test_pillow_guard_covers_a_downsampling_import():
+    from vixl.assets import SOURCE_FACTOR
+
+    # A 108 MP camera file under the default 40 MP limit opens; Pillow's 89 MP default would refuse it.
+    assert Image.MAX_IMAGE_PIXELS >= SOURCE_FACTOR * Limits().max_pixels > 108_000_000
 
 
 def project():
@@ -38,7 +45,6 @@ def test_add_with_max_pixels_downsamples_a_source_above_the_limit(huge):
     assert [layer["width"], layer["height"]] == embedded
     assert embedded[0] * embedded[1] <= 100_000 and embedded[0] >= 400
     assert p.image(layer["asset"]).size == tuple(embedded)
-    assert Image.MAX_IMAGE_PIXELS == 250_000  # Pillow's guard is restored
 
 
 def test_add_without_max_pixels_names_the_limit_and_the_remedy(huge):

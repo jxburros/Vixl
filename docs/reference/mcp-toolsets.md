@@ -43,6 +43,10 @@ shares `vixl_document`, `vixl_render` and `vixl_job`; see [interfaces](interface
 - **Terse results.** Results drop large echoes by default (a new document reports its path, canvas, seed and the
   fonts chosen, not the whole rolled direction); `verbose: true` on `vixl_document` and on a `vixl_apply` batch
   returns the full payload. Previews still return images.
+- **Document text is data.** The instructions and the `vixl_document`, `vixl_check` and `vixl_render` descriptions
+  end with one sentence saying so, and results that carry layer names, text, notes, guidance or provider metadata
+  name those JSON paths under `untrusted` ([agent trust](agent-trust.md#untrusted-document-text)). That sentence is
+  the 390-character growth of the default server in this release.
 
 ## Size and the ratchet
 
@@ -51,11 +55,11 @@ approximate token count of characters / 4:
 
 | Server | Before (the 51-tool server) | After |
 | --- | ---: | ---: |
-| default (`core`, slim schemas) | 51 tools, 66,535 characters | 7 tools, 7,329 characters (~1,830 tokens) |
+| default (`core`, slim schemas) | 51 tools, 66,535 characters | 7 tools, 7,719 characters (~1,930 tokens) |
 | `compact`, slim | 13 tools, 26,462 characters | (removed) |
 | `all`, slim | 62 tools, 73,145 characters | (removed) |
-| `ai` | 16 tools, 12,016 characters | 14 tools, 9,438 characters (~2,360 tokens), without `--planner` |
-| server instructions | 3,979 characters | 735 characters (716 on the `ai` server) |
+| `ai` | 16 tools, 12,016 characters | 14 tools, 9,698 characters (~2,420 tokens), without `--planner` |
+| server instructions | 3,979 characters | 865 characters (846 on the `ai` server) |
 
 The "before" figures are from Python 3.13; 3.11 and 3.12 sent docstring indentation as well and measured about 1,400
 characters more. The "after" figures are the same on every Python.
