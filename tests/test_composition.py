@@ -1,6 +1,8 @@
 """The composition check family (craft plan 2a and 2c): dead bands, margin drift, uneven rhythm, crowding and
 clumped scatter as review findings, on by default and failing the final profile unless waived."""
 
+import pytest
+
 from vixl import Project
 from vixl.checks import CHECKS
 from vixl.composition import CODES, THRESHOLDS
@@ -280,3 +282,50 @@ def test_a_small_block_floating_midway_is_uneven_rhythm_and_repairable():
 def test_evenly_spaced_lines_of_one_kind_do_not_float():
     p = doc(text("title", 100, 80, size=96), *lines("a", "b", "c", "d", start=330, step=150))
     assert not [x for x in found(p) if x["code"] == "uneven_rhythm"]
+
+
+def _poster_layouts():
+    from vixl import house_style
+
+    return sorted(name for name, entry in house_style.data()["taste"]["layouts"].items()
+                  if entry["tier"] != "explicit" and "poster" in entry["purposes"])
+
+
+def _scale_findings(project, name, copy):
+    from vixl.errors import VixlError
+
+    try:
+        project.apply({"type": "layout-apply", "name": name, "seed": 7, **copy})
+    except VixlError as error:  # an example slot this layout leaves out on the canvas
+        if error.code != "unused_slot":
+            raise
+        project.apply({"type": "layout-apply", "name": name, "seed": 7,
+                       **{key: value for key, value in copy.items() if key in error.details["suggestions"]}})
+    return {f"{x['check']}.{x['code']}" for x in project.check()["issues"]
+            if x["check"] == "composition" or x.get("code") == "use-size"}
+
+
+@pytest.mark.parametrize("name", _poster_layouts())
+def test_text_only_layouts_keep_findings_at_poster_scale(name):  # #680
+    from vixl.layouts import LAYOUTS
+
+    copy = {key: value for key, value in LAYOUTS[name]["examples"].items() if key not in ("image", "images")}
+    # The same 3:4 page at social and at poster scale, so only the scale differs.
+    small = Project.new(width=1080, height=1440, purpose="poster", house_style="off")
+    poster = Project.new("poster-18x24", purpose="poster", house_style="off")
+    assert small.state["design_defaults"]["purpose"] == "poster"
+    assert _scale_findings(poster, name, copy) >= _scale_findings(small, name, copy)
+    short = min(poster.state["canvas"]["width"], poster.state["canvas"]["height"])
+    assert not [(layer["name"], layer["size"]) for layer in poster.state["layers"]
+                if layer["type"] in ("text", "rich-text") and layer.get("size") and layer["size"] < 0.03 * short]
+    # The document records the body the layout set (the checks read it for stages and the spacing unit).
+    assert poster.state["character_styles"]["body"]["size"] >= 0.03 * short
+
+
+def test_a_large_custom_poster_canvas_is_judged_across_a_room():  # #680
+    # No named size: the poster purpose's distance rule (3% of the short side, 81 px here) still applies.
+    p = Project.new(width=2700, height=3600, purpose="poster", house_style="off")
+    p.apply({"type": "text", "name": "note", "text": "Doors at seven", "x": 200, "y": 200, "size": 70, "color": "#111111"})
+    [finding] = [x for x in p.check()["issues"] if x.get("code") == "use-size"]
+    assert finding["use"]["seen"] == "distance" and finding["use"]["source"] == "purpose poster"
+    assert finding["needed_size"] >= 81

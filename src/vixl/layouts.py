@@ -127,6 +127,8 @@ class Builder:
                                     short * rule("minimum_text")["minor_share_of_short_side"]
                                     if purpose in ("social", "poster") else 0))
             self.sizes = {role: max(minimum, value) for role, value in self.sizes.items()}
+        # Roles a poster's distance minimum raised, which the document records as its type scale (#680).
+        self.raised = {}
         if "base_size" not in op:
             # Minor text is set at least as large as the legibility check's use size asks of a regular face
             # (a cover at 120 px, a projected slide, a poster across a room); an explicit base_size wins.
@@ -138,9 +140,15 @@ class Builder:
             if use:
                 scale, least, _ = use_scale(c, use)
                 floor = math.ceil(least / scale * fit)
+                if use["seen"] == "distance":
+                    self.raised = {role: floor for role, value in self.sizes.items() if value < floor}
                 self.sizes = {role: max(floor, value) for role, value in self.sizes.items()}
-        # The spacing unit: half the body size (craft spacing), scaled by density.
-        self.unit = spacing_unit(base * DENSITY_SPACING[density])
+        # The spacing unit: half the body size (craft spacing), scaled by density. A sheet read across a room
+        # sets its body at a share of the short side, and spaces it by that body, which the document records
+        # too, so the composition check measures the same gaps at every scale (#680). A thumbnail minimum
+        # (which on a wide banner is large next to the height) raises the type but not the spacing.
+        body = self.sizes["body"] if "body" in self.raised else base
+        self.unit = spacing_unit(body * DENSITY_SPACING[density])
         direction = op.get("direction") or {}
         # Corners follow the rolled direction, else the document's stored direction, else the house corner.
         self.corner = direction.get("corner") if direction.get("corner") in CORNERS else corner_style(project)
@@ -473,10 +481,8 @@ class Builder:
         self.created.append(layer)
         return (round(x), round(y), w, h)
 
-    def button(self, label, x, y, align=None, name="cta", fill="@accent", ink="@on-accent"):
-        if not label:
-            return (x, y, 0, 0)
-        align = align or self.align
+    def _button_box(self, label):
+        """``(w, h, pad_x, pad_y, style)`` of the button ``label`` gets."""
         size = self.sizes["body"]
         tw, th = self.measure(label, size, None, 0, "left", self.font)
         # A layout's own button style wins; then a direction that rolled a pill; otherwise the
@@ -484,7 +490,18 @@ class Builder:
         style = self.layout.get("button") or ("pill" if self.cta_style == "pill" else None)
         # A pill's round ends need more room beside the label than square corners do.
         pad_x, pad_y = round(size * (1.4 if style == "pill" else 1.1)), round(size * 0.6)
-        w, h = tw + 2 * pad_x, th + 2 * pad_y
+        return tw + 2 * pad_x, th + 2 * pad_y, pad_x, pad_y, style
+
+    def button_size(self, label):
+        """``(w, h)`` of the button ``label`` would get, without placing it."""
+        return self._button_box(label)[:2] if label else (0, 0)
+
+    def button(self, label, x, y, align=None, name="cta", fill="@accent", ink="@on-accent"):
+        if not label:
+            return (x, y, 0, 0)
+        align = align or self.align
+        size = self.sizes["body"]
+        w, h, pad_x, pad_y, style = self._button_box(label)
         if align == "center":
             x = x - w / 2
         elif align == "right":
@@ -495,6 +512,44 @@ class Builder:
         self.add({"type": "text", "name": self.name(name), "text": label, "size": size, "color": ink, "x": round(x + pad_x), "y": round(y + pad_y), **({"font": self.font} if self.font else {})})
         self.created.append(self.name(name))
         return (round(x), round(y), round(w), round(h))
+
+    def footer(self, cta, caption, push=0):
+        """Place the CTA button and the caption on the bottom margin without letting them share rows (#710):
+        side by side (button left, caption right-aligned beside it) when the caption's line fits next to the
+        button, otherwise stacked with the caption on the bottom row, lined up under the button. ``push`` moves
+        the whole footer down (copy that ran long). Returns the footer's top edge."""
+        bw, bh = self.button_size(cta)
+        line_w = self.measure(caption, self.sizes["caption"], None, 0, "right", self.font)[0] if caption else 0
+        beside = cta and caption and bw + self.unit * 4 + line_w <= self.cw
+        # Placed at y 0, then moved once the caption's real height (its stage font, a date highlight) is known.
+        start = len(self.ops)
+        self.button(cta, self.L, 0, align="left")
+        middle = len(self.ops)
+        width = self.cw - bw - self.unit * 4 if beside else self.cw
+        _, _, _, ch = self.text("caption", caption, self.R - width, 0, width, name="caption", color="@muted",
+                                align="left" if cta and not beside else "right")
+        if beside:
+            row = max(bh, ch)
+            top = self.B - row + push
+            button_y, caption_y = top + (row - bh) / 2, top + (row - ch) / 2
+        else:
+            caption_y = self.B + push - ch
+            top = button_y = caption_y - (bh + self.unit * 2 if caption else bh) if cta else caption_y
+        for index in range(start, len(self.ops)):
+            op = self.ops[index]
+            if "y" in op:
+                op["y"] = round(op["y"] + (button_y if index < middle else caption_y))
+        return top
+
+    def footer_height(self, cta, caption):
+        """Height ``footer`` would take, measured by placing it and taking it back."""
+        if not (cta or caption):
+            return 0
+        ops, created, highlighted = len(self.ops), len(self.created), self.highlighted
+        top = self.footer(cta, caption)
+        del self.ops[ops:], self.created[created:]
+        self.highlighted = highlighted
+        return self.B - top
 
     def clearance(self, device):
         """Room a footer rule keeps above the copy: one spacing unit above the rule, so the last row
@@ -1084,7 +1139,9 @@ def _product_card(b):
 
 def _event_poster(b):
     b.background()
-    bottom = b.B - (b.sizes["body"] * 3.2 if b.get("cta") or b.get("caption") else 0)
+    cta, caption = b.get("cta"), b.get("caption")
+    footer = b.footer_height(cta, caption)
+    bottom = b.B - (footer + b.unit * 4 if footer else 0)
     ops, created = len(b.ops), len(b.created)
     # Grow the type on large formats until the content fills the page, keeping the last fit.
     previous = 1.0
@@ -1097,7 +1154,7 @@ def _event_poster(b):
                 y = _event_details(b, previous)
             break
         previous = grow
-    spare = bottom - y - b.unit * 4
+    spare = bottom - y - (0 if footer else b.unit * 4)  # the footer reserve already keeps its gap
     if spare > b.ch * 0.15:
         # Headline at the top, the facts at the foot: move the date and details down together.
         heading = next(i for i in range(ops, len(b.ops)) if b.ops[i].get("name") == b.name("headline"))
@@ -1105,10 +1162,9 @@ def _event_poster(b):
             if "y" in op:
                 op["y"] = round(op["y"] + spare)
         y += spare
-    if b.get("cta"):
-        b.button(b.get("cta"), b.L, max(y + b.unit * 4, b.B - b.sizes["body"] * 2.4), align="left")
-    if b.get("caption"):
-        b.text("caption", b.get("caption"), b.L, b.B - b.sizes["caption"] * 1.3, b.cw, name="caption", color="@muted", align="right")
+    if footer:
+        # Copy too long for the page pushes the footer down rather than under the details.
+        b.footer(cta, caption, push=max(0, y + b.unit * 4 - (b.B - footer)))
 
 
 def _event_details(b, grow):
@@ -2216,6 +2272,10 @@ def _build(project, layout, op, seed, fit):
     for role in ROLES:
         execute(project, {"type": "swatch", "name": role, "color": builder.colors[role]})
     execute(project, {"type": "type-scale", "base": round(builder.base, 2), "ratio": builder.ratio})
+    # Roles a poster's distance minimum raised keep the size the layout sets them at, so the document's body
+    # (which the checks read for text stages and the spacing unit) is the body on the page (#680).
+    for role, size in builder.raised.items():
+        execute(project, {"type": "style-define", "name": role, "kind": "character", "settings": {"size": size}})
     layout["build"](builder)
     column_ops = [item for item in builder.ops if item["type"] == "grid" and item.get("kind", "columns") == "columns"]
     columns = column_ops[0].get("columns", 1) if column_ops else (2 if "column" in op["name"] or "split" in op["name"] else 1)
