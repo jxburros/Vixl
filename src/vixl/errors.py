@@ -107,6 +107,16 @@ def _missing_folder(filename):
         return None
 
 
+def _inside(folder, root):
+    """``folder`` relative to ``root`` when it lies inside, else None (a message never names folders outside)."""
+    from pathlib import Path
+
+    try:
+        return Path(folder).resolve().relative_to(Path(root).resolve()).as_posix()
+    except (ValueError, OSError, RuntimeError):
+        return None
+
+
 def friendly(exc, relative_to=None, filename=None):
     """A VixlError for an exception raised by the OS, the JSON decoder or Python itself, with a message a person
     can act on instead of a Python repr. VixlErrors pass through. ``relative_to`` (a workspace) shows the file
@@ -121,8 +131,8 @@ def friendly(exc, relative_to=None, filename=None):
         name = filename if filename is not None else shown_path(name, relative_to)
     if isinstance(exc, FileNotFoundError):
         folder = _missing_folder(getattr(exc, "filename", None))
-        if name and folder is not None:
-            shown = shown_path(folder, relative_to) if relative_to is not None else folder
+        shown = folder if folder is None or relative_to is None else _inside(folder, relative_to)
+        if name and shown:
             return VixlError("not_found", f"No such file: {name} (the folder {shown} does not exist)", field="path")
         return VixlError("not_found", f"No such file: {name}" if name else "No such file")
     if isinstance(exc, IsADirectoryError):

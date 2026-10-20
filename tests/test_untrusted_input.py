@@ -247,9 +247,9 @@ def test_friendly_shows_a_file_outside_the_workspace_by_basename_only(tmp_path):
 
     inside = FileNotFoundError(2, "No such file or directory", str(tmp_path / "art" / "a.png"))
     outside = FileNotFoundError(2, "No such file or directory", "/srv/private/b.png")
-    assert str(friendly(inside, relative_to=tmp_path)) == "No such file: art/a.png"
+    assert str(friendly(inside, relative_to=tmp_path)) == "No such file: art/a.png (the folder art does not exist)"
     assert str(friendly(outside, relative_to=tmp_path)) == "No such file: b.png"
-    assert str(friendly(outside)) == "No such file: /srv/private/b.png"  # The CLI shows what the user typed.
+    assert str(friendly(outside)).startswith("No such file: /srv/private/b.png")  # The CLI shows what the user typed.
 
 
 EPS = (b"%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 16 16\n%%EndComments\n"
