@@ -53,6 +53,15 @@ rem cmd
 set "PATH=%LOCALAPPDATA%\Programs\Vixl\bin;%PATH%"
 ```
 
+### Install check and slow renders
+
+Check availability first: `vixl --version` (CLI) or call `vixl_document(action='list')` (MCP). Install from
+source with `pip install -e ".[server]"` (Python ≥ 3.11; add the `pdf` extra for PDF import); Windows users use the installer.
+Set `VIXL_NO_UPDATE=1` in automation so the Windows auto-updater never runs mid-task.
+A slow render? `check --checks cost` names the costly layer; `VIXL_PROFILE=1` adds a `render_profile`
+(per-layer times, cache hits) to every result. `vixl cache info|clear` manages the disk render cache
+(`VIXL_RENDER_CACHE=off`, `VIXL_CACHE_MAX_MB`).
+
 ## Documents and inspection
 
 | Command | Effect |

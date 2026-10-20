@@ -5,6 +5,7 @@ import base64
 from copy import deepcopy
 import json
 from pathlib import Path
+import re
 
 import pytest
 from fastapi.testclient import TestClient
@@ -385,6 +386,25 @@ def test_agent_bundles_include_skill_references(tmp_path):
                 config = json.loads(archive.read(".mcp.json"))
                 from vixl import __version__
                 assert config["mcpServers"]["vixl"]["args"][1] == f"vixl-engine=={__version__}"
+
+
+SKILL = Path(__file__).parents[1] / "skills/vixl/SKILL.md"
+
+
+def test_skill_entry_point_stays_small():
+    # Every agent session loads SKILL.md; details belong in references/*.md, which agents open on demand.
+    assert len(SKILL.read_text(encoding="utf-8").encode()) <= 10_500
+
+
+def test_skill_links_only_existing_references():
+    text = SKILL.read_text(encoding="utf-8")
+    linked = set(re.findall(r"\]\((references/[^)#\s]+\.md)", text))
+    assert len(linked) >= 15
+    missing = sorted(path for path in linked if not (SKILL.parent / path).is_file())
+    assert not missing, missing
+    # Every reference file is reachable from the entry point.
+    present = {f"references/{path.name}" for path in (SKILL.parent / "references").glob("*.md")}
+    assert present <= linked, sorted(present - linked)
 
 
 def test_brand_checks_canvas_gradients_and_hidden_required_elements(tmp_path):

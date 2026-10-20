@@ -4,6 +4,7 @@ that points at it."""
 
 import asyncio
 import json
+import re
 from pathlib import Path
 
 from vixl import briefs
@@ -69,12 +70,41 @@ def test_mcp_instructions_and_skill_describe_the_finishing_pass(tmp_path):
     loop = call(mcp_server(workspace=tmp_path), "vixl_reference", {})["start_here"]
     assert loop[-1].startswith("Finishing pass after tests pass")
     skill = (ROOT / "skills/vixl/SKILL.md").read_text(encoding="utf-8")
-    start = skill.index("6. **Finishing pass, then export**")
-    section = skill[start:skill.index("## Tests: why, when and how")]
-    assert 'vixl_reference("finishing")' in section and "max_width=w, max_height=h" in section
+    start = skill.index("6. **Finishing pass, then export.**")
+    section = skill[start:skill.index("## The core loop")]
+    # SKILL.md links the checklist instead of repeating it: the registry is its only copy.
+    assert "vixl_reference('finishing')" in section and "vixl guide finishing" in section
+    assert "max_width=w, max_height=h" in section and 'vixl_check(profile="final")' in section
+    for item in CHECKLIST:
+        assert item not in skill, item
+    # The full loop text (references/workflow.md) keeps the steps in order and also links the checklist.
+    workflow = (ROOT / "skills/vixl/references/workflow.md").read_text(encoding="utf-8")
+    start = workflow.index("6. **Finishing pass, then export**")
+    section = workflow[start:workflow.index("## One call for a new piece")]
+    assert "vixl_reference('finishing')" in section and "max_width=w, max_height=h" in section
     assert section.index("Check composition") < section.index("Critique") < section.index("Fix") \
         < section.index("Look at real size") < section.index("Export")
-    # SKILL.md names the checklist; its items are the ones the registry holds.
-    for item in ("one focal point", "no dead band", "one left edge per column", "the motif names the subject",
-                 "nothing reads as a placeholder"):
-        assert item in section and item in GUIDANCE["finishing"]
+
+
+def checklist_items():
+    """The first clause of each checklist line in the registry ("one focal point", "no dead band" ...)."""
+    text = GUIDANCE["finishing"]
+    body = text[text.index("Craft checklist:"):text.index("\n3) Fix")]
+    return [re.split(r"[:;,]", line[2:])[0].strip() for line in body.splitlines() if line.startswith("- ")]
+
+
+def test_no_doc_reproduces_the_finishing_checklist():
+    items = checklist_items()
+    assert len(items) >= 9 and "one focal point" in items
+    # A doc may name an item or two in passing ("no dead band" is also a composition finding); more is a copy.
+    # The implementation plan quotes issue text and is a record, not guidance.
+    files = [ROOT / "README.md", *ROOT.glob("docs/**/*.md"), *ROOT.glob("skills/**/*.md")]
+    copies = {}
+    for path in files:
+        if path.name == "implementation-plan.md":
+            continue
+        text = " ".join(path.read_text(encoding="utf-8").split())
+        found = [item for item in items if item in text]
+        if len(found) > 2:
+            copies[str(path.relative_to(ROOT))] = found
+    assert not copies, copies
