@@ -54,7 +54,7 @@ uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.27.0.tar.gz vix
 ```
 
 The workspace must exist. The server offers seven tools (`vixl_document`, `vixl_apply`, `vixl_check`,
-`vixl_render`, `vixl_export`, `vixl_reference`, `vixl_job`) in about 7,300 characters of tool list; agents
+`vixl_render`, `vixl_export`, `vixl_reference`, `vixl_job`) in about 7,700 characters of tool list; agents
 look up operation fields and rarer options on demand with `vixl_reference`
 ([MCP tool surface](docs/reference/mcp-toolsets.md)). Use `--tools ai` for a second server with the provider-backed
 tools, or `--http` for Streamable HTTP.
@@ -191,7 +191,8 @@ icons, an animated wordmark, usage guidance and editable masters.
 
 Vixl is source-available under the [PolyForm Small Business License 1.0.0](LICENSE): free for
 individuals and for companies with fewer than 100 people and under US$1M (2019) revenue; larger
-companies need a commercial licence from the licensor. Copies of Vixl must carry the licence and
+companies need a commercial licence from the licensor (to ask about one, open an issue or contact
+[@jxburros](https://github.com/jxburros) on GitHub). Copies of Vixl must carry the licence and
 its `Required Notice:` lines. If Vixl helped make your work, please credit it ("Made with Vixl").
 
 Bundled assets keep their own terms: DejaVu Sans ([font licence](src/vixl/data/FONT-LICENSE.txt)), the Noto Sans,

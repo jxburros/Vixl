@@ -178,8 +178,11 @@ def install_rolled_pairing(project, defaults):
     def refuse(request):
         raise httpx.ConnectError("offline", request=request)
 
+    from .fetch import offline
+
     attempts = [lambda: httpx.Client(transport=httpx.MockTransport(refuse))]
-    if mode != "cache" and not _offline:
+    network_off = offline()
+    if mode != "cache" and not _offline and not network_off:
         attempts.append(network_client)
     error = None
     for connect in attempts:
@@ -199,13 +202,18 @@ def install_rolled_pairing(project, defaults):
         return {"pairing": pairing, "installed": False, "reason": "not in the font cache and the download failed",
                 "warning": f"Fonts were not installed: {error}. Later documents in this session will not retry "
                            "the network.", "next_step": hint}
-    reason = "not in the font cache" + ("" if mode == "cache" or _offline else f" ({error})")
+    reason = "not in the font cache" + (" and VIXL_OFFLINE=1" if network_off and mode != "cache" else
+                                        "" if mode == "cache" or _offline else f" ({error})")
     return {"pairing": pairing, "installed": False, "reason": reason, "next_step": hint}
 
 
 def network_client():
     """The client for automatic downloads: a short connect timeout keeps an offline creation fast."""
     import httpx
+
+    from .fetch import network_allowed
+
+    network_allowed("Automatic font download")
 
     return httpx.Client(timeout=httpx.Timeout(20, connect=CONNECT_TIMEOUT), follow_redirects=False,
                         headers={"User-Agent": "vixl"})

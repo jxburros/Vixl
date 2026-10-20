@@ -398,6 +398,10 @@ def fetch_font(family, weight=400, italic=False, *, client=None, source=None):
     axis = f"ital,wght@1,{weight}" if italic else f"wght@{weight}"
     url = f"{CSS_API}?family={quote_plus(family)}:{axis}"
     own = client is None
+    if own:  # A caller's client is the caller's to gate (creation.network_client, or an offline stub).
+        from .fetch import network_allowed
+
+        network_allowed(f"Downloading {family} from Google Fonts")
     client = client or httpx.Client(timeout=30, follow_redirects=False, headers={"User-Agent": "vixl"})
     try:
         css = _get(client, url).decode("utf-8", "replace")

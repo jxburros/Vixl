@@ -1,0 +1,27 @@
+name: Pull request hygiene
+# Advisory: warns about authorship trailers (CONTRIBUTING.md forbids them) and never fails the pull request.
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  trailers:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Look for authorship trailers
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          pattern='^(Co-Authored-By|Claude-Session):'
+          found=0
+          if git log --format=%B "$BASE..$HEAD" | grep -i -E "$pattern"; then found=1; fi
+          if printf '%s\n' "$BODY" | tr -d '\r' | grep -i -E "$pattern"; then found=1; fi
+          if [ "$found" = 1 ]; then
+            echo "::warning title=Authorship trailer::Commits or the description carry Co-Authored-By or Claude-Session lines. Install scripts/hooks/commit-msg to strip them (see CONTRIBUTING.md)."
+          fi

@@ -95,7 +95,7 @@ def video_sample(source, output, *, times=None, interval=None, start=0, end=None
         data = run(["ffmpeg", "-v", "error", "-ss", str(time / 1000), "-i", str(source), "-frames:v", "1",
                     "-vf", f"scale={width}:{width}:force_original_aspect_ratio=decrease", "-f", "image2pipe", "-vcodec", "png", "pipe:1"])
         require(data, "No video frame at requested time", "codec_error")
-        frames.append(Image.open(io.BytesIO(data)).convert("RGB"))
+        frames.append(Image.open(io.BytesIO(data), formats=["PNG"]).convert("RGB"))
     if contact_sheet:
         require(output.suffix.lower() == ".png", "Contact sheet output must be PNG")
         columns = min(4, len(frames))

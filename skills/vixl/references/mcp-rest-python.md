@@ -180,8 +180,10 @@ Every document tool also accepts `document` (workspace path) to address a docume
 ## REST API
 
 Start: `vixl -p poster.vixl serve [--host 127.0.0.1] [--port 8765]`. OpenAPI docs at `/docs`.
-Non-loopback hosts require a bearer token from `VIXL_API_TOKEN` (or `--token-env NAME`); send
-`Authorization: Bearer …`. One fixed project per server.
+Non-loopback hosts require a bearer token of at least 24 characters from `VIXL_API_TOKEN` (or `--token-env NAME`);
+send `Authorization: Bearer …`. 20 bad tokens from one address within 60 s answer 429 with `Retry-After`. A remote
+bind over plain HTTP warns on stderr: use a TLS proxy or `--tls-cert`/`--tls-key`. `--offline` (`VIXL_OFFLINE=1`)
+refuses URL imports, font downloads and providers with `network_disabled`. One fixed project per server.
 
 | Route | Body / query | Result |
 | --- | --- | --- |
@@ -193,7 +195,7 @@ Non-loopback hosts require a bearer token from `VIXL_API_TOKEN` (or `--token-env
 | `POST /measure` | `{"point":[x,y]}` / `{"region":[…],"foreground":…}` / `{"target":…}` | Measurements |
 | `POST /spacing` | same keys as `vixl_check(action='spacing')` | Spacing report |
 | `POST /validate` | `{"profile":…,"rules":[…]}` | Checks |
-| `POST /check` | same keys as `vixl_check` | Design issues |
+| `POST /check` | same keys as `vixl_check`; `sample` is `"worst"` or a workspace CSV path; unknown keys are a 400 | Design issues |
 | `POST /preview` | `{"max_width":…,"max_height":…,"max_bytes":…,"region":[…],"isolate":[…]}` | PNG |
 | `POST /compose` | vixl_apply(create=…) fields without `path`, `exports` or `operations_path` | Dry run: steps, check findings, `preview_base64` (the server serves one fixed document, so nothing is saved) |
 | `POST /compare` | `{"before":"previous","after":"head","mode":"side-by-side","isolate":[…]}` | Summary + `image_base64` |
@@ -214,8 +216,9 @@ Non-loopback hosts require a bearer token from `VIXL_API_TOKEN` (or `--token-env
 | `GET /timeline` · `GET /timeline/frame?time=1.5s` | | Tracks · PNG frame |
 | `POST /timeline/export` | `{"format":"gif","fps":15,"scale":0.5}` | Animation bytes |
 
-Errors: HTTP 400 with `{"error":CODE,"message":…}` (401 without the token, 403 for `forbidden`, 413 for oversized
-bodies and `limit_exceeded`, 429 with `Retry-After` for `max_concurrent`).
+Errors: HTTP 400 with `{"error":CODE,"message":…}` (401 without the token, 403 for `forbidden`, 404 for a missing
+workspace file, 413 for oversized bodies and `limit_exceeded`, 429 with `Retry-After` for `max_concurrent` or
+repeated bad tokens).
 `path`/`linked` operation fields are rejected and `font` takes only a registered name or role, as with MCP.
 
 ```bash

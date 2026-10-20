@@ -1,42 +1,64 @@
 """Content-addressed, normalized image assets; imports never execute project content."""
 
-from contextlib import contextmanager
 import hashlib
 import io
 import math
-import threading
 import warnings
 from pathlib import Path
 
 from PIL import Image, ImageOps
 
 from .errors import VixlError, require
+from .model import Limits
 
 
 # A downsampling import may read a source this many times larger than the pixel limit (a 108 MP camera file under the
 # default 40 MP limit) and shrinks it before anything else sees it.
 SOURCE_FACTOR = 4
-_PILLOW_CAP = threading.Lock()
+
+# The decoders Vixl opens image bytes with, the raster formats it imports (docs/reference/coverage.md). Every other
+# Pillow plugin (EPS/PostScript through Ghostscript, PSD, JPEG 2000, the many legacy formats) stays unloaded, so a
+# hostile file cannot reach a decoder Vixl never needed. Multi-picture camera JPEGs (MPO) open through JPEG.
+RASTER_FORMATS = ("PNG", "JPEG", "WEBP", "GIF", "TIFF", "BMP", "AVIF", "ICO")
+_PLUGINS = {"PNG": "PngImagePlugin", "JPEG": "JpegImagePlugin", "WEBP": "WebPImagePlugin", "GIF": "GifImagePlugin",
+            "TIFF": "TiffImagePlugin", "BMP": "BmpImagePlugin", "AVIF": "AvifImagePlugin", "ICO": "IcoImagePlugin"}
+
+# Pillow's decompression-bomb guard is one process-wide number (89 MP by default). It is raised once, here, to the
+# largest source any Limits can read (SOURCE_FACTOR times a full max_dimension square), and never changed at run time;
+# decode and image_size check each image against the caller's own limits right after the header is read.
+PILLOW_PIXEL_CAP = SOURCE_FACTOR * Limits.max_dimension ** 2
+if Image.MAX_IMAGE_PIXELS is not None and Image.MAX_IMAGE_PIXELS < PILLOW_PIXEL_CAP:
+    Image.MAX_IMAGE_PIXELS = PILLOW_PIXEL_CAP
 
 
 def source_limit(limits):
     return limits.max_pixels * SOURCE_FACTOR
 
 
-@contextmanager
-def _pillow_cap(pixels):
-    """Let Pillow open images up to ``pixels`` (its own decompression-bomb guard stops at 89 MP); Vixl's limits check
-    the size right after opening."""
-    if Image.MAX_IMAGE_PIXELS is None or pixels <= Image.MAX_IMAGE_PIXELS:
-        yield
-        return
-    with _PILLOW_CAP:
-        previous = Image.MAX_IMAGE_PIXELS
-        Image.MAX_IMAGE_PIXELS = pixels
-        try:
-            yield
-        finally:
-            Image.MAX_IMAGE_PIXELS = previous
+def _registered(formats):
+    """``formats`` whose Pillow plugin is loaded. Importing each plugin up front matters: ``Image.open`` calls
+    ``Image.init()``, which imports every decoder Pillow ships, as soon as one requested format is unregistered."""
+    import importlib
+
+    ready = []
+    for name in formats:
+        name = name.upper()
+        if name not in Image.OPEN and name in _PLUGINS:
+            try:
+                importlib.import_module(f"PIL.{_PLUGINS[name]}")
+            except ImportError:  # a Pillow build without this codec
+                continue
+        if name in Image.OPEN:
+            ready.append(name)
+    return tuple(ready)
+
+
+def open_image(source, formats=RASTER_FORMATS):
+    """``Image.open`` restricted to ``formats`` (the raster formats Vixl imports by default). ``source`` is encoded
+    bytes, a binary stream or a path. Bytes in any other format raise ``Image.UnidentifiedImageError``."""
+    if isinstance(source, (bytes, bytearray, memoryview)):
+        source = io.BytesIO(source)
+    return Image.open(source, formats=_registered(formats))
 
 
 def too_large(width, height, limits, allowed=None):
@@ -51,9 +73,9 @@ def too_large(width, height, limits, allowed=None):
 def image_size(data, limits):
     """``(width, height)`` of encoded image bytes from the header, after EXIF orientation, without decoding pixels."""
     try:
-        with warnings.catch_warnings(), _pillow_cap(source_limit(limits)):
+        with warnings.catch_warnings():
             warnings.simplefilter("ignore", Image.DecompressionBombWarning)
-            with Image.open(io.BytesIO(data)) as image:
+            with open_image(data) as image:
                 width, height = image.size
                 if image.getexif().get(0x0112, 1) in (5, 6, 7, 8):
                     width, height = height, width
@@ -74,9 +96,9 @@ def decode(data, limits, mode="RGBA", size_hint=None, target_pixels=None):
     require(len(data) <= limits.max_asset_bytes, "Asset exceeds byte limit", "resource_limit")
     allowed = source_limit(limits) if target_pixels else limits.max_pixels
     try:
-        with warnings.catch_warnings(), _pillow_cap(allowed):
+        with warnings.catch_warnings():
             warnings.simplefilter("ignore", Image.DecompressionBombWarning)
-            with Image.open(io.BytesIO(data)) as image:
+            with open_image(data) as image:
                 width, height = image.size
                 if width * height > allowed:
                     raise too_large(width, height, limits, allowed)
@@ -176,9 +198,9 @@ def add_encoded(project, data, category="assets", *, max_pixels=None, placed_siz
         image = image.resize((max(1, math.floor(image.width * ratio)), max(1, math.floor(image.height * ratio))),
                              Image.Resampling.LANCZOS)
     try:
-        with warnings.catch_warnings(), _pillow_cap(source_limit(project.limits)):
+        with warnings.catch_warnings():
             warnings.simplefilter("ignore", Image.DecompressionBombWarning)
-            with Image.open(io.BytesIO(data)) as probe:
+            with open_image(data) as probe:
                 fmt = probe.format
                 frames = getattr(probe, "n_frames", 1)
     except (OSError, ValueError) as exc:

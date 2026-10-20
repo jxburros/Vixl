@@ -358,10 +358,16 @@ def webp_trial(images, durations, loop=0):
         return None
 
 
+# The animation formats Vixl writes; decoded_frames and encoded_frames read only those.
+ANIMATED = ("GIF", "WEBP", "PNG")
+
+
 def decoded_frames(data):
     """RGBA frames and durations of an encoded animation."""
     frames, durations = [], []
-    with Image.open(io.BytesIO(data)) as image:
+    from .assets import open_image
+
+    with open_image(data, ANIMATED) as image:
         for index in range(getattr(image, "n_frames", 1)):
             image.seek(index)
             frames.append(image.convert("RGBA"))
@@ -464,7 +470,9 @@ def fit_encode(images, durations, encode, target, steps, fps, tone_name=None, ca
 
 def encoded_frames(data):
     """``(frame_count, durations)`` of an animated GIF/WebP/APNG as written (the encoder merges identical frames)."""
-    with Image.open(io.BytesIO(data)) as image:
+    from .assets import open_image
+
+    with open_image(data, ANIMATED) as image:
         count = getattr(image, "n_frames", 1)
         durations = []
         for index in range(count):

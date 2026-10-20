@@ -578,7 +578,7 @@ def apply_workflow(
                 "or VIXL_ALLOW_SCREEN_CAPTURE=1", "permission_denied")
     result = dispatch(ctx.session, workflow, request, document)
     if workflow in ("film-preview", "video-sample", "audio-analyze"):
-        from PIL import Image as PILImage
+        from .assets import open_image
 
         paths = result.get("images", []) if isinstance(result, dict) else []
         if isinstance(result, dict) and not paths:
@@ -586,7 +586,7 @@ def apply_workflow(
         images = []
         for path in paths[:8]:
             if isinstance(path, str) and path.lower().endswith((".png", ".jpg", ".jpeg", ".webp")):
-                with PILImage.open(ctx.session.resolve(path)) as source:
+                with open_image(ctx.session.resolve(path)) as source:
                     images.append(image(encode_png(source.convert("RGB"), 524288)))
         if images:
             return [result, *images]
@@ -646,7 +646,7 @@ def check_design(
         document=document, checks=checks, targets=targets, safe_area=safe_area, avoid=avoid,
         thumbnail_width=thumbnail_width, min_thumbnail_text=min_thumbnail_text, min_contrast=min_contrast,
         ink_limit=ink_limit, min_ppi=min_ppi, artboard=artboard, comp=comp, page=page, deck=deck,
-        sample=sample if sample in (None, "worst") else str(session.resolve(sample)), style=style,
+        sample=sample, style=style,
         connect_tolerance=connect_tolerance, repair=repair, offset=offset, limit=limit, profile=profile,
         waivers=waivers,
         **{key: value for key, value in (("artboards", artboards), ("pages", pages), ("comps", comps))

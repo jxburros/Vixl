@@ -107,6 +107,9 @@ class FigmaClient:
         self._download = download
 
     def get(self, route, params=None):
+        from ...fetch import network_allowed
+
+        network_allowed("Figma import")
         try:
             with httpx.Client(transport=self.transport, timeout=TIMEOUT, follow_redirects=False) as client:
                 response = client.get(self.base + route, params=params, headers={"X-Figma-Token": self.token})
@@ -183,7 +186,7 @@ class FigmaClient:
         from ...fetch import fetch_bounded
 
         limit = self.limits.max_asset_bytes if self.limits else 64 * 1024 * 1024
-        return fetch_bounded(url, limit, accept="image/*", label="Figma image")[0]
+        return fetch_bounded(url, limit, accept="image/*", label="Figma image", allow_list=False)[0]
 
 
 # ------------------------------------------------------------------------------------------------ matrix helpers

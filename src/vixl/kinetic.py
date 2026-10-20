@@ -374,7 +374,7 @@ def render_plain(project, layer, layout, placed):
     project.limits.size(w, h)
     root = ET.Element("{http://www.w3.org/2000/svg}svg", attrs)
     append_paths(root, Plan(layout.width, layout.height, paths, layout.box), layer, project, motion=kept)
-    image = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode")))).convert("RGBA")
+    image = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode"))), formats=["PNG"]).convert("RGBA")
     image.info["vixl_vector_overflow"] = True
     return image
 

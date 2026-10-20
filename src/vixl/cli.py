@@ -437,10 +437,27 @@ def mcp_parser():
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8766)
     p.add_argument("--token-env", default="VIXL_API_TOKEN")
+    service_arguments(p)
     from .call_limits import add_arguments
 
     add_arguments(p)
     return p
+
+
+def service_arguments(parser):
+    """Flags shared by ``vixl mcp``, ``serve`` and ``view``: no-network mode and direct TLS."""
+    parser.add_argument("--offline", action="store_true",
+                        help="Turn off every network access (URL imports, font downloads, providers); "
+                        "also VIXL_OFFLINE=1")
+    parser.add_argument("--tls-cert", help="Serve HTTPS with this PEM certificate (with --tls-key)")
+    parser.add_argument("--tls-key", help="The PEM private key for --tls-cert")
+
+
+def service_setup(args):
+    """Apply ``--offline`` for the whole process; return the ``tls`` pair (or None)."""
+    if args.offline:
+        os.environ["VIXL_OFFLINE"] = "1"
+    return (args.tls_cert, args.tls_key) if args.tls_cert or args.tls_key else None
 
 
 def _dispatch(argv):
@@ -779,6 +796,7 @@ def _dispatch(argv):
         from .call_limits import from_arguments
 
         a = mcp_parser().parse_args(args)
+        tls = service_setup(a)
         # Explicit workspaces can start empty. Existing --project configurations still work.
         path = current_path(options.project) if options.project or not a.workspace else None
         server = mcp_server(path, limits, workspace=a.workspace, planner=a.planner, tools=a.tools,
@@ -786,7 +804,7 @@ def _dispatch(argv):
                             allow_screen_capture=a.allow_screen_capture)
         if a.http:
             from .interfaces import serve_mcp
-            serve_mcp(server, a.host, a.port, os.environ.get(a.token_env))
+            serve_mcp(server, a.host, a.port, os.environ.get(a.token_env), tls=tls)
         else:
             server.run()
         return None, options.json
@@ -807,12 +825,13 @@ def _dispatch(argv):
         p.add_argument("--host", default="127.0.0.1")
         p.add_argument("--port", type=int, default=8765)
         p.add_argument("--token-env", default="VIXL_API_TOKEN")
+        service_arguments(p)
         from .call_limits import add_arguments, from_arguments
 
         add_arguments(p)
         a = p.parse_args(args)
         serve(path, a.host, a.port, os.environ.get(a.token_env), limits, open_browser=cmd == "view",
-              call_limits=from_arguments(a))
+              call_limits=from_arguments(a), tls=service_setup(a))
         return None, options.json
     with file_lock(str(path)):
         project = Project.load(path, limits=limits, allow_linked=options.allow_linked)

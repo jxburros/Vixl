@@ -55,6 +55,8 @@ Create `~/.config/vixl/providers.json` (or set `VIXL_PROVIDERS` to another file)
 
 Use environment variables for keys; omit `key_env` for unauthenticated local services. `url_env` can substitute for `url`. `VIXL_AI_PROVIDER` overrides the default. `--provider NAME` selects a provider per command. Six providers work without a config entry once their key is set (`vixl providers` lists them under `supported`): `--provider openai` (`OPENAI_API_KEY`), `--provider gemini` (`GEMINI_API_KEY`), `--provider flux` (`BFL_API_KEY`), `--provider anthropic` (`ANTHROPIC_API_KEY`, or an `ant auth login` profile), and `--provider mistral` (`MISTRAL_API_KEY`) and `--provider meta` (`MODEL_API_KEY`) through their OpenAI-compatible APIs. Automatic1111, ComfyUI and HTTP gateways need a config entry.
 
+A provider URL must use `https://` unless it points at the local machine (`localhost`, `127.0.0.0/8`, `::1`): a plain `http://` URL to any other host would send the key and the document's images in cleartext, so the provider is refused with `provider_not_configured`. For a trusted network where TLS is not available (a GPU box on your LAN, for example), add `"allow_insecure": true` to that provider's entry. The rule covers `url`, `url_env` and the Anthropic provider's `url`. `VIXL_OFFLINE=1` refuses every provider call with `network_disabled`.
+
 The Anthropic provider uses the official `anthropic` SDK: install `vixl-engine[anthropic]` (included in the Windows installer and the `dev` extra). Images are downscaled to at most 1568 px on the long edge before sending, so Claude's pixel coordinates map back exactly to the document. Describe/detect/OCR use JSON-schema structured output. Server-side refusal fallbacks (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`) are enabled by default; set `"fallbacks": false` to disable them, for example on platforms that do not offer them. A request Claude still declines fails with `provider_refused`.
 
 ## Capability matrix
@@ -95,7 +97,7 @@ Generation request:
 {"image":"BASE64_PNG", "provider":"your-service", "model":"your-model", "seed":42, "metadata":{}}
 ```
 
-The returned image must match requested dimensions. Vixl clips inpaint/outpaint layers to the selection mask even if a provider changes protected pixels. The request, returned seed/model, source, mask and metadata are retained for regeneration. Providers should return only provenance in `metadata`, never credentials. Credentials remain environment-only in Vixl's adapters.
+The returned image must match requested dimensions. Vixl clips inpaint/outpaint layers to the selection mask even if a provider changes protected pixels. The request, returned seed/model, source, mask and metadata are retained for regeneration. Providers should return only provenance in `metadata`, never credentials. Vixl keeps only the scalar values of `revised_prompt`, `prompt_id`, `id`, `resized_from`, `seed` and `model` from it, each string cut to 500 characters, and drops every other key: the metadata ends up in tool results that agents read, so it is untrusted text ([agent trust](agent-trust.md#untrusted-document-text)). Credentials remain environment-only in Vixl's adapters.
 
 Vision requests carry `source_image`, width/height, and a `label` for segmentation or a `query` for detection. `/segment` and `/background-remove` return `{"mask":"BASE64_PNG"}` with the exact input dimensions (white = selected foreground). `/describe`, `/detect`, and `/ocr` return a JSON object. Their content is provider-defined.
 

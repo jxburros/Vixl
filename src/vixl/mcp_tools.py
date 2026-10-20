@@ -22,6 +22,7 @@ from .mcp_runtime import Runtime
 from .model import Limits
 from .proxy import preview_png
 from .schema import operation_schema
+from .untrusted import DATA_SENTENCE
 
 
 def compact_json(value):
@@ -205,7 +206,7 @@ INSTRUCTIONS = (
     "purpose) → vixl_apply(operations=[…], check=true) (atomic batches; fields per operation: "
     "vixl_reference('operations', name=[types])) → fix the 'fix' findings → vixl_render() to look → "
     "vixl_export(path). Each tool takes rare parameters in options (vixl_reference(TOOL) lists them per action); "
-    "errors return the fields expected. Pass document= when several documents are open."
+    "errors return the fields expected. Pass document= when several documents are open. " + DATA_SENTENCE
 )
 AI_INSTRUCTIONS = (
     "Provider-backed AI editing for Vixl documents in the configured workspace: generate, inpaint, extend, "
@@ -213,8 +214,10 @@ AI_INSTRUCTIONS = (
     "document= (a .vixl path in the workspace) or uses the document opened with vixl_document(action='open'). Results "
     "are saved at once, so the main Vixl server sees them on its next call. Find layers with vixl_document and check "
     "results with vixl_render. Every tool needs a configured provider (vixl_models_list); if none is configured, say "
-    "so instead of retrying."
+    "so instead of retrying. " + DATA_SENTENCE
 )
+# Tools whose descriptions repeat the data sentence: the ones that return document text.
+DATA_TOOLS = {"vixl_document", "vixl_check", "vixl_render"}
 
 
 def is_ai_tool(name):
@@ -314,7 +317,10 @@ def build_server(session, *, planner=False, tools="default", allow_screen_captur
         defined.add(fn.__name__)
         if selected(fn.__name__):
             # Python 3.13 dedents docstrings, 3.11 and 3.12 do not: clean them so every client gets the same text.
-            server.tool(description=inspect.cleandoc(fn.__doc__ or ""), structured_output=False)(wrapper)
+            description = inspect.cleandoc(fn.__doc__ or "")
+            if fn.__name__ in DATA_TOOLS:
+                description += " " + DATA_SENTENCE
+            server.tool(description=description, structured_output=False)(wrapper)
         return wrapper
 
     @tool

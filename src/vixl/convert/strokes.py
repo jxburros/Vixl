@@ -34,7 +34,7 @@ def engine_model():
     probe = Project(40, 40)
     probe.apply([{"type": "shape", "shape": "rectangle", "x": 0, "y": 0, "width": 40, "height": 40,
                   "fill": "transparent", "stroke": "#000000", "stroke_width": 10}])
-    image = Image.open(io.BytesIO(probe.export(format="PNG"))).convert("RGBA")
+    image = Image.open(io.BytesIO(probe.export(format="PNG")), formats=["PNG"]).convert("RGBA")
     return "flush" if image.getpixel((2, 20))[3] > 128 else "inset"
 
 

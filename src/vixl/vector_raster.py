@@ -77,7 +77,7 @@ def rasterize(svg):
     key = hashlib.blake2b(svg.encode(), digest_size=20).digest()
     image = CACHE.get_image(key)
     if image is None:
-        image = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=svg))).convert("RGBA")
+        image = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=svg)), formats=["PNG"]).convert("RGBA")
         CACHE.put(key, image)
     return image.copy()
 
@@ -89,7 +89,7 @@ def stencil(svg):
     key = b"stencil" + hashlib.blake2b(svg.encode(), digest_size=20).digest()
     mask = CACHE.get_image(key)
     if mask is None:
-        mask = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=svg))).convert("RGBA").getchannel("A")
+        mask = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=svg)), formats=["PNG"]).convert("RGBA").getchannel("A")
         CACHE.put(key, mask)
     return mask
 
