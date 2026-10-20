@@ -276,6 +276,11 @@
   waiver, outcome, JUnit failure or SARIF finding (JUnit marks it skipped). A name that exists nowhere stays
   `needs_review`. `check` with `targets` over `pages` leaves a target on another page out for that page and lists it
   under the variant's `skipped_targets` instead of raising.
+- **Saving can leave out unused fonts and keep undo (#637).** `vixl save --prune-fonts` (Python
+  `save(prune_fonts=True)`, `Project.prune_fonts(dry_run=…)`) unregisters the fonts no revision draws from a layer,
+  role, style, fallback list, master or page, removes them from every revision and drops their files; undo restores
+  the same design. Fonts drawn only in earlier revisions stay until `compact`. It is opt-in, since a font chosen only
+  from outside the document (export-time variables, data rows, recipe inputs, documents that link it) looks unused.
 - **Suite rules can be limited to pages (#702).** A rule's new `pages` field (page names, ids or 1-based numbers,
   like the `pages` coverage axis) runs it only there; on other pages its result is `not_applicable` with
   `reason: "rule limited to pages …"`. Without a page axis the rule follows the current page. A page that does not

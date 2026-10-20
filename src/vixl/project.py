@@ -1009,6 +1009,13 @@ class Project:
 
         return compact(self, fonts=fonts, dry_run=dry_run)
 
+    def prune_fonts(self, *, dry_run=False):
+        """Unregister fonts no revision draws and drop their files, keeping undo history (see
+        ``compaction.prune_fonts``); returns what was dropped. ``save(prune_fonts=True)`` does this as it saves."""
+        from .compaction import prune_fonts
+
+        return prune_fonts(self, dry_run=dry_run)
+
     @memory_guard
     def check_suite(self, suite, **options):
         from .assurance import run_suite
@@ -1093,14 +1100,17 @@ class Project:
         finally:
             self.path = previous
 
-    def save(self, path=None, *, overwrite=False):
+    def save(self, path=None, *, overwrite=False, prune_fonts=False):
         """Write the project. Saving to the file it was loaded from or last saved to always works; any
-        other existing file is refused unless ``overwrite=True`` (as ``vixl new``/``save`` and exports do)."""
+        other existing file is refused unless ``overwrite=True`` (as ``vixl new``/``save`` and exports do).
+        ``prune_fonts=True`` first unregisters fonts no revision draws so their files are left out (opt-in: a
+        font chosen only from outside the document, such as an export-time variable, looks unused here)."""
         from .fileio import file_lock
         from .fileio import temporary
 
         require(path or self.path, "Provide a .vixl project path")
         require(isinstance(overwrite, bool), "overwrite must be true or false", field="overwrite")
+        require(isinstance(prune_fonts, bool), "prune_fonts must be true or false", field="prune_fonts")
         path = Path(path or self.path).resolve()
         require(path.suffix == ".vixl", "Project filenames must end in .vixl")
         require(overwrite or path == self.path or not path.exists(),
@@ -1117,6 +1127,10 @@ class Project:
             # Rebase on a candidate so a refused or failed save leaves this document intact.
             candidate = self.clone() if path != self.path else copy(self)
             candidate._rebase_links(path)
+            if prune_fonts:
+                from .compaction import prune_fonts as prune
+
+                prune(candidate)
             manifest = candidate.manifest()
             manifest.pop("asset_hashes")
             body = json.dumps(manifest, allow_nan=False, separators=(",", ":")).encode()

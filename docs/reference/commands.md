@@ -289,11 +289,21 @@ vixl branches
 vixl compare vivid clean --out comparison.png
 vixl compact --dry-run   # what compacting would drop
 vixl compact             # drop undo history and unused embedded files
+vixl save --prune-fonts  # keep undo history; leave out fonts no revision draws
 ```
 
 Presets save the active/target layer's complete effect stack. Applying one assigns fresh effect IDs and captures the current selection. Branches name movable tips; checkpoints are fixed. Checking out a checkpoint detaches history; create a branch to name subsequent work. Undo/redo moves the current branch tip; alternate history nodes remain available by ID. Transactions allow provisional edits across processes and commit as one undoable history entry. They do not hide provisional state from other clients of the same project.
 
 A document keeps every embedded file that some revision uses, so undo can restore a replaced image or an earlier font pairing; saving drops only files no revision references. `check` reports the files the current design does not use (an `info` finding of the `fonts` check, with `unused_assets`: each file's `asset`, `kind`, `bytes`, and `fonts` for a registered font no text, role or fallback uses). `vixl compact` (MCP `vixl_document(action='compact')`, REST `POST /history/compact`, Python `project.compact()`) is the explicit way to shed them: it discards all undo history, the redo stack, branches and checkpoints, unregisters unused fonts (`--keep-fonts` keeps them), and drops every embedded file the current design does not use. The design does not change. The result lists what went (`revisions_dropped`, `branches_dropped`, `checkpoints_dropped`, `fonts_unregistered`, `assets_dropped` with bytes, `bytes_dropped`); `--dry-run` (`dry_run: true`) reports without changing anything. Nothing compacts implicitly, and an open transaction must be committed or rolled back first.
+
+To shed unused fonts without losing undo, save with `vixl save --prune-fonts` (Python
+`project.save(prune_fonts=True)`, or `project.prune_fonts(dry_run=True)` to see what would go). It unregisters the
+fonts that no revision (the current design, undo and redo history, branches and checkpoints) draws from a layer, role,
+style, fallback list, master or page, removes them from every revision so undo restores the same design, and leaves
+their files out; the CLI result lists them under `pruned` (`fonts_unregistered`, `assets_dropped`, `bytes_dropped`).
+A font drawn only in an earlier revision stays until `compact`. It is opt-in because a font chosen only from outside
+the document (an export-time variable, a data-merge column, a recipe input or a document that links this one) looks
+unused from inside it.
 
 `batch` refuses output collisions and existing destinations, reports each input's result, and exits nonzero if any fail. Earlier successful outputs remain if a later item fails.
 

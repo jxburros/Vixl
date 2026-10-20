@@ -49,7 +49,7 @@ as `check` is an error that names `validator=`. A file an operation cannot read 
 
 `Project.import_image(path=None, *, url=None, data=None, name="image", credit=None, license=None)` embeds an image from a file, bytes or an `https://` URL as a new layer and returns its id, size, bounds, `asset` and `source` (see [Import existing artwork](#import-existing-artwork)).
 
-`Project.save(path=None, *, overwrite=False)` writes the document. Saving to the file it was loaded from or last saved to always works; another existing `.vixl` is refused with `output_exists` unless `overwrite=True`, as `vixl new`, `vixl save` and exports do.
+`Project.save(path=None, *, overwrite=False, prune_fonts=False)` writes the document. Saving to the file it was loaded from or last saved to always works; another existing `.vixl` is refused with `output_exists` unless `overwrite=True`, as `vixl new`, `vixl save` and exports do. `prune_fonts=True` first unregisters fonts no revision draws and leaves their files out, keeping undo history (`Project.prune_fonts(dry_run=True)` reports what would go; see [commands](commands.md)).
 
 `Project.bounds(target, space="canvas")` returns a layer's `(x, y, width, height)` on the canvas, through the groups it is in (the box around a rotated outline), the same as `inspect()`'s `canvas_bounds`; `space="parent"` gives it in its parent group's content coordinates (`resolved_bounds`).
 
