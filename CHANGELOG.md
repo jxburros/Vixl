@@ -154,6 +154,10 @@
 
 ### Fixed and added
 
+- **The watercolor look no longer rims the canvas edge (#698).** A layer reaching the canvas edge got a near-black frame
+  and a blurred block there; sides of an upright layer that reach the canvas now stay open, and the pooled rim is
+  never more than 35% darker than the wash. New watercolor effect field `edges` (`auto`, `shape`, `box`); `box`
+  rims every edge of the layer's box. Watercolor edges look lighter than before.
 - **HTML export resolves variables in title, alt text and caption (#711).** `${name}` in the document title, the page
   description, layer alt text and the hidden caption was written literally; they now use the same values as the image,
   including an export-time `variables=` override and the artboard's visible layers. SVG, PDF, PowerPoint and presenter

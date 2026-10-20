@@ -34,7 +34,7 @@ CLI: `vixl look LAYER NAME [--color C] [--amount A] [--remove]`, `vixl looks` fo
 | `duotone` | two tones of one ink: `color`, else the layer's own hue, else the palette's `@accent`; the ink's own brightness maps back to the ink | raster fallback |
 | `risograph` | one ink (chosen like `duotone`'s) on warm paper with grain; lighter tones print as tints of it | raster fallback |
 | `sketch` | graphite: edge lines and hatching that follows the tone, plus a pencil `stroke` on shapes, text and groups | raster fallback |
-| `watercolor` | a lighter, blotchy wash with pigment pooled in a darker rim inside every edge | raster fallback |
+| `watercolor` | a lighter, blotchy wash with pigment pooled in a darker rim inside every edge (canvas edges stay open; `edges: box` on the effect restores a rim there) | raster fallback |
 | `halftone` | print-style dot screen | raster fallback |
 | `hand-made` | hand-drawn wobble of a vector layer's outlines and line weight (`irregular`, seeded from the layer's name) | native |
 | `plush` | fur tufts along a shape's edge (behind it), inner flicks (above it) and a soft gradient | native |

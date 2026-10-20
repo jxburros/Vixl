@@ -1222,6 +1222,12 @@ def layer_effects(project, layer, bounds, image):
             # Keep the emboss light where it is on an upright layer, however this one is turned:
             # pass the canvas offset of the neighbour it subtracts (down-left) in the layer's frame.
             effect = {**effect, "_light": tuple(np.linalg.solve(frame, [-1.0, 1.0]))}
+        if effect["name"] == "watercolor" and not turned:
+            # The canvas edge is not the edge of the wash: tell the filter which sides of the box reach it.
+            canvas = project.state["canvas"]
+            effect = {**effect, "_open": (bounds[0] <= 0, bounds[1] <= 0,
+                                          bounds[0] + bounds[2] >= canvas["width"],
+                                          bounds[1] + bounds[3] >= canvas["height"])}
         changed = apply_effect(image, effect, project)
         if effect.get("selection"):
             mask = project.image(effect["selection"], "L")

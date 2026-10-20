@@ -91,11 +91,21 @@ def remap(image, coordinates):
     return Image.fromarray(output)
 
 
-def _blur(values, radius, pad=0):
+def _blur(values, radius, pad=0, open_sides=(False, False, False, False)):
     """Gaussian blur of 0-255 values. ``pad`` is the value assumed beyond the edges (Pillow alone
-    repeats the edge pixels, which hides the boundary of a layer that fills its own box)."""
+    repeats the edge pixels, which hides the boundary of a layer that fills its own box). The sides in
+    ``open_sides`` (left, top, right, bottom) repeat the edge pixels instead: the content goes on past them."""
     reach = math.ceil(3 * radius) + 1
     padded = np.pad(np.uint8(np.clip(values, 0, 255) + 0.5), reach, mode="constant", constant_values=pad)
+    left, top, right, bottom = open_sides
+    if left:
+        padded[:, :reach] = padded[:, reach : reach + 1]
+    if right:
+        padded[:, -reach:] = padded[:, -reach - 1 : -reach]
+    if top:
+        padded[:reach] = padded[reach : reach + 1]
+    if bottom:
+        padded[-reach:] = padded[-reach - 1 : -reach]
     blurred = np.asarray(Image.fromarray(padded, "L").filter(ImageFilter.GaussianBlur(radius)), dtype=np.float32)
     return blurred[reach:-reach, reach:-reach]
 
@@ -120,25 +130,28 @@ def pencil_sketch(gray, alpha, radius):
     return Image.fromarray(np.uint8(np.clip(lines * (1 - np.clip(shade, 0, 0.85)), 0, 255) + 0.5)).convert("RGB")
 
 
-def watercolor(rgb, alpha, seed):
+def watercolor(rgb, alpha, seed, open_sides=(False, False, False, False)):
     """A translucent wash: simplified colors lifted toward the paper, pigment pooled in a darker rim
     inside every edge (shape outlines and color boundaries), blotchy density and paper grain. Pixels
-    outside the layer's box count as paper, so a shape that fills its box still gets its rim."""
+    outside the layer's box count as paper, so a shape that fills its box still gets its rim, except
+    on the ``open_sides`` (left, top, right, bottom), where the wash runs on past the box."""
     h, w = rgb.height, rgb.width
     simple = ImageOps.posterize(rgb.filter(ImageFilter.MedianFilter(5)).filter(ImageFilter.SMOOTH_MORE), 4)
     values = np.asarray(simple, dtype=np.float32)
     reach = max(2.0, min(w, h) * 0.035)
     opacity = np.asarray(alpha, dtype=np.float32)
-    rim = np.clip((opacity - _blur(opacity, reach)) / 255 * 2.5, 0, 1)
+    rim = np.clip((opacity - _blur(opacity, reach, open_sides=open_sides)) / 255 * 2.5, 0, 1)
     coverage = opacity / 255
     lum = np.asarray(ImageOps.grayscale(simple), dtype=np.float32) * coverage + 255 * (1 - coverage)
-    rim = np.maximum(rim, np.clip((_blur(lum, reach, pad=255) - lum) / 64, 0, 1) * (coverage > 0))
+    rim = np.maximum(rim, np.clip((_blur(lum, reach, pad=255, open_sides=open_sides) - lum) / 64, 0, 1) * (coverage > 0))
     rng = np.random.default_rng(seed)
     cells = (max(2, h // 24 + 2), max(2, w // 24 + 2))
     blots = Image.fromarray(rng.standard_normal(cells).astype(np.float32), "F").resize((w, h), Image.Resampling.BICUBIC)
     density = 1 + 0.08 * np.asarray(blots, dtype=np.float32)
     wash = values * 0.78 + 255 * 0.22
-    pigment = 255 - (255 - wash) * (density * (1 + 0.9 * rim))[..., None]
+    base = 255 - (255 - wash) * density[..., None]
+    # The pooled rim deepens the pigment, but never to more than 35% below the wash (a dark fill would go black).
+    pigment = np.maximum(255 - (255 - wash) * (density * (1 + 0.9 * rim))[..., None], base * (1 - 0.35 * rim)[..., None])
     paper = rng.integers(-6, 7, (h, w, 1)).astype(np.float32)
     return Image.fromarray(np.uint8(np.clip(pigment + paper, 0, 255) + 0.5))
 
@@ -265,7 +278,9 @@ def artistic_filter(image, effect):
     elif name == "oil-paint":
         result = ImageOps.posterize(mode_colors(rgb, int(amount)), 5)
     elif name == "watercolor":
-        result = blend(rgb, watercolor(rgb, alpha, effect.get("seed", 0)), amount)
+        edges = effect.get("edges", "auto")
+        open_sides = (True,) * 4 if edges == "shape" else effect.get("_open", (False,) * 4) if edges == "auto" else (False,) * 4
+        result = blend(rgb, watercolor(rgb, alpha, effect.get("seed", 0), open_sides), amount)
     else:
         raise ValueError(f"Unknown artistic filter: {name}")
     result = result.convert("RGBA")

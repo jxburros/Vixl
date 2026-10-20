@@ -366,6 +366,10 @@ def _operation_schema():
         "strength": N,
         "shadow_color": S,
         "highlight_color": S,
+        "edges": {"type": "string", "enum": ["auto", "shape", "box"],
+                  "description": "watercolor: where the pigment pools in a darker rim. auto (default) rims shape outlines "
+                                 "and the box edges inside the canvas but leaves canvas edges open; shape also leaves box "
+                                 "edges open; box rims every edge of the layer's box."},
         "black": N,
         "white": N,
         "luminance": {"type": "number", "minimum": 0, "maximum": 100,
