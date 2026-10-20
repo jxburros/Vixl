@@ -204,7 +204,7 @@ refuses URL imports, font downloads and providers with `network_disabled`. One f
 | `POST /animation/export` | `{"format":"gif"\|"apng"\|"webp"\|"mp4"\|"webm"\|"sheet","animation":"walk","scale":8,"sampling":…,"colors":…,"quality":…,"columns":…}` | Animation bytes (mp4/webm need ffmpeg) |
 | `GET /history` · `POST /history/{action}` | `{"ref":…,"count":1}` | History graph / new head |
 | `POST /assets?name=photo` | raw image bytes, or empty with `url=https://…`; optional `credit`, `license` | New layer |
-| `POST /import?format=svg\|pdf\|figma` | raw bytes (Figma: the URL or file key); `name`, `page`, `dpi`, `svg_mode`, `node_id`, `rasterize_unsupported` | Editable layers (`svg_mode=appearance`: one image) |
+| `POST /import?format=svg\|pdf\|figma` | raw bytes (Figma: the URL or file key); `name`, `page`, `dpi`, `svg_mode`, `node_id`, `rasterize_unsupported`, `font_map` (repeat `SRC=NAME`), `install_fonts` | Editable layers (`svg_mode=appearance`: one image) |
 | `POST /fonts?name=brand` | raw TTF/OTF bytes (≤16 MiB) | Registered font |
 | `GET /resources/{kind}` · `GET\|POST /resources/{kind}/{name}` | POST `{"value":…}` | Names · one entry · save |
 | `POST /workflow/{action}` · `GET /workflow/schema` | the action's request | Workflows allowed on a fixed document (`docs/reference/interfaces.md#capability-matrix` lists them) |

@@ -573,6 +573,10 @@ class Session:
             result, changed = ai_command(p, command, args)
             if changed:
                 p.save()
+            if command in ("detect", "ocr") or (command == "ai" and args[:1] == ["describe"]):
+                from .untrusted import mark_analysis
+
+                mark_analysis(result)
             return result
 
 
@@ -605,7 +609,7 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     bounds each call: a timeout after which a call answers 202 with a job, an export page and megapixel cap
     and the heavy calls running at once in the workspace."""
     try:
-        from fastapi import FastAPI, Request
+        from fastapi import FastAPI, Query, Request
         from fastapi.responses import JSONResponse, Response
         from starlette.middleware.trustedhost import TrustedHostMiddleware
     except ImportError as exc:
@@ -1187,7 +1191,9 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     @app.post("/import")
     async def import_document(request: Request, format: str, name: str = "import", page: str = "1", dpi: int = 144,
                               svg_mode: str = "editable", node_id: str | None = None,
-                              rasterize_unsupported: bool = False):
+                              rasterize_unsupported: bool = False,
+                              font_map: list[str] | None = Query(None),
+                              install_fonts: bool | None = None):
         from .imports import import_document as execute_import
         from starlette.concurrency import run_in_threadpool
         data = await request.body()
@@ -1195,6 +1201,12 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
         figma = format.lower() == "figma"
         require(figma or page.isdigit(), "page must be a number", field="page")
         options = {"node_id": node_id, "rasterize_unsupported": rasterize_unsupported} if figma else {}
+        if font_map or install_fonts is not None:
+            require(not figma, "font_map and install_fonts apply to SVG and PDF import", field="font_map")
+        if font_map:
+            options["font_map"] = parse_font_map(font_map)
+        if install_fonts is not None:
+            options["install_fonts"] = install_fonts
         def apply_import():
             with session.project(write=True) as project:
                 return execute_import(project, data, format, name, int(page) if page.isdigit() else page, dpi,
@@ -1418,6 +1430,27 @@ def route_fields():
     # ``repairs`` is check_design's internal switch for repair suggestions; vixl_check does not offer it either.
     return named(Project.check, check_design) - {"repairs"}, named(measure), named(measure_spacing)
 
+
+
+def parse_font_map(items):
+    """``font_map`` query values, each ``SRC=NAME`` or one JSON object, as ``{source family: registered name}``."""
+    import json
+
+    mapped = {}
+    for item in items:
+        if item.lstrip().startswith("{"):
+            try:
+                loaded = json.loads(item)
+            except ValueError as exc:
+                raise VixlError("invalid_request", f"font_map is not valid JSON: {exc}", field="font_map") from exc
+            require(isinstance(loaded, dict), "font_map JSON must be an object", field="font_map")
+            mapped.update(loaded)
+            continue
+        key, sep, value = item.partition("=")
+        require(sep and key.strip() and value.strip(), "Use font_map=SRC=NAME, e.g. font_map=Literata=literata-400",
+                field="font_map")
+        mapped[key.strip()] = value.strip()
+    return mapped
 
 
 def known_fields(body, allowed, route):

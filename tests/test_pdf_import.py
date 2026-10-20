@@ -334,8 +334,6 @@ def test_font_map_targets_must_be_registered():
     with pytest.raises(VixlError) as caught:
         import_document(target, text_pdf([("noto", NOTO.read_bytes())]), "pdf", font_map={"Noto Sans": "nope"})
     assert caught.value.code == "missing_font" and caught.value.details["field"] == "font_map"
-    with pytest.raises(VixlError, match="font_map applies to PDF"):
-        import_document(target, Project(10, 10).export(format="SVG"), "svg", font_map={"A": "heading"})
 
 
 def test_import_document_step_takes_font_options(tmp_path, monkeypatch):

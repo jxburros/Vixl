@@ -293,6 +293,10 @@ class Runtime:
             from .untrusted import mark
 
             mark(result)
+        elif name == "vixl_ai_analyze":
+            from .untrusted import mark_analysis
+
+            mark_analysis(result)
         if state.document is None or "document" in result or "documents" in result:
             return
         try:

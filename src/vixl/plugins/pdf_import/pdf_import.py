@@ -54,26 +54,12 @@ def import_pdf(project, data, *, name="import", page=1, dpi=None, mode="editable
     Fonts when network access is allowed; by default nothing is downloaded."""
     require(isinstance(page, int) and page >= 1, "PDF page must be positive", field="page")
     require(dpi is None or (isinstance(dpi, (int, float)) and 36 <= dpi <= 600), "dpi must be 36–600", field="dpi")
+    from ...service_fonts import checked_font_map
+
     font_map = checked_font_map(project, font_map)
     if mode == "appearance":
         return raster_page(project, data, name=name, page=page, dpi=dpi or 144)
     return PageReader(project, data, name, page, font_map=font_map, install_fonts=bool(install_fonts)).run()
-
-
-def checked_font_map(project, font_map):
-    """``font_map`` validated: string keys, each value a font name ``project`` can use (as a service client may)."""
-    if not font_map:
-        return {}
-    from ...service_fonts import allowed_fonts, missing_font
-
-    require(isinstance(font_map, dict) and all(isinstance(key, str) and key.strip() and isinstance(value, str)
-                                               for key, value in font_map.items()),
-            "font_map maps PDF font family names to registered font names", field="font_map")
-    allowed = allowed_fonts(project)
-    for value in font_map.values():
-        if value not in allowed:
-            raise missing_font("font_map", value, allowed)
-    return dict(font_map)
 
 
 def raster_page(project, data, *, name, page, dpi, warnings=()):
