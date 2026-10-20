@@ -64,7 +64,9 @@ python -m pip install -e '.[server]'
 vixl -p poster.vixl serve
 ```
 
-Default binding is `127.0.0.1:8765`. OpenAPI is at `/docs`. To bind beyond loopback, configure a bearer token with `VIXL_API_TOKEN` and use `--host 0.0.0.0`; use TLS at a reverse proxy. `--token-env NAME` selects a different environment variable. A configured token protects all document APIs, including docs; `/view` serves a public empty HTML shell. Without a token, host-header validation restricts requests to loopback names. This is a local single-user service, not a multi-tenant hosted product.
+Default binding is `127.0.0.1:8765`. OpenAPI is at `/docs`. To bind beyond loopback, configure a bearer token with `VIXL_API_TOKEN` and use `--host 0.0.0.0`. `--token-env NAME` selects a different environment variable. A token must be at least 24 characters (generate one with `python -c "import secrets; print(secrets.token_urlsafe(32))"`); a shorter one is refused at startup. After 20 failed bearer tokens from one client address within 60 seconds, that address gets `429` with `Retry-After` until the oldest failure is a minute old, and its tokens are not compared meanwhile. A configured token protects all document APIs, including docs. `/view` is exempt: it serves a static, empty HTML shell, and every data call it makes needs the token. Without a token, host-header validation restricts requests to loopback names. This is a local single-user service, not a multi-tenant hosted product.
+
+The token travels in a header, so a remote bind over plain HTTP sends it in cleartext; `serve`, `view` and `mcp --http` print a warning on stderr when they bind beyond loopback without TLS. Put a TLS reverse proxy in front, or pass `--tls-cert CERT.pem --tls-key KEY.pem` to serve HTTPS directly. `--offline` (also `VIXL_OFFLINE=1`) turns off every network access the server could make on its own: URL imports, font downloads and AI providers answer `network_disabled` (see [network access](architecture.md#trust-and-security)).
 
 | Route | Request / result |
 | --- | --- |
@@ -262,7 +264,7 @@ A server shared by several people or agents can bound what one call may cost, so
 | `--max-pages N` | `VIXL_MAX_PAGES` | Pages one export writes (a PDF, PPTX or HTML deck, or a contact sheet). |
 | `--max-concurrent N` | `VIXL_MAX_CONCURRENT` | Heavy calls running at once per workspace, background jobs included: exports, renders, previews, checks, operation batches, compose, workflows and provider calls (MCP: the tools that take `as_job`). Inspection and catalog calls are not counted. |
 
-A call over a limit is refused before it renders with `limit_exceeded` and its `limit` (`max_megapixels`, `max_pages` or `max_concurrent`), `value`, `maximum` and a `hint` (REST: status `413`, or `429` with `Retry-After` for concurrency). `GET /limits` (REST) and `vixl_job(action="list")` (MCP, under `limits`) report the values a server runs with.
+A call over a limit is refused before it renders with `limit_exceeded` and its `limit` (`max_megapixels`, `max_pages` or `max_concurrent`), `value`, `maximum` and a `hint` (REST: status `413`, or `429` with `Retry-After` for concurrency). `GET /limits` (REST) and `vixl_job(action="list")` (MCP, under `limits`) report the values a server runs with; `GET /limits` also reports the network policy under `network` (`offline`, `fetch_hosts`, `private_addresses`, `proxy_resolves`).
 
 ```bash
 vixl serve --call-timeout 30 --max-megapixels 50 --max-pages 40 --max-concurrent 2
@@ -308,7 +310,7 @@ REST and MCP retain loaded projects between calls. A file fingerprint (identity,
 
 ### REST additions
 
-`POST /check` (same options as `vixl_check`), `POST /preview` (`max_width`, `max_height`, `max_bytes`, `region`, `isolate`, …; returns PNG) and `POST /compare` (`before`, `after`, `mode`, `isolate`; returns the summary plus `image_base64`). The CLI takes `--isolate LAYER…` on `compare` and on `apply --preview`. The REST service is bound to its one document and rejects a `document` field.
+`POST /check` (same options as `vixl_check`; `sample` is `"worst"` or a CSV path inside the workspace, and a path outside it answers `403 forbidden`), `POST /preview` (`max_width`, `max_height`, `max_bytes`, `region`, `isolate`, …; returns PNG) and `POST /compare` (`before`, `after`, `mode`, `isolate`; returns the summary plus `image_base64`). The CLI takes `--isolate LAYER…` on `compare` and on `apply --preview`. The REST service is bound to its one document and rejects a `document` field. `/check`, `/measure` and `/spacing`, like `/export`, `/preview` and `/compare`, answer `400` for a field they do not read and name it.
 
 The remaining routes mirror `vixl_check` and the saved-frame tools: `POST /measure` and `POST /spacing`, `GET /pixels/{target}`, `GET /animation`, `GET /animation/frame/{name}` and `POST /animation/export`; `GET /workflow/schema` and `POST /workflow/{action}` serve the fixed-document workflow allow-list shown in the [capability matrix](#capability-matrix); `GET /typefaces`, `GET /typefaces/pairings`, `POST /typefaces/pair`, `POST /typefaces/install` and `GET /roll` cover fonts and a rolled direction; `GET /limits` and `GET /jobs` report the [per-call limits](#per-call-limits) and detached calls.
 
@@ -379,8 +381,8 @@ it writes files). Link sources and merge paths stay inside the workspace. See [l
 ```bash
 # MCP over HTTP, for clients supporting a static Authorization header:
 vixl mcp --workspace . --http --port 8766
-# For a remote bind, set VIXL_API_TOKEN, then add --host 0.0.0.0.
-# Connect to https://YOUR-HOST/mcp through your TLS reverse proxy.
+# For a remote bind, set VIXL_API_TOKEN (24+ characters), then add --host 0.0.0.0.
+# Connect to https://YOUR-HOST/mcp through your TLS reverse proxy, or add --tls-cert and --tls-key.
 
 # Serve a fixed document and open its live viewer:
 vixl -p poster.vixl view
@@ -391,7 +393,8 @@ vixl -p poster.vixl notes resolve NOTE_ID
 
 HTTP MCP uses the official SDK's Streamable HTTP transport. Stdio remains the default.
 HTTP and REST use `Authorization: Bearer TOKEN`, with `VIXL_API_TOKEN` (or `--token-env`)
-and reject remote binds without it. Use a TLS reverse proxy for remote access. OAuth discovery
+and reject remote binds without it; the token rules and failure throttle are those of [REST](#rest). Use a TLS
+reverse proxy (or `--tls-cert`/`--tls-key`) for remote access. OAuth discovery
 is not implemented: clients that require OAuth, including some hosted connector setups, need
 an OAuth-capable gateway. Each connected client has its own active document (see
 [several agents on one server](#several-agents-on-one-server)); agents that share one stdio connection should

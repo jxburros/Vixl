@@ -153,3 +153,26 @@ def test_missing_provider_is_clear(tmp_path, monkeypatch):
     monkeypatch.delenv("VIXL_AI_PROVIDER", raising=False)
     with pytest.raises(VixlError, match="Configure"):
         provider()
+
+
+def test_http_provider_requires_loopback_or_opt_in(monkeypatch):
+    from vixl.plugins.ai.ai import AnthropicProvider
+
+    for url in ("http://example.com", "http://10.0.0.5:8188", "HTTP://gpu.example:7860/"):
+        with pytest.raises(VixlError) as caught:
+            HTTPProvider("remote", {"url": url})
+        assert caught.value.code == "provider_not_configured" and "allow_insecure" in str(caught.value), url
+    for url in ("http://127.0.0.1:8188", "http://localhost:7860", "http://[::1]:9000", "http://127.0.0.5",
+                "https://example.com"):
+        HTTPProvider("local", {"url": url})
+    HTTPProvider("lan", {"url": "http://gpu.example:7860", "allow_insecure": True})
+    with pytest.raises(VixlError):
+        HTTPProvider("lan", {"url": "http://gpu.example:7860", "allow_insecure": "yes"})
+    with pytest.raises(VixlError):
+        ComfyUIProvider("comfy", {"url": "http://comfy.example:8188"})
+    monkeypatch.setenv("VIXL_AI_URL", "http://gateway.example")
+    with pytest.raises(VixlError):
+        HTTPProvider("env", {})
+    pytest.importorskip("anthropic")
+    with pytest.raises(VixlError):
+        AnthropicProvider("claude", {"url": "http://proxy.example"})

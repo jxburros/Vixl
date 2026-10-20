@@ -646,7 +646,7 @@ def check_design(
         document=document, checks=checks, targets=targets, safe_area=safe_area, avoid=avoid,
         thumbnail_width=thumbnail_width, min_thumbnail_text=min_thumbnail_text, min_contrast=min_contrast,
         ink_limit=ink_limit, min_ppi=min_ppi, artboard=artboard, comp=comp, page=page, deck=deck,
-        sample=sample if sample in (None, "worst") else str(session.resolve(sample)), style=style,
+        sample=sample, style=style,
         connect_tolerance=connect_tolerance, repair=repair, offset=offset, limit=limit, profile=profile,
         waivers=waivers,
         **{key: value for key, value in (("artboards", artboards), ("pages", pages), ("comps", comps))

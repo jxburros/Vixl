@@ -23,9 +23,9 @@ def project_path(tmp_path):
 
 
 def test_rest_operations_preview_auth_and_sandbox(project_path):
-    client = TestClient(create_app(project_path, token="test-token"))
+    client = TestClient(create_app(project_path, token="test-token-of-24-characters"))
     assert client.get("/document").status_code == 401
-    headers = {"Authorization": "Bearer test-token"}
+    headers = {"Authorization": "Bearer test-token-of-24-characters"}
     response = client.get("/document", headers=headers)
     assert response.status_code == 200 and response.json()["canvas"]["width"] == 16
     response = client.post(
