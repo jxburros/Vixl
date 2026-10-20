@@ -97,6 +97,10 @@ jobs:
           else
             echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
+      - name: Require a pinned update signing key
+        # Fails before anyone is asked to approve: launchers built without a key refuse every update.
+        if: steps.version.outputs.publish == 'true'
+        run: python -c "import sys; sys.path.append('src/vixl'); import updater_sign; sys.exit(0 if updater_sign.TRUSTED_KEYS else 'TRUSTED_KEYS in src/vixl/updater_sign.py is empty; see docs/reference/releases.md, Update signing')"
   publish:
     if: needs.plan.outputs.publish == 'true'
     needs: [plan, verify, windows]
@@ -121,6 +125,14 @@ jobs:
         with:
           name: windows-release
           path: release
+      - name: Sign the update manifest
+        # The key is a secret of the protected release environment only. Signing fails when it is missing or its
+        # public key is not in updater_sign.TRUSTED_KEYS, so no release ships a manifest launchers would reject.
+        env:
+          VIXL_UPDATE_SIGNING_KEY: ${{ secrets.VIXL_UPDATE_SIGNING_KEY }}
+        run: |
+          rm -f release/vixl-update.json.sig
+          python distribution/sign_manifest.py release/vixl-update.json
       - name: Checksum every release asset
         # The Windows job's SHA256SUMS covers only its own files; this one covers the wheel, sdist, .mcpb and plugin too.
         working-directory: release

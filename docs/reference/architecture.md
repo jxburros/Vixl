@@ -103,6 +103,15 @@ Scripts compile only supported Vixl operations; they do not run shell/Python cod
 
 Plugins and local provider configuration are trusted code/configuration. A provider may transmit the current rendered image, selection, text and document metadata to its configured service. Credentials are referenced by environment-variable name and not copied into Vixl's request provenance. Provider metadata should contain provenance only. HTTP adapters preserve TLS verification and do not follow redirects. They fetch result URLs only where a service requires it: FLUX polling and signed result URLs must be HTTPS on approved hosts (`*.bfl.ai`, `*.blob.core.windows.net`, configurable) and are fetched without credentials. ComfyUI files are fetched only from the configured server.
 
+Managed Windows updates (`vixl.updater`, also frozen into the stable launcher) do not trust the release that carries
+them on its own. Each release's `vixl-update.json` comes with `vixl-update.json.sig`, an Ed25519 signature over the
+manifest's exact bytes, and the updater checks it against the public keys pinned in `vixl.updater_sign.TRUSTED_KEYS`
+(a dependency-free RFC 8032 verifier) before it parses the manifest. Only then does it trust the manifest's SHA-256
+and size for the runtime ZIP. A missing or invalid signature, or a build with no pinned key, refuses the update and
+keeps the current version. The signing key is held only in the protected `release` environment of the release
+workflow, so write access to the repository's releases is not enough to ship an update. Hosts are limited to GitHub
+over HTTPS and the archive is extracted under path and size checks, as before. See [releases](releases.md#update-signing).
+
 Vixl reaches the network on its own only for the AI providers above, `font install`/`font pair` (Google Fonts), importing a Vixl SVG whose Google fonts are not in the font cache (it downloads just those families; Python `install_fonts=False` keeps it offline and falls back with a warning) and the explicit [Figma import](../guides/images/figma.md) (`api.figma.com`, with the token from `FIGMA_TOKEN`; its image downloads use the policy below). Everything else is an explicit URL import: image imports with `url` (`import-image`, `vixl import URL`, `POST /assets?url=`, `Project.import_image(url=)`) and font imports from a URL (an `import-font` step, `vixl font import URL`). These share one bounded fetch (`vixl.fetch.fetch_bounded`):
 
 - HTTPS only; a URL with a user name or password is refused.
