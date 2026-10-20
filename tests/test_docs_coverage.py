@@ -59,3 +59,47 @@ def test_release_notes_carry_no_internal_plan_ids():
             if match:
                 hits.append(f"{version}: {match.group(0)!r} in {line.strip()[:80]}")
     assert not hits, "internal plan IDs in CHANGELOG.md: " + "; ".join(hits)
+
+
+def test_governance_files_exist():
+    """Security policy, code of conduct, issue and pull request templates, and the contributor rules they point to."""
+    for name in ("SECURITY.md", "CODE_OF_CONDUCT.md", ".github/pull_request_template.md",
+                 ".github/ISSUE_TEMPLATE/bug.yml", ".github/ISSUE_TEMPLATE/feature.yml",
+                 ".github/ISSUE_TEMPLATE/config.yml", "scripts/hooks/commit-msg"):
+        assert (ROOT / name).is_file(), name
+    assert "security/advisories/new" in (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+    assert "Contributor Covenant" in (ROOT / "CODE_OF_CONDUCT.md").read_text(encoding="utf-8")
+    config = (ROOT / ".github/ISSUE_TEMPLATE/config.yml").read_text(encoding="utf-8")
+    assert "security/advisories/new" in config
+    contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    for heading in ("## Setup", "## Reporting bugs", "## Change size and release rhythm"):
+        assert heading in contributing, heading
+    assert "scripts/hooks/commit-msg" in contributing
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "@jxburros" in readme.split("## Licence", 1)[1].split("Bundled assets", 1)[0]
+
+
+def test_issue_templates_and_advisory_workflows():
+    for name in ("bug.yml", "feature.yml"):
+        text = (ROOT / ".github/ISSUE_TEMPLATE" / name).read_text(encoding="utf-8")
+        assert text.startswith("name: ") and "\nbody:" in text, name
+    for name in ("pr-size.yml", "pr-hygiene.yml"):
+        text = (ROOT / ".github/workflows" / name).read_text(encoding="utf-8")
+        assert "continue-on-error: true" in text, name
+        assert "::warning" in text and "exit 1" not in text, name
+        assert "uses: actions/checkout@v4" in text, name
+        assert "contents: read" in text and "write" not in text, name
+
+
+def test_commit_msg_hook_strips_authorship_trailers(tmp_path):
+    import shutil
+    import subprocess
+    sh = shutil.which("sh")
+    if sh is None:
+        import pytest
+        pytest.skip("no POSIX shell")
+    message = tmp_path / "MSG"
+    message.write_text("Fix thing\n\nBody line.\n\nCo-Authored-By: Someone <a@b.c>\nClaude-Session: https://x/y\n",
+                       encoding="utf-8")
+    subprocess.run([sh, str(ROOT / "scripts/hooks/commit-msg"), str(message)], check=True)
+    assert message.read_text(encoding="utf-8") == "Fix thing\n\nBody line.\n"

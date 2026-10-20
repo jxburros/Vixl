@@ -1,0 +1,27 @@
+name: Pull request size
+# Advisory: reports a warning annotation and never fails. See CONTRIBUTING.md, "Change size and release rhythm".
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  size:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Count changed lines
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Goldens, generated tables and the changelog do not count towards the review size.
+          changed=$(git diff --numstat "$BASE...$HEAD" -- . \
+            ':(exclude)tests/visual/golden' ':(exclude)CHANGELOG.md' ':(exclude)docs/reference/operations.md' \
+            | awk '$1 != "-" { total += $1 + $2 } END { print total + 0 }')
+          echo "Changed lines (excluding goldens, CHANGELOG.md, docs/reference/operations.md): $changed"
+          if [ "$changed" -gt 800 ]; then
+            echo "::warning title=Large pull request::$changed changed lines (about 800 is the review budget). Split by area, ship mechanical moves on their own, or justify the size in the PR description."
+          fi

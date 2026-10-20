@@ -191,7 +191,8 @@ icons, an animated wordmark, usage guidance and editable masters.
 
 Vixl is source-available under the [PolyForm Small Business License 1.0.0](LICENSE): free for
 individuals and for companies with fewer than 100 people and under US$1M (2019) revenue; larger
-companies need a commercial licence from the licensor. Copies of Vixl must carry the licence and
+companies need a commercial licence from the licensor (to ask about one, open an issue or contact
+[@jxburros](https://github.com/jxburros) on GitHub). Copies of Vixl must carry the licence and
 its `Required Notice:` lines. If Vixl helped make your work, please credit it ("Made with Vixl").
 
 Bundled assets keep their own terms: DejaVu Sans ([font licence](src/vixl/data/FONT-LICENSE.txt)), the Noto Sans,

@@ -1,0 +1,28 @@
+name: Feature request
+description: Suggest a new operation, option or workflow
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The task or design you cannot do, or can only do awkwardly, today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+      description: Operation, CLI command or option you would expect, with an example if you can.
+  - type: dropdown
+    id: placement
+    attributes:
+      label: Core or plugin?
+      description: See "Is a new feature a plugin?" in docs/reference/plugins.md. If unsure, choose "Not sure".
+      options: [Core, Plugin, Content pack, Not sure]
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What do you do instead today?
