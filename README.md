@@ -176,9 +176,9 @@ without AI credentials or network access. Every new visual has an editable maste
 operation recipe; see [documentation maintenance](docs/project/documentation-maintenance.md).
 Showcases, explorations, the marketing pack, promo films and evaluation results live in
 [VixlExamples](https://github.com/jxburros/VixlExamples), and
-[agent evaluations](evals/README.md) measure design tasks. The [development plan](docs/project/roadmap.md) and
-the [craft plan](docs/project/craft-plan.md) order the open work, [render parity](docs/project/render-parity.md) measures raster
-output against Chromium, and [brand voice](docs/project/brand-voice.md) describes how Vixl's own copy sounds.
+[agent evaluations](evals/README.md) measure design tasks. Contributors: [CONTRIBUTING](CONTRIBUTING.md) has the rules,
+and the [project documentation](docs/project/README.md) holds the development and craft plans, decision records,
+render parity and brand voice.
 
 Vixl edits in RGBA8 sRGB and exports supported vectors or documented raster fallbacks.
 CMYK is an export setting. RAW development, spot-color editing, PSD/XCF import
