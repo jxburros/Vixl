@@ -540,6 +540,7 @@ def cover_fonts(project, text=None, scripts=None, weight=400, *, client=None):
     if not families:
         return result
     candidate = project.clone()
+    registered = dict(candidate.state.get("fonts", {}))
     installed, unavailable, error = [], [], None
     for family in families:
         try:
@@ -559,9 +560,18 @@ def cover_fonts(project, text=None, scripts=None, weight=400, *, client=None):
                                      "has it, or import a font file that covers these scripts and add it with "
                                      "font-fallbacks"])
     current = list(candidate.state.get("font_fallbacks", []))
-    names = [item["name"] for item in installed if item["file"]["asset"] not in current]
-    if names:
-        candidate.apply({"type": "font-fallbacks", "fonts": [*current, *names]}, detail="compact")
+    fallbacks = list(current)
+    for item in installed:
+        asset, previous = item["file"]["asset"], registered.get(item["name"])
+        if asset in fallbacks:
+            continue
+        # A face installed again with other bytes (a newer upstream file) replaces its old entry, not a second one.
+        if previous in fallbacks:
+            fallbacks[fallbacks.index(previous)] = item["name"]
+        else:
+            fallbacks.append(item["name"])
+    if fallbacks != current:
+        candidate.apply({"type": "font-fallbacks", "fonts": fallbacks}, detail="compact")
     project.__dict__.update(candidate.__dict__)
     result["installed"] = [{key: item[key] for key in ("name", "family", "weight")} | {
         "origin": item["source"].get("origin")} for item in installed]

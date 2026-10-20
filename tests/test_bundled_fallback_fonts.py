@@ -77,6 +77,25 @@ def _fake_fetch(chars, calls=None):
     return fetch
 
 
+def test_font_cover_again_with_new_bytes_replaces_the_fallback(tmp_path, monkeypatch):
+    from vixl import typefaces
+
+    monkeypatch.setenv("VIXL_FONT_CACHE", str(tmp_path / "cache"))
+    builds = []
+
+    def fetch(family, weight=400, italic=False, *, client=None, source=None):
+        builds.append(family)
+        return _font(SCRIPTS, f"{family} build {len(builds)}"), family
+
+    monkeypatch.setattr(typefaces, "fetch_font", fetch)
+    p = Project(900, 200, "#fff")
+    p.apply({"type": "text", "name": "t", "text": "ภาษาไทย", "size": 40, "color": "black"})
+    first = typefaces.cover_fonts(p, scripts=["thai"])["font_fallbacks"]
+    second = typefaces.cover_fonts(p, scripts=["thai"])["font_fallbacks"]
+    assert len(builds) == 2 and len(first) == len(second) == 1 and first != second
+    assert second == [p.state["fonts"]["noto-sans-thai-400"]]
+
+
 def test_apply_warns_on_uncovered_scripts():
     p = Project(900, 200, "#fff")
     result = p.apply({"type": "text", "name": "t", "text": SCRIPTS, "size": 40, "color": "black"})
