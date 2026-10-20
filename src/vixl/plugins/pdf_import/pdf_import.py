@@ -3,8 +3,12 @@
 The editable import reads the page's objects through pdfium (``pypdfium2``, the ``pdf`` extra):
 
 * text objects become text layers with their text, size, colour, position and rotation; consecutive lines of one
-  style that share a left edge, centre or right edge become one multi-line layer. A font the document has registered
-  under the PDF font's family name (or a bundled face) is used, else the default face, with a warning.
+  style that share a left edge, centre or right edge become one multi-line layer. Fonts are found in this order: the
+  ``font_map`` given (``{PDF family: registered name}``), a font the document has registered under the PDF font's
+  family name in that style, the same face found again (a PDF Vixl exported lists each embedded face's family, style
+  and SHA-256 in ``VixlFonts``: the document's own copy, then the font cache), with ``install_fonts`` a Google Fonts
+  download, then a registration of the family in another style or a bundled face. Otherwise the text uses the
+  default face, with a warning. The result's ``fonts`` says how each PDF font was matched.
 * path objects become path shape layers with their fill (nonzero or even-odd), stroke, width, caps, joins and dashes;
   a stroke drawn right after a fill of the same path joins that layer.
 * image objects become image layers at their place, size and rotation.
@@ -16,6 +20,8 @@ one pixel. Into an empty document the import takes the page size as the canvas a
 background. ``mode='appearance'`` imports the page as one image at ``dpi`` instead."""
 
 import ctypes
+import hashlib
+import json
 import math
 
 from fontTools.misc.transform import Transform
@@ -40,14 +46,34 @@ def _pdfium():
     return pdfium, raw
 
 
-def import_pdf(project, data, *, name="import", page=1, dpi=None, mode="editable"):
+def import_pdf(project, data, *, name="import", page=1, dpi=None, mode="editable", font_map=None, install_fonts=False):
     """``mode``: ``editable`` (the default) or ``auto`` read the page as layers; ``appearance`` renders it as one image
-    at ``dpi`` (default 144). ``dpi`` applies to the image import only: vector content keeps its own scale."""
+    at ``dpi`` (default 144). ``dpi`` applies to the image import only: vector content keeps its own scale.
+    ``font_map`` maps PDF font families to fonts registered in ``project`` (``{"Literata": "literata-400"}``; add
+    ``"Literata Bold"`` for the bold face). ``install_fonts`` lets a face the font cache lacks be downloaded from Google
+    Fonts when network access is allowed; by default nothing is downloaded."""
     require(isinstance(page, int) and page >= 1, "PDF page must be positive", field="page")
     require(dpi is None or (isinstance(dpi, (int, float)) and 36 <= dpi <= 600), "dpi must be 36–600", field="dpi")
+    font_map = checked_font_map(project, font_map)
     if mode == "appearance":
         return raster_page(project, data, name=name, page=page, dpi=dpi or 144)
-    return PageReader(project, data, name, page).run()
+    return PageReader(project, data, name, page, font_map=font_map, install_fonts=bool(install_fonts)).run()
+
+
+def checked_font_map(project, font_map):
+    """``font_map`` validated: string keys, each value a font name ``project`` can use (as a service client may)."""
+    if not font_map:
+        return {}
+    from ...service_fonts import allowed_fonts, missing_font
+
+    require(isinstance(font_map, dict) and all(isinstance(key, str) and key.strip() and isinstance(value, str)
+                                               for key, value in font_map.items()),
+            "font_map maps PDF font family names to registered font names", field="font_map")
+    allowed = allowed_fonts(project)
+    for value in font_map.values():
+        if value not in allowed:
+            raise missing_font("font_map", value, allowed)
+    return dict(font_map)
 
 
 def raster_page(project, data, *, name, page, dpi, warnings=()):
@@ -161,8 +187,10 @@ class Fallback(Exception):
 
 
 class PageReader:
-    def __init__(self, project, data, name, page):
+    def __init__(self, project, data, name, page, *, font_map=None, install_fonts=False):
         self.project, self.data, self.name, self.page_number = project, data, name, page
+        self.font_map, self.install_fonts = font_map or {}, install_fonts
+        self.listed_fonts, self.faces, self.font_report, self.font_operations = {}, {}, {}, []
         self.candidate = project.clone()
         self.operations, self.warnings, self.rasterized, self.anchored = [], [], [], []
         self.used = {layer["name"] for layer in project.state["layers"]} | {layer["id"] for layer in
@@ -203,13 +231,15 @@ class PageReader:
 
         require(any(op["type"] != "canvas" for op in self.operations) or self.background, "The PDF page draws nothing",
                 field="page")
-        operations = anchor_text(self.candidate, self.operations, self.anchored)
+        operations = [*self.font_operations, *anchor_text(self.candidate, self.operations, self.anchored)]
         require(len(operations) <= self.project.limits.max_operations, "PDF page has too many objects",
                 "resource_limit")
         result = self.candidate.apply(operations, detail="compact") if operations else {"success": True}
         self.project.__dict__.update(self.candidate.__dict__)
         result.update(page=self.page_number, mode="editable", scale=round(self.k, 6),
                       layers={key: value for key, value in self.counts.items() if value})
+        if self.font_report:
+            result["fonts"] = list(self.font_report.values())
         if self.rasterized:
             result["rasterized"] = self.rasterized
             self.warnings.append(f"{len(self.rasterized)} group(s) of PDF objects Vixl cannot edit (shadings, clipped "
@@ -223,6 +253,11 @@ class PageReader:
         raw = self.raw
         self.document_raw, self.page_raw = document.raw, page.raw
         recorded = _string(raw, raw.FPDF_GetMetaText, document.raw, b"VixlDPI", utf16=True)
+        try:
+            listed = json.loads(_string(raw, raw.FPDF_GetMetaText, document.raw, b"VixlFonts", utf16=True) or "{}")
+        except ValueError:
+            listed = {}
+        self.listed_fonts = listed if isinstance(listed, dict) else {}
         try:
             dpi = float(recorded) if recorded else 72.0
         except ValueError:
@@ -584,8 +619,17 @@ class PageReader:
         family, base, weight, italic = self.font_names(font)
         from ...svg_import import font_warning, match_font
 
-        bold = weight >= 600 or mode == 2 or "bold" in base.lower()
-        name, unknown = match_font(self.candidate, [n for n in (family, base) if n], bold, italic)
+        raw_base = self.base_name(font)
+        bold = weight >= 600 or mode == 2 or "bold" in raw_base.lower()
+        listed = self.listed_fonts.get(raw_base)
+        if isinstance(listed, dict) and isinstance(listed.get("weight"), int):  # what the exporter recorded
+            bold, italic = bold or listed["weight"] >= 600, italic or bool(listed.get("italic"))
+        how = {}
+        name, unknown = match_font(self.candidate, [n for n in (family, base) if n], bold, italic,
+                                   font_map=self.font_map, resolver=self.resolver(raw_base), report=how)
+        source = (raw_base.split("+", 1)[1] if "+" in raw_base[:7] else raw_base) or family or base
+        if source and source not in self.font_report:
+            self.font_report[source] = {"source": source, "used": name, "how": how.get("how", "default")}
         if unknown:
             self.warnings.append(font_warning(unknown))
         rotation = math.degrees(math.atan2(b, a))
@@ -603,6 +647,76 @@ class PageReader:
     @property
     def lines(self):
         return self.__dict__.setdefault("_lines", [])
+
+    def base_name(self, font):
+        """The PDF font's BaseFont as written, subset tag included (the key of ``VixlFonts``)."""
+        raw = self.raw
+        getter = getattr(raw, "FPDFFont_GetBaseFontName", None) or getattr(raw, "FPDFFont_GetFontName", None)
+        return _string(raw, getter, font) if font and getter else ""
+
+    def resolver(self, raw_base):
+        """The ``match_font`` resolver for one PDF font: the same face found again, never from the network unless
+        ``install_fonts`` is set (and network access is allowed)."""
+        def resolve(families, bold, italic):
+            entry = self.listed_fonts.get(raw_base)
+            if isinstance(entry, dict) and isinstance(entry.get("family"), str):
+                weight = entry.get("weight")
+                weight = weight if isinstance(weight, int) and not isinstance(weight, bool) else 400
+                digest = entry.get("sha256") if isinstance(entry.get("sha256"), str) else None
+                return self.reuse(entry["family"], weight, bool(entry.get("italic")), digest)
+            for family in families:  # another producer's PDF: only the family and the style are known
+                found = self.reuse(family, 700 if bold else 400, italic, None)
+                if found:
+                    return found
+            return None
+
+        return resolve
+
+    def reuse(self, family, weight, italic, digest):
+        """``(registered name, how)`` for one face: the document's own copy (``registered``), the font cache
+        (``cache``) or, with ``install_fonts``, a download (``installed``); None when none has it."""
+        key = (family, weight, italic, digest)
+        if key in self.faces:
+            return self.faces[key]
+        from ... import typefaces
+
+        found = None
+        asset = f"fonts/{digest}.ttf" if digest and len(digest) == 64 else None
+        if asset and asset in self.candidate.assets:
+            found = self.register(family, weight, italic, self.candidate.assets[asset], "registered")
+        style = min(900, max(100, round(weight / 100) * 100))
+        if found is None:
+            data = typefaces.cached_font(family, style, italic)
+            if data is not None:
+                found = self.register(family, style, italic, data, "cache")
+        if found is None and self.install_fonts:
+            try:
+                data, family = typefaces.fetch_font(family, style, italic)
+            except VixlError as exc:
+                self.warnings.append(f"Font {family!r} was not installed ({exc.code}): {exc}")
+            else:
+                found = self.register(family, style, italic, data, "installed")
+        self.faces[key] = found
+        return found
+
+    def register(self, family, weight, italic, data, how):
+        """The name ``data`` is registered under: its existing registration, or a new ``family-weight[-italic]``
+        name queued as a ``font-register`` ahead of the page's operations."""
+        from ...typefaces import slug
+
+        asset = f"fonts/{hashlib.sha256(data).hexdigest()}.ttf"
+        fonts = self.candidate.state.get("fonts", {})
+        pending = {op["name"]: op["asset"] for op in self.font_operations}
+        for name, target in [*fonts.items(), *pending.items()]:
+            if target == asset:
+                return name, how
+        base = slug(family) or "font"
+        name, index = f"{base}-{weight}{'-italic' if italic else ''}", 2
+        while name in fonts or name in pending:
+            name, index = f"{base}-{weight}{'-italic' if italic else ''}-{index}", index + 1
+        self.candidate.assets[asset] = data
+        self.font_operations.append({"type": "font-register", "name": name, "asset": asset})
+        return name, how
 
     def font_names(self, font):
         raw = self.raw

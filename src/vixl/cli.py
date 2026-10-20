@@ -116,8 +116,9 @@ Resources: commands, shapes, sizes [--category print], palette list|show|add|app
 Type:      fonts [--category serif] [--mood M], font show FAMILY, font pairings [--mood M] [--for poster],
            font pairing NAME, font principles, font install FAMILY [--weight 700] [--role heading|body], font pair NAME|random,
            font use NAME --role heading|body, font list|import, --scope workspace [--workspace DIR] (install/pair: brand.json
-           default for new documents; install's role defaults to heading)
-Finish:    look LAYER NAME [--color C] [--amount 0-1] [--remove]  (clean-flat, subtle-grain, light-paper, glow, neon,
+           default for new documents; install's role defaults to heading),
+           font cover [--text T] [--script Thai] (install Noto fallbacks for CJK, Devanagari, Thai ... text)
+Finish:   look LAYER NAME [--color C] [--amount 0-1] [--remove]  (clean-flat, subtle-grain, light-paper, glow, neon,
            soft-shadow, hard-shadow, outline, gradient, soft-halo, grain, paper, film, duotone, risograph, sketch,
            watercolor, halftone, hand-made, plush), looks (catalog),
            radial-repeat LAYER --count N [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--name N]
@@ -157,7 +158,7 @@ Cache:     cache info | cache clear (the disk render cache; VIXL_RENDER_CACHE=of
 Services:  serve | view [--host 127.0.0.1] [--port 8765], notes list|add|resolve
            mcp [--workspace DIR] [--http] [--tools default|ai] [--planner] [--require-document]
            per-call limits (serve, view, mcp): [--call-timeout S] [--max-megapixels N] [--max-pages N] [--max-concurrent N]
-Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144]
+Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144] [--font-map SRC=NAME]
            import PHOTO.jpg | https://HOST/photo.jpg [--name N] [--credit TEXT] [--license TEXT]
            import FIGMA_URL_OR_KEY --format figma [--node 1:2] [--rasterize-unsupported]
 
@@ -886,6 +887,10 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("--node", help="figma: import this node id (1:2) instead of the first page")
         p.add_argument("--rasterize-unsupported", action="store_true", help="figma: import a PNG render of nodes "
                        "that have no editable equivalent")
+        p.add_argument("--font-map", action="append", metavar="SRC=NAME", help="pdf: use registered font NAME for the "
+                       "PDF font family SRC ('Literata Bold=literata-700' for a style); repeatable")
+        p.add_argument("--install-fonts", action="store_true", help="pdf: allow downloading from Google Fonts a font "
+                       "that neither the document nor the font cache has")
         a = p.parse_args(args)
         if a.format == "figma" or re.match(r"(?i)https://(www\.)?figma\.com/", a.path):
             source = Path(a.path).read_bytes() if Path(a.path).is_file() else a.path.encode()
@@ -899,8 +904,17 @@ def project_command(project, cmd, args, *, detail="compact"):
                                      name=a.name or "image", credit=a.credit, license=a.license), True
         require(a.credit is None and a.license is None, "--credit and --license apply to image imports",
                 field="credit")
+        options = {}
+        if a.font_map or a.install_fonts:
+            require(Path(a.path).suffix.lower() == ".pdf", "--font-map and --install-fonts apply to PDF imports",
+                    field="font_map")
+            mapped = [item.partition("=") for item in a.font_map or []]
+            require(all(sep and key.strip() and value.strip() for key, sep, value in mapped),
+                    "Use --font-map SRC=NAME, e.g. --font-map Literata=literata-400", field="font_map")
+            options = {"font_map": {key.strip(): value.strip() for key, _, value in mapped}, "install_fonts": a.install_fonts}
         return import_document(project, read_bounded(a.path, project.limits.max_asset_bytes),
-                               Path(a.path).suffix.lstrip("."), a.name or "import", a.page, a.dpi, a.svg_mode), True
+                               Path(a.path).suffix.lstrip("."), a.name or "import", a.page, a.dpi, a.svg_mode,
+                               **options), True
     if cmd == "notes":
         from .review import notes
         p = Parser(prog="vixl notes")

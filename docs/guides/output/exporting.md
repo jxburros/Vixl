@@ -251,8 +251,8 @@ instead, which draws the whole file as one image.
 
 **PDF.** A page's text objects become live text layers with their text, size, colour, position and rotation;
 consecutive lines of one style that share a left edge, centre or right edge become one multi-line layer, and a text
-outline pass becomes the layer's `stroke_color` and `stroke_width`. Fonts are matched by family name as for SVG
-(PDFs usually embed subsets, which are not registered). Path objects become path shape layers (fill and even-odd
+outline pass becomes the layer's `stroke_color` and `stroke_width`. Fonts are matched as described under
+[PDF fonts](#pdf-fonts) below. Path objects become path shape layers (fill and even-odd
 fill, stroke, width, caps, joins, dashes); a stroke painted right after a fill of the same path joins that layer, and
 so does one that runs half its width inside the fill's outline (how Vixl writes an inside stroke), which becomes
 `stroke_align: "inside"`.
@@ -263,3 +263,33 @@ its background (white otherwise). A PDF Vixl exported maps back to the pixels it
 other PDFs map one point to one pixel, and `dpi` applies to `appearance` imports only. Rotated pages, form fields,
 annotations, blend modes and transparency groups are not read as such: rotated pages import as one image, and
 the others as what pdfium reports for each object.
+
+### PDF fonts
+
+A PDF embeds only the glyphs it uses (a subset), so its fonts cannot be registered as they are. Each PDF font is
+found again, in this order:
+
+1. `font_map`: `{"Literata": "literata-400", "Literata Bold": "literata-700"}` maps a PDF family (with `Bold`,
+   `Italic` or `Bold Italic` for a style) to a font registered in the document or a role such as `heading`. CLI:
+   `--font-map SRC=NAME`, repeatable. A target that is not registered fails with `missing_font`.
+2. A font the document registers under that family name in the same style.
+3. For a PDF Vixl exported: its document information lists each embedded face (`VixlFonts`: BaseFont to family,
+   weight, italic and the SHA-256 of the whole font file). The same file already in the document is used, then the
+   style from the font cache (`VIXL_FONT_CACHE`), which is registered as `family-weight[-italic]`. For other PDFs the
+   family and style the PDF names are looked up in the font cache.
+4. With `install_fonts: true` (CLI `--install-fonts`), a Google Fonts download. Nothing is downloaded by default,
+   and with `VIXL_OFFLINE=1` the download is refused and reported as a warning.
+5. A registration of the family in another style, or the bundled DejaVu Sans when the PDF names it.
+
+Anything else uses the document's default face, with a warning. The result's `fonts` lists one
+`{source, used, how}` entry per PDF font, where `how` is `mapped`, `registered`, `cache`, `installed` or `default`;
+only `default` entries warn. Registered fonts and the imported layers are one revision.
+
+<!-- docs-test: skip needs a PDF file and registered Literata fonts -->
+```bash
+vixl import report.pdf --font-map "Literata=literata-400" --font-map "Literata Bold=literata-700"
+```
+
+Mapping changes the face, not the layout: line breaks and widths follow the mapped font. When the exact appearance
+matters, import with `svg_mode: "appearance"` (one image), or keep the `.vixl` or SVG master, which carry the
+document itself.

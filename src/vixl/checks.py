@@ -142,14 +142,10 @@ def glyph_area(mask, origin, halo=0.1):
 def glyph_reports(project, layers):
     """``(layer, {"missing", "fallback"})`` for resolved text layers whose characters need a
     fallback font or that no available font covers. Text is read with the project's variables."""
-    from .text import glyph_coverage
-    from .render import document_variables
-    from .richtext import active, glyph_coverage as rich_coverage
-    from .variables import layer_text
+    from .text import layer_coverage
 
     for item in layers:
-        view = {**item, "text": layer_text(item, document_variables(project))}
-        report = (rich_coverage if active(view) else glyph_coverage)(project, view)
+        report = layer_coverage(project, item)
         if report["missing"] or report["fallback"]:
             yield item, report
 

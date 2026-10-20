@@ -225,6 +225,27 @@
   warning. Text over a shape or image painted beneath it is now skipped when at least 98% of its glyph pixels land on
   that layer; text crossing part of a button, or covered by a layer above it, is still reported. Craft backtest and
   house-style eval unchanged.
+- **PDF import reuses or maps fonts instead of substituting the default face (#712).** A PDF embeds font subsets
+  only, so imported text used to fall back to the default face with a warning unless the document had registered the
+  family. Vixl's PDF export now records each embedded face in the document information (`VixlFonts`: BaseFont to
+  family, weight, italic and the SHA-256 of the whole font), and the import finds the same face again: the file
+  already in the document, then the font cache, registering it as `family-weight[-italic]` in the same revision.
+  New `font_map` option (`{"Literata": "literata-400", "Literata Bold": "literata-700"}`; CLI `--font-map SRC=NAME`;
+  the `import-document` step) maps families to registered fonts and fails with `missing_font` for an unregistered
+  target. `install_fonts` (CLI `--install-fonts`, default off) may download a missing Google Fonts style, unless
+  `VIXL_OFFLINE=1`. The result lists `fonts: [{source, used, how}]` (`mapped`, `registered`, `cache`, `installed`,
+  `default`), and only `default` entries warn. Bold faces of Vixl PDFs are now recognised from the BaseFont name.
+  Python: `svg_import.match_font` takes `font_map`, `resolver` and `report`, `typefaces.cached_font` reads the font
+  cache without the network, and `fonts.register_font_data` registers font bytes.
+- **Text in scripts no font draws warns at apply time, and `font-cover` fixes it in one step (#684).** The bundled
+  fonts cover Latin, Greek, Cyrillic, Arabic, Hebrew and symbols, so Devanagari, Chinese, Japanese, Korean and Thai
+  drew as empty boxes while the apply returned no warning (only `check` flagged them). An apply that adds or changes
+  such text now returns one warning per layer naming the scripts, a sample of the characters and the fix. The new
+  `font-cover` session step (CLI `vixl font cover [--text T] [--script NAME]`) installs the catalog Noto face for
+  each uncovered script (Noto Sans JP, SC, KR, Devanagari or Thai) and appends it to `font-fallbacks`. It uses the
+  font cache first; with `VIXL_OFFLINE=1`, or when a download fails, nothing changes and the error names the
+  families. The catalog adds Noto Sans Thai, Noto Sans KR and Noto Sans TC (107 families). `font-fallbacks` accepts
+  the entries already in the document's list, so a list can be extended.
 - **A timeline with `loop: 1` plays once.** GIF, WebP and APNG timeline exports played it twice: the encoders
   read `loop` as repetitions after the first play while the timeline, its checks and the docs count plays. A
   timeline's `loop` is now the number of plays in every format (GIF writes no NETSCAPE block for one play, and

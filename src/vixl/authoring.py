@@ -136,8 +136,11 @@ def execute(project, op):
         require("target" not in op, "font-fallbacks is document-wide and takes no target: the list applies to "
                 "every text layer; pass fonts only", field="target")
         fonts = []
+        current = project.state.get("font_fallbacks", [])
         for name in op["fonts"]:
-            require(name in project.state.get("fonts", {}) or name in ("heading", "body", "DejaVuSans.ttf"), "Import fallback fonts with font import first; use their registered names")
+            # An entry of the current list (an embedded font file) may be kept as it is, so a list can be extended.
+            require(name in project.state.get("fonts", {}) or name in ("heading", "body", "DejaVuSans.ttf")
+                    or name in current, "Import fallback fonts with font import first; use their registered names")
             resolved = resolve_font(project, name)[0]
             if resolved not in project.assets and resolved != "DejaVuSans.ttf":
                 import hashlib

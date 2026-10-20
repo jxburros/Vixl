@@ -132,22 +132,28 @@ def import_document(project, data, format, name="import", page=1, dpi=None, svg_
     PDF: see ``pdf_import``. Figma: ``data`` is a file URL or key, or exported file JSON; ``page`` is the Figma
     page (number or name) and ``options`` are ``node_id``, ``rasterize_unsupported`` and ``install_fonts``. For SVG,
     ``install_fonts`` (default true) lets the fonts of Vixl's own SVG, which it names instead of storing, be
-    downloaded from Google Fonts when the font cache does not have them."""
+    downloaded from Google Fonts when the font cache does not have them. For PDF, ``font_map`` maps the PDF's font
+    families to registered fonts (``{"Literata": "literata-400"}``) and ``install_fonts`` (default false) lets a face
+    that is neither in the document nor in the font cache be downloaded."""
     from .plugins import first as plugin_first
 
     if format.lower() == "figma":
         imported = plugin_first("import-format", project, data, "figma", page=page, **options)
         require(imported is not None, "Figma import is not available (plugin figma_import)", field="format")
         return imported
-    install_fonts = options.pop("install_fonts", True) if format.lower() == "svg" else True
+    pdf = format.lower() == "pdf"
+    install_fonts = options.pop("install_fonts", True if format.lower() == "svg" else False)
+    font_map = options.pop("font_map", None)
     require(not options, f"Unknown import option(s): {', '.join(sorted(options))}")
+    require(pdf or not font_map, "font_map applies to PDF import", field="font_map")
     require(len(data) <= project.limits.max_asset_bytes, "Import exceeds byte limit", "resource_limit")
     require(svg_mode in ("editable", "appearance", "auto"), "SVG mode must be editable, appearance or auto",
             field="svg_mode")
     if format.lower() == "svg":
         return _import_svg(project, data, name, svg_mode, install_fonts)
     require(format.lower() == "pdf", "Import format must be svg, pdf or figma")
-    imported = plugin_first("import-format", project, data, "pdf", name=name, page=page, dpi=dpi, mode=svg_mode)
+    imported = plugin_first("import-format", project, data, "pdf", name=name, page=page, dpi=dpi, mode=svg_mode,
+                            font_map=font_map, install_fonts=bool(install_fonts))
     require(imported is not None, "PDF import is not available (plugin pdf_import)", field="format")
     return imported
 

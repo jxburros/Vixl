@@ -373,6 +373,23 @@ def cache_location():
     return _cache_dir(), "VIXL_FONT_CACHE" if os.environ.get("VIXL_FONT_CACHE") else "default"
 
 
+def cached_font(family, weight=400, italic=False):
+    """The bytes of one Google Fonts style from the font cache, or None; never touches the network."""
+    from .fonts import validate_font
+
+    if not isinstance(family, str) or not re.fullmatch(r"[A-Za-z0-9 ]{1,80}", family):
+        return None
+    entry = find_font(family)
+    family = entry["family"] if entry else family
+    cached = _cache_dir() / f"{slug(family)}-{weight}{'-italic' if italic else ''}.ttf"
+    try:
+        data = cached.read_bytes()
+        validate_font(data)
+    except (OSError, VixlError):
+        return None
+    return data
+
+
 def fetch_font(family, weight=400, italic=False, *, client=None, source=None):
     """Return TTF bytes for one static style of a Google Fonts family, using the user cache.
     A ``source`` dict is filled with where the bytes came from: ``origin`` (``cache`` or
@@ -457,6 +474,75 @@ def install_font(project, family, weight=400, italic=False, name=None, role=None
     return {"name": name, "family": family, "weight": weight, "italic": italic, **({"role": role} if role else {}),
             "source": {**found, "cache_dir": str(cache_dir), "cache_dir_from": chosen_by, "bundled_fallback": False},
             "file": {"asset": asset, "bytes": len(data), "sha256": digest}}
+
+
+SCRIPT_ALIASES = {"devanagari": "Devanagari", "hindi": "Devanagari", "han": "Han", "chinese": "Han",
+                  "hiragana/katakana": "Hiragana/Katakana", "hiragana": "Hiragana/Katakana",
+                  "katakana": "Hiragana/Katakana", "kana": "Hiragana/Katakana", "japanese": "Hiragana/Katakana",
+                  "hangul": "Hangul", "korean": "Hangul", "thai": "Thai", "arabic": "Arabic"}
+
+
+def cover_fonts(project, text=None, scripts=None, weight=400, *, client=None):
+    """Install the catalog Noto face for each script that no available font draws and append it to the document's
+    font fallbacks. The scripts come from ``scripts`` (Devanagari, Han, Hiragana/Katakana, Hangul,
+    Thai, Arabic, or a language name such as japanese), else from the characters of ``text`` the document cannot draw,
+    else from every text layer's. Faces come from the font cache first; a download honours the network policy
+    (``VIXL_OFFLINE``), and when one is not allowed or fails nothing is changed and the error names the families."""
+    from .text import SCRIPT_FONTS, cover_families, glyph_coverage, scripts_of, uncovered
+
+    if scripts:
+        require(isinstance(scripts, (list, tuple)) and all(isinstance(item, str) for item in scripts),
+                "scripts is a list of script names", field="scripts")
+        unknown = [item for item in scripts if item.lower() not in SCRIPT_ALIASES]
+        require(not unknown, f"Unknown script(s) {', '.join(map(repr, unknown))}; use "
+                f"{', '.join(SCRIPT_FONTS)} (or japanese, chinese, korean, hindi)", field="scripts")
+        wanted = list(dict.fromkeys(SCRIPT_ALIASES[item.lower()] for item in scripts))
+        missing = []
+    else:
+        if text is not None:
+            missing = glyph_coverage(project, {"text": text})["missing"]
+        else:
+            missing = sorted({char for layer in project.state["layers"] if layer["type"] == "text"
+                              for char in uncovered(project, layer)})
+        wanted = [name for name in scripts_of(missing) if name]
+    families = cover_families(wanted)
+    result = {"scripts": wanted, "families": families, "installed": [],
+              "font_fallbacks": list(project.state.get("font_fallbacks", []))}
+    other = scripts_of(missing).get(None)
+    if other:
+        result["uncovered"] = "".join(other[:24])
+        result["note"] = ("Vixl has no catalog face for some characters; import a font that draws them and add it "
+                          "with font-fallbacks")
+    if not families:
+        return result
+    candidate = project.clone()
+    installed, unavailable, error = [], [], None
+    for family in families:
+        try:
+            installed.append(install_font(candidate, family, weight, client=client))
+        except VixlError as exc:
+            if exc.code not in ("network_disabled", "font_download_failed"):
+                raise
+            unavailable.append(family)
+            error = error or exc
+    if unavailable:
+        offline = error.code == "network_disabled"
+        raise VixlError(error.code, f"font-cover needs {', '.join(unavailable)}, which "
+                        f"{'is' if len(unavailable) == 1 else 'are'} not in the font cache, and "
+                        + ("network access is off (VIXL_OFFLINE=1)" if offline else f"the download failed ({error})")
+                        + "; nothing was changed", field="scripts", families=unavailable,
+                        suggestions=[f"Allow the download once (vixl font install {unavailable[0]!r}) so the cache "
+                                     "has it, or import a font file that covers these scripts and add it with "
+                                     "font-fallbacks"])
+    current = list(candidate.state.get("font_fallbacks", []))
+    names = [item["name"] for item in installed if item["file"]["asset"] not in current]
+    if names:
+        candidate.apply({"type": "font-fallbacks", "fonts": [*current, *names]}, detail="compact")
+    project.__dict__.update(candidate.__dict__)
+    result["installed"] = [{key: item[key] for key in ("name", "family", "weight")} | {
+        "origin": item["source"].get("origin")} for item in installed]
+    result["font_fallbacks"] = list(project.state.get("font_fallbacks", []))
+    return result
 
 
 def origin_of(*installed):

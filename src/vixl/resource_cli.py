@@ -138,7 +138,7 @@ def workspace_scope(cmd, args):
 def project_command(project, cmd, args):
     if cmd == "font":
         p = Parser(prog="vixl font")
-        p.add_argument("action", choices=["list", "import", "install", "pair", "use"])
+        p.add_argument("action", choices=["list", "import", "install", "pair", "use", "cover"])
         p.add_argument("--scope", choices=["document", "workspace"],
                        help="workspace: write the default into brand.json for new documents (install: --role heading|body, "
                             "default heading); --workspace DIR implies it")
@@ -151,6 +151,10 @@ def project_command(project, cmd, args):
         p.add_argument("--seed", type=_seed)
         p.add_argument("--mood")
         p.add_argument("--for", dest="purpose")
+        p.add_argument("--text", help="cover: the characters to cover (default: every text layer's)")
+        p.add_argument("--script", action="append", dest="scripts",
+                       help="cover: a script to cover (Devanagari, Han, Hiragana/Katakana, Hangul, Thai, Arabic); "
+                            "repeatable")
         a = p.parse_args(args)
         require(not (a.workspace and a.scope == "document"),
                 "--workspace selects the brand.json for --scope workspace; a document is chosen with --project",
@@ -175,6 +179,8 @@ def project_command(project, cmd, args):
         if a.action == "install":
             require(a.source, "Use font install FAMILY [--weight 700] [--italic] [--role heading|body]")
             return typefaces.install_font(project, a.source, a.weight, a.italic, a.name, a.role), True
+        if a.action == "cover":
+            return typefaces.cover_fonts(project, a.text, a.scripts, a.weight), True
         if a.action == "pair":
             return typefaces.pair_fonts(project, a.source, seed=a.seed, mood=a.mood, best_for=a.purpose), True
         if a.action == "use":

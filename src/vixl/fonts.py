@@ -36,6 +36,11 @@ def import_font(project, source, name):
             raise
     else:
         data = read_bounded(Path(source), limit)
+    return register_font_data(project, data, name)
+
+
+def register_font_data(project, data, name):
+    """Embed font bytes as ``fonts/<sha256>.ttf`` and register them under ``name``, in one revision."""
     validate_font(data)
     asset = f"fonts/{hashlib.sha256(data).hexdigest()}.ttf"
     candidate = project.clone()

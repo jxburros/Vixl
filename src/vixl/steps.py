@@ -64,7 +64,13 @@ def import_document(session, project, *, path: str | None = None, data_base64: s
                     node_id: Annotated[str | None, Field(description="figma: the frame or node to import (1:2 or 1-2)")] = None,
                     rasterize_unsupported: Annotated[bool, Field(
                         description="figma: import a PNG render of nodes Vixl cannot keep editable; otherwise they "
-                                    "are skipped and listed in the report")] = False):
+                                    "are skipped and listed in the report")] = False,
+                    font_map: Annotated[dict[str, str] | None, Field(
+                        description="pdf: PDF font family to registered font name, e.g. {Literata: literata-400, "
+                                    "'Literata Bold': literata-700}")] = None,
+                    install_fonts: Annotated[bool | None, Field(
+                        description="Allow downloading from Google Fonts a font the document and the font cache lack "
+                                    "(default: true for Vixl's own SVG, false for PDF)")] = None):
     """Import an SVG (Vixl's own round-trips losslessly), one PDF page as editable text, paths and images, or a Figma
     file, frame or node as editable layers (from a URL or key with the server's Figma token, or an exported file
     JSON); svg_mode=appearance imports one image instead. External or active SVG is rejected."""
@@ -85,7 +91,10 @@ def import_document(session, project, *, path: str | None = None, data_base64: s
     require(source is None and node_id is None and not rasterize_unsupported,
             "source, node_id and rasterize_unsupported are Figma import options", field="source")
     require(isinstance(page, int), "A PDF page is a number", field="page")
-    return read(project, _upload(session, path, data_base64), format, name, page, dpi, svg_mode)
+    options = {"install_fonts": install_fonts} if install_fonts is not None else {}
+    if font_map:
+        options["font_map"] = font_map
+    return read(project, _upload(session, path, data_base64), format, name, page, dpi, svg_mode, **options)
 
 
 def import_font(session, project, *, name: Annotated[str, Field(description="The font name text operations use")],
@@ -124,6 +133,19 @@ def font_install(session, project, *, family: Annotated[str, Field(description="
     return install_font(project, family, weight, italic, name, role)
 
 
+def font_cover(session, project, *, text: Annotated[str | None, Field(
+                   description="Cover the characters of this text (default: every text layer's)")] = None,
+               scripts: Annotated[list[str] | None, Field(
+                   description="Scripts to cover: Devanagari, Han, Hiragana/Katakana, Hangul, Thai, Arabic (or "
+                               "japanese, chinese, korean, hindi)")] = None,
+               weight: Annotated[int, Field(ge=100, le=900)] = 400):
+    """Install the catalog Noto face for each script no available font draws (CJK, Devanagari, Thai ...) and append
+    it to font-fallbacks; uses the font cache first and refuses, naming the families, when downloads are off."""
+    from .typefaces import cover_fonts
+
+    return cover_fonts(project, text, scripts, weight)
+
+
 def style_use(session, project, *, name: Annotated[str, Field(description="A style (vixl_reference('styles'))")],
               palette: Annotated[bool, Field(description="Also define and apply the style's first palette")] = False):
     """Tag the document with a catalog style, store its brief as design guidance and optionally apply its palette."""
@@ -146,7 +168,7 @@ def roll(session, project, *, purpose: str | None = None, mood: str | None = Non
 
 
 STEPS = {"import-image": import_image, "import-document": import_document, "import-font": import_font,
-         "font-pair": font_pair, "font-install": font_install, "style-use": style_use, "roll": roll}
+         "font-pair": font_pair, "font-install": font_install, "font-cover": font_cover, "style-use": style_use, "roll": roll}
 
 
 def step_type(kind):

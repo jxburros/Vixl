@@ -457,27 +457,58 @@ def _font_key(text):
     return re.sub(r"[\s_\-'\"]", "", text).lower()
 
 
-def match_font(project, families, bold=False, italic=False):
+def match_font(project, families, bold=False, italic=False, *, font_map=None, resolver=None, report=None):
     """``(font, unknown family)``: the first of ``families`` the document has registered (a bold or italic
     registration of it when asked, such as ``Inter Bold``), else the bundled DejaVu Sans for that family, else None and the
-    first family that is not a generic one."""
+    first family that is not a generic one.
+
+    ``font_map`` (``{source family: registered name}``) is tried first, with the same style suffixes, so
+    ``{"Literata": "literata-400", "Literata Bold": "literata-700"}`` maps bold text to the bold face. ``resolver``,
+    ``resolver(families, bold, italic) -> (name, how) | None``, can find a face elsewhere (the font cache, a download)
+    and register it; it is asked after a registration of the exact style and before one of the plain family.
+    ``report``, a dict, is filled with ``how`` the font was chosen: ``mapped``, ``registered``, the resolver's ``how``,
+    or ``default``."""
+    report = {} if report is None else report
+    named = [f for f in families if f.lower() not in GENERIC_FAMILIES]
+    suffixes = ((["bolditalic"] if bold and italic else []) + (["bold"] if bold else [])
+                + (["italic"] if italic else []))
+    if font_map:
+        keyed = {_font_key(key): value for key, value in font_map.items()}
+        for candidate in named:
+            for suffix in [*suffixes, ""]:
+                if _font_key(candidate) + suffix in keyed:
+                    report["how"] = "mapped"
+                    return keyed[_font_key(candidate) + suffix], None
     registered = {}
     for name, asset in project.state.get("fonts", {}).items():
         registered.setdefault(_font_key(name), name)
         for family in _families(project.assets.get(asset)):
             registered.setdefault(_font_key(family), name)
     bundled = {"dejavusans": "DejaVuSans.ttf"}  # the bundled face text layers can name directly
-    for candidate in families:
-        if candidate.lower() in GENERIC_FAMILIES:
-            continue
-        base = _font_key(candidate)
-        for suffix in ((["bolditalic"] if bold and italic else []) + (["bold"] if bold else [])
-                       + (["italic"] if italic else []) + [""]):
-            if base + suffix in registered:
-                return registered[base + suffix], None
-        if base in bundled:
-            return bundled[base], None
-    named = [f for f in families if f.lower() not in GENERIC_FAMILIES]
+
+    def lookup(plain):
+        for candidate in named:
+            base = _font_key(candidate)
+            for suffix in suffixes + ([""] if plain else []):
+                if base + suffix in registered:
+                    return registered[base + suffix]
+            if plain and base in bundled:
+                return bundled[base]
+        return None
+
+    # Without a resolver this is one pass in the order above; with one, a registration of the exact style comes
+    # first, then the resolver, then a registration of the plain family (another weight or slope).
+    found = lookup(plain=resolver is None or not suffixes)
+    if found is None and resolver is not None:
+        resolved = resolver(named, bold, italic)
+        if resolved:
+            report["how"] = resolved[1]
+            return resolved[0], None
+        found = lookup(plain=True)
+    if found is not None:
+        report["how"] = "registered"
+        return found, None
+    report["how"] = "default"
     return None, named[0] if named else None
 
 
