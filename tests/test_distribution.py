@@ -115,3 +115,93 @@ def test_launch_args_reject_removed_flags():
 
     with pytest.raises(VixlError):
         mcp_parser().parse_args(["--workspace", ".", "--tools", "core", "--schema", "slim"])
+
+
+def _yaml_files(root):
+    return [*sorted((root / ".github/workflows").glob("*.yml")), root / "action.yml"]
+
+
+def _steps(document):
+    """Every step of a workflow's jobs or a composite action."""
+    if "jobs" in document:
+        for job in document["jobs"].values():
+            yield from job.get("steps", [])
+    else:
+        yield from document.get("runs", {}).get("steps", [])
+
+
+def test_workflows_pin_actions_by_sha(tmp_path):  # #673
+    import importlib.util
+    import re
+
+    import yaml
+
+    root = Path(__file__).resolve().parent.parent
+    uses = []
+    for path in _yaml_files(root):
+        document = yaml.safe_load(path.read_text(encoding="utf-8"))
+        uses += [(path.name, step["uses"]) for step in _steps(document) if "uses" in step]
+    assert len(uses) > 20
+    unpinned = [(name, ref) for name, ref in uses if not re.search(r"@[0-9a-f]{40}$", ref)]
+    assert not unpinned, unpinned
+
+    spec = importlib.util.spec_from_file_location("check_workflow_pins", root / "scripts/check_workflow_pins.py")
+    script = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(script)
+    assert script.main([str(root)]) == 0
+    (tmp_path / ".github/workflows").mkdir(parents=True)
+    (tmp_path / ".github/workflows/x.yml").write_text(
+        "jobs:\n  a:\n    steps:\n      - uses: actions/checkout@v4\n"
+        "      - uses: ./local\n      - uses: 'actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830' # v4\n")
+    assert [ref for _, _, ref in script.unpinned(tmp_path)] == ["actions/checkout@v4"]
+    assert script.main([str(tmp_path)]) == 1
+
+
+def test_manifest_launch_is_immutable(tmp_path):  # #673
+    import json
+    import zipfile
+
+    from vixl import __version__
+
+    root = Path(__file__).resolve().parent.parent
+    pinned = f"vixl-engine=={__version__}"
+    checked_in = json.loads((root / ".mcp.json").read_text(encoding="utf-8"))
+    assert checked_in["mcpServers"]["vixl"]["args"][:2] == ["--from", pinned]
+    mcpb = next(path for path in _package_extensions().build(tmp_path) if path.suffix == ".mcpb")
+    with zipfile.ZipFile(mcpb) as archive:
+        manifest = json.loads(archive.read("manifest.json"))
+    assert manifest["server"]["mcp_config"]["args"][:2] == ["--from", pinned]
+    for page in ("README.md", "docs/getting-started.md"):
+        text = (root / page).read_text(encoding="utf-8")
+        assert pinned in text and "archive/refs/tags" not in text, page
+
+
+def test_release_publish_waits_for_the_protected_environment():  # #673
+    import yaml
+
+    root = Path(__file__).resolve().parent.parent
+    workflow = yaml.safe_load((root / ".github/workflows/release.yml").read_text(encoding="utf-8"))
+    jobs = workflow["jobs"]
+    writers = {name for name, job in jobs.items() if "write" in (job.get("permissions") or {}).values()}
+    assert writers == {"publish"}
+    assert workflow["permissions"] == {"contents": "read"}
+    publish = jobs["publish"]
+    assert publish["environment"]["name"] == "release"
+    assert "plan" in publish["needs"] and publish["if"] == "needs.plan.outputs.publish == 'true'"
+    assert "permissions" not in jobs["plan"]
+
+
+def test_release_signs_the_manifest_inside_the_protected_job():  # #621
+    import yaml
+
+    root = Path(__file__).resolve().parent.parent
+    text = (root / ".github/workflows/release.yml").read_text(encoding="utf-8")
+    jobs = yaml.safe_load(text)["jobs"]
+    names = [step.get("name", "") for step in jobs["publish"]["steps"]]
+    sign = names.index("Sign the update manifest")
+    assert sign < names.index("Checksum every release asset") < names.index("Publish an immutable, fully uploaded stable release")
+    step = jobs["publish"]["steps"][sign]
+    assert step["env"] == {"VIXL_UPDATE_SIGNING_KEY": "${{ secrets.VIXL_UPDATE_SIGNING_KEY }}"}
+    assert "distribution/sign_manifest.py release/vixl-update.json" in step["run"]
+    assert text.count("secrets.") == 1  # no other job sees a secret
+    assert any("updater_sign.TRUSTED_KEYS" in step.get("run", "") for step in jobs["plan"]["steps"])

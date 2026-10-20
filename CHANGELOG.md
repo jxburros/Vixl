@@ -177,6 +177,24 @@
 - **Provider metadata is filtered before it is stored.** A generated layer's `provenance.metadata` keeps only the
   scalar values of `revised_prompt`, `prompt_id`, `id`, `resized_from`, `seed` and `model`, each string cut to 500
   characters; anything else a provider returns (an Automatic1111 `info` payload, free text) is dropped.
+- **Releases wait for an approval, and CI runs only reviewed action code (#673).** Every `uses:` in the workflows
+  and in the Vixl GitHub Action names a full commit SHA, and `scripts/check_workflow_pins.py` fails CI on a tag or
+  branch reference. The release workflow's publish job runs in a protected `release` environment that a maintainer
+  approves, and it is the only job with write permissions; a push that changes no version skips it without asking.
+  The action passes `fail-on`, `profile`, its own path and the base commit to its scripts through environment
+  variables instead of pasting them into shell lines. `pip-audit` over the runtime dependencies now fails CI (the
+  audit of the extras stays advisory).
+- **The MCP launch pins an exact PyPI release (#673).** `.mcp.json`, the Claude Desktop `.mcpb` and the README run
+  `uvx --from vixl-engine==0.27.0 …` instead of a GitHub tag archive, which could be moved to other code; a
+  published PyPI version cannot be replaced. The getting-started install pin is `vixl-engine==0.27.0` too.
+- **Windows updates are signed (#621).** Each release carries `vixl-update.json.sig`, an Ed25519 signature over the
+  exact bytes of `vixl-update.json`, made in the protected `release` environment. The updater verifies it against
+  the public keys pinned in `vixl.updater_sign` (a dependency-free RFC 8032 verifier, frozen into the launcher)
+  before it reads the manifest's checksum. A missing or invalid signature refuses the update with "Update signature
+  invalid; current version kept" (or "Update signature missing"). The manifest gains `min_launcher`, so a later key
+  rotation can ask older launchers for a new installer. Installs from before this change keep their old updater,
+  which ignores the signature and still checks the SHA-256, so they keep updating; re-run the installer to get a
+  verifying launcher. Releases now need the signing key set up first ([update signing](docs/reference/releases.md#update-signing)).
 
 ### Fixed and added
 

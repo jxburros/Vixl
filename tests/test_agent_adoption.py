@@ -380,12 +380,11 @@ def test_agent_bundles_include_skill_references(tmp_path):
                 assert archive.read(manifest["icon"]).startswith(b"\x89PNG\r\n\x1a\n")
                 assert "${user_config.workspace}" in manifest["server"]["mcp_config"]["args"]
                 from vixl import __version__
-                source = f"https://github.com/jxburros/Vixl/archive/refs/tags/v{__version__}.tar.gz"
-                assert manifest["server"]["mcp_config"]["args"][1] == source
+                assert manifest["server"]["mcp_config"]["args"][1] == f"vixl-engine=={__version__}"
             else:
                 config = json.loads(archive.read(".mcp.json"))
                 from vixl import __version__
-                assert config["mcpServers"]["vixl"]["args"][1].endswith(f"/v{__version__}.tar.gz")
+                assert config["mcpServers"]["vixl"]["args"][1] == f"vixl-engine=={__version__}"
 
 
 def test_brand_checks_canvas_gradients_and_hidden_required_elements(tmp_path):

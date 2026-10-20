@@ -87,7 +87,7 @@ def test_issue_templates_and_advisory_workflows():
         text = (ROOT / ".github/workflows" / name).read_text(encoding="utf-8")
         assert "continue-on-error: true" in text, name
         assert "::warning" in text and "exit 1" not in text, name
-        assert "uses: actions/checkout@v4" in text, name
+        assert "uses: actions/checkout@" in text, name
         assert "contents: read" in text and "write" not in text, name
 
 

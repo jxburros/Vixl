@@ -31,10 +31,11 @@ live review; `pdf` adds PDF page import (as editable layers or one image). To up
 run `git pull --ff-only`, and repeat the install. Pip installs use pip-managed updates;
 the bundled Windows updater is a separate installation mechanism.
 
-For reproducible work, install a tag rather than tracking `main`:
+For reproducible work, install an exact release rather than tracking `main` (a published PyPI version cannot be
+replaced):
 
 ```bash
-python -m pip install 'https://github.com/jxburros/Vixl/archive/refs/tags/v0.27.0.tar.gz'
+python -m pip install 'vixl-engine==0.27.0'
 ```
 
 Latest `main` may include changes beyond the tagged release while reporting the same
