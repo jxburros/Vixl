@@ -54,6 +54,25 @@ packages = ["src/vixl"]
 include = ["/src/vixl", "/tests", "/docs", "/skills", "/CHANGELOG.md", "/pyproject.toml", "/README.md", "/LICENSE"]
 exclude = ["/tests/visual/_failures", "__pycache__"]
 
+[tool.mypy]
+# Strict checking for the modules listed here; the list only grows (tests/test_typecheck.py). Everything they import
+# is read for its types but not reported on.
+python_version = "3.11"
+strict = true
+follow_imports = "silent"
+ignore_missing_imports = true
+files = [
+    "src/vixl/errors.py",
+    "src/vixl/fileio.py",
+    "src/vixl/hashing.py",
+    "src/vixl/history.py",
+    "src/vixl/model.py",
+    "src/vixl/registry.py",
+    "src/vixl/sdk_compat.py",
+    "src/vixl/targets.py",
+    "src/vixl/types.py",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [

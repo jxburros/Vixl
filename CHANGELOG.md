@@ -56,6 +56,10 @@
 - **A core operation registry (#631).** `operations.execute` no longer walks 40 `if kind in …` branches: after the
   shared steps it looks the type up in `vixl.registry`, which lists the feature module that executes each one and
   refuses a type claimed twice. The operation schema and the list of operation types are unchanged.
+- **Static types for the core leaves (#633).** `errors`, `fileio`, `hashing`, `history`, `model`, `registry`,
+  `sdk_compat` and `targets` are annotated and pass strict mypy (a new `typecheck` CI job). `vixl.types` names the
+  document shapes, and `model.is_number`/`is_int` replace the `isinstance(value, bool)` dance in new code. A test
+  keeps the checked set and its annotated functions from shrinking.
 - **Module layering (#632, first step).** A test holds four layers (leaf, document core, features, interfaces) with a
   baseline of the 230 upward imports it found that may only shrink. The service policy helpers moved to
   `vixl.io_policy` (`service_check` from `interfaces`; `export_file`, `decode_upload` and `EXPORT_SUFFIXES` from

@@ -11,9 +11,11 @@ The operations every document has (``add``, ``move`` ...) stay in ``operations.p
 Adding a module: give it a types tuple and an ``execute(project, op)``, and add a line here.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import lru_cache
 from importlib import import_module
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -22,18 +24,18 @@ class OperationModule:
     types_attribute: str
     module: str  # Where the function that executes them lives.
     function: str = "execute"
-    also: tuple = ()  # Types the module executes that are listed elsewhere (the base list in operations.py).
+    also: tuple[str, ...] = ()  # Types the module executes that are listed elsewhere (the base list in operations.py).
     returns: bool = True  # False: the operation's result is None whatever the function returns.
 
-    def types(self):
+    def types(self) -> tuple[str, ...]:
         return tuple(getattr(import_module(f"vixl.{self.types_module}"), self.types_attribute)) + self.also
 
-    def __call__(self, project, op):
+    def __call__(self, project: Any, op: Any) -> Any:
         result = getattr(import_module(f"vixl.{self.module}"), self.function)(project, op)
         return result if self.returns else None
 
 
-def _module(name, attribute="TYPES", function="execute", **options):
+def _module(name: str, attribute: str = "TYPES", function: str = "execute", **options: Any) -> OperationModule:
     return OperationModule(name, attribute, name, function, **options)
 
 
@@ -77,9 +79,9 @@ CORE_OPERATION_MODULES = (
 
 
 @lru_cache(maxsize=None)
-def operation_modules():
+def operation_modules() -> dict[str, OperationModule]:
     """``{type: OperationModule}`` for every core feature type; a type claimed by two modules is an error."""
-    table = {}
+    table: dict[str, OperationModule] = {}
     for entry in CORE_OPERATION_MODULES:
         for kind in entry.types():
             if kind in table:
@@ -98,7 +100,7 @@ SCHEMA_SOURCES = (
 )
 
 
-def add_schemas(add):
+def add_schemas(add: Callable[..., None]) -> None:
     """Let every module in ``SCHEMA_SOURCES`` add its operation schemas through ``add``."""
     for source in SCHEMA_SOURCES:
         module, _, function = source.partition(":")

@@ -6,12 +6,22 @@ error unless the caller passes ``default`` (for example ``default=str`` for a ke
 so nothing is hashed through an accidental ``repr``.
 """
 
+from collections.abc import Callable
 import hashlib
 import json
 from pathlib import PurePath
+from typing import Any, Protocol
+
+Default = Callable[[Any], Any] | None
 
 
-def _encode(value):
+class Hash(Protocol):
+    def update(self, data: bytes, /) -> None: ...
+    def digest(self) -> bytes: ...
+    def hexdigest(self) -> str: ...
+
+
+def _encode(value: Any) -> Any:
     if isinstance(value, PurePath):
         return value.as_posix()
     if isinstance(value, (set, frozenset)):
@@ -21,12 +31,11 @@ def _encode(value):
     raise TypeError(f"{type(value).__name__} is not hashable as content")
 
 
-def canonical_json(value, *, default=None):
+def canonical_json(value: Any, *, default: Default = None) -> bytes:
     """``value`` as canonical UTF-8 JSON bytes (tuples encode as lists)."""
-    if default is None:
-        encode = _encode
-    else:
-        def encode(item):
+    encode: Callable[[Any], Any] = _encode
+    if default is not None:
+        def encode(item: Any) -> Any:
             try:
                 return _encode(item)
             except TypeError:
@@ -34,25 +43,25 @@ def canonical_json(value, *, default=None):
     return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False, default=encode).encode()
 
 
-def hasher(algo="sha256", size=None):
+def hasher(algo: str = "sha256", size: int | None = None) -> Hash:
     """A new hash object: ``sha256``, or ``blake2b`` with an optional ``size`` in bytes."""
     if algo == "blake2b":
         return hashlib.blake2b(digest_size=size or 64)
     return hashlib.new(algo)
 
 
-def update_json(digest, value, *, default=None):
+def update_json(digest: Hash, value: Any, *, default: Default = None) -> Hash:
     """Feed ``value``'s canonical JSON to an incremental ``digest``."""
     digest.update(canonical_json(value, default=default))
     return digest
 
 
-def content_hash(value, *, algo="sha256", size=None, default=None):
+def content_hash(value: Any, *, algo: str = "sha256", size: int | None = None, default: Default = None) -> str:
     """The hex digest of ``value``'s canonical JSON."""
     return update_json(hasher(algo, size), value, default=default).hexdigest()
 
 
-def legacy_hash(value, *, compact=False, allow_nan=True, default=None):
+def legacy_hash(value: Any, *, compact: bool = False, allow_nan: bool = True, default: Default = None) -> str:
     """The SHA-256 hex digest of ``json.dumps(value, sort_keys=True)`` as earlier releases computed it, for
     digests that are stored and compared later (suite and library hashes, pack-folder revision ids, workspace
     check history keys, lyric build fingerprints): a new encoding would make every stored one look changed.

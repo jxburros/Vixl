@@ -66,7 +66,7 @@ def rule(key):
     return _data()["craft"][key]
 
 
-def safe_area(width, height):
+def safe_area(width: float, height: float) -> int:
     """The default safe-area inset of a ``width`` × ``height`` canvas, in pixels."""
     return round(min(width, height) * rule("safe_area"))
 

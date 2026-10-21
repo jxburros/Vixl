@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 from functools import lru_cache
+from typing import Any
 
 from .geometry import ANCHORS
 from .inplace import EDITS, target_schema
@@ -54,7 +55,7 @@ def field(base, description):
     return {**base, "description": description}
 
 
-def operation_schema():
+def operation_schema() -> dict[str, Any]:
     return deepcopy(_operation_schema())
 
 

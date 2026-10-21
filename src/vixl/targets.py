@@ -13,6 +13,9 @@ depends on the operation, and the schema says which (``x-targets`` on each varia
 The docs table in docs/reference/operations.md is generated from the schema by ``markdown_table``.
 """
 
+from collections.abc import Callable
+from typing import Any
+
 from .errors import VixlError, require
 from .model import MAX_LAYERS
 from .constants import EFFECTS
@@ -43,14 +46,14 @@ DESCRIPTION = ("Several layer IDs or names: the operation is applied to each in 
                "same atomic batch. Pass target or targets, not both.")
 
 
-def mode(kind):
+def mode(kind: str) -> str:
     """``each``, ``joint`` or ``one`` (operations without a layer list)."""
     if kind in EACH or kind in OWN_EACH:
         return "each"
     return "joint" if kind in JOINT else "one"
 
 
-def enrich(variants):
+def enrich(variants: list[dict[str, Any]]) -> None:
     """Give every ``each`` operation a ``targets`` field, so ``required: [target]`` becomes target or
     targets, and tag every variant with its ``x-targets`` mode."""
     for variant in variants:
@@ -75,7 +78,8 @@ def enrich(variants):
                 variant.update(either)
 
 
-def normalize(op, kind, allowed, required, note):
+def normalize(op: dict[str, Any], kind: str, allowed: Any, required: Any,
+              note: Callable[[str], None]) -> dict[str, Any]:
     """Read ``targets``/``target`` in the canonical form for ``kind`` (see the module docstring)."""
     for alias in ALIASES:
         if isinstance(op.get(alias), list) and "targets" not in op and alias not in allowed:
@@ -104,7 +108,7 @@ def normalize(op, kind, allowed, required, note):
                     f"{kind} operation per layer", field="targets", suggestions=["target"])
 
 
-def fan_out(op):
+def fan_out(op: dict[str, Any]) -> list[dict[str, Any]]:
     """The single-layer operations an ``each`` operation with ``targets`` stands for."""
     if op.get("type") not in EACH or "targets" not in op:
         return [op]
@@ -115,13 +119,13 @@ def fan_out(op):
     return [{**rest, "target": target} for target in targets]
 
 
-def markdown_table(variants=None):
+def markdown_table(variants: list[dict[str, Any]] | None = None) -> str:
     """The docs table of which operations take target, targets, or both, generated from the schema."""
     if variants is None:
         from .schema import operation_schema
 
         variants = operation_schema()["properties"]["operations"]["items"]["oneOf"]
-    groups = {"each": [], "joint": [], "one": []}
+    groups: dict[str, list[str]] = {"each": [], "joint": [], "one": []}
     for variant in variants:
         groups[variant["x-targets"]].append(variant["properties"]["type"]["const"])
     rows = [
