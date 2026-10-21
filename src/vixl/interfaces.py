@@ -5,6 +5,7 @@ from contextlib import contextmanager
 import hmac
 import json
 from pathlib import Path
+import threading
 from threading import RLock
 from weakref import WeakKeyDictionary
 
@@ -74,6 +75,9 @@ def offset_indexes(exc, indexes, start=0):
     return exc
 
 
+NEST_TIMEOUT = 30  # Seconds a workflow holding one document waits for an earlier-sorting one (Session._exclusive).
+
+
 class _Document:
     __slots__ = ("path", "project", "stamp")
 
@@ -130,7 +134,14 @@ class Session:
         # failed, or it was closed and opened again): keys are content-addressed, so a reload re-renders
         # only what changed.
         self._render_caches = OrderedDict()
+        # Locks, always taken in this order and never the other way: ``_mutex`` (held by workflows that act on
+        # several documents at once, to exclude each other), a document's own lock (``_exclusive``; one call at
+        # a time per document, while calls on other documents run in parallel), its file lock, and
+        # ``_registry`` (the open documents, the per-client maps and these locks; held only briefly).
         self._mutex = RLock()
+        self._registry = RLock()
+        self._document_locks = {}
+        self._held = threading.local()  # The documents this thread holds, in the order it took them.
         if path:
             self.open(path if workspace else Path(path).resolve())
 
@@ -149,6 +160,10 @@ class Session:
 
     def active(self):
         """The calling client's active document, unless the server insists on ``document=``."""
+        with self._registry:
+            return self._active()
+
+    def _active(self):
         require(
             not self.require_document,
             "document= is required on this server (started with --require-document); pass the .vixl path",
@@ -192,7 +207,7 @@ class Session:
     def _seen(self, path):
         client = current_client()
         if client is not None:
-            seen = self._client_seen.setdefault(client, {})
+            seen = self._client_seen.setdefault(client, {})  # Under ``_registry``.
             seen.pop(path, None)
             seen[path] = True
             while len(seen) > 2 * self.MAX_OPEN:  # Two are enough to refuse; keep the most recent.
@@ -216,61 +231,88 @@ class Session:
     def load(self, path):
         """``Project.load`` that carries the document's previous render caches over."""
         project = Project.load(path, limits=self.limits)
-        kept = self._render_caches.pop(path, None)
-        if kept is not None:
-            project._cache, project._paint_cache = kept
-        self._render_caches[path] = (project._cache, project._paint_cache)
-        while len(self._render_caches) > 2 * self.MAX_OPEN:
-            self._render_caches.popitem(last=False)
+        with self._registry:
+            kept = self._render_caches.pop(path, None)
+            if kept is not None:
+                project._cache, project._paint_cache = kept
+            self._render_caches[path] = (project._cache, project._paint_cache)
+            while len(self._render_caches) > 2 * self.MAX_OPEN:
+                self._render_caches.popitem(last=False)
         return project
 
     def _remember(self, path, project, stamp):
         project._workspace = self.workspace
+        with self._registry:
+            self._keep(path, _Document(path, project, stamp))
+            self.path = path
+            self._seen(path)
+        note_document(path)
+
+    def _keep(self, path, entry):
+        """Make ``entry`` the most recent open document, dropping the oldest past ``MAX_OPEN`` (under
+        ``_registry``). Dropping one that another thread is using is safe: that thread keeps its own reference,
+        everything is saved, and the next call reloads it."""
         self.documents.pop(path, None)
-        self.documents[path] = _Document(path, project, stamp)
+        self.documents[path] = entry
         while len(self.documents) > self.MAX_OPEN:
             oldest = next(iter(self.documents))
-            if oldest == path:
+            if oldest in (path, self.path):
                 break
-            del self.documents[oldest]  # Everything is already saved; reopening reloads it.
-        self.path = path
-        self._seen(path)
-        note_document(path)
+            del self.documents[oldest]
+
+    @contextmanager
+    def _exclusive(self, path):
+        """Hold ``path``'s document lock and its file lock. A thread that already holds another document (a
+        workflow that opens a second one) blocks only for a document that sorts after every one it holds; for
+        an earlier one it waits at most ``NEST_TIMEOUT`` and then fails with ``document_busy``, so two threads
+        that take the same pair in opposite order cannot wait for each other for ever."""
+        with self._registry:
+            lock = self._document_locks.setdefault(path, RLock())
+        held = self._held.__dict__.setdefault("paths", [])
+        if any(other > path for other in held if other != path):
+            require(lock.acquire(timeout=NEST_TIMEOUT), f"{self.relative(path)} is busy with another call; retry",
+                    "document_busy", field="document")
+        else:
+            lock.acquire()
+        held.append(path)
+        try:
+            with file_lock(str(path)):
+                yield
+        finally:
+            held.pop()
+            lock.release()
 
     def open(self, path):
         """Open a document and return its summary."""
-        with self._mutex:
-            resolved = self.resolve(path)
-            require(resolved.is_file(), f"Document does not exist: {path}", "not_found", field="path")
-            with file_lock(str(resolved)):
-                project = self.load(resolved)
-                self._remember(resolved, project, self.stamp(resolved))
-            summary = self.summary(project)
-            return summary
+        resolved = self.resolve(path)
+        require(resolved.is_file(), f"Document does not exist: {path}", "not_found", field="path")
+        with self._exclusive(resolved):
+            project = self.load(resolved)
+            self._remember(resolved, project, self.stamp(resolved))
+        return self.summary(project)
 
     def create(self, path, width=None, height=None, background=None, *, size=None, purpose=None, dpi=None,
                orientation=None, bleed=False, seed=None, variety=None, workspace_fonts=True, house_style=None):
         """Create and save a document through ``creation.create``; the summary adds ``creation`` (size,
         background and fonts chosen, and why) and ``workspace_fonts`` (the ``brand.json`` fonts embedded)."""
-        with self._mutex:
-            resolved = self.resolve(path)
-            require(resolved.suffix.lower() == ".vixl", "Document path must end in .vixl", field="path")
-            from .creation import resolve_size
+        resolved = self.resolve(path)
+        require(resolved.suffix.lower() == ".vixl", "Document path must end in .vixl", field="path")
+        from .creation import resolve_size
 
-            resolve_size(width, height, size, purpose)  # a bad request must not leave directories behind
-            from .variety import house_style_off
+        resolve_size(width, height, size, purpose)  # a bad request must not leave directories behind
+        from .variety import house_style_off
 
-            house_style_off(house_style, self.workspace)
-            self.make_parent(resolved)
-            with file_lock(str(resolved)):
-                require(not resolved.exists(), "Destination already exists; open it instead", field="path")
-                report = {}
-                project = self.new_project(width, height, background, size=size, purpose=purpose, dpi=dpi,
-                                           orientation=orientation, bleed=bleed, seed=seed, variety=variety,
-                                           workspace_fonts=workspace_fonts, report=report, house_style=house_style)
-                project.save(resolved)
-                self._remember(resolved, project, self.stamp(resolved))
-            return {**self.summary(project), **report}
+        house_style_off(house_style, self.workspace)
+        self.make_parent(resolved)
+        with self._exclusive(resolved):
+            require(not resolved.exists(), "Destination already exists; open it instead", field="path")
+            report = {}
+            project = self.new_project(width, height, background, size=size, purpose=purpose, dpi=dpi,
+                                       orientation=orientation, bleed=bleed, seed=seed, variety=variety,
+                                       workspace_fonts=workspace_fonts, report=report, house_style=house_style)
+            project.save(resolved)
+            self._remember(resolved, project, self.stamp(resolved))
+        return {**self.summary(project), **report}
 
     def new_project(self, width=None, height=None, background=None, *, size=None, purpose=None, dpi=None,
                     orientation=None, bleed=False, seed=None, variety=None, workspace_fonts=False, report=None,
@@ -294,7 +336,7 @@ class Session:
         path.parent.mkdir(parents=True, exist_ok=True)
 
     def close(self, document=None):
-        with self._mutex:
+        with self._registry:
             require(document is not None or current_client() is not None or len(self.documents) <= 1,
                     "Several documents are open; pass document explicitly to close one", "ambiguous_document",
                     field="document", documents=[self.relative(path) for path in self.documents])
@@ -314,10 +356,11 @@ class Session:
             return self.open_documents()
 
     def open_documents(self):
-        return {
-            "active": self.relative(self.path) if self.path else None,
-            "open": [self.relative(path) for path in self.documents],
-        }
+        with self._registry:
+            return {
+                "active": self.relative(self.path) if self.path else None,
+                "open": [self.relative(path) for path in self.documents],
+            }
 
     def summary(self, project, path=None):
         return {
@@ -330,8 +373,10 @@ class Session:
 
     @contextmanager
     def project(self, write=False, document=None):
-        # Serialize threads and cooperating CLI/service writers. Revalidate only when disk changes.
-        with self._mutex:
+        """The document, loaded once and kept between calls, held exclusively for the ``with`` block: calls on
+        one document run one at a time (and cooperating CLI and service writers wait on its file lock), calls
+        on different documents in parallel. Revalidate only when the file on disk changes."""
+        with self._registry:
             if document:
                 path = self.resolve(document)
                 require(path.suffix.lower() == ".vixl", "Document path must end in .vixl", field="document")
@@ -339,36 +384,34 @@ class Session:
                     require(path.is_file(), f"Document does not exist: {document}", "not_found", field="document")
                 self._seen(path)
             else:
-                path = self.active()
-            note_document(path)
-            with file_lock(str(path)):
+                path = self._active()
+        note_document(path)
+        with self._exclusive(path):
+            with self._registry:
                 entry = self.documents.get(path)
-                try:
-                    stamp = self.stamp(path)
-                    if entry is None or entry.project is None or stamp != entry.stamp:
-                        entry = _Document(path, self.load(path), stamp)
-                    # Addressing a document explicitly keeps it open but does not change the active one.
-                    self.documents.pop(path, None)
-                    self.documents[path] = entry
-                    while len(self.documents) > self.MAX_OPEN:
-                        oldest = next(iter(self.documents))
-                        if oldest in (path, self.path):
-                            break
-                        del self.documents[oldest]
-                    project = entry.project
-                    project._workspace = self.workspace
-                    revision = project._revision
-                    yield project
-                    if write:
-                        project.save()
-                    if project._revision != revision:
-                        entry.stamp = self.stamp(path)
-                except BaseException:
-                    # A failed provider, operation or save must never leave unsaved cached state.
-                    self.documents.pop(path, None)
+            try:
+                stamp = self.stamp(path)
+                if entry is None or entry.project is None or stamp != entry.stamp:
+                    entry = _Document(path, self.load(path), stamp)
+                # Addressing a document explicitly keeps it open but does not change the active one.
+                with self._registry:
+                    self._keep(path, entry)
+                project = entry.project
+                project._workspace = self.workspace
+                revision = project._revision
+                yield project
+                if write:
+                    project.save()
+                if project._revision != revision:
+                    entry.stamp = self.stamp(path)
+            except BaseException:
+                # A failed provider, operation or save must never leave unsaved cached state.
+                with self._registry:
+                    if self.documents.get(path) is entry:
+                        self.documents.pop(path, None)
                     if self.path == path and not path.exists():
                         self.path = None
-                    raise
+                raise
 
     def inspect(self, target=None, document=None):
         with self.project(document=document) as p:

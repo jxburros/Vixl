@@ -290,7 +290,7 @@ Pass `document=`, or close documents with `vixl_document(action='close', documen
 - Every result names the document it acted on (`document`), so a mistake shows up in the first response.
 - Pass `document=` on every call, with `request_id` on mutating ones.
 
-For many agents at once, run one `vixl mcp --http` server they all connect to (each gets its own active document and the calls share one worker pool and job store) rather than one stdio server per agent; raise `VIXL_MCP_WORKERS` when results come back as `queued` jobs.
+For many agents at once, run one `vixl mcp --http` server they all connect to (each gets its own active document and the calls share one worker pool and job store) rather than one stdio server per agent; raise `VIXL_MCP_WORKERS` when results come back as `queued` jobs. Calls on different documents run in parallel; calls on the same document wait for each other, so agents that work on separate documents do not slow each other down.
 
 ### Typed AI tools
 

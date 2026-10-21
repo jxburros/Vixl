@@ -94,56 +94,55 @@ EXPORT_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", "
 def export_file(session, path, overwrite=False, document=None, **options):
     from .fileio import temporary
 
-    with session._mutex:
-        destination = session.resolve(path)
+    destination = session.resolve(path)
+    require(
+        destination.suffix.lower() in EXPORT_SUFFIXES,
+        "Choose a PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF, ICO, HTML, PPTX or PSD filename, a TTF, OTF, WOFF or WOFF2 "
+        "font (the document's font design), or .vixl with isolate",
+        field="path",
+    )
+    require(destination.suffix.lower() != ".vixl" or options.get("isolate"),
+            "A .vixl export writes a portable object document: pass isolate=[OBJECT]", field="path")
+    session.make_parent(destination)
+    with file_lock(str(destination)):
         require(
-            destination.suffix.lower() in EXPORT_SUFFIXES,
-            "Choose a PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF, ICO, HTML, PPTX or PSD filename, a TTF, OTF, WOFF or WOFF2 "
-            "font (the document's font design), or .vixl with isolate",
+            overwrite or not destination.exists(),
+            "Destination already exists; set overwrite=true",
             field="path",
         )
-        require(destination.suffix.lower() != ".vixl" or options.get("isolate"),
-                "A .vixl export writes a portable object document: pass isolate=[OBJECT]", field="path")
-        session.make_parent(destination)
-        with file_lock(str(destination)):
-            require(
-                overwrite or not destination.exists(),
-                "Destination already exists; set overwrite=true",
-                field="path",
-            )
-            fmt = {".jpg": "JPEG", ".jpeg": "JPEG", ".tif": "TIFF", ".tiff": "TIFF", ".pdf": "PDF", ".ico": "ICO"}.get(
-                destination.suffix.lower(), destination.suffix[1:].upper()
-            )
-            report = {}
-            with session.project(document=document) as project:
-                from .call_limits import check_export, of
+        fmt = {".jpg": "JPEG", ".jpeg": "JPEG", ".tif": "TIFF", ".tiff": "TIFF", ".pdf": "PDF", ".ico": "ICO"}.get(
+            destination.suffix.lower(), destination.suffix[1:].upper()
+        )
+        report = {}
+        with session.project(document=document) as project:
+            from .call_limits import check_export, of
 
-                if destination.suffix.lower() == ".vixl":
-                    from .objects import portable_bytes
+            if destination.suffix.lower() == ".vixl":
+                from .objects import portable_bytes
 
-                    data = portable_bytes(project, options, report)
-                    fmt = "VIXL"
-                else:
-                    check_export(of(session), project, fmt, options)
-                    data = project.export(format=fmt, report=report, **options)
-            fd, temporary_path = temporary(
-                destination.parent, like=destination if destination.exists() else None
-            )
-            try:
-                with os.fdopen(fd, "wb") as stream:
-                    stream.write(data)
-                    stream.flush()
-                    os.fsync(stream.fileno())
-                if overwrite:
-                    os.replace(temporary_path, destination)
-                else:
-                    # Atomic no-clobber publication, including non-Vixl writers.
-                    os.link(temporary_path, destination)
-            finally:
-                if os.path.exists(temporary_path):
-                    os.unlink(temporary_path)
-        return {"path": session.relative(destination), "format": fmt, "bytes": len(data), **report,
-                "outcome": export_outcome(report)}
+                data = portable_bytes(project, options, report)
+                fmt = "VIXL"
+            else:
+                check_export(of(session), project, fmt, options)
+                data = project.export(format=fmt, report=report, **options)
+        fd, temporary_path = temporary(
+            destination.parent, like=destination if destination.exists() else None
+        )
+        try:
+            with os.fdopen(fd, "wb") as stream:
+                stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
+            if overwrite:
+                os.replace(temporary_path, destination)
+            else:
+                # Atomic no-clobber publication, including non-Vixl writers.
+                os.link(temporary_path, destination)
+        finally:
+            if os.path.exists(temporary_path):
+                os.unlink(temporary_path)
+    return {"path": session.relative(destination), "format": fmt, "bytes": len(data), **report,
+            "outcome": export_outcome(report)}
 
 
 def export_outcome(report):

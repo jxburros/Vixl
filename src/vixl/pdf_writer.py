@@ -11,6 +11,7 @@ The writer adds no actions, JavaScript or links of its own (``pdf_forms`` suppli
 
 import hashlib
 import math
+import threading
 import zlib
 
 from .errors import require
@@ -169,12 +170,17 @@ def image_xobject(writer, image, *, jpeg_quality=None, alpha=None):
 _DIGESTS = {}  # id(data) -> (data, sha256): a few font programs are used for every glyph, so each is hashed once
 
 
+_DIGESTS_LOCK = threading.Lock()  # Documents export in parallel threads.
+
+
 def font_digest(data):
     held = _DIGESTS.get(id(data))
     if held is None or held[0] is not data:
-        if len(_DIGESTS) > 64:
-            _DIGESTS.clear()
-        held = _DIGESTS[id(data)] = (data, hashlib.sha256(data).hexdigest())
+        held = (data, hashlib.sha256(data).hexdigest())
+        with _DIGESTS_LOCK:
+            if len(_DIGESTS) > 64:
+                _DIGESTS.clear()
+            _DIGESTS[id(data)] = held
     return held[1]
 
 

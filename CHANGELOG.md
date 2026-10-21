@@ -21,6 +21,14 @@
   the next one gets `503`, `Retry-After: 3` and `limit_exceeded` with `limit: max_queue` instead of waiting in an
   unbounded queue. A job still running past the hard timeout no longer pins its slot in the job list.
 
+### Performance
+
+- **Documents no longer wait for each other on one server (#629).** A REST or MCP server used one lock for every
+  call, so a slow render of one document held up calls on all the others. Each document now has its own lock: calls
+  on different documents run in parallel, calls on one document still run in order. MCP exports no longer hold a
+  server-wide lock while they render. The caches every document shares (rasterised SVG, opacity tables, PDF font
+  digests) are thread-safe.
+
 ### Internal
 
 - **Private MCP SDK access in one module (#685).** Every use of a private FastMCP attribute (the advertised server

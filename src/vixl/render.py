@@ -8,6 +8,7 @@ import json
 import math
 from pathlib import Path
 import re
+import threading
 
 import numpy as np
 from PIL import Image, ImageColor, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
@@ -1542,13 +1543,16 @@ def opacity_table(opacity):
     """The 256-entry table that scales an alpha channel by ``opacity`` (as ``round(a * opacity)``)."""
     table = OPACITY_TABLES.get(opacity)
     if table is None:
-        if len(OPACITY_TABLES) >= 4096:
-            OPACITY_TABLES.clear()
-        table = OPACITY_TABLES[opacity] = [round(a * opacity) for a in range(256)]
+        table = [round(a * opacity) for a in range(256)]
+        with OPACITY_LOCK:  # Documents render in parallel threads.
+            if len(OPACITY_TABLES) >= 4096:
+                OPACITY_TABLES.clear()
+            OPACITY_TABLES[opacity] = table
     return table
 
 
 OPACITY_TABLES = {}
+OPACITY_LOCK = threading.Lock()
 
 
 def with_opacity(image, opacity):
