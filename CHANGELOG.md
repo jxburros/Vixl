@@ -65,8 +65,10 @@
 - **Lit scenes render incrementally (#595, first part).** A document with scene lighting no longer re-renders and
   relights the whole canvas after every edit: the canvas before lighting is kept, the changed box is composited
   and lit again, and a `region` render is lit by its place on the canvas. The pixels are identical to a full render.
-  One move on a lit 4000 × 4000 scene went from about 2 s to well under half a second. Adjustment layers,
-  canvas-edge blur and selection-masked effects still render in full.
+  One move on a lit 4000 × 4000 scene went from about 2 s to well under half a second. Adjustment layers whose
+  filters are per pixel (levels, curves, hue, saturation, brightness, exposure, LUTs …) render incrementally too,
+  their masks and selections cut to the redrawn box. Adjustments that see past each pixel (blur, contrast, sharpen,
+  noise), canvas-edge blur and selection-masked effects on ordinary layers still render in full.
 
 - **Timeline frames render in worker processes (#717).** A long GIF, WebP, APNG, frame-sequence, sheet or MP4/WebM
   export renders its frames in up to four processes (one fewer than the cores; `VIXL_FRAME_WORKERS` sets it, `1`
@@ -76,8 +78,14 @@
   cores. Exports under 16 frames a process, previews and documents with linked layers render in one process.
 - **Speed decisions recorded.** [Render performance](docs/project/render-performance.md) has the re-profile after
   this work and the calls on tiled compositing (#588, deferred until layers can be drawn by region), the glyph cache
-  (#584, next), a Skia backend (#591, not adopted: the cost is the resvg binding's PNG round trip) and native
+  (#584, needs a parity decision), a Skia backend (#591, not adopted: the cost is the resvg binding's PNG round trip) and native
   kernels (#593, no measured gain).
+
+### Fixed
+
+- **`effect-set` and the other effect operations on an adjustment layer failed** with "Malformed operation
+  (KeyError: 'id')": the `adjustment` operation stored its effects without the IDs every other effect stack has.
+  New adjustment layers get them, and stacks saved without them are still addressed by position or name.
 
 ### Internal
 

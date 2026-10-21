@@ -162,13 +162,13 @@ def effect_ref(layer, ref, field):
         index = int(ref) - 1
         require(0 <= index < len(effects), "Effect index out of range (starts at 1)", field=field)
         return effects[index]
-    found = next((x for x in effects if x["id"] == ref), None)
+    found = next((x for x in effects if x.get("id") == ref), None)
     if found is None:
         named = [x for x in effects if x["name"] == ref]
         require(len(named) < 2, f"{len(named)} effects are named {ref}; use a position or ID", field=field)
         found = named[0] if named else None
     require(found, "Effect not found", field=field,
-            allowed=[f"{i}: {x['name']} ({x['id']})" for i, x in enumerate(effects, 1)])
+            allowed=[f"{i}: {x['name']}" + (f" ({x['id']})" if x.get("id") else "") for i, x in enumerate(effects, 1)])
     return found
 
 

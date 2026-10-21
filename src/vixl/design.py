@@ -316,7 +316,8 @@ def execute_design(project, op):
                 "adjustment",
                 c["width"],
                 c["height"],
-                effects=deepcopy(op["effects"]),
+                # Stack entries like any layer's, so effect-set, effect-move and the rest can address them.
+                effects=[{"id": uid("fx"), "enabled": True, **deepcopy(effect)} for effect in op["effects"]],
             ),
         )
     elif kind == "lut":

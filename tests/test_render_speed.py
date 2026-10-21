@@ -282,6 +282,40 @@ def test_documents_that_read_the_whole_canvas_render_in_full():
     assert getattr(p._cache, "snapshot", None) is None
 
 
+def adjusted_scene(mask=False):
+    from vixl.assets import add_image
+
+    p = scene()
+    p.apply({"type": "adjustment", "name": "adj", "effects": [
+        {"name": "levels", "black": 20, "white": 230}, {"name": "hue", "amount": 40},
+        {"name": "curves", "points": [[0, 10], [128, 150], [255, 240]]}, {"name": "saturation", "amount": 30}]},
+        detail="brief")
+    if mask:
+        gradient = Image.linear_gradient("L").resize((450, 350))
+        p.state["layers"][-1]["mask"] = {"asset": add_image(p, gradient.convert("RGBA")), "enabled": True}
+        p.state["layers"][-1]["mask"]["asset"] = add_image(p, gradient)
+    return p
+
+
+@pytest.mark.parametrize("mask", [False, True], ids=["plain", "masked"])
+def test_per_pixel_adjustments_render_incrementally_and_exactly(mask):  # #595
+    random.seed(13)
+    p = adjusted_scene(mask)
+    assert R.region_renders_alone(p)
+    names = ["e", "t", "g", "r2"]
+    R.render(p)
+    for _ in range(20):
+        name = random.choice(names)
+        p.apply({"type": "move", "target": name, "x": random.randint(-100, 800), "y": random.randint(-100, 600)},
+                detail="brief")
+        assert np.array_equal(pixels(R.render(p)), pixels(fresh(p)))
+    assert p._cache.snapshot is not None
+    region = R.render(p, region=(100, 120, 333, 222))
+    assert np.array_equal(pixels(region), pixels(fresh(p).crop((100, 120, 433, 342))))
+    p.apply({"type": "effect-set", "target": "adj", "effect": "levels", "black": 60}, detail="brief")
+    assert np.array_equal(pixels(R.render(p)), pixels(fresh(p)))
+
+
 @pytest.mark.parametrize("edit", [
     lambda p: p.apply({"type": "swatch", "name": "shade", "color": "#00ff00"}, detail="brief"),
     lambda p: p.apply({"type": "variable", "name": "word", "value": "Changed"}, detail="brief"),

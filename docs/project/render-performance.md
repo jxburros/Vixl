@@ -30,7 +30,9 @@ Two facts decide most of what follows:
 - **#590 render pool.** Only layers whose drawing releases the GIL (effects, styles, placed images, large
   gradients, gradient-filled shapes) are drawn ahead on threads; plain vector shapes and text are not, because
   threads would only add overhead. About a quarter faster on the soft-shadow document; byte-identical output.
-- **#595, lighting part.** A lit scene keeps its canvas before lighting and relights only the dirty box.
+- **#595, lighting and per-pixel adjustments.** A lit scene keeps its canvas before lighting and relights only the
+  dirty box; an adjustment layer with only per-pixel filters is applied to the redrawn box, its mask and selections
+  cut to it. Still in full: adjustments that see past a pixel, canvas-edge blur, selection-masked layer effects.
 - **Parallel frame ranges (#717).** Worker processes (not threads) render chunks of timeline frames; per-frame cost
   is Python layout, which processes do parallelise. Byte-identical frames.
 
@@ -42,10 +44,13 @@ Two facts decide most of what follows:
   worth doing only together with region drawing in `draw_ink` (solid, gradient, shape rectangles and rasters
   cropped before effects) and a streamed PNG writer; that is the issue's steps 3 and 4 and stays C4. Incremental
   renders already cover the common case (an edit re-composites a box, not the canvas).
-- **#584 glyph cache: worth doing next, behind a switch.** Labels cost one resvg call each (1 ms); a glyph atlas
-  would make 1,500 labels cost about one call and save roughly half of a cold label-heavy render. The risk is
-  parity: compositing per-glyph coverage with `max` differs from resvg's single-pass antialiasing where glyphs
-  overlap, so it needs the issue's fallback for overlapping clusters, `VIXL_GLYPH_CACHE=off`, and a visual review.
+- **#584 glyph cache: needs a parity decision first.** Labels cost one resvg call each (1 ms); a glyph atlas
+  would make 1,500 labels cost about one call and save roughly half of a cold label-heavy render. But glyphs sit at
+  fractional pen positions, so reuse needs their subpixel phase quantised: at 1/4 px an edge moves by up to 1/8 px,
+  tens of levels on an edge pixel, not the 2 levels the issue's plan targets (exact phases leave almost nothing to
+  reuse). Compositing per-glyph coverage with `max` also differs from resvg where glyphs overlap. Ship it only if
+  the owner accepts that tolerance, behind `VIXL_GLYPH_CACHE`; the binding route under #591 speeds the same work
+  with no pixel change and comes first.
 - **#591 Skia backend: an exploration, not adopted.** The measured bottleneck is the resvg_py binding (GIL held,
   PNG round trip), not resvg's rasteriser. A binding that returns the RGBA buffer and releases the GIL would cut
   vector and text raster time severalfold with no change in pixels; ask upstream (resvg_py) first, or carry a

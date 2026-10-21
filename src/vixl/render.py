@@ -1868,6 +1868,15 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
             origin = (left, top)
         return (patch, origin) if patch is not None else (None, (0, 0))
 
+    def covering(asset):
+        """A selection or mask image stretched over the canvas (or the group tile), and cut to this tile when the
+        tile is a region of the canvas (``limit``)."""
+        if not limit:
+            return project.image(asset, "L").resize(size)
+        whole = (limit[2] - limit[0], limit[3] - limit[1])
+        return project.image(asset, "L").resize(whole).crop((-limit[0], -limit[1], size[0] - limit[0],
+                                                             size[1] - limit[1]))
+
     def reaches(layer):
         """Whether what the layer draws (its styles included) reaches the tile."""
         b = bounds[layer["id"]]
@@ -1925,9 +1934,7 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
                 if effect.get("enabled", True):
                     filtered = apply_effect(changed, effect, project)
                     changed = (
-                        Image.composite(
-                            filtered, changed, project.image(effect["selection"], "L").resize(size)
-                        )
+                        Image.composite(filtered, changed, covering(effect["selection"]))
                         if effect.get("selection")
                         else filtered
                     )
@@ -1935,7 +1942,7 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
             if layer.get("mask") and layer["mask"].get("enabled", True):
                 from PIL import ImageChops
 
-                mask = ImageChops.multiply(mask, project.image(layer["mask"]["asset"], "L").resize(size))
+                mask = ImageChops.multiply(mask, covering(layer["mask"]["asset"]))
             image = Image.composite(composite(image, changed, layer["blend"]), image, mask)
         else:
             drawn_ahead = prefetch.take(layer)
@@ -2056,7 +2063,9 @@ def layer_fingerprints(project, layers, bounds):
         if item.get("parent"):
             continue
         box = None
-        if item["visible"]:
+        if item["visible"] and item["type"] == "adjustment":
+            box = (0, 0, c["width"], c["height"])  # It filters everything below it, wherever its own box is.
+        elif item["visible"]:
             x, y, w, h = bounds[item["id"]]
             mx, my = ink_margin(item, bounds, children, memo)
             # Styles are drawn on a patch reaching past their margin (layer_patch); two pixels hold
@@ -2186,15 +2195,19 @@ def render_incremental(project, background):
 
 def region_renders_alone(project):
     """Whether a region of the canvas can be drawn by itself, matching the same crop of a full render.
-    Not when something reads the whole canvas: adjustment layers (their selections and masks cover the
-    canvas, and their filters see past the region), canvas-edge blur on a top-level layer, or an effect masked
-    by a canvas selection. Scene lighting does not: it lights each pixel by its place on the canvas."""
+    Not when something reads the whole canvas: an adjustment layer with a filter that sees past each pixel (blur,
+    contrast, sharpen, noise, artistic filters), canvas-edge blur on a top-level layer, or an effect on an ordinary
+    layer masked by a canvas selection. Scene lighting and per-pixel adjustments (levels, curves, hue, LUTs ...,
+    their masks and selections cut to the region) give a region the same pixels as the whole canvas."""
     for layer in project.state["layers"]:
         if layer.get("parent") or not layer.get("visible", True):
             continue
-        if layer["type"] == "adjustment" or any(effect_margin(layer)) or any(
-            effect.get("selection") for effect in layer.get("effects") or []
-        ):
+        effects = [effect for effect in layer.get("effects") or [] if effect.get("enabled", True)]
+        if layer["type"] == "adjustment":
+            if any(effect["name"] not in PER_PIXEL or effect["name"] in BLURS for effect in effects):
+                return False
+            continue
+        if any(effect_margin(layer)) or any(effect.get("selection") for effect in effects):
             return False
     return True
 
