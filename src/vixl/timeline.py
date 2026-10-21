@@ -1483,6 +1483,18 @@ def _frames(project, times, scale, preview=False, cancelled=None, progress=None)
     size = (max(1, round(c["width"] * scale)), max(1, round(c["height"] * scale)))
     project.limits.size(*size)
     began = clock.perf_counter()
+    from .frame_workers import frames as parallel_frames, workers_for
+
+    workers = workers_for(project, len(times), preview)
+    if workers > 1:
+        for index, image in enumerate(parallel_frames(project, times, scale, workers, cancelled)):
+            if progress:
+                elapsed, done = clock.perf_counter() - began, index + 1
+                progress({"done": done, "total": len(times), "timing": {
+                    "elapsed_s": round(elapsed, 3), "eta_s": round(elapsed / done * (len(times) - done), 3),
+                    "workers": workers}})
+            yield image if image.size == size else image.resize(size, Image.Resampling.LANCZOS)
+        return
     try:
         for index, time in enumerate(times):
             require(not cancelled or not cancelled(), "Timeline cancelled", "cancelled")

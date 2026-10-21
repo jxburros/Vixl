@@ -68,6 +68,17 @@
   One move on a lit 4000 × 4000 scene went from about 2 s to well under half a second. Adjustment layers,
   canvas-edge blur and selection-masked effects still render in full.
 
+- **Timeline frames render in worker processes (#717).** A long GIF, WebP, APNG, frame-sequence, sheet or MP4/WebM
+  export renders its frames in up to four processes (one fewer than the cores; `VIXL_FRAME_WORKERS` sets it, `1`
+  turns it off), each loading the document once and rendering consecutive chunks; the frames reach the encoder in
+  order and byte-identical to a one-process export. Threads could not do this: text and vector shapes rasterise
+  through resvg, which holds Python's interpreter lock. A 144-frame lyric film took 4.6 s instead of 10 s on four
+  cores. Exports under 16 frames a process, previews and documents with linked layers render in one process.
+- **Speed decisions recorded.** [Render performance](docs/project/render-performance.md) has the re-profile after
+  this work and the calls on tiled compositing (#588, deferred until layers can be drawn by region), the glyph cache
+  (#584, next), a Skia backend (#591, not adopted: the cost is the resvg binding's PNG round trip) and native
+  kernels (#593, no measured gain).
+
 ### Internal
 
 - **Private MCP SDK access in one module (#685).** Every use of a private FastMCP attribute (the advertised server
