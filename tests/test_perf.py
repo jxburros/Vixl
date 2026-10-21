@@ -167,3 +167,18 @@ def test_small_edit_on_2000_layers_through_session(tmp_path, monkeypatch):  # #6
     # The save neither reads the file back to hash it nor re-hashes the unchanged image asset.
     assert "big.vixl" not in reads and not any(size > 1000 for size in hashed)
     assert elapsed < 2.5  # About 0.5 s; before #630 about 0.9 s.
+
+
+def test_one_move_on_a_large_lit_scene():  # #595
+    p = Project(4000, 4000, "white")
+    p.apply([{"type": "shape", "shape": "ellipse", "name": f"c{i}", "x": (i % 10) * 380 + 100,
+              "y": (i // 10) * 380 + 100, "width": 120, "height": 120, "fill": "#e63"} for i in range(80)],
+            detail="brief")
+    p.apply({"type": "lighting", "ambient": 0.9, "vignette": 0.4,
+             "lights": [{"x": 2000, "y": 1500, "radius": 900, "intensity": 0.4}]}, detail="brief")
+    p.render()
+    p.apply({"type": "move", "target": "c0", "x": 140, "y": 150}, detail="brief")
+    # Lighting made every render light the whole 16-megapixel canvas (about 2 s); now only the moved layer's
+    # neighbourhood is composited and lit again.
+    elapsed, _ = timed(p.render)
+    assert elapsed < 0.6

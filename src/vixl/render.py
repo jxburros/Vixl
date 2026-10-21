@@ -2017,10 +2017,12 @@ INCREMENTAL_PIXELS = 40_000_000
 
 
 class Snapshot:
-    """The last canvas a document view rendered, with what each top-level layer depended on and where it drew."""
+    """The last canvas a document view rendered, with what each top-level layer depended on and where it drew.
+    ``lit`` is that canvas after scene lighting (``scene.composite``), when the document has lighting."""
 
-    def __init__(self, document, assets, order, layers, image):
+    def __init__(self, document, assets, order, layers, image, lit=None):
         self.document, self.assets, self.order, self.layers, self.image = document, assets, order, layers, image
+        self.lit = lit
 
 
 def layer_fingerprints(project, layers, bounds):
@@ -2095,11 +2097,15 @@ def union(boxes):
 def render_incremental(project, background):
     """``render_layers`` for a document whose regions render alone, reusing the canvas the same view drew last:
     only the box covering the layers that changed (where they drew and where they draw now) is composited again.
-    Edits, previews and timeline frames that move or restyle a few layers stop costing the whole canvas."""
+    Edits, previews and timeline frames that move or restyle a few layers stop costing the whole canvas. Scene
+    lighting is applied here too (it is a function of each pixel and its place), and to the same box only."""
+    from .scene import composite as light
+
     c = project.state["canvas"]
     cache = layer_cache(project)
+    lit = bool(project.state.get("lighting"))
     if c["width"] * c["height"] > INCREMENTAL_PIXELS:
-        return render_layers(project, background=background)
+        return light(render_layers(project, background=background), project)
 
     def on_canvas(box, left=0, top=0):
         if box is None:
@@ -2121,7 +2127,7 @@ def render_incremental(project, background):
             if current is None:
                 if profile is not None:
                     profile.render(incremental=False, reason="a layer reads a linked file")
-                return _render_layers(project, layers, bounds, None, None, background, None)
+                return light(_render_layers(project, layers, bounds, None, None, background, None), project)
             assets = dict(project.assets)
             previous = getattr(cache, "snapshot", None)
             box = None
@@ -2131,14 +2137,16 @@ def render_incremental(project, background):
             top_level = [item for item in layers if not item.get("parent")]
             changed = {ident for ident, (fingerprint, _) in current.items()
                        if previous is None or previous.layers.get(ident, (None,))[0] != fingerprint}
-            image = None
+            image = lit_image = None
+            relight = previous is not None and (previous.lit is not None) == lit
             for _ in range(3):
-                if box is None:
+                if box is None or not relight:
                     break
                 left, top, right, bottom = box
                 if left >= right or top >= bottom:
                     # Only layers that draw nothing changed (hidden, or off the canvas).
                     image, drawn = previous.image.copy(), {ident: None for ident in changed}
+                    lit_image = previous.lit.copy() if lit else None
                     break
                 drawn = {}
                 placed = shift(bounds, top_level, -left, -top)
@@ -2149,6 +2157,9 @@ def render_incremental(project, background):
                 if reach == box:
                     image = previous.image.copy()
                     image.paste(tile, (left, top))
+                    if lit:
+                        lit_image = previous.lit.copy()
+                        lit_image.paste(light(tile, project, box), (left, top))
                     drawn = {ident: on_canvas(drawn.get(ident), left, top) for ident in changed}
                     break
                 box = reach
@@ -2162,22 +2173,22 @@ def render_incremental(project, background):
                 drawn = {}
                 image = _render_layers(project, layers, bounds, None, None, background, None, drawn=drawn)
                 drawn = {ident: on_canvas(drawn.get(ident)) for ident in current}
+                lit_image = light(image, project) if lit else None
             layers_now = {ident: (fingerprint, drawn[ident] if ident in drawn else previous.layers[ident][1])
                           for ident, (fingerprint, _) in current.items()}
             # The snapshot holds the asset bytes it compared, so an identical id cannot be a reused one.
-            cache.snapshot = Snapshot(document, assets, list(current), layers_now, image.copy())
-            return image
+            cache.snapshot = Snapshot(document, assets, list(current), layers_now, image.copy(),
+                                      lit_image.copy() if lit else None)
+            return lit_image if lit else image
         finally:
             project._resolution = None
 
 
 def region_renders_alone(project):
     """Whether a region of the canvas can be drawn by itself, matching the same crop of a full render.
-    Not when something reads the whole canvas: scene lighting, adjustment layers (their selections and
-    masks cover the canvas, and their filters see past the region), canvas-edge blur on a top-level
-    layer, or an effect masked by a canvas selection."""
-    if project.state.get("lighting"):
-        return False
+    Not when something reads the whole canvas: adjustment layers (their selections and masks cover the
+    canvas, and their filters see past the region), canvas-edge blur on a top-level layer, or an effect masked
+    by a canvas selection. Scene lighting does not: it lights each pixel by its place on the canvas."""
     for layer in project.state["layers"]:
         if layer.get("parent") or not layer.get("visible", True):
             continue
@@ -2241,8 +2252,11 @@ def _render(project, variables=None, artboard=None, comp=None, page=None, region
             if region_renders_alone(candidate):
                 if PROFILE.get() is not None:
                     PROFILE.get().render(incremental=False, region=[left, top, width, height])
-                return render_region(candidate, (left, top, width, height),
+                from .scene import composite as light
+
+                tile = render_region(candidate, (left, top, width, height),
                                      resolve_color(candidate.state["canvas"]["background"], candidate.state))
+                return light(tile, candidate, (left, top, left + width, top + height))
             return _render(project, variables, artboard, comp, page).crop((left, top, left + width, top + height))
     disk = getattr(project, "_disk_cache", None)
     key = None
@@ -2256,14 +2270,13 @@ def _render(project, variables=None, artboard=None, comp=None, page=None, region
             return cached
     background = resolve_color(candidate.state["canvas"]["background"], candidate.state)
     if region_renders_alone(candidate):
-        image = render_incremental(candidate, background)
+        image = render_incremental(candidate, background)  # lit there
     else:
         if PROFILE.get() is not None:
             PROFILE.get().render(incremental=False, reason="the document reads the whole canvas")
-        image = render_layers(candidate, background=background)
-    from .scene import composite
+        from .scene import composite
 
-    image = composite(image, candidate)
+        image = composite(render_layers(candidate, background=background), candidate)
     if disk:
         disk.put(key, image, kind="frame")
     return image

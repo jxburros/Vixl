@@ -140,10 +140,10 @@ def test_a_region_skips_layers_outside_it(monkeypatch):
     assert "t" not in drawn and "g" not in drawn
 
 
-def test_a_region_of_a_lit_scene_falls_back_to_a_crop():
+def test_a_region_of_a_lit_scene_matches_the_crop():  # lit by canvas place since #595, not a fallback
     p = scene()
     p.state["lighting"] = {"ambient": 0.8, "vignette": 0.5}
-    assert not R.region_renders_alone(p)
+    assert R.region_renders_alone(p)
     assert np.array_equal(pixels(p.render(region=(100, 100, 50, 50))), pixels(p.render().crop((100, 100, 150, 150))))
 
 
@@ -227,6 +227,51 @@ def test_timeline_frames_render_incrementally_and_exactly():
         frame._cache = None
         assert np.array_equal(pixels(render_at(p, time)), pixels(R.render(frame)))
     assert p._cache.snapshot is not None
+
+
+def lit_scene():
+    p = scene()
+    p.apply({"type": "lighting", "ambient": 0.8, "vignette": 0.6, "exposure": 0.2, "saturation": 1.2,
+             "tint": "#fff0e0", "lights": [{"x": 200, "y": 150, "radius": 180, "color": "#ffd080", "intensity": 0.5},
+                                           {"x": 700, "y": 500, "radius": 260, "intensity": 0.3}]}, detail="brief")
+    return p
+
+
+def test_lit_scenes_render_incrementally_and_exactly():  # #595
+    random.seed(9)
+    p = lit_scene()
+    assert R.region_renders_alone(p)
+    names = ["e", "t", "g", "r2"]
+    edits = [
+        lambda n: {"type": "move", "target": n, "x": random.randint(-100, 800), "y": random.randint(-100, 600)},
+        lambda n: {"type": "opacity", "target": n, "value": round(random.random(), 2)},
+        lambda n: {"type": random.choice(["hide", "show"]), "target": n},
+    ]
+    R.render(p)
+    for _ in range(25):
+        p.apply(random.choice(edits)(random.choice(names)), detail="brief")
+        assert np.array_equal(pixels(R.render(p)), pixels(fresh(p)))
+    assert p._cache.snapshot.lit is not None
+    # A region of a lit document is lit by its place on the canvas, as the same crop of the whole.
+    region = R.render(p, region=(120, 80, 300, 250))
+    assert np.array_equal(pixels(region), pixels(fresh(p).crop((120, 80, 420, 330))))
+
+
+def test_relighting_after_a_small_edit_lights_only_the_dirty_box(monkeypatch):  # #595
+    from vixl import scene as S
+
+    p = lit_scene()
+    R.render(p)
+    lit = []
+    original = S.composite
+    monkeypatch.setattr(S, "composite", lambda image, project, box=None: lit.append(image.size) or original(
+        image, project, box))
+    p.apply({"type": "move", "target": "r2", "x": 5, "relative": True}, detail="brief")
+    R.render(p)
+    assert lit and lit[0][0] * lit[0][1] < 900 * 700 / 2
+    p.apply({"type": "lighting", "exposure": 0.5}, detail="brief")  # the lighting itself changed: all of it
+    image = R.render(p)
+    assert lit[-1] == (900, 700) and np.array_equal(pixels(image), pixels(fresh(p)))
 
 
 def test_documents_that_read_the_whole_canvas_render_in_full():
