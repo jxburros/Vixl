@@ -183,6 +183,10 @@ class Exporter:
 
         geometry = trim_geometry(layer, attrs["stroke_opacity"] > 0)
         view = geometry["view"]
+        if layer.get("fill_gradient") and (geometry["fill"] or (geometry["line"] and not attrs["stroke_opacity"])):
+            w, h = layer["width"], layer["height"]
+            attrs = {**attrs, "fill_opacity": 1, "fill": self.gradient(
+                layer["fill_gradient"], (0, 0, w, h), (view[0] / w, view[1] / h) if view else None)}
         target = parent
         if view:
             target = node(parent, "svg", width=layer["width"], height=layer["height"], viewBox=f"0 0 {view[0]} {view[1]}",
@@ -220,11 +224,20 @@ class Exporter:
         if styled or (inside and centre is None):
             for path, color in primitives(layer, self.project):
                 fill, alpha = paint(color, self.project.state)
+                if path and getattr(color, "gradient", None):
+                    fill, alpha = self.gradient(color.gradient, (0, 0, sw, sh)), 1
                 if path and alpha:
                     node(parent, "path", d=path, fill=fill, fill_opacity=alpha)
             return
         if trim_range(layer):
             return self.trimmed(parent, layer, attrs)
+        if layer.get("fill_gradient") and (shape != "line" or not attrs["stroke_opacity"]):
+            # The gradient spans the shape's box; a path draws in its view box's units.
+            scale = None
+            if shape in PATH_SHAPES:
+                view = shape_path(layer)[1]
+                scale = (view[0] / sw, view[1] / sh)
+            attrs.update(fill=self.gradient(layer["fill_gradient"], (0, 0, sw, sh), scale), fill_opacity=1)
         if inside:
             # The fill covers the whole shape, under the stroke.
             fill_only = {"fill": attrs["fill"], "fill_opacity": attrs["fill_opacity"]}
@@ -317,10 +330,13 @@ class Exporter:
             self.text_reasons[layer["id"]] = str(exc)
             return False
 
-    def gradient(self, settings, box):
+    def gradient(self, settings, box, scale=None):
+        """A gradient spanning ``box`` in the current user space; ``scale`` (sx, sy) maps that box into a user
+        space drawn at another scale (a path's view box)."""
         ident = self.ident("gradient")
         x, y, w, h = box
         direction = settings.get("direction", "vertical")
+        prefix = f"scale({scale[0]} {scale[1]}) " if scale else ""
         if direction == "radial":
             gradient = node(
                 self.defs,
@@ -330,7 +346,7 @@ class Exporter:
                 cx=0,
                 cy=0,
                 r=1,
-                gradientTransform=f"translate({x + w * settings.get('center', [0.5, 0.5])[0]} {y + h * settings.get('center', [0.5, 0.5])[1]}) scale({w / 2} {h / 2})",
+                gradientTransform=prefix + f"translate({x + w * settings.get('center', [0.5, 0.5])[0]} {y + h * settings.get('center', [0.5, 0.5])[1]}) scale({w / 2} {h / 2})",
             )
         else:
             a = math.radians(settings.get("angle", 0))
@@ -352,6 +368,7 @@ class Exporter:
                 y1=cy - qy / (2 * square),
                 x2=cx + qx / (2 * square),
                 y2=cy + qy / (2 * square),
+                **({"gradientTransform": prefix.strip()} if prefix else {}),
             )
         from .design import gradient_stops
 

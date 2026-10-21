@@ -1,0 +1,13 @@
+{
+  "files": {
+    "src/vixl/errors.py": 11,
+    "src/vixl/fileio.py": 9,
+    "src/vixl/hashing.py": 10,
+    "src/vixl/history.py": 5,
+    "src/vixl/model.py": 10,
+    "src/vixl/registry.py": 5,
+    "src/vixl/sdk_compat.py": 7,
+    "src/vixl/targets.py": 5,
+    "src/vixl/types.py": 0
+  }
+}

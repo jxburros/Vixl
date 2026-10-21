@@ -172,3 +172,51 @@ def test_saving_preserves_existing_file_permissions(tmp_path):
     finally:
         os.umask(previous_umask)
     assert os.stat(tmp_path / "private.vixl").st_mode & 0o777 == 0o600
+
+
+def test_patch_shares_unchanged_layers_only_when_asked():  # #630
+    from vixl.history import diff, patch
+
+    before = {"layers": [{"id": "a", "x": 1, "style": {"k": [1]}}, {"id": "b", "x": 2, "style": {"k": [2]}}]}
+    after = {"layers": [{"id": "a", "x": 5, "style": {"k": [1]}}, {"id": "b", "x": 2, "style": {"k": [2]}}]}
+    delta = diff(before, after)
+    shared = patch(before, delta, share=True)
+    assert shared == after and shared["layers"][1] is before["layers"][1]
+    assert shared["layers"][0] is not before["layers"][0] and before["layers"][0]["x"] == 1
+    private = patch(before, delta)
+    assert private == after and private["layers"][1] is not before["layers"][1]
+    added = patch(before, diff(before, {"layers": [*after["layers"], {"id": "c", "x": 3}]}), share=True)
+    added["layers"][2]["x"] = 9  # A value taken from the delta is never shared with it.
+    assert patch(before, diff(before, {"layers": [*after["layers"], {"id": "c", "x": 3}]}))["layers"][2]["x"] == 3
+
+
+def test_copy_tree_matches_deepcopy():  # #630
+    from copy import deepcopy
+
+    from vixl.model import copy_tree
+
+    value = {"a": [1, 2.5, None, True, "s", {"b": [[]]}], "t": (1, [2]), "n": {"x": {"y": []}}}
+    copied = copy_tree(value)
+    assert copied == deepcopy(value)
+    assert copied["a"] is not value["a"] and copied["a"][5]["b"][0] is not value["a"][5]["b"][0]
+    assert copied["t"][1] is not value["t"][1]  # anything not JSON-shaped is deep-copied as before
+
+
+def test_save_detects_a_concurrent_write_without_rehashing_its_own(tmp_path):  # #630
+    import pytest
+
+    from vixl import Project
+    from vixl.errors import VixlError
+
+    path = tmp_path / "a.vixl"
+    project = Project(10, 10)
+    project.save(path)
+    other = Project.load(path)
+    other.apply({"type": "solid", "name": "x", "color": "red"})
+    other.save()
+    project.apply({"type": "solid", "name": "y", "color": "blue"})
+    with pytest.raises(VixlError) as error:
+        project.save()
+    assert error.value.code == "write_conflict"
+    reloaded = Project.load(path)
+    assert reloaded._revision == other._revision  # the digest computed while writing is the file's hash

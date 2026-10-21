@@ -3,6 +3,7 @@ deep-copying the whole state, and render paths leave out top-level subtrees that
 (inactive lyric cues). Both must leave the document untouched and draw exactly the same pixels."""
 
 import json
+import os
 
 import numpy as np
 import pytest
@@ -164,3 +165,71 @@ def test_a_sixty_frame_export_matches_frame_by_frame_renders(tmp_path):
             with archive.open(names[index]) as stream:
                 image = Image.open(stream).convert("RGBA")
                 assert np.array_equal(pixels(image), pixels(reference(p, index * 50)))
+
+
+def frames_of(path):
+    import zipfile
+
+    with zipfile.ZipFile(path) as archive:
+        return {name: archive.read(name) for name in archive.namelist()}
+
+
+def test_worker_processes_export_the_same_frames(tmp_path, monkeypatch):  # #717
+    from vixl import frame_workers
+
+    p = lyric_film(cues=4)
+    monkeypatch.setattr(frame_workers, "MIN_FRAMES_PER_WORKER", 4)
+    monkeypatch.setenv("VIXL_FRAME_WORKERS", "1")
+    export_timeline(p, tmp_path / "one.zip", format="frames", fps=12)
+    monkeypatch.setenv("VIXL_FRAME_WORKERS", "3")
+    assert frame_workers.workers_for(p, 24) == 3
+    progress = []
+    export_timeline(p, tmp_path / "three.zip", format="frames", fps=12, progress=progress.append)
+    assert frames_of(tmp_path / "one.zip") == frames_of(tmp_path / "three.zip")
+    assert progress[-1]["done"] == progress[-1]["total"] == 24 and progress[-1]["timing"]["workers"] == 3
+
+
+def test_short_exports_previews_and_linked_documents_stay_in_process(monkeypatch):  # #717
+    from vixl import frame_workers
+
+    monkeypatch.setenv("VIXL_FRAME_WORKERS", "4")
+    p = lyric_film(cues=2)
+    assert frame_workers.workers_for(p, 20) == 1
+    assert frame_workers.workers_for(p, 400, preview=True) == 1
+    assert frame_workers.workers_for(p, 400) == 4
+    monkeypatch.setenv("VIXL_FRAME_WORKERS", "0")
+    assert frame_workers.workers_for(p, 400) == 1
+
+
+def test_a_cancelled_parallel_export_stops(tmp_path, monkeypatch):  # #717
+    from vixl import frame_workers
+    from vixl.errors import Cancelled
+
+    p = lyric_film(cues=8)
+    monkeypatch.setattr(frame_workers, "MIN_FRAMES_PER_WORKER", 4)
+    monkeypatch.setattr(frame_workers, "CHUNK", 4)
+    monkeypatch.setenv("VIXL_FRAME_WORKERS", "2")
+    seen = []
+    with pytest.raises(Cancelled):
+        export_timeline(p, tmp_path / "x.zip", format="frames", fps=12, progress=seen.append,
+                        cancelled=lambda: len(seen) >= 6)
+    assert len(seen) < 6 + 2 * 2 * frame_workers.CHUNK
+    assert not (tmp_path / "x.zip").exists()
+
+
+@pytest.mark.perf
+@pytest.mark.skipif((os.cpu_count() or 1) < 4 or "PYTEST_XDIST_WORKER" in os.environ,
+                    reason="a speedup is measured on four idle cores: run pytest -m perf without -n")
+def test_worker_processes_export_long_timelines_faster(tmp_path, monkeypatch):  # #717
+    import time
+
+    p = lyric_film(cues=24, extra=300)
+
+    def timed(workers, name):
+        monkeypatch.setenv("VIXL_FRAME_WORKERS", str(workers))
+        start = time.perf_counter()
+        export_timeline(p, tmp_path / name, format="frames", fps=12)
+        return time.perf_counter() - start
+
+    sequential, parallel = timed(1, "one.zip"), timed(4, "four.zip")
+    assert parallel < 0.6 * sequential, (parallel, sequential)

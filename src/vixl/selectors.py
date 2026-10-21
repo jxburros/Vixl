@@ -232,7 +232,7 @@ def record(project, key, value):
 
 
 def execute(project, op):
-    from .interfaces import service_check
+    from .io_policy import service_check
     from .normalize import apply_centering, resolve_geometry
     from .operations import execute as apply_operation
     from .schema import validate_operation

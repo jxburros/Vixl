@@ -9,7 +9,7 @@ Two paths:
 * **Any other SVG** (or a Vixl SVG edited elsewhere) is read element by element: rect, circle, ellipse, line,
   polyline, polygon and path become shape layers (fill, stroke, opacity, dashes, transforms baked into the
   geometry), ``<text>``/``<tspan>`` become live text layers, ``<g>`` becomes a group, linear and radial gradients
-  become gradient layers or gradient overlays, embedded ``<image>`` data becomes an image layer, ``<use>`` is
+  become gradient layers or shape gradient fills, embedded ``<image>`` data becomes an image layer, ``<use>`` is
   expanded and ``<style>`` class rules apply. In ``auto`` mode an element Vixl cannot represent (a filter, mask,
   clip path, pattern …) becomes an image layer of just that element, so the rest stays editable.
 """
@@ -521,7 +521,7 @@ def _families(data):
 
         names = face(data)[0]["name"]
         return tuple(dict.fromkeys(str(names.getDebugName(i)) for i in (16, 1, 4) if names.getDebugName(i)))
-    except Exception:  # an unreadable name table only means the font cannot be matched by family
+    except Exception:  # noqa: BLE001 - an unreadable name table only means the font cannot be matched by family
         return ()
 
 
@@ -926,7 +926,7 @@ class Converter:
             try:
                 operation = _gradient_rect(attrs, props, matrix, gradients, name, opacity)
             except VixlError:
-                pass  # not one of Vixl's own exact gradient rectangles: a path with a gradient overlay below
+                pass  # not one of Vixl's own exact gradient rectangles: a path with a gradient fill below
             else:
                 operation["name"] = name
                 self.operations.append(operation)
@@ -1016,7 +1016,6 @@ class Converter:
                      "width": w, "height": h, "x": left, "y": top, "stroke": stroke, "stroke_width": stroke_width * scale}
         if opacity != 1:
             operation["opacity"] = opacity
-        style = None
         if fill_value.startswith("url("):
             operation["fill"], style = self.gradient_fill(fill_value, local_pen, matrix, (left, top, w, h), props)
             axis_aligned = abs(matrix[1]) < 1e-9 and abs(matrix[2]) < 1e-9
@@ -1031,9 +1030,10 @@ class Converter:
                     gradient["opacity"] = opacity
                 self.operations.append(gradient)
                 return [name]
-            if style and any(len(stop["color"]) == 9 for stop in style["stops"]):
-                self.warnings.append(f"{name!r}: a translucent gradient on this shape is approximated (its colours "
-                                     "are kept, its transparency follows the shape's fill)")
+            if style:
+                # The gradient spans the layer's box, as the settings were timed: the shape keeps it as its fill.
+                del operation["fill"]
+                operation["fill_gradient"] = style
         else:
             operation["fill"] = self.paint(props, "fill")
         if stroked:
@@ -1042,15 +1042,13 @@ class Converter:
         if stroke_first:
             # paint-order: stroke under the fill, as two layers.
             outline = {**operation, "name": self.unique(f"{name} stroke"), "fill": "transparent"}
+            outline.pop("fill_gradient", None)
             operation["stroke"] = "transparent"
             for key in ("line_cap", "line_join", "dash", "dash_offset"):
                 operation.pop(key, None)
             self.operations.append(outline)
             names.insert(0, outline["name"])
         self.operations.append(operation)
-        if style:
-            self.operations.append({"type": "layer-style", "target": name, "name": "gradient-overlay",
-                                    "settings": style})
         return names
 
     @staticmethod
@@ -1080,8 +1078,9 @@ class Converter:
                     operation["dash_offset"] = offset
 
     def gradient_fill(self, value, local_pen, matrix, box, props):
-        """(base fill, gradient-overlay settings) for a gradient-filled shape: the overlay maps the gradient onto
-        the layer's box, so stops are re-timed to where the SVG gradient crosses it."""
+        """(flat fill, gradient settings) for a gradient-filled shape: its ``fill_gradient`` spans the layer's box,
+        so stops are re-timed to where the SVG gradient crosses it. The settings are None (and the fill the
+        gradient's last colour) for a gradient with no extent."""
         kind, attrs, stops = self.gradient(value)
         alpha = float(props.get("fill-opacity", 1))
         if alpha != 1:
@@ -1129,7 +1128,7 @@ class Converter:
             radius = math.hypot(edge[0] - centre[0], edge[1] - centre[1])
             if radius <= 1e-9:
                 return stops[-1][1], None
-            # Vixl's radial overlay reaches t=1 at the box's half width: re-time SVG offsets to that.
+            # A Vixl radial gradient reaches t=1 at the box's half width: re-time SVG offsets to that.
             s0, s1 = 0, (w / 2) / radius
             settings = {"direction": "radial", "center": [min(1, max(0, (centre[0] - x) / w)),
                                                           min(1, max(0, (centre[1] - y) / h))]}

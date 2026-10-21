@@ -115,7 +115,7 @@ def top_level_contrast(project, targets):
                 coverage = Image.new("L", (right - left, bottom - top))
                 coverage.paste(ink, (ox - left, oy - top))
                 results[ident] = target_contrast(layers[ident], after, before, coverage, origin=(left, top))
-            except Exception as exc:  # Reported per target, like a failed measure() call.
+            except Exception as exc:  # noqa: BLE001 - Reported per target, like a failed measure() call.
                 results[ident] = exc
 
         return observe

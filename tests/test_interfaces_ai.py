@@ -286,3 +286,25 @@ def test_ai_analyze_results_name_provider_text_as_untrusted(project_path, monkey
     assert client.post("/ai/ocr", json={"args": []}).json()["untrusted"] == expected["ocr"]
     assert client.post("/ai/detect", json={"args": []}).json()["untrusted"] == expected["detect"]
     assert client.post("/ai/ai", json={"args": ["describe"]}).json()["untrusted"] == expected["describe"]
+
+
+def test_rest_replays_a_streamed_body_to_the_route(project_path):  # #685
+    app = create_app(project_path)
+    sent = []
+    body = json.dumps({"operations": [{"type": "solid", "name": "streamed", "color": "red"}]}).encode()
+    chunks = [{"type": "http.request", "body": body[:10], "more_body": True},
+              {"type": "http.request", "body": body[10:], "more_body": False}]
+
+    async def receive():
+        return chunks.pop(0) if chunks else {"type": "http.disconnect"}
+
+    async def send(message):
+        sent.append(message)
+
+    scope = {"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1", "method": "POST", "scheme": "http",
+             "path": "/operations", "raw_path": b"/operations", "query_string": b"", "root_path": "",
+             "headers": [(b"host", b"testserver"), (b"content-type", b"application/json")],
+             "client": ("127.0.0.1", 1), "server": ("testserver", 80)}
+    asyncio.run(app(scope, receive, send))
+    assert sent[0]["status"] == 200, sent
+    assert Project.load(project_path).layer()["name"] == "streamed"

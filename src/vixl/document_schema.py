@@ -96,7 +96,10 @@ LAYER_FIELDS = {
     "source_id": (LAYER_ID, "ID of the layer a scattered or repeated copy was made from."),
     "recolor": (OBJECT, "Colour substitutions applied to a placed copy."),
     # Fill, stroke and geometry
-    "fill": (COLOR, "Fill colour (shape, solid, pathfinder)."),
+    "fill": (COLOR, "Fill colour (shape, solid, pathfinder). A shape with fill_gradient keeps the gradient's middle "
+             "colour here."),
+    "fill_gradient": (OBJECT, "shape: gradient fill spanning the shape's box, with the gradient layer's fields {start, "
+                      "end or stops, direction, angle, center, falloff}; drawn instead of fill."),
     "color": (COLOR, "Text or field text colour."),
     "stroke": (COLOR, "Stroke colour; transparent for none."),
     "stroke_width": (NUMBER, "Stroke width in pixels (text: outline width)."),
@@ -385,7 +388,7 @@ def document_schema():
     from .model import LAYER_ROLES, LAYER_TYPES
     from .pages import MASTER_FIELDS, PAGE_FIELDS, SCOPED
     from .project import FORMAT_VERSION, NODE_KEYS
-    from .render import BLENDS
+    from .constants import BLENDS
     from .sizes import CANVAS_KEYS, SIDES, UNIT_INCHES
 
     assert set(PAGE_FIELDS_DOC) == set(PAGE_FIELDS), "document_schema.PAGE_FIELDS_DOC is out of date"

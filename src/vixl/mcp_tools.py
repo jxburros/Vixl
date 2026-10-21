@@ -5,8 +5,6 @@ code/field/suggestions (and the expected schema for a bad option or operation), 
 an optional ``document``.
 """
 
-import base64
-import binascii
 import inspect
 import json
 import os
@@ -16,8 +14,10 @@ from typing import Annotated, Literal
 
 from pydantic import Field, WithJsonSchema
 
+from . import sdk_compat
+# Moved to io_policy; kept importable from here for one release.
+from .io_policy import EXPORT_SUFFIXES, decode_upload, export_file, export_outcome  # noqa: F401
 from .errors import VixlError, require
-from .fileio import file_lock
 from .mcp_runtime import Runtime
 from .model import Limits
 from .proxy import preview_png
@@ -83,85 +83,6 @@ def preview(
                            artboard=artboard, comp=comp, time=time, proof=proof, simulate=simulate, guides=guides,
                            page=page, values=values, show_fields=show_fields, isolate=isolate, views=views,
                            exploded=exploded)
-
-
-EXPORT_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico", ".html", ".htm", ".pptx", ".psd",
-                   ".ttf", ".otf", ".woff", ".woff2",
-                   ".vixl")
-
-
-def export_file(session, path, overwrite=False, document=None, **options):
-    from .fileio import temporary
-
-    with session._mutex:
-        destination = session.resolve(path)
-        require(
-            destination.suffix.lower() in EXPORT_SUFFIXES,
-            "Choose a PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF, ICO, HTML, PPTX or PSD filename, a TTF, OTF, WOFF or WOFF2 "
-            "font (the document's font design), or .vixl with isolate",
-            field="path",
-        )
-        require(destination.suffix.lower() != ".vixl" or options.get("isolate"),
-                "A .vixl export writes a portable object document: pass isolate=[OBJECT]", field="path")
-        session.make_parent(destination)
-        with file_lock(str(destination)):
-            require(
-                overwrite or not destination.exists(),
-                "Destination already exists; set overwrite=true",
-                field="path",
-            )
-            fmt = {".jpg": "JPEG", ".jpeg": "JPEG", ".tif": "TIFF", ".tiff": "TIFF", ".pdf": "PDF", ".ico": "ICO"}.get(
-                destination.suffix.lower(), destination.suffix[1:].upper()
-            )
-            report = {}
-            with session.project(document=document) as project:
-                from .call_limits import check_export, of
-
-                if destination.suffix.lower() == ".vixl":
-                    from .objects import portable_bytes
-
-                    data = portable_bytes(project, options, report)
-                    fmt = "VIXL"
-                else:
-                    check_export(of(session), project, fmt, options)
-                    data = project.export(format=fmt, report=report, **options)
-            fd, temporary_path = temporary(
-                destination.parent, like=destination if destination.exists() else None
-            )
-            try:
-                with os.fdopen(fd, "wb") as stream:
-                    stream.write(data)
-                    stream.flush()
-                    os.fsync(stream.fileno())
-                if overwrite:
-                    os.replace(temporary_path, destination)
-                else:
-                    # Atomic no-clobber publication, including non-Vixl writers.
-                    os.link(temporary_path, destination)
-            finally:
-                if os.path.exists(temporary_path):
-                    os.unlink(temporary_path)
-        return {"path": session.relative(destination), "format": fmt, "bytes": len(data), **report,
-                "outcome": export_outcome(report)}
-
-
-def export_outcome(report):
-    """A written export executed; it is not validated (exports run no checks) and its warnings need review."""
-    from .outcomes import make
-
-    warnings = [str(item) for item in report.get("warnings", [])]
-    return make("completed", "not_run", ["export runs no checks: run vixl_check and the suites first", *warnings])
-
-
-def decode_upload(data_base64, limit):
-    require(isinstance(data_base64, str) and data_base64, "data_base64 must be a non-empty string")
-    payload = data_base64.split(",", 1)[1] if data_base64.startswith("data:") else data_base64
-    payload = "".join(payload.split())
-    require(len(payload) <= limit * 4 // 3 + 8, "Image exceeds byte limit", "resource_limit")
-    try:
-        return base64.b64decode(payload, validate=True)
-    except (binascii.Error, ValueError) as exc:
-        raise VixlError("invalid_image", "data_base64 is not valid base64", field="data_base64") from exc
 
 
 def typed_ai(session, command, words=(), document=None, **options):
@@ -284,14 +205,14 @@ def build_server(session, *, planner=False, tools="default", allow_screen_captur
     from . import __version__
 
     # serverInfo.version names the engine, not the MCP SDK.
-    server._mcp_server.version = __version__
+    sdk_compat.set_server_version(server, __version__)
     from .call_limits import of as call_limits_of
 
     runtime = Runtime(session, compact_json, ToolError, inline_seconds=call_limits_of(session).timeout)
     server.vixl_runtime = runtime
     context = Context(session, runtime, allow_screen_capture)
     defined = set()
-    manager = server._tool_manager
+    manager = sdk_compat.tool_manager(server)
     serve_call = manager.call_tool
 
     async def call_tool(name, arguments, context=None, convert_result=False):
@@ -629,13 +550,13 @@ def build_server(session, *, planner=False, tools="default", allow_screen_captur
     def operations_reference() -> str:
         return json.dumps(operation_schema())
 
-    server._mcp_server.instructions += (
+    sdk_compat.append_instructions(server, (
         " A call still running after ~40 s returns a job: poll vixl_job and do not resend it (mutating calls take "
         "request_id so a retry never applies twice)."
-    )
+    ))
     if session.require_document:
-        server._mcp_server.instructions += " Every document tool needs document= on every call."
-    for registered in server._tool_manager.list_tools():
+        sdk_compat.append_instructions(server, " Every document tool needs document= on every call.")
+    for registered in manager.list_tools():
         registered.parameters = slim_schema(registered.parameters)
         runtime.watch_arguments(registered)
     return server
@@ -656,7 +577,7 @@ def surface(tools="default"):
     with tempfile.TemporaryDirectory() as workspace:
         server = build_server(Session(workspace=Path(workspace)), tools=tools)
         listed = asyncio.run(server.list_tools())
-        instructions = server._mcp_server.instructions or ""
+        instructions = sdk_compat.instructions(server)
     sizes = {tool.name: len(compact_json(tool.model_dump(exclude_none=True))) for tool in listed}
     total = sum(sizes.values())
     return {"tools": dict(sorted(sizes.items())), "total_chars": total, "total_tokens": round(total / 4),

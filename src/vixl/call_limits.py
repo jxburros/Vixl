@@ -5,8 +5,10 @@ or one oversized render starves everyone else. These are set per server by flag 
 
 * ``timeout`` (``--call-timeout``, ``VIXL_CALL_TIMEOUT``): seconds a call may run inline. A REST call
   that is still running then answers ``202`` with a job to poll (``GET /jobs/{id}``) instead of
-  holding the connection; MCP calls detach into a ``vixl_job`` (MCP's own default is 40 s). Calls
-  are never killed: the work finishes and its result waits in the job.
+  holding the connection; MCP calls detach into a ``vixl_job`` (MCP's own default is 40 s).
+* ``hard_timeout`` (``--call-hard-timeout``, ``VIXL_CALL_HARD_TIMEOUT``): seconds after which a running
+  call, detached or not, is asked to stop. It stops at its next checkpoint (between layers, pages,
+  frames, export targets and check families) with ``cancelled``; an atomic edit is then not applied.
 * ``max_megapixels`` (``--max-megapixels``, ``VIXL_MAX_MEGAPIXELS``): lowers ``Limits.max_pixels``
   (canvases, imports, frames) and caps the pixels one export renders: canvas × scale² × pages.
 * ``max_pages`` (``--max-pages``, ``VIXL_MAX_PAGES``): pages one export may write.
@@ -15,12 +17,18 @@ or one oversized render starves everyone else. These are set per server by flag 
   detached jobs included. A call over the cap is refused at once instead of queueing.
 
 Exceeding a limit raises ``limit_exceeded`` with ``limit``, ``value``, ``maximum`` and a ``hint``.
-Nothing is limited unless configured; ``describe`` reports the values a server runs with.
+A server that other machines can reach (``serve`` or ``view`` on a non-loopback host, ``mcp --http``) starts
+with ``network_defaults``; a loopback ``serve``/``view`` and stdio ``mcp`` limit nothing unless configured.
+A value of ``0`` turns one limit off, and ``--no-call-limits`` turns off every default. ``describe``
+reports the values a server runs with and where each came from.
 """
 
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
+import heapq
+import itertools
 import math
 import os
 from pathlib import Path
@@ -28,12 +36,13 @@ import threading
 import time
 import uuid
 
-from .errors import VixlError, require
+from .errors import Cancelled, VixlError, require
 
 ENV = {"timeout": "VIXL_CALL_TIMEOUT", "max_megapixels": "VIXL_MAX_MEGAPIXELS", "max_pages": "VIXL_MAX_PAGES",
-       "max_concurrent": "VIXL_MAX_CONCURRENT"}
+       "max_concurrent": "VIXL_MAX_CONCURRENT", "hard_timeout": "VIXL_CALL_HARD_TIMEOUT"}
 FLAGS = {"timeout": "--call-timeout", "max_megapixels": "--max-megapixels", "max_pages": "--max-pages",
-         "max_concurrent": "--max-concurrent"}
+         "max_concurrent": "--max-concurrent", "hard_timeout": "--call-hard-timeout"}
+FRACTIONAL = ("timeout", "max_megapixels", "hard_timeout")
 # Formats whose export is one raster image per page (PDF only when it is written as images).
 VECTOR_FORMATS = ("SVG", "HTML", "HTM", "PPTX")
 FONT_FORMATS = ("TTF", "OTF", "WOFF", "WOFF2")
@@ -45,32 +54,50 @@ class CallLimits:
     max_megapixels: float | None = None
     max_pages: int | None = None
     max_concurrent: int | None = None
+    hard_timeout: float | None = None
+    # Where each value came from: a flag, an environment variable or "default" (network_defaults).
+    sources: dict = field(default_factory=dict, compare=False, repr=False)
+
+    @staticmethod
+    def network_defaults(cpu=None, mcp=False):
+        """The limits of a server other machines can reach. MCP keeps its own 40 s inline wait (clients give up
+        at about 60 s), so only REST gets a default ``timeout``."""
+        cpu = cpu if cpu is not None else os.cpu_count() or 1
+        values = {"max_megapixels": 40.0, "max_pages": 200, "max_concurrent": max(2, cpu), "hard_timeout": 600.0}
+        return values if mcp else {"timeout": 120.0, **values}
 
     @classmethod
-    def configure(cls, environ=None, **given):
-        """Limits from ``given`` values (CLI flags; ``None`` means not given), else the environment."""
+    def configure(cls, environ=None, *, network=None, **given):
+        """Limits from ``given`` values (CLI flags; ``None`` means not given), else the environment, else the
+        ``network`` defaults (``"rest"`` or ``"mcp"`` for a server other machines can reach, ``None`` for none).
+        ``0`` turns a limit off."""
         environ = os.environ if environ is None else environ
-        values = {}
+        defaults = {} if network is None else cls.network_defaults(mcp=network == "mcp")
+        values, sources = {}, {}
         for key, variable in ENV.items():
             value = given.get(key)
             source = FLAGS[key]
             if value is None and str(environ.get(variable, "")).strip():
                 value, source = environ[variable].strip(), variable
             if value is None:
+                if key in defaults:
+                    values[key], sources[key] = defaults[key], "default"
                 continue
-            fractional = key in ("timeout", "max_megapixels")
+            fractional = key in FRACTIONAL
             try:
                 number = float(value) if fractional else int(value)
             except (TypeError, ValueError):
                 kind = "number" if fractional else "whole number"
                 raise VixlError("invalid_input", f"{source} must be a {kind}, not {value!r}", field=key) from None
-            require(math.isfinite(number) and number > 0, f"{source} must be positive", field=key)
-            values[key] = number
-        return cls(**values)
+            require(math.isfinite(number) and number >= 0, f"{source} must be positive, or 0 for no limit", field=key)
+            sources[key] = source
+            if number:
+                values[key] = number
+        return cls(**values, sources=sources)
 
     def any(self):
         return any(value is not None for value in (self.timeout, self.max_megapixels, self.max_pages,
-                                                    self.max_concurrent))
+                                                    self.max_concurrent, self.hard_timeout))
 
     def pixel_cap(self):
         return None if self.max_megapixels is None else int(self.max_megapixels * 1_000_000)
@@ -83,8 +110,9 @@ class CallLimits:
     def describe(self, mcp_inline_seconds=None):
         """The limits as a service reports them (``GET /limits``, ``vixl_job(action='list')``)."""
         timeout = self.timeout if self.timeout is not None else mcp_inline_seconds
-        return {"timeout_s": timeout, "max_megapixels": self.max_megapixels, "max_pages": self.max_pages,
-                "max_concurrent_per_workspace": self.max_concurrent,
+        return {"timeout_s": timeout, "hard_timeout_s": self.hard_timeout, "max_megapixels": self.max_megapixels,
+                "max_pages": self.max_pages, "max_concurrent_per_workspace": self.max_concurrent,
+                "source": {key: self.sources.get(key, "unset") for key in ENV},
                 "configure": {key: {"flag": FLAGS[key], "env": ENV[key]} for key in ENV}}
 
 
@@ -92,17 +120,25 @@ def add_arguments(parser):
     """The limit flags of ``vixl serve``, ``vixl view`` and ``vixl mcp``."""
     parser.add_argument("--call-timeout", type=float, dest="call_timeout",
                         help="Seconds a call runs inline before it continues as a job (also VIXL_CALL_TIMEOUT; "
-                             "MCP default 40, REST default none)")
+                             "MCP default 40, REST default none, or 120 when serving other machines)")
+    parser.add_argument("--call-hard-timeout", type=float, dest="call_hard_timeout",
+                        help="Seconds after which a running call is cancelled at its next checkpoint "
+                             "(VIXL_CALL_HARD_TIMEOUT; default none, or 600 when serving other machines)")
     parser.add_argument("--max-megapixels", type=float, help="Pixels one call may render, in millions; also caps "
                         "canvases and imports (VIXL_MAX_MEGAPIXELS)")
     parser.add_argument("--max-pages", type=int, help="Pages one export may write (VIXL_MAX_PAGES)")
     parser.add_argument("--max-concurrent", type=int, help="Heavy calls running at once per workspace, jobs included "
                         "(VIXL_MAX_CONCURRENT)")
+    parser.add_argument("--no-call-limits", action="store_true",
+                        help="Do not apply the default limits of a server other machines can reach")
 
 
-def from_arguments(args):
+def from_arguments(args, network=None):
+    """Limits from the parsed flags; ``network`` (``"rest"``/``"mcp"``) when other machines can reach the server."""
     return CallLimits.configure(timeout=args.call_timeout, max_megapixels=args.max_megapixels,
-                                max_pages=args.max_pages, max_concurrent=args.max_concurrent)
+                                max_pages=args.max_pages, max_concurrent=args.max_concurrent,
+                                hard_timeout=args.call_hard_timeout,
+                                network=None if args.no_call_limits else network)
 
 
 def exceeded(limit, value, maximum, message, hint):
@@ -203,22 +239,104 @@ class Gate:
 
 GATE = Gate()
 MAX_REST_JOBS = 100
+REST_QUEUE = 16  # REST calls that may wait for a worker; one more is answered 503.
+
+
+class BoundedExecutor:
+    """A thread pool that holds at most ``workers`` running and ``queue`` waiting calls, and refuses the next
+    one with ``limit_exceeded`` (``limit: max_queue``, answered 503) instead of queueing it without bound."""
+
+    def __init__(self, workers, queue=REST_QUEUE, name="vixl-rest"):
+        self.pool = ThreadPoolExecutor(max_workers=workers, thread_name_prefix=name)
+        self.workers, self.queue = workers, queue
+        self.slots = threading.BoundedSemaphore(workers + queue)
+
+    def submit(self, fn, *args, **kwargs):
+        if not self.slots.acquire(blocking=False):
+            raise VixlError("limit_exceeded", f"The server is busy: {self.workers} calls are running and {self.queue} "
+                            "are waiting", limit="max_queue", value=self.workers + self.queue + 1,
+                            maximum=self.workers + self.queue, hint="Retry after a few seconds.")
+        try:
+            future = self.pool.submit(fn, *args, **kwargs)
+        except BaseException:
+            self.slots.release()
+            raise
+        future.add_done_callback(lambda _: self.slots.release())
+        return future
+
+
+class Watchdog:
+    """Asks calls to stop when their hard timeout passes: it sets the call's ``CallState.cancel``, and the work
+    raises ``cancelled`` at its next checkpoint. One daemon thread serves every call of the process."""
+
+    def __init__(self):
+        self.heap = []
+        self.order = itertools.count()
+        self.condition = threading.Condition()
+        self.thread = None
+
+    def watch(self, state, seconds):
+        """Cancel ``state`` after ``seconds``; returns a handle for ``forget``."""
+        entry = [time.monotonic() + seconds, next(self.order), state, seconds]
+        with self.condition:
+            heapq.heappush(self.heap, entry)
+            if self.thread is None:
+                self.thread = threading.Thread(target=self.run, name="vixl-watchdog", daemon=True)
+                self.thread.start()
+            self.condition.notify()
+        return entry
+
+    def forget(self, entry):
+        """The call ended: drop its reference (the entry leaves the heap when its time comes)."""
+        entry[2] = None
+
+    def run(self):
+        while True:
+            with self.condition:
+                while not self.heap:
+                    self.condition.wait()
+                deadline, _, state, seconds = self.heap[0]
+                delay = deadline - time.monotonic()
+                if delay > 0 and state is not None:
+                    self.condition.wait(delay)
+                    continue
+                heapq.heappop(self.heap)
+            if state is not None:
+                state.reason = (f"Call stopped after the {seconds:g} s hard timeout ({FLAGS['hard_timeout']}, "
+                                f"{ENV['hard_timeout']})")
+                state.cancel.set()
+
+
+WATCHDOG = Watchdog()
+
+
+def watch(state, limits, future):
+    """Cancel the call behind ``future`` (its ``CallState`` is ``state``) after the hard timeout, if one is set."""
+    if limits.hard_timeout is None:
+        return
+    entry = WATCHDOG.watch(state, limits.hard_timeout)
+    future.add_done_callback(lambda _: WATCHDOG.forget(entry))
 
 
 class RestJobs:
     """REST calls that outlived the timeout. Their futures keep running; the result waits here."""
 
-    def __init__(self):
+    def __init__(self, hard_timeout=None):
         self.jobs = OrderedDict()
         self.lock = threading.Lock()
+        self.hard_timeout = hard_timeout
 
     def add(self, route, future):
         ident = uuid.uuid4().hex[:16]
         with self.lock:
             self.jobs[ident] = {"id": ident, "route": route, "future": future, "created": time.time()}
             while len(self.jobs) > MAX_REST_JOBS:
-                # Forget the oldest finished job; a running one is never dropped.
+                # Forget the oldest finished job, else the oldest one still running past its hard timeout (it was
+                # cancelled and has not reached a checkpoint); a running job within its time is never dropped.
                 victim = next((k for k, j in self.jobs.items() if j["future"].done()), None)
+                if victim is None and self.hard_timeout is not None:
+                    expired = time.time() - self.hard_timeout
+                    victim = next((k for k, j in self.jobs.items() if j["created"] < expired), None)
                 if victim is None:
                     break
                 del self.jobs[victim]
@@ -235,13 +353,15 @@ class RestJobs:
         from .errors import friendly
 
         future = job["future"]
-        status = "running" if not future.done() else "failed" if future.exception() is not None else "completed"
+        error = future.exception() if future.done() else None
+        status = ("running" if not future.done() else "cancelled" if isinstance(error, Cancelled)
+                  else "failed" if error is not None else "completed")
         result = {"id": job["id"], "status": status, "route": job["route"],
                   "elapsed_s": round(time.time() - job["created"], 1), "result_url": f"/jobs/{job['id']}/result"}
         if status == "running":
             result["retry_after_s"] = 3
-        elif status == "failed":
-            result["error"] = friendly(future.exception()).as_dict()
+        elif status in ("failed", "cancelled"):
+            result["error"] = friendly(error).as_dict()
         return result
 
     def recent(self):

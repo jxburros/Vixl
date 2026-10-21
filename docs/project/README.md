@@ -14,6 +14,7 @@ maintain the documentation. Users usually want the [guides](../guides/README.md)
 | [Implementation plan](implementation-plan.md) | Plan for the issues open on 2026-10-16 |
 | [Use-case evidence](use-case-evidence.md) | Where each use case's call count and time come from, and how to maintain the catalog |
 | [Render parity](render-parity.md) | Raster quality against Chromium and exact references |
+| [Render performance](render-performance.md) | Where render time goes, and the decisions on the open speed issues |
 | [Brand voice](brand-voice.md) | How Vixl's own copy and marketing sound |
 | [Documentation maintenance](documentation-maintenance.md) | Folder layout, rebuilding visuals, executable examples |
 | [Original product specification](product-spec.md) | Historical design context; see [coverage](../reference/coverage.md) for what ships |

@@ -1,5 +1,139 @@
 # Changelog
 
+## 0.29.0
+
+A concurrency, structure and speed release, with gradient fills on shapes. Shapes take a `fill_gradient` drawn as a
+vector gradient in PNG, SVG, PDF and PPTX. Servers that other machines can reach start with call limits, cancel calls
+that run past a hard timeout, refuse work past a bounded queue, and serve different documents in parallel. Applies
+and saves cost less, lit scenes and per-pixel adjustments render incrementally, effect-heavy layers are drawn on a
+thread pool and long timeline exports on worker processes. Inside, operations dispatch through a registry, content
+hashing has one encoding, the core leaf modules pass strict mypy, and tests hold the module layering and every
+broad `except`. Breaking changes are listed under Upgrading from 0.28.
+
+### Upgrading from 0.28
+
+- **Servers other machines can reach are limited by default (breaking).** `vixl serve` and `vixl view` on a
+  non-loopback `--host`, and `vixl mcp --http`, start with a 120 s call timeout (REST only), a 600 s hard timeout,
+  40 megapixels, 200 pages and one concurrent heavy call per core (at least 2). Pass a flag or variable to change one,
+  `0` to turn one off, or `--no-call-limits` to drop them. Loopback and stdio servers are unchanged.
+- **Python imports that moved.** `vixl.render.export` is gone: use `Project.export` (or `vixl.export_dispatch.export`).
+  `service_check`, `export_file`, `decode_upload`, `EXPORT_SUFFIXES` and `read_json` live in `vixl.io_policy`; their old
+  homes (`interfaces`, `mcp_tools`, `cli`) still re-export them for this release.
+- **Archives are a little larger.** `project.json` inside a `.vixl` is compressed at the fastest zlib level (up to a
+  tenth larger, a third of the time). The persistent render cache misses once after upgrading.
+
+### Shapes
+
+- **Gradient fills on shapes.** A `shape` takes `fill_gradient`, an object with the `gradient` operation's fields
+  (`start`/`end` or `stops`, `direction`, `angle`, `center`, `falloff`) that spans the shape's box. The stroke keeps
+  its own colour. PNG, SVG (a `linearGradient`/`radialGradient` the shape's fill refers to), PDF (a shading clipped to
+  the outline) and PPTX (`gradFill`) draw it as a gradient; PDF draws translucent stops, and PPTX an off-centre radial
+  gradient, as an image of the layer. `fill` stays a colour: it holds the gradient's middle colour (unless the same
+  operation sets `fill`), so the contrast, palette and brand checks keep reading it, and the brand palette check, the
+  `gradients` style rule, mono logo recolouring and workspace colour replacement read the gradient's stops. Stop
+  colours take `@swatch` and `${variable}` references. A `fill` object (`{"start":…,"end":…}`, `{"stops":[…]}` or
+  `{"gradient":{…}}`) is read as `fill_gradient` and reported under `normalized`. With `target`, `fill_gradient` alone
+  sets the gradient, a `fill` colour replaces it, and `fill_gradient: null` (or `"none"`) removes it. CLI:
+  `vixl shape … --fill-gradient '{"start":"#6366f1","end":"#ec4899"}'`.
+- **SVG and Figma imports keep gradient fills as `fill_gradient`.** A gradient-filled SVG shape (other than a plain
+  rectangle or radial glow, which stay gradient layers) and a Figma linear or radial gradient fill used to become a
+  flat fill plus a `gradient-overlay` style; they are now the shape's `fill_gradient`, mapped onto the layer's box, so
+  translucent stops fade instead of taking the shape's fill.
+
+### Service limits and cancellation
+
+- **Default limits for network servers, and a hard timeout (#623).** See Upgrading above. `--call-hard-timeout`
+  (`VIXL_CALL_HARD_TIMEOUT`) cancels a call that runs longer, detached or not: it stops at its next checkpoint (between
+  layers of a render, pages of a PDF or PPTX export, timeline frames and check families) with `cancelled` and a message
+  naming the limit, and an operation batch is then not applied. REST work can now be cancelled at all (it carries the
+  same call context as MCP), and a REST job reports `cancelled`. `GET /limits` and `vixl_job(action="list")` report
+  where each limit came from under `source`.
+- **REST answers 503 when its queue is full (#623).** Heavy REST calls run on 16 workers with at most 16 more waiting;
+  the next one gets `503`, `Retry-After: 3` and `limit_exceeded` with `limit: max_queue` instead of waiting in an
+  unbounded queue. A job still running past the hard timeout no longer pins its slot in the job list.
+
+### Performance
+
+- **Documents no longer wait for each other on one server (#629).** A REST or MCP server used one lock for every
+  call, so a slow render of one document held up calls on all the others. Each document now has its own lock: calls
+  on different documents run in parallel, calls on one document still run in order. MCP exports no longer hold a
+  server-wide lock while they render. The caches every document shares (rasterised SVG, opacity tables, PDF font
+  digests) are thread-safe.
+
+- **Cheaper applies and saves (#630).** Copies of the document state (each apply's candidate, the history head, the
+  state an inspection reports) use a JSON-shaped copy instead of `copy.deepcopy`; rebuilding an old revision shares
+  what its deltas leave unchanged; a save hashes the archive while writing it instead of reading it back, skips
+  hashing the file for the conflict check when its size, times and inode are as this document left them, and hashes
+  each embedded asset once. One move on a 2,000-layer document through a service, save included, went from about
+  0.9 s to about 0.5 s (`tests/test_perf.py`). `project.json` inside a `.vixl` is compressed at the fastest zlib
+  level, so archives are up to a tenth larger.
+
+- **Layers drawn ahead on a thread pool (#590).** Layers whose drawing releases Python's interpreter lock (effects,
+  layer styles such as soft shadows, placed images, large gradients and paint) are drawn on a pool while the stack
+  is composited in document order, so the pixels match a one-thread render byte for byte. 80 soft-shadowed shapes on
+  a 4000 × 4000 canvas render about a quarter faster on four cores (`tests/test_render_pool.py`). Plain vector shapes
+  and text are not drawn ahead: resvg holds the lock, so threads would only add overhead. `VIXL_RENDER_THREADS` sets
+  the pool size (`0` turns it off). The layer, decoded-image and disk render caches are thread-safe.
+
+- **Lit scenes render incrementally (#595, first part).** A document with scene lighting no longer re-renders and
+  relights the whole canvas after every edit: the canvas before lighting is kept, the changed box is composited
+  and lit again, and a `region` render is lit by its place on the canvas. The pixels are identical to a full render.
+  One move on a lit 4000 × 4000 scene went from about 6 s to about 0.15 s. Adjustment layers whose
+  filters are per pixel (levels, curves, hue, saturation, brightness, exposure, LUTs …) render incrementally too,
+  their masks and selections cut to the redrawn box. Adjustments that see past each pixel (blur, contrast, sharpen,
+  noise), canvas-edge blur and selection-masked effects on ordinary layers still render in full.
+
+- **Timeline frames render in worker processes (#717).** A long GIF, WebP, APNG, frame-sequence, sheet or MP4/WebM
+  export renders its frames in up to four processes (one fewer than the cores; `VIXL_FRAME_WORKERS` sets it, `1`
+  turns it off), each loading the document once and rendering consecutive chunks; the frames reach the encoder in
+  order and byte-identical to a one-process export. Threads could not do this: text and vector shapes rasterise
+  through resvg, which holds Python's interpreter lock. A 144-frame lyric film took 4.6 s instead of 10 s on four
+  cores. Exports under 16 frames a process, previews and documents with linked layers render in one process.
+- **Speed decisions recorded.** [Render performance](docs/project/render-performance.md) has the re-profile after
+  this work and the calls on tiled compositing (#588, deferred until layers can be drawn by region), the glyph cache
+  (#584, needs a parity decision), a Skia backend (#591, not adopted: the cost is the resvg binding's PNG round trip) and native
+  kernels (#593, no measured gain).
+
+### Fixed
+
+- **`effect-set` and the other effect operations on an adjustment layer failed** with "Malformed operation
+  (KeyError: 'id')": the `adjustment` operation stored its effects without the IDs every other effect stack has.
+  New adjustment layers get them, and stacks saved without them are still addressed by position or name.
+
+### Internal
+
+- **Private MCP SDK access in one module (#685).** Every use of a private FastMCP attribute (the advertised server
+  version, the instructions, the tool registry, a tool's `run`) goes through `vixl.sdk_compat`, which reports a
+  renamed attribute as `missing_dependency` with the tested range instead of an `AttributeError` inside a call. The
+  REST service buffers and replays request bodies in an ASGI middleware (`BodyLimit`) instead of setting Starlette's
+  private `request._body`; the 413 rules are unchanged. A cancelled call raises the typed `vixl.errors.Cancelled`
+  (still code `cancelled`), and an MCP job reports `cancelled` from that type, so a failed call whose message quotes
+  `"error":"cancelled"` is no longer reported as cancelled. CI runs the suite at the highest dependency versions the
+  pins allow as well as the lowest, and weekly.
+- **One content-hash helper (#634).** `vixl.hashing` holds the one canonical JSON encoding (sorted keys, compact,
+  no NaN, explicit Path, tuple, set and bytes) behind render cache keys, page and text-flow keys, brush stroke
+  prefixes and film resume keys; the persistent render cache misses once after upgrading. Digests that are stored
+  and compared later (suite and library hashes, pack-folder revision ids, workspace check history, lyric build
+  fingerprints) keep their encoding through `legacy_hash`. Ruff's `BLE001` is on for `src/`: each remaining
+  `except Exception` names why it swallows everything, and three were narrowed to the errors they expect.
+- **A core operation registry (#631).** `operations.execute` no longer walks 40 `if kind in …` branches: after the
+  shared steps it looks the type up in `vixl.registry`, which lists the feature module that executes each one and
+  refuses a type claimed twice. The operation schema and the list of operation types are unchanged.
+- **Static types for the core leaves (#633).** `errors`, `fileio`, `hashing`, `history`, `model`, `registry`,
+  `sdk_compat` and `targets` are annotated and pass strict mypy (a new `typecheck` CI job). `vixl.types` names the
+  document shapes, and `model.is_number`/`is_int` replace the `isinstance(value, bool)` dance in new code. A test
+  keeps the checked set and its annotated functions from shrinking.
+- **Module layering (#632, first step).** A test holds four layers (leaf, document core, features, interfaces) with a
+  baseline of the 230 upward imports it found that may only shrink. The service policy helpers moved to
+  `vixl.io_policy` (`service_check` from `interfaces`; `export_file`, `decode_upload` and `EXPORT_SUFFIXES` from
+  `mcp_tools`; `read_json` from `cli`), which re-export them for one release; `EFFECTS` and `BLENDS` are imported
+  from `vixl.constants`, and the default safe area from `vixl.house_style`, so `model` and `targets` no longer import
+  the renderer or the craft module. Then (second step) the export dispatcher moved from `render.py` to
+  `vixl.export_dispatch` (`vixl.render.export` is gone; `Project.export` is unchanged), so the renderer no longer
+  imports the PDF, PowerPoint, PSD, SVG and HTML writers, and `schema.py` collects feature schemas through
+  `registry.SCHEMA_SOURCES` instead of importing 35 feature modules; the published schema is byte-identical. The
+  baseline is down to 188.
+
 ## 0.28.0
 
 A security and cost release. URL fetches, AI providers, bearer tokens, image decoders and form patterns are tightened, with a network policy (`VIXL_OFFLINE`, `VIXL_FETCH_HOSTS`), signed Windows updates, release workflows that wait for an approval, and results that name the document text an agent must treat as data. Agent results are smaller (capped brief apply summaries, a `vixl schema` that lists operations, a 9 KB agent skill entry point), the CLI names the file it edits and suggests corrections, and new documents no longer touch the network. Checks are quieter and more exact (use-size legibility, hidden text, composition, overlap, suite rules per page), with layout, poster, tracked-text and stroke fixes alongside. Text in Devanagari, Chinese, Japanese, Korean and Thai gets fonts (`font-cover`), PDF and SVG import map fonts, and a document can design a font and export it as TTF, OTF or WOFF. Optional features became built-in plugins, the emoji artwork a downloadable content pack, and the docs are organized by kind of page. Breaking changes are listed under Upgrading from 0.27.

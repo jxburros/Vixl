@@ -124,3 +124,31 @@ def test_rest_document_results_name_their_untrusted_text(tmp_path):  # #677
     assert client.get("/layers").headers["x-vixl-untrusted"] == "[].name, [].text"
     assert client.get("/notes").json()["untrusted"] == ["notes"]
     assert client.post("/check", json={}).json()["untrusted"] == ["issues[].layers", "issues[].message"]
+
+
+def test_sdk_compat_reports_a_missing_private_attribute(tmp_path):  # #685
+    import pytest
+
+    from vixl import sdk_compat
+    from vixl.errors import VixlError
+
+    class Server:
+        pass
+
+    with pytest.raises(VixlError) as error:
+        sdk_compat.tool_manager(Server())
+    assert error.value.code == "missing_dependency" and "_tool_manager" in str(error.value)
+    assert sdk_compat.TESTED in str(error.value)
+
+
+def test_private_sdk_access_goes_through_sdk_compat():  # #685
+    import re
+    from pathlib import Path
+
+    import vixl
+
+    root = Path(vixl.__file__).parent
+    pattern = re.compile(r"\._(mcp_server|tool_manager)\b|\brequest\._body\b|object\.__setattr__\(registered")
+    found = [str(path.relative_to(root)) for path in root.rglob("*.py")
+             if path.name != "sdk_compat.py" and pattern.search(path.read_text(encoding="utf-8"))]
+    assert found == []

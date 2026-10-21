@@ -1,16 +1,34 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+from os import PathLike
+from typing import Any, ParamSpec, TypeVar
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
 class VixlError(Exception):
-    def __init__(self, code: str, message: str, **details):
+    def __init__(self, code: str, message: str, **details: Any) -> None:
         super().__init__(message)
         self.code = code
         self.details = details
 
-    def as_dict(self):
+    def as_dict(self) -> dict[str, Any]:
         return {"error": self.code, "message": str(self), **self.details}
 
 
-def require(condition, message, code="invalid_operation", **details):
+class Cancelled(VixlError):
+    """A call stopped because its caller cancelled it (code ``cancelled``). Services tell a cancelled job from a
+    failed one by this type, never by the message text."""
+
+    def __init__(self, message: str = "Call cancelled", **details: Any) -> None:
+        super().__init__("cancelled", message, **details)
+
+
+def require(condition: object, message: str, code: str = "invalid_operation", **details: Any) -> None:
     if not condition:
-        raise VixlError(code, message, **details)
+        raise Cancelled(message, **details) if code == "cancelled" else VixlError(code, message, **details)
 
 
 # Error text names the command a reader can run. Messages are written once; these rewrites give each surface its own
@@ -47,7 +65,7 @@ _FOR_CLI = (
 )
 
 
-def for_surface(value, surface):
+def for_surface(value: Any, surface: str | None) -> Any:
     """``value`` (an error payload, or any string, list or dict in it) with hints spelled for ``surface``."""
     import re
 
@@ -66,13 +84,13 @@ def for_surface(value, surface):
 OUT_OF_MEMORY = "Not enough memory for this operation; use a smaller canvas, scale or batch"
 
 
-def memory_guard(function):
+def memory_guard(function: Callable[P, R]) -> Callable[P, R]:
     """Report running out of memory (a large canvas, a numpy allocation) as a ``resource_limit`` VixlError. The
     error is raised after the failed call's frames are released, so the memory they held is free again."""
     import functools
 
     @functools.wraps(function)
-    def guarded(*args, **kwargs):
+    def guarded(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
             return function(*args, **kwargs)
         except MemoryError:
@@ -82,7 +100,7 @@ def memory_guard(function):
     return guarded
 
 
-def shown_path(filename, relative_to=None):
+def shown_path(filename: Any, relative_to: str | PathLike[str] | None = None) -> Any:
     """``filename`` as an error message may show it: relative to ``relative_to`` (a workspace) when it lies inside,
     otherwise only its basename, so a message never reveals where the workspace sits on disk. Unchanged without
     ``relative_to``."""
@@ -99,7 +117,7 @@ def shown_path(filename, relative_to=None):
         return path.name
 
 
-def _missing_folder(filename):
+def _missing_folder(filename: Any) -> str | None:
     """The folder of ``filename`` when that folder is what is missing, else None."""
     import os
     from pathlib import Path
@@ -113,7 +131,7 @@ def _missing_folder(filename):
         return None
 
 
-def _inside(folder, root):
+def _inside(folder: str, root: str | PathLike[str]) -> str | None:
     """``folder`` relative to ``root`` when it lies inside, else None (a message never names folders outside)."""
     from pathlib import Path
 
@@ -123,7 +141,8 @@ def _inside(folder, root):
         return None
 
 
-def friendly(exc, relative_to=None, filename=None):
+def friendly(exc: BaseException, relative_to: str | PathLike[str] | None = None,
+             filename: str | None = None) -> VixlError:
     """A VixlError for an exception raised by the OS, the JSON decoder or Python itself, with a message a person
     can act on instead of a Python repr. VixlErrors pass through. ``relative_to`` (a workspace) shows the file
     relative to it, or only its basename when it lies outside; ``filename`` (the path as the caller wrote it)

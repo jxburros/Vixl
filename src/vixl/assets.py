@@ -150,7 +150,7 @@ def to_srgb(image):
         if alpha is not None:
             out.putalpha(alpha)
         return out
-    except Exception:  # an unreadable or mismatched profile falls back to the plain conversion
+    except Exception:  # noqa: BLE001 - an unreadable or mismatched profile falls back to the plain conversion
         return image
 
 

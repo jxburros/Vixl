@@ -9,7 +9,6 @@ pressure tapers and paper/canvas textures make strokes look hand-made yet reprod
 from collections import OrderedDict
 from copy import deepcopy
 from functools import lru_cache
-import hashlib
 import json
 import math
 import threading
@@ -17,6 +16,7 @@ import threading
 import numpy as np
 from PIL import Image, ImageFilter
 
+from .hashing import hasher, update_json
 from .errors import VixlError, require
 from .model import finite, new_layer
 
@@ -387,12 +387,12 @@ def paint_image(project, layer):
 
     w, h = layer.get("surface", [layer["width"], layer["height"]])
     cache = project.__dict__.setdefault("_paint_cache", OrderedDict())
-    digest = hashlib.sha256(json.dumps([w, h], sort_keys=True).encode())
+    digest = update_json(hasher(), [w, h])
     prefixes, plans = [], []
     for stroke in layer["strokes"]:
         settings = brush_settings(project.state, stroke["brush"], stroke.get("settings"))
         rgba = color(resolve_color(stroke.get("color", "black"), project.state))
-        digest.update(json.dumps([stroke, settings, rgba], sort_keys=True).encode())
+        update_json(digest, [stroke, settings, rgba])
         prefixes.append(digest.hexdigest())
         plans.append((stroke, settings, rgba))
     start, premultiplied = 0, None

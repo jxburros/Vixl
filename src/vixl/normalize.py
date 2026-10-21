@@ -481,16 +481,10 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
         op["x"], op["y"] = op.pop("dx", 0), op.pop("dy", 0)
         op["relative"] = True
         note("dx/dy → x/y with relative: true")
-    if kind == "gradient" and isinstance(op.get("colors"), list) and "stops" not in op:
-        colors = op.pop("colors")
-        if len(colors) == 2:
-            op.setdefault("start", colors[0])
-            op.setdefault("end", colors[1])
-        elif len(colors) > 2:
-            op["stops"] = [
-                {"offset": round(i / (len(colors) - 1), 6), "color": c} for i, c in enumerate(colors)
-            ]
-        note("colors → start/end/stops")
+    if kind == "gradient":
+        _gradient_colors(op, note)
+    if kind == "shape":
+        _fill_gradient(op, note)
     for key in COLOR_FIELDS:
         if isinstance(op.get(key), str) and op[key].strip().lower() == "none":
             op[key] = "transparent"
@@ -498,6 +492,42 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
         elif isinstance(op.get(key), str) and RGB_FUNCTION.match(op[key]):
             op[key] = _clamped_rgb(op[key], key, note)
     return op
+
+
+def _gradient_colors(settings, note, where=""):
+    """A ``colors`` list on a gradient → start/end (two colours) or evenly spaced stops."""
+    if not isinstance(settings.get("colors"), list) or "stops" in settings:
+        return
+    colors = settings.pop("colors")
+    if len(colors) == 2:
+        settings.setdefault("start", colors[0])
+        settings.setdefault("end", colors[1])
+    elif len(colors) > 2:
+        settings["stops"] = [{"offset": round(i / (len(colors) - 1), 6), "color": c} for i, c in enumerate(colors)]
+    note(f"{where}colors → {where}start/end/stops")
+
+
+def _fill_gradient(op, note):
+    """A shape's gradient given as its ``fill`` (an object: {start, end}, {stops}, or {gradient: {...}}) is its
+    ``fill_gradient``; ``fill_gradient: "none"`` removes the gradient (null); the gradient operation's colour aliases
+    work inside it."""
+    fill = op.get("fill")
+    if isinstance(fill, dict) and "fill_gradient" not in op:
+        inner = fill.get("gradient")
+        op["fill_gradient"] = dict(inner if set(fill) == {"gradient"} and isinstance(inner, dict) else fill)
+        del op["fill"]
+        note("fill {…} → 'fill_gradient' (a gradient fill; fill becomes its middle colour)")
+    gradient = op.get("fill_gradient")
+    if isinstance(gradient, str) and gradient.strip().lower() in ("none", "transparent", ""):
+        op["fill_gradient"] = None
+        note(f"fill_gradient {gradient!r} → null (removes the gradient)")
+    elif isinstance(gradient, dict):
+        gradient = op["fill_gradient"] = dict(gradient)
+        for key, canonical in FIELD_ALIASES["gradient"].items():
+            if key in gradient and canonical not in gradient:
+                gradient[canonical] = gradient.pop(key)
+                note(f"fill_gradient.{key} → fill_gradient.{canonical}")
+        _gradient_colors(gradient, note, "fill_gradient.")
 
 
 RGB_FUNCTION = re.compile(r"\s*rgba?\(", re.IGNORECASE)
@@ -580,7 +610,7 @@ def resolve_geometry(project, op):
     if kind in ("move", "resize", "text-layout", "stack") or (kind in IN_PLACE_TYPES and op.get("target")):
         try:
             layer = project.layer(op["targets"][0] if kind == "stack" and op.get("targets") else op.get("target"))
-        except Exception:
+        except (VixlError, KeyError, IndexError, TypeError):  # The operation reports a missing target itself.
             layer = None
         if layer and layer.get("parent") and op.get("space") != "canvas" and not op.get("absolute"):
             parent = project.layer(layer["parent"])

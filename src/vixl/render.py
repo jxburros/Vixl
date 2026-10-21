@@ -2,24 +2,23 @@
 
 from collections import OrderedDict
 from copy import deepcopy
-import hashlib
 import io
-import json
 import math
 from pathlib import Path
 import re
+import threading
 
 import numpy as np
 from PIL import Image, ImageColor, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 
 from .assets import decode, read_bounded
-from .constants import EFFECTS as EFFECTS
+from .constants import BLENDS as BLENDS, EFFECTS as EFFECTS
 from .errors import VixlError, require
+from .hashing import content_hash
 from .model import MAX_LAYERS, finite
 from .profiling import ACTIVE as PROFILE
 from .variables import RESOLVED, layer_text, substitute as substitute, with_maps
 
-BLENDS = ("normal", "multiply", "screen", "overlay", "darken", "lighten", "difference", "add", "subtract")
 CANVAS_PRESETS = {
     "instagram-square": (1080, 1080),
     "instagram-post": (1080, 1080),
@@ -279,7 +278,8 @@ def _needs_variables(layer):
     return (layer["type"] in ("text", "field", "symbol") or layer.get("code") or layer.get("asset_variable")
             or layer.get("character_style") or layer.get("paragraph_style")
             or any(isinstance(layer.get(key), str) and "${" in layer[key] for key in ("asset", "alt", *COLOR_KEYS))
-            or (layer.get("repeat") and "${" in repr(layer["repeat"])))
+            or (layer.get("repeat") and "${" in repr(layer["repeat"]))
+            or (layer.get("fill_gradient") and "${" in repr(layer["fill_gradient"])))
 
 
 def _resolved_layers(project, variables=None, subset=None):
@@ -363,6 +363,13 @@ def _resolved_layers(project, variables=None, subset=None):
         for key in COLOR_KEYS:
             if key in layer:
                 layer[key] = resolve_color(layer[key], project.state, variables)
+        gradient = layer.get("fill_gradient")
+        if isinstance(gradient, dict):
+            for key in ("start", "end"):
+                if key in gradient:
+                    gradient[key] = resolve_color(gradient[key], project.state, variables)
+            for stop in gradient.get("stops") or []:
+                stop["color"] = resolve_color(stop["color"], project.state, variables)
         blend = (layer.get("repeat") or {}).get("end", {})
         for key in ("fill", "color"):
             if key in blend:
@@ -769,35 +776,40 @@ class LayerCache(OrderedDict):
     def __init__(self, entries=2 * MAX_LAYERS, budget=384 * 1024 * 1024):
         super().__init__()
         self.entries, self.budget, self.bytes = entries, budget, 0
+        self.lock = threading.RLock()  # Layers are drawn in parallel (render_pool).
 
     def image(self, key):
-        if key not in self:
-            return None
-        self.move_to_end(key)
-        return self[key].copy()
+        with self.lock:
+            cached = self.get(key)
+            if cached is None:
+                return None
+            self.move_to_end(key)
+        return cached.copy()
 
     def put(self, key, image):
         size = image.width * image.height * 4
         if size > self.budget // 4:
             return
-        previous = self.pop(key, None)
-        if previous is not None:
-            self.bytes -= previous.width * previous.height * 4
+        stored = image.copy()
         profile = PROFILE.get()
-        while self and (len(self) >= self.entries or self.bytes + size > self.budget):
-            _, old = self.popitem(last=False)
-            self.bytes -= old.width * old.height * 4
-            if profile is not None:
-                profile.count("layer_evictions")
-        self[key] = image.copy()
-        self.bytes += size
+        with self.lock:
+            previous = self.pop(key, None)
+            if previous is not None:
+                self.bytes -= previous.width * previous.height * 4
+            while self and (len(self) >= self.entries or self.bytes + size > self.budget):
+                _, old = self.popitem(last=False)
+                self.bytes -= old.width * old.height * 4
+                if profile is not None:
+                    profile.count("layer_evictions")
+            self[key] = stored
+            self.bytes += size
         if profile is not None:
             profile.count("layer_writes")
 
 
 def digest(value):
     """A short content key for ``value`` (JSON-serialisable)."""
-    return hashlib.blake2b(json.dumps(value, sort_keys=True, separators=(",", ":")).encode(), digest_size=20).hexdigest()
+    return content_hash(value, algo="blake2b", size=20)
 
 
 def layer_cache(project):
@@ -1542,13 +1554,16 @@ def opacity_table(opacity):
     """The 256-entry table that scales an alpha channel by ``opacity`` (as ``round(a * opacity)``)."""
     table = OPACITY_TABLES.get(opacity)
     if table is None:
-        if len(OPACITY_TABLES) >= 4096:
-            OPACITY_TABLES.clear()
-        table = OPACITY_TABLES[opacity] = [round(a * opacity) for a in range(256)]
+        table = [round(a * opacity) for a in range(256)]
+        with OPACITY_LOCK:  # Documents render in parallel threads.
+            if len(OPACITY_TABLES) >= 4096:
+                OPACITY_TABLES.clear()
+            OPACITY_TABLES[opacity] = table
     return table
 
 
 OPACITY_TABLES = {}
+OPACITY_LOCK = threading.Lock()
 
 
 def with_opacity(image, opacity):
@@ -1729,6 +1744,90 @@ def render_members(project, members, region=None, background="transparent", incl
     return image, (left, top)
 
 
+PREFETCH_MIN_PIXELS = 1_000_000  # Summed area of the layers worth drawing ahead before a pool pays for itself.
+_POOL = [None, 0]  # The render pool and its size.
+_POOL_LOCK = threading.Lock()
+_IN_POOL = threading.local()
+
+
+def render_threads():
+    """Threads that draw layers ahead of the compositor: ``VIXL_RENDER_THREADS`` (0 or 1 turns it off), else up to
+    8, one per core."""
+    import os
+
+    value = os.environ.get("VIXL_RENDER_THREADS", "").strip()
+    try:
+        return max(0, int(value)) if value else min(8, os.cpu_count() or 1)
+    except ValueError:
+        return 0
+
+
+def render_pool():
+    """The process's layer-drawing pool, or None when it is off."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    threads = render_threads()
+    if threads < 2:
+        return None
+    with _POOL_LOCK:
+        if _POOL[0] is None or _POOL[1] != threads:
+            if _POOL[0] is not None:
+                _POOL[0].shutdown(wait=False)
+            _POOL[0], _POOL[1] = ThreadPoolExecutor(max_workers=threads, thread_name_prefix="vixl-render"), threads
+        return _POOL[0]
+
+
+def worth_prefetching(layer):
+    """Whether drawing ``layer`` is mostly work that releases the GIL (Pillow filters for effects and styles, image
+    decoding and resampling, numpy gradients), so drawing it on another thread overlaps with the rest. Plain
+    vector shapes and text rasterise through resvg, which holds the GIL: threads would only add overhead."""
+    if layer["type"] in ("adjustment", "link") or layer["opacity"] <= 0:
+        return False
+    if layer.get("styles") or any(effect.get("enabled", True) for effect in layer.get("effects") or []):
+        return True
+    return layer["type"] in ("raster", "gradient", "paint", "pixel", "frame") or bool(layer.get("fill_gradient"))
+
+
+class Prefetch:
+    """Draws the next layers worth drawing ahead (``worth_prefetching``) on the render pool while the compositor
+    works through the stack in order; at most two per thread are in flight, so memory stays bounded. Only the
+    drawing is parallel: compositing keeps the document order, so the pixels are those of a sequential render."""
+
+    def __init__(self, work, candidates):
+        self.work, self.queue, self.pending = work, list(reversed(candidates)), {}
+        self.pool = render_pool() if candidates else None
+        self.window = 2 * render_threads()
+
+    def refill(self):
+        import contextvars
+
+        while self.pool is not None and self.queue and len(self.pending) < self.window:
+            layer = self.queue.pop()
+            context = contextvars.copy_context()
+            self.pending[layer["id"]] = self.pool.submit(context.run, self.run, layer)
+
+    def run(self, layer):
+        _IN_POOL.active = True
+        try:
+            return self.work(layer)
+        finally:
+            _IN_POOL.active = False
+
+    def take(self, layer):
+        """The drawn layer, if it was drawn ahead; ``None`` otherwise (the caller draws it)."""
+        future = self.pending.pop(layer["id"], None)
+        if future is None:
+            return None
+        try:
+            return future.result()
+        finally:
+            self.refill()
+
+    def close(self):
+        for future in self.pending.values():
+            future.cancel()
+
+
 def _render_layers(project, layers, bounds, parent, size, background, observe, members=None, limit=None, drawn=None):
     """``drawn``, a dict, receives each layer's (left, top, right, bottom) tile box that it drew into, before
     the tile's edge cut it."""
@@ -1769,13 +1868,40 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
             origin = (left, top)
         return (patch, origin) if patch is not None else (None, (0, 0))
 
+    def covering(asset):
+        """A selection or mask image stretched over the canvas (or the group tile), and cut to this tile when the
+        tile is a region of the canvas (``limit``)."""
+        if not limit:
+            return project.image(asset, "L").resize(size)
+        whole = (limit[2] - limit[0], limit[3] - limit[1])
+        return project.image(asset, "L").resize(whole).crop((-limit[0], -limit[1], size[0] - limit[0],
+                                                             size[1] - limit[1]))
+
+    def reaches(layer):
+        """Whether what the layer draws (its styles included) reaches the tile."""
+        b = bounds[layer["id"]]
+        mx, my = ink_margin(layer, bounds, children, memo)
+        if layer.get("styles"):
+            mx, my = (m + 2 * s + 4 for m, s in zip((mx, my), style_margin(layer)))
+        return not (b[0] - mx >= size[0] or b[1] - my >= size[1] or b[0] + b[2] + mx <= 0 or b[1] + b[3] + my <= 0)
+
+    def plain(layer):
+        return not layer.get("styles") and not layer.get("clip") and layer["type"] != "adjustment"
+
+    def ahead(layer):
+        """What compositing ``layer`` needs that does not read the tile: its ink, or its styled patch."""
+        if plain(layer):
+            return layer_ink(project, {**layer, "opacity": 1}, bounds[layer["id"]])
+        return patch_of(layer)
+
     def direct(layer):
         """Composite a plain layer only over its own bounds instead of a full-canvas tile."""
         b = bounds[layer["id"]]
-        mx, my = ink_margin(layer, bounds, children, memo)
-        if b[0] - mx >= size[0] or b[1] - my >= size[1] or b[0] + b[2] + mx <= 0 or b[1] + b[3] + my <= 0:
+        if not reaches(layer):
             return image
-        source = layer_ink(project, {**layer, "opacity": 1}, b)
+        source = prefetch.take(layer)
+        if source is None:
+            source = layer_ink(project, {**layer, "opacity": 1}, b)
         x, y = ink_origin(source, b)
         if drawn is not None:
             drawn[layer["id"]] = (x, y, x + source.width, y + source.height)
@@ -1800,7 +1926,7 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
             # Fully transparent (a layer or group scaled to nothing is drawn this way): nothing to
             # composite, and resampling a zero-size group tile would ask for an unbounded raster.
             return image
-        if not layer.get("styles") and not layer.get("clip") and layer["type"] != "adjustment":
+        if plain(layer):
             return direct(layer)
         if layer["type"] == "adjustment":
             changed = image
@@ -1808,9 +1934,7 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
                 if effect.get("enabled", True):
                     filtered = apply_effect(changed, effect, project)
                     changed = (
-                        Image.composite(
-                            filtered, changed, project.image(effect["selection"], "L").resize(size)
-                        )
+                        Image.composite(filtered, changed, covering(effect["selection"]))
                         if effect.get("selection")
                         else filtered
                     )
@@ -1818,10 +1942,11 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
             if layer.get("mask") and layer["mask"].get("enabled", True):
                 from PIL import ImageChops
 
-                mask = ImageChops.multiply(mask, project.image(layer["mask"]["asset"], "L").resize(size))
+                mask = ImageChops.multiply(mask, covering(layer["mask"]["asset"]))
             image = Image.composite(composite(image, changed, layer["blend"]), image, mask)
         else:
-            patch, (left, top) = patch_of(layer)
+            drawn_ahead = prefetch.take(layer)
+            patch, (left, top) = drawn_ahead if drawn_ahead is not None else patch_of(layer)
             if patch is not None:
                 # Pixels the layer leaves transparent are unchanged by every blend mode.
                 box = (left, top, left + patch.width, top + patch.height)
@@ -1833,16 +1958,29 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
                     image.paste(composite(image.crop(box), patch, layer["blend"]), box[:2])
         return image
 
-    for layer in layers:
-        if layer.get("parent") != parent or not layer["visible"] or (members is not None and layer["id"] not in members):
-            continue
-        if observe and layer["id"] in observe:
-            box = pixel_box(bounds[layer["id"]], image.size)
-            before = image.crop(box)
-            image = draw(layer)
-            observe[layer["id"]](before, image.crop(box))
-        else:
-            image = draw(layer)
+    from .calls import check_cancelled
+
+    shown = [layer for layer in layers if layer.get("parent") == parent and layer["visible"]
+             and (members is None or layer["id"] in members)]
+    candidates = []
+    if not getattr(_IN_POOL, "active", False) and PROFILE.get() is None and render_threads() > 1:
+        candidates = [layer for layer in shown if worth_prefetching(layer) and reaches(layer)]
+        if sum(bounds[layer["id"]][2] * bounds[layer["id"]][3] for layer in candidates) < PREFETCH_MIN_PIXELS:
+            candidates = []
+    prefetch = Prefetch(ahead, candidates)
+    prefetch.refill()
+    try:
+        for layer in shown:
+            check_cancelled()
+            if observe and layer["id"] in observe:
+                box = pixel_box(bounds[layer["id"]], image.size)
+                before = image.crop(box)
+                image = draw(layer)
+                observe[layer["id"]](before, image.crop(box))
+            else:
+                image = draw(layer)
+    finally:
+        prefetch.close()
     if ax or ay:
         image = trim_overflow(image, content, ax, ay)
     return image
@@ -1886,10 +2024,12 @@ INCREMENTAL_PIXELS = 40_000_000
 
 
 class Snapshot:
-    """The last canvas a document view rendered, with what each top-level layer depended on and where it drew."""
+    """The last canvas a document view rendered, with what each top-level layer depended on and where it drew.
+    ``lit`` is that canvas after scene lighting (``scene.composite``), when the document has lighting."""
 
-    def __init__(self, document, assets, order, layers, image):
+    def __init__(self, document, assets, order, layers, image, lit=None):
         self.document, self.assets, self.order, self.layers, self.image = document, assets, order, layers, image
+        self.lit = lit
 
 
 def layer_fingerprints(project, layers, bounds):
@@ -1923,7 +2063,9 @@ def layer_fingerprints(project, layers, bounds):
         if item.get("parent"):
             continue
         box = None
-        if item["visible"]:
+        if item["visible"] and item["type"] == "adjustment":
+            box = (0, 0, c["width"], c["height"])  # It filters everything below it, wherever its own box is.
+        elif item["visible"]:
             x, y, w, h = bounds[item["id"]]
             mx, my = ink_margin(item, bounds, children, memo)
             # Styles are drawn on a patch reaching past their margin (layer_patch); two pixels hold
@@ -1964,11 +2106,15 @@ def union(boxes):
 def render_incremental(project, background):
     """``render_layers`` for a document whose regions render alone, reusing the canvas the same view drew last:
     only the box covering the layers that changed (where they drew and where they draw now) is composited again.
-    Edits, previews and timeline frames that move or restyle a few layers stop costing the whole canvas."""
+    Edits, previews and timeline frames that move or restyle a few layers stop costing the whole canvas. Scene
+    lighting is applied here too (it is a function of each pixel and its place), and to the same box only."""
+    from .scene import composite as light
+
     c = project.state["canvas"]
     cache = layer_cache(project)
+    lit = bool(project.state.get("lighting"))
     if c["width"] * c["height"] > INCREMENTAL_PIXELS:
-        return render_layers(project, background=background)
+        return light(render_layers(project, background=background), project)
 
     def on_canvas(box, left=0, top=0):
         if box is None:
@@ -1990,7 +2136,7 @@ def render_incremental(project, background):
             if current is None:
                 if profile is not None:
                     profile.render(incremental=False, reason="a layer reads a linked file")
-                return _render_layers(project, layers, bounds, None, None, background, None)
+                return light(_render_layers(project, layers, bounds, None, None, background, None), project)
             assets = dict(project.assets)
             previous = getattr(cache, "snapshot", None)
             box = None
@@ -2000,14 +2146,16 @@ def render_incremental(project, background):
             top_level = [item for item in layers if not item.get("parent")]
             changed = {ident for ident, (fingerprint, _) in current.items()
                        if previous is None or previous.layers.get(ident, (None,))[0] != fingerprint}
-            image = None
+            image = lit_image = None
+            relight = previous is not None and (previous.lit is not None) == lit
             for _ in range(3):
-                if box is None:
+                if box is None or not relight:
                     break
                 left, top, right, bottom = box
                 if left >= right or top >= bottom:
                     # Only layers that draw nothing changed (hidden, or off the canvas).
                     image, drawn = previous.image.copy(), {ident: None for ident in changed}
+                    lit_image = previous.lit.copy() if lit else None
                     break
                 drawn = {}
                 placed = shift(bounds, top_level, -left, -top)
@@ -2018,6 +2166,9 @@ def render_incremental(project, background):
                 if reach == box:
                     image = previous.image.copy()
                     image.paste(tile, (left, top))
+                    if lit:
+                        lit_image = previous.lit.copy()
+                        lit_image.paste(light(tile, project, box), (left, top))
                     drawn = {ident: on_canvas(drawn.get(ident), left, top) for ident in changed}
                     break
                 box = reach
@@ -2031,28 +2182,32 @@ def render_incremental(project, background):
                 drawn = {}
                 image = _render_layers(project, layers, bounds, None, None, background, None, drawn=drawn)
                 drawn = {ident: on_canvas(drawn.get(ident)) for ident in current}
+                lit_image = light(image, project) if lit else None
             layers_now = {ident: (fingerprint, drawn[ident] if ident in drawn else previous.layers[ident][1])
                           for ident, (fingerprint, _) in current.items()}
             # The snapshot holds the asset bytes it compared, so an identical id cannot be a reused one.
-            cache.snapshot = Snapshot(document, assets, list(current), layers_now, image.copy())
-            return image
+            cache.snapshot = Snapshot(document, assets, list(current), layers_now, image.copy(),
+                                      lit_image.copy() if lit else None)
+            return lit_image if lit else image
         finally:
             project._resolution = None
 
 
 def region_renders_alone(project):
     """Whether a region of the canvas can be drawn by itself, matching the same crop of a full render.
-    Not when something reads the whole canvas: scene lighting, adjustment layers (their selections and
-    masks cover the canvas, and their filters see past the region), canvas-edge blur on a top-level
-    layer, or an effect masked by a canvas selection."""
-    if project.state.get("lighting"):
-        return False
+    Not when something reads the whole canvas: an adjustment layer with a filter that sees past each pixel (blur,
+    contrast, sharpen, noise, artistic filters), canvas-edge blur on a top-level layer, or an effect on an ordinary
+    layer masked by a canvas selection. Scene lighting and per-pixel adjustments (levels, curves, hue, LUTs ...,
+    their masks and selections cut to the region) give a region the same pixels as the whole canvas."""
     for layer in project.state["layers"]:
         if layer.get("parent") or not layer.get("visible", True):
             continue
-        if layer["type"] == "adjustment" or any(effect_margin(layer)) or any(
-            effect.get("selection") for effect in layer.get("effects") or []
-        ):
+        effects = [effect for effect in layer.get("effects") or [] if effect.get("enabled", True)]
+        if layer["type"] == "adjustment":
+            if any(effect["name"] not in PER_PIXEL or effect["name"] in BLURS for effect in effects):
+                return False
+            continue
+        if any(effect_margin(layer)) or any(effect.get("selection") for effect in effects):
             return False
     return True
 
@@ -2110,8 +2265,11 @@ def _render(project, variables=None, artboard=None, comp=None, page=None, region
             if region_renders_alone(candidate):
                 if PROFILE.get() is not None:
                     PROFILE.get().render(incremental=False, region=[left, top, width, height])
-                return render_region(candidate, (left, top, width, height),
+                from .scene import composite as light
+
+                tile = render_region(candidate, (left, top, width, height),
                                      resolve_color(candidate.state["canvas"]["background"], candidate.state))
+                return light(tile, candidate, (left, top, left + width, top + height))
             return _render(project, variables, artboard, comp, page).crop((left, top, left + width, top + height))
     disk = getattr(project, "_disk_cache", None)
     key = None
@@ -2125,369 +2283,13 @@ def _render(project, variables=None, artboard=None, comp=None, page=None, region
             return cached
     background = resolve_color(candidate.state["canvas"]["background"], candidate.state)
     if region_renders_alone(candidate):
-        image = render_incremental(candidate, background)
+        image = render_incremental(candidate, background)  # lit there
     else:
         if PROFILE.get() is not None:
             PROFILE.get().render(incremental=False, reason="the document reads the whole canvas")
-        image = render_layers(candidate, background=background)
-    from .scene import composite
+        from .scene import composite
 
-    image = composite(image, candidate)
+        image = composite(render_layers(candidate, background=background), candidate)
     if disk:
         disk.put(key, image, kind="frame")
     return image
-
-
-def export(
-    project,
-    path=None,
-    *,
-    quality=None,
-    scale=1,
-    profile=None,
-    variables=None,
-    format=None,
-    background="white",
-    artboard=None,
-    comp=None,
-    sampling="smooth",
-    svg_policy="appearance",
-    color_space="rgb",
-    icc_profile=None,
-    intent="relative",
-    black_generation=1.0,
-    ink_limit=None,
-    proof=False,
-    simulate=None,
-    dpi=None,
-    icon_sizes=None,
-    time=None,
-    page=None,
-    pages=None,
-    pdf_content=None,
-    report=None,
-    fillable=False,
-    values=None,
-    fill_mode="flatten",
-    alpha="auto",
-    presenter=None,
-    overwrite=False,
-    width=480,
-    columns=None,
-    labels=True,
-    title=None,
-    max_bytes=None,
-    isolate=None,
-    padding=None,
-    svg_document=True,
-):
-    """Render and encode. ``color_space='cmyk'`` separates JPEG/TIFF/PDF output (ICC profile
-    bytes in ``icc_profile`` for press-accurate separation, else device-naive GCR with
-    ``black_generation`` 0–1 and ``ink_limit`` in percent). ``proof`` soft-proofs RGB output
-    through that separation; ``simulate`` previews a color-vision deficiency. ``alpha`` sets the
-    channels of PNG, WEBP, TIFF and AVIF output: ``keep`` always writes RGBA, ``auto`` writes RGB
-    when every pixel is opaque and RGBA otherwise (the file export default), and ``flatten``
-    composites onto ``background`` and writes RGB (as JPEG and PDF always do). PDF is vector by
-    default, RGB or CMYK: ``pdf_content='raster'`` writes one image per page instead, and ``report``
-    receives ``content``, ``content_reason``, ``raster_fallbacks`` and ``page_size``. HTML output of a
-    multi-page document is a self-contained slide presentation (see ``presenter.py``): ``presenter``
-    is ``False`` for the plain single-image HTML, ``True`` for a presentation of any document, or
-    a dict of options (theme, notes, slide_images, start, title). ``title`` is the PDF document title
-    (default: the page's title layer, then the file name). ``max_bytes`` is a size budget: when the
-    encoded file is larger, ``report['warnings']`` says so (the export still succeeds). ``isolate`` (layer
-    names, object paths such as ``dog/head`` or ``object:KIND``) exports only those layers, cropped to their ink
-    plus ``padding`` pixels on a transparent canvas, in any format. SVG output embeds the document it shows (its layers,
-    and the images and fonts they use) so that importing the SVG gives back the same editable layers;
-    ``svg_document=False`` leaves it out."""
-    require(isinstance(overwrite, bool), "overwrite must be true or false", field="overwrite")
-    require(path is None or overwrite or not Path(path).exists(),
-            "Export output already exists; pass overwrite=True to replace it", "output_exists", field="path")
-    require(path is None or Path(path).suffix.lower() != ".vixl", "Cannot export over a Vixl project")
-    quality_given = quality is not None  # None: not given (PDF images stay lossless, others use 90)
-    quality = 90 if quality is None else quality
-    require(alpha in ("auto", "keep", "flatten"), "alpha must be auto, keep or flatten", field="alpha")
-    require(sampling in ("smooth", "nearest"), "Sampling must be smooth or nearest")
-    require(color_space in ("rgb", "cmyk"), "Color space must be rgb or cmyk")
-    if time is not None:
-        # A single timeline frame: the document with every animated property applied at ``time``.
-        from .timeline import default_timeline, parse_time, project_at
-
-        timeline = project.state.get("timeline") or default_timeline()
-        project = project_at(project, parse_time(time, timeline["duration"], timeline.get("markers")))
-    require(svg_policy in ("appearance", "strict"), "SVG policy must be appearance or strict")
-    if isolate is not None:
-        require(not pages and page != "all", "isolate exports one page; pass page, not pages", field="isolate")
-        require(padding is None or 0 <= finite(padding, "padding", 0, 4096), "padding is 0-4096 px", field="padding")
-        from .objects import isolated_export
-
-        project = isolated_export(view_page(project, page) if page is not None else project, isolate, padding=padding)
-        page = None
-        if report is not None:
-            report["isolated"] = {"layers": [project.layer(ident)["name"] for ident in project._isolated],
-                                  "size": [project.state["canvas"]["width"], project.state["canvas"]["height"]]}
-    else:
-        require(padding is None, "padding goes with isolate", field="padding")
-    from .pages import parse_pages
-
-    all_pages = pages == "all"
-    pages = None if all_pages else parse_pages(pages)
-    if isinstance(page, str) and page.isdigit():
-        page = int(page)
-    suffix = Path(path).suffix.lower() if path else ""
-    requested = (format or suffix.lstrip(".") or "PNG").upper()
-    sheet = page == "all" or (all_pages or bool(pages)) and requested not in ("PDF", "PPTX", "HTML", "HTM")
-    require(page is None or not pages, "Pass page or pages, not both")
-    if sheet:
-        require(requested in ("PNG", "JPG", "JPEG", "WEBP", "TIFF", "TIF", "AVIF"),
-                "Page contact sheets require a raster image format", field="page")
-        require(not (artboard or comp or profile or time is not None),
-                "Page contact sheets do not take artboard, comp, profile or time", field="page")
-    require(fill_mode in ("flatten", "editable"), "fill_mode must be flatten or editable", field="fill_mode")
-    if fillable or fill_mode == "editable":
-        # A fillable PDF: Vixl's artwork with AcroForm fields on top (prefilled with ``values``).
-        require((format or "").upper() == "PDF" or suffix == ".pdf" or (not format and not suffix),
-                "Fillable forms export as PDF", field="fillable")
-        require(color_space == "rgb", "Fillable PDFs are RGB; export CMYK without fillable", field="color_space")
-        require(page is None or not pages, "Pass page or pages, not both")
-        from .pdf_forms import export_fillable
-
-        return export_fillable(project, path, pages=pages or ([page] if page is not None else None), values=values,
-                               dpi=dpi, content=pdf_content or "vector", background=background, report=report)
-    if variables:
-        from .forms import all_fields, has_fields
-
-        if has_fields(project):
-            keys = {layer["field"]["key"] for _, layer in all_fields(project)} & set(variables)
-            require(not keys, f"{', '.join(sorted(keys))} name form fields; pass field values in values, not variables",
-                    field="variables")
-    if values:
-        # Flattened filling: the values are drawn into a throwaway copy that never touches the
-        # document or the persistent render cache.
-        from .forms import with_values
-
-        project = with_values(project, values)
-        if (format or "").upper() == "PDF" or suffix == ".pdf":
-            pdf_content = pdf_content or "vector"
-    from .presenter import export_presenter, wants_presenter
-
-    html_name = (format or (suffix[1:] if suffix in (".html", ".htm") else "")).upper() in ("HTML", "HTM")
-    # Options a presentation cannot honor keep a paged document's HTML export the single artwork page.
-    artwork = bool(profile or artboard or comp or proof or simulate or icc_profile) or color_space != "rgb"
-    if wants_presenter(False if presenter is None and artwork else presenter, html=html_name,
-                       paged=bool(project.state.get("pages")), page=page):
-        require(not artwork, "A presentation shows pages in RGB; profile, artboard, comp, proof, simulate and CMYK do not apply")
-        require(page is None or not pages, "Pass page or pages, not both")
-        data = export_presenter(project, pages=pages or ([page] if page is not None else None), options=presenter,
-                                variables=variables, svg_policy=svg_policy, scale=scale, report=report)
-        if path:
-            Path(path).write_bytes(data)
-        return data
-    from .plugins import first as plugin_first
-
-    exported = plugin_first("export-format", project, path, (format or suffix.lstrip(".")).lower(), report,
-                            pages=pages, page=page, artwork=artwork, isolate=isolate)
-    if exported is not None:
-        return exported
-    if (format or "").upper() == "PSD" or suffix == ".psd":
-        require(not (pages or artwork), "PSD export writes one page in RGB; profile, artboard, "
-                "comp, proof, simulate, CMYK and pages do not apply", field="format")
-        from .psd_export import export_psd
-
-        return export_psd(project, path, page=page, variables=variables, report=report)
-    if (format or "").upper() == "PPTX" or suffix == ".pptx":
-        require(not artwork, "PPTX keeps editable RGB slides; profile, artboard, comp, proof, simulate and CMYK do not "
-                "apply (export a PNG or PDF to preview them)", field="format")
-        from .pptx_export import export_pptx
-
-        return export_pptx(project, path, pages=pages, dpi=dpi, report=report)
-    wants_pdf = (format or "").upper() == "PDF" or suffix == ".pdf"
-    paged = bool(project.state.get("pages"))
-    requested_scale = scale
-    raster_only = [name for name, used in (("profile", profile), ("artboard", artboard), ("comp", comp), ("proof", proof),
-                                           ("simulate", simulate)) if used]
-    if wants_pdf:
-        require(pdf_content in (None, "vector", "raster"), "pdf_content must be vector or raster", field="pdf_content")
-        require(not (raster_only and pdf_content == "vector"),
-                f"pdf_content=vector cannot be combined with {', '.join(raster_only)}: those export the page as an image",
-                field="pdf_content")
-    if wants_pdf and not raster_only and (pdf_content or scale == 1):
-        # Every PDF is written by Vixl's own writer: vector unless raster is asked for (exact physical
-        # print pages, TrimBox and BleedBox, selectable text, CMYK). A scaled export is a larger
-        # raster, so it keeps the image path below unless pdf_content says otherwise.
-        require(page is None or not pages, "Pass page or pages, not both")
-        from .pdf_export import export_pdf
-
-        separation = None
-        if color_space == "cmyk":
-            from . import colors
-
-            if icc_profile is None and report is not None:
-                report.setdefault("warnings", []).append(
-                    "CMYK conversion has no ICC profile; colors may shift or lose saturation. "
-                    "Supply icc_profile (CLI --icc) for the intended printer/paper.")
-            separation = dict(profile=colors.load_profile(icc_profile) if icc_profile is not None else None,
-                              intent=intent, black=finite(black_generation, "black_generation", 0, 1),
-                              ink_limit=None if ink_limit is None else ink_limit / 100, background=background)
-        content = pdf_content or "vector"
-        data = export_pdf(project, path, pages=pages or ([page] if page is not None else None), content=content,
-                          dpi=dpi, background=background, color_space=color_space, separation=separation,
-                          jpeg_quality=int(quality) if quality_given else None, title=title, report=report)
-        if report is not None:
-            report["content_reason"] = ("requested with pdf_content" if pdf_content else
-                                        "default: vector, with images only for what PDF cannot draw (see raster_fallbacks)")
-        return data
-    if not sheet and (page is not None or paged):
-        project = view_page(project, page)
-    resample = Image.Resampling.NEAREST if sampling == "nearest" else Image.Resampling.LANCZOS
-    require(path is None or Path(path).suffix.lower() != ".vixl", "Cannot export over a Vixl project")
-    finite(scale, "scale", 0.01, 16)
-    finite(quality, "quality", 1, 100)
-    settings = {}
-    if profile:
-        require(profile in EXPORT_PROFILES, f"Unknown export profile: {profile}")
-        settings = deepcopy(EXPORT_PROFILES[profile])
-    requested_format = (
-        format or settings.get("format") or (Path(path).suffix[1:] if path and Path(path).suffix.lower() in (".svg", ".html", ".htm") else "")
-    ).upper()
-    if requested_format in ("SVG", "HTML", "HTM"):
-        require(not profile, "SVG export does not use raster export profiles")
-        require(
-            color_space == "rgb" and not (proof or simulate or icc_profile),
-            "SVG export is RGB; use PDF, TIFF or JPEG for CMYK, and a raster or PDF export for proof and simulate",
-        )
-        from .svg import export_svg
-
-        if requested_format in ("HTML", "HTM"):
-            from .html_export import export_html
-            export_svg = export_html
-        data = export_svg(project, scale=scale, variables=variables, artboard=artboard, comp=comp, svg_policy=svg_policy,
-                          **({"document": svg_document} if requested_format == "SVG" else {}))
-        if path:
-            Path(path).write_bytes(data)
-        return data
-    require(svg_policy == "appearance", "Strict SVG policy requires SVG output")
-    if format:
-        format = {"JPG": "JPEG", "TIF": "TIFF"}.get(format.upper(), format.upper())
-    image = None
-    if sheet:
-        from .deck import contact_sheet
-
-        image = contact_sheet(project, pages=pages, width=width, columns=columns, labels=labels, variables=variables)
-    if image is None and scale > 1 and sampling != "nearest" and not (artboard or comp or settings.get("size")):
-        # Enlarge by re-rendering a scaled copy, so text, shapes and vectors stay crisp.
-        from .proxy import scaled_project
-
-        project.limits.size(round(project.state["canvas"]["width"] * scale), round(project.state["canvas"]["height"] * scale))
-        proxy = scaled_project(project, scale)
-        if proxy is not None:
-            image = render(proxy, variables)
-            scale = 1
-    if image is None:
-        image = render(project, variables, artboard, comp)
-    size = settings.pop("size", None)
-    if size:
-        image = ImageOps.contain(image, size, resample)
-    target_size = (max(1, round(image.width * scale)), max(1, round(image.height * scale)))
-    project.limits.size(*target_size)
-    if target_size != image.size:
-        image = image.resize(target_size, resample)
-    profile_format = settings.pop("format", None)
-    fmt = (
-        format
-        or profile_format
-        or (
-            {
-                ".jpg": "JPEG",
-                ".jpeg": "JPEG",
-                ".webp": "WEBP",
-                ".tif": "TIFF",
-                ".tiff": "TIFF",
-                ".png": "PNG",
-                ".avif": "AVIF",
-                ".pdf": "PDF",
-                ".ico": "ICO",
-            }.get(Path(path).suffix.lower())
-            if path
-            else "PNG"
-        )
-    )
-    require(fmt in ("PNG", "JPEG", "WEBP", "TIFF", "AVIF", "PDF", "ICO"),
-            f"Unsupported export format {(Path(path).suffix if path and not format else format) or '(none)'!r}; use png, "
-            "jpg, webp, tiff, avif, pdf, ico, svg, pptx, psd or html (fonts: ttf, otf, woff, woff2; audio: vixl_export "
-            "(.wav), or a .wav path on the CLI; animation: export-timeline)",
-            field="format")
-    from . import colors
-
-    cms = None
-    if icc_profile is not None:
-        cms = colors.load_profile(icc_profile)
-    require(ink_limit is None or 100 <= ink_limit <= 400, "Ink limit must be 100–400%")
-    separation = dict(
-        profile=cms,
-        intent=intent,
-        black=finite(black_generation, "black_generation", 0, 1),
-        ink_limit=None if ink_limit is None else ink_limit / 100,
-        background=background,
-    )
-    if simulate:
-        image = colors.simulate_vision(image, simulate)
-    if proof:
-        image = colors.proof_image(image, **separation)
-    canvas_dpi = project.state["canvas"].get("dpi")
-    if dpi is not None:
-        finite(dpi, "dpi", 36, 2400)
-    # requested_scale: a crisp enlargement re-renders at full size and resets ``scale`` to 1.
-    effective_dpi = dpi or (canvas_dpi * requested_scale if canvas_dpi else None)
-    if not effective_dpi and fmt == "TIFF":
-        # TIFF is a print format and readers assume 1 dpi without resolution tags; use the 72 dpi a PDF export assumes.
-        effective_dpi = 72 * requested_scale
-    if effective_dpi and "dpi" not in settings:
-        settings["dpi"] = (round(effective_dpi, 3), round(effective_dpi, 3))
-    if color_space == "cmyk":
-        require(fmt in ("JPEG", "TIFF", "PDF"), "CMYK export supports JPEG, TIFF and PDF" + (
-            "; for an RGB soft proof of print colours drop --cmyk (color_space) and keep --proof" if proof else ""),
-            field="color_space")
-        require(not proof, "Choose either a CMYK separation or an RGB soft proof")
-        image = colors.cmyk_image(image, **separation)
-        if cms is not None:
-            settings["icc_profile"] = cms.tobytes()
-    elif icc_profile is not None:
-        require(proof, "An ICC profile needs color_space='cmyk' or proof=True")
-    if image.mode == "RGBA" and (fmt in ("JPEG", "PDF") or alpha == "flatten" and fmt != "ICO"):
-        base = Image.new("RGBA", image.size, color(background))
-        base.alpha_composite(image)
-        image = base.convert("RGB")
-    elif image.mode == "RGBA" and alpha == "auto" and fmt != "ICO" and image.getchannel("A").getextrema()[0] == 255:
-        image = image.convert("RGB")  # an opaque canvas needs no alpha channel
-    if fmt == "PDF":
-        settings["resolution"] = settings.pop("dpi", (72, 72))[0]
-        settings.pop("quality", None)
-    if fmt == "ICO":
-        sizes = icon_sizes or [16, 24, 32, 48, 64, 128, 256]
-        require(
-            isinstance(sizes, list) and 0 < len(sizes) <= 16 and all(isinstance(s, int) and 8 <= s <= 256 for s in sizes),
-            "ICO sizes must be 1–16 integers from 8 to 256",
-        )
-        require(abs(image.width - image.height) <= 1, "ICO export needs a square canvas (try the favicon size)")
-        settings = {"sizes": [(s, s) for s in sorted(set(sizes))]}
-    else:
-        require(icon_sizes is None, "icon_sizes applies to ICO export")
-        settings.setdefault("quality", int(quality))
-    stream = io.BytesIO()
-    try:
-        image.save(stream, format=fmt, **settings)
-    except (OSError, KeyError) as exc:
-        raise VixlError("codec_error", str(exc)) from exc
-    data = stream.getvalue()
-    if fmt == "PDF" and report is not None:
-        report.update(content="raster", color_space=color_space, content_reason=(
-            f"{', '.join(raster_only)} export the page as an image" if raster_only else
-            f"scale {requested_scale:g} exports a larger image; pass pdf_content for a vector or raster PDF at its natural size"))
-    if report is not None and fmt in ("PNG", "JPEG", "WEBP", "TIFF", "AVIF"):
-        from .animation import still_size_warnings
-
-        if warnings := still_size_warnings(project, fmt, len(data), max_bytes):
-            report.setdefault("warnings", []).extend(warnings)
-    if path:
-        Path(path).write_bytes(data)
-    return data

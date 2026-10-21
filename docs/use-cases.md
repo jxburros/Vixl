@@ -65,6 +65,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DOC-04 | Rename, hide, show, raise, lower, duplicate or delete a layer | `vixl_apply` | 1 · <1 | Works on `targets` lists in one atomic batch. |
 | DOC-05 | Change canvas size or switch to another preset (portrait ↔ landscape) | `canvas resize`, `canvas size NAME --landscape` | 1 · <1 | Constrained layers follow their anchors. |
 | DOC-06 | Add a solid or gradient background | `solid`, `gradient` operations | 1 · <1 | Linear, radial and multi-stop gradients. |
+| DOC-45 | Fill a shape (a card, a button, a blob, a logo path) with a gradient | `shape` with `fill_gradient` | 1 · <1 | Spans the shape's box; the stroke keeps its colour. Vector in SVG, PDF and PPTX. |
 | DOC-07 | Import an image, SVG or PDF page as a layer | `import-image`, `import-document` | 1 · <1 | PDF needs `[pdf]`. SVG and PDF import as editable layers (`svg_mode=auto` draws unsupported elements as images; `appearance` imports one image). |
 | DOC-08 | Undo, redo or jump back in history | `vixl_document(action='history')`, `vixl undo N` | 1 · <1 | Delta history with checkpoints. |
 | DOC-09 | Save a named checkpoint before a risky edit | `vixl checkpoint NAME` | 1 · <1 | Restore with `checkout`. |

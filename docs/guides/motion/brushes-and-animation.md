@@ -194,6 +194,11 @@ vixl export-timeline --out hero@2x.webp --scale 2
 
 Exports: GIF, APNG and animated WebP hold frames in memory, bounded by four times the pixel budget (use `scale`, `fps` or `start`/`end` to shorten). PNG-sequence ZIPs (with `timing.json`) and MP4/WebM stream frames; MP4/WebM need `ffmpeg` on PATH. Limits: 10 minutes, 60 fps, 3 600 frames (MP4/WebM have no frame cap), 1 024 tracks, 8 192 keys per track.
 
+Long exports render their frames in worker processes: one fewer than the machine's cores, at most four, once there
+are at least 16 frames for each (shorter exports, previews and documents with linked layers render in one process).
+The frames are byte-identical to a one-process export; progress reports `timing.workers`. `VIXL_FRAME_WORKERS` sets
+the number of processes (`1` turns it off). A 144-frame lyric film on four cores took 4.6 s instead of 10 s.
+
 Export results report what was written: for sheets `size` is the sheet's pixel size (`frame_size` the cell), and for GIF/WebP/APNG `frames` and `frame_durations` are the frames in the file after identical neighbours merged (`rendered_frames` is how many were rendered). `poster` (time, marker, `"end"`) puts that frame first in GIF/WebP/APNG and the result warns when it is empty; `export-timeline --poster end`. Loops, `repeat`/`stagger` and the time-aware checks are described in [animation-authoring.md](animation-authoring.md).
 
 MCP: `vixl_render(action='timeline-inspect')`, `vixl_render(action='timeline', time=… | count=8 | times=[…] | thumbnail=360)`, `vixl_export(kind='timeline', scale=, colors=, dither=, max_bytes=, poster=)`, and `time=` on `vixl_render`/`vixl_export`. REST: `GET /timeline`, `GET /timeline/frame?time=1.5s`, `POST /timeline/export` (body fields as the CLI flags, including `colors`). Python: `vixl.timeline.export_timeline(project, path, scale=2, colors=64)`.

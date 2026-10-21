@@ -73,10 +73,20 @@ scaled parent are refused with the tracks named. The whole call is one undoable 
 
 ## Examples: gradients, glows, shadows and radial repeats
 
-Shapes take a flat `fill`. Gradients, glows and shadows are layer styles or looks on the same layer, so one shape stays one
-editable layer. `vixl_reference('operations', name=[...])` returns these (and more) as `examples` next to each operation's fields.
+A shape fills with a flat `fill` colour or with a `fill_gradient`: an object with the `gradient` operation's fields
+(`start`/`end` or `stops`, `direction`, `angle`, `center`, `falloff`) that spans the shape's box. The stroke keeps its own
+colour. PNG, SVG, PDF and PPTX draw the gradient as a gradient, not an image (PDF uses an image for translucent stops,
+PPTX for an off-centre radial). The shape's `fill` then holds the gradient's middle colour, which the contrast, palette
+and brand checks read, unless the same operation sets `fill` too. A `fill` given as an object (`{"start":…,"end":…}`,
+`{"stops":[…]}` or `{"gradient":{…}}`) is read as `fill_gradient` and reported under `normalized`. On an existing shape
+(`target`), `fill_gradient` alone sets or changes the gradient, a `fill` colour replaces it, and `fill_gradient: null`
+removes it. Glows and shadows are layer styles or looks on the same layer, so one shape stays one editable layer.
+`vixl_reference('operations', name=[...])` returns these (and more) as `examples` next to each operation's fields.
 
 ```json
+{"type":"shape","shape":"rounded-rectangle","name":"button","x":40,"y":40,"width":240,"height":64,"radius":32,"fill_gradient":{"start":"#6366f1","end":"#ec4899","direction":"horizontal"},"stroke":"#312e81","stroke_width":2}
+{"type":"shape","target":"button","fill_gradient":{"stops":[{"offset":0,"color":"#f97316"},{"offset":1,"color":"#db2777"}],"direction":"angled","angle":20}}
+{"type":"shape","target":"button","fill":"#4f46e5"}
 {"type":"gradient","name":"sky","start":"#1e3a8a","end":"#7dd3fc","direction":"vertical"}
 {"type":"gradient","name":"sunset","direction":"angled","angle":35,"stops":[{"offset":0,"color":"#f97316"},{"offset":0.55,"color":"#db2777"},{"offset":1,"color":"#4c1d95"}]}
 {"type":"gradient","name":"glow-disc","width":400,"height":400,"start":"#fde68a","end":"#00000000","direction":"radial"}

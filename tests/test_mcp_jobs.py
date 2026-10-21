@@ -373,3 +373,48 @@ def test_tool_schemas_offer_request_id_and_as_job_only_where_they_help(tmp_path)
             assert not {"request_id", "as_job"} & set(tools[name].inputSchema["properties"])
 
     asyncio.run(scenario())
+
+
+def test_cancelled_status_uses_the_error_type_not_its_text():  # #685
+    from concurrent.futures import Future
+
+    from vixl.errors import Cancelled
+    from vixl.mcp_runtime import Job
+
+    class Box:
+        started = submitted = None
+        progress = None
+
+    def finished(error):
+        future = Future()
+        future.set_exception(error)
+        return Job("vixl_apply", None, None, future, Box()).status
+
+    class ToolError(Exception):
+        pass
+
+    lookalike = VixlError("invalid_operation", 'Text says {"error":"cancelled"}')
+    wrapped = ToolError('{"error":"cancelled"}')
+    wrapped.__cause__ = lookalike
+    assert finished(wrapped) == "failed"
+    real = ToolError("stopped")
+    real.__cause__ = Cancelled()
+    assert finished(real) == "cancelled"
+    assert finished(Cancelled("Timeline cancelled")) == "cancelled"
+
+
+def test_every_cancelled_error_is_typed():  # #685
+    from vixl.calls import check_cancelled
+    from vixl.errors import Cancelled, require
+
+    with pytest.raises(Cancelled) as error:
+        require(False, "Film cancelled", "cancelled")
+    assert error.value.code == "cancelled" and str(error.value) == "Film cancelled"
+    state = CallState()
+    state.cancel.set()
+    token = CALL.set(state)
+    try:
+        with pytest.raises(Cancelled):
+            check_cancelled()
+    finally:
+        CALL.reset(token)

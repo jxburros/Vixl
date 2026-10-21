@@ -509,8 +509,13 @@ OVERRIDES = {
               "radius": "Corner radius in pixels (rounded-rectangle; default from the document corner style, soft "
                         "when that is sharp).", "sides": "Polygon side count.",
               "inner_radius": "Star inner radius as a fraction of the outer radius.",
-              "fill": "Fill color (default @accent, else a neutral grey; open stroked shapes stay unfilled); use a "
-                      "gradient-overlay layer-style (or the look operation) for gradients.",
+              "fill": "Fill color (default @accent, else a neutral grey; open stroked shapes stay unfilled). With "
+                      "fill_gradient it is the flat colour checks and palettes read; a fill color alone on an existing "
+                      "shape replaces its gradient.",
+              "fill_gradient": "Gradient fill spanning the shape's box, with the gradient operation's fields: start/end "
+                               "or stops [{offset, color}], direction (vertical default, horizontal, angled with "
+                               "angle, radial with center), falloff. The stroke keeps its own color. Sets fill to the "
+                               "gradient's middle color unless fill is given; null removes the gradient.",
               "stroke": "Outline color; omit for no outline. A stroke_width alone draws in @ink, and an open shape "
                         "(line, wave, open path) with neither fill nor stroke is drawn as an @ink line.",
               "stroke_width": "Outline thickness in pixels (default about 1.5% of the shape's short side)."},

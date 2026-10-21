@@ -128,3 +128,57 @@ def test_full_canvas_dithered_linear_gradient():
         elapsed, image = timed(lambda: gradient_image(p, layer, (2400, 2400)))
         assert image.size == (2400, 2400)
         assert elapsed < 0.1
+
+
+def test_small_edit_on_2000_layers_through_session(tmp_path, monkeypatch):  # #630
+    import hashlib
+    from pathlib import Path
+
+    from vixl.interfaces import Session
+
+    p = Project(4000, 3000)
+    p.apply([{"type": "shape", "shape": "rectangle", "name": f"r{i}", "x": i % 400 * 10, "y": i // 400 * 10,
+              "width": 8, "height": 8, "fill": "red"} for i in range(2000)], detail="brief")
+    import io
+
+    from PIL import Image
+
+    noise = io.BytesIO()
+    Image.effect_noise((64, 64), 60).convert("RGB").save(noise, format="PNG")
+    p.import_image(data=noise.getvalue(), name="logo")
+    p.save(tmp_path / "big.vixl")
+    session = Session(workspace=tmp_path)
+    move = [{"type": "move", "target": "r5", "x": 1, "relative": True}]
+    session.apply(move, document="big.vixl", detail="brief")
+    reads, hashed = [], []
+    real_read, real_sha = Path.read_bytes, hashlib.sha256
+
+    def read_bytes(self):
+        reads.append(self.name)
+        return real_read(self)
+
+    def sha256(data=b"", **kwargs):
+        hashed.append(len(data))
+        return real_sha(data, **kwargs)
+
+    monkeypatch.setattr(Path, "read_bytes", read_bytes)
+    monkeypatch.setattr(hashlib, "sha256", sha256)
+    elapsed, _ = timed(lambda: session.apply(move, document="big.vixl", detail="brief"))
+    # The save neither reads the file back to hash it nor re-hashes the unchanged image asset.
+    assert "big.vixl" not in reads and not any(size > 1000 for size in hashed)
+    assert elapsed < 2.5  # About 0.5 s; before #630 about 0.9 s.
+
+
+def test_one_move_on_a_large_lit_scene():  # #595
+    p = Project(4000, 4000, "white")
+    p.apply([{"type": "shape", "shape": "ellipse", "name": f"c{i}", "x": (i % 10) * 380 + 100,
+              "y": (i // 10) * 380 + 100, "width": 120, "height": 120, "fill": "#e63"} for i in range(80)],
+            detail="brief")
+    p.apply({"type": "lighting", "ambient": 0.9, "vignette": 0.4,
+             "lights": [{"x": 2000, "y": 1500, "radius": 900, "intensity": 0.4}]}, detail="brief")
+    p.render()
+    p.apply({"type": "move", "target": "c0", "x": 140, "y": 150}, detail="brief")
+    # Lighting made every render composite and light the whole 16-megapixel canvas (about 6 s); now only the moved
+    # layer's neighbourhood is composited and lit again (about 0.15 s; a loaded macOS runner took 0.9 s).
+    elapsed, _ = timed(p.render)
+    assert elapsed < 2.5

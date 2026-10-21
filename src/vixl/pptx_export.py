@@ -248,9 +248,12 @@ class Slide:
             if inset and min(rw, rh) - 2 * inset >= 1:
                 frame = (inset, inset, rw - 2 * inset, rh - 2 * inset)
             geometry = self.geometry(layer, inset if frame else 0)
-            fill = self.fill(default_fill(layer), opacity)
+            fill = self.gradient(layer["fill_gradient"], opacity) if layer.get("fill_gradient") \
+                else self.fill(default_fill(layer), opacity)
             if layer["shape"] == "line":
                 fill = "<a:noFill/>"
+                if stroke_alpha <= 0 and layer.get("fill_gradient"):
+                    raise Unsupported("a line drawn with a gradient fill")
                 if stroke_alpha <= 0:
                     stroke_xml, stroke_alpha = self.color(layer.get("fill", "white"), opacity)
             if stroke_alpha > 0 and width > 0:
@@ -277,7 +280,8 @@ class Slide:
 
         parts = []
         for path, paint in primitives(layer, self.view):
-            fill = self.fill(paint, layer["opacity"])
+            gradient = getattr(paint, "gradient", None)
+            fill = self.gradient(gradient, layer["opacity"]) if gradient else self.fill(paint, layer["opacity"])
             if not path or fill == "<a:noFill/>":
                 continue
             pen = BoundsPen(None)
@@ -724,9 +728,12 @@ def export_pptx(project, path=None, *, pages=None, dpi=None, report=None):
         records = [find_page(project.state, ref, "pages") for ref in pages] if pages else page_list(project)
     views = page_views(project, [r["id"] for r in records] if records else pages)
     slides, notes = [], []
+    from .calls import check_cancelled
+
     for number, (label, view) in enumerate(views, 1):
         from .export_appearance import prepare
 
+        check_cancelled()
         view = prepare(view)
         slide = Slide(exporter, view, number)
         layers = resolved_layers(view)

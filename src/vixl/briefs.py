@@ -393,7 +393,7 @@ OPERATION_GROUPS = {
 
 def operations_index():
     """Operations grouped by what they are for, each with its one-line summary; anything not grouped is listed under 'other'."""
-    from .render import EFFECTS
+    from .constants import EFFECTS
     from .schema import operation_schema
     from .operations import OPERATION_TYPES
 

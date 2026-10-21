@@ -93,6 +93,12 @@ vixl -p poster.vixl check --checks cost
 vixl cache info
 ```
 
+Layers whose drawing is mostly image work (effects, drop shadows and glows, placed images, large gradients) are drawn
+ahead on a pool of threads while the stack is composited in order, so the pixels are those of a one-thread render.
+`VIXL_RENDER_THREADS` sets its size (default: one per core, at most 8; `0` or `1` turns it off). Plain vector shapes
+and text are not drawn ahead: their rasteriser holds Python's interpreter lock, so threads would only add overhead.
+With `VIXL_PROFILE=1` every layer is drawn on the calling thread, so the profile stays per layer.
+
 The disk cache (`vixl cache info`, `vixl cache clear`, `VIXL_RENDER_CACHE=off`, `VIXL_CACHE_MAX_MB`) is described
 under [production](guides/automation/production.md#persistent-rendering-cache-and-library). Long timeline exports report per-frame
 timing in their progress (`vixl_job` status): `timing.elapsed_s`, `timing.eta_s`, and the frame's `setup_ms`

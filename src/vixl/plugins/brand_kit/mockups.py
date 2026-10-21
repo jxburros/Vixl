@@ -334,7 +334,7 @@ def dispatch(session, action, request, document=None):
                         "slots": project.state["mockup"]["slots"]})
     if formats:
         from ...export_batch import export_batch
-        from ...mcp_tools import export_file
+        from ...io_policy import export_file
 
         targets = [{"path": session.relative(Path(session.resolve(row["path"])).with_suffix("." + f)),
                     "document": row["path"]} for row in results for f in formats]

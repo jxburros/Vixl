@@ -11,7 +11,7 @@ from ...production import read_json, write_json, publish_file, file_digest
 
 
 def dispatch(session, action, request):
-    from ...interfaces import service_check
+    from ...io_policy import service_check
     from ...schema import validate_operation
 
     if action == "group-list":
@@ -102,7 +102,7 @@ def dispatch(session, action, request):
 
 
 def apply_group(session, name, group, paths, request):
-    from ...interfaces import service_check
+    from ...io_policy import service_check
     from ...project import Project
     from ...service_fonts import checker
 

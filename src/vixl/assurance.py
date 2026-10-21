@@ -1,18 +1,19 @@
 """Portable design contracts. Checks never mutate artwork or their own expectations."""
 
 from copy import deepcopy
-import hashlib
 import json
 import math
 
 import numpy as np
 
+from .hashing import legacy_hash
 from .errors import VixlError, require
 from .model import finite
 
 
 def digest(value):
-    return hashlib.sha256(json.dumps(value, sort_keys=True, allow_nan=False).encode()).hexdigest()
+    # Stored in suite and library records and compared later, so the encoding stays as it was.
+    return legacy_hash(value, allow_nan=False)
 
 
 RULE_FIELDS = {

@@ -37,7 +37,8 @@ STYLES = ("drop-shadow", "stroke", "outer-glow", "color-overlay", "gradient-over
 def schemas(add):
     from .inplace import target_schema
     from .model import MAX_LAYERS
-    from .schema import S, N, B, POSITIVE_INT, COORD, SIZE, enum
+    from .schema import S, N, B, POSITIVE_INT, COORD, SIZE, enum, field, gradient_fields
+    from .schema_docs import OVERRIDES
 
     refs = {"type": "array", "items": S, "minItems": 1, "maxItems": MAX_LAYERS, "uniqueItems": True}
     obj = {"type": "object"}
@@ -59,6 +60,12 @@ def schemas(add):
                           "description": "Path source size [width, height], with origin (0, 0). Scales the unchanged "
                           "path data into width × height. Only valid for path shapes; omit for literal local pixels."},
             "fill": S,
+            "fill_gradient": {"anyOf": [
+                {"type": "object", "minProperties": 1, "additionalProperties": False,
+                 "properties": {key: value if "description" in value else field(value, OVERRIDES["gradient"][key])
+                                for key, value in gradient_fields().items()}},
+                {"type": "null"},
+            ]},
             "stroke": S,
             "stroke_width": N,
             "radius": N,

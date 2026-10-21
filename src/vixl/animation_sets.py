@@ -197,7 +197,7 @@ def target_frames(animation, op):
 def nested_operations(operations):
     """Validate and normalize the operation list once, before any frame is touched."""
     from .animation import ANIMATION_TYPES
-    from .interfaces import service_check
+    from .io_policy import service_check
     from .schema import validate_operation
 
     require(

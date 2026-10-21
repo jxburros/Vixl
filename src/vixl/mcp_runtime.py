@@ -42,7 +42,7 @@ import uuid
 from pydantic import Field
 
 from .calls import CALL, UNKNOWN, CallState
-from .errors import VixlError, for_surface, friendly, memory_guard, require
+from .errors import Cancelled, VixlError, for_surface, friendly, memory_guard, require
 
 DEFAULT_INLINE_SECONDS = 40
 DEFAULT_WORKERS = 32
@@ -106,7 +106,8 @@ class Job:
         error = self.future.exception()
         if error is None:
             return "completed"
-        return "cancelled" if '"error":"cancelled"' in str(error) else "failed"
+        # The tool error wraps the VixlError the call raised (``raise ... from``).
+        return "cancelled" if isinstance(error.__cause__ or error, Cancelled) else "failed"
 
     def summary(self):
         status = self.status
@@ -274,7 +275,9 @@ class Runtime:
                 if token is not None:
                     UNKNOWN.reset(token)
 
-        object.__setattr__(registered, "run", run)
+        from .sdk_compat import wrap_tool_run
+
+        wrap_tool_run(registered, run)
 
     def ignored(self, name, state):
         """The warning for this call's unknown arguments, if any."""
@@ -476,6 +479,9 @@ class Runtime:
                 raise
         if gate is not None:
             future.add_done_callback(lambda _: GATE.release(gate))
+        from .call_limits import of as limits_of, watch
+
+        watch(state, limits_of(self.session), future)
         if as_job:
             job = self.detach(name, kwargs, future, box, request_id, entry)
             return self.pointer(job, "Started in the background.")

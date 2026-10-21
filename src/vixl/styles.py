@@ -282,7 +282,11 @@ class Facts:
                     for key in ("fill", "color", "start", "end", "stroke_color", "stroke"):
                         if isinstance(item.get(key), str):
                             found.append((item[key], item["name"]))
-                    for stop in item.get("stops") or []:
+                    gradient = item.get("fill_gradient") if isinstance(item.get("fill_gradient"), dict) else {}
+                    for key in ("start", "end"):
+                        if isinstance(gradient.get(key), str):
+                            found.append((gradient[key], item["name"]))
+                    for stop in [*(item.get("stops") or []), *(gradient.get("stops") or [])]:
                         if isinstance(stop, dict) and isinstance(stop.get("color"), str):
                             found.append((stop["color"], item["name"]))
             clusters = []
@@ -559,8 +563,8 @@ def rule_glow(f, p):
 
 
 def _gradient_layers(f):
-    return [item for item in f.layers if item["type"] == "gradient" or item.get("styles", {}).get("gradient-overlay")
-            and item["styles"]["gradient-overlay"].get("enabled", True)]
+    return [item for item in f.layers if item["type"] == "gradient" or item.get("fill_gradient")
+            or item.get("styles", {}).get("gradient-overlay") and item["styles"]["gradient-overlay"].get("enabled", True)]
 
 
 def rule_gradients(f, p):

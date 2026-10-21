@@ -13,8 +13,9 @@ The order is a recommendation. Re-rate an issue when it is picked up; move it wh
 
 The [implementation plan](implementation-plan.md) covers every issue open on 2026-10-16, with its status, cause, steps,
 tests and ratings, and a release order across all of them.
-Its steps 0 to 3 are done (housekeeping, release blockers, security and project hygiene, check noise, layout and
-agent cost; recorded in the Unreleased changelog); step 4, concurrency, structure and rendering speed, is next.
+Its steps 0 to 4 are done (housekeeping, release blockers, security and project hygiene, check noise, layout and
+agent cost in 0.28.0; concurrency, structure and rendering speed in 0.29.0, with the speed
+decisions in [render performance](render-performance.md)); step 5, craft, is next.
 
 ## What 0.22.1 settled
 
@@ -107,6 +108,20 @@ capability matrix (#640) and native opaque blending (#585). Showcases and media 
   #702, #710, #711, #712, #713).
 - **Before it:** built-in plugins and the emoji content pack, making fonts, use-size legibility and the docs
   reorganization.
+
+## What 0.29.0 settles
+
+0.29.0 completes step 4 of the [implementation plan](implementation-plan.md) and adds gradient fills on shapes
+(#744):
+
+- **Concurrency and service limits:** typed cancellation and one module for private SDK access (#685), default
+  limits and a hard timeout for network servers (#623), one lock per document (#629), cheaper applies and saves
+  (#630).
+- **Structure:** one content-hash encoding (#634), a layering test (#632), a core operation registry (#631) and
+  strict types on the core leaves (#633).
+- **Speed:** a render pool for GIL-releasing layers (#590), incremental lit scenes and per-pixel adjustments (#595)
+  and worker processes for long timeline exports (#717). #588 is deferred, #584 waits on a parity decision, and
+  #591 and #593 are closed with numbers ([render performance](render-performance.md)).
 
 ## Rules for every release below
 

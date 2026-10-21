@@ -7,36 +7,43 @@ not depend on what happens to be cached."""
 from collections import OrderedDict
 import hashlib
 import io
+import threading
 
 from PIL import Image
 
 
 class SvgCache(OrderedDict):
-    """Rasterised SVGs by digest, least recently used first, bounded by bytes."""
+    """Rasterised SVGs by digest, least recently used first, bounded by bytes. One cache serves every document
+    of the process, and documents render in parallel threads, so each lookup and insertion holds ``lock``."""
 
     def __init__(self, budget=96 * 1024 * 1024):
         super().__init__()
         self.budget, self.bytes = budget, 0
         self.hits = self.misses = 0
+        self.lock = threading.RLock()
 
     def get_image(self, key):
-        image = self.get(key)
-        if image is None:
-            self.misses += 1
-            return None
-        self.hits += 1
-        self.move_to_end(key)
-        return image
+        with self.lock:
+            image = self.get(key)
+            if image is None:
+                self.misses += 1
+                return None
+            self.hits += 1
+            self.move_to_end(key)
+            return image
 
     def put(self, key, image):
         size = len(image.getbands()) * image.width * image.height
         if size > self.budget // 8:
             return
-        while self and self.bytes + size > self.budget:
-            _, old = self.popitem(last=False)
-            self.bytes -= len(old.getbands()) * old.width * old.height
-        self[key] = image
-        self.bytes += size
+        with self.lock:
+            if key in self:
+                self.bytes -= len(self[key].getbands()) * self[key].width * self[key].height
+            while self and self.bytes + size > self.budget:
+                _, old = self.popitem(last=False)
+                self.bytes -= len(old.getbands()) * old.width * old.height
+            self[key] = image
+            self.bytes += size
 
 
 CACHE = SvgCache()

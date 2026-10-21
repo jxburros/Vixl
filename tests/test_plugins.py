@@ -1,14 +1,13 @@
 """Built-in plugins: valid manifests, declared dependencies, and the core/plugin boundary (docs/reference/plugins.md)."""
 
-import ast
-from pathlib import Path
 import re
 
 import pytest
 
 from vixl import plugins
 
-SRC = Path(__file__).resolve().parents[1] / "src"
+from _imports import SRC, _imports, _module
+
 PLUGIN_ROOT = SRC / "vixl" / "plugins"
 
 # Core modules that still import plugin modules directly, and why. A plugin can ship separately only when no
@@ -40,29 +39,6 @@ KNOWN_COUPLINGS = {
     ("timeline", "characters.characters"): "timeline frames pose characters",
     ("resources", "brand_kit.mockups"): "the resource library validates mockup templates",
 }
-
-
-def _module(path):
-    parts = list(path.relative_to(SRC).with_suffix("").parts)
-    if parts[-1] == "__init__":
-        return parts[:-1], True
-    return parts, False
-
-
-def _imports(path):
-    """Absolute module paths imported by ``path`` (relative imports resolved, from-imported submodules included)."""
-    parts, is_pkg = _module(path)
-    package = parts if is_pkg else parts[:-1]
-    found = set()
-    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
-        if isinstance(node, ast.Import):
-            found.update(tuple(alias.name.split(".")) for alias in node.names)
-        elif isinstance(node, ast.ImportFrom):
-            base = package[: len(package) - node.level + 1] if node.level else []
-            target = base + (node.module.split(".") if node.module else [])
-            found.add(tuple(target))
-            found.update(tuple(target + [alias.name]) for alias in node.names)
-    return found
 
 
 def _plugin_module(target):

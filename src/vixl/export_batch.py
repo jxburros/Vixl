@@ -84,7 +84,7 @@ def shown_document(session, document):
 
 
 def export_batch(session, export_file, targets, defaults=None, overwrite=False, stop_on_error=False, document=None):
-    from .mcp_tools import EXPORT_SUFFIXES
+    from .io_policy import EXPORT_SUFFIXES
 
     require(isinstance(targets, list) and 0 < len(targets) <= MAX_TARGETS,
             f"Give 1–{MAX_TARGETS} targets", field="targets")

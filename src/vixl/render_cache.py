@@ -7,6 +7,7 @@ from importlib.metadata import version, PackageNotFoundError
 import io
 import json
 import os
+import threading
 from pathlib import Path
 import sys
 
@@ -58,7 +59,7 @@ def environment():
 
 def key_for(project, layer=None, bounds=None):
     from .text import font_data, font_digest
-    from .render import EFFECTS
+    from .constants import EFFECTS
 
     layers = [layer] if layer else project.state["layers"]
     if any(x.get("linked") or x["type"] == "link" or any(e["name"] not in EFFECTS for e in x.get("effects", []))
@@ -137,6 +138,7 @@ class RenderCache:
         self.counts = {"frame_hits": 0, "frame_misses": 0, "layer_writes": 0, "frame_writes": 0,
                        "frame_writes_skipped": 0, "evictions": 0, "bytes_written": 0}
         self._bytes = 0
+        self._lock = threading.RLock()  # Layers are drawn in parallel (render.render_pool).
         self._seen = None
         self._sightings = []
 
@@ -177,6 +179,10 @@ class RenderCache:
     def get(self, key, limits, kind="layer"):
         if key is None:
             return None
+        with self._lock:
+            return self._get(key, limits, kind)
+
+    def _get(self, key, limits, kind):
         path = self.directory / (key + ".png")
         try:
             from .assets import decode, read_bounded
@@ -188,7 +194,7 @@ class RenderCache:
                 self.counts["frame_hits"] += 1
             _count("disk_frame_hits" if kind == "frame" else "disk_hits")
             return image
-        except Exception:
+        except Exception:  # noqa: BLE001 - an unreadable cache entry is a miss and is written again
             self.misses += 1
             if kind == "frame":
                 self.counts["frame_misses"] += 1
@@ -251,6 +257,10 @@ class RenderCache:
     def put(self, key, image, kind="layer"):
         if key is None:
             return
+        with self._lock:
+            self._put(key, image, kind)
+
+    def _put(self, key, image, kind):
         if not self.admit(key, kind):
             self.counts["frame_writes_skipped"] += 1
             _count("disk_frame_writes_skipped")

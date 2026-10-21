@@ -10,7 +10,7 @@ callback. Without a wrapper (CLI, Python, REST) every helper here is a no-op.
 from contextvars import ContextVar
 import threading
 
-from .errors import require
+from .errors import Cancelled
 
 CALL = ContextVar("vixl_call", default=None)
 UNKNOWN = ContextVar("vixl_unknown_arguments", default=())  # Tool arguments the client sent that no parameter takes.
@@ -25,6 +25,7 @@ class CallState:
         self.document = None
         self.unknown = UNKNOWN.get()
         self.cancel = threading.Event()
+        self.reason = None  # Why ``cancel`` was set, when not by the caller: the message ``check_cancelled`` raises.
 
 
 def current_client():
@@ -59,4 +60,5 @@ def cancelled():
 
 
 def check_cancelled():
-    require(not cancelled(), "Call cancelled", "cancelled")
+    if cancelled():
+        raise Cancelled(CALL.get().reason or "Call cancelled")

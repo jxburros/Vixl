@@ -21,7 +21,7 @@ import math
 from pathlib import Path
 import re
 
-from .errors import VixlError, require
+from .errors import Cancelled, VixlError, require
 from .form_rules import (EMAIL, MAX_MESSAGE, MAX_PATTERN, MAX_VALUE as MAX_PATTERN_VALUE, check_pattern,
                          date_picture, pattern_matches)
 from .model import finite, new_layer
@@ -1715,7 +1715,7 @@ def fill_data(project, csv_path, directory=None, *, combine=None, name="{row}", 
         pages = []
         for number, view in selected:
             if cancelled and cancelled():
-                raise VixlError("cancelled", "Form fill cancelled")
+                raise Cancelled("Form fill cancelled")
             for label, page in page_views(view):
                 pages.append((f"{number:04d}-{label}", page))
         data = export_pdf(project, None, views=pages, dpi=dpi, content=options.get("pdf_content", "vector"))
@@ -1743,7 +1743,7 @@ def fill_data(project, csv_path, directory=None, *, combine=None, name="{row}", 
     try:
         for done, (filename, number) in enumerate(names.items(), 1):
             if cancelled and cancelled():
-                raise VixlError("cancelled", "Form fill cancelled")
+                raise Cancelled("Form fill cancelled")
             view = views[number - 1]
             if mode == "editable":
                 data = project.export(None, fillable=True, values=rows[number - 1], dpi=dpi, unknown=unknown)

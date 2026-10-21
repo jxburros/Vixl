@@ -83,7 +83,7 @@ def _pdf_metadata(data):
             meta.update(pages=len(document), page_size=f"{width:g} × {height:g} pt")
         finally:
             document.close()
-    except Exception:  # metadata stays best-effort without pypdfium2 or for odd PDFs
+    except Exception:  # noqa: BLE001 - metadata stays best-effort without pypdfium2 or for odd PDFs
         pass
     return meta
 

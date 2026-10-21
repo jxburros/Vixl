@@ -74,6 +74,10 @@ def execute_design(project, op):
             reach = path_box(op["path"])
             width, height = op.get("width", reach[0]), op.get("height", reach[1])
             fields["path_view"] = list(op.get("path_view", [width, height]))
+        fields.pop("fill_gradient", None)
+        set_fill_gradient(fields, op, state)
+        if "fill" in fields and "fill" not in op:
+            op = {**op, "fill": fields["fill"]}  # the gradient's colour is an explicit fill (craft.shape_defaults)
         from .craft import shape_defaults
 
         name = op["name"] if "name" in op else default_name(project, "shape")
@@ -312,7 +316,8 @@ def execute_design(project, op):
                 "adjustment",
                 c["width"],
                 c["height"],
-                effects=deepcopy(op["effects"]),
+                # Stack entries like any layer's, so effect-set, effect-move and the rest can address them.
+                effects=[{"id": uid("fx"), "enabled": True, **deepcopy(effect)} for effect in op["effects"]],
             ),
         )
     elif kind == "lut":
@@ -673,6 +678,63 @@ def validate_gradient(data, state):
             f"falloff must be one of {', '.join(GRADIENT_FALLOFFS)}", field="falloff", allowed=list(GRADIENT_FALLOFFS))
 
 
+GRADIENT_FIELDS = ("start", "end", "stops", "direction", "angle", "center", "falloff")
+
+
+def validate_fill_gradient(data, state):
+    """A shape's ``fill_gradient``: the gradient layer's colour fields, checked as a gradient layer's are."""
+    require(isinstance(data, dict) and bool({"start", "end", "stops"} & set(data)),
+            "fill_gradient is an object with start/end or stops (and optionally direction, angle, center, falloff)",
+            field="fill_gradient")
+    unknown = sorted(set(data) - set(GRADIENT_FIELDS))
+    require(not unknown, f"Invalid fill_gradient field(s) {', '.join(map(repr, unknown))}; allowed: "
+            f"{', '.join(GRADIENT_FIELDS)}", field="fill_gradient." + unknown[0] if unknown else None,
+            allowed=list(GRADIENT_FIELDS))
+    validate_gradient(data, state)
+
+
+def gradient_color(settings, state, t=0.5, variables=None):
+    """The colour a gradient paints ``t`` of the way along its stops (#rrggbb, or #rrggbbaa when translucent),
+    mixed with premultiplied alpha as ``design_render.gradient_image`` mixes it. A gradient-filled shape keeps
+    this as its flat ``fill``, the colour that checks, palettes and contrast read."""
+    from .render import color
+
+    stops = gradient_stops(settings, state)
+    rgba = [color(resolve_color(stop["color"], state, variables)) for stop in stops]
+    offsets = [stop["offset"] for stop in stops]
+    if t <= offsets[0]:
+        mixed = rgba[0]
+    elif t >= offsets[-1]:
+        mixed = rgba[-1]
+    else:
+        i = next(i for i in range(1, len(offsets)) if t <= offsets[i])
+        u = (t - offsets[i - 1]) / (offsets[i] - offsets[i - 1])
+        a, b = rgba[i - 1], rgba[i]
+        alpha = a[3] + (b[3] - a[3]) * u
+        rgb = [(a[k] * a[3] + (b[k] * b[3] - a[k] * a[3]) * u) / alpha if alpha else 0 for k in range(3)]
+        mixed = (*rgb, alpha)
+    values = [round(min(255, max(0, v))) for v in mixed]
+    return "#" + "".join(f"{v:02x}" for v in (values if values[3] < 255 else values[:3]))
+
+
+def set_fill_gradient(layer, op, state):
+    """Apply a shape operation's ``fill`` and ``fill_gradient`` to ``layer``. A gradient also sets ``fill`` to
+    its middle colour unless the operation gives a fill string; a fill string alone replaces the gradient;
+    ``fill_gradient: null`` removes it (``fill`` keeps the flat colour)."""
+    if "fill_gradient" not in op:
+        if isinstance(op.get("fill"), str):
+            layer.pop("fill_gradient", None)
+        return
+    gradient = op["fill_gradient"]
+    if gradient is None:
+        layer.pop("fill_gradient", None)
+        return
+    validate_fill_gradient(gradient, state)
+    layer["fill_gradient"] = deepcopy(gradient)
+    if not isinstance(op.get("fill"), str):
+        layer["fill"] = gradient_color(gradient, state)
+
+
 def validate_style(name, settings, state):
     from .render import color
 
@@ -825,6 +887,9 @@ def validate_design(project, state):
                 finite(layer.get("inner_radius", 0.5), "inner radius", 0.01, 1)
         if kind == "gradient":
             validate_gradient(layer, state)
+        if "fill_gradient" in layer:
+            require(kind == "shape", "fill_gradient belongs to shape layers", field="fill_gradient")
+            validate_fill_gradient(layer["fill_gradient"], state)
         if kind == "frame":
             require(layer.get("fit", "fill") in ("fill", "fit"), "Invalid frame fitting")
         if kind == "symbol":

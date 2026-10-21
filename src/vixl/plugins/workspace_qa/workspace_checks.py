@@ -27,6 +27,7 @@ from pathlib import Path
 import re
 import subprocess
 
+from ...hashing import legacy_hash
 from ...errors import VixlError, require
 
 LEVELS = ("error", "warning", "fix", "review", "never")
@@ -475,7 +476,7 @@ def _scope(request, documents):
         key["profile"] = request["profile"]
     if request.get("waivers", True) is False:
         key["waivers"] = False
-    return hashlib.sha256(json.dumps(key, sort_keys=True).encode()).hexdigest()[:16]
+    return legacy_hash(key)[:16]  # Stored in the run history and compared with later runs.
 
 
 def _history_dir(session):

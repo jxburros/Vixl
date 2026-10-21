@@ -236,14 +236,19 @@ def paper_image(image, layer):
     return result
 
 
-def composite(image, project):
+def composite(image, project, box=None):
+    """``image`` with the document's lighting and grading. With ``box`` (left, top, right, bottom on the canvas),
+    ``image`` is that part of the canvas: each pixel is lit as it is in the whole canvas (lights and the vignette
+    are placed by canvas coordinates), so a relit box pastes seamlessly into a lit canvas."""
     settings = project.state.get("lighting")
     if not settings:
         return image
     from .render import color
     pixels = np.asarray(image.convert("RGBA"), dtype=np.float32) / 255
-    h, w = pixels.shape[:2]
-    yy, xx = np.ogrid[:h, :w]
+    canvas = project.state["canvas"]
+    left, top = box[:2] if box else (0, 0)
+    w, h = (canvas["width"], canvas["height"]) if box else pixels.shape[1::-1]
+    yy, xx = np.ogrid[top:top + pixels.shape[0], left:left + pixels.shape[1]]
     rgb = pixels[:, :, :3] * settings.get("ambient", 1)
     for light in settings.get("lights", []):
         radius = light.get("radius", 200)

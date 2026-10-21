@@ -90,7 +90,7 @@ vixl gradient --name sky --start '#152641' --end '#635e83' --direction vertical|
 vixl gradient --name sky --direction angled --angle 35 --stops '[{"offset":0,"color":"#152235"},{"offset":1,"color":"#e8885c"}]'
 vixl text add 'Hello' --name title --size 96 --color white [--font path.ttf] [--align center] [--spacing 8 | --line-height 1.1] [--x center --y 120]
 vixl shape rectangle|rounded-rectangle|ellipse|polygon|star|arc|line --name s --width W --height H [--x --y] \
-     [--fill C] [--stroke C] [--stroke-width N] [--radius N] [--sides N] [--inner-radius 0.4] \
+     [--fill C | --fill-gradient '{"start":C,"end":C}'] [--stroke C] [--stroke-width N] [--radius N] [--sides N] [--inner-radius 0.4] \
      [--line-cap butt|round|square] [--trim-start PCT] [--trim-end PCT]
      [--start-angle -90 --end-angle 70]   # arc: pie wedge / donut segment (0 = 3 o'clock, clockwise); --open: the curve only
      # a closed shape's stroke sits inside its outline, flush with the box; paths, arcs and lines stroke on their centre line (stroke_align in apply JSON overrides)

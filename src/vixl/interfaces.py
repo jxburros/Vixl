@@ -3,7 +3,9 @@
 from collections import OrderedDict
 from contextlib import contextmanager
 import hmac
+import json
 from pathlib import Path
+import threading
 from threading import RLock
 from weakref import WeakKeyDictionary
 
@@ -11,53 +13,11 @@ from .calls import current_client, note_document
 from .fileio import file_lock
 
 from .errors import VixlError, require
+from .io_policy import service_check  # noqa: F401 - moved to io_policy; importable from here for one release
 from .model import Limits
 from . import __version__
 from .project import Project
 from .validation import validate
-
-
-def service_check(operation, fonts=None):
-    """Restrictions for remote/agent callers, applied after normalization so aliases such as
-    ``font_family`` cannot bypass them. Service clients import images explicitly; they cannot
-    read arbitrary server files, enable plugins, or resolve linked assets or font files.
-    ``fonts`` (the names a document allows, see ``service_fonts``) lets operations on a document
-    name a registered font or role; without it any ``font`` is refused."""
-    from .render import EFFECTS
-    from .operations import OPERATION_TYPES
-
-    kind = operation.get("type")
-    blocked = ("linked",) if fonts is not None else ("linked", "font", "display_font")
-    require(
-        not any(k in operation for k in blocked)
-        and ("path" not in operation or (kind in ("text-layout", "shape", "paint") or (kind == "select" and operation.get("shape") == "path"))),
-        "Filesystem fields (path, linked, font files) are unavailable through services; "
-        "import images with import-image and reference the returned asset"
-        + ("" if fonts is not None else "; fonts are named only in operations applied to a document, by registered name or role"),
-        "forbidden",
-        field=next((k for k in ("path", *blocked) if k in operation), None),
-    )
-    if fonts is not None:
-        from .service_fonts import check_fonts
-
-        check_fonts(operation, fonts)
-    require(kind in set(OPERATION_TYPES) | set(EFFECTS), "Unsupported service operation", field="type")
-    if kind == "effect":
-        import difflib
-
-        name = operation.get("name")
-        close = difflib.get_close_matches(str(name), EFFECTS, 2, 0.5)
-        require(
-            name in EFFECTS,
-            f"Unknown effect {name!r}"
-            + (f"; did you mean {' or '.join(map(repr, close))}?" if close else "; see allowed for built-in effects"),
-            "forbidden",
-            field="name",
-            allowed=list(EFFECTS),
-            suggestions=close,
-        )
-    if kind == "mask":
-        require(operation.get("action") != "import", "Import masks using embedded assets", "forbidden")
 
 
 def offset_indexes(exc, indexes, start=0):
@@ -71,6 +31,9 @@ def offset_indexes(exc, indexes, start=0):
         if isinstance(item, dict) and "operation_index" in item:
             item["operation_index"] = place(item["operation_index"])
     return exc
+
+
+NEST_TIMEOUT = 30  # Seconds a workflow holding one document waits for an earlier-sorting one (Session._exclusive).
 
 
 class _Document:
@@ -129,7 +92,14 @@ class Session:
         # failed, or it was closed and opened again): keys are content-addressed, so a reload re-renders
         # only what changed.
         self._render_caches = OrderedDict()
+        # Locks, always taken in this order and never the other way: ``_mutex`` (held by workflows that act on
+        # several documents at once, to exclude each other), a document's own lock (``_exclusive``; one call at
+        # a time per document, while calls on other documents run in parallel), its file lock, and
+        # ``_registry`` (the open documents, the per-client maps and these locks; held only briefly).
         self._mutex = RLock()
+        self._registry = RLock()
+        self._document_locks = {}
+        self._held = threading.local()  # The documents this thread holds, in the order it took them.
         if path:
             self.open(path if workspace else Path(path).resolve())
 
@@ -148,6 +118,10 @@ class Session:
 
     def active(self):
         """The calling client's active document, unless the server insists on ``document=``."""
+        with self._registry:
+            return self._active()
+
+    def _active(self):
         require(
             not self.require_document,
             "document= is required on this server (started with --require-document); pass the .vixl path",
@@ -191,7 +165,7 @@ class Session:
     def _seen(self, path):
         client = current_client()
         if client is not None:
-            seen = self._client_seen.setdefault(client, {})
+            seen = self._client_seen.setdefault(client, {})  # Under ``_registry``.
             seen.pop(path, None)
             seen[path] = True
             while len(seen) > 2 * self.MAX_OPEN:  # Two are enough to refuse; keep the most recent.
@@ -209,67 +183,95 @@ class Session:
 
     @staticmethod
     def stamp(path):
-        stat = path.stat()
-        return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+        from .fileio import stamp
+
+        return stamp(path)
 
     def load(self, path):
         """``Project.load`` that carries the document's previous render caches over."""
         project = Project.load(path, limits=self.limits)
-        kept = self._render_caches.pop(path, None)
-        if kept is not None:
-            project._cache, project._paint_cache = kept
-        self._render_caches[path] = (project._cache, project._paint_cache)
-        while len(self._render_caches) > 2 * self.MAX_OPEN:
-            self._render_caches.popitem(last=False)
+        with self._registry:
+            kept = self._render_caches.pop(path, None)
+            if kept is not None:
+                project._cache, project._paint_cache = kept
+            self._render_caches[path] = (project._cache, project._paint_cache)
+            while len(self._render_caches) > 2 * self.MAX_OPEN:
+                self._render_caches.popitem(last=False)
         return project
 
     def _remember(self, path, project, stamp):
         project._workspace = self.workspace
+        with self._registry:
+            self._keep(path, _Document(path, project, stamp))
+            self.path = path
+            self._seen(path)
+        note_document(path)
+
+    def _keep(self, path, entry):
+        """Make ``entry`` the most recent open document, dropping the oldest past ``MAX_OPEN`` (under
+        ``_registry``). Dropping one that another thread is using is safe: that thread keeps its own reference,
+        everything is saved, and the next call reloads it."""
         self.documents.pop(path, None)
-        self.documents[path] = _Document(path, project, stamp)
+        self.documents[path] = entry
         while len(self.documents) > self.MAX_OPEN:
             oldest = next(iter(self.documents))
-            if oldest == path:
+            if oldest in (path, self.path):
                 break
-            del self.documents[oldest]  # Everything is already saved; reopening reloads it.
-        self.path = path
-        self._seen(path)
-        note_document(path)
+            del self.documents[oldest]
+
+    @contextmanager
+    def _exclusive(self, path):
+        """Hold ``path``'s document lock and its file lock. A thread that already holds another document (a
+        workflow that opens a second one) blocks only for a document that sorts after every one it holds; for
+        an earlier one it waits at most ``NEST_TIMEOUT`` and then fails with ``document_busy``, so two threads
+        that take the same pair in opposite order cannot wait for each other for ever."""
+        with self._registry:
+            lock = self._document_locks.setdefault(path, RLock())
+        held = self._held.__dict__.setdefault("paths", [])
+        if any(other > path for other in held if other != path):
+            require(lock.acquire(timeout=NEST_TIMEOUT), f"{self.relative(path)} is busy with another call; retry",
+                    "document_busy", field="document")
+        else:
+            lock.acquire()
+        held.append(path)
+        try:
+            with file_lock(str(path)):
+                yield
+        finally:
+            held.pop()
+            lock.release()
 
     def open(self, path):
         """Open a document and return its summary."""
-        with self._mutex:
-            resolved = self.resolve(path)
-            require(resolved.is_file(), f"Document does not exist: {path}", "not_found", field="path")
-            with file_lock(str(resolved)):
-                project = self.load(resolved)
-                self._remember(resolved, project, self.stamp(resolved))
-            summary = self.summary(project)
-            return summary
+        resolved = self.resolve(path)
+        require(resolved.is_file(), f"Document does not exist: {path}", "not_found", field="path")
+        with self._exclusive(resolved):
+            project = self.load(resolved)
+            self._remember(resolved, project, self.stamp(resolved))
+        return self.summary(project)
 
     def create(self, path, width=None, height=None, background=None, *, size=None, purpose=None, dpi=None,
                orientation=None, bleed=False, seed=None, variety=None, workspace_fonts=True, house_style=None):
         """Create and save a document through ``creation.create``; the summary adds ``creation`` (size,
         background and fonts chosen, and why) and ``workspace_fonts`` (the ``brand.json`` fonts embedded)."""
-        with self._mutex:
-            resolved = self.resolve(path)
-            require(resolved.suffix.lower() == ".vixl", "Document path must end in .vixl", field="path")
-            from .creation import resolve_size
+        resolved = self.resolve(path)
+        require(resolved.suffix.lower() == ".vixl", "Document path must end in .vixl", field="path")
+        from .creation import resolve_size
 
-            resolve_size(width, height, size, purpose)  # a bad request must not leave directories behind
-            from .variety import house_style_off
+        resolve_size(width, height, size, purpose)  # a bad request must not leave directories behind
+        from .variety import house_style_off
 
-            house_style_off(house_style, self.workspace)
-            self.make_parent(resolved)
-            with file_lock(str(resolved)):
-                require(not resolved.exists(), "Destination already exists; open it instead", field="path")
-                report = {}
-                project = self.new_project(width, height, background, size=size, purpose=purpose, dpi=dpi,
-                                           orientation=orientation, bleed=bleed, seed=seed, variety=variety,
-                                           workspace_fonts=workspace_fonts, report=report, house_style=house_style)
-                project.save(resolved)
-                self._remember(resolved, project, self.stamp(resolved))
-            return {**self.summary(project), **report}
+        house_style_off(house_style, self.workspace)
+        self.make_parent(resolved)
+        with self._exclusive(resolved):
+            require(not resolved.exists(), "Destination already exists; open it instead", field="path")
+            report = {}
+            project = self.new_project(width, height, background, size=size, purpose=purpose, dpi=dpi,
+                                       orientation=orientation, bleed=bleed, seed=seed, variety=variety,
+                                       workspace_fonts=workspace_fonts, report=report, house_style=house_style)
+            project.save(resolved)
+            self._remember(resolved, project, self.stamp(resolved))
+        return {**self.summary(project), **report}
 
     def new_project(self, width=None, height=None, background=None, *, size=None, purpose=None, dpi=None,
                     orientation=None, bleed=False, seed=None, variety=None, workspace_fonts=False, report=None,
@@ -293,7 +295,7 @@ class Session:
         path.parent.mkdir(parents=True, exist_ok=True)
 
     def close(self, document=None):
-        with self._mutex:
+        with self._registry:
             require(document is not None or current_client() is not None or len(self.documents) <= 1,
                     "Several documents are open; pass document explicitly to close one", "ambiguous_document",
                     field="document", documents=[self.relative(path) for path in self.documents])
@@ -313,10 +315,11 @@ class Session:
             return self.open_documents()
 
     def open_documents(self):
-        return {
-            "active": self.relative(self.path) if self.path else None,
-            "open": [self.relative(path) for path in self.documents],
-        }
+        with self._registry:
+            return {
+                "active": self.relative(self.path) if self.path else None,
+                "open": [self.relative(path) for path in self.documents],
+            }
 
     def summary(self, project, path=None):
         return {
@@ -329,8 +332,10 @@ class Session:
 
     @contextmanager
     def project(self, write=False, document=None):
-        # Serialize threads and cooperating CLI/service writers. Revalidate only when disk changes.
-        with self._mutex:
+        """The document, loaded once and kept between calls, held exclusively for the ``with`` block: calls on
+        one document run one at a time (and cooperating CLI and service writers wait on its file lock), calls
+        on different documents in parallel. Revalidate only when the file on disk changes."""
+        with self._registry:
             if document:
                 path = self.resolve(document)
                 require(path.suffix.lower() == ".vixl", "Document path must end in .vixl", field="document")
@@ -338,36 +343,34 @@ class Session:
                     require(path.is_file(), f"Document does not exist: {document}", "not_found", field="document")
                 self._seen(path)
             else:
-                path = self.active()
-            note_document(path)
-            with file_lock(str(path)):
+                path = self._active()
+        note_document(path)
+        with self._exclusive(path):
+            with self._registry:
                 entry = self.documents.get(path)
-                try:
-                    stamp = self.stamp(path)
-                    if entry is None or entry.project is None or stamp != entry.stamp:
-                        entry = _Document(path, self.load(path), stamp)
-                    # Addressing a document explicitly keeps it open but does not change the active one.
-                    self.documents.pop(path, None)
-                    self.documents[path] = entry
-                    while len(self.documents) > self.MAX_OPEN:
-                        oldest = next(iter(self.documents))
-                        if oldest in (path, self.path):
-                            break
-                        del self.documents[oldest]
-                    project = entry.project
-                    project._workspace = self.workspace
-                    revision = project._revision
-                    yield project
-                    if write:
-                        project.save()
-                    if project._revision != revision:
-                        entry.stamp = self.stamp(path)
-                except BaseException:
-                    # A failed provider, operation or save must never leave unsaved cached state.
-                    self.documents.pop(path, None)
+            try:
+                stamp = self.stamp(path)
+                if entry is None or entry.project is None or stamp != entry.stamp:
+                    entry = _Document(path, self.load(path), stamp)
+                # Addressing a document explicitly keeps it open but does not change the active one.
+                with self._registry:
+                    self._keep(path, entry)
+                project = entry.project
+                project._workspace = self.workspace
+                revision = project._revision
+                yield project
+                if write:
+                    project.save()
+                if project._revision != revision:
+                    entry.stamp = self.stamp(path)
+            except BaseException:
+                # A failed provider, operation or save must never leave unsaved cached state.
+                with self._registry:
+                    if self.documents.get(path) is entry:
+                        self.documents.pop(path, None)
                     if self.path == path and not path.exists():
                         self.path = None
-                    raise
+                raise
 
     def inspect(self, target=None, document=None):
         with self.project(document=document) as p:
@@ -604,6 +607,53 @@ async def profiled_response(response, run):
     return Response(body, status_code=response.status_code, headers=headers, media_type=media or None)
 
 
+class BodyLimit:
+    """ASGI middleware: read the request body up to ``maximum(path)`` bytes, answer 413 past it (before reading at
+    all when Content-Length says so), and replay the buffered body to the app. Starlette's request object cannot be
+    handed a body through its public API, so the replay goes through ``receive``."""
+
+    def __init__(self, app, maximum):
+        self.app, self.maximum = app, maximum
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        maximum = self.maximum(scope["path"])
+        headers = dict(scope.get("headers") or ())
+        declared = headers.get(b"content-length", b"").decode("latin-1")
+        if declared.isdigit() and int(declared) > maximum:
+            return await self.refuse(maximum, send)
+        body, more = bytearray(), True
+        while more:
+            message = await receive()
+            if message["type"] == "http.disconnect":
+                return None
+            body.extend(message.get("body", b""))
+            more = message.get("more_body", False)
+            if len(body) > maximum:
+                return await self.refuse(maximum, send)
+        replayed = False
+
+        async def replay():
+            nonlocal replayed
+            if replayed:
+                return await receive()  # After the body: the disconnect, when it comes.
+            replayed = True
+            return {"type": "http.request", "body": bytes(body), "more_body": False}
+
+        return await self.app(scope, replay, send)
+
+    @staticmethod
+    async def refuse(maximum, send):
+        error = VixlError("resource_limit", f"The request body is larger than {maximum:,} bytes; send a smaller body "
+                          "(downsample images, split operations into several batches)", limit=maximum).as_dict()
+        payload = json.dumps(error).encode()
+        await send({"type": "http.response.start", "status": 413,
+                    "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(payload)).encode()),
+                                (b"connection", b"close")]})
+        await send({"type": "http.response.body", "body": payload})
+
+
 def create_app(path, *, token=None, limits=None, call_limits=None):
     """The REST app for one document. ``call_limits`` (default: from the environment, see ``call_limits.py``)
     bounds each call: a timeout after which a call answers 202 with a job, an export page and megapixel cap
@@ -615,11 +665,11 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     except ImportError as exc:
         raise VixlError("missing_dependency", "Install vixl-engine[server]") from exc
     import asyncio
-    from concurrent.futures import ThreadPoolExecutor
     import contextvars
     import functools
 
-    from .call_limits import GATE, CallLimits, RestJobs, check_export, detached
+    from .call_limits import GATE, BoundedExecutor, CallLimits, RestJobs, check_export, detached, watch
+    from .calls import CALL, CallState
     from .untrusted import mark
 
     require_token(token)
@@ -628,21 +678,26 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     call_limits = call_limits if call_limits is not None else CallLimits.configure()
     session = Session(path, call_limits.apply_to(limits or Limits()))
     session.call_limits = call_limits
-    jobs = RestJobs()
-    workers = ThreadPoolExecutor(max_workers=16, thread_name_prefix="vixl-rest")
+    jobs = RestJobs(call_limits.hard_timeout)
+    workers = BoundedExecutor(16)
 
     def limited(fn):
-        """A heavy route: counted against max_concurrent, and detached into a job after the timeout."""
+        """A heavy route: counted against max_concurrent, detached into a job after the timeout and cancelled at
+        its next checkpoint after the hard timeout."""
         @functools.wraps(fn)
         async def wrapper(*args, **kwargs):
             key = GATE.acquire(session.workspace, call_limits.max_concurrent)
+            # Run in a copy of the request's context, so a VIXL_PROFILE render profile sees the work, with the
+            # call state that check_cancelled reads.
+            context, state = contextvars.copy_context(), CallState()
+            context.run(CALL.set, state)
             try:
-                # Run in a copy of the request's context, so a VIXL_PROFILE render profile sees the work.
-                future = workers.submit(contextvars.copy_context().run, fn, *args, **kwargs)
+                future = workers.submit(context.run, fn, *args, **kwargs)
             except BaseException:
                 GATE.release(key)
                 raise
             future.add_done_callback(lambda _: GATE.release(key))
+            watch(state, call_limits, future)
             waiter = asyncio.wrap_future(future)
             waiter.add_done_callback(lambda f: f.cancelled() or f.exception())  # Retrieved even if nobody waits.
             if call_limits.timeout is None:
@@ -656,6 +711,13 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
 
         return wrapper
     app = FastAPI(title="Vixl Engine", version=__version__)
+
+    def body_limit(path):
+        maximum = session.limits.max_asset_bytes if path in ("/assets", "/fonts", "/import") else 1024 * 1024
+        return min(maximum, 16 * 1024 * 1024) if path == "/fonts" else maximum
+
+    # Added first, so it runs inside the guard below: an unauthorized request is refused before its body is read.
+    app.add_middleware(BodyLimit, maximum=body_limit)
     if not token:
         app.add_middleware(
             TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "[::1]", "testserver"]
@@ -670,22 +732,6 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
         origin = request.headers.get("origin")
         if origin and origin != str(request.base_url).rstrip("/"):
             return JSONResponse({"error": "cross_origin_forbidden"}, status_code=403)
-        maximum = session.limits.max_asset_bytes if request.url.path in ("/assets", "/fonts", "/import") else 1024 * 1024
-        if request.url.path == "/fonts":
-            maximum = min(maximum, 16 * 1024 * 1024)
-        too_large = VixlError("resource_limit", f"The request body is larger than {maximum:,} bytes; send a smaller body "
-                              "(downsample images, split operations into several batches)",
-                              limit=maximum).as_dict()
-        declared = request.headers.get("content-length", "")
-        if declared.isdigit() and int(declared) > maximum:
-            # Refuse before reading: the body is never buffered.
-            return JSONResponse(too_large, status_code=413, headers={"Connection": "close"})
-        body = bytearray()
-        async for chunk in request.stream():
-            body.extend(chunk)
-            if len(body) > maximum:
-                return JSONResponse(too_large, status_code=413, headers={"Connection": "close"})
-        request._body = bytes(body)
         from . import profiling
 
         if not profiling.enabled():
@@ -698,9 +744,9 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     async def vixl_error(request: Request, exc: VixlError):
         status = 403 if exc.code == "forbidden" else 400
         if exc.code == "limit_exceeded":
-            status = 429 if exc.details.get("limit") == "max_concurrent" else 413
+            status = {"max_concurrent": 429, "max_queue": 503}.get(exc.details.get("limit"), 413)
         return JSONResponse(exc.as_dict(), status_code=status,
-                            headers={"Retry-After": "3"} if status == 429 else None)
+                            headers={"Retry-After": "3"} if status in (429, 503) else None)
 
     @app.get("/limits")
     def server_limits():
@@ -718,7 +764,7 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
         if wait and not job["future"].done():
             try:
                 await asyncio.wait_for(asyncio.shield(asyncio.wrap_future(job["future"])), min(float(wait), 50))
-            except Exception:  # Timed out, or failed: the summary says which.
+            except Exception:  # noqa: BLE001 - Timed out, or failed: the summary says which.
                 pass
         return job
 
@@ -878,7 +924,7 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
         require(fmt in media, "Unsupported export format")
         body = dict(body)
         if "icc_profile_base64" in body:
-            from .mcp_tools import decode_upload
+            from .io_policy import decode_upload
 
             body["icc_profile"] = decode_upload(body.pop("icc_profile_base64"), 16 * 1024 * 1024)
         with session.project() as project:

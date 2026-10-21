@@ -40,7 +40,7 @@ class _Step:
 def _targets(session, exports, overwrite, path):
     """Validated export targets (same options as vixl_export(kind='batch')), checked before anything is written."""
     from .export_batch import MAX_TARGETS, parse_target
-    from .mcp_tools import EXPORT_SUFFIXES
+    from .io_policy import EXPORT_SUFFIXES
 
     require(isinstance(exports, list) and 0 < len(exports) <= MAX_TARGETS,
             f"exports is a list of 1-{MAX_TARGETS} paths or export targets", field="exports")
@@ -197,7 +197,7 @@ def compose(session, *, path=None, operations=None, operations_path=None, layout
     """Run the chain; returns ``(result, PNG bytes or None)``. ``dry_run`` runs every step up to preview and
     writes nothing (``path`` may be omitted)."""
     from .checks import batch_findings, _apply_options
-    from .interfaces import service_check
+    from .io_policy import service_check
     from .service_fonts import checker
 
     done = []
@@ -336,7 +336,7 @@ def compose(session, *, path=None, operations=None, operations_path=None, layout
         try:
             with _Step("export", done):
                 from .export_batch import export_batch
-                from .mcp_tools import export_file
+                from .io_policy import export_file
 
                 batch = export_batch(session, export_file, targets, overwrite=overwrite, stop_on_error=True,
                                      document=path)
@@ -374,7 +374,7 @@ def run(workspace=".", **request):
 
 def cli(args, options, limits):
     """``vixl compose --request FILE [--preview OUT.png] [--workspace DIR]``."""
-    from .cli import read_json
+    from .io_policy import read_json
     from .commands import Parser
     from .interfaces import Session
 

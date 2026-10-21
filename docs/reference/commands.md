@@ -493,7 +493,7 @@ vixl -p doc.vixl emoji install PACK | emoji reset [--emoji EMOJI]
 
 ## Servers
 
-`vixl mcp --workspace DIR` serves the seven MCP tools over stdio (`--http` for Streamable HTTP at `/mcp`, with `--host`, `--port` and `--token-env`). `vixl mcp --tools ai` serves the provider-backed `vixl_ai_*` tools and `vixl_models_list` as a second server (`--planner` adds `vixl_ai_plan`). `--require-document` (or `VIXL_REQUIRE_DOCUMENT=1`) makes `document=` mandatory on every document tool, and `--allow-screen-capture` enables desktop capture. `vixl serve` runs the REST API and `vixl view` the live viewer; `serve`, `view` and `mcp` share the per-call limits `--call-timeout`, `--max-megapixels`, `--max-pages` and `--max-concurrent`. See [MCP tool surface](mcp-toolsets.md) and [interfaces](interfaces.md#mcp).
+`vixl mcp --workspace DIR` serves the seven MCP tools over stdio (`--http` for Streamable HTTP at `/mcp`, with `--host`, `--port` and `--token-env`). `vixl mcp --tools ai` serves the provider-backed `vixl_ai_*` tools and `vixl_models_list` as a second server (`--planner` adds `vixl_ai_plan`). `--require-document` (or `VIXL_REQUIRE_DOCUMENT=1`) makes `document=` mandatory on every document tool, and `--allow-screen-capture` enables desktop capture. `vixl serve` runs the REST API and `vixl view` the live viewer; `serve`, `view` and `mcp` share the per-call limits `--call-timeout`, `--call-hard-timeout`, `--max-megapixels`, `--max-pages` and `--max-concurrent` (with defaults when other machines can reach the server; `--no-call-limits` drops them). See [MCP tool surface](mcp-toolsets.md) and [interfaces](interfaces.md#mcp).
 
 ## Output destinations and help
 

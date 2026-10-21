@@ -45,7 +45,7 @@ def discover():
 
 def run(project, name, options=None, *, dry_run=False):
     """Trusted Python operation plugins return ordinary operations; mutations remain atomic."""
-    from ..interfaces import service_check
+    from ..io_policy import service_check
     from ..errors import require
     from copy import deepcopy
 

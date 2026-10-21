@@ -10,7 +10,7 @@ import re
 
 import numpy as np
 
-from .errors import require
+from .errors import VixlError, require
 from .geometry import compact_number
 from .model import finite
 from .timeline import animated as timeline_animated
@@ -457,6 +457,17 @@ def hidden_text(project, resolved, layers, bounds, ink, alpha, is_text, issue, w
                   [text, *culprits[:3]], code="hidden-text", hidden=round(share, 3))
 
 
+class Checkpoints(list):
+    """The check names of one ``check_design`` run. Each check family starts with an ``in`` test on this list,
+    which is also where a cancelled call stops (``calls.check_cancelled``)."""
+
+    def __contains__(self, name):
+        from .calls import check_cancelled
+
+        check_cancelled()
+        return super().__contains__(name)
+
+
 def check_design(
     project,
     *,
@@ -535,6 +546,7 @@ def check_design(
     require(not unknown, f"Unknown check(s) {unknown}; available: {', '.join(CHECKS + OPTIONAL_CHECKS)}", field="checks")
     if "accessibility" in checks:
         checks = checks + [name for name in ACCESSIBILITY_BUNDLE if name not in checks]
+    checks = Checkpoints(checks)
     candidate = artboard_project(project.clone(), artboard, comp, variables)
     undefined = []
     if "placeholders" in checks:
@@ -1467,7 +1479,7 @@ def effective_ppi(project, layer, box, dpi):
         return None
     try:
         source = project.image(layer["asset"])
-    except Exception:
+    except (KeyError, OSError, ValueError, VixlError):  # A missing or unreadable image places nothing to print.
         return None
     sw, sh = (layer["crop"][2] - layer["crop"][0], layer["crop"][3] - layer["crop"][1]) if layer.get("crop") else source.size
     _, _, w, h = box

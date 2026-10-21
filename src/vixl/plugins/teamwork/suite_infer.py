@@ -8,7 +8,7 @@ The result is returned for review; it is only saved when asked (``apply``) and n
 import math
 import re
 
-from ...errors import require
+from ...errors import VixlError, require
 
 MAX_TEXT_RULES = 12
 MAX_PALETTE = 16
@@ -110,7 +110,7 @@ def infer(project, name="inferred"):
     for layer, size, _ in texts[:MAX_TEXT_RULES]:
         try:
             passed, detail = _contrast(project, {"target": layer["id"], "minimum": 1})
-        except Exception:
+        except Exception:  # noqa: BLE001 - a text role whose contrast cannot be measured gets no rule
             continue
         actual = max(detail["actual"], detail.get("outline", 0))
         wcag = 3.0 if size >= 24 else 4.5
@@ -141,7 +141,7 @@ def infer(project, name="inferred"):
 
         try:
             report = measure(project, colors=palette, tolerance=24, max_fraction=1)
-        except Exception:
+        except Exception:  # noqa: BLE001 - a palette that cannot be measured gets no rule
             report = None
         if report and report["outside_fraction"] <= 0.25:
             fraction = min(1.0, round(report["outside_fraction"] * 1.5 + 0.02, 3))
@@ -156,7 +156,7 @@ def infer(project, name="inferred"):
     for rule in rules:
         try:
             passed, _ = rule_result(project, rule)
-        except Exception:
+        except Exception:  # noqa: BLE001 - a rule the approved design cannot be checked against is dropped
             passed = False
         (kept if passed else dropped).append(rule)
     suite["rules"] = kept
@@ -180,7 +180,7 @@ def _palette(project):
             return
         try:
             rgba = color(resolve_color(value, project.state))
-        except Exception:
+        except (VixlError, ValueError):  # Not a colour (a variable left unresolved, a typo): nothing to infer.
             return
         if rgba[3]:
             hexa = "#%02x%02x%02x" % tuple(rgba[:3])
@@ -192,9 +192,12 @@ def _palette(project):
     for layer in resolved_layers(project):
         if layer["id"] not in ids:
             continue
+        gradient = layer.get("fill_gradient") or {}
         for key in ("color", "fill", "stroke", "stroke_color", "start", "end"):
             take(layer.get(key))
-        for stop in layer.get("stops") or []:
+        for key in ("start", "end"):
+            take(gradient.get(key))
+        for stop in [*(layer.get("stops") or []), *(gradient.get("stops") or [])]:
             take(stop.get("color"))
     return colors[:MAX_PALETTE] if len(colors) >= 2 else None
 
@@ -263,7 +266,7 @@ def dispatch(session, request, document=None):
         def run(member, rule):
             try:
                 return bool(rule_result(member, rule)[0])
-            except Exception:
+            except Exception:  # noqa: BLE001 - a member a rule cannot be checked on counts as failing it
                 return False
 
         rules, dropped, notes = combine(inferences, members, run)

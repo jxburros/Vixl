@@ -146,7 +146,7 @@ def spacing_for(project, font, size, multiple):
 
     try:
         natural = natural_height(font_data(project, {"font": font, "text": "x"}), size)
-    except Exception:  # A font the outline reader cannot parse keeps the old fixed leading.
+    except Exception:  # noqa: BLE001 - A font the outline reader cannot parse keeps the old fixed leading.
         return 4
     return round(size * multiple - natural)
 
@@ -175,8 +175,7 @@ def stroke_width(width, height):
     return max(1, round(min(width, height) * house_style.rule("stroke_width")))
 
 
-def safe_area(width, height):
-    return round(min(width, height) * house_style.rule("safe_area"))
+safe_area = house_style.safe_area
 
 
 def _visible(value):

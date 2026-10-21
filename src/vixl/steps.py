@@ -23,7 +23,7 @@ Scope = Annotated[Literal["document", "workspace"], Field(
 
 def _upload(session, path, data_base64):
     from .assets import read_bounded
-    from .mcp_tools import decode_upload
+    from .io_policy import decode_upload
 
     limit = session.limits.max_asset_bytes
     return read_bounded(session.resolve(path), limit) if path else decode_upload(data_base64, limit)

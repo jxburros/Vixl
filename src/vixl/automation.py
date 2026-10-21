@@ -102,7 +102,7 @@ def validate_motion(value):
 
 def validate_action(value):
     from .schema import validate_operation
-    from .interfaces import service_check
+    from .io_policy import service_check
 
     bounded_object(value, {"operations", "description"}, "Invalid action")
     ops = value.get("operations")
@@ -343,7 +343,7 @@ def execute(project, op):
                     layer.update(deepcopy(project.state[category + "_styles"][name]))
         from .operations import execute as apply_operation
         from .schema import validate_operation
-        from .interfaces import service_check
+        from .io_policy import service_check
         from .normalize import resolve_geometry, apply_centering
 
         operations = expand(project, op)
