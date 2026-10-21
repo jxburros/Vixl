@@ -238,7 +238,7 @@ lines that share an `x` become one multi-line layer). A font family the document
 or by the font's own family name) is used, else the default face with a warning; a text with mixed span styles takes
 its first style. `<g>` elements with an `id`, `data-layer` or Inkscape label, or with opacity, become groups (a group
 of one layer passes its name and opacity to it). Linear and radial gradients become gradient layers on rectangles
-(and radial glows on circles) and gradient overlays on other shapes. Embedded PNG, JPEG and WebP `<image>` data
+(and radial glows on circles) and the `fill_gradient` of other shapes, translucent stops included. Embedded PNG, JPEG and WebP `<image>` data
 becomes an image layer. `<use>` and `<symbol>` are expanded, and `<style>` rules with type, class and ID selectors
 apply. Filters, masks, clip paths, patterns, markers, skewed text and external references are not editable: `auto`
 draws each such element as an image layer. External resources are never fetched.

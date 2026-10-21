@@ -278,7 +278,8 @@ def _needs_variables(layer):
     return (layer["type"] in ("text", "field", "symbol") or layer.get("code") or layer.get("asset_variable")
             or layer.get("character_style") or layer.get("paragraph_style")
             or any(isinstance(layer.get(key), str) and "${" in layer[key] for key in ("asset", "alt", *COLOR_KEYS))
-            or (layer.get("repeat") and "${" in repr(layer["repeat"])))
+            or (layer.get("repeat") and "${" in repr(layer["repeat"]))
+            or (layer.get("fill_gradient") and "${" in repr(layer["fill_gradient"])))
 
 
 def _resolved_layers(project, variables=None, subset=None):
@@ -362,6 +363,13 @@ def _resolved_layers(project, variables=None, subset=None):
         for key in COLOR_KEYS:
             if key in layer:
                 layer[key] = resolve_color(layer[key], project.state, variables)
+        gradient = layer.get("fill_gradient")
+        if isinstance(gradient, dict):
+            for key in ("start", "end"):
+                if key in gradient:
+                    gradient[key] = resolve_color(gradient[key], project.state, variables)
+            for stop in gradient.get("stops") or []:
+                stop["color"] = resolve_color(stop["color"], project.state, variables)
         blend = (layer.get("repeat") or {}).get("end", {})
         for key in ("fill", "color"):
             if key in blend:

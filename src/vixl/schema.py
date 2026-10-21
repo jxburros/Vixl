@@ -55,6 +55,21 @@ def field(base, description):
     return {**base, "description": description}
 
 
+def gradient_fields():
+    """The colour fields of a gradient layer, shared by a shape's ``fill_gradient`` (one definition, so both
+    accept the same gradients)."""
+    return {
+        "start": S,
+        "end": S,
+        "direction": enum("horizontal", "vertical", "radial", "angled"),
+        "center": {"type": "array", "items": {"type": "number", "minimum": 0, "maximum": 1},
+                   "minItems": 2, "maxItems": 2, "description": "Radial centre [x,y] as fractions of the layer; default [0.5,0.5]."},
+        "stops": {"type": "array", "items": {"type": "object"}},
+        "angle": N,
+        "falloff": enum("linear", "smooth", "ease", "quadratic", "gaussian"),
+    }
+
+
 def operation_schema() -> dict[str, Any]:
     return deepcopy(_operation_schema())
 
@@ -120,14 +135,7 @@ def _operation_schema():
             "name": S,
             "width": SIZE,
             "height": SIZE,
-            "start": S,
-            "end": S,
-            "direction": enum("horizontal", "vertical", "radial", "angled"),
-            "center": {"type": "array", "items": {"type": "number", "minimum": 0, "maximum": 1},
-                       "minItems": 2, "maxItems": 2, "description": "Radial centre [x,y] as fractions of the layer; default [0.5,0.5]."},
-            "stops": {"type": "array", "items": {"type": "object"}},
-            "angle": N,
-            "falloff": enum("linear", "smooth", "ease", "quadratic", "gaussian"),
+            **gradient_fields(),
             "x": COORD,
             "y": COORD,
         },

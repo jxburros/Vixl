@@ -88,6 +88,9 @@ def execute(project, op):
         for key in SHAPE_FIELDS:
             if key in op:
                 layer[key] = deepcopy(op[key])
+        from .design import set_fill_gradient
+
+        set_fill_gradient(layer, op, project.state)
         width, height = op.get("width", layer["width"]), op.get("height", layer["height"])
         if "path" in op:
             layer["path_view"] = [width, height]

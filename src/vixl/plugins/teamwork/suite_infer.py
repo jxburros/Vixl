@@ -192,9 +192,12 @@ def _palette(project):
     for layer in resolved_layers(project):
         if layer["id"] not in ids:
             continue
+        gradient = layer.get("fill_gradient") or {}
         for key in ("color", "fill", "stroke", "stroke_color", "start", "end"):
             take(layer.get(key))
-        for stop in layer.get("stops") or []:
+        for key in ("start", "end"):
+            take(gradient.get(key))
+        for stop in [*(layer.get("stops") or []), *(gradient.get("stops") or [])]:
             take(stop.get("color"))
     return colors[:MAX_PALETTE] if len(colors) >= 2 else None
 

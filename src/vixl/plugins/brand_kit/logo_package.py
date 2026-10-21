@@ -22,7 +22,7 @@ from ...errors import VixlError, require
 
 VARIANTS = ("full-color", "mono-black", "mono-white", "on-light", "on-dark")
 LOCKUPS = ("mark", "horizontal", "stacked")
-COLOR_KEYS = ("fill", "stroke", "color", "stroke_color", "start", "end", "colors", "stops", "background")
+COLOR_KEYS = ("fill", "fill_gradient", "stroke", "color", "stroke_color", "start", "end", "colors", "stops", "background")
 SOURCE_SUFFIXES = (".vixl", ".png", ".jpg", ".jpeg", ".webp", ".svg")
 USAGE = {
     "full-color": "Primary logo. Use on white or light, plain backgrounds.",

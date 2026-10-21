@@ -154,6 +154,16 @@ def test_palette_extra_colors_are_approved_and_become_swatches(tmp_path):
     assert [i for i in p.check(checks=["brand"])["issues"] if i["layers"] == ["off"]]
 
 
+def test_gradient_fill_stops_are_checked_against_the_palette(tmp_path):
+    write(tmp_path, brand_kit(palette=PALETTE))
+    p = document(tmp_path)
+    p.apply({"type": "shape", "shape": "rectangle", "name": "ramp", "width": 40, "height": 40, "fill": "#0044aa",
+             "fill_gradient": {"start": "#0044aa", "end": "#eeeeee"}})
+    assert not [i for i in p.check(checks=["brand"])["issues"] if i["layers"] == ["ramp"]]
+    p.apply({"type": "shape", "target": "ramp", "fill": "#0044aa", "fill_gradient": {"start": "#0044aa", "end": "#ff00ff"}})
+    assert [i for i in p.check(checks=["brand"])["issues"] if i["layers"] == ["ramp"]]
+
+
 def test_extra_color_max_fraction(tmp_path):
     write(tmp_path, {"palette": {**PALETTE, "extra": [{"color": "#d2a465", "max_fraction": 0.1}]}})
     p = document(tmp_path, 200, 200)

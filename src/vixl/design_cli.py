@@ -18,6 +18,8 @@ def compile_design(cmd, args):
                        help="Path source size at origin (0, 0); scale into --width and --height")
         for key in ("fill", "stroke"):
             p.add_argument("--" + key)
+        p.add_argument("--fill-gradient", type=json.loads,
+                       help='JSON gradient fill, e.g. \'{"start":"#6366f1","end":"#ec4899","direction":"horizontal"}\'')
         for key in ("stroke-width", "radius", "inner-radius", "start-angle", "end-angle", "trim-start", "trim-end"):
             p.add_argument("--" + key, type=float)
         p.add_argument("--line-cap", choices=["butt", "round", "square"])

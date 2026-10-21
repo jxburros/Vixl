@@ -139,9 +139,16 @@ def _color_changes(project, rule):
     for layer in _walk(state["layers"]):
         for key in COLOR_FIELDS:
             consider(layer, key, {"layer": layer["name"]}, key)
-        for index, stop in enumerate(layer.get("stops") or []):
-            if isinstance(stop, dict):
-                consider(stop, "color", {"layer": layer["name"]}, f"stops[{index}].color")
+        gradient = layer.get("fill_gradient") if isinstance(layer.get("fill_gradient"), dict) else None
+        for owner, prefix in ((layer, ""), (gradient, "fill_gradient.")):
+            if owner is None:
+                continue
+            if owner is gradient:
+                for key in ("start", "end"):
+                    consider(gradient, key, {"layer": layer["name"]}, prefix + key)
+            for index, stop in enumerate(owner.get("stops") or []):
+                if isinstance(stop, dict):
+                    consider(stop, "color", {"layer": layer["name"]}, f"{prefix}stops[{index}].color")
     if rule["swatches"]:
         for name in list(state.get("swatches", {})):
             if rule["with"].lstrip("@") != name:

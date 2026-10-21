@@ -92,7 +92,7 @@ Figma layer names are kept. Vixl layer names are unique, so repeated names get a
 | VECTOR, BOOLEAN_OPERATION, STAR, POLYGON | path layer from `fillGeometry` (SVG path data scaled with `path_view`); stroke-only vectors keep an editable stroke |
 | TEXT | live text: characters, font, weight, size, tracking, line height, alignment, case, colour, fixed box width; style runs become `text-style` spans (bold, italic, size, colour, tracking, underline, strike, font) |
 | Solid fill | fill colour, paint opacity folded into its alpha |
-| Linear and radial gradient | `gradient-overlay` layer style built from the gradient handles (exact for linear; radial when circular) |
+| Linear and radial gradient | the shape's `fill_gradient`, built from the gradient handles (exact for linear; radial when circular), transparent stops included |
 | Image fill | image frame clipped to the node's outline; `FILL` is cover, `FIT` is contain |
 | Several fills | one layer per fill inside a group named after the node |
 | Stroke | colour, weight, inside/centre/outside alignment, caps, joins, dashes |
@@ -122,7 +122,7 @@ Everything below is reported; the layer is still imported unless the entry says 
 - **Clipping**: frames that clip their content do not clip in Vixl; only the root frame is clipped by the canvas.
 - **Inner shadows, background blur, noise and texture effects, shadow spread, extra drop shadows**: dropped (a Vixl layer carries one drop shadow).
 - **Blend modes** without a Vixl counterpart (colour dodge/burn, soft/hard light, exclusion, hue, saturation, colour, luminosity): drawn as normal.
-- **Gradients**: angular and diamond become a flat colour; elliptical or rotated radial gradients become circular; stops with transparency blend with the first stop colour instead of fading out; gradient strokes use their first stop.
+- **Gradients**: angular and diamond become a flat colour; elliptical or rotated radial gradients become circular; gradient strokes use their first stop.
 - **Image fills**: tile, stretch and crop scale modes become cover; image filters and rotation are ignored; an image whose bytes could not be downloaded is skipped.
 - **Fills on text**: images and gradients become a flat colour; lists, paragraph spacing and indent, hyperlinks, per-range case, small caps, justified alignment and vertical alignment in fixed boxes are not applied; font sizes are whole pixels.
 - **Strokes**: per-side weights use the largest; only the top stroke paint is kept.

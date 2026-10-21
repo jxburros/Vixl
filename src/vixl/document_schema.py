@@ -96,7 +96,10 @@ LAYER_FIELDS = {
     "source_id": (LAYER_ID, "ID of the layer a scattered or repeated copy was made from."),
     "recolor": (OBJECT, "Colour substitutions applied to a placed copy."),
     # Fill, stroke and geometry
-    "fill": (COLOR, "Fill colour (shape, solid, pathfinder)."),
+    "fill": (COLOR, "Fill colour (shape, solid, pathfinder). A shape with fill_gradient keeps the gradient's middle "
+             "colour here."),
+    "fill_gradient": (OBJECT, "shape: gradient fill spanning the shape's box, with the gradient layer's fields {start, "
+                      "end or stops, direction, angle, center, falloff}; drawn instead of fill."),
     "color": (COLOR, "Text or field text colour."),
     "stroke": (COLOR, "Stroke colour; transparent for none."),
     "stroke_width": (NUMBER, "Stroke width in pixels (text: outline width)."),

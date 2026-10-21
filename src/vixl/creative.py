@@ -196,6 +196,8 @@ def execute(project, op):
         for key in ("fill", "stroke", "stroke_width", *TRIM_FIELDS):
             if key in op:
                 layer[key] = op[key]
+        if isinstance(op.get("fill"), str):
+            layer.pop("fill_gradient", None)  # a flat fill replaces a gradient, as shape with a target does
         if op.get("nodes") is None and op.get("points") is None:
             return
         if "pen_origin" in layer and "width" not in op and "height" not in op:
