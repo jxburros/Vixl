@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+Changes on the main branch since 0.28.0.
+
+### Shapes
+
+- **Gradient fills on shapes.** A `shape` takes `fill_gradient`, an object with the `gradient` operation's fields
+  (`start`/`end` or `stops`, `direction`, `angle`, `center`, `falloff`) that spans the shape's box. The stroke keeps
+  its own colour. PNG, SVG (a `linearGradient`/`radialGradient` the shape's fill refers to), PDF (a shading clipped to
+  the outline) and PPTX (`gradFill`) draw it as a gradient; PDF draws translucent stops, and PPTX an off-centre radial
+  gradient, as an image of the layer. `fill` stays a colour: it holds the gradient's middle colour (unless the same
+  operation sets `fill`), so the contrast, palette and brand checks keep reading it, and the brand palette check, the
+  `gradients` style rule, mono logo recolouring and workspace colour replacement read the gradient's stops. Stop
+  colours take `@swatch` and `${variable}` references. A `fill` object (`{"start":…,"end":…}`, `{"stops":[…]}` or
+  `{"gradient":{…}}`) is read as `fill_gradient` and reported under `normalized`. With `target`, `fill_gradient` alone
+  sets the gradient, a `fill` colour replaces it, and `fill_gradient: null` (or `"none"`) removes it. CLI:
+  `vixl shape … --fill-gradient '{"start":"#6366f1","end":"#ec4899"}'`.
+- **SVG and Figma imports keep gradient fills as `fill_gradient`.** A gradient-filled SVG shape (other than a plain
+  rectangle or radial glow, which stay gradient layers) and a Figma linear or radial gradient fill used to become a
+  flat fill plus a `gradient-overlay` style; they are now the shape's `fill_gradient`, mapped onto the layer's box, so
+  translucent stops fade instead of taking the shape's fill.
+
 ## 0.28.0
 
 A security and cost release. URL fetches, AI providers, bearer tokens, image decoders and form patterns are tightened, with a network policy (`VIXL_OFFLINE`, `VIXL_FETCH_HOSTS`), signed Windows updates, release workflows that wait for an approval, and results that name the document text an agent must treat as data. Agent results are smaller (capped brief apply summaries, a `vixl schema` that lists operations, a 9 KB agent skill entry point), the CLI names the file it edits and suggests corrections, and new documents no longer touch the network. Checks are quieter and more exact (use-size legibility, hidden text, composition, overlap, suite rules per page), with layout, poster, tracked-text and stroke fixes alongside. Text in Devanagari, Chinese, Japanese, Korean and Thai gets fonts (`font-cover`), PDF and SVG import map fonts, and a document can design a font and export it as TTF, OTF or WOFF. Optional features became built-in plugins, the emoji artwork a downloadable content pack, and the docs are organized by kind of page. Breaking changes are listed under Upgrading from 0.27.

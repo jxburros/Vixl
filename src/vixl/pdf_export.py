@@ -310,7 +310,12 @@ class PageBuilder:
             self.ops += ([f"/{state_name} gs"] if state_name else []) + [
                 matrix_ops(affine(w, 0, 0, h)), "0 0 1 1 re W n", f"/{name} sh"]
         elif kind == "shape":
-            self.shape(layer, w, h, opacity)
+            mark = len(self.ops) - 2
+            try:
+                self.shape(layer, w, h, opacity)
+            except Unsupported:
+                del self.ops[mark:]
+                raise
         elif kind == "pathfinder":
             # One compound path: contours and holes wind oppositely and never overlap.
             from .design import resolve_color
@@ -330,6 +335,19 @@ class PageBuilder:
             return
         state_name = self.alpha(rgba[3] / 255 * opacity, 1)
         self.ops += (["q", f"/{state_name} gs"] if state_name else ["q"]) + [self.paint.fill(rgba), *geometry, rule, "Q"]
+
+    def shape_fill(self, geometry, layer, rgba, opacity, box, rule="f"):
+        """A shape's fill: its flat colour, or its ``fill_gradient`` as a shading clipped to the outline and
+        spanning ``box`` (w, h), the shape's box in the current units."""
+        gradient = layer.get("fill_gradient")
+        if not gradient:
+            return self.fill_ops(geometry, rgba, opacity, rule)
+        name = self.shading(gradient, *box)
+        if name is None:
+            raise Unsupported("translucent gradient stops")
+        state_name = self.alpha(opacity, 1)
+        self.ops += (["q", f"/{state_name} gs"] if state_name else ["q"]) + [
+            *geometry, "W* n" if rule == "f*" else "W n", matrix_ops(affine(box[0], 0, 0, box[1])), f"/{name} sh", "Q"]
 
     def stroke_ops(self, geometry, rgba, width, opacity, cap=0, join=0):
         if rgba[3] == 0 or width <= 0:
@@ -363,7 +381,8 @@ class PageBuilder:
         if styled or (inside and centre is None):
             for path, paint in primitives(layer, self.view):
                 if path:
-                    self.fill_ops(path_ops(parse_path(path)), color(resolve_color(paint, state)), opacity)
+                    self.shape_fill(path_ops(parse_path(path)), {"fill_gradient": getattr(paint, "gradient", None)},
+                                    color(resolve_color(paint, state)), opacity, (w, h))
             return
         if shape in PATH_SHAPES:
             path, view = shape_path(layer)
@@ -371,11 +390,13 @@ class PageBuilder:
             geometry = path_ops(parse_path(path))
             cap = {"round": 1, "square": 2}.get(layer.get("line_cap"), 0)
             self.ops += ["q", matrix_ops(scale)]
-            self.fill_ops(geometry, fill, opacity)
+            self.shape_fill(geometry, layer, fill, opacity, view)
             self.stroke_ops(geometry, stroke, width, opacity, cap, 1 if cap == 1 else 0)
             self.ops.append("Q")
             return
         if shape == "line":
+            if layer.get("fill_gradient") and not stroke[3]:
+                raise Unsupported("a line drawn with a gradient fill")
             self.stroke_ops([f"{_fmt(inset)} {_fmt(inset)} m", f"{_fmt(w - inset)} {_fmt(h - inset)} l"],
                             stroke if stroke[3] else fill, max(1, width), opacity)
             return
@@ -389,7 +410,7 @@ class PageBuilder:
                 return ellipse_ops(x, y, bw, bh)
 
             radius = layer.get("radius", min(w, h) / (2 if shape == "capsule" else 5))
-            self.fill_ops(outline(0, 0, w, h, radius), fill, opacity)
+            self.shape_fill(outline(0, 0, w, h, radius), layer, fill, opacity, (w, h))
             if centre:
                 # The fill covers the whole shape, under a stroke whose outer edge is the outline.
                 self.stroke_ops(outline(*centre), stroke, width, opacity)
@@ -404,7 +425,7 @@ class PageBuilder:
                 geometry.append(f"{_fmt(points[0][0])} {_fmt(points[0][1])} m")
                 geometry += [f"{_fmt(px)} {_fmt(py)} l" for px, py in points[1:]]
                 geometry.append("h")
-        self.fill_ops(geometry, fill, opacity)
+        self.shape_fill(geometry, layer, fill, opacity, (w, h))
         if centre:
             self.stroke_ops([f"{NATIVE_MITER_LIMIT} M", *path_ops(parse_path(centre))], stroke, width, opacity)
 

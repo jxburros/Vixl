@@ -30,6 +30,22 @@ FIELDS = (
 )
 
 
+class GradientPaint(str):
+    """The fill paint of a shape with a ``fill_gradient``: the string is its flat ``fill`` (what the raster routes
+    and the checks read), ``gradient`` the gradient the SVG, PDF and PowerPoint exports draw instead."""
+
+    def __new__(cls, value, gradient):
+        paint = super().__new__(cls, value)
+        paint.gradient = gradient
+        return paint
+
+
+def fill_paint(layer):
+    """``default_fill(layer)``, as a ``GradientPaint`` when the shape has a ``fill_gradient``."""
+    paint = default_fill(layer)
+    return GradientPaint(paint, layer["fill_gradient"]) if layer.get("fill_gradient") else paint
+
+
 def schema():
     from .schema import B, N, S, enum
 
@@ -489,7 +505,7 @@ def expanded(layer, path):
     ]
     if layer.get("shape") in OPEN_SHAPES:
         if settings[0]["color"] == "transparent":
-            settings[0]["color"] = layer.get("fill", "white")
+            settings[0]["color"] = fill_paint(layer) if layer.get("fill_gradient") else layer.get("fill", "white")
     from .trim import trim_range
 
     trim = trim_range(layer)
@@ -681,7 +697,7 @@ def primitives(layer, project=None):
     result = []
     open_kind = layer.get("shape") in OPEN_SHAPES
     if not open_kind:
-        result.append((path, default_fill(layer)))
+        result.append((path, fill_paint(layer)))
     stroke_path = path
     if layer.get("shape") == "star-rating":
         stroke_path = pixel_path({**layer, "rating": layer.get("count", 5)})

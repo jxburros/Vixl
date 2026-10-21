@@ -731,7 +731,7 @@ def check(project, kit, issue):
         # Inspect only visual paint fields; provenance/animation metadata is not a color policy input.
         paint_fields = {
             key: layer[key]
-            for key in ("fill", "stroke", "color", "stroke_color", "stops", "strokes")
+            for key in ("fill", "stroke", "color", "stroke_color", "stops", "strokes", "fill_gradient")
             if key in layer
         }
         if layer["type"] == "gradient":

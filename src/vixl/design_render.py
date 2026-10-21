@@ -128,12 +128,61 @@ def svg_shape(project, layer):
     return not vector_routed(project, layer) and not trim_range(layer) and layer["shape"] in PATH_SHAPES
 
 
+def gradient_shape_image(project, layer):
+    """A shape with a ``fill_gradient``: the fill's silhouette, drawn by the ordinary routes in one colour with no
+    stroke, takes the gradient (spanning the shape's box, its edge colours continuing past it), and the stroke is
+    drawn over it on its own. Every route centres its image on the box. An open shape (a line, a wave) paints no
+    area: its line takes the gradient when it has no stroke of its own."""
+    from .geometry import OPEN_SHAPES
+    from .render import color
+    from .vector_strokes import FIELDS
+
+    plain = {key: value for key, value in layer.items() if key != "fill_gradient"}
+    stroked = layer.get("stroke_width", 1) > 0 and color(
+        resolve_color(layer.get("stroke", "transparent"), project.state))[3] > 0
+    if layer.get("shape") in OPEN_SHAPES:
+        if stroked:
+            return shape_image(project, plain)
+        silhouette, outline = shape_image(project, {**plain, "fill": "#ffffff"}), None
+    else:
+        bare = {key: value for key, value in plain.items() if key not in FIELDS}
+        silhouette = shape_image(project, {**bare, "fill": "#ffffff", "stroke": "transparent", "stroke_width": 0})
+        outline = shape_image(project, {**plain, "fill": "transparent"}) if stroked else None
+    box = (max(1, math.ceil(layer["width"])), max(1, math.ceil(layer["height"])))
+    ramp = np.asarray(gradient_image(project, layer["fill_gradient"], box))
+    pads = []
+    for axis, have in ((0, box[1]), (1, box[0])):
+        want = silhouette.size[1 - axis]
+        if want >= have:
+            pads.append(((want - have) // 2, want - have - (want - have) // 2))
+        else:
+            cut = (have - want) // 2
+            ramp = ramp[cut:cut + want] if axis == 0 else ramp[:, cut:cut + want]
+            pads.append((0, 0))
+    ramp = np.pad(ramp, (*pads, (0, 0)), mode="edge")
+    alpha = np.asarray(silhouette.getchannel("A"), dtype=np.uint16) * ramp[..., 3] // 255
+    image = Image.fromarray(np.dstack([ramp[..., :3], alpha.astype(np.uint8)]), "RGBA")
+    overflow = silhouette.info.get("vixl_vector_overflow")
+    if outline is not None:
+        overflow = overflow or outline.info.get("vixl_vector_overflow")
+        size = (max(image.width, outline.width), max(image.height, outline.height))
+        result = Image.new("RGBA", size)
+        for part in (image, outline):
+            result.alpha_composite(part, ((size[0] - part.width) // 2, (size[1] - part.height) // 2))
+        image = result
+    if overflow:
+        image.info["vixl_vector_overflow"] = True
+    return image
+
+
 def shape_image(project, layer):
     from .render import color
     from .trim import trim_range, trimmed_image
     from .vector_strokes import render as vector_render
     from .geometry import PATH_SHAPES
 
+    if layer.get("fill_gradient"):
+        return gradient_shape_image(project, layer)
     if vector_routed(project, layer):
         return vector_render(project, layer)
     if trim_range(layer):
@@ -291,6 +340,8 @@ def vector_drawing(project, layer):
     (what ``draw_ink`` draws for it, before effects) into an image of ``size``, mapped by the affine
     ``matrix`` from box pixels; None for layers drawn otherwise."""
     if layer["type"] == "shape":
+        if layer.get("fill_gradient"):
+            return None  # drawn by gradient_shape_image, which composes images: resampled like any image
         if vector_routed(project, layer):
             from .vector_strokes import render
 

@@ -303,7 +303,7 @@ def _stops(raw, to_offset):
 
 
 def gradient_settings(paint):
-    """Vixl gradient-overlay settings for a Figma linear or radial gradient paint, plus the lossy notes.
+    """A shape's fill_gradient for a Figma linear or radial gradient paint, plus the lossy notes.
 
     Vixl ramps are linear in the layer's normalized box, as Figma's handle positions are, so a linear gradient maps
     exactly; a radial one maps exactly when its handles are axis aligned and equal in normalized length."""
@@ -316,8 +316,6 @@ def gradient_settings(paint):
     det = ax * by - bx * ay
     if abs(det) < 1e-9:
         return None, ["degenerate gradient handles"]
-    if any(s["color"].get("a", 1) < 0.999 for s in raw):
-        notes.append("gradient stop transparency blends with the first stop colour instead of fading out")
     if paint["type"] == "GRADIENT_LINEAR":
         gx, gy = by / det, -bx / det
         length = abs(gx) + abs(gy)
@@ -594,8 +592,9 @@ class Builder:
                     first = (paint.get("gradientStops") or [{"color": {}}])[0]
                     self.ops.append(self.shape_op(layer, geom, place, color_of(first, opacity)))
                 else:
-                    self.ops.append(self.shape_op(layer, geom, place, settings["stops"][0]["color"][:7]))
-                    self.ops.append({"type": "layer-style", "name": "gradient-overlay", "settings": settings})
+                    op = self.shape_op(layer, geom, place, None)
+                    del op["fill"]  # the shape's flat fill becomes the gradient's middle colour
+                    self.ops.append({**op, "fill_gradient": settings})
                     layer_opacity = opacity
             elif kind in ("GRADIENT_ANGULAR", "GRADIENT_DIAMOND") and paint.get("gradientStops"):
                 stops = paint["gradientStops"]

@@ -265,13 +265,13 @@ def test_ellipse_vector_star_and_boolean_become_shapes_or_paths(poster):
     assert by_name["Crescent"]["path"].startswith("M40 0C62")
 
 
-def test_gradients_become_gradient_overlays(poster):
+def test_gradients_become_shape_gradient_fills(poster):
     _, _, by_name = poster
-    sky = by_name["Sky"]["styles"]["gradient-overlay"]
+    sky = by_name["Sky"]["fill_gradient"]
     assert sky["direction"] == "angled" and sky["angle"] == 90
     assert [s["offset"] for s in sky["stops"]] == [0, 0.55, 1]
     assert sky["stops"][1]["color"] == "#ff6f91"
-    sun = by_name["Sun"]["styles"]["gradient-overlay"]
+    sun = by_name["Sun"]["fill_gradient"]
     assert sun["direction"] == "radial" and sun["center"] == [0.5, 0.5]
 
 
@@ -389,7 +389,7 @@ def test_the_import_renders_like_the_design(poster):
     assert image.getpixel((60, 712))[0] > 200 and image.getpixel((60, 712))[1] < 100   # the pink button
 
 
-def test_stroke_never_lands_under_a_gradient_overlay():
+def test_a_gradient_fill_and_a_stroke_become_separate_layers():
     data = load("poster")
     sky = next(c for c in data["document"]["children"][0]["children"][0]["children"] if c["name"] == "Sky")
     sky["strokes"] = [{"type": "SOLID", "color": {"r": 0, "g": 0, "b": 0, "a": 1}}]
@@ -399,7 +399,7 @@ def test_stroke_never_lands_under_a_gradient_overlay():
     by_name = layers(project)
     group = by_name["Sky"]
     assert group["type"] == "group"
-    assert "gradient-overlay" in by_name["Sky fill"]["styles"] and "styles" not in by_name["Sky stroke"]
+    assert "fill_gradient" in by_name["Sky fill"] and "fill_gradient" not in by_name["Sky stroke"]
     assert by_name["Sky stroke"]["stroke_width"] == 6
 
 
@@ -411,7 +411,7 @@ def test_multiple_fills_stack_inside_a_group():
     result = import_figma_document(project, data, images=IMAGES)
     by_name = layers(project)
     assert by_name["Sun"]["type"] == "group"
-    assert by_name["Sun fill"]["type"] == "shape" and by_name["Sun fill 2"]["styles"]["gradient-overlay"]
+    assert by_name["Sun fill"]["type"] == "shape" and by_name["Sun fill 2"]["fill_gradient"]
     assert result["figma"]["layers"] >= 20
 
 
