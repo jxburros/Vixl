@@ -521,7 +521,7 @@ def _families(data):
 
         names = face(data)[0]["name"]
         return tuple(dict.fromkeys(str(names.getDebugName(i)) for i in (16, 1, 4) if names.getDebugName(i)))
-    except Exception:  # an unreadable name table only means the font cannot be matched by family
+    except Exception:  # noqa: BLE001 - an unreadable name table only means the font cannot be matched by family
         return ()
 
 

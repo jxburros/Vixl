@@ -493,7 +493,7 @@ def run(project, spec, directory, *, cancelled=lambda: False, progress=lambda va
                 return {**variant, "status": "cancelled", "outcome": make("cancelled")}
             try:
                 return render_variant(project, spec, variant, directory, prior.get(variant["id"]), cancelled)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - a failed variant is recorded and the run goes on with the others
                 error = (
                     exc.as_dict()
                     if isinstance(exc, VixlError)

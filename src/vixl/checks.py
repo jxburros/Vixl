@@ -10,7 +10,7 @@ import re
 
 import numpy as np
 
-from .errors import require
+from .errors import VixlError, require
 from .geometry import compact_number
 from .model import finite
 from .timeline import animated as timeline_animated
@@ -1479,7 +1479,7 @@ def effective_ppi(project, layer, box, dpi):
         return None
     try:
         source = project.image(layer["asset"])
-    except Exception:
+    except (KeyError, OSError, ValueError, VixlError):  # A missing or unreadable image places nothing to print.
         return None
     sw, sh = (layer["crop"][2] - layer["crop"][0], layer["crop"][3] - layer["crop"][1]) if layer.get("crop") else source.size
     _, _, w, h = box

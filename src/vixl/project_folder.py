@@ -6,6 +6,7 @@ from pathlib import Path, PurePosixPath
 import tempfile
 import zipfile
 
+from .hashing import legacy_hash
 from .assets import read_bounded
 from .errors import require
 from .production import write_bytes
@@ -74,7 +75,7 @@ def pack(directory, output, *, limits=None, overwrite=False):
         require(total <= limits.max_project_bytes, 'Expanded project exceeds byte limit', 'resource_limit')
         require(hashlib.sha256(data).hexdigest() == expected, f'Asset checksum mismatch: {name}', 'invalid_project')
         assets[name] = data
-    ident = 'rev_' + hashlib.sha256(json.dumps(source['state'], sort_keys=True, allow_nan=False).encode()).hexdigest()[:16]
+    ident = 'rev_' + legacy_hash(source['state'], allow_nan=False)[:16]  # Committed in packed folders.
     metadata = {'format_version': FORMAT_VERSION, 'vixl_version': __version__, 'state': source['state'],
                 'nodes': {ident: {'id': ident, 'parent': None, 'operations': [], 'label': 'Pack source folder',
                                   'state': source['state']}}, 'head': ident, 'branches': {'main': ident},

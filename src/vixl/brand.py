@@ -509,7 +509,7 @@ def font_family(project, font):
 
     try:
         names = face(primary_font_data(project, {"font": font, "text": "x"}))[0]["name"]
-    except Exception:  # An unreadable font has no family to compare; the fonts check reports it.
+    except Exception:  # noqa: BLE001 - An unreadable font has no family to compare; the fonts check reports it.
         return None
     for name_id in (16, 1):
         value = names.getDebugName(name_id)
@@ -612,7 +612,7 @@ def check_fonts(project, kit, issue, layers):
             try:
                 name = face(embedded(spec["data_base64"]))[0]["name"]
                 families.add((name.getDebugName(16) or name.getDebugName(1) or "").casefold())
-            except Exception:  # brand validate reports an unreadable embedded font
+            except Exception:  # noqa: BLE001 - brand validate reports an unreadable embedded font
                 pass
     seen = {}
     for layer in layers:
@@ -827,7 +827,7 @@ def _report_kit(kit, where, errors, warnings):
         try:
             with open_image(embedded(spec["data_base64"])) as image:
                 image.verify()
-        except Exception:  # Any decoder failure means the embedded logo is unusable.
+        except Exception:  # noqa: BLE001 - Any decoder failure means the embedded logo is unusable.
             errors.append(f"{where}logo {spec['name']!r} is not a readable image")
     for name in (kit.get("logo") or {}).get("layers", []):
         if kit.get("logos") and name not in logo_names:

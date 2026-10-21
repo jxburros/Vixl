@@ -145,7 +145,7 @@ def test_same_document_still_serialises(tmp_path, monkeypatch):  # #629
     def worker(index):
         try:
             session.apply([{"type": "move", "target": "t", "x": 1, "relative": True}], document="a.vixl")
-        except Exception as error:  # noqa: BLE001 - the assertion below names it
+        except Exception as error:  # the assertion below names it
             errors.append(error)
 
     threads = [threading.Thread(target=worker, args=(index,)) for index in range(6)]
@@ -178,7 +178,7 @@ def test_shared_caches_are_threadsafe(monkeypatch):  # #629
                 key = (seed + round_) % 9
                 if cache.get_image(key) is None:
                     cache.put(key, Image.new("RGBA", (40, 40)))
-        except Exception as error:  # noqa: BLE001 - the assertion below names it
+        except Exception as error:  # the assertion below names it
             errors.append(error)
 
     threads = [threading.Thread(target=hammer, args=(seed,)) for seed in range(8)]

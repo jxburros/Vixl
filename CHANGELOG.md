@@ -47,6 +47,12 @@
   (still code `cancelled`), and an MCP job reports `cancelled` from that type, so a failed call whose message quotes
   `"error":"cancelled"` is no longer reported as cancelled. CI runs the suite at the highest dependency versions the
   pins allow as well as the lowest, and weekly.
+- **One content-hash helper (#634).** `vixl.hashing` holds the one canonical JSON encoding (sorted keys, compact,
+  no NaN, explicit Path, tuple, set and bytes) behind render cache keys, page and text-flow keys, brush stroke
+  prefixes and film resume keys; the persistent render cache misses once after upgrading. Digests that are stored
+  and compared later (suite and library hashes, pack-folder revision ids, workspace check history, lyric build
+  fingerprints) keep their encoding through `legacy_hash`. Ruff's `BLE001` is on for `src/`: each remaining
+  `except Exception` names why it swallows everything, and three were narrowed to the errors they expect.
 
 ## 0.28.0
 

@@ -2,9 +2,7 @@
 
 from collections import OrderedDict
 from copy import deepcopy
-import hashlib
 import io
-import json
 import math
 from pathlib import Path
 import re
@@ -16,6 +14,7 @@ from PIL import Image, ImageColor, ImageDraw, ImageEnhance, ImageFilter, ImageFo
 from .assets import decode, read_bounded
 from .constants import EFFECTS as EFFECTS
 from .errors import VixlError, require
+from .hashing import content_hash
 from .model import MAX_LAYERS, finite
 from .profiling import ACTIVE as PROFILE
 from .variables import RESOLVED, layer_text, substitute as substitute, with_maps
@@ -798,7 +797,7 @@ class LayerCache(OrderedDict):
 
 def digest(value):
     """A short content key for ``value`` (JSON-serialisable)."""
-    return hashlib.blake2b(json.dumps(value, sort_keys=True, separators=(",", ":")).encode(), digest_size=20).hexdigest()
+    return content_hash(value, algo="blake2b", size=20)
 
 
 def layer_cache(project):

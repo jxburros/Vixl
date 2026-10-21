@@ -11,6 +11,7 @@ import zipfile
 
 from PIL import Image
 
+from ...hashing import update_json
 from ...automation import bounded_object
 from ...errors import VixlError, require
 from ...model import Limits, finite
@@ -236,10 +237,9 @@ def _render_document(candidate, target, size, shot):
 
 
 def _state_key(project):
-    import hashlib
-    import json
+    from ...hashing import hasher, update_json
 
-    return hashlib.sha256(json.dumps(project.state, sort_keys=True, default=str).encode()).digest()
+    return update_json(hasher(), project.state, default=str).digest()
 
 
 def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False,
@@ -480,7 +480,6 @@ def _segment_key(spec, root, per, suffix, limits):
     format, the Vixl version and the content of every shot source (a document's state and assets,
     not its file bytes, which change with every save)."""
     import hashlib
-    import json
 
     from ... import __version__
     from ...project import Project
@@ -488,12 +487,12 @@ def _segment_key(spec, root, per, suffix, limits):
     digest = hashlib.sha256()
     body = {"spec": {k: v for k, v in spec.items() if k != "audio"}, "per": per, "suffix": suffix.lower(),
             "version": __version__}
-    digest.update(json.dumps(body, sort_keys=True, default=str).encode())
+    update_json(digest, body, default=str)
     for shot in spec["shots"]:
         path = local_path(root, shot["source"])
         if path.suffix.lower() == ".vixl":
             project = Project.load(path, limits=limits)
-            digest.update(json.dumps(project.state, sort_keys=True, default=str).encode())
+            update_json(digest, project.state, default=str)
             for name in sorted(project.assets):
                 digest.update(name.encode() + hashlib.sha256(project.assets[name]).digest())
         else:

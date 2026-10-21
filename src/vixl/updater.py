@@ -564,13 +564,13 @@ def prepare_launch(root, allow_updates=True):
 def background(root):
     try:
         update(root, automatic=True)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - a background update check must never fail the command it runs beside
         # Background checks must never write into CLI JSON/image/MCP streams.
         try:
             with locked(root):
                 state = read_state(root)
                 state["last_error"] = str(exc)[:500]
                 atomic_json(Path(root) / "install.json", state)
-        except Exception:
+        except Exception:  # noqa: BLE001 - nowhere left to report the error to
             pass
 

@@ -13,10 +13,10 @@ variables ``${page}``, ``${pages}`` and ``${page_name}``.
 """
 
 from copy import copy, deepcopy
-import hashlib
 import json
 import re
 
+from .hashing import content_hash
 from .errors import VixlError, require
 from .model import uid
 
@@ -586,7 +586,7 @@ def validate_pages(project, state):
         ids_here = {layer["id"] for layer in content.get("layers", [])}
         require(not (ids_here & layer_ids), "Layer IDs must be unique across pages", "invalid_project")
         layer_ids |= ids_here
-        key = hashlib.sha256(json.dumps(content, sort_keys=True, default=str).encode()).hexdigest()
+        key = content_hash(content, default=str)
         if key in seen:
             continue
         view = {k: v for k, v in state.items() if k not in SCOPED and k not in ("pages", "masters", "page")}

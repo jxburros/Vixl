@@ -486,7 +486,7 @@ class Queue:
                                 checkpoint, limits=limits
                             )  # Validate recovered archive before publication.
                         self.publish_checkpoint(job)
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 - every failure is recorded on the job, which then stops or waits for a retry
                     error = exc.as_dict() if isinstance(exc, VixlError) else {"code": type(exc).__name__}
                     uncertain = kind in ("video", "generate") and job.get("request_started")
                     # Pollable jobs retain remote identifiers and can be resumed after transient failure.

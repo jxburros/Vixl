@@ -806,7 +806,7 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
         if wait and not job["future"].done():
             try:
                 await asyncio.wait_for(asyncio.shield(asyncio.wrap_future(job["future"])), min(float(wait), 50))
-            except Exception:  # Timed out, or failed: the summary says which.
+            except Exception:  # noqa: BLE001 - Timed out, or failed: the summary says which.
                 pass
         return job
 

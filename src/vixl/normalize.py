@@ -580,7 +580,7 @@ def resolve_geometry(project, op):
     if kind in ("move", "resize", "text-layout", "stack") or (kind in IN_PLACE_TYPES and op.get("target")):
         try:
             layer = project.layer(op["targets"][0] if kind == "stack" and op.get("targets") else op.get("target"))
-        except Exception:
+        except (VixlError, KeyError, IndexError, TypeError):  # The operation reports a missing target itself.
             layer = None
         if layer and layer.get("parent") and op.get("space") != "canvas" and not op.get("absolute"):
             parent = project.layer(layer["parent"])

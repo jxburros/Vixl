@@ -733,7 +733,7 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
 
         try:
             title = document_title(views[0][1]) if views else None
-        except Exception:  # a title is a nicety; never fail an export over it
+        except Exception:  # noqa: BLE001 - a title is a nicety; never fail an export over it
             title = None
         title = (title or (Path(path).stem if path else ""))[:200]
     # VixlDPI: the pixels per inch the pages were laid out at, so a PDF import maps them back to the same pixels.

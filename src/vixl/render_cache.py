@@ -188,7 +188,7 @@ class RenderCache:
                 self.counts["frame_hits"] += 1
             _count("disk_frame_hits" if kind == "frame" else "disk_hits")
             return image
-        except Exception:
+        except Exception:  # noqa: BLE001 - an unreadable cache entry is a miss and is written again
             self.misses += 1
             if kind == "frame":
                 self.counts["frame_misses"] += 1

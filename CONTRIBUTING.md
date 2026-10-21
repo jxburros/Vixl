@@ -61,6 +61,13 @@ access anywhere else. The REST service does not touch Starlette internals: a req
 the `BodyLimit` ASGI middleware. The `minimum-versions` CI job runs the suite at the lowest and the highest versions
 the pins allow, and runs weekly as well.
 
+## Hashes and broad exceptions
+
+Hash JSON-shaped content with `vixl.hashing.content_hash` (or `hasher` and `update_json`), never with an ad hoc
+`json.dumps`; a digest that is stored and compared later keeps its encoding with `legacy_hash`. An
+`except Exception` that swallows the error needs `# noqa: BLE001 - reason` (ruff checks this in `src/`); prefer
+naming the exceptions you expect.
+
 ## Changing a default
 
 Defaults for sparse briefs live in the house style (`src/vixl/data/house-style.json`, read through `src/vixl/house_style.py`); read values from there instead of adding constants. Pre-release: breaking changes are allowed; note them in the changelog, and do not add version switches to the engine: documents saved with older behaviour are handled by the conversion kit (`src/vixl/convert/`, [converting](docs/reference/converting.md)), which the engine never imports. Default changes must still pass the house-style quality/diversity eval. Compare `python -m evals.house_style --compare evals/house-style-baseline.json` before and after; quality must not fall. See [house style](docs/project/house-style.md#changing-defaults-h2).

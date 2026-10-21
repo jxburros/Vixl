@@ -37,11 +37,11 @@ A built document records the options and sources it was built from (``state["lyr
 
 from copy import deepcopy
 import hashlib
-import json
 import math
 from pathlib import Path
 import re
 
+from ...hashing import legacy_hash
 from ...errors import VixlError, require
 from ...model import Limits, finite
 
@@ -1021,7 +1021,8 @@ def _fingerprint(state):
     """A hash of everything in a built document except its build record, to tell a document that
     still is what the build wrote from one that has been edited since."""
     body = {key: value for key, value in state.items() if key != RECORD}
-    return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
+    # Stored in the build record and compared later, so the encoding stays as it was.
+    return legacy_hash(body, compact=True, default=str)
 
 
 def build(request, root, limits=None):

@@ -21,12 +21,12 @@ rectangle, or one-line bands that follow the shape's outline.
 from bisect import bisect_right
 from contextlib import contextmanager
 from copy import deepcopy
-import hashlib
 import json
 import math
 import re
 import unicodedata
 
+from .hashing import content_hash
 from .errors import VixlError, require
 from .model import finite, new_layer
 
@@ -437,7 +437,7 @@ def _signature(state, rec):
     for layer, page in _slots(state, rec):
         parts.append([layer["id"], layer["width"], layer["height"], layer.get("font"), layer.get("size"), layer.get("spacing"),
                       layer.get("align"), layer.get("stroke_width"), layer.get("text"), json.dumps(layer.get("rich"), sort_keys=True)])
-    return hashlib.sha256(json.dumps(parts, sort_keys=True, default=str).encode()).hexdigest()
+    return content_hash(parts, default=str)
 
 
 def reflow(project, name):

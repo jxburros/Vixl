@@ -146,7 +146,7 @@ def spacing_for(project, font, size, multiple):
 
     try:
         natural = natural_height(font_data(project, {"font": font, "text": "x"}), size)
-    except Exception:  # A font the outline reader cannot parse keeps the old fixed leading.
+    except Exception:  # noqa: BLE001 - A font the outline reader cannot parse keeps the old fixed leading.
         return 4
     return round(size * multiple - natural)
 
