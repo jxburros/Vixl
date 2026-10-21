@@ -10,6 +10,7 @@ import math
 import os
 from pathlib import Path
 import re
+import threading
 import uuid
 import zipfile
 import zlib
@@ -26,6 +27,7 @@ SNAPSHOT_INTERVAL = 32
 MAX_DELTA_CHAIN = SNAPSHOT_INTERVAL * 2
 FORMAT_VERSION = 2
 DECODED_BUDGET = 256 * 1024 * 1024
+DECODED_LOCK = threading.RLock()
 NODE_KEYS = {"id", "parent", "operations", "label", "state", "delta", "squashed"}
 ASSET_REFERENCE = re.compile(rb"(?:assets|masks|fonts|sources|emoji-sources)/[0-9a-f]{64}\.[a-z0-9]{2,5}")
 
@@ -285,19 +287,22 @@ class Project:
         require(asset in self.assets, f"Missing embedded asset: {asset}", "missing_asset")
         key = (asset, mode, tuple(size_hint) if size_hint else None)
         cache = self._decoded
-        if key in cache:
-            cache[key] = cache.pop(key)
-            return cache[key].copy()
+        with DECODED_LOCK:  # Layers are drawn in parallel (render.render_pool).
+            if key in cache:
+                cache[key] = cache.pop(key)
+                return cache[key].copy()
         image = decode(self.assets[asset], self.limits, mode, size_hint)
         size = image.width * image.height * len(image.getbands())
         if size <= DECODED_BUDGET // 2:
-            while (
-                cache
-                and sum(i.width * i.height * len(i.getbands()) for i in cache.values()) + size
-                > DECODED_BUDGET
-            ):
-                cache.pop(next(iter(cache)))
-            cache[key] = image.copy()
+            stored = image.copy()
+            with DECODED_LOCK:
+                while (
+                    cache
+                    and sum(i.width * i.height * len(i.getbands()) for i in cache.values()) + size
+                    > DECODED_BUDGET
+                ):
+                    cache.pop(next(iter(cache)))
+                cache[key] = stored
         return image
 
     def clone(self):

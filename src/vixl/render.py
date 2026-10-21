@@ -768,28 +768,33 @@ class LayerCache(OrderedDict):
     def __init__(self, entries=2 * MAX_LAYERS, budget=384 * 1024 * 1024):
         super().__init__()
         self.entries, self.budget, self.bytes = entries, budget, 0
+        self.lock = threading.RLock()  # Layers are drawn in parallel (render_pool).
 
     def image(self, key):
-        if key not in self:
-            return None
-        self.move_to_end(key)
-        return self[key].copy()
+        with self.lock:
+            cached = self.get(key)
+            if cached is None:
+                return None
+            self.move_to_end(key)
+        return cached.copy()
 
     def put(self, key, image):
         size = image.width * image.height * 4
         if size > self.budget // 4:
             return
-        previous = self.pop(key, None)
-        if previous is not None:
-            self.bytes -= previous.width * previous.height * 4
+        stored = image.copy()
         profile = PROFILE.get()
-        while self and (len(self) >= self.entries or self.bytes + size > self.budget):
-            _, old = self.popitem(last=False)
-            self.bytes -= old.width * old.height * 4
-            if profile is not None:
-                profile.count("layer_evictions")
-        self[key] = image.copy()
-        self.bytes += size
+        with self.lock:
+            previous = self.pop(key, None)
+            if previous is not None:
+                self.bytes -= previous.width * previous.height * 4
+            while self and (len(self) >= self.entries or self.bytes + size > self.budget):
+                _, old = self.popitem(last=False)
+                self.bytes -= old.width * old.height * 4
+                if profile is not None:
+                    profile.count("layer_evictions")
+            self[key] = stored
+            self.bytes += size
         if profile is not None:
             profile.count("layer_writes")
 
@@ -1731,6 +1736,90 @@ def render_members(project, members, region=None, background="transparent", incl
     return image, (left, top)
 
 
+PREFETCH_MIN_PIXELS = 1_000_000  # Summed area of the layers worth drawing ahead before a pool pays for itself.
+_POOL = [None, 0]  # The render pool and its size.
+_POOL_LOCK = threading.Lock()
+_IN_POOL = threading.local()
+
+
+def render_threads():
+    """Threads that draw layers ahead of the compositor: ``VIXL_RENDER_THREADS`` (0 or 1 turns it off), else up to
+    8, one per core."""
+    import os
+
+    value = os.environ.get("VIXL_RENDER_THREADS", "").strip()
+    try:
+        return max(0, int(value)) if value else min(8, os.cpu_count() or 1)
+    except ValueError:
+        return 0
+
+
+def render_pool():
+    """The process's layer-drawing pool, or None when it is off."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    threads = render_threads()
+    if threads < 2:
+        return None
+    with _POOL_LOCK:
+        if _POOL[0] is None or _POOL[1] != threads:
+            if _POOL[0] is not None:
+                _POOL[0].shutdown(wait=False)
+            _POOL[0], _POOL[1] = ThreadPoolExecutor(max_workers=threads, thread_name_prefix="vixl-render"), threads
+        return _POOL[0]
+
+
+def worth_prefetching(layer):
+    """Whether drawing ``layer`` is mostly work that releases the GIL (Pillow filters for effects and styles, image
+    decoding and resampling, numpy gradients), so drawing it on another thread overlaps with the rest. Plain
+    vector shapes and text rasterise through resvg, which holds the GIL: threads would only add overhead."""
+    if layer["type"] in ("adjustment", "link") or layer["opacity"] <= 0:
+        return False
+    if layer.get("styles") or any(effect.get("enabled", True) for effect in layer.get("effects") or []):
+        return True
+    return layer["type"] in ("raster", "gradient", "paint", "pixel", "frame")
+
+
+class Prefetch:
+    """Draws the next layers worth drawing ahead (``worth_prefetching``) on the render pool while the compositor
+    works through the stack in order; at most two per thread are in flight, so memory stays bounded. Only the
+    drawing is parallel: compositing keeps the document order, so the pixels are those of a sequential render."""
+
+    def __init__(self, work, candidates):
+        self.work, self.queue, self.pending = work, list(reversed(candidates)), {}
+        self.pool = render_pool() if candidates else None
+        self.window = 2 * render_threads()
+
+    def refill(self):
+        import contextvars
+
+        while self.pool is not None and self.queue and len(self.pending) < self.window:
+            layer = self.queue.pop()
+            context = contextvars.copy_context()
+            self.pending[layer["id"]] = self.pool.submit(context.run, self.run, layer)
+
+    def run(self, layer):
+        _IN_POOL.active = True
+        try:
+            return self.work(layer)
+        finally:
+            _IN_POOL.active = False
+
+    def take(self, layer):
+        """The drawn layer, if it was drawn ahead; ``None`` otherwise (the caller draws it)."""
+        future = self.pending.pop(layer["id"], None)
+        if future is None:
+            return None
+        try:
+            return future.result()
+        finally:
+            self.refill()
+
+    def close(self):
+        for future in self.pending.values():
+            future.cancel()
+
+
 def _render_layers(project, layers, bounds, parent, size, background, observe, members=None, limit=None, drawn=None):
     """``drawn``, a dict, receives each layer's (left, top, right, bottom) tile box that it drew into, before
     the tile's edge cut it."""
@@ -1771,13 +1860,31 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
             origin = (left, top)
         return (patch, origin) if patch is not None else (None, (0, 0))
 
+    def reaches(layer):
+        """Whether what the layer draws (its styles included) reaches the tile."""
+        b = bounds[layer["id"]]
+        mx, my = ink_margin(layer, bounds, children, memo)
+        if layer.get("styles"):
+            mx, my = (m + 2 * s + 4 for m, s in zip((mx, my), style_margin(layer)))
+        return not (b[0] - mx >= size[0] or b[1] - my >= size[1] or b[0] + b[2] + mx <= 0 or b[1] + b[3] + my <= 0)
+
+    def plain(layer):
+        return not layer.get("styles") and not layer.get("clip") and layer["type"] != "adjustment"
+
+    def ahead(layer):
+        """What compositing ``layer`` needs that does not read the tile: its ink, or its styled patch."""
+        if plain(layer):
+            return layer_ink(project, {**layer, "opacity": 1}, bounds[layer["id"]])
+        return patch_of(layer)
+
     def direct(layer):
         """Composite a plain layer only over its own bounds instead of a full-canvas tile."""
         b = bounds[layer["id"]]
-        mx, my = ink_margin(layer, bounds, children, memo)
-        if b[0] - mx >= size[0] or b[1] - my >= size[1] or b[0] + b[2] + mx <= 0 or b[1] + b[3] + my <= 0:
+        if not reaches(layer):
             return image
-        source = layer_ink(project, {**layer, "opacity": 1}, b)
+        source = prefetch.take(layer)
+        if source is None:
+            source = layer_ink(project, {**layer, "opacity": 1}, b)
         x, y = ink_origin(source, b)
         if drawn is not None:
             drawn[layer["id"]] = (x, y, x + source.width, y + source.height)
@@ -1802,7 +1909,7 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
             # Fully transparent (a layer or group scaled to nothing is drawn this way): nothing to
             # composite, and resampling a zero-size group tile would ask for an unbounded raster.
             return image
-        if not layer.get("styles") and not layer.get("clip") and layer["type"] != "adjustment":
+        if plain(layer):
             return direct(layer)
         if layer["type"] == "adjustment":
             changed = image
@@ -1823,7 +1930,8 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
                 mask = ImageChops.multiply(mask, project.image(layer["mask"]["asset"], "L").resize(size))
             image = Image.composite(composite(image, changed, layer["blend"]), image, mask)
         else:
-            patch, (left, top) = patch_of(layer)
+            drawn_ahead = prefetch.take(layer)
+            patch, (left, top) = drawn_ahead if drawn_ahead is not None else patch_of(layer)
             if patch is not None:
                 # Pixels the layer leaves transparent are unchanged by every blend mode.
                 box = (left, top, left + patch.width, top + patch.height)
@@ -1837,17 +1945,27 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
 
     from .calls import check_cancelled
 
-    for layer in layers:
-        if layer.get("parent") != parent or not layer["visible"] or (members is not None and layer["id"] not in members):
-            continue
-        check_cancelled()
-        if observe and layer["id"] in observe:
-            box = pixel_box(bounds[layer["id"]], image.size)
-            before = image.crop(box)
-            image = draw(layer)
-            observe[layer["id"]](before, image.crop(box))
-        else:
-            image = draw(layer)
+    shown = [layer for layer in layers if layer.get("parent") == parent and layer["visible"]
+             and (members is None or layer["id"] in members)]
+    candidates = []
+    if not getattr(_IN_POOL, "active", False) and PROFILE.get() is None and render_threads() > 1:
+        candidates = [layer for layer in shown if worth_prefetching(layer) and reaches(layer)]
+        if sum(bounds[layer["id"]][2] * bounds[layer["id"]][3] for layer in candidates) < PREFETCH_MIN_PIXELS:
+            candidates = []
+    prefetch = Prefetch(ahead, candidates)
+    prefetch.refill()
+    try:
+        for layer in shown:
+            check_cancelled()
+            if observe and layer["id"] in observe:
+                box = pixel_box(bounds[layer["id"]], image.size)
+                before = image.crop(box)
+                image = draw(layer)
+                observe[layer["id"]](before, image.crop(box))
+            else:
+                image = draw(layer)
+    finally:
+        prefetch.close()
     if ax or ay:
         image = trim_overflow(image, content, ax, ay)
     return image

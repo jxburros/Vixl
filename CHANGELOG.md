@@ -37,6 +37,13 @@
   0.9 s to about 0.5 s (`tests/test_perf.py`). `project.json` inside a `.vixl` is compressed at the fastest zlib
   level, so archives are up to a tenth larger.
 
+- **Layers drawn ahead on a thread pool (#590).** Layers whose drawing releases Python's interpreter lock (effects,
+  layer styles such as soft shadows, placed images, large gradients and paint) are drawn on a pool while the stack
+  is composited in document order, so the pixels match a one-thread render byte for byte. 80 soft-shadowed shapes on
+  a 4000 × 4000 canvas render about a quarter faster on four cores (`tests/test_render_pool.py`). Plain vector shapes
+  and text are not drawn ahead: resvg holds the lock, so threads would only add overhead. `VIXL_RENDER_THREADS` sets
+  the pool size (`0` turns it off). The layer, decoded-image and disk render caches are thread-safe.
+
 ### Internal
 
 - **Private MCP SDK access in one module (#685).** Every use of a private FastMCP attribute (the advertised server

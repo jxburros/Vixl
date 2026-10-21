@@ -7,6 +7,7 @@ from importlib.metadata import version, PackageNotFoundError
 import io
 import json
 import os
+import threading
 from pathlib import Path
 import sys
 
@@ -137,6 +138,7 @@ class RenderCache:
         self.counts = {"frame_hits": 0, "frame_misses": 0, "layer_writes": 0, "frame_writes": 0,
                        "frame_writes_skipped": 0, "evictions": 0, "bytes_written": 0}
         self._bytes = 0
+        self._lock = threading.RLock()  # Layers are drawn in parallel (render.render_pool).
         self._seen = None
         self._sightings = []
 
@@ -177,6 +179,10 @@ class RenderCache:
     def get(self, key, limits, kind="layer"):
         if key is None:
             return None
+        with self._lock:
+            return self._get(key, limits, kind)
+
+    def _get(self, key, limits, kind):
         path = self.directory / (key + ".png")
         try:
             from .assets import decode, read_bounded
@@ -251,6 +257,10 @@ class RenderCache:
     def put(self, key, image, kind="layer"):
         if key is None:
             return
+        with self._lock:
+            self._put(key, image, kind)
+
+    def _put(self, key, image, kind):
         if not self.admit(key, kind):
             self.counts["frame_writes_skipped"] += 1
             _count("disk_frame_writes_skipped")
