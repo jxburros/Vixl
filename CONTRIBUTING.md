@@ -53,6 +53,13 @@ and state the decision in the pull request. The core never imports a plugin modu
 this and lists the remaining exceptions. Large data that only some features use is a content pack in
 [VixlExamples](https://github.com/jxburros/VixlExamples/tree/main/packs), downloaded on first use by `vixl.packs`.
 
+## Adding an operation
+
+A feature module keeps its operation types in a tuple and executes them with one function; list the module in
+`CORE_OPERATION_MODULES` (`src/vixl/registry.py`), in a plugin register it through `vixl.plugins`. No type may be
+claimed twice (`tests/test_registry.py`). Then classify the type in `targets.py` and regenerate the table in
+`docs/reference/operations.md`, as `CLAUDE.md` describes.
+
 ## Private SDK attributes
 
 Reach past the public API of the MCP SDK (FastMCP) only through `src/vixl/sdk_compat.py`, which turns a missing

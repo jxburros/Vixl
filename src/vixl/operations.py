@@ -67,7 +67,8 @@ from .render import (
 COLOR_TYPES = ("palette-generate",)
 
 
-OPERATION_TYPES = list(EMOJI_TYPES + tuple(plugins.operation_types()) + DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CODE_TYPES + DIECUT_TYPES + SPLIT_TYPES + FINISHING_TYPES + FLOW_TYPES + TRANSFORM_TYPES + MOTION_TYPES + TEXTURE_TYPES + AUDIO_TYPES + VECTOR_TYPES + CAPTION_TYPES + SCENE_TYPES + MERGE_TYPES + OBJECT_TYPES + ACCESSIBILITY_TYPES) + [
+# Executed here rather than by a feature module (registry.py); move, resize and scale go to transforms.
+BASE_TYPES = (
     "add",
     "solid",
     "gradient",
@@ -110,7 +111,9 @@ OPERATION_TYPES = list(EMOJI_TYPES + tuple(plugins.operation_types()) + DESIGN_T
     "variable-map",
     "preset-save",
     "preset-apply",
-]
+)
+
+OPERATION_TYPES = list(EMOJI_TYPES + tuple(plugins.operation_types()) + DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CODE_TYPES + DIECUT_TYPES + SPLIT_TYPES + FINISHING_TYPES + FLOW_TYPES + TRANSFORM_TYPES + MOTION_TYPES + TEXTURE_TYPES + AUDIO_TYPES + VECTOR_TYPES + CAPTION_TYPES + SCENE_TYPES + MERGE_TYPES + OBJECT_TYPES + ACCESSIBILITY_TYPES) + list(BASE_TYPES)
 
 
 def _align_baselines(project, op, targets, ref):
@@ -396,9 +399,6 @@ def execute(project, op):
         for single in fan_out({**op, "type": kind}):
             execute(project, single)
         return None
-    if kind in EMOJI_TYPES:
-        from .emojis import execute as emoji_execute
-        return emoji_execute(project, op)
     target = op.get("target", op.get("layer"))
     from .schema import LAYER_FINISH
 
@@ -413,33 +413,6 @@ def execute(project, op):
         return result
     if kind in plugins.operation_types():
         return plugins.execute(project, op, kind)
-    if kind in MERGE_TYPES:
-        from .merging import execute as execute_merge
-        return execute_merge(project, op)
-    if kind in SCENE_TYPES:
-        from .scene import execute as execute_scene
-        return execute_scene(project, op)
-    if kind in CAPTION_TYPES:
-        from .captions import execute as execute_caption
-        return execute_caption(project, op)
-    if kind in VECTOR_TYPES:
-        from .vector_paths import execute as execute_vector
-        return execute_vector(project, op)
-    if kind in AUDIO_TYPES:
-        from .audio import execute as execute_audio
-        return execute_audio(project, op)
-    if kind in TEXTURE_TYPES:
-        from .textures import execute as execute_texture
-        return execute_texture(project, op)
-    if kind in MOTION_TYPES:
-        from .motion import execute as execute_motion
-        return execute_motion(project, op)
-    if kind in OBJECT_TYPES:
-        from .objects import execute as execute_object
-        return execute_object(project, op)
-    if kind in ACCESSIBILITY_TYPES:
-        from .accessibility import execute as execute_accessibility
-        return execute_accessibility(project, op)
     if target is not None and kind in IN_PLACE_TYPES:
         from .inplace import execute as execute_in_place
 
@@ -448,92 +421,11 @@ def execute(project, op):
         from .stacks import guard
 
         guard(project, op, target)
-    from .transforms import execute as execute_transform
-    if kind in (*TRANSFORM_TYPES, "move", "resize", "scale"):
-        return execute_transform(project, op)
-    if kind in STACK_TYPES:
-        from .stacks import execute as execute_stack
+    from .registry import operation_modules
 
-        return execute_stack(project, op)
-    if kind in SELECTOR_TYPES:
-        from .selectors import execute as execute_selectors
-        return execute_selectors(project, op)
-    if kind in DIECUT_TYPES:
-        from .diecut import execute as execute_diecut
-        return execute_diecut(project, op)
-    if kind in SPLIT_TYPES:
-        from .path_split import execute as execute_split
-        return execute_split(project, op)
-    if kind in PAGE_TYPES:
-        from .pages import execute as execute_pages
-        return execute_pages(project, op)
-    if kind in FORM_TYPES:
-        from .forms import execute as execute_forms
-        return execute_forms(project, op)
-    if kind in LINK_TYPES:
-        from .links import execute as execute_links
-        return execute_links(project, op)
-    if kind in CODE_TYPES:
-        from .codes import execute as execute_codes
-        return execute_codes(project, op)
-    if kind in FINISHING_TYPES:
-        from .finishing import execute as execute_finishing
-        return execute_finishing(project, op)
-    if kind in FLOW_TYPES:
-        from .textflow import execute as execute_flow
-        return execute_flow(project, op)
-    if kind in RICH_TYPES:
-        from .richtext import execute as execute_rich
-        return execute_rich(project, op)
-    if kind in GUIDE_TYPES:
-        from .guides import execute as execute_guides
-        return execute_guides(project, op)
-    if kind in IRREGULAR_TYPES:
-        from .irregular import execute as execute_irregular
-        return execute_irregular(project, op)
-    if kind in AUTHORING_TYPES:
-        from .authoring import execute as execute_authoring
-        return execute_authoring(project, op)
-    if kind in CONTAINER_TYPES:
-        from .containers import execute as execute_container
-        return execute_container(project, op)
-    if kind in CREATIVE_TYPES:
-        from .creative import execute as execute_creative
-        return execute_creative(project, op)
-    if kind in AUTOMATION_TYPES:
-        from .automation import execute as execute_automation
-        execute_automation(project, op)
-        return
-    if kind in RESOURCE_TYPES:
-        from .resources import execute_resource
-
-        execute_resource(project, op)
-        return
-    if kind in PIXEL_TYPES:
-        from .pixel import execute_pixel
-
-        execute_pixel(project, op)
-        return
-    if kind in ANIMATION_TYPES:
-        from .animation import execute_animation
-
-        execute_animation(project, op)
-        return
-    if kind in BRUSH_TYPES:
-        from .brushes import execute_brush
-
-        execute_brush(project, op)
-        return
-    if kind in TIMELINE_TYPES:
-        from .timeline import execute_timeline
-
-        execute_timeline(project, op)
-        return
-    if kind in LAYOUT_TYPES:
-        from .layouts import execute_layout
-
-        execute_layout(project, op)
-        return
+    handler = operation_modules().get(kind)
+    if handler is not None:
+        return handler(project, op)
     if kind == "palette-generate":
         from .colors import generate_swatches
         from .design import resolve_color as resolve
@@ -541,11 +433,8 @@ def execute(project, op):
         resolved = {**op, "color": resolve(op["color"], project.state)}
         project.state.setdefault("swatches", {}).update(generate_swatches(resolved))
         return
-    from .design import execute_design, resolve_color
+    from .design import resolve_color
 
-    if kind in DESIGN_TYPES:
-        execute_design(project, op)
-        return
     if kind == "add":
         original_size = None
         if "asset" in op:
