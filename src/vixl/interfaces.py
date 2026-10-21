@@ -3,6 +3,7 @@
 from collections import OrderedDict
 from contextlib import contextmanager
 import hmac
+import json
 from pathlib import Path
 from threading import RLock
 from weakref import WeakKeyDictionary
@@ -604,6 +605,53 @@ async def profiled_response(response, run):
     return Response(body, status_code=response.status_code, headers=headers, media_type=media or None)
 
 
+class BodyLimit:
+    """ASGI middleware: read the request body up to ``maximum(path)`` bytes, answer 413 past it (before reading at
+    all when Content-Length says so), and replay the buffered body to the app. Starlette's request object cannot be
+    handed a body through its public API, so the replay goes through ``receive``."""
+
+    def __init__(self, app, maximum):
+        self.app, self.maximum = app, maximum
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        maximum = self.maximum(scope["path"])
+        headers = dict(scope.get("headers") or ())
+        declared = headers.get(b"content-length", b"").decode("latin-1")
+        if declared.isdigit() and int(declared) > maximum:
+            return await self.refuse(maximum, send)
+        body, more = bytearray(), True
+        while more:
+            message = await receive()
+            if message["type"] == "http.disconnect":
+                return None
+            body.extend(message.get("body", b""))
+            more = message.get("more_body", False)
+            if len(body) > maximum:
+                return await self.refuse(maximum, send)
+        replayed = False
+
+        async def replay():
+            nonlocal replayed
+            if replayed:
+                return await receive()  # After the body: the disconnect, when it comes.
+            replayed = True
+            return {"type": "http.request", "body": bytes(body), "more_body": False}
+
+        return await self.app(scope, replay, send)
+
+    @staticmethod
+    async def refuse(maximum, send):
+        error = VixlError("resource_limit", f"The request body is larger than {maximum:,} bytes; send a smaller body "
+                          "(downsample images, split operations into several batches)", limit=maximum).as_dict()
+        payload = json.dumps(error).encode()
+        await send({"type": "http.response.start", "status": 413,
+                    "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(payload)).encode()),
+                                (b"connection", b"close")]})
+        await send({"type": "http.response.body", "body": payload})
+
+
 def create_app(path, *, token=None, limits=None, call_limits=None):
     """The REST app for one document. ``call_limits`` (default: from the environment, see ``call_limits.py``)
     bounds each call: a timeout after which a call answers 202 with a job, an export page and megapixel cap
@@ -656,6 +704,13 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
 
         return wrapper
     app = FastAPI(title="Vixl Engine", version=__version__)
+
+    def body_limit(path):
+        maximum = session.limits.max_asset_bytes if path in ("/assets", "/fonts", "/import") else 1024 * 1024
+        return min(maximum, 16 * 1024 * 1024) if path == "/fonts" else maximum
+
+    # Added first, so it runs inside the guard below: an unauthorized request is refused before its body is read.
+    app.add_middleware(BodyLimit, maximum=body_limit)
     if not token:
         app.add_middleware(
             TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "[::1]", "testserver"]
@@ -670,22 +725,6 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
         origin = request.headers.get("origin")
         if origin and origin != str(request.base_url).rstrip("/"):
             return JSONResponse({"error": "cross_origin_forbidden"}, status_code=403)
-        maximum = session.limits.max_asset_bytes if request.url.path in ("/assets", "/fonts", "/import") else 1024 * 1024
-        if request.url.path == "/fonts":
-            maximum = min(maximum, 16 * 1024 * 1024)
-        too_large = VixlError("resource_limit", f"The request body is larger than {maximum:,} bytes; send a smaller body "
-                              "(downsample images, split operations into several batches)",
-                              limit=maximum).as_dict()
-        declared = request.headers.get("content-length", "")
-        if declared.isdigit() and int(declared) > maximum:
-            # Refuse before reading: the body is never buffered.
-            return JSONResponse(too_large, status_code=413, headers={"Connection": "close"})
-        body = bytearray()
-        async for chunk in request.stream():
-            body.extend(chunk)
-            if len(body) > maximum:
-                return JSONResponse(too_large, status_code=413, headers={"Connection": "close"})
-        request._body = bytes(body)
         from . import profiling
 
         if not profiling.enabled():

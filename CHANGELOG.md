@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Internal
+
+- **Private MCP SDK access in one module (#685).** Every use of a private FastMCP attribute (the advertised server
+  version, the instructions, the tool registry, a tool's `run`) goes through `vixl.sdk_compat`, which reports a
+  renamed attribute as `missing_dependency` with the tested range instead of an `AttributeError` inside a call. The
+  REST service buffers and replays request bodies in an ASGI middleware (`BodyLimit`) instead of setting Starlette's
+  private `request._body`; the 413 rules are unchanged. A cancelled call raises the typed `vixl.errors.Cancelled`
+  (still code `cancelled`), and an MCP job reports `cancelled` from that type, so a failed call whose message quotes
+  `"error":"cancelled"` is no longer reported as cancelled. CI runs the suite at the highest dependency versions the
+  pins allow as well as the lowest, and weekly.
+
 ## 0.28.0
 
 A security and cost release. URL fetches, AI providers, bearer tokens, image decoders and form patterns are tightened, with a network policy (`VIXL_OFFLINE`, `VIXL_FETCH_HOSTS`), signed Windows updates, release workflows that wait for an approval, and results that name the document text an agent must treat as data. Agent results are smaller (capped brief apply summaries, a `vixl schema` that lists operations, a 9 KB agent skill entry point), the CLI names the file it edits and suggests corrections, and new documents no longer touch the network. Checks are quieter and more exact (use-size legibility, hidden text, composition, overlap, suite rules per page), with layout, poster, tracked-text and stroke fixes alongside. Text in Devanagari, Chinese, Japanese, Korean and Thai gets fonts (`font-cover`), PDF and SVG import map fonts, and a document can design a font and export it as TTF, OTF or WOFF. Optional features became built-in plugins, the emoji artwork a downloadable content pack, and the docs are organized by kind of page. Breaking changes are listed under Upgrading from 0.27.

@@ -53,6 +53,14 @@ and state the decision in the pull request. The core never imports a plugin modu
 this and lists the remaining exceptions. Large data that only some features use is a content pack in
 [VixlExamples](https://github.com/jxburros/VixlExamples/tree/main/packs), downloaded on first use by `vixl.packs`.
 
+## Private SDK attributes
+
+Reach past the public API of the MCP SDK (FastMCP) only through `src/vixl/sdk_compat.py`, which turns a missing
+attribute into a `missing_dependency` error naming the tested range; `tests/test_mcp_surface.py` fails on a private
+access anywhere else. The REST service does not touch Starlette internals: a request body is buffered and replayed by
+the `BodyLimit` ASGI middleware. The `minimum-versions` CI job runs the suite at the lowest and the highest versions
+the pins allow, and runs weekly as well.
+
 ## Changing a default
 
 Defaults for sparse briefs live in the house style (`src/vixl/data/house-style.json`, read through `src/vixl/house_style.py`); read values from there instead of adding constants. Pre-release: breaking changes are allowed; note them in the changelog, and do not add version switches to the engine: documents saved with older behaviour are handled by the conversion kit (`src/vixl/convert/`, [converting](docs/reference/converting.md)), which the engine never imports. Default changes must still pass the house-style quality/diversity eval. Compare `python -m evals.house_style --compare evals/house-style-baseline.json` before and after; quality must not fall. See [house style](docs/project/house-style.md#changing-defaults-h2).

@@ -16,6 +16,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field, WithJsonSchema
 
+from . import sdk_compat
 from .errors import VixlError, require
 from .fileio import file_lock
 from .mcp_runtime import Runtime
@@ -284,14 +285,14 @@ def build_server(session, *, planner=False, tools="default", allow_screen_captur
     from . import __version__
 
     # serverInfo.version names the engine, not the MCP SDK.
-    server._mcp_server.version = __version__
+    sdk_compat.set_server_version(server, __version__)
     from .call_limits import of as call_limits_of
 
     runtime = Runtime(session, compact_json, ToolError, inline_seconds=call_limits_of(session).timeout)
     server.vixl_runtime = runtime
     context = Context(session, runtime, allow_screen_capture)
     defined = set()
-    manager = server._tool_manager
+    manager = sdk_compat.tool_manager(server)
     serve_call = manager.call_tool
 
     async def call_tool(name, arguments, context=None, convert_result=False):
@@ -629,13 +630,13 @@ def build_server(session, *, planner=False, tools="default", allow_screen_captur
     def operations_reference() -> str:
         return json.dumps(operation_schema())
 
-    server._mcp_server.instructions += (
+    sdk_compat.append_instructions(server, (
         " A call still running after ~40 s returns a job: poll vixl_job and do not resend it (mutating calls take "
         "request_id so a retry never applies twice)."
-    )
+    ))
     if session.require_document:
-        server._mcp_server.instructions += " Every document tool needs document= on every call."
-    for registered in server._tool_manager.list_tools():
+        sdk_compat.append_instructions(server, " Every document tool needs document= on every call.")
+    for registered in manager.list_tools():
         registered.parameters = slim_schema(registered.parameters)
         runtime.watch_arguments(registered)
     return server
@@ -656,7 +657,7 @@ def surface(tools="default"):
     with tempfile.TemporaryDirectory() as workspace:
         server = build_server(Session(workspace=Path(workspace)), tools=tools)
         listed = asyncio.run(server.list_tools())
-        instructions = server._mcp_server.instructions or ""
+        instructions = sdk_compat.instructions(server)
     sizes = {tool.name: len(compact_json(tool.model_dump(exclude_none=True))) for tool in listed}
     total = sum(sizes.values())
     return {"tools": dict(sorted(sizes.items())), "total_chars": total, "total_tokens": round(total / 4),

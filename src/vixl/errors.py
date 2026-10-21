@@ -8,9 +8,17 @@ class VixlError(Exception):
         return {"error": self.code, "message": str(self), **self.details}
 
 
+class Cancelled(VixlError):
+    """A call stopped because its caller cancelled it (code ``cancelled``). Services tell a cancelled job from a
+    failed one by this type, never by the message text."""
+
+    def __init__(self, message="Call cancelled", **details):
+        super().__init__("cancelled", message, **details)
+
+
 def require(condition, message, code="invalid_operation", **details):
     if not condition:
-        raise VixlError(code, message, **details)
+        raise Cancelled(message, **details) if code == "cancelled" else VixlError(code, message, **details)
 
 
 # Error text names the command a reader can run. Messages are written once; these rewrites give each surface its own
