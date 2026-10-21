@@ -109,8 +109,8 @@ To publish a stable release:
 3. Tag the reviewed commit with its exact version and push the tag:
 
    ```bash
-   git tag v0.29.0 <reviewed-commit>
-   git push origin v0.29.0
+   git tag v0.29.1 <reviewed-commit>
+   git push origin v0.29.1
    ```
 
 4. The tag workflow re-runs tests, checks tag/package-version consistency and builds the distributions. The publish job then waits in the protected `release` environment until a required reviewer approves the deployment (Actions run, **Review deployments**). Approve only a run whose commit and version you reviewed. After approval it creates a **draft** GitHub release. It uploads every artifact before publishing it as the latest stable release. No release becomes visible to the updater while files are still being uploaded.

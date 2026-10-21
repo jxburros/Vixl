@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.29.1
+
+The first published release of the 0.29 work: 0.29.0's Windows build failed, so it was never released. Everything
+listed under 0.29.0 below is in this release.
+
+### Fixed
+
+- **The Windows launcher build failed** ("cannot import name 'GenericAlias' from partially initialized module
+  'types'"): the build puts `src/vixl` itself on the import path, and the new `vixl/types.py` replaced the standard
+  library's `types` module there. The module is now `vixl.document_types`, and a test refuses any new module named
+  like a standard-library one.
+
 ## 0.29.0
 
 A concurrency, structure and speed release, with gradient fills on shapes. Shapes take a `fill_gradient` drawn as a
@@ -120,7 +132,7 @@ broad `except`. Breaking changes are listed under Upgrading from 0.28.
   shared steps it looks the type up in `vixl.registry`, which lists the feature module that executes each one and
   refuses a type claimed twice. The operation schema and the list of operation types are unchanged.
 - **Static types for the core leaves (#633).** `errors`, `fileio`, `hashing`, `history`, `model`, `registry`,
-  `sdk_compat` and `targets` are annotated and pass strict mypy (a new `typecheck` CI job). `vixl.types` names the
+  `sdk_compat` and `targets` are annotated and pass strict mypy (a new `typecheck` CI job). `vixl.document_types` names the
   document shapes, and `model.is_number`/`is_int` replace the `isinstance(value, bool)` dance in new code. A test
   keeps the checked set and its annotated functions from shrinking.
 - **Module layering (#632, first step).** A test holds four layers (leaf, document core, features, interfaces) with a

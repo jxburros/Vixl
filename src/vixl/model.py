@@ -10,7 +10,7 @@ from typing import Any, TypeGuard, TypeVar
 import uuid
 
 from .errors import require
-from .types import Canvas, State
+from .document_types import Canvas, State
 
 T = TypeVar("T")
 
