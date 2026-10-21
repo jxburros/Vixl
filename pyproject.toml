@@ -70,7 +70,7 @@ files = [
     "src/vixl/registry.py",
     "src/vixl/sdk_compat.py",
     "src/vixl/targets.py",
-    "src/vixl/types.py",
+    "src/vixl/document_types.py",
 ]
 
 [tool.pytest.ini_options]

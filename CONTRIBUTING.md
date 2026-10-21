@@ -79,7 +79,7 @@ naming the exceptions you expect.
 
 The modules listed under `[tool.mypy] files` in `pyproject.toml` are checked with strict mypy (`pip install mypy`,
 then `mypy`; CI's `typecheck` job). The list only grows: when a module checks clean, add it there and its count of
-annotated functions to `tests/typecheck_baseline.json`. Document shapes are in `vixl.types` (`Layer`, `Canvas`,
+annotated functions to `tests/typecheck_baseline.json`. Document shapes are in `vixl.document_types` (`Layer`, `Canvas`,
 `State`); test numbers with `model.is_number` and `model.is_int`, which exclude booleans.
 
 ## Changing a default
