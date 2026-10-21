@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.29.0
 
 A concurrency, structure and speed release, with gradient fills on shapes. Shapes take a `fill_gradient` drawn as a
 vector gradient in PNG, SVG, PDF and PPTX. Servers that other machines can reach start with call limits, cancel calls
@@ -78,7 +78,7 @@ broad `except`. Breaking changes are listed under Upgrading from 0.28.
 - **Lit scenes render incrementally (#595, first part).** A document with scene lighting no longer re-renders and
   relights the whole canvas after every edit: the canvas before lighting is kept, the changed box is composited
   and lit again, and a `region` render is lit by its place on the canvas. The pixels are identical to a full render.
-  One move on a lit 4000 × 4000 scene went from about 2 s to well under half a second. Adjustment layers whose
+  One move on a lit 4000 × 4000 scene went from about 6 s to about 0.15 s. Adjustment layers whose
   filters are per pixel (levels, curves, hue, saturation, brightness, exposure, LUTs …) render incrementally too,
   their masks and selections cut to the redrawn box. Adjustments that see past each pixel (blur, contrast, sharpen,
   noise), canvas-edge blur and selection-masked effects on ordinary layers still render in full.
