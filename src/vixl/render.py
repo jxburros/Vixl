@@ -1785,7 +1785,7 @@ def worth_prefetching(layer):
         return False
     if layer.get("styles") or any(effect.get("enabled", True) for effect in layer.get("effects") or []):
         return True
-    return layer["type"] in ("raster", "gradient", "paint", "pixel", "frame")
+    return layer["type"] in ("raster", "gradient", "paint", "pixel", "frame") or bool(layer.get("fill_gradient"))
 
 
 class Prefetch:
