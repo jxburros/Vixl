@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### Upgrading from 0.28
+
+- **Servers other machines can reach are limited by default (breaking).** `vixl serve` and `vixl view` on a
+  non-loopback `--host`, and `vixl mcp --http`, start with a 120 s call timeout (REST only), a 600 s hard timeout,
+  40 megapixels, 200 pages and one concurrent heavy call per core (at least 2). Pass a flag or variable to change one,
+  `0` to turn one off, or `--no-call-limits` to drop them. Loopback and stdio servers are unchanged.
+
+### Service limits and cancellation
+
+- **Default limits for network servers, and a hard timeout (#623).** See Upgrading above. `--call-hard-timeout`
+  (`VIXL_CALL_HARD_TIMEOUT`) cancels a call that runs longer, detached or not: it stops at its next checkpoint (between
+  layers of a render, pages of a PDF or PPTX export, timeline frames and check families) with `cancelled` and a message
+  naming the limit, and an operation batch is then not applied. REST work can now be cancelled at all (it carries the
+  same call context as MCP), and a REST job reports `cancelled`. `GET /limits` and `vixl_job(action="list")` report
+  where each limit came from under `source`.
+- **REST answers 503 when its queue is full (#623).** Heavy REST calls run on 16 workers with at most 16 more waiting;
+  the next one gets `503`, `Retry-After: 3` and `limit_exceeded` with `limit: max_queue` instead of waiting in an
+  unbounded queue. A job still running past the hard timeout no longer pins its slot in the job list.
+
 ### Internal
 
 - **Private MCP SDK access in one module (#685).** Every use of a private FastMCP attribute (the advertised server

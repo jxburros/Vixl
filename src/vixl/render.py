@@ -1833,9 +1833,12 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
                     image.paste(composite(image.crop(box), patch, layer["blend"]), box[:2])
         return image
 
+    from .calls import check_cancelled
+
     for layer in layers:
         if layer.get("parent") != parent or not layer["visible"] or (members is not None and layer["id"] not in members):
             continue
+        check_cancelled()
         if observe and layer["id"] in observe:
             box = pixel_box(bounds[layer["id"]], image.size)
             before = image.crop(box)

@@ -50,7 +50,8 @@ returns `{"status":"running","job":"job_…"}` and carries on; `as_job: true` on
 `vixl_export` and the `vixl_ai_*` tools does so at once. `vixl_render` always answers inline. Under load (more calls
 than `VIXL_MCP_WORKERS`) calls become jobs sooner; `queued: true` means it has not started yet.
 Follow it with `vixl_job(action="status"|"result"|"cancel"|"list", id, wait=…)`; never resend a call
-that timed out. A timeline export's `progress` has `timing` (`elapsed_s`, `eta_s`, `setup_ms`, `raster_ms`).
+that timed out. A server with a hard timeout (`--call-hard-timeout`, 600 s by default on `vixl mcp --http`) cancels a
+call that runs longer: split the work (fewer pages, frames or operations) rather than retrying it whole. A timeline export's `progress` has `timing` (`elapsed_s`, `eta_s`, `setup_ms`, `raster_ms`).
 With `VIXL_PROFILE=1` in the server's environment, results carry a `render_profile` (REST: also the
 `X-Vixl-Profile` header). `vixl_document`, `vixl_apply`, `vixl_export` and the `vixl_ai_*` tools take `request_id`
 (up to 64 characters): repeating a call with the same id returns the first result (`"replayed": true`) instead of

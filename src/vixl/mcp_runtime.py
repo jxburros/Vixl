@@ -479,6 +479,9 @@ class Runtime:
                 raise
         if gate is not None:
             future.add_done_callback(lambda _: GATE.release(gate))
+        from .call_limits import of as limits_of, watch
+
+        watch(state, limits_of(self.session), future)
         if as_job:
             job = self.detach(name, kwargs, future, box, request_id, entry)
             return self.pointer(job, "Started in the background.")

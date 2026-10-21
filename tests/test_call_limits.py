@@ -37,7 +37,8 @@ def test_configure_reads_flags_then_environment():
     with pytest.raises(VixlError, match="VIXL_MAX_PAGES must be a whole number"):
         CallLimits.configure({"VIXL_MAX_PAGES": "lots"})
     with pytest.raises(VixlError, match="--max-concurrent must be positive"):
-        CallLimits.configure({}, max_concurrent=0)
+        CallLimits.configure({}, max_concurrent=-1)
+    assert CallLimits.configure({"VIXL_MAX_PAGES": "0"}).max_pages is None  # 0 turns a limit off
     lowered = CallLimits(max_megapixels=2).apply_to(Limits())
     assert lowered.max_pixels == 2_000_000
     assert CallLimits(max_megapixels=500).apply_to(Limits()).max_pixels == Limits().max_pixels
@@ -159,3 +160,118 @@ def test_serve_and_mcp_accept_limit_flags():
     parsed = parser.parse_args(["--call-timeout", "30", "--max-megapixels", "25", "--max-pages", "50",
                                 "--max-concurrent", "4"])
     assert from_arguments(parsed) == CallLimits(timeout=30, max_megapixels=25, max_pages=50, max_concurrent=4)
+
+
+def test_network_mode_gets_defaults():  # #623
+    rest = CallLimits.configure({}, network="rest")
+    assert rest.timeout == 120 and rest.hard_timeout == 600 and rest.max_megapixels == 40 and rest.max_pages == 200
+    assert rest.max_concurrent >= 2 and rest.describe()["source"]["timeout"] == "default"
+    # MCP keeps its 40 s inline wait: clients give up at about a minute.
+    assert CallLimits.configure({}, network="mcp").timeout is None
+    assert CallLimits.configure({}) == CallLimits()  # loopback and stdio: nothing unless configured
+    given = CallLimits.configure({"VIXL_MAX_PAGES": "0"}, network="rest", timeout=5)
+    assert given.timeout == 5 and given.max_pages is None and given.max_megapixels == 40
+    assert given.describe()["source"] == {"timeout": "--call-timeout", "max_megapixels": "default",
+                                          "max_pages": "VIXL_MAX_PAGES", "max_concurrent": "default",
+                                          "hard_timeout": "default"}
+
+
+def test_no_call_limits_flag_and_network_choice_in_the_cli(monkeypatch, tmp_path):  # #623
+    from vixl import cli, interfaces
+
+    seen = {}
+    monkeypatch.setattr(interfaces, "serve", lambda *args, call_limits=None, **kwargs: seen.update(rest=call_limits))
+    path = Project(10, 10).save(tmp_path / "a.vixl") or tmp_path / "a.vixl"
+    monkeypatch.setenv("VIXL_API_TOKEN", "x" * 32)
+    cli.main(["--project", str(path), "serve", "--host", "0.0.0.0"])
+    assert seen["rest"].timeout == 120
+    cli.main(["--project", str(path), "serve", "--host", "0.0.0.0", "--no-call-limits"])
+    assert not seen["rest"].any()
+    cli.main(["--project", str(path), "serve"])
+    assert not seen["rest"].any()
+
+
+def test_rest_queue_full_is_503(tmp_path, monkeypatch):  # #623
+    import threading
+
+    from vixl import call_limits
+
+    path = paged(tmp_path / "doc.vixl", pages=1)
+    release = threading.Event()
+
+    def slow_check(self, document=None, **options):
+        release.wait(10)
+        return {"passed": True}
+
+    monkeypatch.setattr(Session, "check", slow_check)
+    original = call_limits.BoundedExecutor.__init__
+    monkeypatch.setattr(call_limits.BoundedExecutor, "__init__",
+                        lambda self, workers, queue=1, name="t": original(self, 1, 1, name))
+    api = client(path, CallLimits(timeout=0.05))
+    try:
+        assert api.post("/check", json={}).status_code == 202  # running
+        assert api.post("/check", json={}).status_code == 202  # waiting for the one worker
+        refused = api.post("/check", json={})
+        assert refused.status_code == 503 and refused.headers["retry-after"] == "3"
+        assert refused.json()["limit"] == "max_queue"
+    finally:
+        release.set()
+
+
+def test_timed_out_rest_call_is_cancelled(tmp_path, monkeypatch):  # #623
+    from vixl.calls import check_cancelled
+
+    path = paged(tmp_path / "doc.vixl", pages=1)
+    loops = []
+
+    def stubborn_check(self, document=None, **options):
+        while True:
+            loops.append(1)
+            check_cancelled()
+            time.sleep(0.01)
+
+    monkeypatch.setattr(Session, "check", stubborn_check)
+    api = client(path, CallLimits(timeout=0.05, hard_timeout=0.5))
+    started = time.monotonic()
+    job = api.post("/check", json={}).json()["job"]
+    status = api.get(f"/jobs/{job}", params={"wait": 10}).json()
+    assert status["status"] == "cancelled" and time.monotonic() - started < 5
+    assert "hard timeout" in status["error"]["message"] and status["error"]["error"] == "cancelled"
+
+
+def test_mcp_call_past_the_hard_timeout_is_cancelled(tmp_path, monkeypatch):  # #623
+    from vixl.calls import check_cancelled
+
+    paged(tmp_path / "doc.vixl", pages=1)
+    session = Session(workspace=tmp_path)
+    session.call_limits = CallLimits(hard_timeout=0.3)
+
+    def stubborn_check(self, document=None, **options):
+        while True:
+            check_cancelled()
+            time.sleep(0.01)
+
+    monkeypatch.setattr(Session, "check", stubborn_check)
+    server, call = mcp(session)
+    call("vixl_document", action="open", path="doc.vixl")
+    with pytest.raises(Exception, match="hard timeout"):
+        call("vixl_check")
+
+
+def test_hot_loops_stop_at_a_cancelled_call():  # #623
+    from vixl.calls import CALL, CallState
+    from vixl.checks import check_design
+    from vixl.errors import Cancelled
+
+    project = Project(200, 200)
+    project.apply([{"type": "solid", "name": "a", "color": "red"}, {"type": "text", "name": "t", "text": "Hi"}])
+    state = CallState()
+    state.cancel.set()
+    token = CALL.set(state)
+    try:
+        with pytest.raises(Cancelled):
+            project.render()
+        with pytest.raises(Cancelled):
+            check_design(project)
+    finally:
+        CALL.reset(token)

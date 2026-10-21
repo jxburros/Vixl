@@ -652,9 +652,12 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
     from .design import resolve_color
     from .render import color, render
 
+    from .calls import check_cancelled
+
     for number, (label, view) in enumerate(views):
         from .export_appearance import prepare
 
+        check_cancelled()
         view = prepare(view)
         c = view.state["canvas"]
         width, height, kx, ky, bleed = page_geometry(c, dpi)

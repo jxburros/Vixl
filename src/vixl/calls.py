@@ -25,6 +25,7 @@ class CallState:
         self.document = None
         self.unknown = UNKNOWN.get()
         self.cancel = threading.Event()
+        self.reason = None  # Why ``cancel`` was set, when not by the caller: the message ``check_cancelled`` raises.
 
 
 def current_client():
@@ -60,4 +61,4 @@ def cancelled():
 
 def check_cancelled():
     if cancelled():
-        raise Cancelled()
+        raise Cancelled(CALL.get().reason or "Call cancelled")

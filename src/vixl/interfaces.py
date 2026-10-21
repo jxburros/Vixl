@@ -663,11 +663,11 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     except ImportError as exc:
         raise VixlError("missing_dependency", "Install vixl-engine[server]") from exc
     import asyncio
-    from concurrent.futures import ThreadPoolExecutor
     import contextvars
     import functools
 
-    from .call_limits import GATE, CallLimits, RestJobs, check_export, detached
+    from .call_limits import GATE, BoundedExecutor, CallLimits, RestJobs, check_export, detached, watch
+    from .calls import CALL, CallState
     from .untrusted import mark
 
     require_token(token)
@@ -676,21 +676,26 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     call_limits = call_limits if call_limits is not None else CallLimits.configure()
     session = Session(path, call_limits.apply_to(limits or Limits()))
     session.call_limits = call_limits
-    jobs = RestJobs()
-    workers = ThreadPoolExecutor(max_workers=16, thread_name_prefix="vixl-rest")
+    jobs = RestJobs(call_limits.hard_timeout)
+    workers = BoundedExecutor(16)
 
     def limited(fn):
-        """A heavy route: counted against max_concurrent, and detached into a job after the timeout."""
+        """A heavy route: counted against max_concurrent, detached into a job after the timeout and cancelled at
+        its next checkpoint after the hard timeout."""
         @functools.wraps(fn)
         async def wrapper(*args, **kwargs):
             key = GATE.acquire(session.workspace, call_limits.max_concurrent)
+            # Run in a copy of the request's context, so a VIXL_PROFILE render profile sees the work, with the
+            # call state that check_cancelled reads.
+            context, state = contextvars.copy_context(), CallState()
+            context.run(CALL.set, state)
             try:
-                # Run in a copy of the request's context, so a VIXL_PROFILE render profile sees the work.
-                future = workers.submit(contextvars.copy_context().run, fn, *args, **kwargs)
+                future = workers.submit(context.run, fn, *args, **kwargs)
             except BaseException:
                 GATE.release(key)
                 raise
             future.add_done_callback(lambda _: GATE.release(key))
+            watch(state, call_limits, future)
             waiter = asyncio.wrap_future(future)
             waiter.add_done_callback(lambda f: f.cancelled() or f.exception())  # Retrieved even if nobody waits.
             if call_limits.timeout is None:
@@ -737,9 +742,9 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     async def vixl_error(request: Request, exc: VixlError):
         status = 403 if exc.code == "forbidden" else 400
         if exc.code == "limit_exceeded":
-            status = 429 if exc.details.get("limit") == "max_concurrent" else 413
+            status = {"max_concurrent": 429, "max_queue": 503}.get(exc.details.get("limit"), 413)
         return JSONResponse(exc.as_dict(), status_code=status,
-                            headers={"Retry-After": "3"} if status == 429 else None)
+                            headers={"Retry-After": "3"} if status in (429, 503) else None)
 
     @app.get("/limits")
     def server_limits():

@@ -807,7 +807,8 @@ def _dispatch(argv):
         workspace_shown = Path(a.workspace or Path(path).parent).resolve()
         print(f"vixl mcp: workspace {workspace_shown}", file=sys.stderr)
         server = mcp_server(path, limits, workspace=a.workspace, planner=a.planner, tools=a.tools,
-                            require_document=a.require_document, call_limits=from_arguments(a),
+                            require_document=a.require_document,
+                            call_limits=from_arguments(a, network="mcp" if a.http else None),
                             allow_screen_capture=a.allow_screen_capture)
         if a.http:
             from .interfaces import serve_mcp
@@ -826,7 +827,7 @@ def _dispatch(argv):
                             "Run vixl --help.", suggestions=close) from exc
         raise
     if cmd in ("serve", "view"):
-        from .interfaces import serve
+        from .interfaces import LOOPBACK, serve
 
         p = Parser(prog="vixl serve")
         p.add_argument("--host", default="127.0.0.1")
@@ -838,7 +839,7 @@ def _dispatch(argv):
         add_arguments(p)
         a = p.parse_args(args)
         serve(path, a.host, a.port, os.environ.get(a.token_env), limits, open_browser=cmd == "view",
-              call_limits=from_arguments(a), tls=service_setup(a))
+              call_limits=from_arguments(a, network=None if a.host in LOOPBACK else "rest"), tls=service_setup(a))
         return None, options.json
     with file_lock(str(path)):
         project = Project.load(path, limits=limits, allow_linked=options.allow_linked)

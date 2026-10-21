@@ -254,19 +254,20 @@ Recommended pattern for agents: send heavy calls with a fresh `request_id`; if o
 
 ### Per-call limits
 
-A server shared by several people or agents can bound what one call may cost, so one oversized render cannot starve the rest. `vixl serve`, `vixl view` and `vixl mcp` take the same flags (or environment variables); nothing is limited unless one is set:
+A server shared by several people or agents can bound what one call may cost, so one oversized render cannot starve the rest. `vixl serve`, `vixl view` and `vixl mcp` take the same flags (or environment variables). A server other machines can reach (`serve` or `view` with a non-loopback `--host`, and `mcp --http`) starts with defaults: a 120 s timeout (REST only; MCP keeps its 40 s inline wait), a 600 s hard timeout, 40 megapixels, 200 pages and as many concurrent heavy calls as the machine has cores (at least 2). A loopback `serve`/`view` and a stdio `mcp` limit nothing unless one is set. A value of `0` turns one limit off, and `--no-call-limits` drops every default:
 
 | Flag | Environment | Limit |
 | --- | --- | --- |
-| `--call-timeout S` | `VIXL_CALL_TIMEOUT` | Seconds a call runs inline. A REST call still running then answers `202` with `{"status": "running", "job", "poll", "result_url"}` and a `Location` header; `GET /jobs/{id}?wait=20` reports `running`, `completed` or `failed` (with `error`), and `GET /jobs/{id}/result` returns what the call would have returned (the file, the JSON or the error; `409` while it runs). `GET /jobs` lists recent jobs. For MCP it replaces `VIXL_MCP_INLINE_SECONDS` (default 40). Calls are never killed. |
+| `--call-timeout S` | `VIXL_CALL_TIMEOUT` | Seconds a call runs inline. A REST call still running then answers `202` with `{"status": "running", "job", "poll", "result_url"}` and a `Location` header; `GET /jobs/{id}?wait=20` reports `running`, `completed` or `failed` (with `error`), and `GET /jobs/{id}/result` returns what the call would have returned (the file, the JSON or the error; `409` while it runs). `GET /jobs` lists recent jobs. For MCP it replaces `VIXL_MCP_INLINE_SECONDS` (default 40). The call itself goes on. |
+| `--call-hard-timeout S` | `VIXL_CALL_HARD_TIMEOUT` | Seconds after which a running call, detached or not, is cancelled: it stops at its next checkpoint (between layers, pages, frames, export targets and check families) with `cancelled` and a message naming the limit, and an operation batch is then not applied. A REST job reports `cancelled`. |
 | `--max-megapixels N` | `VIXL_MAX_MEGAPIXELS` | Lowers the pixel limit (`--max-pixels`) for canvases, imports and frames to N million, and caps the pixels one export renders: canvas × scale² × pages written as images (vector PDF, SVG, PPTX and HTML count one page). |
 | `--max-pages N` | `VIXL_MAX_PAGES` | Pages one export writes (a PDF, PPTX or HTML deck, or a contact sheet). |
 | `--max-concurrent N` | `VIXL_MAX_CONCURRENT` | Heavy calls running at once per workspace, background jobs included: exports, renders, previews, checks, operation batches, compose, workflows and provider calls (MCP: the tools that take `as_job`). Inspection and catalog calls are not counted. |
 
-A call over a limit is refused before it renders with `limit_exceeded` and its `limit` (`max_megapixels`, `max_pages` or `max_concurrent`), `value`, `maximum` and a `hint` (REST: status `413`, or `429` with `Retry-After` for concurrency). `GET /limits` (REST) and `vixl_job(action="list")` (MCP, under `limits`) report the values a server runs with; `GET /limits` also reports the network policy under `network` (`offline`, `fetch_hosts`, `private_addresses`, `proxy_resolves`).
+A call over a limit is refused before it renders with `limit_exceeded` and its `limit` (`max_megapixels`, `max_pages` or `max_concurrent`), `value`, `maximum` and a `hint` (REST: status `413`, or `429` with `Retry-After` for concurrency). REST runs heavy calls on 16 worker threads with at most 16 more waiting; the next one gets `503` with `Retry-After` and `limit: max_queue`. `GET /limits` (REST) and `vixl_job(action="list")` (MCP, under `limits`) report the values a server runs with and, under `source`, where each came from (a flag, an environment variable, `default` or `unset`); `GET /limits` also reports the network policy under `network` (`offline`, `fetch_hosts`, `private_addresses`, `proxy_resolves`).
 
 ```bash
-vixl serve --call-timeout 30 --max-megapixels 50 --max-pages 40 --max-concurrent 2
+vixl serve --call-timeout 30 --call-hard-timeout 300 --max-megapixels 50 --max-pages 40 --max-concurrent 2
 ```
 
 ### Several agents on one server

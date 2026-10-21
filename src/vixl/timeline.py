@@ -1476,6 +1476,7 @@ def _frames(project, times, scale, preview=False, cancelled=None, progress=None)
     estimate of the seconds left, and this frame's setup (sampling the timeline) and raster milliseconds."""
     import time as clock
 
+    from .calls import check_cancelled
     from .profiling import current as current_profile
 
     c = project.state["canvas"]
@@ -1485,6 +1486,7 @@ def _frames(project, times, scale, preview=False, cancelled=None, progress=None)
     try:
         for index, time in enumerate(times):
             require(not cancelled or not cancelled(), "Timeline cancelled", "cancelled")
+            check_cancelled()
             start = clock.perf_counter()
             if preview:
                 from .proxy import render_preview
