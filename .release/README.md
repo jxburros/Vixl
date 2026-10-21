@@ -1,6 +1,6 @@
 # Release integration
 
-The workflow and toolkit checkout are pinned to infrastructure commit `e219396d4dcab9a14c9d7ee1730320fc94006dcc`. Keep those pins equal when upgrading. The local build/package/signing steps remain responsible for application-specific smoke tests and existing updater signatures. The shared final stage runs only pinned toolkit code with repository write permissions.
+The workflow and toolkit checkout are pinned to infrastructure commit `181636b602317ba703c3f4bf12775c34560f4efb`. Keep those pins equal when upgrading. The local build/package/signing steps remain responsible for application-specific smoke tests and existing updater signatures. The shared final stage runs only pinned toolkit code with repository write permissions.
 
 `release.json` is authoritative; `.release/config.json` lists embedded version fields, app scopes, required platform deliverables, bounded package variants, release notes, checksum naming, and the executable security profile. Exact required assets must all exist. Any optional filename rule has explicit bounds and does not exempt a required platform.
 
@@ -16,4 +16,4 @@ Validation for this migration: shared engine syntax/test suite and workflow lint
 
 The current checked-in `TRUSTED_KEYS` in `src/vixl/updater_sign.py` is empty. Existing mandatory signing checks intentionally continue to block releases until the owner provisions and reviews an updater trust root. PyPI remains in the local `pypi.yml` workflow and consumes the already-built distributions.
 
-Hosted validation note (2026-10-20): GitHub reported that an Actions budget prevented some jobs from starting. Other repositories also reported dependency advisories in unchanged dependency graphs. These gates remain enforced; the migration does not claim an end-to-end native release where those checks are blocked.
+Hosted validation: after the Actions budget was replenished, the blocked checks were restarted. The current pull request checks record the latest results. Release dry runs and production publication remain separate from pull request validation.

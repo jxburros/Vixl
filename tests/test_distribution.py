@@ -177,17 +177,28 @@ def test_manifest_launch_is_immutable(tmp_path):  # #673
 
 
 def test_release_publish_waits_for_the_protected_environment():  # #673
+    import re
     import yaml
 
     root = Path(__file__).resolve().parent.parent
     workflow = yaml.safe_load((root / ".github/workflows/release.yml").read_text(encoding="utf-8"))
     jobs = workflow["jobs"]
     writers = {name for name, job in jobs.items() if "write" in (job.get("permissions") or {}).values()}
-    assert writers == {"publish"}
+    assert writers == {"publish-vixl", "pypi"}
     assert workflow["permissions"] == {"contents": "read"}
-    publish = jobs["publish"]
-    assert publish["environment"]["name"] == "release"
-    assert "plan" in publish["needs"] and publish["if"] == "needs.plan.outputs.publish == 'true'"
+    assert jobs["publish"]["permissions"] == {"contents": "read"}
+    assert jobs["publish"]["environment"]["name"] == "release"
+    assert {"plan", "verify", "windows"} <= set(jobs["publish"]["needs"])
+    finish = jobs["publish-vixl"]
+    assert re.fullmatch(r"JX-Holdings-LLC/release-infrastructure/\.github/workflows/finish\.yml@[0-9a-f]{40}", finish["uses"])
+    assert finish["uses"].rsplit("@", 1)[1] == finish["with"]["toolkit-ref"]
+    assert finish["with"]["source-sha"] == "${{ needs.plan.outputs.sha }}"
+    assert finish["with"]["dry-run"] == "${{ inputs.dry_run }}"
+    assert {"plan", "publish", "pypi"} <= set(finish["needs"])
+    pypi = yaml.safe_load((root / ".github/workflows/pypi.yml").read_text(encoding="utf-8"))["jobs"]["publish"]
+    assert pypi["environment"]["name"] == "pypi"
+    assert pypi["permissions"] == {"id-token": "write"}
+    assert not any("checkout@" in step.get("uses", "") for step in pypi["steps"])
     assert "permissions" not in jobs["plan"]
 
 
@@ -199,9 +210,9 @@ def test_release_signs_the_manifest_inside_the_protected_job():  # #621
     jobs = yaml.safe_load(text)["jobs"]
     names = [step.get("name", "") for step in jobs["publish"]["steps"]]
     sign = names.index("Sign the update manifest")
-    assert sign < names.index("Checksum every release asset") < names.index("Publish an immutable, fully uploaded stable release")
+    assert sign < names.index("Checksum every release asset") < names.index("Stage the complete configured release inventory")
     step = jobs["publish"]["steps"][sign]
     assert step["env"] == {"VIXL_UPDATE_SIGNING_KEY": "${{ secrets.VIXL_UPDATE_SIGNING_KEY }}"}
     assert "distribution/sign_manifest.py release/vixl-update.json" in step["run"]
     assert text.count("secrets.") == 1  # no other job sees a secret
-    assert any("updater_sign.TRUSTED_KEYS" in step.get("run", "") for step in jobs["plan"]["steps"])
+    assert any("updater_sign.TRUSTED_KEYS" in step.get("run", "") for step in jobs["verify"]["steps"])

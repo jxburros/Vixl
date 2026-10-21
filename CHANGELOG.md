@@ -1801,3 +1801,13 @@ Vixl's main users are AI agents; this release targets long agent sessions, fewer
 
 - Adopt the unified release manifest, version-advance validation, manual main-only planning, complete artifact staging, and verified draft publisher. Preserve local packaging, existing updater trust, and distribution identities.
 - Validation: shared engine tests, workflow lint, and prepared manifest/version checks. Native/hosted consumer release dry runs and publication remain unverified until the migration is merged and credentials/settings are checked.
+
+## 2026-10-21 — Release check fixes
+
+### Changed
+
+- Require security-fixed Pillow 13 and update release contract checks for the shared protected publisher, prebuilt PyPI job and complete inventory.
+
+### Notes
+
+- 37 release/error-message checks and Ruff pass locally; the full suite is running.

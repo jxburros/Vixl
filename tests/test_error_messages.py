@@ -205,12 +205,21 @@ def test_mcp_server_info_reports_the_vixl_version(tmp_path):
 
 
 def test_release_checksums_cover_every_published_asset():
+    import json
     from pathlib import Path
+    import yaml
 
-    workflow = (Path(__file__).resolve().parent.parent / ".github/workflows/release.yml").read_text()
-    publish = workflow.split("\n  publish:", 1)[1]
-    checksum = publish.index("sha256sum -- * > SHA256SUMS.txt")
-    assert publish.index("name: windows-release") < checksum < publish.index("gh release upload")
+    root = Path(__file__).resolve().parent.parent
+    workflow = yaml.safe_load((root / ".github/workflows/release.yml").read_text())
+    steps = workflow["jobs"]["publish"]["steps"]
+    checksum = next(i for i, step in enumerate(steps) if "sha256sum -- * > SHA256SUMS.txt" in step.get("run", ""))
+    windows = next(i for i, step in enumerate(steps) if step.get("with", {}).get("name") == "windows-release")
+    stage = next(i for i, step in enumerate(steps) if "release.mjs stage" in step.get("run", ""))
+    assert windows < checksum < stage
+    config = json.loads((root / ".release/config.json").read_text())["apps"]["vixl"]
+    assert config["checksumFile"] == "SHA256SUMS.txt"
+    assert {"vixl-update.json", "vixl-update.json.sig", "vixl_engine-{version}-py3-none-any.whl", "vixl_engine-{version}.tar.gz"} <= set(config["assets"])
+    assert workflow["jobs"]["publish-vixl"]["with"]["artifact"] == "bundle-vixl"
 
 
 def test_brush_define_unknown_base_names_known_brushes():  # #687
