@@ -95,7 +95,7 @@ def finite(value, name="value", low=None, high=None):
 
 
 def new_state(width, height, background):
-    from .craft import safe_area
+    from .house_style import safe_area
 
     canvas = {"width": width, "height": height, "background": background, "color_mode": "rgba8"}
     # A size that defines no safe area gets the craft default; a named size replaces it with its own.

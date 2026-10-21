@@ -132,7 +132,7 @@ def dispatch(session, action, request, document=None):
             raise VixlError("invalid_request", f"Invalid {action} request: {exc}") from exc
     if action == "adapt-sizes":
         from .adapt import adapt_copies
-        from .mcp_tools import export_file
+        from .io_policy import export_file
 
         return adapt_copies(session, export_file, request["sizes"], request.get("directory", "."),
                             request.get("name", "{name}-{size}"), request.get("options"), document,
@@ -180,7 +180,7 @@ def dispatch(session, action, request, document=None):
                 )
             return library.place(project, request["id"], request["name"], request.get("as", "group"))
     if action == "act":
-        from .interfaces import service_check
+        from .io_policy import service_check
 
         with session.project(write=not request.get("dry_run", False), document=document) as project:
             return project.act(validator=service_check, **request)
@@ -256,7 +256,7 @@ def check_suites(project, request):
 
 def cli(args, options, limits):
     from .commands import Parser
-    from .cli import read_json
+    from .io_policy import read_json
     from .interfaces import Session
 
     parser = Parser(

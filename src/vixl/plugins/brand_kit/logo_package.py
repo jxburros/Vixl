@@ -317,7 +317,7 @@ def _plan_social(primary, mark, light):
 def build(session, request, document=None):
     from ...export_batch import export_batch
     from ...exports import ICON_SETS, export_icons
-    from ...mcp_tools import export_file
+    from ...io_policy import export_file
 
     unknown = sorted(set(request) - FIELDS)
     require(not unknown, f"Unknown logo-package field(s) {unknown}", field=unknown[0] if unknown else None)

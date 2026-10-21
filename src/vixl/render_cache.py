@@ -58,7 +58,7 @@ def environment():
 
 def key_for(project, layer=None, bounds=None):
     from .text import font_data, font_digest
-    from .render import EFFECTS
+    from .constants import EFFECTS
 
     layers = [layer] if layer else project.state["layers"]
     if any(x.get("linked") or x["type"] == "link" or any(e["name"] not in EFFECTS for e in x.get("effects", []))

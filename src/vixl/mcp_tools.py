@@ -5,8 +5,6 @@ code/field/suggestions (and the expected schema for a bad option or operation), 
 an optional ``document``.
 """
 
-import base64
-import binascii
 import inspect
 import json
 import os
@@ -17,8 +15,9 @@ from typing import Annotated, Literal
 from pydantic import Field, WithJsonSchema
 
 from . import sdk_compat
+# Moved to io_policy; kept importable from here for one release.
+from .io_policy import EXPORT_SUFFIXES, decode_upload, export_file, export_outcome  # noqa: F401
 from .errors import VixlError, require
-from .fileio import file_lock
 from .mcp_runtime import Runtime
 from .model import Limits
 from .proxy import preview_png
@@ -84,84 +83,6 @@ def preview(
                            artboard=artboard, comp=comp, time=time, proof=proof, simulate=simulate, guides=guides,
                            page=page, values=values, show_fields=show_fields, isolate=isolate, views=views,
                            exploded=exploded)
-
-
-EXPORT_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico", ".html", ".htm", ".pptx", ".psd",
-                   ".ttf", ".otf", ".woff", ".woff2",
-                   ".vixl")
-
-
-def export_file(session, path, overwrite=False, document=None, **options):
-    from .fileio import temporary
-
-    destination = session.resolve(path)
-    require(
-        destination.suffix.lower() in EXPORT_SUFFIXES,
-        "Choose a PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF, ICO, HTML, PPTX or PSD filename, a TTF, OTF, WOFF or WOFF2 "
-        "font (the document's font design), or .vixl with isolate",
-        field="path",
-    )
-    require(destination.suffix.lower() != ".vixl" or options.get("isolate"),
-            "A .vixl export writes a portable object document: pass isolate=[OBJECT]", field="path")
-    session.make_parent(destination)
-    with file_lock(str(destination)):
-        require(
-            overwrite or not destination.exists(),
-            "Destination already exists; set overwrite=true",
-            field="path",
-        )
-        fmt = {".jpg": "JPEG", ".jpeg": "JPEG", ".tif": "TIFF", ".tiff": "TIFF", ".pdf": "PDF", ".ico": "ICO"}.get(
-            destination.suffix.lower(), destination.suffix[1:].upper()
-        )
-        report = {}
-        with session.project(document=document) as project:
-            from .call_limits import check_export, of
-
-            if destination.suffix.lower() == ".vixl":
-                from .objects import portable_bytes
-
-                data = portable_bytes(project, options, report)
-                fmt = "VIXL"
-            else:
-                check_export(of(session), project, fmt, options)
-                data = project.export(format=fmt, report=report, **options)
-        fd, temporary_path = temporary(
-            destination.parent, like=destination if destination.exists() else None
-        )
-        try:
-            with os.fdopen(fd, "wb") as stream:
-                stream.write(data)
-                stream.flush()
-                os.fsync(stream.fileno())
-            if overwrite:
-                os.replace(temporary_path, destination)
-            else:
-                # Atomic no-clobber publication, including non-Vixl writers.
-                os.link(temporary_path, destination)
-        finally:
-            if os.path.exists(temporary_path):
-                os.unlink(temporary_path)
-    return {"path": session.relative(destination), "format": fmt, "bytes": len(data), **report,
-            "outcome": export_outcome(report)}
-
-
-def export_outcome(report):
-    """A written export executed; it is not validated (exports run no checks) and its warnings need review."""
-    from .outcomes import make
-
-    warnings = [str(item) for item in report.get("warnings", [])]
-    return make("completed", "not_run", ["export runs no checks: run vixl_check and the suites first", *warnings])
-
-
-def decode_upload(data_base64, limit):
-    require(isinstance(data_base64, str) and data_base64, "data_base64 must be a non-empty string")
-    payload = data_base64.split(",", 1)[1] if data_base64.startswith("data:") else data_base64
-    payload = "".join(payload.split())
-    require(len(payload) <= limit * 4 // 3 + 8, "Image exceeds byte limit", "resource_limit")
-    try:
-        return base64.b64decode(payload, validate=True)
-    except (binascii.Error, ValueError) as exc:
-        raise VixlError("invalid_image", "data_base64 is not valid base64", field="data_base64") from exc
 
 
 def typed_ai(session, command, words=(), document=None, **options):

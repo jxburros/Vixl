@@ -441,7 +441,7 @@ def adapt_copies(session, export_file, sizes, directory=".", name="{name}-{size}
     from pathlib import Path
 
     from . import calls
-    from .interfaces import service_check
+    from .io_policy import service_check
 
     require(isinstance(sizes, list) and 0 < len(sizes) <= 16, "Give 1–16 sizes", field="sizes")
     require(report in ("summary", "layers"), "report is summary or layers", field="report")

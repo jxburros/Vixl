@@ -180,7 +180,7 @@ def validate(value):
 
 def apply(project, value, variables=None, dry_run=False):
     from .resources import substitute
-    from .interfaces import service_check
+    from .io_policy import service_check
 
     validate(value)
     return project.apply(

@@ -32,7 +32,7 @@ def dispatch(session, action, request, document=None):
         result["output"] = session.relative(Path(result["output"]))
         return result
     if action == "protected-edit":
-        from ...interfaces import service_check
+        from ...io_policy import service_check
         from .protected_edit import protected_edit
 
         for field in ("structural", "pixels"):

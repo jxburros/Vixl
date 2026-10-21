@@ -13,53 +13,11 @@ from .calls import current_client, note_document
 from .fileio import file_lock
 
 from .errors import VixlError, require
+from .io_policy import service_check  # noqa: F401 - moved to io_policy; importable from here for one release
 from .model import Limits
 from . import __version__
 from .project import Project
 from .validation import validate
-
-
-def service_check(operation, fonts=None):
-    """Restrictions for remote/agent callers, applied after normalization so aliases such as
-    ``font_family`` cannot bypass them. Service clients import images explicitly; they cannot
-    read arbitrary server files, enable plugins, or resolve linked assets or font files.
-    ``fonts`` (the names a document allows, see ``service_fonts``) lets operations on a document
-    name a registered font or role; without it any ``font`` is refused."""
-    from .render import EFFECTS
-    from .operations import OPERATION_TYPES
-
-    kind = operation.get("type")
-    blocked = ("linked",) if fonts is not None else ("linked", "font", "display_font")
-    require(
-        not any(k in operation for k in blocked)
-        and ("path" not in operation or (kind in ("text-layout", "shape", "paint") or (kind == "select" and operation.get("shape") == "path"))),
-        "Filesystem fields (path, linked, font files) are unavailable through services; "
-        "import images with import-image and reference the returned asset"
-        + ("" if fonts is not None else "; fonts are named only in operations applied to a document, by registered name or role"),
-        "forbidden",
-        field=next((k for k in ("path", *blocked) if k in operation), None),
-    )
-    if fonts is not None:
-        from .service_fonts import check_fonts
-
-        check_fonts(operation, fonts)
-    require(kind in set(OPERATION_TYPES) | set(EFFECTS), "Unsupported service operation", field="type")
-    if kind == "effect":
-        import difflib
-
-        name = operation.get("name")
-        close = difflib.get_close_matches(str(name), EFFECTS, 2, 0.5)
-        require(
-            name in EFFECTS,
-            f"Unknown effect {name!r}"
-            + (f"; did you mean {' or '.join(map(repr, close))}?" if close else "; see allowed for built-in effects"),
-            "forbidden",
-            field="name",
-            allowed=list(EFFECTS),
-            suggestions=close,
-        )
-    if kind == "mask":
-        require(operation.get("action") != "import", "Import masks using embedded assets", "forbidden")
 
 
 def offset_indexes(exc, indexes, start=0):
@@ -966,7 +924,7 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
         require(fmt in media, "Unsupported export format")
         body = dict(body)
         if "icc_profile_base64" in body:
-            from .mcp_tools import decode_upload
+            from .io_policy import decode_upload
 
             body["icc_profile"] = decode_upload(body.pop("icc_profile_base64"), 16 * 1024 * 1024)
         with session.project() as project:

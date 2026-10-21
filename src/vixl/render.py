@@ -12,14 +12,13 @@ import numpy as np
 from PIL import Image, ImageColor, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 
 from .assets import decode, read_bounded
-from .constants import EFFECTS as EFFECTS
+from .constants import BLENDS as BLENDS, EFFECTS as EFFECTS
 from .errors import VixlError, require
 from .hashing import content_hash
 from .model import MAX_LAYERS, finite
 from .profiling import ACTIVE as PROFILE
 from .variables import RESOLVED, layer_text, substitute as substitute, with_maps
 
-BLENDS = ("normal", "multiply", "screen", "overlay", "darken", "lighten", "difference", "add", "subtract")
 CANVAS_PRESETS = {
     "instagram-square": (1080, 1080),
     "instagram-post": (1080, 1080),

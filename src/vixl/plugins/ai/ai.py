@@ -889,7 +889,7 @@ SAFE_PLAN = (set(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES) - {"frame", "repl
 
 
 def plan(project, prompt, backend, apply=False, *, detail="full", model=None):
-    from ...render import EFFECTS
+    from ...constants import EFFECTS
 
     from ...schema import operation_schema
 

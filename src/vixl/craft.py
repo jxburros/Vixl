@@ -175,8 +175,7 @@ def stroke_width(width, height):
     return max(1, round(min(width, height) * house_style.rule("stroke_width")))
 
 
-def safe_area(width, height):
-    return round(min(width, height) * house_style.rule("safe_area"))
+safe_area = house_style.safe_area
 
 
 def _visible(value):

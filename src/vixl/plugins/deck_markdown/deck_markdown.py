@@ -456,7 +456,7 @@ def run(session, request):
                                        for i in issues][:40]}
     if formats:
         from ...export_batch import export_batch
-        from ...mcp_tools import export_file
+        from ...io_policy import export_file
 
         targets = [{"path": session.relative(output.with_suffix("." + f)), "document": session.relative(output)}
                    for f in formats]

@@ -10,6 +10,7 @@ import shlex
 import sys
 import tempfile
 
+from .io_policy import read_json  # noqa: F401 - moved to io_policy; importable from here for one release
 from .fileio import file_lock
 
 from . import __version__
@@ -279,7 +280,7 @@ def typo_hint(cmd):
     """A did-you-mean for a command word that is no command or operation, or None."""
     from .commands import close_matches
     from .operations import OPERATION_TYPES
-    from .render import EFFECTS
+    from .constants import EFFECTS
 
     if cmd in TOP_LEVEL_COMMANDS or cmd in OPERATION_TYPES or cmd in EFFECTS:
         return None
@@ -303,21 +304,6 @@ def guide_operation(args):
     if any(arg.split("=", 1)[0] in GUIDE_OPTIONS for arg in args):
         return True
     return len(args) == 3 and args[1] in ("x", "y") and re.fullmatch(r"-?\d+(\.\d+)?", args[2]) is not None
-
-
-def read_json(path):
-    limit = 64 * 1024 * 1024
-    inline = isinstance(path, str) and path.lstrip().startswith(("{", "["))
-    text = path if inline else sys.stdin.read(limit + 1) if path == "-" else read_bounded(path, limit).decode()
-    require(len(text.encode("utf-8")) <= limit, "JSON input exceeds the 64 MiB batch limit", "resource_limit")
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError as exc:
-        source = "inline JSON" if inline else "stdin" if path == "-" else str(path)
-        raise VixlError("invalid_json", f"{source}: line {exc.lineno} column {exc.colno}: {exc.msg}",
-                        **({} if inline or path == "-" else {"path": str(path)})) from exc
-    except ValueError as exc:
-        raise VixlError("invalid_json", str(exc)) from exc
 
 
 def output_options(args, command):
@@ -495,7 +481,7 @@ def _dispatch(argv):
     if cmd == "adapt-layout" and "--sizes" in args:
         from .adapt import adapt_copies
         from .interfaces import Session
-        from .mcp_tools import export_file
+        from .io_policy import export_file
 
         p = Parser(prog="vixl adapt-layout")
         p.add_argument("--sizes", nargs="+", required=True)
@@ -552,7 +538,7 @@ def _dispatch(argv):
     if cmd in ("commands", "shapes"):
         from .operations import OPERATION_TYPES
         from .design_schema import SHAPES
-        from .render import EFFECTS
+        from .constants import EFFECTS
 
         return (
             {"shapes": list(SHAPES)}

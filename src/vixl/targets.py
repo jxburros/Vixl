@@ -15,7 +15,7 @@ The docs table in docs/reference/operations.md is generated from the schema by `
 
 from .errors import VixlError, require
 from .model import MAX_LAYERS
-from .render import EFFECTS
+from .constants import EFFECTS
 
 MAX_TARGETS = MAX_LAYERS
 ALIASES = ("layers", "layer_ids", "layerIds", "target_ids", "targetIds")

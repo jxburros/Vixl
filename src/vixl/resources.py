@@ -226,7 +226,7 @@ def validate(kind, value):
         from .containers import validate as validate_container
         validate_container(value)
     elif kind == "shapes":
-        from .interfaces import service_check
+        from .io_policy import service_check
         require(isinstance(value, dict) and value.get("type") in ("shape", "pen"), "Saved shapes need a shape or pen operation")
         service_check(validate_operation(value))
         require(not value.get("target"), "Saved shapes cannot target an existing layer")

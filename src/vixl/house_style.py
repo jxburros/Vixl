@@ -66,6 +66,11 @@ def rule(key):
     return _data()["craft"][key]
 
 
+def safe_area(width, height):
+    """The default safe-area inset of a ``width`` × ``height`` canvas, in pixels."""
+    return round(min(width, height) * rule("safe_area"))
+
+
 def level(variety):
     """Settings of a variety level: tier weights, look scale, motifs and background treatments."""
     levels = _data()["taste"]["levels"]

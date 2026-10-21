@@ -53,6 +53,12 @@
   and compared later (suite and library hashes, pack-folder revision ids, workspace check history, lyric build
   fingerprints) keep their encoding through `legacy_hash`. Ruff's `BLE001` is on for `src/`: each remaining
   `except Exception` names why it swallows everything, and three were narrowed to the errors they expect.
+- **Module layering (#632, first step).** A test holds four layers (leaf, document core, features, interfaces) with a
+  baseline of today's 230 upward imports that may only shrink. The service policy helpers moved to
+  `vixl.io_policy` (`service_check` from `interfaces`; `export_file`, `decode_upload` and `EXPORT_SUFFIXES` from
+  `mcp_tools`; `read_json` from `cli`), which re-export them for one release; `EFFECTS` and `BLENDS` are imported
+  from `vixl.constants`, and the default safe area from `vixl.house_style`, so `model` and `targets` no longer import
+  the renderer or the craft module.
 
 ## 0.28.0
 

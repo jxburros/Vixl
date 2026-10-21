@@ -208,7 +208,7 @@ def _asset_changes(session, project, rule, image_cache):
 
 def edit(session, project, rules, image_cache):
     """Apply ``rules`` to ``project`` (a candidate). Returns the list of matches."""
-    from ...interfaces import service_check
+    from ...io_policy import service_check
     from ...validation import check_state
 
     matches, operations, edits = [], [], []

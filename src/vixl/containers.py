@@ -16,7 +16,7 @@ CONTENT = {"text", "solid", "gradient", "shape", "pen", "image-slot", "key-value
 def validate(value):
     from .schema import validate_operation
     from .resources import substitute
-    from .interfaces import service_check
+    from .io_policy import service_check
     from .automation import bounded_object
 
     bounded_object(

@@ -57,3 +57,5 @@ EFFECTS = (
 STACK_EFFECTS = EFFECTS + ("lookup",)
 # Amount used when an effect is added without one.
 EFFECT_DEFAULTS = {**ARTISTIC_DEFAULTS, "white-balance": 100, "lookup": 1}
+
+BLENDS = ("normal", "multiply", "screen", "overlay", "darken", "lighten", "difference", "add", "subtract")

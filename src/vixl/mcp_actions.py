@@ -461,7 +461,7 @@ def teach(exc, operations):
 def operation_variant(kind):
     """One operation type's exact schema (fields, enums, requirements, summary and examples), or None."""
     from .normalize import _canonical_type
-    from .render import EFFECTS
+    from .constants import EFFECTS
     from .schema import operation_schema
 
     variants = {v["properties"]["type"]["const"]: v
@@ -916,7 +916,7 @@ def export_one(
 ):
     """Export one file, full size by default (vixl_reference('exports') explains formats, CMYK, PDF, PPTX, HTML and
     forms). Returns file metadata, never image bytes."""
-    from .mcp_tools import export_file
+    from .io_policy import export_file
 
     session = ctx.session
     profile_bytes = read_bounded(session.resolve(icc_profile), 16 * 1024 * 1024) if icc_profile else None
@@ -942,7 +942,7 @@ def export_many(
     """Several files in one call (sizes, formats, artboards or documents). Every target is checked first, then
     written in order; each reports its own metadata or error."""
     from .export_batch import export_batch
-    from .mcp_tools import export_file
+    from .io_policy import export_file
 
     return export_batch(ctx.session, export_file, targets, defaults, overwrite, stop_on_error, document)
 

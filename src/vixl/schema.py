@@ -6,7 +6,7 @@ from functools import lru_cache
 from .geometry import ANCHORS
 from .inplace import EDITS, target_schema
 from .model import Limits
-from .render import EFFECTS, BLENDS
+from .constants import BLENDS, EFFECTS
 from .type_roles import STAGES
 
 S = {"type": "string"}

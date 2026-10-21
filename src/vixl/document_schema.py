@@ -385,7 +385,7 @@ def document_schema():
     from .model import LAYER_ROLES, LAYER_TYPES
     from .pages import MASTER_FIELDS, PAGE_FIELDS, SCOPED
     from .project import FORMAT_VERSION, NODE_KEYS
-    from .render import BLENDS
+    from .constants import BLENDS
     from .sizes import CANVAS_KEYS, SIDES, UNIT_INCHES
 
     assert set(PAGE_FIELDS_DOC) == set(PAGE_FIELDS), "document_schema.PAGE_FIELDS_DOC is out of date"
