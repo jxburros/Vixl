@@ -13,8 +13,9 @@ The order is a recommendation. Re-rate an issue when it is picked up; move it wh
 
 The [implementation plan](implementation-plan.md) covers every issue open on 2026-10-16, with its status, cause, steps,
 tests and ratings, and a release order across all of them.
-Its steps 0 to 3 are done (housekeeping, release blockers, security and project hygiene, check noise, layout and
-agent cost; recorded in the Unreleased changelog); step 4, concurrency, structure and rendering speed, is next.
+Its steps 0 to 4 are done (housekeeping, release blockers, security and project hygiene, check noise, layout and
+agent cost in 0.28.0; concurrency, structure and rendering speed in the Unreleased changelog, with the speed
+decisions in [render performance](render-performance.md)); step 5, craft, is next.
 
 ## What 0.22.1 settled
 

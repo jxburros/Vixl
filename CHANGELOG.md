@@ -2,12 +2,25 @@
 
 ## Unreleased
 
+A concurrency, structure and speed release, with gradient fills on shapes. Shapes take a `fill_gradient` drawn as a
+vector gradient in PNG, SVG, PDF and PPTX. Servers that other machines can reach start with call limits, cancel calls
+that run past a hard timeout, refuse work past a bounded queue, and serve different documents in parallel. Applies
+and saves cost less, lit scenes and per-pixel adjustments render incrementally, effect-heavy layers are drawn on a
+thread pool and long timeline exports on worker processes. Inside, operations dispatch through a registry, content
+hashing has one encoding, the core leaf modules pass strict mypy, and tests hold the module layering and every
+broad `except`. Breaking changes are listed under Upgrading from 0.28.
+
 ### Upgrading from 0.28
 
 - **Servers other machines can reach are limited by default (breaking).** `vixl serve` and `vixl view` on a
   non-loopback `--host`, and `vixl mcp --http`, start with a 120 s call timeout (REST only), a 600 s hard timeout,
   40 megapixels, 200 pages and one concurrent heavy call per core (at least 2). Pass a flag or variable to change one,
   `0` to turn one off, or `--no-call-limits` to drop them. Loopback and stdio servers are unchanged.
+- **Python imports that moved.** `vixl.render.export` is gone: use `Project.export` (or `vixl.export_dispatch.export`).
+  `service_check`, `export_file`, `decode_upload`, `EXPORT_SUFFIXES` and `read_json` live in `vixl.io_policy`; their old
+  homes (`interfaces`, `mcp_tools`, `cli`) still re-export them for this release.
+- **Archives are a little larger.** `project.json` inside a `.vixl` is compressed at the fastest zlib level (up to a
+  tenth larger, a third of the time). The persistent render cache misses once after upgrading.
 
 ### Shapes
 

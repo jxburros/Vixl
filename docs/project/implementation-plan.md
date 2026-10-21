@@ -160,6 +160,41 @@ The original step 3 list:
 
 ### Step 4: concurrency, structure and rendering speed
 
+Done on 2026-10-21, on branch `claude/kind-cray-n08ers`, with issue #744 (gradient fills on shapes) alongside;
+each item has its regression tests and a changelog entry, and no golden changed. Where the work departed from the
+plan:
+
+- #685: `Cancelled` lives in `errors.py` and `require(..., "cancelled")` raises it, so every cancel site is typed.
+  The upper-pins leg is a `highest` resolution in the `minimum-versions` matrix; the whole workflow runs weekly.
+- #623: MCP over HTTP gets the network defaults except `timeout` (clients give up at about 60 s, so its 40 s
+  inline wait stays). The hard ceiling is a single `--call-hard-timeout` (600 s on network servers) enforced by one
+  watchdog thread, not "5 × timeout with no poll". Checkpoints: per layer, per PDF/PPTX page, per frame, per check
+  family (`checks.Checkpoints`).
+- #629: three lock levels (`_mutex` for multi-document workflows, one lock per document, `_registry`); a thread
+  that already holds a document waits at most 30 s for an earlier-sorting one (`document_busy`). MCP exports no
+  longer hold the coarse lock while rendering.
+- #630: copy-on-write per layer and deltas from changed ids were not needed: a JSON-shaped copy (`model.copy_tree`,
+  five times faster than `deepcopy`) plus a save that hashes while writing took one move on 2,000 layers through a
+  service from about 0.9 s to 0.5 s. `project.json` is compressed at zlib level 1. `_prune` is unchanged.
+- #634: digests that are stored and compared later keep their encoding through `hashing.legacy_hash`.
+- #632: the service helpers went to `io_policy.py` (`policy.py` is the check policy). Step 2 moved the export
+  dispatcher to `export_dispatch.py` and made `schema.py` collect feature schemas through `registry.SCHEMA_SOURCES`
+  (byte-identical schema); the layering baseline went from 230 to 188. Render purity (step 5) waits for #637.
+- #631: `registry.CORE_OPERATION_MODULES` replaces the `if` chain; `targets.py` keeps its own sets (deriving them
+  from specs, step 5, is left), and the CLI/command dispatch tables (step 7-9) are not done.
+- #633: mypy (no Node dependency) instead of pyright, installed by the CI job rather than added to `dev`, so
+  `uv.lock` did not change. `py.typed` is not shipped yet.
+- #590: only layers whose drawing releases the GIL are drawn ahead (resvg_py holds it, so plain shapes and text
+  would only add overhead); about a quarter faster on the soft-shadow document.
+- #595: lighting and per-pixel adjustment layers render incrementally; canvas-edge blur, selection-masked layer
+  effects and non-pointwise adjustments still render in full.
+- Parallel frame ranges (#717): `frame_workers.py`, spawned processes with adaptive chunks; film segments are not
+  parallelised yet.
+- #588 deferred, #584 needs a parity decision, #591 and #593 closed with numbers:
+  [render performance](render-performance.md).
+
+The original step 4 list:
+
 - **Concurrency and apply cost:** #685 (a typed cancel error, and no private FastMCP or Starlette attributes), then
   #623, #629, #630.
 - **Refactors, none of which changes behaviour:** #634, then #632 step 1, then #631 (a core operation registry),
