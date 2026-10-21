@@ -10,7 +10,8 @@ from pathlib import Path
 from _imports import SRC, _imports, _module
 
 LEAF = {"errors", "constants", "hashing", "model", "house_style", "sdk_compat", "untrusted"}
-CORE = {"history", "fileio", "normalize", "schema", "validation", "targets", "project", "operations", "render"}
+CORE = {"history", "fileio", "normalize", "schema", "validation", "targets", "project", "operations", "registry",
+        "render"}
 INTERFACES = {"cli", "cli_summary", "commands", "interfaces", "mcp_actions", "mcp_runtime", "mcp_tools", "workflows",
               "steps", "session", "design_cli", "feature_cli", "finishing_cli", "resource_cli", "__main__"}
 BASELINE = Path(__file__).with_name("layering_baseline.json")

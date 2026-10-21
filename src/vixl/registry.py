@@ -86,3 +86,20 @@ def operation_modules():
                 raise RuntimeError(f"Operation {kind!r} is claimed by {table[kind].module} and {entry.module}")
             table[kind] = entry
     return table
+
+
+# Modules that add operation schemas (``schemas(add)``, or ``module:function``), in the order the published schema
+# lists them; the base operations come first, from schema.py itself.
+SCHEMA_SOURCES = (
+    "design_schema", "pixel_schema", "brushes", "timeline", "layouts", "automation", "creative", "emojis",
+    "authoring", "plugins", "containers", "stacks", "irregular", "guides", "richtext", "pages", "forms", "selectors",
+    "links", "codes", "diecut", "path_split", "finishing", "textflow", "schema:palette_schemas", "scene", "captions",
+    "merging", "vector_paths", "audio", "textures", "motion", "objects", "accessibility", "transforms",
+)
+
+
+def add_schemas(add):
+    """Let every module in ``SCHEMA_SOURCES`` add its operation schemas through ``add``."""
+    for source in SCHEMA_SOURCES:
+        module, _, function = source.partition(":")
+        getattr(import_module(f"vixl.{module}"), function or "schemas")(add)

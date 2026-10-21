@@ -187,7 +187,7 @@ def test_svg_pdf_and_pptx_draw_the_same_fitted_dashes():
     drawn = [path for path, paint in primitives(p.layer("s"), p) if path and paint != "transparent"]
     import tempfile
     from pathlib import Path
-    from vixl.render import export
+    from vixl.export_dispatch import export
 
     folder = Path(tempfile.mkdtemp())
     export(p, folder / "a.svg")

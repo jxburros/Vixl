@@ -57,11 +57,15 @@
   shared steps it looks the type up in `vixl.registry`, which lists the feature module that executes each one and
   refuses a type claimed twice. The operation schema and the list of operation types are unchanged.
 - **Module layering (#632, first step).** A test holds four layers (leaf, document core, features, interfaces) with a
-  baseline of today's 230 upward imports that may only shrink. The service policy helpers moved to
+  baseline of the 230 upward imports it found that may only shrink. The service policy helpers moved to
   `vixl.io_policy` (`service_check` from `interfaces`; `export_file`, `decode_upload` and `EXPORT_SUFFIXES` from
   `mcp_tools`; `read_json` from `cli`), which re-export them for one release; `EFFECTS` and `BLENDS` are imported
   from `vixl.constants`, and the default safe area from `vixl.house_style`, so `model` and `targets` no longer import
-  the renderer or the craft module.
+  the renderer or the craft module. Then (second step) the export dispatcher moved from `render.py` to
+  `vixl.export_dispatch` (`vixl.render.export` is gone; `Project.export` is unchanged), so the renderer no longer
+  imports the PDF, PowerPoint, PSD, SVG and HTML writers, and `schema.py` collects feature schemas through
+  `registry.SCHEMA_SOURCES` instead of importing 35 feature modules; the published schema is byte-identical. The
+  baseline is down to 188.
 
 ## 0.28.0
 

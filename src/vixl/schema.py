@@ -67,6 +67,14 @@ def _validators():
 
 
 @lru_cache(maxsize=1)
+def palette_schemas(add):
+    add(
+        "palette-generate",
+        {"name": S, "color": S, "scheme": S, "count": {"type": "integer", "minimum": 2, "maximum": 12}},
+        ["name", "color"],
+    )
+
+
 def _operation_schema():
     variants = []
 
@@ -406,93 +414,10 @@ def _operation_schema():
         {"name": S, "overrides": {"type": "object", "additionalProperties": {"type": ["string", "number"]}}},
         ["name"],
     )
-    from .design_schema import schemas
+    from .registry import add_schemas
+    from .transforms import enrich_transform_schemas
 
-    schemas(add)
-    from .pixel_schema import schemas as pixel_schemas
-
-    pixel_schemas(add)
-    from .brushes import schemas as brush_schemas
-
-    brush_schemas(add)
-    from .timeline import schemas as timeline_schemas
-
-    timeline_schemas(add)
-    from .layouts import schemas as layout_schemas
-
-    layout_schemas(add)
-    from .automation import schemas as automation_schemas
-    automation_schemas(add)
-    from .creative import schemas as creative_schemas
-    creative_schemas(add)
-    from .emojis import schemas as emoji_schemas
-    emoji_schemas(add)
-    from .authoring import schemas as authoring_schemas
-    authoring_schemas(add)
-    from .plugins import schemas as plugin_schemas
-    plugin_schemas(add)
-    from .containers import schemas as container_schemas
-    container_schemas(add)
-    from .stacks import schemas as stack_schemas
-    stack_schemas(add)
-    from .irregular import schemas as irregular_schemas
-    irregular_schemas(add)
-    from .guides import schemas as guide_schemas
-    guide_schemas(add)
-    from .richtext import schemas as rich_schemas
-    rich_schemas(add)
-    from .pages import schemas as page_schemas
-    page_schemas(add)
-    from .forms import schemas as form_schemas
-    form_schemas(add)
-    from .selectors import schemas as selector_schemas
-    selector_schemas(add)
-    from .links import schemas as link_schemas
-    link_schemas(add)
-    from .codes import schemas as code_schemas
-    code_schemas(add)
-    from .diecut import schemas as diecut_schemas
-    diecut_schemas(add)
-    from .path_split import schemas as split_schemas
-    split_schemas(add)
-    from .finishing import schemas as finishing_schemas
-    finishing_schemas(add)
-    from .textflow import schemas as flow_schemas
-    flow_schemas(add)
-    add(
-        "palette-generate",
-        {"name": S, "color": S, "scheme": S, "count": {"type": "integer", "minimum": 2, "maximum": 12}},
-        ["name", "color"],
-    )
-    from .scene import schemas as scene_schemas
-
-    scene_schemas(add)
-    from .captions import schemas as caption_schemas
-
-    caption_schemas(add)
-    from .merging import schemas as merge_schemas
-
-    merge_schemas(add)
-    from .vector_paths import schemas as vector_schemas
-
-    vector_schemas(add)
-    from .audio import schemas as audio_schemas
-
-    audio_schemas(add)
-    from .textures import schemas as texture_schemas
-
-    texture_schemas(add)
-    from .motion import schemas as motion_schemas
-
-    motion_schemas(add)
-    from .objects import schemas as object_schemas
-    from .accessibility import schemas as accessibility_schemas
-
-    object_schemas(add)
-    accessibility_schemas(add)
-    from .transforms import schemas as transform_schemas, enrich_transform_schemas
-
-    transform_schemas(add)
+    add_schemas(add)
     enrich_transform_schemas(variants)
     for variant in variants:
         if variant["properties"]["type"]["const"] in LAYER_FINISH:

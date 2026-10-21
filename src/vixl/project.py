@@ -920,7 +920,7 @@ class Project:
 
     @memory_guard
     def export(self, path=None, **options):
-        from .render import export
+        from .export_dispatch import export
 
         return export(self, path, **options)
 
