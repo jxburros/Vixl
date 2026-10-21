@@ -206,6 +206,7 @@ def test_mcp_server_info_reports_the_vixl_version(tmp_path):
 
 def test_release_checksums_cover_every_published_asset():
     import json
+    import tomllib
     from pathlib import Path
     import yaml
 
@@ -218,7 +219,8 @@ def test_release_checksums_cover_every_published_asset():
     assert windows < checksum < stage
     config = json.loads((root / ".release/config.json").read_text())["apps"]["vixl"]
     assert config["checksumFile"] == "SHA256SUMS.txt"
-    assert {"vixl-update.json", "vixl-update.json.sig", "vixl_engine-{version}-py3-none-any.whl", "vixl_engine-{version}.tar.gz"} <= set(config["assets"])
+    distribution = tomllib.loads((root / "pyproject.toml").read_text())["project"]["name"].replace("-", "_")
+    assert {"vixl-update.json", "vixl-update.json.sig", f"{distribution}-{{version}}-py3-none-any.whl", f"{distribution}-{{version}}.tar.gz"} <= set(config["assets"])
     assert workflow["jobs"]["publish-vixl"]["with"]["artifact"] == "bundle-vixl"
 
 
