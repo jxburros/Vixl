@@ -9,7 +9,7 @@ from pathlib import Path
 
 from _imports import SRC, _imports, _module
 
-LEAF = {"errors", "constants", "hashing", "model", "house_style", "sdk_compat", "untrusted"}
+LEAF = {"errors", "constants", "hashing", "model", "house_style", "sdk_compat", "types", "untrusted"}
 CORE = {"history", "fileio", "normalize", "schema", "validation", "targets", "project", "operations", "registry",
         "render"}
 INTERFACES = {"cli", "cli_summary", "commands", "interfaces", "mcp_actions", "mcp_runtime", "mcp_tools", "workflows",
