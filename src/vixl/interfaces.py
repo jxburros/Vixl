@@ -225,8 +225,9 @@ class Session:
 
     @staticmethod
     def stamp(path):
-        stat = path.stat()
-        return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+        from .fileio import stamp
+
+        return stamp(path)
 
     def load(self, path):
         """``Project.load`` that carries the document's previous render caches over."""

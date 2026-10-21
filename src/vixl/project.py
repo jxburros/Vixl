@@ -18,7 +18,7 @@ from . import __version__, calls
 from .assets import decode, read_bounded
 from .errors import VixlError, friendly, memory_guard, require
 from .history import diff, patch
-from .model import Limits, new_state, uid
+from .model import Limits, copy_tree, new_state, uid
 from .render import LayerCache
 
 # Every Nth revision on a chain stores a full snapshot; the others store a delta from the parent.
@@ -304,7 +304,7 @@ class Project:
         """Copy-on-write candidate. History nodes are immutable once recorded, so they are shared
         instead of deep-copied on every edit; the render cache is content-addressed and shared."""
         clone = copy(self)
-        clone.state = deepcopy(self.state)
+        clone.state = copy_tree(self.state)
         clone.assets = dict(self.assets)
         clone.nodes = dict(self.nodes)
         clone.branches = dict(self.branches)
@@ -347,7 +347,7 @@ class Project:
     def _inspect(self, target=None):
         from .render import child_index, extent, resolve_layout, resolved_layers
 
-        state = {key: deepcopy(value) for key, value in self.state.items() if key not in ("pages", "masters")}
+        state = {key: copy_tree(value) for key, value in self.state.items() if key not in ("pages", "masters")}
         if self.state.get("pages"):
             from .pages import summary
 
@@ -454,7 +454,7 @@ class Project:
     def _state_at(self, ident):
         """Reconstruct a revision's state from its nearest snapshot. Returns a private copy."""
         if ident == self.head and self._head_state is not None:
-            return deepcopy(self._head_state)
+            return copy_tree(self._head_state)
         chain = []
         cursor = ident
         while "state" not in self.nodes[cursor]:
@@ -471,15 +471,15 @@ class Project:
                 f"History delta chain is longer than {MAX_DELTA_CHAIN} revisions",
                 "invalid_project",
             )
-        state = deepcopy(self.nodes[cursor]["state"])
+        state = copy_tree(self.nodes[cursor]["state"])
         for delta in reversed(chain):
-            state = patch(state, delta, max_items=self.limits.max_layers)
+            state = patch(state, delta, max_items=self.limits.max_layers, share=True)
         return state
 
     def _node(self, ident, parent, operations, label, state, parent_state):
         node = {"id": ident, "parent": parent, "operations": deepcopy(operations), "label": label}
         if parent is None or parent_state is None or self._delta_depth(parent) + 1 >= SNAPSHOT_INTERVAL:
-            node["state"] = deepcopy(state)
+            node["state"] = copy_tree(state)
         else:
             node["delta"] = diff(parent_state, state)
         return node
@@ -490,7 +490,7 @@ class Project:
         ident = uid("rev", fresh=True)
         self.nodes[ident] = self._node(ident, self.head, operations, label, self.state, self._head_state)
         self.head = ident
-        self._head_state = deepcopy(self.state)
+        self._head_state = copy_tree(self.state)
         self._verified.add(ident)
         if self.current_branch:
             self.branches[self.current_branch] = ident
@@ -505,7 +505,7 @@ class Project:
             **self._node(self.head, parent, node["operations"], node["label"], self.state, parent_state),
             **({"squashed": True} if node.get("squashed") else {}),
         }
-        self._head_state = deepcopy(self.state)
+        self._head_state = copy_tree(self.state)
 
     def _prune(self):
         """Squash the oldest unreferenced revisions instead of refusing further edits.
@@ -1081,8 +1081,17 @@ class Project:
             "current_branch": self.current_branch,
             "redo_stack": self.redo_stack,
             "transaction": self.transaction,
-            "asset_hashes": {k: hashlib.sha256(v).hexdigest() for k, v in self.assets.items()},
+            "asset_hashes": {k: self._asset_digest(k, v) for k, v in self.assets.items()},
         }
+
+    def _asset_digest(self, name, data):
+        """The SHA-256 of an embedded asset, computed once per asset: asset bytes are never changed in place, so
+        a digest is reused while the same bytes object is stored under the name (clones share the memo)."""
+        memo = self.__dict__.setdefault("_asset_digests", {})
+        held = memo.get(name)
+        if held is None or held[0] is not data:
+            held = memo[name] = (data, hashlib.sha256(data).hexdigest())
+        return held[1]
 
     def _rebase_links(self, path):
         """Saving into another folder keeps relative link sources pointing at the same files (one history entry)."""
@@ -1105,8 +1114,7 @@ class Project:
         other existing file is refused unless ``overwrite=True`` (as ``vixl new``/``save`` and exports do).
         ``prune_fonts=True`` first unregisters fonts no revision draws so their files are left out (opt-in: a
         font chosen only from outside the document, such as an export-time variable, looks unused here)."""
-        from .fileio import file_lock
-        from .fileio import temporary
+        from .fileio import HashingWriter, file_lock, stamp, temporary
 
         require(path or self.path, "Provide a .vixl project path")
         require(isinstance(overwrite, bool), "overwrite must be true or false", field="overwrite")
@@ -1118,7 +1126,9 @@ class Project:
                 field="path")
         path.parent.mkdir(parents=True, exist_ok=True)
         with file_lock(str(path)):
-            if self.path == path and self._revision and path.exists():
+            if self.path == path and self._revision and path.exists() and self.__dict__.get("_stamp") != stamp(path):
+                # The file is not as this document last read or wrote it: hash it to tell an untouched copy
+                # (restored, touched) from someone else's save.
                 require(
                     self._revision == hashlib.sha256(path.read_bytes()).hexdigest(),
                     "Project changed on disk; reload before saving",
@@ -1135,10 +1145,12 @@ class Project:
             manifest.pop("asset_hashes")
             body = json.dumps(manifest, allow_nan=False, separators=(",", ":")).encode()
             # Drop assets no revision references any more (for example after history pruning).
-            referenced = {name.decode() for name in ASSET_REFERENCE.findall(body)}
-            candidate.assets = {k: v for k, v in candidate.assets.items() if k in referenced}
-            manifest["asset_hashes"] = {k: hashlib.sha256(v).hexdigest() for k, v in candidate.assets.items()}
-            encoded = json.dumps(manifest, allow_nan=False, separators=(",", ":")).encode()
+            if candidate.assets:
+                referenced = {name.decode() for name in ASSET_REFERENCE.findall(body)}
+                candidate.assets = {k: v for k, v in candidate.assets.items() if k in referenced}
+            hashes = json.dumps({k: candidate._asset_digest(k, v) for k, v in candidate.assets.items()},
+                                separators=(",", ":")).encode()
+            encoded = body[:-1] + b',"asset_hashes":' + hashes + b"}"
             require(
                 len(encoded) + sum(map(len, candidate.assets.values())) <= self.limits.max_project_bytes,
                 "Project exceeds byte limit",
@@ -1146,9 +1158,12 @@ class Project:
             )
             fd, temporary_path = temporary(path.parent, like=path if path.exists() else None)
             try:
-                with os.fdopen(fd, "wb") as stream:
+                with os.fdopen(fd, "wb") as raw:
+                    stream = HashingWriter(raw)
                     with zipfile.ZipFile(stream, "w") as archive:
-                        archive.writestr("project.json", encoded, zipfile.ZIP_DEFLATED)
+                        # Every edit through a service saves: the fastest level is a third of the time of the
+                        # default for an archive under a tenth larger.
+                        archive.writestr("project.json", encoded, zipfile.ZIP_DEFLATED, compresslevel=1)
                         # Image assets are already compressed; recompressing them on every
                         # autosave cost far more time than it saved space.
                         for name, data in sorted(candidate.assets.items()):
@@ -1158,13 +1173,14 @@ class Project:
                                 zipfile.ZIP_DEFLATED if name.startswith("fonts/") else zipfile.ZIP_STORED,
                             )
                     stream.flush()
-                    os.fsync(stream.fileno())
+                    os.fsync(raw.fileno())
                 os.replace(temporary_path, path)
             finally:
                 if os.path.exists(temporary_path):
                     os.unlink(temporary_path)
             candidate.path = path
-            candidate._revision = hashlib.sha256(path.read_bytes()).hexdigest()
+            candidate._revision = stream.digest()
+            candidate._stamp = stamp(path)
             self.__dict__.update(candidate.__dict__)
         return str(path)
 
@@ -1177,7 +1193,10 @@ class Project:
         require(
             path.stat().st_size <= limits.max_project_bytes, "Project exceeds byte limit", "resource_limit"
         )
+        from .fileio import stamp
+
         try:
+            before = stamp(path)
             data = read_bounded(path, limits.max_project_bytes)
             revision = hashlib.sha256(data).hexdigest()
             with zipfile.ZipFile(io.BytesIO(data)) as archive:
@@ -1243,7 +1262,7 @@ class Project:
                 pixels = 0
                 for name, asset_data in project.assets.items():
                     require(len(asset_data) <= limits.max_asset_bytes, "Asset exceeds byte limit", "resource_limit")
-                    require(hashlib.sha256(asset_data).hexdigest() == hashes[name],
+                    require(project._asset_digest(name, asset_data) == hashes[name],
                             "Asset checksum mismatch", "invalid_project")
                     if name.startswith(("assets/", "masks/")) and not name.endswith(".wav"):
                         width, height = image_size(asset_data, limits)
@@ -1276,6 +1295,8 @@ class Project:
                 project._verified = set()
                 check_document(project)
                 project._revision = revision
+                # Only when the file did not change while it was read: the stamp must describe these bytes.
+                project._stamp = before if stamp(path) == before else None
                 return project
         except KeyError as exc:
             raise VixlError("invalid_project", f"Malformed Vixl archive: a record is missing its {exc.args[0]!r} "

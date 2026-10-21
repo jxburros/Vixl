@@ -7,6 +7,41 @@ import stat
 import uuid
 
 
+def stamp(path):
+    """What changes when a file is written or replaced: device, inode, size and the modification and change times
+    (nanoseconds). Equal stamps let a writer skip re-reading the file to see whether someone else changed it."""
+    info = os.stat(path)
+    return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+
+class HashingWriter:
+    """A write-only stream that hashes everything written through it (``digest``), so a file's checksum is known
+    without reading it back. It cannot seek, so ``zipfile`` writes each entry's sizes after its data."""
+
+    def __init__(self, raw):
+        import hashlib
+
+        self.raw, self.hash, self.offset = raw, hashlib.sha256(), 0
+
+    def write(self, data):
+        self.raw.write(data)
+        self.hash.update(data)
+        self.offset += len(data)
+        return len(data)
+
+    def tell(self):
+        return self.offset
+
+    def seekable(self):
+        return False
+
+    def flush(self):
+        self.raw.flush()
+
+    def digest(self):
+        return self.hash.hexdigest()
+
+
 def temporary(directory, suffix=".tmp", like=None):
     """Create an exclusive temporary file in ``directory``; return ``(fd, path)``.
 

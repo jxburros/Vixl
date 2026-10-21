@@ -50,6 +50,26 @@ class Limits:
 _IDS = contextvars.ContextVar("vixl_ids", default=None)
 
 
+_ATOMS = (str, int, float, bool, type(None))
+
+
+def copy_tree(value):
+    """A deep copy of JSON-shaped data (dicts, lists, strings, numbers, booleans, None), about five times faster
+    than ``copy.deepcopy``, which every apply pays several times on the whole document state. Other values are
+    deep-copied as usual. Unlike ``deepcopy`` it does not keep two references to one list or dict as one: state
+    never holds such aliases (it round-trips through JSON)."""
+    kind = type(value)
+    if kind is dict:
+        return {key: item if type(item) in _ATOMS else copy_tree(item) for key, item in value.items()}
+    if kind is list:
+        return [item if type(item) in _ATOMS else copy_tree(item) for item in value]
+    if kind in _ATOMS:
+        return value
+    from copy import deepcopy
+
+    return deepcopy(value)
+
+
 def uid(prefix, *, fresh=False):
     source = None if fresh else _IDS.get()
     return f"{prefix}_{source.getrandbits(64):016x}" if source else f"{prefix}_{uuid.uuid4().hex[:16]}"

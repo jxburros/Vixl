@@ -7,10 +7,8 @@ A delta is always a tagged object, so raw document values are never mistaken for
                                                patch a list of objects keyed by a unique FIELD
 """
 
-from copy import deepcopy
-
 from .errors import VixlError
-from .model import MAX_LAYERS
+from .model import MAX_LAYERS, copy_tree as deepcopy
 
 KEY_FIELDS = ("id", "name")
 
@@ -74,19 +72,23 @@ def diff(before, after):
     return {"$": "v", "v": deepcopy(after)}
 
 
-def patch(value, delta, *, max_items=MAX_LAYERS):
+def patch(value, delta, *, max_items=MAX_LAYERS, share=False):
     """Apply a delta produced by ``diff``. Malformed deltas raise invalid_project.
 
-    ``max_items`` bounds every keyed list a delta builds (layers, children), checked before anything is copied."""
+    ``max_items`` bounds every keyed list a delta builds (layers, children), checked before anything is copied.
+    The result never shares data with ``delta``. With ``share=True`` it shares what the delta leaves unchanged
+    with ``value`` (only the changed path is copied): for a caller that owns ``value`` and discards it, such as
+    a chain of patches from one private snapshot."""
+    keep = (lambda item: item) if share else deepcopy
     try:
-        return _patch(value, delta, max_items)
+        return _patch(value, delta, max_items, keep)
     except (KeyError, TypeError, ValueError, AttributeError, RecursionError) as exc:
         raise VixlError("invalid_project", f"Malformed history delta: {exc}") from exc
 
 
-def _patch(value, delta, max_items):
+def _patch(value, delta, max_items, keep):
     if delta is None:
-        return deepcopy(value)
+        return keep(value)
     if not isinstance(delta, dict):
         raise ValueError("delta must be an object")
     tag = delta["$"]
@@ -99,10 +101,10 @@ def _patch(value, delta, max_items):
         if not isinstance(removed, list):
             raise TypeError("deleted keys must be a list")
         removed = set(removed)
-        result = {k: deepcopy(v) for k, v in value.items() if k not in removed}
+        result = {k: keep(v) for k, v in value.items() if k not in removed}
         for key, child in delta["s"].items():
-            result[key] = (_patch(value[key], child, max_items) if key in value and child["$"] != "v"
-                           else _patch(None, child, max_items))
+            result[key] = (_patch(value[key], child, max_items, keep) if key in value and child["$"] != "v"
+                           else _patch(None, child, max_items, keep))
         if "o" in delta:
             order = delta["o"]
             if not isinstance(order, list) or len(order) != len(result) or set(order) != set(result):
@@ -131,9 +133,9 @@ def _patch(value, delta, max_items):
         for key in order:
             if key in changes:
                 child = changes[key]
-                result.append(_patch(old[key], child, max_items) if child["$"] != "v"
-                              else _patch(None, child, max_items))
+                result.append(_patch(old[key], child, max_items, keep) if child["$"] != "v"
+                              else _patch(None, child, max_items, keep))
             else:
-                result.append(deepcopy(old[key]))
+                result.append(keep(old[key]))
         return result
     raise ValueError(f"unknown delta tag {tag!r}")

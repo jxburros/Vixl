@@ -29,6 +29,14 @@
   server-wide lock while they render. The caches every document shares (rasterised SVG, opacity tables, PDF font
   digests) are thread-safe.
 
+- **Cheaper applies and saves (#630).** Copies of the document state (each apply's candidate, the history head, the
+  state an inspection reports) use a JSON-shaped copy instead of `copy.deepcopy`; rebuilding an old revision shares
+  what its deltas leave unchanged; a save hashes the archive while writing it instead of reading it back, skips
+  hashing the file for the conflict check when its size, times and inode are as this document left them, and hashes
+  each embedded asset once. One move on a 2,000-layer document through a service, save included, went from about
+  0.9 s to about 0.5 s (`tests/test_perf.py`). `project.json` inside a `.vixl` is compressed at the fastest zlib
+  level, so archives are up to a tenth larger.
+
 ### Internal
 
 - **Private MCP SDK access in one module (#685).** Every use of a private FastMCP attribute (the advertised server
