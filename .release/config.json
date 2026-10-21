@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "bumpPolicy": "every-main-change",
+  "apps": {
+    "vixl": {
+      "tagPrefix": "v",
+      "paths": [
+        "**"
+      ],
+      "versionFiles": [
+        {
+          "path": "src/vixl/__init__.py",
+          "format": "text",
+          "pattern": "^__version__ = \"(?<version>[^\"]+)\"$"
+        }
+      ],
+      "notes": ".release/notes/{app}/{version}.md",
+      "assets": [
+        "vixl-{version}-windows-x64.zip",
+        "vixl-catalog.json",
+        "vixl-catalog.schema.json",
+        "vixl-claude-code.zip",
+        "Vixl-Setup-{version}-windows-x64.exe",
+        "vixl-update.json",
+        "vixl.mcpb",
+        "vixl_engine-{version}-py3-none-any.whl",
+        "vixl_engine-{version}.tar.gz",
+        "vixl-update.json.sig"
+      ],
+      "security": "standard",
+      "checksumFile": "SHA256SUMS.txt",
+      "legacyLatest": true
+    }
+  }
+}
