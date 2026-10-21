@@ -51,7 +51,7 @@ jobs:
       # Size guard: the wheel was 20 MB larger when the emoji artwork shipped in it (now a content pack).
       - name: Wheel size guard (8 MB)
         run: python -c "import glob, os, sys; big = [(f, os.path.getsize(f)) for f in glob.glob('dist/*.whl') if os.path.getsize(f) > 8 * 1024 * 1024]; print(big or 'wheel size ok'); sys.exit(1 if big else 0)"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: vixl-${{ matrix.os }}-${{ matrix.python }}
           path: dist/*.whl
@@ -115,7 +115,7 @@ jobs:
           path: ~/.cache/vixl/packs
           key: vixl-packs-${{ hashFiles('src/vixl/packs.py') }}
       - run: pytest -q -n auto -m visual tests/visual
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: visual-failures
