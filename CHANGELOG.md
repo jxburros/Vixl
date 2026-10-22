@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.30.0
+
+A texture release: 60 more built-in patterns and seven more drawn-texture presets for models to use.
 
 ### Added
 
