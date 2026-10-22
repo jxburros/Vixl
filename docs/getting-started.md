@@ -35,7 +35,7 @@ For reproducible work, install an exact release rather than tracking `main` (a p
 replaced):
 
 ```bash
-python -m pip install 'vixl-engine==0.30.0'
+python -m pip install 'vixl-engine==0.30.1'
 ```
 
 Latest `main` may include changes beyond the tagged release while reporting the same

@@ -1,8 +1,7 @@
-"""Windows integration: signed manifest, real archive download/probe/immediate switch plus broken-candidate recovery.
+"""Windows integration: real archive download/probe/immediate switch plus broken-candidate recovery.
 Only GitHub transport is replaced; installed frozen executables are really executed.
 """
 
-from contextlib import ExitStack
 import csv
 import hashlib
 import json
@@ -16,7 +15,6 @@ from unittest.mock import patch
 
 from vixl import __version__
 from vixl import updater
-from vixl import updater_sign
 
 root = Path(sys.argv[1]).resolve()
 bundle = Path(sys.argv[2]).resolve()
@@ -29,46 +27,24 @@ shutil.move(root / "versions" / __version__, root / "versions" / old)
 state = updater.read_state(root)
 state.update(current=old, previous=None, pending=None, last_check=time.time())
 updater.atomic_json(root / "install.json", state)
-# The real manifest built beside the bundle, signed with a key made for this run. Only the GitHub transport is
-# replaced, so latest() verifies the signature and update() the checksum exactly as an installed launcher does.
-manifest = (bundle.parent / updater.MANIFEST).read_bytes()
-seed = os.urandom(32)
-signature = (updater_sign.sign(seed, manifest).hex() + "\n").encode("ascii")
-tag = f"v{__version__}"
-base = f"https://github.com/{updater.REPOSITORY}/releases/download/{tag}/"
-metadata = {
-    "tag_name": tag,
-    "draft": False,
-    "prerelease": False,
-    "assets": [{"name": name} for name in (updater.MANIFEST, updater.SIGNATURE, bundle.name)],
+release = {
+    "version": __version__,
+    "url": "fixture",
+    "sha256": hashlib.sha256(bundle.read_bytes()).hexdigest(),
+    "size": bundle.stat().st_size,
+    "release_url": "fixture",
 }
-served = {base + updater.MANIFEST: manifest, base + updater.SIGNATURE: signature}
 
 
-def download(url, destination, limit=0):
-    assert url == base + bundle.name, url
+def download(_url, destination, limit=0):
     shutil.copyfile(bundle, destination)
-    return hashlib.sha256(bundle.read_bytes()).hexdigest(), bundle.stat().st_size
+    return release["sha256"], release["size"]
 
 
-def transport(keys):
-    stack = ExitStack()
-    stack.enter_context(patch.object(updater_sign, "TRUSTED_KEYS", keys))
-    stack.enter_context(patch.object(updater, "json_download", return_value=metadata))
-    stack.enter_context(patch.object(updater, "bytes_download", side_effect=lambda url, limit=0: served[url]))
-    stack.enter_context(patch.object(updater, "download", side_effect=download))
-    return stack
-
-
-for keys, expected in (((), "signing key"), ((updater_sign.public_key(os.urandom(32)).hex(),), "signature invalid")):
-    with transport(keys):
-        try:
-            updater.update(root)
-            raise AssertionError(f"update must be refused: {expected}")
-        except updater.UpdateError as exc:
-            assert expected in str(exc), exc
-    assert updater.read_state(root)["current"] == old
-with transport((updater_sign.public_key(seed).hex(),)):
+with (
+    patch.object(updater, "latest", return_value=release),
+    patch.object(updater, "download", side_effect=download),
+):
     assert updater.update(root)["status"] == "updated"
 assert updater.read_state(root)["current"] == __version__
 assert updater.read_state(root)["pending"] is None
@@ -141,4 +117,4 @@ finally:
 # A failed user command is not a reason to roll back a healthy application.
 subprocess.run([str(launcher), "not-a-command"], capture_output=True, env=env, timeout=60)
 assert updater.read_state(root)["current"] == __version__
-print("Native signature, checksum, health check, immediate activation, corrupt/denied-candidate recovery passed.")
+print("Native checksum, health check, immediate activation, corrupt/denied-candidate recovery passed.")

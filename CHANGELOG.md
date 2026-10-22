@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.30.1
+
+Unblocks releases: every release run since 0.28.0 stopped before publishing, so 0.28.0 to 0.30.0 were never published.
+This release ships their changes.
+
+### Changed
+
+- **Windows update-manifest signing is backed out for now (#621, follow-up #756).** The signing introduced for 0.28.0
+  needed a key pair that was never set up, so the release workflow refused to publish. Releases no longer carry
+  `vixl-update.json.sig` and the updater checks the manifest's SHA-256 and size as in 0.27, trusting HTTPS and the
+  GitHub repository. Signing returns with #756 once a key is in place.
+
 ## 0.30.0
 
 A texture release: 60 more built-in patterns and seven more drawn-texture presets for models to use.
@@ -425,14 +437,6 @@ A security and cost release. URL fetches, AI providers, bearer tokens, image dec
 - **The MCP launch pins an exact PyPI release (#673).** `.mcp.json`, the Claude Desktop `.mcpb` and the README run
   `uvx --from vixl-engine==VERSION …` (the release's own version) instead of a GitHub tag archive, which could be moved to other code; a
   published PyPI version cannot be replaced. The getting-started install pin names the exact version too.
-- **Windows updates are signed (#621).** Each release carries `vixl-update.json.sig`, an Ed25519 signature over the
-  exact bytes of `vixl-update.json`, made in the protected `release` environment. The updater verifies it against
-  the public keys pinned in `vixl.updater_sign` (a dependency-free RFC 8032 verifier, frozen into the launcher)
-  before it reads the manifest's checksum. A missing or invalid signature refuses the update with "Update signature
-  invalid; current version kept" (or "Update signature missing"). The manifest gains `min_launcher`, so a later key
-  rotation can ask older launchers for a new installer. Installs from before this change keep their old updater,
-  which ignores the signature and still checks the SHA-256, so they keep updating; re-run the installer to get a
-  verifying launcher. Releases now need the signing key set up first ([update signing](docs/reference/releases.md#update-signing)).
 
 ### Fixed and added
 

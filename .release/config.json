@@ -24,8 +24,7 @@
         "vixl-update.json",
         "vixl.mcpb",
         "vixl_engine-{version}-py3-none-any.whl",
-        "vixl_engine-{version}.tar.gz",
-        "vixl-update.json.sig"
+        "vixl_engine-{version}.tar.gz"
       ],
       "security": "standard",
       "checksumFile": "SHA256SUMS.txt",
