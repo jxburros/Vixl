@@ -11,7 +11,7 @@ Four kinds of extension use the word "plugin" or "pack". They are different thin
 | Built-in plugin | An optional feature package, such as charts, lyric videos or Figma import | `src/vixl/plugins/<name>/` |
 | Python extension | Third-party trusted code loaded from entry points with `vixl --plugins` (filters, providers, operations) | Installed Python packages; see [interfaces](interfaces.md#trusted-extensions) |
 | Resource pack | A declarative pack of saved shapes, suites, styles and templates (`plugin-install`) | The workspace resource library; see [studio](../guides/automation/studio.md) |
-| Content pack | Large data Vixl downloads on first use, such as the emoji artwork | The [VixlExamples](https://github.com/jxburros/VixlExamples/tree/main/packs) repository |
+| Content pack | Large data Vixl downloads on first use, such as the emoji artwork | The [VixlPacks](https://github.com/jxburros/VixlPacks) repository |
 
 ## Is a new feature a plugin?
 
@@ -41,9 +41,10 @@ Check these parameters **before** adding a feature, and say which way it went in
 ### Large data is a content pack
 
 Data over about 1 MB that only some features use (artwork, sample libraries, large catalogs) goes to
-VixlExamples under `packs/` and is downloaded on first use through `vixl.packs`. The pack is pinned to a commit
+VixlPacks and is downloaded on first use through `vixl.packs`. The pack is pinned to a commit
 and checked by SHA-256. Small indexes that the core needs to answer queries offline, such as the emoji
-catalog, stay in `src/vixl/data/`.
+catalog, stay in `src/vixl/data/`. The built-in packs are `emojis` (the artwork) and `fonts` (third-party fonts the
+examples use, named like the font cache); the fallback fonts that make text render offline ship in the package.
 
 ### Grey areas
 

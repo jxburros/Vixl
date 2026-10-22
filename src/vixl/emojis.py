@@ -130,7 +130,7 @@ def _bundled(key, kind, path, mtime, size):
 
 
 def archive_path(download=True):
-    """The artwork archive: the emojis content pack, downloaded from VixlExamples on first use (see packs)."""
+    """The artwork archive: the emojis content pack, downloaded from VixlPacks on first use (see packs)."""
     from .packs import path
 
     return path("emojis", download)
