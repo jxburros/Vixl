@@ -16,7 +16,7 @@ It runs through MCP, CLI, Python or REST, so there is no canvas to open. People 
 interfaces; the product is built for the agent at the keyboard.
 
 Pre-1.0 and in Beta: breaking changes are allowed and noted in the [changelog](CHANGELOG.md#0270).
-Current tagged release: **0.30.2**. Run `vixl --version` to check your runtime; record the Git commit when using a
+Current tagged release: **0.30.3**. Run `vixl --version` to check your runtime; record the Git commit when using a
 source checkout.
 
 **[Documentation home](docs/README.md)** · [Getting started](docs/getting-started.md) ·
@@ -50,7 +50,7 @@ Change the headline next week and nothing is redrawn.
 For a pinned release with uv (an exact PyPI version, which cannot be replaced once published):
 
 ```bash
-uvx --from vixl-engine==0.30.2 vixl mcp --workspace .
+uvx --from vixl-engine==0.30.3 vixl mcp --workspace .
 ```
 
 The workspace must exist. The server offers seven tools (`vixl_document`, `vixl_apply`, `vixl_check`,

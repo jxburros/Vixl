@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.30.3
+
+Publishes the GitHub release: 0.30.2 reached PyPI, but its GitHub release stopped as a draft. This release ships
+the changes from 0.28.0 on.
+
+### Changed
+
+- **The release workflow uses the current shared release toolkit.** The pinned version looked up the new draft
+  release by its tag, which GitHub only answers for published releases, so it failed after creating the draft.
+  The toolkit now finds drafts in the release list, and the GitHub release notes cover every version since the last
+  published one.
+
 ## 0.30.2
 
 Publishes to PyPI again: 0.30.1 stopped at the PyPI upload and was never published. This release ships its changes
