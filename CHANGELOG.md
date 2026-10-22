@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.30.4
+
+Moves the content packs out of VixlExamples, so Vixl no longer downloads anything from the examples repository.
 
 ### Changed
 
