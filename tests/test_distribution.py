@@ -201,18 +201,3 @@ def test_release_publish_waits_for_the_protected_environment():  # #673
     assert not any("checkout@" in step.get("uses", "") for step in pypi["steps"])
     assert "permissions" not in jobs["plan"]
 
-
-def test_release_signs_the_manifest_inside_the_protected_job():  # #621
-    import yaml
-
-    root = Path(__file__).resolve().parent.parent
-    text = (root / ".github/workflows/release.yml").read_text(encoding="utf-8")
-    jobs = yaml.safe_load(text)["jobs"]
-    names = [step.get("name", "") for step in jobs["publish"]["steps"]]
-    sign = names.index("Sign the update manifest")
-    assert sign < names.index("Checksum every release asset") < names.index("Stage the complete configured release inventory")
-    step = jobs["publish"]["steps"][sign]
-    assert step["env"] == {"VIXL_UPDATE_SIGNING_KEY": "${{ secrets.VIXL_UPDATE_SIGNING_KEY }}"}
-    assert "distribution/sign_manifest.py release/vixl-update.json" in step["run"]
-    assert text.count("secrets.") == 1  # no other job sees a secret
-    assert any("updater_sign.TRUSTED_KEYS" in step.get("run", "") for step in jobs["verify"]["steps"])

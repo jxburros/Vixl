@@ -63,12 +63,11 @@ Automatic updates are enabled on a new installation. A normal `vixl` launch star
 Only the latest **published stable** GitHub release with a compatible Windows update manifest is eligible. Drafts, prereleases, equal versions, and downgrades are ignored or rejected. The updater:
 
 1. Gets release metadata from the fixed `jxburros/Vixl` GitHub repository over HTTPS.
-2. Downloads `vixl-update.json` and `vixl-update.json.sig` and verifies the Ed25519 signature over the manifest's exact bytes against the keys pinned in the updater ([update signing](#update-signing)). A missing or invalid signature stops here: "Update signature invalid; current version kept".
-3. Downloads the runtime ZIP and verifies its exact size and SHA-256 against the signed manifest.
-4. Rejects unsafe ZIP paths, links, case-colliding paths, NTFS alternate streams and oversized archives.
-5. Extracts into a temporary directory and runs an offline rendering/API/MCP startup health check.
-6. Moves the validated runtime into its own version directory.
-7. For explicit `vixl update`, checks the installed path and atomically switches the active-version pointer before returning success. Background updates remain pending and activate after another health check on a subsequent normal launch.
+2. Downloads the runtime ZIP and verifies its exact size and SHA-256 against the release manifest.
+3. Rejects unsafe ZIP paths, links, case-colliding paths, NTFS alternate streams and oversized archives.
+4. Extracts into a temporary directory and runs an offline rendering/API/MCP startup health check.
+5. Moves the validated runtime into its own version directory.
+6. For explicit `vixl update`, checks the installed path and atomically switches the active-version pointer before returning success. Background updates remain pending and activate after another health check on a subsequent normal launch.
 
 The previous runtime remains on disk. Existing processes continue using their original runtime: an update never replaces loaded executables or DLLs. A failed candidate health check clears the pending switch and leaves the current working version active. Failed user commands, validation failures and editing errors do **not** trigger rollbacks. Runtime regressions not detectable by the startup check may require manual rollback.
 
@@ -105,12 +104,12 @@ Python installations intentionally do not self-update or invoke pip. They return
 To publish a stable release:
 
 1. Update the single-sourced version in `src/vixl/__init__.py` (package, API and bundle versions derive from it), then the places that repeat it: `.claude-plugin/plugin.json`, the PyPI pin `vixl-engine==X.Y.Z` in `.mcp.json` (the `.mcpb` derives it), the install pins in `README.md` and `getting-started.md`, the release line in `README.md` and the documentation home, the action pin in [CI](../guides/automation/ci.md), the tag in step 3 and the sample manifest in [file format](file-format.md); update release notes (see [release notes](#release-notes)) and documentation as needed.
-2. Run tests and review the PR's **Windows installer and releases** workflow. It runs a real silent installer, verifies PATH lookup, creates/exports a project using the frozen runtime, activates an explicit update before any normal launch with mocked network transport and a manifest signed by a key made for the run (and refused with no key or a wrong one), checks corrupted-candidate recovery, and uninstalls while preserving a user project and existing PATH entries.
+2. Run tests and review the PR's **Windows installer and releases** workflow. It runs a real silent installer, verifies PATH lookup, creates/exports a project using the frozen runtime, activates an explicit update before any normal launch with mocked network transport, checks corrupted-candidate recovery, and uninstalls while preserving a user project and existing PATH entries.
 3. Tag the reviewed commit with its exact version and push the tag:
 
    ```bash
-   git tag v0.30.0 <reviewed-commit>
-   git push origin v0.30.0
+   git tag v0.30.1 <reviewed-commit>
+   git push origin v0.30.1
    ```
 
 4. The tag workflow re-runs tests, checks tag/package-version consistency and builds the distributions. The publish job then waits in the protected `release` environment until a required reviewer approves the deployment (Actions run, **Review deployments**). Approve only a run whose commit and version you reviewed. After approval it creates a **draft** GitHub release. It uploads every artifact before publishing it as the latest stable release. No release becomes visible to the updater while files are still being uploaded.
@@ -127,54 +126,19 @@ creates it on first use without protection and the publish job runs unapproved.
    release. Turn on **Prevent self-review** when more than one maintainer can approve.
 3. Under **Deployment branches and tags**, choose **Selected branches and tags** and add the branch `main` and the
    tag pattern `v*`.
-4. Add the update signing key as an environment secret of `release` (see [update signing](#update-signing)). The
-   workflow refuses to publish without it.
-5. The PyPI environment `pypi` (see [Python and agent bundles](#python-and-agent-bundles)) can carry the same
+4. The PyPI environment `pypi` (see [Python and agent bundles](#python-and-agent-bundles)) can carry the same
    reviewer rule; a release from main already passed the `release` approval before it starts `pypi.yml`.
 
 Release assets:
 
 - `Vixl-Setup-VERSION-windows-x64.exe` — installer for people.
 - `vixl-VERSION-windows-x64.zip` — complete runtime used by the updater.
-- `vixl-update.json` — protocol/platform/version, asset filename, SHA-256, byte size and `min_launcher`.
-- `vixl-update.json.sig` — Ed25519 signature over the exact bytes of `vixl-update.json`, as 128 hex characters.
+- `vixl-update.json` — protocol/platform/version, asset filename, SHA-256 and byte size.
 - `SHA256SUMS.txt` — checksums of every release asset (the publish job rewrites it to cover the Windows files, the wheel, the source distribution, the `.mcpb` and the plugin ZIP).
 - Python wheel and source distribution — optional pip/developer installs.
 - `vixl-catalog.json` and `vixl-catalog.schema.json` — the design catalog bundle for host applications (`vixl catalog export`) and its JSON Schema.
 
-An update trusts the signing key, not only the repository: the manifest is signed by a key that lives only in the protected `release` environment, and the manifest pins the runtime's SHA-256. Someone who can upload release assets but cannot pass the environment's approval cannot produce an update that launchers accept. Authenticode signing of the installer and runtime is a later hardening step.
-
-### Update signing
-
-The updater (`src/vixl/updater.py`) checks `vixl-update.json.sig` with `src/vixl/updater_sign.py`, a pure-Python
-RFC 8032 Ed25519 verifier with no dependencies, so the stable launcher's freeze stays small. `TRUSTED_KEYS` in that
-file pins the public keys: the primary key, then an offline backup. The publish job signs the manifest with
-`distribution/sign_manifest.py`, which reads the secret key from the `VIXL_UPDATE_SIGNING_KEY` secret and refuses a
-key whose public half is not pinned. The workflow's `plan` job refuses to start a release while `TRUSTED_KEYS` is
-empty, because a launcher built without a key refuses every update.
-
-One-time setup (owner, on a trusted machine):
-
-1. Make two key pairs, primary and backup, with `python distribution/sign_manifest.py --generate` (run it twice).
-   Each run prints a secret key and its public key.
-2. Store the primary secret as the environment secret `VIXL_UPDATE_SIGNING_KEY` of the `release` environment
-   (**Settings → Environments → release → Add environment secret**), not as a repository secret. Keep the backup
-   secret offline (a password manager or hardware-backed storage), never in GitHub.
-3. Put both public keys in `TRUSTED_KEYS`, primary first, in a reviewed pull request:
-   `TRUSTED_KEYS = ("<primary public hex>", "<backup public hex>")`.
-4. Delete any other copy of the secrets, including terminal scrollback.
-
-Rotation: when the primary key is lost or exposed, sign releases with the backup (move it into the environment
-secret) and pin a new backup in the next release. A launcher accepts any pinned key, so launchers that know the backup
-keep updating. To retire a key that older launchers still trust, raise `min_launcher` in the manifest
-(`distribution/package_release.py`) together with `LAUNCHER` in `updater.py`: older launchers then report that the
-release needs a newer installer instead of trusting it. Both keys lost means every installed launcher needs a new
-installer.
-
-Rollout: installs from before signing keep their old updater, which ignores the `.sig` asset and still checks the
-SHA-256 from the manifest, so they keep finding and installing updates; the manifest path and fields they read are
-unchanged. Signature checks apply to launchers built from this change onward, which every installer from then on
-contains. Re-running the installer is the way to move an older install onto a verifying launcher.
+An update trusts HTTPS and access control of the official GitHub repository. The manifest and artifact have the same trust root; checksums detect corruption or mismatched downloads but do not defend against compromise of the repository's release permissions. A signed manifest ([#756](https://github.com/jxburros/Vixl/issues/756)) and Authenticode signing are future hardening options.
 
 ### Release notes
 

@@ -8,12 +8,12 @@ The initial migration uses the shared **standard** inventory profile while retai
 
 Before a live release, verify actual environment reviewers/branch restrictions, required checks, signing secrets, registry publisher identities, and native package/install/update smoke results. Names in YAML do not prove these settings exist. This GitHub connection cannot read or administer secrets or repository environment protections. Keep release/signing runners disposable and separate from persistent QA runners.
 
-Existing checksum filenames and the primary stable latest-release alias are retained explicitly for installed clients. Auxiliary app releases never take over that alias. Where existing detached GPG checksum signatures are enabled, the shared publisher validates the final coverage and preserves the signed bytes. Required updater signatures remain fail-closed.
+Existing checksum filenames and the primary stable latest-release alias are retained explicitly for installed clients. Auxiliary app releases never take over that alias. Where existing detached GPG checksum signatures are enabled, the shared publisher validates the final coverage and preserves the signed bytes.
 
 To bump locally, obtain the pinned toolkit at `.toolkit`, run `node .toolkit/src/release.mjs bump --app APP_ID`, regenerate any application-specific resources/generated bundles, update the version-specific notes file, and run the repository's checks. All meaningful main changes require at least one advance; shared source/workflow changes require every affected app to advance.
 
 Validation for this migration: shared engine syntax/test suite and workflow lint; manifest/embedded-version validation is run against the prepared changes. Hosted/native consumer release dry runs and actual publication have not been performed from these unmerged branches. No release/tag was created by this migration.
 
-The current checked-in `TRUSTED_KEYS` in `src/vixl/updater_sign.py` is empty. Existing mandatory signing checks intentionally continue to block releases until the owner provisions and reviews an updater trust root. PyPI remains in the local `pypi.yml` workflow and consumes the already-built distributions.
+Update-manifest signing was backed out in 0.30.1 because no signing key had been provisioned; it returns with #756. PyPI remains in the local `pypi.yml` workflow and consumes the already-built distributions.
 
 Hosted validation: after the Actions budget was replenished, the blocked checks were restarted. The current pull request checks record the latest results. Release dry runs and production publication remain separate from pull request validation.

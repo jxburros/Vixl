@@ -220,7 +220,7 @@ def test_release_checksums_cover_every_published_asset():
     config = json.loads((root / ".release/config.json").read_text())["apps"]["vixl"]
     assert config["checksumFile"] == "SHA256SUMS.txt"
     distribution = tomllib.loads((root / "pyproject.toml").read_text())["project"]["name"].replace("-", "_")
-    assert {"vixl-update.json", "vixl-update.json.sig", f"{distribution}-{{version}}-py3-none-any.whl", f"{distribution}-{{version}}.tar.gz"} <= set(config["assets"])
+    assert {"vixl-update.json", f"{distribution}-{{version}}-py3-none-any.whl", f"{distribution}-{{version}}.tar.gz"} <= set(config["assets"])
     assert workflow["jobs"]["publish-vixl"]["with"]["artifact"] == "bundle-vixl"
 
 

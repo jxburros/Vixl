@@ -62,9 +62,6 @@ jobs:
           dist/*.mcpb
           dist/*-claude-code.zip
           dist/vixl-catalog*.json
-    - name: Require a pinned update signing key
-      run: python -c "import sys; sys.path.append('src/vixl'); import updater_sign; sys.exit(0 if updater_sign.TRUSTED_KEYS
-        else 'TRUSTED_KEYS in src/vixl/updater_sign.py is empty; see docs/reference/releases.md, Update signing')"
     needs:
     - plan
     if: needs.plan.outputs.selected == 'true' && fromJSON(needs.plan.outputs.apps)['vixl'].selected
@@ -131,12 +128,6 @@ jobs:
       with:
         name: windows-release
         path: release
-    - name: Sign the update manifest
-      env:
-        VIXL_UPDATE_SIGNING_KEY: ${{ secrets.VIXL_UPDATE_SIGNING_KEY }}
-      run: |
-        rm -f release/vixl-update.json.sig
-        python distribution/sign_manifest.py release/vixl-update.json
     - name: Checksum every release asset
       working-directory: release
       run: |

@@ -6,13 +6,11 @@ import io
 import json
 from pathlib import Path
 import subprocess
-import sys
 import zipfile
 
 import pytest
 
 from vixl import updater as u
-from vixl import updater_sign as sign
 from vixl.cli import dispatch
 from vixl.errors import VixlError
 
@@ -198,55 +196,26 @@ def test_zip_links_and_case_collisions(tmp_path):
         u.extract_bundle(archive, tmp_path / "out")
 
 
-class SignedRelease:
-    """GitHub transport for latest(): release metadata, a manifest and its .sig, signed by a key made in the test."""
-
-    def __init__(self, monkeypatch, release="0.8.0"):
-        import os
-
-        self.seed = os.urandom(32)
-        self.public = sign.public_key(self.seed).hex()
-        monkeypatch.setattr(sign, "TRUSTED_KEYS", (self.public,))
-        self.release = {
-            "tag_name": f"v{release}",
-            "draft": False,
-            "prerelease": False,
-            "assets": [{"name": u.MANIFEST}, {"name": u.SIGNATURE}, {"name": f"vixl-{release}-windows-x64.zip"}],
-        }
-        self.manifest = {
-            "protocol": 1,
-            "version": release,
-            "platform": "windows-x64",
-            "asset": f"vixl-{release}-windows-x64.zip",
-            "sha256": "a" * 64,
-            "size": 123,
-            "min_launcher": 1,
-        }
-        self.tamper = None
-        self.signer = self.seed
-        self.requested = []
-        monkeypatch.setattr(u, "json_download", self.json)
-        monkeypatch.setattr(u, "bytes_download", self.bytes)
-
-    def manifest_bytes(self):
-        return (json.dumps(self.manifest, indent=2) + "\n").encode()
-
-    def json(self, url):
-        assert url == u.API
-        return deepcopy(self.release)
-
-    def bytes(self, url, limit=1024 * 1024):
-        self.requested.append(url.rsplit("/", 1)[-1])
-        data = self.manifest_bytes()
-        if url.endswith("/" + u.SIGNATURE):
-            return (sign.sign(self.signer, data).hex() + "\n").encode()
-        assert url.endswith("/" + u.MANIFEST)
-        return self.tamper(data) if self.tamper else data
-
-
 def test_latest_only_trusts_published_stable_correct_platform(monkeypatch):
-    fixture = SignedRelease(monkeypatch)
-    release, manifest = fixture.release, fixture.manifest
+    release = {
+        "tag_name": "v0.8.0",
+        "draft": False,
+        "prerelease": False,
+        "assets": [{"name": "vixl-update.json"}, {"name": "vixl-0.8.0-windows-x64.zip"}],
+    }
+    manifest = {
+        "protocol": 1,
+        "version": "0.8.0",
+        "platform": "windows-x64",
+        "asset": "vixl-0.8.0-windows-x64.zip",
+        "sha256": "a" * 64,
+        "size": 123,
+    }
+
+    def read(url):
+        return deepcopy(release if url == u.API else manifest)
+
+    monkeypatch.setattr(u, "json_download", read)
     assert (
         u.latest()["url"]
         == "https://github.com/jxburros/Vixl/releases/download/v0.8.0/vixl-0.8.0-windows-x64.zip"
@@ -262,144 +231,6 @@ def test_latest_only_trusts_published_stable_correct_platform(monkeypatch):
     manifest["asset"] = "https://evil.test/run.exe"
     with pytest.raises(u.UpdateError):
         u.latest()
-
-
-def test_valid_signature_accepted(monkeypatch):  # #621
-    fixture = SignedRelease(monkeypatch)
-    assert u.latest()["sha256"] == "a" * 64
-    assert fixture.requested == [u.MANIFEST, u.SIGNATURE]
-    # A signed manifest without min_launcher (the field is optional) is accepted.
-    del fixture.manifest["min_launcher"]
-    assert u.latest()["version"] == "0.8.0"
-
-
-def test_unsigned_manifest_refused(install, monkeypatch):  # #621
-    fixture = SignedRelease(monkeypatch)
-    fixture.release["assets"] = [a for a in fixture.release["assets"] if a["name"] != u.SIGNATURE]
-    with pytest.raises(u.UpdateError, match="signature missing"):
-        u.latest()
-    assert fixture.requested == []
-    # Through update(), the refusal leaves the installed version active and downloads no runtime.
-    monkeypatch.setattr(u, "download", lambda *a, **k: pytest.fail("must not download the runtime"))
-    with pytest.raises(u.UpdateError, match="signature missing"):
-        u.update(install)
-    assert u.read_state(install)["current"] == "0.7.0"
-
-
-@pytest.mark.parametrize("signature", [b"", b"not hex", b"00" * 64 + b"\n", "é".encode() * 64])
-def test_malformed_signature_refused(monkeypatch, signature):  # #621
-    fixture = SignedRelease(monkeypatch)
-    real = fixture.bytes
-    monkeypatch.setattr(u, "bytes_download", lambda url, limit=0: signature if url.endswith(".sig") else real(url))
-    with pytest.raises(u.UpdateError, match="signature invalid"):
-        u.latest()
-
-
-def test_tampered_manifest_refused(install, monkeypatch):  # #621
-    fixture = SignedRelease(monkeypatch)
-
-    def flip(data):
-        index = data.index(b"a" * 64)
-        return data[:index] + b"b" + data[index + 1:]
-
-    fixture.tamper = flip
-    with pytest.raises(u.UpdateError, match="Update signature invalid; current version kept"):
-        u.latest()
-    fixture.tamper = lambda data: data + b" "  # even whitespace outside the JSON is covered
-    with pytest.raises(u.UpdateError, match="signature invalid"):
-        u.latest()
-    monkeypatch.setattr(u, "download", lambda *a, **k: pytest.fail("must not download the runtime"))
-    with pytest.raises(u.UpdateError, match="signature invalid"):
-        u.update(install)
-    assert u.read_state(install)["current"] == "0.7.0"
-
-
-def test_wrong_key_refused(monkeypatch):  # #621
-    import os
-
-    fixture = SignedRelease(monkeypatch)
-    fixture.signer = os.urandom(32)
-    with pytest.raises(u.UpdateError, match="signature invalid"):
-        u.latest()
-    # Any pinned key verifies: the backup key signs after a rotation.
-    monkeypatch.setattr(sign, "TRUSTED_KEYS", (fixture.public, sign.public_key(fixture.signer).hex()))
-    assert u.latest()["version"] == "0.8.0"
-
-
-def test_build_without_signing_key_refuses_updates(monkeypatch):  # #621
-    SignedRelease(monkeypatch)
-    monkeypatch.setattr(sign, "TRUSTED_KEYS", ())
-    with pytest.raises(u.UpdateError, match="no update signing key"):
-        u.latest()
-
-
-def test_newer_min_launcher_asks_for_installer(monkeypatch):  # #621
-    fixture = SignedRelease(monkeypatch)
-    fixture.manifest["min_launcher"] = u.LAUNCHER + 1
-    with pytest.raises(u.UpdateError, match="newer installer"):
-        u.latest()
-    fixture.manifest["min_launcher"] = "1"
-    with pytest.raises(u.UpdateError, match="newer installer"):
-        u.latest()
-
-
-RFC8032 = [
-    ("9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60",
-     "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a", "",
-     "e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b"),
-    ("4ccd089b28ff96da9db6c346ec114e0f5b8a319f35aba624da8cf6ed4fb8a6fb",
-     "3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c", "72",
-     "92a009a9f0d4cab8720e820b5f642540a2b27b5416503f8fb3762223ebdb69da085ac1e43e15996e458f3613d0f11d8c387b2eaeb4302aeeb00d291612bb0c00"),
-    ("c5aa8df43f9f837bedb7442f31dcb7b166d38535076f094b85ce3a2e0b4458f7",
-     "fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb911548908025", "af82",
-     "6291d657deec24024827e69c3abe01a30ce548a284743a445e3680d7db5ac3ac18ff9b538d16f290ae67f760984dc6594a7c15e9716ed28dc027beceea1ec40a"),
-]
-
-
-@pytest.mark.parametrize("secret, public, message, signature", RFC8032)
-def test_ed25519_rfc8032_vectors(secret, public, message, signature):  # #621
-    secret, public, message, signature = map(bytes.fromhex, (secret, public, message, signature))
-    assert sign.public_key(secret) == public
-    assert sign.sign(secret, message) == signature
-    assert sign.verify(public, message, signature)
-    assert not sign.verify(public, message + b"\0", signature)
-    assert not sign.verify(public, message, signature[:63] + bytes([signature[63] ^ 1]))
-    # S at or above the group order is rejected (no malleable second signature).
-    s = int.from_bytes(signature[32:], "little") + 2**252 + 27742317777372353535851937790883648493
-    assert not sign.verify(public, message, signature[:32] + s.to_bytes(32, "little"))
-    assert not sign.verify(b"\xff" * 32, message, signature) and not sign.verify(public, message, signature[:63])
-
-
-def test_sign_manifest_script_signs_only_with_a_trusted_key(tmp_path, monkeypatch):  # #621
-    import importlib.util
-    import os
-
-    monkeypatch.setattr(sys, "path", list(sys.path))  # the script appends src/vixl; keep that out of other tests
-    location = Path(__file__).resolve().parents[1] / "distribution/sign_manifest.py"
-    spec = importlib.util.spec_from_file_location("sign_manifest", location)
-    script = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(script)
-    manifest = tmp_path / u.MANIFEST
-    manifest.write_bytes(b'{"protocol": 1}\n')
-    seed = os.urandom(32)
-    with pytest.raises(SystemExit, match="not in updater_sign.TRUSTED_KEYS"):
-        script.sign_file(manifest, seed, keys=())
-    assert not (tmp_path / u.SIGNATURE).exists()
-    keys = (sign.public_key(seed).hex(),)
-    written = script.sign_file(manifest, seed, keys=keys)
-    assert written == tmp_path / u.SIGNATURE
-    assert sign.trusted(manifest.read_bytes(), written.read_bytes(), keys)
-    monkeypatch.setenv(script.ENVIRONMENT, "short")
-    with pytest.raises(SystemExit, match="64 hex"):
-        script.main([str(manifest)])
-
-
-def test_launcher_freeze_finds_the_verifier_outside_the_package():  # #621
-    source = Path(__file__).resolve().parents[1] / "src" / "vixl"
-    code = "import updater, updater_sign; assert updater.updater_sign is updater_sign; print(updater.LAUNCHER)"
-    result = subprocess.run([sys.executable, "-I", "-c", f"import sys; sys.path.append({str(source)!r}); {code}"],
-                            capture_output=True, text=True, timeout=60)
-    assert result.returncode == 0 and result.stdout.strip() == "1", result.stderr
 
 
 @pytest.mark.parametrize(
