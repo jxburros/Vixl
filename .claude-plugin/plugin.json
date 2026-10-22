@@ -7,6 +7,6 @@
   "homepage": "https://github.com/jxburros/Vixl",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
-  "version": "0.30.2"
+  "version": "0.30.3"
 }
 
