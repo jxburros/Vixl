@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **60 more built-in patterns for `pattern-fill` and `pattern-stroke`** (72 in all), in four
+  families: geometric (herringbone, chevron, argyle, honeycomb, bricks, houndstooth, graph paper, isometric grid,
+  ordered dither …), textile (linen, canvas, burlap, denim, corduroy, knit, plaid, gingham, tweed, quilted, carbon
+  fiber), material (marble, granite, concrete, terrazzo, cork, rust, brushed metal, leather, kraft and watercolor
+  paper …) and natural (cracked earth, cobblestone, cells, caustics, topographic contours, bark, clouds, camouflage,
+  leopard, giraffe, zebra, sand, confetti, starfield …). All are seamless, seeded and two-colour like the originals.
+  `pattern-list` now returns `families`, a one-line `descriptions` entry and `default_spacing` for each pattern, and
+  `drawn_descriptions` for the drawn presets. The new textiles default to a 24 px cell and the new material and
+  natural fills to 64 px; the original twelve keep 16 px and render as before.
+- **Seven more `drawn-texture` presets:** cross-hatch, scribble, spatter, dry-brush, pastel, smudge and marker.
+
 ## 0.29.1
 
 The first published release of the 0.29 work: 0.29.0's Windows build failed, so it was never released. Everything

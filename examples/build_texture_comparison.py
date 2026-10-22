@@ -8,7 +8,7 @@ from vixl.textures import DRAWN, PATTERNS
 
 
 def build(output):
-    columns, cell = 4, 180
+    columns, cell = 8, 180
     entries = [("plain", None), *[(p, "drawn") for p in DRAWN], *[(p, "pattern") for p in PATTERNS]]
     rows = (len(entries) + columns - 1) // columns
     sheet = Image.new("RGB", (columns * cell, rows * 200), "#eee9df")
@@ -21,7 +21,7 @@ def build(output):
                            "strength": .85, "color": "#304f66", "seed": 9})
         elif kind == "pattern":
             project.apply({"type": "pattern-fill", "target": "paper", "pattern": name,
-                           "colors": ["#304f66", "#f5e9cc"], "spacing": 20})
+                           "colors": ["#304f66", "#f5e9cc"]})
         x, y = i % columns * cell, i // columns * 200
         image = project.render()
         sheet.paste(image, (x + 10, y + 10), image)

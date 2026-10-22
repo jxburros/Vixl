@@ -140,6 +140,8 @@ the organic `fur-blob` preset; the `hand-made` look applies a removable irregula
 `repeat`/`radial-repeat` take `rotation_step`, `scale_step`, `opacity_step`, seeded jitter and
 `merge`. Reference: `docs/guides/shapes/design-tools.md#scatter-and-seamless-pattern-tiles`.
 
+Built-in textures: `pattern-fill` (clipped to a layer) and `pattern-stroke` take 72 built-in patterns, geometric (herringbone, honeycomb, houndstooth, graph-paper …), textile (linen, denim, plaid, knit …), material (marble, terrazzo, leather, concrete …) and natural (cobblestone, topographic, leopard, clouds …); `vixl_apply(workflow='pattern-list', request={})` lists them with descriptions. `colors` is `[ink, ground]`. Material and natural fills default to a 64 px cell, the newer textiles to 24 px, the rest to 16 px. `drawn-texture` presets: pencil, charcoal, crayon, ink-wash, stipple, hatch, cross-hatch, scribble, spatter, dry-brush, pastel, smudge, marker. Reference: `docs/guides/images/media-craft.md`.
+
 ## Guides, grids and placement
 
 Guides can be angled lines, rays, segments, points, circles and curves; `grid --kind` makes

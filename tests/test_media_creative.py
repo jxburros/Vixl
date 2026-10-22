@@ -87,6 +87,28 @@ def test_pattern_periodicity_transform_and_custom_roundtrip(tmp_path):
     assert restored.render().tobytes()==project.render().tobytes()
 
 
+def test_pattern_library_is_distinct_described_and_seeded():
+    project=Project(64,64)
+    catalog=textures.catalog(project)
+    assert len(textures.PATTERNS)>=70 and len(textures.DRAWN)>=13
+    assert sorted(sum(catalog["families"].values(),[]))==sorted(textures.PATTERNS)
+    assert set(catalog["descriptions"])==set(textures.PATTERNS)==set(catalog["default_spacing"])
+    assert set(catalog["drawn_descriptions"])==set(textures.DRAWN)
+    seen={}
+    for name in textures.PATTERNS:
+        image=textures.pattern_image(project,(96,96),{"pattern":name,"spacing":24,"seed":7})
+        values=np.asarray(image)
+        assert values[...,:3].std()>2, name
+        assert values.tobytes() not in seen, (name,seen.get(values.tobytes()))
+        seen[values.tobytes()]=name
+    # Organic fills vary with the seed; their larger default cell keeps the repeat from reading as a grid.
+    a=textures.pattern_image(project,(64,64),{"pattern":"marble","seed":1})
+    b=textures.pattern_image(project,(64,64),{"pattern":"marble","seed":2})
+    assert a.tobytes()!=b.tobytes()
+    assert textures.catalog()["default_spacing"]["marble"]==64
+    assert textures.pattern_image(project,(64,64),{"pattern":"marble","seed":1,"spacing":64}).tobytes()==a.tobytes()
+
+
 def test_drawn_texture_seed_alpha_and_pressure(tmp_path):
     original=Image.new("RGBA",(80,80),"white")
     original.putpixel((0,0),(255,255,255,0))
