@@ -34,4 +34,7 @@ jobs:
       with:
         packages-dir: packages/
         skip-existing: true
+        # Called from release.yml, the attestation names release.yml while Trusted Publishing matched pypi.yml,
+        # and PyPI rejects the upload. Signed provenance returns with #756.
+        attestations: false
       if: ${{ !inputs.dry-run }}
