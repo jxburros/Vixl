@@ -7,14 +7,107 @@ from copy import deepcopy
 import math
 
 import numpy as np
-from PIL import Image, ImageChops, ImageDraw
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 from .errors import require
 from .model import finite, new_layer
 
 TYPES = ("pattern-define", "pattern-fill", "pattern-stroke", "drawn-texture", "clone-stamp")
-PATTERNS = ("stripes", "dots", "halftone", "hatching", "grid", "checker", "noise", "paper", "fabric", "wood", "stone", "scales")
-DRAWN = ("pencil", "charcoal", "crayon", "ink-wash", "stipple", "hatch")
+# name: (family, what it looks like). Every built-in repeats every two cells of `spacing`.
+PATTERN_INFO = {
+    "stripes": ("geometric", "Even parallel bands."),
+    "dots": ("geometric", "Small dots on a square grid."),
+    "halftone": ("geometric", "Large print-style dots on a square grid."),
+    "hatching": ("geometric", "Thin crossing diagonal lines."),
+    "grid": ("geometric", "Thin square grid lines."),
+    "checker": ("geometric", "Alternating squares."),
+    "noise": ("material", "Fine seeded value noise."),
+    "paper": ("material", "Quiet paper tooth."),
+    "fabric": ("textile", "Soft woven ripple."),
+    "wood": ("natural", "Wavy wood rings."),
+    "stone": ("material", "Mottled stone with bright flecks."),
+    "scales": ("natural", "Overlapping scale outlines."),
+    "diagonal-stripes": ("geometric", "Bands at 45 degrees."),
+    "pinstripes": ("geometric", "Thin, widely spaced lines."),
+    "chevron": ("geometric", "Stacked V-shaped bands."),
+    "zigzag": ("geometric", "Thin zigzag lines."),
+    "waves": ("geometric", "Smooth wavy bands."),
+    "herringbone": ("geometric", "Columns of slanted strokes alternating direction."),
+    "diamonds": ("geometric", "Diamonds on a square grid."),
+    "argyle": ("geometric", "Two-tone diamond checker with overstitched lines."),
+    "triangles": ("geometric", "Each cell split into two triangles."),
+    "honeycomb": ("geometric", "Hexagon cell outlines."),
+    "bricks": ("geometric", "Running-bond brick courses with mortar lines."),
+    "basketweave": ("geometric", "Alternating horizontal and vertical strand blocks."),
+    "plaid": ("textile", "Crossing bands of two widths, tartan-like."),
+    "gingham": ("textile", "Two-tone checked cloth with overlapping bands."),
+    "polka": ("geometric", "Staggered round dots."),
+    "crosses": ("geometric", "Plus signs on a grid."),
+    "rings": ("geometric", "Concentric circles in each cell."),
+    "squares": ("geometric", "Concentric squares in each cell."),
+    "dashes": ("geometric", "Staggered short dashes."),
+    "houndstooth": ("textile", "Broken check with hooked diagonals."),
+    "dot-grid": ("geometric", "Tiny dots at grid intersections, notebook-style."),
+    "graph-paper": ("geometric", "Fine grid with a heavier line every cell."),
+    "isometric-grid": ("geometric", "Three line families for isometric sketching."),
+    "dither": ("geometric", "Ordered (Bayer) dither of soft noise, retro pixel look."),
+    "linen": ("textile", "Fine irregular threads with slubs."),
+    "canvas": ("textile", "Tight artist-canvas weave."),
+    "burlap": ("textile", "Coarse open weave with gaps."),
+    "denim": ("textile", "Diagonal twill with faded streaks."),
+    "corduroy": ("textile", "Soft vertical ribs."),
+    "knit": ("textile", "Columns of V-shaped stitches."),
+    "carbon-fiber": ("textile", "Woven carbon twill with highlights."),
+    "tweed": ("textile", "Speckled flecked wool."),
+    "quilted": ("textile", "Diamond stitching with puffy shading."),
+    "marble": ("material", "Swirling veins."),
+    "granite": ("material", "Dense multi-tone speckle."),
+    "concrete": ("material", "Soft mottling with pits."),
+    "terrazzo": ("material", "Scattered chips in a quiet ground."),
+    "cork": ("material", "Small tonal granules with pores."),
+    "rust": ("material", "Blotchy corrosion with pitting."),
+    "brushed-metal": ("material", "Fine horizontal streaks."),
+    "leather": ("material", "Pebbled grain with creases."),
+    "corrugated": ("material", "Shaded parallel ridges."),
+    "kraft-paper": ("material", "Paper with visible fibres."),
+    "watercolor-paper": ("material", "Cold-press paper bumps."),
+    "cracked": ("natural", "Dry-earth cracks between plates."),
+    "cobblestone": ("natural", "Rounded stones with dark joints."),
+    "mosaic": ("material", "Irregular tiles in varied tones with grout."),
+    "cells": ("natural", "Thin Voronoi cell walls."),
+    "bubbles": ("natural", "Ring outlines of varied sizes."),
+    "sand": ("natural", "Fine grain with wind ripples."),
+    "clouds": ("natural", "Soft billowing clouds."),
+    "camouflage": ("natural", "Three-tone organic blotches."),
+    "topographic": ("natural", "Contour lines of a seeded terrain."),
+    "caustics": ("natural", "Rippling light network seen under water."),
+    "bark": ("natural", "Vertical furrowed tree bark."),
+    "leopard": ("natural", "Broken rosettes with lighter centres."),
+    "giraffe": ("natural", "Large patches with light borders."),
+    "zebra": ("natural", "Warped bold stripes."),
+    "confetti": ("natural", "Scattered round flecks."),
+    "starfield": ("natural", "Sparse stars of varied size."),
+}
+PATTERNS = tuple(PATTERN_INFO)
+# Organic fills read as repeats at the 16 px default, so they default to a larger cell.
+DEFAULT_SPACING = {name: 64 if family in ("material", "natural") else 24
+                   for name, (family, _) in list(PATTERN_INFO.items())[12:] if family != "geometric"}
+DRAWN_INFO = {
+    "pencil": "Graphite lines with paper tooth.",
+    "charcoal": "Pooled smoky coverage broken by tooth.",
+    "crayon": "Waxy broad strokes skipping over tooth.",
+    "ink-wash": "Pooled translucent ink.",
+    "stipple": "Scattered ink dots.",
+    "hatch": "Fine parallel strokes.",
+    "cross-hatch": "Two crossing families of strokes.",
+    "scribble": "Looping hand-drawn scribbles.",
+    "spatter": "Flicked ink drops of varied size.",
+    "dry-brush": "Streaky broken horizontal brush strokes.",
+    "pastel": "Soft chalky strokes with heavy tooth dropout.",
+    "smudge": "Blended soft charcoal smears.",
+    "marker": "Broad felt-tip strokes with overlaps.",
+}
+DRAWN = tuple(DRAWN_INFO)
 
 
 def schemas(add):
@@ -24,7 +117,7 @@ def schemas(add):
         "seamless": "Reject custom tiles whose edge discontinuity exceeds the seam heuristic.",
         "pattern": "Built-in or document custom pattern; discover with pattern-list.",
         "scale": "Texture scale multiplier.", "rotation": "Pattern rotation in degrees.",
-        "offset": "Pattern phase [x,y] in pixels.", "spacing": "Base pattern cell spacing in pixels (2–256).",
+        "offset": "Pattern phase [x,y] in pixels.", "spacing": "Base pattern cell spacing in pixels (2–256); built-ins repeat every two cells. Default 16, 24 for the newer textiles and 64 for the newer material and natural fills (pattern-list default_spacing).",
         "colors": "Foreground and background color pair.", "seed": "Unsigned 32-bit deterministic random seed.",
         "opacity": "Paint or overlay opacity from 0 to 1.", "points": "Stroke path points in destination-layer pixels (pattern strokes use canvas pixels).",
         "size": "Brush diameter in pixels (1–2048).", "preset": "Drawn medium recipe.", "color": "Mark color.",
@@ -48,7 +141,7 @@ def schemas(add):
     from .schema import S, N, B
     point = {"type": "array", "items": N, "minItems": 2, "maxItems": 2}
     points = {"type": "array", "items": point, "minItems": 1, "maxItems": 10000}
-    params = {"pattern": {"type": "string", "examples": list(PATTERNS), "description": "Built-in pattern (" + ", ".join(PATTERNS) + ") or the name of a pattern saved in the document with pattern-define."}, "scale": {"type": "number", "exclusiveMinimum": 0}, "rotation": N,
+    params = {"pattern": {"type": "string", "examples": list(PATTERNS), "description": f"Built-in pattern ({len(PATTERNS)} geometric, textile, material and natural fills listed with descriptions by pattern-list, e.g. stripes, herringbone, plaid, marble, terrazzo, topographic) or the name of a pattern saved in the document with pattern-define."}, "scale": {"type": "number", "exclusiveMinimum": 0}, "rotation": N,
               "offset": point, "spacing": {"type": "number", "minimum": 2, "maximum": 256},
               "colors": {"type": "array", "items": S, "minItems": 2, "maxItems": 2}, "seed": {"type": "integer"},
               "tile_variation": {"type": "number", "minimum": 0, "maximum": 1}}
@@ -66,7 +159,11 @@ def schemas(add):
 
 def catalog(project=None):
     return {"builtins": list(PATTERNS), "custom": sorted((project.state.get("patterns") or {}) if project else {}),
-            "drawn": list(DRAWN), "operations": list(TYPES),
+            "families": {family: [name for name, info in PATTERN_INFO.items() if info[0] == family]
+                         for family in ("geometric", "textile", "material", "natural")},
+            "descriptions": {name: info[1] for name, info in PATTERN_INFO.items()},
+            "default_spacing": {name: DEFAULT_SPACING.get(name, 16) for name in PATTERNS},
+            "drawn": list(DRAWN), "drawn_descriptions": dict(DRAWN_INFO), "operations": list(TYPES),
             "parameters": ["scale", "rotation", "offset", "spacing", "colors", "seed", "tile_variation"]}
 
 
@@ -93,7 +190,7 @@ def pattern_image(project, size, options):
     name = options["pattern"]
     require(name in PATTERNS or name in project.state.get("patterns", {}), "Unknown pattern; use pattern-list")
     scale = finite(options.get("scale", 1), "scale", 0.05, 100)
-    spacing = finite(options.get("spacing", 16), "spacing", 2, 256)
+    spacing = finite(options.get("spacing", DEFAULT_SPACING.get(name, 16)), "spacing", 2, 256)
     angle = math.radians(finite(options.get("rotation", 0), "rotation", -36000, 36000))
     offset = options.get("offset", [0, 0])
     require(isinstance(offset, list) and len(offset) == 2, "Offset is [x,y]")
@@ -107,6 +204,7 @@ def pattern_image(project, size, options):
     seed = options.get("seed", 0)
     require(isinstance(seed, int) and 0 <= seed <= 2**32 - 1, "Seed must be an unsigned 32-bit integer")
     noise_tile = np.random.default_rng(seed).random((32, 32))
+    fields = _Fields(seed)
     variation = finite(options.get("tile_variation", 0), "tile_variation", 0, 1)
     # Chunked coordinates keep full-canvas textures within the document's pixel budget.
     for top in range(0, size[1], 128):
@@ -148,14 +246,237 @@ def pattern_image(project, size, options):
             dx = ((u + .5*(np.floor(v).astype(int)%2)) % 1) - .5
             distance = np.sqrt(dx*dx + (b-.05)**2)
             coverage = (distance > .48) & (distance < .58)
+        elif name in _EXTRA:
+            coverage = _EXTRA[name](u, v, a, b, fields)
         else:
             coverage = noise if name == "noise" else .1 + .25*noise
-        coverage = np.asarray(coverage, dtype=float)[..., None]
+        coverage = np.clip(np.asarray(coverage, dtype=float), 0, 1)[..., None]
         rows = np.uint8(np.clip(bg + (fg-bg)*coverage, 0, 255))
         if variation:
             rows = _vary(rows, np.floor(u), np.floor(v), seed, variation)
         output[top:top + len(y)] = rows
     return Image.fromarray(output)
+
+
+class _Fields:
+    """Seeded periodic noise for the procedural patterns.
+
+    Pattern coordinates are in cells; every field here repeats every two cells so fills tile seamlessly
+    and match the period of the original patterns."""
+
+    def __init__(self, seed):
+        self.seed = seed
+        self._tiles = {}
+
+    def _tile(self, key, shape):
+        if key not in self._tiles:
+            self._tiles[key] = np.random.default_rng([self.seed, *key]).random(shape)
+        return self._tiles[key]
+
+    def value(self, u, v, fu, fv=None):
+        """Smooth value noise with fu lattice points per cell across and fv down."""
+        fv = fu if fv is None else fv
+        tile = self._tile((1, fu, fv), (2 * fv, 2 * fu))
+        x, y = (u * fu) % (2 * fu), (v * fv) % (2 * fv)
+        ix, iy = np.floor(x).astype(int), np.floor(y).astype(int)
+        fx, fy = x - ix, y - iy
+        fx, fy = fx * fx * (3 - 2 * fx), fy * fy * (3 - 2 * fy)
+        jx, jy = (ix + 1) % (2 * fu), (iy + 1) % (2 * fv)
+        top = tile[iy, ix] * (1 - fx) + tile[iy, jx] * fx
+        bottom = tile[jy, ix] * (1 - fx) + tile[jy, jx] * fx
+        return top * (1 - fy) + bottom * fy
+
+    def fbm(self, u, v, base=1, octaves=4):
+        cached = self._tiles.get(("fbm", base, octaves))
+        if cached and cached[0] is u and cached[1] is v:
+            return cached[2]
+        total, weight, norm = 0, 1, 0
+        for octave in range(octaves):
+            total = total + weight * self.value(u, v, base << octave)
+            norm += weight
+            weight /= 2
+        self._tiles[("fbm", base, octaves)] = (u, v, total / norm)
+        return total / norm
+
+    def worley(self, u, v, n):
+        """Distances to the nearest and second-nearest of n x n jittered points per two cells, and the
+        nearest point's seeded tone."""
+        # Patterns ask for the same field several times per chunk; the identity check keeps the
+        # cache to the chunk being drawn.
+        cached = self._tiles.get(("worley", n))
+        if cached and cached[0] is u and cached[1] is v:
+            return cached[2]
+        result = self._worley(u, v, n)
+        self._tiles[("worley", n)] = (u, v, result)
+        return result
+
+    def edge(self, u, v, n):
+        """Distance from the wall between two Worley cells (0 on the wall)."""
+        f1, f2, _ = self.worley(u, v, n)
+        return f2 - f1
+
+    def _worley(self, u, v, n):
+        points = self._tile((2, n), (n, n, 3))
+        x, y = (u * n / 2) % n, (v * n / 2) % n
+        ix, iy = np.floor(x).astype(int), np.floor(y).astype(int)
+        f1 = np.full(x.shape, np.inf)
+        f2 = np.full(x.shape, np.inf)
+        tone = np.zeros(x.shape)
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                cx, cy = ix + dx, iy + dy
+                point = points[cy % n, cx % n]
+                d = np.hypot(cx + point[..., 0] - x, cy + point[..., 1] - y)
+                closer = d < f1
+                f2 = np.where(closer, f1, np.minimum(f2, d))
+                tone = np.where(closer, point[..., 2], tone)
+                f1 = np.where(closer, d, f1)
+        return f1, f2, tone
+
+
+_BAYER = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]) / 16 + 1 / 32
+
+
+def _honeycomb(u, v):
+    # Rows one cell apart, every other row shifted half a cell: period one cell across, two down.
+    f1 = np.full(u.shape, np.inf)
+    f2 = np.full(u.shape, np.inf)
+    row = np.floor(v)
+    for dr in (-1, 0, 1, 2):
+        r = row + dr
+        shift = .5 * (r % 2)
+        column = np.floor(u - shift)
+        for dc in (-1, 0, 1):
+            d = np.hypot(column + dc + shift + .5 - u, r - v)
+            f2 = np.where(d < f1, f1, np.minimum(f2, d))
+            f1 = np.minimum(f1, d)
+    return f2 - f1 < .08
+
+
+def _parity(*values):
+    return sum(np.floor(value).astype(int) for value in values) % 2
+
+
+def _plaid(a, b):
+    def band(t):
+        return .5 * (t < .3) + .5 * (np.abs(t - .65) < .025)
+    return .9 * np.minimum(1, band(a) + band(b))
+
+
+def _burlap(u, v, f):
+    across, down = (u * 2) % 1 < .72, (v * 2) % 1 < .72
+    over = _parity(u * 2, v * 2)
+    shade = np.where(across & down, np.where(over, .8, .6), np.where(down, .65, np.where(across, .55, 0)))
+    return shade * (.75 + .25 * f.value(u, v, 8))
+
+
+def _knit(u, v):
+    x = (u * 3) % 1
+    stitch = ((v * 4 + np.abs(x - .5) * 1.4) % 1) < .55
+    return .25 + .5 * stitch - .15 * (np.abs(x - .5) > .45)
+
+
+def _carbon(u, v):
+    pu, pv = (u * 4) % 1, (v * 4) % 1
+    light = np.where(_parity(u * 4, v * 4) == 0, pu, pv)
+    return .85 - .5 * 4 * light * (1 - light)
+
+
+def _caustics(u, v, f):
+    edge = f.edge(u + .3 * f.value(u, v, 2), v, 6)
+    return np.clip(1 - 5 * edge, 0, 1) ** 2
+
+
+def _leopard(u, v, f):
+    f1, _, tone = f.worley(u, v, 4)
+    ring = (f1 > .2) & (f1 < .33) & (f.value(u, v, 8) > .35)
+    return np.where(ring, 1, np.where(f1 < .2, .35 + .1 * tone, 0))
+
+
+def _terrazzo(u, v, f):
+    f1, _, tone = f.worley(u, v, 10)
+    chip = f1 < .2 + .15 * f.value(u, v, 16) * (tone > .3)
+    return np.where(chip, .35 + .65 * tone, .05 + .08 * f.value(u, v, 16))
+
+
+_EXTRA = {
+    "diagonal-stripes": lambda u, v, a, b, f: (u + v) % 1 < .35,
+    "pinstripes": lambda u, v, a, b, f: a < .08,
+    "chevron": lambda u, v, a, b, f: (v + np.abs(a - .5)) % 1 < .35,
+    "zigzag": lambda u, v, a, b, f: (v + np.abs(a - .5)) % 1 < .1,
+    "waves": lambda u, v, a, b, f: np.abs((v + .2 * np.sin(2 * np.pi * u)) % 1 - .5) < .15,
+    "herringbone": lambda u, v, a, b, f: (np.where(np.floor(u) % 2 == 0, u + v, v - u) * 2) % 1 < .4,
+    "diamonds": lambda u, v, a, b, f: np.abs(a - .5) + np.abs(b - .5) < .4,
+    "argyle": lambda u, v, a, b, f: np.where(((u + v + .5) % 1 < .04) | ((u - v + .5) % 1 < .04), 1,
+                                             .55 * _parity(u + v, u - v)),
+    "triangles": lambda u, v, a, b, f: b > a,
+    "honeycomb": lambda u, v, a, b, f: _honeycomb(u, v),
+    "bricks": lambda u, v, a, b, f: ((v * 2) % 1 < .12) | ((u + .5 * (np.floor(v * 2) % 2)) % 1 < .06),
+    "basketweave": lambda u, v, a, b, f: np.where((np.where(_parity(u, v), a, b) * 3) % 1 < .15, 1, .35),
+    "plaid": lambda u, v, a, b, f: _plaid(a, b),
+    "gingham": lambda u, v, a, b, f: .5 * (a < .5) + .5 * (b < .5),
+    "polka": lambda u, v, a, b, f: (((u + .5 * (np.floor(v) % 2)) % 1) - .5) ** 2 + (b - .5) ** 2 < .22 ** 2,
+    "crosses": lambda u, v, a, b, f: ((np.abs(a - .5) < .07) & (np.abs(b - .5) < .28)) |
+                                     ((np.abs(b - .5) < .07) & (np.abs(a - .5) < .28)),
+    "rings": lambda u, v, a, b, f: (np.hypot(a - .5, b - .5) < .5) & ((np.hypot(a - .5, b - .5) * 6) % 1 < .4),
+    "squares": lambda u, v, a, b, f: (np.maximum(np.abs(a - .5), np.abs(b - .5)) * 6) % 1 < .4,
+    "dashes": lambda u, v, a, b, f: ((u + .5 * (np.floor(v) % 2)) % 1 < .5) & (np.abs(b - .5) < .08),
+    "houndstooth": lambda u, v, a, b, f: np.where((a < .5) == (b < .5), a < .5, (a * 4 - b * 4) % 2 < 1),
+    "dot-grid": lambda u, v, a, b, f: np.minimum(a, 1 - a) ** 2 + np.minimum(b, 1 - b) ** 2 < .1 ** 2,
+    "graph-paper": lambda u, v, a, b, f: np.where((a < .04) | (b < .04), 1,
+                                                  .4 * (((u * 4) % 1 < .06) | ((v * 4) % 1 < .06))),
+    "isometric-grid": lambda u, v, a, b, f: ((v + .5 * u) % 1 < .05) | ((v - .5 * u) % 1 < .05) | (a < .04),
+    "dither": lambda u, v, a, b, f: f.fbm(u, v, 2) > _BAYER[np.floor(v * 8).astype(int) % 4,
+                                                          np.floor(u * 8).astype(int) % 4],
+    "linen": lambda u, v, a, b, f: .1 + .3 * f.value(u, v, 2, 16) + .3 * f.value(u, v, 16, 2)
+                                   + .1 * np.sin(8 * np.pi * u) * np.sin(8 * np.pi * v),
+    "canvas": lambda u, v, a, b, f: .35 + .25 * np.sin(8 * np.pi * u) * np.sin(8 * np.pi * v) + .2 * f.value(u, v, 16),
+    "burlap": lambda u, v, a, b, f: _burlap(u, v, f),
+    "denim": lambda u, v, a, b, f: .45 + .3 * ((np.floor(u * 6) + np.floor(v * 6)) % 3 == 0)
+                                   + .15 * f.value(u, v, 8) - .35 * (f.value(u, v, 2, 32) > .82),
+    "corduroy": lambda u, v, a, b, f: .2 + .55 * np.sin(np.pi * u * 3) ** 2 + .15 * f.value(u, v, 4, 16),
+    "knit": lambda u, v, a, b, f: _knit(u, v),
+    "carbon-fiber": lambda u, v, a, b, f: _carbon(u, v),
+    "tweed": lambda u, v, a, b, f: .3 + .2 * f.fbm(u, v, 2) + .4 * (f.value(u, v, 16) > .78)
+                                   - .25 * (f.value(u, v, 16, 8) < .15),
+    "quilted": lambda u, v, a, b, f: np.where(((u + v) % 1 < .04) | ((u - v) % 1 < .04), 1,
+                                              .1 + .5 * np.minimum((u + v) % 1, (u - v) % 1)),
+    "marble": lambda u, v, a, b, f: (1 - np.abs(np.sin(np.pi * (u + v + 2.5 * f.fbm(u, v, 2))))) ** 6,
+    "granite": lambda u, v, a, b, f: np.where(f.value(u, v, 32) > .72, 1,
+                                              np.where(f.value(u, v, 32, 16) < .25, .5, .1)) + .1 * f.fbm(u, v, 2),
+    "concrete": lambda u, v, a, b, f: .15 + .3 * f.fbm(u, v, 2) + .5 * (
+        (f.worley(u, v, 8)[0] < .07) & (f.worley(u, v, 8)[2] > .55)),
+    "terrazzo": lambda u, v, a, b, f: _terrazzo(u, v, f),
+    "cork": lambda u, v, a, b, f: np.where(f.worley(u, v, 16)[0] < .08, .9, .25 + .45 * f.worley(u, v, 16)[2]),
+    "rust": lambda u, v, a, b, f: np.where(f.fbm(u, v, 2) > .52, .5 + .5 * f.value(u, v, 32), .15 * f.value(u, v, 16)),
+    "brushed-metal": lambda u, v, a, b, f: .3 + .4 * f.value(u, v, 1, 32) + .2 * f.value(u, v, 2, 64),
+    "leather": lambda u, v, a, b, f: np.where(f.edge(u, v, 12) < .08, .75,
+                                              .2 + .25 * f.worley(u, v, 12)[2]),
+    "corrugated": lambda u, v, a, b, f: .5 + .45 * np.sin(4 * np.pi * u),
+    "kraft-paper": lambda u, v, a, b, f: .15 + .2 * f.fbm(u, v, 2) + .25 * (f.value(u, v, 32, 4) > .8)
+                                         + .25 * (f.value(u, v, 4, 32) > .82),
+    "watercolor-paper": lambda u, v, a, b, f: .05 + .35 * np.minimum(1, f.worley(u, v, 12)[0]) + .1 * f.value(u, v, 16),
+    "cracked": lambda u, v, a, b, f: np.where(f.edge(u, v, 6) < .05 + .06 * f.value(u, v, 8), 1,
+                                              .1 + .2 * f.worley(u, v, 6)[2]),
+    "cobblestone": lambda u, v, a, b, f: np.where(f.edge(u, v, 6) < .12, 1,
+                                                  .1 + .35 * f.worley(u, v, 6)[2] + .3 * f.worley(u, v, 6)[0]),
+    "mosaic": lambda u, v, a, b, f: np.where(f.edge(u, v, 8) < .08, 0,
+                                             .3 + .7 * f.worley(u, v, 8)[2]),
+    "cells": lambda u, v, a, b, f: f.edge(u, v, 6) < .05,
+    "bubbles": lambda u, v, a, b, f: np.abs(f.worley(u, v, 6)[0] - .15 - .25 * f.worley(u, v, 6)[2]) < .035,
+    "sand": lambda u, v, a, b, f: .2 + .3 * f.value(u, v, 32) + .2 * np.sin(2 * np.pi * (2 * v + .5 * f.fbm(u, v, 2))),
+    "clouds": lambda u, v, a, b, f: (f.fbm(u, v, 2) - .3) * 2.5,
+    "camouflage": lambda u, v, a, b, f: np.where(f.fbm(u, v, 2, 3) < .42, 1, np.where(f.fbm(u, v, 2, 3) < .55, .55, .15)),
+    "topographic": lambda u, v, a, b, f: (f.fbm(u, v, 2, 2) * 12) % 1 < .1,
+    "caustics": lambda u, v, a, b, f: _caustics(u, v, f),
+    "bark": lambda u, v, a, b, f: .25 + .55 * (1 - np.abs(np.sin(np.pi * (u * 3 + 1.5 * f.value(u, v, 2, 1))))) ** 2
+                                  + .2 * f.value(u, v, 16, 4),
+    "leopard": lambda u, v, a, b, f: _leopard(u, v, f),
+    "giraffe": lambda u, v, a, b, f: np.where(f.edge(u, v, 5) < .1 + .05 * f.value(u, v, 8), 0, .85),
+    "zebra": lambda u, v, a, b, f: np.sin(2 * np.pi * (u * 2 + 1.5 * f.fbm(u, v, 2, 2))) > .1,
+    "confetti": lambda u, v, a, b, f: (f.worley(u, v, 8)[0] < .22) & (f.worley(u, v, 8)[2] > .45),
+    "starfield": lambda u, v, a, b, f: f.worley(u, v, 12)[0] < .05 + .2 * f.worley(u, v, 12)[2] ** 4,
+}
 
 
 def _vary(rows, cell_x, cell_y, seed, amount):
@@ -212,19 +533,79 @@ def drawn_image(image, preset, *, seed=0, color="#25221f", strength=.6, scale=1,
         for x,y,r in rng.uniform(0,1,(count,3)):
             r = max(.5, r*2*scale)
             draw.ellipse((x*w-r,y*h-r,x*w+r,y*h+r), fill=round(255*(1-pressure*rng.uniform(0,.6))))
-    else:
+    elif preset in ("charcoal", "ink-wash"):
         coarse = Image.fromarray(rng.integers(30,255,(max(2, math.ceil(h/(18*scale))), max(2, math.ceil(w/(18*scale)))), dtype=np.uint8))
         mask = coarse.resize((w,h), Image.Resampling.BICUBIC)
+    else:
+        mask = _drawn_marks(mask, preset, rng, scale=scale, jitter=jitter, pressure=pressure)
     values = np.asarray(mask, dtype=np.float32)
     tooth = rng.uniform(0,1,(h,w))
-    values *= (1-grain*tooth) * strength
-    if preset in ("charcoal", "crayon", "pencil"):
-        values[tooth > 1-.18*grain] = 0
+    # Felt-tip ink sits on top of the paper; dry media skip over its tooth.
+    values *= (1-grain*tooth*(.3 if preset == "marker" else 1)) * strength
+    if preset in ("charcoal", "crayon", "pencil", "pastel", "dry-brush"):
+        values[tooth > 1-(.4 if preset == "pastel" else .18)*grain] = 0
     mask = ImageChops.multiply(Image.fromarray(np.uint8(values)), image.getchannel("A"))
     overlay = Image.new("RGBA", image.size, parse_color(color))
     mask = ImageChops.multiply(mask, overlay.getchannel("A"))
     overlay.putalpha(mask)
     return overlay
+
+
+def _drawn_marks(mask, preset, rng, *, scale, jitter, pressure):
+    """Coverage mask for the presets added after the original six."""
+    w, h = mask.size
+    draw = ImageDraw.Draw(mask)
+
+    def tone(spread):
+        return round(255*(1-pressure*rng.uniform(0, spread)))
+
+    def lines(step, width, slope, spread=.65):
+        for y in range(-round(w*abs(slope))-step, h+round(w*abs(slope))+step, step):
+            points = [(x, y + x*slope + rng.uniform(-2, 2)*jitter*scale) for x in range(0, w+step, step)]
+            draw.line(points, fill=tone(spread), width=max(1, round(width*scale)))
+
+    if preset == "cross-hatch":
+        step = max(2, round(6*scale))
+        lines(step, 1, .4)
+        lines(step, 1, -1.2)
+    elif preset == "pastel":
+        lines(max(3, round(9*scale)), 6, .25, .5)
+    elif preset == "marker":
+        lines(max(3, round(9*scale)), 11, -.35, .35)
+    elif preset == "dry-brush":
+        step = max(2, round(5*scale))
+        for y in range(-step, h+step, step):
+            x = rng.uniform(-w*.2, w*.1)
+            while x < w:
+                length = rng.uniform(.3, .9)*w
+                draw.line([(x, y + rng.uniform(-1, 1)*jitter*3*scale), (x+length, y + rng.uniform(-1, 1)*jitter*3*scale)],
+                          fill=tone(.5), width=max(1, round(rng.uniform(4, 9)*scale)))
+                x += length + rng.uniform(0, .25)*w
+        # Bristle streaks: whole rows lose ink together, as a dry brush does.
+        streaks = np.clip(rng.uniform(-.2, 1.6, (h, 1)), 0, 1)
+        mask = Image.fromarray(np.uint8(np.asarray(mask, dtype=np.float32) * streaks))
+    elif preset == "scribble":
+        count = min(4000, max(1, round(w*h / (700*scale*scale))))
+        for _ in range(count):
+            x, y, angle = rng.uniform(0, w), rng.uniform(0, h), rng.uniform(0, 2*math.pi)
+            turn = rng.uniform(.08, .35) * rng.choice((-1, 1))
+            points = []
+            for _ in range(60):
+                points.append((x, y))
+                angle += turn + rng.uniform(-.4, .4)*(.5+jitter)
+                x, y = x + math.cos(angle)*3*scale, y + math.sin(angle)*3*scale
+            draw.line(points, fill=tone(.6), width=max(1, round(scale)), joint="curve")
+    elif preset == "spatter":
+        count = min(200000, max(1, round(w*h / (120*scale*scale))))
+        for _ in range(count):
+            x, y = rng.uniform(0, w), rng.uniform(0, h)
+            r = max(.5, min(12*scale, rng.exponential(1.1*scale)))
+            draw.ellipse((x-r, y-r, x+r, y+r), fill=tone(.4))
+    elif preset == "smudge":
+        coarse = rng.integers(0, 255, (max(2, math.ceil(h/(40*scale))), max(2, math.ceil(w/(40*scale)))), dtype=np.uint8)
+        mask = Image.fromarray(coarse).resize((w, h), Image.Resampling.BICUBIC)
+        mask = mask.filter(ImageFilter.GaussianBlur(max(1, 6*scale)))
+    return mask
 
 
 def clone_image(destination, source, source_point, strokes, *, size=32, hardness=.8, opacity=1, aligned=True, brush="round"):

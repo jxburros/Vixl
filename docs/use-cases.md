@@ -172,6 +172,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | ILL-55 | Reflection of a scene in water below a horizon, with ripples and a fade | `reflection` | 1 · <1 | Craft plan 6a. One raster layer; `reflection --target` re-renders it after the scene changes. Was hand-placed dashes (M:T03). |
 | ILL-56 | Filled layered water: sea, harbor or lake bands with crests | `organic` preset `water` | 1 · <1 | Craft plan 6c. Replaces stroked wave lines (M:T09, T12). |
 | ILL-57 | The concrete motif a brief implies (a cup with steam, a lighthouse in the sea, strung lanterns) | `vixl_reference` motifs; shapes `cup`, `steam`, `lighthouse`, `lantern` | 1–3 · <1 | Craft plan 6b. |
+| ILL-58 | Fill a shape with a material or textile texture (marble, terrazzo, linen, denim, leather, cobblestone, topographic lines, leopard, camouflage …) | `pattern-fill` with a built-in pattern | 1 · <1 | 72 seeded seamless patterns in four families; `pattern-list` describes each. |
 
 ### Data and diagrams
 
@@ -514,7 +515,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | ILL-53 | Reusable editable object (mascot placed recoloured in several documents) | `object-save`/`object-place` with `recolor`, or `vixl_export(isolate, path=….vixl)` + `object-place source` | 4–8 · 1–2 | Copies are independent, with new IDs. |
 | ILL-33 | Painted texture or brush illustration (dozens of strokes) | `paint` with brushes | 15–30 · 3–4 | Strokes stay editable. |
 | ILL-34 | Cut-paper style illustration | cut-paper guidance, `tear`, shadows | 20–35 · 3–5 |  |
-| ILL-35 | Pencil, charcoal, ink-wash, stipple or hatch finish | material finishes | 5–10 · 1–2 |  |
+| ILL-35 | Pencil, charcoal, ink-wash, stipple, hatch, cross-hatch, scribble, spatter, dry-brush, pastel, smudge or marker finish | `drawn-texture` | 5–10 · 1–2 |  |
 | DRW-20 | Draw a custom vector icon with the pen and node edits | `pen`, path node ops, simplify/smooth | 15–30 · 3–4 | Path coordinates are literal local pixels. |
 | DRW-21 | Envelope or corner-pin distortion of vector art | vector distortion | 5–10 · 1–2 | Animatable parameters. |
 | DRW-22 | Outline a stroke or offset a path into a shape | outline/offset path | 3–6 · 1 |  |

@@ -10,10 +10,23 @@ not measured reflectance data or classifications of human appearance.
 
 ## Patterns, handmade texture and clone stamping
 
-Use `vixl_apply(workflow='pattern-list', request={})` for the built-in list;
-pass a document to include its custom patterns. Patterns include stripes, dots,
-halftone, hatching, grid, checker, noise, paper, fabric, wood, stone and scales.
+Use `vixl_apply(workflow='pattern-list', request={})` for the built-in list
+with a one-line description, family and default spacing for each;
+pass a document to include its custom patterns. There are 72 built-in patterns:
+
+- **Geometric:** stripes, dots, halftone, hatching, grid, checker, diagonal-stripes, pinstripes, chevron, zigzag, waves, herringbone, diamonds, argyle, triangles, honeycomb, bricks, basketweave, polka, crosses, rings, squares, dashes, dot-grid, graph-paper, isometric-grid, dither.
+- **Textile:** fabric, plaid, gingham, houndstooth, linen, canvas, burlap, denim, corduroy, knit, carbon-fiber, tweed, quilted.
+- **Material:** noise, paper, stone, marble, granite, concrete, terrazzo, cork, rust, brushed-metal, leather, corrugated, kraft-paper, watercolor-paper, mosaic.
+- **Natural:** wood, scales, cracked, cobblestone, cells, bubbles, sand, clouds, camouflage, topographic, caustics, bark, leopard, giraffe, zebra, confetti, starfield.
+
 Scale, rotation, offset, spacing, two colors and seed control their appearance.
+`colors` is `[ink, ground]`: the first colour draws the lines, spots, veins or
+threads and the second is the background, with in-between tones for shading.
+Every built-in repeats every two cells of `spacing`. The newer textile patterns
+default to a 24 px cell and the newer material and natural ones to 64 px, so a
+marble or terrazzo fill does not read as a small repeat; the rest default to 16 px.
+Seeded patterns (stone, marble, camouflage, cells …) change with `seed`; add
+`tile_variation` for a tone shift on each repeat.
 
 ```json
 [
@@ -23,7 +36,8 @@ Scale, rotation, offset, spacing, two colors and seed control their appearance.
 ]
 ```
 
-`drawn-texture` supports pencil, charcoal, crayon, ink-wash, stipple and hatch.
+`drawn-texture` supports pencil, charcoal, crayon, ink-wash, stipple, hatch,
+cross-hatch, scribble, spatter, dry-brush, pastel, smudge and marker.
 Fill and texture operations add a raster overlay clipped to the rendered source
 silhouette, keeping the source vector editable. They do not change its outline
 geometry. For pressure-sensitive editable outlines, use the existing `paint`
@@ -31,7 +45,7 @@ brush presets and pressure points. Jitter shifts drawn line paths, pressure vari
 coverage, and grain introduces tooth and broken marks. All stochastic choices
 are reproducible with a seed.
 
-![Plain versus six drawn presets and the pattern library](../../assets/images/texture-comparison.png)
+![Plain versus every drawn preset and the pattern library](../../assets/images/texture-comparison.png)
 
 Regenerate this comparison with `python examples/build_texture_comparison.py`.
 Compare plain/textured forms at both thumbnail and delivery size. Zooming in is
