@@ -13,8 +13,9 @@ with `git config core.hooksPath scripts/hooks` (or copy it to `.git/hooks/commit
 appends such lines by default should use it. An advisory CI check (`pr-hygiene.yml`) warns about trailers in a pull
 request's commits or description; it does not fail the run. Past commits are not rewritten for trailers.
 
-Showcases, experiments, films, marketing media, published evaluation results and large content packs belong in
-[VixlExamples](https://github.com/jxburros/VixlExamples), not here; link to them from the docs. Keep media in this repository only when
+Showcases, experiments, films, marketing media and published evaluation results belong in
+[VixlExamples](https://github.com/jxburros/VixlExamples), not here; link to them from the docs. Vixl never imports, downloads
+from or needs that repository to run. Keep media in this repository only when
 tests, docs or packaging need it (`docs/assets`, `assets/`, `examples/`, `tests/fixtures`).
 
 ## Setup
@@ -51,7 +52,7 @@ Optional features live in built-in plugins under `src/vixl/plugins/` and join th
 `vixl.plugins`. Before adding a feature, go through the parameters in [plugins](docs/reference/plugins.md#is-a-new-feature-a-plugin)
 and state the decision in the pull request. The core never imports a plugin module; `tests/test_plugins.py` checks
 this and lists the remaining exceptions. Large data that only some features use is a content pack in
-[VixlExamples](https://github.com/jxburros/VixlExamples/tree/main/packs), downloaded on first use by `vixl.packs`.
+[VixlPacks](https://github.com/jxburros/VixlPacks), downloaded on first use by `vixl.packs`.
 
 ## Adding an operation
 

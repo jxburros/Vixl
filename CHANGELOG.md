@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **Vixl no longer downloads anything from VixlExamples.** The emoji content pack moved to its own repository,
+  [VixlPacks](https://github.com/jxburros/VixlPacks), and `vixl.packs` pins it there by commit and SHA-256 (the file is
+  byte-identical). VixlExamples is showcase media only; nothing in the engine or its tests needs it. Releases up to 0.30.3
+  keep working: they pin a VixlExamples commit that stays reachable.
+- **A `fonts` content pack.** Press Start 2P and Space Mono, which the pixel-RPG example used to keep in a committed font
+  cache, are now a pinned pack in VixlPacks with their licences, registered in `vixl.packs` like the emoji artwork
+  (`packs.path("fonts")`, `VIXL_FONTS_PACK`, `VIXL_PACK_DOWNLOAD=off`). Its files are named like Vixl's font cache, so unpacking
+  the archive into `VIXL_FONT_CACHE` makes them available without a download. The Noto and DejaVu fallback fonts stay in
+  the package, so text still renders offline. A missing pack's error now names the right install command for that pack.
+
 ## 0.30.3
 
 Publishes the GitHub release: 0.30.2 reached PyPI, but its GitHub release stopped as a draft. This release ships

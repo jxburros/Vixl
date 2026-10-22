@@ -9,7 +9,7 @@ if not os.environ.get("VIXL_DOCS_ONLINE"):
 # Exports of saved documents use the per-user disk render cache: keep the suite's entries out of the real one.
 os.environ["VIXL_RENDER_CACHE"] = tempfile.mkdtemp(prefix="vixl-render-cache-")
 
-# The emoji artwork is a content pack (vixl.packs) pinned to VixlExamples. Fetch it once before the
+# The emoji artwork is a content pack (vixl.packs) pinned to VixlPacks. Fetch it once before the
 # tests run (one worker downloads, the others wait on the lock), then forbid downloads inside tests.
 from pathlib import Path  # noqa: E402
 

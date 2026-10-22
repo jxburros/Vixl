@@ -10,7 +10,7 @@ symbols. No font installation is needed.
 ## The artwork pack
 
 The catalog (names, groups, sequences) ships with Vixl, so search and detection work offline. The artwork itself
-(about 20 MB) is a content pack in [VixlExamples](https://github.com/jxburros/VixlExamples/tree/main/packs/emojis):
+(about 20 MB) is a content pack in [VixlPacks](https://github.com/jxburros/VixlPacks/tree/main/emojis):
 Vixl downloads it the first time it draws an emoji or exports one, checks it against a pinned SHA-256, and keeps
 it in `~/.cache/vixl/packs/` (`VIXL_PACK_DIR` moves that). After that no network is needed.
 
@@ -35,7 +35,7 @@ shapes; compound even-odd fills are converted to editable outlines.
 
 ![VIXL Line sample sheet](../../assets/generated/emojis.png)
 
-Rebuild this review sheet and sample packs with `python packs/emojis/build_review_sheets.py` in VixlExamples.
+Rebuild this review sheet and sample packs with `python emojis/build_review_sheets.py` in VixlPacks.
 The script also creates a 48-emoji Discord starter pack, a 100-original collection,
 separate category packs and a 512 px image pack in `packs/emojis/output/`.
 
@@ -254,7 +254,7 @@ license. Original user-supplied art keeps its stated license (or `unspecified`);
 installing a pack retains its per-entry licenses. The engine's license is separate.
 Unicode test data is included under the Unicode data license.
 
-Maintainers rebuild the pack in VixlExamples with `python packs/emojis/build_pack.py --sources DIR`. The source
+Maintainers rebuild the pack in VixlPacks with `python emojis/build_pack.py --sources DIR`. The source
 directory contains these pinned inputs, downloaded with TLS verification:
 
 - [OpenMoji 17 SVG color archive](https://github.com/hfg-gmuend/openmoji/releases/download/17.0.0/openmoji-svg-color.zip), saved as `openmoji.zip`.
@@ -263,11 +263,11 @@ directory contains these pinned inputs, downloaded with TLS verification:
 - [OpenMoji license](https://raw.githubusercontent.com/hfg-gmuend/openmoji/17.0.0/LICENSE.txt), saved as `LICENSE.txt`.
 - [Unicode license](https://www.unicode.org/license.txt), saved as `UNICODE-LICENSE.txt`.
 
-Original faces, reactions and symbol sources live in VixlExamples `packs/emojis/sources/reactions/`; the builder
+Original faces, reactions and symbol sources live in VixlPacks `emojis/sources/reactions/`; the builder
 bundles them alongside the Unicode library without applying the OpenMoji transformation.
 
-The builder writes `artwork.zip` and `catalog.json`. Commit `artwork.zip` to VixlExamples, copy `catalog.json` to
+The builder writes `artwork.zip` and `catalog.json`. Commit `artwork.zip` to VixlPacks, copy `catalog.json` to
 `src/vixl/data/emojis/`, and update the `emojis` entry in `src/vixl/packs.py` (`commit`, `sha256`, `bytes`) to the new
-VixlExamples commit. Pin each next Unicode/OpenMoji version together, audit missing entries and preview
+VixlPacks commit. Pin each next Unicode/OpenMoji version together, audit missing entries and preview
 all changed artwork. Never replace an uncovered emoji with a generic placeholder.
 The catalog ships in the wheel; the artwork is downloaded once and cached.

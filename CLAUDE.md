@@ -3,7 +3,8 @@
 Vixl is a layered-image engine (CLI, Python API, MCP server, REST) in `src/vixl`. Tests are in `tests/`,
 user docs in `docs/`, the agent skill in `skills/vixl/`. `CONTRIBUTING.md` has the full rules.
 Showcases, explorations, films, marketing media and published eval results live in the separate VixlExamples
-repository (https://github.com/jxburros/VixlExamples); add new ones there and link to them.
+repository (https://github.com/jxburros/VixlExamples); add new ones there and link to them. Vixl must run without
+that repository: never import from it, download from it or make a test depend on it.
 
 ## Running tests
 - `pytest -n auto` runs the whole suite (about 4,900 tests). Iterate on one file first: `pytest -q tests/test_x.py`.
@@ -25,7 +26,7 @@ which way it went. In short:
   so documents still work without it, serves a particular domain, or brings its own heavy dependency, tool or
   network access. Reach it through registry roles and hooks; never import a plugin from the core (`tests/test_plugins.py`
   fails on new direct imports). A missing hook point goes into `vixl.plugins.HOOKS`.
-- **Content pack** (VixlExamples `packs/`, fetched by `vixl.packs`, pinned by commit and SHA-256) for large data only
+- **Content pack** (the VixlPacks repository, fetched by `vixl.packs`, pinned by commit and SHA-256) for large data only
   some features use.
 All plugins are built in for now. Features that extend an existing plugin go in that plugin's package.
 

@@ -23,7 +23,7 @@ def no_pack(tmp_path, monkeypatch):
 def test_missing_pack_is_reported_with_instructions(no_pack):
     status = packs.status("emojis")
     assert not status["installed"] and status["downloads"] == "off"
-    assert status["url"].endswith(f"/{packs.PACKS['emojis']['commit']}/packs/emojis/artwork.zip")
+    assert status["url"].endswith(f"/{packs.PACKS['emojis']['commit']}/emojis/artwork.zip")
     with pytest.raises(VixlError) as error:
         packs.path("emojis")
     assert error.value.code == "pack_unavailable"
@@ -31,6 +31,15 @@ def test_missing_pack_is_reported_with_instructions(no_pack):
     with pytest.raises(VixlError) as error:
         packs.install("emojis")
     assert error.value.code == "pack_unavailable"
+
+
+def test_each_pack_explains_how_to_install_it(no_pack, monkeypatch):
+    monkeypatch.delenv("VIXL_FONTS_PACK", raising=False)
+    with pytest.raises(VixlError) as error:
+        packs.path("fonts")
+    assert error.value.code == "pack_unavailable"
+    assert "vixl.packs.install('fonts'" in str(error.value) and "vixl emoji" not in str(error.value)
+    assert packs.status("fonts")["url"].endswith(f"/{packs.PACKS['fonts']['commit']}/fonts/fonts.zip")
 
 
 def test_a_file_that_does_not_match_the_pin_is_refused(no_pack, tmp_path):
@@ -55,7 +64,7 @@ def test_override_points_at_a_local_copy(no_pack, tmp_path, monkeypatch):
 
 def test_unknown_pack_is_an_error():
     with pytest.raises(VixlError, match="Unknown content pack"):
-        packs.status("fonts")
+        packs.status("unicorns")
 
 
 def test_text_with_emojis_renders_from_fonts_without_the_pack(no_pack):

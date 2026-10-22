@@ -1,6 +1,6 @@
 """Content packs: large data Vixl downloads on first use instead of shipping in the package.
 
-A pack is data only (no code runs from it). Each one is pinned to a commit of the VixlExamples
+A pack is data only (no code runs from it). Each one is pinned to a commit of the VixlPacks
 repository and checked by SHA-256, so a changed or tampered file is refused. Downloads go to the
 per-user pack directory (``VIXL_PACK_DIR``, default ``~/.cache/vixl/packs``).
 
@@ -17,15 +17,25 @@ import tempfile
 
 from .errors import VixlError, require
 
-REPOSITORY = "https://raw.githubusercontent.com/jxburros/VixlExamples"
+REPOSITORY = "https://raw.githubusercontent.com/jxburros/VixlPacks"
 PACKS = {
     "emojis": {
         "file": "artwork.zip",
-        "path": "packs/emojis/artwork.zip",
-        "commit": "3b967de556d5b1c3beff1514a8d13c104b026992",
+        "path": "emojis/artwork.zip",
+        "commit": "fa2632ed0fd0443cfe5e7c4e878afc7ddda56adf",
         "sha256": "3971e02a07f70557470b4e01c0c74328f0d613182df85a59ee9949c2695f438f",
         "bytes": 20466816,
         "description": "VIXL Line emoji artwork: SVG and editable .vixl masters for every catalog entry.",
+        "install": "Run `vixl emoji artwork --download`, or download {url} and run `vixl emoji artwork --from FILE`.",
+    },
+    "fonts": {
+        "file": "fonts.zip",
+        "path": "fonts/fonts.zip",
+        "commit": "ad7b72479569c906110bf8f89181548a58c4cc64",
+        "sha256": "eefb01e73539f97bc6b7054b1890d7b2abb5ca6a2d4b5c4f3bfa0e8066c0954d",
+        "bytes": 81431,
+        "description": "Third-party fonts the Vixl examples use (Press Start 2P, Space Mono), named like the font cache.",
+        "install": "Download {url} and install it with `vixl.packs.install('fonts', FILE)`.",
     },
 }
 OFF = {"0", "off", "false", "no"}
@@ -134,8 +144,7 @@ def path(name, download=True):
     cached = _cached(name)
     if cached.is_file():
         return cached
-    hint = (f"The {name} content pack is not installed. Run `vixl emoji artwork --download`, or download "
-            f"{url(name)} and run `vixl emoji artwork --from FILE`.")
+    hint = f"The {name} content pack is not installed. " + _spec(name)["install"].format(url=url(name))
     require(download and name not in _failed, _failed.get(name, hint), "pack_unavailable")
     try:
         return Path(install(name)["path"])
