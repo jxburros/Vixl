@@ -199,5 +199,7 @@ def test_release_publish_waits_for_the_protected_environment():  # #673
     assert pypi["environment"]["name"] == "pypi"
     assert pypi["permissions"] == {"id-token": "write"}
     assert not any("checkout@" in step.get("uses", "") for step in pypi["steps"])
+    upload = next(step for step in pypi["steps"] if "gh-action-pypi-publish" in step.get("uses", ""))
+    assert upload["with"]["attestations"] is False  # a reusable workflow's attestation names its caller
     assert "permissions" not in jobs["plan"]
 

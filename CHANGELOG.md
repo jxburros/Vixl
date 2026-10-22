@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.2
+
+Publishes to PyPI again: 0.30.1 stopped at the PyPI upload and was never published. This release ships its changes
+and those of 0.28.0 to 0.30.0.
+
+### Changed
+
+- **PyPI uploads no longer carry attestations.** The release workflow calls `pypi.yml` as a reusable workflow, so
+  the attestation names `release.yml` while Trusted Publishing matched `pypi.yml`, and PyPI refused the upload.
+  Uploads still use Trusted Publishing; signed provenance returns with #756.
+
 ## 0.30.1
 
 Unblocks releases: every release run since 0.28.0 stopped before publishing, so 0.28.0 to 0.30.0 were never published.
