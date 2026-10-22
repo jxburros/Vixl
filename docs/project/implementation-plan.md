@@ -237,6 +237,31 @@ The original step 4 list:
 #611, #613, #523, #612, #513, #177 (Lottie, as a plugin with a timeline export hook), the #214 remainder, the #218
 remainder, #662 (Figma export).
 
+**Export speed** (no issues yet; measurements in [render performance](render-performance.md#animation-export-2026-10-22)).
+None of these changes a rendered pixel; the encoder items change the encoded file, so compare size and quality before
+and after.
+
+1. An animation export budget in `tests/test_perf.py` (a fading document, MP4 and frame zip, one and several
+   workers), so the items below are measured and a regression fails. C1 P3.
+2. WebM: give libvpx-vp9 `-row-mt 1 -deadline good -cpu-used 4` in `timeline._video` (18.7 s to 10.1 s for 311
+   720p frames). C1 P3.
+3. Worker count from measurement: render the first chunk in-process, time it, and start workers only when the rest
+   clearly pays for their start-up, leaving a core for ffmpeg (`frame_workers.workers_for`; today they lose at 90
+   and 311 frames on 4 cores). Keep the byte-equality test against `workers=1`. C2 P3.
+4. Frame zips: save frames with a fast PNG compression level (`compress_level=1`); larger files, same pixels. C1 P2.
+5. MP4: skip the per-frame white backdrop and conversion when the frame is already opaque. C1 P1.
+6. Frame setup: a track that changes only scalar fields (opacity, position, scale) takes a shallow layer copy
+   instead of `deepcopy` in `FrameState.writable`. C2 P2.
+7. Fades: apply layer opacity while compositing (or cache the scaled alpha per opacity step) instead of
+   `with_opacity`'s split, remap and putalpha per layer per frame; check whether runs of unchanged layers below the
+   animated ones are composited once as a backdrop. C3 P3.
+8. Encoder speed presets: a draft/final choice on video export (x264 `veryfast` 2.1 s against `medium` 3.5 s, larger
+   files at the same CRF). C2 P2.
+9. Hardware encoding, opt-in (`VIXL_VIDEO_ENCODER=auto|software|nvenc|qsv|vaapi|videotoolbox`): probe the encoder
+   with a one-frame encode, fall back to software, map `quality` to each encoder's own control; software stays the
+   default because hardware output is larger at equal quality and varies by machine. After items 1 to 3 show that
+   encoding is a real share of export time. C3 P2.
+
 ### Later or exploratory
 
 - #383 (object detection).

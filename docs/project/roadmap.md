@@ -205,6 +205,7 @@ which is the open step (`python -m evals.craft_rerun`, [evals/README.md](../../e
 | #177 | Lottie export | 5 | 3 | After motion features settle |
 | #166 | PPTX font embedding | 4 | 3 | Re-scope: warnings and licences shipped; PDF is the fidelity route |
 | #214 | Remainder of a partly shipped issue: bind chart data across charts and into text | 3 | 3 | |
+| — | Animation export speed: an export perf budget, faster VP9 settings, measured worker count, cheaper frame setup and fades, encoder presets, opt-in hardware encoding | 1–3 | 2–3 | Step 8 of the [implementation plan](implementation-plan.md#step-8-motion-and-media); numbers in [render performance](render-performance.md#animation-export-2026-10-22) |
 
 ## Needs a decision or a spec
 
