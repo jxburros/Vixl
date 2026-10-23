@@ -37,7 +37,7 @@ jobs:
       security-events: write   # only for sarif: true
     steps:
       - uses: actions/checkout@v4
-      - uses: jxburros/Vixl@v0.30.4   # pin a release tag (or a commit SHA)
+      - uses: jxburros/Vixl@v0.30.5   # pin a release tag (or a commit SHA)
         with:
           paths: designs/**/*.vixl
           profile: final          # draft | review | final | a .vixl-checks.json profile (optional)
@@ -49,8 +49,8 @@ jobs:
           sarif: true             # findings in the Security tab and on the pull request
 ```
 
-A tag such as `v0.30.4` is easy to read but can be moved to other code. For a pin nothing can change, use the
-release's full commit SHA with the version in a comment, `uses: jxburros/Vixl@<40-character-sha>  # v0.30.4`, and
+A tag such as `v0.30.5` is easy to read but can be moved to other code. For a pin nothing can change, use the
+release's full commit SHA with the version in a comment, `uses: jxburros/Vixl@<40-character-sha>  # v0.30.5`, and
 let Dependabot (`package-ecosystem: github-actions`) propose updates. The action itself pins `setup-python`,
 `upload-artifact` and `upload-sarif` by commit SHA, and passes every input to its scripts through environment
 variables, never by pasting `${{ inputs.* }}` into a shell line.
