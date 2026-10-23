@@ -58,3 +58,26 @@ Two facts decide most of what follows:
 - **#593 native kernels: close with numbers.** The numpy loops it names are no longer where time goes: blur and
   compositing are Pillow C, and lighting is now relit per dirty box. numba would add about 50 MB to the frozen
   build for no measured gain on these documents.
+
+## Animation export (2026-10-22)
+
+A 1280 × 720 document with 40 fading ellipses and 12 fading text labels, exported at 30 fps on the same kind of
+4-core container (wall clock, one run each):
+
+| Export | Time |
+| --- | --- |
+| MP4, 90 frames, `VIXL_FRAME_WORKERS=1` | 2.6 s |
+| MP4, 90 frames, default workers | 4.4 s |
+| MP4, 311 frames, 1 / 2 / 3 workers | 7.6 / 8.9 / 8.1 s |
+| Frame zip (PNG), 311 frames, one process | 11.3 s |
+| WebM, 90 frames, one process | 8.4 s |
+
+Re-encoding the 311 raw frames alone: libx264 `medium` 3.5 s, `veryfast` 2.1 s; libvpx-vp9 at its defaults 18.7 s,
+with `-row-mt 1 -deadline good -cpu-used 4` 10.1 s. A `cProfile` of the one-process MP4 export puts compositing
+first (`alpha_composite`, 0.62 s of 4.4 s profiled), then the per-frame copy of animated layers (`deepcopy` from
+`FrameState.writable`, about 10%), writing to and waiting on ffmpeg (about 15%), and `with_opacity` per layer.
+resvg made 13 calls: a fade redraws nothing.
+
+So for animations that move or fade, the time is in compositing, frame setup and encoding, not rasterising; worker
+processes lose to a single process at these lengths, because each costs about a second to start and ffmpeg shares the
+cores. The follow-up items are listed under step 8 of the [implementation plan](implementation-plan.md#step-8-motion-and-media).

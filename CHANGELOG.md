@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.30.5
+
+Plans the animation export speed work.
+
+### Changed
+
+- **Animation export speed is planned.** [Render performance](docs/project/render-performance.md#animation-export-2026-10-22)
+  records a profile of MP4, WebM and frame-zip exports, and step 8 of the
+  [implementation plan](docs/project/implementation-plan.md#step-8-motion-and-media) lists the follow-ups: an export perf
+  budget, faster VP9 settings, a measured worker count, cheaper frame setup and fades, encoder presets and opt-in
+  hardware encoding. No code changes.
+
 ## 0.30.4
 
 Moves the content packs out of VixlExamples, so Vixl no longer downloads anything from the examples repository.
