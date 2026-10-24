@@ -47,7 +47,8 @@ originals; positions of the left edges and tops follow the originals.
 
 `manifest.json` lists, per test, every defect a judge named for the Vixl lane:
 
-- **expected**: the composition matters (dead band, margin drift, uneven rhythm, crowding, clumped scatter), each
+- **expected**: the composition matters (dead band, margin drift, uneven rhythm, crowding, clumped scatter; no judged
+  defect of a reconstructed document is a hierarchy one, so the four hierarchy codes have none), each
   with the codes that count as catching it, the document and the region in its pixels, the judges who named it
   and their words;
 - **out_of_scope**: everything else (drawing, motif, type, colour, data presentation, print, export), with a
@@ -70,6 +71,10 @@ At the thresholds in `src/vixl/composition.py`:
 | uneven_rhythm | 4 | 2 | 2 | 3 | 0 | 1 |
 | crowding | 1 | 1 | 0 | 4 | 0 | 0 |
 | clumped_scatter | 1 | 0 | 1 | 0 | 0 | 0 |
+| flat_hierarchy | 0 | 0 | 0 | 0 | 0 | 0 |
+| single_weight | 0 | 0 | 0 | 0 | 0 | 0 |
+| no_focal | 0 | 0 | 0 | 0 | 0 | 0 |
+| accent_unused | 0 | 0 | 0 | 0 | 0 | 0 |
 | all | 21 | 12 | 9 | 23 | 0 | 3 |
 
 Findings exceed catches because one defect is often found more than once (the four section rules of the T16 menu,
@@ -90,8 +95,24 @@ What it misses, and why:
   variation 0.47 against 0.19-0.49 for 60 seeded tiles of the same motifs); what the judges saw is three like motifs
   lined up in one column, which density does not measure.
 
+The four hierarchy codes (`flat_hierarchy`, `single_weight`, `no_focal`, `accent_unused`) were gated on this set the
+same way: a code lands only with no false finding. None fires on the 20 documents, so none is false, but the backtest
+cannot say what they catch, for two reasons. No judged defect of a reconstructed document is a flat scale, a single
+weight, a missing focal point or an unused accent (the nearest, the T05 chart whose labels are as large as its data, is
+on slide 3, which is not among the reconstructions), so there is no expected defect to catch. And the reconstructions are set in the bundled proofing font and carry no rolled direction,
+so `single_weight` (which does not judge the proofing font) and `accent_unused` (which needs a direction with an
+accent) cannot fire here at all. What the set does show is headroom: the closest `flat_hierarchy` call is the T14 lyric
+frame at 2.13 times the body size against a limit of 1.6; no page has its two heaviest blocks within 15% of each
+other with a lighter third (the nearest, the T12 name and tagline, weigh 72% of each other, and two blocks alone are
+not judged); the T07 print sheet's four names are a series of equals (and each sits in a card of its own), and the T04
+logo sheet (marks over 13% of the canvas) and the T08 infographic (51%) are judged by their art: the code leaves
+all three alone. Their positive and negative cases are in `tests/test_composition_hierarchy.py`, and the pairs in the skill's
+`finishing-pairs.md` are applied and checked by `tests/test_finishing_pairs.py`.
+
 The thresholds were also run on the 144 rolled designs of `python -m evals.house_style` (48 sparse briefs at three
-variety levels): none gets a composition finding.
+variety levels): none gets a composition finding. That includes the four hierarchy codes: the eval's stand-in fonts are one file under
+every name, which `single_weight` cannot tell apart, so the designs were rolled a second time with different stand-in
+faces for the heading and the body (Noto Sans and DejaVu Sans): still none.
 
 ## Repair
 
@@ -108,6 +129,7 @@ composition repairs it selected and checks again.
 | uneven_rhythm | 3 | 1 |
 | crowding | 4 | 4 |
 | clumped_scatter | 0 | 0 |
+| flat_hierarchy, single_weight, no_focal, accent_unused | 0 | 0 |
 | all | 23 | 18 |
 
 16 of the 20 findings that catch a judged defect are resolved, with no new finding. Left over: the T02 band beside

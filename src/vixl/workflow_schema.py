@@ -814,9 +814,12 @@ SUMMARIES = {
 
 
 def summary(action):
+    from .variations import SUMMARY as VARIATIONS_SUMMARY
     from .emoji_workflows import SUMMARIES as EMOJI_SUMMARIES
     from .plugins import workflow_actions, workflow_summary
 
     if action in workflow_actions() and workflow_summary(action):
         return workflow_summary(action)
+    if action == "variations":
+        return VARIATIONS_SUMMARY
     return EMOJI_SUMMARIES.get(action, SUMMARIES.get(action, ""))

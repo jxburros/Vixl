@@ -48,8 +48,9 @@ CHECK_INFO = {
     "diagram": ("Diagram nodes and edges: overlaps, crossings, labels and routing.", ("error", "warning")),
     "flow": ("Text flows: overset text, widows, orphans and broken frame chains.", ("error", "warning")),
     "codes": ("QR codes and barcodes: quiet zone, size, contrast and decodability.", ("error", "warning")),
-    "composition": ("Craft review: dead bands, margin drift, uneven rhythm, crowding under a rule or heading and "
-                    "clumped scatters, each with a code, region, measured values and threshold.", ("warning",)),
+    "composition": ("Craft review: dead bands, margin drift, uneven rhythm, crowding under a rule or heading, "
+                    "clumped scatters, flat type hierarchy, one weight, no focal point and an unused accent, each "
+                    "with a code, region, measured values and threshold.", ("warning",)),
     "print": ("Print readiness: dpi, image resolution, ink limit, small type and the live area.",
               ("error", "warning")),
     "color_vision": ("Text and chart series that become hard to tell apart under color-vision deficiencies.",

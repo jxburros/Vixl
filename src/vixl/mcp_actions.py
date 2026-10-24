@@ -577,7 +577,7 @@ def apply_workflow(
         require(ctx.allow_screen_capture, "Desktop capture is disabled; start vixl mcp with --allow-screen-capture "
                 "or VIXL_ALLOW_SCREEN_CAPTURE=1", "permission_denied")
     result = dispatch(ctx.session, workflow, request, document)
-    if workflow in ("film-preview", "video-sample", "audio-analyze"):
+    if workflow in ("film-preview", "video-sample", "audio-analyze", "variations"):
         from .assets import open_image
 
         paths = result.get("images", []) if isinstance(result, dict) else []

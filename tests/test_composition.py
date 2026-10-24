@@ -14,9 +14,14 @@ def doc(*ops, size=(1000, 1000), body=20):
     return p
 
 
-def found(p, **options):
+# The hierarchy codes judge the sizes and faces of a document, which these spacing fixtures leave to chance (every
+# line is 24 px against a 20 px body): they have their own cases in test_composition_hierarchy.py.
+HIERARCHY = ("flat_hierarchy", "single_weight", "no_focal", "accent_unused")
+
+
+def found(p, hierarchy=False, **options):
     report = p.check(checks=["composition"], **options)
-    return [x for x in report["issues"] if x["check"] == "composition"]
+    return [x for x in report["issues"] if x["check"] == "composition" and (hierarchy or x["code"] not in HIERARCHY)]
 
 
 def codes(p):
@@ -36,7 +41,7 @@ def panel(name, y, height=150, x=100, width=800):
 def test_composition_is_a_default_family_of_review_findings():
     assert "composition" in CHECKS
     p = doc(text("title", 60, 60), text("subtitle", 72, 100))
-    (finding,) = [x for x in p.check()["issues"] if x["check"] == "composition"]
+    (finding,) = [x for x in p.check()["issues"] if x["check"] == "composition" and x["code"] not in HIERARCHY]
     assert finding["action"] == "review" and finding["severity"] == "warning"
     assert finding["code"] in CODES and finding["rule"] == "composition.margin_drift"
     # Machine-usable for repair: layers, a region, what was measured against which threshold.
@@ -169,7 +174,7 @@ def test_final_profile_fails_on_composition_until_waived(tmp_path):
     assert p.check()["passed"] and p.check(profile="draft")["passed"]
     final = p.check(profile="final")
     assert not final["passed"] and "composition" in final["checked"]["checks"]
-    assert [final["issues"][i]["check"] for i in final["profile"]["failing"]] == ["composition"]
+    assert {final["issues"][i]["check"] for i in final["profile"]["failing"]} == {"composition"}
     p.apply({"type": "waiver", "check": "composition", "reason": "the subtitle is indented on purpose"})
     assert p.check(profile="final")["passed"]
 
@@ -203,7 +208,7 @@ def test_check_command_line_and_mcp_select_the_family(tmp_path):
         return json.loads(content[0].text)
 
     report = asyncio.run(call())
-    assert [x["code"] for x in report["issues"]] == ["margin_drift"]
+    assert [x["code"] for x in report["issues"] if x["code"] not in HIERARCHY] == ["margin_drift"]
 
 
 def test_text_in_a_chip_aligns_by_the_chip():

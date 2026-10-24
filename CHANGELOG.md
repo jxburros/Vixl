@@ -42,6 +42,27 @@ packages.
 
 ### Craft checks and variations
 
+- **Four hierarchy findings join the composition check (breaking).** `flat_hierarchy` (two or more text blocks whose
+  largest text is under 1.6 times the body size), `single_weight` (three or more text blocks in one face and one
+  weight), `no_focal` (the two heaviest blocks of a page of type and pictures weigh within 15% of each other) and
+  `accent_unused` (a page built on the document's palette never draws the accent its direction rolled) are `review`
+  findings like the spacing codes: a plain `check` passes with them, the `final` profile fails until they are fixed or
+  waived with a reason, and `repair-layout` applies nothing for them (which line leads is a judgement call) and lists
+  `suggestions` under `reviews_remaining`. A document that passed `final` before can now fail it; the thresholds are in
+  `composition.THRESHOLDS`. On the craft backtest none of them adds a false finding, but no judged defect of the
+  reconstructions is of these kinds, so what they catch is not measured there; the 144 rolled designs of the
+  house-style eval still have no composition finding. Documented under [composition](docs/guides/layout/guides.md#composition). (#649)
+- **`variations` compares seeded rolls of the open document.** `vixl_apply(workflow='variations', request={output, count
+  or seeds, locks, slots})` renders 2 to 4 rolls on copies, writes one labelled contact sheet (the MCP tool also returns
+  it as an image) and gives each tile its seed, layout, palette, finding counts and the `roll` step that makes it real.
+  The open document is unchanged until you apply the chosen step. The `roll` step takes `replace` to re-roll a document
+  that already has a layout instead of failing on the name clash. See [safe variety](docs/guides/layout/safe-variety.md#comparing-variations). (#649)
+- **Finishing pairs for agents.** `skills/vixl/references/finishing-pairs.md` describes six generic pages and their
+  finished versions in words, each with the exact operations that close the gap (a flat type scale, one weight, two
+  rival headlines, an unused accent, a dead band, two left margins); a test applies every pair and checks that the
+  finding appears and then disappears. The `finishing` checklist now asks for steps in the type and for the accent to be
+  used, and points at `variations` when the composition itself is generic. (#649)
+
 ### Palette and decoration from the brief
 
 ### Layout and adaptation
@@ -87,6 +108,22 @@ packages.
 ### Reproducibility and delivery
 
 ### Evals
+
+- **A craft grader in the agent eval.** Task checks can be `craft`: the composition checks (spacing, rhythm, crowding and
+  the four hierarchy codes) run on the document the agent leaves, every finding counted whether or not it was waived.
+  The score is `1 - min(1, findings / max_findings)`; the check passes when no finding has a `forbid` code and the score
+  reaches `min_score`, and its detail lists each finding's code, layers and region. Four sparse briefs (an event poster,
+  a café menu with tab stops and dot leaders, a report cover, a quote card) have reference solutions that score 1.0, and
+  `evals/baseline.json` stores a floor per craft task and for their mean, so a check or default change that lowers what a
+  finished page scores fails `python -m evals.run --baseline`. Reports show a craft column. (#656)
+- **An optional rubric judge.** `python -m evals.run --judge` renders each craft task's document at delivery size and asks a
+  model for 1-5 scores on hierarchy, spacing, type, colour, motif and finish (`--judge-model`, `--judge-endpoint` or
+  `VIXL_JUDGE_ENDPOINT` for any Anthropic-compatible server). It is off by default, never used by the Agent eval workflow
+  or the tests (they script it), kept out of the baseline, and stores its scores, notes and images beside the run. No
+  re-judging has been run with it, so it measures nothing yet. (#656)
+- **The craft backtest scores the four hierarchy codes.** None fires on the 20 reconstructed documents, so none adds a
+  false finding; `single_weight` and `accent_unused` cannot fire there (proofing font, no rolled direction), which the
+  [backtest README](evals/craft_backtest/README.md) says. (#649)
 
 ## 0.30.5
 

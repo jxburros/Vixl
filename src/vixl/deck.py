@@ -111,10 +111,41 @@ def document_title(view):
     return " ".join(layer["text"].split()) if layer else None
 
 
+SHEET_GAP, SHEET_LABEL = 16, 24
+
+
+def sheet_size(count, *, width, height, columns, labeled=True):
+    """The pixel size of a sheet of ``count`` tiles (see ``tile_sheet``)."""
+    rows, label = math.ceil(count / columns), (SHEET_LABEL if labeled else 0)
+    return columns * width + (columns + 1) * SHEET_GAP, rows * (height + label) + (rows + 1) * SHEET_GAP
+
+
+def tile_sheet(images, labels, *, width, height, columns):
+    """One image with ``images`` (RGBA, already ``width`` x ``height``) laid out in ``columns`` on a grey ground,
+    each under its caption from ``labels`` (empty or None: no caption row). Shared by the page contact sheet and
+    the variations workflow."""
+    from PIL import Image, ImageDraw, ImageFont
+
+    gap, label = SHEET_GAP, (SHEET_LABEL if labels else 0)
+    font = ImageFont.load_default(size=15)
+    total_w, total_h = sheet_size(len(images), width=width, height=height, columns=columns, labeled=bool(labels))
+    sheet = Image.new("RGBA", (total_w, total_h), (226, 226, 230, 255))
+    draw = ImageDraw.Draw(sheet)
+    for index, image in enumerate(images):
+        row, column = divmod(index, columns)
+        x, y = gap + column * (width + gap), gap + row * (height + label + gap)
+        backdrop = Image.new("RGBA", image.size, (255, 255, 255, 255))
+        sheet.paste(Image.alpha_composite(backdrop, image), (x, y + label))
+        draw.rectangle((x - 1, y + label - 1, x + width, y + label + height), outline=(160, 160, 168, 255))
+        if labels:
+            draw.text((x, y + 3), labels[index], fill=(40, 40, 48, 255), font=font)
+    return sheet
+
+
 def contact_sheet(project, pages=None, *, width=480, columns=None, labels=True, include_hidden=True, variables=None):
     """One image with every page side by side (labelled with its number and name), for reviewing
     a deck at a glance."""
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image
 
     from .pages import find_page, page_list
     from .render import render, view_page
@@ -127,28 +158,15 @@ def contact_sheet(project, pages=None, *, width=480, columns=None, labels=True, 
     height = max(1, round(width * canvas["height"] / canvas["width"]))
     columns = int(columns or min(4, len(records)))
     require(1 <= columns <= 16, "columns must be 1–16", field="columns")
-    rows = math.ceil(len(records) / columns)
-    gap, label = 16, (24 if labels else 0)
-    font = ImageFont.load_default(size=15)
-    total_w, total_h = columns * width + (columns + 1) * gap, rows * (height + label) + (rows + 1) * gap
-    project.limits.size(total_w, total_h)
-    sheet = Image.new("RGBA", (total_w, total_h), (226, 226, 230, 255))
-    draw = ImageDraw.Draw(sheet)
-    for index, record in enumerate(records):
-        row, column = divmod(index, columns)
-        x, y = gap + column * (width + gap), gap + row * (height + label + gap)
-        view = view_page(project, record["id"])
-        image = render(view, variables).convert("RGBA")
-        image = image.resize((width, height), Image.Resampling.LANCZOS)
-        backdrop = Image.new("RGBA", image.size, (255, 255, 255, 255))
-        sheet.paste(Image.alpha_composite(backdrop, image), (x, y + label))
-        draw.rectangle((x - 1, y + label - 1, x + width, y + label + height), outline=(160, 160, 168, 255))
-        if labels:
-            number = project.state["pages"].index(record) + 1
-            text = f"{number}  {record['name']}" + ("  (hidden)" if record.get("hidden") else "") + (
-                "  · notes" if record.get("notes") else "")
-            draw.text((x, y + 3), text, fill=(40, 40, 48, 255), font=font)
-    return sheet
+    project.limits.size(*sheet_size(len(records), width=width, height=height, columns=columns, labeled=labels))
+    images, captions = [], []
+    for record in records:
+        image = render(view_page(project, record["id"]), variables).convert("RGBA")
+        images.append(image.resize((width, height), Image.Resampling.LANCZOS))
+        number = project.state["pages"].index(record) + 1
+        captions.append(f"{number}  {record['name']}" + ("  (hidden)" if record.get("hidden") else "") + (
+            "  · notes" if record.get("notes") else ""))
+    return tile_sheet(images, captions if labels else None, width=width, height=height, columns=columns)
 
 
 def _cluster(values, tolerance):

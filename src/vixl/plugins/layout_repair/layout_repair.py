@@ -195,9 +195,12 @@ def repair_layout(project, *, checks=None, suites=(), protected=(), minimum_size
         if review and not options:
             from .composition_repair import candidates
 
+            from .composition_repair import suggestions
+
             reasons[_key(finding)] = "not auto-repairable: " + candidates(work, finding)[1]
             attempts.append({"rule": finding["rule"], "layers": finding.get("layers", []), "candidate": None,
-                             "result": "skipped", "reason": reasons[_key(finding)]})
+                             "result": "skipped", "reason": reasons[_key(finding)],
+                             **({"suggestions": hints} if (hints := suggestions(finding)) else {})})
         for name, operations in options:
             if evaluated >= max_candidates:
                 stopped = "max_candidates"
@@ -255,9 +258,12 @@ def repair_layout(project, *, checks=None, suites=(), protected=(), minimum_size
             reasons.setdefault(_key(finding), "no candidate resolved it without a new finding (see attempts)")
         if stopped:
             break
+    from .composition_repair import suggestions
+
     remaining = [{"rule": item["rule"], "layers": item.get("layers", []),
                   "reason": reasons.get(_key(item), "not tried: the search stopped at "
-                                        + (stopped or "max_iterations"))}
+                                        + (stopped or "max_iterations")),
+                  **({"suggestions": hints} if (hints := suggestions(item)) else {})}
                  for item in reviews if composition and item.get("check") == "composition"]
     unsatisfied = [{"rule": item["rule"], "layers": item.get("layers", []), **(
         {"message": item["message"]} if item.get("message") else {})} for item in fixes if item["rule"] in REPAIRABLE]

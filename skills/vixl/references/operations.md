@@ -277,7 +277,7 @@ carries the new layer's `id`, `name` and `asset`). CLI equivalents: `vixl import
 | `font-install` | **`family`**, `weight`, `italic`, `name`, `role`, `scope` | One Google Fonts style, optionally as a role's font. |
 | `font-cover` | `text`, `scripts` (`Devanagari`, `Han`, `Hiragana/Katakana`, `Hangul`, `Thai`, `Arabic`), `weight` | Installs the Noto face for each script no font draws and appends it to `font-fallbacks`; default: every text layer's characters. Refuses offline when a face is not cached. |
 | `style-use` | **`name`**, `palette` | Tags the document with a catalog style (and applies its first palette). |
-| `roll` | `purpose`, `mood`, `seed`, `variety`, `locks`, `slots`, `unfilled` | Rolls a direction and applies fonts and layout. |
+| `roll` | `purpose`, `mood`, `seed`, `variety`, `locks`, `slots`, `unfilled`, `replace` | Rolls a direction and applies fonts and layout; `replace` re-rolls a document that already has a layout. |
 
 ## Legacy aliases (avoid in new code)
 

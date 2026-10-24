@@ -297,7 +297,8 @@ built-in ones, in `.vixl-checks.json` at its root; a project group's `profiles` 
 ```
 
 `final` keeps `composition` even when a workspace narrows its `checks`, so unresolved [composition
-reviews](../layout/guides.md#composition) (dead bands, margin drift, uneven rhythm, crowding, clumped scatter) fail shipping
+reviews](../layout/guides.md#composition) (dead bands, margin drift, uneven rhythm, crowding, clumped scatter, and flat
+hierarchy, a single weight, no focal point or an unused accent) fail shipping
 until they are fixed or waived with a reason. Only a workspace that narrows `checks` and also sets `final.optional`
 replaces the built-in `optional` list (`color_vision`, `composition`); name `composition` in it to keep the gate.
 

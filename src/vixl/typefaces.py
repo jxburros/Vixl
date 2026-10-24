@@ -684,7 +684,7 @@ def install_workspace(workspace, family, weight=400, italic=False, name=None, ro
 
 def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood=None, canvas=None,
                   locks=None, apply=False, slots=None, unfilled=None, variety=None,
-                  recommend=None, kind=None):
+                  recommend=None, kind=None, replace=False):
     """Choose brand defaults and optionally commit the whole direction in one undo step.
 
     Precedence: explicit ``locks`` > the workspace brand > the purpose profile > the document's stored
@@ -696,6 +696,7 @@ def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood
     direction is final and passes ``check``; ``blank`` shows a ``[Label]`` placeholder that ``check``
     rejects until it is filled. The default is ``omit`` when ``slots`` supplies copy and ``blank``
     when it supplies none (an all-omitted layout would be empty, so the placeholders show what to fill).
+    ``replace`` removes the layers of the document's previous layout first (a re-roll of a rolled document).
     """
     require(unfilled in (None, "blank", "omit"), "unfilled must be blank or omit", field="unfilled")
     from .layouts import CONTENT_KEYS
@@ -742,6 +743,8 @@ def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood
         if own_transaction:
             candidate.begin()
         operation = {**result["operation"], **(slots or {})}
+        if replace and candidate.state.get("layout"):
+            operation["replace"] = True
         if not embedded_pair:
             installed = pair_fonts(candidate, result["direction"]["pairing"])
             result["fonts"] = {key: installed[key] for key in ("origin", "heading", "body")}
