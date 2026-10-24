@@ -913,7 +913,7 @@ def validate_design(project, state):
                     layer[category + "_style"] in state.get(category + "_styles", {}),
                     "Missing named text style",
                 )
-        if "stack" in layer or "hide_if_empty" in layer:
+        if "stack" in layer or "hide_if_empty" in layer or "stack_grow" in layer or "stack_span" in layer:
             from .stacks import validate_layer
 
             validate_layer(layer)

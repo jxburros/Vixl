@@ -306,6 +306,24 @@ def _parallel(name, angle, spacing, region, through, prefix="a"):
     return guides
 
 
+def tracks(length, columns, gap=0):
+    """``[(start, width)]`` of the columns across ``length`` (column guides and grid stacks share this):
+    ``columns`` is a count of equal columns, or a list of pixel widths and ``"Nfr"`` shares of the length the
+    pixel columns and gaps leave (CSS grid-template-columns)."""
+    if isinstance(columns, int):
+        cell = (length - (columns - 1) * gap) / columns
+        return [(i * (cell + gap), cell) for i in range(columns)]
+    shares = [float(item[:-2]) if isinstance(item, str) else 0.0 for item in columns]
+    fixed = sum(item for item in columns if not isinstance(item, str))
+    unit = max(0.0, length - fixed - gap * (len(columns) - 1)) / sum(shares) if sum(shares) else 0.0
+    result, cursor = [], 0.0
+    for item, share in zip(columns, shares):
+        width = share * unit if isinstance(item, str) else float(item)
+        result.append((cursor, width))
+        cursor += width + gap
+    return result
+
+
 def generate(op, canvas):
     """Guides for a ``grid`` operation, keyed by name (each tagged with the grid's name)."""
     kind = op.get("kind", "columns")
@@ -332,11 +350,11 @@ def generate(op, canvas):
         for which, key, start, size in (("x", "columns", x, w), ("y", "rows", y, h)):
             count = op.get(key, 1)
             require(isinstance(count, int) and 1 <= count <= 512, "Grid limit is 512 rows/columns", field=key)
-            cell = (size - 2 * margin - (count - 1) * gutter) / count
-            require(cell > 0, "Grid margins and gutters exceed canvas", field="margin")
-            for i in range(count):
+            cells = tracks(size - 2 * margin, count, gutter)
+            require(cells[0][1] > 0, "Grid margins and gutters exceed canvas", field="margin")
+            for i, (offset_start, cell) in enumerate(cells):
                 for edge, offset in (("start", 0), ("end", cell)):
-                    guides[f"{name}-{which}{i + 1}-{edge}"] = {"axis": which, "position": start + margin + i * (cell + gutter) + offset}
+                    guides[f"{name}-{which}{i + 1}-{edge}"] = {"axis": which, "position": start + margin + offset_start + offset}
     elif kind == "baseline":
         spacing = finite(op.get("spacing", 8), "spacing", 1, 1e6)
         top = finite(op.get("offset", 0), "offset", -1e6, 1e6)

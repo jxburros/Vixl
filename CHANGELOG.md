@@ -67,6 +67,41 @@ packages.
 
 ### Layout and adaptation
 
+- **Stacks speak CSS flexbox and grid.** `justify` also takes `space-between`, `space-around` and `space-evenly`;
+  `align: "stretch"` sizes members across the box (text wraps to its width, shapes, solids, gradients and frames fill
+  it); `grow: {member: weight}` shares the free space along the stack (`stack_grow` on the member); a horizontal stack
+  with `wrap: true` continues on new rows `row_gap` apart; and `direction: "grid"` places members row by row in
+  `columns` (a count, or widths such as `["1fr", "2fr"]` or `[240, "1fr"]`) with `span: {member: n}` (`stack_span`),
+  wrapping text that is wider than its cell. Grid columns use the same column math as `grid` guides. Stretched and
+  grown sizes exist only while the document is laid out, so every renderer and exporter draws them and `remove: true`
+  writes them into the members. The CSS spellings (`justify_content`, `align_items`, `flex_direction: "row"`,
+  `flex_wrap`, `flex_grow`, `grid_template_columns`, `flex-start`) are accepted and reported under `normalized`, the
+  CLI has `--wrap`, `--columns 1fr,2fr`, `--row-gap`, `--grow NAME=W` and `--span NAME=N`, and a `stacks` guidance
+  entry maps the CSS model for agents (#653).
+- **`adapt-layout` rebuilds an unedited layout at the new size by default (breaking).** A document built by
+  `layout-apply` and not edited since is now recomposed from its stored recipe, as `recompose: true` did before, so a
+  post becomes a story or banner composed for that format instead of a scaled copy. The layout record keeps a
+  fingerprint of the layers it made (layer IDs do not count); any later edit, a layer the layout did not make, or a
+  proportional option (`anchors`, `where`, `scale`, `text`, `together`) keeps the anchoring rules. Every report and
+  every `adapt-sizes` copy says `recomposed` and a `reason`; `recompose: false` (CLI `--no-recompose`) restores the old
+  default (#653).
+- **Arrangements re-place any document and keep the best one.** `adapt-layout` `arrangements` (`stack-vertical`,
+  `side-by-side`, `hero-top`, `proportional`) builds each candidate, scores it with the composition, legibility,
+  bounds and overlap checks and keeps the one with the fewest unmet requirements, fix findings and review findings.
+  Copy is re-wrapped to its column with balanced lines and shrunk no further than `min_text` (raised to the size the
+  legibility check asks of social and poster pieces). The report lists `candidates` and carries an `outcome`
+  (`outcomes.make`): validated when the kept candidate passed, `needs_review` when none did (#519).
+- **Priorities, focal points and required copy.** `layer-intent` takes `priority` (`required`, the default,
+  `optional` or `decorative`) and, on image and frame layers, `focal: [x, y]`. Optional and decorative layers are
+  hidden when they would be too small to read or an arrangement has no room; required copy is never hidden or cut off
+  (its text box grows to its lines) and copy that still does not fit is listed under `requirements` and fails the
+  arrangement's validation. A cover crop centres the focal point as far as the image allows and is reported under
+  `crops` with the pixels lost on each side. The `optional` tag is an alias for `priority: optional` (#519).
+- **Each adapted copy runs the document's suites.** `adapt_copies` and `vixl_apply(workflow='adapt-sizes')` run the
+  document's attached check suites on every copy and attach each copy's `suites` results and `outcome` (`suites`: true
+  by default, a name or list, or false; CLI `--no-suites`); `options` also accepts `arrangements`. A `pytest -m perf`
+  budget covers adapting a poster to three sizes with four arrangements each (#519).
+
 ### Atmosphere and motifs
 
 - **Fog for `haze`.** `haze` takes `form: "fog"`: two to five stacked soft horizontal bands (`layers`, default 3) that are

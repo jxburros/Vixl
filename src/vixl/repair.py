@@ -57,19 +57,24 @@ def _resolved(project, layer):
     return next((x for x in resolved_layers(project) if x["id"] == layer["id"]), layer)
 
 
+def legible_minimum(project):
+    """The smallest font size the legibility check accepts on a social or poster piece (the house style's share of
+    the short side), else 0."""
+    from .house_style import purpose_for, rule
+
+    canvas = project.state["canvas"]
+    purpose = project.state.get("design_defaults", {}).get("purpose") or purpose_for(canvas.get("size"))
+    if purpose in ("social", "poster") and not (canvas.get("physical") and canvas.get("dpi")):
+        return math.ceil(rule("minimum_text")["minor_share_of_short_side"] * min(canvas["width"], canvas["height"]))
+    return 0
+
+
 def minimum_size(project, layer, minimum=None):
     """The smallest size a repair may set: the rule's ``minimum`` when given, else the larger of fit-text's
     default and, for social and poster pieces, the house style's minimum share of the short side."""
     if minimum is not None:
         return max(1, math.ceil(minimum))
-    from .house_style import purpose_for, rule
-
-    canvas = project.state["canvas"]
-    floor = FIT_TEXT_MINIMUM
-    purpose = project.state.get("design_defaults", {}).get("purpose") or purpose_for(canvas.get("size"))
-    if purpose in ("social", "poster") and not (canvas.get("physical") and canvas.get("dpi")):
-        floor = max(floor, math.ceil(rule("minimum_text")["minor_share_of_short_side"]
-                                     * min(canvas["width"], canvas["height"])))
+    floor = max(FIT_TEXT_MINIMUM, legible_minimum(project))
     for suite in project.state.get("suites", {}).values():
         for item in suite.get("rules", []):
             if item.get("kind") == "text-fit" and item.get("minimum") is not None:

@@ -390,7 +390,7 @@ def _resolved_layers(project, variables=None, subset=None):
         project.limits.size(layer["width"], layer["height"], vector=True)
     from .stacks import collapse
 
-    collapse(layers)
+    collapse(layers, project)
     from .vector_paths import attach_ancestors
     attach_ancestors(layers)
     return layers

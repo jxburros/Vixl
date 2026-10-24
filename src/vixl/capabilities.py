@@ -22,8 +22,9 @@ TOPICS = {
                    ["motifs", "natural-color-light"]),
     "film": ("film video audio caption", ["film-review", "audio-composition"]),
     "layout": (
-        "layout container template stack fit align distribute spatial grid snap guide comic",
-        ["layout", "overall", "finishing"],
+        "layout container template stack flex flexbox css fit align distribute spatial grid snap guide comic adapt "
+        "responsive",
+        ["layout", "stacks", "overall", "finishing"],
     ),
     "color": ("palette color swatch look style lighting", ["color", "natural-color-light", "accessibility"]),
     "export": ("export film merge form", ["print"]),

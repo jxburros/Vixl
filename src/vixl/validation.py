@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 
 from .errors import VixlError, require
-from .model import LAYER_ROLES, LAYER_TYPES, finite
+from .model import FOCAL_TYPES, LAYER_PRIORITIES, LAYER_ROLES, LAYER_TYPES, finite
 from .plugins import hooks as plugin_hooks
 from .render import BLENDS, color, resolve_layout
 
@@ -69,6 +69,13 @@ def check_state(project, state):
         require(isinstance(layer.get("color_vision_safe", False), bool), "Invalid color vision intent", "invalid_project")
         require(isinstance(layer.get("detached_ok", False), bool), "Invalid detached intent", "invalid_project")
         require(isinstance(layer.get("literal_text", False), bool), "Invalid literal text intent", "invalid_project")
+        require(layer.get("priority", "required") in LAYER_PRIORITIES, "Invalid layer priority", "invalid_project")
+        if "focal" in layer:
+            focal = layer["focal"]
+            require(isinstance(focal, list) and len(focal) == 2 and layer["type"] in FOCAL_TYPES,
+                    "focal is [x, y] on an image or frame layer", "invalid_project")
+            for value in focal:
+                finite(value, "focal", 0, 1)
         ids.add(layer["id"])
         names.add(layer["name"])
         require(

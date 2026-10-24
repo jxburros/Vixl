@@ -628,11 +628,15 @@ ACTION_FIELDS = {
         "directory": {**PATH, "description": "Folder for the adapted copies (default: the workspace root)."},
         "name": {"type": "string", "default": "{name}-{size}",
                  "description": "File name template for each copy: {name} {size} {index}."},
-        "options": {"type": "object", "description": "adapt-layout settings for every size: scale, anchors, where, text."},
+        "options": {"type": "object", "description": "adapt-layout settings for every size: scale, anchors, where, "
+                    "text, recompose, arrangements, safe, min_text, together."},
         "formats": {**STRINGS, "description": "Also export each copy, e.g. ['png']."},
         "overwrite": {"type": "boolean", "default": False, "description": "Replace existing copies and exports."},
         "report": {"type": "string", "enum": ["summary", "layers"], "default": "summary",
                    "description": "layers also lists where each layer went."},
+        "suites": {"type": ["boolean", "string", "array"], "items": {"type": "string"}, "default": True,
+                   "description": "Run the document's check suites on every copy and attach each copy's results and "
+                   "outcome: true (default) runs every attached suite, a name or list runs those, false none."},
     },
     "replace-across": {
         "name": {"type": "string", "description": "Project group whose members to edit (or give documents)."},
@@ -799,7 +803,8 @@ SUMMARIES = {
                       "match, apply publishes through the group journal (group-recover undoes an interrupted run).",
     "group-recover": "Roll back an interrupted group edit from its journal.",
     "adapt-sizes": "Adapt the open document to several sizes (a campaign: square, story, banner, print): each size is a "
-                   "saved copy re-laid out by adapt-layout and optionally exported; the source is not changed.",
+                   "saved copy re-composed by adapt-layout, checked by the document's suites and optionally exported; "
+                   "the source is not changed.",
     "repair-layout": "Bounded layout repair: try several candidates per overflow, overlap, spacing, contrast or "
                      "safe-area failure, then per composition finding (drift, rhythm, crowding, dead band, clumped "
                      "tile), keep the least disruptive that adds no finding; infeasible leaves the document "
