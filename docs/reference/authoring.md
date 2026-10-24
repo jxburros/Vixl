@@ -47,7 +47,7 @@ listed, as informational and `waived`; see [waivers](../guides/automation/produc
 
 Text and layout `--font`/`--display-font` accept registered names, typography roles, system
 font names, and local files. Explicit files are embedded before measurement and export.
-For missing glyphs, every renderer and export uses the bundled outline fonts automatically: DejaVu Sans, then Noto Sans, Noto Sans Symbols, Noto Sans Symbols 2 and Noto Sans Math (more Latin, Greek and Cyrillic, symbols, dingbats, arrows and math). CJK is not bundled.
+For missing glyphs, every renderer and export uses the bundled outline fonts automatically: Noto Sans (the proofing face), then DejaVu Sans (Arabic, Hebrew and more), Noto Sans Symbols, Noto Sans Symbols 2 and Noto Sans Math (symbols, dingbats, arrows and math). CJK, Devanagari and Thai are not bundled: they draw from a matching face already in the font cache (or `VIXL_CJK_PACK`), and `font-cover` embeds one.
 `font-fallbacks 'Registered CJK' 'Registered Symbols'` sets an ordered document fallback list;
 each font is embedded. `font-fallbacks` with an empty list clears it. The list is document-wide: a `target` is rejected, because fallbacks apply to every text layer.
 List several faces of a fallback family (for example `noto-sans-jp-400` and `noto-sans-jp-700`) and each text

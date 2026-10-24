@@ -8,6 +8,7 @@ from pathlib import Path
 import random
 
 from . import house_style
+from .constants import PROOFING_FONT
 from .errors import require
 from .safe_catalog import SAFE_PALETTES
 
@@ -494,6 +495,6 @@ def _compose_component(project, builder, direction):
         name = builder.name("component-" + key)
         size = max(10, min(builder.sizes["body"], round((builder.B - y) / max(1, len(remaining)) / 1.5)))
         execute(project, {"type": "text", "name": name, "text": str(value), "size": size,
-                          "x": builder.L, "y": y, "color": "@ink", "font": builder.font or "DejaVuSans.ttf"})
+                          "x": builder.L, "y": y, "color": "@ink", "font": builder.font or PROOFING_FONT})
         builder.created.append(name)
         y += project.layer()["height"] + builder.unit

@@ -17,6 +17,7 @@ from fontTools.ttLib import TTFont
 from fontTools.unicodedata import script
 import uharfbuzz as hb
 
+from .constants import BUNDLED_FALLBACKS as BUNDLED_FALLBACKS, BUNDLED_FONTS, PROOFING_FONT
 from .errors import require
 from .model import finite
 
@@ -83,7 +84,7 @@ def primary_font_data(project, layer):
     name = project.state.get("fonts", {}).get(layer.get("font"), layer.get("font"))
     if name in project.assets:
         return project.assets[name]
-    path = _font_path(name or "DejaVuSans.ttf") if 1 <= int(layer.get("size", 48)) <= 4096 else None
+    path = _font_path(name or PROOFING_FONT) if 1 <= int(layer.get("size", 48)) <= 4096 else None
     if path is not None:
         try:
             return file_bytes(path)
@@ -92,14 +93,6 @@ def primary_font_data(project, layer):
     font = font_for(project, layer)
     path = font.path
     return path.getvalue() if hasattr(path, "getvalue") else file_bytes(path)
-
-
-# Bundled outline faces that draw the characters the default face (DejaVu Sans) lacks, after the
-# document's own font-fallbacks: more Latin, Greek and Cyrillic, symbols, dingbats, arrows and math.
-# CJK is not bundled (install a CJK face and list it in font-fallbacks).
-BUNDLED_FALLBACKS = ("NotoSans-Regular.ttf", "NotoSansSymbols-Regular.ttf", "NotoSansSymbols2-Regular.ttf",
-                     "NotoSansMath-Regular.ttf")
-BUNDLED_FONTS = ("DejaVuSans.ttf", *BUNDLED_FALLBACKS)
 
 
 @lru_cache(maxsize=64)
@@ -208,31 +201,55 @@ def font_data(project, layer):
 
 
 def _font_data(project, layer, text):
-    primary = primary_font_data(project, layer)
-    if all(not visible_char(c) or ord(c) in coverage(primary) for c in text):
-        from .emojis import with_emojis
-
-        return with_emojis(project, primary, text)
-    names = [*project.state.get("font_fallbacks", []), *BUNDLED_FONTS]
     from .emojis import with_emojis
 
-    return with_emojis(
-        project,
-        fallback_chain(primary, [primary_font_data(project, {**layer, "font": name}) for name in names]),
-        text,
-    )
+    primary = primary_font_data(project, layer)
+    if all(not visible_char(c) or ord(c) in coverage(primary) for c in text):
+        return with_emojis(project, primary, text)
+    fonts = document_fallbacks(project, layer)
+    return with_emojis(project, fallback_chain(primary, [*fonts, *local_faces(text, [primary, *fonts])]), text)
+
+
+def document_fallbacks(project, layer):
+    """The fonts after a layer's own that the document itself provides: its font-fallbacks, then the bundled faces."""
+    names = [*project.state.get("font_fallbacks", []), *BUNDLED_FONTS]
+    return [primary_font_data(project, {**layer, "font": name}) for name in names]
+
+
+# Faces to look for on this machine per script, after the catalog face font-cover installs: any CJK face draws the
+# common Han ideographs, so a Japanese face in the cache serves Chinese text that has no Chinese face, and so on.
+LOCAL_ALTERNATES = {"Han": ("Noto Sans TC", "Noto Sans JP", "Noto Sans KR"),
+                    "Hiragana/Katakana": ("Noto Sans SC", "Noto Sans TC"), "Hangul": ()}
+
+
+def local_faces(text, fonts):
+    """Faces already on this machine (``typefaces.local_script_faces``) for the characters of ``text`` that ``fonts``
+    lack, when they are in a script Vixl has a catalog face for (CJK, Devanagari, Thai ...). The document does not
+    embed them, so the apply warns and font-cover embeds one; nothing is downloaded here."""
+    missing = sorted(c for c in set(text) if visible_char(c) and not any(ord(c) in coverage(f) for f in fonts))
+    scripts = [name for name in scripts_of(missing) if name]
+    if not scripts:
+        return []
+    from .typefaces import local_script_faces
+
+    families = cover_families(scripts)
+    families += [family for name in scripts for family in LOCAL_ALTERNATES.get(name, ()) if family not in families]
+    wanted = {ord(c) for c in missing if script_of(c)}
+    return [data for data in local_script_faces(families) if wanted & coverage(data)]
 
 
 def glyph_coverage(project, layer):
+    """``{missing, fallback}`` characters of a text layer: the ones no font draws (tofu) and the ones a font after its
+    own draws. ``local`` (with ``local_fonts``, their families) lists those drawn by a face only this machine has."""
     data = font_data(project, layer)
-    from .emojis import is_context, scan
+    from .emojis import is_context, is_glyph, scan
 
     fonts = tuple(f for f in (data if isinstance(data, tuple) else (data,)) if not is_context(f))
     text = layer.get("text", "")
     spans = scan(text, project.state.get("emojis", {}).get("overrides"))
     handled = {i for a, b, _ in spans for i in range(a, b)}
     chars = sorted({c for i, c in enumerate(text) if i not in handled and visible_char(c)})
-    return {
+    report = {
         "missing": [c for c in chars if not any(ord(c) in coverage(f) for f in fonts)],
         "fallback": [
             c
@@ -240,6 +257,15 @@ def glyph_coverage(project, layer):
             if ord(c) not in coverage(fonts[0]) and any(ord(c) in coverage(f) for f in fonts[1:])
         ],
     }
+    if report["fallback"] and any(script_of(c) for c in report["fallback"]):
+        held = {fonts[0], *document_fallbacks(project, layer)}
+        machine = [f for f in fonts[1:] if not is_glyph(f) and f not in held]
+        drawn = {c: next(f for f in fonts if ord(c) in coverage(f)) for c in report["fallback"]}
+        local = [c for c in report["fallback"] if any(drawn[c] is f for f in machine)]
+        if local:
+            report["local"] = local
+            report["local_fonts"] = sorted({font_style(drawn[c])[0] for c in local})
+    return report
 
 
 def layer_coverage(project, layer):
@@ -905,10 +931,19 @@ def leadered(data, line, size, tabs):
     return out
 
 
-@lru_cache(maxsize=4096)
 def measure(data, text, size, spacing=4, align="left", width=None, wrap="greedy", tabs=None):
     """Glyph paths and ink box of shaped text. Cached: every render and check re-measures each
     text layer (auto-sized boxes, constraints), usually with the same font, text and size."""
+    return _measured(data, text, size, spacing, align, width, wrap, tabs)[:2]
+
+
+def ink_right(data, text, size, spacing=4, align="left", width=None, wrap="greedy", tabs=None):
+    """The right edge of what ``measure`` draws, without the advance of the widest line that its box includes."""
+    return _measured(data, text, size, spacing, align, width, wrap, tabs)[2]
+
+
+@lru_cache(maxsize=4096)
+def _measured(data, text, size, spacing, align, width, wrap, tabs):
     finite(size, "font size", 1, 4096)
     outline = face(data)[0]
     factor = size / outline["head"].unitsPerEm
@@ -935,7 +970,7 @@ def measure(data, text, size, spacing=4, align="left", width=None, wrap="greedy"
         max(widest, max((b[2] for b in bounds), default=0)),
         max((b[3] for b in bounds), default=ascent) if bounds else ascent,
     )
-    return paths, box
+    return paths, box, max((b[2] for b in bounds), default=0)
 
 
 def plan_glyphs(project, layer, layout=None):

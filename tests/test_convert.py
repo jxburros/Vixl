@@ -102,11 +102,11 @@ def test_the_changes_a_release_needs_are_reported():
     assert {"archive-format", "text-box-height"} <= ids("v0.10.0", "text")
     assert {"lookup-field", "temperature-tint-scale"} <= ids("v0.20.0", "effects")
     assert {"open-shape-fill", "styled-stroke-align"} <= ids("v0.20.0", "shapes")
-    assert ids("v0.20.0", "chart") == {"chart-padding"}
+    assert ids("v0.20.0", "chart") == {"chart-padding", "proofing-font"}
     assert "diagram-line-height" in ids("v0.20.0", "diagram")
     assert "irregular-strength" in ids("v0.22.1", "irregular")
-    assert ids("v0.26.0", "designed") == {"house-style-version"}
-    assert ids("afaee33", "designed") == {"house-style-version"}
+    assert ids("v0.26.0", "designed") == {"house-style-version", "proofing-font"}  # its chart names no face
+    assert ids("afaee33", "designed") == {"house-style-version", "proofing-font"}
     assert "lookup-field" not in ids("v0.22.1", "effects")  # converted on load by 0.21 to 0.26 already
     report = convert_file(FIXTURES / "v0.20.0" / "effects.vixl", dry_run=True)
     lookup = changes(report, "lookup-field")[0]

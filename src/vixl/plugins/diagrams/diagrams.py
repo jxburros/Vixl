@@ -21,6 +21,7 @@ import re
 from types import SimpleNamespace
 
 from . import diagram_layout as L
+from ...constants import PROOFING_FONT
 from ...errors import VixlError, require
 from ...geometry import compact_number
 from ...model import finite, new_layer
@@ -738,12 +739,12 @@ def _auto_layout(spec):
 def _build(project, spec, scale, area, name, direction=None):
     """Lay the spec out at ``scale``; returns a ``Build`` with node/edge geometry and layer parts."""
     style = _Style(project, spec, scale, (area[2], area[3]))
-    font = spec.get("font", "DejaVuSans.ttf")
+    font = spec.get("font", PROOFING_FONT)
     if spec.get("font_role"):
         from ...render import resolve_font
 
         font, _ = resolve_font(project, spec["font_role"])
-    elif font == "DejaVuSans.ttf" and (project.state.get("typography") or {}).get("body"):
+    elif font == PROOFING_FONT and (project.state.get("typography") or {}).get("body"):
         from ...render import resolve_font
 
         font, _ = resolve_font(project, "body")
@@ -1089,7 +1090,8 @@ def _layout_into_document(project, name, rec):
             factor = min(1.0, factor)
         else:
             factor = max(0.3, min(3.0, factor))
-        if abs(factor - 1) < 0.015 or (fit == "shrink" and factor >= 0.999):
+        # Close enough when it is at most 1.5% under its box; a diagram over its box keeps shrinking.
+        if 1 <= factor < 1.015 or (fit == "shrink" and factor >= 0.999):
             break
         if b.style.size <= 6 and factor < 1:
             break

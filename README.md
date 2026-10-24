@@ -197,8 +197,9 @@ companies need a commercial licence from the licensor (to ask about one, open an
 [@jxburros](https://github.com/jxburros) on GitHub). Copies of Vixl must carry the licence and
 its `Required Notice:` lines. If Vixl helped make your work, please credit it ("Made with Vixl").
 
-Bundled assets keep their own terms: DejaVu Sans ([font licence](src/vixl/data/FONT-LICENSE.txt)), the Noto Sans,
-Noto Sans Symbols, Noto Sans Symbols 2 and Noto Sans Math fallback fonts ([SIL OFL 1.1](src/vixl/data/NOTO-LICENSE.txt)),
+Bundled assets keep their own terms: the Noto Sans proofing font and the Noto Sans Symbols, Noto Sans Symbols 2 and
+Noto Sans Math fallback fonts ([SIL OFL 1.1](src/vixl/data/NOTO-LICENSE.txt)), the DejaVu Sans fallback font
+([font licence](src/vixl/data/FONT-LICENSE.txt)),
 the xkcd colour names (CC0), and VIXL Line emoji artwork adapted from OpenMoji
 ([CC BY-SA 4.0](src/vixl/data/emojis/LICENSE.txt); [Unicode data license](src/vixl/data/emojis/UNICODE-LICENSE.txt)).
 

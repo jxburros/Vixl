@@ -117,7 +117,7 @@ def test_markdown_headings_use_the_h_stages():
 def test_without_typography_stages_keep_the_proofing_font_quietly():
     p = Project(600, 600)
     result = p.apply({"type": "text", "text": "Title", "stage": "h1", "name": "t"}, detail="compact")
-    assert p.layer("t")["font"] == "DejaVuSans.ttf" and "font_role" not in p.layer("t")
+    assert p.layer("t")["font"] == "NotoSans-Regular.ttf" and "font_role" not in p.layer("t")
     assert not any("proofing" in w for w in result.get("warnings", []))
 
 

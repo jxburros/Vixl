@@ -15,6 +15,7 @@ and, for pies and donuts, the share), so a chart's value legend and a standalone
 from copy import deepcopy
 import re
 
+from ...constants import BUNDLED_FONTS
 from ...errors import require
 from ...model import finite, new_layer
 
@@ -348,7 +349,7 @@ def check_options(state, recipe):
     for key, low, high in (("font_size", 4, 300), ("container_font_size", 4, 300), ("width", 1, 20000)):
         if key in recipe:
             finite(recipe[key], key, low, high)
-    allowed = ["heading", "body", "DejaVuSans.ttf", *state.get("fonts", {})]
+    allowed = ["heading", "body", *BUNDLED_FONTS[:2], *state.get("fonts", {})]
     for key in ("font", "value_font"):
         require(recipe.get(key, "body") in allowed, f"{key} must be a registered font or the heading or body role; "
                 f"available: {', '.join(allowed)}", field=key, allowed=allowed)

@@ -27,6 +27,7 @@ import re
 import unicodedata
 
 from .hashing import content_hash
+from .constants import PROOFING_FONT
 from .errors import VixlError, require
 from .model import finite, new_layer
 
@@ -532,7 +533,7 @@ def _style_from(project, op, rec_style=None, new=False):
             font, role = resolve_font(project, "body")
             style["font"], style["font_role"] = font, role
         else:
-            style["font"] = "DejaVuSans.ttf"
+            style["font"] = PROOFING_FONT
     if new:
         from .craft import LINE_HEIGHT, body_size, stage_for
 

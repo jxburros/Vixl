@@ -166,7 +166,7 @@ Alignment supports center, center-x/y, left/right/top/bottom and corner pairs. A
 ```bash
 vixl solid --name panel --width 400 --height 200 --color '#26344e'
 vixl gradient --name sky --start '#152641' --end '#635e83' --direction vertical
-vixl text add 'Hello' --name title --size 96 --font DejaVuSans.ttf --color white --x center --y 120
+vixl text add 'Hello' --name title --size 96 --font NotoSans-Regular.ttf --color white --x center --y 120
 vixl text title --text 'Good evening' --size 80 --align center
 vixl text title --stroke-width 2 --stroke-color black
 vixl rasterize title

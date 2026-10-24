@@ -7,6 +7,16 @@ per-user pack directory (``VIXL_PACK_DIR``, default ``~/.cache/vixl/packs``).
 ``VIXL_<NAME>_PACK`` (for example ``VIXL_EMOJIS_PACK``) points at a local copy instead, and
 ``VIXL_PACK_DOWNLOAD=off`` forbids downloads (offline machines, sandboxes); ``install`` with a
 source file still works then.
+
+``cjk`` has no entry yet, only its override: ``VIXL_CJK_PACK`` names a font file, or a zip of font files named
+like the font cache (``noto-sans-sc-400.ttf``), that text draws CJK, Devanagari or Thai from when no document font
+covers them (``typefaces.local_script_faces``; renders never download it). A published pack adds an entry here
+in the shape of the others, a zip of the Noto Sans SC, TC, JP and KR regular styles under those names:
+
+    "cjk": {"file": "cjk.zip", "path": "fonts/cjk.zip", "commit": "<VixlPacks commit>",
+            "sha256": "<sha256 of cjk.zip>", "bytes": <size>,
+            "description": "Noto Sans CJK faces text falls back to when no document font draws a character.",
+            "install": "Download {url} and install it with `vixl.packs.install('cjk', FILE)`."},
 """
 
 import hashlib
@@ -130,6 +140,16 @@ def install(name, source=None):
         Path(staged.name).unlink(missing_ok=True)
     _failed.pop(name, None)
     return {**status(name), "path": str(path), "installed": True, "source": "cache"}
+
+
+def local(name):
+    """The local file for ``name`` when it is already on this machine (``VIXL_<NAME>_PACK`` or the pack directory),
+    else None. It never downloads, so render paths may call it, and it answers for a pack that so far has only an
+    override and no ``PACKS`` entry (``cjk``)."""
+    override = _override(name)
+    if override is not None:
+        return override if override.is_file() else None
+    return _cached(name) if name in PACKS and _cached(name).is_file() else None
 
 
 def path(name, download=True):

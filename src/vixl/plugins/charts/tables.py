@@ -18,6 +18,7 @@ import math
 import re
 
 from .charts import Kit, Parts, Style, contrast, format_number, hex_color, mix, parse_format, place, rgba, sync
+from ...constants import BUNDLED_FONTS
 from ...errors import VixlError, require
 from ...model import finite, new_layer
 
@@ -594,7 +595,7 @@ def check_options(state, recipe):
                            ("padding", 0, 200), ("row_height", 0, 2000), ("width", 1, 20000)):
         if key in recipe:
             finite(recipe[key], key, low, high)
-    allowed = ["heading", "body", "DejaVuSans.ttf", *state.get("fonts", {})]
+    allowed = ["heading", "body", *BUNDLED_FONTS[:2], *state.get("fonts", {})]
     for key in ("header_font", "body_font"):
         require(recipe.get(key, "body") in allowed, f"{key} must be a registered font or the heading or body role; "
                 f"available: {', '.join(allowed)}", field=key, allowed=allowed)

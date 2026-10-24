@@ -15,6 +15,7 @@ import re
 from pathlib import Path
 
 from .assets import open_image, read_bounded
+from .constants import PROOFING_FONT
 from .errors import VixlError, require
 
 FIELDS = ("name", "palette", "pairing", "fonts", "logos", "minimum_contrast", "required_elements", "stages",
@@ -725,7 +726,7 @@ def use_preset(project, name):
 
 
 def font_family(project, font):
-    """The family name stored in a font file (``DejaVu Sans`` for the proofing fallback), or None."""
+    """The family name stored in a font file (``Noto Sans`` for the proofing fallback), or None."""
     from .text import face, primary_font_data
 
     try:
@@ -839,7 +840,7 @@ def check_fonts(project, kit, issue, layers):
     for layer in layers:
         if layer["type"] != "text":
             continue
-        fonts = [layer.get("font", "DejaVuSans.ttf")]
+        fonts = [layer.get("font", PROOFING_FONT)]
         fonts += [span["font"] for span in (layer.get("rich") or {}).get("spans", []) if span.get("font")]
         for font in dict.fromkeys(fonts):
             if font not in seen:

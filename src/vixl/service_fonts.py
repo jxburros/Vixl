@@ -8,9 +8,10 @@ rule covers ``display_font``, the fonts set on rich-text spans and ``font=`` in 
 
 import difflib
 
+from .constants import BUNDLED_FONTS
 from .errors import VixlError
 
-ROLES = ("heading", "body", "DejaVuSans.ttf")
+ROLES = ("heading", "body", *BUNDLED_FONTS[:2])
 FIELDS = ("font", "display_font")
 INSTALL = ("Install one with a font-install or font-pair step (or import a workspace font file with an "
            "import-font step), then pass the registered name or a role (heading, body)")

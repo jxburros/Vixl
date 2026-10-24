@@ -27,6 +27,7 @@ import re
 import unicodedata
 import xml.etree.ElementTree as ET
 
+from .constants import PROOFING_FONT
 from .errors import VixlError, require
 from .model import finite
 from .notices import note
@@ -351,7 +352,7 @@ def styled_spans(project, layer, variables=None):
 
     rich = layer["rich"]
     variables = {**document_variables(project), **(variables or {})}
-    base_font = layer.get("font", "DejaVuSans.ttf")
+    base_font = layer.get("font", PROOFING_FONT)
     result = []
     for span in rich["spans"]:
         text = span["text"] if layer.get(RESOLVED) else substitute(span["text"], variables)
@@ -681,7 +682,7 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
                 ascent = max(t["ascent"] for t in line)
                 descent = min(t["descent"] for t in line)
             else:
-                data = style_font_data(project, layer.get("font", "DejaVuSans.ttf"), " ")
+                data = style_font_data(project, layer.get("font", PROOFING_FONT), " ")
                 a, d = _metrics(data)
                 ascent, descent = a * base_size, d * base_size
             rows.append({
@@ -1029,7 +1030,7 @@ def active(layer):
     return bool(rich) and plain(rich) == layer.get("text")
 
 
-def fonts_used(layer, fallback="DejaVuSans.ttf"):
+def fonts_used(layer, fallback=PROOFING_FONT):
     """The stored font of each run of visible text a text layer draws: the layer font for plain
     text, and for rich text each span's own font (``font`` on the span) or else the layer font."""
     base = layer.get("font", fallback)
@@ -1044,12 +1045,17 @@ def glyph_coverage(project, layer):
     document and bundled fallbacks, the way it is drawn."""
     from .text import glyph_coverage as span_coverage
 
-    missing, fallback = set(), set()
+    missing, fallback, local, local_fonts = set(), set(), set(), set()
     for span in styled_spans(project, layer):
         report = span_coverage(project, {"font": span["font"], "text": span["text"]})
         missing.update(report["missing"])
         fallback.update(report["fallback"])
-    return {"missing": sorted(missing), "fallback": sorted(fallback - missing)}
+        local.update(report.get("local", ()))
+        local_fonts.update(report.get("local_fonts", ()))
+    result = {"missing": sorted(missing), "fallback": sorted(fallback - missing)}
+    if local - missing:
+        result.update(local=sorted(local - missing), local_fonts=sorted(local_fonts))
+    return result
 
 
 def fill_variables(rich, variables):

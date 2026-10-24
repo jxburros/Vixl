@@ -2,5 +2,5 @@ slide size 10058400x6858000
 slide 1
   AUTO_SHAPE (1) 'margin-left' at (1005840,365760) size (45720x6126480) fill=E07A5F
   AUTO_SHAPE (1) 'margin-right' at (9052560,365760) size (45720x6126480) fill=E07A5F
-  PLACEHOLDER (14) 'quote' at (650528,455727) size (8402032x3659073) text='“Hang the quote,” she said, “and the line reads straight.”'
-  TEXT_BOX (17) 'signoff' at (1051560,4844847) size (8001000x732993) text='— “The end.”'
+  PLACEHOLDER (14) 'quote' at (756117,522945) size (8296443x2677455) text='“Hang the quote,” she said, “and the line reads straight.”'
+  TEXT_BOX (17) 'signoff' at (1051560,4912065) size (8001000x665775) text='— “The end.”'

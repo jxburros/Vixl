@@ -332,6 +332,40 @@ def chart_padding(ctx, state):
                    layer, "chart.padding", after=recipe["padding"])
 
 
+# Recipe fields that name the face of text a group redraws on every edit, and the role each falls back to.
+RECIPE_FONTS = {"chart": (("title_font", "heading"), ("label_font", "body")),
+                "table": (("header_font", "body"), ("body_font", "body")),
+                "key_values": (("font", "body"), ("value_font", "body"))}
+OLD_PROOFING_FONT = "DejaVuSans.ttf"
+
+
+def proofing_font(ctx, state):
+    """Text without a typeface was drawn in DejaVu Sans; it is now drawn in Noto Sans. Text layers name their face, but
+    charts, tables, key-value lists and diagrams redraw their text from a recipe on every edit."""
+    if not ctx.older(CURRENT_SINCE):
+        return
+    typography = state.get("typography") or {}
+    found = []
+    for layer in layers(state):
+        for key, fields in RECIPE_FONTS.items():
+            recipe = layer.get(key)
+            if layer.get("type") == "group" and isinstance(recipe, dict):
+                found += [(layer, recipe, field, f"{key}.{field}") for field, role in fields
+                          if not recipe.get(field) and not typography.get(role)]
+    for name, record in (state.get("diagrams") or {}).items():
+        spec = record.get("spec") if isinstance(record, dict) else None
+        if isinstance(spec, dict) and not spec.get("font") and not spec.get("font_role") and not typography.get("body"):
+            found.append((None, spec, "font", f"diagrams.{name}.spec.font"))
+    for layer, recipe, field, path in found:
+        if not ctx.preserve:
+            ctx.warn("proofing-font", "The next edit redraws this text in Noto Sans, the proofing face, instead of "
+                     "DejaVu Sans", layer, path)
+            continue
+        recipe[field] = OLD_PROOFING_FONT
+        ctx.change("proofing-font", "The face is now explicit, so an edit keeps drawing DejaVu Sans", layer, path,
+                   after=OLD_PROOFING_FONT)
+
+
 def heading_wrap(ctx, state):
     """Before house style 4 a heading's text box broke lines greedily; a new box on a heading now balances them."""
     if ctx.house_style >= 4:
@@ -577,6 +611,7 @@ RULES = (
     ("irregular-strength", irregular_strength),
     ("diagram-line-height", diagram_line_height),
     ("chart-padding", chart_padding),
+    ("proofing-font", proofing_font),
     ("heading-wrap", heading_wrap),
     ("scatter-distribution", scatter_distribution),
     ("rectangle-radius", rectangle_radius),

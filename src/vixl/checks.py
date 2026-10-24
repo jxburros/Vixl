@@ -10,6 +10,7 @@ import re
 
 import numpy as np
 
+from .constants import BUNDLED_FONTS, PROOFING_FONT
 from .errors import VixlError, require
 from .geometry import compact_number
 from .model import finite
@@ -17,7 +18,7 @@ from .timeline import animated as timeline_animated
 
 CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "placeholders", "fonts", "brand", "content",
           "form", "links", "diagram", "flow", "codes", "composition", "object")
-FALLBACK_FONT = "DejaVuSans.ttf"
+FALLBACK_FONT = PROOFING_FONT
 OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing", "style", "motion", "character", "captions",
                    "connected", "cost", "accessibility")
 # The accessibility check bundles these with its own findings (alt text, language, text size, colour-only
@@ -154,7 +155,7 @@ def boxed_text_need(project, layer):
     """For text set in a text-layout box, the (width, height) its lines need when wrapped at the
     box width, else None. Fitted, warped and path text are skipped: fit shrinks to the box, and
     warps and paths are laid out differently."""
-    from .text import measure, font_data, tab_stops, UnsupportedText
+    from .text import font_data, ink_right, measure, tab_stops, UnsupportedText
     from .render import document_variables
     from .variables import layer_text
 
@@ -174,13 +175,17 @@ def boxed_text_need(project, layer):
     if settings.get("warp", "none") != "none":
         return None
     text = layer_text(layer, document_variables(project))
+    args = (font_data(project, layer), text, layer["size"], layer.get("spacing", 4), layer.get("align", "left"),
+            layer["width"], settings.get("wrap", "greedy"), tab_stops(layer, project))
     try:
-        _, box = measure(font_data(project, layer), text, layer["size"], layer.get("spacing", 4),
-                         layer.get("align", "left"), layer["width"], settings.get("wrap", "greedy"), tab_stops(layer, project))
+        _, box = measure(*args)
     except UnsupportedText:
         return None
     stroke = 2 * layer.get("stroke_width", 0)
-    return math.ceil(box[2] - box[0] + stroke), math.ceil(box[3] - box[1] + stroke)
+    # Lines wrap by advance, so only ink can leave the box: a glyph starting left of its origin (the tail of J) moves
+    # the lines right by its overhang, which cuts nothing off unless the ink of a line then reaches past the edge.
+    right = ink_right(*args) if box[0] < 0 else box[2]
+    return math.ceil(right - box[0] + stroke), math.ceil(box[3] - box[1] + stroke)
 
 
 def boxed_text_overflow(project, layer):
@@ -803,8 +808,19 @@ def check_design(
         # check run, whichever checks were selected; fallback-font warnings belong to "fonts".
         for item, report in glyph_reports(candidate, [item for item in layers if item["type"] == "text"]):
             if report["missing"]:
+                from .advisories import cover_fix
+                from .text import scripts_of
+
                 issue("fonts", "error", f"{item['name']!r} has characters no font can draw ({''.join(report['missing'][:12])}); "
-                      "they render as empty boxes. Import a font that covers them and add it with font-fallbacks", [item], **report)
+                      f"they render as empty boxes. {cover_fix(scripts_of(report['missing']))}", [item], **report)
+            elif report.get("local") and "fonts" in checks:
+                from .advisories import cover_fix
+                from .text import scripts_of
+
+                issue("fonts", "warning", f"{item['name']!r} draws {''.join(report['local'][:12])} with "
+                      f"{', '.join(report['local_fonts'])} from this machine, which the document does not embed: "
+                      f"elsewhere they render as empty boxes. {cover_fix(scripts_of(report['local']), local=True)}",
+                      [item], **report)
             elif report["fallback"] and "fonts" in checks:
                 issue("fonts", "warning", f"{item['name']!r} uses fallback glyphs", [item], **report)
 
@@ -1139,7 +1155,9 @@ def check_design(
         from .richtext import fonts_used
 
         # The font each run of text is drawn in, so rich text with a font on every span is not flagged.
-        fallback = [item for item in texts if FALLBACK_FONT in fonts_used(resolved[item["id"]], FALLBACK_FONT)]
+        # Any bundled face counts: documents saved before Noto Sans became the proofing face name DejaVu Sans.
+        fallback = [item for item in texts
+                    if any(font in BUNDLED_FONTS for font in fonts_used(resolved[item["id"]], FALLBACK_FONT))]
         if fallback:
             names = ", ".join(repr(x["name"]) for x in fallback[:5]) + (" …" if len(fallback) > 5 else "")
             issue(

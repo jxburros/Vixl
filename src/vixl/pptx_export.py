@@ -19,6 +19,7 @@ import unicodedata
 import zipfile
 from xml.sax.saxutils import escape, quoteattr
 
+from .constants import PROOFING_FONT
 from .errors import require
 
 NS = ('xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
@@ -472,7 +473,7 @@ class Slide:
         pen_left = layout.box[0] if layer.get("align", "left") == "left" else 0
         align = {"left": "l", "center": "ctr", "right": "r"}[layer.get("align", "left")]
         # A bold or italic registered face (inter-700, inter-400-italic) is the style of plain text too.
-        font = layer.get("font", "DejaVuSans.ttf")
+        font = layer.get("font", PROOFING_FONT)
         span = {"font": self.view.state.get("fonts", {}).get(font, font)}
         style = {"bold": self.exporter.is_bold(span), "italic": self.exporter.is_italic(span)}
         out = []

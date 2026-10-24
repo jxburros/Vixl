@@ -316,7 +316,7 @@ def test_missing_fonts_fall_back_and_are_reported(poster):
     _, result, by_name = poster
     fonts = [r for r in result["report"] if "font Inter" in r["what_was_lost"]]
     assert {r["name"] for r in fonts} == {"Title", "Subtitle", "Label"}
-    assert by_name["Title"]["font"] == "DejaVuSans.ttf"
+    assert by_name["Title"]["font"] == "NotoSans-Regular.ttf"
     assert all(set(r) == {"node_id", "name", "type", "what_was_lost"} for r in result["report"])
     assert result["warnings"] and "lossy" in result["warnings"][0]
 

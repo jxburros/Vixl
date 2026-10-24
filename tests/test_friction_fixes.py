@@ -36,7 +36,7 @@ def test_template_text_follows_document_typography():
     p.apply({"type": "font-register", "name": "display", "role": "heading"})
     title = text_layers(p)["title"]
     assert title["font"] == p.state["fonts"]["display"]
-    assert text_layers(p)["subtitle"]["font"] == "DejaVuSans.ttf"
+    assert text_layers(p)["subtitle"]["font"] == "NotoSans-Regular.ttf"
 
 
 def test_text_set_changes_font_and_missing_font_lists_registered_fonts():

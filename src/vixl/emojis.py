@@ -13,6 +13,7 @@ from types import SimpleNamespace
 import zipfile
 import xml.etree.ElementTree as ET
 
+from .constants import BUNDLED_FONTS, PROOFING_FONT
 from .errors import require, VixlError
 
 DATA = Path(__file__).parent / "data" / "emojis"
@@ -257,7 +258,7 @@ def load_master(raw, limits):
         if layer["type"] == "text":
             require(
                 all(
-                    f == "DejaVuSans.ttf" or f in project.state.get("fonts", {}) or f in project.assets
+                    f in BUNDLED_FONTS or f in project.state.get("fonts", {}) or f in project.assets
                     for f in fonts_used(layer)
                 ),
                 "Embed emoji master fonts before importing",
@@ -479,7 +480,7 @@ def with_emojis(project, data, text):
         except UnsupportedText:
             pass
     if not safe_fonts:
-        safe_fonts = [primary_font_data(project, {"font": "DejaVuSans.ttf", "size": 12})]
+        safe_fonts = [primary_font_data(project, {"font": PROOFING_FONT, "size": 12})]
     return (*safe_fonts, CONTEXT + json.dumps(selected, sort_keys=True).encode())
 
 

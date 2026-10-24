@@ -232,7 +232,7 @@ vixl -p copy.vixl import poster.svg
   document registers under the same name (or with the same family and style), then the Google Fonts style from the
   font cache, downloading it when the cache does not have it (`install_fonts=False` in Python keeps the import
   offline). The result's `fonts` says how each registered font was found. A font none of these supplies (an
-  imported file you do not have registered) is drawn with the bundled DejaVu Sans and listed in `warnings`; the
+  imported file you do not have registered) is drawn with the bundled Noto Sans and listed in `warnings`; the
   import does not fail, and importing and registering the font under the same name restores it. Everything except
   the font files round-trips exactly.
 - Importing into a document without layers takes the embedded canvas and resources too, so the result equals the
@@ -308,7 +308,9 @@ found again, in this order:
    family and style the PDF names are looked up in the font cache.
 4. With `install_fonts: true` (CLI `--install-fonts`), a Google Fonts download. Nothing is downloaded by default,
    and with `VIXL_OFFLINE=1` the download is refused and reported as a warning.
-5. A registration of the family in another style, or the bundled DejaVu Sans when the PDF names it.
+5. A registration of the family in another style, or the bundled DejaVu Sans when the PDF names it (an embedded
+   Noto Sans is found in the cache or downloaded and registered, since text in the bundled proofing face counts as
+   type still to choose).
 
 Anything else uses the document's default face, with a warning. The result's `fonts` lists one
 `{source, used, how}` entry per PDF font, where `how` is `mapped`, `registered`, `cache`, `installed` or `default`;

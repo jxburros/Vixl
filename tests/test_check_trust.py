@@ -82,7 +82,7 @@ def test_hill_ellipse_bleed_is_informational_but_text_is_not():  # #250
     p = Project(800, 600, "white")
     p.apply([
         {"type": "shape", "shape": "ellipse", "name": "hill", "x": -200, "y": 400, "width": 1200, "height": 500, "fill": "#22aa77"},
-        {"type": "text", "name": "title", "text": "Hello", "size": 40, "x": 700, "y": 100, "color": "#000000"},
+        {"type": "text", "name": "title", "text": "Hello", "size": 40, "x": 730, "y": 100, "color": "#000000"},
     ])
     bounds = [i for i in p.check(checks=["bounds"])["issues"] if i["check"] == "bounds"]
     hill = [i for i in bounds if i["layers"] == ["hill"]]

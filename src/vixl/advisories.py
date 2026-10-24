@@ -97,11 +97,12 @@ def ignored_fields(candidate, op):
 
 
 def uncovered_scripts(candidate, before, after):
-    """Changed text layers with characters no available font draws (they render as empty boxes): one warning per
-    layer naming the scripts and the fix. The bundled fonts cover Latin, Greek, Cyrillic, Arabic, Hebrew, symbols
-    and math, not CJK, Devanagari or Thai."""
+    """Changed text layers with characters no available font draws (they render as empty boxes), or that only a face
+    on this machine draws (the document does not embed it, so elsewhere they are empty boxes): one warning per layer
+    naming the scripts and the exact font-cover step. The bundled fonts cover Latin, Greek, Cyrillic, Arabic, Hebrew,
+    symbols and math, not CJK, Devanagari or Thai."""
     from .render import resolving
-    from .text import cover_families, scripts_of, uncovered
+    from .text import layer_coverage, scripts_of
 
     layers = [layer for layer in touched(before, after) if layer["type"] == "text"][:MAX_LAYERS]
     if not layers:
@@ -111,21 +112,50 @@ def uncovered_scripts(candidate, before, after):
     with resolving(candidate):
         for item in layers:
             layer = state.get(item["id"])
-            missing = uncovered(candidate, layer) if layer is not None else []
-            if not missing:
-                continue
-            found = scripts_of(missing)
-            names = [f"{name} ({''.join(chars[:6])})" for name, chars in found.items() if name]
-            if None in found:
-                names.append(f"other ({''.join(found[None][:6])})")
-            families = cover_families(found)
-            fix = (f"font-cover installs {_listed(families)} and adds them as font fallbacks in one step "
-                   f"({{type: font-cover}}, or vixl font cover); or font-install family {families[0]!r} then "
-                   "{type: font-fallbacks, fonts: [its registered name]}") if families else (
-                "install or import a font that covers them, then list it in {type: font-fallbacks, fonts: [...]}")
-            warnings.append(f"text {item['name']!r} has characters no available font draws: {_listed(names)}; "
-                            f"they render as empty boxes. {fix}")
+            report = layer_coverage(candidate, layer) if layer is not None else {"missing": []}
+            if report["missing"]:
+                found = scripts_of(report["missing"])
+                warnings.append(f"text {item['name']!r} has characters no available font draws: {_scripts(found)}; "
+                                f"they render as empty boxes. {cover_fix(found)}")
+            elif report.get("local"):
+                found = scripts_of(report["local"])
+                warnings.append(f"text {item['name']!r} draws {_scripts(found)} with {_listed(report['local_fonts'])} "
+                                "from this machine (font cache or VIXL_CJK_PACK), which the document does not embed: "
+                                f"elsewhere they render as empty boxes. {cover_fix(found, local=True)}")
     return warnings
+
+
+def _scripts(found):
+    names = [f"{name} ({''.join(chars[:6])})" for name, chars in found.items() if name]
+    if None in found:
+        names.append(f"other ({''.join(found[None][:6])})")
+    return _listed(names)
+
+
+# The --script value of ``vixl font cover`` for each script ``text.scripts_of`` names.
+SCRIPT_OPTIONS = {"Devanagari": "Devanagari", "Han": "Han", "Hiragana/Katakana": "japanese", "Hangul": "Hangul",
+                  "Thai": "Thai", "Arabic": "Arabic"}
+
+
+def cover_fix(found, local=False):
+    """The font-cover step and CLI command that cover the scripts of ``found`` (``text.scripts_of``), or the manual
+    route for characters Vixl has no catalog face for."""
+    import json
+
+    from .text import cover_families
+
+    families = cover_families(found)
+    if not families:
+        return "Install or import a font that covers them, then list it in {type: font-fallbacks, fonts: [...]}"
+    scripts = [name for name in found if name in SCRIPT_OPTIONS]
+    step = json.dumps({"type": "font-cover", "scripts": scripts}, ensure_ascii=False)
+    command = "vixl font cover " + " ".join(f"--script {SCRIPT_OPTIONS[name]}" for name in scripts)
+    fix = (f"the step {step} (CLI: {command}) installs {_listed(families)} (from the font cache when it is there, "
+           "else a download) and adds it to font-fallbacks")
+    if local:
+        return f"To embed it, {fix}."
+    return (f"Fix: {fix}; offline, fill the font cache first or set VIXL_CJK_PACK to a font file that draws them "
+            "(drawn, not embedded).")
 
 
 def touched(before, after):

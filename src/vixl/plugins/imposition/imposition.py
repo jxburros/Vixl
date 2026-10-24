@@ -19,6 +19,7 @@ import math
 from pathlib import Path
 import re
 
+from ...constants import PROOFING_FONT
 from ...errors import VixlError, require
 from ...model import finite, new_layer, uid
 
@@ -543,7 +544,7 @@ def build_sheet(session, plan, items, source, revision, size, page, artboard, pa
             text = spec["slug"].format_map({"template": Path(source).stem, "page": sheet + 1, "pages": sheets,
                                             "first": min(numbers, default=0), "last": max(numbers, default=0),
                                             "count": len(entries), "rows": len(items)})
-            layer = new_layer("slug", "text", 1, 1, text=text, font="DejaVuSans.ttf", size=max(1, round(plan["marks"]["slug_px"])),
+            layer = new_layer("slug", "text", 1, 1, text=text, font=PROOFING_FONT, size=max(1, round(plan["marks"]["slug_px"])),
                               color="#000000", align="left", spacing=4, auto_size=True)
             layer["width"], layer["height"], _ = text_metrics(project, layer)
             layer["x"], layer["y"] = round(plan["origin"][0]), round(plan["page"][1] - layer["height"] - 3 * plan["dpi"] / 72)

@@ -19,6 +19,7 @@ from pathlib import Path
 import re
 
 from ...craft import line_height
+from ...constants import BUNDLED_FONTS
 from ...errors import VixlError, require
 from ...model import finite, new_layer
 
@@ -1639,7 +1640,7 @@ def check_options(state, recipe):
             "ticks must be a whole number from 2 to 20", field="ticks")
     if "number_format" in recipe:
         parse_format(recipe["number_format"])
-    allowed = ["heading", "body", "DejaVuSans.ttf", *state.get("fonts", {})]
+    allowed = ["heading", "body", *BUNDLED_FONTS[:2], *state.get("fonts", {})]
     for key in ("title_font", "label_font"):
         require(recipe.get(key, "body") in allowed, f"{key} must be a registered font or the heading or body role; "
                 f"available: {', '.join(allowed)}", field=key, allowed=allowed)

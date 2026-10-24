@@ -42,7 +42,7 @@ def test_margin_drift_snaps_the_stray_edge_to_the_margin():
 
 
 def test_margin_drift_moves_the_chip_with_its_text():
-    chip = {"type": "shape", "name": "pill", "shape": "rectangle", "x": 70, "y": 52, "width": 110, "height": 40,
+    chip = {"type": "shape", "name": "pill", "shape": "rectangle", "x": 70, "y": 52, "width": 96, "height": 40,
             "fill": "#ffcc00"}
     p = doc(chip, text("date", 82, 60), text("headline", 60, 140, size=48), text("subtitle", 60, 220))
     repaired(p, "margin_drift")

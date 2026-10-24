@@ -213,7 +213,7 @@ def test_check_command_line_and_mcp_select_the_family(tmp_path):
 
 def test_text_in_a_chip_aligns_by_the_chip():
     """A highlighted date line or a pill: the chip's edge sits on the column, the text inside it is padding."""
-    chip = {"type": "shape", "name": "date-highlight", "shape": "rectangle", "x": 60, "y": 62, "width": 110,
+    chip = {"type": "shape", "name": "date-highlight", "shape": "rectangle", "x": 60, "y": 62, "width": 96,
             "height": 40, "fill": "#ffcc00"}  # Under the share of the canvas that makes a card.
     p = doc(chip, text("date", 72, 70), text("headline", 60, 140, size=48), text("subtitle", 60, 220))
     assert "margin_drift" not in codes(p)

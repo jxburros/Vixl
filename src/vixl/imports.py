@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 
 from fontTools.misc.transform import Transform, Identity
 
+from .constants import BUNDLED_FONTS
 from .errors import VixlError, require
 
 NUMBER = r"[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?"
@@ -269,7 +270,8 @@ def sanitize_svg(data, limits, *, byte_limit=None):
 
 
 def render_svg(root, width, height):
-    """Rasterize a tree returned by ``sanitize_svg`` with the bundled font only; returns RGBA PIL image."""
+    """Rasterize a tree returned by ``sanitize_svg`` with the bundled text faces only (text naming Noto Sans or DejaVu
+    Sans draws; resvg draws no other family); returns RGBA PIL image."""
     import io
     from pathlib import Path
     import resvg_py
@@ -278,7 +280,7 @@ def render_svg(root, width, height):
     try:
         encoded = resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode"),
                     width=width, height=height, skip_system_fonts=True,
-                    font_files=[str(Path(__file__).parent / "data" / "DejaVuSans.ttf")])
+                    font_files=[str(Path(__file__).parent / "data" / face) for face in BUNDLED_FONTS[:2]])
         return Image.open(io.BytesIO(encoded), formats=["PNG"]).convert("RGBA")
     except Exception as exc:
         raise VixlError("invalid_svg", f"Cannot render SVG: {exc}") from exc

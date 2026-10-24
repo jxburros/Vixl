@@ -22,7 +22,7 @@ def sign_up(phone_width=288):
     p = page()
     p.apply([
         {"type": "field", "name": "performer_name", "kind": "text", "label": "Name", "size": 10.5, "x": 54, "y": 144,
-         "width": 504, "height": 26, "max_length": 80, "min_size": 6.5},
+         "width": 504, "height": 26, "max_length": 90, "min_size": 6.5},
         {"type": "field", "name": "phone", "kind": "text", "label": "Phone", "size": 10.5, "x": 54, "y": 216,
          "width": phone_width, "height": 26, "max_length": 24},
         {"type": "field", "name": "pieces", "kind": "multiline", "label": "Pieces", "size": 9.6, "x": 54, "y": 288,
@@ -60,12 +60,12 @@ def test_report_says_what_it_measured():
     measured = issue["measured"]
     assert issue["code"] == "overflow" and measured["status"] == "overflow"
     assert measured["sample"].startswith("WWWW") and measured["characters"] == 60
-    assert measured["font"].startswith("DejaVu Sans") and "proofing fallback" in measured["font"]
+    assert measured["font"].startswith("Noto Sans") and "proofing fallback" in measured["font"]
     assert measured["box_width"] == 288 and measured["inner_width"] == 288 - 2 * measured["padding"]
     assert measured["size"] == 10.5 and measured["size_measured"] == measured["min_size"] == 7.35
     assert measured["rendered_width"] > measured["inner_width"]
     for fragment in ("60 characters", f"{measured['rendered_width']:g} px", f"{measured['inner_width']:g} px",
-                     "DejaVu Sans", "smallest size"):
+                     "Noto Sans", "smallest size"):
         assert fragment in issue["message"], fragment
     # The suggested limit really is the longest that fits.
     fits = measured["max_length_that_fits"]

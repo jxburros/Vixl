@@ -20,6 +20,7 @@ from PIL import Image, ImageDraw
 
 from . import house_style
 from .craft import CORNERS, LINE_HEIGHT, base_size, corner_style, measure_chars, spacing_unit
+from .constants import PROOFING_FONT
 from .errors import VixlError, require
 from .safe_catalog import SAFE_PALETTES
 from .sizes import safe_sides
@@ -247,7 +248,7 @@ class Builder:
         if wrap is None:
             wrap = document_wrap(self.project, font is not None and font == self.display_font)
         text = substitute(text, document_variables(self.project))
-        layer = {"text": text, "size": size, "spacing": spacing, "align": align, "font": self.project.state.get("fonts", {}).get(font, font or "DejaVuSans.ttf")}
+        layer = {"text": text, "size": size, "spacing": spacing, "align": align, "font": self.project.state.get("fonts", {}).get(font, font or PROOFING_FONT)}
         try:
             _, box = measure(font_data(self.project, layer), text, size, spacing, align, width,
                              wrap if width is not None else "greedy", None)
@@ -286,7 +287,7 @@ class Builder:
             from .text import advance, font_data
 
             sample = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-            data = font_data(self.project, {"font": self.project.state.get("fonts", {}).get(font, font or "DejaVuSans.ttf")})
+            data = font_data(self.project, {"font": self.project.state.get("fonts", {}).get(font, font or PROOFING_FONT)})
             width = min(width, max(1, int(advance(data, sample, size) / len(sample) * house_style.rule("line_length")["max"])))
         if heavy and isinstance(role, str):
             size = self.measure_cap(role, content, size, width)
@@ -361,7 +362,7 @@ class Builder:
 
         text = substitute(content, document_variables(self.project))
         layer = {"type": "text", "text": text, "size": size, "align": align, "line_height": multiple, "width": width,
-                 "font": self.project.state.get("fonts", {}).get(font, font or "DejaVuSans.ttf"),
+                 "font": self.project.state.get("fonts", {}).get(font, font or PROOFING_FONT),
                  "text_layout": {"width": width, "wrap": wrap}}
         rich = {"spans": [{"text": text}], "paragraphs": [{}]}
         size_leading(self.project, layer, rich, multiple)
@@ -396,7 +397,7 @@ class Builder:
         """Pixel spacing that puts baselines ``multiple`` × ``size`` apart in ``font`` (see craft.spacing_for)."""
         from .craft import spacing_for
 
-        return spacing_for(self.project, self.project.state.get("fonts", {}).get(font, font or "DejaVuSans.ttf"),
+        return spacing_for(self.project, self.project.state.get("fonts", {}).get(font, font or PROOFING_FONT),
                            size, multiple)
 
     def measure_box(self, size, content, width, max_height, multiple=None):
@@ -654,7 +655,7 @@ class Builder:
                 total += gaps.get(name, gap)
             placed = True
             if role == "button":
-                _, th = self.measure(text, self.sizes["body"], None, 0)
+                _, th = self.measure(text, self.sizes["body"], None, 0, "left", self.font)
                 total += th + 2 * round(self.sizes["body"] * 0.6)
             else:
                 size = self.sizes[role]
@@ -1231,10 +1232,14 @@ def _event_poster(b):
     for grow in (1.0, 1.25, 1.5, 1.8, 2.2):
         del b.ops[ops:], b.created[created:]
         y = _event_details(b, grow)
-        if y > bottom or y > b.T + b.ch * 0.6:
-            if y > bottom and grow > 1:
+        if y > bottom:
+            if grow > 1:
                 del b.ops[ops:], b.created[created:]
                 y = _event_details(b, previous)
+            break
+        # Past 60% of the page the type stops growing, unless what is left would move the facts to the foot
+        # (below) and open an empty band: a pixel either side of 60% must not decide between the two.
+        if y > b.T + b.ch * 0.6 and bottom - y - (0 if footer else b.unit * 4) <= b.ch * 0.15:
             break
         previous = grow
     spare = bottom - y - (0 if footer else b.unit * 4)  # the footer reserve already keeps its gap
@@ -1287,7 +1292,7 @@ def _banner(b):
     cta = b.get("cta")
     cta_w = 0
     if cta:
-        tw, _ = b.measure(cta, b.sizes["body"], None, 0)
+        tw, _ = b.measure(cta, b.sizes["body"], None, 0, "left", b.font)
         cta_w = tw + b.sizes["body"] * 2.2
     text_w = b.cw - cta_w - b.unit * 6
     title_size = b.sizes["title"]
@@ -1409,7 +1414,8 @@ def _logo_horizontal(b):
     name_size = round(mark * 0.42)
     tagline = b.get("subtitle")
     nw, nh = b.measure(b.get("title"), name_size, None, 0, "left", b.display_font)
-    tw, th = b.measure(tagline, round(name_size * 0.36), None, 0) if tagline else (0, 0)
+    # The tagline is measured in the face glyphs() draws it in, so it starts on the wordmark's edge.
+    tw, th = b.measure(tagline, round(name_size * 0.36), None, 0, "left", b.display_font) if tagline else (0, 0)
     gap = round(mark * 0.28)
     total = mark + gap + max(nw, tw)
     scale = min(1, b.cw / total)
@@ -1425,7 +1431,7 @@ def _logo_horizontal(b):
     b.glyphs(name_size, b.get("title"), left + nw / 2, ty + nh / 2, "wordmark", color="@ink")
     if tagline:
         tag_size = max(6, round(name_size * 0.36))
-        tw, th = b.measure(tagline, tag_size, None, 0)
+        tw, th = b.measure(tagline, tag_size, None, 0, "left", b.display_font)
         b.glyphs(tag_size, tagline, left + tw / 2, ty + nh + b.unit + th / 2, "tagline", color="@muted")
 
 
@@ -1440,7 +1446,7 @@ def _logo_stacked(b):
         nw, nh = b.measure(b.get("title"), name_size, None, 0, "left", b.display_font)
     tagline = b.get("subtitle")
     tag_size = max(6, round(name_size * 0.38))
-    _, th = b.measure(tagline, tag_size, None, 0) if tagline else (0, 0)
+    _, th = b.measure(tagline, tag_size, None, 0, "left", b.font) if tagline else (0, 0)
     gap = mark * 0.18
     total = mark + gap + nh + (b.unit * 2 + th if tagline else 0)
     y = (b.H - total) / 2
@@ -1957,6 +1963,17 @@ def _two_columns(b, entries, vertical, device):
     gap = b.unit * 4
     left_w = (b.cw - gap) * 0.56
     right_w = b.cw - gap - left_w
+    columns = [(lead, b.L, left_w), (rest, b.L + left_w + gap, right_w)]
+    button = next((entry for entry in rest if entry[0] == "button" and entry[1]), None)
+    if button and any(entry[1] for entry in rest if entry is not button) \
+            and b.stack_height(rest, right_w, gap=b.unit * 2) > b.ch:
+        # Too shallow for the call to action under the copy beside the headline (minor text cannot shrink below
+        # the legibility minimum): the button takes a third column at the right edge instead of leaving the canvas.
+        button_w = b.button_size(button[1])[0]
+        left_w = (b.cw - 2 * gap - button_w) * 0.5
+        middle = [entry for entry in rest if entry is not button]
+        columns = [(lead, b.L, left_w), (middle, b.L + left_w + gap, b.cw - 2 * gap - button_w - left_w),
+                   ([button], b.R - button_w, button_w)]
     if device == "rule":
         b.rect("quiet-rule", b.L, max(0, b.T - b.unit - max(2, b.unit / 4)), b.cw, max(2, b.unit / 4), "@accent", decoration=True)
     elif device == "rail":
@@ -1966,7 +1983,7 @@ def _two_columns(b, entries, vertical, device):
     elif device == "footer":
         b.rect("quiet-footer", b.L, b.B - b.unit / 4, b.cw, max(2, b.unit / 4), "@accent")
     align = "left" if b.align == "right" else b.align
-    for index, (column, x, width) in enumerate(((lead, b.L, left_w), (rest, b.L + left_w + gap, right_w))):
+    for index, (column, x, width) in enumerate(columns):
         height = b.stack_height(column, width, gap=b.unit * 2)
         y = b.T + max(0, b.ch - height - b.clearance(device)) * vertical
         if index == 0 and not (b.accent == "rule" and device == "rule"):
