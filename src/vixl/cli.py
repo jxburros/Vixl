@@ -132,7 +132,9 @@ Styles:    styles [list [QUERY] | show NAME | apply NAME [--palette] | check [NA
            check --checks style [--style NAME…] (premade rules for swiss, brutalist, minimalist, art-deco …)
 Dice:      roll [--apply] [--set title=…] [--for poster] [--mood M] [--size NAME] [--seed N|random] [--lock palette=sage]
            [--variety low|medium|high] [--unfilled omit|blank], house [show PURPOSE] (the house style)
-Brand:     brand validate [--preset NAME] (missing roles, fonts, logos), brand show [--preset NAME]; workflow brand-board
+Brand:     brand validate [--preset NAME] (missing roles, fonts, logos), brand show [--preset NAME]; workflow brand-board;
+           brand init [--palette P] [--pairing P] [--font ROLE=FILE], brand pack OUT.vixlbrand, brand install FILE
+           [--preset-only], brand element NAME --from FILE.vixl [--object GROUP]
 Color:     color [info] COLOR…, color convert COLOR --to oklch|cmyk|…, color harmony COLOR --scheme triadic,
            color scale COLOR | A B [--count N], color mix A B, color contrast FG BG, color names QUERY,
            palette-generate NAME COLOR [--scheme scale|triadic|…], type-scale --base 16 --ratio golden
@@ -910,7 +912,10 @@ def command_help(cmd, args):
         "capabilities": "capabilities [TOPIC]  (e.g. capabilities animation: operations with fields, workflows, gotchas, guidance)",
         "looks": "looks  (the finishing looks; apply with look LAYER NAME)",
         "house": "house [show [PURPOSE]]  (the house style: craft rules, tiered pools, variety levels; or one purpose's profile)",
-        "brand": "brand validate|show [--preset NAME]  (check the workspace brand.json: missing roles, fonts and logos; or summarize it)",
+        "brand": "brand validate|show [--preset NAME]  (check the workspace brand.json: missing roles, fonts and logos; or "
+                 "summarize it) | brand init [--name N] [--palette P] [--pairing P] [--font ROLE=FILE] | brand pack "
+                 "OUT.vixlbrand | brand install FILE.vixlbrand [--preset-only [--as NAME]] [--overwrite] | brand element "
+                 "NAME --from FILE.vixl [--object GROUP]",
         "guides": "guides (list guides and grids)",
         "links": "links (list the linked documents and their state: ok, stale, missing, cycle)",
     }

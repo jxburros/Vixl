@@ -258,6 +258,8 @@ def validate(kind, value):
         Limits().size(value["width"], value["height"])
         color(value.get("background", "transparent"))
         require(isinstance(value.get("defaults", {}), dict), "Template defaults must be an object")
+        require(isinstance(value.get("places_logo", False), bool),
+                "places_logo is true when the template places the brand logo itself (brand-logo)")
         from .automation import validate_inputs, validate_state as validate_automation
         validate_automation(value)
         if "inputs" in value:
@@ -514,7 +516,7 @@ def execute_resource(project, op):
         if op.get("style"):
             from .styles import apply_operations
 
-            for operation in apply_operations(op["style"], palette=False):
+            for operation in apply_operations(op["style"], palette=False, brand_styles=kit.get("styles")):
                 execute(project, operation)
             rolled["style"] = op["style"]
         for key, kind, field in (("suites", "suite-set", "suite"), ("motions", "motion-define", "motion"),

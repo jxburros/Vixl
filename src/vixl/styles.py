@@ -9,6 +9,10 @@ every rule with its measurement, so a passing rule is visible too.
 
 Rules are advisory. Each is an evaluator in ``RULES`` taking measured facts about the document
 and the rule's parameters; a document can relax any of them in its tag's ``options``.
+
+A workspace ``brand.json`` can add its own styles under ``styles`` (guidance, rules of the kinds in ``RULES``
+and recommended looks). They are named ``brand:NAME`` wherever a catalog style name is taken: ``style-set``
+tags a document with one and ``check --checks style`` enforces its rules while that brand is active.
 """
 
 import colorsys
@@ -19,7 +23,7 @@ import re
 import numpy as np
 
 from .errors import VixlError, require
-from .style_catalog import STYLES
+from .style_catalog import R, STYLES
 from .house_style import tier_of
 
 for _name, _style in STYLES.items():
@@ -30,15 +34,120 @@ TYPES = ("style-set",)
 MAX_NAMES = 3
 SEVERITIES = ("error", "warning", "info")
 WEIGHT_NAME = re.compile(r"^(.+?)(?:-(\d{3}))?(-italic)?$")
+BRAND_PREFIX = "brand:"
+STYLE_NAME = re.compile(r"[a-z0-9][a-z0-9-]{0,39}")
+BRAND_STYLE_FIELDS = ("title", "summary", "guidance", "rules", "looks")
+BRAND_RULE_FIELDS = ("kind", "id", "severity", "summary", "fix", "params")
+MAX_BRAND_STYLES, MAX_BRAND_RULES = 32, 50
 
 
 def names():
     return sorted(STYLES)
 
 
-def resolve(name):
-    """The catalog key for ``name`` (case and spacing forgiving), or a helpful error."""
+def known_rule_params():
+    """``{rule kind: the parameter names the catalog's rules of that kind use}``."""
+    known = {}
+    for entry in STYLES.values():
+        for rule in entry["checks"]:
+            known.setdefault(rule["kind"], set()).update(rule["params"])
+    return known
+
+
+def _short_text(value, name, limit=300):
+    require(isinstance(value, str) and len(value) <= limit, f"{name} is text of at most {limit} characters")
+
+
+def validate_brand_styles(styles):
+    """brand.json ``styles``: ``{name: {title?, summary?, guidance?, rules?: [{kind, id?, severity?, summary?,
+    fix?, params?}], looks?: [look names]}}``. Rule kinds and their parameter names are the catalog's."""
+    from .looks import LOOKS
+
+    require(isinstance(styles, dict) and len(styles) <= MAX_BRAND_STYLES,
+            f"styles maps up to {MAX_BRAND_STYLES} style names to {{guidance, rules, looks}}")
+    known = known_rule_params()
+    for name, entry in styles.items():
+        require(isinstance(name, str) and STYLE_NAME.fullmatch(name),
+                f"Brand style names are lowercase letters, digits and hyphens (got {name!r})")
+        require(isinstance(entry, dict) and set(entry) <= set(BRAND_STYLE_FIELDS),
+                f"Brand style {name!r} takes {', '.join(BRAND_STYLE_FIELDS)}")
+        for key in ("title", "summary"):
+            if key in entry:
+                _short_text(entry[key], f"styles.{name}.{key}")
+        if "guidance" in entry:
+            require(isinstance(entry["guidance"], str) and 0 < len(entry["guidance"]) <= 100000,
+                    f"styles.{name}.guidance is 1-100000 characters")
+        looks = entry.get("looks", [])
+        require(isinstance(looks, list) and len(looks) <= 16 and all(look in LOOKS for look in looks),
+                f"styles.{name}.looks lists look names (vixl looks): {', '.join(sorted(LOOKS)[:8])} ...")
+        rules = entry.get("rules", [])
+        require(isinstance(rules, list) and len(rules) <= MAX_BRAND_RULES,
+                f"styles.{name}.rules is a list of up to {MAX_BRAND_RULES} rules")
+        seen = set()
+        for number, rule in enumerate(rules):
+            where = f"styles.{name}.rules[{number}]"
+            require(isinstance(rule, dict) and set(rule) <= set(BRAND_RULE_FIELDS),
+                    f"{where} takes {', '.join(BRAND_RULE_FIELDS)}")
+            require(rule.get("kind") in RULES, f"{where}: kind is a style rule kind: {', '.join(sorted(RULES))}",
+                    allowed=sorted(RULES))
+            ident = rule.get("id", rule["kind"].replace("_", "-"))
+            require(isinstance(ident, str) and STYLE_NAME.fullmatch(ident) and ident not in seen,
+                    f"{where}: id is a unique lowercase name (two rules of one kind need their own ids)")
+            seen.add(ident)
+            require(rule.get("severity", "warning") in SEVERITIES,
+                    f"{where}: severity is one of {', '.join(SEVERITIES)}")
+            for key in ("summary", "fix"):
+                if key in rule:
+                    _short_text(rule[key], f"{where}.{key}")
+            params = rule.get("params", {})
+            require(isinstance(params, dict) and len(params) <= 16, f"{where}: params is an object")
+            allowed = known.get(rule["kind"])
+            stray = sorted(set(params) - allowed) if allowed is not None else []
+            require(not stray, f"{where}: unknown params {stray} for {rule['kind']}; it takes "
+                    f"{', '.join(sorted(allowed or ()))}", allowed=sorted(allowed or ()))
+            for key, value in params.items():
+                require(isinstance(key, str) and (value is None or isinstance(value, (str, int, float, bool))
+                        or (isinstance(value, list) and len(value) <= 64
+                            and all(isinstance(item, (str, int, float)) for item in value))),
+                        f"{where}.params.{key} is a number, text, true/false or a short list")
+    return styles
+
+
+def brand_entry(name, entry):
+    """A brand style in the catalog's shape (``checks`` built like the catalog's ``R`` rules)."""
+    checks = [R(rule["kind"], rule.get("summary", rule["kind"].replace("_", " ")),
+                rule.get("fix", "Follow the brand style's guidance"), rule.get("severity", "warning"),
+                rule.get("id"), **rule.get("params", {})) for rule in entry.get("rules", [])]
+    return {"title": entry.get("title", name), "summary": entry.get("summary", ""),
+            "guidance": entry.get("guidance", ""), "looks": list(entry.get("looks", [])), "checks": checks,
+            "brand": True}
+
+
+def _entry(key, brand_styles=None):
+    if key.startswith(BRAND_PREFIX):
+        return brand_entry(key[len(BRAND_PREFIX):], (brand_styles or {})[key[len(BRAND_PREFIX):]])
+    return STYLES[key]
+
+
+def brand_styles_of(project):
+    """The active brand's styles for ``project`` ({} without a brand or styles)."""
+    from .brand import for_project
+
+    return (for_project(project) or {}).get("styles") or {}
+
+
+def resolve(name, brand_styles=None):
+    """The catalog key for ``name`` (case and spacing forgiving), ``brand:NAME`` for a style of the active
+    brand.json, or a helpful error."""
     require(isinstance(name, str) and name.strip(), "Style name must be a non-empty string", field="style")
+    if name.strip().lower().startswith(BRAND_PREFIX):
+        own = name.strip()[len(BRAND_PREFIX):].strip().lower()
+        brand_styles = brand_styles or {}
+        require(own in brand_styles, f"brand.json has no style {own!r}"
+                + (f"; its styles: {', '.join(sorted(brand_styles))}" if brand_styles else
+                   "; add styles to brand.json (or use a catalog style)"),
+                "unknown_style", field="style", allowed=[BRAND_PREFIX + key for key in sorted(brand_styles)])
+        return BRAND_PREFIX + own
     key = re.sub(r"[\s_/]+", "-", name.strip().lower())
     if key in STYLES:
         return key
@@ -70,10 +179,15 @@ def listing(query=None):
                     "vixl_check(checks=['style']) evaluates its rules"}
 
 
-def describe(name):
+def describe(name, brand_styles=None):
     """The full guidance for one style, with each check's parameters."""
-    key = resolve(name)
-    entry = STYLES[key]
+    key = resolve(name, brand_styles)
+    entry = _entry(key, brand_styles)
+    if key.startswith(BRAND_PREFIX):
+        return {"name": key, **{k: v for k, v in entry.items() if k != "checks"},
+                "checks": [{"id": f"{key}/{rule['id']}", "kind": rule["kind"], "severity": rule["severity"],
+                            "summary": rule["summary"], "fix": rule["fix"], "params": rule["params"]}
+                           for rule in entry["checks"]]}
     return {"name": key, **{k: v for k, v in entry.items() if k != "checks"},
             "checks": [{"id": f"{key}/{rule['id']}", "kind": rule["kind"], "severity": rule["severity"],
                         "summary": rule["summary"], "fix": rule["fix"], "params": rule["params"]}
@@ -82,9 +196,17 @@ def describe(name):
                            f"options relax a rule: {{type: style-set, style: {key}, options: {{{entry['checks'][0]['id']}: false}}}}"]}
 
 
-def guidance_text(name):
+def guidance_text(name, brand_styles=None):
     """A compact brief for the document's design guidance (what ``apply`` stores)."""
-    key = resolve(name)
+    key = resolve(name, brand_styles)
+    if key.startswith(BRAND_PREFIX):
+        e = _entry(key, brand_styles)
+        lines = [f"Style: {e['title']}. {e['summary']}".strip(), e["guidance"]]
+        if e["looks"]:
+            lines.append("Looks: " + ", ".join(e["looks"]) + ".")
+        if e["checks"]:
+            lines.append("Checks: " + "; ".join(rule["summary"] for rule in e["checks"]) + ".")
+        return "\n".join(line for line in lines if line)
     e = STYLES[key]
     palette = e["palettes"][0]
     lines = [f"Style: {e['title']}. {e['summary']}", "Principles: " + " ".join(e["principles"]),
@@ -113,13 +235,15 @@ def palette_roles(swatches):
     return roles
 
 
-def apply_operations(name, palette=False, guidance=True):
-    """The operations that tag a document with a style and store its brief (and optionally palette)."""
-    key = resolve(name)
+def apply_operations(name, palette=False, guidance=True, brand_styles=None):
+    """The operations that tag a document with a style and store its brief (and optionally palette; a brand
+    style has none, the brand's palette applies)."""
+    key = resolve(name, brand_styles)
     ops = [{"type": "style-set", "style": key}]
     if guidance:
-        ops.append({"type": "guidance", "name": key, "text": guidance_text(key), "style": "style"})
-    if palette:
+        ops.append({"type": "guidance", "name": key.replace(":", "-"), "text": guidance_text(key, brand_styles),
+                    "style": "style"})
+    if palette and not key.startswith(BRAND_PREFIX):
         swatches = STYLES[key]["palettes"][0]["swatches"]
         ops += [{"type": "palette-define", "name": key, "colors": swatches},
                 {"type": "palette-apply", "name": key, "roles": palette_roles(swatches)}]
@@ -135,15 +259,15 @@ def schemas(add):
     }, ["style"])
 
 
-def _rules(key):
-    return {rule["id"]: rule for rule in STYLES[key]["checks"]}
+def _rules(key, brand_styles=None):
+    return {rule["id"]: rule for rule in _entry(key, brand_styles)["checks"]}
 
 
-def _validated_options(keys, options):
+def _validated_options(keys, options, brand_styles=None):
     require(isinstance(options, dict), "options must be an object {rule: false | {param: value}}", field="options")
     known = {}
     for key in keys:
-        for rule_id, rule in _rules(key).items():
+        for rule_id, rule in _rules(key, brand_styles).items():
             known.setdefault(rule_id, []).append(rule)
             known[f"{key}/{rule_id}"] = [rule]
     for ref, change in options.items():
@@ -172,9 +296,15 @@ def execute(project, op):
     raw = [value] if isinstance(value, str) else value
     require(isinstance(raw, list) and 0 < len(raw) <= MAX_NAMES and all(isinstance(v, str) for v in raw),
             f"style is a style name or a list of up to {MAX_NAMES} names (null clears it)", field="style")
-    keys = list(dict.fromkeys(resolve(v) for v in raw))
-    options = _validated_options(keys, op.get("options", {}))
+    brand_styles = brand_styles_of(project) if any(v.strip().lower().startswith(BRAND_PREFIX) for v in raw) else {}
+    keys = list(dict.fromkeys(resolve(v, brand_styles) for v in raw))
+    options = _validated_options(keys, op.get("options", {}), brand_styles)
     project.state["style"] = {"names": keys, **({"options": options} if options else {})}
+
+
+def _tag_name(name):
+    return name in STYLES or (isinstance(name, str) and name.startswith(BRAND_PREFIX)
+                              and STYLE_NAME.fullmatch(name[len(BRAND_PREFIX):]) is not None)
 
 
 def validate_style_tag(state):
@@ -182,8 +312,15 @@ def validate_style_tag(state):
     if tag is None:
         return
     require(isinstance(tag, dict) and set(tag) <= {"names", "options"} and isinstance(tag.get("names"), list)
-            and 0 < len(tag["names"]) <= MAX_NAMES and all(n in STYLES for n in tag["names"]),
+            and 0 < len(tag["names"]) <= MAX_NAMES and all(_tag_name(n) for n in tag["names"]),
             "Invalid style tag", "invalid_project")
+    if any(name.startswith(BRAND_PREFIX) for name in tag["names"]):
+        # A brand style's rules live in the workspace brand.json, which a document read elsewhere may lack.
+        options = tag.get("options", {})
+        require(isinstance(options, dict) and all(change is False or isinstance(change, dict)
+                                                  for change in options.values()),
+                "Invalid style tag options", "invalid_project")
+        return
     _validated_options(tag["names"], tag.get("options", {}))
 
 
@@ -909,21 +1046,26 @@ def rule_min_text_size(f, p):
 RULES = {name[5:]: fn for name, fn in globals().items() if name.startswith("rule_")}
 
 
-def selected(style, state):
+def selected(style, state, brand_styles=None):
     """The (style names, options) to check: an explicit ``style`` argument, else the document's tag."""
     if style is not None:
         raw = [style] if isinstance(style, str) else list(style)
-        keys = list(dict.fromkeys(resolve(v) for v in raw))
+        keys = list(dict.fromkeys(resolve(v, brand_styles) for v in raw))
         return keys, state.get("style", {}).get("options", {}) if set(keys) <= set(state.get("style", {}).get("names", [])) else {}
     tag = state.get("style")
     return (list(tag["names"]), tag.get("options", {})) if tag else ([], {})
 
 
-def evaluate(facts, keys, options):
+def evaluate(facts, keys, options, brand_styles=None):
     """Every rule of the styles in ``keys`` evaluated: ``[{id, style, rule, severity, status, …}]``."""
     results = []
     for key in keys:
-        for rule in STYLES[key]["checks"]:
+        own = key.startswith(BRAND_PREFIX)
+        if own and key[len(BRAND_PREFIX):] not in (brand_styles or {}):
+            results.append({"id": key, "style": key, "rule": None, "summary": "brand style", "severity": "warning",
+                            **skipped(f"brand.json in this workspace has no style {key[len(BRAND_PREFIX):]!r}")})
+            continue
+        for rule in _entry(key, brand_styles)["checks"]:
             ref = f"{key}/{rule['id']}"
             change = options.get(ref, options.get(rule["id"]))
             if change is False or (isinstance(change, dict) and change.get("enabled") is False):
@@ -932,7 +1074,13 @@ def evaluate(facts, keys, options):
                 continue
             params = {**rule["params"], **{k: v for k, v in (change or {}).items() if k not in ("enabled", "severity")}}
             severity = (change or {}).get("severity", rule["severity"])
-            outcome = RULES[rule["kind"]](facts, params)
+            try:
+                outcome = RULES[rule["kind"]](facts, params)
+            except (KeyError, TypeError, ValueError, ZeroDivisionError) as exc:
+                if not own:
+                    raise
+                # A brand rule names a known kind but may leave out a parameter the evaluator needs.
+                outcome = skipped(f"the brand rule's params do not fit {rule['kind']} ({type(exc).__name__}: {exc})")
             results.append({"id": ref, "style": key, "rule": rule["id"], "summary": rule["summary"],
                             "fix": rule["fix"], "severity": severity, **outcome})
     return results
@@ -940,15 +1088,21 @@ def evaluate(facts, keys, options):
 
 def check_style(candidate, resolved, projection, layers, content, issue, style=None):
     """Add one finding per failed rule of the document's style (or ``style``); returns the rule report."""
-    keys, options = selected(style, candidate.state)
+    tagged = [style] if isinstance(style, str) else list(style or candidate.state.get("style", {}).get("names", []))
+    brand_styles = brand_styles_of(candidate) if any(
+        isinstance(name, str) and name.strip().lower().startswith(BRAND_PREFIX) for name in tagged) else {}
+    keys, options = selected(style, candidate.state, brand_styles)
     if not keys:
         issue("style", "warning", "No style is set: tag the document with style-set (vixl_reference('styles') lists the styles) or "
               "pass style=…", [])
         return {"styles": [], "rules": []}
     facts = Facts(candidate, resolved, projection, layers, content)
     by_name = {item["name"]: item for item in resolved.values()}
-    results = evaluate(facts, keys, options)
+    results = evaluate(facts, keys, options, brand_styles)
     for result in results:
+        if result["status"] == "skipped" and result["rule"] is None:
+            issue("style", "warning", f"{result['style']}: {result['detail']}; the style's rules were not checked",
+                  [], style=result["style"])
         if result["status"] != "failed":
             continue
         issue("style", result["severity"], f"{result['style']}: {result['summary']}: {result['detail']}. {result['fix']}.",

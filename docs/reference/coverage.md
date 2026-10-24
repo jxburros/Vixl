@@ -19,7 +19,7 @@ implementation, not a claim of production maturity or complete GIMP parity.
 | Add motion | Keyframe timelines, rigs, kinetic type, lyric videos, app-animation packages | No nested compositions or motion-path editor |
 | Use AI where it helps | Vision, generation and inpainting through providers you configure | Needs a real service; Vixl ships no model weights |
 
-Counts at 0.27: **259** operation types, **151** named sizes, **53** layouts, **61** templates, **74** palettes,
+Counts at 0.27: **261** operation types, **151** named sizes, **53** layouts, **61** templates, **74** palettes,
 **28** design styles, **20** looks, **17** brushes, **19** artistic filters and **34** organic presets. `vixl schema`,
 `vixl sizes`, `vixl layouts`, `vixl template list`, `vixl palette list`, `vixl styles list`, `vixl looks`,
 `vixl brushes` and `vixl organics` list the current sets, and a test fails when these numbers drift.

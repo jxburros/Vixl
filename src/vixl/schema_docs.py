@@ -115,6 +115,8 @@ SUMMARIES = {
     "palette-generate": "Generate swatches from one color: a 50-950 scale or a harmony (complementary, triadic …).",
     "template-apply": "Create layers from a named template with variables.",
     "guidance": "Store or remove a written design guide (brand voice, rules) in the document.",
+    "brand-logo": "Place a brand.json logo by purpose (icon, wordmark, avatar, lockup) at its anchor, inside the safe "
+                  "area; templates use it to place their own logo.",
     "brand-preset": "Use a named preset of the workspace brand (brand.json presets) for this document: its palette, "
                     "fonts, stages and rules apply to layouts, templates and the brand check; none returns to the base brand.",
     "font-design": "Name the font drawn in this document and set its metrics in canvas pixels (em, ascent, descent, x-height, cap height, side bearing, space) and kerning pairs.",

@@ -105,6 +105,12 @@ def pack(directory, output, *, limits=None, overwrite=False):
 def _archive(path, metadata, assets):
     entries = {'project.json': json.dumps(metadata, ensure_ascii=False, sort_keys=True,
                                          separators=(',', ':'), allow_nan=False).encode(), **assets}
+    deterministic_zip(path, entries)
+
+
+def deterministic_zip(path, entries):
+    """Write ``{name: bytes}`` as a ZIP whose bytes depend only on the entries: sorted names, a fixed date and
+    file mode (shared by ``pack`` and brand packages)."""
     with zipfile.ZipFile(path, 'w') as archive:
         for name, data in sorted(entries.items()):
             info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))

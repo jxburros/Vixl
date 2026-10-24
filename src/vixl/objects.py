@@ -728,7 +728,8 @@ def schemas(add):
         "tags": {"type": "array", "items": S, "maxItems": 32, "description": "Search tags."},
     }, ["name"])
     add("object-place", {
-        "name": field(S, "Saved object to place (object-save), or with source the new object's name."),
+        "name": field(S, "Saved object to place (object-save), brand:NAME for an element of the workspace brand.json "
+                      "(placed before the document library is consulted), or with source the new object's name."),
         "source": field(S, "A portable object .vixl file in the workspace (vixl_export(isolate=[OBJ], path=…vixl)) "
                         "to place instead of a saved object."),
         "name_as": field(S, "Name of the placed object group; default the saved name (made unique)."),
@@ -932,10 +933,16 @@ def place(project, op, record_and_assets=None):
     from .operations import append_layer, default_name, unique_name
 
     assets = {}
+    base = op["name"]
     if record_and_assets is not None:
         item, assets = record_and_assets
     elif op.get("source"):
         item, assets = _from_file(project, op["source"])
+    elif op["name"].startswith("brand:"):
+        from .brand import element
+
+        base = op["name"][6:]
+        item, assets = element(project, base)
     else:
         library = project.state.get("object_library", {})
         require(op["name"] in library, f"No saved object {op['name']!r}"
@@ -958,7 +965,7 @@ def place(project, op, record_and_assets=None):
     if op.get("name_as"):
         root_name = unique_name(project, op["name_as"])
     else:
-        root_name = default_name(project, op["name"])
+        root_name = default_name(project, base)
     scale = finite(op.get("scale", 1), "scale", 0.0001, 100)
     if "width" in op or "height" in op:
         require(not ("width" in op and "height" in op), "Give width or height (the aspect ratio is kept), not both",

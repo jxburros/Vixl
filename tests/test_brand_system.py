@@ -310,3 +310,295 @@ def test_brand_cli(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     shown, _ = dispatch(["brand", "show", "--preset", "flames"])
     assert shown["palette"]["accent"] == "#d2a465" and shown["stages"]["h1"] == "heading"
+
+
+# --- logos, elements, styles and brand packages (#436 remainder) -----------------------------------------
+
+
+def png_base64(color="red", size=(40, 20)):
+    from PIL import Image
+
+    stream = io.BytesIO()
+    Image.new("RGBA", size, color).save(stream, format="PNG")
+    return base64.b64encode(stream.getvalue()).decode()
+
+
+def logo(name, purpose, color="red", **extra):
+    return {"name": name, "data_base64": png_base64(color), "purpose": purpose, **extra}
+
+
+def test_a_single_logo_is_placed_by_its_place_inside_the_safe_area(tmp_path):
+    write(tmp_path, {"palette": dict(PALETTE), "logos": [
+        logo("mark", "icon", place={"anchor": "bottom-right", "margin": 0.05, "width_fraction": 0.25})]})
+    p = document(tmp_path, 800, 600)
+    p.apply({"type": "layout-apply", "name": "hero-statement", "title": "Launch", "unfilled": "omit"})
+    mark = p.layer("mark")
+    assert (mark["width"], mark["height"]) == (200, 100)
+    assert (mark["x"], mark["y"]) == (800 - 30 - 200, 600 - 30 - 100)
+    assert mark["provenance"]["purpose"] == "icon"
+    assert p.state["layers"][-1]["name"] == "mark"  # kept above the generated background
+
+
+def test_multi_logo_brands_add_only_auto_logos(tmp_path):
+    logos = [logo("icon", "icon"), logo("wordmark", "wordmark", "blue")]
+    write(tmp_path, {"palette": dict(PALETTE), "logos": logos})
+    p = document(tmp_path)
+    p.apply({"type": "layout-apply", "name": "hero-statement", "title": "Launch", "unfilled": "omit"})
+    names = {layer["name"] for layer in p.state["layers"]}
+    assert not {"icon", "wordmark"} & names  # several logos are variants: none is added on its own
+    write(tmp_path, {"palette": dict(PALETTE), "logos": [logos[0], {**logos[1], "auto": True}]})
+    p = document(tmp_path)
+    p.apply({"type": "layout-apply", "name": "hero-statement", "title": "Launch", "unfilled": "omit"})
+    names = {layer["name"] for layer in p.state["layers"]}
+    assert "wordmark" in names and "icon" not in names
+
+
+def test_brand_logo_places_by_purpose_and_moves_instead_of_duplicating(tmp_path):
+    write(tmp_path, {"palette": dict(PALETTE), "logo": {"clear_space": 0.5},
+                     "logos": [logo("icon", "icon"), logo("wordmark", "wordmark", "blue",
+                                                         place={"width_fraction": 0.5, "safe": False})]})
+    p = document(tmp_path, 1000, 500)
+    p.apply({"type": "brand-logo", "purpose": "wordmark", "anchor": "top-right", "margin": 0})
+    word = p.layer("wordmark")
+    assert (word["x"], word["y"], word["width"], word["height"]) == (500, 0, 500, 250)
+    p.apply({"type": "brand-logo", "purpose": "wordmark", "anchor": "bottom-left", "margin": 0})
+    assert [layer["name"] for layer in p.state["layers"]].count("wordmark") == 1
+    assert (p.layer("wordmark")["x"], p.layer("wordmark")["y"]) == (0, 250)
+    p.apply({"type": "brand-logo", "purpose": "icon", "name": "corner-icon"})
+    icon = p.layer("corner-icon")
+    assert (icon["x"], icon["y"], icon["width"]) == (0, 0, 40)  # a logo without place keeps its own position
+    p.apply({"type": "text", "text": "crowding", "name": "crowd", "x": 45, "y": 0, "size": 12, "color": "#111111"})
+    clear = [i for i in p.check(checks=["brand"])["issues"] if "clear space" in i["message"]]
+    assert any("corner-icon" in i["layers"] for i in clear)  # brand-logo layers are logos for the logo rules
+    with pytest.raises(VixlError, match="no avatar logo"):
+        p.apply({"type": "brand-logo", "purpose": "avatar"})
+
+
+def test_templates_that_place_their_own_logo_opt_out_of_auto_logos(tmp_path, monkeypatch):
+    from vixl.resources import register as save
+
+    monkeypatch.setenv("VIXL_RESOURCES", str(tmp_path / "global.json"))
+    write(tmp_path, {"palette": dict(PALETTE), "logos": [logo("icon", "icon", auto=True), logo("wordmark", "wordmark")]})
+    base = {"width": 600, "height": 400, "proportional": True, "operations": [
+        {"type": "solid", "name": "bg", "color": "@background", "width": 600, "height": 400}]}
+    save("templates", "plain", base, workspace=tmp_path)
+    save("templates", "own-logo", {**base, "places_logo": True, "operations": [
+        *base["operations"], {"type": "brand-logo", "purpose": "wordmark", "anchor": "bottom"}]}, workspace=tmp_path)
+    p = document(tmp_path, 600, 400)
+    p.apply({"type": "template-apply", "name": "plain"})
+    assert "icon" in {layer["name"] for layer in p.state["layers"]}
+    p = document(tmp_path, 600, 400)
+    p.apply({"type": "template-apply", "name": "own-logo"})
+    names = [layer["name"] for layer in p.state["layers"]]
+    assert "wordmark" in names and "icon" not in names and names[-1] == "wordmark"
+    with pytest.raises(VixlError, match="places_logo"):
+        save("templates", "bad", {**base, "places_logo": "yes"}, workspace=tmp_path)
+
+
+def test_logo_fields_are_validated(tmp_path):
+    for bad, match in (({"purpose": "favicon"}, "purpose"), ({"place": {"anchor": "nowhere"}}, "anchor"),
+                       ({"place": {"margin": 2}}, "margin"), ({"colour": "red"}, "unknown field")):
+        write(tmp_path, {"logos": [{**logo("mark", "icon"), **bad}]})
+        with pytest.raises(VixlError, match=match):
+            load(tmp_path)
+
+
+def element_document(tmp_path):
+    p = Project(300, 300)
+    data = base64.b64decode(png_base64("green", (30, 30)))
+    asset = f"assets/{hashlib.sha256(data).hexdigest()}.png"
+    p.assets[asset] = data
+    p.apply([{"type": "shape", "shape": "ellipse", "name": "flame", "width": 60, "height": 90, "fill": "#e8562a"},
+             {"type": "add", "asset": asset, "name": "spark", "x": 15, "y": 30},
+             {"type": "group", "name": "flame-mark", "targets": ["flame", "spark"]}])
+    p.save(tmp_path / "mark.vixl")
+    return asset
+
+
+def test_brand_elements_place_with_object_place_brand_name(tmp_path):
+    from vixl.brand import cli as brand_cli
+
+    asset = element_document(tmp_path)
+    write(tmp_path, {"palette": dict(PALETTE)})
+    result = brand_cli(["element", "flame", "--from", "mark.vixl", "--object", "flame-mark",
+                        "--workspace", str(tmp_path)])
+    assert result["assets"] == 1 and "brand:flame" in result["use"]
+    p = document(tmp_path, 600, 600)
+    p.apply({"type": "object-place", "name": "brand:flame", "x": 100, "y": 50, "width": 120})
+    root = p.layer("flame")
+    assert root["type"] == "group" and root["width"] == 120 and (root["x"], root["y"]) == (100, 50)
+    assert asset in p.assets and p.layer("flame/spark")["asset"] == asset
+    with pytest.raises(VixlError, match="No brand element 'smoke'"):
+        p.apply({"type": "object-place", "name": "brand:smoke"})
+    # A file whose bytes no longer match the SHA-256 in its name is refused, here and by brand validate.
+    kit = json.loads((tmp_path / "brand.json").read_text())
+    kit["elements"]["flame"]["assets"][asset] = png_base64("blue", (30, 30))
+    write(tmp_path, kit)
+    with pytest.raises(VixlError, match="SHA-256"):
+        document(tmp_path).apply({"type": "object-place", "name": "brand:flame"})
+    assert any("element 'flame'" in error for error in report(tmp_path)["errors"])
+
+
+def test_a_custom_brand_style_rule_fires_in_the_style_check(tmp_path):
+    write(tmp_path, {"palette": dict(PALETTE), "styles": {"one-voice": {
+        "guidance": "One typeface, set flush left.",
+        "rules": [{"kind": "max_typefaces", "params": {"max": 1}, "severity": "error",
+                   "summary": "One typeface only"},
+                  {"kind": "text_align", "params": {"allowed": ["left"]}}]}}})
+    p = document(tmp_path, 600, 400)
+    register(p, "Anton")
+    register(p, "Typer")
+    p.apply([{"type": "text", "text": "Title", "font": "anton", "name": "a", "color": "#111111"},
+             {"type": "text", "text": "Body", "font": "typer", "name": "b", "y": 100, "color": "#111111"},
+             {"type": "style-set", "style": "brand:one-voice"}])
+    assert p.state["style"]["names"] == ["brand:one-voice"]
+    issues = [i for i in p.check(checks=["style"])["issues"] if i["check"] == "style"]
+    assert any(i["rule"] == "brand:one-voice/max-typefaces" and i["severity"] == "error" for i in issues)
+    p.apply({"type": "style-set", "style": "brand:one-voice", "options": {"max-typefaces": False}})
+    assert not [i for i in p.check(checks=["style"])["issues"] if i.get("rule", "").endswith("max-typefaces")]
+    with pytest.raises(VixlError, match="no style 'loud'"):
+        p.apply({"type": "style-set", "style": "brand:loud"})
+    for bad, match in (({"kind": "nonsense"}, "rule kind"), ({"kind": "max_typefaces", "params": {"maxx": 1}},
+                                                               "unknown params")):
+        write(tmp_path, {"styles": {"one-voice": {"rules": [bad]}}})
+        with pytest.raises(VixlError, match=match):
+            load(tmp_path)
+
+
+def test_brand_init_then_validate_round_trip(tmp_path):
+    from vixl.brand import cli as brand_cli
+
+    font = tmp_path / "Brand.ttf"
+    font.write_bytes(renamed("Brandy"))
+    made = brand_cli(["init", "--name", "Acme", "--palette", "ocean", "--pairing", "source-serif-sans",
+                      "--font", f"heading={font}", "--workspace", str(tmp_path)])
+    assert made["name"] == "Acme" and set(made["palette"]) == set(PALETTE) and made["fonts"] == ["heading"]
+    result = report(tmp_path)
+    assert result["valid"], result
+    assert load(tmp_path)["fonts"]["heading"]["data_base64"]
+    with pytest.raises(VixlError, match="already exists"):
+        brand_cli(["init", "--workspace", str(tmp_path)])
+
+
+def brand_workspace(tmp_path, monkeypatch):
+    from vixl.resources import register as save
+
+    monkeypatch.setenv("VIXL_RESOURCES", str(tmp_path / "global.json"))
+    source = tmp_path / "source"
+    source.mkdir()
+    write(source, brand_kit(logos=[logo("mark", "icon")], styles={"calm": {"guidance": "Quiet."}}))
+    save("palettes", "acme", ["#101010", "#f0f0f0", "#0044aa"], workspace=source)
+    save("guidance", "voice", "Short sentences.", workspace=source)
+    save("templates", "card", {"width": 400, "height": 300, "operations": [
+        {"type": "asset-place", "resource": "seal", "x": 10, "y": 10}]}, workspace=source)
+    save("assets", "seal", {"data_base64": png_base64("green"), "media_type": "png", "credit": "Acme"},
+         workspace=source)
+    return source
+
+
+def test_pack_then_install_into_an_empty_workspace_reproduces_the_resources(tmp_path, monkeypatch):
+    from vixl.brand import cli as brand_cli
+
+    source = brand_workspace(tmp_path, monkeypatch)
+    out = tmp_path / "acme.vixlbrand"
+    packed = brand_cli(["pack", str(out), "--workspace", str(source)])
+    assert packed["resources"] == {"assets": ["seal"], "guidance": ["voice"], "palettes": ["acme"],
+                                   "templates": ["card"]}
+    again = brand_cli(["pack", str(tmp_path / "again.vixlbrand"), "--workspace", str(source)])
+    assert again["sha256"] == packed["sha256"]  # deterministic bytes
+    with pytest.raises(VixlError, match="already exists"):
+        brand_cli(["pack", str(out), "--workspace", str(source)])
+    target = tmp_path / "target"
+    target.mkdir()
+    installed = brand_cli(["install", str(out), "--workspace", str(target)])
+    assert installed["resources"]["assets"] == ["seal"]
+    assert load(target) == load(source)
+    assert json.loads((target / ".vixl-resources.json").read_text()) == json.loads(
+        (source / ".vixl-resources.json").read_text())
+    assert sorted(p.name for p in (target / ".vixl-resources-assets").iterdir()) == sorted(
+        p.name for p in (source / ".vixl-resources-assets").iterdir())
+    p = document(target, 400, 300)
+    p.apply({"type": "template-apply", "name": "card"})
+    assert p.layer("seal")["provenance"]["credit"] == "Acme"
+    # A second install of the same package changes nothing; a different brand.json needs --overwrite.
+    brand_cli(["install", str(out), "--workspace", str(target)])
+    write(target, {"name": "Other"})
+    with pytest.raises(VixlError, match="already exists"):
+        brand_cli(["install", str(out), "--workspace", str(target)])
+    brand_cli(["install", str(out), "--workspace", str(target), "--overwrite"])
+    assert load(target)["name"] == "JXG"
+
+
+def test_install_preset_only_adds_the_brand_as_a_preset(tmp_path, monkeypatch):
+    from vixl.brand import cli as brand_cli
+
+    source = brand_workspace(tmp_path, monkeypatch)
+    out = tmp_path / "acme.vixlbrand"
+    brand_cli(["pack", str(out), "--workspace", str(source)])
+    target = tmp_path / "target"
+    target.mkdir()
+    write(target, {"name": "Home", "palette": dict(PALETTE)})
+    result = brand_cli(["install", str(out), "--preset-only", "--as", "acme", "--workspace", str(target)])
+    assert result["preset"] == "acme"
+    raw = json.loads((target / "brand.json").read_text())
+    assert raw["name"] == "Home" and "acme" in raw["presets"] and "logos" in raw["presets"]["acme"]
+    assert not (target / ".vixl-resources.json").exists()
+
+
+def test_install_validates_first_and_rolls_back_on_failure(tmp_path, monkeypatch):
+    import zipfile
+
+    from vixl import brand_pack
+    from vixl.brand import cli as brand_cli
+
+    source = brand_workspace(tmp_path, monkeypatch)
+    out = tmp_path / "acme.vixlbrand"
+    brand_cli(["pack", str(out), "--workspace", str(source)])
+    target = tmp_path / "target"
+    target.mkdir()
+    write(target, {"name": "Before"})
+    before = (target / "brand.json").read_bytes()
+    # A member changed after packing fails its manifest checksum; nothing is written.
+    corrupt = tmp_path / "corrupt.vixlbrand"
+    with zipfile.ZipFile(out) as original, zipfile.ZipFile(corrupt, "w") as copy:
+        for info in original.infolist():
+            data = original.read(info)
+            copy.writestr(info, data.replace(b"Short sentences.", b"Long sentences!!") if "guidance" in info.filename
+                          else data)
+    with pytest.raises(VixlError, match="Checksum mismatch"):
+        brand_cli(["install", str(corrupt), "--workspace", str(target), "--overwrite"])
+    # A path that escapes the package is refused before anything is read.
+    escape = tmp_path / "escape.vixlbrand"
+    with zipfile.ZipFile(escape, "w") as archive:
+        archive.writestr("../brand.json", "{}")
+    with pytest.raises(VixlError, match="Unexpected member"):
+        brand_cli(["install", str(escape), "--workspace", str(target)])
+    assert (target / "brand.json").read_bytes() == before and not (target / ".vixl-resources.json").exists()
+    # A failure while writing restores what was there and removes new asset files.
+    real = brand_pack._atomic
+
+    def failing(path, data):
+        if path.name == "brand.json":
+            raise OSError("disk full")
+        real(path, data)
+
+    monkeypatch.setattr(brand_pack, "_atomic", failing)
+    with pytest.raises(OSError):
+        brand_cli(["install", str(out), "--workspace", str(target), "--overwrite"])
+    assert (target / "brand.json").read_bytes() == before
+    assert not (target / ".vixl-resources.json").exists()
+    assert not any((target / ".vixl-resources-assets").iterdir())
+
+
+def test_validate_flags_style_guidance_colours_and_undefined_template_font_roles(tmp_path, monkeypatch):
+    from vixl.resources import register as save
+
+    monkeypatch.setenv("VIXL_RESOURCES", str(tmp_path / "global.json"))
+    write(tmp_path, brand_kit(styles={"loud": {"guidance": "Shout in #ff00ff on #ffffff."}}))
+    save("templates", "aside", {"width": 300, "height": 200, "operations": [
+        {"type": "text", "text": "x", "font": "script"}, {"type": "text", "text": "y", "font": "hand"}]},
+        workspace=tmp_path)
+    warnings = report(tmp_path)["warnings"]
+    assert any("styles.loud" in w and "#ff00ff" in w and "#ffffff" not in w for w in warnings)
+    assert any("'script'" in w and "aside" in w for w in warnings)
+    assert not any("'hand'" in w for w in warnings)

@@ -50,6 +50,7 @@ CORE_OPERATION_MODULES = (
     _module("motion"),
     _module("objects"),
     _module("pack_assets"),
+    _module("brand"),
     _module("accessibility"),
     _module("transforms", also=("move", "resize", "scale")),
     _module("stacks"),
@@ -97,7 +98,8 @@ SCHEMA_SOURCES = (
     "design_schema", "pixel_schema", "brushes", "timeline", "layouts", "automation", "creative", "emojis",
     "authoring", "plugins", "containers", "stacks", "irregular", "guides", "richtext", "pages", "forms", "selectors",
     "links", "codes", "diecut", "path_split", "finishing", "textflow", "schema:palette_schemas", "scene", "captions",
-    "merging", "vector_paths", "audio", "textures", "motion", "objects", "pack_assets", "accessibility", "transforms",
+    "merging", "vector_paths", "audio", "textures", "motion", "objects", "pack_assets", "brand", "accessibility",
+    "transforms",
 )
 
 
