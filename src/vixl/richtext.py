@@ -15,7 +15,7 @@ Character styles override the layer's own font, size and color: ``bold``, ``ital
 sub), ``tracking`` (extra px between letters) and ``small_caps``. Bold and italic use a registered
 variant when one exists (``inter-700``, ``inter-400-italic``, or ``font_variants``) and are
 synthesized otherwise; small caps use the font's own small capitals (OpenType ``smcp``) or are
-synthesized. One shaped layout (``layout``) feeds PNG, SVG, PDF and PPTX output, and sets the
+synthesized. One shaped layout (``layout``) feeds PNG, SVG, PDF and PPTX output, and applies the
 layer's ``hanging_punctuation``.
 """
 
