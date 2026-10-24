@@ -216,6 +216,7 @@ def required_contrast(floor, size_px, bold=False):
 def _validate(kit, preset=False):
     from .colors import parse
     from .layouts import ROLES
+    from .palette_roles import EXTRA_ROLES
     from .type_roles import role_name, validate_stages
 
     require(isinstance(kit, dict), "brand.json must be an object")
@@ -223,8 +224,9 @@ def _validate(kit, preset=False):
     require(not unknown, f"Unknown brand.json field {', '.join(unknown)}; fields: {', '.join(FIELDS)}")
     palette = kit.get("palette", {})
     require(
-        isinstance(palette, dict) and set(palette) <= {*ROLES, "extra"},
-        "Brand palette maps layout roles to colors (plus extra: approved colors without a role)",
+        isinstance(palette, dict) and set(palette) <= {*ROLES, *EXTRA_ROLES, "extra"},
+        "Brand palette maps layout roles to colors (accent-2 and accent-3 for rolls with two or three accents; "
+        "plus extra: approved colors without a role)",
     )
     for value in role_colors(kit).values():
         parse(value)

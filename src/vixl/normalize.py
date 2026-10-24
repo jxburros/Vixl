@@ -278,6 +278,25 @@ def _snake(key):
     return re.sub(r"(?<=[a-z0-9])([A-Z])", r"_\1", key).lower().replace("-", "_")
 
 
+# Short names a roll's locks accept for direction fields.
+LOCK_ALIASES = {"accents": "accent_count"}
+
+
+def roll_locks(locks):
+    """A roll's locks with the short names (``accents: 2``) spelled as their direction fields (``accent_count``),
+    and a count given as text (``--lock accents=2``) as a number."""
+    result = dict(locks or {})
+    for alias, field in LOCK_ALIASES.items():
+        if alias in result:
+            value = result.pop(alias)
+            require(result.get(field, value) == value, f"locks.{alias} and locks.{field} disagree; give one",
+                    field="locks")
+            result[field] = value
+    if isinstance(result.get("accent_count"), str) and result["accent_count"].strip().isdigit():
+        result["accent_count"] = int(result["accent_count"])
+    return result
+
+
 def _canonical_type(kind, known):
     if not isinstance(kind, str):
         return kind

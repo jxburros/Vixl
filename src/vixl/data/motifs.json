@@ -1,10 +1,11 @@
 {
   "version": 1,
-  "about": "Concrete motifs a brief implies and what draws them. Each theme has keywords (whole words or phrases, accents ignored) and elements that answer three questions: the object, what it emits or reflects, and what frames it. An element is the specific thing to draw, the placeholder it replaces, how to build it, and the catalog shapes, organic presets, object kinds and operations that do it. vixl_reference(brief) returns the matching themes as motifs; vixl_reference('motifs') returns them all.",
+  "about": "Concrete motifs a brief implies and what draws them. Each theme has keywords (whole words or phrases, accents ignored), moods (the palette moods it implies, which weight the palette a roll of the brief picks) and elements that answer three questions: the object, what it emits or reflects, and what frames it. An element is the specific thing to draw, the placeholder it replaces, how to build it, and the catalog shapes, organic presets, object kinds and operations that do it. vixl_reference(brief) returns the matching themes as motifs; vixl_reference('motifs') returns them all.",
   "themes": {
     "coffee": {
       "title": "Coffee, café or tea",
       "keywords": ["coffee", "cafe", "espresso", "latte", "cappuccino", "flat white", "barista", "mocha", "cortado", "tea", "teahouse", "roastery", "brunch"],
+      "moods": ["warm", "cozy", "earthy", "rustic", "crafted"],
       "elements": [
         {"element": "a cup or mug with steam rising from it",
          "instead_of": "a plain disc, ring or circle standing in for the drink",
@@ -27,6 +28,7 @@
     "coast": {
       "title": "Sea, coast, harbor or lighthouse",
       "keywords": ["sea", "ocean", "coast", "coastal", "seaside", "harbor", "harbour", "port", "quay", "pier", "beach", "lighthouse", "waves", "tide", "marina", "boat", "sailing", "nautical", "water", "waterline"],
+      "moods": ["fresh", "coastal", "cool", "calm"],
       "elements": [
         {"element": "filled layered water: bands of sea in three or four tones, lighter at the horizon, darker in front",
          "instead_of": "thin stroked wave lines, which read as unfinished next to filled shapes",
@@ -60,6 +62,7 @@
     "lake": {
       "title": "Lake, river or still water",
       "keywords": ["lake", "river", "pond", "lagoon", "fjord", "canal", "waterfront", "lakeside", "riverside"],
+      "moods": ["calm", "natural", "fresh", "cool"],
       "elements": [
         {"element": "still filled water with a mirrored shoreline",
          "instead_of": "an empty flat band or a few wave lines",
@@ -81,6 +84,7 @@
     "market": {
       "title": "Winter, night or holiday market and festivals",
       "keywords": ["market", "night market", "winter market", "christmas market", "holiday market", "festival", "lantern", "lanterns", "fairy lights", "string lights", "bazaar", "food stalls", "carnival"],
+      "moods": ["warm", "cozy", "festive", "friendly", "energetic"],
       "elements": [
         {"element": "strings of lights or paper lanterns sagging across the top, each with a glow",
          "instead_of": "evenly spaced dots or circles on a straight line",
@@ -107,6 +111,7 @@
     "night-city": {
       "title": "Night city or skyline",
       "keywords": ["night city", "city", "skyline", "downtown", "urban", "rooftop", "neon", "nightlife", "metropolis", "city lights"],
+      "moods": ["futuristic", "tech", "dramatic", "bold", "edgy"],
       "elements": [
         {"element": "a skyline of varied buildings with irregular lit windows",
          "instead_of": "a row of equal boxes (a placeholder skyline)",
@@ -125,6 +130,7 @@
     "night-sky": {
       "title": "Night sky, moon and stars",
       "keywords": ["night sky", "stars", "starry", "moon", "moonlight", "galaxy", "constellation", "midnight", "astronomy", "stargazing"],
+      "moods": ["dreamy", "calm", "cool", "elegant"],
       "elements": [
         {"element": "a moon with a soft halo",
          "instead_of": "a flat disc on its own",
@@ -139,6 +145,7 @@
     "music": {
       "title": "Concert, open mic or club night",
       "keywords": ["concert", "open mic", "gig", "live music", "band", "jazz", "club night", "karaoke", "dj", "stage"],
+      "moods": ["energetic", "bold", "dramatic", "loud"],
       "elements": [
         {"element": "a stage light or spotlight glow falling on the subject",
          "instead_of": "decorative wave lines filling empty space",
@@ -161,6 +168,7 @@
     "bakery": {
       "title": "Bakery, bread and pastry",
       "keywords": ["bakery", "bakeshop", "patisserie", "bread", "baguette", "sourdough", "croissant", "pastry", "pastries", "cake", "cupcake", "cupcakes", "doughnut", "donut", "bake sale", "baking", "baker", "bun", "buns"],
+      "moods": ["warm", "cozy", "friendly", "soft"],
       "elements": [
         {"element": "a loaf, croissant or cake drawn as that product, with its crust and cuts",
          "instead_of": "a brown circle or a generic wheat icon standing in for the product",
@@ -185,6 +193,7 @@
     "garden": {
       "title": "Garden, plants and botanical",
       "keywords": ["garden", "gardening", "gardener", "botanical", "botany", "greenhouse", "florist", "floral", "flowers", "bouquet", "blossom", "bloom", "houseplant", "houseplants", "plant shop", "herb", "herbs", "seedling", "succulent", "succulents", "foliage", "allotment"],
+      "moods": ["natural", "fresh", "organic", "earthy"],
       "elements": [
         {"element": "leaves with a midrib and veins on a stem, or a flower with a centre and petals",
          "instead_of": "green ovals, or one flat flower icon repeated",
@@ -208,6 +217,7 @@
     "winter": {
       "title": "Winter, snow and the holiday season",
       "keywords": ["winter", "snow", "snowy", "snowflake", "snowflakes", "snowfall", "christmas", "xmas", "festive", "advent", "new year", "hanukkah", "yule", "solstice", "frost", "frosty", "ski", "skiing", "sledding", "hot chocolate"],
+      "moods": ["cool", "calm", "soft", "elegant"],
       "elements": [
         {"element": "snowflakes with six branched arms, at several sizes",
          "instead_of": "white dots or asterisks standing in for snow",
@@ -231,6 +241,7 @@
     "sport": {
       "title": "Sport, fitness and events",
       "keywords": ["sport", "athletics", "athlete", "athletes", "football", "soccer", "basketball", "tennis", "baseball", "rugby", "volleyball", "swimming", "marathon", "fun run", "5k", "10k", "running club", "cycling", "gym", "fitness", "workout", "tournament", "match day", "game day", "sports day", "stadium"],
+      "moods": ["energetic", "bold", "confident"],
       "elements": [
         {"element": "the ball or equipment of the sport, with the markings that identify it",
          "instead_of": "a plain circle standing in for the ball",
@@ -253,6 +264,7 @@
     "tech": {
       "title": "Tech, software and product launch",
       "keywords": ["tech", "technology", "software", "startup", "saas", "product launch", "app launch", "launch", "developer", "developers", "api", "hackathon", "machine learning", "cybersecurity", "robotics", "gadget", "smart home", "devops", "fintech"],
+      "moods": ["tech", "modern", "futuristic", "clean"],
       "elements": [
         {"element": "the product shown as a real device with something on its screen, or a rocket for a launch",
          "instead_of": "a grey rectangle, or a generic rocket emoji",
@@ -276,6 +288,7 @@
     "wellness": {
       "title": "Wellness, yoga and spa",
       "keywords": ["wellness", "wellbeing", "well-being", "yoga", "pilates", "meditation", "mindfulness", "spa", "massage", "retreat", "self care", "self-care", "skincare", "aromatherapy", "relaxation", "herbal", "breathwork"],
+      "moods": ["calm", "soft", "natural", "organic"],
       "elements": [
         {"element": "one calm object: a stack of smooth stones, a lotus or a candle",
          "instead_of": "an abstract blob, or a stock yoga silhouette",
@@ -299,6 +312,7 @@
     "travel": {
       "title": "Travel, trips and adventure",
       "keywords": ["travel", "trip", "adventure", "voyage", "passport", "itinerary", "vacation", "tourism", "destination", "road trip", "backpacking", "camping", "hiking", "expedition", "flight", "airline", "cruise", "getaway", "wanderlust", "luggage"],
+      "moods": ["fresh", "friendly", "energetic", "natural"],
       "elements": [
         {"element": "the destination's own landmark, vehicle or luggage",
          "instead_of": "a globe or a generic plane that could be any trip",
@@ -322,6 +336,7 @@
     "books": {
       "title": "Books, reading and libraries",
       "keywords": ["books", "a book", "new book", "open book", "bookshop", "bookstore", "book club", "book fair", "book launch", "book cover", "bookmark", "bookworm", "storybook", "picture book", "library", "librarian", "novel", "poetry", "literary", "reading list", "reading night", "story time", "storytelling"],
+      "moods": ["classic", "editorial", "warm", "vintage", "academic"],
       "elements": [
         {"element": "an open book with lines of text and a visible cover, or a stack of closed books",
          "instead_of": "a blank rectangle, or a rectangle with a line down the middle",
@@ -343,6 +358,7 @@
     "party": {
       "title": "Kids, parties and celebrations",
       "keywords": ["birthday", "birthday party", "party invitation", "party invite", "party poster", "party flyer", "pool party", "balloon", "balloons", "confetti", "kids", "children", "kindergarten", "preschool", "toddler", "baby shower", "playdate", "pinata", "face painting"],
+      "moods": ["playful", "friendly", "youthful", "energetic"],
       "elements": [
         {"element": "balloons with a knot and a string, in two or three colours at different heights",
          "instead_of": "coloured circles on sticks",

@@ -51,6 +51,11 @@ def suggestions(finding):
     if code == "no_focal" and len(names) >= 2:
         return [f"let {names[0]!r} lead: enlarge it by about a third, or set it in a heavier weight",
                 f"or quiet {names[1]!r}: a smaller size, a muted colour (@muted) or less opacity"]
+    if code == "accent_unused" and values.get("role", "accent") != "accent":
+        role = values["role"]
+        return [f"apply @{role} to a secondary element: a rule or marker with fill @{role}, or a label: "
+                f"{{\"type\": \"text\", \"target\": \"<its name>\", \"color\": \"@{role}-text\"}}",
+                "or waive the finding with a reason if the page is meant to have fewer accents"]
     if code == "accent_unused":
         return ["apply @accent to the one element that should be found first, such as the call to action: "
                 "{\"type\": \"text\", \"target\": \"<its name>\", \"color\": \"@accent-text\"} or a shape with fill @accent",

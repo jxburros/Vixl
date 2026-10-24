@@ -629,7 +629,8 @@ OVERRIDES = {
                      "palette": "Palette name or colors; roles are assigned by luminance and mode unless keep_order "
                                 "or colors says otherwise.",
                      "colors": "Explicit role colors {background, surface, ink, muted, accent, accent-text, "
-                               "on-accent}; they win over the palette.",
+                               "on-accent; accent-2 and accent-3 for a direction with two or three accents}; they "
+                               "win over the palette, and fixed colors get no derived second accent.",
                      "keep_order": "true uses the palette in the order given: background, surface, then accents "
                                    "(ink and muted are derived for contrast).",
                      "mode": "light or dark (default: from the canvas background).",

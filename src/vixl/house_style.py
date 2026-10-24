@@ -29,6 +29,8 @@ This module only reads the data. The rolls that use it live in ``typefaces.roll`
 ``purpose_size(value)`` and ``is_mark(...)``  the size a purpose implies and whether it is a mark
 ``tier_of(kind, name, purpose=None)`` and ``entries(kind)``  tier and metadata of pool entries
 ``level(variety)``            the settings of a variety level
+``accents(purpose=None)``     how many accent colours a roll draws and how they share the page
+``mood_keywords()``           the brief words that imply each palette mood (``briefs.brief_moods``)
 ``neutral()``                 what a document gets with ``house_style: "off"``: no roll, a neutral direction
 ``finish()``                  the finishing rules: glow, shadow and halo colours, dash fitting
 """
@@ -82,6 +84,22 @@ def level(variety):
 
 def moods():
     return deepcopy(_data()["taste"]["moods"])
+
+
+def mood_keywords():
+    """``{mood: [words]}``: the words of a brief that imply each mood (the mood's own name counts too)."""
+    return deepcopy(_data()["taste"]["moods"]["keywords"])
+
+
+def accents(purpose=None):
+    """How a roll sets its accent colours (``taste.accents``): ``count_weights`` (how many accents, 0-3; a purpose
+    profile may override them), ``representation`` (equal or skewed), the ``skew`` shares per count, and how
+    accent-2 and accent-3 are found (``min_hue_distance``, ``min_chroma``) or derived (``rotation``)."""
+    entry = deepcopy(_data()["taste"]["accents"])
+    resolved = purpose_for(purpose) if purpose else None
+    override = _data()["purposes"].get(resolved, {}).get("accents", {})
+    entry.update({key: deepcopy(value) for key, value in override.items() if key != "note"})
+    return entry
 
 
 def details():
