@@ -18,7 +18,7 @@ TOPICS = {
         ["looping-motion", "scatter", "natural-motion", "character-rigging", "motion", "cut-paper", "audio-composition"],
     ),
     "shapes": ("shape shapes heart bubble badge star content", []),
-    "atmosphere": ("atmosphere reflection haze star stars string lights bokeh water motif motifs",
+    "atmosphere": ("atmosphere reflection haze fog mist star stars string lights bokeh water motif motifs",
                    ["motifs", "natural-color-light"]),
     "film": ("film video audio caption", ["film-review", "audio-composition"]),
     "layout": (

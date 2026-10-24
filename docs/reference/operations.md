@@ -170,7 +170,7 @@ Every operation also accepts `page` (a page name or number) in a multi-page docu
 
 | Operation | Fields |
 | --- | --- |
-| haze | `target` (the light) **or** `x`/`y`, `form` (`band`/`round`), `width`, `height`, `color`, `strength`, `name`, `below` — a soft glow band or halo directly below its light — [scene atmosphere](../guides/finishing/atmosphere.md) |
+| haze | `target` (the light) **or** `x`/`y`, `form` (`band`/`round`/`fog`), `width`, `height`, `color`, `strength`, `name`, `below`; fog: `layers` (2-5), `density`, `behind`, `seed` — a soft glow band or halo directly below its light, or stacked soft bands of mist behind the layers you name — [scene atmosphere](../guides/finishing/atmosphere.md) |
 | star-field | `region` **or** `target`, `count`, `size`, `opacity`, `color`, `sparkles`, `fade`, `avoid` (default: every text layer), `clearance`, `seed`, `name`, `below` — seeded stars that keep clear of text |
 | string-lights | `target` (a path) **or** `from`/`to`, `sag`, `count` **or** `spacing`, `size`, `bulb` (`globe`/`pear`/`lantern`), `colors`, `glow`, `hang`, `jitter`, `wire`, `wire_width`, `seed`, `name`, `below` |
 | bokeh | `region` **or** `target`, `count`, `size`, `opacity`, `colors`, `softness`, `avoid`, `blend`, `seed`, `name`, `below` — soft out-of-focus discs |

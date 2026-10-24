@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "about": "Concrete motifs a brief implies and what draws them. Each theme has keywords (whole words or phrases, accents ignored) and elements: the specific thing to draw, the placeholder it replaces, how to build it, and the catalog shapes, organic presets, object kinds and operations that do it. vixl_reference(brief) returns the matching themes as motifs; vixl_reference('motifs') returns them all.",
+  "about": "Concrete motifs a brief implies and what draws them. Each theme has keywords (whole words or phrases, accents ignored) and elements that answer three questions: the object, what it emits or reflects, and what frames it. An element is the specific thing to draw, the placeholder it replaces, how to build it, and the catalog shapes, organic presets, object kinds and operations that do it. vixl_reference(brief) returns the matching themes as motifs; vixl_reference('motifs') returns them all.",
   "themes": {
     "coffee": {
       "title": "Coffee, café or tea",
-      "keywords": ["coffee", "cafe", "espresso", "latte", "cappuccino", "flat white", "barista", "mocha", "cortado", "tea", "teahouse", "roastery", "bakery", "brunch"],
+      "keywords": ["coffee", "cafe", "espresso", "latte", "cappuccino", "flat white", "barista", "mocha", "cortado", "tea", "teahouse", "roastery", "brunch"],
       "elements": [
         {"element": "a cup or mug with steam rising from it",
          "instead_of": "a plain disc, ring or circle standing in for the drink",
@@ -47,7 +47,14 @@
         {"element": "lights reflected in the water",
          "instead_of": "rows of short dashes",
          "draw": "reflection with horizon at the waterline once the scene above it is drawn; re-run it with target after editing the scene",
-         "operations": ["reflection"]}
+         "operations": ["reflection"]},
+        {"element": "morning fog or sea mist drifting over the water and hiding the base of headlands and the lighthouse",
+         "instead_of": "a flat grey or white overlay, or one uniform band of haze",
+         "draw": "haze with form fog: three stacked soft bands, lighter and less saturated toward the horizon (layers 2-5, density 0.4-0.6, color the pale blue-grey of the sky at the horizon, seed for the drift), placed behind the nearest headland or the lighthouse with behind so the foreground stays crisp; run it once per gap to put mist between headlands, a paler color for the farther gap",
+         "operations": ["haze"],
+         "example": [
+           {"type": "haze", "form": "fog", "y": 660, "height": 240, "layers": 3, "density": 0.5, "color": "#cfdbe6", "seed": 4}
+         ]}
       ]
     },
     "lake": {
@@ -61,7 +68,14 @@
         {"element": "trees or reeds on the shore",
          "instead_of": "green triangles",
          "draw": "organic presets pine, tree or grass, smaller and lighter toward the far shore",
-         "organic_presets": ["pine", "tree", "grass"], "operations": ["organic"]}
+         "organic_presets": ["pine", "tree", "grass"], "operations": ["organic"]},
+        {"element": "mist lying on the water at dawn, between the shore and the far hills",
+         "instead_of": "a clear sky meeting a flat band of water, or a white gradient pasted over the hills",
+         "draw": "haze with form fog at the waterline and over the far shore: two or three soft stacked bands (layers 3, density 0.4-0.5), lighter and less saturated toward the horizon, color a pale tone of the dawn sky; put it behind the nearest trees with behind so the near shore stays sharp, then reflection of the shoreline below it",
+         "operations": ["haze", "reflection"],
+         "example": [
+           {"type": "haze", "form": "fog", "y": 640, "height": 200, "layers": 3, "density": 0.45, "color": "#e6dccf", "seed": 2}
+         ]}
       ]
     },
     "market": {
@@ -130,10 +144,223 @@
          "instead_of": "decorative wave lines filling empty space",
          "draw": "haze (form round) above the subject, string-lights across the top for a café or bar venue, bokeh for a crowd of lights",
          "operations": ["haze", "string-lights", "bokeh"]},
-        {"element": "an instrument or microphone drawn as an object with its parts",
+        {"element": "a stand microphone",
+         "instead_of": "a capsule on a stick, or a rounded rectangle standing in for the head",
+         "draw": "shape microphone: one outline with a slotted grille head, the cradle around it, the stem and the base, about 0.43 as wide as tall; fill it with the lightest tone of the palette on a dark stage, then put haze (form round) behind the head for the spotlight",
+         "shapes": ["microphone"], "operations": ["shape", "haze"],
+         "example": [
+           {"type": "shape", "shape": "microphone", "name": "mic", "x": 470, "y": 300, "width": 140, "height": 330, "fill": "#f4ead5"},
+           {"type": "haze", "target": "mic", "form": "round", "color": "#ffb36b", "strength": 0.4}
+         ]},
+        {"element": "an instrument drawn as an object with its parts",
          "instead_of": "a single silhouette with clipped or mismatched parts",
-         "draw": "build it from parts (capsule and rounded-rectangle for a microphone; the guitar, piano or drum kinds list their parts) and declare it as an object",
+         "draw": "build it from parts (the guitar, piano or drum kinds list their parts) and declare it as an object",
          "shapes": ["capsule", "rounded-rectangle"], "object": "guitar", "operations": ["shape", "group", "object"]}
+      ]
+    },
+    "bakery": {
+      "title": "Bakery, bread and pastry",
+      "keywords": ["bakery", "bakeshop", "patisserie", "bread", "baguette", "sourdough", "croissant", "pastry", "pastries", "cake", "cupcake", "cupcakes", "doughnut", "donut", "bake sale", "baking", "baker", "bun", "buns"],
+      "elements": [
+        {"element": "a loaf, croissant or cake drawn as that product, with its crust and cuts",
+         "instead_of": "a brown circle or a generic wheat icon standing in for the product",
+         "draw": "a loaf as a capsule in a crust tone with three slanted score marks (shape lens, lighter, rotated about 30 degrees); a croissant as shape crescent with curved segment lines across it; a cupcake as a trapezoid case under a cloud of frosting with a small ellipse on top; two tones per item, the lighter on top",
+         "shapes": ["capsule", "lens", "crescent", "trapezoid", "cloud"], "operations": ["shape", "rotate", "group"],
+         "example": [
+           {"type": "shape", "shape": "capsule", "name": "loaf", "x": 300, "y": 520, "width": 480, "height": 220, "fill": "#b9743a"},
+           {"type": "shape", "shape": "lens", "name": "score-1", "x": 400, "y": 545, "width": 60, "height": 150, "fill": "#f0cf9a", "rotation": 30},
+           {"type": "shape", "shape": "lens", "name": "score-2", "x": 510, "y": 545, "width": 60, "height": 150, "fill": "#f0cf9a", "rotation": 30},
+           {"type": "shape", "shape": "lens", "name": "score-3", "x": 620, "y": 545, "width": 60, "height": 150, "fill": "#f0cf9a", "rotation": 30}
+         ]},
+        {"element": "steam rising from fresh bread and the warm glow of the oven",
+         "instead_of": "nothing around the product, or a flat orange rectangle for the oven",
+         "draw": "shape steam above the loaf at about 0.5 opacity, narrower than the loaf, and haze (form round or band) in a warm tone behind the shelf so the crust catches light",
+         "shapes": ["steam"], "operations": ["shape", "haze"]},
+        {"element": "a shelf, counter or shop front that frames the product",
+         "instead_of": "the product floating on an empty background",
+         "draw": "a counter as a wide rectangle below the product, a striped awning with a scalloped-border edge above it, and a row of loaves of different widths on the shelf (repeat, then vary width and tone)",
+         "shapes": ["rectangle", "scalloped-border"], "object": "building", "operations": ["shape", "repeat"]}
+      ]
+    },
+    "garden": {
+      "title": "Garden, plants and botanical",
+      "keywords": ["garden", "gardening", "gardener", "botanical", "botany", "greenhouse", "florist", "floral", "flowers", "bouquet", "blossom", "bloom", "houseplant", "houseplants", "plant shop", "herb", "herbs", "seedling", "succulent", "succulents", "foliage", "allotment"],
+      "elements": [
+        {"element": "leaves with a midrib and veins on a stem, or a flower with a centre and petals",
+         "instead_of": "green ovals, or one flat flower icon repeated",
+         "draw": "shape leaf (a pointed leaf with a stem, its midrib and veins cut out) in two or three greens at different sizes and rotations, grouped on a stem; organic presets leaf, fern, frond or branch for a spray, and flower, daisy, sunflower or rose for blooms, smaller toward the edges",
+         "shapes": ["leaf"], "organic_presets": ["leaf", "fern", "frond", "branch", "flower", "daisy", "sunflower", "rose"], "object": "leaf", "operations": ["shape", "organic", "rotate", "group"],
+         "example": [
+           {"type": "shape", "shape": "leaf", "name": "leaf-1", "x": 420, "y": 300, "width": 160, "height": 250, "fill": "#2f6b4f", "rotation": -20},
+           {"type": "shape", "shape": "leaf", "name": "leaf-2", "x": 520, "y": 340, "width": 130, "height": 205, "fill": "#4c9a6a", "rotation": 24},
+           {"type": "shape", "shape": "leaf", "name": "leaf-3", "x": 350, "y": 400, "width": 100, "height": 158, "fill": "#7fbf8e", "rotation": -48}
+         ]},
+        {"element": "morning light and dew on the plants",
+         "instead_of": "flat, evenly lit foliage",
+         "draw": "haze (form round) in a warm yellow behind the brightest bloom at low strength, a few small light ellipses on the leaves as dew highlights, and bokeh in the background for sunlit leaves out of focus",
+         "operations": ["haze", "bokeh", "shape"]},
+        {"element": "a pot, a trellis, a wreath or a vine border that holds the plants",
+         "instead_of": "plants floating on an empty background",
+         "draw": "a pot as a trapezoid with a rim (rounded-rectangle) in terracotta; a wreath of leaves around the title (shape wreath, or leaves placed around a ring with radial-repeat); organic preset vine along an edge",
+         "shapes": ["trapezoid", "rounded-rectangle", "wreath", "ring"], "organic_presets": ["vine"], "object": "pot", "operations": ["shape", "radial-repeat", "organic"]}
+      ]
+    },
+    "winter": {
+      "title": "Winter, snow and the holiday season",
+      "keywords": ["winter", "snow", "snowy", "snowflake", "snowflakes", "snowfall", "christmas", "xmas", "festive", "advent", "new year", "hanukkah", "yule", "solstice", "frost", "frosty", "ski", "skiing", "sledding", "hot chocolate"],
+      "elements": [
+        {"element": "snowflakes with six branched arms, at several sizes",
+         "instead_of": "white dots or asterisks standing in for snow",
+         "draw": "shape snowflake (six arms with two pairs of branches each; thickness sets the arm width) in white or ice blue at three sizes, each rotated differently, the small ones at lower opacity; star-field (white, sparkles 0, fade 0) for the fall of small flakes behind them",
+         "shapes": ["snowflake"], "operations": ["shape", "rotate", "star-field"],
+         "example": [
+           {"type": "shape", "shape": "snowflake", "name": "flake-large", "x": 380, "y": 280, "width": 320, "height": 320, "fill": "#e8f1fb"},
+           {"type": "shape", "shape": "snowflake", "name": "flake-medium", "x": 180, "y": 220, "width": 130, "height": 130, "fill": "#cfe2f3", "rotation": 15, "opacity": 0.8},
+           {"type": "shape", "shape": "snowflake", "name": "flake-small", "x": 780, "y": 640, "width": 70, "height": 70, "fill": "#cfe2f3", "rotation": 30, "opacity": 0.6, "thickness": 0.09}
+         ]},
+        {"element": "warm light against the cold: lit windows, string lights and a glow on the snow",
+         "instead_of": "a uniformly cold, flat scene",
+         "draw": "string-lights across the top or a lit window (a warm rectangle with haze, form band, behind it) against a blue-grey night; reflection of the lights on ice; star-field for the snowfall, which keeps clear of the copy",
+         "operations": ["string-lights", "haze", "star-field", "reflection"]},
+        {"element": "a pine tree, a wreath or a window that holds the scene",
+         "instead_of": "a triangle on a stick",
+         "draw": "organic preset pine, smaller toward the horizon, with snow caps as a lighter shape on the branches; a wreath as shape wreath with a ribbon and two berries (small ellipses); a frame shape as the window",
+         "shapes": ["wreath", "frame"], "organic_presets": ["pine"], "object": "pine", "operations": ["organic", "shape"]}
+      ]
+    },
+    "sport": {
+      "title": "Sport, fitness and events",
+      "keywords": ["sport", "athletics", "athlete", "athletes", "football", "soccer", "basketball", "tennis", "baseball", "rugby", "volleyball", "swimming", "marathon", "fun run", "5k", "10k", "running club", "cycling", "gym", "fitness", "workout", "tournament", "match day", "game day", "sports day", "stadium"],
+      "elements": [
+        {"element": "the ball or equipment of the sport, with the markings that identify it",
+         "instead_of": "a plain circle standing in for the ball",
+         "draw": "a football as a white ellipse with a dark pentagon at the centre and short seam lines toward the edge; a basketball as an orange ellipse with four stroked arcs for the seams; a tennis ball with two curved arcs; one ball large and central",
+         "shapes": ["ellipse", "pentagon", "arc"], "operations": ["shape", "group"],
+         "example": [
+           {"type": "shape", "shape": "ellipse", "name": "ball", "x": 380, "y": 380, "width": 320, "height": 320, "fill": "#f4f1ea", "stroke": "#14263b", "stroke_width": 6},
+           {"type": "shape", "shape": "pentagon", "name": "panel", "x": 485, "y": 478, "width": 110, "height": 110, "fill": "#14263b"}
+         ]},
+        {"element": "speed and impact: motion lines and a shadow on the ground",
+         "instead_of": "a static object with no sense of movement",
+         "draw": "shape speed-lines or motion-lines trailing behind the ball, a soft shadow under it (a flat ellipse at 0.3 opacity, or look soft-shadow), stadium floodlights as haze (form round) with bokeh in the dark upper corners",
+         "shapes": ["speed-lines", "motion-lines"], "operations": ["shape", "look", "haze", "bokeh"]},
+        {"element": "the field, court or track that places the sport",
+         "instead_of": "the ball on an empty colour",
+         "draw": "pitch or court lines as stroked shapes: an outline rectangle, a centre line and a thin centre ring; lane lines for a track (repeat of a long thin rectangle); grass stripes as alternating bands in two greens",
+         "shapes": ["rectangle", "ring", "line"], "organic_presets": ["grass"], "operations": ["shape", "repeat"]}
+      ]
+    },
+    "tech": {
+      "title": "Tech, software and product launch",
+      "keywords": ["tech", "technology", "software", "startup", "saas", "product launch", "app launch", "launch", "developer", "developers", "api", "hackathon", "machine learning", "cybersecurity", "robotics", "gadget", "smart home", "devops", "fintech"],
+      "elements": [
+        {"element": "the product shown as a real device with something on its screen, or a rocket for a launch",
+         "instead_of": "a grey rectangle, or a generic rocket emoji",
+         "draw": "shape phone-frame (or tablet-frame, browser-window) with a few interface blocks inside it (rounded rectangles in the brand colours, a small group of chart bars); for a launch, a rocket as a capsule body, a triangle nose, two small triangles for fins and a ring for the window",
+         "shapes": ["phone-frame", "tablet-frame", "browser-window", "rounded-rectangle", "capsule", "triangle", "ring"], "object": "phone", "operations": ["shape", "group", "object"],
+         "example": [
+           {"type": "shape", "shape": "phone-frame", "name": "phone", "x": 440, "y": 240, "width": 200, "height": 400, "fill": "#e8eef5"},
+           {"type": "shape", "shape": "rounded-rectangle", "name": "card", "x": 462, "y": 330, "width": 156, "height": 70, "radius": 14, "fill": "#5bc0be"},
+           {"type": "shape", "shape": "rounded-rectangle", "name": "bar", "x": 462, "y": 420, "width": 110, "height": 18, "radius": 9, "fill": "#8aa3bf"}
+         ]},
+        {"element": "light from the screen or the exhaust, and a reflection on the surface below",
+         "instead_of": "a device on a flat background with no light",
+         "draw": "haze (form round) in the accent colour behind the device so the screen seems to glow; reflection with a small horizon under it for a glossy surface; for a launch, an exhaust plume as a vertical gradient (accent to transparent) with a haze at its base",
+         "operations": ["haze", "reflection", "gradient"]},
+        {"element": "a grid, orbit lines or circuit traces that place the product in a system",
+         "instead_of": "random decorative circles",
+         "draw": "thin ring shapes as orbits around the product with small ellipses as nodes on them; circuit traces as pen lines with right angles that end in small circles; or a faint dot grid (pattern-scatter) that fades out toward the edges",
+         "shapes": ["ring", "ellipse"], "operations": ["shape", "pen", "pattern-scatter"]}
+      ]
+    },
+    "wellness": {
+      "title": "Wellness, yoga and spa",
+      "keywords": ["wellness", "wellbeing", "well-being", "yoga", "pilates", "meditation", "mindfulness", "spa", "massage", "retreat", "self care", "self-care", "skincare", "aromatherapy", "relaxation", "herbal", "breathwork"],
+      "elements": [
+        {"element": "one calm object: a stack of smooth stones, a lotus or a candle",
+         "instead_of": "an abstract blob, or a stock yoga silhouette",
+         "draw": "three stones as ellipses of decreasing width stacked with small offsets in two soft tones; or a lotus as five lens petals fanned out with radial-repeat around the base; or a candle as a rounded-rectangle with a teardrop flame",
+         "shapes": ["ellipse", "lens", "teardrop", "rounded-rectangle"], "operations": ["shape", "radial-repeat", "group"],
+         "example": [
+           {"type": "shape", "shape": "ellipse", "name": "stone-1", "x": 380, "y": 560, "width": 320, "height": 110, "fill": "#8a8f86"},
+           {"type": "shape", "shape": "ellipse", "name": "stone-2", "x": 420, "y": 470, "width": 230, "height": 95, "fill": "#a9ada3"},
+           {"type": "shape", "shape": "ellipse", "name": "stone-3", "x": 470, "y": 395, "width": 140, "height": 80, "fill": "#c7c9bf"}
+         ]},
+        {"element": "a soft glow, steam or sunrise light",
+         "instead_of": "flat, hard-edged colour",
+         "draw": "haze (form round) at low strength behind the object, shape steam above a cup of herbal tea, a semicircle sun low behind the stones; keep every edge soft and the contrast gentle",
+         "shapes": ["steam", "semicircle"], "operations": ["haze", "shape"]},
+        {"element": "generous empty space and one soft shape that holds the object",
+         "instead_of": "the object crowded by decoration",
+         "draw": "a large arch or circle in a pale tone behind the object (an ellipse or squircle), leaves from shape leaf at the edges, margins of at least a sixth of the canvas, one line of copy",
+         "shapes": ["ellipse", "squircle", "leaf"], "operations": ["shape"]}
+      ]
+    },
+    "travel": {
+      "title": "Travel, trips and adventure",
+      "keywords": ["travel", "trip", "adventure", "voyage", "passport", "itinerary", "vacation", "tourism", "destination", "road trip", "backpacking", "camping", "hiking", "expedition", "flight", "airline", "cruise", "getaway", "wanderlust", "luggage"],
+      "elements": [
+        {"element": "the destination's own landmark, vehicle or luggage",
+         "instead_of": "a globe or a generic plane that could be any trip",
+         "draw": "a map-pin standing on the destination; a suitcase as a rounded-rectangle with a handle, two straps and a sticker (shape sticker); a boat, car or bicycle built as an object; for hiking, mountains as layered triangles, darker toward the front",
+         "shapes": ["map-pin", "rounded-rectangle", "sticker", "triangle"], "object": "mountain", "operations": ["shape", "group", "object"],
+         "example": [
+           {"type": "shape", "shape": "rounded-rectangle", "name": "suitcase", "x": 400, "y": 460, "width": 280, "height": 200, "radius": 28, "fill": "#c1572b"},
+           {"type": "shape", "shape": "rounded-rectangle", "name": "handle", "x": 500, "y": 410, "width": 80, "height": 60, "radius": 14, "fill": "transparent", "stroke": "#7a3317", "stroke_width": 12},
+           {"type": "shape", "shape": "map-pin", "name": "pin", "x": 640, "y": 330, "width": 90, "height": 130, "fill": "#f4c56a"}
+         ]},
+        {"element": "the sun's light on the place and what the water reflects",
+         "instead_of": "a flat sky with nothing under it",
+         "draw": "shape sun with haze (form round) behind it, a contrail or flight path as a dashed curve (a pen line with dash), and reflection of mountains or buildings in a lake or harbor",
+         "shapes": ["sun", "curve"], "operations": ["haze", "reflection", "pen"]},
+        {"element": "a ticket, stamp or postcard border that makes it a keepsake",
+         "instead_of": "a plain photo box",
+         "draw": "ticket or postmark shapes for passport and booking briefs (a stamp with a circular postmark and a date); a frame or scalloped-border edge for a postcard; a horizon of layered hills for a landscape",
+         "shapes": ["ticket", "stamp", "postmark", "frame", "scalloped-border"], "operations": ["shape", "organic"]}
+      ]
+    },
+    "books": {
+      "title": "Books, reading and libraries",
+      "keywords": ["books", "a book", "new book", "open book", "bookshop", "bookstore", "book club", "book fair", "book launch", "book cover", "bookmark", "bookworm", "storybook", "picture book", "library", "librarian", "novel", "poetry", "literary", "reading list", "reading night", "story time", "storytelling"],
+      "elements": [
+        {"element": "an open book with lines of text and a visible cover, or a stack of closed books",
+         "instead_of": "a blank rectangle, or a rectangle with a line down the middle",
+         "draw": "shape book (two curved pages with a gap at the spine, lines of text cut out and a cover edge under the pages) in one colour; for a stack, three rounded-rectangles of different widths and heights with a lighter band for the pages and a spine stripe, the top one slightly rotated",
+         "shapes": ["book", "rounded-rectangle"], "operations": ["shape", "group", "rotate"],
+         "example": [
+           {"type": "shape", "shape": "book", "name": "book", "x": 340, "y": 400, "width": 400, "height": 300, "fill": "#f4ead5"}
+         ]},
+        {"element": "a lamp's warm pool of light on the pages, and dust in the beam",
+         "instead_of": "a flat page with no light source",
+         "draw": "haze (form round) in warm yellow above the open book, bokeh (few, small, low opacity) for dust in the beam, and a soft shadow under the book (look soft-shadow)",
+         "operations": ["haze", "bokeh", "look"]},
+        {"element": "a shelf or window seat that places the reading",
+         "instead_of": "the book on an empty colour",
+         "draw": "a shelf of upright books as rectangles of different heights, widths and tones (repeat, then vary), one leaning at an angle, a plant or a lamp at the end; an arched window (a semicircle over a rectangle) behind",
+         "shapes": ["rectangle", "rounded-rectangle", "semicircle"], "operations": ["shape", "repeat", "rotate"]}
+      ]
+    },
+    "party": {
+      "title": "Kids, parties and celebrations",
+      "keywords": ["birthday", "birthday party", "party invitation", "party invite", "party poster", "party flyer", "pool party", "balloon", "balloons", "confetti", "kids", "children", "kindergarten", "preschool", "toddler", "baby shower", "playdate", "pinata", "face painting"],
+      "elements": [
+        {"element": "balloons with a knot and a string, in two or three colours at different heights",
+         "instead_of": "coloured circles on sticks",
+         "draw": "shape balloon (a highlight, a knot and a curling string are part of it) in three palette colours at different sizes and heights, each rotated a few degrees one way or the other, strings crossing; one balloon in front, two behind it, smaller",
+         "shapes": ["balloon"], "operations": ["shape", "rotate", "group"],
+         "example": [
+           {"type": "shape", "shape": "balloon", "name": "balloon-front", "x": 440, "y": 300, "width": 190, "height": 325, "fill": "#e63946", "rotation": -6},
+           {"type": "shape", "shape": "balloon", "name": "balloon-left", "x": 290, "y": 360, "width": 150, "height": 256, "fill": "#f4c56a", "rotation": -14},
+           {"type": "shape", "shape": "balloon", "name": "balloon-right", "x": 640, "y": 340, "width": 160, "height": 273, "fill": "#5bc0be", "rotation": 10}
+         ]},
+        {"element": "confetti, sparkle and the glow of a celebration",
+         "instead_of": "evenly spaced dots",
+         "draw": "shape confetti (seeded slips that fill their box) in the brand colours over the top third, a few sparkle shapes in white or yellow beside the balloons, and haze (form round) behind the main balloon; keep the confetti clear of the copy",
+         "shapes": ["confetti", "sparkle"], "operations": ["shape", "haze"]},
+        {"element": "bunting, a banner or a table that sets the scene",
+         "instead_of": "decorations floating without a place",
+         "draw": "bunting as a sagging line (a pen curve, or string-lights with bulb pear and no glow) with triangle flags in alternating colours (repeat); a banner shape behind the headline; scalloped-border along the bottom edge",
+         "shapes": ["triangle", "banner", "scalloped-border"], "operations": ["string-lights", "pen", "repeat", "shape"]}
       ]
     }
   }
