@@ -105,7 +105,7 @@ The payload is always the operation list: when unsure of a field, `vixl_referenc
 | Every operation, by need and by field | [operations](references/operations.md) |
 | Worked batches and minimal examples | [recipes](references/recipes.md) |
 | The full start-here path and core loop | [workflow](references/workflow.md) |
-| Test suites, outcomes, repair, composition checks | [testing](references/testing.md) |
+| Test suites, outcomes, repair, composition checks, finishing pairs | [testing](references/testing.md), [finishing-pairs](references/finishing-pairs.md) |
 | Sizes, layouts, palettes, looks, print | [design-system](references/design-system.md) |
 | Fonts, pairings, rolls, making a font | [typography](references/typography.md) |
 | Palettes, templates, guidance, SVG output | [resources](references/resources.md) |

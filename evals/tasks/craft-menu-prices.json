@@ -1,0 +1,228 @@
+{
+  "prompt": "Make a one-page menu for Harbor Café, letter portrait (1275x1650). Coffee: espresso 3.25, flat white 4.50, cappuccino 4.75, filter coffee 3.50. Other drinks: hot chocolate 4.25, mint tea 3.75, orange juice 4.00. Line the prices up on the right with dot leaders, and say it is open daily 7 am to 5 pm. Save it as menu.vixl and export menu.pdf.",
+  "document": "menu.vixl",
+  "checks": [
+    {
+      "type": "canvas",
+      "width": 1275,
+      "height": 1650
+    },
+    {
+      "type": "layer",
+      "name": "title",
+      "match": {
+        "type": "text",
+        "text_contains": "Harbor Caf",
+        "min_size": 100
+      }
+    },
+    {
+      "type": "layer",
+      "name": "coffee list",
+      "match": {
+        "type": "text",
+        "text_contains": "Flat white\t4.50"
+      }
+    },
+    {
+      "type": "layer",
+      "name": "other list",
+      "match": {
+        "type": "text",
+        "text_contains": "Mint tea\t3.75"
+      }
+    },
+    {
+      "type": "layer_field",
+      "name": "coffee prices have a dot leader",
+      "layer": "coffee",
+      "field": [
+        "tabs",
+        0,
+        "leader"
+      ],
+      "equals": "."
+    },
+    {
+      "type": "layer",
+      "name": "hours",
+      "match": {
+        "type": "text",
+        "text_contains": "7 am to 5 pm"
+      }
+    },
+    {
+      "type": "design",
+      "name": "no design errors"
+    },
+    {
+      "type": "craft",
+      "name": "craft: composition and hierarchy",
+      "forbid": [
+        "flat_hierarchy",
+        "single_weight",
+        "no_focal",
+        "accent_unused"
+      ],
+      "max_findings": 3,
+      "min_score": 0.75
+    },
+    {
+      "type": "file",
+      "path": "menu.pdf"
+    }
+  ],
+  "reference": [
+    {
+      "tool": "vixl_document",
+      "arguments": {
+        "action": "create",
+        "path": "menu.vixl",
+        "width": 1275,
+        "height": 1650,
+        "background": "#f6efe6",
+        "seed": 7
+      }
+    },
+    {
+      "tool": "vixl_apply",
+      "arguments": {
+        "operations": [
+          {
+            "type": "font-pair",
+            "pairing": "source-serif-sans"
+          },
+          {
+            "type": "type-scale",
+            "base": 34
+          },
+          {
+            "type": "text",
+            "name": "title",
+            "text": "Harbor Café",
+            "size": 128,
+            "x": 160,
+            "y": 150,
+            "color": "#1c2733"
+          },
+          {
+            "type": "shape",
+            "name": "rule",
+            "shape": "rectangle",
+            "x": 160,
+            "y": 290,
+            "width": 955,
+            "height": 4,
+            "fill": "#c2410c"
+          },
+          {
+            "type": "text",
+            "name": "coffee-heading",
+            "text": "COFFEE",
+            "size": 30,
+            "x": 160,
+            "y": 430,
+            "color": "#c2410c",
+            "tracking": 4
+          },
+          {
+            "type": "text",
+            "name": "coffee",
+            "text": "Espresso\t3.25\nFlat white\t4.50\nCappuccino\t4.75\nFilter coffee\t3.50",
+            "size": 42,
+            "x": 160,
+            "y": 490,
+            "color": "#1c2733",
+            "tabs": [
+              {
+                "at": "100%",
+                "align": "right",
+                "leader": "."
+              }
+            ],
+            "line_height": 1.8
+          },
+          {
+            "type": "text-layout",
+            "target": "coffee",
+            "width": 955
+          },
+          {
+            "type": "text",
+            "name": "other-heading",
+            "text": "OTHER DRINKS",
+            "size": 30,
+            "x": 160,
+            "y": 880,
+            "color": "#c2410c",
+            "tracking": 4
+          },
+          {
+            "type": "text",
+            "name": "other",
+            "text": "Hot chocolate\t4.25\nMint tea\t3.75\nOrange juice\t4.00",
+            "size": 42,
+            "x": 160,
+            "y": 940,
+            "color": "#1c2733",
+            "tabs": [
+              {
+                "at": "100%",
+                "align": "right",
+                "leader": "."
+              }
+            ],
+            "line_height": 1.8
+          },
+          {
+            "type": "text-layout",
+            "target": "other",
+            "width": 955
+          },
+          {
+            "type": "text",
+            "name": "hours",
+            "text": "Open daily 7 am to 5 pm",
+            "size": 34,
+            "x": 160,
+            "y": 1440,
+            "color": "#5b6878"
+          }
+        ]
+      }
+    },
+    {
+      "tool": "vixl_check",
+      "arguments": {
+        "checks": [
+          "composition"
+        ]
+      }
+    },
+    {
+      "tool": "vixl_export",
+      "arguments": {
+        "path": "menu.pdf"
+      }
+    }
+  ],
+  "stripped": [
+    {
+      "type": "text",
+      "targets": [
+        "title",
+        "coffee-heading",
+        "coffee",
+        "other-heading",
+        "other",
+        "hours"
+      ],
+      "size": 34
+    }
+  ],
+  "setup": {
+    "font_pairings": [
+      "source-serif-sans"
+    ]
+  }
+}

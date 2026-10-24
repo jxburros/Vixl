@@ -126,6 +126,7 @@ findings are repaired after the failures, with geometric candidates of their own
 | `crowding` | open the gap under the rule, band or heading to one spacing unit, or just past half a unit: push the text down (alone or with the rest of its column) or lift the rule (alone or with what is above it) |
 | `dead_band` | between blocks: spread the band over the frame's other gaps in proportion to their size, move the blocks below up (all the way to the typical gap, or half), or move the blocks above down by half; at an edge: spread the content into the band, or centre it in its frame |
 | `clumped_scatter` | a `pattern-scatter` tile is thinned in place or re-seeded from its recipe; any other scatter is listed as not auto-repairable |
+| `flat_hierarchy`, `single_weight`, `no_focal`, `accent_unused` | none: which line leads, which weight and where the accent goes are judgement calls. The finding is listed under `reviews_remaining` (and in `attempts` as skipped) with `suggestions`: raise the headline to the heading or display step with the `text` operation that does it, set it in the heading role or install a bolder weight, enlarge one of two rival blocks or quiet the other, apply `@accent` to the call to action or waive the finding |
 
 A composition candidate is accepted only if its finding is gone and no finding of any check (fix or review) is new,
 and while composition is checked no candidate for a failure may add a composition finding either. Moves never touch

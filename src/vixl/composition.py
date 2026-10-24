@@ -19,7 +19,7 @@ Nine kinds of finding, each a ``review`` warning with a stable ``code``:
 - ``single_weight``: three or more text blocks set in one face and one weight (no bold, no second face);
 - ``no_focal``: the two heaviest blocks (size, contrast and area) within 15% of each other, so the eye has two
   places to start and no first one;
-- ``accent_unused``: the document's direction names an accent and no visible layer uses ``@accent`` or its colour.
+- ``accent_unused``: the page is built on the document's palette, whose rolled accent no visible layer uses.
 
 The last four are judgement calls about hierarchy, not geometry: they carry suggestions in the repair plugin's
 output and no automatic repair.
@@ -985,12 +985,17 @@ def _mentions(value, pattern):
     return False
 
 
-ACCENT_REFERENCE = re.compile(r"@accent(?:-text)?(?![\w-])")
+ACCENT_NAMES = ("accent", "accent-text")
+
+
+def _reference(names):
+    return re.compile(r"@(?:" + "|".join(re.escape(name) for name in names) + r")(?![\w-])") if names else None
 
 
 def accent_unused(candidate, blocks, resolved, ancestors, width, height, emit):
-    """The rolled direction chose an accent and no visible layer, nor the canvas, draws it: ``@accent`` or
-    ``@accent-text`` in a colour, or the colour itself."""
+    """The page is built on the document's palette (a visible layer takes one of its colours) and the accent the
+    rolled direction chose is drawn nowhere: no visible layer, nor the canvas, takes ``@accent`` or
+    ``@accent-text`` or their colours. A page in its own colours, whatever the document rolled, is not judged."""
     from .design import resolve_color
 
     t = THRESHOLDS
@@ -1002,26 +1007,33 @@ def accent_unused(candidate, blocks, resolved, ancestors, width, height, emit):
         return
     if sum(1 for b in blocks if not b.decoration) < t["accent_min_blocks"]:
         return
-    colours = set()
-    for name in ("accent", "accent-text"):
-        if name in swatches:
-            try:
-                colours.add(str(resolve_color(f"@{name}", state)).lower())
-            except Exception:  # noqa: BLE001 - an unreadable swatch cannot be matched by value
-                continue
-    if _mentions(state["canvas"], ACCENT_REFERENCE):
+    others = [name for name in swatches if name not in ACCENT_NAMES]
+    accent_ref, other_ref = _reference(ACCENT_NAMES), _reference(others)
+    values = {"accent": set(), "other": set()}
+    for name in swatches:
+        try:
+            values["accent" if name in ACCENT_NAMES else "other"].add(str(resolve_color(f"@{name}", state)).lower())
+        except Exception:  # noqa: BLE001 - an unreadable swatch cannot be matched by value
+            continue
+    # Pure white and black turn up in every palette and every page: they do not say the page is on this one.
+    values["other"] -= values["accent"] | {"#ffffff", "#000000", "white", "black"}
+    if _mentions(state["canvas"], accent_ref) or str(state["canvas"].get("background", "")).lower() in values["accent"]:
         return
     stored = {layer["id"]: layer for layer in state["layers"]}
+    on_palette = False
     for ident, item in resolved.items():
         if not all(x["visible"] and x["opacity"] > 0 for x in (item, *ancestors(item))):
             continue
-        if _mentions(stored.get(ident, {}), ACCENT_REFERENCE) or any(
-                colour in str({k: v for k, v in item.items() if k not in ("text", "name", "id")}).lower()
-                for colour in colours):
+        blob = str({k: v for k, v in item.items() if k not in ("text", "name", "id")}).lower()
+        if _mentions(stored.get(ident, {}), accent_ref) or any(colour in blob for colour in values["accent"]):
             return
-    emit("accent_unused", f"The document's direction has an accent ({style}, {swatches['accent']}) and nothing on "
-         "the page uses it: the page reads as one colour. Apply @accent to the one element that should be found "
-         "first (the call to action, a rule, the key word), or waive this if the page is meant to be monochrome",
+        on_palette = on_palette or (other_ref is not None and _mentions(stored.get(ident, {}), other_ref)) or any(
+            colour in blob for colour in values["other"])
+    if not on_palette:
+        return
+    emit("accent_unused", f"The page is built on the document's palette and its accent ({style}, {swatches['accent']}) "
+         "is drawn nowhere: it reads as one colour. Apply @accent to the one element that should be found first "
+         "(the call to action, a rule, the key word), or waive this if the page is meant to be monochrome",
          [], (0.0, 0.0, float(width), float(height)), actual=0, expected=1,
          values={"accent": swatches["accent"], "style": style},
          threshold={"min_layers": 1, "min_blocks": t["accent_min_blocks"]})

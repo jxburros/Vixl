@@ -124,7 +124,7 @@ def grade(task, workspace):
 
     for check in task["checks"]:
         kind = check["type"]
-        passed, detail = False, None
+        passed, detail, extra = False, None, {}
         try:
             if kind == "file":
                 path = workspace / check["path"]
@@ -199,6 +199,9 @@ def grade(task, workspace):
                     detail = [issue["message"] for issue in report["issues"]
                               if issue["severity"] == "error" or issue.get("code") in forbidden]
                     passed = report["errors"] == 0 and not any(issue.get("code") in forbidden for issue in report["issues"])
+                elif kind == "craft":
+                    detail, score, passed = craft_check(project, check)
+                    extra["score"] = score
                 elif kind == "spacing":
                     report = project.measure_spacing(**check["options"])
                     detail = [gap["pixels"] for gap in report["gaps"]]
@@ -249,8 +252,31 @@ def grade(task, workspace):
                     raise ValueError(f"Unknown check type {kind!r}")
         except (VixlError, OSError, KeyError, IndexError, TypeError, ValueError) as exc:
             detail = f"{type(exc).__name__}: {exc}"
-        results.append({"check": check.get("name", kind), "passed": bool(passed), "detail": detail})
+        results.append({"check": check.get("name", kind), "passed": bool(passed), "detail": detail, **extra})
     return results
+
+
+def craft_check(project, check):
+    """The ``craft`` check: the composition family on the finished document (spacing, rhythm, crowding and the
+    hierarchy codes), every finding counted whether or not the agent waived it. ``score`` is
+    ``1 - min(1, findings / max_findings)``; the check passes when no finding has a code in ``forbid`` and the
+    score reaches ``min_score``. Returns ``(detail, score, passed)``; ``detail`` lists each finding's code, layers
+    and region."""
+    from vixl.composition import CODES
+
+    limit, floor = check.get("max_findings", 4), check.get("min_score", 1.0)
+    forbid = check.get("forbid", [])
+    if type(limit) is not int or limit < 1 or not isinstance(floor, (int, float)) or not 0 <= floor <= 1:
+        raise ValueError("craft takes max_findings (an integer of at least 1) and min_score (0-1)")
+    if not isinstance(forbid, list) or not set(forbid) <= set(CODES):
+        raise ValueError(f"craft forbid is a list of composition codes: {', '.join(CODES)}")
+    report = project.check(checks=["composition"], waivers=False)
+    found = [item for item in report["issues"] if item["check"] == "composition" and item.get("action") == "review"]
+    score = round(1 - min(1, len(found) / limit), 3)
+    barred = sorted({item["code"] for item in found} & set(forbid))
+    detail = {"score": score, "findings": [{"code": item["code"], "layers": item["layers"], "region": item["region"]}
+                                           for item in found], **({"forbidden": barred} if barred else {})}
+    return detail, score, not barred and score >= floor
 
 
 # --- tool plumbing -------------------------------------------------------------------------------
@@ -403,7 +429,7 @@ def _text(blocks):
 # --- running ---------------------------------------------------------------------------------------
 
 
-def run_task(task, agent, keep=None):
+def run_task(task, agent, keep=None, judge=None):
     with tempfile.TemporaryDirectory(prefix=f"vixl-eval-{task['id']}-") as directory:
         workspace = Path(directory)
         prepare_workspace(task, workspace)
@@ -417,6 +443,9 @@ def run_task(task, agent, keep=None):
         finally:
             tools.close()
         checks = grade(task, workspace)
+        scores = [c["score"] for c in checks if "score" in c]
+        # The optional rubric judge (evals/judge.py) looks at the delivered document of a task with a craft check.
+        rubric = judge(task, workspace) if judge is not None and scores else None
         if keep:
             target = Path(keep) / task["id"]
             target.mkdir(parents=True, exist_ok=True)
@@ -428,6 +457,8 @@ def run_task(task, agent, keep=None):
             "agent": agent.name,
             "passed": error is None and all(c["passed"] for c in checks),
             "checks": checks,
+            "craft_score": round(sum(scores) / len(scores), 3) if scores else None,
+            **({"judge": rubric} if rubric is not None else {}),
             "round_trips": outcome["round_trips"],
             "tool_calls": tools.calls,
             "tool_errors": tools.errors,
@@ -457,6 +488,8 @@ def over_budget(results, budgets):
 def summarize(results):
     count = len(results) or 1
     total = {key: sum(r["usage"].get(key, 0) for r in results) for key in ("input_tokens", "output_tokens")}
+    crafted = [r["craft_score"] for r in results if r.get("craft_score") is not None]
+    judged = [r["judge"]["mean"] for r in results if isinstance(r.get("judge"), dict) and "mean" in r["judge"]]
     return {
         "tasks": len(results),
         "passed": sum(r["passed"] for r in results),
@@ -468,6 +501,8 @@ def summarize(results):
         "mean_retries": round(sum(r.get("retries", 0) for r in results) / count, 2),
         "mean_tool_result_tokens": round(sum(r["tool_result_tokens_estimate"] for r in results) / count),
         **{f"total_{key}": value for key, value in total.items()},
+        **({"mean_craft_score": round(sum(crafted) / len(crafted), 3)} if crafted else {}),
+        **({"mean_judge_score": round(sum(judged) / len(judged), 2)} if judged else {}),
     }
 
 
@@ -477,20 +512,32 @@ def markdown(results, summary, meta):
         "",
         f"Success **{summary['passed']}/{summary['tasks']}** ({summary['success_rate']:.0%}) · "
         f"round trips {summary['mean_round_trips']} · tool calls {summary['mean_tool_calls']} · "
-        f"tool error rate {summary['tool_error_rate']:.1%} · retries {summary['mean_retries']} · tool result tokens ≈{summary['mean_tool_result_tokens']}/task",
+        f"tool error rate {summary['tool_error_rate']:.1%} · retries {summary['mean_retries']} · tool result tokens ≈{summary['mean_tool_result_tokens']}/task"
+        + (f" · craft {summary['mean_craft_score']}" if "mean_craft_score" in summary else "")
+        + (f" · judge {summary['mean_judge_score']}/5" if "mean_judge_score" in summary else ""),
         "",
-        "| Task | Result | Round trips | Tool calls | Tool errors | Input tok | Output tok | Failed checks |",
-        "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
+        "| Task | Result | Round trips | Tool calls | Tool errors | Input tok | Output tok | Craft | Failed checks |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
     ]
     for r in results:
         failed = ", ".join(c["check"] for c in r["checks"] if not c["passed"]) or ("error: " + r["error"] if r["error"] else "")
         lines.append(
             f"| {r['task']} | {'pass' if r['passed'] else 'FAIL'} | {r['round_trips']} | {r['tool_calls']} | "
-            f"{r['tool_errors']} | {r['usage'].get('input_tokens', '–')} | {r['usage'].get('output_tokens', '–')} | {failed} |"
+            f"{r['tool_errors']} | {r['usage'].get('input_tokens', '–')} | {r['usage'].get('output_tokens', '–')} | "
+            f"{craft_cell(r)} | {failed} |"
         )
     return "\n".join(lines) + "\n"
 
 
-def run(tasks, agent, keep=None):
-    results = [run_task(deepcopy(task), agent, keep) for task in tasks]
+def craft_cell(result):
+    """The craft score of a task (and the judge's mean out of 5 when it was judged), or a dash."""
+    score = result.get("craft_score")
+    rubric = result.get("judge")
+    if score is None:
+        return "–"
+    return f"{score}" + (f" · {rubric['mean']}/5" if isinstance(rubric, dict) and "mean" in rubric else "")
+
+
+def run(tasks, agent, keep=None, judge=None):
+    results = [run_task(deepcopy(task), agent, keep, judge) for task in tasks]
     return results, summarize(results)

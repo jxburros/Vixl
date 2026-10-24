@@ -156,23 +156,30 @@ def test_initials_set_in_a_mark_are_part_of_the_mark_not_a_line_of_type():
 
 
 def accented(*ops, style="rule"):
+    """A document with a rolled direction and a palette: ink and an accent (and its text colour)."""
     p = Project.new(width=1000, height=1000, purpose="poster", house_style="off")
     p.state["design_defaults"] = {"direction": {"accent": style}}
-    p.apply([{"type": "swatch", "name": "accent", "color": "#e63946"}, {"type": "swatch", "name": "accent-text",
-                                                                          "color": "#b0202e"}, *ops])
+    p.apply([{"type": "swatch", "name": "ink", "color": "#1d2238"},
+             {"type": "swatch", "name": "accent", "color": "#e63946"},
+             {"type": "swatch", "name": "accent-text", "color": "#b0202e"}, *ops])
     return p
 
 
 def three(**extra):
-    return [text("title", 100, 100, 48, **extra), text("subtitle", 100, 200, 24), text("note", 100, 260, 24)]
+    """Three lines on the palette: the ink colour, as a layout sets them."""
+    extra = {"color": "@ink", **extra}
+    return [text("title", 100, 100, 48, **extra), {**text("subtitle", 100, 200, 24), "color": "@ink"},
+            {**text("note", 100, 260, 24), "color": "@ink"}]
 
 
-def test_accent_unused_when_the_direction_has_an_accent_nothing_draws():
+def test_accent_unused_when_the_page_is_on_the_palette_and_nothing_draws_the_accent():
     p = accented(*three())
     (finding,) = only(p, "accent_unused")
     assert finding["action"] == "review" and finding["layers"] == []
     assert finding["values"] == {"accent": "#e63946", "style": "rule"}
     assert finding["measured"] == {"actual": 0, "expected": 1, "unit": "count"}
+    # The ink colour by value is the palette too.
+    assert only(accented(*[{**x, "color": "#1d2238"} for x in three()]), "accent_unused")
 
 
 def test_any_visible_use_of_the_accent_satisfies_it():
@@ -181,7 +188,7 @@ def test_any_visible_use_of_the_accent_satisfies_it():
            "fill": "@accent"}
     assert not only(accented(*three(), bar), "accent_unused")
     # The colour itself counts as well as the reference to it.
-    assert not only(accented(*three(color="#E63946")), "accent_unused")
+    assert not only(accented(*three(), {**bar, "fill": "#E63946"}), "accent_unused")
     # A hidden layer does not.
     assert only(accented(*three(), bar, {"type": "hide", "target": "bar"}), "accent_unused")
     # A direction without an accent, a canvas painted with it, or a bare note ask nothing.
@@ -190,7 +197,13 @@ def test_any_visible_use_of_the_accent_satisfies_it():
     painted = accented(*three())
     painted.apply({"type": "canvas", "background": "@accent"})
     assert not only(painted, "accent_unused")
-    assert not only(doc(*three()), "accent_unused")  # no direction at all
+    assert not only(doc(text("title", 100, 100, 48), text("subtitle", 100, 200, 24), text("note", 100, 260, 24)),
+                    "accent_unused")  # no direction at all
+
+
+def test_a_page_in_its_own_colours_is_not_asked_for_the_rolled_accent():
+    own = [text("title", 100, 100, 48), text("subtitle", 100, 200, 24), text("note", 100, 260, 24)]
+    assert not only(accented(*own), "accent_unused")
 
 
 def test_a_waiver_turns_the_hierarchy_finding_informational():

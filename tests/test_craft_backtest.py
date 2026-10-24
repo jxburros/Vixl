@@ -18,7 +18,7 @@ PINNED = {
     "uneven_rhythm": (4, 2, 0),
     "crowding": (1, 1, 0),
     "clumped_scatter": (1, 0, 0),
-    # The judges named no hierarchy defect, so these can only be false: none of the four fires on the 20 documents.
+    # No judged defect of the reconstructions is a hierarchy one, so these can only be false: none of the four fires.
     "flat_hierarchy": (0, 0, 0),
     "single_weight": (0, 0, 0),
     "no_focal": (0, 0, 0),
