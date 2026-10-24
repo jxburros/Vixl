@@ -88,7 +88,7 @@ def font_standalone(cmd, args, project=None):
         p.add_argument("--seed", type=_seed, help="Integer or 'random' (default)")
         p.add_argument("--apply", action="store_true", help="Apply the direction and fonts to the current document")
         p.add_argument("--set", action="append", help="Fill a layout slot: title=…")
-        p.add_argument("--lock", action="append", help="Keep a choice: layout=…, pairing=…, palette=…, mode=…")
+        p.add_argument("--lock", action="append", help="Keep a choice: layout=…, pairing=…, palette=…, mode=…, accents=0-3")
         p.add_argument("--unfilled", choices=["omit", "blank"],
                        help="Unfilled slots: leave out (default with --set) or show as [Label] blanks")
         a = p.parse_args(args)

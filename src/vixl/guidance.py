@@ -160,7 +160,7 @@ Other kinds: batch (targets=[{path, …options}], defaults: several sizes, forma
 
 @lru_cache(maxsize=1)
 def motif_registry():
-    """Every motif theme: ``{name: {title, keywords, elements}}``."""
+    """Every motif theme: ``{name: {title, keywords, moods, elements}}``."""
     return json.loads(MOTIFS_FILE.read_text(encoding="utf-8"))["themes"]
 
 
@@ -169,14 +169,21 @@ def _plain(text):
     return " " + " ".join(re.findall(r"[a-z0-9]+", folded.lower())) + " "
 
 
-def motifs(brief):
-    """The motif themes a free-text brief implies, best match first, each with the keywords it matched."""
+def phrases(brief, words):
+    """The ``words`` (single words or phrases) that occur in ``brief`` as whole words, accents and case ignored."""
     text = _plain(brief)
+    return [word for word in words if _plain(word) in text]
+
+
+def motifs(brief):
+    """The motif themes a free-text brief implies, best match first, each with the keywords it matched and the
+    palette moods the theme implies."""
     found = []
     for index, (name, theme) in enumerate(motif_registry().items()):
-        hits = [word for word in theme["keywords"] if _plain(word) in text]
+        hits = phrases(brief, theme["keywords"])
         if hits:
             found.append((-sum(len(_plain(w).split()) for w in hits), index, name, hits))
     return [{"theme": name, "title": motif_registry()[name]["title"], "matched": hits,
+             "moods": list(motif_registry()[name].get("moods", [])),
              "elements": json.loads(json.dumps(motif_registry()[name]["elements"]))}
             for _, _, name, hits in sorted(found)]

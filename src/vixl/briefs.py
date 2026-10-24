@@ -515,19 +515,47 @@ def entry(kind):
     return result
 
 
-def _directed(result, kind, seed, variety, workspace):
+def brief_moods(brief, implied=None):
+    """What a free-text brief says about mood, for a roll: ``{moods, words, motif}``, or None when nothing matches.
+    ``moods`` are the moods of the motif themes it names (``implied``, else ``guidance.motifs(brief)``) and every
+    mood of the house style's keyword table whose name or keywords it contains; ``words`` the brief words that
+    implied them; ``motif`` the best theme's first element (what to draw), a suggestion that adds no layers."""
+    from .guidance import motifs, phrases
+    from .house_style import mood_keywords
+
+    implied = motifs(brief) if implied is None else implied
+    moods = [mood for theme in implied for mood in theme.get("moods", [])]
+    words = [word for theme in implied for word in theme["matched"]]
+    for mood, keywords in mood_keywords().items():
+        hits = phrases(brief, [mood, *keywords])
+        if hits:
+            moods.append(mood)
+            words.extend(hits)
+    if not moods:
+        return None
+    motif = None
+    if implied:
+        first = implied[0]["elements"][0]
+        motif = {"theme": implied[0]["theme"], "element": first["element"], "draw": first["draw"],
+                 **{key: first[key] for key in ("shapes", "organic_presets", "object", "operations") if key in first}}
+    return {"moods": sorted(set(moods)), "words": list(dict.fromkeys(words)), "motif": motif}
+
+
+def _directed(result, kind, seed, variety, workspace, moods=None):
     """Attach a rolled direction drawn with the kind's recommendations, and say which choices are in them.
 
     The roll favours the kind's layouts, looks and styles where the variety level allows their tier
     (at ``low`` only safe entries roll), so a recommendation outside the roll is an opt-in alternative,
-    and ``recommendations`` says so for each list instead of leaving two directions to reconcile."""
+    and ``recommendations`` says so for each list instead of leaving two directions to reconcile. ``moods``
+    (``brief_moods``) weights the palettes toward the brief's moods."""
     if kind not in NO_DIRECTION:
         from .house_style import tier_of
         from .typefaces import roll_document
 
         item = KINDS[kind]
         recommend = {"layouts": item["layouts"], "looks": item["looks"], "styles": item["styles"]}
-        direction = roll_document(workspace=workspace, seed=seed, variety=variety, kind=kind, recommend=recommend)
+        direction = roll_document(workspace=workspace, seed=seed, variety=variety, kind=kind, recommend=recommend,
+                                  brief_moods=moods)
         result["direction"] = direction
         chosen = direction["direction"]
         purpose = direction.get("purpose")
@@ -626,7 +654,7 @@ def guide(brief=None, *, seed=None, variety=None, workspace=None):
                                     "recipe and the guidance names.", field="brief", suggestions=list(KINDS)[:6], allowed=list(KINDS))
     best = ranked[0]
     result = _directed({"matched": best, **entry(best), "alternatives": ranked[1:4], "start_here": START_HERE},
-                       best, seed, variety, workspace)
+                       best, seed, variety, workspace, brief_moods(brief, implied))
     if subject:
         result["object"] = object_summary(subject, workspace)
     if implied:

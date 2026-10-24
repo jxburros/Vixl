@@ -175,6 +175,11 @@ class Builder:
         self.floor = None
         # Color roles with contrast guarantees.
         self.colors = assign_roles(op, self.rng)
+        self.accent_count = accent_count(op)
+        self.accent_representation = direction.get("accent_representation", "skewed")
+        require(self.accent_representation in ACCENT_SHARES, "direction.accent_representation is one of "
+                f"{', '.join(ACCENT_SHARES)}", field="direction")
+        self.accents = None
         self.contrast = round(contrast_ratio(parse(self.colors["ink"])[:3], parse(self.colors["background"])[:3]), 2)
         self.align = op.get("align") or self.rng.choice(layout.get("aligns", ["left"]))
         require(self.align in ("left", "center", "right"), "align must be left, center or right")
@@ -680,14 +685,24 @@ class Builder:
 ROLES = ("background", "surface", "ink", "muted", "accent", "accent-text", "on-accent")
 
 
+def accent_count(op):
+    """How many accent colours a layout-apply draws: its direction's ``accent_count`` (0-3, from a roll), else one."""
+    count = (op.get("direction") or {}).get("accent_count", 1)
+    require(isinstance(count, int) and not isinstance(count, bool) and 0 <= count <= 3,
+            "direction.accent_count is 0, 1, 2 or 3", field="direction")
+    return count
+
+
 def assign_roles(op, rng):
     """Background/surface/ink/muted/accent/on-accent from a palette with checked contrast.
 
     By default roles follow light or dark mode (lightest color behind the work in light mode,
     darkest in dark mode). ``keep_order`` takes the palette as given instead: background, surface,
-    then accents. The result carries ``_explain``: each role's color, source and reason."""
+    then accents. The direction's ``accent_count`` (``accent_count(op)``) adds ``accent-2``/``accent-3`` and their
+    ``-text`` variants for two or three accents, or, for none, gives the accent the ink and muted colours. The
+    result carries ``_explain``: each role's color, source and reason."""
     from .colors import contrast_ratio, hex_of, mix, parse, relative_luminance, srgb_to_oklab, to_polar
-    from .palette_roles import describe, explicit, notes
+    from .palette_roles import EXTRA_ROLES, accent_reasons, accent_roles, describe, explicit, extra_accents, notes
     from .resources import get
 
     palette = op.get("palette")
@@ -768,9 +783,11 @@ def assign_roles(op, rng):
     if keep_order:
         accent = parsed[2] if len(parsed) > 2 else parsed[1]
         surface = parsed[1] if len(parsed) > 2 else mix(background, ink, 0.07 if mode == "light" else 0.12)
+        others = parsed[3:]
     else:
         candidates = [c for c in parsed if c not in (background, ink)] or [ink]
         accent = max(candidates, key=lambda c: chroma(c) + rng.random() * 0.02)
+        others = [c for c in parsed if c not in (by_light[0], by_light[-1], accent)]
         surface = mix(background, ink, 0.07 if mode == "light" else 0.12)
         # Accent fills and large accent type sit on the background and on surface panels and gradients.
         fill = house_style.craft("contrast")["fill"]
@@ -794,6 +811,10 @@ def assign_roles(op, rng):
         if readable(accent_text):
             break
         accent_text = mix(accent_text, extreme, 0.15)
+    count = accent_count(op)
+    if count == 0:
+        # No accent rolled: what the layout draws in the accent takes the ink, and accent text the muted colour.
+        accent, accent_text = ink, muted
     on_accent = max((background, ink, white, black), key=lambda c: contrast_ratio(c[:3], accent[:3]))
     roles = {
         "background": hex_of(background[:3] + (1.0,)),
@@ -804,8 +825,36 @@ def assign_roles(op, rng):
         "accent-text": hex_of(accent_text[:3] + (1.0,)),
         "on-accent": hex_of(on_accent[:3] + (1.0,)),
     }
+    given_colors = op.get("colors") if isinstance(op.get("colors"), dict) else {}
+    sources, adjusted = [], []
+    if count >= 2:
+        # Colours the caller fixed (a brand) get no invented companions: extra accents come from the palette or colors.
+        found = extra_accents(others, accent, count, derive=not given_colors, ordered=keep_order)
+        fill = house_style.craft("contrast")["fill"]
+        for index, role in enumerate(accent_roles(count)[1:]):
+            if role in given_colors:
+                extra, source = parse(given_colors[role]), "explicit"
+            elif index < len(found):
+                extra, source = found[index]
+                for step in range(12):
+                    if min(contrast_ratio(extra[:3], background[:3]), contrast_ratio(extra[:3], surface[:3])) >= fill:
+                        break
+                    extra = mix(extra, extreme, 0.18)
+                    adjusted.append(role)
+            else:
+                break
+            text = extra
+            for step in range(16):
+                if readable(text):
+                    break
+                text = mix(text, extreme, 0.15)
+                adjusted.append(f"{role}-text")
+            roles[role], roles[f"{role}-text"] = hex_of(extra[:3] + (1.0,)), hex_of(text[:3] + (1.0,))
+            sources.append(source)
     for key, value in (op.get("colors") or {}).items():
-        require(key in roles, f"colors keys are {', '.join(roles)}")
+        if key in EXTRA_ROLES and key not in roles:
+            continue  # an accent beyond this direction's count
+        require(key in roles, f"colors keys are {', '.join((*roles, *EXTRA_ROLES))}")
         parse(value)
         roles[key] = value
     roles.update(chosen)
@@ -814,7 +863,7 @@ def assign_roles(op, rng):
     roles["_mode"] = mode
     roles["_mode_source"] = mode_source
     roles["_explain"] = describe(colors, roles, mode=mode, mode_source=mode_source, keep_order=keep_order,
-                                 explicit_roles=given)
+                                 explicit_roles=given, reasons=accent_reasons(count, sources, adjusted))
     roles["_notes"] = notes(keep_order=keep_order, mode=mode, mode_source=mode_source, explicit_roles=given)
     return roles
 
@@ -2037,7 +2086,11 @@ def catalog():
             "font": "Registered body font; defaults to the document typography (font pair), else the proofing fallback",
             "display_font": "Registered heading font; defaults to the document typography heading, else font",
             "palette": "Palette name or list of colors (roles are assigned with contrast checks)",
-            "colors": "Override roles: background, surface, ink, muted, accent, accent-text, on-accent",
+            "colors": "Override roles: background, surface, ink, muted, accent, accent-text, on-accent (and accent-2, "
+            "accent-3 with two or three accents)",
+            "direction": "Rolled choices; accent_count 0-3 sets how many accent colours the layout draws (0: in ink; 2-3: "
+            "the accent-bearing layers are spread over @accent, @accent-2, @accent-3, equal or skewed by "
+            "accent_representation)",
             "mode": "inherit (default), light or dark",
             "type_scale": "Ratio name (" + ", ".join(RATIOS) + ") or number",
             "density": "airy, balanced or dense (margins and scale)",
@@ -2189,6 +2242,7 @@ def execute_layout(project, op):
         "margin": builder.m,
         "align": builder.align,
         "accent": builder.accent,
+        **({"accents": builder.accents} if builder.accents else {}),
         "contrast": builder.contrast,
         "principles": layout["principles"],
         "fonts": fonts or "fallback",
@@ -2346,6 +2400,7 @@ def _build(project, layout, op, seed, fit):
         from .variety import apply_direction
 
         apply_direction(project, builder, op["direction"])
+    share_accents(project, builder)
     # Decoration a layout lets run off the canvas (a corner block, a counterweight) is a drawn bleed:
     # mark it so checks report it as informational instead of cut-off content.
     from .render import resolve_layout
@@ -2358,6 +2413,100 @@ def _build(project, layout, op, seed, fit):
             if x <= 0 or y <= 0 or x + w >= canvas["width"] or y + h >= canvas["height"]:
                 layer["allow_crop"] = True
     return builder
+
+
+ACCENT_SHARES = ("equal", "skewed")
+ACCENT_PAINT = ("fill", "stroke", "color")
+
+
+def accent_plan(anchored, prominence, shares, representation):
+    """Which accent each movable element takes, as role indexes (0 = the first accent). ``anchored`` elements keep
+    the first accent; ``prominence`` holds a size per movable element; ``shares`` the target share of each accent.
+    Every accent gets at least one element while there are enough; the counts follow ``shares`` (largest
+    remainder). Skewed puts the first accent on the most prominent elements and the others on the quieter ones;
+    equal deals the elements out in turn, so each accent carries large and small ones."""
+    count, total = len(shares), anchored + len(prominence)
+    targets = [max(1, anchored)] + [1] * (count - 1)
+    while sum(targets) < total:
+        best = max(range(count), key=lambda r: (shares[r] * total - targets[r], -r))
+        targets[best] += 1
+    need = [targets[0] - anchored, *targets[1:]]
+    order = sorted(range(len(prominence)), key=lambda i: (-prominence[i], i))
+    plan = [0] * len(prominence)
+    if representation == "skewed":
+        for i, role in zip(order, [r for r in range(count) for _ in range(need[r])]):
+            plan[i] = role
+        return plan
+    turn = 1 if anchored else 0
+    for i in order:
+        while need[turn % count] <= 0:
+            turn += 1
+        plan[i] = turn % count
+        need[turn % count] -= 1
+        turn += 1
+    return plan
+
+
+def share_accents(project, builder):
+    """Spread the layout's accent-bearing layers (fills, strokes and text in ``@accent`` or ``@accent-text``) over
+    the accents the direction rolled (``accent_count``), and add the swatches of the extra accents drawn. A shape
+    with text on it keeps the first accent, so that text stays readable. Accents that find no layer (fewer movable
+    layers than accents, or a palette with no second accent for fixed colours) are left out and recorded."""
+    from .operations import execute
+    from .palette_roles import accent_roles
+    from .render import resolve_layout
+
+    count = builder.accent_count
+    if count == 1:
+        return
+    builder.accents = {"count": count, "representation": builder.accent_representation}
+    if count == 0:
+        return
+    available = [role for role in accent_roles(count) if role in builder.colors]
+    names = set(builder.created)
+    own = [layer for layer in project.state["layers"] if layer["name"] in names]
+    accented = [layer for layer in own if any(layer.get(key) in ("@accent", "@accent-text") for key in ACCENT_PAINT)]
+    bounds = resolve_layout(project)
+    centres = [(x + w / 2, y + h / 2) for layer in own if layer["type"] == "text" for x, y, w, h in [bounds[layer["id"]]]]
+
+    def carries_text(layer):
+        if layer["type"] == "text" or layer.get("fill") != "@accent":
+            return False
+        x, y, w, h = bounds[layer["id"]]
+        return any(x <= cx <= x + w and y <= cy <= y + h for cx, cy in centres)
+
+    anchored = [layer for layer in accented if carries_text(layer)]
+    movable = [layer for layer in accented if not carries_text(layer)]
+    places = len(movable) + (1 if anchored else 0)
+    if len(available) > places and builder.name("direction-motif") not in names:
+        # One more place: the direction's margin motif (a short rule unless it rolled another shape), where a
+        # corner is clear of the text.
+        from .variety import place_motif
+
+        motif = (builder.op.get("direction") or {}).get("motif", "none")
+        added = place_motif(project, builder, own, "rule" if motif == "none" else motif)
+        if added is not None:
+            bounds = resolve_layout(project)
+            movable.append(added)
+            places += 1
+    roles = available[:min(len(available), places)]
+    if len(roles) >= 2:
+        shares = ([1 / len(roles)] * len(roles) if builder.accent_representation == "equal"
+                  else house_style.accents()["skew"][str(len(roles))])
+        plan = accent_plan(len(anchored), [bounds[layer["id"]][2] * bounds[layer["id"]][3] for layer in movable],
+                           shares, builder.accent_representation)
+        for layer, index in zip(movable, plan):
+            swap = {"@accent": f"@{roles[index]}", "@accent-text": f"@{roles[index]}-text"}
+            if index:
+                layer.update({key: swap[layer[key]] for key in ACCENT_PAINT if layer.get(key) in swap})
+        for role in roles[1:]:
+            for name in (role, f"{role}-text"):
+                execute(project, {"type": "swatch", "name": name, "color": builder.colors[name]})
+    builder.accents["drawn"] = roles if places else []
+    if len(roles) < count:
+        why = (f"the layout has {places} place{'s' if places != 1 else ''} for an accent" if len(available) > places
+               else "the colors given hold no further accent")
+        builder.accents["note"] = f"{why}, so {', '.join(accent_roles(count)[len(roles):])} not drawn"
 
 
 def _overflows(project, builder):
@@ -2398,7 +2547,7 @@ def schemas(add):
             "name": S,
             "seed": {"type": ["integer", "string"]},
             "variety": {"enum": ["low", "medium", "high", "fixed"], "description": "Sparse-choice range; fixed defaults to seed 0 or the workspace seed."},
-            "direction": {"type": "object", "description": "Extra rolled choices: cta (pill or button), date (highlight or plain), motif, look, style, margin, corner, background_treatment and color_assignment."},
+            "direction": {"type": "object", "description": "Extra rolled choices: cta (pill or button), date (highlight or plain), motif, look, style, margin, corner, background_treatment, color_assignment, accent_count (0-3 accent colours: 0 draws the accents in ink, 2 or 3 add @accent-2 and @accent-3) and accent_representation (equal or skewed)."},
             "unfilled": {
                 "enum": ["blank", "omit"],
                 "description": "blank (default): slots left unfilled show as [Label] placeholders that check "

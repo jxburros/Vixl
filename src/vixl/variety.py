@@ -333,20 +333,7 @@ def apply_direction(project, builder, direction):
     motif = direction.get("motif", "none")
     require(motif in ("none", "rule", "ellipse", "rectangle"), "Unknown motif", field="direction")
     if motif != "none":
-        size = max(3, round(builder.unit))
-        height = max(2, size // 4) if motif == "rule" else size
-        # The top-right corner of the margin, else the other margin corners; a motif with no corner clear of
-        # the text is left out rather than drawn through it.
-        boxes = _text_boxes(project, own, builder.unit)
-        spots = [(builder.R - size, builder.T / 2), (builder.L, builder.T / 2),
-                 (builder.R - size, (builder.B + builder.H) / 2 - height), (builder.L, (builder.B + builder.H) / 2 - height)]
-        spot = next((s for s in spots if not _hits(boxes, (s[0], s[1], size, height))), None)
-        if spot:
-            name = builder.name("direction-motif")
-            execute(project, {"type": "shape", "shape": "ellipse" if motif == "ellipse" else "rectangle", "name": name,
-                              "x": spot[0], "y": spot[1], "width": size, "height": height, "fill": "@accent"})
-            project.layer().update(role="decoration")
-            builder.created.append(name)
+        place_motif(project, builder, own, motif)
     look = direction.get("look", "none")
     if look != "none":
         amount = direction.get("look_amount", 0.1)
@@ -358,6 +345,29 @@ def apply_direction(project, builder, direction):
     if direction.get("style"):
         for operation in apply_operations(direction["style"], palette=False):
             execute(project, operation)
+
+
+def place_motif(project, builder, own, motif):
+    """The direction's motif, a small ``rule``, ``ellipse`` or ``rectangle`` in ``@accent``, at the top-right corner
+    of the margin, else the other margin corners: the decoration layer, or None when no corner is clear of the
+    scaffold's text (a motif is left out rather than drawn through it)."""
+    from .operations import execute
+
+    size = max(3, round(builder.unit))
+    height = max(2, size // 4) if motif == "rule" else size
+    boxes = _text_boxes(project, own, builder.unit)
+    spots = [(builder.R - size, builder.T / 2), (builder.L, builder.T / 2),
+             (builder.R - size, (builder.B + builder.H) / 2 - height), (builder.L, (builder.B + builder.H) / 2 - height)]
+    spot = next((s for s in spots if not _hits(boxes, (s[0], s[1], size, height))), None)
+    if not spot:
+        return None
+    name = builder.name("direction-motif")
+    execute(project, {"type": "shape", "shape": "ellipse" if motif == "ellipse" else "rectangle", "name": name,
+                      "x": spot[0], "y": spot[1], "width": size, "height": height, "fill": "@accent"})
+    layer = project.layer()
+    layer.update(role="decoration")
+    builder.created.append(name)
+    return layer
 
 
 def _text_boxes(project, own, clearance):

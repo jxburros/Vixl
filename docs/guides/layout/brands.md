@@ -34,7 +34,10 @@ by layer name. Place/resize them to suit the composition after applying the layo
 `layout apply`, template creation/application, and `roll` use the brand palette and typography
 by default. Explicit layout palette/color/font options and roll locks take precedence. Unspecified
 color roles are derived by the normal layout system; specifying all seven roles avoids unexpected
-colors. `check` warns about colors outside the supplied palette and fonts outside the configured
+colors. A roll that draws two or three accents ([accent colours](safe-variety.md#accent-colours)) takes the second
+and third from `accent-2` and `accent-3` in the palette (optional roles, with `accent-2-text` and `accent-3-text`
+for small text, else derived for 4.5:1); a brand without them never gets an invented hue, so such a roll draws the
+accents the palette holds and the layout record's `accents.note` says so. `check` warns about colors outside the supplied palette and fonts outside the configured
 pairing, errors on missing required layer names, and enforces `minimum_contrast` even if a caller
 asks for a lower threshold. `check --checks brand` isolates policy findings.
 

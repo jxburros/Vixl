@@ -2677,7 +2677,9 @@ use-cases rows (layout), CHANGELOG (the recompose default is a behaviour change;
 
 ### #654 Defaults: derive palette and decoration from the brief, and make defaults look finished
 
-**Status:** Partly done. "Finished" defaults shipped: chart inside the safe area with two spacing units (7d,
+**Status:** Done (Unreleased, group P): theme `moods`, `taste.moods.keywords`, `briefs.brief_moods`, palette
+weighting in `typefaces.roll` (`brief_moods`), `mood_source`/`motif_suggestion` in the direction,
+`tests/test_brief_moods.py`; see CHANGELOG. Before: partly done. "Finished" defaults shipped: chart inside the safe area with two spacing units (7d,
 `charts.py:1543`), one line-height table (#421), rule clearance (5b), finishing look by purpose (#420), cta pills
 and date highlights (5c), motifs from the brief (6b). Not done: the roll ignores brief words.
 `briefs._directed` calls `roll_document(kind=..., recommend=...)` (`briefs.py:530`) with the kind only; palettes
@@ -2883,9 +2885,11 @@ automatically. File as a separate enhancement if wanted.
 
 ### #404 Accent count distribution: one accent usually, two often, zero or three rarely
 
-**Status:** Not started. One accent role only: `palette_roles.ROLES` = background, surface, ink, muted, accent,
-accent-text, on-accent (`palette_roles.py:14`); layouts pick one accent (`layouts.py:163`). #389 (accent drawn)
-is closed.
+**Status:** Done (Unreleased, group P): `taste.accents`, `accent_count`/`accent_representation` in the roll (own
+stream, `locks={accents: N}`), `@accent-2`/`@accent-3` (`palette_roles.extra_accents`), `layouts.share_accents`,
+`accent_unused` per drawn accent, `tests/test_accents.py`; see CHANGELOG. Before: one accent role only:
+`palette_roles.ROLES` = background, surface, ink, muted, accent, accent-text, on-accent (`palette_roles.py:14`);
+layouts pick one accent (`layouts.py:163`). #389 (accent drawn) is closed.
 
 **Remaining work:** rolled accent count and representation, `@accent-2`/`@accent-3` roles with contrast checks,
 layouts drawing them.

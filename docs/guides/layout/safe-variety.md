@@ -98,6 +98,48 @@ the slots it does use; drop those it leaves out and apply again. The roll's `dir
 the layout came from (`content`, or `preview` for that fallback). If no layout fits at all (locks rule every
 one out), the error's `suggestions` name up to three layouts with the supplied slots each places.
 
+## Accent colours
+
+A roll also sets how many accent colours the page draws, `accent_count`: one usually (55%), two often (30%),
+none or three rarely (7.5% each); a mark (the logo purpose) rolls one, sometimes none or two. With two or three,
+`accent_representation` says how they share the page: `equal` deals the accent-bearing layers (rules, bars, dots,
+the margin motif, labels, big numbers) out in turn, so each accent carries large and small ones; `skewed` gives the
+first accent the larger share (70/30 for two, 60/25/15 for three) and the most prominent layers. A shape with text
+on it, such as the call to action or a highlighted date, keeps the first accent. Both come from a separate stream of
+the seed, so a seed keeps the palette, layout and first accent it rolled before.
+
+The extra accents are the palette roles `@accent-2` and `@accent-3`, each with a `-text` variant for small text:
+the palette's next most colourful entry whose OKLCH hue is at least 30° from the accents before it, else the first
+accent turned in hue at the same lightness and chroma. Each is nudged until it reads 3:1 as a fill on the background
+and surface, and its text variant 4.5:1. Colours you fix (a brand palette, `colors`) get no invented companion: the
+second accent then comes from the palette, or from `accent-2` and `accent-3` in the brand palette or `colors`. With
+no accent, the accent layers take the ink colour and accent text the muted one.
+
+A layout that has fewer places for an accent than the roll asked for adds the direction's margin motif (a short
+rule) where a corner is clear of the text, and leaves out the accents that still find no layer. The layout record's
+`accents` lists the accents drawn (`drawn`) and why any is missing (`note`); only drawn accents get swatches, and
+the composition check's `accent_unused` reports an extra accent that a later edit removed from the page. Lock the
+count like any choice: `locks={accents: 1}` (`--lock accents=1`) restores one accent, `accents: 0` a page in ink,
+and `accent_representation` picks the sharing. On `layout-apply` the same fields go in `direction`:
+
+```json
+{"type": "layout-apply", "name": "hero-statement", "title": "Night Market", "label": "Saturday", "seed": 7,
+ "palette": "chalk-indigo", "direction": {"accent_count": 2, "accent_representation": "equal"}}
+```
+
+## Moods from the brief
+
+`vixl_reference(brief)` reads a free-text brief for mood as well as for its kind of work: each motif theme it names
+carries moods (coffee is warm, cozy, earthy, rustic and crafted; a night city is futuristic, tech, dramatic, bold
+and edgy), and the house style's keyword table (`taste.moods.keywords`) adds the moods its other words imply
+(`cozy` and `autumn` warm, `luxury` luxurious, `quarterly` corporate; a mood's own name counts too). The attached
+roll weights the palettes with one of those moods three times (`taste.moods.brief_weight`) within the rolled tier: it
+favours them and never filters, so a coffee brief still sees most of the palette pool. The direction reports
+`mood_source: "brief"`, the `brief_moods` and the `mood_words` that implied them, and the best theme's first element
+as `motif_suggestion` (what to draw, how and with which shapes; no layers are added, and the rolled `motif`
+decoration is unchanged). A brief with no matching word rolls exactly as it did before. Lock the palette
+(`locks={palette: NAME}`) to choose it yourself.
+
 ## New documents
 
 Every surface creates documents the same way: `vixl new`, Python `Project()`, `Project.sized()` and

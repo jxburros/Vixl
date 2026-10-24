@@ -1,5 +1,5 @@
 {
-  "description": "House-style eval baseline (python -m evals.house_style --compare evals/house-style-baseline.json). scores: the current house style. quality.no_composition_findings is the share of designs with no composition finding. A comparison fails when a quality share falls, or when a level's diversity mean, image, same-mode or structure distance falls by more than diversity_tolerance.",
+  "description": "House-style eval baseline (python -m evals.house_style --compare evals/house-style-baseline.json). scores: the current house style. quality.no_composition_findings is the share of designs with no composition finding; quality.accents_drawn the share of designs rolled with two or three accents whose layout draws them all. A comparison fails when a quality share falls, or when a level's diversity mean, image, same-mode or structure distance falls by more than diversity_tolerance.",
   "briefs": 48,
   "diversity_tolerance": 0.05,
   "scores": {
@@ -21,7 +21,8 @@
         "no_composition_findings": 1.0,
         "fonts_installed": 1.0,
         "contrast_pass": 1.0,
-        "min_ink_contrast": 9.25
+        "min_ink_contrast": 9.25,
+        "accents_drawn": 0.95
       },
       "tiers": {
         "safe": 48
@@ -45,7 +46,8 @@
         "no_composition_findings": 1.0,
         "fonts_installed": 1.0,
         "contrast_pass": 1.0,
-        "min_ink_contrast": 8.47
+        "min_ink_contrast": 8.47,
+        "accents_drawn": 0.95
       },
       "tiers": {
         "avant-garde": 3,
@@ -71,7 +73,8 @@
         "no_composition_findings": 1.0,
         "fonts_installed": 1.0,
         "contrast_pass": 1.0,
-        "min_ink_contrast": 7.14
+        "min_ink_contrast": 7.14,
+        "accents_drawn": 0.95
       },
       "tiers": {
         "avant-garde": 7,
