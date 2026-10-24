@@ -212,7 +212,10 @@ def inspect_file(path):
         elif suffix == ".svg":
             head = path.read_bytes()[:4096].decode("utf-8", "replace")
             box = re.search(r'viewBox="\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)', head)
-            if box:
+            size = [re.search(rf'<svg[^>]*\s{side}="([\d.]+)(?:px)?"', head) for side in ("width", "height")]
+            if all(size):
+                facts.update(width=float(size[0][1]), height=float(size[1][1]))
+            elif box:
                 facts.update(width=float(box[1]), height=float(box[2]))
             facts["color"] = {"space": "RGB", "vector": True}
         elif suffix == ".psd":
@@ -504,7 +507,7 @@ def _reproduction(session, request, sources):
     require(isinstance(lock, dict) and lock and all(isinstance(path, str) for path in lock.values()),
             "lock is a lockfile path or {source: lockfile}", field="lock")
     found = {}
-    for source, path in lock.items():
+    for source, path in {session.relative(session.resolve(name)): path for name, path in lock.items()}.items():
         locked = read_lock(session.resolve(path))
         with session.project(document=source) as project:
             found[source] = {"lockfile": path, **reproduce(
@@ -544,6 +547,7 @@ def _write(staged, entries, kept, extras, manifest):
     with zipfile.ZipFile(staged, "w") as archive:
         def add(name, source=None, payload=None):
             info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+            info.create_system = 3
             info.external_attr = 0o644 << 16
             info.compress_type = zipfile.ZIP_STORED if name.lower().endswith(STORED) else zipfile.ZIP_DEFLATED
             if payload is not None:
@@ -579,8 +583,11 @@ def build(session, request):
     candidates = [item for item in candidates if item["path"] != output]
     require(len(candidates) + len(held) <= MAX_FILES, f"At most {MAX_FILES} files per package", "resource_limit",
             field="files")
-    sources = sorted({item["source"] for item in candidates if item["source"]} | ({request["source"]}
-                                                                                    if request.get("source") else set()))
+    for item in candidates:
+        if item["source"]:
+            item["source"] = session.relative(session.resolve(item["source"]))
+    default = session.relative(session.resolve(request["source"])) if request.get("source") else None
+    sources = sorted({item["source"] for item in candidates if item["source"]} | ({default} if default else set()))
     revisions = {}
     for source in sources:
         path = session.resolve(source)

@@ -1,5 +1,42 @@
 # Changelog
 
+## Unreleased
+
+### Reproducibility and delivery
+
+- **Render lockfiles cover every page, artboard and frame.** `vixl reproduce --write-lock` writes a version 2 lockfile
+  (version 1 files still verify) with the render hash of each page and artboard and of sampled timeline frames
+  (`--frames N` or `--times 0 1.5s 50%`; an animated document gets three by default), a hash of the variable set or
+  campaign rows with one per variable name, and every `seed` in the document. `--lock` locates a change: `page 2`, an
+  artboard by name, a frame by time, a variable or seed by name. The lockfile version 2 is not readable by earlier
+  releases (#512).
+- **Lockfiles record exports.** `--write-lock FILE --export png "jpg:quality=80" mp4:fps=24` encodes each export in memory
+  and records its options (defaults filled in), the SHA-256 of its bytes, the SHA-256 of its decoded pixels or sampled
+  frames, a coarse 16x16 block-average signature, and the ffmpeg version or ICC profile hash it used. `--lock FILE
+  --export` encodes them again and reports `byte_identical` and `visually_equivalent` per export, separately: bytes decide
+  PNG, SVG, PDF, HTML, PPTX, PSD, TIFF and APNG, decoded pixels or frames within `--export-tolerance` decide JPEG, WebP,
+  AVIF, GIF, MP4 and WebM, and `--export-visual` judges every format by its pixels. A requested export that differs from
+  the locked one is `export-setting` drift (`jpg.quality`), a changed ffmpeg or ICC profile `toolchain` drift
+  (`mp4.ffmpeg`, `pdf.icc_profile`), and a recorded export that alone differs gives the new `export-mismatch` level.
+  The workflow takes `exports`, `verify_exports`, `frames`, `times`, `export_tolerance` and `export_visual` (#512).
+- **A manifest-ready reproduction summary.** `reproduce(..., report=True)`, `--report` and `report: true` return a compact
+  record (level, the lock's version and SHA-256, drift counts and the first located items, per-export results) instead of
+  the full result, for embedding in a delivery manifest (#512).
+- **No credential can enter a lockfile.** Writing a lock or a report refuses any value of an environment variable named
+  like a key, token, secret or password, or named as a configured AI provider's key variable, and the error names the
+  variable, never the value. The [limits of exact reproduction](docs/guides/automation/ci.md#the-limits-of-exact-reproduction)
+  (fonts, platform zlib, encoder versions) are now documented (#512).
+- **Delivery packages.** The `package` workflow action and `vixl package` write the completed outputs of a campaign run
+  (`--production out/production.json`) or exported files (`--files "exports/*.png"`) into one zip: files named from a
+  template (`{brand}_{doc}_{artboard}_{w}x{h}.{ext}`, also `{locale}`, `{row}` and `{id}`; a name two files would share
+  is refused up front with the list), identical files once, `manifest.json` with each file's source document and
+  revision, export settings, check state, SHA-256, dimensions, colour space and the codec, frame rate and duration read
+  back from the encoded file, the Vixl version, validation coverage and visual-review status, `SHA256SUMS`, the check
+  report (Markdown and JSON) and a proof page. Variants the run held are listed under `held` and left out, as are files
+  whose source fails its checks or that the proof page's decisions reject. A render lockfile's reproduction summary can go
+  into the manifest. The zip is staged and published atomically, `--dry-run` plans without writing, and an existing
+  package is kept unless `--overwrite` (#573).
+
 ## 0.30.5
 
 Plans the animation export speed work.

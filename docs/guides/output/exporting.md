@@ -142,6 +142,30 @@ checks, render decisions and resume information. To send a set of exports for si
 [proof page](../automation/production.md#proof-pages): one offline HTML file with thumbnails, metadata, findings and
 approve/reject decisions; `vixl diff A B` shows what changed between two exports.
 
+## Package and re-check a delivery
+
+`vixl package` collects the finished exports of a campaign run (`--production out/production.json`) or a set of files
+(`--files "exports/*.png"`) into one zip:
+
+```bash
+vixl package --production out/production.json --source banner.vixl --output delivery.zip --name "{doc}_{row}.{ext}"
+```
+
+Files are named from a template (a name two files would share is refused up front), identical files are packaged once,
+and the outputs a run held for review are listed and left out. The zip carries `manifest.json` (per file: the source
+document and its revision, export settings, check state, SHA-256, dimensions, colour space and the codec, frame rate
+and duration read back from the encoded file), `SHA256SUMS`, the check report and a proof page. It is written atomically
+and never replaces an existing package without `--overwrite`. See
+[delivery packages](../automation/production.md#delivery-packages).
+
+To know later whether an export would come out the same, record it in a render lockfile and verify it:
+`vixl reproduce --write-lock poster.lock.json --export png "jpg:quality=85" mp4`, then
+`vixl reproduce --lock poster.lock.json --export`. PNG, SVG and PDF are compared by their bytes; JPEG, WebP, GIF and
+video by their decoded pixels, because their bytes depend on the encoder; the report gives `byte_identical` and
+`visually_equivalent` separately ([reproduction](../../reference/agent-trust.md#reproduction), and
+[what differs between machines](../automation/ci.md#the-limits-of-exact-reproduction)). Pass the lockfile to `package`
+(`--lock poster.lock.json`) to put the result in the manifest.
+
 ## Python export consistency
 
 `Project.export`, `Project.export_animation`, `export_timeline` and MCP `vixl_export`

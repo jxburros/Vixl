@@ -63,7 +63,9 @@ nudge inside the safe area; blanks are held) and keeps only repairs that leave n
 `preview={overlay: true}` (with `check`) marks the findings on the preview; `focus: N` zooms to one. For
 overflow or overlap with no single fix use workflow `repair-layout` (`protected`, `minimum_size`; dry run by
 default, unchanged when infeasible); `protected-edit` commits an edit only if protected layers and regions are
-unchanged; `vixl reproduce --reference PNG` or `--lock FILE` verifies an approved render.
+unchanged; `vixl reproduce --reference PNG` or `--lock FILE` verifies an approved render, and `--write-lock FILE
+--export png jpg` with `--lock FILE --export` also re-encodes the recorded exports (`byte_identical` and
+`visually_equivalent` per export, located drift).
 
 ## Composition checks
 
