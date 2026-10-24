@@ -159,7 +159,8 @@ TEMPLATES.update(MODULAR_TEMPLATES)
 BUILTINS = {"palettes": PALETTES, "templates": TEMPLATES, "guidance": GUIDANCE,
             "containers": CONTAINERS, "shapes": {}, "suites": SUITES, "workflows": WORKFLOWS,
             "mockups": {},  # built-in mockups are drawn by mockups.BUILTINS; the library holds the user's own
-            "objects": builtin_kinds()}
+            "objects": builtin_kinds(),
+            "assets": {}}  # images that packs carry; the bytes live beside the library (pack_assets)
 
 
 def proportional(project, item, operations):
@@ -245,6 +246,10 @@ def validate(kind, value):
         from .objects import validate_entry
 
         validate_entry("kind", value)
+    elif kind == "assets":
+        from .pack_assets import validate as validate_asset
+
+        validate_asset(value)
     elif kind == "templates":
         require(isinstance(value, dict), "Template must be a JSON object")
         from .model import Limits
@@ -287,7 +292,12 @@ def validate(kind, value):
 def register(kind, name, value, *, workspace=None):
     require(kind in BUILTINS, "Unknown resource category")
     named(name)
-    validate(kind, value)
+    if kind == "assets":
+        # Checked in full by pack_assets.store, under the library lock, before anything is written.
+        require(isinstance(value, dict) and "data_base64" in value,
+                "Save an asset as {data_base64, media_type, credit?, license?}", field="value")
+    else:
+        validate(kind, value)
     if kind == "objects":
         from .objects import validate_user_kind
 
@@ -298,6 +308,11 @@ def register(kind, name, value, *, workspace=None):
         data = json.loads(read_bounded(path, 1024 * 1024)) if path.exists() else {}
         require(not any(name in plugin.get("resources", {}).get(kind, []) for plugin in data.get("_plugins", {}).values()),
                 "Resource belongs to a plugin; update the pack or save under another name")
+        if kind == "assets":
+            from .pack_assets import store
+
+            data.setdefault(kind, {}).pop(name, None)
+            value = store(path, value, data)
         data.setdefault(kind, {})[name] = value
         payload = json.dumps(data, ensure_ascii=False).encode()
         require(len(payload) <= 1024 * 1024, "Resource library exceeds limit", "resource_limit")
@@ -309,6 +324,10 @@ def register(kind, name, value, *, workspace=None):
         finally:
             if os.path.exists(temp):
                 os.unlink(temp)
+        if kind == "assets":
+            from .pack_assets import collect
+
+            collect(path, data)
     return {"registered": name, "kind": kind}
 
 

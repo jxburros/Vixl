@@ -741,7 +741,9 @@ def check(project, kit, issue):
         if (font_names and not allowed_fonts and layer["type"] == "text"
                 and layer.get("font") not in font_assets):
             issue("brand", "warning", "Font is outside the brand font pairing", [layer])
+    # A required element is a layer name, or an asset resource placed with asset-place (its provenance).
     names = {layer["name"] for layer in layers}
+    names |= {(layer.get("provenance") or {}).get("resource") for layer in layers} - {None}
     for name in kit.get("required_elements", []):
         if name not in names:
             issue("brand", "error", f"Required brand element is missing: {name}")

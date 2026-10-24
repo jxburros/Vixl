@@ -69,6 +69,7 @@ def package(session, action, request):
     from ..fileio import file_lock
     from ..design import named
     from ..errors import require
+    from ..pack_assets import MAX_PACK_BYTES, collect, decode_input, library_bytes, MAX_LIBRARY_BYTES, write_blob
 
     path = resource_path(session.workspace)
     with file_lock(str(path)):
@@ -90,6 +91,7 @@ def package(session, action, request):
                 for key in names:
                     data.get(kind, {}).pop(key, None)
             write_json(path, data)
+            collect(path, data)
             return {"removed": name}
         manifest = deepcopy(request["manifest"])
         require(
@@ -128,7 +130,7 @@ def package(session, action, request):
             "Invalid plugin resources",
         )
         prior = packages.get(name, {}).get("resources", {})
-        owned = {}
+        owned, blobs = {}, []
         for kind, entries in resources.items():
             require(isinstance(entries, dict) and len(entries) <= 100, "Invalid plugin resource collection")
             owned[kind] = []
@@ -140,13 +142,23 @@ def package(session, action, request):
                     and (key not in data.get(kind, {}) or key in prior.get(kind, [])),
                     "Plugin resource collision",
                 )
-                validate(kind, value)
+                if kind == "assets":
+                    # The library keeps a record; the checked bytes are stored beside it.
+                    raw, entries[key] = decode_input(value)
+                    blobs.append((entries[key], raw))
+                else:
+                    validate(kind, value)
                 owned[kind].append(key)
+        require(sum(len(raw) for _, raw in blobs) <= MAX_PACK_BYTES,
+                f"A plugin pack carries at most {MAX_PACK_BYTES // (1024 * 1024)} MiB of assets", "resource_limit")
         for kind, keys in prior.items():
             for key in keys:
                 data.get(kind, {}).pop(key, None)
         for kind, entries in resources.items():
             data.setdefault(kind, {}).update(entries)
+        require(library_bytes(data) <= MAX_LIBRARY_BYTES,
+                f"The resource library keeps at most {MAX_LIBRARY_BYTES // (1024 * 1024)} MiB of assets",
+                "resource_limit")
         packages[name] = {
             k: manifest[k] for k in ("version", "api_version", "description", "dependencies") if k in manifest
         }
@@ -166,5 +178,8 @@ def package(session, action, request):
         require(
             len(json.dumps(data).encode()) <= 1024 * 1024, "Plugin library exceeds 1 MiB", "resource_limit"
         )
+        for record, raw in blobs:
+            write_blob(path, record, raw)
         write_json(path, data)
+        collect(path, data)
         return {"installed": name, **packages[name]}

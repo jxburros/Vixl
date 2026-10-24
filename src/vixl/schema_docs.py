@@ -11,6 +11,7 @@ from copy import deepcopy
 
 SUMMARIES = {
     "add": "Embed an image as a new raster layer (an embedded asset id from import-image, or a path in the CLI).",
+    "asset-place": "Place an image from an assets resource (a pack or brand asset) as a raster layer; templates may use it.",
     "solid": "Add a flat-color rectangle layer, by default covering the canvas (a background).",
     "gradient": "Add a linear, angled or radial gradient layer between two colors or several stops.",
     "text": "Add an editable text layer (auto-sized to its text).",
