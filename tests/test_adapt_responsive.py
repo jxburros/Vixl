@@ -161,6 +161,24 @@ def test_a_focal_subject_stays_inside_the_crop(tmp_path):
     assert x + w == 1080 and h == 1920
 
 
+def test_arrangements_and_priorities_from_the_command_line():
+    from vixl.commands import compile_command
+
+    assert compile_command("adapt-layout --size story --arrangements stack-vertical hero-top --no-recompose") == {
+        "type": "adapt-layout", "size": "story", "arrangements": ["stack-vertical", "hero-top"], "recompose": False}
+    assert compile_command("layer-intent url --priority optional")["priority"] == "optional"
+
+
+def test_text_keep_never_shrinks_copy_in_an_arrangement():
+    p = Project(1080, 1080, "white")
+    p.apply([{"type": "text", "name": "headline", "text": "Tide Pool Nights", "size": 90, "x": 80, "y": 80,
+              "color": "black"},
+             {"type": "text", "name": "body", "text": "Live music by the water every Friday in June", "size": 40,
+              "x": 80, "y": 260, "color": "black"}])
+    p.apply({"type": "adapt-layout", "size": "leaderboard", "text": "keep", "arrangements": ["stack-vertical"]})
+    assert (p.layer("headline")["size"], p.layer("body")["size"]) == (90, 40)
+
+
 def test_arrangement_options_validate():
     p = Project(400, 300, "white")
     p.apply({"type": "text", "name": "t", "text": "Hello", "size": 30, "color": "black"})
@@ -195,6 +213,11 @@ def test_adapt_copies_run_the_documents_suites_on_every_variant(tmp_path):
     assert "suites" not in quiet["documents"][0]
     with pytest.raises(VixlError, match="attached"):
         adapt_copies(session, export_file, ["story"], directory="x", document="post.vixl", suites=["missing"])
+    from vixl.workflows import dispatch
+
+    workflow = dispatch(session, "adapt-sizes", {"sizes": ["story"], "directory": "flow", "suites": ["legible"]},
+                        "post.vixl")
+    assert workflow["documents"][0]["suites"]["legible"]["status"] == "passed"
 
 
 def test_adapt_copies_accept_arrangements(tmp_path):

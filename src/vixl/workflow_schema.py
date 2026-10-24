@@ -802,7 +802,8 @@ SUMMARIES = {
                       "match, apply publishes through the group journal (group-recover undoes an interrupted run).",
     "group-recover": "Roll back an interrupted group edit from its journal.",
     "adapt-sizes": "Adapt the open document to several sizes (a campaign: square, story, banner, print): each size is a "
-                   "saved copy re-laid out by adapt-layout and optionally exported; the source is not changed.",
+                   "saved copy re-composed by adapt-layout, checked by the document's suites and optionally exported; "
+                   "the source is not changed.",
     "repair-layout": "Bounded layout repair: try several candidates per overflow, overlap, spacing, contrast or "
                      "safe-area failure, then per composition finding (drift, rhythm, crowding, dead band, clumped "
                      "tile), keep the least disruptive that adds no finding; infeasible leaves the document "

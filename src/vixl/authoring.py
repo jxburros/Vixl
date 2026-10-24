@@ -6,12 +6,10 @@ import math
 import random
 
 from .errors import require
-from .model import MAX_LAYERS
+from .model import FOCAL_TYPES, LAYER_PRIORITIES as PRIORITIES, MAX_LAYERS
 
 TYPES = ("organic-shape", "path-fit", "layer-intent", "font-fallbacks", "waiver")
 KINDS = ("leaf", "petal", "blob", "rose")
-PRIORITIES = ("required", "optional", "decorative")
-FOCAL_TYPES = ("raster", "frame")
 
 
 WAIVER_FIELDS = {

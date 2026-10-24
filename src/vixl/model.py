@@ -22,6 +22,10 @@ MAX_LAYERS = 4096
 LAYER_TYPES = ("raster", "text", "solid", "gradient", "shape", "group", "frame", "adjustment", "pathfinder", "symbol",
                "pixel", "paint", "field", "link")
 LAYER_ROLES = ("content", "decoration", "background", "title")
+# layer-intent priority: what adapt-layout may hide at another size (unset counts as required).
+LAYER_PRIORITIES = ("required", "optional", "decorative")
+# Layers whose box a layer-intent focal point is measured in.
+FOCAL_TYPES = ("raster", "frame")
 
 
 @dataclass(frozen=True)

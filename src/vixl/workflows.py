@@ -29,7 +29,7 @@ ACTIONS = {
     "start": ({"workers"}, set()),
     "form-fill": ({"data", "values", "output", "name", "format", "combine", "mode", "skip_invalid", "dry_run", "check",
                    "unknown", "dpi"}, set()),
-    "adapt-sizes": ({"sizes", "directory", "name", "options", "formats", "overwrite", "report"}, {"sizes"}),
+    "adapt-sizes": ({"sizes", "directory", "name", "options", "formats", "overwrite", "report", "suites"}, {"sizes"}),
 }
 
 

@@ -57,7 +57,6 @@ STRETCHABLE_SHAPES = ("rectangle", "rounded-rectangle", "line")
 TOGETHER = 0.06  # Layers this close (a fraction of the old canvas's short side) move as one unit.
 SPAN = 0.9  # A layer this large along an axis is treated as spanning it.
 MAX_REPORTED = 60
-PRIORITIES = ("required", "optional", "decorative")
 ARRANGEMENTS = ("proportional", "stack-vertical", "side-by-side", "hero-top")
 NEEDS_IMAGE = ("side-by-side", "hero-top")
 # What an arrangement candidate is scored with: composition and legibility, plus the checks that catch content an
@@ -268,7 +267,8 @@ def fingerprint(state):
 
 
 def choose(project, op):
-    """``(how, reason)``: rebuild the layout ``recipe``, try ``arrange``\\ ments or adapt ``proportional``\\ ly."""
+    """``(how, reason)``: ``recipe`` rebuilds the stored layout, ``arrange`` tries the arrangements and
+    ``proportional`` follows the anchoring rules."""
     layout = project.state.get("layout") or {}
     if op.get("recompose") is True:
         require(layout.get("recipe"), "This document has no saved layout recipe; reapply layout-apply first",
@@ -700,7 +700,8 @@ def column_height(bounds, segments, gap, apart):
 def fit_column(project, context, segments, column, gap, apart, images_in_column):
     """Make the column's content fit its box: wrap text to the column width and shrink images to at most 40% of
     the height; then, while it is too tall, hide decorative and then optional layers (bottom first) and set text
-    smaller, never below ``min_text``. Required copy that still does not fit is reported by ``unmet``."""
+    smaller, never below ``min_text`` (and not at all with ``text: keep``). Required copy that still does not fit is
+    reported by ``unmet``."""
     from .operations import execute as apply_operation
     from .render import resolve_layout
 
@@ -735,7 +736,7 @@ def fit_column(project, context, segments, column, gap, apart, images_in_column)
                     if layer in segment:
                         segment.remove(layer)
                 bounds = resolve_layout(project)
-    for _ in range(8):
+    for _ in range(0 if context["keep_text"] else 8):
         if column_height(bounds, segments, gap, apart) <= height:
             break
         smaller = False
