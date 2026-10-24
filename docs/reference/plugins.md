@@ -132,7 +132,7 @@ These core modules still import plugin code directly. Each is listed with its re
 `tests/test_plugins.py` (`KNOWN_COUPLINGS`). Remove an entry when its import moves behind a hook. A plugin can
 ship separately only when it has no entries left.
 
-- The CLI, REST and MCP surfaces call the AI provider plugin, workspace checks, reproduce and imposition
+- The CLI, REST and MCP surfaces call the AI provider plugin, workspace checks, reproduce, package and imposition
   directly for their own commands.
 - The job queue runs film, lyric video and AI generation jobs by kind.
 - Design checks and accessibility read chart data for chart contrast and series colors. PPTX export writes

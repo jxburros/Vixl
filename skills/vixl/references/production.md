@@ -121,7 +121,7 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
 19. Delivery packages: `vixl_apply(workflow='package', request={production: "out/production.json" | files: [path | glob |
    {path, source}], output: "delivery.zip", source?, name?, brand?, layout?, check?, proof?, lock?, decisions?,
    export_settings?, dry_run?, overwrite?})` (CLI `vixl package --production out/production.json --source doc.vixl
-   --output delivery.zip`) writes one zip: the completed outputs of a campaign run (or the files) named from `name`
+   --out delivery.zip`) writes one zip: the completed outputs of a campaign run (or the files) named from `name`
    (`{brand}_{doc}_{artboard}_{w}x{h}.{ext}`; also `{locale}` `{row}` `{id}`; two files with one name refuse the whole
    package, so a campaign of rows needs `{row}`), identical files once, `manifest.json` (per file: source document and
    `revision`, export settings, check state, `sha256`, dimensions, colour, codec/fps/duration read from the encoded file;

@@ -223,6 +223,9 @@ def test_an_mp4_re_encode_is_visually_equivalent_not_byte_identical():
     item = result["exports"][0]
     assert (item["byte_identical"], item["visually_equivalent"], item["passed"]) == (False, True, True)
     assert result["reproducible"]
+    # VP9 is not always byte-stable even on one machine; its decoded frames are what must agree.
+    webm = reproduce(p, locked=lock(p, exports=["webm"]), verify_exports=True)
+    assert webm["reproducible"] and webm["visually_equivalent"] is True
     # A different encoder version is located by format and tool.
     other["toolchain"]["ffmpeg"] = "0.0.1"
     drifted = reproduce(p, locked=other, verify_exports=True)
@@ -318,12 +321,20 @@ def test_workflow_records_and_verifies_exports(tmp_path):
     written = dispatch(session, "reproduce", {"write_lock": "poster.lock.json", "exports": ["png", "jpg:quality=80"]},
                        "poster.vixl")
     assert written["lock_written"] == "poster.lock.json"
+    assert written["lock_covers"] == {"version": 2, "targets": 0, "exports": ["png", "jpg:quality=80"]}
     assert [e["format"] for e in read_lock(tmp_path / "poster.lock.json")["exports"]] == ["png", "jpg"]
     result = dispatch(session, "reproduce", {"lock": "poster.lock.json", "verify_exports": True}, "poster.vixl")
     assert result["reproducible"] and result["byte_identical"] is True
     report = dispatch(session, "reproduce", {"lock": "poster.lock.json", "verify_exports": True, "report": True},
                       "poster.vixl")
     assert report["format"] == "vixl-reproduction"
+    spelled = dispatch(session, "reproduce", {"write_lock": "spelled.lock.json", "overwrite": True,
+                                              "exports": ["jpeg:quality=70", "tif:color-space=cmyk"]}, "poster.vixl")
+    assert [e["format"] for e in read_lock(tmp_path / "spelled.lock.json")["exports"]] == ["jpg", "tiff"]
+    assert spelled["normalized"] == [
+        {"field": "exports[0]", "from": "jpeg", "to": "jpg", "reason": "export format alias"},
+        {"field": "exports[1]", "from": "tif", "to": "tiff", "reason": "export format alias"},
+        {"field": "exports[1]", "from": "color-space", "to": "color_space", "reason": "option names use underscores"}]
     for bad in ({"exports": ["png"]}, {"verify_exports": True}, {"lock": "poster.lock.json", "frames": 2}):
         with pytest.raises(VixlError):
             dispatch(session, "reproduce", bad, "poster.vixl")

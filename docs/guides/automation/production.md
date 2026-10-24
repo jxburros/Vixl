@@ -555,8 +555,8 @@ proof page. It takes the outputs of a [campaign run](#variant-production-and-dra
 `production.json`) or exported files (`files`: paths and globs, or `{path, source}`).
 
 ```bash
-vixl package --production out/production.json --source banner.vixl --output delivery.zip --name "{doc}_{row}_{artboard}.{ext}"
-vixl package --files "exports/*.png" "exports/*.pdf" --source poster.vixl --output poster-delivery.zip --dry-run
+vixl package --production out/production.json --source banner.vixl --out delivery.zip --name "{doc}_{row}_{artboard}.{ext}"
+vixl package --files "exports/*.png" "exports/*.pdf" --source poster.vixl --out poster-delivery.zip --dry-run
 ```
 
 ```json

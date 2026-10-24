@@ -164,6 +164,14 @@ def test_a_failure_while_building_leaves_nothing_behind(tmp_path, monkeypatch):
     assert caught.value.code == "output_exists" and sorted(os.listdir(tmp_path)) == before
 
 
+def test_a_file_that_changes_while_it_is_packaged_stops_the_package(tmp_path, monkeypatch):
+    session = exported(tmp_path)
+    monkeypatch.setattr(package, "file_digest", lambda path: "0" * 64)  # What was hashed is no longer what is read.
+    with pytest.raises(VixlError, match="changed while the package was being written"):
+        dispatch(session, "package", {"files": ["exports/good.png"], "output": "p.zip", "name": "{doc}.{ext}"})
+    assert not (tmp_path / "p.zip").exists()
+
+
 def test_a_dry_run_plans_the_names_and_writes_nothing(tmp_path):
     session = campaign(tmp_path)
     plan = build(session, dry_run=True)
@@ -413,7 +421,7 @@ def test_the_action_is_described_and_reachable_through_the_cli(tmp_path, capsys)
     assert action["properties"]["layout"]["enum"] == ["flat", "by-format", "by-artboard"]
     campaign(tmp_path)
     base = ["--json", "package", "--workspace", str(tmp_path), "--production", "out/production.json", "--source",
-            "banner.vixl", "--output", "cli.zip", "--name", "{doc}_{row}.{ext}"]
+            "banner.vixl", "--out", "cli.zip", "--name", "{doc}_{row}.{ext}"]
     assert main([*base, "--dry-run"]) == 0
     assert json.loads(capsys.readouterr().out)["names"] == ["banner_1.png", "banner_2.png"]
     assert not (tmp_path / "cli.zip").exists()
@@ -423,5 +431,5 @@ def test_the_action_is_described_and_reachable_through_the_cli(tmp_path, capsys)
     assert main([*base, "--overwrite", "--no-check", "--no-proof", "--layout", "by-format"]) == 0
     assert sorted(members(tmp_path / "cli.zip")) == ["SHA256SUMS", "manifest.json", "png/banner_1.png",
                                                       "png/banner_2.png"]
-    assert main(["package", "--workspace", str(tmp_path), "--files", "out/0001-*.png", "--output", "f.zip",
+    assert main(["package", "--workspace", str(tmp_path), "--files", "out/0001-*.png", "--out", "f.zip",
                  "--name", "{id}.{ext}", "--lock", "a=b", "--lock", "c"]) == 1

@@ -148,7 +148,7 @@ approve/reject decisions; `vixl diff A B` shows what changed between two exports
 (`--files "exports/*.png"`) into one zip:
 
 ```bash
-vixl package --production out/production.json --source banner.vixl --output delivery.zip --name "{doc}_{row}.{ext}"
+vixl package --production out/production.json --source banner.vixl --out delivery.zip --name "{doc}_{row}.{ext}"
 ```
 
 Files are named from a template (a name two files would share is refused up front), identical files are packaged once,

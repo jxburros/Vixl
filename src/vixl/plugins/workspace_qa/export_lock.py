@@ -31,8 +31,8 @@ from PIL import Image
 from ...assets import open_image, read_bounded
 from ...errors import VixlError, require
 from ...model import is_int, is_number
+from ...normalize import EXPORT_FORMAT_ALIASES
 
-FORMAT_ALIASES = {"jpeg": "jpg", "tif": "tiff", "htm": "html"}
 # format: (kind, byte_exact). "still" goes through Project.export, "timeline" through export_timeline.
 FORMATS = {
     "png": ("still", True), "svg": ("still", True), "pdf": ("still", True), "html": ("still", True),
@@ -56,7 +56,6 @@ STILL_OPTIONS = {
     "dpi": ("number", 36, 2400), "alpha": ("enum", ("auto", "keep", "flatten")), "page": ("page",), "pages": ("str",),
     "pdf_content": ("enum", ("vector", "raster")), "svg_policy": ("enum", ("appearance", "strict")),
     "svg_document": ("bool",), "artboard": ("str",), "comp": ("str",), "time": ("time",), "title": ("str",),
-    "animated": ("bool",),
 }
 TIMELINE_OPTIONS = {
     "fps": ("number", 1, 60), "scale": ("number", 0.05, 16), "start": ("time",), "end": ("time",),
@@ -138,7 +137,7 @@ def parse(spec):
         name, options = spec["format"], spec.get("options") or {}
         require(isinstance(options, dict), "options is an object of export settings", field="exports")
     name = name.lower().lstrip(".")
-    name = FORMAT_ALIASES.get(name, name)
+    name = EXPORT_FORMAT_ALIASES.get(name, name)
     if name not in FORMATS:
         close = difflib.get_close_matches(name, FORMATS, 1, 0.6)
         _fail(f"Unknown export format {name!r}; use {', '.join(FORMATS)}", allowed=list(FORMATS), suggestions=close)
@@ -168,6 +167,26 @@ def parse_all(specs):
     return [parse(spec) for spec in specs]
 
 
+def alias_notes(specs):
+    """The ``normalized`` notes for requests that used a format alias (``jpeg``) or hyphenated option names
+    (``color-space``); call it after ``parse_all`` accepted the requests."""
+    notes = []
+    for index, spec in enumerate(specs or []):
+        where = f"exports[{index}]"
+        if isinstance(spec, str):
+            name, _, rest = spec.partition(":")
+            keys = [part.partition("=")[0].strip() for part in rest.split(",")]
+        else:
+            name, keys = str(spec.get("format", "")), []
+        name = name.strip().lower().lstrip(".")
+        if name in EXPORT_FORMAT_ALIASES:
+            notes.append({"field": where, "from": name, "to": EXPORT_FORMAT_ALIASES[name],
+                          "reason": "export format alias"})
+        notes += [{"field": where, "from": key, "to": key.replace("-", "_"), "reason": "option names use underscores"}
+                  for key in keys if "-" in key]
+    return notes
+
+
 def label(entry):
     """The export as it would be typed: ``jpg:quality=80``."""
     defaults = DEFAULTS.get(entry["format"], {})
@@ -182,7 +201,6 @@ def encode(project, entry, *, resolve=Path, limits=None):
     """Encode one export in memory: ``(bytes, info)`` where info holds the frame count and size of a timeline."""
     options = dict(entry["options"])
     if entry["kind"] == "still":
-        options.pop("animated", None)
         if "icc_profile" in options:
             options["icc_profile"] = read_bounded(resolve(options["icc_profile"]), ICC_BYTES)
         return project.export(format=entry["format"], **options), {}
@@ -245,7 +263,7 @@ def _video_frames(data, suffix, count, limits):
                             + done.stderr.decode("utf-8", "replace").strip()[:300])
         frames = []
         for path in sorted(Path(staging).glob("frame-*.png")):
-            with Image.open(path) as frame:
+            with open_image(path) as frame:
                 limits.size(*frame.size)
                 frames.append(frame.convert("RGBA"))
     return frames, count

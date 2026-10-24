@@ -545,7 +545,7 @@ def _file_check(item, document_status):
 
 def _write(staged, entries, kept, extras, manifest):
     with zipfile.ZipFile(staged, "w") as archive:
-        def add(name, source=None, payload=None):
+        def add(name, source=None, payload=None, expected=None):
             info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
             info.create_system = 3
             info.external_attr = 0o644 << 16
@@ -553,11 +553,17 @@ def _write(staged, entries, kept, extras, manifest):
             if payload is not None:
                 archive.writestr(info, payload)
                 return
+            digest = hashlib.sha256()
             with source.open("rb") as stream, archive.open(info, "w", force_zip64=source.stat().st_size > 2 ** 31) as sink:
-                shutil.copyfileobj(stream, sink, 1024 * 1024)
+                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                    digest.update(chunk)
+                    sink.write(chunk)
+            # The manifest and SHA256SUMS promise this checksum, so a file that changed while it was read stops the package.
+            require(digest.hexdigest() == expected, f"{source.name} changed while the package was being written",
+                    "invalid_request", field="files")
 
         for entry, item in zip(entries, kept):
-            add(entry["name"], source=item["path"])
+            add(entry["name"], source=item["path"], expected=entry["sha256"])
         add("SHA256SUMS", payload="".join(f"{entry['sha256']}  {entry['name']}\n" for entry in entries).encode("utf-8"))
         add("manifest.json", payload=json.dumps(manifest, indent=2, ensure_ascii=False).encode("utf-8"))
         for name, payload in sorted(extras.items()):
@@ -715,7 +721,7 @@ def cli(args, options, limits):
     p.add_argument("--production", help="A campaign run's production.json")
     p.add_argument("--files", nargs="+", metavar="PATH_OR_GLOB", help="Exported files to package")
     p.add_argument("--source", help="The .vixl document the outputs were made from")
-    p.add_argument("--output", required=True, help="The package to write (.zip)")
+    p.add_argument("--out", required=True, help="The package to write (.zip)")
     p.add_argument("--name", help=f"File name template (default {DEFAULT_NAME})")
     p.add_argument("--brand", help="Value of {brand} (default: the brand.json name)")
     p.add_argument("--locale", help="Value of {locale} where a row has none")
@@ -729,7 +735,7 @@ def cli(args, options, limits):
     p.add_argument("--overwrite", action="store_true", help="Replace an existing package")
     p.add_argument("--workspace", default=".", help="Workspace folder (default: the current folder)")
     a = p.parse_args(args)
-    request = {"output": a.output}
+    request = {"output": a.out}
     for key in ("production", "files", "source", "name", "brand", "locale", "layout", "decisions"):
         if getattr(a, key) is not None:
             request[key] = getattr(a, key)

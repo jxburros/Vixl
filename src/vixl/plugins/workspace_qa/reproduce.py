@@ -33,6 +33,7 @@ from ...hashing import content_hash
 from ...model import is_int
 from . import export_lock
 
+alias_notes = export_lock.alias_notes  # The CLI and the workflow report the export spellings they normalized.
 LOCK_VERSION = 2
 READABLE = (1, 2)
 LEVELS = ("renderable", "environment-matched", "reference-verified")
@@ -304,8 +305,9 @@ def verify_reference(image, reference, *, tolerance=0, max_fraction=0.0):
 
 
 def _all(values):
-    values = list(values)
-    return None if not values or any(v is None for v in values) else all(values)
+    """True when every export that could be compared agrees, False when one differs, None when none could be."""
+    known = [value for value in values if value is not None]
+    return all(known) if known else None
 
 
 def reproduce(project, *, reference=None, tolerance=0, max_fraction=0.0, locked=None, limits=None, exports=None,
@@ -453,6 +455,12 @@ def write_lock(project, path, *, overwrite=False, exports=None, frames=None, tim
                  exports=exports or None)
     write_bytes(path, json.dumps(value, indent=2, sort_keys=True).encode(), replace=overwrite)
     return value
+
+
+def covers(value):
+    """What a lockfile covers, for the result of ``write_lock``: pages, artboards and frames, and the recorded exports."""
+    return {"version": value["version"], "targets": len(value.get("targets") or []),
+            "exports": [export_lock.label(item) for item in value.get("exports") or []]}
 
 
 def read_lock(path):

@@ -86,7 +86,7 @@ def dispatch(session, action, request, document=None):
                                   structural=request.get("structural", True), pixels=request.get("pixels", True),
                                   dry_run=dry_run, validator=service_check)
     if action == "reproduce":
-        from .reproduce import read_lock, reproduce, write_lock
+        from .reproduce import alias_notes, covers, read_lock, reproduce, write_lock
 
         for field in ("overwrite", "verify_exports", "export_visual", "report"):
             require(type(request.get(field, False)) is bool, f"{field} must be boolean", field=field)
@@ -100,10 +100,12 @@ def dispatch(session, action, request, document=None):
         with session.project(document=document) as project:
             result = {}
             if writing:
-                write_lock(project, session.resolve(writing), overwrite=request.get("overwrite", False),
-                           exports=exports, frames=request.get("frames"), times=request.get("times"),
-                           variables=request.get("variables"), resolve=session.resolve, limits=session.limits)
+                written = write_lock(project, session.resolve(writing), overwrite=request.get("overwrite", False),
+                                     exports=exports, frames=request.get("frames"), times=request.get("times"),
+                                     variables=request.get("variables"), resolve=session.resolve,
+                                     limits=session.limits)
                 result["lock_written"] = writing
+                result["lock_covers"] = covers(written)
             outcome = reproduce(
                 project, reference=session.resolve(request["reference"]) if request.get("reference") else None,
                 tolerance=request.get("tolerance", 0), max_fraction=request.get("max_fraction", 0.0),
@@ -115,6 +117,8 @@ def dispatch(session, action, request, document=None):
             result.update(outcome)
             if result.get("reference"):
                 result["reference"]["path"] = request["reference"]
+            if notes := alias_notes(exports):
+                result["normalized"] = notes
             return result
     if action == "check-all":
         from .workspace_checks import run

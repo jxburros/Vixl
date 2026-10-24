@@ -106,7 +106,7 @@ History:   undo [N], redo [N], history, checkpoint NAME, branch NAME,
            checkout REF, branches, compare REF REF --out FILE [--isolate LAYER…], diff A B [--out D.png] (two documents or images)
 Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG [--isolate LAYER…]], run SCRIPT, batch GLOB --run SCRIPT --out DIR,
            workflow ACTION --request FILE [--workspace DIR] (workflow schema lists actions; proof, logo-package, brand-board …),
-           package (--production out/production.json | --files GLOB…) --output delivery.zip [--source DOC.vixl]
+           package (--production out/production.json | --files GLOB…) --out delivery.zip [--source DOC.vixl]
            [--name TEMPLATE] [--layout by-format|by-artboard] [--lock FILE] [--dry-run] (outputs, manifest, report, proof),
            compose --request FILE [--preview P.png] (create → layout → look → operations → check → exports, atomic),
            each layer --name PATTERN -- COMMAND, preset save|apply|show NAME,
@@ -1033,7 +1033,7 @@ def project_command(project, cmd, args, *, detail="compact"):
     if cmd in ("dependencies", "reproduce"):
         result = dependencies(project)
         if cmd == "reproduce":
-            from .plugins.workspace_qa.reproduce import read_lock, reproduce, write_lock
+            from .plugins.workspace_qa.reproduce import alias_notes, covers, read_lock, reproduce, write_lock
 
             p = Parser(prog="vixl reproduce", description="Render and report the reproduction level reached: "
                        "renderable, environment-matched (--lock) or reference-verified (--reference or --lock)")
@@ -1066,15 +1066,18 @@ def project_command(project, cmd, args, *, detail="compact"):
             require((a.frames is None and a.times is None) or a.write_lock, "--frames and --times choose what "
                     "--write-lock records", "usage_error")
             if a.write_lock:
-                write_lock(project, a.write_lock, overwrite=a.overwrite, exports=a.export or None, frames=a.frames,
-                           times=a.times, limits=project.limits)
+                written = write_lock(project, a.write_lock, overwrite=a.overwrite, exports=a.export or None,
+                                     frames=a.frames, times=a.times, limits=project.limits)
                 result["lock_written"] = a.write_lock
+                result["lock_covers"] = covers(written)
             result.update(reproduce(project, reference=a.reference, tolerance=a.tolerance, max_fraction=a.max_fraction,
                                     locked=read_lock(a.lock) if a.lock else None, limits=project.limits,
                                     exports=a.export or None if a.lock else None,
                                     verify_exports=a.export is not None and bool(a.lock),
                                     export_tolerance=a.export_tolerance, export_visual=a.export_visual,
                                     report=a.report))
+            if notes := alias_notes(a.export):
+                result["normalized"] = notes
             result["note"] = (result.get("note", "") + " Remote model replay is not guaranteed.").strip()
             if not result["reproducible"]:
                 raise VixlError("reproduction_failed", "; ".join(result["outcome"]["review_reasons"]), report=result)
