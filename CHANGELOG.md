@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.30.6
+
+Adds a one-page overview of Vixl.
+
+### Added
+
+- **[What Vixl is](docs/overview.md).** A technical overview for people evaluating Vixl or explaining it to someone else:
+  the problem it solves, the three pillars, the architecture and the inspect → apply → check → preview → export loop,
+  the four interfaces, the document model, what it makes with measured agent timings, checks and outcomes, AI
+  providers, plugins, the safety defaults, its boundaries and the catalog counts. Linked from the README and the
+  documentation home. No code changes.
+
 ## 0.30.5
 
 Plans the animation export speed work.

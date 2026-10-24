@@ -4,7 +4,7 @@
       "command": "uvx",
       "args": [
         "--from",
-        "vixl-engine==0.30.5",
+        "vixl-engine==0.30.6",
         "vixl",
         "mcp",
         "--workspace",

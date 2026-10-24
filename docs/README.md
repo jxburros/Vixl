@@ -21,6 +21,9 @@ See the [provider matrix](reference/providers.md#capability-matrix) before choos
 
 ## Start here
 
+New to Vixl? [What Vixl is](overview.md) explains it in one sitting: the problem, how it works, what it makes
+and where it stops.
+
 1. [Install and make your first design](getting-started.md): a complete CLI and Python walkthrough.
 2. [Understand the document](concepts.md): layers, coordinates, constraints, assets and history.
 3. [Explore the visual gallery](gallery.md): actual Vixl output with editable masters and recipes.
@@ -29,7 +32,7 @@ See the [provider matrix](reference/providers.md#capability-matrix) before choos
 5. [Resolve common problems](troubleshooting.md): installation, text, checks, imports and providers.
 
 Pre-1.0 and in Beta: breaking changes are allowed and noted in the [changelog](../CHANGELOG.md). Current tagged
-release: **0.30.5** ([release notes](../CHANGELOG.md#0304)).
+release: **0.30.6** ([release notes](../CHANGELOG.md#0306)).
 See [installation and updating](reference/releases.md) for Windows, source and agent bundles.
 
 ## Learn by making
@@ -49,7 +52,7 @@ offline with `python examples/build_documentation.py`.
 
 | Folder | What is in it | Read it when |
 | --- | --- | --- |
-| This folder | [Getting started](getting-started.md), [concepts](concepts.md), [gallery](gallery.md), [use-case catalog](use-cases.md), [troubleshooting](troubleshooting.md) | You are new, or looking for what Vixl can make |
+| This folder | [What Vixl is](overview.md), [getting started](getting-started.md), [concepts](concepts.md), [gallery](gallery.md), [use-case catalog](use-cases.md), [troubleshooting](troubleshooting.md) | You are new, or looking for what Vixl can make |
 | [`tutorials/`](tutorials/) | Four end-to-end walkthroughs that build a complete artifact | You learn by doing |
 | [`guides/`](guides/README.md) | Task-oriented guides for one feature area each, grouped by layout, shapes, finishing, text, images, motion, output and automation | You know what you want to make |
 | [`reference/`](reference/README.md) | Commands, operations, file format, interfaces, providers, plugins, architecture, coverage, releases | You need exact syntax, fields or limits |

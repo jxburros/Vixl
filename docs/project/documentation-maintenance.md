@@ -6,7 +6,7 @@ Documentation is organized by purpose, one folder per kind of page:
 
 | Location | Kind | Put a page here when |
 | --- | --- | --- |
-| `docs/` (top level) | Learning path: [hub](../README.md), getting started, concepts, gallery, use-case catalog, troubleshooting | Every new user needs it |
+| `docs/` (top level) | Learning path: [hub](../README.md), [overview](../overview.md), getting started, concepts, gallery, use-case catalog, troubleshooting | Every new user needs it |
 | `docs/tutorials/` | Walkthroughs that build one complete artifact | It is a start-to-finish lesson with committed assets |
 | `docs/guides/<area>/` | Task-oriented feature guides (`layout`, `shapes`, `finishing`, `text`, `images`, `motion`, `output`, `automation`) | It explains when and how to use a feature and its limits |
 | `docs/reference/` | Syntax, formats, interfaces, coverage, releases | A reader looks it up rather than reads it through |
