@@ -843,6 +843,7 @@ def _faces(candidate, resolved, texts):
     span asks for bold or italic; None when the faces cannot be told apart (the proofing fallback, which the
     fonts check reports, or two registered names that share one font file, as an offline stand-in does)."""
     from .checks import FALLBACK_FONT
+    from .constants import BUNDLED_FONTS
     from .errors import VixlError
     from .richtext import active, fonts_used
     from .text import font_style, primary_font_data
@@ -856,7 +857,7 @@ def _faces(candidate, resolved, texts):
     for block in texts:
         layer = resolved[block.item["id"]]
         for key in fonts_used(layer, FALLBACK_FONT):
-            if key == FALLBACK_FONT:
+            if key in BUNDLED_FONTS:
                 return None
             try:
                 faces.add(font_style(primary_font_data(candidate, {"font": key, "size": 48})))

@@ -305,3 +305,16 @@ def test_text_set_keeps_text_layout_box():
     p.apply({"type": "text-set", "target": "q", "text": "short"})
     assert (p.layer("q")["width"], p.layer("q")["height"]) == (300, 250)
 
+
+def test_a_horizontal_logo_tagline_starts_on_the_wordmark_edge_in_its_own_face():
+    # The tagline was measured in the proofing face and drawn in the display face, so a face of another width put it
+    # off the wordmark's left edge.
+    p = Project.sized("logo")
+    p.apply([{"type": "font-register", "name": "wide", "asset": "DejaVuSans.ttf", "role": "heading"},
+             {"type": "font-register", "name": "wide", "role": "body"},
+             {"type": "layout-apply", "name": "logo-horizontal", "title": "Brightline", "subtitle": "Data for good",
+              "seed": 1}])
+    wordmark, tagline = p.layer("wordmark"), p.layer("tagline")
+    assert tagline["font"] == wordmark["font"] == p.state["fonts"]["wide"]
+    assert abs(tagline["x"] - wordmark["x"]) <= 1
+

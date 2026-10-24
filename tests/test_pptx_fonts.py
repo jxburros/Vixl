@@ -74,7 +74,7 @@ def test_default_proofing_font_is_warned_about():
     p.apply({"type": "text", "name": "t", "text": "Plain", "size": 60, "x": 100, "y": 100, "color": "black"})
     report = {}
     p.export(format="PPTX", report=report)
-    assert report["fonts_not_embedded"] == ["DejaVu Sans"] and "DejaVu Sans" in report["warnings"][0]
+    assert report["fonts_not_embedded"] == ["Noto Sans"] and "Noto Sans" in report["warnings"][0]
 
 
 def test_mcp_export_file_returns_the_warnings(tmp_path):
@@ -87,7 +87,7 @@ def test_mcp_export_file_returns_the_warnings(tmp_path):
                   document="deck.vixl")
     result = export_file(session, "deck.pptx", document="deck.vixl")
     assert result["format"] == "PPTX" and result["slides"] == 1 and result["warnings"]
-    assert result["fonts_not_embedded"] == result["fonts"] == ["DejaVu Sans"]
+    assert result["fonts_not_embedded"] == result["fonts"] == ["Noto Sans"]
 
 
 @pytest.mark.parametrize("fs_type, permission", [(0, "installable"), (2, "restricted"), (4, "preview-print"),

@@ -27,6 +27,7 @@ import re
 import unicodedata
 import xml.etree.ElementTree as ET
 
+from .constants import PROOFING_FONT
 from .errors import VixlError, require
 from .model import finite
 from .notices import note
@@ -351,7 +352,7 @@ def styled_spans(project, layer, variables=None):
 
     rich = layer["rich"]
     variables = {**document_variables(project), **(variables or {})}
-    base_font = layer.get("font", "DejaVuSans.ttf")
+    base_font = layer.get("font", PROOFING_FONT)
     result = []
     for span in rich["spans"]:
         text = span["text"] if layer.get(RESOLVED) else substitute(span["text"], variables)
@@ -681,7 +682,7 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
                 ascent = max(t["ascent"] for t in line)
                 descent = min(t["descent"] for t in line)
             else:
-                data = style_font_data(project, layer.get("font", "DejaVuSans.ttf"), " ")
+                data = style_font_data(project, layer.get("font", PROOFING_FONT), " ")
                 a, d = _metrics(data)
                 ascent, descent = a * base_size, d * base_size
             rows.append({
@@ -1029,7 +1030,7 @@ def active(layer):
     return bool(rich) and plain(rich) == layer.get("text")
 
 
-def fonts_used(layer, fallback="DejaVuSans.ttf"):
+def fonts_used(layer, fallback=PROOFING_FONT):
     """The stored font of each run of visible text a text layer draws: the layer font for plain
     text, and for rich text each span's own font (``font`` on the span) or else the layer font."""
     base = layer.get("font", fallback)

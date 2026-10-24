@@ -13,7 +13,7 @@ import numpy as np
 from PIL import Image, ImageColor, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 
 from .assets import decode, read_bounded
-from .constants import BLENDS as BLENDS, EFFECTS as EFFECTS
+from .constants import BLENDS as BLENDS, BUNDLED_FONTS, EFFECTS as EFFECTS, PROOFING_FONT
 from .errors import VixlError, require
 from .hashing import content_hash
 from .model import MAX_LAYERS, finite
@@ -81,16 +81,14 @@ def color(value):
 def font_for(project, layer):
     size = int(layer.get("size", 48))
     require(1 <= size <= 4096, "Font size must be 1–4096")
-    font = layer.get("font", "DejaVuSans.ttf")
+    font = layer.get("font", PROOFING_FONT)
     font = project.state.get("fonts", {}).get(font, font)
     try:
         if font in project.assets:
             return ImageFont.truetype(io.BytesIO(project.assets[font]), size)
         # Only explicitly imported fonts or Pillow's bundled/system font lookup, never project paths.
         require("/" not in font and "\\" not in font, "Import custom fonts with text --font FILE")
-        return ImageFont.truetype(
-            str(Path(__file__).parent / "data" / font) if font == "DejaVuSans.ttf" else font, size
-        )
+        return ImageFont.truetype(str(Path(__file__).parent / "data" / font) if font in BUNDLED_FONTS else font, size)
     except OSError as exc:
         raise missing_font(project, layer.get("font", font)) from exc
 
@@ -103,29 +101,29 @@ def missing_font(project, name):
     return VixlError(
         "missing_font",
         f"Font {name!r} not found. Registered fonts: {known}. Install one with "
-        "vixl font install FAMILY --weight N or vixl font pair NAME, or import a font file; "
-        "DejaVuSans.ttf is the proofing fallback.",
+        f"vixl font install FAMILY --weight N or vixl font pair NAME, or import a font file; "
+        f"{PROOFING_FONT} is the proofing fallback.",
         field="font",
-        allowed=[*roles, *fonts, "DejaVuSans.ttf"],
+        allowed=[*roles, *fonts, PROOFING_FONT],
     )
 
 
 def resolve_font(project, name):
     """A text layer's stored font and role for a requested font name, role or file."""
     if name is None:
-        return "DejaVuSans.ttf", None
+        return PROOFING_FONT, None
     from .type_roles import is_role, role_font
 
     fonts = project.state.get("fonts", {})
     role = None
     if is_role(project, name):
         # A role or text stage uses the proofing fallback until the document typography sets it.
-        role, name = name, role_font(project, name) or "DejaVuSans.ttf"
-        if name == "DejaVuSans.ttf":
+        role, name = name, role_font(project, name) or PROOFING_FONT
+        if name == PROOFING_FONT:
             from .notices import warn
 
             warn(project, f"font role {role!r} has no typeface in this document, so text uses the bundled proofing "
-                          "font (DejaVu Sans); choose type with vixl_reference('fonts') then font-pair (or font-install)")
+                          "font (Noto Sans); choose type with vixl_reference('fonts') then font-pair (or font-install)")
     font = fonts.get(name, name)
     if font not in project.assets and Path(font).is_file():
         from .assets import read_bounded
@@ -133,7 +131,7 @@ def resolve_font(project, name):
         data = read_bounded(font, project.limits.max_asset_bytes)
         font = f"fonts/{hashlib.sha256(data).hexdigest()}.ttf"
         project.assets[font] = data
-    if font in project.assets or font == "DejaVuSans.ttf":
+    if font in project.assets or font in BUNDLED_FONTS:
         return font, role
     try:
         ImageFont.truetype(font, 12)

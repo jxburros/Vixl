@@ -270,7 +270,7 @@ def small_caps(font=None, **extra):
 
         import_font(p, str(Path(vixl.__file__).parent / "data" / "NotoSans-Regular.ttf"), "noto")
     p.apply({"type": "text", "name": "t", "text": SC, "size": 40, "color": "#000000", "x": 20, "y": 20,
-             "text_transform": "small-caps", **({"font": "noto"} if font else {}), **extra})
+             "text_transform": "small-caps", "font": "noto" if font else "DejaVuSans.ttf", **extra})
     return p
 
 
@@ -290,7 +290,7 @@ def test_small_caps_are_synthesized_when_the_font_has_no_smcp():
                                                   ("C", 40), ("A", 28), ("P", 28), ("S", 28)]
     assert p.layer("t")["text"] == SC  # the stored text keeps its case
     plain = Project(600, 200, "white")
-    plain.apply({"type": "text", "name": "t", "text": SC.upper(), "size": 40, "x": 20, "y": 20})
+    plain.apply({"type": "text", "name": "t", "text": SC.upper(), "size": 40, "x": 20, "y": 20, "font": "DejaVuSans.ttf"})
     assert p.layer("t")["height"] < plain.layer("t")["height"] + 1 and p.layer("t")["width"] < plain.layer("t")["width"]
 
 
@@ -302,7 +302,8 @@ def test_small_caps_use_the_fonts_own_smcp_glyphs():
 
 def test_small_caps_on_rich_text_spans_and_text_style():
     p = Project(600, 200, "white")
-    p.apply({"type": "rich-text", "name": "t", "markdown": "In [small caps]{small-caps} now", "size": 30})
+    p.apply({"type": "rich-text", "name": "t", "markdown": "In [small caps]{small-caps} now", "size": 30,
+             "font": "DejaVuSans.ttf"})  # no smcp, so the small capitals are synthesized
     assert {"text": "small caps", "small_caps": True} in p.layer("t")["rich"]["spans"]
     result = p.apply({"type": "rich-text", "name": "s", "size": 30, "spans": [{"text": "Note ", "smallCaps": True}]})
     assert p.layer("s")["rich"]["spans"][0]["small_caps"] and result["normalized"]

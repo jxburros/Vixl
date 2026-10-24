@@ -5,6 +5,7 @@ from copy import deepcopy
 import math
 import random
 
+from .constants import BUNDLED_FONTS
 from .errors import require
 from .model import FOCAL_TYPES, LAYER_PRIORITIES as PRIORITIES, MAX_LAYERS
 
@@ -147,10 +148,10 @@ def execute(project, op):
         current = project.state.get("font_fallbacks", [])
         for name in op["fonts"]:
             # An entry of the current list (an embedded font file) may be kept as it is, so a list can be extended.
-            require(name in project.state.get("fonts", {}) or name in ("heading", "body", "DejaVuSans.ttf")
+            require(name in project.state.get("fonts", {}) or name in ("heading", "body", *BUNDLED_FONTS)
                     or name in current, "Import fallback fonts with font import first; use their registered names")
             resolved = resolve_font(project, name)[0]
-            if resolved not in project.assets and resolved != "DejaVuSans.ttf":
+            if resolved not in project.assets and resolved not in BUNDLED_FONTS:
                 import hashlib
                 data = primary_font_data(project, {"font": resolved})
                 resolved = f"fonts/{hashlib.sha256(data).hexdigest()}.ttf"

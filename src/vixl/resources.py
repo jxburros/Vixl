@@ -13,6 +13,7 @@ from .promo_templates import builtins as promo_builtins
 from .fileio import file_lock
 
 from .assets import read_bounded
+from .constants import BUNDLED_FONTS
 from .design import named
 from .errors import require
 from .guidance import GUIDANCE
@@ -409,7 +410,15 @@ def execute_resource(project, op):
         require(op.get("asset") or role, "font-register needs an asset, a role, or both")
         if op.get("asset"):
             asset = op["asset"]
-            require(asset in project.assets and asset.startswith("fonts/"), "Import a font asset first")
+            if asset in BUNDLED_FONTS:
+                # A bundled face is embedded like an imported one, so the role keeps it in every renderer and export.
+                import hashlib
+
+                data = (Path(__file__).parent / "data" / asset).read_bytes()
+                asset = f"fonts/{hashlib.sha256(data).hexdigest()}.ttf"
+                project.assets[asset] = data
+            require(asset in project.assets and asset.startswith("fonts/"),
+                    f"Import a font asset first (or name a bundled face: {', '.join(BUNDLED_FONTS[:2])})")
             validate_font(project.assets[asset])
             project.state.setdefault("fonts", {})[name] = asset
         if role:

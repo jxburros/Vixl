@@ -21,6 +21,7 @@ import math
 from pathlib import Path
 import re
 
+from .constants import BUNDLED_FONTS, PROOFING_FONT
 from .errors import Cancelled, VixlError, require
 from .form_rules import (EMAIL, MAX_MESSAGE, MAX_PATTERN, MAX_VALUE as MAX_PATTERN_VALUE, check_pattern,
                          date_picture, pattern_matches)
@@ -911,13 +912,13 @@ def font_label(project, layer, text=""):
     from .richtext import _registered_name, style_font_data
     from .text import primary_font_data
 
-    font = layer.get("font", "DejaVuSans.ttf")
+    font = layer.get("font", PROOFING_FONT)
     family, style = _font_names(primary_font_data(project, {"font": font, "size": 12}))
     label = f"{family} {style}".strip() or font
     registered = _registered_name(project.state, font)
     if registered:
         label += f" (registered as {registered})"
-    elif font == "DejaVuSans.ttf":
+    elif font in BUNDLED_FONTS:
         label += " (the bundled proofing fallback)"
     if text and isinstance(style_font_data(project, font, text), tuple):
         label += ", with fallback fonts for glyphs it lacks"

@@ -106,7 +106,7 @@ def test_rendering_draws_styles():
 def test_justify_fills_lines_but_not_the_last():
     p = Project(400, 300)
     p.apply([{"type": "rich-text", "name": "j", "size": 20, "width": 300, "align": "justify",
-              "markdown": "words that wrap across several lines so justification spreads them evenly to both edges here"}])
+              "markdown": "words that wrap across several lines so justification spreads them evenly to both edges of the box"}])
     result = layout(p, p.layer("j"))
     rights = {}
     for glyph in result.glyphs:

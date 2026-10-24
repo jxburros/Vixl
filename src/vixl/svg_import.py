@@ -33,6 +33,7 @@ from fontTools.pens.reverseContourPen import ReverseContourPen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.svgLib.path import parse_path
 
+from .constants import PROOFING_FONT
 from .errors import VixlError, require
 from .imports import _gradient_rect, length, numbers, transform
 
@@ -139,7 +140,7 @@ def resolve_fonts(fonts, project, assets, report, *, install=True):
     """Find each font the payload names by identity (``svg.font_identity``) and add its bytes to ``assets``. In
     order: the same file already in ``project`` (by hash), the bundled file, a font ``project`` registers under
     the same name or with the same family and style, the Google Fonts style from the font cache, then (with
-    ``install``) from Google Fonts. A font none of these has falls back to the bundled DejaVu Sans with a warning;
+    ``install``) from Google Fonts. A font none of these has falls back to the bundled proofing face with a warning;
     the import never fails for a font. Returns ``{old: new}`` asset names for fonts found as other bytes;
     ``report["fonts"]`` says how each registered font resolved."""
     from .text import BUNDLED_FONTS, font_style
@@ -166,7 +167,7 @@ def resolve_fonts(fonts, project, assets, report, *, install=True):
         if raw is None and record.get("source") == "google":
             raw, how = google_font(family, weight, italic, install)
         if raw is None:
-            raw, how = (folder / "DejaVuSans.ttf").read_bytes(), "fallback"
+            raw, how = (folder / PROOFING_FONT).read_bytes(), "fallback"
             missing.append(f"{family} {weight}{' italic' if italic else ''}"
                            + (f" ({', '.join(registered)})" if registered else ""))
         new = f"fonts/{hashlib.sha256(raw).hexdigest()}.ttf"
@@ -178,7 +179,7 @@ def resolve_fonts(fonts, project, assets, report, *, install=True):
     if missing:
         report["warnings"].append(
             f"SVG does not store font files, and these were not found again: {'; '.join(missing)}. Their text uses the "
-            "bundled DejaVu Sans; import the font and register it under the same name to restore it."
+            "bundled proofing face (Noto Sans); import the font and register it under the same name to restore it."
             + ("" if install else " Font installs were off, so Google Fonts were looked for in the font cache only."))
     return renamed
 
@@ -484,7 +485,9 @@ def match_font(project, families, bold=False, italic=False, *, font_map=None, re
         registered.setdefault(_font_key(name), name)
         for family in _families(project.assets.get(asset)):
             registered.setdefault(_font_key(family), name)
-    bundled = {"dejavusans": "DejaVuSans.ttf"}  # the bundled face text layers can name directly
+    # A layer may name this bundled face directly. The bundled Noto Sans is left out: as the proofing face it would be
+    # reported as a font still to choose, so an imported Noto Sans is found (cache, download) and registered instead.
+    bundled = {"dejavusans": "DejaVuSans.ttf"}
 
     def lookup(plain):
         for candidate in named:

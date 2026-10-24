@@ -1,13 +1,21 @@
-"""Bundled Noto fallback faces draw the Latin, Greek, Cyrillic and symbol characters DejaVu Sans lacks (#419)."""
+"""Noto Sans is the proofing face, with DejaVu Sans and the Noto symbol and math faces behind it; scripts the bundled
+faces lack warn at apply time and font-cover installs a face for them (#419, #684)."""
 
 from pathlib import Path
 
 import pytest
 
 from vixl import Project
-from vixl.text import BUNDLED_FALLBACKS, coverage, file_bytes, glyph_coverage
+from vixl.text import BUNDLED_FONTS, coverage, file_bytes, glyph_coverage
 
 DATA = Path(__file__).resolve().parents[1] / "src" / "vixl" / "data"
+
+
+@pytest.fixture(autouse=True)
+def _no_machine_faces(tmp_path, monkeypatch):
+    """A face a developer's font cache happens to hold must not change what these tests see."""
+    monkeypatch.setenv("VIXL_FONT_CACHE", str(tmp_path / "empty-cache"))
+    monkeypatch.delenv("VIXL_CJK_PACK", raising=False)
 # Each character is missing from DejaVu Sans: power symbol, helm, alchemical air, ⟁, ⧉, a Cyrillic letter
 # from Extended-C and a Latin letter from Extended-D.
 MIXED = "Ελληνικά Кириллица ⏻ ⎈ 🜁 ⟁ ⧉ ᲀ Ꟁ"
@@ -45,11 +53,13 @@ def test_exports_draw_fallback_glyphs(tmp_path, kind):
 
 
 def test_bundled_files_and_licence_ship_together():
-    total = sum((DATA / name).stat().st_size for name in BUNDLED_FALLBACKS)
+    total = sum((DATA / name).stat().st_size for name in BUNDLED_FONTS)
     assert total < 6 * 1024 * 1024
     licence = (DATA / "NOTO-LICENSE.txt").read_text(encoding="utf-8")
     assert "SIL OPEN FONT LICENSE Version 1.1" in licence
-    assert all(name in licence for name in BUNDLED_FALLBACKS)
+    noto = [name for name in BUNDLED_FONTS if name.startswith("Noto")]
+    assert len(noto) == 4 and all(name in licence for name in noto)
+    assert "DejaVuSans.ttf" in BUNDLED_FONTS and "DejaVu" in (DATA / "FONT-LICENSE.txt").read_text(encoding="utf-8")
 
 
 # --- #684: scripts the bundled fonts do not draw (CJK, Devanagari, Thai) ---------------------------------------
@@ -215,3 +225,40 @@ def test_unknown_script_is_rejected():
 
     with pytest.raises(VixlError, match="Unknown script"):
         typefaces.cover_fonts(Project(10, 10), scripts=["klingon"])
+
+
+# --- #419: Noto Sans is the proofing face; DejaVu Sans stays bundled and nameable ----------------------------------
+
+
+def test_the_proofing_face_is_noto_sans():
+    from vixl.text import PROOFING_FONT, font_style, primary_font_data
+
+    p = Project(400, 100, "#fff")
+    p.apply({"type": "text", "name": "t", "text": "Proof", "size": 30, "color": "black"})
+    assert p.layer("t")["font"] == PROOFING_FONT == "NotoSans-Regular.ttf" == BUNDLED_FONTS[0]
+    assert font_style(primary_font_data(p, p.layer("t")))[0] == "Noto Sans"
+    assert [i for i in p.check()["issues"] if i["check"] == "fonts" and "proofing only" in i["message"]]
+
+
+def test_dejavu_sans_stays_behind_noto_and_can_be_named():
+    from vixl.text import font_data, font_style
+
+    p = Project(600, 200, "#fff")
+    # Arabic is a script Noto Sans lacks and DejaVu Sans draws.
+    p.apply([{"type": "text", "name": "mixed", "text": "Hello مرحبا", "size": 30, "color": "black"},
+             {"type": "text", "name": "old", "text": "Proof", "font": "DejaVuSans.ttf", "size": 30, "y": 100,
+              "color": "black"}])
+    chain = [font_style(data)[0] for data in font_data(p, p.layer("mixed"))]
+    assert chain[:2] == ["Noto Sans", "DejaVu Sans"] and glyph_coverage(p, p.layer("mixed"))["missing"] == []
+    assert font_style(font_data(p, p.layer("old")))[0] == "DejaVu Sans"
+    flagged = next(i for i in p.check()["issues"] if i["check"] == "fonts" and "proofing only" in i["message"])
+    assert set(flagged["layers"]) == {"mixed", "old"}  # a saved document's DejaVu text is still the proofing face
+
+
+def test_dejavu_sans_can_be_registered_as_the_body_face():
+    p = Project(600, 200, "#fff")
+    p.apply({"type": "font-register", "name": "dejavu", "asset": "DejaVuSans.ttf", "role": "body"})
+    asset = p.state["fonts"]["dejavu"]
+    assert asset.startswith("fonts/") and p.assets[asset] == (DATA / "DejaVuSans.ttf").read_bytes()
+    p.apply({"type": "text", "name": "t", "text": "Body copy", "size": 16, "color": "black"})
+    assert p.layer("t")["font"] == asset

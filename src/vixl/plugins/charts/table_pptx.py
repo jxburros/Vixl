@@ -11,6 +11,7 @@ cell cannot reach into the next one. Rotated or flipped tables, and tables whose
 from xml.sax.saxutils import escape, quoteattr
 
 from .chart_pptx import solid
+from ...constants import PROOFING_FONT
 
 TABLE_URI = "http://schemas.openxmlformats.org/drawingml/2006/table"
 ALIGN = {"left": "l", "center": "ctr", "right": "r", "decimal": "r"}
@@ -103,7 +104,7 @@ def shapes(slide, layer, bounds, emu, layers, index):
         cells = []
         for j, value in enumerate(row):
             part = parts.get(f"cell-{i}-{j}") or sample
-            font = part["font"] if part else "DejaVuSans.ttf"
+            font = part["font"] if part else PROOFING_FONT
             if font not in faces:
                 faces[font] = slide.exporter.font(primary_font_data(slide.view, {"font": font}))
             size = (part["size"] if part else 16) * pt

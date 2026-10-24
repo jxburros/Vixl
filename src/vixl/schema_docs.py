@@ -425,7 +425,9 @@ OVERRIDES = {
                        "seed": "Seed for templates that vary."},
     "guidance": {"name": "Guidance name (a built-in guide, or any name when text is given).",
                  "text": "Guidance text to store.", "style": "Slot to store it in (default 'overall')."},
-    "font-register": {"name": "Name to register the font under.", "asset": "Imported font asset ID.",
+    "font-register": {"name": "Name to register the font under.",
+                      "asset": "Imported font asset ID (fonts/…), or a bundled face to embed: NotoSans-Regular.ttf "
+                               "(the proofing face) or DejaVuSans.ttf.",
                       "role": "Make it the font of this role: heading, body, a text stage (h1, label …) or any lowercase role name (accent, hand, mono); text that follows the role, or a stage inheriting it, changes with it."},
     "text": {"size": "Font size in pixels. Without one, the body size of the document's type scale (about 2.6% of "
                      "the canvas short side when it has none).", "color": "Text color. Without one, the document @ink swatch, else black or white, whichever reads on the canvas background.", "align": "Alignment within the text box.",

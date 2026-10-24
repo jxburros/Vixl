@@ -85,7 +85,7 @@ def test_colours_and_rich_text_go_through_filters():
     layers = {layer["name"]: layer for layer in resolved_layers(p)}
     assert layers["bar"].get("fill", layers["bar"].get("color")) == "#d4af37"
     assert layers["r"]["text"] == "GOLD member"
-    assert p.render().getpixel((5, 5))[:3] == (0xD4, 0xAF, 0x37)
+    assert p.render().getpixel((295, 5))[:3] == (0xD4, 0xAF, 0x37)  # the bar, right of the text
 
 
 def test_inspect_lists_placeholders_with_their_filters():

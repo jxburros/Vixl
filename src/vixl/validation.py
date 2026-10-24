@@ -4,6 +4,7 @@ import operator
 from pathlib import Path
 import re
 
+from .constants import BUNDLED_FONTS
 from .errors import VixlError, require
 from .model import FOCAL_TYPES, LAYER_PRIORITIES, LAYER_ROLES, LAYER_TYPES, finite
 from .plugins import hooks as plugin_hooks
@@ -38,7 +39,7 @@ def check_state(project, state):
         require(asset in project.assets and asset.startswith("fonts/"), "Missing registered font")
     fallbacks = state.get("font_fallbacks", [])
     require(isinstance(fallbacks, list) and len(fallbacks) <= 16, "Invalid font fallback list", "invalid_project")
-    require(all(isinstance(f, str) and (f in project.assets or f == "DejaVuSans.ttf") for f in fallbacks), "Fallback fonts must be embedded or bundled", "invalid_project")
+    require(all(isinstance(f, str) and (f in project.assets or f in BUNDLED_FONTS) for f in fallbacks), "Fallback fonts must be embedded or bundled", "invalid_project")
     from .emojis import validate as validate_emojis
     validate_emojis(project)
     from .waivers import validate_state as validate_waivers

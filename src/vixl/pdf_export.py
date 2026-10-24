@@ -495,6 +495,7 @@ class PageBuilder:
         passes.append(("fill", None))
         for mode, override in passes:
             block, current, run = [], None, None
+            block_state = {"Tc": 0}  # the character spacing set in the open text object
 
             def flush():
                 # One text object per line run: a Tm at the first glyph, then TJ with kerning
@@ -504,11 +505,19 @@ class PageBuilder:
                 size, skew, x0, y0, width_op, items = run
                 if width_op:
                     block.append(width_op)
+                # Letter spacing (tracking) is the run's character spacing, Tc, so a text extractor does not read
+                # the even gaps as word spaces, which it does for large TJ adjustments; TJ keeps the kerning.
+                gaps = sorted((items[i + 1][1] - gx) / size * 1000 - advance for i, (_, gx, advance) in enumerate(items[:-1]))
+                spacing = round(gaps[len(gaps) // 2], 2) if len(gaps) > 1 else 0
+                spacing = spacing if abs(spacing) >= 1 else 0
+                if spacing or block_state["Tc"]:
+                    block.append(f"{_fmt(spacing / 1000)} Tc")
+                    block_state["Tc"] = spacing
                 parts, hexes = [], []
                 for i, (gid, gx, advance) in enumerate(items):
                     hexes.append(f"{gid:04X}")
                     if i + 1 < len(items):
-                        adjust = round(advance - (items[i + 1][1] - gx) / size * 1000, 2)
+                        adjust = round(advance + spacing - (items[i + 1][1] - gx) / size * 1000, 2)
                         if abs(adjust) >= 0.01:
                             parts += [f"<{''.join(hexes)}>", _fmt(adjust)]
                             hexes = []
@@ -552,6 +561,7 @@ class PageBuilder:
                     else:
                         setup += ["0 Tr"]
                     block = setup
+                    block_state["Tc"] = 0
                 skew = size * 0.2126 if italic else 0
                 width = (2 * stroke_width / size) if mode == "stroke" else 0.045 if bold else None
                 width_op = f"{_fmt(width)} w" if width else None

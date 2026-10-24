@@ -22,6 +22,7 @@ import re
 
 import numpy as np
 
+from .constants import BUNDLED_FONTS
 from .errors import VixlError, require
 from .style_catalog import R, STYLES
 from .house_style import tier_of
@@ -413,7 +414,7 @@ class Facts:
             inverse.setdefault(path, name)
         name = inverse.get(asset)
         if name is None:
-            return ("bundled" if asset in (None, "DejaVuSans.ttf") else str(asset), None, None)
+            return ("bundled" if asset is None or asset in BUNDLED_FONTS else str(asset), None, None)
         match = WEIGHT_NAME.match(name)
         return match[1], (int(match[2]) if match[2] else None), name
 

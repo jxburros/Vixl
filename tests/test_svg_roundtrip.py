@@ -302,8 +302,8 @@ def test_a_user_font_that_cannot_be_found_falls_back_with_a_warning(tmp_path, fo
     restored = Project(10, 10)
     result = import_document(restored, svg, "svg")
     assert result["mode"] == "document" and result["fonts"] == {"house": "fallback"}
-    assert any("Vixl House Face 400 (house)" in w and "DejaVu Sans" in w for w in result["warnings"])
-    fallback = (ROOT / "src" / "vixl" / "data" / "DejaVuSans.ttf").read_bytes()
+    assert any("Vixl House Face 400 (house)" in w and "Noto Sans" in w for w in result["warnings"])
+    fallback = (ROOT / "src" / "vixl" / "data" / "NotoSans-Regular.ttf").read_bytes()
     assert restored.assets[restored.state["fonts"]["house"]] == fallback
     assert restored.layer("word")["text"] == "House" and restored.layer("word")["font"] == restored.state["fonts"]["house"]
     # Everything but the font file comes back as it was.

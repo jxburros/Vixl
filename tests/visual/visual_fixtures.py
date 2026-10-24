@@ -372,7 +372,7 @@ def finish_glow_shadow():
 @fixture
 def text_small_caps():
     # Small caps synthesized from capitals (DejaVu Sans has no smcp), from a font's own small capitals (Noto Sans
-    # has smcp), and on one rich-text span.
+    # has smcp), and on one rich-text span in the proofing face (Noto Sans, so its own small capitals too).
     from pathlib import Path
 
     import vixl
@@ -381,8 +381,8 @@ def text_small_caps():
     p = doc(220, 150)
     import_font(p, str(Path(vixl.__file__).parent / "data" / "NotoSans-Regular.ttf"), "noto")
     p.apply([
-        {"type": "text", "text": "Small Caps", "name": "synthesized", "size": 30, "x": 12, "y": 10,
-         "color": "#264653", "text_transform": "small-caps"},
+        {"type": "text", "text": "Small Caps", "name": "synthesized", "font": "DejaVuSans.ttf", "size": 30, "x": 12,
+         "y": 10, "color": "#264653", "text_transform": "small-caps"},
         {"type": "text", "text": "Small Caps", "name": "smcp", "font": "noto", "size": 30, "x": 12, "y": 54,
          "color": "#264653", "text_transform": "small-caps"},
         {"type": "rich-text", "name": "span", "markdown": "In [small caps]{small-caps} now", "size": 16, "x": 12,

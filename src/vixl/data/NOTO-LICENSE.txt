@@ -1,4 +1,4 @@
-Noto fallback fonts bundled with Vixl
+Noto fonts bundled with Vixl: Noto Sans is the proofing face, the others are fallback faces
 
 NotoSans-Regular.ttf (Noto Sans 2.015):
   Copyright 2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic)

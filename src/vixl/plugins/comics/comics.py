@@ -1,5 +1,6 @@
 """Editable comic pages: ordered panels, gutters, artwork slots, captions and dialogue."""
 
+from ...constants import PROOFING_FONT
 from ...errors import require
 from ...model import new_layer
 
@@ -122,7 +123,7 @@ def execute(project, op):
         reserve = 0
         if caption:
             size = op.get("caption_size", 20)
-            layer = {"font": "DejaVuSans.ttf", "size": size, "text": caption}
+            layer = {"font": PROOFING_FONT, "size": size, "text": caption}
             _, box = measure(font_data(project, layer), caption, size, 4, "left", pw - 24)
             reserve = round(box[3] - box[1]) + 24
             require(reserve < ph * 0.55, "Caption consumes too much panel space; shorten it or enlarge panel")
