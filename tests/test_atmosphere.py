@@ -251,6 +251,7 @@ def test_capabilities_topic_lists_the_atmosphere_operations():
     found = lookup("atmosphere")
     assert set(found["operations"]) >= {"reflection", "haze", "star-field", "string-lights", "bokeh"}
     assert "motifs" in found["guidance"]
+    assert "haze" in lookup("fog")["operations"]  # a search for the effect finds the operation
 
 
 def test_atmosphere_exports_stay_vector_except_the_reflection():

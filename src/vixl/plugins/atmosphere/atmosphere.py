@@ -69,7 +69,7 @@ def schemas(add):
     add("haze", {
         "target": field(S, "The light source (a lamp, sun, lantern or window): the haze is centred on it and "
                            "placed directly below it. For fog: a layer whose box is the fog zone instead."),
-        "name": field(S, "Name of the haze group (default haze; fog)."),
+        "name": field(S, "Name of the group (default haze, or fog for form fog)."),
         "x": field(N, "Centre x in canvas pixels when there is no target (fog: the zone's centre, default the "
                       "canvas centre)."),
         "y": field(N, "Centre y in canvas pixels when there is no target (fog: the zone's centre, default 60% "

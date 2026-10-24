@@ -184,7 +184,7 @@ KINDS = {
                      "Add a sun or moon with a glow; plant organic trees, flowers or ferns.",
                      "Water is filled layered bands (organic preset water), not stroked wave lines; draw the specific motif "
                      "the brief names (the result's motifs lists them) and finish the atmosphere with single operations: "
-                     "haze behind lights, star-field (clear of the copy), string-lights along a sag, bokeh, and reflection "
+                     "haze behind lights (form fog for mist between hills), star-field (clear of the copy), string-lights along a sag, bokeh, and reflection "
                      "below the waterline.",
                      "For an illustrated rather than computed feel, irregular (subtle) the drawn shapes and tear any paper; keep "
                      "the sky and frame clean.", "Finish with grain; check the preview."],
