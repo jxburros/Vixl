@@ -72,13 +72,14 @@
       "square_styles": ["swiss", "brutalist", "neo-brutalist", "bauhaus", "editorial", "vintage-letterpress", "art-deco", "pixel-art"]
     },
     "accents": {
-      "summary": "How many accent colours a roll draws and how they share the accent-bearing elements. One accent usually, two often, none or three rarely. With none the accent elements take the ink colour (text the muted one); with two or three, accent-2 and accent-3 come from the palette's next most colourful entries whose hue is at least min_hue_distance degrees (OKLCH) from the accents already chosen, else they are the first accent turned by the first of the rotation angles that lands min_hue_distance from every accent already chosen. Equal gives each accent about the same number of elements; skewed gives them the skew shares, the first accent keeping the call to action and anything carrying text on the accent.",
+      "summary": "How many accent colours a roll draws and how they share the accent-bearing elements. One accent usually, two often, none or three rarely. With none the accent elements take the ink colour (text the muted one); with two or three, accent-2 and accent-3 come from the palette's next most colourful entries whose hue is at least min_hue_distance degrees (OKLCH) from the accents already chosen, else they are the first accent turned by the first of the rotation angles that lands min_hue_distance from every accent already chosen; a grey first accent (chroma under min_chroma) has no hue to turn, so the next accents are tones of it, tone_step lighter (or darker, on a light grey) each. Equal gives each accent about the same number of elements; skewed gives them the skew shares, the first accent keeping the call to action and anything carrying text on the accent.",
       "count_weights": {"0": 0.075, "1": 0.55, "2": 0.3, "3": 0.075},
       "representation": {"equal": 0.5, "skewed": 0.5},
       "skew": {"2": [0.7, 0.3], "3": [0.6, 0.25, 0.15]},
       "min_hue_distance": 30,
       "min_chroma": 0.03,
-      "rotation": [150, 210, 90, 270]
+      "rotation": [150, 210, 90, 270],
+      "tone_step": 0.2
     },
     "tiers": ["safe", "bold", "avant-garde"],
     "tier_notes": {

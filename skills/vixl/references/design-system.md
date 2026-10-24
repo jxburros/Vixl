@@ -54,7 +54,7 @@ ways to fill it: **import** (`import-image` → `replace-contents` or re-apply w
 `palette-apply` and `layout-apply palette=[…]` turn colors into `@background`, `@surface`, `@ink`, `@muted`, `@accent`,
 `@accent-text` and `@on-accent` by luminance and chroma, following light or dark mode (a direction with two or three
 accents adds `@accent-2` and `@accent-3`: the next most colourful palette entry 30° of hue away, else the accent turned
-in hue; fixed `colors` or a brand get no derived one). That reassigns colors
+in hue (a grey one in tone); fixed `colors` or a brand get no derived one). That reassigns colors
 passed in an order that looked like background, surface, accents. The result explains it: `palette_roles`
 (palette-apply) and `layout.roles` (layout-apply) give each role's color, whether it is a palette entry
 (`palette[2]`) or derived, and a one-line reason, plus `mode` and where it came from. To decide yourself, pass

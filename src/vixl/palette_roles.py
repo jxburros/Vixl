@@ -48,6 +48,11 @@ def extra_accents(candidates, accent, count, *, derive=True, ordered=False):
                 and all(hue_distance(lch(c)[2], hue) >= rules["min_hue_distance"] for _, _, hue in chosen)]
         if pool:
             pick, source = (pool[0] if ordered else max(pool, key=lambda c: lch(c)[1])), "palette"
+        elif derive and chosen[0][1] < rules["min_chroma"]:
+            # A grey turned in hue stays the same grey: its next accents are lighter tones (darker on a light grey).
+            light, chroma, hue = chosen[0]
+            step = rules["tone_step"] * (index + 1) * (1 if light < 0.5 else -1)
+            pick, source = gamut_map(from_polar((min(max(light + step, 0.1), 0.95), chroma, hue))) + (1.0,), "toned"
         elif derive:
             light, chroma, hue = chosen[0]
 
@@ -80,6 +85,7 @@ def accent_reasons(count, sources=(), adjusted=()):
                                     f"{rules['min_hue_distance']}° from the accents before it",
                          "derived": f"the accent turned in hue at the same lightness and chroma (no palette color is "
                                     f"{rules['min_hue_distance']}° from the accents before it)",
+                         "toned": "a lighter or darker tone of the grey accent, which has no hue to turn",
                          "explicit": "set in colors"}[source]
         if role in adjusted:
             reasons[role] += ", nudged until it reads 3:1 on the background and surface"

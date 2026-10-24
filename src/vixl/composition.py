@@ -1035,7 +1035,11 @@ def accent_unused(candidate, blocks, resolved, ancestors, width, height, emit):
     state = candidate.state
     direction = (state.get("design_defaults") or {}).get("direction") or {}
     swatches = state.get("swatches") or {}
-    if direction.get("accent_count") == 0:
+    # A layout records the accents it applied (one, unless it says otherwise); the stored direction is the roll made
+    # when the document was created, which a later seeded roll or layout replaces.
+    layout = state.get("layout") or {}
+    count = (layout.get("accents") or {}).get("count", 1) if layout.get("name") else direction.get("accent_count")
+    if count == 0:
         return
     style = direction.get("accent")
     roles = (["accent"] if style and style != "none" and "accent" in swatches else []) + [

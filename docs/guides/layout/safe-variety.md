@@ -110,7 +110,8 @@ the seed, so a seed keeps the palette, layout and first accent it rolled before.
 
 The extra accents are the palette roles `@accent-2` and `@accent-3`, each with a `-text` variant for small text:
 the palette's next most colourful entry whose OKLCH hue is at least 30° from the accents before it, else the first
-accent turned in hue at the same lightness and chroma. Each is nudged until it reads 3:1 as a fill on the background
+accent turned in hue at the same lightness and chroma (a grey accent, which has no hue to turn, gives lighter or
+darker tones of itself). Each is nudged until it reads 3:1 as a fill on the background
 and surface, and its text variant 4.5:1. Colours you fix (a brand palette, `colors`) get no invented companion: the
 second accent then comes from the palette, or from `accent-2` and `accent-3` in the brand palette or `colors`. With
 no accent, the accent layers take the ink colour and accent text the muted one.

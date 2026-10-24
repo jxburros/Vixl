@@ -95,7 +95,8 @@ def mood_keywords():
 def accents(purpose=None):
     """How a roll sets its accent colours (``taste.accents``): ``count_weights`` (how many accents, 0-3; a purpose
     profile may override them), ``representation`` (equal or skewed), the ``skew`` shares per count, and how
-    accent-2 and accent-3 are found (``min_hue_distance``, ``min_chroma``) or derived (``rotation``)."""
+    accent-2 and accent-3 are found (``min_hue_distance``, ``min_chroma``) or derived (``rotation``, or ``tone_step``
+    for a grey accent)."""
     entry = deepcopy(_data()["taste"]["accents"])
     resolved = purpose_for(purpose) if purpose else None
     override = _data()["purposes"].get(resolved, {}).get("accents", {})

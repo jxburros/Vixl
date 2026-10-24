@@ -228,6 +228,31 @@ def test_an_undrawn_second_accent_is_reported(fonts, tmp_path):
     assert "@accent-2" in codes[0]["message"]
 
 
+def test_the_layout_record_not_the_creation_roll_decides_which_accents_are_judged(fonts, tmp_path):
+    # Project.sized rolls an unseeded direction when the document is made; the seeded roll applied after it is what
+    # the page shows, so a creation roll of no accent must not silence the check.
+    p, _ = rolled(tmp_path, 12, 2)
+    p.state["design_defaults"]["direction"]["accent_count"] = 0
+    for layer in p.state["layers"]:
+        for key in PAINT:
+            if layer.get(key) in ("@accent-2", "@accent-2-text"):
+                layer[key] = "@ink"
+    codes = [x for x in p.check(checks=["composition"])["issues"] if x.get("code") == "accent_unused"]
+    assert [x["values"]["role"] for x in codes] == ["accent-2"]
+
+
+def test_a_grey_accent_gets_distinct_tones_not_copies_of_itself():
+    grey = parse("#5f5f5f")
+    extra = extra_accents([], grey, 3)
+    assert [source for _, source in extra] == ["toned", "toned"]
+    colours = [grey[:3], *(rgba[:3] for rgba, _ in extra)]
+    assert len({tuple(round(c * 255) for c in colour) for colour in colours}) == 3
+    assert all(to_polar(srgb_to_oklab(c))[1] < house_style.accents()["min_chroma"] for c in colours)
+    mono = assign_roles({"palette": "mono", "mode": "light", "direction": {"accent_count": 2}}, random.Random(0))
+    assert mono["accent-2"] != mono["accent"]
+    assert "tone" in {entry["role"]: entry for entry in mono["_explain"]}["accent-2"]["reason"]
+
+
 def test_house_style_off_and_explicit_layouts_keep_one_accent():
     p = Project.new(width=1080, height=1080, purpose="poster", house_style="off")
     assert "accent_count" not in p.state["design_defaults"]["direction"]

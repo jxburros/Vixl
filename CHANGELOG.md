@@ -117,8 +117,8 @@ the blind re-judge has not run. Breaking changes are listed under Upgrading from
   [safe variety](docs/guides/layout/safe-variety.md#accent-colours). (#404)
 - **`@accent-2` and `@accent-3` palette roles.** Two or three accents add these roles with `-text` variants: the
   palette's next most colourful entry at least 30° of OKLCH hue from the accents before it, else the first accent
-  turned in hue at the same lightness and chroma, nudged to 3:1 as a fill and 4.5:1 for text, each with its reason in
-  `layout.roles`. Only the accents a layout draws get swatches. Colours you fix (`colors`, a brand palette) get no
+  turned in hue at the same lightness and chroma (a grey accent, which has no hue to turn, gives lighter or darker
+  tones of itself), nudged to 3:1 as a fill and 4.5:1 for text, each with its reason in `layout.roles`. Only the accents a layout draws get swatches. Colours you fix (`colors`, a brand palette) get no
   invented accent; a brand palette may set `accent-2` and `accent-3` (and their `-text` roles). On `layout-apply` the
   count goes in `direction`: `{"accent_count": 2, "accent_representation": "equal"}`. (#404)
 - **A brief's words weight the rolled palette (breaking).** Motif themes carry `moods` (coffee is warm, cozy,

@@ -360,7 +360,7 @@ Implemented (#404): a roll sets `accent_count` (0-3, `taste.accents.count_weight
 at 0.075 each; a mark rolls 0, 1 or 2) and `accent_representation` (`equal` or `skewed`, half each) from a separate
 stream of the seed, so a seed keeps everything else it rolled, its first accent included. Two or three accents add
 the roles `accent-2` and `accent-3` (the palette's next most colourful entries at least 30° of OKLCH hue from the
-accents before them, else the first accent turned in hue; each nudged to 3:1 as a fill, with a `-text` variant at
+accents before them, else the first accent turned in hue, or a lighter or darker tone of a grey one; each nudged to 3:1 as a fill, with a `-text` variant at
 4.5:1). The layout spreads its accent-bearing layers over them: skewed gives the first accent the larger share
 (0.7/0.3, 0.6/0.25/0.15) and the most prominent layers, equal deals them out in turn; a shape with text on it keeps
 the first accent. With no accent the accent layers take the ink colour and accent text the muted one. The layout
