@@ -1,8 +1,10 @@
 """Objects: a group declared as one thing (a dog, a guitar, a person) with a kind, named parts and sub-objects.
 
 The kind taxonomy (domain > class > kind, ``data/objects.json``) describes what each kind is made of: its
-parts, the parts that must touch, proportions, layering and outline policy. A kind inherits every field from
-its parent; ``parts+`` and ``connections+`` extend the inherited lists. Workspace and user resources of kind
+parts, the parts that must touch, proportions, layering and outline policy, and how to build one (``build``:
+approach, placements, research notes and a working example batch). A kind inherits every field from its parent;
+``parts+`` and ``connections+`` extend the inherited lists and ``build`` merges field by field
+(``merge_build``). ``object_check`` measures declared objects against their kind. Workspace and user resources of kind
 ``objects`` add kinds (a brand mascot, a product) that may extend a built-in parent.
 
 In a document, ``group["object"]`` declares the object (``{version, kind, label?, notes?, references?}``) and
@@ -486,7 +488,8 @@ def catalog_command(args, workspace=None):
     if any(arg in ("--help", "-h") for arg in args):
         return ("Usage: vixl objects [QUERY] | vixl objects show KIND | vixl objects tree\n"
                 "The object taxonomy (domain > class > kind): search kinds, show one kind's inherited parts, "
-                "connections, proportions and chain, or print the whole tree. Workspace kinds come from "
+                "connections, proportions, chain and build block (how to draw one, with an example batch), or print "
+                "the whole tree. Workspace kinds come from "
                 ".vixl-resources.json (resource kind objects).")
     if args and args[0] == "show":
         require(len(args) == 2, "Use vixl objects show KIND")
@@ -497,7 +500,7 @@ def catalog_command(args, workspace=None):
     if query and find(query, registry(workspace)):
         return describe(query, workspace)
     return {"kinds": search(query, workspace),
-            "next": "vixl objects show KIND prints the inherited parts, connections and proportions"}
+            "next": "vixl objects show KIND prints the inherited parts, connections, proportions and build block"}
 
 
 # ---------------------------------------------------------------------------------------------------------------

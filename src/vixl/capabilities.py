@@ -136,7 +136,10 @@ def lookup(topic=None, *, fields=False):
             "vixl_render(isolate=[NAME] or ['object:KIND'], views=['parts'], exploded=true) shows each part; "
             "vixl_export(isolate=[NAME]) exports it alone (.vixl: a portable object for object-place source=). "
             "object-save/object-place reuse an editable object. vixl_reference('objects', name=KIND) reads a "
-            "kind; vixl_apply(workflow='resource-save', request={kind: 'objects', name, value}) adds one.")
+            "kind with its build block (approach, placements, a working example batch); vixl_check measures "
+            "declared objects against their kind (the object check: parts, gaps, proportions, mirrored pairs, "
+            "layering; stylized: true skips proportions, depth: far|near orders side-view limbs); "
+            "vixl_apply(workflow='resource-save', request={kind: 'objects', name, value}) adds a kind.")
         extra["taxonomy"] = taxonomy()
     if "accessibility" in chosen:
         extra["accessibility"] = (

@@ -73,7 +73,8 @@ def test_proportions_out_of_range_and_the_stylized_and_ignore_opt_outs():
     [issue] = found(p)
     assert issue["rule"] == "object.proportion" and issue["action"] == "review"
     assert issue["measured"]["expected"] == [0.45, 0.7] and issue["measured"]["actual"] > 0.7
-    p.apply({"type": "object", "target": "guitar", "stylized": True})
+    result = p.apply({"type": "object", "target": "guitar", "stylised": True})
+    assert "stylized" in str(result["normalized"])
     assert found(p) == [] and objects.tree(p, "guitar")["stylized"] is True
     p.apply([{"type": "object", "target": "guitar", "stylized": False},
              {"type": "object", "target": "guitar", "proportions": "ignore"}])
@@ -190,6 +191,13 @@ def test_targets_limit_the_check_to_the_objects_they_touch():
     assert sorted(i["object"] for i in found(p)) == ["cloud", "dog"]
     assert [i["object"] for i in found(p, targets=["dog/head"])] == ["dog"]
     assert [i["object"] for i in found(p, targets=["cloud"])] == ["cloud"]
+
+
+def test_cli_spells_the_new_object_fields():
+    assert objects.compile_command("object", ["dog", "--stylized", "--proportions", "ignore"]) == {
+        "type": "object", "target": "dog", "stylized": True, "proportions": "ignore"}
+    assert objects.compile_command("object", ["part", "leg-1", "--part", "leg", "--depth", "far"]) == {
+        "type": "object", "action": "part", "target": "leg-1", "part": "leg", "depth": "far"}
 
 
 def test_part_masks_drawn_over_the_object_region_match_the_canvas_render():

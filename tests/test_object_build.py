@@ -91,7 +91,7 @@ def test_seed_example_applies_renders_and_passes_the_checks(kind):
     assert all(op["type"] in OPERATION_TYPES for op in ops)
     for op in ops:
         validate_operation(json.loads(json.dumps(op)))
-    assert any(op["type"] == "object" and op.get("kind") == kind for op in ops)
+    assert any(op["type"] == "object" and op.get("kind") == kind for op in ops) and ops[-1]["type"] == "object"
     p = Project(420, 520, "#8ecae6")
     assert p.apply(ops)["success"]
     assert p.render().getbbox() is not None
@@ -108,7 +108,7 @@ def test_vixl_reference_returns_the_build_block_and_example(tmp_path):
     assert found["approach"][0].startswith("Guitar:") and "vixl_check(checks=['object'])" in " ".join(found["approach"])
     assert found["operations"] == found["build"]["operations"] and "build" not in found["object"]
     summary = object_summary("dog")
-    assert summary["build"]["placements"] and "example" not in summary["build"]
+    assert summary["build"]["placements"] and not {"example", "research"} & set(summary["build"])
     assert "example" in summary["more"]
     from tests.test_agent_interface import call
     from vixl.interfaces import mcp_server

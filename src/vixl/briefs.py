@@ -634,19 +634,23 @@ def guide(brief=None, *, seed=None, variety=None, workspace=None):
     return result
 
 
+SUMMARY_BUILD = ("approach", "operations", "organic", "shapes", "palette", "placements")
+
+
 def object_summary(kind, workspace=None):
     """What a brief's subject is made of, from the object taxonomy, and how to declare it."""
     from .objects import describe
 
     item = describe(kind, workspace)
-    build = {key: value for key, value in item.get("build", {}).items() if key != "example"}
+    # What drawing the subject needs inside a larger piece; research, looks and the example stay one call away.
+    build = {key: value for key, value in item.get("build", {}).items() if key in SUMMARY_BUILD}
     return {"kind": item["kind"], "path": item["path"], "parts": [p["name"] for p in item["parts"]],
             "required_parts": item["required_parts"], "connections": item["connections"],
             "layering": item["layering"],
             **({"build": build} if build else {}),
             "declare": {"type": "object", "target": "GROUP", "kind": item["kind"]},
-            "more": f"vixl_reference('objects', name={item['kind']!r})"
-                    + (" adds a working example batch" if item.get("build", {}).get("example") else "")}
+            "more": f"vixl_reference('objects', name={item['kind']!r}) adds research notes"
+                    + (" and a working example batch" if item.get("build", {}).get("example") else "")}
 
 
 # The declare-and-review loop every object shares; a kind's build block adds how to draw it.

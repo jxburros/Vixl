@@ -1315,7 +1315,8 @@ def _resource(kind):
         "palettes": "Built-in and saved palettes; name reads one.",
         "templates": "Document templates (vixl_document create template=NAME); name reads one.",
         "guidance": "Craft guidance names; name reads one text (user additions included).",
-        "objects": "Object kinds (dog, guitar, person …); name reads its parts, connections, proportions and layering.",
+        "objects": "Object kinds (dog, guitar, person …); name reads its parts, connections, proportions, layering "
+                   "and build block (approach, placements, a working example).",
         "house-style": "The built-in default brand: craft rules, tiers and levels, or a purpose's profile (name).",
     }[kind]
     return read

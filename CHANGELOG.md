@@ -1,5 +1,62 @@
 # Changelog
 
+## Unreleased
+
+Steps 5 and 6 of the [implementation plan](docs/project/implementation-plan.md): craft, then objects and brand
+packages.
+
+### Upgrading from 0.30
+
+### Typography and components
+
+### Craft checks and variations
+
+### Palette and decoration from the brief
+
+### Layout and adaptation
+
+### Atmosphere and motifs
+
+### Illustration defaults
+
+### Fonts
+
+### Objects
+
+- **Kinds say how to build one (#376).** Every object kind has a `build` block, merged down the taxonomy: the
+  approach, workflows, operations, organic presets, shapes, patterns, looks, palette, placements (where each part
+  goes, such as `{part: leg, anchor: body.bottom, at: top, spread: "0.15-0.85"}`, with the anchor names of `align`),
+  guidance, short offline research notes, checks and a working example batch. The organic, constructed, natural and
+  symbolic domains and their classes carry general blocks; person, dog, cat, bird, fish, tree, flower, leaf,
+  mushroom, guitar, car, house, cup, rock and cloud have their own, each with an example that passes the object
+  check. `vixl_reference("guitar")`, `vixl_reference('objects', name=…)`, `vixl objects show` and the object summary
+  of a brief return it, declaring an object adds a `next_steps` entry that points to it, and a workspace kind may
+  add its own (the names it uses must exist). See [objects](docs/guides/shapes/objects.md#the-build-block).
+- **The `object` check (#378).** `vixl_check` measures every declared object and sub-object against its kind:
+  required parts missing or miscounted (a dog with three legs), paired parts without a side, unknown part names,
+  gaps between parts that must touch (on the drawn ink, and at the poster, middle and last frames of a timeline:
+  `guitar/neck ↔ guitar/body: 6 px gap`), proportions outside the kind's range, mirrored pairs that differ in size
+  or sit on one side, and parts stacked against the kind's layering. Findings carry `rule` (`object.part-count`,
+  `object.gap` …), `layer_ids`, `box`, `measured`, `action` and a `hint` that names the build placement. New
+  `object` fields: `stylized: true` and `proportions: "ignore"` silence the proportion findings, and a part's
+  `depth: far|near` marks side-view limbs. Each part is drawn once per frame on a tile the size of its object, and
+  `tests/test_perf.py` holds a budget for it. See [the object check](docs/guides/shapes/objects.md#the-object-check).
+- **`object` runs by default on pages with declared objects, and `connected` leaves them to it (breaking).** A
+  plain `vixl_check` of a document with a declared object now reports `object` findings; missing parts and gaps
+  are `fix` findings, so `passed` can turn false where it was true. When both checks run, a gap in a declared object
+  is reported once, by `object`. Pages without declared objects, and standard characters without an object record
+  of their own (still the `character` check's), report as before.
+
+### Brand packages
+
+### Merch
+
+### Characters
+
+### Reproducibility and delivery
+
+### Evals
+
 ## 0.30.5
 
 Plans the animation export speed work.

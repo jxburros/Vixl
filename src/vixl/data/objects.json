@@ -398,13 +398,13 @@
           {"type": "shape", "shape": "ellipse", "name": "spot-2", "x": 186, "y": 66, "width": 30, "height": 24, "fill": "#fdf0d5"},
           {"type": "shape", "shape": "ellipse", "name": "spot-3", "x": 234, "y": 102, "width": 24, "height": 20, "fill": "#fdf0d5"},
           {"type": "group", "name": "spots", "targets": ["spot-1", "spot-2", "spot-3"]},
+          {"type": "layer-intent", "target": "spots", "detached_ok": true},
           {"type": "group", "name": "mushroom", "targets": ["stem", "gills", "cap", "spots"]},
           {"type": "object", "target": "mushroom", "kind": "mushroom"},
           {"type": "object", "action": "part", "target": "stem", "part": "stem"},
           {"type": "object", "action": "part", "target": "gills", "part": "gills"},
           {"type": "object", "action": "part", "target": "cap", "part": "cap"},
-          {"type": "object", "action": "part", "target": "spots", "part": "spots"},
-          {"type": "layer-intent", "target": "spots", "detached_ok": true}]}},
+          {"type": "object", "action": "part", "target": "spots", "part": "spots"}]}},
     "feather": {"parent": "organic", "aliases": ["quill", "plume"], "summary": "A feather: a shaft with vanes on both sides.", "parts": [{"name": "shaft", "required": true}, {"name": "vane", "count": 2, "side": true}], "connections": [["vane", "shaft"]], "symmetry": "bilateral"},
     "cell": {"parent": "organic", "aliases": ["microbe", "bacterium"], "summary": "A cell: membrane, nucleus and organelles.", "parts": [{"name": "membrane", "required": true}, {"name": "nucleus"}], "connections": [["nucleus", "membrane"]]},
 
@@ -533,6 +533,7 @@
         "research": [{"title": "Cup proportions", "notes": "A mug is about as wide as it is tall; the handle about half the body's height on its side; steam rises about 0.6 of the cup's height and is narrower than the cup."}],
         "example": [
           {"type": "shape", "shape": "steam", "name": "steam", "x": 150, "y": 20, "width": 100, "height": 110, "fill": "#8d99ae", "opacity": 0.6},
+          {"type": "layer-intent", "target": "steam", "detached_ok": true},
           {"type": "shape", "shape": "ring", "name": "handle", "x": 252, "y": 180, "width": 84, "height": 96, "fill": "#e07a5f"},
           {"type": "shape", "shape": "rounded-rectangle", "name": "body", "x": 110, "y": 150, "width": 180, "height": 180, "fill": "#e07a5f"},
           {"type": "shape", "shape": "ellipse", "name": "rim", "x": 110, "y": 138, "width": 180, "height": 28, "fill": "#f4f1de"},
@@ -541,8 +542,7 @@
           {"type": "object", "action": "part", "target": "steam", "part": "steam"},
           {"type": "object", "action": "part", "target": "handle", "part": "handle"},
           {"type": "object", "action": "part", "target": "body", "part": "body"},
-          {"type": "object", "action": "part", "target": "rim", "part": "rim"},
-          {"type": "layer-intent", "target": "steam", "detached_ok": true}]}},
+          {"type": "object", "action": "part", "target": "rim", "part": "rim"}]}},
     "bottle": {"parent": "container", "aliases": ["jar", "flask"], "summary": "A bottle: body, neck and cap.", "parts": [{"name": "body", "required": true}, {"name": "neck"}, {"name": "cap"}, {"name": "label"}], "connections": [["neck", "body"], ["cap", "neck"], ["label", "body"]]},
     "pot": {"parent": "container", "aliases": ["flower-pot", "planter", "vase"], "summary": "A plant pot: body and rim.", "parts": [{"name": "body", "required": true}, {"name": "rim"}, {"name": "soil"}], "connections": [["rim", "body"], ["soil", "body"]]},
 
