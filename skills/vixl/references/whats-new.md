@@ -99,6 +99,9 @@ Agent-facing summaries of the larger additions since 0.11, kept from the skill e
   charts, images, speaker notes, one master) from a Markdown file in one call; re-running rebuilds only changed slides.
 - **Mockups** — the `mockup` workflow places a design in phone, laptop, browser, poster-wall, business-card or mug
   templates (or the workspace's own, `mockup-save`) as a live, corner-pinned link; one call per design, `export` renders them.
+  Merch products (tee, long-sleeve, crewneck, hoodie, tote, sticker, sticker-kiss-cut, enamel-pin, patch, button, cap, beanie,
+  socks) take `place: {area: design}`, `garment_color` and `finish`; `print-art` writes the print files per area
+  (`print_size_mm` × `dpi`, `spot_colors`, `underbase`). See [production](production.md).
 - **Print merge** — `merge-impose` lays CSV rows out on print sheets with crop marks: vector-text PDF plus an editable sheet.
   Placeholders take filters: `${name|upper}`, `${company|default:Independent}`, `${state|map:states}` (`variable-map`).
   `$${name}` writes a literal `${name}`.

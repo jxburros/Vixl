@@ -88,4 +88,4 @@ Without a profile, CMYK uses a predictable device-naive separation with gray-com
 
 ## Boundaries
 
-Documents remain 8-bit RGBA sRGB: there is no CMYK editing, spot color, overprint control, trapping or high-bit-depth pipeline. CMYK values written in documents are converted to sRGB, so exact plate values are not preserved through export; use an ICC profile for accurate separations.
+Documents remain 8-bit RGBA sRGB: there is no CMYK editing, spot color, overprint control, trapping or high-bit-depth pipeline. CMYK values written in documents are converted to sRGB, so exact plate values are not preserved through export; use an ICC profile for accurate separations. The one separation Vixl writes is the flat-ink film positives of the mockup workflow's [`print-art`](../output/merch-mockups.md#print-ready-art) action (a design posterized to N inks, plus a white underbase): they are not named spot-colour plates, and there is no overprint or trapping.

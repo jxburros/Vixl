@@ -56,18 +56,22 @@ FIELD_TYPES = {
     "place": {"type": "object", "additionalProperties": {"anyOf": [
         {"type": "string"}, {"type": "object", "additionalProperties": False, "properties": {
             "design": {"type": "string", "description": "The design: a workspace .vixl document."},
-            "fit": {"type": "string", "enum": ["fill", "fit", "stretch"]},
-            "finish": {"type": "string", "enum": list(finishes.FINISHES)},
-            "source_page": {"type": ["string", "integer"]},
-            "artboard": {"type": "string"}}, "required": ["design"]}]},
+            "fit": {"type": "string", "enum": ["fill", "fit", "stretch"],
+                    "description": "How this design fills its area (default: the request's fit)."},
+            "finish": {"type": "string", "enum": [*finishes.FINISHES, "none"],
+                       "description": "The print finish of this area (default: the request's, else the area's own)."},
+            "source_page": {"type": ["string", "integer"], "description": "Page of this design to show."},
+            "artboard": {"type": "string", "description": "Artboard of this design to show."}},
+                                                  "required": ["design"]}]},
         "description": "Designs by placement: {area name: design.vixl} or {area name: {design, fit?, finish?, "
                        "source_page?, artboard?}}. Names are the template's areas (mockup-list), for a tee "
                        "front-chest, full-front, back, sleeve-l, sleeve-r, hem-tag and inside-neck; sleeve-l is the "
                        "wearer's left."},
-    "finish": {"type": "string", "enum": list(finishes.FINISHES),
+    "finish": {"type": "string", "enum": [*finishes.FINISHES, "none"],
                "description": "How the print looks on the product: " + "; ".join(
-                   f"{name}: {info['summary']}" for name, info in finishes.FINISHES.items()) + ". Applies to every "
-               "placed design; a place entry can choose its own."},
+                   f"{name}: {info['summary']}" for name, info in finishes.FINISHES.items()) + "; none leaves the print flat, "
+               "even where the product has a default finish. Applies to every placed design; a place entry can choose "
+               "its own."},
     "garment_color": {"type": "string", "description": "A colour (name, #hex …) for the template's base layers: the "
                       "garment, bag or sheet itself, with its shading kept. Only templates with a garment colour "
                       "take it (mockup-list shows each default)."},
@@ -79,8 +83,8 @@ FIELD_TYPES = {
 }
 SLOT_KEYS = {"name", "corners", "surface", "radius", "shade", "gloss", "clip_path", "print_size_mm", "cut", "finish"}
 AREA_KEYS = SLOT_KEYS - {"name"}
-CUT_KEYS = {"mode", "border_mm"}
-CUT_MODES = ("die", "kiss", "pin")
+CUT_KEYS = {"mode", "border_mm", "color"}
+CUT_MODES = ("die", "kiss", "pin", "patch")
 TEMPLATE_KEYS = {"description", "document", "width", "height", "background", "operations", "slots", "overlay", "areas",
                  "base", "garment_color"}
 
@@ -227,7 +231,7 @@ def _colour(value, field):
     try:
         return color(value)
     except VixlError as exc:
-        raise VixlError(exc.code, f"{field}: {exc.message}", field=field) from exc
+        raise VixlError(exc.code, f"{field}: {exc}", field=field) from exc
 
 
 def _validate_placement(record, where):
@@ -255,7 +259,10 @@ def _validate_placement(record, where):
     if "cut" in record:
         cut = record["cut"]
         require(isinstance(cut, dict) and set(cut) <= CUT_KEYS and cut.get("mode") in CUT_MODES,
-                f"{where}.cut is {{mode: {'|'.join(CUT_MODES)}, border_mm}}", field=f"{where}.cut")
+                f"{where}.cut is {{mode: {'|'.join(CUT_MODES)}, border_mm?, color?}}", field=f"{where}.cut")
+        if "color" in cut:
+            require(isinstance(cut["color"], str), f"{where}.cut.color is a colour", field=f"{where}.cut")
+            _colour(cut["color"], f"{where}.cut.color")
         require(isinstance(cut.get("border_mm", 3), (int, float)) and 0 <= cut.get("border_mm", 3) <= 50,
                 f"{where}.cut.border_mm is 0-50 millimetres", field=f"{where}.cut")
 
@@ -375,7 +382,7 @@ def placement_operations(slot, design, settings, name):
     if surface:
         ops.append({"type": "clip", "target": name, "base": surface})
     finish = settings.get("finish") or slot.get("finish")
-    if finish:
+    if finish and finish != "none":
         ops += finishes.operations(finish, name, (x0, y0, w, h), surface, slot.get("print_size_mm"))
     cut = slot.get("cut")
     if cut:
@@ -404,21 +411,26 @@ def _cut_operations(cut, name, slot):
     size = slot.get("print_size_mm") or [max(xs) - min(xs), 1]
     per_mm = (max(xs) - min(xs)) / size[0]
     mode = cut["mode"]
-    border = cut.get("border_mm", {"die": 3, "kiss": 3, "pin": 1.2}[mode])
+    border = cut.get("border_mm", {"die": 3, "kiss": 3, "pin": 1.2, "patch": 2.5}[mode])
     layer = f"{name}-cut"
     look = {"die": {"fill": "#ffffff", "stroke": "#ffffff", "stroke_width": 1},
             "kiss": {"fill": "#ffffff", "stroke": "#9aa1ad", "stroke_width": max(1.5, per_mm * 0.25)},
-            "pin": {"fill": "#d9b45a", "stroke": "#8f6d1f", "stroke_width": max(1.5, per_mm * 0.35)}}[mode]
+            "pin": {"fill": "#d9b45a", "stroke": "#8f6d1f", "stroke_width": max(1.5, per_mm * 0.35)},
+            "patch": {"fill": cut.get("color", "#1f1f1f"), "stroke": "#8e9298", "stroke_width": max(1.5, per_mm * 0.3)}}[mode]
     ops = [{"type": "die-cut", "targets": [name], "distance": round(border * per_mm, 2), "name": layer,
-            "stroke": look["stroke"], "stroke_width": look["stroke_width"], "smooth": 1.5},
+            "stroke": look["stroke"], "stroke_width": round(look["stroke_width"], 2), "smooth": 1.5},
            {"type": "shape", "target": layer, "fill": look["fill"]},
            {"type": "lower", "target": layer}]
+    if mode == "patch":
+        # The merrow edge: a dashed thread line along the middle of the border.
+        ops.append({"type": "shape", "target": layer, "dash": [round(per_mm * 0.5, 2), round(per_mm * 0.4, 2)],
+                    "stroke_align": "inside"})
     if mode == "pin":
         ops.append({"type": "shape", "target": layer, "fill_gradient": {
             "direction": "angled", "angle": 40,
             "stops": [{"offset": 0, "color": "#f4dc8e"}, {"offset": 0.45, "color": "#c9a13f"},
                       {"offset": 0.7, "color": "#e9cf7c"}, {"offset": 1, "color": "#9c7a28"}]}})
-    shadow = {"die": (0.016, 0.3), "kiss": (0.006, 0.18), "pin": (0.02, 0.4)}[mode]
+    shadow = {"die": (0.016, 0.3), "kiss": (0.006, 0.18), "pin": (0.02, 0.4), "patch": (0.012, 0.35)}[mode]
     unit = per_mm * size[0] * shadow[0]
     ops.append({"type": "layer-style", "target": layer, "name": "drop-shadow",
                 "settings": {"color": "#000000", "dx": round(unit * 0.4, 2), "dy": round(unit, 2),
@@ -507,8 +519,9 @@ def request_settings(request):
     require(settings["fit"] in ("fill", "fit", "stretch"), "fit is fill, fit or stretch", field="fit")
     for key in ("shade", "gloss", "overwrite"):
         require(type(request.get(key, True)) is bool, f"{key} must be true or false", field=key)
-    require(settings["finish"] is None or settings["finish"] in finishes.FINISHES,
-            f"finish is one of {', '.join(finishes.FINISHES)}", field="finish", allowed=list(finishes.FINISHES))
+    require(settings["finish"] is None or settings["finish"] in (*finishes.FINISHES, "none"),
+            f"finish is one of {', '.join(finishes.FINISHES)} or none", field="finish",
+            allowed=[*finishes.FINISHES, "none"])
     if settings["garment_color"] is not None:
         require(isinstance(settings["garment_color"], str), "garment_color is a colour", field="garment_color")
         _colour(settings["garment_color"], "garment_color")
@@ -549,8 +562,9 @@ def plan_designs(session, spec, name, request):
             if "fit" in entry:
                 require(entry["fit"] in ("fill", "fit", "stretch"), "fit is fill, fit or stretch", field=f"place.{key}.fit")
             if "finish" in entry:
-                require(entry["finish"] in finishes.FINISHES, f"finish is one of {', '.join(finishes.FINISHES)}",
-                        field=f"place.{key}.finish", allowed=list(finishes.FINISHES))
+                require(entry["finish"] in (*finishes.FINISHES, "none"),
+                        f"finish is one of {', '.join(finishes.FINISHES)} or none", field=f"place.{key}.finish",
+                        allowed=[*finishes.FINISHES, "none"])
             entry["design"] = resolved(entry["design"], f"place.{key}")
             chosen[key] = entry
     require(chosen, "Give a design (it fills the template's slots or main area) or place: {area: design}",

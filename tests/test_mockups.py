@@ -7,7 +7,7 @@ from vixl import Project
 from vixl.errors import VixlError
 from vixl.interfaces import Session
 from vixl.links import corner_pin, perspective_coefficients
-from vixl.plugins.brand_kit.mockups import BUILTINS
+from vixl.plugins.brand_kit.mockups import BUILTINS, placements
 from vixl.workflows import dispatch
 
 
@@ -26,22 +26,28 @@ def session(workspace):
     return Session(workspace / "poster.vixl", workspace=workspace)
 
 
-def test_every_builtin_template_builds_and_renders(workspace):
+@pytest.mark.parametrize("name", list(BUILTINS))
+def test_every_builtin_template_builds_and_renders(workspace, name):
     s = session(workspace)
-    result = dispatch(s, "mockup", {"design": "post.vixl", "mockup": list(BUILTINS), "output": "mockups"})
-    assert result["count"] == len(BUILTINS) == 6
-    for row in result["mockups"]:
-        p = Project.load(workspace / row["path"])
-        p._workspace = workspace
-        links = [layer for layer in p.state["layers"] if layer["type"] == "link"]
-        assert len(links) == len(row["slots"]) and all(layer.get("corner_pin") for layer in links)
-        assert all(layer["clip"] for layer in links)  # clipped to the slot's surface
-        image = p.render()
-        slot = BUILTINS[row["mockup"]]["slots"][0]
-        cx = round(sum(c[0] for c in slot["corners"]) / 4)
-        cy = round(sum(c[1] for c in slot["corners"]) / 4)
-        r, g, b = image.getpixel((cx, cy))[:3]
-        assert g > r and g > 100, row["mockup"]  # the teal design shows in the middle of the slot
+    result = dispatch(s, "mockup", {"design": "post.vixl", "mockup": name, "output": "one.vixl"})
+    row = result["mockups"][0]
+    p = Project.load(workspace / row["path"])
+    p._workspace = workspace
+    links = [layer for layer in p.state["layers"] if layer["type"] == "link"]
+    assert len(links) == len(row["slots"]) >= 1 and all(layer.get("corner_pin") for layer in links)
+    assert all(layer["clip"] for layer in links if layer["name"] not in ("face",))  # clipped to the surface shape
+    image = p.render()
+    spec = BUILTINS[name]
+    first = placements(spec)[row["slots"][0].removeprefix("design-")]
+    cx = round(sum(c[0] for c in first["corners"]) / 4)
+    cy = round(sum(c[1] for c in first["corners"]) / 4)
+    r, g, b = image.getpixel((cx, cy))[:3]
+    assert g > r and g > 100, name  # the teal design shows in the middle of the placement
+
+
+def test_the_builtin_catalog_has_the_merch_products():
+    assert {"phone", "laptop", "browser", "poster-wall", "business-card", "mug", "tee", "long-sleeve", "hoodie", "tote",
+            "sticker", "sticker-kiss-cut", "enamel-pin"} <= set(BUILTINS)
 
 
 def test_poster_in_one_call_and_edits_show_on_the_next_render(workspace):

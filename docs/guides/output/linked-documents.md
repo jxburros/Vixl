@@ -134,7 +134,9 @@ Through MCP and REST the same operations go through `vixl_apply` / `POST /operat
 ## Mockups
 
 The `mockup` workflow action shows a design in context in one call: on a phone, a laptop or in a browser
-window, framed on a wall, as a business card on a desk or on a mug.
+window, framed on a wall, as a business card on a desk or on a mug. Printed products (tees, hoodies, tote bags, stickers,
+pins, caps and more) with named print areas, a garment colour, print finishes and print-ready art per area are in
+[merch mockups](merch-mockups.md).
 
 ```json
 {"design": "poster.vixl", "mockup": "poster-wall", "output": "poster-mockup.vixl"}
@@ -156,15 +158,17 @@ receives `TEMPLATE.vixl` each; `export` writes images next to them through the s
 | `phone` | A phone held upright, 9:19.5 screen with rounded corners | `screen` |
 | `laptop` | An open laptop from the front, 16:10 screen | `screen` |
 | `browser` | A desktop browser window with title and address bars | `page` |
-| `poster-wall` | A framed portrait poster with a white mat on a wall | `poster` |
+| `poster-wall` | A framed portrait A3 poster (297 × 420 mm) with a white mat on a wall | `poster` |
 | `business-card` | A 3.5 × 2 in card on a desk, seen at an angle (a perspective slot) | `card` |
 | `mug` | A white mug; the print area is shaded like the curve of the cup | `print` |
 
 The templates are drawn with ordinary operations, so they are licence-clean and editable like any document.
 `mockup-list` lists them with their slots, together with the workspace's own: `mockup-save` stores a template
 (`{description, document: "scene.vixl"` or `width, height, background, operations`, `slots: [{name, corners,
-surface, radius, shade, gloss}]`, `overlay`: operations drawn above the slots`}`) in the workspace resource
-library. A curved surface such as the mug is a flat slot under cylindrical shading: the design is not bent.
+surface, radius, shade, gloss}]`, `areas`, `base`, `garment_color`, `overlay`: operations drawn above the slots`}`) in the
+workspace resource library; named print areas, the garment colour and the products are in [merch
+mockups](merch-mockups.md#your-own-templates). A curved surface such as the mug is a flat slot under cylindrical
+shading: the design is not bent.
 
 ## Related
 

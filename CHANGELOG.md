@@ -148,6 +148,41 @@ packages.
 
 ### Merch
 
+- **Merch products for the `mockup` workflow.** `tee`, `long-sleeve`, `crewneck` and `hoodie` (flat lays, front and back in
+  one scene), `tote`, `sticker` (die-cut), `sticker-kiss-cut`, `enamel-pin`, `patch`, `button`, `cap`, `beanie` and `socks`
+  join the phone, laptop, browser, poster, business card and mug. They are drawn as vector paths from measurements in the
+  `brand_kit` plugin (`products.py`, `garments.py`, `goods.py`, `accessories.py`; about 300 KB of generated path data, no
+  pictures), with seams, stitching, ribbing and folds as multiply and screen layers over the base layers, so one drawing
+  reads on white and on black. Wave 2 of the plan (crewneck, cap, beanie, socks, patch, button) is included. The core is
+  unchanged (#444).
+- **Named print areas on templates.** A template has `areas: {name: {corners, print_size_mm, clip_path?, surface?, finish?,
+  cut?}}` besides its `slots`; the garments carry `front-chest`, `full-front`, `back`, `sleeve-l` (the wearer's left),
+  `sleeve-r`, `hem-tag` and `inside-neck`, and every area keeps the aspect ratio of its print size. `mockup-save` takes
+  `areas`, `base` and `garment_color` too, and `mockup-list` shows each template's areas, print sizes and default colour.
+  `poster-wall`'s slot is now A3-proportioned (297 × 420 mm) and carries a print size (#444).
+- **`place: {area: design}` on `mockup`.** Each design is clipped to its area's path and fitted by `fit`; an entry can be
+  `{design, fit, finish, source_page, artboard}`. A bare `design` fills the slots, or the main area of a template that has
+  only areas, and `design` is no longer required when `place` is given. An unknown area lists the template's areas. The
+  mockup record keeps `placed` and `areas` (#444).
+- **`garment_color` recolours only the base layers.** The garment, bag or cap is drawn as base layers (`base`) under
+  shading layers, so a colour request changes the fill of those layers and of the area surfaces under the prints and
+  nothing else; a template without a garment colour refuses the field (#444).
+- **Print finishes.** `finish: screen | puff | embroidery | enamel | woven` (or `none`) puts an ordinary stack on the placed
+  design: effects and layer styles plus helper layers (dot screen, thread hatch, satin sheen, weave, gloss) clipped to the
+  design's shape, per request or per area. The pin and the patch default to `enamel` and `embroidery`. They are mockup
+  finishes in the plugin, not new `look` presets; the core `look` list is unchanged (#444).
+- **Stickers, pins and patches follow the artwork.** After the design is placed, `die-cut` traces its ink and the cut shape
+  goes under it: a white vinyl border (die-cut), a thin cut line on the backing sheet (kiss-cut), a gold rim (pin) or a
+  dashed merrow border (patch), each with a soft shadow. Area `cut: {mode, border_mm?, color?}` does this in a template (#444).
+- **`print-art` action: print-ready files per placed area.** Each area is written at `print_size_mm` × `dpi` (default 300) as
+  `AREA.png` with its resolution and transparency, plus an editable `source/AREA.vixl`, through the export path (call
+  limits, no overwrite without `overwrite: true`, a failure removes what it wrote). `spot_colors: N` posterizes to at most N
+  flat inks (perceptual merge in OKLab) with `AREA-spot.png` and one film positive per ink as PNG, or as PDF pages with
+  `separations: "pdf"`; `underbase: true` adds a white choke layer (`choke_mm`) for dark garments only (relative
+  luminance under 0.4), and says why when it skips a light garment or a product that is not a garment (#444).
+- **Templates can use pack images.** `asset-place` is allowed in a template's `operations` and `overlay`, so a custom
+  product photo or label can ship in a pack; a missing resource fails the mockup with `missing_asset` (#444, #530).
+
 ### Characters
 
 ### Reproducibility and delivery

@@ -195,8 +195,10 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | --- | --- | --- | --- | --- |
 | PRD-53 | Show a design on a phone, laptop, browser, framed poster, business card or mug | `vixl_apply(workflow='mockup')` | 1 · <1 | Since #172: a live, corner-pinned link; editing the design updates the mockup. |
 | PRD-54 | One design across several mockups, exported | `vixl_apply(workflow='mockup')` (list of templates, `export`) | 1 · <1 | Since #172. |
+| PRD-55 | Merch mockup: a design on the named print areas of a tee, long-sleeve, crewneck, hoodie, tote, sticker, enamel pin, patch, button, cap, beanie or socks, in any garment colour and print finish | `vixl_apply(workflow='mockup')` (`place`, `garment_color`, `finish`) | 1 · <1 | Since #444: garments are vector flat lays (front and back); finishes are `screen`, `puff`, `embroidery`, `enamel` and `woven`; [guide](guides/output/merch-mockups.md). |
+| PRD-56 | Print-ready art per placed area at its print size and dpi, with spot-colour separations and a white underbase for dark garments | `vixl_apply(workflow='print-art')` (`dpi`, `spot_colors`, `separations`, `underbase`) | 1 · <1 | Since #444: PNG at `print_size_mm` × dpi, editable sources, film positives per ink (PNG or PDF pages); no Pantone or overprint. |
 | DEK-51 | Slide deck from a Markdown file (layouts, notes, tables, charts, images), checked and exported | `vixl_apply(workflow='deck-from-markdown')` | 1 · 1 | Since #170; re-running rebuilds only changed slides. Fonts need a pairing (`fonts`) for a clean font check. |
-| PRN-51 | Sticker or label cut line around artwork | `die-cut` | 1 · <1 | Since #444 item 4: union outline offset by N px, stroked and unfilled. |
+| PRN-51 | Sticker or label cut line around artwork | `die-cut` | 1 · <1 | Since #444 item 4: union outline offset by N px, stroked and unfilled. The sticker, pin and patch mockups cut around the placed design with it (PRD-55). |
 | DRW-31 | Cut a traced or drawn shape into two parts along a line or polygon | `path-split` | 1 · <1 | Since #443; `overlap` keeps crossing shapes whole. |
 | DOC-20 | Export PNG, JPEG, WebP or TIFF | `vixl_export` | 1 · <1 | RGB PNG by default since 0.20. |
 | DOC-21 | Export at 2× or 3× for screens | `export --scale 2x`, `export-screens` | 1 · <1 |  |

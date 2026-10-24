@@ -7,7 +7,7 @@ Each entry of ``PRODUCTS`` is a mockup template (see ``mockups.py``): a scene of
 Area corners keep the aspect ratio of their print size, so a design looks on the product as it will print.
 """
 
-from . import garments
+from . import accessories, garments, goods
 from .drawing import CX, PX_PER_MM, View, polygon_pen, rect_quad, rotated_quad
 
 PRODUCTS = {}
@@ -111,3 +111,6 @@ PRODUCTS["crewneck"] = _garment(garments.Garment(**CREWNECK),
 PRODUCTS["hoodie"] = _garment(garments.Garment(**HOODIE),
                               "A pullover hoodie with drawstrings, kangaroo pocket and ribbed cuffs, front and back "
                               "(the hood lies flat behind the neck)." + AREAS_NOTE, "#e4e2dc")
+
+for _name, _make in {**goods.GOODS, **accessories.ACCESSORIES}.items():
+    PRODUCTS[_name] = _make()
