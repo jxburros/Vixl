@@ -352,6 +352,34 @@ packages.
 
 ### Characters
 
+- **One library for saved characters and objects (breaking).** `character-save` now writes the document's object
+  library (`object_library`, the records `object-save` keeps, kind `person` or the character's own object kind) and
+  `character-load` reads it, so `object-place` places a saved character too; `character-load source=` imports into
+  the same library. The separate `character_library` is no longer written. A document that still holds one opens as
+  before and `character-load` reads its entries; `vixl convert OLD.vixl` moves them into the object library (rule
+  `character-library`, run on documents from every release, a taken name getting a `-character` suffix). Code that
+  read `state["character_library"]` reads `state["object_library"]` (#521).
+- **Portable character packages (`.vixlchar`).** The `character-package` workflow action writes a rigged character
+  as one deterministic ZIP: its portable character document and a versioned manifest with the name, kind, the
+  character's own `version`, parts, rig, named expressions (`{name: {part: variant}}` over eyes, brows and mouth),
+  poses (`{name: {joint: degrees}}`), motions (a `character-cycle` or pose keys), the checks to run on each copy, and
+  the fonts and images it uses, every file with a SHA-256. Left out, expressions, poses and motions default to the
+  built-in ones the character can use (`confused`, `celebrate`, `wave`, `walk` …). Output is never replaced without
+  `overwrite: true` (#521).
+- **Discover, inspect and place packages.** `character-discover` lists the packages in the workspace and in the user
+  library (`VIXL_CHARACTERS`, else `~/.config/vixl/characters`) and the characters saved in the open document;
+  `character-inspect` verifies one and returns its manifest; `character-place {package, pose?, expression?,
+  motion?}` places an editable copy with new IDs and its rig bindings, in one undo step, and reports the package's
+  checks on it. `colors` and `outfit` recolour a copy; `scale`, `width` or `height` scale it whole, and only
+  `scale_parts` changes proportions (#521).
+- **Located character errors; a cycle needs its bones (breaking).** A joint the rig does not have (`pose.left-elbow`,
+  suggesting `left-lower-arm`), a motion whose cycle needs bones the rig lacks and an expression on a missing part are
+  errors with the field, the character and what it has, on place and in `character-pose`, `character-cycle` and
+  `character-package`. `character-cycle` now refuses `walk`, `run` and `ride` on a rig without `left-upper-leg` and
+  `right-upper-leg`, and `wave` without `right-upper-arm` and `right-lower-arm`, naming the cycles the rig can drive;
+  before, such a cycle quietly left the missing limbs out. A package is read within fixed bounds (64 MiB, exactly
+  two members, no encryption), checked against its manifest before anything changes, and never executed (#521).
+
 ### Reproducibility and delivery
 
 - **Render lockfiles cover every page, artboard and frame.** `vixl reproduce --write-lock` writes a version 2 lockfile

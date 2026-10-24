@@ -299,11 +299,11 @@
     },
     "object_library": {
      "type": "object",
-     "description": "Saved objects (object-save) for object-place."
+     "description": "Saved objects and characters (object-save, character-save) for object-place and character-load."
     },
     "character_library": {
      "type": "object",
-     "description": "Saved characters."
+     "description": "Characters saved before the one library; character-load still reads them and vixl convert moves them into object_library."
     },
     "emojis": {
      "type": "object",

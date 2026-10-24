@@ -119,7 +119,7 @@ Assertion grammar: `canvas.width == 1920`, `layer.NAME.exists`, `layer.NAME.boun
 | `animation` | **`path`**, `format`, `animation=NAME`, `scale` (0.05–32), `sampling`, `colors`, `dither`, `max_bytes`, `quality`, `columns`, `overwrite` | Saved frames; a sheet also writes `same-stem.json` with frame rects, durations and the `animations` map |
 | `audio` | **`path`** (.wav), `sample_rate` | Mix of the audio tracks at the highest source rate (≤48 kHz), mono when every source is mono and unpanned |
 | `icons` | **`path`** (a folder), `icon_set` `web\|apple\|android\|windows\|all`, `sampling` | favicon.ico, PNG sizes, site.webmanifest |
-| `character` | **`path`** (.vixl), **`target`** | A portable character library for `character-load` |
+| `character` | **`path`** (.vixl), **`target`** | A portable character document for `character-load source` (packages with poses, expressions and motions: workflow `character-package`) |
 
 Without `kind`, `.wav` is audio, `targets` is a batch, and `.gif`/`.apng`/`.mp4`/`.webm`/`.zip` are the
 timeline, or the saved-frame animation when the document has frames and no timeline.

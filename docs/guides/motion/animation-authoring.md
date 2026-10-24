@@ -38,11 +38,67 @@ Natural movement has a cause: prepare a large action with a small opposite actio
 
 `character` generates a simple editable character, or accepts a `parts` mapping from standard part names to artwork. Required names: `torso`, `head`, `left-eye`, `right-eye`, `mouth`; `left/right-upper-arm`, `left/right-lower-arm`, `left/right-hand`; `left/right-upper-leg`, `left/right-lower-leg`, `left/right-foot`. Brows, hair and accessories are optional. Proximal limb pivots are `[0.5,0]`; standard shapes are ordered with limbs behind the torso, facial features in front of the head. Custom bound artwork keeps its authored draw order.
 
-`character-save target=hero name=cast-member` stores artwork and rig in the document library. Save the `.vixl` document to retain the library; `character-load template=cast-member name=friend` creates independent IDs with optional `colors`, per-part `outfit` colors, `scale`, `x` and `y`. Shared embedded image/font assets remain portable. `character-load source="cast.vixl" name="friend"` imports a workspace-contained character document. Python `export_character` / `import_character` also move a template between documents; `vixl_export(kind='character')` writes a standalone character asset.
+`character-save target=hero name=cast-member` stores artwork and rig in the document's object library, the same library `object-save` writes ([objects](../shapes/objects.md#save-and-place-editable-objects)): the entry is an object of kind `person` (or the character's own object kind) and `object-place name=cast-member` places it too. Save the `.vixl` document to retain the library; `character-load template=cast-member name=friend` creates independent IDs with optional `colors`, per-part `outfit` colors, `scale`, `x` and `y`. Shared embedded image/font assets remain portable. `character-load source="cast.vixl" name="friend"` imports a workspace-contained character document. Python `export_character` / `import_character` also move a template between documents; `vixl_export(kind='character')` writes a standalone character asset. To share a character across documents and workspaces with its poses, expressions and motions, write a [character package](#character-packages).
+
+Documents saved before the one library keep their saved characters in `character_library`: `character-load` still reads them, and `vixl convert OLD.vixl` moves them into the object library ([converting](../../reference/converting.md)).
 
 `character-rig` defines bones with a `part`/`layer`, optional `parent`, root `origin:[x,y]`, `length`, `angle` and `limits:[min,max]`. Joint angles clamp to limits; cycles and unknown parents are rejected. `character-pose angles={...}` solves connected positions. `character-ik chain=[upper,lower] point=[x,y] bend=1` solves a limb in character-local coordinates and clamps unreachable goals to the reach envelope. Joint limits may prevent exact contact. Use explicit IK contact poses for planted feet; `character-cycle` supplies retargetable walk, run, idle, ride, react and wave starting points. The standard character faces the viewer, so its `walk` and `run` lift each foot in turn, bend the knee a little, open the opposite arm and bob the body, and `react` keeps the feet planted; bound artwork (a `parts` mapping, usually a side view) swings its limbs in the picture plane. `view: "front"` or `"side"` on `character-cycle` overrides the choice. The `character` check reports `front-view-leg-swing` when a front-facing character's upper legs swing more than 15 degrees in the plane, which reads as the splits.
 
 `character-lipsync` accepts text or explicit `{time,viseme}` cues. Text allocation is an approximate visual guide, not speech recognition or phoneme alignment. The set is `rest,A,E,O,U,M,F,L`; supplying artwork named `viseme-A` etc uses those parts, otherwise the default mouth uses distinct proportions. Explicit cues from aligned audio are the accurate timing path.
+
+## Character packages
+
+A `.vixlchar` package carries one rigged character from document to document: its artwork and rig as a portable
+character document, and a versioned manifest with the character's name, kind, parts, rig, named expressions, poses
+and motions, the checks to run on each copy, and the fonts and images it uses, each with a SHA-256. The four
+workflow actions (`vixl_apply(workflow=…, request=…)`, or `vixl workflow ACTION --request FILE --workspace .`) are:
+
+| Action | Request | What it does |
+| --- | --- | --- |
+| `character-package` | `target`, `output` (`.vixlchar`), `name`, `description`, `tags`, `version`, `expressions`, `poses`, `motions`, `checks`, `overwrite` | Writes the package; an existing file is replaced only with `overwrite: true`. |
+| `character-discover` | `query` | Lists the packages in the workspace and in the user library (`VIXL_CHARACTERS`, else `characters/` beside the user resource library, `~/.config/vixl/characters`), and the characters saved in the open document. Files that fail to read are listed under `invalid`. |
+| `character-inspect` | `package` | Verifies a package and returns its manifest. |
+| `character-place` | `package`, `name`, `x`, `y`, `scale` / `width` / `height`, `pose`, `expression`, `motion`, `colors`, `outfit`, `scale_parts` | Places an editable copy with new IDs and its rig, in one undo step, and runs the package's checks on it. |
+
+`package` is a workspace path ending in `.vixlchar`, `user:FILE` in the user library, or the name of a package
+`character-discover` finds (the workspace first).
+
+```json
+{"target": "hero", "output": "cast/hero.vixlchar", "version": "1.0.0", "description": "Our guide",
+ "expressions": {"confused": {"left-brow": "tilted", "right-brow": "lowered", "mouth": "smirk"}},
+ "poses": {"celebrate": {"left-upper-arm": -100, "left-lower-arm": -50, "right-upper-arm": 100, "right-lower-arm": 50}},
+ "motions": {"wave": {"cycle": "wave", "duration": 1200, "period": 600}}}
+```
+
+Leave out `expressions`, `poses` or `motions` and the package carries the built-in ones the character can use:
+expressions `neutral`, `happy`, `confused`, `surprised`, `sad`, `angry` and `celebrate`; poses `rest` (every joint
+at 0), `celebrate`, `wave` and `point`; motions `wave`, `walk`, `idle` and `react`, each only when the character has
+the parts or bones it moves. An expression maps face parts to variants: `left-eye`/`right-eye` `open`, `wide`,
+`closed`, `squint`, `happy`; `left-brow`/`right-brow` `neutral`, `raised`, `lowered`, `angry`, `sad`, `tilted`;
+`mouth` `neutral`, `smile`, `grin`, `frown`, `open`, `o`, `flat`, `smirk`. A pose maps joints to degrees. A motion is
+a `character-cycle` (`{cycle, duration?, period?, amount?, samples?, view?}`) or pose keys (`{keys: [{time,
+angles, easing?}]}`). `checks` defaults to `character`, plus `object` when the group is a declared object.
+
+```json
+{"package": "hero", "pose": "celebrate", "expression": "confused", "motion": "wave", "x": 40, "y": 60,
+ "colors": {"skin": "#7c5036"}, "outfit": {"torso": "#2a6"}}
+```
+
+`pose` and `expression` also take an inline map. A placed copy keeps the package's proportions: `scale`, `width`
+or `height` (one of them) scales the whole character, `colors` (by colour role: skin, outfit, hair, eyes) and
+`outfit` (by part) recolour it, and only `scale_parts` (`{head: 1.2}`, 0.25-4) changes proportions, scaling parts
+about their pivots and lengthening the bones on them.
+
+Validation comes before anything changes, and errors say where: a joint the rig does not have (`pose.left-elbow`,
+with `left-lower-arm` suggested), a motion whose cycle needs bones the rig lacks (`motions.wave`: a wave moves
+`right-upper-arm` and `right-lower-arm`, with the cycles the rig can drive suggested), an expression on a part the
+character does not have (`expression.left-brow`), and an unknown colour role or part. `character-cycle` and
+`character-pose` give the same errors. The standard character's shoulders sit outside its torso, so a pose that
+raises an arm far opens a small gap that the `object` check reports on a declared object.
+
+A package is untrusted input. It is read within fixed bounds (64 MiB, exactly two members, no encryption), its
+character document opens through the ordinary bounded loader, every digest and every manifest field is checked
+against the character before anything is placed, and nothing in it is executed.
 
 ## Atmosphere and cut paper
 

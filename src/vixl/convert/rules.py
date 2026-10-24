@@ -502,6 +502,45 @@ def pdf_bleed(ctx, state):
                  "the canvas operation's size to get the exact bleed", field="canvas.physical")
 
 
+def character_library(ctx, state):
+    """Saved characters had a library of their own (``character_library``: name -> layers); they are entries of the
+    object library, which ``character-load`` and ``object-place`` read. A name the object library already uses gets a
+    ``-character`` suffix."""
+    legacy = state.pop("character_library", None)
+    if legacy is None:
+        return
+    from ..objects import portable_record
+
+    if not isinstance(legacy, dict):
+        ctx.warn("character-library", "The character library was not a name → layers map; it was dropped",
+                 field="character_library")
+        return
+    library = state.setdefault("object_library", {})
+    for name, layers in legacy.items():
+        roots = [layer for layer in layers if isinstance(layer, dict) and "character" in layer
+                 and not layer.get("parent")] if isinstance(layers, list) else []
+        if len(roots) != 1:
+            ctx.warn("character-library", "The saved character has no character group; it was dropped",
+                     field=f"character_library.{name}")
+            continue
+        target, number = name, 1
+        while target in library:
+            target = f"{name}-character" + (f"-{number}" if number > 1 else "")
+            number += 1
+        library[target] = {**portable_record(layers, roots[0]["id"], state), "description": "", "tags": []}
+        ctx.change("character-library", "The saved character moved into the object library, the one library of "
+                   "saved characters and objects", field=f"object_library.{target}", before=name, after=target)
+
+
+# Rules that a stored state field triggers, whatever release saved the document: they run on current documents too.
+KEYED = {"character-library": "character_library"}
+
+
+def keyed(state):
+    """The keyed rules ``state`` needs (empty when it holds none of their fields)."""
+    return tuple(rule for rule, key in KEYED.items() if isinstance(state, dict) and key in state)
+
+
 def _comps(state):
     """Every layer comp (``{layer id: fields}``) in the state, the page's and those kept in pages and masters."""
     found = []
@@ -547,4 +586,5 @@ RULES = (
     ("thick-stroke", thick_stroke),
     ("dash-fit", dash_fit),
     ("pdf-bleed", pdf_bleed),
+    ("character-library", character_library),
 )

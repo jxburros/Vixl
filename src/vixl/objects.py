@@ -1186,24 +1186,32 @@ def subtree(project, root_id):
 def snapshot(project, root_id, motion=True):
     """A portable record of the subtree under ``root_id``: its layers (the root re-based to the page), the fonts
     and resources they use and, with ``motion``, the timeline tracks that move them."""
-    layers = deepcopy(subtree(project, root_id))
-    root = next(layer for layer in layers if layer["id"] == root_id)
-    root.pop("parent", None)
-    text = json.dumps(layers)
-    fonts = {name: asset for name, asset in project.state.get("fonts", {}).items()
-             if asset in text or f'"{name}"' in text}
+    layers = subtree(project, root_id)
     tracks = []
     if motion:
         ids = {layer["id"] for layer in layers}
-        tracks = deepcopy([track for track in (project.state.get("timeline") or {}).get("tracks", [])
-                           if track.get("target") in ids])
+        tracks = [track for track in (project.state.get("timeline") or {}).get("tracks", [])
+                  if track.get("target") in ids]
+    return portable_record(layers, root_id, project.state, tracks)
+
+
+def portable_record(layers, root_id, state, tracks=()):
+    """The saved-object record of ``layers``, one subtree whose root is ``root_id``: the layers (the root
+    re-based to the page), the fonts and resources of ``state`` they use, and ``tracks``. Its ``kind`` is the
+    root's object kind (``person`` for a standard character)."""
+    layers = deepcopy(list(layers))
+    root = next(layer for layer in layers if layer["id"] == root_id)
+    root.pop("parent", None)
+    text = json.dumps(layers)
+    fonts = {name: asset for name, asset in state.get("fonts", {}).items()
+             if asset in text or f'"{name}"' in text}
     item = {"version": RECORD_VERSION, "root": root_id, "layers": layers, "fonts": fonts}
     if tracks:
-        item["tracks"] = tracks
+        item["tracks"] = deepcopy(list(tracks))
     for key in RESOURCE_KEYS:
-        if project.state.get(key):
-            item.setdefault("resources", {})[key] = deepcopy(project.state[key])
-    found = record(project.layer(root_id))
+        if state.get(key):
+            item.setdefault("resources", {})[key] = deepcopy(state[key])
+    found = record(root)
     if found:
         item["kind"] = found["kind"]
     return item
