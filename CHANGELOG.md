@@ -1,5 +1,63 @@
 # Changelog
 
+## Unreleased
+
+Steps 5 and 6 of the [implementation plan](docs/project/implementation-plan.md): craft, then objects and brand
+packages.
+
+### Upgrading from 0.30
+
+### Typography and components
+
+### Craft checks and variations
+
+### Palette and decoration from the brief
+
+### Layout and adaptation
+
+### Atmosphere and motifs
+
+- **Fog for `haze`.** `haze` takes `form: "fog"`: two to five stacked soft horizontal bands (`layers`, default 3) that are
+  lighter, less saturated and denser toward the horizon, with the nearer bands taller. `density` sets how thick the fog is,
+  `seed` where the bands drift, `color` the nearest band's colour (default a pale blue-grey), and `target` or `x`, `y`,
+  `width`, `height` the zone. `behind` names the foreground layers the fog sits behind, so they stay crisp (default: below
+  the lowest text layer); run it once per gap for mist between ranges of hills. It is an editable group of gaussian
+  gradients, vector in every export, like the other atmosphere operations. `layers`, `density` and `behind` are refused on
+  the `band` and `round` forms instead of being ignored (#655).
+- **The atmosphere decision is recorded, with golden coverage.** The [atmosphere guide](docs/guides/finishing/atmosphere.md)
+  says why reflection, haze, star-field, string-lights and bokeh are operations that write editable layers and not stack
+  effects (an effect has no parts to edit and every exporter would have to learn to draw it), and that light falloff is the
+  `lighting` operation. A new visual fixture, `atmosphere_scene`, draws stars, a haze glow, fog behind the near hill, string
+  lights, bokeh and a reflection on one small canvas (#655).
+- **Five motif shapes.** Catalog shapes `microphone` (grille slots, cradle, stem, base), `snowflake` (six arms with two pairs
+  of branches, one merged outline; `thickness` sets the arm width), `leaf` (stem, midrib and veins), `book` (open, with
+  lines of text and the cover showing) and `balloon` (highlight, knot and wavy string) draw what composed shapes drew
+  badly. Each is one editable outline of plain curves with cut-outs wound against the body, so SVG, PDF, PowerPoint and the
+  preview flatten it with the same Bezier evaluator, and each reads at 24 px as well as at poster size. The visual fixture
+  `catalog_motif_shapes` shows them at both sizes (#651).
+- **Nine more motif themes, and three questions.** `vixl_reference(brief)` now also returns motifs for bakeries, gardens
+  and botanicals, winter and the holiday season, sport, tech and product launches, wellness, travel, books and reading,
+  and kids' parties (16 themes in all). `bakery` moved from the coffee theme's keywords to its own theme. Every theme
+  answers what the object is, what it emits or reflects and what frames it, and the `motifs` guidance now asks those three
+  questions before drawing. The music theme draws a stand microphone with the new `microphone` shape, and the coast and
+  lake themes draw morning fog and mist with `haze` `form: "fog"` (#651).
+
+### Illustration defaults
+
+### Fonts
+
+### Objects
+
+### Brand packages
+
+### Merch
+
+### Characters
+
+### Reproducibility and delivery
+
+### Evals
+
 ## 0.30.5
 
 Plans the animation export speed work.

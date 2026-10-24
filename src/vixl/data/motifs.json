@@ -50,7 +50,7 @@
          "operations": ["reflection"]},
         {"element": "morning fog or sea mist drifting over the water and hiding the base of headlands and the lighthouse",
          "instead_of": "a flat grey or white overlay, or one uniform band of haze",
-         "draw": "haze with form fog: three stacked soft bands, lighter and less saturated toward the horizon (layers 2-5, density 0.4-0.6, color the pale blue-grey of the sky at the horizon, seed for the drift), placed behind the nearest headland or the lighthouse with behind so the foreground stays crisp; run it once per gap to put mist between headlands, thinner (lower density) for the farther gap",
+         "draw": "haze with form fog: three stacked soft bands, lighter and less saturated toward the horizon (layers 2-5, density 0.4-0.6, color the pale blue-grey of the sky at the horizon, seed for the drift), placed behind the nearest headland or the lighthouse with behind so the foreground stays crisp; run it once per gap to put mist between headlands, a paler color for the farther gap",
          "operations": ["haze"],
          "example": [
            {"type": "haze", "form": "fog", "y": 660, "height": 240, "layers": 3, "density": 0.5, "color": "#cfdbe6", "seed": 4}
