@@ -7,6 +7,7 @@
         "approach": [
           "Build from soft overlapping masses (ellipse, teardrop, capsule, blob or an organic preset), not boxes; tuck each joint under the part it grows from.",
           "Vary sizes and angles a little (irregular at subtle) so it reads as alive, and keep one light direction across the parts."],
+        "workflows": ["object-plan"],
         "operations": ["shape", "organic", "pathfinder", "irregular", "group", "object"],
         "looks": ["hand-made", "soft-shadow"],
         "guidance": ["multi-part-objects", "natural-color-light", "imperfection"],
@@ -16,6 +17,7 @@
         "approach": [
           "Build from geometric primitives (rectangle, rounded-rectangle, trapezoid, ellipse) with one corner radius and one stroke weight; unite a silhouette from several shapes with pathfinder.",
           "Keep made things straight and symmetric about their axis; line parts up with align and distribute rather than by eye."],
+        "workflows": ["object-plan"],
         "operations": ["shape", "pathfinder", "round-corners", "align", "distribute", "group", "object"],
         "looks": ["clean-flat", "soft-shadow"],
         "guidance": ["multi-part-objects", "illustration-perspective"],
@@ -23,6 +25,7 @@
     "natural": {"summary": "Landscape and weather forms without a fixed anatomy.", "outline": {"silhouette": false, "internal": "none"},
       "build": {
         "approach": ["Draw one mass with an irregular edge (path, blob or an organic preset), then lighter and darker facets or puffs on top for its form; leave it without an outline."],
+        "workflows": ["object-plan"],
         "operations": ["shape", "organic", "irregular", "gradient", "group", "object"],
         "looks": ["subtle-grain"],
         "guidance": ["natural-color-light", "imperfection"],
@@ -30,6 +33,7 @@
     "symbolic": {"summary": "Signs drawn to be read, not depicted: icons, badges, emblems.", "outline": {"silhouette": true, "internal": "same", "weight": "uniform"},
       "build": {
         "approach": ["Draw one bold silhouette on a square grid, then a few details in one stroke weight; it must still read at 24 px."],
+        "workflows": ["object-plan"],
         "operations": ["shape", "pathfinder", "group", "object"],
         "looks": ["clean-flat", "outline"],
         "guidance": ["icon", "logo"],
@@ -59,9 +63,9 @@
       "build": {
         "approach": [
           "Front view: about 7.5 heads tall, the head about 1/8 of the height, shoulders about 2 heads wide, the crotch at half the height and the hands at mid-thigh.",
-          "Draw the 17 standard parts as shapes and bind them with the character operation (its parts map names every part and makes the figure posable), or plan head units with the figure-plan workflow. character without parts draws a cartoon about 3.4 heads tall: declare that object stylized: true.",
+          "Draw the 17 standard parts as shapes and bind them with the character operation (its parts map names every part and makes the figure posable), or scaffold all 17 from head units with the object-plan workflow (template figure-plan returns a seven-mass blocking figure instead). character without parts draws a cartoon about 3.4 heads tall: declare that object stylized: true.",
           "Limbs overlap at every joint; the torso overlaps the chin and the tops of the arms and legs."],
-        "workflows": ["figure-plan"],
+        "workflows": ["object-plan"],
         "operations": ["character", "character-pose"],
         "shapes": ["ellipse", "capsule", "rounded-rectangle"],
         "palette": "natural:skin",
