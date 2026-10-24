@@ -41,7 +41,7 @@ REPAIRS = Literal["fit-text", "contrast-ink", "safe-area-nudge"]
 CHECKS = Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "placeholders", "fonts", "brand",
                  "print", "color_vision", "guides", "alignment", "deck", "title_position", "type_scale", "words",
                  "min_font", "notes", "empty", "form", "drawing", "links", "style", "diagram", "flow", "codes",
-                 "composition", "motion", "character", "captions", "connected", "cost", "accessibility"]
+                 "composition", "object", "motion", "character", "captions", "connected", "cost", "accessibility"]
 
 
 class Context:
@@ -624,7 +624,7 @@ def check_design(
     sample: Annotated[str | None, Field(description="form checks: 'worst' or a workspace CSV of rows")] = None,
     style: Annotated[str | list[str] | None, Field(description="style check: this style (or list) instead of the "
                                                                "document's style tag")] = None,
-    connect_tolerance: Annotated[float, Field(ge=0, le=100, description="connected check: gap still touching, px")] = 2,
+    connect_tolerance: Annotated[float, Field(ge=0, le=100, description="connected and object checks: gap still touching, px")] = 2,
     repair: Annotated[bool | list[REPAIRS] | None, Field(
         description="Apply the suggested built-in repairs first (one undoable batch), then check")] = None,
     offset: Annotated[int, Field(ge=0, description="First finding to list")] = 0,

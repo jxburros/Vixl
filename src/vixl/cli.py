@@ -1250,7 +1250,7 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("--checks", nargs="+", choices=check_names(), metavar="CHECK",
                        help="run only these checks (listed below)")
         p.add_argument("--connect-tolerance", type=float, default=2,
-                       help="connected check: pixels of gap still counted as touching (default 2)")
+                       help="connected and object checks: pixels of gap still counted as touching (default 2)")
         p.add_argument("--style", nargs="+", help="style checks: evaluate this style (or styles) instead of the document's tag")
         p.add_argument("--page", help="Check one page of a multi-page document (default: the active page)")
         p.add_argument("--pages", help="the pages to check, e.g. 1-3,5 or all (every page shown on export), each "

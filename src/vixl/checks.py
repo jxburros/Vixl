@@ -16,7 +16,7 @@ from .model import finite
 from .timeline import animated as timeline_animated
 
 CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "placeholders", "fonts", "brand", "content",
-          "form", "links", "diagram", "flow", "codes", "composition")
+          "form", "links", "diagram", "flow", "codes", "composition", "object")
 FALLBACK_FONT = "DejaVuSans.ttf"
 OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing", "style", "motion", "character", "captions",
                    "connected", "cost", "accessibility")
@@ -500,7 +500,9 @@ def check_design(
     ``min_font``, ``max_words``, ``pages``, ``include_hidden``). ``sample`` (``"worst"`` or a CSV
     path) fills the form's fields to find values that overflow their boxes. The ``style`` check
     evaluates the document's style tag (or ``style``, a name or list of names) rule by rule. The ``connected``
-    check reports parts of a group that float free of its main body (gaps above ``connect_tolerance`` px).
+    check reports parts of a group that float free of its main body (gaps above ``connect_tolerance`` px); the
+    ``object`` check measures declared objects against their kind (``object_check``), and ``connected`` then leaves
+    those groups to it.
     The document's waivers (see ``waivers.py``) turn the findings they cover into informational ones listed
     as ``waived``; ``waivers=False`` reports every finding as if there were none."""
     from .design_render import artboard_project
@@ -1171,10 +1173,17 @@ def check_design(
 
         check_accessibility(candidate, resolved, layers, texts, bounds, text_scales, issue)
 
+    measured_objects = set()
+    if "object" in checks:
+        from .object_check import check as check_objects
+
+        measured_objects = check_objects(candidate, issue, tolerance=connect_tolerance, targets=targets,
+                                         resolved=resolved, local=local_bounds)
+
     if "connected" in checks:
         from .parts import check_connected
 
-        check_connected(candidate, issue, connect_tolerance, targets, resolved)
+        check_connected(candidate, issue, connect_tolerance, targets, resolved, skip=measured_objects)
 
     from .plugins import hooks as plugin_hooks
 
