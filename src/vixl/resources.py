@@ -159,7 +159,8 @@ TEMPLATES.update(MODULAR_TEMPLATES)
 BUILTINS = {"palettes": PALETTES, "templates": TEMPLATES, "guidance": GUIDANCE,
             "containers": CONTAINERS, "shapes": {}, "suites": SUITES, "workflows": WORKFLOWS,
             "mockups": {},  # built-in mockups are drawn by mockups.BUILTINS; the library holds the user's own
-            "objects": builtin_kinds()}
+            "objects": builtin_kinds(),
+            "assets": {}}  # images that packs carry; the bytes live beside the library (pack_assets)
 
 
 def proportional(project, item, operations):
@@ -245,6 +246,10 @@ def validate(kind, value):
         from .objects import validate_entry
 
         validate_entry("kind", value)
+    elif kind == "assets":
+        from .pack_assets import validate as validate_asset
+
+        validate_asset(value)
     elif kind == "templates":
         require(isinstance(value, dict), "Template must be a JSON object")
         from .model import Limits
@@ -253,6 +258,8 @@ def validate(kind, value):
         Limits().size(value["width"], value["height"])
         color(value.get("background", "transparent"))
         require(isinstance(value.get("defaults", {}), dict), "Template defaults must be an object")
+        require(isinstance(value.get("places_logo", False), bool),
+                "places_logo is true when the template places the brand logo itself (brand-logo)")
         from .automation import validate_inputs, validate_state as validate_automation
         validate_automation(value)
         if "inputs" in value:
@@ -287,7 +294,12 @@ def validate(kind, value):
 def register(kind, name, value, *, workspace=None):
     require(kind in BUILTINS, "Unknown resource category")
     named(name)
-    validate(kind, value)
+    if kind == "assets":
+        # Checked in full by pack_assets.store, under the library lock, before anything is written.
+        require(isinstance(value, dict) and "data_base64" in value,
+                "Save an asset as {data_base64, media_type, credit?, license?}", field="value")
+    else:
+        validate(kind, value)
     if kind == "objects":
         from .objects import validate_user_kind
 
@@ -298,6 +310,11 @@ def register(kind, name, value, *, workspace=None):
         data = json.loads(read_bounded(path, 1024 * 1024)) if path.exists() else {}
         require(not any(name in plugin.get("resources", {}).get(kind, []) for plugin in data.get("_plugins", {}).values()),
                 "Resource belongs to a plugin; update the pack or save under another name")
+        if kind == "assets":
+            from .pack_assets import store
+
+            data.setdefault(kind, {}).pop(name, None)
+            value = store(path, value, data)
         data.setdefault(kind, {})[name] = value
         payload = json.dumps(data, ensure_ascii=False).encode()
         require(len(payload) <= 1024 * 1024, "Resource library exceeds limit", "resource_limit")
@@ -309,21 +326,26 @@ def register(kind, name, value, *, workspace=None):
         finally:
             if os.path.exists(temp):
                 os.unlink(temp)
+        if kind == "assets":
+            from .pack_assets import collect
+
+            collect(path, data)
     return {"registered": name, "kind": kind}
 
 
-def substitute(value, variables):
+def substitute(value, variables, notes=None):
+    """``value`` (template, container or workflow operations) with its ``${variables}`` filled: a field that is
+    exactly ``${name}`` takes the variable's own value (a number stays a number), and a field that starts with
+    ``=`` is evaluated as arithmetic (``vixl.expressions``); ``notes`` collects each evaluated expression."""
+    from .expressions import resolve
     from .render import substitute as text_substitute
 
-    if isinstance(value, dict):
-        return {k: substitute(v, variables) for k, v in value.items()}
-    if isinstance(value, list):
-        return [substitute(v, variables) for v in value]
-    if isinstance(value, str):
-        if value.startswith("${") and value.endswith("}") and value[2:-1] in variables:
-            return deepcopy(variables[value[2:-1]])
-        return text_substitute(value, variables)
-    return value
+    def fill(text):
+        if text.startswith("${") and text.endswith("}") and text[2:-1] in variables:
+            return deepcopy(variables[text[2:-1]])
+        return text_substitute(text, variables)
+
+    return resolve(value, fill, notes)
 
 
 RESOURCE_TYPES = ("palette-define", "palette-apply", "template-apply", "guidance", "font-register", "brand-preset")
@@ -461,7 +483,15 @@ def execute_resource(project, op):
             values = validate_inputs(item["inputs"], values)
             project.state["variables"].update(values)
         from .container_library import template_operations
-        expanded = substitute(proportional(project, item, template_operations(project, item, op, values)), values)
+        from .notices import note
+
+        evaluated = []
+        # Variables and = expressions are filled first, so a number they give scales with a proportional template
+        # like a number written in it.
+        expanded = proportional(project, item, substitute(template_operations(project, item, op, values), values,
+                                                          evaluated))
+        for text in evaluated:
+            note(project, f"template {name}: {text}")
         # Template text follows the document typography: text that names no role or stage takes the heading
         # role when it is the largest, else body.
         texts = [o for o in expanded if o.get("type") == "text"
@@ -486,7 +516,7 @@ def execute_resource(project, op):
         if op.get("style"):
             from .styles import apply_operations
 
-            for operation in apply_operations(op["style"], palette=False):
+            for operation in apply_operations(op["style"], palette=False, brand_styles=kit.get("styles")):
                 execute(project, operation)
             rolled["style"] = op["style"]
         for key, kind, field in (("suites", "suite-set", "suite"), ("motions", "motion-define", "motion"),

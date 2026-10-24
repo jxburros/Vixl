@@ -11,6 +11,7 @@ from copy import deepcopy
 
 SUMMARIES = {
     "add": "Embed an image as a new raster layer (an embedded asset id from import-image, or a path in the CLI).",
+    "asset-place": "Place an image from an assets resource (a pack or brand asset) as a raster layer; templates may use it.",
     "solid": "Add a flat-color rectangle layer, by default covering the canvas (a background).",
     "gradient": "Add a linear, angled or radial gradient layer between two colors or several stops.",
     "text": "Add an editable text layer (auto-sized to its text).",
@@ -114,6 +115,8 @@ SUMMARIES = {
     "palette-generate": "Generate swatches from one color: a 50-950 scale or a harmony (complementary, triadic …).",
     "template-apply": "Create layers from a named template with variables.",
     "guidance": "Store or remove a written design guide (brand voice, rules) in the document.",
+    "brand-logo": "Place a brand.json logo by purpose (icon, wordmark, avatar, lockup) at its anchor, inside the safe "
+                  "area; templates use it to place their own logo.",
     "brand-preset": "Use a named preset of the workspace brand (brand.json presets) for this document: its palette, "
                     "fonts, stages and rules apply to layouts, templates and the brand check; none returns to the base brand.",
     "font-design": "Name the font drawn in this document and set its metrics in canvas pixels (em, ascent, descent, x-height, cap height, side bearing, space) and kerning pairs.",
@@ -456,7 +459,10 @@ OVERRIDES = {
               "relative_to": "canvas, selection, or a layer name (default canvas, or the selection for targets).",
               "targets": "Layers to align together (default the target)."},
     "constrain": {"constraints": "Anchors to expressions: {left|right|top|bottom|center-x|center-y: a number, "
-                                 "'canvas.right-40', 'layer.left+8' or 'guide:name.center-x'}; one per axis."},
+                                 "'canvas.right-40', 'layer.left+8' or 'guide:name.center-x'}; one per axis. On a "
+                                 "text layer 'lyric.line[-1].end' (where its last line's pen ends; line[0].start, "
+                                 "counted from the end with -1) and 'lyric.baseline[-1]' (a line's baseline) follow "
+                                 "the rendered copy; offsets are pixels or em of that text's size ('+0.25em')."},
     "canvas": {"width": "Canvas width in pixels.", "height": "Canvas height in pixels.",
                "size": "Named size from vixl_reference('sizes') (letter, instagram-post, favicon …).",
                "preset": "Same as size.", "dpi": "Dots per inch for print metadata (36-2400).",

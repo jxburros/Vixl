@@ -183,9 +183,13 @@ def apply(project, value, variables=None, dry_run=False):
     from .io_policy import service_check
 
     validate(value)
-    return project.apply(
-        substitute(value["operations"], {**value.get("defaults", {}), **(variables or {})}),
+    evaluated = []
+    result = project.apply(
+        substitute(value["operations"], {**value.get("defaults", {}), **(variables or {})}, evaluated),
         validator=service_check,
         detail="compact",
         dry_run=dry_run,
     )
+    if evaluated:
+        result["normalized"] = [*result.get("normalized", []), *(f"workflow: {text}" for text in evaluated)]
+    return result

@@ -346,6 +346,17 @@ Comps capture visibility, position, rotation, opacity, blend, constraints, and l
 
 Text boxes wrap paragraphs and oversized words. Given only a `width`, the box is as tall as the wrapped lines (a box whose height was set before only grows), so nothing is cut off; `fit` shrinks from the configured font size until the text fits, and at least until its longest word fits on a line, so a word is broken across lines only when it cannot fit even at 1 px. Warps are `none`, `arc`, `flag`, and `bulge`, with amounts −1 to 1, applied inside the box. Paths are local pixel polylines: glyphs follow segment tangents and content beyond the path is omitted. This is basic glyph placement, not full shaping/kerning on Bézier paths. A warp moves glyphs up or down by a fraction of the box height; the warped line is moved back inside the box so lifted letters keep their tops. Content taller than the box keeps its top and is clipped at the bottom, so allow room for curvature. `wrap` (`greedy`, `balance`, `pretty`) chooses where lines break, and headings balance by default: see [line breaking](../text/typography.md#line-breaking). A new `text-layout` operation replaces the previous settings.
 
+A constraint expression names a sibling (or `canvas`, or a guide) and one of its box anchors (`left`, `right`,
+`top`, `bottom`, `center-x`, `center-y`) plus an optional offset: `title.bottom+24`. On a text layer it can also
+name a line as the renderer sets it: `title.line[-1].end` (where the last line's pen ends; `line[0].start`, and
+negative numbers count from the end) for a horizontal anchor, `title.baseline[0]` (a line's baseline) for a
+vertical one. Offsets are pixels or `em` of that text's drawn size (`+0.25em`), so a mark after a variable
+headline keeps its distance at any size:
+
+```bash
+vixl constrain spark --left 'title.line[-1].end+0.25em' --bottom 'title.baseline[-1]'
+```
+
 Guides are named absolute x/y positions used in constraint expressions such as `guide:left-margin.left+8`. Angled lines, rays, points, circles and curves, generated grid systems (thirds, golden, armature, polar, isometric, perspective …), `place` and `snap` are described in [guides](../layout/guides.md). Grids generate guides `NAME-x1-start`, `NAME-x1-end`, `NAME-y1-start`, etc.; redefining the grid replaces its generated guides. Guides/grids are document metadata, never painted into output, and remain absolute when the canvas changes.
 
 Pathfinder combines procedural shape silhouettes by union, subtraction in target order, or intersection. It retains procedural operand snapshots for resizing, hides the originals, and uses the first operand's fill. It does not rewrite editable vector paths or track subsequent edits to the original operands.
