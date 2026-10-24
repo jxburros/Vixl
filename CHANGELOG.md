@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **Round and bevel joins on sharp corners.** A stroked path's outer corner took a mitre point whenever its offset edges met
+  within the neighbouring segments, so `line_join: "round"` and `"bevel"` drew a spike on a sharp V and `miter_limit` was
+  ignored. Only a flattened curve's gentle outer turn now takes the single mitre point; a real corner gets its join in
+  PNG, SVG, PDF, PowerPoint, `outline-stroke` and font glyphs alike.
+
 ## 0.30.5
 
 Plans the animation export speed work.

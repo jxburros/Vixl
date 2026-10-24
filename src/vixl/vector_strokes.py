@@ -196,8 +196,9 @@ def _parallel(points, distances, closed, join, miter_limit):
         inner_limit = max(abs(d), shorter)
         # On a flattened curve every vertex turns a little: inside, the offset edges meet within the
         # neighbouring segments (|t| is how far along them); outside, a round join bulges past the mitre
-        # point by less than ``FLAT`` px. Either way one point is exact, where two would fold back.
-        gentle = abs(t) <= shorter or (outer and join == "round" and reach - abs(d) <= FLAT)
+        # point by less than ``FLAT`` px. Either way one point is exact, where two would fold back. A sharp outer
+        # corner is not gentle however short its offset edges are: it takes its round, bevel or limited mitre join.
+        gentle = abs(t) <= shorter if not outer else reach - abs(d) <= FLAT
         if (not outer and (reach <= inner_limit or gentle)) or (outer and (gentle or join == "miter"
                                                                             and reach <= abs(d) * miter_limit)):
             out.append(intersection)

@@ -228,3 +228,31 @@ def test_curved_stroke_outlines_do_not_fold_back(join):
         turns = [math.atan2(b[1] - 20, b[0] - 20) - math.atan2(a[1] - 20, a[0] - 20) for a, b in zip(contour, contour[1:])]
         steps = [(turn + math.pi) % math.tau - math.pi for turn in turns]
         assert all(step >= -1e-9 for step in steps) or all(step <= 1e-9 for step in steps)
+
+
+@pytest.mark.parametrize("join, bottom", [("round", 140), ("bevel", 133.85), ("miter", 156)])
+def test_a_sharp_outer_corner_takes_its_join(join, bottom):
+    """A V's outer corner is rounded or bevelled as asked (a mitre within its limit keeps the point)."""
+    from vixl.vector_paths import pixel_path
+    from vixl.vector_strokes import expanded
+
+    project = Project(200, 200, background="#ffffff")
+    project.apply([{"type": "shape", "shape": "path", "name": "v", "x": 0, "y": 0, "path": "M10 10 L60 130 L110 10",
+                    "stroke": "#000000", "stroke_width": 20, "line_join": join}])
+    layer = project.layer("v")
+    (d, _), = expanded(layer, pixel_path(layer, False))
+    ys = [float(v) for v in re.findall(r"-?\d+(?:\.\d+)?", d)[1::2]]
+    assert max(ys) == pytest.approx(bottom, abs=0.5)
+
+
+def test_a_mitre_past_its_limit_is_bevelled():
+    from vixl.vector_paths import pixel_path
+    from vixl.vector_strokes import expanded
+
+    project = Project(200, 200, background="#ffffff")
+    project.apply([{"type": "shape", "shape": "path", "name": "v", "x": 0, "y": 0, "path": "M10 10 L60 130 L110 10",
+                    "stroke": "#000000", "stroke_width": 20, "line_join": "miter", "miter_limit": 2}])
+    layer = project.layer("v")
+    (d, _), = expanded(layer, pixel_path(layer, False))
+    ys = [float(v) for v in re.findall(r"-?\d+(?:\.\d+)?", d)[1::2]]
+    assert max(ys) < 140
