@@ -23,6 +23,9 @@ packages.
 - **Brands with several logos add only the logos marked `auto: true`**, and unknown logo fields are an error.
 - **Proportional templates scale numbers that variables and `=` expressions produce.**
 - **Render lockfiles are version 2.** Earlier releases cannot read them; version 1 lockfiles still verify.
+- **Saved characters live in the object library.** `character-save` writes `object_library`; run `vixl convert` on
+  a document with an old `character_library` to move its entries (the engine still reads them). `character-cycle`
+  refuses walk, run, ride or wave on a rig without the bones the cycle moves.
 - **`layer-intent` `tags: ["optional"]` becomes `priority: optional`**, and a stack's `align: "middle"` becomes
   `center`; both are reported under `normalized`.
 
