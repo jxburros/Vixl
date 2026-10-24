@@ -75,7 +75,8 @@ def test_character_saved_instances_independent_and_portable(tmp_path):
     p.save(tmp_path / 'cast.vixl')
     loaded = Project.load(tmp_path / 'cast.vixl')
     assert not findings(loaded)
-    assert loaded.state['character_library']['hero-template']
+    saved = loaded.state['object_library']['hero-template']
+    assert saved['kind'] == 'person' and 'character_library' not in loaded.state
     assert loaded.render().size == (500, 450)
 
 
