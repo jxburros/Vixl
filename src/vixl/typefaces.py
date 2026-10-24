@@ -15,6 +15,7 @@ import random
 import re
 import secrets
 from urllib.parse import quote_plus, urlparse
+import zipfile
 
 import httpx
 
@@ -456,6 +457,84 @@ def cached_font(family, weight=400, italic=False):
     return data
 
 
+def local_script_faces(families):
+    """Font bytes for ``families`` (catalog faces of scripts the bundled fonts lack, such as Noto Sans SC) that are
+    already on this machine: the ``cjk`` content pack (``VIXL_CJK_PACK``: one font file, or a zip of files named like
+    the font cache), then every cached style of each family (left there by font-cover or font install). Never touches
+    the network: a render must not download, so a face that is not here leaves the characters to the apply warning."""
+    from .packs import local
+    from .text import file_bytes
+
+    found = []
+    pack = local("cjk")
+    if pack is not None:
+        stat = pack.stat()
+        if zipfile.is_zipfile(pack):
+            members = _pack_members(str(pack), stat.st_mtime_ns, stat.st_size)
+            found += [_pack_member(str(pack), stat.st_mtime_ns, stat.st_size, member)
+                      for family in families for member in members.get(slug(family), ())]
+        else:
+            found.append(file_bytes(pack))
+    directory = _cache_dir()
+    try:
+        listing = _cache_listing(str(directory), directory.stat().st_mtime_ns)
+    except OSError:
+        listing = {}
+    for family in families:
+        for name in listing.get(slug(family), ()):
+            try:
+                found.append(file_bytes(directory / name))
+            except OSError:
+                continue
+    return [data for data in dict.fromkeys(found) if data is not None and _usable_face(data)]
+
+
+_STYLE_FILE = re.compile(r"(?P<family>[a-z0-9-]+?)-(?P<weight>[1-9]00)(?:-italic)?\.ttf")
+
+
+def _styles(names):
+    """``{family slug: [file names]}`` for font files named like the font cache (``noto-sans-sc-400.ttf``)."""
+    found = {}
+    for name in sorted(names):
+        match = _STYLE_FILE.fullmatch(Path(name).name)
+        if match:
+            found.setdefault(match["family"], []).append(name)
+    return found
+
+
+@lru_cache(maxsize=4)
+def _cache_listing(directory, mtime):
+    return _styles(entry.name for entry in os.scandir(directory) if entry.is_file())
+
+
+@lru_cache(maxsize=4)
+def _pack_members(path, mtime, size):
+    with zipfile.ZipFile(path) as archive:
+        return _styles(info.filename for info in archive.infolist() if not info.is_dir()
+                       and info.file_size <= LIMIT)
+
+
+@lru_cache(maxsize=8)
+def _pack_member(path, mtime, size, member):
+    try:
+        with zipfile.ZipFile(path) as archive:
+            return archive.read(member)
+    except (OSError, KeyError, zipfile.BadZipFile):
+        return None
+
+
+@lru_cache(maxsize=16)
+def _usable_face(data):
+    """Whether the outline renderer can draw from ``data`` (a damaged or colour font is skipped, not fatal)."""
+    from .text import coverage, face
+
+    try:
+        face(data)
+        return bool(coverage(data))
+    except Exception:  # noqa: BLE001 - an unreadable or colour font file is just not a usable face
+        return False
+
+
 def fetch_font(family, weight=400, italic=False, *, client=None, source=None):
     """Return TTF bytes for one static style of a Google Fonts family, using the user cache.
     A ``source`` dict is filled with where the bytes came from: ``origin`` (``cache`` or
@@ -582,7 +661,7 @@ def cover_fonts(project, text=None, scripts=None, weight=400, *, client=None):
     Thai, Arabic, or a language name such as japanese), else from the characters of ``text`` the document cannot draw,
     else from every text layer's. Faces come from the font cache first; a download honours the network policy
     (``VIXL_OFFLINE``), and when one is not allowed or fails nothing is changed and the error names the families."""
-    from .text import SCRIPT_FONTS, cover_families, glyph_coverage, scripts_of, uncovered
+    from .text import SCRIPT_FONTS, cover_families, glyph_coverage, layer_coverage, scripts_of
 
     if scripts:
         require(isinstance(scripts, (list, tuple)) and all(isinstance(item, str) for item in scripts),
@@ -593,11 +672,14 @@ def cover_fonts(project, text=None, scripts=None, weight=400, *, client=None):
         wanted = list(dict.fromkeys(SCRIPT_ALIASES[item.lower()] for item in scripts))
         missing = []
     else:
+        # Characters drawn only from a face on this machine (text.local_faces) count too: font-cover embeds it.
         if text is not None:
-            missing = glyph_coverage(project, {"text": text})["missing"]
+            report = glyph_coverage(project, {"text": text})
+            missing = sorted({*report["missing"], *report.get("local", ())})
         else:
             missing = sorted({char for layer in project.state["layers"] if layer["type"] == "text"
-                              for char in uncovered(project, layer)})
+                              for report in (layer_coverage(project, layer),)
+                              for char in (*report["missing"], *report.get("local", ()))})
         wanted = [name for name in scripts_of(missing) if name]
     families = cover_families(wanted)
     result = {"scripts": wanted, "families": families, "installed": [],

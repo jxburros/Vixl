@@ -1045,12 +1045,17 @@ def glyph_coverage(project, layer):
     document and bundled fallbacks, the way it is drawn."""
     from .text import glyph_coverage as span_coverage
 
-    missing, fallback = set(), set()
+    missing, fallback, local, local_fonts = set(), set(), set(), set()
     for span in styled_spans(project, layer):
         report = span_coverage(project, {"font": span["font"], "text": span["text"]})
         missing.update(report["missing"])
         fallback.update(report["fallback"])
-    return {"missing": sorted(missing), "fallback": sorted(fallback - missing)}
+        local.update(report.get("local", ()))
+        local_fonts.update(report.get("local_fonts", ()))
+    result = {"missing": sorted(missing), "fallback": sorted(fallback - missing)}
+    if local - missing:
+        result.update(local=sorted(local - missing), local_fonts=sorted(local_fonts))
+    return result
 
 
 def fill_variables(rich, variables):

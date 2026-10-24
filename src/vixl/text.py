@@ -206,7 +206,8 @@ def _font_data(project, layer, text):
     primary = primary_font_data(project, layer)
     if all(not visible_char(c) or ord(c) in coverage(primary) for c in text):
         return with_emojis(project, primary, text)
-    return with_emojis(project, fallback_chain(primary, document_fallbacks(project, layer)), text)
+    fonts = document_fallbacks(project, layer)
+    return with_emojis(project, fallback_chain(primary, [*fonts, *local_faces(text, [primary, *fonts])]), text)
 
 
 def document_fallbacks(project, layer):
@@ -215,16 +216,40 @@ def document_fallbacks(project, layer):
     return [primary_font_data(project, {**layer, "font": name}) for name in names]
 
 
+# Faces to look for on this machine per script, after the catalog face font-cover installs: any CJK face draws the
+# common Han ideographs, so a Japanese face in the cache serves Chinese text that has no Chinese face, and so on.
+LOCAL_ALTERNATES = {"Han": ("Noto Sans TC", "Noto Sans JP", "Noto Sans KR"),
+                    "Hiragana/Katakana": ("Noto Sans SC", "Noto Sans TC"), "Hangul": ()}
+
+
+def local_faces(text, fonts):
+    """Faces already on this machine (``typefaces.local_script_faces``) for the characters of ``text`` that ``fonts``
+    lack, when they are in a script Vixl has a catalog face for (CJK, Devanagari, Thai ...). The document does not
+    embed them, so the apply warns and font-cover embeds one; nothing is downloaded here."""
+    missing = sorted(c for c in set(text) if visible_char(c) and not any(ord(c) in coverage(f) for f in fonts))
+    scripts = [name for name in scripts_of(missing) if name]
+    if not scripts:
+        return []
+    from .typefaces import local_script_faces
+
+    families = cover_families(scripts)
+    families += [family for name in scripts for family in LOCAL_ALTERNATES.get(name, ()) if family not in families]
+    wanted = {ord(c) for c in missing if script_of(c)}
+    return [data for data in local_script_faces(families) if wanted & coverage(data)]
+
+
 def glyph_coverage(project, layer):
+    """``{missing, fallback}`` characters of a text layer: the ones no font draws (tofu) and the ones a font after its
+    own draws. ``local`` (with ``local_fonts``, their families) lists those drawn by a face only this machine has."""
     data = font_data(project, layer)
-    from .emojis import is_context, scan
+    from .emojis import is_context, is_glyph, scan
 
     fonts = tuple(f for f in (data if isinstance(data, tuple) else (data,)) if not is_context(f))
     text = layer.get("text", "")
     spans = scan(text, project.state.get("emojis", {}).get("overrides"))
     handled = {i for a, b, _ in spans for i in range(a, b)}
     chars = sorted({c for i, c in enumerate(text) if i not in handled and visible_char(c)})
-    return {
+    report = {
         "missing": [c for c in chars if not any(ord(c) in coverage(f) for f in fonts)],
         "fallback": [
             c
@@ -232,6 +257,15 @@ def glyph_coverage(project, layer):
             if ord(c) not in coverage(fonts[0]) and any(ord(c) in coverage(f) for f in fonts[1:])
         ],
     }
+    if report["fallback"] and any(script_of(c) for c in report["fallback"]):
+        held = {fonts[0], *document_fallbacks(project, layer)}
+        machine = [f for f in fonts[1:] if not is_glyph(f) and f not in held]
+        drawn = {c: next(f for f in fonts if ord(c) in coverage(f)) for c in report["fallback"]}
+        local = [c for c in report["fallback"] if any(drawn[c] is f for f in machine)]
+        if local:
+            report["local"] = local
+            report["local_fonts"] = sorted({font_style(drawn[c])[0] for c in local})
+    return report
 
 
 def layer_coverage(project, layer):

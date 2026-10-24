@@ -1,5 +1,8 @@
 """Noto Sans is the proofing face, with DejaVu Sans and the Noto symbol and math faces behind it; scripts the bundled
-faces lack warn at apply time and font-cover installs a face for them (#419, #684)."""
+faces lack draw from a face already on the machine, else the apply warns and names the font-cover step (#419, #684).
+
+``fixtures/fonts/cjk-test.ttf`` is a synthesized stand-in for a CJK face (``font_helper.make_font``: a filled box for
+each of a few Han, kana and Hangul characters), built offline so no CJK font has to ship or download."""
 
 from pathlib import Path
 
@@ -9,6 +12,7 @@ from vixl import Project
 from vixl.text import BUNDLED_FONTS, coverage, file_bytes, glyph_coverage
 
 DATA = Path(__file__).resolve().parents[1] / "src" / "vixl" / "data"
+CJK_FIXTURE = Path(__file__).parent / "fixtures" / "fonts" / "cjk-test.ttf"
 
 
 @pytest.fixture(autouse=True)
@@ -262,3 +266,129 @@ def test_dejavu_sans_can_be_registered_as_the_body_face():
     assert asset.startswith("fonts/") and p.assets[asset] == (DATA / "DejaVuSans.ttf").read_bytes()
     p.apply({"type": "text", "name": "t", "text": "Body copy", "size": 16, "color": "black"})
     assert p.layer("t")["font"] == asset
+
+
+# --- #419: CJK, Devanagari and Thai from a face already on this machine -----------------------------------------
+
+
+def _no_network(monkeypatch):
+    import httpx
+
+    monkeypatch.setattr(httpx.Client, "send", lambda *a, **k: (_ for _ in ()).throw(AssertionError("network used")))
+
+
+def _ink_height(project):
+    import numpy as np
+
+    rows = np.where((np.asarray(project.render().convert("L")) < 128).any(axis=1))[0]
+    return int(rows.max() - rows.min() + 1) if len(rows) else 0
+
+
+def _cache_with(tmp_path, monkeypatch, name):
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    (cache / name).write_bytes(CJK_FIXTURE.read_bytes())
+    monkeypatch.setenv("VIXL_FONT_CACHE", str(cache))
+    return cache
+
+
+def test_cjk_draws_from_a_cached_face_without_registering_it(tmp_path, monkeypatch):
+    _no_network(monkeypatch)
+    text = "中文字"
+    empty = Project(400, 100, "#fff")
+    first = empty.apply({"type": "text", "name": "t", "text": text, "size": 40, "color": "black"})
+    assert glyph_coverage(empty, empty.layer("t"))["missing"] == sorted(text)
+    assert any("no available font draws" in w for w in first["warnings"])
+    tofu = _ink_height(empty)
+    _cache_with(tmp_path, monkeypatch, "noto-sans-sc-400.ttf")
+    p = Project(400, 100, "#fff")
+    result = p.apply({"type": "text", "name": "t", "text": text, "size": 40, "color": "black"})
+    report = glyph_coverage(p, p.layer("t"))
+    assert report["missing"] == [] and report["local"] == sorted(text) and report["local_fonts"] == ["Vixl CJK Test"]
+    assert "font_fallbacks" not in p.state and not [name for name in p.assets if name.startswith("fonts/")]
+    # Drawn: the stand-in face draws each character as a thin bar, where a missing glyph is a tall empty box.
+    assert tofu > 20 and 0 < _ink_height(p) < 8
+    warning = next(w for w in result["warnings"] if "does not embed" in w)
+    assert "Vixl CJK Test" in warning and '{"type": "font-cover", "scripts": ["Han"]}' in warning
+    assert "vixl font cover --script Han" in warning
+    issue = next(i for i in p.check()["issues"] if i["check"] == "fonts" and i.get("local"))
+    assert issue["severity"] == "warning" and "font-cover" in issue["message"]
+
+
+def test_font_cover_embeds_the_cached_face_offline(tmp_path, monkeypatch):
+    from vixl import typefaces
+
+    _no_network(monkeypatch)
+    _cache_with(tmp_path, monkeypatch, "noto-sans-sc-400.ttf")
+    monkeypatch.setenv("VIXL_OFFLINE", "1")
+    p = Project(400, 100, "#fff")
+    p.apply({"type": "text", "name": "t", "text": "中文", "size": 40, "color": "black"})
+    result = typefaces.cover_fonts(p)
+    assert [item["origin"] for item in result["installed"]] == ["cache"] and len(p.state["font_fallbacks"]) == 1
+    report = glyph_coverage(p, p.layer("t"))
+    assert report["missing"] == [] and "local" not in report  # the document draws it itself now
+    assert not [i for i in p.check()["issues"] if i["check"] == "fonts" and (i.get("local") or i.get("missing"))]
+
+
+def test_a_japanese_face_in_the_cache_serves_han_text(tmp_path, monkeypatch):
+    _cache_with(tmp_path, monkeypatch, "noto-sans-jp-400.ttf")
+    p = Project(400, 100, "#fff")
+    p.apply({"type": "text", "name": "t", "text": "汉字", "size": 40, "color": "black"})
+    assert glyph_coverage(p, p.layer("t"))["missing"] == []
+
+
+@pytest.mark.parametrize("packed", [False, True])
+def test_the_cjk_pack_override_is_a_font_file_or_a_zip(tmp_path, monkeypatch, packed):
+    import zipfile
+
+    _no_network(monkeypatch)
+    if packed:
+        source = tmp_path / "cjk.zip"
+        with zipfile.ZipFile(source, "w") as archive:
+            archive.writestr("fonts/noto-sans-kr-400.ttf", CJK_FIXTURE.read_bytes())
+            archive.writestr("README.txt", "not a font")
+    else:
+        source = tmp_path / "MyCJK.ttf"
+        source.write_bytes(CJK_FIXTURE.read_bytes())
+    monkeypatch.setenv("VIXL_CJK_PACK", str(source))
+    p = Project(400, 100, "#fff")
+    result = p.apply({"type": "text", "name": "t", "text": "한국어", "size": 40, "color": "black"})
+    assert glyph_coverage(p, p.layer("t"))["missing"] == []
+    assert any("does not embed" in w for w in result["warnings"])
+
+
+def test_a_missing_pack_file_or_a_broken_cached_face_leaves_the_warning(tmp_path, monkeypatch):
+    from vixl import packs
+
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    (cache / "noto-sans-thai-400.ttf").write_bytes(b"not a font")
+    monkeypatch.setenv("VIXL_FONT_CACHE", str(cache))
+    monkeypatch.setenv("VIXL_CJK_PACK", str(tmp_path / "missing.zip"))
+    assert packs.local("cjk") is None
+    p = Project(400, 100, "#fff")
+    result = p.apply({"type": "text", "name": "t", "text": "ไทย", "size": 40, "color": "black"})
+    warning = next(w for w in result["warnings"] if "no available font draws" in w)
+    assert '{"type": "font-cover", "scripts": ["Thai"]}' in warning and "vixl font cover --script Thai" in warning
+    assert "VIXL_CJK_PACK" in warning
+    error = next(i for i in p.check()["issues"] if i["check"] == "fonts" and i.get("missing"))
+    assert "font-cover" in error["message"]
+
+
+@pytest.mark.parametrize("kind", ["pdf", "svg", "pptx"])
+def test_exports_draw_the_cached_face(tmp_path, monkeypatch, kind):
+    _cache_with(tmp_path, monkeypatch, "noto-sans-sc-400.ttf")
+    p = Project(400, 100, "#fff")
+    p.apply({"type": "text", "name": "t", "text": "Hi 中文", "size": 40, "color": "black"})
+    p.export(tmp_path / f"t.{kind}")
+    if kind == "pdf":
+        import pypdfium2
+
+        assert "中文" in pypdfium2.PdfDocument(str(tmp_path / "t.pdf"))[0].get_textpage().get_text_range()
+    elif kind == "svg":
+        assert (tmp_path / "t.svg").read_text().count("<path") >= 4
+    else:
+        import zipfile
+
+        slide = zipfile.ZipFile(tmp_path / "t.pptx").read("ppt/slides/slide1.xml").decode()
+        assert 'typeface="Vixl CJK Test"' in slide

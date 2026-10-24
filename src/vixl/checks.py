@@ -808,8 +808,19 @@ def check_design(
         # check run, whichever checks were selected; fallback-font warnings belong to "fonts".
         for item, report in glyph_reports(candidate, [item for item in layers if item["type"] == "text"]):
             if report["missing"]:
+                from .advisories import cover_fix
+                from .text import scripts_of
+
                 issue("fonts", "error", f"{item['name']!r} has characters no font can draw ({''.join(report['missing'][:12])}); "
-                      "they render as empty boxes. Import a font that covers them and add it with font-fallbacks", [item], **report)
+                      f"they render as empty boxes. {cover_fix(scripts_of(report['missing']))}", [item], **report)
+            elif report.get("local") and "fonts" in checks:
+                from .advisories import cover_fix
+                from .text import scripts_of
+
+                issue("fonts", "warning", f"{item['name']!r} draws {''.join(report['local'][:12])} with "
+                      f"{', '.join(report['local_fonts'])} from this machine, which the document does not embed: "
+                      f"elsewhere they render as empty boxes. {cover_fix(scripts_of(report['local']), local=True)}",
+                      [item], **report)
             elif report["fallback"] and "fonts" in checks:
                 issue("fonts", "warning", f"{item['name']!r} uses fallback glyphs", [item], **report)
 
