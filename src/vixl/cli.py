@@ -1092,7 +1092,7 @@ def project_command(project, cmd, args, *, detail="compact"):
             p.add_argument("--frames", type=int, help="With --write-lock: timeline frames to lock (default 3 for an "
                            "animated document)")
             p.add_argument("--times", nargs="+", metavar="TIME", help="With --write-lock: timeline times to lock "
-                           "(milliseconds, 1.5s, 50% or a marker)")
+                           "(milliseconds, 1.5s, 50%% or a marker)")
             p.add_argument("--export-tolerance", type=int, help="How far a block average of a lossy export may move "
                            "(0-254, default 8) and still be visually equivalent")
             p.add_argument("--export-visual", action="store_true", help="Judge every export by its pixels, even those "
