@@ -10,7 +10,7 @@ from functools import lru_cache
 from .errors import require
 
 KINDS = tuple(
-    "ring donut cloud teardrop crescent half-circle banner ribbon tag callout bracket brace wave zigzag blob curve cylinder cube document folder button toggle browser-window phone-frame tablet-frame burst starburst seal flower squircle superellipse lens vesica reuleaux quarter-circle semicircle ellipse-segment kite rhombus isosceles-triangle star-polygon hexagram octagram stairs steps frame corner-bracket L-shape T-shape notched-rectangle plus minus x saltire asterisk trefoil quatrefoil infinity gear cog ruler tick-strip sawtooth square-wave dashed-line checkmark x-mark lightning-bolt lightning sun moon flame map-pin house bell lock magnifier envelope play pause stop skip info question warning music-note sparkle star-rating flourish swash-underline scroll laurel wreath divider corner-ornament sunburst radial-burst motion-lines speed-lines confetti scribble squiggle ticket stamp postmark scalloped-border sticker cup steam lighthouse lantern".split()
+    "ring donut cloud teardrop crescent half-circle banner ribbon tag callout bracket brace wave zigzag blob curve cylinder cube document folder button toggle browser-window phone-frame tablet-frame burst starburst seal flower squircle superellipse lens vesica reuleaux quarter-circle semicircle ellipse-segment kite rhombus isosceles-triangle star-polygon hexagram octagram stairs steps frame corner-bracket L-shape T-shape notched-rectangle plus minus x saltire asterisk trefoil quatrefoil infinity gear cog ruler tick-strip sawtooth square-wave dashed-line checkmark x-mark lightning-bolt lightning sun moon flame map-pin house bell lock magnifier envelope play pause stop skip info question warning music-note sparkle star-rating flourish swash-underline scroll laurel wreath divider corner-ornament sunburst radial-burst motion-lines speed-lines confetti scribble squiggle ticket stamp postmark scalloped-border sticker cup steam lighthouse lantern microphone snowflake leaf book balloon".split()
 )
 PARAMETERS = (
     "corner_style",
@@ -115,6 +115,7 @@ SHAPE_PARAMETERS = {
     "cube": ("depth",),
     "star-rating": ("count", "rating"),
     "confetti": ("count", "seed", "radius"),
+    "snowflake": ("thickness",),
 }
 # New per-shape parameters: a shape that does not read one of these ignores it (reported as an advisory).
 SHAPE_ONLY = ("cleft", "tip", "body", "pointer_side", "slant")
@@ -972,6 +973,8 @@ def path(layer):
             normalized([(0.34, 0.84), (0.66, 0.84), (0.66, 0.9), (0.65, 0.915), (0.35, 0.915), (0.34, 0.9)]),
             normalized([(0.485, 0.9), (0.515, 0.9), (0.53, 1), (0.47, 1)]),
         ])
+    if k in MOTIF_SHAPES:
+        return MOTIF_SHAPES[k](p, w, h)
     if k in PARAMETRIC_SHORTCUTS:
         return PARAMETRIC_SHORTCUTS[k](p, w, h)
     from .geometry import SHORTCUTS, parse_path
@@ -1071,6 +1074,143 @@ def _slant(p, w, limit):
     return min(limit, max(0, length(p.get("slant"), w, w * 0.25)))
 
 
+def _design(data, frame, w, h):
+    """SVG path data drawn on a design plane, with ``frame`` (x, y, width, height) the part of it that fills the
+    ``w`` x ``h`` layer. Arcs come out as cubic curves, so renderers and exporters flatten every motif shape with
+    the one Bezier evaluator."""
+    from .geometry import parse_path
+    from .pathfinder_geometry import path_data
+
+    x0, y0, fw, fh = frame
+    sx, sy = w / fw, h / fh
+    return path_data([(c, [(v - x0) * sx if i % 2 == 0 else (v - y0) * sy for i, v in enumerate(values)])
+                      for c, values in parse_path(data)])
+
+
+def _slit(points, box, w, h):
+    """A thin cut-out polygon (design coordinates) wound against the body so it shows what is behind."""
+    return hole_path(_design(poly(points), box, w, h))
+
+
+def _ribbon(centre, half_widths):
+    """A closed outline around a polyline ``centre`` whose half width varies per point (a slit or a thin curve)."""
+    left, right = [], []
+    for i, (x, y) in enumerate(centre):
+        a, b = centre[max(0, i - 1)], centre[min(len(centre) - 1, i + 1)]
+        d = math.dist(a, b) or 1.0
+        nx, ny = -(b[1] - a[1]) / d, (b[0] - a[0]) / d
+        left.append((x + nx * half_widths[i], y + ny * half_widths[i]))
+        right.append((x - nx * half_widths[i], y - ny * half_widths[i]))
+    return left + right[::-1]
+
+
+def _clockwise(points):
+    from .vector_strokes import area
+
+    return points if area(points) > 0 else points[::-1]
+
+
+def microphone(p, w, h):
+    """A stand microphone: a grille head (slotted), the cradle around it, the stem and the base. Drawn at 43 x 100."""
+    box = (6, 0, 43, 100)
+    head = "M14 13.5 A13.5 13.5 0 0 1 41 13.5 L41 36.5 A13.5 13.5 0 0 1 14 36.5 Z"
+    cradle = "M6 30 L10 30 L10 36.5 A17.5 17.5 0 0 0 45 36.5 L45 30 L49 30 L49 36.5 A21.5 21.5 0 0 1 6 36.5 Z"
+    stem = "M25.5 56 L29.5 56 L29.5 90 L25.5 90 Z"
+    base = "M13 93 L42 93 A3.5 3.5 0 0 1 42 100 L13 100 A3.5 3.5 0 0 1 13 93 Z"
+    slots = [_slit([(19.5, y), (35.5, y), (35.5, y + 2.4), (19.5, y + 2.4)], box, w, h) for y in (13, 19.5, 26, 32.5)]
+    return " ".join([_design(shape, box, w, h) for shape in (head, cradle, stem, base)] + slots)
+
+
+def snowflake(p, w, h):
+    """Six arms, each with two pairs of branches, as one merged outline. ``thickness`` is the arm width."""
+    from shapely.geometry import LineString
+    from shapely.geometry.polygon import orient
+    from shapely.ops import unary_union
+
+    mn = min(w, h)
+    arm = min(30.0, max(1.0, length(p.get("thickness"), mn, mn * 0.065) / mn * 100))
+    reach = 46.0 - arm / 2
+    sticks = []
+    for index in range(6):
+        angle = math.radians(-90 + 60 * index)
+        ux, uy = math.cos(angle), math.sin(angle)
+        sticks.append(((50.0, 50.0), (50 + ux * reach, 50 + uy * reach), arm))
+        for along, size in ((0.5, 0.26), (0.76, 0.19)):
+            base = (50 + ux * reach * along, 50 + uy * reach * along)
+            for turn in (-1, 1):
+                a = angle + turn * math.radians(50)
+                tip = (base[0] + math.cos(a) * reach * size, base[1] + math.sin(a) * reach * size)
+                sticks.append((base, tip, arm * 0.8))
+    merged = unary_union([LineString([a, b]).buffer(width / 2, quad_segs=4) for a, b, width in sticks])
+    parts = list(merged.geoms) if merged.geom_type == "MultiPolygon" else [merged]
+    rings = []
+    for part in parts:
+        part = orient(part, 1.0)
+        rings += [list(part.exterior.coords)[:-1], *(list(ring.coords)[:-1] for ring in part.interiors)]
+    return _design(" ".join(poly(ring) for ring in rings), (0, 0, 100, 100), w, h)
+
+
+def leaf(p, w, h):
+    """A pointed leaf with a stem, cut by a midrib and three pairs of side veins. Drawn at 62 x 98."""
+    box = (0, 2, 62, 98)
+    body = "M31 94 C-10.7 76 -10.7 30 33 2 C72 30 72 76 31 94 Z"
+    stem = "M29.2 88 L32.8 88 L32.8 100 L29.2 100 Z"
+    veins = [_slit(_ribbon([(31.4, 82), (31.6, 12)], [1.3, 0.35]), box, w, h)]
+    for index, base_y in enumerate((74, 56, 38)):
+        reach = 21 - index * 4
+        for turn in (-1, 1):
+            start = (31.4, base_y)
+            end = (31.4 + turn * reach, base_y - reach * 0.78)
+            mid = (start[0] + (end[0] - start[0]) * 0.55, start[1] + (end[1] - start[1]) * 0.55 + 1.5)
+            veins.append(_slit(_ribbon([start, mid, end], [1.2, 0.95, 0.3]), box, w, h))
+    return " ".join([_design(body, box, w, h), _design(stem, box, w, h)] + veins)
+
+
+def book(p, w, h):
+    """An open book: two curved pages with a gap at the spine, each with lines of text cut out. Drawn at 95 x 71."""
+    from .geometry import bezier_points
+
+    box = (2.5, 8, 95, 71.2)
+    left = "M47.5 15 L47.5 72 C38 64 20 62 3 66 L3 10 C20 6 38 8 47.5 15 Z"
+    right = "M52.5 15 C62 8 80 6 97 10 L97 66 C80 62 62 64 52.5 72 Z"
+    # Lines of text follow the page's top curve, so they bow with it; the pages are mirror images.
+    top = bezier_points([(47.5, 15), (38, 8), (20, 6), (3, 10)], [i / 12 for i in range(13)])
+    lines = []
+    for offset in (13, 22, 31, 40):
+        centre = [(x, y + offset) for x, y in top[1:11]]
+        outline = _ribbon(centre, [1.1] * len(centre))
+        lines.append(_slit(outline, box, w, h))
+        lines.append(_slit([(100 - x, y) for x, y in outline], box, w, h))
+    # The cover shows as a thin band under each page.
+    bottom = bezier_points([(47.5, 72), (38, 64), (20, 62), (3, 66)], [i / 12 for i in range(13)])
+    cover = _ribbon([(x, y + 5.5) for x, y in bottom], [2.1] * len(bottom))
+    covers = [_design(poly(_clockwise(cover)), box, w, h),
+              _design(poly(_clockwise([(100 - x, y) for x, y in cover])), box, w, h)]
+    return " ".join([_design(left, box, w, h), _design(right, box, w, h)] + covers + lines)
+
+
+def balloon(p, w, h):
+    """A balloon with a knot, a wavy string and a highlight cut into the body. Drawn at 58 x 99."""
+    from .vector_strokes import stroke_outline
+
+    box = (2, 0, 58, 99.2)
+    body = "M31 76 C20 70 2 52 2 33 C2 14 14 0 31 0 C48 0 60 14 60 33 C60 52 42 70 31 76 Z"
+    knot = "M31 74 L36 83 L26 83 Z"
+    wave = [(31 + 3.4 * math.sin(q * math.tau * 1.25), 83 + 15.5 * q) for q in (i / 24 for i in range(25))]
+    string = poly(_clockwise(_polygon_points(stroke_outline(wave, 1.5, False, "round", "round"))))
+    arc = [(31 + 24 * math.cos(math.radians(a)), 33 + 24 * math.sin(math.radians(a))) for a in range(200, 256, 4)]
+    shine = _slit(_ribbon(arc, [0.4, 1.0, 1.5, 1.6, 1.6, 1.5, 1.4, 1.2, 1.0, 0.8, 0.6, 0.4, 0.3, 0.2][:len(arc)]),
+                  box, w, h)
+    return " ".join([_design(body, box, w, h), _design(knot, box, w, h), _design(string, box, w, h), shine])
+
+
+def _polygon_points(path_data_text):
+    from .geometry import path_polygons
+
+    return path_polygons(path_data_text)[0][:-1]
+
+
+MOTIF_SHAPES = {"microphone": microphone, "snowflake": snowflake, "leaf": leaf, "book": book, "balloon": balloon}
 PARAMETRIC_SHORTCUTS = {
     "heart": heart,
     "speech-bubble": speech_bubble,
