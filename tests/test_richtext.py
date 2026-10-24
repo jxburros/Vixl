@@ -191,3 +191,19 @@ def test_accent_and_small_caps_flags():
     p.apply([{"type": "palette-apply", "name": "slate"},
              {"type": "rich-text", "name": "t", "markdown": "[Winter]{accent} [sale]{accent-bg} quay", "size": 30}])
     assert p.layer("t")["rich"]["spans"][2]["highlight"] == "@accent" and ink(p.render()) > 0
+
+
+@pytest.mark.parametrize("grouped", [False, True])
+def test_highlighted_text_is_measured_against_its_highlight(grouped):
+    def contrast(markdown):
+        p = Project(600, 160, "white")
+        p.apply({"type": "rich-text", "name": "t", "markdown": markdown, "size": 28, "x": 40, "y": 40,
+                 "color": "#111111"})
+        if grouped:
+            p.apply({"type": "group", "name": "g", "targets": ["t"]})
+        return [issue for issue in p.check(checks=["contrast"])["issues"] if issue.get("code") == "text-contrast"]
+
+    # Light words on a dark highlight read; measured against the white canvas under the layer they did not.
+    assert not contrast("Some [sale]{highlight=#222222 color=#ffffff} words")
+    assert not contrast("Some ==marked== words")
+    assert contrast("Some [sale]{highlight=#222222 color=#333333} words")

@@ -27,6 +27,10 @@ packages.
   Markdown has the flags `[Winter]{accent}` (`@accent-text`) and `[Sale]{accent-bg}` (`@on-accent` on an `@accent`
   highlight). These name palette roles; a document without them is refused with the remedy instead of failing on an
   unknown swatch (#650).
+- **Highlighted rich text is measured against its highlight.** The contrast check compared the glyphs of a highlighted
+  span (`==marked==`, `highlight=`, `accent-bg`) with what lies under the layer instead of with the highlight they sit
+  on, so light words on a dark highlight failed and dark words on a dark highlight could pass. It now reads them against
+  the highlight, for top-level and grouped text (#650).
 - **Callout, band and labelled-rule containers.** `callout` is a title and body on a panel tinted toward the accent,
   with an accent rule and an optional icon; `band` a header or footer strip with text and an optional detail; and
   `labelled-rule` a label between two rules. They use palette roles, hide their optional parts when empty and are not
