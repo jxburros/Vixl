@@ -897,8 +897,8 @@ def _ground_colour(candidate, resolved, geometry, block):
         if layer["type"] not in ("shape", "solid", "gradient") or not layer.get("visible", True) or layer.get(
                 "opacity", 1) < 0.5:
             continue
-        x, y, w, h = geometry[ident]
-        if not (x <= centre[0] <= x + w and y <= centre[1] <= y + h):
+        box = geometry.get(ident)
+        if box is None or not (box[0] <= centre[0] <= box[0] + box[2] and box[1] <= centre[1] <= box[1] + box[3]):
             continue
         stops = layer.get("stops") or []
         paint = layer.get("fill") or layer.get("color") or (stops[0].get("color") if stops else layer.get("start"))

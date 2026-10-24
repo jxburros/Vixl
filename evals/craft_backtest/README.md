@@ -104,8 +104,9 @@ so `single_weight` (which does not judge the proofing font) and `accent_unused` 
 accent) cannot fire here at all. What the set does show is headroom: the closest `flat_hierarchy` call is the T14 lyric
 frame at 2.13 times the body size against a limit of 1.6; no page has its two heaviest blocks within 15% of each
 other with a lighter third (the nearest, the T12 name and tagline, weigh 72% of each other, and two blocks alone are
-not judged); the T04 logo sheet, the T07 print sheet and the T05 bullets are series of equals, which the code leaves
-alone. Their positive and negative cases are in `tests/test_composition_hierarchy.py`, and the pairs in the skill's
+not judged); the T07 print sheet's four names are a series of equals (and each sits in a card of its own), and the T04
+logo sheet (marks over 13% of the canvas) and the T08 infographic (51%) are judged by their art: the code leaves
+all three alone. Their positive and negative cases are in `tests/test_composition_hierarchy.py`, and the pairs in the skill's
 `finishing-pairs.md` are applied and checked by `tests/test_finishing_pairs.py`.
 
 The thresholds were also run on the 144 rolled designs of `python -m evals.house_style` (48 sparse briefs at three
