@@ -69,9 +69,10 @@ vixl -p flyer.vixl export flyer.pdf --cmyk --icc printer.icc
 
 `printer.icc` is the profile supplied for your actual press/paper. Without an ICC profile,
 CMYK uses a device-naive GCR approximation with optional ink limiting. Documents edit in
-RGBA8 sRGB; CMYK is an export setting, not an editing space. Spot colors and RAW development
-are outside the implementation. A proof image helps assess separations but does not replace
-a printer proof. See [color and print](../finishing/color-and-print.md) for ink limits and simulations.
+RGBA8 sRGB; CMYK is an export setting, not an editing space. Spot-colour (Pantone) inks and RAW
+development are outside the implementation; the one separation Vixl writes is the flat-ink film
+positives of [print-ready art](merch-mockups.md#print-ready-art), for screen printing a design on a
+garment. A proof image helps assess separations but does not replace a printer proof. See [color and print](../finishing/color-and-print.md) for ink limits and simulations.
 
 A document made from a print size exports a PDF page of exactly trim plus bleed on every side, with a
 TrimBox and BleedBox, including when the bleed is a fraction of a pixel (raster PDFs too). Verify the

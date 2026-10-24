@@ -4639,15 +4639,23 @@ existing test files (`tests/test_checks*.py`, `tests/test_artistic*.py`).
 
 ### #444 Merch and print mockups
 
-**Status:** Item 4 (die-cut) is done; items 1-3 are open.
-- **Item 4:** the `die-cut` op (`src/vixl/diecut.py`, `tests/test_die_cut.py`, 6 tests; CHANGELOG 480).
-- **Item 1, partly:** the `mockup` workflow from #172 exists (`src/vixl/plugins/brand_kit/mockups.py`). Its built-ins
-  are only phone, laptop, browser, poster-wall, business-card and mug (`mockups.py:64-140`). There are no garments,
-  no named print areas and no garment colour variable.
-- **Item 2:** no product finishes.
-- **Item 3:** no print-ready art per placement.
+**Status:** Done (Unreleased, CHANGELOG "Merch").
+- **Item 4:** the `die-cut` op (`src/vixl/diecut.py`, `tests/test_die_cut.py`, 6 tests; CHANGELOG 480); the sticker, pin
+  and patch mockups cut around the placed design with it.
+- **Item 1:** templates take `areas`, `base`, `garment_color` and `main` (`mockups.py`); the built-ins are drawn as vector
+  paths in `products.py`, `garments.py`, `goods.py` and `accessories.py` (about 300 KB of generated path data): wave 1
+  (tee, long-sleeve, hoodie, tote, sticker, kiss-cut sticker, enamel pin, poster-wall) and wave 2 (crewneck, cap, beanie,
+  socks, patch, button).
+- **Item 2:** `finish: screen | puff | embroidery | enamel | woven | none` in `finishes.py`. Departure: they are
+  plugin data written as ordinary effects, styles and helper layers, not `looks.py` presets, so the core `look` list is
+  unchanged; `screen` is an ink-spread blur, grain and a dot-screen texture layer (the `halftone` effect on the art itself
+  would turn a full-colour design into one ink).
+- **Item 3:** the `print-art` action (`print_art.py`): `AREA.png` at `print_size_mm` × dpi through `export_file`, editable
+  sources, `spot_colors` (separations as PNG or PDF pages) and `underbase` for dark garments.
+- **Tests:** `tests/test_merch.py`, `tests/test_mockups.py`, and one golden fixture (`merch_tee_hoodie_sticker`) holding
+  the tee, hoodie and sticker.
 
-**Remaining work:** garment and product templates with named print areas, finishes, and per-placement print export.
+**Remaining work:** none.
 **Plan (plugin: extend `brand_kit` as a domain feature that writes ordinary layers; per CLAUDE.md "features that
 extend an existing plugin go in that plugin's package"):**
 1. Template schema extension:

@@ -3,7 +3,16 @@
 Mockups: `vixl_apply(workflow='mockup', request={"design": "poster.vixl", "mockup": "poster-wall", "output": "wall.vixl"})` places
 a design in a phone, laptop, browser, poster-wall, business-card or mug template as a live, corner-pinned link
 (a list of templates and `"output": "folder"` makes one each; `export: ["png"]` renders them). `mockup-list` lists
-templates and their slots; `mockup-save` adds the workspace's own. See `docs/guides/output/linked-documents.md#mockups`.
+templates, their slots and print areas; `mockup-save` adds the workspace's own. See `docs/guides/output/linked-documents.md#mockups`.
+
+Merch: the same workflow shows a design on a product, `vixl_apply(workflow='mockup', request={"mockup": "tee", "output":
+"tee.vixl", "place": {"front-chest": "logo.vixl", "back": "art.vixl"}, "garment_color": "#14161c", "finish": "screen"})`.
+Products: tee, long-sleeve, crewneck, hoodie (areas front-chest, full-front, back, sleeve-l, sleeve-r, hem-tag, inside-neck),
+tote (front), sticker, sticker-kiss-cut, enamel-pin, patch, button (face), cap, beanie, socks. `garment_color` recolours only
+the base layers; `finish` is screen, puff, embroidery, enamel, woven or none. `vixl_apply(workflow='print-art', request={
+"mockup": "tee", "output": "print", "place": {...}, "dpi": 300, "spot_colors": 3, "underbase": true})` then writes each
+area at its `print_size_mm` × dpi (PNG, an editable source, film-positive separations as PNG or PDF pages, and a white
+underbase for dark garments only). See `docs/guides/output/merch-mockups.md`.
 
 Discover actions with `vixl_reference('workflows')` or `vixl workflow schema`.
 Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/main/docs/guides/automation/production.md).
