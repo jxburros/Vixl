@@ -118,7 +118,7 @@ examples use, named like the font cache); the fallback fonts that make text rend
 | `brand_kit` (Brand kit) | workflows | Logo packages, brand guideline boards and device or print mockups from a brand.json and a logo. | `brand-board`, `logo-package`, `mockup`, `mockup-list`, `mockup-save` |
 | `deck_markdown` (Markdown to deck) | workflows | Turn a Markdown outline into a checked slide deck with charts, tables and speaker notes. | `deck-from-markdown` |
 | `teamwork` (Teamwork) | workflows | Workspace branches and merges, document groups with shared parameters and rollback, suite inference. | `branch-fork`, `branch-list`, `branch-merge`, `branch-status`, `group-apply`, `group-define`, `group-list`, `group-recover`, `group-show`, `suite-infer` |
-| `workspace_qa` (Workspace QA) | workflows | check-all and replace-across over many documents, protected edits, proof pages and render lockfiles. | `check-all`, `proof`, `protected-edit`, `replace-across`, `reproduce` |
+| `workspace_qa` (Workspace QA) | workflows | check-all and replace-across over many documents, protected edits, proof pages, render lockfiles and deliverable packages. | `check-all`, `package`, `proof`, `protected-edit`, `replace-across`, `reproduce` |
 | `layout_repair` (Layout repair) | workflows | repair-layout: try ranked candidate fixes for failing checks and keep the least disruptive one. | `repair-layout` |
 | `app_animation` (App animation packages) | workflows | Package animation states, theme variants, reduced-motion images and a sample consumer for apps. | `app-animation-package` |
 | `screen_capture` (Screen capture) | workflows | Capture the local desktop, a pixel rectangle or a Windows window to a PNG, only when asked. | `screen-capture` |
