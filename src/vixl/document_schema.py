@@ -145,6 +145,8 @@ LAYER_FIELDS = {
     "irregular": (OBJECT, "Irregular (torn, rough) edge recipe and its source geometry."),
     "tear": (OBJECT, "Torn-edge record: the tear recipe, mask or path mode and its rim and fibre layers."),
     "die_cut": (OBJECT, "A die-cut outline record: the layers it surrounds and the offset distance."),
+    "generated": (OBJECT, "A layer an operation draws and redraws itself {by}: object-outline for an object's "
+                  "outline (object action outline)."),
     "reflection": (OBJECT, "A reflection layer's settings (horizon, sources), kept so it can be re-rendered."),
     "cut_paper": (OBJECT, "Cut-paper look settings (grain, edge texture)."),
     "export_fallback": (STRING, "Reason vector exports draw this layer as an image."),
@@ -259,8 +261,10 @@ LAYER_FIELDS = {
     "drawing": (OBJECT, "A hand-drawing pipeline record (source, cleanup, vectorize settings)."),
     "drawing_strokes": (ARRAY, "Vectorized strokes of a drawing."),
     "drawing_role": (STRING, "Role of this layer in a drawing (line, fill …)."),
-    "object": (OBJECT, "group: object declaration {kind, label, notes, references, version}."),
-    "object_part": (OBJECT, "This layer's part name {name, side} inside its object."),
+    "object": (OBJECT, "group: object declaration {kind, label, notes, references, stylized, proportions, outline, "
+               "interior, outline_color, outline_width, outlined, version}; outlined is the applied outline policy "
+               "with the part strokes it replaced and the geometry hash it was drawn for."),
+    "object_part": (OBJECT, "This layer's part name {name, side, depth, outline, interior} inside its object."),
     "character": (OBJECT, "group: character rig (parts, bones, poses)."),
     "character_part": (STRING, "Which part of a character this layer is."),
     "character_color": (STRING, "Character colour role of this part."),

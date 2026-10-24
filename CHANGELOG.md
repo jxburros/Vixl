@@ -158,6 +158,32 @@ packages.
   are `fix` findings, so `passed` can turn false where it was true. When both checks run, a gap in a declared object
   is reported once, by `object`. Pages without declared objects, and standard characters without an object record
   of their own (still the `character` check's), report as before.
+- **Outline policy per object and part (#379).** `{type: object, action: outline, target: dog}` applies an outline
+  policy stored on the object record: `outline: silhouette` writes one `NAME/outline` path layer, the object's top
+  child marked `generated: {by: object-outline}`, around the union of what its layers fill, and sets the part strokes
+  by `interior` (`hide`, `thin` at 40% of the width, or `show`); `parts` outlines every part alike; `none` puts the
+  original part strokes back, as does `action: outline-remove`; `inherit` (the default) is the kind's policy from the
+  taxonomy (organic and constructed kinds silhouette with thin interior lines, natural none). `outline_color` and
+  `outline_width` set the line; a part takes its own `outline` (`none` keeps its stroke, `parts` gives it a full
+  contour) and `interior`. Open and unfilled shapes keep their strokes and add no area. When an apply moves, resizes
+  or adds a part, the outline is redrawn in the same undo step. The object check reports `object.outline-seam`,
+  `object.outline-weight` and `object.outline-stale`, the outline is the same unfilled stroke in PNG, SVG, PDF and
+  PowerPoint, and `duplicate` carries the stored strokes to the copy. CLI: `vixl object outline GROUP [--outline
+  parts]`, `vixl object outline-remove GROUP`. See [outline policy](docs/guides/shapes/objects.md#outline-policy).
+- **`object-plan` scaffolds an object from its kind (#380).** The new workflow (`vixl_apply(workflow='object-plan',
+  request={kind, height, apply})`, CLI `vixl object plan KIND --height N [--apply]`) writes a placeholder per part
+  from the kind's build block: shapes, sizes and colours from its example, positions from its placements, proportions
+  at the middle of their range (`seed` varies them inside it), back to front with sides and depths, each part pushed
+  into a 2 px overlap with what it attaches to, then `group`, `object` and the part names. Every seed kind's scaffold,
+  and every other kind that lists parts, passes the object check as generated. `box` or `x`/`y`/`height` place it
+  (by default it fits the canvas), `with: ["guitar"]` nests sub-objects, and a person comes from head units
+  (`head_units`, `width_ratio`) with all 17 standard parts. `apply: false` (the default) returns the batch with a
+  next step per part and changes nothing; `apply: true` is one undo step. Every domain's build block now lists it
+  under `workflows`. See [object-plan](docs/guides/shapes/objects.md#scaffold-with-object-plan).
+- **`figure-plan` is object-plan's person template.** `figure-plan` now runs `object-plan` with `kind: person` and
+  `template: figure-plan`; its operations, parts map, head units and next steps are byte-for-byte what it returned
+  before, and the result adds a `normalized` entry naming the workflow it ran. The person kind's build block lists
+  `object-plan` instead of `figure-plan` under `workflows`.
 
 ### Brand packages
 

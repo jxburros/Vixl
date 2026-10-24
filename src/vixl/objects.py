@@ -35,6 +35,9 @@ SIDES = ("left", "right", "center")
 DEPTHS = ("far", "near")
 PROPORTIONS = ("check", "ignore")
 SET_FIELDS = ("kind", "label", "notes", "references", "stylized", "proportions")
+ACTIONS = ("set", "unset", "part", "outline", "outline-remove")
+RECORD_FIELDS = ("version", *SET_FIELDS, "outline", "interior", "outline_color", "outline_width", "outlined")
+PART_RECORD = ("name", "side", "depth", "outline", "interior")
 # How to build a kind. List fields merge down the chain (the child's items first, duplicates dropped); palette and
 # example are replaced by the child's.
 BUILD_FIELDS = ("approach", "workflows", "operations", "organic", "shapes", "patterns", "looks", "palette",
@@ -433,6 +436,12 @@ def level(name, kinds):
     return "class" if any(entry.get("parent") == name for entry in kinds.values()) else "kind"
 
 
+def _default_outline(kind, kinds):
+    from .object_outline import default_policy
+
+    return default_policy(kind, kinds)
+
+
 def describe(name, workspace=None):
     """One kind with inherited parts, connections, proportions, its chain (``organic › animal › mammal › dog``) and
     its merged ``build`` block (how to construct one, with a working example batch)."""
@@ -454,6 +463,7 @@ def describe(name, workspace=None):
         "symmetry": fields.get("symmetry", "none"),
         "layering": fields.get("layering", []),
         "outline": fields.get("outline", {}),
+        "outline_policy": dict(zip(("outline", "interior"), _default_outline(kind, kinds))),
         **({"texture": True} if fields.get("texture") else {}),
         "children": sorted(k for k, entry in kinds.items() if entry.get("parent") == kind),
         "organic_presets": sorted(p for p, k in organic_presets().items() if k == kind),
@@ -808,7 +818,9 @@ def tree(project, ref):
         unnamed = [layer["name"] for layer in project.state["layers"]
                    if layer["id"] in inside and owner(index, layer) is group
                    and not part_of(layer) and not record(layer) and layer["type"] != "group"
+                   and not layer.get("generated")
                    and not any(part_of(a) for a in _ancestors(index, layer, group))]
+        outlined = found.get("outlined")
         result = {
             "object": group["name"],
             "path": path_of(project, group, index),
@@ -820,6 +832,8 @@ def tree(project, ref):
             "layers": len(inside),
             "parts": parts,
             "missing_parts": missing_parts(project, group, kinds, children),
+            **({"outline": {key: outlined[key] for key in ("outline", "interior", "color", "width")}}
+               if outlined else {"outline": {"outline": found["outline"]}} if found.get("outline") else {}),
             **({"unnamed_layers": unnamed[:40]} if unnamed else {}),
             "sub_objects": [describe_object(sub) for sub in sub_objects(project, group, children)],
         }
@@ -858,26 +872,69 @@ def validate_layers(project, state):
         if found is not None:
             require(layer["type"] == "group", f"Only groups can be objects ({layer['name']!r})", "invalid_project")
             require(isinstance(found, dict) and isinstance(found.get("kind"), str) and found["kind"]
-                    and set(found) <= {"version", "kind", "label", "notes", "references", "stylized", "proportions"},
+                    and set(found) <= set(RECORD_FIELDS),
                     f"Invalid object record on {layer['name']!r}", "invalid_project")
             require(isinstance(found.get("label", ""), str) and isinstance(found.get("notes", ""), str)
                     and isinstance(found.get("stylized", False), bool)
                     and found.get("proportions", "ignore") in PROPORTIONS,
                     f"Invalid object record on {layer['name']!r}", "invalid_project")
+            _validate_outline(layer, found)
             refs = found.get("references", [])
             require(isinstance(refs, list) and len(refs) <= MAX_REFERENCES and all(isinstance(r, dict) for r in refs),
                     f"Invalid object references on {layer['name']!r}", "invalid_project")
         part = layer.get("object_part")
         if part is not None:
+            from .object_outline import INTERIORS, POLICIES
+
             require(isinstance(part, dict) and isinstance(part.get("name"), str) and part["name"]
-                    and set(part) <= {"name", "side", "depth"} and part.get("side", "left") in SIDES
-                    and part.get("depth", "far") in DEPTHS,
+                    and set(part) <= set(PART_RECORD) and part.get("side", "left") in SIDES
+                    and part.get("depth", "far") in DEPTHS and part.get("outline", "none") in POLICIES
+                    and part.get("interior", "thin") in INTERIORS,
                     f"Invalid object part on {layer['name']!r}", "invalid_project")
+        if layer.get("generated") is not None:
+            require(isinstance(layer["generated"], dict) and isinstance(layer["generated"].get("by"), str)
+                    and set(layer["generated"]) == {"by"}, f"Invalid generated record on {layer['name']!r}",
+                    "invalid_project")
     library = state.get("object_library", {})
     require(isinstance(library, dict), "Invalid object library", "invalid_project")
     for name, item in library.items():
         require(isinstance(item, dict) and isinstance(item.get("layers"), list) and item["layers"]
                 and isinstance(item.get("root"), str), f"Invalid saved object {name!r}", "invalid_project")
+
+
+def _validate_outline(layer, found):
+    from .model import is_number
+    from .object_outline import INTERIORS, POLICIES
+
+    invalid = f"Invalid outline policy on {layer['name']!r}"
+    require(found.get("outline", "none") in POLICIES and found.get("interior", "thin") in INTERIORS
+            and isinstance(found.get("outline_color", ""), str), invalid, "invalid_project")
+    require("outline_width" not in found or (is_number(found["outline_width"]) and 0 < found["outline_width"] <= 100),
+            invalid, "invalid_project")
+    stored = found.get("outlined")
+    if stored is not None:
+        require(isinstance(stored, dict) and stored.get("outline") in ("silhouette", "parts")
+                and stored.get("interior") in INTERIORS and isinstance(stored.get("color"), str)
+                and is_number(stored.get("width")) and isinstance(stored.get("hash"), str)
+                and isinstance(stored.get("strokes"), dict)
+                and all(isinstance(value, dict) for value in stored["strokes"].values()), invalid, "invalid_project")
+
+
+def refresh_outlines(project):
+    """Redraw the outline of every outlined object whose geometry changed (``object_outline.refresh``)."""
+    if any((layer.get("object") or {}).get("outlined") for layer in project.state["layers"]):
+        from .object_outline import refresh
+
+        refresh(project)
+
+
+def remap_records(layers, mapping):
+    """After ``duplicate``: the copies' object records name the copied layers, not the originals."""
+    from .object_outline import remap
+
+    for layer in layers:
+        if layer.get("object"):
+            remap(layer["object"], mapping)
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -894,10 +951,14 @@ def schemas(add):
         "license": field(S, "License or usage terms of the reference."),
         "note": field(S, "What the reference shows."),
     }, "additionalProperties": False, "description": "A reference: {url or asset, credit?, license?, note?}."}
+    from .object_outline import INTERIORS, POLICIES
+
     add("object", {
-        "action": {"enum": ["set", "unset", "part"], "description": "set (default): declare the target group an object "
+        "action": {"enum": list(ACTIONS), "description": "set (default): declare the target group an object "
                    "of a kind (again: update it); unset: remove the declaration and its direct part names; part: name the "
-                   "target layer as a part of the object it belongs to."},
+                   "target layer as a part of the object it belongs to; outline: apply an outline policy to the object "
+                   "(outline, interior, outline_color, outline_width); outline-remove: restore the part strokes and "
+                   "delete the outline layer."},
         "kind": field(S, "set: what the object is, a kind or class of the taxonomy (dog, guitar, person, tree, "
                       "instrument …) or an alias such as puppy; vixl objects lists them."),
         "label": field(S, "set: a display name (accessibility title, exports); default the group's name."),
@@ -913,6 +974,18 @@ def schemas(add):
         "depth": {"enum": list(DEPTHS), "description": "part: in a side view, far (behind the body) or near (in "
                   "front of it); the object check orders it by the kind's layering (far limbs, near limbs) and does "
                   "not mirror a far/near pair."},
+        "outline": {"enum": list(POLICIES), "description": "outline: silhouette (one outline layer around the "
+                    "object's union, part strokes set by interior), parts (every part outlined alike), none (no "
+                    "outline: the part strokes come back) or inherit (default: the kind's policy; organic and "
+                    "constructed kinds are silhouette with thin interior lines, natural none). part: this part's "
+                    "override; none leaves it out of the outline with its own stroke, parts gives it the full "
+                    "outline, inherit clears it."},
+        "interior": {"enum": list(INTERIORS), "description": "outline: under silhouette, the part strokes inside it: "
+                     "hide, thin (40% of the outline width) or show (as wide as the outline); default from the kind. "
+                     "part: this part's own interior."},
+        "outline_color": field(S, "outline: the outline colour (default #1d1d24)."),
+        "outline_width": {"type": "number", "exclusiveMinimum": 0, "maximum": 100, "description": "outline: the "
+                          "outline width in pixels of the object's own space (default 1% of its larger side)."},
     })
     add("object-save", {
         "name": field(S, "Library name (letters, digits, hyphens, underscores)."),
@@ -964,14 +1037,21 @@ def execute(project, op):
 def _object(project, op):
     from .notices import note
 
+    from .object_outline import FIELDS as OUTLINE_FIELDS
+
     action = op.get("action", "set")
     layer = project.layer(op.get("target"))
     index = {item["id"]: item for item in project.state["layers"]}
+    if action in ("outline", "outline-remove"):
+        return _outline(project, layer, op, action)
+    require(action == "part" or not any(k in op for k in OUTLINE_FIELDS),
+            "outline, interior, outline_color and outline_width belong to action outline (a part takes outline and "
+            "interior as its override)", field="action")
     if action == "part":
         require("part" in op, "object action part needs part (the part name)", field="part")
-        require(not any(k in op for k in SET_FIELDS),
-                "part names a part; kind, label, notes, references, stylized and proportions belong to action set",
-                field="action")
+        require(not any(k in op for k in (*SET_FIELDS, "outline_color", "outline_width")),
+                "part names a part; kind, label, notes, references, stylized and proportions belong to action set, "
+                "outline_color and outline_width to action outline", field="action")
         group = owner(index, layer)
         require(group is not None, f"{layer['name']!r} is not inside an object; declare its group first with "
                 "{type: object, target: GROUP, kind: KIND}", field="target")
@@ -980,7 +1060,9 @@ def _object(project, op):
                 field="part")
         _warn_unknown_part(project, group, name)
         layer["object_part"] = {"name": name, **({"side": op["side"]} if op.get("side") else {}),
-                                **({"depth": op["depth"]} if op.get("depth") else {})}
+                                **({"depth": op["depth"]} if op.get("depth") else {}),
+                                **({"outline": op["outline"]} if op.get("outline", "inherit") != "inherit" else {}),
+                                **({"interior": op["interior"]} if op.get("interior") else {})}
         return
     require(not any(k in op for k in ("part", "side", "depth")), "part, side and depth name a part: use action part",
             field="action")
@@ -991,6 +1073,10 @@ def _object(project, op):
         require(layer.get("object") or not layer.get("character"),
                 f"{layer['name']!r} is a character: it reads as a person object until its character record goes",
                 field="target")
+        if (layer.get("object") or {}).get("outlined"):
+            from .object_outline import remove
+
+            remove(project, layer)
         for part in object_parts(project, layer):
             part.pop("object_part", None)
         layer.pop("object", None)
@@ -1044,6 +1130,24 @@ def _object(project, op):
             "how": f"vixl_reference('objects', name={kind!r}) returns how to build a {kind}: approach, placements and "
                    "a working example batch; name each part, then vixl_check(checks=['object']) tests its parts, "
                    "connections, proportions, symmetry and layering"})
+
+
+def _outline(project, layer, op, action):
+    """``action: outline`` applies an outline policy (``object_outline``); ``outline-remove`` takes it away: the part
+    strokes come back, the outline layer goes and the record's outline fields are cleared."""
+    from .object_outline import FIELDS, apply, remove
+
+    require(layer["type"] == "group" and layer.get("object"), f"{layer['name']!r} is not a declared object; declare "
+            "it first with {type: object, target: GROUP, kind: KIND}", field="target")
+    extra = [key for key in op if key not in ("type", "action", "target", *(FIELDS if action == "outline" else ()))]
+    require(not extra, f"action {action} takes " + ("target, outline, interior, outline_color and outline_width"
+                                                   if action == "outline" else "only target") + f"; got {extra}",
+            field=extra[0] if extra else "action")
+    if action == "outline":
+        return apply(project, layer, op)
+    remove(project, layer)
+    for key in FIELDS:
+        layer["object"].pop(key, None)
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -1472,6 +1576,7 @@ def parts_sheet(project, refs, max_width=1024, max_height=1024, *, explode=False
 
 def compile_command(cmd, args):
     """``vixl object TARGET --kind dog``, ``vixl object part LAYER --part head [--side left]``, ``vixl object unset
+    TARGET``, ``vixl object outline TARGET [--outline silhouette] [--interior thin]``, ``vixl object outline-remove
     TARGET``, ``vixl object-save TARGET --name N`` and ``vixl object-place NAME [--x X --y Y]``."""
     if cmd not in TYPES:
         return None
@@ -1480,10 +1585,18 @@ def compile_command(cmd, args):
     from .commands import Parser
 
     if cmd == "object":
-        action = args[0] if args and args[0] in ("set", "unset", "part") else "set"
-        args = args[1:] if args and args[0] in ("set", "unset", "part") else args
+        from .object_outline import INTERIORS, POLICIES
+
+        action = args[0] if args and args[0] in ACTIONS else "set"
+        args = args[1:] if args and args[0] in ACTIONS else args
         p = Parser(prog=f"vixl object {action}")
         p.add_argument("target")
+        if action in ("outline", "part"):
+            p.add_argument("--outline", choices=list(POLICIES), help="silhouette, parts, none or inherit (the kind's)")
+            p.add_argument("--interior", choices=list(INTERIORS), help="part strokes inside a silhouette")
+        if action == "outline":
+            p.add_argument("--outline-color")
+            p.add_argument("--outline-width", type=float)
         if action == "set":
             p.add_argument("--kind")
             p.add_argument("--label")

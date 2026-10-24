@@ -650,6 +650,9 @@ def execute(project, op):
                     if item["field"].get("label_layer") in mapping:
                         item["field"]["label_layer"] = mapping[item["field"]["label_layer"]]
                 append_layer(project, item)
+            from .objects import remap_records
+
+            remap_records([duplicate, *copies], mapping)
             project.state["active_layer"] = duplicate["id"]
     elif kind == "text-set":
         require(layer["type"] == "text", "Layer is not editable text")

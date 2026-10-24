@@ -13,8 +13,8 @@ its identity in SVG, PowerPoint and PSD files.
 | Term | Meaning |
 | --- | --- |
 | Domain › class › kind | The taxonomy: `organic › animal › mammal › dog`, `constructed › instrument › guitar`. A kind inherits every field from its parent. |
-| Object | A group with `object: {kind, label?, notes?, references?}`. A standard character is a `person` without a record of its own: its `character_part` names read as person parts. |
-| Part | A layer inside the object with `object_part: {name, side?}`, such as `{name: leg, side: left}`. |
+| Object | A group with `object: {kind, label?, notes?, references?}`, plus its [outline policy](#outline-policy) once one is applied. A standard character is a `person` without a record of its own: its `character_part` names read as person parts. |
+| Part | A layer inside the object with `object_part: {name, side?, depth?}`, such as `{name: leg, side: left}`. |
 | Sub-object | An object nested inside another object's group. Its parts belong to it, not to the outer object. |
 | Path | `dog/head`, `dog/leg[left]`, `person/guitar/neck`: wherever a layer name is accepted. |
 
@@ -55,17 +55,30 @@ That value goes to `vixl_apply(workflow='resource-save', request={kind: "objects
 
 ## Build an object
 
-The loop is: read the kind's build block, draw the parts, declare the object and name its parts, then check
-and look.
+The loop is: reference → object-plan → refine → outline → check.
 
-1. `vixl_reference("guitar")` (or `vixl_reference('objects', name="guitar")`, `vixl objects show guitar`)
-   returns the kind with its merged `build` block: how to draw one, and an `example` batch to adapt.
-2. Draw each part as its own layer (shape, pen, organic, pathfinder) in the order the kind's `layering`
-   gives, letting parts that meet overlap by a few pixels.
-3. Group them and declare the group, then name the parts. The `object` result's `next_steps` points back to
-   the build block.
-4. `vixl_check` runs the [object check](#the-object-check); preview the object alone with
-   `vixl_render(isolate=["dog"], views=["parts"])`.
+1. **Reference.** `vixl_reference("guitar")` (or `vixl_reference('objects', name="guitar")`, `vixl objects show
+   guitar`) returns the kind with its merged `build` block: how to draw one, and an `example` batch to adapt.
+2. **Plan.** `vixl_apply(workflow='object-plan', request={kind: "guitar", height: 400, apply: true})` (CLI `vixl
+   object plan guitar --height 400 --apply`) scaffolds the whole object as named placeholder parts, grouped and
+   declared, that already pass the object check ([below](#scaffold-with-object-plan)).
+3. **Refine.** Turn each placeholder into the part it stands for: edit it in place (`{type: shape, target:
+   guitar-neck, …}`, a path, an organic preset) or draw the part and name it, keeping the overlaps.
+4. **Outline.** `{type: object, action: outline, target: guitar}` applies the kind's [outline
+   policy](#outline-policy): one outline around the silhouette, thin lines inside.
+5. **Check.** `vixl_check` runs the [object check](#the-object-check); preview the object alone with
+   `vixl_render(isolate=["guitar"], views=["parts"])`.
+
+```bash
+vixl new 600x500 -o guitar.vixl
+vixl object plan guitar --height 400 --apply
+vixl object outline guitar
+vixl check --checks object
+```
+
+Drawing it yourself instead: draw each part as its own layer (shape, pen, organic, pathfinder) in the order the
+kind's `layering` gives, letting parts that meet overlap by a few pixels; group them, declare the group and name
+the parts. The `object` result's `next_steps` points back to the build block.
 
 ```json
 [
@@ -85,14 +98,17 @@ and look.
 ```
 
 `object` actions: `set` (the default: declare or update `kind`, `label`, `notes`, `references`, `stylized`,
-`proportions`), `part` (`part`, `side`, `depth`) and `unset` (drop the record and the object's direct part names).
+`proportions`), `part` (`part`, `side`, `depth`, and the part's own `outline` and `interior`), `outline` and
+`outline-remove` ([outline policy](#outline-policy)), and `unset` (drop the record and the object's direct part
+names; an applied outline is removed first).
 `side` (`left`, `right`, `center`) names a mirrored pair in a front view; `depth` (`far`, `near`) names limbs
 behind or in front of the body in a side view. `stylized: true` says the proportions are exaggerated on purpose
 (a mascot's big head) and `proportions: "ignore"` says the kind's ranges do not apply: either silences the
 check's proportion findings. A part name outside the kind's list is kept with a warning that suggests the
 closest name. `subject` is accepted for `object`, `object_kind` for `kind`, `name` for `label` and `stylised` for
-`stylized`. The CLI spells it `vixl object dog --kind dog [--stylized] [--proportions ignore]` and
-`vixl object part leg-1 --part leg --side left [--depth far]`.
+`stylized`. The CLI spells it `vixl object dog --kind dog [--stylized] [--proportions ignore]`,
+`vixl object part leg-1 --part leg --side left [--depth far]`, `vixl object outline dog [--outline parts]` and
+`vixl object plan dog --height 300 [--apply]`.
 
 A declared object stays one item: `move`, `scale`, `rotate`, `align`, `distribute`, `duplicate` and `remove`
 act on the group as for any group; `duplicate` copies the records with the subtree. `ungroup` refuses an
@@ -108,7 +124,7 @@ and ears and a working example. Lists merge down the chain with the child's item
 | Field | What it holds |
 | --- | --- |
 | `approach` | Construction steps, most specific first. |
-| `workflows`, `operations` | Workflow actions (`figure-plan`) and operations that build it. |
+| `workflows`, `operations` | Workflow actions (`object-plan`) and operations that build it. |
 | `organic`, `shapes`, `patterns` | Organic presets, catalog shapes, and pattern operations such as `{op: scatter, preset: fur}`. |
 | `looks`, `palette` | Finishing looks, and a palette name or `natural:SUBJECT` (skin, foliage, sky, earth, water, stone). |
 | `placements` | Where each part goes (below). |
@@ -134,6 +150,82 @@ The 15 seed kinds have a block with an example that passes the object check: per
 tree, flower, leaf, mushroom, guitar, car, house, cup, rock and cloud. Every domain except `texture` has a
 general block, so every other kind gets at least an approach; a workspace kind may add its own `build` (the
 names it uses must exist).
+
+### Scaffold with object-plan
+
+The `object-plan` workflow turns a kind's build block into one batch of ordinary operations: a placeholder
+shape per part, then `group`, `object` and one `object` `action: part` per part and side.
+
+```json
+{"kind": "dog", "height": 300, "x": 40, "y": 60, "apply": false}
+```
+
+- **Parts.** With a build `example`, the parts it draws, with their shapes, boxes, rotations, colours, sides and
+  depths; otherwise every required part and every part the placements place, `count` of each. A side view shows
+  one of an optional pair (the far eye is hidden) and a pair of limbs as a far and a near one.
+- **Positions** come from the `placements`: the part's `at` point on the anchor point of the part it attaches to,
+  several spread along the edge, a far limb half its width behind the near one, a radial kind's petals in a ring.
+  Each part is then pushed toward what it attaches to until they overlap by 2 px, and every pair the kind says
+  must touch is checked again, so the scaffold passes the object check as generated (every seed kind does, and so
+  does every kind that lists parts).
+- **Proportions**: a part the kind's `proportions` measure is sized at the middle of its range; `seed` picks a
+  value inside the range instead and varies the other parts by up to 8%.
+- **Order**: back to front as the example draws them, else by the kind's `layering`.
+- **Size and place**: `height` with `x`/`y`, or `box: [x, y, width, height]` to fit inside; with neither, the
+  object fits a centred box of 80% of the canvas width and 60% of its height (400 px at the origin without a
+  document). Layer names are `NAME-PART` (`dog-leg-1-far`), made unique in the document.
+- **View**: animals and vehicles are side views facing right, everything else a front view; `view` names the
+  kind's own and refuses another.
+- **People** come from head units: `head_units` (default 7.5, or the middle of the kind's head proportion) and
+  `width_ratio` place all 17 standard parts; a head outside the kind's range declares the object `stylized`.
+  `template: "figure-plan"` returns the seven-mass blocking figure instead; the `figure-plan` workflow is that
+  template and says so under `normalized`.
+- **Sub-objects**: `with: ["guitar"]` (or `{kind, name?, height?, anchor?, at?}`: `anchor` is a point of one of
+  the object's parts such as `torso.center`, default `object.center`; `height` defaults to half the object's)
+  plans each one the same way and nests it in front of the parts.
+- **Result**: `apply: false` (the default) returns `operations`, `parts` (layer names by part), `box`, `view` and
+  `next_steps` (the approach, one step per part naming its placeholder and placement, then outline and check) and
+  changes nothing; `apply: true` applies the batch as one undo step.
+
+Placeholders read as the kind's silhouette, not as finished art: refine them. A kind without an example or
+placements (most classes outside the 15 seeds) gets a rough arrangement of its parts around the part with the
+most connections.
+
+## Outline policy
+
+Whether an object has one outline around its silhouette, a line around every part or none is its **outline
+policy**, `{type: object, action: outline, target: NAME, outline, interior, outline_color, outline_width}`:
+
+| `outline` | What is drawn |
+| --- | --- |
+| `silhouette` | One `NAME/outline` path layer, the object's top child, around the union of what its layers fill (sub-objects included), holes kept. Part strokes follow `interior`: `hide`, `thin` (40% of the outline width) or `show` (as wide). |
+| `parts` | No outline layer: every part's stroke is the outline colour and width. |
+| `none` | Nothing: the part strokes the policy replaced come back. |
+| `inherit` | The default: the kind's policy from the taxonomy's `outline` entry. Organic and constructed kinds are `silhouette` with `thin` interior lines, symbolic ones `silhouette` with `show`, natural ones `none` (`vixl_reference('objects', name=KIND)` lists it as `outline_policy`). |
+
+```json
+{"type": "object", "action": "outline", "target": "dog", "outline": "silhouette", "interior": "thin", "outline_width": 4}
+```
+
+- `outline_color` defaults to `#1d1d24` and `outline_width` to 1% of the object's larger side; the line scales with
+  the object. The outline layer is marked `generated: {by: object-outline}` and drawn as an unfilled stroke in PNG,
+  SVG, PDF and PowerPoint alike.
+- The original part strokes are stored on the object record (`outlined`); `action: outline-remove` (or `outline:
+  none`, or `unset`) puts them back and deletes the outline layer. Running `outline` again replaces the policy.
+- Open lines and unfilled shapes (whiskers, strings, an open path: anything `geometry.default_fill` leaves
+  unfilled) are line work: they add no area to the silhouette and keep their strokes. A pathfinder part has no
+  stroke of its own; only the silhouette outlines it.
+- Per part: `{type: object, action: part, target: LAYER, part: steam, outline: none}` leaves a part out (no
+  silhouette, its own stroke), `outline: parts` gives it a full contour of its own, and `interior` sets its own
+  interior.
+- The outline follows the object: when a part moves, changes size or shape, or a part is added or removed, the
+  apply that did it redraws the outline and gives new parts the policy's strokes, in the same undo step. While a
+  policy is applied it owns the part strokes; a part styled by hand keeps its stroke only with `outline: none`.
+
+The object check adds three findings for an object with an applied policy: `object.outline-seam` (a part stroke
+that shows inside the silhouette where the policy hides it, or as heavy as the contour where it thins it),
+`object.outline-weight` (part outlines whose widths differ by more than 25% under `parts`) and
+`object.outline-stale` (the outline was drawn for other geometry, or its layer was deleted: run `outline` again).
 
 ## Paths and selectors
 
@@ -179,6 +271,9 @@ alone). Each object and sub-object is measured against its kind, merged down the
 | `object.symmetry-size` | review | A left/right pair whose sizes differ by more than 15%. |
 | `object.symmetry-side` | review | A left/right pair that sits on one side of the centre of the part it attaches to. |
 | `object.layering` | review | Parts that overlap stacked against the kind's back-to-front `layering` (a far leg over the body). |
+| `object.outline-seam` | review | With an [outline policy](#outline-policy) applied: a part stroke showing inside the silhouette. |
+| `object.outline-weight` | review | Under `outline: parts`: part outlines whose widths differ by more than 25%. |
+| `object.outline-stale` | fix | The outline was drawn for other geometry, or its layer is gone. |
 
 Every finding carries `layer_ids`, a canvas `box`, `measured` (actual against expected), `object` (its path),
 `kind` and a `hint`, which names the kind's build placement for the part when there is one. Gaps are measured on
@@ -232,7 +327,9 @@ Alt text from [accessibility](../output/accessibility.md) is written alongside: 
 
 ## Limits
 
-- Object records do not change rendering. The object check reads a part's size from its box, not its silhouette,
+- Object records do not change rendering; only an applied outline policy draws (its outline layer and the part
+  strokes it sets). The silhouette is computed from the parts' geometry at rest: on a timeline it does not follow
+  animated parts. The object check reads a part's size from its box, not its silhouette,
   and compares only what the kind declares; it cannot tell whether a shape looks like the part it is named for
   (`vixl_render(isolate=[NAME], views=["parts"])` shows that).
 - Build blocks are short curated notes and examples, read offline; nothing is fetched.

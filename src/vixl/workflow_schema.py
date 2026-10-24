@@ -726,7 +726,11 @@ def properties(action, fields):
 SUMMARIES = {
     "guide-check": "Check explicit lighting, anatomy, perspective and illustration measurements against advisory rules.",
     "perspective-guides": "Plan vanishing-point guides and scale-by-depth object sizes.",
-    "figure-plan": "Plan an editable figure from head units with a named part map.",
+    "figure-plan": "Plan an editable blocking figure from head units with a named part map (object-plan with kind "
+                   "person and template figure-plan).",
+    "object-plan": "Scaffold an object of a kind as named placeholder parts, placed and proportioned from its build "
+                   "block and grouped, declared and named; returns the batch and per-part next steps, or applies it "
+                   "as one undo step.",
     "pattern-list": "List built-in and document-defined repeatable textures and patterns.",
     "pattern-check": "Measure edge discontinuity in a pattern tile before repeating it.",
     "check": "Run an attached, inherited or inline check suite (or every one) against the document, optionally over "

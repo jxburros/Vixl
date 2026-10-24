@@ -37,6 +37,7 @@ Layers:    add FILE --name NAME, solid --color COLOR, gradient --start A --end B
            remove, rename, duplicate, hide, show, raise, lower, top, bottom, reorder
 Objects:   objects [QUERY] | objects show KIND | objects tree (taxonomy), object GROUP --kind dog [--label L],
            object part LAYER --part leg [--side left], object unset GROUP, inspect --object NAME|PATH|*,
+           object plan KIND [--height N] [--apply] (placeholder parts), object outline GROUP [--outline parts],
            object-save GROUP --name N, object-place N [--x X --y Y --scale S] [--source obj.vixl],
            export dog.svg --isolate dog [--padding 8], export dog.vixl --isolate dog (portable object)
 Access:    accessibility --lang en-GB [--title T] [--page-alt TEXT] [--reading-order A B], layer-intent LAYER --alt TEXT
@@ -593,6 +594,9 @@ def _dispatch(argv):
         from .objects import catalog_command
 
         return catalog_command(args, workspace=Path.cwd()), options.json
+    if (cmd == "object" and args[:1] == ["plan"] and not has_document(options.project)
+            and "--help" not in args and "-h" not in args):
+        return object_plan_command(None, args[1:])[0], options.json
     if cmd in ("color", "colors", "sizes", "layouts", "brushes", "easings", "organics") or (
         cmd == "layout" and (not args or args[0] in ("list", "show"))
     ):
@@ -927,9 +931,37 @@ def command_help(cmd, args):
     return project_command(Project(1, 1), cmd, args)[0]
 
 
+def object_plan_command(project, args):
+    """``vixl object plan KIND [--height N] [--x X --y Y | --box X Y W H] [--name N] [--with KIND …] [--seed N]
+    [--apply]``: the object-plan workflow (``object_plan.command``); ``(result, changed)``."""
+    from .object_plan import VIEWS, command
+
+    p = Parser(prog="vixl object plan", description="Scaffold an object of a kind as named placeholder parts "
+               "(object-plan): prints the batch, or applies it to the document with --apply.")
+    p.add_argument("kind")
+    p.add_argument("--name")
+    p.add_argument("--height", type=float)
+    p.add_argument("--x", type=float)
+    p.add_argument("--y", type=float)
+    p.add_argument("--box", type=float, nargs=4, metavar=("X", "Y", "W", "H"))
+    p.add_argument("--view", choices=list(VIEWS))
+    p.add_argument("--with", dest="with_", action="append", metavar="KIND", help="nest a sub-object (repeatable)")
+    p.add_argument("--seed", type=int)
+    p.add_argument("--head-units", type=float)
+    p.add_argument("--width-ratio", type=float)
+    p.add_argument("--color")
+    p.add_argument("--template", choices=["figure-plan"])
+    p.add_argument("--apply", action="store_true", help="apply the batch to the document as one undo step")
+    request = {key.rstrip("_"): value for key, value in vars(p.parse_args(args)).items()
+               if value is not None and value is not False}
+    return command(project, request)
+
+
 def project_command(project, cmd, args, *, detail="compact"):
     from .validation import assert_rule, dependencies, validate
 
+    if cmd == "object" and args[:1] == ["plan"]:
+        return object_plan_command(project, args[1:])
     if cmd == "styles":
         from .finishing_cli import bound as styles_bound
 

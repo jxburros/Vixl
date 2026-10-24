@@ -86,7 +86,11 @@ strokes in the operation. Transparent/outside source pixels remain transparent.
 `figure-plan` with `spec:{"height":600,"head_units":7.5,"width_ratio":1}` returns
 editable named parts and a grouping operation. Apply those operations, adjust
 from references and pose, split limbs for articulation, then use character rigging.
-It is a construction aid, not a definition of a normal body.
+It is a construction aid, not a definition of a normal body. It is `object-plan`
+with `kind: person` and `template: figure-plan` (and says so under `normalized`);
+`object-plan` without the template scaffolds all 17 named person parts from the
+same head units, declared and ready for the object check
+([objects](../shapes/objects.md#scaffold-with-object-plan)).
 
 `perspective-guides` with `spec:{"width":800,"height":600,"horizon":240,
 "points":2,"depths":[1,2,4],"reference_size":100}` returns a perspective grid

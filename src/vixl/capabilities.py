@@ -137,7 +137,9 @@ def lookup(topic=None, *, fields=False):
             "vixl_render(isolate=[NAME] or ['object:KIND'], views=['parts'], exploded=true) shows each part; "
             "vixl_export(isolate=[NAME]) exports it alone (.vixl: a portable object for object-place source=). "
             "object-save/object-place reuse an editable object. vixl_reference('objects', name=KIND) reads a "
-            "kind with its build block (approach, placements, a working example batch); vixl_check measures "
+            "kind with its build block (approach, placements, a working example batch); vixl_apply(workflow="
+            "'object-plan', request={kind, height, apply}) scaffolds one as named placeholder parts; {type: object, "
+            "action: outline, target: NAME, outline: silhouette|parts|none} applies its outline policy; vixl_check measures "
             "declared objects against their kind (the object check: parts, gaps, proportions, mirrored pairs, "
             "layering; stylized: true skips proportions, depth: far|near orders side-view limbs); "
             "vixl_apply(workflow='resource-save', request={kind: 'objects', name, value}) adds a kind.")

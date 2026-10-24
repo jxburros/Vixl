@@ -108,8 +108,9 @@ def floating_parts(frame, tolerance=2, targets=None, skip=()):
         if (group["type"] != "group" or group.get("detached_ok") or any(group.get(key) for key in COLLECTIONS)
                 or group["id"] in skip or not _shown(group, index) or (wanted is not None and not selected(group))):
             continue
+        # A generated layer (an object's outline) draws over the parts it was made from; it would bridge their gaps.
         parts = [item for item in layers if item.get("parent") == group["id"] and _shown(item, index)
-                 and item["type"] not in ("text", "adjustment")]
+                 and item["type"] not in ("text", "adjustment") and not item.get("generated")]
         if len(parts) < 2:
             continue
         masks, kept = [], []

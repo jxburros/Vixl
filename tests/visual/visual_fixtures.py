@@ -11,10 +11,11 @@ from vixl.assets import add_image
 
 FIXTURES = {}
 SVG_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "gradients", "text_plain", "groups", "dashes_fitted",
-                "text_small_caps", "text_hanging_quote")
+                "text_small_caps", "text_hanging_quote", "object_outline_policies")
 PDF_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "text_plain", "dashes_fitted", "text_small_caps",
-                "text_hanging_quote")
-PPTX_FIXTURES = ("shapes_and_strokes", "text_plain", "groups", "dashes_fitted", "text_small_caps", "text_hanging_quote")
+                "text_hanging_quote", "object_outline_policies")
+PPTX_FIXTURES = ("shapes_and_strokes", "text_plain", "groups", "dashes_fitted", "text_small_caps", "text_hanging_quote",
+                 "object_outline_policies")
 
 
 def fixture(builder):
@@ -448,3 +449,29 @@ def catalog_motif_shapes():
                     "height": 28, "fill": "#c1121f"})
         x += width + 16
     return doc(256, 256, "#f4efe6", ops=ops)
+
+
+@fixture
+def object_outline_policies():
+    # A three-part mushroom (a stem with its own grey stroke, a cap, a spot) in each outline policy, left to right:
+    # silhouette with interior hide, silhouette with thin interior lines, parts, and none (the stem's stroke is back).
+    ops = []
+    policies = [("silhouette", "hide"), ("silhouette", "thin"), ("parts", None), ("none", None)]
+    for index, (outline, interior) in enumerate(policies):
+        name, x = f"m{index}", 8 + index * 60
+        ops += [
+            {"type": "shape", "shape": "rounded-rectangle", "name": f"{name}-stem", "x": x + 16, "y": 50, "width": 20,
+             "height": 52, "fill": "#f1e3d3", "stroke": "#8d99ae", "stroke_width": 2},
+            {"type": "shape", "shape": "semicircle", "name": f"{name}-cap", "x": x, "y": 18, "width": 52, "height": 36,
+             "fill": "#d62828"},
+            {"type": "shape", "shape": "ellipse", "name": f"{name}-spot", "x": x + 20, "y": 28, "width": 12,
+             "height": 10, "fill": "#fdf0d5"},
+            {"type": "group", "name": name, "targets": [f"{name}-stem", f"{name}-cap", f"{name}-spot"]},
+            {"type": "object", "target": name, "kind": "mushroom"},
+            {"type": "object", "action": "part", "target": f"{name}-stem", "part": "stem"},
+            {"type": "object", "action": "part", "target": f"{name}-cap", "part": "cap"},
+            {"type": "object", "action": "part", "target": f"{name}-spot", "part": "spots"},
+            {"type": "object", "action": "outline", "target": name, "outline": outline, "outline_width": 2.5,
+             **({"interior": interior} if interior else {})},
+        ]
+    return doc(248, 116, "#f4efe6", ops=ops)
