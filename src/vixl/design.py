@@ -989,14 +989,14 @@ def validate_design(project, state):
             )
         for expression in layer["constraints"].values():
             if isinstance(expression, str):
-                match = re.fullmatch(
-                    r"(.+)\.(left|right|top|bottom|center-x|center-y)([+-]\d+(?:\.\d+)?)?", expression
-                )
-                if match and match[1] in index:
+                from .render import parse_constraint
+
+                parsed = parse_constraint(expression)
+                if parsed and parsed.ref in index:
                     require(
-                        index[match[1]].get("parent") == parent,
+                        index[parsed.ref].get("parent") == parent,
                         f"Constraints must reference sibling layers: {layer['name']!r} is constrained to "
-                        f"{index[match[1]]['name']!r}, which is in a different group; unconstrain "
+                        f"{index[parsed.ref]['name']!r}, which is in a different group; unconstrain "
                         f"{layer['name']!r} or keep both layers in the same group",
                     )
 

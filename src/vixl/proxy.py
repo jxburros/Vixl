@@ -7,14 +7,13 @@ inputs are fixed-size canvas rasters (effect selections) fall back to a full ren
 """
 
 from copy import copy, deepcopy
-import re
+from dataclasses import replace
 
 from .constants import ARTISTIC_DEFAULTS
 from .design_render import repeat_items
 
 # Layer types drawn into a box of their own size, whose edges can sit on whole preview pixels.
 SNAPPED = ("raster", "solid", "gradient", "shape", "frame", "group")
-CONSTRAINT = re.compile(r"^(.+\.(?:left|right|top|bottom|center-x|center-y))([+-]\d+(?:\.\d+)?)?$")
 
 
 def _size(value, s):
@@ -105,14 +104,16 @@ def _scale_layer(layer, s):
         elif name in ("ripple", "wave", "glass"):
             effect["amount"] = effect.get("amount", ARTISTIC_DEFAULTS[name]) * s
             effect["radius"] = effect.get("radius", 12 if name == "glass" else 32) * s
+    from .render import parse_constraint
+
     constraints = layer.get("constraints", {})
     for anchor, expression in list(constraints.items()):
         if isinstance(expression, (int, float)):
             constraints[anchor] = expression * s
         elif isinstance(expression, str):
-            match = CONSTRAINT.match(expression)
-            if match and match[2]:
-                constraints[anchor] = f"{match[1]}{float(match[2]) * s:+g}"
+            parsed = parse_constraint(expression)
+            if parsed and parsed.offset and parsed.unit == "px":  # an em offset follows the scaled text size
+                constraints[anchor] = replace(parsed, offset=parsed.offset * s).text()
     for operand in layer.get("operands", []):
         _scale_layer(operand, s)
 

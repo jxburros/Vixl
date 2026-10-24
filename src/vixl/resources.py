@@ -331,18 +331,19 @@ def register(kind, name, value, *, workspace=None):
     return {"registered": name, "kind": kind}
 
 
-def substitute(value, variables):
+def substitute(value, variables, notes=None):
+    """``value`` (template, container or workflow operations) with its ``${variables}`` filled: a field that is
+    exactly ``${name}`` takes the variable's own value (a number stays a number), and a field that starts with
+    ``=`` is evaluated as arithmetic (``vixl.expressions``); ``notes`` collects each evaluated expression."""
+    from .expressions import resolve
     from .render import substitute as text_substitute
 
-    if isinstance(value, dict):
-        return {k: substitute(v, variables) for k, v in value.items()}
-    if isinstance(value, list):
-        return [substitute(v, variables) for v in value]
-    if isinstance(value, str):
-        if value.startswith("${") and value.endswith("}") and value[2:-1] in variables:
-            return deepcopy(variables[value[2:-1]])
-        return text_substitute(value, variables)
-    return value
+    def fill(text):
+        if text.startswith("${") and text.endswith("}") and text[2:-1] in variables:
+            return deepcopy(variables[text[2:-1]])
+        return text_substitute(text, variables)
+
+    return resolve(value, fill, notes)
 
 
 RESOURCE_TYPES = ("palette-define", "palette-apply", "template-apply", "guidance", "font-register", "brand-preset")
@@ -480,7 +481,15 @@ def execute_resource(project, op):
             values = validate_inputs(item["inputs"], values)
             project.state["variables"].update(values)
         from .container_library import template_operations
-        expanded = substitute(proportional(project, item, template_operations(project, item, op, values)), values)
+        from .notices import note
+
+        evaluated = []
+        # Variables and = expressions are filled first, so a number they give scales with a proportional template
+        # like a number written in it.
+        expanded = proportional(project, item, substitute(template_operations(project, item, op, values), values,
+                                                          evaluated))
+        for text in evaluated:
+            note(project, f"template {name}: {text}")
         # Template text follows the document typography: text that names no role or stage takes the heading
         # role when it is the largest, else body.
         texts = [o for o in expanded if o.get("type") == "text"

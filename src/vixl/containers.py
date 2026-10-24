@@ -190,7 +190,13 @@ def execute(project, op):
                  container={"resource": resource, "size": [width, height], "base_size": [item["width"], item["height"]],
                             "rules": deepcopy(selected.get("rules", {})), "variables": variables, "variant": variant,
                             "seed": seed, "bounds": {k: item[k] for k in ("min_width", "max_width", "min_height", "max_height") if k in item}})
-    ops = substitute(selected["operations"], variables)
+    evaluated = []
+    ops = substitute(selected["operations"], variables, evaluated)
+    if evaluated:
+        from .notices import note
+
+        for text in evaluated:
+            note(project, f"container {resource}: {text}")
     budget = getattr(project, "_resource_budget", project.limits.max_operations) - len(ops)
     require(budget >= 0, "Container expansion exceeds operation limit", "resource_limit")
     project._resource_budget = budget

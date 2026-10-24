@@ -221,6 +221,47 @@ def drawn_lines(project, layer):
             for line in lines(data, paragraph, size, width, wrap_mode(layer), tabs)]
 
 
+def line_edges(project, layer):
+    """``[(start, end, baseline)]`` for each line a resolved text layer draws, in its box's pixels: where the line's
+    pen starts and ends (after alignment) and its baseline, from the layout the renderer draws (after ``fit``).
+    Constraint refs such as ``lyric.line[-1].end`` read these."""
+    from .errors import require
+    from .richtext import active, fitted
+
+    settings = layer.get("text_layout") or {}
+    require(not settings.get("path") and settings.get("warp", "none") == "none",
+            f"{layer['name']!r} is set on a path or warped; line and baseline refs need straight text",
+            "invalid_constraint", field="constraints")
+    if active(layer):
+        result = fitted(project, layer)
+        rows = [[None, None, row[1]] for row in result.lines]
+        for glyph in result.glyphs:
+            outline = face(glyph.data)[0]
+            advance = outline["hmtx"][glyph.name][0] * glyph.size / outline["head"].unitsPerEm
+            row = rows[glyph.line]
+            row[0] = glyph.x if row[0] is None else min(row[0], glyph.x)
+            row[1] = glyph.x + advance if row[1] is None else max(row[1], glyph.x + advance)
+        return [(start or 0.0, end if end is not None else (start or 0.0), baseline) for start, end, baseline in rows]
+    layout = plan(project, layer)
+    data = font_data(project, layer)
+    outline = face(data)[0]  # the same metrics text.measure lays the lines out with
+    factor = layout.size / outline["head"].unitsPerEm
+    ascent = outline["hhea"].ascent * factor
+    pitch = (outline["hhea"].ascent - outline["hhea"].descent) * factor + layer.get("spacing", 4)
+    tabs = tab_stops(layer, project)
+    width = layer["width"] if "width" in settings else None
+    advances = [set_line(data, line, layout.size, tabs)[1]
+                for line in lines(data, layer["text"], layout.size, width, wrap_mode(layer), tabs)]
+    widest = max(advances, default=0)
+    align = layer.get("align", "left")
+    edges = []
+    for index, advance in enumerate(advances):
+        offset = (widest - advance) / 2 if align == "center" else widest - advance if align == "right" else 0
+        start = offset - layout.box[0] + layout.offset
+        edges.append((start, start + advance, ascent + index * pitch - layout.box[1]))
+    return edges
+
+
 RUNT_MINIMUM_SIZE = 24  # px: display text; body copy has its own measure check
 RUNT_SHARE = 0.2
 RUNT_WORD_SHARE = 0.5  # a lone last word counts only when it is also this short and could be rebalanced

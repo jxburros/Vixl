@@ -858,12 +858,22 @@ def execute(project, op):
                 "Unknown constraint anchor",
             )
             if isinstance(expression, str):
-                match = re.fullmatch(
-                    r"(.+)\.(left|right|top|bottom|center-x|center-y)([+-]\d+(?:\.\d+)?)?", expression
-                )
-                require(match, "Invalid constraint expression")
-                if match[1] != "canvas" and not match[1].startswith("guide:"):
-                    expression = project.layer(match[1])["id"] + "." + match[2] + (match[3] or "")
+                from .render import parse_constraint
+
+                parsed = parse_constraint(expression)
+                require(parsed, f"Invalid constraint expression {expression!r}: use REF.left|right|top|bottom|"
+                        "center-x|center-y, or on text REF.line[N].start|end or REF.baseline[N], with an optional "
+                        "offset such as +8 or +0.25em", field="constraints")
+                if parsed.anchor not in ("left", "right", "top", "bottom", "center-x", "center-y"):
+                    horizontal = anchor in ("left", "right", "center-x")
+                    require(parsed.horizontal == horizontal,
+                            f"{expression!r} is a {'horizontal' if parsed.horizontal else 'vertical'} position; "
+                            f"constrain {'left, right or center-x' if parsed.horizontal else 'top, bottom or center-y'}"
+                            " with it", field="constraints")
+                ref = parsed.ref
+                if ref != "canvas" and not ref.startswith("guide:"):
+                    ref = project.layer(ref)["id"]
+                expression = parsed.text(ref)
             layer["constraints"][anchor] = expression
         for axes in (("left", "right", "center-x"), ("top", "bottom", "center-y")):
             present = [x for x in axes if x in layer["constraints"]]

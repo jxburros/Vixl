@@ -457,7 +457,10 @@ OVERRIDES = {
               "relative_to": "canvas, selection, or a layer name (default canvas, or the selection for targets).",
               "targets": "Layers to align together (default the target)."},
     "constrain": {"constraints": "Anchors to expressions: {left|right|top|bottom|center-x|center-y: a number, "
-                                 "'canvas.right-40', 'layer.left+8' or 'guide:name.center-x'}; one per axis."},
+                                 "'canvas.right-40', 'layer.left+8' or 'guide:name.center-x'}; one per axis. On a "
+                                 "text layer 'lyric.line[-1].end' (where its last line's pen ends; line[0].start, "
+                                 "counted from the end with -1) and 'lyric.baseline[-1]' (a line's baseline) follow "
+                                 "the rendered copy; offsets are pixels or em of that text's size ('+0.25em')."},
     "canvas": {"width": "Canvas width in pixels.", "height": "Canvas height in pixels.",
                "size": "Named size from vixl_reference('sizes') (letter, instagram-post, favicon …).",
                "preset": "Same as size.", "dpi": "Dots per inch for print metadata (36-2400).",
