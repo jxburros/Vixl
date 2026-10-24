@@ -131,6 +131,14 @@ def test_a_new_part_takes_the_policy_and_joins_the_silhouette():
     assert p.layer("gills")["id"] in p.layer("shroom")["object"]["outlined"]["strokes"]
 
 
+def test_hiding_every_filled_part_drops_the_outline_and_restores_the_strokes():
+    p = shroom(stem_stroke=("#ff0000", 5))
+    outline(p, outline="silhouette", interior="hide")
+    p.apply({"type": "hide", "targets": ["shroom-stem", "shroom-cap", "shroom-spot"]})
+    assert "outlined" not in p.layer("shroom")["object"] and p.find_layer("shroom/outline") is None
+    assert (p.layer("shroom-stem")["stroke"], p.layer("shroom-stem")["stroke_width"]) == ("#ff0000", 5)
+
+
 def test_line_work_keeps_its_stroke_and_adds_no_area():
     p = shroom()
     p.apply([{"type": "shape", "shape": "path", "name": "whisker", "x": 150, "y": 60, "path": "M0 0 L120 30",

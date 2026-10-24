@@ -356,15 +356,18 @@ def default_width(group):
 def _apply(project, group, outline, interior, color, width):
     children = _children(project)
     index = {layer["id"]: layer for layer in project.state["layers"]}
+    region = None
+    if outline == "silhouette":
+        # Measured before any stroke changes, so a refusal leaves the parts as they were.
+        region = silhouette(project, group, children)
+        require(region is not None and not region.is_empty, f"{group['name']!r} has no filled area to outline; draw "
+                "its parts with fills (line work keeps its own strokes)", field="target")
     strokes = {}
     for layer in strokable(project, group, children):
         strokes[layer["id"]] = {key: deepcopy(layer[key]) for key in STROKE_KEYS if key in layer}
         _paint(layer, mode(outline, interior, override(layer, index, group)), color, width)
     layer = None
-    if outline == "silhouette":
-        region = silhouette(project, group, children)
-        require(region is not None and not region.is_empty, f"{group['name']!r} has no filled area to outline; draw "
-                "its parts with fills (line work keeps its own strokes)", field="target")
+    if region is not None:
         layer = _write(project, group, region, color, width, children)
     else:
         _drop(project, group, children)
