@@ -1235,7 +1235,8 @@ def reference_styles(ctx, name: Annotated[str | None, Field(description="One sty
     """Design styles (swiss, brutalist, art-deco, risograph …); apply one with the style-use operation."""
     from . import styles
 
-    return styles.describe(name) if name else styles.listing(query)
+    own = styles.workspace_styles(ctx.session.workspace)
+    return styles.describe(name, own) if name else styles.listing(query, own)
 
 
 @action("vixl_reference", "looks")

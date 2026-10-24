@@ -136,6 +136,16 @@ def brand_styles_of(project):
     return (for_project(project) or {}).get("styles") or {}
 
 
+def workspace_styles(workspace):
+    """The styles of the brand.json in ``workspace`` ({} without one, or when it does not load)."""
+    from .brand import load
+
+    try:
+        return (load(workspace) or {}).get("styles") or {}
+    except VixlError:
+        return {}
+
+
 def resolve(name, brand_styles=None):
     """The catalog key for ``name`` (case and spacing forgiving), ``brand:NAME`` for a style of the active
     brand.json, or a helpful error."""
@@ -162,10 +172,16 @@ def resolve(name, brand_styles=None):
                     field="style", suggestions=close or matches[:3], allowed=names())
 
 
-def listing(query=None):
-    """Every style in one line each; ``query`` narrows by name, summary, keywords or use."""
+def listing(query=None, brand_styles=None):
+    """Every style in one line each (the workspace brand's own styles first, as ``brand:NAME``); ``query``
+    narrows by name, summary, keywords or use."""
     words = [w for w in re.split(r"\W+", (query or "").lower()) if w]
     rows = []
+    for name, own in sorted((brand_styles or {}).items()):
+        entry = brand_entry(name, own)
+        if all(w in " ".join([name, entry["title"], entry["summary"]]).lower() for w in words):
+            rows.append({"name": BRAND_PREFIX + name, "title": entry["title"], "summary": entry["summary"],
+                         "brand": True, "checks": [rule["id"] for rule in entry["checks"]]})
     for name in names():
         entry = STYLES[name]
         text = " ".join([name, entry["title"], entry["summary"], *entry["keywords"], *entry["best_for"]]).lower()

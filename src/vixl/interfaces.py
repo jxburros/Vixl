@@ -953,7 +953,8 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     def style_catalog(query: str | None = None, name: str | None = None):
         from . import styles
 
-        return styles.describe(name) if name else styles.listing(query)
+        own = styles.workspace_styles(session.workspace)
+        return styles.describe(name, own) if name else styles.listing(query, own)
 
     @app.get("/looks")
     def look_catalog():

@@ -465,6 +465,24 @@ def test_a_custom_brand_style_rule_fires_in_the_style_check(tmp_path):
             load(tmp_path)
 
 
+def test_brand_styles_join_the_style_lookups_of_their_workspace(tmp_path, monkeypatch):
+    from vixl.cli import dispatch
+
+    write(tmp_path, {"styles": {"calm": {"title": "Calm", "guidance": "Quiet and spare.",
+                                         "rules": [{"kind": "max_typefaces", "params": {"max": 2}}]}}})
+    monkeypatch.chdir(tmp_path)
+    listed, _ = dispatch(["styles", "list"])
+    assert listed["styles"][0]["name"] == "brand:calm" and listed["styles"][0]["checks"] == ["max-typefaces"]
+    shown, _ = dispatch(["styles", "show", "brand:calm"])
+    assert shown["title"] == "Calm" and shown["checks"][0]["id"] == "brand:calm/max-typefaces"
+    p = document(tmp_path)
+    from vixl.styles import apply_operations, brand_styles_of
+
+    p.apply(apply_operations("brand:calm", brand_styles=brand_styles_of(p)))
+    assert p.state["style"]["names"] == ["brand:calm"]
+    assert "Quiet and spare." in p.state["design_guidance"]["style"]
+
+
 def test_brand_init_then_validate_round_trip(tmp_path):
     from vixl.brand import cli as brand_cli
 

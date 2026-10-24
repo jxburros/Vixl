@@ -127,7 +127,9 @@ Element files are checked against their SHA-256 and decoded when placed and by `
 text, `rules` of the catalog's rule kinds (`max_typefaces`, `hue_count`, `min_negative_space`, `text_align` …,
 with the same parameter names; `vixl styles show swiss` lists them with their parameters) and recommended
 `looks`. A document is tagged with one as `brand:NAME`, and `check --checks style` evaluates its rules while
-that brand is the workspace brand. Rule kinds and parameter names are validated when brand.json is read.
+that brand is the workspace brand. Rule kinds and parameter names are validated when brand.json is read. In the
+workspace, `vixl styles list` and `vixl_reference('styles')` list the brand's styles first, `styles show brand:NAME`
+describes one and `styles apply brand:NAME` tags the document and stores its guidance.
 
 ```json
 {"styles": {"one-voice": {
