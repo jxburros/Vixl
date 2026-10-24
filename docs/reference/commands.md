@@ -352,10 +352,11 @@ charts told apart by colour alone (review) and text whose export order jumps aga
 [accessibility](../guides/output/accessibility.md). Declared [objects](../guides/shapes/objects.md) are inspected with `vixl inspect --object NAME`
 (`*` lists them all), exported alone with `vixl export dog.svg --isolate dog [--padding 8]` (a `.vixl` output
 writes a portable object) and listed by `vixl manifest`. `vixl object plan KIND [--height N] [--x X --y Y | --box X
-Y W H] [--name N] [--with KIND] [--seed N] [--apply]` scaffolds an object of a kind as named placeholder parts (the
-`object-plan` workflow; without a document it prints the batch), and `vixl object outline GROUP [--outline
-silhouette|parts|none|inherit] [--interior hide|thin|show] [--outline-color C] [--outline-width W]` and `vixl object
-outline-remove GROUP` apply and remove its outline policy.
+Y W H] [--name N] [--with KIND] [--seed N] [--illustration house|plain] [--apply]` scaffolds an object of a kind as
+named placeholder parts (the `object-plan` workflow; without a document it prints the batch; in a document with a house
+style it ends with the flat vector illustration finish unless `--illustration plain`), and `vixl object outline GROUP
+[--outline silhouette|parts|none|inherit] [--interior hide|thin|show] [--outline-color C] [--outline-width W]
+[--outline-lines JSON]` and `vixl object outline-remove GROUP` apply and remove its outline policy.
 
 Saved SVG exports report `svg.vector_only` and `svg.raster_fallbacks` in the CLI result so embedded bitmaps are visible without opening the SVG metadata. Use `export logo.svg --svg-policy strict` to reject all embedded raster content. Exporting to `-` still writes only SVG bytes. Supported grouped shapes and outlined text remain vectors; unsupported appearances may rasterize in the default appearance policy. Every SVG export also carries its document in `<metadata id="vixl-document">` (fonts named, not stored), so `vixl import FILE.svg` restores the editable layers ([exporting](../guides/output/exporting.md#svg-round-trip)).
 

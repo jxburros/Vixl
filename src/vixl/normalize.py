@@ -623,6 +623,17 @@ def _clamped_rgb(value, key, note):
     return clip["to"]
 
 
+def illustration_alias(op, note):
+    """``outline: false`` on an illustrated form (an organic shape, an ``object-plan`` request) is
+    ``illustration: "plain"``, and ``outline: true`` is ``illustration: "house"``."""
+    if isinstance(op.get("outline"), bool):
+        word = "house" if op["outline"] else "plain"
+        note(f"outline {str(op['outline']).lower()} → illustration: {word!r}")
+        op = {key: value for key, value in op.items() if key != "outline"}
+        op.setdefault("illustration", word)
+    return op
+
+
 def opacity(value, field, note):
     """One opacity scale everywhere: 0 (clear) to 1 (opaque). A percentage string such as "70%" is
     read as 0.7 (and noted); a bare number above 1 is an error, never guessed to be a percentage."""

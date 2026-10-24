@@ -25,20 +25,25 @@ middle of the kind's head proportion) and ``width_ratio`` place the 17 standard 
 range declares the object ``stylized``. ``template: "figure-plan"`` returns the blocking figure of the
 ``figure-plan`` workflow instead (``figure_template``), which is what that workflow now runs.
 
-``FINISHERS`` add operations after the parts are named, in the same batch: each takes the plan (its ``kind``,
-``name``, ``box``, ``parts`` and ``operations``) and returns a list of operations. A house-style illustration finish
-(outline width, offset shadow, slight irregularity) plugs in there.
+``FINISHERS`` add operations after the parts are named, in the same batch: each is called as
+``finish(plan, project, request, depth)`` (the plan with its ``kind``, ``name``, ``box``, ``parts`` and ``operations``;
+the open document or None; the request; 0 for the object and above for a sub-object) and returns a list of operations.
+``illustration_finish`` is the one registered: in a document with a house style (``craft.illustration_on``) every
+plan, sub-objects included, ends with the house illustration finish (see its docstring); ``illustration: "plain"``
+(or ``outline: false``) leaves the scaffold as the parts left it. The ``figure-plan`` template returns before any
+finisher runs, so its output never changes.
 """
 
 from dataclasses import dataclass, field
 import math
 import random
+import zlib
 
 from .errors import require
 from .model import finite
 
 FIELDS = ("kind", "name", "box", "x", "y", "height", "view", "with", "seed", "apply", "head_units", "width_ratio",
-          "color", "template")
+          "color", "template", "illustration")
 ACTIONS = {"object-plan": (set(FIELDS), {"kind"})}
 VIEWS = ("side", "front")
 SIDE_VIEW = ("animal", "vehicle")
@@ -99,6 +104,11 @@ FIELD_TYPES = {
     "width_ratio": {"type": "number", "description": "person: horizontal scale of the body, 0.5-2 (default 1)."},
     "color": {"type": "string", "description": "One colour for the placeholders, shaded per part (default: the colours "
               "of the kind's example, else its palette)."},
+    "illustration": {"type": "string", "enum": ["house", "plain"], "description": "house adds the house style's "
+                     "illustration finish after the parts (ink part lines under outline parts, thin extra lines "
+                     "now and then, a slight wobble, a hard offset shadow cast away from the light); plain leaves the "
+                     "scaffold as it is. Default: house in a document with a house style, plain without one. "
+                     "outline: false is read as plain."},
     "template": {"type": "string", "enum": ["figure-plan"], "description": "person: figure-plan returns the blocking "
                  "figure of the figure-plan workflow (seven separated head-unit masses and a parts map, no object "
                  "declaration) instead of the named parts."},
@@ -911,10 +921,15 @@ def plan(request, project=None, depth=0, taken=()):
     """The scaffold for one object (see the module docstring): ``{kind, name, view, box, operations, parts,
     next_steps}``; nothing is applied."""
     from .automation import bounded_object
+    from .normalize import illustration_alias
     from .objects import descends, merged as merge, registry, resolve_kind
 
     require(isinstance(request, dict), "object-plan takes an object of fields", field="request")
+    notes = []
+    request = illustration_alias(request, notes.append)
     bounded_object(request, set(FIELDS), "Unknown object-plan field")
+    require(request.get("illustration") in (None, "house", "plain"), "illustration is house or plain",
+            field="illustration", allowed=["house", "plain"])
     require(isinstance(request.get("kind"), str), "object-plan needs kind (dog, guitar, person …); vixl objects lists "
             "them", field="kind")
     kinds = registry(getattr(project, "_workspace", None))
@@ -1001,8 +1016,47 @@ def plan(request, project=None, depth=0, taken=()):
         result["head_units"] = heads
     _nest(result, request, project, depth, pieces, taken)
     for finish in FINISHERS:
-        result["operations"] += list(finish(result))
+        result["operations"] += list(finish(result, project, request, depth))
+    if notes:
+        result["normalized"] = [{"field": "outline", "reason": text} for text in notes]
     return result
+
+
+def illustration_finish(result, project, request, depth):
+    """The house illustration finish (``craft.illustration_style``) as operations after the parts: parts too small for a
+    line of that width are left out of the outline (``outline: none``, as a flat illustration draws an eye), the
+    wobble (``irregular``) on the object's own filled parts, then one ``outline`` with the policy, ink colour and width
+    of the house style and its occasional extra lines, so the outline follows the wobbled parts, and last a hard
+    ``drop-shadow`` on the object (a sub-object leaves it to its object, which casts one shadow for everything).
+    Nothing without a document with a house style, or with ``illustration: plain``."""
+    from . import craft
+
+    if project is None or not craft.illustration_on(project, request.get("illustration")):
+        return []
+    name = result["name"]
+    own = {layer for layers in result["parts"].values() for layer in layers}
+    key = f"illustration/{result['kind']}/{name}/{request.get('seed')}"
+    style = craft.illustration_style(project, result["box"], random.Random(key))
+    shapes = {op["name"]: op for op in result["operations"] if op["type"] == "shape" and op["name"] in own}
+    operations = []
+    for op in [op for op in result["operations"] if op["type"] == "object" and op.get("action") == "part"
+               and set(op["targets"]) <= own]:
+        size = max(min(shapes[layer]["width"], shapes[layer]["height"]) for layer in op["targets"])
+        if craft.illustration_small(style["stroke_width"], size):
+            operations.append({**op, "outline": "none"})
+    solid = [layer for layer, op in shapes.items() if op.get("fill", "transparent") != "transparent"]
+    if solid and style["irregular"]:
+        seed = request["seed"] if isinstance(request.get("seed"), int) and request["seed"] >= 0 else zlib.crc32(key.encode())
+        operations.append({"type": "irregular", "targets": solid, "seed": seed, **style["irregular"]})
+    operations.append({"type": "object", "action": "outline", "target": name, "outline": style["policy"],
+                       "outline_color": style["stroke"], "outline_width": style["stroke_width"],
+                       **({"outline_lines": style["strokes"]} if style["strokes"] else {})})
+    if depth == 0 and style["shadow"]:
+        operations.append({"type": "layer-style", "target": name, "name": "drop-shadow", "settings": style["shadow"]})
+    return operations
+
+
+FINISHERS.append(illustration_finish)
 
 
 def _paint(pieces, root, fields, ramp, request):
@@ -1111,8 +1165,9 @@ def _nest(result, request, project, depth, pieces, taken):
         at = canonical_anchor(item.get("at") or _opposite(point))
         require(at is not None, "with.at is an anchor (top, center, bottom-left …)", field="with")
         sub_name = item.get("name") or f"{result['name']}-{resolve(item['kind'], project)}"
-        sub = plan({"kind": item["kind"], "name": sub_name, "x": 0, "y": 0, "height": size}, project, depth + 1,
-                   tuple(used))
+        sub = plan({"kind": item["kind"], "name": sub_name, "x": 0, "y": 0, "height": size,
+                    **({"illustration": request["illustration"]} if "illustration" in request else {})},
+                   project, depth + 1, tuple(used))
         sw, sh = sub["box"][2], sub["box"][3]
         px, py = box[0] + ANCHORS[point][0] * (box[2] - box[0]), box[1] + ANCHORS[point][1] * (box[3] - box[1])
         ox, oy = round(px - ANCHORS[at][0] * sw), round(py - ANCHORS[at][1] * sh)

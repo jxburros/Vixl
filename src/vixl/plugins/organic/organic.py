@@ -35,8 +35,9 @@ GOLDEN_ANGLE = 137.50776405003785
 POST_RULES = ("blend", "occlude", "intersect")
 # Operation fields stored in a form's recipe, so a regrow starts from what was last asked for.
 RECIPE_KEYS = ("preset", "parts", "params", "colors", "seed", "naturalness", "padding", "stretch", "fill", "stroke",
-               "stroke_width")
+               "stroke_width", "illustration")
 UNFILLED = ("transparent", "none")
+NUMBER = re.compile(r"-?\d+(?:\.\d+)?(?:e[+-]?\d+)?", re.IGNORECASE)
 
 
 def element(points, closed=True, smooth=True):
@@ -1948,6 +1949,8 @@ PRESETS = {
 }
 # Scenery presets fill the layer's box edge to edge instead of keeping their aspect inside a padded box.
 BOX_PRESETS = ("water",)
+# Presets that cover a surface (a coat, a tissue, scales, water) rather than draw a form: no outline, wobble or shadow.
+SURFACE_PRESETS = ("cells", "giraffe", "spots", "scales", *BOX_PRESETS)
 
 
 def catalog():
@@ -2237,6 +2240,13 @@ def schemas(add):
         "fill": {**S, "description": "Fill for every filled part; colors names single parts and wins over it."},
         "stroke": {**S, "description": "Line color for every part, extra line outputs such as chambers and veins included."},
         "stroke_width": {**N, "description": "Line width for every part and extra line output."},
+        "illustration": {"type": "string", "enum": ["house", "plain"], "description": "house draws a form as the "
+                         "house style's flat vector illustration: ink part lines about 1.2% of the form's larger side "
+                         "(thinner on parts of small elements), a slight wobble, now and then a second or third line "
+                         "inside the outline, and a hard offset shadow cast away from the light. plain draws the "
+                         "preset as it is. Default: house in a document with a house style (not house_style off), "
+                         "plain without one; presets that cover a surface (spots, scales, cells, giraffe, water) are "
+                         "always plain. outline: false is read as plain; stroke, stroke_width and fill still win."},
     }, anyOf=[{"required": ["preset"]}, {"required": ["parts"]}, {"required": ["target"]}])
 
 
@@ -2267,7 +2277,57 @@ def regrown_style(kept, derived, op):
     return result
 
 
+def filled(paint):
+    return str(paint).strip().lower() not in UNFILLED
+
+
+def element_size(d):
+    """How thick the elements of a part are: the median over its subpaths of the smaller of the shorter side of their
+    boxes and 4 × area / perimeter (the width of a ribbon, the diameter of a disc); infinity without subpaths."""
+    sizes = []
+    for sub in d.split("M")[1:]:
+        numbers = np.array(NUMBER.findall(sub), dtype=float)
+        points = numbers[:len(numbers) // 2 * 2].reshape(-1, 2)
+        if len(points) < 3:
+            continue
+        ahead = np.roll(points, -1, axis=0)
+        area = abs(float(np.sum(points[:, 0] * ahead[:, 1] - ahead[:, 0] * points[:, 1]))) / 2
+        perimeter = float(np.sum(np.hypot(*(ahead - points).T)))
+        side = float((points.max(axis=0) - points.min(axis=0)).min())
+        sizes.append(min(side, 4 * area / perimeter) if perimeter else side)
+    return float(np.median(sizes)) if sizes else math.inf
+
+
+def finish_illustration(project, holder, looks, seed, shadow):
+    """The house illustration finish on a form that was just drawn (``craft.illustration_style``): a subtle wobble of its
+    filled parts, the extra lines inside the outline of a grouped form (now and then) and, for a new form, the hard
+    offset shadow. A form with no filled part (a fern) keeps its strokes and gets no shadow."""
+    from ...object_outline import draw_lines, silhouette
+    from ...operations import execute as apply
+
+    members = ([layer for layer in project.state["layers"] if layer.get("parent") == holder["id"]]
+               if holder["type"] == "group" else [holder])
+    solid = [layer for layer in members if layer["type"] == "shape" and filled(layer["fill"])]
+    if not solid:
+        return
+    # The wobble is sized by the whole layer, so a part of small elements (seeds, spots, leaves) would be scrambled by it.
+    wobbly = [layer["id"] for layer in solid if element_size(layer["path"]) >= looks["wobble_element"]]
+    if looks["irregular"] and wobbly:
+        apply(project, {"type": "irregular", "targets": wobbly, "seed": seed, **looks["irregular"]})
+    if holder["type"] == "group" and looks["strokes"]:
+        region = silhouette(project, holder)
+        if region is not None and not region.is_empty:
+            edge = max(layer.get("stroke_width", 0) for layer in solid) / 2
+            draw_lines(project, holder, region, looks["stroke"], looks["strokes"], edge)
+    if shadow and looks["shadow"]:
+        apply(project, {"type": "layer-style", "target": holder["id"], "name": "drop-shadow",
+                        "settings": looks["shadow"]})
+
+
 def execute(project, op):
+    import random
+
+    from ... import craft
     from ...operations import append_layer, default_name, execute as apply
     from ...model import new_layer
 
@@ -2285,6 +2345,13 @@ def execute(project, op):
     seed = recipe.setdefault("seed", 0)
     naturalness = float(recipe.setdefault("naturalness", 0.5))
     parts = recipe_parts(recipe)
+    # A form made before the illustration finish existed is regrown as it was: plain unless it is asked for.
+    illustrated = craft.illustration_on(project, recipe.get("illustration") or ("plain" if target else None)) and not (
+        recipe.get("preset") in SURFACE_PRESETS and "parts" not in recipe)
+    if illustrated and "illustration" not in recipe:
+        recipe["illustration"] = "house"
+    own_lines = ({spec.get("name"): {key for key in ("stroke", "stroke_width") if key in spec} for spec in parts}
+                 if "parts" in recipe else {})
     colors = recipe.get("colors", {})
     require(isinstance(colors, dict), "colors maps part names to fill colors", field="colors")
     if "fill" in recipe:
@@ -2320,6 +2387,10 @@ def execute(project, op):
     widest = max([spec.get("stroke_width", 0) for spec, _ in built if spec.get("stroke", "transparent") != "transparent"]
                  + [recipe.get("stroke_width", style.get("stroke_width", 1))
                     for spec, _ in built for style in (spec.get("styles") or {}).values()] + [0])
+    looks = (craft.illustration_style(project, [0, 0, width, height], random.Random(f"illustration/{seed}"))
+             if illustrated else None)
+    if looks:
+        widest = max(widest, looks["stroke_width"])
     boxed = recipe.get("preset") in BOX_PRESETS and "parts" not in recipe
     padding = finite(recipe.get("padding", 0 if boxed else 2 + widest / 2), "padding", 0, min(width, height) / 2 - 1)
     paths = render_paths(built, width, height, padding, not recipe.get("stretch", boxed))
@@ -2329,6 +2400,13 @@ def execute(project, op):
         spec = styles[name]
         style = {"fill": spec.get("fill", "#5c8f4a"), "stroke": spec.get("stroke", "transparent"),
                  "stroke_width": spec.get("stroke_width", 1)}
+        if looks and tag == "shape" and filled(style["fill"]):
+            # Part lines: ink at the house width, thinner on a part made of small elements; a line the operation or
+            # the part itself sets stays.
+            if "stroke" not in recipe and "stroke" not in own_lines.get(name, ()):
+                style["stroke"] = looks["stroke"]
+            if "stroke_width" not in recipe and "stroke_width" not in own_lines.get(name, ()):
+                style["stroke_width"] = craft.illustration_part_width(looks["stroke_width"], element_size(d))
         # What the operation sets outranks the preset's own line styling for an output.
         extra = {k: v for k, v in (spec.get("styles") or {}).get(tag, {}).items() if k not in recipe}
         if tag != "shape":
@@ -2360,6 +2438,8 @@ def execute(project, op):
             layer = path_layer(name, d, style, opacity, x, y)
             layer["organic"] = stored
             append_layer(project, layer)
+            if looks:
+                finish_illustration(project, layer, looks, seed, True)
             return
         ids = []
         for label, d, style, opacity in layers:
@@ -2371,6 +2451,8 @@ def execute(project, op):
         group["organic"] = stored
         group["role"] = group.get("role", "content")
         project.state["active_layer"] = group["id"]
+        if looks:
+            finish_illustration(project, group, looks, seed, True)
         return
     if target["type"] == "shape":
         require(len(layers) == 1, f"{target['name']!r} is a single path; this recipe draws {len(layers)} parts. "
@@ -2383,6 +2465,10 @@ def execute(project, op):
         target["organic"] = stored
         place(target)
         project.state["active_layer"] = target["id"]
+        if looks:
+            # The wobble was made for the old outline; it is drawn again for the new one.
+            target.pop("irregular", None)
+            finish_illustration(project, target, looks, seed, False)
         return
     require(target["type"] == "group", "Organic regeneration needs the organic group or path", field="target")
     from ...design import descendants
@@ -2412,6 +2498,8 @@ def execute(project, op):
     target["organic"] = stored
     place(target)
     project.state["active_layer"] = target["id"]
+    if looks:
+        finish_illustration(project, target, looks, seed, False)
 
 
 def compile_command(cmd, args):
@@ -2439,6 +2527,8 @@ def compile_command(cmd, args):
     p.add_argument("--color", action="append", help="Part fill PART=COLOR, e.g. petals=#fff")
     p.add_argument("--parts", type=json.loads, help="JSON list of parts (instead of a preset)")
     p.add_argument("--stretch", action="store_true", default=None)
+    p.add_argument("--illustration", choices=["house", "plain"],
+                   help="plain draws the preset without the house illustration finish (default: house in a house-style document)")
     a = vars(p.parse_args(args))
     op = {"type": "organic"}
     for key, value in a.items():

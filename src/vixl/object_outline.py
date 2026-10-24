@@ -7,6 +7,10 @@ silhouette), ``outline_color`` and ``outline_width``. A part may override it on 
 none`` leaves the part out (not in the silhouette, its stroke untouched), ``outline: parts`` gives it the full
 outline, and ``interior`` picks its own interior.
 
+``outline_lines`` adds thin lines inside the outline, parallel to it (``[{gap, width}]``: a double or triple line): one
+generated ``NAME/outline-N`` path layer each, inset from the silhouette by the outline's inner edge, the gaps and the
+widths before them, and drawn again with the outline.
+
 ``{type: object, action: outline}`` applies the policy. Under silhouette it writes one ``NAME/outline`` path layer,
 the object's top child, marked ``generated: {by: object-outline}``: the union of the filled areas the object's
 layers draw (sub-objects included, generated outlines not) with holes filled, stroked and unfilled. Line work (an
@@ -34,8 +38,9 @@ from .errors import VixlError, require
 
 POLICIES = ("silhouette", "parts", "none", "inherit")
 INTERIORS = ("hide", "thin", "show")
-FIELDS = ("outline", "interior", "outline_color", "outline_width")
+FIELDS = ("outline", "interior", "outline_color", "outline_width", "outline_lines")
 GENERATED = "object-outline"
+MAX_LINES = 3
 THIN = 0.4
 WEIGHT_TOLERANCE = 0.25
 DEFAULT_COLOR = "#1d1d24"
@@ -287,7 +292,18 @@ def _path(region):
 
 def outline_layer(project, group, children=None):
     children = children if children is not None else _children(project)
-    return next((child for child in children.get(group["id"], []) if generated(child)), None)
+    return next((child for child in children.get(group["id"], [])
+                 if generated(child) and "line" not in child["generated"]), None)
+
+
+def check_lines(value, field="outline_lines"):
+    """``outline_lines`` is at most ``MAX_LINES`` of ``{gap, width}``, both positive pixel numbers."""
+    from .model import is_number
+
+    require(isinstance(value, list) and len(value) <= MAX_LINES
+            and all(isinstance(line, dict) and set(line) == {"gap", "width"}
+                    and all(is_number(line[key]) and 0 < line[key] <= 100 for key in line) for line in value),
+            f"{field} is up to {MAX_LINES} lines of {{gap, width}} in pixels (each above 0, up to 100)", field=field)
 
 
 def _write(project, group, region, color, width, children):
@@ -304,23 +320,65 @@ def _write(project, group, region, color, width, children):
     layer = new_layer(default_name(project, f"{group['name']}/outline"), "shape", w, h, shape="path", path=data,
                       path_view=[w, h], fill="transparent", stroke=color, stroke_width=width, x=x, y=y, parent=group["id"], role="decoration", generated={"by": GENERATED})
     append_layer(project, layer)
+    _on_top(project, group, layer)
+    return layer
+
+
+def _on_top(project, group, layer):
     layers = project.state["layers"]
     siblings = [i for i, item in enumerate(layers) if item.get("parent") == group["id"] and item is not layer]
     if siblings:
         layers.remove(layer)
         layers.insert(max(siblings) + 1, layer)
-    return layer
 
 
-def _drop(project, group, children=None):
+def _drop(project, group, children=None, *, outline=True, lines=True):
+    """Delete the generated layers of an object: its outline and its extra lines (either can be left out)."""
     from .operations import forget_layers
 
-    layer = outline_layer(project, group, children)
-    if layer is not None:
-        project.state["layers"].remove(layer)
-        forget_layers(project, {layer["id"]})
-        if project.state.get("active_layer") == layer["id"]:
+    children = children if children is not None else _children(project)
+    gone = {child["id"] for child in children.get(group["id"], [])
+            if generated(child) and (lines if "line" in child["generated"] else outline)}
+    if gone:
+        project.state["layers"][:] = [layer for layer in project.state["layers"] if layer["id"] not in gone]
+        forget_layers(project, gone)
+        if project.state.get("active_layer") in gone:
             project.state["active_layer"] = group["id"]
+
+
+def insets(lines, edge):
+    """``[(inset, width)]`` for extra lines: the distance of each line's centre from the silhouette, given where the
+    outline's ink ends (``edge``) and each line's ``gap`` from the ink before it."""
+    found, at = [], float(edge)
+    for line in lines:
+        at += line["gap"] + line["width"] / 2
+        found.append((round(at, 3), line["width"]))
+        at += line["width"] / 2
+    return found
+
+
+def draw_lines(project, group, region, color, lines, edge):
+    """Write the extra lines inside ``region`` (the group's silhouette): one unfilled path layer per line on top of the
+    group's layers, ``generated`` so the geometry hash and the outline policy leave it alone. A line the shape is too
+    thin for ends the series. Returns the layers drawn."""
+    from .model import new_layer
+    from .operations import append_layer, default_name
+
+    made = []
+    for number, (inset, width) in enumerate(insets(lines, edge), 1):
+        inner = region.buffer(-inset, join_style=1)
+        if inner.is_empty:
+            break
+        x, y, w, h, data = _path(inner)
+        if not data:
+            break
+        layer = new_layer(default_name(project, f"{group['name']}/outline-{number}"), "shape", w, h, shape="path",
+                          path=data, path_view=[w, h], fill="transparent", stroke=color, stroke_width=width, x=x, y=y,
+                          parent=group["id"], role="decoration", generated={"by": GENERATED, "line": number})
+        append_layer(project, layer)
+        _on_top(project, group, layer)
+        made.append(layer)
+    return made
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -347,19 +405,25 @@ def _restore_strokes(project, record):
         layer.update(deepcopy(original))
 
 
-def default_width(group):
-    """1% of the object's larger side, to half a pixel, at least 1 px."""
+def default_width(group, outline="silhouette"):
+    """The outline width of an object that sets none, to half a pixel and at least 1 px: the house illustration's part
+    line (``craft.illustration.outline.width_share``) of the object's larger side under ``parts``, and its
+    ``silhouette_share`` under ``silhouette``."""
+    from . import house_style
+
+    rule = house_style.rule("illustration")["outline"]
     side = max(float(group.get("content_width", group["width"])), float(group.get("content_height", group["height"])))
-    return max(1.0, round(side / 100 * 2) / 2)
+    return max(1.0, round(side * rule["width_share" if outline == "parts" else "silhouette_share"] * 2) / 2)
 
 
-def _apply(project, group, outline, interior, color, width):
+def _apply(project, group, outline, interior, color, width, lines=()):
     children = _children(project)
     index = {layer["id"]: layer for layer in project.state["layers"]}
     region = None
-    if outline == "silhouette":
+    if outline == "silhouette" or lines:
         # Measured before any stroke changes, so a refusal leaves the parts as they were.
         region = silhouette(project, group, children)
+    if outline == "silhouette":
         require(region is not None and not region.is_empty, f"{group['name']!r} has no filled area to outline; draw "
                 "its parts with fills (line work keeps its own strokes)", field="target")
     strokes = {}
@@ -367,13 +431,18 @@ def _apply(project, group, outline, interior, color, width):
         strokes[layer["id"]] = {key: deepcopy(layer[key]) for key in STROKE_KEYS if key in layer}
         _paint(layer, mode(outline, interior, override(layer, index, group)), color, width)
     layer = None
-    if region is not None:
+    if outline == "silhouette":
         layer = _write(project, group, region, color, width, children)
     else:
-        _drop(project, group, children)
+        _drop(project, group, children, lines=False)
+    _drop(project, group, children, outline=False)
+    drawn = []
+    if lines and region is not None and not region.is_empty:
+        drawn = draw_lines(project, group, region, color, lines, width / 2 if outline == "silhouette" else width)
     group["object"]["outlined"] = {"outline": outline, "interior": interior, "color": color, "width": width,
-                                   "strokes": strokes, "hash": geometry_hash(project, group)}
-    return layer, strokes
+                                   "strokes": strokes, "hash": geometry_hash(project, group),
+                                   **({"lines": deepcopy(list(lines))} if lines else {})}
+    return layer, strokes, drawn
 
 
 def remove(project, group):
@@ -396,6 +465,12 @@ def apply(project, group, op):
             continue
         if key == "outline" and op[key] == "inherit":
             record.pop("outline", None)
+        elif key == "outline_lines":
+            check_lines(op[key])
+            if op[key]:
+                record[key] = deepcopy(op[key])
+            else:
+                record.pop(key, None)
         else:
             record[key] = op[key]
     if "outline_color" in op:
@@ -406,10 +481,11 @@ def apply(project, group, op):
     summary = {"object": group["name"], "outline": outline}
     if outline != "none":
         color = record.get("outline_color", DEFAULT_COLOR)
-        width = float(record.get("outline_width") or default_width(group))
-        layer, strokes = _apply(project, group, outline, interior, color, width)
+        width = float(record.get("outline_width") or default_width(group, outline))
+        layer, strokes, drawn = _apply(project, group, outline, interior, color, width, record.get("outline_lines", ()))
         summary.update(interior=interior, color=color, width=width, parts=len(strokes),
-                       **({"layer": layer["name"]} if layer is not None else {}))
+                       **({"layer": layer["name"]} if layer is not None else {}),
+                       **({"lines": len(drawn)} if record.get("outline_lines") else {}))
     report(project, "outlines", summary)
 
 
@@ -423,7 +499,8 @@ def refresh(project):
             continue
         _restore_strokes(project, group["object"])
         try:
-            _apply(project, group, stored["outline"], stored["interior"], stored["color"], stored["width"])
+            _apply(project, group, stored["outline"], stored["interior"], stored["color"], stored["width"],
+                   stored.get("lines", ()))
         except VixlError:
             # Every part was removed or hidden: nothing is left to outline, so the outline goes with them.
             group["object"].pop("outlined", None)

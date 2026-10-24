@@ -36,8 +36,9 @@ the viewer expects a person, a material or an accident, and hurts where they exp
   break it. Pick a strength by looking at the preview, starting at `subtle`.
 * **Not on every layer.** If everything is wobbly, nothing is: keep the structure (backgrounds,
   frames, type) clean and roughen the focal character, sticker, label or paper.
-* **Not twice.** `organic` forms already have their own `naturalness`; use `irregular` on shapes,
-  pen paths and imported vectors, and `tear` only where something is actually ripped.
+* **Not twice.** `organic` forms already have their own `naturalness` (and in a house-style document the
+  [illustration finish](../shapes/organic.md#house-illustration-finish) adds a subtle wobble to a new form's larger
+  parts); use `irregular` on shapes, pen paths and imported vectors, and `tear` only where something is actually ripped.
 * **Not to fix a weak design.** It adds character to a good one.
 * **Not for randomness at export time.** The result is fixed by `seed` and stored in the document;
   to get another take, change the seed and look again.

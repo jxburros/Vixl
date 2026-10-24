@@ -94,7 +94,7 @@ Use video-sample with explicit times or interval to produce visible labeled cont
     "this: outline silhouette (one generated NAME/outline layer around the union of the parts, redrawn whenever a part "
     "moves) with interior hide, thin (40% of the width, the default for animals and made things) or show; outline parts "
     "outlines every part alike; none (natural kinds) or action outline-remove restores the part strokes. outline_color "
-    "and outline_width set the line; a part takes outline: none to keep its own stroke (steam, a highlight) or parts "
+    "and outline_width set the line (outline_lines adds a double or triple line inside it); a part takes outline: none to keep its own stroke (steam, a highlight) or parts "
     "for a full contour of its own. Open lines (whiskers, strings) keep their strokes. Keep one light direction and one "
     "shadow colour across parts. To "
     "review: vixl_document(action='inspect', object=NAME) lists the parts and the required parts still missing; "

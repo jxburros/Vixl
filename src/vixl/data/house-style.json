@@ -53,6 +53,14 @@
                "blur": [0.04, 0.12, 4, 100], "opacity": [0.35, 0.25]},
       "halo": {"max_core": 0.7},
       "dash_fit": true
+    },
+    "illustration": {
+      "summary": "Flat vector: thin ink lines around every part, a hard offset shadow cast away from the light, a slight hand-made waver and, now and then, a second or third line inside the outline.",
+      "outline": {"policy": "parts", "width_share": 0.012, "silhouette_share": 0.01, "element_share": 0.2, "minimum": 0.5},
+      "light": "top-left",
+      "shadow": {"kind": "offset", "distance_share": 0.03, "angle_from": "light", "opacity": 0.35},
+      "irregular": {"strength": "subtle", "only": ["wobble"], "element_widths": 12},
+      "extra_lines": {"probability": 0.15, "count": [1, 2], "offset_share": 0.006, "width": 0.5}
     }
   },
   "taste": {
