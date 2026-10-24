@@ -313,6 +313,11 @@ vixl export guitar.vixl --isolate guitar
   workspace brand.json ([brand elements](../layout/brands.md#elements)).
 - The component library's `library-place` workflow action places a component as an editable group (its
   layers, fonts and images). `as: "image"` keeps the old raster snapshot.
+- There is one library of saved things per document: `character-save` writes a character into the same object
+  library (kind `person`, or the character's own object kind) and `character-load` reads it with the character
+  overrides (`colors`, `outfit`, `scale`), so `object-place` places a saved character too. A rigged character
+  shared across documents and workspaces with named poses, expressions and motions is a `.vixlchar`
+  [character package](../motion/animation-authoring.md#character-packages).
 
 ## Exports keep the identity
 
