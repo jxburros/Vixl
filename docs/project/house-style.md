@@ -70,6 +70,13 @@ Today: explicit field > brand (`brand.json`) > document `design_defaults` > a fr
 
 Decision:
 
+Implemented (#654): inside the roll, the words of a free-text brief count too. `vixl_reference(brief)` takes the moods
+of the motif themes the brief names (`moods` in `data/motifs.json`) and of the house style's keyword table
+(`taste.moods.keywords`), and weights the palettes with one of those moods by `taste.moods.brief_weight` (3) within
+the rolled tier: weighting, never filtering, so the spread of palettes stays wide. The direction reports
+`mood_source: "brief"`, `brief_moods` and `mood_words`, and the best theme's first element as `motif_suggestion`
+(what to draw; no layers are added). A brief with no matching word rolls exactly as before.
+
 ### A4. Safe versus expressive pools
 Today rolls are safe-only, while brief recommendations name expressive options such as brutalist, hard-shadow and
 risograph (`src/vixl/briefs.py:30-339`).
@@ -347,6 +354,17 @@ Today the accent is rolled, but in safe compositions it is often never drawn (se
 **Recommendation:** the rule. It reads as intentional.
 
 Decision: Not free, not just one either.  It should be most likely to have one accent color, second most likely to have two, and least likely to have zero or three.  Accent colors can either be equally represented or skewed towards one color
+
+Implemented (#404): a roll sets `accent_count` (0-3, `taste.accents.count_weights`: 1 at 0.55, 2 at 0.30, 0 and 3
+at 0.075 each; a mark rolls 0, 1 or 2) and `accent_representation` (`equal` or `skewed`, half each) from a separate
+stream of the seed, so a seed keeps everything else it rolled, its first accent included. Two or three accents add
+the roles `accent-2` and `accent-3` (the palette's next most colourful entries at least 30° of OKLCH hue from the
+accents before them, else the first accent turned in hue; each nudged to 3:1 as a fill, with a `-text` variant at
+4.5:1). The layout spreads its accent-bearing layers over them: skewed gives the first accent the larger share
+(0.7/0.3, 0.6/0.25/0.15) and the most prominent layers, equal deals them out in turn; a shape with text on it keeps
+the first accent. With no accent the accent layers take the ink colour and accent text the muted one. The layout
+record's `accents` lists the accents drawn; `accent_unused` checks each one. Restore one accent with
+`locks={accents: 1}`. See [safe variety](../guides/layout/safe-variety.md#accent-colours).
 
 ### D6. Chart colours
 Today charts take colours from the document palette first, then colour-blind-safe defaults
@@ -656,8 +674,9 @@ one module, `src/vixl/house_style.py`. A workspace `brand.json` and explicit fie
   always reflect the data; layouts, rich text, text flow, charts, diagrams, templates and containers
   read the same values.
 - **`taste`** holds the pools a roll draws from (palettes, pairings, layouts, styles, looks), each entry
-  with a `tier` and moods, the variety `levels` that gate the tiers, the `alignment` weights and the `details`
-  shares that decide a roll's `cta` and `date`.
+  with a `tier` and moods, the variety `levels` that gate the tiers, the `alignment` weights, the `details`
+  shares that decide a roll's `cta` and `date`, the `accents` rules (how many accent colours and how they share
+  the page) and, under `moods`, the `keywords` that tie a brief's words to palette moods.
 - **`purposes`** holds one profile per purpose (poster, social, slides, document, form, diagram, logo,
   motion): the brief kinds, size categories and aliases that map to it, the default document `size`
   (and `sizes` for aliases with their own, such as `story`, `icon` or `favicon`), whether it is a `mark`
@@ -681,6 +700,8 @@ Read it, never copy it. The API:
 | `house_style.purpose_size(value)`, `is_mark(purpose, size)` | the size a purpose implies, and whether a document is a mark |
 | `house_style.tier_of(kind, name, purpose=None)`, `entries(kind)`, `names(kind, tier)` | tiers and metadata of the pools |
 | `house_style.level(variety)` | a variety level's tier weights, look scale, motifs and treatments |
+| `house_style.accents(purpose=None)` | the accent count weights (a purpose may override them), representation, skew shares and how extra accents are found |
+| `house_style.mood_keywords()` | the brief words that imply each palette mood |
 | `house_style.safe_palettes()` | the quiet palettes the safe tier and palette-less layouts draw from |
 | `house_style.neutral()` | what `house_style: "off"` gives: `summary`, `background` and the neutral `direction` |
 
@@ -776,6 +797,12 @@ and #370 (layouts fail their own safe-area check).
   read across a room, where the roles above body step up from the raised body by the scale's ratio, the type
   scale records the raised roles and the spacing unit follows the raised body, in rolls as in direct layouts),
   and bold text (700+) counts as large for contrast from 18.66 px; regular text from 24 px.
+- **Accent colours (#404).** A roll draws one accent usually, two often, none or three rarely (`accent_count`),
+  equally or skewed (`accent_representation`); extra accents are the roles `accent-2` and `accent-3`. Lock
+  `accents=1` for one accent. See [safe variety](../guides/layout/safe-variety.md#accent-colours).
+- **Palette from the brief (#654).** The moods a brief's words imply (motif themes and `taste.moods.keywords`)
+  weight the rolled palette three times, within the tier; the direction names them and suggests the theme's motif.
+  Lock the palette (`locks={palette: NAME}`) to choose it yourself.
 - **Layout details (craft plan 5b, 5c).** A roll also sets `cta` (`pill` or `button`) and `date` (`highlight` or
   `plain`) from a separate stream of the seed; see [safe variety](../guides/layout/safe-variety.md). Footer rules in the safe
   compositions and the `section-header` rule keep one spacing unit of clearance. Lock `cta=button` and

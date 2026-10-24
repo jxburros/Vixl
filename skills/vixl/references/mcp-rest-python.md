@@ -128,7 +128,9 @@ timeline, or the saved-frame animation when the document has frames and no timel
 
 `vixl_reference()` is the first call for an open brief: the start-here recipe and every kind of work.
 `vixl_reference("a mascot for a coffee brand")` (a kind or free text) returns the approach, operations, layouts,
-looks, styles, a working example and `motifs`; a guidance name (`finishing`, `testing`, `batches`, `checks`,
+looks, styles, a working example and `motifs`; its rolled `direction` favours palettes with the moods the brief's
+words imply (`direction.mood_source: "brief"`, `brief_moods`, `mood_words`) and suggests the motif to draw
+(`motif_suggestion`, no layers added); a guidance name (`finishing`, `testing`, `batches`, `checks`,
 `exports`, `looping-motion` …) returns its text. Topics with `name` (and `options`):
 `operations` (`name=[types]`: exact schemas; none: every operation by purpose), `workflows`, `capabilities`
 (`name=TOPIC`, `fields`), `sizes` (`name` search, `category`), `layouts`, `fonts` (a pairing or family name, or

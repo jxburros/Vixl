@@ -65,6 +65,41 @@ packages.
 
 ### Palette and decoration from the brief
 
+- **Rolls draw one, two, three or no accent colours (breaking).** A roll's direction now carries `accent_count` and
+  `accent_representation`: one accent in 55% of rolls, two in 30%, none or three in 7.5% each (a mark rolls one,
+  sometimes none or two), shared `equal`ly or `skewed` toward the first (70/30, 60/25/15). Both come from a separate
+  stream of the seed, so a seed keeps its palette, layout and first accent; a seed that now rolls two accents draws
+  some of its rules, dots, labels or margin motif in the second, and one that rolls none draws its accent shapes in
+  the ink colour and accent text in the muted one. A shape carrying text (the call to action, a highlighted date)
+  keeps the first accent. A layout with fewer places for an accent than the roll asks for adds the margin motif
+  where a corner is clear of the text, then leaves the rest out; the layout record's `accents` lists the accents
+  `drawn` and says why any is missing. `accent_unused` checks every drawn accent and skips a direction with none,
+  and charts with several series start from the drawn accents. Restore one accent with `locks={accents: 1}`
+  (`--lock accents=1`), or roll nothing with `house_style: "off"`. On the house-style eval every quality share stays
+  1.0 at every level and 19 of the 20 two- and three-accent rolls per level draw all their accents (the third finds
+  no place in the other); the diversity mean and image and structure distances are unchanged and the same-mode
+  distance moves from 0.1022 to 0.1020 at low (one poster's corner block turning from green to purple), 0.1394 to
+  0.1395 at medium and stays 0.166 at high, all above the stored baseline. See
+  [safe variety](docs/guides/layout/safe-variety.md#accent-colours). (#404)
+- **`@accent-2` and `@accent-3` palette roles.** Two or three accents add these roles with `-text` variants: the
+  palette's next most colourful entry at least 30° of OKLCH hue from the accents before it, else the first accent
+  turned in hue at the same lightness and chroma, nudged to 3:1 as a fill and 4.5:1 for text, each with its reason in
+  `layout.roles`. Only the accents a layout draws get swatches. Colours you fix (`colors`, a brand palette) get no
+  invented accent; a brand palette may set `accent-2` and `accent-3` (and their `-text` roles). On `layout-apply` the
+  count goes in `direction`: `{"accent_count": 2, "accent_representation": "equal"}`. (#404)
+- **A brief's words weight the rolled palette (breaking).** Motif themes carry `moods` (coffee is warm, cozy,
+  earthy, rustic and crafted) and the house style a keyword table (`taste.moods.keywords`: `cozy` and `autumn` are
+  warm, `luxury` luxurious, `quarterly` corporate). The roll attached to `vixl_reference(brief)` weights palettes
+  with one of the brief's moods three times within the rolled tier, so a coffee brief picks warm or earthy palettes
+  about 45% of the time instead of 27% while still seeing nearly every palette. The direction reports
+  `mood_source: "brief"`, `brief_moods` and `mood_words`, and the best theme's first element as
+  `motif_suggestion` (what to draw; no layers are added). A brief with no matching word rolls exactly as before.
+  Choose the palette yourself with `locks={palette: NAME}`, or roll nothing with `house_style: "off"`. See
+  [safe variety](docs/guides/layout/safe-variety.md#moods-from-the-brief). (#654)
+- **The house-style eval counts accents.** It reports the accent count rolled as a diversity dimension and, as a
+  quality share, how many two- and three-accent rolls draw all their accents (`accents_drawn`, now in the baseline).
+  (#404)
+
 ### Layout and adaptation
 
 ### Atmosphere and motifs

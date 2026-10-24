@@ -324,11 +324,12 @@ def show(purpose=None):
         require(found, f"Unknown purpose {purpose!r}; purposes: {', '.join(PURPOSES)}", field="purpose",
                 allowed=list(PURPOSES))
         return {"purpose": found, "profile": profile(found), "craft": craft(),
-                "levels": {name: level(name) for name in item["taste"]["levels"]}}
+                "levels": {name: level(name) for name in item["taste"]["levels"]}, "accents": accents(found)}
     pools = {kind: {tier: len(names(kind, tier)) for tier in (*TIERS, "explicit")} for kind in KINDS}
     return {"name": item["name"], "description": item["description"],
             "precedence": item["precedence"], "craft": craft(),
             "levels": {name: level(name) for name in item["taste"]["levels"]},
+            "accents": accents(),
             "pools": pools,
             "purposes": {name: item["purposes"][name]["summary"] for name in PURPOSES},
             "detail": "vixl house show PURPOSE (vixl_reference('house-style', name=PURPOSE)) gives one purpose profile"}

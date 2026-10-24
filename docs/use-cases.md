@@ -127,6 +127,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | CLR-06 | Define brand swatches and use `@swatch` references | `swatch` | 1 · <1 | Modifiers like `lighten(@brand, 10%)`. |
 | CLR-07 | Find a color by name (CSS or xkcd) | `color names QUERY` | 1 · <1 |  |
 | CLR-12 | Delete a stray swatch without breaking the layers that use it | `swatch` with `delete` (`detach` keeps their colors) | 1 · <1 | Unreleased; refused with the list of users unless `detach`; undo restores it. |
+| CLR-13 | A design with two or three accent colours, or none, shared equally or led by one | a roll (`locks={accents: 2, accent_representation: "skewed"}`), or `layout-apply` `direction: {accent_count: 2}` | 1 · <1 | Unreleased (#404): rolls draw one accent usually, two often, none or three rarely; `@accent-2`/`@accent-3` are contrast-checked and spread over the layout's rules, dots, labels and motif. Before, extra swatches and recolouring layers by hand. |
+| CLR-14 | A rolled palette that follows the brief's mood (a coffee brief leans warm and earthy) | `vixl_reference(brief)` | 1 · <1 | Unreleased (#654): the brief's motif themes and mood words weight the palette (never filter it); the direction reports `mood_words` and a `motif_suggestion`. Before, a palette lock chosen by hand. |
 
 ### Shapes, layout and placement
 

@@ -202,13 +202,15 @@ python -m evals.house_style --compare evals/house-style-baseline.json   # exit 1
 python -m evals.house_style --limit 8 --levels medium         # a quick look
 ```
 
-**Diversity** is the entropy in bits of the rolled palette, layout, mode, pairing, look and style; the mean
+**Diversity** is the entropy in bits of the rolled palette, layout, mode, pairing, look, style and accent count; the mean
 pairwise distance of 48 px renders (`image dist.`, dominated by light against dark); the same distance
 within one mode (`same-mode dist.`); and `structure dist.`, one minus the correlation of normalised
 lightness maps (the arrangement, whatever the colours). **Quality** is the share of designs with no `fix`
 finding from `check`, with no `composition` finding (`no composition`: dead bands, margin drift, uneven rhythm,
 crowding, clumped scatter, flat type hierarchy, one weight, no focal point or an unused accent, the craft the checks measure; see [the craft backtest](craft_backtest/README.md)), with
-their fonts installed and passing the contrast check. `--compare` fails when a
+their fonts installed and passing the contrast check, and of the designs rolled with two or three accents, the share
+whose layout draws them all (`accents drawn`; a layout with too few places for an accent leaves the rest out).
+`--compare` fails when a
 quality share falls or a level's diversity falls by more than the baseline's tolerance; a deliberate
 change updates `house-style-baseline.json` in the same commit. `tests/test_house_style.py` runs four
 briefs at two levels as part of the test suite.

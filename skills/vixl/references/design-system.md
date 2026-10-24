@@ -37,6 +37,7 @@ vixl_check() ; vixl_render()
 - Variation: change `seed` to explore; pin `palette`, `mode` (light/dark), `type_scale` (`minor-third` … `golden` or a number), `density` (airy/balanced/dense), `align`, `accent` (rule/bar/dot/block/outline/none), `gap` (pixels or spacing units such as `"2u"`, 1u = half the body size). The chosen system is in the result's `changes.layout` and in `state.layout`; a `notes` entry means type was shrunk to fit.
 - Two-tone headline: `accent_words: ["Winter"]` sets those whole words of the `title` in `@accent-text` (a missing word is a warning). Headlines wrap balanced; a rolled `cta` (`pill`/`button`) and `date` (`highlight`/`plain`) go in `direction`, e.g. `"direction": {"cta": "button"}`.
 - Layouts create swatches `@background @surface @ink @muted @accent @accent-text @on-accent` (contrast-checked) and character styles `caption body lead subhead title headline display`. Edit a swatch to retint everything; use `@accent-text` (not `@accent`) for small accent-colored text.
+- Accent count: a roll draws one accent usually, two often, none or three rarely (`direction.accent_count`, lock with `locks: {accents: 1}`). Two or three add `@accent-2`/`@accent-3` with `@accent-2-text`/`@accent-3-text` (3:1 fills, 4.5:1 text), only for the accents the layout draws (`state.layout.accents.drawn`); `accent_representation` `equal` or `skewed` decides how they share the rules, dots, labels and motif, and a shape carrying text keeps `@accent`. With none, `@accent` is the ink colour. On `layout-apply`: `"direction": {"accent_count": 2}`.
 - Second layout in the same document: pass `prefix` (e.g. `"b-"`) or `replace: true`.
 - `type-scale` alone defines the styles: `{"type":"type-scale","base":18,"ratio":"golden"}`. Guidance resources `typography`, `color`, `layout`, `accessibility`, `print`, `icon`, `motion`, `brush` hold the principles in words (`{"type":"guidance","name":"print","style":"print"}`).
 
@@ -51,7 +52,9 @@ ways to fill it: **import** (`import-image` → `replace-contents` or re-apply w
 ## Palette roles
 
 `palette-apply` and `layout-apply palette=[…]` turn colors into `@background`, `@surface`, `@ink`, `@muted`, `@accent`,
-`@accent-text` and `@on-accent` by luminance and chroma, following light or dark mode. That reassigns colors
+`@accent-text` and `@on-accent` by luminance and chroma, following light or dark mode (a direction with two or three
+accents adds `@accent-2` and `@accent-3`: the next most colourful palette entry 30° of hue away, else the accent turned
+in hue; fixed `colors` or a brand get no derived one). That reassigns colors
 passed in an order that looked like background, surface, accents. The result explains it: `palette_roles`
 (palette-apply) and `layout.roles` (layout-apply) give each role's color, whether it is a palette entry
 (`palette[2]`) or derived, and a one-line reason, plus `mode` and where it came from. To decide yourself, pass
