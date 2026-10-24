@@ -38,6 +38,9 @@ the blind re-judge has not run. Breaking changes are listed under Upgrading from
 - **Saved characters live in the object library.** `character-save` writes `object_library`; run `vixl convert` on
   a document with an old `character_library` to move its entries (the engine still reads them). `character-cycle`
   refuses walk, run, ride or wave on a rig without the bones the cycle moves.
+- **filelock 4.2.1 or later is required** (it was 3.21 to 3.x). Three advisories against filelock 3.32.7
+  (CVE-2026-112940, CVE-2026-112913, CVE-2026-112907) are fixed only in 4.2.1; Vixl's use of `FileLock` is unchanged,
+  and `uv.lock` pins 4.2.4.
 - **`layer-intent` `tags: ["optional"]` becomes `priority: optional`**, and a stack's `align: "middle"` becomes
   `center`; both are reported under `normalized`.
 
