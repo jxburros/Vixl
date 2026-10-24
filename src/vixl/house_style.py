@@ -33,6 +33,7 @@ This module only reads the data. The rolls that use it live in ``typefaces.roll`
 ``mood_keywords()``           the brief words that imply each palette mood (``briefs.brief_moods``)
 ``neutral()``                 what a document gets with ``house_style: "off"``: no roll, a neutral direction
 ``finish()``                  the finishing rules: glow, shadow and halo colours, dash fitting
+``illustration()``            the illustration finish: part-line width, offset shadow, irregularity, extra lines
 """
 
 from copy import deepcopy
@@ -312,6 +313,13 @@ def finish():
     """The finishing rules (``craft.finish``): what a glow, a shadow or a halo looks like when no colour is given,
     and whether dash patterns are fitted to corners by default."""
     return _data()["craft"]["finish"]
+
+
+def illustration():
+    """The illustration finish (``craft.illustration``), a copy: the outline policy and width share, the light and the
+    hard offset shadow angled from it, the irregularity preset and how often extra lines appear. ``craft.illustration_style``
+    applies it to one object's box."""
+    return deepcopy(_data()["craft"]["illustration"])
 
 
 def show(purpose=None):
