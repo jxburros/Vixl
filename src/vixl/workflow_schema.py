@@ -767,10 +767,6 @@ SUMMARIES = {
     "drawing-report": "Measure a hand-drawing layer: strokes, closures, straightness and cleanup suggestions.",
     "deck-from-markdown": "Build a checked slide deck from a Markdown file: a page per heading with a fitting layout, "
                           "rich text, tables, charts, images and speaker notes; re-running rebuilds only changed slides.",
-    "mockup": "Place a design into device or print mockups (phone, laptop, browser, framed poster, business card, mug "
-              "or a saved template) as a live, corner-pinned link; optionally export each.",
-    "mockup-list": "List the mockup templates: built-in and the workspace's own, with their slots.",
-    "mockup-save": "Save a mockup template (a scene and its four-corner slots) to the workspace resource library.",
     "drawing-compare": "Write a before/after comparison PNG of a drawing layer; the result reports fidelity (IoU, pixel mismatch).",
     "resource-list": "List built-in and user resources of one category.",
     "resource-get": "Read one named resource.",
