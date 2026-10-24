@@ -1,5 +1,38 @@
 # Changelog
 
+## Unreleased
+
+Steps 5 and 6 of the [implementation plan](docs/project/implementation-plan.md): craft, then objects and brand
+packages.
+
+### Upgrading from 0.30
+
+### Typography and components
+
+### Craft checks and variations
+
+### Palette and decoration from the brief
+
+### Layout and adaptation
+
+### Atmosphere and motifs
+
+### Illustration defaults
+
+### Fonts
+
+### Objects
+
+### Brand packages
+
+### Merch
+
+### Characters
+
+### Reproducibility and delivery
+
+### Evals
+
 ## 0.30.5
 
 Plans the animation export speed work.
