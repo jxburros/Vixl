@@ -182,3 +182,29 @@ def test_one_move_on_a_large_lit_scene():  # #595
     # layer's neighbourhood is composited and lit again (about 0.15 s; a loaded macOS runner took 0.9 s).
     elapsed, _ = timed(p.render)
     assert elapsed < 2.5
+
+
+def test_object_check_on_many_declared_objects_over_animation_frames():  # #378
+    from vixl.objects import merged
+
+    example = merged("dog")["build"]["example"]
+    p = Project(4000, 3000, "white")
+    batch = []
+    for i in range(24):
+        dx, dy = (i % 6) * 600, (i // 6) * 600
+        names = {op["name"]: f"{op['name']}-{i}" for op in example if op["type"] in ("shape", "group")}
+        for op in example:
+            op = {**op, **({"x": op["x"] + dx, "y": op["y"] + dy} if "x" in op else {})}
+            op.update({key: names.get(op[key], op[key]) for key in ("name", "target") if key in op})
+            if "targets" in op:
+                op["targets"] = [names.get(ref, ref) for ref in op["targets"]]
+            batch.append(op)
+    p.apply(batch, detail="brief")
+    p.apply([{"type": "timeline-set", "duration": 2000, "fps": 24},
+             {"type": "keyframe", "target": "tail-0", "property": "rotation", "time": 0, "value": -25},
+             {"type": "keyframe", "target": "tail-0", "property": "rotation", "time": 1000, "value": 10}], detail="brief")
+    # 240 parts at three sampled frames: about 1.7 s. Each part is drawn once per frame onto a tile the size of its
+    # object; drawn on canvas-sized tiles, as the connected check draws them, it took over 15 s.
+    elapsed, report = timed(lambda: p.check(checks=["object"]))
+    assert report["passed"] and "object" in report["checked"]["checks"]
+    assert elapsed < 8

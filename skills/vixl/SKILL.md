@@ -49,8 +49,8 @@ Details: [workflow](references/workflow.md), [testing](references/testing.md).
 2. **Plan one batch** of canonical operations; dry-run anything risky (`dry_run: true`).
 3. **Apply** and read the change summary, its `warnings` and `normalized` (use that spelling next time).
 4. **Check without looking**: `vixl_check` lists only problems (bounds, overlap, contrast, safe area, legibility,
-   composition, `use-size`); then run your suite. Measure, don't eyeball: `vixl_check(action='measure')`,
-   `action='spacing'`, `action='validate'`.
+   composition, `use-size`, declared objects against their kind); then run your suite. Measure, don't eyeball:
+   `vixl_check(action='measure')`, `action='spacing'`, `action='validate'`.
 5. **Finishing pass** (above), or `undo` an edit that did not help.
 6. **Look**: `vixl_render()` returns a reduced preview; `region` with `max_width`/`max_height` is 1:1,
    `isolate=["mascot"]` shows one object, `action='compare'` shows before and after. Never declare a visual task

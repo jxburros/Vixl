@@ -360,6 +360,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | BLK-11 | Seamless random scatter for patterns | `pattern-scatter`, `pattern-fill` | 2–4 · 1 | Since 0.22; reports a seam score. |
 | ILL-06 | Fewer motifs in a scattered pattern without re-rolling it | `pattern-scatter` `target` with a lower `count`, or `thin` | 1–2 · <1 | The surviving copies stay in place (T15 R2 kept 7 % of the ink on 0.26). |
 | ILL-51 | Scatter motifs inside or along a shape, or fur on a mascot | `scatter` (`preset: fur`), `plush` look | 1–3 · 1 | Since 0.22. |
+| ILL-52 | Object from its kind (dog, guitar, house …) | `vixl_reference(KIND)` → adapt `build.example` in one `vixl_apply` with `check=true` → isolated preview | 3–6 · 1–2 | The 15 seed kinds have tested examples; the default `object` check reports missing parts, gaps, proportions, mirrored pairs and layering. A person holding a guitar still places the sub-object by hand. |
 
 ### Motion and pixels
 
@@ -514,7 +515,6 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | ILL-30 | Static character or mascot built from named parts | `character` kind, groups with pivots, `object` kind person + named parts, `inspect object=` | 20–35 · 3–5 | Missing required parts are listed; review with `isolate` `views: [parts]`. |
 | ILL-31 | Landscape scene with depth (sky, sun, hills, plants) | `scene` kind, organic, gradients | 20–30 · 3–4 |  |
 | ILL-32 | Botanical illustration with several organic forms | `organic` ×n, repeat, irregular, `object` kind (flower, tree, cactus …) | 10–18 · 2–3 | Every organic preset maps to a kind ([objects](guides/shapes/objects.md)). |
-| ILL-52 | Object from a kind scaffold (dog, guitar, person with a guitar) | `vixl_reference(brief)` → shapes → `group` → `object` + parts → `inspect object=` → isolated preview | 15–30 · 3–4 | Parts, connections and layering from the taxonomy. |
 | ILL-53 | Reusable editable object (mascot placed recoloured in several documents) | `object-save`/`object-place` with `recolor`, or `vixl_export(isolate, path=….vixl)` + `object-place source` | 4–8 · 1–2 | Copies are independent, with new IDs. |
 | ILL-33 | Painted texture or brush illustration (dozens of strokes) | `paint` with brushes | 15–30 · 3–4 | Strokes stay editable. |
 | ILL-34 | Cut-paper style illustration | cut-paper guidance, `tear`, shadows | 20–35 · 3–5 |  |

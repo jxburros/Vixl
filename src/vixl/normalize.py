@@ -223,7 +223,7 @@ FIELD_ALIASES = {
     "link": {"path": "source", "file": "source", "src": "source", "document": "source", "doc": "source"},
     # ``type`` names the operation, so the object's kind is never spelled ``type`` here.
     "object": {"object_kind": "kind", "object_type": "kind", "subject": "kind", "name": "label", "title": "label",
-               "part_name": "part"},
+               "part_name": "part", "stylised": "stylized"},
     "object-place": {"as": "name_as", "rename": "name_as"},
     "layer-intent": {"alt_text": "alt", "description": "alt", "aria_label": "alt"},
     "layout-apply": {key: "accent_words" for key in ("accent_word", "accents", "highlight_words", "highlight",

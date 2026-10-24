@@ -750,6 +750,8 @@ class Project:
         if warnings:
             result["warnings"] = [*result.get("warnings", []), *warnings]
         notes = [*notes, *interpreted, *reports.pop("normalized", [])]
+        if reports.get("next_steps") and result.get("next_steps"):
+            reports["next_steps"] = [*result["next_steps"], *reports["next_steps"]]
         result.update(reports)
         if font_install is not None:
             result["font_install"] = font_install
