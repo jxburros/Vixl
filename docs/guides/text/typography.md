@@ -98,6 +98,13 @@ vixl font list                         # registered fonts, the document typograp
 
 Installs fetch one static TTF per style from the Google Fonts CSS API (`fonts.gstatic.com`, HTTPS only, bounded size). Any Google Fonts family works, not only catalog entries. Files are validated and cached in `~/.cache/vixl/fonts` (set `VIXL_FONT_CACHE` to move it), then embedded in the document and registered as `family-weight` (for example `dm-serif-display-400`). A saved `.vixl` file therefore renders anywhere without the network. `font pair` and `--role` set `state.typography`, and layouts use it for headings and body unless you pass `font`/`display_font`. The structured operation is `{"type": "font-register", "name": "dm-sans-400", "role": "body"}`.
 
+**Body italics.** `font pair`, and `font install` with `--role body`, also fetch the italic of a body face that is a
+catalog text face with an italic (one more file, registered as `family-weight-italic`, such as
+`source-sans-3-400-italic`), so italic rich text in body copy draws the real italic instead of a slanted roman. The
+result names it under `body.body_italic` (`font install`: `body_italic`) with its `origin`; when it cannot be fetched
+(offline, not in the cache) the pair still succeeds and `body_italic.skipped` says why. Rolls and new documents
+install the two styles only. Installs are static files: optical sizes (`opsz`) are not used.
+
 Each install reports where the font came from, so agents and CI can verify offline behaviour: `source.origin` is `cache` (served from `source.cache_file` with no network) or `download` (with the Google Fonts stylesheet in `source.stylesheet` and the font file in `source.url`; `cache_file` is the copy it was stored as, or null when the cache is not writable). `source.cache_dir` is the cache directory and `source.cache_dir_from` says whether `VIXL_FONT_CACHE` or the default chose it. `family`, `weight`, `italic` and `name` give the resolved style, and `file` names the embedded asset (`fonts/<sha256>.ttf`), its byte size and hash. `font pair` returns this for both the heading and body fonts plus `origin` (`cache`, `download` or `mixed`); an applied roll (the `roll` step of `vixl_apply`, `vixl roll --apply`) returns the same under `fonts`. `source.bundled_fallback` is always false: a font that cannot be downloaded or found in the cache fails with `font_download_failed` (or `unknown_font`), and the bundled DejaVu Sans is never substituted silently. To run offline, pre-fill the cache (or set `VIXL_FONT_CACHE` to a directory holding `family-weight[-italic].ttf` files such as `inter-400.ttf`) and check for `origin: "cache"`. Set `VIXL_OFFLINE=1` (or start the server with `--offline`) to make sure nothing is downloaded: a style that is not in the cache then fails with `network_disabled` instead of reaching Google Fonts, and font imports from a URL are refused the same way.
 
 ### Scripts the bundled fonts do not draw
@@ -176,7 +183,26 @@ A roll picks a pairing first, then a palette whose mood fits it, a layout suited
 
 Tracking is letter spacing in local pixels between characters (never after the last one on a line); negative values tighten text. Set it on the layer with `text` or `text-set`, for example `{"type":"text-set","target":"headline","tracking":4}`: layer tracking applies to whatever text the layer holds, including text changed later by `text` keyframes, typewriter or captions, and `${variable}` values. `text-style` tracking styles a matched phrase, range or paragraph, and rich-text spans take `tracking` too; a span's own (nonzero) tracking replaces the layer's. `letter_spacing` is accepted as an alias. This is the letter-spacing control, distinct from `spacing` and `line_height` (line spacing). Inspect and preview after tracking changes because the text may wrap differently. Tracked text is laid out by the rich-text engine; a layer whose text had no rich formatting keeps its line pitch and its box (top at the ink), so adding tracking, on the layer or with a first `text-style`, does not move the text. Because no tracking follows a line's last letter, tracked text measures, wraps, centres and right-aligns by its glyphs, and PNG, SVG, PDF, PPTX, scaled previews and linked documents agree.
 
-`text_transform` draws the text in a case without changing the stored text: `uppercase`, `lowercase`, `capitalize` (the first letter of each word) or `none`. Like tracking it is a layer property, so `{"type":"text-set","target":"lyric","text_transform":"uppercase","tracking":4}` gives keyed lyric lines and merge-field values the brand's caps and tracking. `text-transform`, `case`, and values such as `caps`, `upper` and `title` are accepted and reported under `normalized`. Rendering, `inspect`, `check`, `fit-text` and the SVG, PDF and PPTX exports all use the cased, tracked text.
+`text_transform` draws the text in a case without changing the stored text: `uppercase`, `lowercase`, `capitalize` (the first letter of each word), `small-caps` or `none`. Like tracking it is a layer property, so `{"type":"text-set","target":"lyric","text_transform":"uppercase","tracking":4}` gives keyed lyric lines and merge-field values the brand's caps and tracking. `text-transform`, `case`, `font_variant`, and values such as `caps`, `upper`, `title` and `smallcaps` are accepted and reported under `normalized`. Rendering, `inspect`, `check`, `fit-text` and the SVG, PDF and PPTX exports all use the cased, tracked text.
+
+## Small caps
+
+`text_transform: "small-caps"` draws lowercase letters as small capitals and leaves capitals, figures and
+punctuation as they are, so "Summer Night Market" reads as a capital S, N and M over small capitals. When the font has
+its own small capitals (the OpenType `smcp` feature, as the bundled Noto Sans and many text faces do), those glyphs are
+used; otherwise they are synthesized from the capitals at 0.7 of the size with 5% of the size added between them, so
+they keep their weight and colour next to full capitals. The stored text keeps its case.
+
+```json
+{"type": "text", "name": "eyebrow", "text": "The Harbour Review", "size": 32, "x": 60, "y": 60,
+ "text_transform": "small-caps", "tracking": 2}
+```
+
+A rich-text span takes `small_caps` (Markdown `[words]{small-caps}`, `text-style` `small_caps: true`, CLI
+`--small-caps`), for small capitals inside a line: an acronym in running text, a byline. Small caps are laid out by the
+rich-text engine, like tracking: PNG, SVG and PDF draw the same glyphs at the same places, and PPTX writes the run's own
+text with `cap="small"`, so PowerPoint sets it in small capitals too. A PDF reads synthesized small capitals back as
+the capitals they are drawn with. On a layer with tab stops, small caps set its tabs as four spaces, as tracking does.
 
 Width-only `text-layout` boxes grow vertically after `text-set` or variable substitution. Give both width and height to keep a fixed box and let overflow checks report copy that does not fit. Markdown text-flow retains its size-based line-height calculation when splitting across frames.
 
@@ -207,6 +233,31 @@ for PowerPoint to wrap, as before). `wrap` is kept when the box is resized with 
 **Headings balance by default.** A new `text-layout` box on a heading (a heading font role or stage, or text whose size
 reads as the h2 step or larger) and every layout headline take `wrap: "balance"`. Rich text keeps `greedy` unless you ask. Pass `wrap: "greedy"` on the
 `text-layout` for greedy breaks.
+
+## Hanging punctuation
+
+A quotation mark at the start of a line makes the letters look indented. `hanging_punctuation: true` on `text`,
+`text-set` or `rich-text` sets such marks outside the text edge, so the letters line up with it:
+
+- at the start of lines aligned left (or justified): opening quotes and brackets (`“ ‘ " ' « ( [`), and a bullet with
+  the space after it;
+- at the end of right-aligned lines: closing quotes and brackets, stops and commas;
+- in centred lines, both, so the words are centred between the marks.
+
+```json
+[{"type": "text", "name": "quote", "text": "“The tide waits for no one,” she said.", "size": 48, "x": 80, "y": 60,
+  "hanging_punctuation": true},
+ {"type": "text-layout", "target": "quote", "width": 600}]
+```
+
+The marks reach past the layer's box: auto-sized text gets a box that starts at the first letter, and in a text box a
+hung mark needs no room, so a line holding one fits as if it were not there, and `fit-text` sizes the letters to the box.
+The bounds and safe-area checks count the hung marks, so text placed at the canvas edge is still reported as cut off;
+leave a margin for them. Lists keep their marker column, and a line with tab stops does not hang. Text without a mark
+that could hang draws exactly as before. PNG, SVG and PDF draw the marks where the layout puts them; PPTX writes
+`hangingPunct` on the paragraph and hangs the first line of a left-aligned paragraph with a negative first-line indent
+(PowerPoint does not hang wrapped lines or line ends). `hanging`, `hang_quotes` and `optical_margin` are accepted and
+reported under `normalized`; `false` removes it. It is opt-in: no default sets it.
 
 ## Tab stops and leaders
 

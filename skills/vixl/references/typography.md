@@ -107,7 +107,7 @@ A roll draws from Vixl's house style: it first draws a tier (`safe`, `bold` or `
 
 `check` reports `code: runt` (review) when wrapped display text (24 px+) leaves under 20% of the longest line, or one word under half of it (when the paragraph has more words than lines), alone on its last line; set `wrap`, widen the box or break the line.
 
-### Line breaking, tab stops and accent words
+### Line breaking, tab stops, accent words, small caps and hanging punctuation
 
 - `text-layout` `wrap` (also `rich-text` with a width): `greedy` (fill each line), `balance` (same line count, even
   widths: headings, titles, short text) or `pretty` (no one-word last line: body text, lyrics). Kept when the box is
@@ -117,7 +117,21 @@ A roll draws from Vixl's house style: it first draws a tier (`safe`, `bold` or `
   `left`/`right`/`center`/`decimal`, `leader` such as `"."`. Each `\t` moves to the next stop; a line with a tab is
   not wrapped. PPTX gets native tab stops with the leader written as characters. Tables take a column `leader`.
 - `layout-apply` `accent_words: ["Winter"]` styles whole-word, any-case matches in the headline with
-  `@accent-text` (rich-text spans); a word not found is a warning. `accent` with a list is read as `accent_words`. Letter spacing is `tracking` in local pixels: on the layer (`text`/`text-set`, also for keyed or `${variable}` text) or on a span with `text-style`. `spacing` and `line_height` are line spacing. `text_transform` (`uppercase`, `lowercase`, `capitalize`) cases the drawn text without changing the stored text, including keyed text. Width-only text boxes grow after copy/variable edits; fixed height stays fixed. Rich text-flow preserves size-based leading.
+  `@accent-text` (rich-text spans); a word not found is a warning. `accent` with a list is read as `accent_words`.
+  `text`/`text-set` take `accent_words` too (the layer becomes rich text), and rich-text Markdown has the flags
+  `[Winter]{accent}` (`@accent-text`) and `[Sale]{accent-bg}` (`@on-accent` on an `@accent` highlight). All need the
+  palette roles (`palette-apply` with roles, `layout-apply` or a roll) and are refused without them. Letter spacing is `tracking` in local pixels: on the layer (`text`/`text-set`, also for keyed or `${variable}` text) or on a span with `text-style`. `spacing` and `line_height` are line spacing. `text_transform` (`uppercase`, `lowercase`, `capitalize`, `small-caps`) cases the drawn text without changing the stored text, including keyed text. Width-only text boxes grow after copy/variable edits; fixed height stays fixed. Rich text-flow preserves size-based leading.
+- Small caps: `text_transform: "small-caps"` (alias `font_variant: "small-caps"`) draws lowercase letters as small
+  capitals, the font's own (OpenType `smcp`) or synthesized (capitals at 0.7 of the size, 5% tracking); a span takes
+  `small_caps` (`[byline]{small-caps}`, `text-style small_caps: true`). PPTX writes `cap="small"`. Use it for eyebrows,
+  bylines and acronyms in running text instead of uppercase at a smaller size.
+- Hanging punctuation: `hanging_punctuation: true` on `text`, `text-set` or `rich-text` sets opening quotes, brackets
+  and bullets outside the start of left-aligned lines (closing marks, stops and commas outside right-aligned line ends;
+  both in centred lines), so the letters line up with the margin. Opt-in, for pull quotes and quoted headlines. The
+  hung marks reach past the layer box, need no room in it (`fit-text` sizes the letters) and count in the bounds and
+  safe-area checks: leave them a margin. PPTX gets `hangingPunct` and a negative first-line indent.
+- `font pair` and `font install --role body` also fetch the body text face's italic (`body_italic` in the result,
+  `skipped` with the reason when offline), so italic rich text uses the real italic. No optical sizes (`opsz`).
 
 `check` judges text at its real use size (`legibility` finding, `code: use-size`, `action: review`): cover art (`album-art`, any 3000×3000 canvas) at 120 px, book covers (`ebook-cover`, 1600×2560) at a 160 px thumbnail, app icons at 60 px, social at its 320 px thumbnail, portrait infographics at 400 px, slides projected (36 px on a 1080 px slide), posters across a room (3% of the sheet's short side). Light weights (< 400) and faint colours need more; bold needs less. The finding names the needed font size or weight. Skip with `layer-intent decorative` or waive `legibility`.
 

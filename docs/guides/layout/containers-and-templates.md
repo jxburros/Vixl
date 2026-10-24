@@ -39,8 +39,28 @@ Omitting a seed selects a fresh one. Placement reports its seed and selected var
 | `product-card` | photo, name, price, optional tag | left, centered, split |
 | `section-header` | eyebrow, title (a rule closes it) | default |
 | `key-value-list` | title, items (one `label \| value \| share` per line) | default |
+| `callout` | title, body and an optional icon (a symbol or emoji) on a tinted panel with an accent rule | default |
+| `band` | title and an optional detail on an accent strip (960×160 by default) | default |
+| `labelled-rule` | label between two rules (720×96 by default) | default |
 
 The original headline, quote, feature and illustration containers remain available. Text and decorations use palette role swatches. Image-bearing resources show crossed neutral placeholders until filled. Both the normal blanks check and the `container-layout` suite report missing image slots; the container suite also reports sources with fewer pixels than the displayed image requires.
+
+The finishing pieces `callout`, `band` and `labelled-rule` are placed on purpose, never picked by a roll (like
+`key-value-list`), so rolled documents stay as they were. A callout's panel is the surface tinted 12% toward the accent;
+its icon sits in the top corner and hides when empty, so the copy keeps its place either way. A band is a wide, short
+strip for a header or footer: its text is `@on-accent` on `@accent`, and the detail at the far end hides when empty.
+A labelled rule divides sections ("Chapter two", "or") with the label's capitals centred on the rules. Give each the
+size it needs; the strips accept heights down to 64 and 40 px.
+
+```json
+[{"type": "palette-apply", "name": "slate"},
+ {"type": "container-place", "name": "note", "resource": "callout", "x": 60, "y": 60,
+  "variables": {"title": "Heads up", "body": "Doors open at seven.", "icon": "!"}},
+ {"type": "container-place", "name": "footer", "resource": "band", "x": 0, "y": 680, "width": 1200, "height": 120,
+  "variables": {"title": "Summer Night Market", "detail": "June 21"}},
+ {"type": "container-place", "name": "divider", "resource": "labelled-rule", "x": 240, "y": 460,
+  "variables": {"label": "Chapter two"}}]
+```
 
 The section header's rule keeps at least one spacing unit (half the document's body size) between itself and the container's bottom edge at any height, so the row that follows never sits on it (the [craft plan](../../project/craft-plan.md) counts a gap under half a unit as crowding; one unit keeps clear of that threshold).
 
