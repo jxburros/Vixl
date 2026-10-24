@@ -46,6 +46,14 @@ and checked by SHA-256. Small indexes that the core needs to answer queries offl
 catalog, stay in `src/vixl/data/`. The built-in packs are `emojis` (the artwork) and `fonts` (third-party fonts the
 examples use, named like the font cache); the fallback fonts that make text render offline ship in the package.
 
+`cjk` has a seam but no published pack yet. Text whose CJK, Devanagari or Thai characters no document font covers
+draws them from a face already on the machine: `vixl.packs.local("cjk")` (the `VIXL_CJK_PACK` override: a font
+file, or a zip of files named like the font cache, `noto-sans-sc-400.ttf`), then the font cache
+(`typefaces.local_script_faces`). Rendering never downloads a pack. To publish one, commit a zip of the Noto Sans
+SC, TC, JP and KR regular styles under those names (OFL, with its licence) to VixlPacks and add a `PACKS["cjk"]`
+entry with the commit, SHA-256 and size, in the shape the `vixl.packs` docstring shows; `vixl.packs.install("cjk")`
+then fetches it once and the render path finds it in the pack directory.
+
 ### Grey areas
 
 - **It needs a hook point that does not exist yet.** Add the hook point to `vixl.plugins.HOOKS` with its call

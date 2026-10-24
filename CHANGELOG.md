@@ -168,6 +168,36 @@ packages.
 
 ### Fonts
 
+- **Noto Sans is the proofing face (breaking) (#419).** Text without a font (and roles the document's typography does
+  not set) is drawn in the bundled `NotoSans-Regular.ttf` instead of DejaVu Sans, so every default render changes:
+  Noto Sans is narrower, with taller line metrics and deeper descenders. DejaVu Sans stays bundled and nameable, now
+  after Noto Sans in the fallback order (it draws the Arabic, Hebrew, Armenian and Georgian that Noto Sans lacks), and
+  layers that name `DejaVuSans.ttf`, as text saved without a chosen font before this release does, keep drawing it. Restore it
+  for new text with `"font": "DejaVuSans.ttf"` on the layer, or as a role's face with
+  `{type: font-register, name: dejavu, asset: DejaVuSans.ttf, role: body}` (`font-register` now embeds a bundled face
+  named as its `asset`); `font-fallbacks` accepts either bundled face. The `fonts` check reports text in either
+  bundled face as the proofing fallback. The conversion kit's `preserve` look writes `DejaVuSans.ttf` into chart,
+  table, key-value and diagram recipes that name no face (`proofing-font`, documents before 0.27); later documents'
+  recipes redraw in Noto Sans on their next edit. A missing font in an SVG import falls back to Noto Sans.
+- **CJK, Devanagari and Thai draw from a face already on the machine (#419).** When no document font covers such a
+  character, the fallback chain adds the matching catalog Noto face from the font cache (left by `font-cover` or
+  `font install`; any cached CJK face serves Han) or from `VIXL_CJK_PACK` (a font file, or a zip of files named like
+  the font cache), without the document registering it and without any download while rendering. Exports draw it
+  like any fallback face (PDF embeds the subset it draws). Because the document does not embed it, the apply warns and
+  `check` reports a `fonts` warning naming the step that does; `font-cover` without arguments now embeds such faces
+  too. With no face on the machine, the apply warning and the `fonts` error name the exact step and command, such as
+  `{"type": "font-cover", "scripts": ["Han"]}` and `vixl font cover --script Han`. `vixl.packs` has the seam for a
+  pinned `cjk` content pack (`vixl.packs.local`, documented in [plugins](docs/reference/plugins.md)); none is
+  published yet.
+- **Layout and export fixes the new face brought out.** Logo taglines and a banner's call to action are measured in
+  the face they are drawn in, not the proofing face. A wide banner too shallow for a call to action under the copy
+  beside the headline (a LinkedIn cover with a two-line subtitle) puts the button in a third column instead of past
+  the bottom edge. The event poster grows its type while its facts would otherwise be moved to the foot past an empty
+  band, so a pixel either side of 60% fill no longer decides. A diagram given a box no longer ends up to 1.5% larger
+  than it. A boxed text whose first glyph starts left of its origin (the tail of J) is reported as cut off only when
+  its ink leaves the box. PDF exports set letter spacing as character spacing (`Tc`), so extracted tracked text no
+  longer reads as spaced letters. SVG raster imports draw text that names Noto Sans as well as DejaVu Sans.
+
 ### Objects
 
 - **Kinds say how to build one (#376).** Every object kind has a `build` block, merged down the taxonomy: the

@@ -125,7 +125,7 @@ text-flow picks `#111111` or `#ffffff` from the background (`src/vixl/textflow.p
 Decision:
 
 ### B2. Text font
-Today plain `text` resolves to the bundled DejaVu Sans even when the document has typography
+Plain `text` used to resolve to the bundled proofing face even when the document had typography
 (`src/vixl/render.py:114-115`). The fonts check then raises a must-fix finding.
 - [X] The `body` role when typography exists; `heading` for text at or above the title step of the type scale
 - [ ] Always `body`
@@ -235,7 +235,8 @@ next step and renders in the fallback font (`src/vixl/variety.py:16-24`).
 Decision:
 
 ### C4. The bundled fallback font
-Today the fallback is DejaVu Sans, documented as "proofing only". Bundled VIXL Line artwork supplies complete Unicode 17 emoji coverage independently of fonts; CJK still needs additional fonts.
+The fallback was DejaVu Sans, documented as "proofing only"; Noto Sans has replaced it as the proofing face (#419),
+with DejaVu Sans kept behind it. Bundled VIXL Line artwork supplies complete Unicode 17 emoji coverage independently of fonts; CJK still needs additional fonts.
 - [ ] Keep it as a proofing-only font
 - [X] Bundle a broad-coverage open font (larger package, better first renders)
 

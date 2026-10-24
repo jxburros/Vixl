@@ -65,7 +65,7 @@ get JSON.
 
 You now have an editable `hello.vixl` and a PNG export. Open the PNG to inspect the actual
 appearance. `check` covers the rules requested, not every possible design problem. The
-bundled DejaVu Sans font makes proofing work offline; for finished brand work, choose a
+bundled Noto Sans font makes proofing work offline; for finished brand work, choose a
 font with `vixl font pairings` and install a pairing or import your licensed font. A new document rolls a
 pairing and installs it with its first text, from the font cache or by downloading it from Google Fonts;
 `VIXL_AUTO_FONTS=cache` uses the cache only, `VIXL_AUTO_FONTS=off` never installs it, and `VIXL_OFFLINE=1` turns
