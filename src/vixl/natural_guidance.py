@@ -127,27 +127,10 @@ def perspective_guides(spec):
 
 
 def figure_plan(spec):
-    bounded_object(spec,{"name","height","head_units","width_ratio","x","y","color"},"Unknown figure setting")
-    name = spec.get("name","figure")
-    require(isinstance(name,str) and name and len(name)<=64,"Invalid figure name")
-    height = finite(spec.get("height",600),"height",40,10000)
-    heads = finite(spec.get("head_units",7.5),"head_units",3,12)
-    width = finite(spec.get("width_ratio",1),"width_ratio",.5,2)
-    x,y = finite(spec.get("x",0),"x",-1e6,1e6),finite(spec.get("y",0),"y",-1e6,1e6)
-    head = height/heads
-    # Side-separated limbs keep silhouette legible; all parts remain ordinary editable shapes.
-    parts = {"head":(.95,.0,.9,1,"ellipse"),"torso":(.45,1.1,1.9,1.65,"rectangle"),
-             "pelvis":(.6,2.8,1.6,.8,"rectangle"),"left-arm":(.05,1.25,.35,2.7,"rectangle"),
-             "right-arm":(2.4,1.25,.35,2.7,"rectangle"),"left-leg":(.62,3.65,.65,heads-3.65,"rectangle"),
-             "right-leg":(1.55,3.65,.65,heads-3.65,"rectangle")}
-    require(heads>3.65,"Head units must exceed 3.65 for this separated-limb template")
-    operations = []
-    for part,(px,py,pw,ph,shape) in parts.items():
-        operations.append({"type":"shape","name":f"{name}-{part}","shape":shape,"x":x+px*head*width,"y":y+py*head,
-                           "width":max(1,round(pw*head*width)),"height":max(1,round(ph*head)),"fill":spec.get("color","#916b56")})
-    operations.append({"type":"group","name":name,"targets":[o["name"] for o in operations]})
-    return {"operations":operations,"parts":{part:f"{name}-{part}" for part in parts},"head_units":heads,
-            "next_steps":"Adjust gesture/proportions from references, split articulated limbs, then define the character rig pivots."}
+    """The figure-plan blocking figure (``object_plan.figure_template``)."""
+    from .object_plan import figure_template
+
+    return figure_template(spec)
 
 
 def dispatch(session, action, request, document=None):
@@ -156,7 +139,9 @@ def dispatch(session, action, request, document=None):
     if action == "perspective-guides":
         return perspective_guides(request["spec"])
     if action == "figure-plan":
-        return figure_plan(request["spec"])
+        from .object_plan import figure_alias
+
+        return figure_alias(request["spec"])
     from .textures import catalog,seamless_check
     if action == "pattern-list" and document is None:
         return catalog()
