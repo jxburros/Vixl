@@ -9,6 +9,37 @@ packages.
 
 ### Typography and components
 
+- **Small caps.** `text_transform: "small-caps"` on `text` and `text-set` draws lowercase letters as small capitals
+  without changing the stored text: the font's own small capitals when it has the OpenType `smcp` feature, else
+  capitals at 0.7 of the size with 5% added tracking. A rich-text span takes `small_caps` (Markdown
+  `[words]{small-caps}`, `text-style` `small_caps`, CLI `--small-caps`). The glyphs come from the shared shaper, so PNG,
+  SVG and PDF draw the same ones, and PPTX writes the run with `cap="small"`. `font_variant` and `smallcaps` are
+  accepted and reported under `normalized` (#652).
+- **Hanging punctuation.** `hanging_punctuation: true` on `text`, `text-set` and `rich-text` sets opening quotes,
+  brackets and bullets outside the start of left-aligned lines, and closing quotes, stops and commas outside the end of
+  right-aligned ones (both in centred lines), so the letters line up with the edge. A hung mark needs no room in a text
+  box (wrapping and `fit-text` measure the letters between the edges), auto-sized text gets a box that starts at the
+  first letter, and the bounds and safe-area checks count the marks. PPTX writes `hangingPunct` and hangs the first
+  line with a negative indent. It is opt-in: turned on for headings, the house-style eval's share of designs without a
+  composition finding fell from 1.0 to 0.979 at every variety level, so no default sets it (#652).
+- **Accent words on any text.** `text` and `text-set` take `accent_words`, as `layout-apply` does: whole words, matched
+  without regard to case, become `@accent-text` spans, and words not found are listed in the warnings. Rich-text
+  Markdown has the flags `[Winter]{accent}` (`@accent-text`) and `[Sale]{accent-bg}` (`@on-accent` on an `@accent`
+  highlight). These name palette roles; a document without them is refused with the remedy instead of failing on an
+  unknown swatch (#650).
+- **Highlighted rich text is measured against its highlight.** The contrast check compared the glyphs of a highlighted
+  span (`==marked==`, `highlight=`, `accent-bg`) with what lies under the layer instead of with the highlight they sit
+  on, so light words on a dark highlight failed and dark words on a dark highlight could pass. It now reads them against
+  the highlight, for top-level and grouped text (#650).
+- **Callout, band and labelled-rule containers.** `callout` is a title and body on a panel tinted toward the accent,
+  with an accent rule and an optional icon; `band` a header or footer strip with text and an optional detail; and
+  `labelled-rule` a label between two rules. They use palette roles, hide their optional parts when empty and are not
+  picked by rolls, so rolled documents are unchanged (#650).
+- **Font pairs bring the body italic.** `font pair`, and `font install` with the body role, also install the italic of a
+  body face that is a catalog text face with one (registered as `family-weight-italic`), so italic rich text draws the
+  real italic instead of a slanted roman. When it cannot be fetched the install still succeeds and `body_italic.skipped`
+  says why. Rolls and new documents install two styles as before; optical sizes (`opsz`) are not used (#652).
+
 ### Craft checks and variations
 
 ### Palette and decoration from the brief

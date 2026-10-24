@@ -285,7 +285,7 @@ def geometry_boxes(project):
 
     resolved = {item["id"]: item for item in resolved_layers(project)}
     local = resolve_layout(project, layers=list(resolved.values()))
-    return resolved, canvas_projection(resolved, local)["geometry_bounds"]
+    return resolved, canvas_projection(resolved, local, project)["geometry_bounds"]
 
 
 def frame_of(block, grounds):

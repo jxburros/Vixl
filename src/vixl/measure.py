@@ -87,6 +87,42 @@ def outline_ring(layer, mask):
     return ring if ring.any() else None
 
 
+def highlight_parts(layer):
+    """For rich text with highlighted spans, ``(glyphs, ground)``: the layer without its highlights, and the layer
+    drawing only them. Highlighted glyphs are read against their highlight, not against what lies under the layer,
+    so contrast measures the glyphs over a backdrop that includes the highlights. None for other layers."""
+    from copy import deepcopy
+
+    from .richtext import active
+
+    if layer.get("type") != "text" or not active(layer) or not any(s.get("highlight") for s in layer["rich"]["spans"]):
+        return None
+    glyphs, ground = deepcopy(layer), deepcopy(layer)
+    for span in glyphs["rich"]["spans"]:
+        span.pop("highlight", None)
+    for span in ground["rich"]["spans"]:
+        span["color"] = "#00000000"
+    ground.update(color="#00000000", stroke_width=0, styles={})
+    return glyphs, ground
+
+
+def with_highlights(project, layer, bounds, backdrop, origin):
+    """``backdrop`` (a canvas region whose corner is at ``origin``) with ``layer``'s highlights drawn over it at the
+    layer's opacity, as ``highlight_parts`` describes."""
+    from .render import ink_origin, layer_ink
+
+    ground = layer_ink(project, highlight_parts(layer)[1], bounds)
+    x, y = ink_origin(ground, bounds)
+    over = Image.new("RGBA", backdrop.size, (0, 0, 0, 0))
+    over.paste(ground, (x - origin[0], y - origin[1]))
+    opacity = layer.get("opacity", 1)
+    if opacity < 1:
+        over.putalpha(over.getchannel("A").point(lambda value: round(value * opacity)))
+    result = backdrop.copy()
+    result.alpha_composite(over)
+    return result
+
+
 def top_level_contrast(project, targets):
     """``measure(target=…)["contrast"]`` for top-level layers, from a single render.
 
@@ -110,10 +146,13 @@ def top_level_contrast(project, targets):
                         and math.ceil(y + h - 1e-8) <= canvas["height"], "Region must be within canvas")
                 # Place the layer's ink exactly where the compositor does, so the coverage lines up with
                 # the pixels it drew even when the box sits on a half pixel.
-                ink = layer_ink(project, layers[ident], bounds[ident]).getchannel("A")
+                parts = highlight_parts(layers[ident])
+                ink = layer_ink(project, parts[0] if parts else layers[ident], bounds[ident]).getchannel("A")
                 ox, oy = ink_origin(ink, bounds[ident])
                 coverage = Image.new("L", (right - left, bottom - top))
                 coverage.paste(ink, (ox - left, oy - top))
+                if parts:
+                    before = with_highlights(project, layers[ident], bounds[ident], before, (left, top))
                 results[ident] = target_contrast(layers[ident], after, before, coverage, origin=(left, top))
             except Exception as exc:  # noqa: BLE001 - Reported per target, like a failed measure() call.
                 results[ident] = exc
@@ -165,6 +204,7 @@ def measure(
         }
     target_image = None
     coverage = None
+    ground = None  # the backdrop with the target's own highlights, for highlighted rich text
     if target:
         layer = candidate.layer(target)
         b = resolve_layout(candidate)[layer["id"]]
@@ -186,7 +226,10 @@ def measure(
                 ancestor["effects"] = []
             # Coverage measures glyph ink, not the stroke/shadow painted around it. Keep the
             # original layer in the layout index so ancestor overflow tiles retain their geometry.
-            coverage = layer_canvas_surface(mask_view, {**effective, "styles": {}}).getchannel("A")
+            parts = highlight_parts(effective)
+            coverage = layer_canvas_surface(mask_view, {**(parts[0] if parts else effective), "styles": {}}).getchannel("A")
+            if parts:
+                ground = layer_canvas_surface(mask_view, parts[1])
             box = coverage.getbbox()
             require(box is not None, "Target has no visible content")
             region = [box[0], box[1], box[2] - box[0], box[3] - box[1]]
@@ -201,15 +244,22 @@ def measure(
             branch = candidate.layer(branch["parent"]) if branch.get("parent") else None
         layer["visible"] = False
         image = candidate.render()
+        if ground is not None:
+            # A grouped layer's highlights, drawn through its ancestors onto the canvas, over its backdrop.
+            surface, ground = ground, image.copy()
+            ground.alpha_composite(surface)
         if foreground is None:
             layer["visible"] = True
             target_image = candidate.render()
             if coverage is None:
                 from .render import layer_ink, ink_origin
 
-                ink = layer_ink(candidate, effective, b).getchannel("A")
+                parts = highlight_parts(effective)
+                ink = layer_ink(candidate, parts[0] if parts else effective, b).getchannel("A")
                 coverage = Image.new("L", image.size)
                 coverage.paste(ink, ink_origin(ink, b))
+                if parts:
+                    ground = with_highlights(candidate, effective, b, image, (0, 0))
     if region is not None:
         require(
             len(region) == 4 and all(isinstance(v, int) for v in region),
@@ -221,6 +271,8 @@ def measure(
             "Region must be within canvas",
         )
         image = image.crop((x, y, x + w, y + h))
+        if ground is not None:
+            ground = ground.crop((x, y, x + w, y + h))
         if target_image is not None:
             target_image = target_image.crop((x, y, x + w, y + h))
         if coverage is not None:
@@ -259,7 +311,8 @@ def measure(
 
         if target_image is not None:
             result["contrast"] = target_contrast(
-                effective, target_image, image, coverage, background, origin=result["region"][:2]
+                effective, target_image, image if ground is None else ground, coverage, background,
+                origin=result["region"][:2]
             )
         else:
             backdrop = Image.new("RGBA", image.size, color(background))

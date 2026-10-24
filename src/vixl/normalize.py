@@ -163,7 +163,14 @@ FIELD_ALIASES = {
         **{key: "hide_if_empty" for key in ("hide_when_empty", "collapse_if_empty", "collapse_when_empty", "hide_empty")},
         "tab_stops": "tabs",
         "tabstops": "tabs",
+        "font_variant": "text_transform",
+        "font_variant_caps": "text_transform",
+        **{key: "hanging_punctuation" for key in ("hanging", "hang_punctuation", "hanging_quotes", "hang_quotes",
+                                                  "optical_margin", "optical_margins")},
+        **{key: "accent_words" for key in ("accent", "accent_word", "accents", "highlight_words", "emphasis",
+                                           "accent_text")},
     },
+    "text-style": {"smallcaps": "small_caps", "small_capitals": "small_caps"},
     "shape": {
         "color": "fill",
         "colour": "fill",
@@ -234,8 +241,10 @@ TEXT_TRANSFORMS = {
     **{key: "uppercase" for key in ("uppercase", "upper", "caps", "all-caps", "allcaps", "upper-case")},
     **{key: "lowercase" for key in ("lowercase", "lower", "lower-case")},
     **{key: "capitalize" for key in ("capitalize", "capitalise", "title", "title-case", "titlecase")},
+    **{key: "small-caps" for key in ("small-caps", "smallcaps", "small-capitals", "smcp")},
     **{key: "none" for key in ("none", "normal", "as-is", "original")},
 }
+SPAN_ALIASES = {"smallcaps": "small_caps", "small_capitals": "small_caps"}
 GEOMETRY_TYPES = {
     "qr",
     "barcode",
@@ -394,6 +403,21 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
         if isinstance(op.get("accent_words"), str):
             op["accent_words"] = [op["accent_words"]]
             note("accent_words 'word' → ['word']")
+    if kind in ("text", "text-set") and isinstance(op.get("accent_words"), str) and "accent_words" in allowed:
+        op["accent_words"] = [op["accent_words"]]
+        note("accent_words 'word' → ['word']")
+    if kind == "rich-text" and isinstance(op.get("spans"), list):
+        spans = []
+        for number, span in enumerate(op["spans"]):
+            if isinstance(span, dict):
+                span = dict(span)
+                for key in list(span):
+                    canonical = SPAN_ALIASES.get(_snake(key), _snake(key))
+                    if canonical == "small_caps" and key != canonical and canonical not in span:
+                        span[canonical] = span.pop(key)
+                        note(f"spans[{number}].{key} → {canonical}")
+            spans.append(span)
+        op["spans"] = spans
     if kind == "text-layout" and isinstance(op.get("wrap"), str):
         wrap = WRAP_ALIASES.get(op["wrap"].strip().lower(), op["wrap"])
         if wrap != op["wrap"]:

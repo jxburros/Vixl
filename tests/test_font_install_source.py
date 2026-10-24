@@ -123,3 +123,54 @@ def test_cli_and_mcp_return_the_source(tmp_path, monkeypatch):
     steps = asyncio.run(call("vixl_reference", {"topic": "operations", "name": ["font-install", "font-pair"]}))
     for name in ("font-install", "font-pair"):
         assert "cache" in steps[name]["description"] or "Download" in steps[name]["description"]
+    # The commands bring the body text face's italic too.
+    assert paired["body"]["body_italic"]["name"] == paired["body"]["name"] + "-italic"
+
+
+def fake_google_faces():
+    """``fake_google`` serving a face of its own for every family and style requested."""
+    from urllib.parse import parse_qs
+
+    from font_helper import make_font
+
+    def handler(request):
+        if request.url.host == "fonts.googleapis.com":
+            family, axis = parse_qs(request.url.query.decode())["family"][0].split(":")
+            name = f"{typefaces.slug(family)}{'-italic' if 'ital' in axis else ''}"
+            return httpx.Response(200, text=STYLESHEET.replace("abc.ttf", f"{name}.ttf"))
+        name = request.url.path.rsplit("/", 1)[-1][:-4]
+        return httpx.Response(200, content=make_font("Plain slanted", family=name.removesuffix("-italic"),
+                                                     italic=name.endswith("-italic")))
+
+    return REAL_CLIENT(transport=httpx.MockTransport(handler))
+
+
+def test_font_pair_brings_the_body_italic_that_italic_text_then_uses(tmp_path, monkeypatch):
+    from vixl.render import resolved_layers
+    from vixl.richtext import styled_spans
+
+    monkeypatch.setenv("VIXL_FONT_CACHE", str(tmp_path))
+    project = Project(400, 100)
+    result = typefaces.pair_fonts(project, "source-serif-sans", client=fake_google_faces(), body_italic=True)
+    italic = result["body"]["body_italic"]
+    assert italic == {"name": "source-sans-3-400-italic", "origin": "download"}
+    assert (tmp_path / "source-sans-3-400-italic.ttf").is_file() and italic["name"] in project.state["fonts"]
+    project.apply({"type": "rich-text", "name": "t", "markdown": "Plain *slanted*", "font": "body"})
+    layer = next(item for item in resolved_layers(project) if item["name"] == "t")
+    span = styled_spans(project, layer)[1]
+    assert span["font"] == project.state["fonts"][italic["name"]] and not span["fake_italic"]
+    # Rolls and other internal pairings install the two styles only, and so does a face without an italic.
+    assert "body_italic" not in typefaces.pair_fonts(Project(10, 10), "source-serif-sans", client=fake_google([]))["body"]
+    plain = typefaces.pair_fonts(Project(10, 10), "space-mono-space-grotesk", client=fake_google([]), body_italic=True)
+    assert "body_italic" not in plain["body"]
+
+
+def test_a_body_italic_that_cannot_be_fetched_is_skipped(tmp_path, monkeypatch):
+    monkeypatch.setenv("VIXL_FONT_CACHE", str(tmp_path))
+    monkeypatch.setenv("VIXL_OFFLINE", "1")
+    for name in ("source-serif-4-600", "source-sans-3-400"):
+        (tmp_path / f"{name}.ttf").write_bytes(FONT)
+    project = Project(10, 10)
+    result = typefaces.pair_fonts(project, "source-serif-sans", body_italic=True)
+    assert "network" in result["body"]["body_italic"]["skipped"] and result["origin"] == "cache"
+    assert "source-sans-3-400-italic" not in project.state["fonts"]

@@ -116,7 +116,7 @@ def font_pair(session, project, *, pairing: Annotated[str, Field(
 
     if scope == "workspace":
         return pair_workspace(session.workspace, pairing, seed=seed, mood=mood, best_for=best_for)
-    return pair_fonts(project, pairing, seed=seed, mood=mood, best_for=best_for)
+    return pair_fonts(project, pairing, seed=seed, mood=mood, best_for=best_for, body_italic=True)
 
 
 def font_install(session, project, *, family: Annotated[str, Field(description="Any Google Fonts family")],
@@ -130,7 +130,7 @@ def font_install(session, project, *, family: Annotated[str, Field(description="
 
     if scope == "workspace":
         return install_workspace(session.workspace, family, weight, italic, name, role)
-    return install_font(project, family, weight, italic, name, role)
+    return install_font(project, family, weight, italic, name, role, body_italic=True)
 
 
 def font_cover(session, project, *, text: Annotated[str | None, Field(

@@ -159,7 +159,7 @@ def text_metrics(ctx, name="t", color="#111111"):
 
 
 def text_case(name, text, size, *, color="#111111", background="#ffffff", width=360, height=None, tracking=0,
-              title=None, note="", tags=()):
+              title=None, note="", tags=(), transform=None, extra=""):
     height = height or int(size * 1.6) + 16
     baseline = round(8 + size * 1.07)
 
@@ -169,6 +169,8 @@ def text_case(name, text, size, *, color="#111111", background="#ffffff", width=
               "font": str(FONT)}
         if tracking:
             op["tracking"] = tracking
+        if transform:
+            op["text_transform"] = transform
         p.apply([op])
         # Put the first baseline on a whole pixel with a whole-pixel layer position: move the layer by
         # the whole-pixel part only, so no placement resampling enters the comparison.
@@ -178,7 +180,7 @@ def text_case(name, text, size, *, color="#111111", background="#ffffff", width=
 
     def html(project):
         placed, _ = glyphs(project, "t")
-        return text_markup("t", text, size, color, placed[0][1], placed[0][2], tracking)
+        return text_markup("t", text, size, color, placed[0][1], placed[0][2], tracking, extra=extra)
 
     case(name=name, category="text", title=title or f"{text[:24]!r} at {size}px", width=width, height=height,
          background=background, build=build, html=html, analyze=lambda ctx: text_metrics(ctx, color=color),
@@ -200,6 +202,9 @@ text_case("text_display_96_ligatures", "office fifty", 96, width=620, tags=("lig
 text_case("text_display_120", "Hamburg", 120, width=520, tags=("display",))
 text_case("text_tracking_28", "TRACKED CAPS", 28, tracking=6, width=420, tags=("tracking",),
           note="tracking 6 px (CSS letter-spacing 6px).")
+text_case("text_small_caps_28", "Small Caps Harbour", 28, transform="small-caps", width=420, tags=("small-caps",),
+          extra="font-variant-caps:small-caps;",
+          note="text_transform small-caps with NotoSans smcp (CSS font-variant-caps: small-caps).")
 
 
 def paragraph_build(width, size, text, box):

@@ -478,8 +478,9 @@ def fetch_font(family, weight=400, italic=False, *, client=None, source=None):
     return data, family
 
 
-def install_font(project, family, weight=400, italic=False, name=None, role=None, *, client=None):
-    """Download (or reuse from cache), embed and register one style; optionally give it a role."""
+def install_font(project, family, weight=400, italic=False, name=None, role=None, *, client=None, body_italic=False):
+    """Download (or reuse from cache), embed and register one style; optionally give it a role. With
+    ``body_italic``, a body text face also brings its italic (see ``install_body_italic``)."""
     import hashlib
 
     from .design import named
@@ -495,9 +496,36 @@ def install_font(project, family, weight=400, italic=False, name=None, role=None
     candidate.apply(op, detail="compact")
     project.__dict__.update(candidate.__dict__)
     cache_dir, chosen_by = cache_location()
-    return {"name": name, "family": family, "weight": weight, "italic": italic, **({"role": role} if role else {}),
-            "source": {**found, "cache_dir": str(cache_dir), "cache_dir_from": chosen_by, "bundled_fallback": False},
-            "file": {"asset": asset, "bytes": len(data), "sha256": digest}}
+    result = {"name": name, "family": family, "weight": weight, "italic": italic, **({"role": role} if role else {}),
+              "source": {**found, "cache_dir": str(cache_dir), "cache_dir_from": chosen_by, "bundled_fallback": False},
+              "file": {"asset": asset, "bytes": len(data), "sha256": digest}}
+    if body_italic and role == "body" and not italic:
+        companion = install_body_italic(project, family, weight, name, client=client)
+        if companion:
+            result["body_italic"] = companion
+    return result
+
+
+def text_face(family):
+    """Whether a catalog family is a text face that has an italic (role ``text``, ``italic`` true)."""
+    entry = find_font(family)
+    return bool(entry and entry.get("italic") and "text" in entry.get("roles", []))
+
+
+def install_body_italic(project, family, weight, roman, *, client=None):
+    """Also install the italic of a body text face, registered as ``<roman>-italic`` (``source-sans-3-400-italic``),
+    so italic rich text draws the real italic instead of slanting the roman (one more file). Families that are not
+    catalog text faces with an italic return None. A failed download changes nothing and is reported as
+    ``{"skipped": reason}``. Only static files are fetched: optical sizes (``opsz``) are not used."""
+    if not text_face(family):
+        return None
+    try:
+        installed = install_font(project, family, weight, True, f"{roman}-italic", client=client)
+    except VixlError as exc:
+        if exc.code not in ("network_disabled", "font_download_failed", "unknown_font", "unavailable_weight"):
+            raise
+        return {"skipped": str(exc)}
+    return {"name": installed["name"], "origin": installed["source"].get("origin")}
 
 
 SCRIPT_ALIASES = {"devanagari": "Devanagari", "hindi": "Devanagari", "han": "Han", "chinese": "Han",
@@ -585,15 +613,17 @@ def origin_of(*installed):
     return origins.pop() if len(origins) == 1 else "mixed"
 
 
-def pair_fonts(project, pairing=None, *, seed=None, mood=None, best_for=None, client=None):
-    """Install a pairing's heading and body styles and make them the document typography."""
+def pair_fonts(project, pairing=None, *, seed=None, mood=None, best_for=None, client=None, body_italic=False):
+    """Install a pairing's heading and body styles and make them the document typography. With ``body_italic``
+    (the font pair command), a body text face also brings its italic."""
     rolled = None
     if pairing in (None, "random"):
         item, rolled = roll_pairing(seed, mood, best_for)
     else:
         item = get_pairing(pairing)
     heading = install_font(project, item["heading"]["family"], item["heading"]["weight"], role="heading", client=client)
-    body = install_font(project, item["body"]["family"], item["body"]["weight"], role="body", client=client)
+    body = install_font(project, item["body"]["family"], item["body"]["weight"], role="body", client=client,
+                        body_italic=body_italic)
     result = {
         "pairing": item["name"],
         "heading": heading,

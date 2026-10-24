@@ -110,7 +110,9 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | TXT-15 | Set text on a stage (display, h1–h3, subtitle, lead, body, caption, citation, label) and spread 2–4 fonts across the stages | `text` with `stage`, `font-register` with a role or stage | 1–2 · <1 | Stages follow heading/body until a stage or brand role gets its own face. |
 | TXT-16 | Break a heading into lines of even width, or keep one word off a paragraph's last line | `text-layout` `wrap: balance` / `pretty` | 1 · <1 | Craft plan 4a (T09, T14). Headings and layout headlines balance by default; the breaks are shared by PNG, SVG, PDF and PPTX. Before, a runt needed a hand line break. |
 | BLK-07 | Tab stops and dot leaders in text (menus, price lists, contents pages) | `text` `tabs: [{at, align, leader}]` with `\t`; `table` column `leader` | 1 · <1 | Moved from Blocked (craft plan 4b, #213; T16): left, right, centre and decimal stops with leaders in PNG, SVG and PDF; native tab stops in PPTX with the leader written as characters. Before, leaders were drawn by hand. |
-| TXT-17 | Two-tone headline: one or two words of a layout headline in the accent color | `layout-apply` `accent_words` | 1 · <1 | Craft plan 4c (T03, T09); before, a `text-style` match per word after the layout, with the box height fixed by hand. |
+| TXT-17 | Two-tone headline: one or two words of a headline in the accent color | `layout-apply` `accent_words`; `text`/`text-set` `accent_words`; rich-text `[word]{accent}` or `{accent-bg}` | 1 · <1 | Craft plan 4c (T03, T09); before, a `text-style` match per word after the layout, with the box height fixed by hand. Unreleased (#650): any text layer takes `accent_words`, and the Markdown flags accent one word. |
+| TXT-24 | Small caps for an eyebrow, byline or acronym in running text | `text`/`text-set` `text_transform: "small-caps"`; span `small_caps` | 1 · <1 | Unreleased (#652): the font's own small capitals (OpenType `smcp`) or synthesized ones, the same in PNG, SVG, PDF and PPTX (`cap="small"`). Before, uppercase at a smaller size in a second span, drawn lighter than the capitals. |
+| TXT-25 | Hang a pull quote's opening quote (or a bullet) outside the text edge so the letters line up | `hanging_punctuation: true` on `text`, `text-set` or `rich-text` | 1 · <1 | Unreleased (#652), opt-in: wrapping, `fit-text` and the bounds checks use the shifted marks. Before, a separate quote layer placed by hand. |
 | TXT-21 | Export the font drawn in a document as TTF, OTF or WOFF, or embed it for its own text | `vixl_export` `.ttf`/`.otf`/`.woff`, `font-build` | 1 · <1 | Unreleased; see [making a font](guides/text/custom-fonts.md). WOFF2 needs `brotli`. |
 
 ### Color
@@ -152,6 +154,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SHP-18 | Recompose a layout-generated design at a new aspect ratio | `adapt-layout` with `recompose: true` | 1 · <1 | Since 0.24; rebuilds generated layout layers from the saved recipe, replacing manual changes to them. |
 | SHP-21 | QR code or barcode (Code 128, EAN-13) as a vector layer | `qr`, `barcode` | 1 · <1 | Since 0.22; `${variables}` re-encode per merge row; `codes` check. |
 | SHP-22 | Center text in a shape's body (bubble, badge, frame) | `text` `within`, `place` `within`, `align` `box: "content"` | 1 · <1 | Since 0.22; shapes report `content_bounds`. |
+| SHP-25 | A callout note, a header or footer band, or a divider rule with a label | `container-place` `callout`, `band`, `labelled-rule` | 1 · <1 | Unreleased (#650): palette-role colors, optional icon and detail hide when empty; never rolled. Before, three or four shapes and texts placed by hand. |
 
 ### Effects and finishing
 

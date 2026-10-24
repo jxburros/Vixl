@@ -178,11 +178,12 @@ def project_command(project, cmd, args):
 
         if a.action == "install":
             require(a.source, "Use font install FAMILY [--weight 700] [--italic] [--role heading|body]")
-            return typefaces.install_font(project, a.source, a.weight, a.italic, a.name, a.role), True
+            return typefaces.install_font(project, a.source, a.weight, a.italic, a.name, a.role, body_italic=True), True
         if a.action == "cover":
             return typefaces.cover_fonts(project, a.text, a.scripts, a.weight), True
         if a.action == "pair":
-            return typefaces.pair_fonts(project, a.source, seed=a.seed, mood=a.mood, best_for=a.purpose), True
+            return typefaces.pair_fonts(project, a.source, seed=a.seed, mood=a.mood, best_for=a.purpose,
+                                        body_italic=True), True
         if a.action == "use":
             require(a.source and a.role, "Use font use NAME --role heading|body")
             return project.apply({"type": "font-register", "name": a.source, "role": a.role}, detail="compact"), True

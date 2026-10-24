@@ -981,7 +981,8 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
             return pair_workspace(session.workspace, body.get("pairing", "random"), seed=body.get("seed"), mood=body.get("mood"), best_for=body.get("best_for"))
         require(body.get("scope", "document") == "document", "scope must be document or workspace", field="scope")
         with session.project(write=True) as project:
-            return pair_fonts(project, body.get("pairing", "random"), seed=body.get("seed"), mood=body.get("mood"), best_for=body.get("best_for"))
+            return pair_fonts(project, body.get("pairing", "random"), seed=body.get("seed"), mood=body.get("mood"),
+                              best_for=body.get("best_for"), body_italic=True)
 
     @app.post("/typefaces/install")
     def typeface_install(body: dict):
@@ -992,7 +993,8 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
             return install_workspace(session.workspace, body["family"], body.get("weight", 400), body.get("italic", False), body.get("name"), body.get("role"))
         require(body.get("scope", "document") == "document", "scope must be document or workspace", field="scope")
         with session.project(write=True) as project:
-            return install_font(project, body["family"], body.get("weight", 400), body.get("italic", False), body.get("name"), body.get("role"))
+            return install_font(project, body["family"], body.get("weight", 400), body.get("italic", False), body.get("name"),
+                                body.get("role"), body_italic=True)
 
     @app.get("/roll")
     def design_roll(purpose: str | None = None, mood: str | None = None, seed: int | None = None):
