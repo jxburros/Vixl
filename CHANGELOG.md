@@ -274,25 +274,6 @@ packages.
 
 ### Reproducibility and delivery
 
-### Evals
-
-- **A craft grader in the agent eval.** Task checks can be `craft`: the composition checks (spacing, rhythm, crowding and
-  the four hierarchy codes) run on the document the agent leaves, every finding counted whether or not it was waived.
-  The score is `1 - min(1, findings / max_findings)`; the check passes when no finding has a `forbid` code and the score
-  reaches `min_score`, and its detail lists each finding's code, layers and region. Four sparse briefs (an event poster,
-  a café menu with tab stops and dot leaders, a report cover, a quote card) have reference solutions that score 1.0, and
-  `evals/baseline.json` stores a floor per craft task and for their mean, so a check or default change that lowers what a
-  finished page scores fails `python -m evals.run --baseline`. Reports show a craft column. (#656)
-- **An optional rubric judge.** `python -m evals.run --judge` renders each craft task's document at delivery size and asks a
-  model for 1-5 scores on hierarchy, spacing, type, colour, motif and finish (`--judge-model`, `--judge-endpoint` or
-  `VIXL_JUDGE_ENDPOINT` for any Anthropic-compatible server). It is off by default, never used by the Agent eval workflow
-  or the tests (they script it), kept out of the baseline, and stores its scores, notes and images beside the run. No
-  re-judging has been run with it, so it measures nothing yet. (#656)
-- **The craft backtest scores the four hierarchy codes.** None fires on the 20 reconstructed documents, so none adds a
-  false finding; `single_weight` and `accent_unused` cannot fire there (proofing font, no rolled direction), which the
-  [backtest README](evals/craft_backtest/README.md) says. (#649)
-### Reproducibility and delivery
-
 - **Render lockfiles cover every page, artboard and frame.** `vixl reproduce --write-lock` writes a version 2 lockfile
   (version 1 files still verify) with the render hash of each page and artboard and of sampled timeline frames
   (`--frames N` or `--times 0 1.5s 50%`; an animated document gets three by default), a hash of the variable set or
@@ -325,6 +306,24 @@ packages.
   whose source fails its checks or that the proof page's decisions reject. A render lockfile's reproduction summary can go
   into the manifest. The zip is staged and published atomically, `--dry-run` plans without writing, and an existing
   package is kept unless `--overwrite` (#573).
+
+### Evals
+
+- **A craft grader in the agent eval.** Task checks can be `craft`: the composition checks (spacing, rhythm, crowding and
+  the four hierarchy codes) run on the document the agent leaves, every finding counted whether or not it was waived.
+  The score is `1 - min(1, findings / max_findings)`; the check passes when no finding has a `forbid` code and the score
+  reaches `min_score`, and its detail lists each finding's code, layers and region. Four sparse briefs (an event poster,
+  a café menu with tab stops and dot leaders, a report cover, a quote card) have reference solutions that score 1.0, and
+  `evals/baseline.json` stores a floor per craft task and for their mean, so a check or default change that lowers what a
+  finished page scores fails `python -m evals.run --baseline`. Reports show a craft column. (#656)
+- **An optional rubric judge.** `python -m evals.run --judge` renders each craft task's document at delivery size and asks a
+  model for 1-5 scores on hierarchy, spacing, type, colour, motif and finish (`--judge-model`, `--judge-endpoint` or
+  `VIXL_JUDGE_ENDPOINT` for any Anthropic-compatible server). It is off by default, never used by the Agent eval workflow
+  or the tests (they script it), kept out of the baseline, and stores its scores, notes and images beside the run. No
+  re-judging has been run with it, so it measures nothing yet. (#656)
+- **The craft backtest scores the four hierarchy codes.** None fires on the 20 reconstructed documents, so none adds a
+  false finding; `single_weight` and `accent_unused` cannot fire there (proofing font, no rolled direction), which the
+  [backtest README](evals/craft_backtest/README.md) says. (#649)
 
 ## 0.30.5
 
