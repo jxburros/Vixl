@@ -2,6 +2,9 @@
 
 Four of them build ordinary editable layers (shapes, pen paths and radial gradients in one named group), so
 every exporter draws them with its own fill, stroke and gradient rules and nothing new is needed per format.
+They are operations rather than stack effects on purpose: an effect has no parts, so one star or one band of fog
+could not be moved, recoloured or deleted, and every exporter would have to learn to draw it. Light falloff is the
+``lighting`` operation's gaussian lights.
 ``reflection`` cannot be vector: it mirrors rendered pixels, so it makes one raster layer and keeps its
 settings on that layer; running it again with ``target`` set to that layer re-renders it after the scene
 above the horizon changed. Everything random is drawn from ``seed``, so a seed gives the same result.
@@ -23,6 +26,8 @@ BULBS = ("globe", "pear", "lantern")
 MAX_STARS = 600
 MAX_BULBS = 120
 MAX_DISCS = 80
+FOG_LAYERS = (2, 5)
+FOG_COLOR = "#dfe6ee"
 REFLECTION_KEYS = ("horizon", "targets", "squash", "ripple", "breakup", "fade", "blur", "opacity", "tint",
                    "tint_amount", "seed")
 
@@ -63,19 +68,35 @@ def schemas(add):
     })
     add("haze", {
         "target": field(S, "The light source (a lamp, sun, lantern or window): the haze is centred on it and "
-                           "placed directly below it."),
-        "name": field(S, "Name of the haze group (default haze)."),
-        "x": field(N, "Centre x in canvas pixels when there is no target."),
-        "y": field(N, "Centre y in canvas pixels when there is no target."),
+                           "placed directly below it. For fog: a layer whose box is the fog zone instead."),
+        "name": field(S, "Name of the haze group (default haze; fog)."),
+        "x": field(N, "Centre x in canvas pixels when there is no target (fog: the zone's centre, default the "
+                      "canvas centre)."),
+        "y": field(N, "Centre y in canvas pixels when there is no target (fog: the zone's centre, default 60% "
+                      "of the canvas height)."),
         "width": field({"type": "number", "exclusiveMinimum": 0},
                        "Width of the glow band in pixels (default 6x the target's width and at least 15% of the canvas "
-                       "width, or 60% of the canvas without a target)."),
+                       "width, or 60% of the canvas without a target; fog: 110% of the canvas width)."),
         "height": field({"type": "number", "exclusiveMinimum": 0},
-                        "Height of the glow band in pixels (default 45% of the width for a band, equal for round)."),
-        "form": field({"enum": ["band", "round"]}, "band (default): a wide soft band, as light spreads over a "
-                      "horizon or along a street; round: an even halo."),
-        "color": field(S, "Glow colour. Default: the target's fill, or warm #ffd38a."),
-        "strength": field(unit, "Opacity at the centre of the glow (default 0.45)."),
+                        "Height of the glow band in pixels (default 45% of the width for a band, equal for round; "
+                        "fog: the height the bands are stacked over, default 30% of the canvas height)."),
+        "form": field({"enum": ["band", "round", "fog"]},
+                      "band (default): a wide soft band, as light spreads over a horizon or along a street; round: "
+                      "an even halo; fog: stacked soft horizontal bands that are lighter and less saturated toward "
+                      "the horizon (set layers, density and behind)."),
+        "color": field(S, "Glow colour. Default: the target's fill, or warm #ffd38a. For fog: the colour of the "
+                          "nearest band (default #dfe6ee); the bands toward the horizon are lighter and less "
+                          "saturated."),
+        "strength": field(unit, "Opacity at the centre of the glow (default 0.45). Fog uses density instead."),
+        "layers": field({"type": "integer", "minimum": FOG_LAYERS[0], "maximum": FOG_LAYERS[1]},
+                        "Fog only: how many bands (2-5, default 3), the farthest first."),
+        "density": field(unit, "Fog only: how thick the fog is, 0 clear to 1 heavy (default 0.5); the farthest "
+                               "band is the densest."),
+        "behind": {"type": "array", "items": S, "minItems": 1, "maxItems": 64,
+                   "description": "Fog only: foreground layers the fog sits behind, so they stay crisp. The fog "
+                                  "goes directly below the lowest of them (default: below the lowest text layer). "
+                                  "Run the fog once per gap to put it between several ranges of hills."},
+        "seed": field(seed, "Seed for where the fog's bands drift (default 0); band and round are not random."),
         "below": below,
     })
     add("star-field", {
@@ -311,6 +332,13 @@ def _resolved(project, value):
 def haze(project, op):
     from ...operations import default_name
 
+    form = op.get("form", "band")
+    require(form in ("band", "round", "fog"), "form is band, round or fog", field="form")
+    if form == "fog":
+        return fog(project, op)
+    stray = [key for key in ("layers", "density", "behind") if key in op]
+    require(not stray, f"{', '.join(stray)} only apply to form fog; band and round take strength",
+            field=stray[0] if stray else None)
     source = project.layer(op["target"]) if op.get("target") else None
     cw, ch = _canvas(project)
     if source is not None:
@@ -319,8 +347,6 @@ def haze(project, op):
     else:
         require("x" in op and "y" in op, "haze needs a target (the light source) or x and y", field="target")
         cx, cy, width = finite(op["x"], "x"), finite(op["y"], "y"), cw * 0.6
-    form = op.get("form", "band")
-    require(form in ("band", "round"), "form is band or round", field="form")
     width = finite(op.get("width", width), "width", 1, 1e6)
     height = finite(op.get("height", width * (0.45 if form == "band" else 1)), "height", 1, 1e6)
     strength = finite(op.get("strength", 0.45), "strength", 0, 1)
@@ -339,6 +365,76 @@ def haze(project, op):
     group = _group(project, {**op, "name": name}, ids, "haze")
     _settle(project, group, op, under=_top(project, source) if source is not None else None)
     return {"group": group["id"], "center": [round(cx, 2), round(cy, 2)], "width": width, "height": height}
+
+
+def _fog_tone(tone, depth):
+    """The fog colour ``depth`` of the way from the horizon (0) to the nearest band (1): lighter and less
+    saturated toward the horizon, as distance washes colour out."""
+    from ...colors import hex_of, hsl_to_srgb, parse, srgb_to_hsl
+
+    r, g, b, a = parse(tone)
+    hue, saturation, light = srgb_to_hsl((r, g, b))
+    far = 1 - depth
+    return hex_of((*hsl_to_srgb(hue, saturation * (1 - 0.65 * far), light + (1 - light) * 0.5 * far), a))
+
+
+def fog(project, op):
+    """Stacked soft horizontal bands, the farthest (highest, lightest, densest) first. Each band is a few wide
+    overlapping gaussian gradients at seeded positions, so the fog drifts instead of lying in a ruled stripe."""
+    from ...operations import default_name
+
+    rng = _rng(op)
+    cw, ch = _canvas(project)
+    count = op.get("layers", 3)
+    require(isinstance(count, int) and not isinstance(count, bool) and FOG_LAYERS[0] <= count <= FOG_LAYERS[1],
+            f"layers must be {FOG_LAYERS[0]}-{FOG_LAYERS[1]}", field="layers")
+    density = finite(op.get("density", 0.5), "density", 0, 1)
+    if op.get("target"):
+        x0, y0, x1, y1 = _boxes(project, [project.layer(op["target"])])[0]
+        cx, cy, width, height = (x0 + x1) / 2, (y0 + y1) / 2, max(1.0, x1 - x0), max(1.0, y1 - y0)
+    else:
+        cx, cy, width, height = cw / 2, ch * 0.6, cw * 1.1, ch * 0.3
+    cx, cy = finite(op.get("x", cx), "x"), finite(op.get("y", cy), "y")
+    width, height = finite(op.get("width", width), "width", 1, 1e6), finite(op.get("height", height), "height", 1, 1e6)
+    tone = _resolved(project, op.get("color", FOG_COLOR))
+    behind = None
+    if "behind" in op:
+        require("below" not in op, "Give behind or below, not both", field="behind")
+        refs = op["behind"]
+        require(isinstance(refs, list) and refs, "behind lists the foreground layers the fog sits behind",
+                field="behind")
+        order = {layer["id"]: index for index, layer in enumerate(project.state["layers"])}
+        behind = min((_top(project, project.layer(ref)) for ref in refs), key=lambda layer: order[layer["id"]])
+    puffs = 3
+    _budget(project, count * (puffs + 1))
+    name = op.get("name") or default_name(project, "fog")
+    step = height / count
+    top = cy - height / 2
+    ids, bands = [], []
+    for index in range(count):
+        depth = index / (count - 1)
+        band_tone = _fog_tone(tone, depth)
+        # The farthest band is the densest, as haze is at the horizon, and the near ones are taller (perspective).
+        alpha = min(0.9, density * 1.1 * (1 - 0.5 * depth))
+        band_y = top + (index + 0.5) * step
+        for part in range(puffs):
+            px = cx - width / 2 + (part + 0.5 + float(rng.uniform(-0.3, 0.3))) * width / puffs
+            pw = width * float(rng.uniform(0.55, 0.85))
+            ph = step * (2.2 + 0.8 * depth) * float(rng.uniform(0.85, 1.15))
+            py = band_y + step * float(rng.uniform(-0.15, 0.15))
+            disc = _radial(project, f"{name}/band-{index + 1}/puff-{part + 1}", px, py, pw, ph,
+                           [{"offset": 0, "color": _alpha(band_tone, alpha * float(rng.uniform(0.75, 1.0)))},
+                            {"offset": 1, "color": _alpha(band_tone, 0)}], "gaussian")
+            ids.append(disc["id"])
+        bands.append({"band": index + 1, "y": round(band_y, 2), "color": band_tone, "opacity": round(alpha, 3)})
+    group = _group(project, {**op, "name": name}, ids, "fog")
+    # Fog runs on past the canvas edges, as a sky does: not a crop to report.
+    group["allow_crop"] = True
+    _settle(project, group, op, under=behind)
+    note(project, f"haze fog: {count} bands in {group['name']!r}"
+                  + (f" behind {behind['name']!r}" if behind is not None else ""))
+    return {"group": group["id"], "form": "fog", "bands": bands, "center": [round(cx, 2), round(cy, 2)],
+            "width": round(width, 2), "height": round(height, 2)}
 
 
 # ---------------------------------------------------------------------------------------------------------------

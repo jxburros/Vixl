@@ -180,7 +180,7 @@ SUMMARIES = {
     "diagram-set": "Change a diagram's nodes, edges or options and lay it out again in place, keeping layer IDs.",
     "text-flow": "Flow one story through linked text frames (columns, pages, shapes), reflow it and report overflow.",
     "reflection": "Mirror what stands above a horizon into the water below it, with ripples, ripple bands and a fade (one raster layer that re-renders).",
-    "haze": "Add a soft glow band behind a light source (two radial gradients in a group).",
+    "haze": "Add a soft glow band or halo behind a light source, or form fog: stacked soft horizontal bands that wash out toward the horizon (an editable group).",
     "star-field": "Scatter seeded stars and a few sparkles over a region, keeping clear of text (an editable group).",
     "string-lights": "Hang bulbs or paper lanterns with glows evenly along a path or a sagging wire (an editable group).",
     "bokeh": "Scatter soft out-of-focus light discs over a region (radial gradients in an editable group).",
@@ -884,6 +884,7 @@ EXAMPLES = {
     "haze": [
         {"type": "haze", "target": "moon", "color": "#ffd38a", "strength": 0.45},
         {"type": "haze", "x": 400, "y": 300, "width": 600, "form": "band"},
+        {"type": "haze", "form": "fog", "y": 420, "height": 180, "layers": 3, "density": 0.5, "color": "#dfe6ee", "seed": 2},
     ],
     "star-field": [
         {"type": "star-field", "region": [0, 0, 800, 300], "count": 80, "seed": 4},
