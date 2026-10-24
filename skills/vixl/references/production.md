@@ -23,8 +23,9 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    Library suites listed under `suites` in `group-define` or brand.json are inherited by reference; a
    document overrides a rule by `id` with a suite that has `extends: NAME`. Workflow `check` with no
    `suite` runs every attached and inherited suite.
-2. Use `fit-text`, `arrange-grid`, or `adapt-layout` (`recompose: true` rebuilds a stored layout recipe at the
-   new size and may replace manual edits) for predictable layout tasks;
+2. Use `fit-text`, `arrange-grid`, or `adapt-layout` (an unedited `layout-apply` document is rebuilt from its recipe
+   at the new size by default; `recompose: true` forces it after edits and replaces them; `arrangements` keeps the
+   best-scoring re-arrangement) for predictable layout tasks;
    save a bounded sequence with `action-define`. `role-set`, `motion-define`, and
    `motion-apply` produce editable staggered/relative animation tracks.
 3. Workflow `act` accepts operations, suites, dry_run and repair. It returns measurements and

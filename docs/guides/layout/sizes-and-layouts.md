@@ -50,7 +50,7 @@ Fixed templates make every adopter look alike. A layout is a composition system 
 - **Rules and the copy** — a footer rule keeps one spacing unit between itself and the last line of copy: copy too tall to leave that room is set smaller, as copy that would leave the safe area is. Rule accents above the copy already keep at least one unit. One unit is the smallest step of the spacing scale and twice the half-unit gap the [craft plan](../../project/craft-plan.md) counts as crowding.
 - **Composition** — alignment, focal placement, split proportions, accent device (`rule`, `bar`, `dot`, `block`, `outline`, `none`) and button shape.
 
-To carry a generated layout to another size, `adapt-layout` with `recompose: true` re-applies the saved layout recipe at the new canvas (replacing the generated layers and any manual edits to them); without it, adaptation scales and moves the existing layers proportionally.
+To carry a generated layout to another size, `adapt-layout` rebuilds it from the saved recipe at the new canvas while it is unedited; see [carrying a design to other sizes](#carrying-a-design-to-other-sizes).
 
 Explicit seeds are deterministic. Without one, sparse designs get a fresh seed unless the document or workspace sets `variety: "fixed"`. The applied choices are recorded in `state.layout` (and reported in the change summary), so you can reproduce a result with its returned seed or pin any choice explicitly. See [safe variety](safe-variety.md) for safe pools, expanded roll dimensions and workspace history.
 
@@ -163,6 +163,28 @@ mapping as `palette_roles` in the apply result. `palette-generate` never assigns
 
 `seed` accepts `"random"`. Choices you do not make (palette, mode, type scale, density, alignment, accent) are rolled from the seed and listed in the layout record's `rolled`. When most of them were rolled, the result says so and suggests exploring: apply with `seed: "random"` a few times, preview, and keep the seed you like. `vixl roll` (`vixl_reference('roll')`) rolls a whole direction at once: a font pairing, a palette whose mood fits it, a layout suited to the purpose and canvas, and its parameters, returned as a ready `layout-apply` operation. Use `--lock` to keep any choice fixed while re-rolling the rest. Applying a roll (`roll --apply`, the `roll` step of `vixl_apply`) honours `unfilled` (`omit` or `blank`, CLI `--unfilled`): when you pass `slots` the default is `omit`, so slots you did not fill are left out and the applied direction passes `check` without a second layout pass; with no slots every slot would be left out, so the default is `blank` and the `[Label]` placeholders show what to fill. The result lists `unfilled_slots` (blanks) or the layout's `omitted` slots.
 
+## Carrying a design to other sizes
+
+`adapt-layout` resizes the canvas and re-composes the document there, and its report says how under `recomposed` and `reason`:
+
+- **A layout rebuilds itself.** A document built by `layout-apply` and not edited since is rebuilt from its stored recipe at the new size (`mode: "recompose"`), so a square post becomes a story or a banner composed for that format rather than scaled. This is the default; earlier releases needed `recompose: true`. The layout record keeps a fingerprint of the layers it made, so any later edit (new copy, a moved layer, an added logo) keeps the anchoring rules instead, and `reason` says why (`the layout's layers were edited since layout-apply; recompose: true would replace those edits`). `recompose: true` rebuilds anyway, replacing those edits and the generated layer IDs; `recompose: false`, or `anchors`, `where`, `scale`, `text` or `together`, asks for the anchoring rules.
+- **Arrangements re-place any document.** `arrangements` tries `stack-vertical` (one centred column), `side-by-side` (image beside the copy), `hero-top` (image above the copy) and `proportional` (the anchoring rules) on copies of the document, scores each with the composition, legibility, bounds and overlap checks and keeps the best. Copy is re-wrapped to its column with balanced lines and set smaller only down to `min_text`; `candidates` lists every score and `outcome` says whether the kept one passed (`validated`), none did (`needs_review`, with `findings`) or required copy does not fit (`validation_failed`).
+- **Otherwise proportional.** Layers keep their margins or relative places, backgrounds stretch, photos cover, text scales but not below `min_text`, and layers that sat together move together (see [operations](../../reference/operations.md)).
+
+Mark what may give way with `layer-intent` `priority`: `required` (the default) copy is never hidden or cut off, `optional` and `decorative` layers are hidden when they would be too small to read or an arrangement has no room (decorative first; the report lists them under `dropped`). Required copy that still does not fit is listed under `requirements` with what it missed. Give a photo a `focal` point (`[x, y]` fractions of its box) and a cover crop keeps it in view; `crops` reports each cropped image with the pixels it lost on each side.
+
+```json
+[
+  {"type": "text", "name": "headline", "text": "Tide Pool Nights", "size": 96, "x": 80, "y": 120, "color": "#1d3557"},
+  {"type": "text", "name": "body", "text": "Live music by the water every Friday in June", "size": 36, "x": 80, "y": 260, "color": "#1d3557"},
+  {"type": "text", "name": "url", "text": "tidepool.example", "size": 24, "x": 80, "y": 700, "color": "#1d3557"},
+  {"type": "layer-intent", "target": "url", "priority": "optional"},
+  {"type": "adapt-layout", "size": "story", "arrangements": ["stack-vertical", "proportional"]}
+]
+```
+
+For a campaign, `vixl_apply(workflow='adapt-sizes')` (CLI `vixl adapt-layout --sizes story leaderboard 1200x628 --directory out`) saves one adapted copy per size, takes the same settings in `options` (`arrangements` included) and runs the document's attached check suites on every copy, so each entry carries its `suites` results and an `outcome` (`suites: false` or `--no-suites` skips them). Auto-layout [stacks](../shapes/design-tools.md#empty-content-and-stacks), which work like CSS flexbox and grid, keep re-flowing inside each adapted size.
+
 Standalone design-system pieces:
 
 ```json
@@ -170,7 +192,7 @@ Standalone design-system pieces:
 {"type": "guidance", "name": "typography", "style": "typography"}
 ```
 
-Built-in guidance now covers `overall`, `minimal`, `editorial`, `playful`, `logo`, `pixel-art`, `typography`, `color`, `layout`, `accessibility`, `print`, `icon`, `motion`, `brush` and `image-rights`.
+Built-in guidance now covers `overall`, `minimal`, `editorial`, `playful`, `logo`, `pixel-art`, `typography`, `color`, `layout`, `stacks`, `accessibility`, `print`, `icon`, `motion`, `brush` and `image-rights`.
 
 Layouts are text compositions, which is why open requests drift toward posters. For icons, characters, scenes, patterns,
 mandalas and diagrams, `vixl_reference(brief)` (CLI `vixl guide BRIEF`) names the approach, operations, layouts, looks and

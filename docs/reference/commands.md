@@ -55,8 +55,8 @@ check suites, recipes, matrices, libraries, jobs and films. New editing commands
 `suite-set`, `suite-capture`, `role-set`, `motion-define`, `motion-apply`, `action-define`,
 `action-apply`, `fit-text`, `arrange-grid`, `adapt-layout` and `recipe-set`; each has `--help`.
 `edit-layers --where JSON --do JSON [--expect N] [--dry-run]` runs an operation on every layer matching a selector, and
-`adapt-layout --size story [--scale fit|fill|width|height|N] [--anchors JSON] [--where JSON] [--text keep] [--min-text N] [--no-safe] [--no-together]` (without
-`--targets`) resizes the canvas and re-lays out every layer; see [operations](operations.md#bulk-edits-and-resizing-a-whole-layout-unreleased).
+`adapt-layout --size story [--scale fit|fill|width|height|N] [--anchors JSON] [--where JSON] [--text keep] [--min-text N] [--no-safe] [--no-together] [--[no-]recompose] [--arrangements stack-vertical side-by-side hero-top proportional]` (without
+`--targets`) resizes the canvas and re-composes the document: an unedited `layout-apply` design is rebuilt from its recipe, `--arrangements` keeps the arrangement the checks score best, anything else is re-laid out proportionally; see [operations](operations.md#bulk-edits-and-resizing-a-whole-layout-unreleased).
 
 Vixl is a headless design engine for AI agents; people can drive the same interfaces.
 
@@ -366,6 +366,7 @@ vixl waiver fonts --reason "proofing font for now"     # document-wide; --remove
 vixl check --profile final               # draft | review | final | a .vixl-checks.json profile; --no-waivers
 vixl layer-intent LAYER [--role content|decoration|background|title] [--allow-overlap L…] [--tags T…]
                         [--[no-]detached-ok] [--[no-]color-vision-safe] [--[no-]literal-text]   # compact inspect shows what is set
+                        [--priority required|optional|decorative] [--focal X Y]   # what adapt-layout may hide; the photo point it keeps
 vixl layout apply NAME --palette '["#0f172a","#1e293b","#38bdf8"]' --keep-order
 vixl palette apply NAME --keep-order | --roles '{"background": 0, "accent": "#e11d48"}'
 vixl styles [list [QUERY] | show NAME] | styles apply NAME [--palette] | styles check [NAME…]
@@ -461,7 +462,7 @@ vixl catalog export --out catalog.json --section sizes --section checks
 
 Workflow request arguments accept a JSON file, `-` for stdin, or an inline JSON object. CLI workspace resources resolve from the current directory. Add `.vixl-session.json` to your repository's `.gitignore`; it records the local current-document session and is not a project source file. Shared MCP servers require an explicit document when closing a session with several documents open.
 
-`vixl -p master.vixl adapt-layout --sizes instagram-post story --directory out --formats png` exports copies at several sizes. It does not overwrite the master. Inspect the adaptation reports and run checks on the copies; proportional adaptation is not a replacement for recomposing long copy into a radically different aspect ratio. For a document built with `layout-apply`, `--options '{"recompose": true}'` (single size: `vixl adapt-layout --size story --recompose`; operation field `recompose: true`) instead reapplies the stored layout at each size; it rebuilds the generated layers, so manual edits to them and their IDs are replaced. Recomposition is never implicit.
+`vixl -p master.vixl adapt-layout --sizes instagram-post story --directory out --formats png` exports copies at several sizes. It does not overwrite the master. Each copy reports `recomposed` and `reason`, and the document's attached check suites run on every copy (`suites` and `outcome` per copy; `--no-suites` skips them). A document built with `layout-apply` and not edited since is rebuilt from its stored layout at each size by default (earlier releases needed `--recompose`); it rebuilds the generated layers and their IDs. After an edit, the copies are re-laid out proportionally unless `--options '{"recompose": true}'` (single size: `vixl adapt-layout --size story --recompose`) asks for the rebuild anyway, replacing those edits; `--no-recompose` (`{"recompose": false}`) always adapts proportionally. Proportional adaptation is not a replacement for recomposing long copy into a radically different aspect ratio: `--options '{"arrangements": ["stack-vertical", "side-by-side", "hero-top"]}'` re-places the content in each candidate arrangement, keeps the one the composition, legibility, bounds and overlap checks score best and reports its `outcome` (`needs_review` when none passes).
 
 
 ## Reviewing editable projects in Git

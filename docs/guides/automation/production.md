@@ -321,8 +321,12 @@ Higher-level operations:
   given priority order. Refuses content that cannot fit; this is not a general constraint solver.
   Without `targets` the same verb re-lays out every layer proportionally at another size and reports
   where each layer moved (see [operations](../../reference/operations.md#bulk-edits-and-resizing-a-whole-layout-019)).
-  `recompose: true` instead re-applies the document's saved `layout-apply` recipe at the new size,
-  replacing the generated layers (and manual edits to them); it fails when there is no saved recipe.
+  A document built by `layout-apply` and not edited since is instead rebuilt from its saved recipe at the
+  new size by default; `recompose: true` forces that after edits (replacing the generated layers and the edits
+  to them; it fails when there is no saved recipe) and `recompose: false` never does it. `arrangements`
+  (`stack-vertical`, `side-by-side`, `hero-top`, `proportional`) builds each candidate arrangement of the
+  content, scores it with the composition, legibility, bounds and overlap checks and keeps the best, with an
+  `outcome`. Every result says `recomposed` and why.
 - Existing `replace-contents` preserves a frame's placement, effects and identity.
 
 An `action-define` stores bounded canonical operations under a name; `action-apply`
