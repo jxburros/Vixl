@@ -12,7 +12,9 @@ It runs on groups with an ``object`` record (``objects.all_objects`` minus impli
   marked ``stylized: true`` or ``proportions: "ignore"`` has none;
 - **symmetry**: a left/right pair whose sizes differ by more than 15%, or that sits on one side of the axis of the
   part it attaches to. A pair marked ``depth`` far/near is a side view and is not mirrored;
-- **layering**: parts that overlap stacked against the kind's back-to-front ``layering``.
+- **layering**: parts that overlap stacked against the kind's back-to-front ``layering``;
+- **outline**: for an object with an applied outline policy (``object_outline``), part strokes that show inside its
+  silhouette, part outlines of uneven width under ``parts``, and an outline drawn for other geometry.
 
 Each finding has ``rule`` ``object.<code>``, ``layer_ids``, ``box`` (canvas pixels), ``measured``, ``action`` and a
 ``hint``, which names the kind's build placement for the part when it has one. More findings plug in through
@@ -562,7 +564,14 @@ def _overlap(context, subject, a, b):
     return False
 
 
-FINDERS = [parts, connections, proportions, symmetry, layering]
+def outline(context, subject):
+    """The outline policy's findings (``object_outline.findings``): seams, uneven part outlines, a stale outline."""
+    from .object_outline import findings
+
+    yield from findings(context, subject)
+
+
+FINDERS = [parts, connections, proportions, symmetry, layering, outline]
 
 
 # ---------------------------------------------------------------------------------------------------------------

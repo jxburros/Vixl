@@ -905,6 +905,10 @@
      "type": "object",
      "description": "A die-cut outline record: the layers it surrounds and the offset distance."
     },
+    "generated": {
+     "type": "object",
+     "description": "A layer an operation draws and redraws itself {by}: object-outline for an object's outline (object action outline)."
+    },
     "reflection": {
      "type": "object",
      "description": "A reflection layer's settings (horizon, sources), kept so it can be re-rendered."
@@ -1374,11 +1378,11 @@
     },
     "object": {
      "type": "object",
-     "description": "group: object declaration {kind, label, notes, references, version}."
+     "description": "group: object declaration {kind, label, notes, references, stylized, proportions, outline, interior, outline_color, outline_width, outlined, version}; outlined is the applied outline policy with the part strokes it replaced and the geometry hash it was drawn for."
     },
     "object_part": {
      "type": "object",
-     "description": "This layer's part name {name, side} inside its object."
+     "description": "This layer's part name {name, side, depth, outline, interior} inside its object."
     },
     "character": {
      "type": "object",
