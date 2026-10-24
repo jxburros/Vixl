@@ -391,7 +391,7 @@ def placement_operations(slot, design, settings, name):
         ops.append({"type": "clip", "target": name, "base": surface})
     finish = settings.get("finish") or slot.get("finish")
     if finish and finish != "none":
-        ops += finishes.operations(finish, name, (x0, y0, w, h), surface, slot.get("print_size_mm"))
+        ops += finishes.operations(finish, name, (x0, y0, w, h))
     cut = slot.get("cut")
     if cut:
         ops += _cut_operations(cut, name, slot)

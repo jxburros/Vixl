@@ -125,6 +125,6 @@ def woven(name, box, u):
 BUILDERS = {"screen": screen, "puff": puff, "embroidery": embroidery, "enamel": enamel, "woven": woven}
 
 
-def operations(finish, name, box, surface=None, print_size=None):
+def operations(finish, name, box):
     """The operations that give the placed design layer ``name`` (in ``box``) the ``finish``."""
     return BUILDERS[finish](name, box, _unit(box))

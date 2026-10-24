@@ -272,7 +272,7 @@ def build(session, request, document=None):
                    "print_size_mm": every[key]["print_size_mm"], "dpi": dpi, "pixels": list(sizes[key]),
                    "file": session.relative(root / f"{key}.png"), "source": session.relative(root / f"source/{key}.vixl")}
             if spots or make_underbase:
-                with Image.open(root / f"{key}.png") as opened:
+                with Image.open(root / f"{key}.png", formats=["PNG"]) as opened:
                     art = opened.convert("RGBA")
                 row.update(_separations(session, root, key, art, spots, separations, make_underbase, choke_mm, dpi,
                                         overwrite, written))

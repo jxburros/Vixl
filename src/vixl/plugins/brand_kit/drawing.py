@@ -9,6 +9,8 @@ Everything is measured in a flat-lay view at 30 px per inch (about 1.18 px per m
 
 import math
 
+from ...geometry import compact_number
+
 PX_PER_MM = 30 / 25.4
 # The axis of a symmetric view, which every garment view is drawn around.
 CX = 550
@@ -77,18 +79,13 @@ class Pen:
         return out
 
     def data(self, dx=0, dy=0):
-        parts = [f"M{_n(self.start[0] + dx)} {_n(self.start[1] + dy)}"]
+        parts = [f"M{compact_number(self.start[0] + dx, 2)} {compact_number(self.start[1] + dy, 2)}"]
         for seg in self.segments:
-            coords = " ".join(f"{_n(x + dx)} {_n(y + dy)}" for x, y in seg[1:])
+            coords = " ".join(f"{compact_number(x + dx, 2)} {compact_number(y + dy, 2)}" for x, y in seg[1:])
             parts.append(f"{seg[0]}{coords}")
         if self.closed:
             parts.append("Z")
         return " ".join(parts)
-
-
-def _n(value):
-    text = f"{value:.2f}".rstrip("0").rstrip(".")
-    return "0" if text in ("", "-0") else text
 
 
 def polygon_pen(points, closed=True):
