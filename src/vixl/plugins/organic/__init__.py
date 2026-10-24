@@ -5,8 +5,9 @@ PLUGIN = {
     "title": "Organic shapes",
     "summary": "Composable organic shapes: generators, growth rules and presets for living things.",
     "kind": "operations",
-    "modules": ["organic", "workflow"],
+    "modules": ["organic", "workflow", "hooks"],
     "operations": ["organic"],
     "commands": ["organic"],
     "workflows": ["workflow"],
+    "hooks": {"normalize": ["hooks:normalize"]},
 }

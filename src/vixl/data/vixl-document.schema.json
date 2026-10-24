@@ -1399,7 +1399,7 @@
     },
     "object": {
      "type": "object",
-     "description": "group: object declaration {kind, label, notes, references, stylized, proportions, outline, interior, outline_color, outline_width, outlined, version}; outlined is the applied outline policy with the part strokes it replaced and the geometry hash it was drawn for."
+     "description": "group: object declaration {kind, label, notes, references, stylized, proportions, outline, interior, outline_color, outline_width, outline_lines, outlined, version}; outlined is the applied outline policy with the part strokes it replaced and the geometry hash it was drawn for."
     },
     "object_part": {
      "type": "object",

@@ -262,8 +262,8 @@ LAYER_FIELDS = {
     "drawing_strokes": (ARRAY, "Vectorized strokes of a drawing."),
     "drawing_role": (STRING, "Role of this layer in a drawing (line, fill …)."),
     "object": (OBJECT, "group: object declaration {kind, label, notes, references, stylized, proportions, outline, "
-               "interior, outline_color, outline_width, outlined, version}; outlined is the applied outline policy "
-               "with the part strokes it replaced and the geometry hash it was drawn for."),
+               "interior, outline_color, outline_width, outline_lines, outlined, version}; outlined is the applied "
+               "outline policy with the part strokes it replaced and the geometry hash it was drawn for."),
     "object_part": (OBJECT, "This layer's part name {name, side, depth, outline, interior} inside its object."),
     "character": (OBJECT, "group: character rig (parts, bones, poses)."),
     "character_part": (STRING, "Which part of a character this layer is."),

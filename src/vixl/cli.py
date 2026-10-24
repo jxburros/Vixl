@@ -958,6 +958,8 @@ def object_plan_command(project, args):
     p.add_argument("--width-ratio", type=float)
     p.add_argument("--color")
     p.add_argument("--template", choices=["figure-plan"])
+    p.add_argument("--illustration", choices=["house", "plain"],
+                   help="plain leaves the bare scaffold (default: the house illustration finish in a house-style document)")
     p.add_argument("--apply", action="store_true", help="apply the batch to the document as one undo step")
     request = {key.rstrip("_"): value for key, value in vars(p.parse_args(args)).items()
                if value is not None and value is not False}
