@@ -222,11 +222,24 @@ FIELD_ALIASES = {
     "layout-apply": {key: "accent_words" for key in ("accent_word", "accents", "highlight_words", "highlight",
                                                      "emphasis", "accent_text")},
     "text-layout": {"text_wrap": "wrap", "wrapping": "wrap", "line_breaks": "wrap"},
+    # The CSS flexbox and grid property names for the stack's fields.
+    "stack": {"flex_direction": "direction", "justify_content": "justify", "align_items": "align", "flex_wrap": "wrap",
+              "grid_template_columns": "columns", "flex_grow": "grow", "grid_column": "span", "column_span": "span"},
     "accessibility": {"language": "lang", "locale": "lang", "page_description": "page_alt",
                       "page_language": "page_lang"},
 }
 FIELD_ALIASES["text-set"] = FIELD_ALIASES["text"]
 # CSS text-wrap values and the usual guesses for them.
+# CSS flexbox values for the stack's fields.
+STACK_VALUES = {
+    "direction": {"row": "horizontal", "column": "vertical", "columns": "vertical", "rows": "horizontal",
+                  "col": "vertical"},
+    "justify": {"flex-start": "start", "flex-end": "end", "left": "start", "right": "end", "top": "start",
+                "bottom": "end", "middle": "center", "between": "space-between", "around": "space-around",
+                "evenly": "space-evenly"},
+    "align": {"flex-start": "start", "flex-end": "end", "left": "start", "right": "end", "top": "start",
+              "bottom": "end", "middle": "center", "fill": "stretch"},
+}
 WRAP_ALIASES = {"balanced": "balance", "even": "balance", "wrap": "greedy", "normal": "greedy", "auto": "greedy",
                 "stable": "greedy", "no-runts": "pretty", "avoid-runts": "pretty", "no-orphans": "pretty"}
 # CSS text-transform values and the usual guesses for them.
@@ -379,6 +392,22 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
         from .forms import normalize as normalize_field
 
         op = normalize_field(op, note)
+    if kind == "stack":
+        for key, values in STACK_VALUES.items():
+            given = op.get(key)
+            if isinstance(given, str) and values.get(given.strip().lower()):
+                op[key] = values[given.strip().lower()]
+                note(f"{key} {given!r} → {op[key]!r}")
+        if isinstance(op.get("wrap"), str) and op["wrap"].strip().lower() in ("wrap", "nowrap", "no-wrap"):
+            given = op["wrap"]
+            op["wrap"] = given.strip().lower() == "wrap"
+            note(f"wrap {given!r} → {op['wrap']}")
+    if kind == "layer-intent" and isinstance(op.get("tags"), list) and "optional" in op["tags"] \
+            and "priority" not in op:
+        # The optional tag was adapt-layout's priority before priority existed.
+        op["tags"] = [tag for tag in op["tags"] if tag != "optional"]
+        op["priority"] = "optional"
+        note("tags ['optional'] → priority: 'optional'")
     if kind == "layer-intent" and "allow_low_contrast" in op and "waive" not in op:
         # The flag agents guess for faint decorative text: a contrast waiver on the layer.
         op["waive"] = ["contrast"] if op.pop("allow_low_contrast") else []

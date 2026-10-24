@@ -627,11 +627,15 @@ ACTION_FIELDS = {
         "directory": {**PATH, "description": "Folder for the adapted copies (default: the workspace root)."},
         "name": {"type": "string", "default": "{name}-{size}",
                  "description": "File name template for each copy: {name} {size} {index}."},
-        "options": {"type": "object", "description": "adapt-layout settings for every size: scale, anchors, where, text."},
+        "options": {"type": "object", "description": "adapt-layout settings for every size: scale, anchors, where, "
+                    "text, recompose, arrangements, safe, min_text, together."},
         "formats": {**STRINGS, "description": "Also export each copy, e.g. ['png']."},
         "overwrite": {"type": "boolean", "default": False, "description": "Replace existing copies and exports."},
         "report": {"type": "string", "enum": ["summary", "layers"], "default": "summary",
                    "description": "layers also lists where each layer went."},
+        "suites": {"type": ["boolean", "string", "array"], "items": {"type": "string"}, "default": True,
+                   "description": "Run the document's check suites on every copy and attach each copy's results and "
+                   "outcome: true (default) runs every attached suite, a name or list runs those, false none."},
     },
     "replace-across": {
         "name": {"type": "string", "description": "Project group whose members to edit (or give documents)."},

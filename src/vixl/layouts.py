@@ -2245,6 +2245,10 @@ def execute_layout(project, op):
                           f"layout {name!r} sets its headline on the accent color, where accent text would not read")
     if notes:
         state["layout"]["notes"] = notes
+    from .adapt import fingerprint
+
+    # adapt-layout rebuilds this layout at a new size by default only while the layers still match it.
+    state["layout"]["fingerprint"] = fingerprint(state)
 
 
 def _record_blanks(state, builder, layout_name, created):

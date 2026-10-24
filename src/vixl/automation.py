@@ -485,8 +485,14 @@ def compile_command(cmd, args):
         parser.add_argument("--no-together", dest="together", action="store_false", default=None,
                             help="anchor every layer on its own instead of moving close layers as one")
         parser.add_argument("--no-report", dest="report", action="store_false", default=None)
-        parser.add_argument("--recompose", action="store_true", default=None,
-                            help="Reapply the stored layout-apply recipe at the new size; replaces edits to generated layers")
+        from argparse import BooleanOptionalAction
+        from .adapt import ARRANGEMENTS
+
+        parser.add_argument("--recompose", action=BooleanOptionalAction, default=None,
+                            help="Rebuild the stored layout-apply recipe at the new size (the default while the "
+                                 "layout is unedited); --no-recompose adapts proportionally")
+        parser.add_argument("--arrangements", nargs="+", choices=ARRANGEMENTS,
+                            help="try these arrangements of the content and keep the one the checks score best")
     if cmd == "suite-capture":
         parser.add_argument("--regions", type=json.loads)
     if cmd == "motion-apply":

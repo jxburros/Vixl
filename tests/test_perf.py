@@ -182,3 +182,30 @@ def test_one_move_on_a_large_lit_scene():  # #595
     # layer's neighbourhood is composited and lit again (about 0.15 s; a loaded macOS runner took 0.9 s).
     elapsed, _ = timed(p.render)
     assert elapsed < 2.5
+
+
+def test_adapting_a_poster_to_three_sizes_with_arrangements(tmp_path):  # #519
+    from PIL import Image
+
+    Image.new("RGB", (1200, 800), "#3a86ff").save(tmp_path / "photo.png")
+    master = Project(1080, 1080, "#fdf6ec")
+    master.apply([{"type": "add", "path": str(tmp_path / "photo.png"), "name": "photo", "x": 80, "y": 80,
+                   "width": 920, "height": 520},
+                  {"type": "text", "name": "headline", "text": "Tide Pool Nights", "size": 96, "x": 80, "y": 640,
+                   "color": "#1d3557"},
+                  {"type": "text", "name": "body", "text": "Live music by the water every Friday in June", "size": 40,
+                   "x": 80, "y": 770, "color": "#1d3557"},
+                  *({"type": "shape", "shape": "ellipse", "name": f"dot{i}", "width": 12, "height": 12,
+                     "x": 40 + i * 25, "y": 1040, "fill": "#3a86ff"} for i in range(40))], detail="brief")
+    copies = [master.clone() for _ in range(3)]
+    sizes = ({"size": "story"}, {"size": "leaderboard"}, {"width": 1920, "height": 1080})
+    arrangements = ["stack-vertical", "side-by-side", "hero-top", "proportional"]
+
+    def adapt():
+        return [copy.apply({"type": "adapt-layout", **size, "arrangements": arrangements}, detail="brief")
+                ["adapt_layout"][0] for copy, size in zip(copies, sizes)]
+
+    # Each size builds and checks four candidates: about 0.8 s for all three on a developer machine.
+    elapsed, reports = timed(adapt)
+    assert all(len(report["candidates"]) == 4 for report in reports)
+    assert elapsed < 8

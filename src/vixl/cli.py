@@ -490,11 +490,13 @@ def _dispatch(argv):
         p.add_argument("--formats", nargs="+")
         p.add_argument("--options", help="Inline JSON, file, or - for stdin")
         p.add_argument("--overwrite", action="store_true")
+        p.add_argument("--no-suites", dest="suites", action="store_false",
+                       help="do not run the document's check suites on each copy")
         a = p.parse_args(args)
         session = Session(current_path(options.project), limits, workspace=Path.cwd())
         return adapt_copies(session, export_file, a.sizes, a.directory, a.name,
                             read_json(a.options) if a.options else None,
-                            overwrite=a.overwrite, formats=a.formats), options.json
+                            overwrite=a.overwrite, formats=a.formats, suites=a.suites), options.json
     if cmd in ("pack", "unpack"):
         from .project_folder import pack, unpack
         parser = Parser(prog="vixl " + cmd)

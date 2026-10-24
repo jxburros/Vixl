@@ -136,7 +136,8 @@ def dispatch(session, action, request, document=None):
 
         return adapt_copies(session, export_file, request["sizes"], request.get("directory", "."),
                             request.get("name", "{name}-{size}"), request.get("options"), document,
-                            request.get("overwrite", False), request.get("formats"), request.get("report", "summary"))
+                            request.get("overwrite", False), request.get("formats"), request.get("report", "summary"),
+                            request.get("suites", True))
     if action == "plan":
         return plan(request["spec"])
     if action == "form-fill":

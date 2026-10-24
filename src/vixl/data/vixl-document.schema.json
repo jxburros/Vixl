@@ -662,11 +662,32 @@
     },
     "tags": {
      "type": "array",
-     "description": "Free-form tags (selectors, adapt rules such as optional)."
+     "description": "Free-form tags that edit-layers selects with where.tag."
+    },
+    "priority": {
+     "type": "string",
+     "description": "Intent: required, optional or decorative; what adapt-layout may hide at another size."
+    },
+    "focal": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 2,
+     "maxItems": 2,
+     "description": "Intent: [x, y] fractions of an image or frame layer's box that adapt-layout keeps in view."
     },
     "stack": {
      "type": "object",
-     "description": "Auto-layout stack settings of a group: direction, gap, alignment, padding."
+     "description": "Auto-layout stack settings of a group: direction (vertical, horizontal or grid), gap, row_gap, align, justify, padding, wrap and grid columns."
+    },
+    "stack_grow": {
+     "type": "number",
+     "description": "Stack member: weight it shares the stack's free space by (CSS flex-grow)."
+    },
+    "stack_span": {
+     "type": "integer",
+     "description": "Grid stack member: columns it spans."
     },
     "hide_if_empty": {
      "type": "boolean",

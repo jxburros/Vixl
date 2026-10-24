@@ -10,6 +10,8 @@ from .model import MAX_LAYERS
 
 TYPES = ("organic-shape", "path-fit", "layer-intent", "font-fallbacks", "waiver")
 KINDS = ("leaf", "petal", "blob", "rose")
+PRIORITIES = ("required", "optional", "decorative")
+FOCAL_TYPES = ("raster", "frame")
 
 
 WAIVER_FIELDS = {
@@ -54,7 +56,15 @@ def schemas(add):
                                  "shows (HTML alt, SVG <title>, PowerPoint descr, PDF /Alt); an empty string clears it"},
                          "decorative": {"type": "boolean",
                                         "description": "true: purely decorative, so screen readers skip it and the "
-                                        "accessibility check needs no alt text"}}, ["target"])
+                                        "accessibility check needs no alt text"},
+                         "focal": {"type": "array", "items": {"type": "number", "minimum": 0, "maximum": 1},
+                                   "maxItems": 2, "description": "Image or frame layers: the point to keep in view, "
+                                   "[x, y] fractions of the layer's box; adapt-layout centres it when a new size crops "
+                                   "the image. [] clears it."},
+                         "priority": {"enum": list(PRIORITIES), "description": "What adapt-layout may give way at "
+                                      "another size: required (the default) is never hidden or cut off, optional "
+                                      "and decorative are hidden when they would be too small to read or there is "
+                                      "no room (decorative first). Replaces the optional tag."}}, ["target"])
 
     add("waiver", {"check": field(S, "The design check to waive (contrast, bounds, overlap, safe_area, brand ...)."),
                    "rule": field(S, "A suite rule id to waive instead of a check (no target)."),
@@ -203,6 +213,17 @@ def execute(project, op):
                 layer["literal_text"] = True
             else:
                 layer.pop("literal_text", None)
+        if "focal" in op:
+            if op["focal"]:
+                require(len(op["focal"]) == 2, "focal is [x, y]: fractions of the layer's box from 0 to 1, or [] to "
+                        "clear it", field="focal")
+                require(layer["type"] in FOCAL_TYPES, f"focal belongs to image and frame layers; {layer['name']!r} "
+                        f"is a {layer['type']} layer", field="focal")
+                layer["focal"] = [float(value) for value in op["focal"]]
+            else:
+                layer.pop("focal", None)
+        if "priority" in op:
+            layer["priority"] = op["priority"]
         return
     if kind == "path-fit":
         require(layer["type"] == "shape" and layer["shape"] == "path", "Path fit needs a path layer")
@@ -265,6 +286,10 @@ def compile_command(cmd, args):
         p.add_argument("--alt", help="alternative text for an image, frame, chart, link or group ('' clears it)")
         p.add_argument("--decorative", action=argparse.BooleanOptionalAction, default=None,
                        help="purely decorative: screen readers skip it and it needs no alt text")
+        p.add_argument("--focal", nargs="*", type=float, metavar="FRACTION",
+                       help="image or frame: the point adapt-layout keeps in view, x y as fractions (none clears it)")
+        p.add_argument("--priority", choices=PRIORITIES,
+                       help="what adapt-layout may hide at another size: required (default), optional, decorative")
     elif cmd == "waiver":
         p.add_argument("check", nargs="?", help="the design check to waive (contrast, bounds, overlap ...)")
         p.add_argument("--rule", help="a suite rule id to waive instead of a check")
