@@ -87,7 +87,8 @@ def dispatch(session, action, request, document=None):
     if action == "character-package":
         require(type(request.get("overwrite", False)) is bool, "overwrite must be true or false", field="overwrite")
         output = session.resolve(request["output"])
-        session.make_parent(output)
+        require(not output.parent.exists() or output.parent.is_dir(), f"{session.relative(output.parent)} exists and "
+                "is not a directory", field="output")
         with session.project(document=document) as project:
             result = packages.build(project, request["target"], output, name=request.get("name"),
                                     description=request.get("description", ""), tags=request.get("tags"),
