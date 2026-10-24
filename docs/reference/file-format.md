@@ -39,7 +39,7 @@ are stored uncompressed (they are already compressed); `project.json` and fonts 
 ```json
 {
   "format_version": 2,
-  "vixl_version": "0.30.5",
+  "vixl_version": "0.31.0",
   "state": {
     "canvas": {"width": 400, "height": 300, "background": "#ffffff", "color_mode": "rgba8"},
     "layers": [

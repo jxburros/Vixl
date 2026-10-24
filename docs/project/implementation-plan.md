@@ -205,6 +205,60 @@ The original step 4 list:
 
 ### Step 5: craft
 
+Built on 2026-10-24, on branch `claude/gifted-galileo-gmvfzg`, for 0.31.0: items 2 to 8, each with its regression
+tests, docs and a changelog entry. Items 1 and 9, the blind re-judge, are not run: they need the VixlExamples
+tool-comparison kit, a paid agent run and judges, so the work followed the default order above and no craft gain is
+claimed. #648 and #388 stay open until a re-judge is published. Every default change passed the house-style eval.
+Where the work departed from the plan:
+
+- #652, #650: small caps and hanging punctuation are laid out by the rich-text engine, as tracking already was,
+  not in `text.plan`; small caps on a layer with tab stops fall back to spaced tabs, and hanging is skipped on lines
+  with tab stops. Hanging punctuation is opt-in: on for headings, a comma hung at the end of a wrapped headline line
+  set off `margin_drift` and lowered `no_composition_findings` to 0.979. PowerPoint hangs only the first line of a
+  left-aligned paragraph. The contrast check now measures highlighted glyphs against their highlight (every
+  `accent-bg` span failed before). The new containers are not in the rolled pool, so rolls are unchanged. The body
+  italic is fetched for `font pair` and `font install --role body`, not for `--scope workspace` installs.
+- #649: all four codes landed with no false finding on the backtest, but no reconstructed document has a judged
+  hierarchy defect, so their catch rate is untested. `no_focal` weighs size and contrast (area made a one-line
+  headline equal to a paragraph), and `accent_unused` fires only on pages built on the rolled palette. `variations`
+  is a workflow action that needs an `output` path, and `roll` gained `replace` so a chosen seed re-applies over a
+  layout. The codes are documented in the layout guides; `docs/guides/output/codes.md` is the QR-code guide.
+- #656: the four craft tasks pin seed 7 and an offline pairing, so a networked run scores the same. The `--judge`
+  rubric judge has not run against a model.
+- #404, #654: the accent count and representation roll from their own seed stream, so a seed keeps everything else it
+  rolled. Brief moods enter as `brief_moods`, not `mood=`, which would also move the tier, pairing and layout and break
+  "no match rolls the same"; the motif hint is `motif_suggestion`, because `direction.motif` is the drawn decoration.
+  Shapes that carry text keep the first accent. Three rolled accents are fully drawn about half the time, because
+  many layouts have one or two places for an accent. The eval's same-mode distance at the low level moved from
+  0.1022 to 0.1020 (one poster's corner block changed hue; the stored baseline is 0.1005), and `--compare` reports
+  no regression.
+- #653, #519: one function picks recipe, arrangements or proportional adaptation; a layout document recomposes by
+  default while a fingerprint of its layers matches the recipe. Required copy that cannot fit gives
+  `validation_failed`, not `needs-review`. Arrangements raise `min_text` to the legibility minimum, reuse the stack
+  spacing rather than container slots and handle top-level layers only. Frames do not use `focal` for their inner
+  crop. The old `optional` tag is still read on stored documents; a conversion rule waits for the next
+  `CURRENT_SINCE` bump.
+- #655, #651: the five shapes are in `MOTIF_SHAPES` (the parametric table must mirror the shortcut table). Bare
+  keywords such as "party", "pie" and "book" are left out of the themes because they match unrelated briefs. The
+  two new visual fixtures are PNG only.
+- #427: both halves were built, because `object-plan` landed first in this branch. `object_plan.FINISHERS` takes
+  `(plan, project, request, depth)`, so the shadow goes on the top-level object only. Extra lines are a new
+  `outline_lines` field of the object outline, drawn inside the silhouette, and appear on grouped organic forms
+  only. Irregularity is wobble only. Only the `parts` policy takes the house-style width; `silhouette` stays 1%.
+- #419: no content pack, because a pack needs a real pinned commit in VixlPacks, which this work could not publish. A
+  CJK, Devanagari or Thai run that no document font covers draws from a matching Noto face in the font cache or
+  `VIXL_CJK_PACK`, with no download at render time; `font-cover` with no arguments embeds it, and `vixl.packs.local()`
+  is the seam for a pinned pack (the entry's shape is in the `vixl.packs` docstring). DejaVu Sans stays bundled
+  second in the chain, because it covers 1,695 code points the Noto faces do not (Arabic, Hebrew, Armenian,
+  Georgian). The new face exposed eight bugs, fixed at the cause: text measured in one face and drawn in another
+  (logo taglines, banner and stacked buttons), a LinkedIn-cover button off the canvas, the event poster's grow loop,
+  an oversized diagram, ink-based overflow for overhanging glyphs, PDF tracking written as gaps, PDF import font
+  registration and SVG raster import. 18 golden files changed, all text-bearing. Documents saved by 0.27 to 0.30
+  count as current to the conversion kit, so their recipes redraw in Noto on the next edit; moving `CURRENT_SINCE`
+  is a release decision.
+
+The original step 5 list:
+
 1. Run the blind craft re-judge baseline first (`python -m evals.craft_rerun`). Its results decide the order of
    the craft work that follows.
 2. Group T: #650 and #652.
@@ -217,6 +271,50 @@ The original step 4 list:
 9. Re-judge again. Then close #648 and #388.
 
 ### Step 6: objects and brand packages
+
+Done on 2026-10-24, on the same branch, for 0.31.0: every item below, each with its regression tests, docs and a
+changelog entry; the objects and brand items change no golden. Where the work departed from the plan:
+
+- #376: a placement also takes `at`, the point of the placed part that sits on the anchor, and its anchor part may be
+  `object`. A brief's object summary leaves out research, looks and the example to save tokens.
+- #378: the check runs by default on pages with a declared object, so `passed` can turn false there (noted as
+  breaking). Standard characters without an object record stay with the `character` check. Parts gained
+  `depth: far|near` for side-view layering; too few parts is flagged only for required parts and too many only for
+  paired ones, because data counts such as petals are typical rather than exact. Each part is drawn once per frame on
+  a tile the size of its object: 24 dogs over three frames take about 1.7 s, where canvas-sized tiles took over 15 s.
+  The eval harness keeps its own object check for now.
+- #379: the silhouette is the shapely union of what the object's layers fill; real holes stay and only slivers under
+  16 px² are filled. Regeneration redraws the outline in place after every apply, in the same history step, and
+  re-applies the policy to every part, so a hand-styled part stroke survives only with `outline: none`. The
+  silhouette does not follow timeline animation. `connected` ignores generated layers.
+- #380: kinds declare no views, so the view is derived (animals and vehicles side, others front). Every seed kind's
+  scaffold, and all 69 kinds that list parts, pass the object check as generated. `figure-plan` output is
+  byte-identical apart from a `normalized` entry. Kinds without an example or placements get rough scaffolds.
+- #530: asset bytes live beside the resource library (`<library>-assets/<sha>.<ext>`), because the library file has a
+  1 MiB cap. There is no `assets` topic in `vixl_reference` yet.
+- #529: one parser, `render.parse_constraint`, replaced five copies of the constraint grammar. Proportional templates
+  fill variables and expressions before scaling, so numbers they produce scale too (breaking).
+- #436: logo `margin` is a share of the shorter canvas side. Brand styles are namespaced `brand:NAME` and apply when a
+  document is tagged with one, not automatically. `--preset-only` adds the package's brand as a preset and leaves
+  the resource library alone. `vixl brand element` was added, because building an element by hand meant assembling
+  base64 files. `brand init --pairing` records a pairing rather than downloading and embedding its fonts.
+- #444: wave 1 and wave 2 products are both in (19 built-in mockups, about 300 KB of computed vector paths). Finishes
+  are plugin data in `brand_kit/finishes.py`, not `looks.py` presets, and `screen` is ink spread, grain and a dot
+  screen rather than a halftone of the art, which would flatten a colour design to one ink. Separations are flat
+  inks from the design's own colours, not named Pantone plates.
+- #521: the old `character_library` moves to `object_library` through a conversion-kit rule, not on load (the engine
+  never switches on versions); the kit gained rules keyed on a stored field, which run on documents from any release.
+  The character docs went into the animation authoring guide, as there is no characters page. Expressions are
+  built-in transforms of the eye, brow and mouth parts applied at place time. The standard character's shoulders sit
+  outside its torso, so raised-arm poses open a 6–7 px gap that the `object` check reports; it is documented and
+  tested, and the standard character is unchanged.
+- #512, #573: both stay in the `workspace_qa` plugin; the `pipelines` plugin comes with step 7, and `package.INPUTS`
+  is the seam for a run-record input. `export_checks.inspect` (#557) does not exist yet, so a local `inspect_file`
+  stands in. A new reproduce level, `export-mismatch`, covers a document whose only drift is a recorded export, and a
+  16x16 block signature gives exports a tolerance comparison without storing the encoded file.
+- Close #257 when #376, #378, #379 and #380 close; #383 stays open as a standalone issue.
+
+The original step 6 list:
 
 - **Objects:** #376, then #378, #379, #380. Then close #257.
 - **Brand packages, shipped together:** #436 remainder, #530, #529.

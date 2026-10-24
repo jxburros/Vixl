@@ -1,9 +1,18 @@
 # Changelog
 
-## Unreleased
+## 0.31.0
 
-Steps 5 and 6 of the [implementation plan](docs/project/implementation-plan.md): craft, then objects and brand
-packages.
+A craft, objects and brand packages release: steps 5 and 6 of the
+[implementation plan](docs/project/implementation-plan.md). Type gets small caps, hanging punctuation, accent words
+and three finishing containers; the composition check finds flat hierarchy, a single weight, no focal point and an
+unused accent, and `variations` shows seeded directions side by side. Rolls draw zero to three accents and weight
+their palette by the brief's words, stacks lay out like flexbox and grid, and `adapt-layout` recomposes, crops around
+a focal point and tries alternative arrangements. Scenes get fog and nine more motif themes; organic forms and
+object scaffolds get the house illustration finish; Noto Sans is the proofing face. Object kinds carry build
+knowledge, declared objects are checked against their kind, outlined by policy and scaffolded with `object-plan`.
+Brand packs carry images, templates anchor to text lines and compute values, and brands install from one file. Merch
+mockups, portable characters, full render lockfiles and deliverable packages complete it. No craft gain is claimed:
+the blind re-judge has not run. Breaking changes are listed under Upgrading from 0.30.
 
 ### Upgrading from 0.30
 
@@ -23,6 +32,9 @@ packages.
 - **Brands with several logos add only the logos marked `auto: true`**, and unknown logo fields are an error.
 - **Proportional templates scale numbers that variables and `=` expressions produce.**
 - **Render lockfiles are version 2.** Earlier releases cannot read them; version 1 lockfiles still verify.
+- **Noto Sans is the proofing face.** Text with no font draws in Noto Sans instead of DejaVu Sans, so default
+  renders and text widths change; DejaVu Sans stays bundled as a fallback. Name `DejaVuSans.ttf` on a layer, or
+  register it as the body font with `font-register {name, asset: "DejaVuSans.ttf", role: body}`, to keep it.
 - **Saved characters live in the object library.** `character-save` writes `object_library`; run `vixl convert` on
   a document with an old `character_library` to move its entries (the engine still reads them). `character-cycle`
   refuses walk, run, ride or wave on a rig without the bones the cycle moves.
