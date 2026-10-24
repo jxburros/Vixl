@@ -7,6 +7,25 @@ packages.
 
 ### Upgrading from 0.30
 
+- **More review findings by default.** The composition check adds `flat_hierarchy`, `single_weight`, `no_focal` and
+  `accent_unused`, and pages with a declared object run the `object` check, whose missing parts and gaps are `fix`
+  findings. A document that passed `vixl_check` or the `final` profile can now report findings or fail; waive a
+  review finding with a reason, or fix the design.
+- **Rolls and briefs pick colours differently.** A roll may draw zero, two or three accents (`@accent-2`,
+  `@accent-3`), and a brief's words weight its palette. `locks={accents: 1}` restores one accent; lock the palette
+  (`locks={palette: NAME}`) or create the document with `house_style: off` to keep a palette.
+- **`adapt-layout` recomposes an unedited layout document.** Pass `recompose: false` (CLI `--no-recompose`) for
+  the old proportional scaling.
+- **Organic forms and `object-plan` scaffolds get the house illustration finish** in a document with a house
+  style. Pass `illustration: "plain"` (or `outline: false`) per form, or create the document with
+  `house_style: off`. Under `outline: parts` the default outline width is 1.2% of the larger side; set
+  `outline_width` for the old 1%.
+- **Brands with several logos add only the logos marked `auto: true`**, and unknown logo fields are an error.
+- **Proportional templates scale numbers that variables and `=` expressions produce.**
+- **Render lockfiles are version 2.** Earlier releases cannot read them; version 1 lockfiles still verify.
+- **`layer-intent` `tags: ["optional"]` becomes `priority: optional`**, and a stack's `align: "middle"` becomes
+  `center`; both are reported under `normalized`.
+
 ### Typography and components
 
 - **Small caps.** `text_transform: "small-caps"` on `text` and `text-set` draws lowercase letters as small capitals
