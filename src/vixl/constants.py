@@ -59,3 +59,8 @@ STACK_EFFECTS = EFFECTS + ("lookup",)
 EFFECT_DEFAULTS = {**ARTISTIC_DEFAULTS, "white-balance": 100, "lookup": 1}
 
 BLENDS = ("normal", "multiply", "screen", "overlay", "darken", "lighten", "difference", "add", "subtract")
+
+# Operation types of feature modules that operations.py lists without importing them (registry.py names the
+# module that runs each).
+PACK_ASSET_TYPES = ("asset-place",)
+BRAND_TYPES = ("brand-logo",)

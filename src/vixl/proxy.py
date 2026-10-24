@@ -7,7 +7,6 @@ inputs are fixed-size canvas rasters (effect selections) fall back to a full ren
 """
 
 from copy import copy, deepcopy
-from dataclasses import replace
 
 from .constants import ARTISTIC_DEFAULTS
 from .design_render import repeat_items
@@ -113,7 +112,7 @@ def _scale_layer(layer, s):
         elif isinstance(expression, str):
             parsed = parse_constraint(expression)
             if parsed and parsed.offset and parsed.unit == "px":  # an em offset follows the scaled text size
-                constraints[anchor] = replace(parsed, offset=parsed.offset * s).text()
+                constraints[anchor] = parsed.text(number=f"{parsed.offset * s:+g}")
     for operand in layer.get("operands", []):
         _scale_layer(operand, s)
 

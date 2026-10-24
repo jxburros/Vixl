@@ -200,7 +200,8 @@ COMMON = {
                   "description": "Variable overrides {name: string|number|boolean}."},
     "target": {"type": "string", "description": "Layer ID or unique name."},
     "kind": {"type": "string", "enum": ["palettes", "templates", "guidance", "containers", "shapes", "suites",
-                                        "workflows"], "description": "Resource category."},
+                                        "workflows", "mockups", "objects", "assets"],
+             "description": "Resource category (assets: images {data_base64, media_type, credit, license})."},
     "start": {"type": "boolean", "default": False, "description": "Start a background worker after submitting."},
 }
 

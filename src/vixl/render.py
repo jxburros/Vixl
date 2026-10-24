@@ -401,7 +401,7 @@ def _resolved_layers(project, variables=None, subset=None):
 # of the referenced text's drawn size. The first group is always the reference.
 CONSTRAINT_REF = re.compile(
     r"(.+?)\.(?:(left|right|top|bottom|center-x|center-y)|line\[(-?\d{1,4})\]\.(start|end)|baseline\[(-?\d{1,4})\])"
-    r"(?:\s*([+-])\s*(\d{1,7}(?:\.\d{1,6})?|\.\d{1,6})\s*(px|em)?)?")
+    r"(?:\s*([+-])\s*(\d+(?:\.\d+)?|\.\d+)\s*(px|em)?)?")
 BOX_ANCHORS = ("left", "right", "top", "bottom", "center-x", "center-y")
 HORIZONTAL_ANCHORS = ("left", "right", "center-x")
 
@@ -420,16 +420,19 @@ class ConstraintRef:
     def horizontal(self):
         return self.anchor in HORIZONTAL_ANCHORS or self.anchor in ("line-start", "line-end")
 
-    def text(self, ref=None):
-        """The canonical spelling (``ref`` replaces the reference, e.g. a name with its stable ID)."""
+    def text(self, ref=None, number=None):
+        """The canonical spelling (``ref`` replaces the reference, e.g. a name with its stable ID; ``number`` is
+        the offset already formatted). The offset keeps its full precision."""
         if self.anchor in BOX_ANCHORS:
             where = self.anchor
         elif self.anchor == "baseline":
             where = f"baseline[{self.line}]"
         else:
             where = f"line[{self.line}].{self.anchor[5:]}"
-        offset = f"{self.offset:+g}{'em' if self.unit == 'em' else ''}" if self.offset else ""
-        return f"{ref or self.ref}.{where}{offset}"
+        if number is None and self.offset:
+            number = f"{int(self.offset):+d}" if float(self.offset).is_integer() else f"{self.offset:+}"
+        unit = "em" if self.unit == "em" and number else ""
+        return f"{ref or self.ref}.{where}{number or ''}{unit}"
 
 
 def parse_constraint(expression):
@@ -545,7 +548,7 @@ def resolve_layout(project, variables=None, layers=None):
                 "invalid_constraint", field="constraints")
         key = layer["id"]
         if key not in lines:
-            from .text_metrics import line_edges
+            from .text import line_edges
 
             lines[key] = line_edges(project, layer)
         found = lines[key]

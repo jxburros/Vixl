@@ -7,7 +7,7 @@ from vixl import Project, VixlError
 from vixl import resources
 from vixl.expressions import evaluate
 from vixl.render import parse_constraint, resolve_layout
-from vixl.text_metrics import line_edges
+from vixl.text import line_edges
 
 
 def lyric_scene(text, width=None):

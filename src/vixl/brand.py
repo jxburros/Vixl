@@ -32,7 +32,6 @@ PLACE_FIELDS = ("anchor", "margin", "width_fraction", "safe")
 # A logo placed by ``place`` without its own numbers: a fifth of the canvas width, 5 % of the shorter side in.
 PLACE_DEFAULTS = {"anchor": "top-left", "margin": 0.05, "width_fraction": 0.2, "safe": True}
 ELEMENT_NAME = re.compile(r"[A-Za-z0-9][\w-]{0,63}")
-TYPES = ("brand-logo",)
 
 
 def load(workspace=None, preset=None):

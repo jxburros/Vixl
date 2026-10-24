@@ -22,7 +22,6 @@ import warnings
 
 from .errors import VixlError, require
 
-TYPES = ("asset-place",)
 MEDIA_TYPES = ("png", "jpeg", "svg", "webp")
 EXTENSIONS = {"png": "png", "jpeg": "jpg", "svg": "svg", "webp": "webp"}
 PILLOW_FORMATS = {"png": "PNG", "jpeg": "JPEG", "webp": "WEBP"}

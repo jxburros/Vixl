@@ -35,8 +35,7 @@ from .scene import TYPES as SCENE_TYPES
 from .vector_paths import TYPES as VECTOR_TYPES
 from .merging import TYPES as MERGE_TYPES
 from .objects import TYPES as OBJECT_TYPES
-from .pack_assets import TYPES as PACK_ASSET_TYPES
-from .brand import TYPES as BRAND_TYPES
+from .constants import BRAND_TYPES, PACK_ASSET_TYPES
 from .accessibility import TYPES as ACCESSIBILITY_TYPES
 
 from . import plugins
