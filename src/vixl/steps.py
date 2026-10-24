@@ -159,12 +159,14 @@ def roll(session, project, *, purpose: str | None = None, mood: str | None = Non
          locks: Annotated[dict | None, Field(description="Fix choices such as palette or layout")] = None,
          slots: Annotated[dict | None, Field(description="Layout content, e.g. {title: Launch}")] = None,
          unfilled: Annotated[Literal["omit", "blank"] | None, Field(
-             description="Unfilled slots: omit (default with slots) or [Label] blanks")] = None):
+             description="Unfilled slots: omit (default with slots) or [Label] blanks")] = None,
+         replace: Annotated[bool, Field(description="Remove the layers of the document's previous layout first, "
+                                                    "to re-roll a document that already has one")] = False):
     """Roll a coherent direction honouring brand.json and apply it: install the fonts and apply the layout."""
     from .typefaces import roll_document
 
     return roll_document(project, seed=seed, purpose=purpose, mood=mood, locks=locks, apply=True, slots=slots,
-                         unfilled=unfilled, variety=variety)
+                         unfilled=unfilled, variety=variety, replace=replace)
 
 
 STEPS = {"import-image": import_image, "import-document": import_document, "import-font": import_font,
