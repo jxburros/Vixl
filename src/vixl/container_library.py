@@ -159,6 +159,37 @@ def expand(containers, templates):
                  "frame": [0.07, 0.36, 0.86, 0.56], "min_size": 10},
             ],
         ),
+        # A tinted note: a panel tinted toward the accent with an accent rule down its left side. The optional icon
+        # (a symbol or emoji) sits in the top corner, so the copy keeps its place with or without one.
+        "callout": (
+            {"title": "[Note]", "body": "[What the reader should know]", "icon": ""},
+            [
+                shape("panel", [0, 0, 1, 1], "rounded-rectangle", "mix(@surface, @accent, 12%)", radius=16),
+                shape("rule", [0.04, 0.12, 0.012, 0.76]),
+                text("title", [0.09, 0.12, 0.70, 0.22], 28),
+                text("icon", [0.80, 0.10, 0.13, 0.24], 40, "@accent-text", align="right", hide_if_empty=True),
+                text("body", [0.09, 0.42, 0.82, 0.46], 20),
+            ],
+        ),
+        # A header or footer strip: accent ground, the text on it and an optional detail at the far end. Text frames
+        # start at the ink top, so each sits about one line high around the strip's middle.
+        "band": (
+            {"title": "[Band text]", "detail": ""},
+            [
+                shape("band", [0, 0, 1, 1]),
+                text("title", [0.04, 0.33, 0.60, 0.34], 40, "@on-accent"),
+                text("detail", [0.66, 0.38, 0.30, 0.24], 24, "@on-accent", align="right", hide_if_empty=True),
+            ],
+        ),
+        # A label between two rules, as a section divider ("Chapter two", "or"); the label's capitals centre on them.
+        "labelled-rule": (
+            {"label": "[Label]"},
+            [
+                shape("rule-left", [0, 0.48, 0.30, 0.04]),
+                text("label", [0.33, 0.39, 0.34, 0.36], 24, align="center"),
+                shape("rule-right", [0.70, 0.48, 0.30, 0.04]),
+            ],
+        ),
     }
     for name, (defaults, ops) in definitions.items():
         containers[name] = {
@@ -179,8 +210,12 @@ def expand(containers, templates):
             "operations": ops,
         }
     # A data list holds the caller's figures, so a roll never picks it as the document's component (and the
-    # rolled pool, which seeds draw from, stays as it was).
-    containers["key-value-list"]["safe"] = False
+    # rolled pool, which seeds draw from, stays as it was). The finishing pieces are placed on purpose too.
+    for name in ("key-value-list", "callout", "band", "labelled-rule"):
+        containers[name]["safe"] = False
+    # Strips are wide and short.
+    containers["band"].update(width=960, height=160, min_width=320, min_height=64)
+    containers["labelled-rule"].update(width=720, height=96, min_width=240, min_height=40)
     # Variants retain identical variable names and semantic children, while changing placement.
     for name in ("testimonial", "feature-icon", "profile", "product-card"):
         original = containers[name]["operations"]

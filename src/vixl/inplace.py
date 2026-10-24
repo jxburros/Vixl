@@ -42,7 +42,7 @@ USE_INSTEAD = {
 
 SHAPE_FIELDS = (*CATALOG_FIELDS, *STROKE_FIELDS, "shape", "path", "fill", "stroke", "stroke_width", "radius", "sides", "inner_radius", "start_angle", "end_angle", "closed", "trim_start", "trim_end")
 TEXT_FIELDS = ("text", "size", "color", "align", "spacing", "font", "hide_if_empty", "tracking", "text_transform", "stage",
-               "tabs")
+               "tabs", "hanging_punctuation")
 
 
 def target_schema(kind):
@@ -103,7 +103,8 @@ def execute(project, op):
     elif kind == "gradient":
         edit_gradient(layer, op)
     else:
-        fields = {key: op[key] for key in TEXT_FIELDS if key in op}
+        # accent_words is an edit (it styles spans), not a stored field.
+        fields = {key: op[key] for key in (*TEXT_FIELDS, "accent_words") if key in op}
         if fields:
             apply(project, {"type": "text-set", "target": ident, **fields})
     if kind != "text" and ("width" in op or "height" in op):

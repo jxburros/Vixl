@@ -546,6 +546,10 @@ def execute(project, op):
             require(not {"x", "y"} & set(op), "within positions the text; drop x and y (or use place with within "
                     "and an anchor)", field="within")
             place_within(project, layer["id"], op["within"])
+        if kind == "text" and op.get("accent_words") is not None:
+            from .richtext import accent_layer
+
+            accent_layer(project, layer, op["accent_words"])
         return
     if kind == "canvas":
         c = project.state["canvas"]
@@ -708,6 +712,10 @@ def execute(project, op):
             # A text-layout box keeps its wrapping dimensions; plain text re-fits its content.
             layer["width"], layer["height"], _ = text_metrics(project, layer)
             layer["auto_size"] = True
+        if op.get("accent_words") is not None:
+            from .richtext import accent_layer
+
+            accent_layer(project, layer, op["accent_words"])
     elif kind in ("rotate", "pivot", "flip") and layer["type"] == "field":
         raise VixlError("invalid_operation", f"{kind} does not apply to fields: PDF form fields are upright rectangles",
                         field="target")

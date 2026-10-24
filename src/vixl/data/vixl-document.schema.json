@@ -1170,7 +1170,11 @@
     },
     "text_transform": {
      "type": "string",
-     "description": "text: none, uppercase, lowercase or capitalize, applied when drawing."
+     "description": "text: none, uppercase, lowercase, capitalize or small-caps, applied when drawing."
+    },
+    "hanging_punctuation": {
+     "type": "boolean",
+     "description": "text: punctuation at the line edges hangs outside the text box."
     },
     "tabs": {
      "type": "array",

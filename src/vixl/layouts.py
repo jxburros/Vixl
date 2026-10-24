@@ -366,17 +366,18 @@ class Builder:
     def accent_headline(self, layer, content, color):
         """Set the headline's accent words in the accent text color, through rich-text spans: whole words,
         matched without regard to case. Copy already set on the accent color keeps one color."""
+        from .richtext import ACCENT, accent_spans
+
         for word in self.accent_words:
-            found = list(re.finditer(rf"(?<!\w){re.escape(word.strip())}(?!\w)", content, re.IGNORECASE))
+            found, _ = accent_spans(content, [word])
             if not found:
                 continue
             if color != "@ink":
                 self.accent_skipped.add(word)
                 continue
             self.accented.add(word)
-            for match in found:
-                self.add({"type": "text-style", "target": layer, "start": match.start(), "end": match.end(),
-                          "color": "@accent-text"})
+            for start, end in found:
+                self.add({"type": "text-style", "target": layer, "start": start, "end": end, **ACCENT})
 
     def measure_cap(self, role, content, size, width):
         """Keep a readable measure: a heavy line holds at least ~10 (display) or 14 (headings) characters,

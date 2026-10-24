@@ -249,9 +249,10 @@ def gradient_edges(project, layer, box, width, height, opacity=1.0, threshold=0.
     return [side for side in ("top", "bottom", "left", "right") if inside[side] and edges[side].max() > threshold]
 
 
-def geometry_bounds(layer):
+def geometry_bounds(layer, project=None):
     """(left, top, right, bottom) of what the layer actually draws, in its own box's pixel space
     (the origin is the box's top-left corner). Shapes report their path geometry including stroke,
+    text set with hanging punctuation (given the ``project``) its box widened by the hung marks,
     every other layer fills its box. Checks use
     this instead of the layer box so a path drawn smaller than its (often full-canvas) box is judged
     by what it paints."""
@@ -259,6 +260,15 @@ def geometry_bounds(layer):
 
     width, height = rest_size(layer)
     box = (0.0, 0.0, float(width), float(height))
+    if layer["type"] == "text" and project is not None and layer.get("hanging_punctuation"):
+        from .richtext import hung_reach
+        from .text import UnsupportedText
+
+        try:
+            reach = hung_reach(project, layer)
+        except UnsupportedText:
+            reach = None
+        return (-reach[0], 0.0, float(width) + reach[1], float(height)) if reach else box
     if layer["type"] != "shape" or layer.get("repeat"):
         return box
     try:
@@ -319,9 +329,10 @@ def clipped_geometry(project, layer, bounds, tolerance=2.0):
             and (room_y if side in ("top", "bottom") else room_x) < past[side] - tolerance]
 
 
-def canvas_projection(resolved, local_bounds):
+def canvas_projection(resolved, local_bounds, project=None):
     """Canvas-space integer bounds, text scale factors and group matrices for every layer.
-    Shared by the design checks, guide checks and fillable form export, so they agree."""
+    Shared by the design checks, guide checks and fillable form export, so they agree. With the
+    ``project``, the geometry bounds of text count its hung punctuation."""
     bounds, scales, matrices, exact, drawn = {}, {}, {}, {}, {}
     for item in resolved.values():
         matrix = group_matrix(item, resolved, local_bounds)
@@ -335,7 +346,7 @@ def canvas_projection(resolved, local_bounds):
         rw, rh = rest_size(item)
         placed = matrix @ layer_matrix(item, local_bounds[item["id"]])
         exact[item["id"]] = envelope(affine_corners((0, 0, rw, rh), placed))
-        gl, gt, gr, gb = geometry_bounds(item)
+        gl, gt, gr, gb = geometry_bounds(item, project)
         drawn[item["id"]] = envelope(affine_corners((gl, gt, gr - gl, gb - gt), placed))
         scales[item["id"]] = float(np.linalg.norm(matrix[:2, 1]))
         matrices[item["id"]] = matrix
@@ -571,7 +582,7 @@ def check_design(
         return all(x["visible"] and x["opacity"] > 0 for x in (item, *ancestors(item)))
 
     # Layout bounds are local to the immediate group; project them onto the canvas.
-    projection = canvas_projection(resolved, local_bounds)
+    projection = canvas_projection(resolved, local_bounds, candidate)
     bounds = projection["bounds"]
     text_scales = projection["scales"]
     layers = [

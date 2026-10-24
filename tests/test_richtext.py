@@ -172,3 +172,22 @@ def test_cli_compiles_rich_text_commands():
         "type": "text-style", "target": "t", "match": "there", "bold": True, "color": "red"}
     assert compile_command(["text-style", "t", "--paragraphs", "0,2", "--list", "number", "--number-start", "5"]) == {
         "type": "text-style", "target": "t", "paragraphs": [0, 2], "list": "number", "number_start": 5}
+    assert compile_command(["text-style", "t", "--match", "quay", "--small-caps"]) == {
+        "type": "text-style", "target": "t", "match": "quay", "small_caps": True}
+
+
+def test_accent_and_small_caps_flags():
+    spans, _ = parse_markdown("[Winter]{accent} [sale]{accent-bg} [note]{small-caps bold} [x]{small_caps}")
+    styled = {span["text"]: {k: v for k, v in span.items() if k != "text"} for span in spans}
+    assert styled["Winter"] == {"color": "@accent-text"}
+    assert styled["sale"] == {"highlight": "@accent", "color": "@on-accent"}
+    assert styled["note"] == {"small_caps": True, "bold": True} and styled["x"] == {"small_caps": True}
+    with pytest.raises(VixlError, match="flags are"):
+        parse_markdown("[x]{accented}")
+    # The accent flags name palette roles: a document without them is told how to get them.
+    with pytest.raises(VixlError, match="palette-apply"):
+        Project(300, 100).apply({"type": "rich-text", "markdown": "[Winter]{accent} quay"})
+    p = Project(400, 100)
+    p.apply([{"type": "palette-apply", "name": "slate"},
+             {"type": "rich-text", "name": "t", "markdown": "[Winter]{accent} [sale]{accent-bg} quay", "size": 30}])
+    assert p.layer("t")["rich"]["spans"][2]["highlight"] == "@accent" and ink(p.render()) > 0

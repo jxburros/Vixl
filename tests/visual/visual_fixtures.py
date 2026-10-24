@@ -10,9 +10,11 @@ from vixl import Project
 from vixl.assets import add_image
 
 FIXTURES = {}
-SVG_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "gradients", "text_plain", "groups", "dashes_fitted")
-PDF_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "text_plain", "dashes_fitted")
-PPTX_FIXTURES = ("shapes_and_strokes", "text_plain", "groups", "dashes_fitted")
+SVG_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "gradients", "text_plain", "groups", "dashes_fitted",
+                "text_small_caps", "text_hanging_quote")
+PDF_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "text_plain", "dashes_fitted", "text_small_caps",
+                "text_hanging_quote")
+PPTX_FIXTURES = ("shapes_and_strokes", "text_plain", "groups", "dashes_fitted", "text_small_caps", "text_hanging_quote")
 
 
 def fixture(builder):
@@ -364,3 +366,41 @@ def finish_glow_shadow():
         {"type": "look", "target": "button", "look": "soft-shadow", "amount": 0.8},
     ])
     return p
+
+
+@fixture
+def text_small_caps():
+    # Small caps synthesized from capitals (DejaVu Sans has no smcp), from a font's own small capitals (Noto Sans
+    # has smcp), and on one rich-text span.
+    from pathlib import Path
+
+    import vixl
+    from vixl.fonts import import_font
+
+    p = doc(220, 150)
+    import_font(p, str(Path(vixl.__file__).parent / "data" / "NotoSans-Regular.ttf"), "noto")
+    p.apply([
+        {"type": "text", "text": "Small Caps", "name": "synthesized", "size": 30, "x": 12, "y": 10,
+         "color": "#264653", "text_transform": "small-caps"},
+        {"type": "text", "text": "Small Caps", "name": "smcp", "font": "noto", "size": 30, "x": 12, "y": 54,
+         "color": "#264653", "text_transform": "small-caps"},
+        {"type": "rich-text", "name": "span", "markdown": "In [small caps]{small-caps} now", "size": 16, "x": 12,
+         "y": 108, "color": "#333333"},
+    ])
+    return p
+
+
+@fixture
+def text_hanging_quote():
+    # Hanging punctuation: the opening quote of a boxed paragraph sits left of the margin rule, the letters on it;
+    # the closing quote of a right-aligned line hangs past the right rule.
+    return doc(220, 150, ops=[
+        rect("margin-left", 22, 8, 1, 134, "#e07a5f"),
+        rect("margin-right", 198, 8, 1, 134, "#e07a5f"),
+        {"type": "text", "text": "“Hang the quote,” she said, “and the line reads straight.”",
+         "name": "quote", "size": 18, "x": 23, "y": 12, "color": "#1d3557", "hanging_punctuation": True},
+        {"type": "text-layout", "target": "quote", "width": 175},
+        {"type": "text", "text": "— “The end.”", "name": "signoff", "size": 18, "x": 23, "y": 108,
+         "color": "#1d3557", "align": "right", "hanging_punctuation": True},
+        {"type": "text-layout", "target": "signoff", "width": 175},
+    ])

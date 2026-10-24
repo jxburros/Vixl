@@ -33,6 +33,7 @@ class Glyph:
     advance: float
     data: bytes = b""
     text: str = ""  # The characters this glyph starts (its HarfBuzz cluster), for text extraction.
+    scale: float = 1.0  # Its size as a multiple of the shaped size: below 1 for synthesized small capitals.
 
 
 @dataclass
@@ -398,7 +399,99 @@ def script_tags(chars):
     return tags
 
 
-def shape(data, text, size):
+@lru_cache(maxsize=64)
+def has_feature(data, tag):
+    """Whether the font ``data`` has the OpenType substitution feature ``tag`` (such as ``smcp``)."""
+    from .emojis import is_glyph
+
+    if is_glyph(data):
+        return False
+    outline = face(data)[0]
+    if "GSUB" not in outline or outline["GSUB"].table.FeatureList is None:
+        return False
+    return any(record.FeatureTag == tag for record in outline["GSUB"].table.FeatureList.FeatureRecord)
+
+
+# Small capitals for a font without its own (no OpenType smcp): each lowercase letter is drawn as its capital at
+# this share of the size, with this share of the size added after it, since shrunken capitals look light and tight.
+SMALL_CAPS_SCALE = 0.7
+SMALL_CAPS_TRACKING = 0.05
+
+
+def _lowered(char):
+    """Whether small caps draw ``char`` as a small capital: a lowercase letter whose capital is one character."""
+    upper = char.upper()
+    return upper != char and len(upper) == 1
+
+
+def _synthesized_small_caps(font_data, segment, size, rtl, tag):
+    """``(glyphs, advance)`` of one font run in synthesized small caps: runs of lowercase letters are shaped as
+    capitals at ``SMALL_CAPS_SCALE`` of the size and spaced by ``SMALL_CAPS_TRACKING``, the rest as it is. A small
+    capital's glyph carries the capital as its text, which is what it draws (and what a PDF maps it to)."""
+    pieces = []
+    for char in segment:
+        lowered = _lowered(char) or (bool(pieces) and pieces[-1][0] and unicodedata.category(char).startswith("M"))
+        if pieces and pieces[-1][0] == lowered:
+            pieces[-1][1].append(char)
+        else:
+            pieces.append((lowered, [char]))
+    if rtl:
+        pieces.reverse()
+    glyphs, cursor = [], 0.0
+    for lowered, chars in pieces:
+        text = "".join(chars)
+        if not lowered:
+            found, width = _shape_run(font_data, text, size, rtl, tag)
+        else:
+            found, width = _shape_run(font_data, text.upper(), size * SMALL_CAPS_SCALE, rtl, tag)
+            extra = size * SMALL_CAPS_TRACKING
+            count = 0
+            for glyph in found:
+                glyph.scale = SMALL_CAPS_SCALE
+                if glyph.text:
+                    count += 1
+                glyph.x += extra * (count - 1)
+            width += extra * count
+        for glyph in found:
+            glyph.x += cursor
+        glyphs.extend(found)
+        cursor += width
+    return glyphs, cursor
+
+
+def _shape_run(font_data, segment, size, rtl, tag, features=None):
+    """``(glyphs, advance)`` of one run of one script and direction in one font."""
+    outline, font = face(font_data)
+    names, factor = outline.getGlyphOrder(), size / font.face.upem
+    buffer = hb.Buffer()
+    buffer.add_str(segment)
+    buffer.direction = "rtl" if rtl else "ltr"
+    buffer.script = tag
+    buffer.guess_segment_properties()
+    hb.shape(font, buffer, features)
+    starts = sorted({info.cluster for info in buffer.glyph_infos})
+    ends = dict(zip(starts, starts[1:] + [len(segment)]))
+    seen, glyphs, cursor = set(), [], 0.0
+    for info, pos in zip(buffer.glyph_infos, buffer.glyph_positions):
+        first = info.cluster not in seen
+        seen.add(info.cluster)
+        glyphs.append(
+            Glyph(
+                names[info.codepoint],
+                cursor + pos.x_offset * factor,
+                -pos.y_offset * factor,
+                pos.x_advance * factor,
+                font_data,
+                segment[info.cluster : ends[info.cluster]] if first else "",
+            )
+        )
+        cursor += pos.x_advance * factor
+    return glyphs, cursor
+
+
+def shape(data, text, size, small_caps=False):
+    """``(glyphs, advance)`` of ``text`` at ``size``. ``small_caps`` sets lowercase letters as small capitals: the
+    font's own (OpenType ``smcp``) in each font that has them, synthesized in the others."""
     from .emojis import split_context
 
     fonts, protected, placeholders = split_context(data, text)
@@ -424,7 +517,7 @@ def shape(data, text, size):
                     glyphs.append(Glyph("emoji", cursor, 0, size, art, original))
                     cursor += size
                 else:
-                    found, width = shape(fonts, piece, size)
+                    found, width = shape(fonts, piece, size, small_caps)
                     for glyph in found:
                         glyph.x += cursor
                     glyphs.extend(found)
@@ -436,31 +529,17 @@ def shape(data, text, size):
         if level % 2:
             segments.reverse()
         for font_data, segment in segments:
-            outline, font = face(font_data)
-            names, factor = outline.getGlyphOrder(), size / font.face.upem
-            buffer = hb.Buffer()
-            buffer.add_str(segment)
-            buffer.direction = "rtl" if level % 2 else "ltr"
-            buffer.script = tag
-            buffer.guess_segment_properties()
-            hb.shape(font, buffer)
-            starts = sorted({info.cluster for info in buffer.glyph_infos})
-            ends = dict(zip(starts, starts[1:] + [len(segment)]))
-            seen = set()
-            for info, pos in zip(buffer.glyph_infos, buffer.glyph_positions):
-                first = info.cluster not in seen
-                seen.add(info.cluster)
-                glyphs.append(
-                    Glyph(
-                        names[info.codepoint],
-                        cursor + pos.x_offset * factor,
-                        -pos.y_offset * factor,
-                        pos.x_advance * factor,
-                        font_data,
-                        segment[info.cluster : ends[info.cluster]] if first else "",
-                    )
-                )
-                cursor += pos.x_advance * factor
+            rtl = bool(level % 2)
+            if not small_caps or not any(_lowered(char) for char in segment):
+                found, width = _shape_run(font_data, segment, size, rtl, tag)
+            elif has_feature(font_data, "smcp"):
+                found, width = _shape_run(font_data, segment, size, rtl, tag, {"smcp": True})
+            else:
+                found, width = _synthesized_small_caps(font_data, segment, size, rtl, tag)
+            for glyph in found:
+                glyph.x += cursor
+            glyphs.extend(found)
+            cursor += width
     return glyphs, cursor
 
 
