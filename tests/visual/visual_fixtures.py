@@ -364,3 +364,47 @@ def finish_glow_shadow():
         {"type": "look", "target": "button", "look": "soft-shadow", "amount": 0.8},
     ])
     return p
+
+
+@fixture
+def atmosphere_scene():
+    # One night harbor with every atmosphere operation: stars, a haze glow, fog behind the near hill, string lights,
+    # bokeh in the water and a reflection of what stands above the waterline. No text, so no font dependency.
+    return doc(256, 192, "#0b1730", ops=[
+        {"type": "gradient", "name": "sky", "width": 256, "height": 130, "direction": "vertical",
+         "stops": [{"offset": 0, "color": "#07101f"}, {"offset": 1, "color": "#35507a"}]},
+        {"type": "solid", "name": "water", "x": 0, "y": 130, "width": 256, "height": 62, "color": "#0d1a30"},
+        {"type": "star-field", "region": [0, 0, 256, 100], "count": 46, "seed": 5, "sparkles": 3},
+        {"type": "shape", "shape": "triangle", "name": "far-hill", "x": 10, "y": 62, "width": 180, "height": 68, "fill": "#2e4b78"},
+        {"type": "shape", "shape": "triangle", "name": "near-hill", "x": 120, "y": 86, "width": 150, "height": 44, "fill": "#0f1d36"},
+        {"type": "haze", "form": "fog", "y": 116, "height": 36, "layers": 3, "density": 0.5, "color": "#aebfd8",
+         "behind": ["near-hill"], "seed": 4},
+        {"type": "shape", "shape": "lighthouse", "name": "lighthouse", "x": 30, "y": 58, "width": 22, "height": 72, "fill": "#0a1424"},
+        {"type": "shape", "shape": "ellipse", "name": "lamp", "x": 37, "y": 67, "width": 8, "height": 8, "fill": "#ffcf6e"},
+        {"type": "haze", "target": "lamp", "strength": 0.7},
+        {"type": "reflection", "horizon": 130, "squash": 0.8, "ripple": 0.3, "seed": 1, "tint": "#13284a"},
+        {"type": "string-lights", "from": [-8, 14], "to": [264, 22], "sag": 16, "count": 7, "size": 9,
+         "colors": ["#f4b942", "#e8743b", "#f7d488"], "seed": 2},
+        {"type": "bokeh", "region": [0, 134, 256, 58], "count": 7, "size": [10, 26], "seed": 3},
+    ])
+
+
+@fixture
+def catalog_motif_shapes():
+    # The motif shapes at a large and a small size: they must read as the thing at both.
+    kinds = [("microphone", 0.43), ("snowflake", 1.0), ("leaf", 0.63), ("book", 1.335), ("balloon", 0.585)]
+    ops = []
+    for row, (first, last) in enumerate(((0, 3), (3, 5))):
+        x = 10
+        for kind, aspect in kinds[first:last]:
+            width = round(96 * aspect)
+            ops.append({"type": "shape", "shape": kind, "name": f"{kind}-large", "x": x, "y": 8 + 108 * row,
+                        "width": width, "height": 96, "fill": "#14263b"})
+            x += width + 16
+    x = 10
+    for kind, aspect in kinds:
+        width = round(28 * aspect)
+        ops.append({"type": "shape", "shape": kind, "name": f"{kind}-small", "x": x, "y": 224, "width": width,
+                    "height": 28, "fill": "#c1121f"})
+        x += width + 16
+    return doc(256, 256, "#f4efe6", ops=ops)
