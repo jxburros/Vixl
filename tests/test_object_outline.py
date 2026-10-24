@@ -177,6 +177,16 @@ def test_seam_weight_and_stale_findings():
     assert "gone" in gone["message"] and gone["measured"]["actual"] == "missing"
 
 
+def test_the_outline_layer_does_not_bridge_a_gap_for_either_check():
+    p = shroom()
+    outline(p, outline="silhouette")
+    p.apply({"type": "move", "target": "shroom-stem", "x": 60, "y": 150})
+    [gap] = found(p, "object.gap")
+    assert "shroom/stem" in gap["message"]
+    connected = [i for i in p.check(checks=["connected"])["issues"] if i["check"] == "connected"]
+    assert [i["layers"] for i in connected] == [["shroom-stem"]]
+
+
 def test_duplicate_and_unset_carry_the_outline_state():
     p = shroom(stem_stroke=("#ff0000", 5))
     outline(p, outline="silhouette", interior="hide")

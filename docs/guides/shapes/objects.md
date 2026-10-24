@@ -13,8 +13,8 @@ its identity in SVG, PowerPoint and PSD files.
 | Term | Meaning |
 | --- | --- |
 | Domain › class › kind | The taxonomy: `organic › animal › mammal › dog`, `constructed › instrument › guitar`. A kind inherits every field from its parent. |
-| Object | A group with `object: {kind, label?, notes?, references?}`. A standard character is a `person` without a record of its own: its `character_part` names read as person parts. |
-| Part | A layer inside the object with `object_part: {name, side?}`, such as `{name: leg, side: left}`. |
+| Object | A group with `object: {kind, label?, notes?, references?}`, plus its [outline policy](#outline-policy) once one is applied. A standard character is a `person` without a record of its own: its `character_part` names read as person parts. |
+| Part | A layer inside the object with `object_part: {name, side?, depth?}`, such as `{name: leg, side: left}`. |
 | Sub-object | An object nested inside another object's group. Its parts belong to it, not to the outer object. |
 | Path | `dog/head`, `dog/leg[left]`, `person/guitar/neck`: wherever a layer name is accepted. |
 

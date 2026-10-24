@@ -208,7 +208,7 @@ def _outline(piece):
     from shapely.ops import unary_union
 
     from .geometry import path_polygons
-    from .object_outline import _area
+    from .object_outline import filled_area
 
     key = (piece.shape, piece.width, piece.height, piece.rotation, repr(sorted(piece.extra.items())),
            piece.stroke_width if piece.stroke else None)
@@ -224,7 +224,8 @@ def _outline(piece):
         else:
             layer = {"type": "shape", "shape": piece.shape, "width": w, "height": h, "fill": "#000000",
                      **piece.extra}
-            region = _area(layer, np.array([[1, 0, -w / 2], [0, 1, -h / 2], [0, 0, 1]], float), _blank_state())
+            centred = np.array([[1, 0, -w / 2], [0, 1, -h / 2], [0, 0, 1]], float)
+            region = filled_area(layer, centred, _blank_state())
             if region is None:
                 from shapely.geometry import box
 
@@ -235,10 +236,10 @@ def _outline(piece):
     return _SHAPES[key]
 
 
-def _placed(piece, dx=0, dy=0):
+def _placed(piece):
     from shapely import affinity
 
-    return affinity.translate(_outline(piece), piece.x + piece.width / 2 + dx, piece.y + piece.height / 2 + dy)
+    return affinity.translate(_outline(piece), piece.x + piece.width / 2, piece.y + piece.height / 2)
 
 
 def _overlaps(a, b, overlap):
@@ -366,7 +367,7 @@ def _default_shape(name, build, organic):
     return "ellipse" if organic else "rounded-rectangle"
 
 
-def _part_pieces(fields, merged, view):
+def _part_pieces(merged, view, organic):
     """Pieces for a kind without an example: required parts and placed parts, ``count`` of each."""
     build = merged.get("build", {})
     placed = {item["part"] for item in build.get("placements", [])}
@@ -375,7 +376,7 @@ def _part_pieces(fields, merged, view):
         name, count = part["name"], part.get("count", 1)
         if not part.get("required") and name not in placed:
             continue
-        shape = _default_shape(name, build, fields["organic"])
+        shape = _default_shape(name, build, organic)
         spread = any(item.get("spread") for item in build.get("placements", []) if item["part"] == name)
         if view == "side" and name in PAIRED_LIMBS and count % 2 == 0:
             made = [Piece(name, shape, 0, 0, depth=depth) for _ in range(count // 2) for depth in ("far", "near")]
@@ -953,13 +954,13 @@ def plan(request, project=None, depth=0, taken=()):
         pieces, object_size = _example_pieces(build.get("example") or [], parts, primitive)
         missing = [part for part in fields.get("parts", []) if part.get("required") and part["name"] not in pieces]
         if pieces and missing:
-            pieces.update(_part_pieces({"organic": organic}, {**fields, "parts": missing}, view))
+            pieces.update(_part_pieces({**fields, "parts": missing}, view, organic))
         if not pieces:
-            pieces = _part_pieces({"organic": organic}, fields, view)
+            pieces = _part_pieces(fields, view, organic)
         if not pieces and fields.get("parts"):
             # Every part is optional and unplaced (a coral's branches): plan them all.
-            pieces = _part_pieces({"organic": organic}, {**fields, "parts": [
-                {**part, "required": True} for part in fields["parts"]]}, view)
+            pieces = _part_pieces({**fields, "parts": [{**part, "required": True} for part in fields["parts"]]},
+                                  view, organic)
         below = sorted(name for name, entry in kinds.items() if entry.get("parent") == kind)
         require(pieces, f"The {kind} kind lists no parts to plan" + (
             f"; plan one of its kinds ({', '.join(below[:8])})" if below else

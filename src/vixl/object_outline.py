@@ -191,8 +191,9 @@ def _flatten(contour, transform):
     return [(float(x), float(y)) for x, y in moved[:2].T]
 
 
-def _area(item, transform, state):
-    """The area ``item`` fills (no stroke) in its object's frame, as a shapely geometry, or None."""
+def filled_area(item, transform, state):
+    """The area ``item`` fills (no stroke), mapped by ``transform``, as a shapely geometry; None for line work, text,
+    groups and adjustments. A layer whose outline cannot be traced (an image, a pathfinder with strokes) is its box."""
     from .booleans import Unsupported
     from .pathfinder_geometry import _close, pathfinder_outline, shape_contours
     from .render import rest_size
@@ -252,7 +253,7 @@ def silhouette(project, group, children=None):
         if item["id"] not in wanted or not _shown(item, index, group["id"]):
             continue
         transform = inner @ group_matrix(item, index, local) @ layer_matrix(item, local[item["id"]])
-        region = _area(item, transform, project.state)
+        region = filled_area(item, transform, project.state)
         if region is not None:
             regions.append(region)
     if not regions:
