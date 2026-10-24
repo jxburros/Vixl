@@ -183,6 +183,15 @@ shape per part, then `group`, `object` and one `object` `action: part` per part 
 - **Sub-objects**: `with: ["guitar"]` (or `{kind, name?, height?, anchor?, at?}`: `anchor` is a point of one of
   the object's parts such as `torso.center`, default `object.center`; `height` defaults to half the object's)
   plans each one the same way and nests it in front of the parts.
+- **House illustration finish**: in a document that has a house style (not `house_style: off`, not a bare
+  `Project(width, height)`) the batch ends with the house style's flat vector finish
+  ([decision F5](../../project/house-style.md#f5-illustration-defaults), data `craft.illustration`): an `irregular`
+  `subtle` wobble on the filled parts, one `outline` with policy `parts`, `@ink` and a width of 1.2% of the object's
+  larger side (parts too small for a line that wide, such as a person's eyes and mouth, get `outline: none`, as a flat
+  illustration draws them), now and then (15%, decided by `seed`, else by the kind and name) `outline_lines` for a
+  double or triple line, and a hard `drop-shadow` (blur 0, ink, offset to the bottom right, as the light is at the top
+  left) on the object. A sub-object is outlined too but leaves the shadow to its object. `illustration: "plain"` (or
+  `outline: false`, reported under `normalized`) returns the bare scaffold; the `figure-plan` template never gets it.
 - **Result**: `apply: false` (the default) returns `operations`, `parts` (layer names by part), `box`, `view` and
   `next_steps` (the approach, one step per part naming its placeholder and placement, then outline and check) and
   changes nothing; `apply: true` applies the batch as one undo step.
@@ -194,7 +203,8 @@ most connections.
 ## Outline policy
 
 Whether an object has one outline around its silhouette, a line around every part or none is its **outline
-policy**, `{type: object, action: outline, target: NAME, outline, interior, outline_color, outline_width}`:
+policy**, `{type: object, action: outline, target: NAME, outline, interior, outline_color, outline_width,
+outline_lines}`:
 
 | `outline` | What is drawn |
 | --- | --- |
@@ -207,9 +217,20 @@ policy**, `{type: object, action: outline, target: NAME, outline, interior, outl
 {"type": "object", "action": "outline", "target": "dog", "outline": "silhouette", "interior": "thin", "outline_width": 4}
 ```
 
-- `outline_color` defaults to `#1d1d24` and `outline_width` to 1% of the object's larger side; the line scales with
-  the object. The outline layer is marked `generated: {by: object-outline}` and drawn as an unfilled stroke in PNG,
-  SVG, PDF and PowerPoint alike.
+```json
+{"type": "object", "action": "outline", "target": "dog", "outline": "parts", "outline_width": 4,
+ "outline_lines": [{"gap": 2.5, "width": 2}, {"gap": 2.5, "width": 2}]}
+```
+
+- `outline_color` defaults to `#1d1d24` and `outline_width` to 1% of the object's larger side under `silhouette` and
+  1.2% under `parts` (the house style's part line, `craft.illustration.outline`); the line scales with the object.
+  The outline layer is marked `generated: {by: object-outline}` and drawn as an unfilled stroke in PNG, SVG, PDF and
+  PowerPoint alike.
+- `outline_lines: [{gap, width}]` (up to three) adds thin lines inside the outline, parallel to it: a double or
+  triple line. `gap` is the space in pixels from the outline's inner edge (or the line before) and `width` the line's
+  stroke width. Each is a generated `NAME/outline-1` … path layer on top of the object, the silhouette of what the
+  parts fill pulled in; a shape too thin for a line ends the series. They are redrawn with the outline and go with
+  `outline-remove`; `outline_lines: []` clears them.
 - The original part strokes are stored on the object record (`outlined`); `action: outline-remove` (or `outline:
   none`, or `unset`) puts them back and deletes the outline layer. Running `outline` again replaces the policy.
 - Open lines and unfilled shapes (whiskers, strings, an open path: anything `geometry.default_fill` leaves

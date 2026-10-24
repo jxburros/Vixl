@@ -166,6 +166,32 @@ packages.
 
 ### Illustration defaults
 
+- **New organic forms and `object-plan` scaffolds are drawn flat vector in a document with a house style (#427,
+  breaking).** The decision (house style F5) is data, `craft.illustration` in `house-style.json`, read through
+  `house_style.illustration()` and applied by `craft.illustration_style(project, box, rng)`: ink part lines (outline
+  policy `parts`) 1.2% of the object's larger side, a hard offset `drop-shadow` (blur 0, ink, 35% opacity, 3% of the
+  larger side toward the bottom right, as the light is at the top left), a `subtle` `irregular` wobble and, on about
+  15% of forms (the seed decides), one or two thin extra lines inside the outline. In `organic`, every filled part
+  gets the ink line (a part of small elements a finer one, so seeds and spots are not drowned, and those parts are not
+  wobbled), the form gets the shadow, and the extra lines are generated `NAME/outline-1` layers; forms with no filled
+  part (a fern) and the presets that cover a surface (`spots`, `scales`, `cells`, `giraffe`, `water`) are unchanged,
+  and a `stroke`, `stroke_width`, `fill` or `colors` you give wins. In `object-plan`, the batch ends with the
+  wobble, an `object` `action: outline` with policy `parts` (parts too small for the line, such as a person's eyes,
+  get `outline: none`), `outline_lines` now and then and one `drop-shadow` on the object (a sub-object is outlined and
+  leaves the shadow to its object); the `figure-plan` output is byte-for-byte unchanged. A bare `Project(width,
+  height)` and a document made with `house_style: off` have no house style and draw as before. **Restore the old
+  look** per form with `illustration: "plain"` (or `outline: false`, reported under `normalized`; CLI `vixl organic
+  PRESET --illustration plain`), for a document by creating it with `house_style: off`, or on a made form with
+  `layer-style` `remove: true` for the shadow and `irregular` `remove: true` for the wobble. The house-style eval (`python -m evals.house_style --compare`) is
+  unchanged at every variety level: its sparse-brief designs draw no organic forms. See
+  [organic](docs/guides/shapes/organic.md#house-illustration-finish) and
+  [object-plan](docs/guides/shapes/objects.md#scaffold-with-object-plan).
+- **Double and triple lines on objects: `outline_lines` (#427).** `{type: object, action: outline, outline_lines:
+  [{gap, width}]}` draws up to three thin lines inside the outline, parallel to it, as generated `NAME/outline-N`
+  layers that are redrawn with the outline when a part moves and go with `outline-remove`. `outline_width` now
+  defaults to 1.2% of the larger side under `outline: parts` (the house part line; `silhouette` keeps 1%) (breaking:
+  restore with `outline_width`). See [outline policy](docs/guides/shapes/objects.md#outline-policy).
+
 ### Fonts
 
 ### Objects

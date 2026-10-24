@@ -16,11 +16,16 @@ metadata.
   proportions at mid-range, ordered back to front, grouped, declared and named: it passes the object check as
   generated. `apply: false` returns the batch with a next step per part; `box`, `x`/`y`/`height`, `seed`, `with:
   ["guitar"]` (a sub-object) and, for people, `head_units` shape it. Refine each placeholder in place (`{type: shape,
-  target: dog-head, …}`). `figure-plan` is `object-plan` with `template: figure-plan`.
+  target: dog-head, …}`). `figure-plan` is `object-plan` with `template: figure-plan`. In a document with a house
+  style the batch ends with the flat vector finish (subtle wobble, outline `parts` at 1.2% of the larger side, now and
+  then a double line, one hard offset shadow on the object); `illustration: plain` (or `outline: false`) leaves the
+  bare scaffold.
 - **Outline policy** — `{type: object, action: outline, target: dog}` applies the kind's policy (animals and made
   things: one outline around the silhouette with thin interior lines). `outline: silhouette|parts|none`, `interior:
-  hide|thin|show`, `outline_color`, `outline_width`; a part takes `outline: none` (keeps its own stroke) or `parts`.
-  The `NAME/outline` layer follows moved parts in the same undo step; `outline-remove` restores the part strokes.
+  hide|thin|show`, `outline_color`, `outline_width` (1% of the larger side; 1.2% under `parts`), `outline_lines:
+  [{gap, width}]` (a double or triple line inside the outline); a part takes `outline: none` (keeps its own stroke)
+  or `parts`. The `NAME/outline` layer follows moved parts in the same undo step; `outline-remove` restores the part
+  strokes.
 - **Declare objects** — build a dog, a guitar or a person as one group, then `{type: object, target: GROUP,
   kind: dog}` and `{type: object, action: part, target: LAYER, part: leg, side: left}` (`depth: far|near` for limbs
   behind or in front of the body in a side view). A person holding a guitar is an object with a sub-object.

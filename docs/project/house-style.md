@@ -529,6 +529,12 @@ Today none are defined. These matter for the object system (#257, #379).
 - [ ] Shadows: none, soft contact shadow or flat offset
 - [ ] Line weight: proportional to the object (for example 1.5–2% of its height)
 
+Implemented (#427): craft `illustration` holds the decision as data (outline policy `parts` at 1.2% of an object's
+larger side, a hard offset shadow cast from a light at the top left, `subtle` irregularity, extra lines on 15% of
+forms); `craft.illustration_style` applies it. New organic forms and `object-plan` scaffolds in a document with a house
+style get it by default (`illustration: "plain"` opts out); see [organic](../guides/shapes/organic.md#house-illustration-finish)
+and [object-plan](../guides/shapes/objects.md#scaffold-with-object-plan).
+
 **Recommendation:** flat vector, silhouette outline off, a soft contact shadow, light from the top left.
 
 Decision: Flat vector, part lines, offset shadows, thin lines, sometimmes double and triple lines, slight imprefections/variations
