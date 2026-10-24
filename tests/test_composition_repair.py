@@ -6,7 +6,7 @@ import pytest
 from vixl import Project
 from vixl.plugins.layout_repair.layout_repair import repair_layout
 
-from test_composition import card, doc, scatter, text
+from test_composition import HIERARCHY, card, doc, scatter, text
 
 CHECKS = ["bounds", "overlap", "safe_area", "composition"]
 
@@ -18,7 +18,8 @@ def findings(p, checks=CHECKS):
 
 
 def codes(p):
-    return sorted(x["code"] for x in p.check(checks=["composition"])["issues"] if x["check"] == "composition")
+    return sorted(x["code"] for x in p.check(checks=["composition"])["issues"]
+                  if x["check"] == "composition" and x["code"] not in HIERARCHY)
 
 
 def repaired(p, code, checks=CHECKS, **options):
@@ -111,7 +112,7 @@ def test_dry_run_plans_without_changing_the_document():
     assert plan["dry_run"] and not plan["committed"] and p.state["layers"] == state
     assert plan["operations"] == [{"type": "move", "target": p.layer("subtitle")["id"], "x": -12, "y": 0,
                                    "relative": True}]
-    assert plan["initial"] == [{"rule": "composition.margin_drift", "layers": ["subtitle", "title"]}]
+    assert {"rule": "composition.margin_drift", "layers": ["subtitle", "title"]} in plan["initial"]
     again = repair_layout(p, checks=CHECKS)
     assert (again["selected"], again["attempts"]) == (plan["selected"], plan["attempts"])  # the same plan
     p.apply(plan["operations"])

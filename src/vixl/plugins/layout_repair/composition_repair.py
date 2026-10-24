@@ -9,7 +9,9 @@ Each finding kind gets a few candidates in a fixed order, all relative moves exc
   down, alone or with the rest of its column, or lift the rule, alone or with what is above it;
 - ``dead_band``: between blocks, spread the band over the frame's other gaps, move the blocks below up (fully or
   halfway) or the blocks above down halfway; at an edge, spread the content into the band or centre it in its frame;
-- ``clumped_scatter``: a ``pattern-scatter`` tile is thinned in place or re-seeded; any other scatter is not.
+- ``clumped_scatter``: a ``pattern-scatter`` tile is thinned in place or re-seeded; any other scatter is not;
+- ``flat_hierarchy``, ``single_weight``, ``no_focal``, ``accent_unused``: no candidates (which line leads is a
+  judgement call); ``suggestions`` says what to do.
 
 Layout repair applies every candidate to a copy, keeps it only when the finding is gone and nothing new appears
 (no fix finding, no review finding of any check) and picks the least disruptive. Moving a line of text moves the
@@ -22,6 +24,39 @@ from ...composition import GROUND_SHARE, _inside, geometry_boxes, hugs
 
 NOT_REPAIRABLE = ("this scatter has no pattern-scatter recipe to thin or re-seed; re-spread it by hand "
                   "(move the largest motifs into the gaps) or rebuild it with pattern-scatter")
+# Hierarchy findings are judgement calls (which line leads, which weight, where the accent goes): repair applies
+# nothing for them and lists suggestions instead.
+JUDGEMENT = ("flat_hierarchy", "single_weight", "no_focal", "accent_unused")
+JUDGEMENT_REASON = "a judgement call about hierarchy, not a move; see suggestions"
+
+
+def suggestions(finding):
+    """Plain-language moves for a hierarchy finding (empty for the other codes), with the operation that makes
+    each one where it is exact. Nothing here is applied automatically."""
+    code = finding.get("code")
+    names = finding.get("layers") or []
+    values = finding.get("values") or {}
+    first = names[0] if names else None
+    if code == "flat_hierarchy" and first:
+        step = values.get("raise_to")
+        return [f"raise {first!r} to the heading or display step" + (
+                    f" (about {step} px: {{\"type\": \"text\", \"target\": {first!r}, \"size\": {step}}})"
+                    if step else ""),
+                "or set every supporting line at the body size so one line stands apart as the headline"]
+    if code == "single_weight":
+        return [f"set the headline in the heading role: {{\"type\": \"text\", \"target\": {first!r}, \"font\": "
+                "\"heading\"}" if first else "set the headline in the heading role",
+                "if the document has one face only, install a bolder weight for the heading: "
+                "{\"type\": \"font-install\", \"family\": \"<the body family>\", \"weight\": 700, \"role\": \"heading\"}"]
+    if code == "no_focal" and len(names) >= 2:
+        return [f"let {names[0]!r} lead: enlarge it by about a third, or set it in a heavier weight",
+                f"or quiet {names[1]!r}: a smaller size, a muted colour (@muted) or less opacity"]
+    if code == "accent_unused":
+        return ["apply @accent to the one element that should be found first, such as the call to action: "
+                "{\"type\": \"text\", \"target\": \"<its name>\", \"color\": \"@accent-text\"} or a shape with fill @accent",
+                "or add a rule or bar in @accent beside the headline",
+                "or waive the finding with a reason if the page is meant to be monochrome"]
+    return []
 
 
 def _overlaps(box, x0, x1):
@@ -372,6 +407,8 @@ def candidates(project, finding):
         found = _clumped_scatter(scene, finding)
         if not found:
             return [], NOT_REPAIRABLE
+    elif code in JUDGEMENT:
+        return [], JUDGEMENT_REASON
     else:
         found = []
     found = [(name, operations) for name, operations in found if operations]

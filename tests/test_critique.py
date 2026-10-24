@@ -34,7 +34,7 @@ def test_check_lists_composition_findings_on_untouched_layers_and_the_weakest_re
     result, image = apply_reviewed(p, NUDGE, check=True)
     assert image is None
     issues = result["check"]["issues"]
-    (drift,) = [i for i, x in enumerate(issues) if x["check"] == "composition"]
+    (drift,) = [i for i, x in enumerate(issues) if x["check"] == "composition" and x["code"] == "margin_drift"]
     assert issues[drift]["code"] == "margin_drift" and "note" not in issues[drift]["layers"]
     first, second = result["check"]["regions"]
     assert drift in first["findings"] and "composition.margin_drift" in first["why"]
