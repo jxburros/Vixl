@@ -244,6 +244,10 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | AGT-42 | Turn the house style off: new documents with no rolled direction and neutral layout defaults | `house_style: "off"` in `vixl_document` create and `vixl_apply(create=…)`, `vixl new --house-style off`, `.vixl/variety.json` | 1 · <1 | Craft rules still apply; the default stays on. |
 | AGT-06 | Read the house style: craft rules, tiers, variety levels or one purpose's profile | `vixl_reference('house-style')`, `vixl house show PURPOSE` | 1 · <1 | Purposes: poster, social, slides, document, form, diagram, logo, motion. |
 | BRD-53 | Validate a brand kit: missing font roles, unreadable fonts or logos, palette roles left to derivation, guidance colours the palette does not approve | `vixl brand validate`, `vixl brand show` | 1 · <1 |  |
+| BRD-56 | Start, package and install a brand: brand.json from a palette and fonts, then one `.vixlbrand` with its templates, palettes, suites, guidance and images | `vixl brand init`, `vixl brand pack`, `vixl brand install [--preset-only]` | 1–3 · <1 | Unreleased (#436); install validates the whole package first, writes atomically and rolls back on failure. |
+| BRD-57 | Place the right brand logo by purpose (icon, wordmark …) in a template, with only the automatic logo on other designs | `brand-logo`, logo `purpose`/`place`/`auto`, template `places_logo` | 1 · <1 | Unreleased (#436). |
+| BRD-58 | Reuse a brand mascot or badge as an editable group, and enforce the brand's own style rules | `object-place` `brand:NAME`, `vixl brand element`, `style-set` `brand:NAME`, `check --checks style` | 1–2 · <1 | Unreleased (#436). |
+| BRD-59 | Brand template that places a pack image and keeps a mark just after the last word of variable copy | `asset-place`, constraint `NAME.line[-1].end+0.25em`, `=` expressions | 1 · <1 | Unreleased (#529, #530); scales with `proportional`. |
 | AGT-34 | Export the design catalogs (sizes, palettes, pairings, layouts, briefs, guidance, check IDs) for a host app | `vixl catalog export --out catalog.json` | 1 · <1 | Versioned JSON with a schema; also a release asset (#536). |
 
 ### Provider-backed (one call each)
@@ -675,7 +679,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | --- | --- | --- | --- | --- |
 | SOC-80 | Product launch kit across print, social, web, email and motion | brand group, linked masters, production runs | several sessions |  |
 | SOC-81 | Monthly social calendar (30 posts) from a content CSV | recipe capture + production run | 1 session setup, minutes per month | Cheap once the recipe exists. |
-| BRD-50 | Brand system as a plugin pack with templates, palettes and check suites | resources, plugin pack, suites | 1–2 days |  |
+| BRD-50 | Brand system as a plugin pack with templates, palettes and check suites | resources, plugin pack, suites | 1–2 days | Building the templates and suites is the work; packaging and installing are one command each since brand packages (BRD-56). |
 | PRD-50 | Personalised certificates or tickets for thousands of rows | merge-impose, durable jobs | setup 1 h, run unattended |  |
 | PRD-51 | Localised campaign in 10 languages with font fallbacks and checks | variables, `font-fallbacks`, suites | several hours | Automatic multi-font fallback is not implemented. |
 | PRD-52 | Data-driven report generator (Python) re-run on each new dataset | `Project` API, `chart --csv`, templates | 1–2 days dev |  |

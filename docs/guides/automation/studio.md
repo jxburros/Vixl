@@ -383,7 +383,9 @@ pages exports as a slide presentation instead (see [presenter](../output/present
 Packs declare `api_version:1`, `name`, semantic `version`, optional exact-version `dependencies`,
 and `resources` grouped by category. Resource names must start with `plugin-name-`. Installation
 validates the whole manifest, dependencies and collisions, then atomically writes the workspace
-resource catalog. `replace:true` upgrades a pack and removes its old resources. Updates that
+resource catalog. `resources.assets` carries images (`{data_base64, media_type, credit, license}`, at most
+2 MiB each and 20 MiB per pack, checked before anything is written) that templates place with `asset-place`
+([pack assets](../layout/agent-resources.md#pack-assets)); removing the pack removes their stored files. `replace:true` upgrades a pack and removes its old resources. Updates that
 break dependents or introduce cycles fail. `plugin-list` discovers installed packs without
 executing code; `plugin-remove` refuses to remove a dependency. Copy owned resources under a
 new name to customize them without changing the pack.

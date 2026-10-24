@@ -161,3 +161,6 @@ def test_missing_or_changed_bytes_are_reported(workspace):
     with pytest.raises(VixlError) as error:
         document(workspace).apply({"type": "asset-place", "resource": "badge"})
     assert error.value.code == "missing_asset"
+    with pytest.raises(VixlError, match="'badg' not found") as error:
+        document(workspace).apply({"type": "asset-place", "resource": "badg"})
+    assert error.value.code == "missing_asset" and error.value.details["suggestions"] == ["badge"]

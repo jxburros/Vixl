@@ -428,7 +428,7 @@ def test_brand_elements_place_with_object_place_brand_name(tmp_path):
     root = p.layer("flame")
     assert root["type"] == "group" and root["width"] == 120 and (root["x"], root["y"]) == (100, 50)
     assert asset in p.assets and p.layer("flame/spark")["asset"] == asset
-    with pytest.raises(VixlError, match="No brand element 'smoke'"):
+    with pytest.raises(VixlError, match="Brand element 'smoke' not found"):
         p.apply({"type": "object-place", "name": "brand:smoke"})
     # A file whose bytes no longer match the SHA-256 in its name is refused, here and by brand validate.
     kit = json.loads((tmp_path / "brand.json").read_text())

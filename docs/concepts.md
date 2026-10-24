@@ -103,7 +103,8 @@ Placeholders take filters, applied left to right: `${name|upper}`, `lower`, `tit
 `${company|default:Independent}` (used when the variable is undefined or empty),
 `${state|map:states}` (looks the value up in a document map defined with `variable-map`; a `"*"`
 entry catches values the map does not list), `${price|number:2}` (thousands separators, 2
-decimals) and `${seat|format:03d}` (a Python format spec). An unknown filter or an undefined map is a
+decimals), `${seat|format:03d}` (a Python format spec) and `${price|calc:x*0.8}` (arithmetic on the value:
+numbers, `+ - * / // %`, parentheses, `min`, `max`, `round`, `abs`). An unknown filter or an undefined map is a
 validation error. Text, colours (`${tier|map:tier_colors}`), link variables and merge-impose
 templates all substitute the same way, and `inspect` lists every placeholder with its filters under
 `placeholders`.

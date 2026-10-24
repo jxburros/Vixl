@@ -360,11 +360,12 @@ def auto_logos(kit):
 def choose_logo(kit, purpose=None):
     """The logo ``brand-logo`` places: the first of ``purpose``, else the first automatic logo, else the first."""
     logos = kit.get("logos") or []
-    require(logos, "brand.json has no logos; add logos to place one with brand-logo", "not_found", field="purpose")
+    require(logos, "Brand logo not found: brand.json has no logos; add logos to place one with brand-logo", "not_found",
+            field="purpose")
     if purpose is None:
         return (auto_logos(kit) or logos)[0]
     found = [spec for spec in logos if spec.get("purpose", "icon") == purpose]
-    require(found, f"brand.json has no {purpose} logo; purposes: "
+    require(found, f"Brand logo not found: brand.json has no {purpose} logo; purposes: "
             f"{', '.join(sorted({spec.get('purpose', 'icon') for spec in logos}))}", "not_found", field="purpose",
             allowed=sorted({spec.get("purpose", "icon") for spec in logos}))
     return found[0]
@@ -493,7 +494,7 @@ def element(project, name):
     """``(record, assets)`` of the brand element ``name`` for ``object-place brand:NAME``."""
     kit = for_project(project)
     elements = kit.get("elements") or {}
-    require(name in elements, f"No brand element {name!r}" + (f"; elements: {', '.join(sorted(elements))}"
+    require(name in elements, f"Brand element {name!r} not found" + (f"; elements: {', '.join(sorted(elements))}"
             if elements else "; brand.json has no elements"), "not_found", field="name",
             suggestions=sorted(elements)[:10])
     item = deepcopy(elements[name])

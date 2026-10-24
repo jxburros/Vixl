@@ -25,6 +25,51 @@ packages.
 
 ### Brand packages
 
+- **Multi-logo brands no longer add every logo to every document (breaking).** A brand.json logo takes `purpose`
+  (`icon`, `wordmark`, `avatar`, `lockup`), `place` (`anchor`, `margin`, `width_fraction`, `safe`) and `auto`. Layouts,
+  templates and `brand-preset` add only automatic logos; `auto` defaults to true for a brand with one logo and false
+  when it has several, so give the one that should appear everywhere `"auto": true`. A logo with `place` sits at its
+  anchor, `margin` from the edge and inside the safe area; without `place` it keeps its `x`/`y`/`width`/`height` as
+  before. Unknown logo fields are now an error (#436).
+- **`brand-logo` places a brand logo by purpose.** `{"type": "brand-logo", "purpose": "wordmark", "anchor": "bottom"}`
+  places the first logo of that purpose (moving an existing layer of that name rather than adding a second), and the
+  logo rules (clear space, minimum size) count it. A template that places its own logo sets `"places_logo": true`, so
+  applying it adds no automatic logo (#436).
+- **Brand elements.** brand.json `elements` holds multi-part objects (the record `object-save` keeps, with the files
+  its layers use embedded), placed with `object-place` as `brand:NAME` before the document library is looked at.
+  `vixl brand element NAME --from FILE.vixl [--object GROUP]` saves one from a document (#436).
+- **Custom brand styles.** brand.json `styles` defines styles with guidance, rules of the catalog's rule kinds and
+  recommended looks. Documents tag one with `style-set` as `brand:NAME`, and `check --checks style` enforces its rules
+  while that brand is active (#436).
+- **`vixl brand init`, `pack` and `install`.** `init` writes a valid brand.json from a palette, a pairing and embedded
+  `--font ROLE=FILE` fonts. `pack OUT.vixlbrand` writes the brand and the workspace resource library (palettes,
+  templates, workflows, suites, guidance, assets …) as one deterministic ZIP with a SHA-256 manifest. `install`
+  validates the whole package first, then writes brand.json, the library and the asset files atomically and rolls back
+  on any failure; it never runs code, and `--preset-only` adds the package's brand as a preset instead (#436).
+- **`brand validate` checks more.** It also decodes element files, flags hex colours in brand style guidance that the
+  palette does not approve, and flags workspace templates that set a font role the brand does not define (#436).
+- **Packs can carry images.** A new `assets` resource kind, `{data_base64, media_type: png|jpeg|svg|webp, credit,
+  license}`, installs from plugin packs, brand packages and `resource-save`. Saving checks the base64, the file
+  signature, at most 2 MiB per asset and 20 MiB per plugin pack, a still image within the document limits, and SVG
+  through the static-SVG import rules. The bytes are stored by SHA-256 beside the resource library
+  (`.vixl-resources-assets/`), so the library file stays small (#530).
+- **`asset-place` places a pack image.** `{"type": "asset-place", "resource": "acme-badge", "x": "center", "y": 40,
+  "width": 200, "anchor": "top"}` embeds the asset once however often it is placed, renders SVG at the placed size,
+  and records `{resource, sha256}` (and credit and licence) in the layer's provenance. Templates may use it, and it
+  scales with `proportional`. A placed asset satisfies a brand `required_elements` entry or a `group-check` required
+  layer named after its resource (#530).
+- **Constraints read text line metrics.** `REF.line[N].start` and `REF.line[N].end` (where a line's pen starts and
+  ends; `-1` counts from the end) and `REF.baseline[N]` follow the copy as the renderer sets it, with offsets in pixels
+  or `em` of that text's size: `{"left": "lyric.line[-1].end+0.25em", "bottom": "lyric.baseline[-1]"}` keeps a mark
+  after the last word of a variable lyric. Line refs are checked for the right axis and an existing line (#529).
+- **Arithmetic in templates and workflows.** A template, container or workflow field whose whole value starts with
+  `=` is evaluated after its variables are filled (`"x": "=${pad} + 76.34 * ${k}"`) and reported under `normalized`;
+  `==` writes a literal `=`. A safe evaluator allows numbers, `+ - * / // %`, parentheses, `min`, `max`, `round` and
+  `abs`; names, attributes, other calls and `**` are refused, length and size are bounded, and division by zero is
+  an error. The `calc` variable filter does the same inside text: `${price|calc:x*0.8|number:2}` (#529).
+- **Proportional templates scale numbers from variables (breaking).** Variables and `=` expressions are now filled
+  before a `proportional` template scales, so a size or position a variable gives scales like a written one (#529).
+
 ### Merch
 
 ### Characters

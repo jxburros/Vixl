@@ -215,8 +215,14 @@ def read(record, workspace=None):
 
 def resolved(name, workspace=None):
     """``(record, bytes)`` of the asset resource ``name``."""
-    from .resources import get
+    import difflib
 
+    from .resources import catalog, get
+
+    names = sorted(catalog("assets", workspace=workspace))
+    require(name in names, f"Asset resource {name!r} not found; save one with resource-save (kind assets) or install a "
+            "plugin or brand pack" + (f"; assets: {', '.join(names[:20])}" if names else ""), "missing_asset",
+            field="resource", suggestions=difflib.get_close_matches(name, names, 3, 0.5))
     record = get("assets", name, workspace=workspace)
     return record, read(record, workspace)
 

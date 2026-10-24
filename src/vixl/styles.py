@@ -143,7 +143,7 @@ def resolve(name, brand_styles=None):
     if name.strip().lower().startswith(BRAND_PREFIX):
         own = name.strip()[len(BRAND_PREFIX):].strip().lower()
         brand_styles = brand_styles or {}
-        require(own in brand_styles, f"brand.json has no style {own!r}"
+        require(own in brand_styles, f"Unknown style {name.strip()!r}: brand.json has no style {own!r}"
                 + (f"; its styles: {', '.join(sorted(brand_styles))}" if brand_styles else
                    "; add styles to brand.json (or use a catalog style)"),
                 "unknown_style", field="style", allowed=[BRAND_PREFIX + key for key in sorted(brand_styles)])

@@ -14,7 +14,7 @@ metadata.
   each part alone; `vixl_check(checks=["connected"])` finds parts that float free.
 - **Export and reuse** — `vixl_export(isolate=["guitar"], padding=8)` exports one object cropped to its
   ink (a `.vixl` path writes a portable object); `object-save` / `object-place` (`recolor` by part, `source` for a
-  portable file) place editable copies; `library-place` places components as editable groups (`as: "image"` for a
+  portable file, `brand:NAME` for a brand.json element) place editable copies; `library-place` places components as editable groups (`as: "image"` for a
   snapshot). SVG keeps `data-vixl-object`/`data-vixl-kind`/`data-vixl-part`, PowerPoint named groups, PSD group
   names. `ungroup` refuses an object unless `force: true`.
 - **Accessibility** — `layer-intent` `alt` on meaningful images, frames, charts and object groups (or
