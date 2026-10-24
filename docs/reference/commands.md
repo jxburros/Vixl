@@ -34,6 +34,8 @@ project with appropriate layers or input files. See each guide for complete crea
 | Proof page | `workflow proof --request proof.json --workspace .` | [Proof pages](../guides/automation/production.md#proof-pages) |
 | Logo package | `workflow logo-package --request logo.json --workspace .` | [Logo packages](../guides/automation/production.md#logo-packages) |
 | Brand guidelines | `workflow brand-board --request board.json --workspace .`; `brand validate`, `brand show [--preset NAME]` | [Brands](../guides/layout/brands.md#brand-board) |
+| Mockups and merch | `workflow mockup --request mock.json --workspace .`; `workflow mockup-list --request '{}' --workspace .` | [Merch mockups](../guides/output/merch-mockups.md) |
+| Print-ready art per area | `workflow print-art --request print.json --workspace .` | [Print-ready art](../guides/output/merch-mockups.md#print-ready-art) |
 | Brand packages | `brand init [--name N] [--palette P] [--pairing P] [--font ROLE=FILE]`, `brand pack OUT.vixlbrand`, `brand install FILE.vixlbrand [--preset-only [--as NAME]] [--overwrite]`, `brand element NAME --from FILE.vixl [--object GROUP]` | [Brand packages](../guides/layout/brands.md#brand-packages) |
 | App animation package | `workflow app-animation-package --request package.json --workspace .` | [App animation packages](../guides/motion/animation-authoring.md#app-animation-packages) |
 | Six-second loop | `template new video-tip -o tip.vixl --set title=… --set subtitle=… --set cta=…` (also `video-launch`, `video-event`) | [Short templates](../guides/motion/animation-authoring.md#joint-pose-keys-and-short-templates) |

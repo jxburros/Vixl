@@ -45,7 +45,8 @@ colour. An area's corners keep the aspect ratio of its print size, so a design l
 artboard}` to give that area its own settings. The design is clipped to the area's clip path (the torso, the sleeve,
 the round face of a button) and fitted by `fit` as in any mockup: `fill` crops to cover the area (the default), `fit`
 shows all of it and `stretch` distorts it. A bare `design` fills every slot of a template, or the first area of one that
-has only areas (the front chest of a tee, the front of a tote, the face of a sticker). An unknown area is refused with
+has only areas (the front chest of a tee, the front of a tote, the face of a sticker; both socks), as the template's
+`main` list says. An unknown area is refused with
 the template's areas and the nearest names.
 
 ## Garment colour
@@ -136,6 +137,7 @@ named `areas`, and the fields that make a product:
   border_mm?, color?}`, a cut shape around the artwork. Names are lowercase with hyphens. Slots may carry a
   `print_size_mm` too.
 - `base` names the operations' layers a garment colour recolours (their `fill`), and `garment_color` is the default.
+  `main` lists the placements a bare `design` fills when it is not the first area.
 - Scenes are drawn with operations or taken from a workspace document, and may place a pack image: an `asset-place` of an
   `assets` resource (a product photo, a woven label) is allowed in `operations` and `overlay`, because it reads no file
   the caller names. A missing resource fails the mockup with `missing_asset` and the names that exist.

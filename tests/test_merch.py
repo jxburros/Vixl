@@ -85,6 +85,25 @@ def test_garments_have_the_standard_areas_a_colour_and_base_layers(name):
     assert set(spec["base"]) <= names
 
 
+@pytest.mark.parametrize("name", list(BUILTINS))
+def test_every_builtin_is_a_valid_template_a_user_could_save(name):
+    mockups.validate(BUILTINS[name])
+    spec = BUILTINS[name]
+    assert all(layer.get("name") for layer in spec.get("operations", []) if layer["type"] == "shape")
+
+
+@pytest.mark.parametrize("name", list(BUILTINS))
+def test_placement_names_are_free_so_the_design_layer_is_named_after_its_area(name):
+    spec = BUILTINS[name]
+    drawn = {op["name"] for key in ("operations", "overlay") for op in spec.get(key, []) if op.get("name")}
+    assert not drawn & set(placements(spec))
+
+
+def test_built_in_artwork_stays_small():
+    # Drawn from measurements, not pictures: a few hundred kilobytes of path data for the whole catalogue.
+    assert len(json.dumps({name: BUILTINS[name] for name in BUILTINS})) < 600_000
+
+
 def test_goods_have_their_areas():
     assert set(BUILTINS["tote"]["areas"]) == {"front"} and BUILTINS["tote"]["areas"]["front"]["print_size_mm"] == [280, 330]
     for name in ("sticker", "sticker-kiss-cut", "enamel-pin", "patch", "button"):
@@ -117,8 +136,9 @@ def test_placing_art_fills_the_area_and_leaves_the_rest(workspace, name):
 
 def test_a_bare_design_fills_the_slots_or_the_main_area(workspace):
     s = session(workspace)
-    dispatch(s, "mockup", {"design": "teal.vixl", "mockup": ["tee", "poster-wall", "tote"], "output": "bare"})
-    for item, expected in (("tee", ["front-chest"]), ("poster-wall", ["poster"]), ("tote", ["front"])):
+    dispatch(s, "mockup", {"design": "teal.vixl", "mockup": ["tee", "poster-wall", "tote", "socks"], "output": "bare"})
+    for item, expected in (("tee", ["front-chest"]), ("poster-wall", ["poster"]), ("tote", ["front"]),
+                           ("socks", ["sock-l", "sock-r"])):
         names = [layer["name"] for layer in loaded(workspace, f"bare/{item}.vixl").state["layers"] if layer["type"] == "link"]
         assert names == expected
 
@@ -198,6 +218,8 @@ def test_garment_color_needs_a_template_with_one(workspace):
         dispatch(s, "mockup", {"mockup": "phone", "output": "x.vixl", "design": "teal.vixl", "garment_color": "#000000"})
     with pytest.raises(VixlError):
         dispatch(s, "mockup", {"mockup": "tee", "output": "x.vixl", "design": "teal.vixl", "garment_color": "not a colour"})
+    with pytest.raises(VixlError, match="opaque"):
+        dispatch(s, "mockup", {"mockup": "tee", "output": "x.vixl", "design": "teal.vixl", "garment_color": "rgba(0,0,0,0.5)"})
 
 
 def test_the_listing_shows_areas_print_sizes_and_garment_colours(workspace):
@@ -227,6 +249,8 @@ def test_templates_with_areas_save_and_validate(workspace):
             ({"areas": {"front": {**area, "finish": "glitter"}}}, "finish"),
             ({"areas": {"front": {**area, "cut": {"mode": "laser"}}}}, "cut"),
             ({"base": ["missing"]}, "base names layers"),
+            ({"main": ["nowhere"]}, "main lists"),
+            ({"garment_color": "transparent"}, "opaque"),
             ({"areas": {}}, "needs 1"),
             ({"slots": [{"name": "front", "corners": area["corners"]}]}, "unique")):
         with pytest.raises(VixlError, match=message):
@@ -243,15 +267,12 @@ def test_stickers_are_cut_around_the_art(workspace):
         assert order.index("face-cut") < order.index("face") and cut["fill"] == "#ffffff" and cut["stroke"] == line
         assert cut["die_cut"]["targets"] == [project.layer("face")["id"]] and cut["styles"]["drop-shadow"]
         assert "face-surface" not in order and "clip" not in project.layer("face")
-        # The vinyl border runs a few millimetres outside the disc, and the corners of the quad stay bare.
+        # The disc fills 432 of the quad's 540 px (radius 216 around 600, 600); the border is 3 mm, 21 px, of white vinyl
+        # outside it, and beyond that, and in the quad's corners, the surface or the backing sheet shows.
         image = project.render().convert("RGB")
-        quad = BUILTINS[name]["areas"]["face"]["corners"]
-        cx, cy = 600, (quad[0][1] + quad[2][1]) / 2
-        radius = (quad[1][0] - quad[0][0]) * 0.4 / 0.6 * 0.6  # the disc fills 480 of 600 px of the quad
-        edge = round(cy - radius * 1.0)
-        assert image.getpixel((600, edge - 6)) == (255, 255, 255) or name == "sticker-kiss-cut"
-        corner = image.getpixel((round(quad[0][0] + 6), round(quad[0][1] + 6)))
-        assert corner != (255, 255, 255) or name == "sticker-kiss-cut"
+        assert image.getpixel((600, 600 - 216 - 10)) == (255, 255, 255)
+        assert image.getpixel((600, 600 - 216 - 21 - 14)) != (255, 255, 255)
+        assert image.getpixel((336, 336)) != (255, 255, 255)
 
 
 def test_enamel_pin_has_a_metal_rim_and_the_enamel_finish_by_default(workspace):
@@ -289,9 +310,15 @@ def test_each_finish_is_an_ordinary_look_stack_on_the_design(window, finish):
     expected = {"screen": "gaussian-blur", "puff": "emboss", "embroidery": "emboss", "enamel": "saturation",
                 "woven": "emboss"}[finish]
     assert expected in [effect["name"] for effect in art["effects"]]
-    assert len(done.state["layers"]) >= len(plain.state["layers"])
-    helpers = [layer["name"] for layer in done.state["layers"] if "-finish-" in layer["name"]]
-    assert helpers == sorted(helpers, key=lambda n: done.state["layers"].index(done.layer(n))) or helpers
+    helpers = {layer["name"] for layer in done.state["layers"] if "-finish-" in layer["name"]}
+    assert helpers == {"screen": {"face-finish-dots"}, "puff": {"face-finish-lift"},
+                       "embroidery": {"face-finish-threads", "face-finish-thread-light", "face-finish-satin"},
+                       "enamel": {"face-finish-gloss"},
+                       "woven": {"face-finish-warp", "face-finish-weft", "face-finish-weft-light"}}[finish]
+    # Every helper is clipped to the design, so it never draws outside its shape.
+    assert all(done.layer(name)["clip"] == art["id"] for name in helpers)
+    assert ("drop-shadow" in art.get("styles", {})) == (finish != "screen") and (
+        "stroke" in art.get("styles", {})) == (finish == "enamel")
     a, b = np.asarray(plain.render().convert("RGB"), float), np.asarray(done.render().convert("RGB"), float)
     assert np.abs(a - b).mean() > 0.3  # the finish changes how the print looks
     assert b[100:500, 100:500].std() > 10  # and the art is still there

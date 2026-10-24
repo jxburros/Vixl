@@ -105,7 +105,7 @@ def separate(image, inks):
         colors=min(64, max(16, inks * 8)), method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
     table = np.asarray(fine.getpalette()[:768], dtype=np.uint8).reshape(-1, 3)
     mapping, colours = _merge_palette(fine.getcolors(), table.tolist(), inks)
-    lookup = np.zeros(256, np.int64)
+    lookup = np.zeros(256, np.uint8)
     for index, cluster in mapping.items():
         lookup[index] = cluster
     labels = lookup[np.asarray(Image.fromarray(rgb, "RGB").quantize(palette=fine, dither=Image.Dither.NONE))]
@@ -134,8 +134,14 @@ def choked(mask, pixels):
     import numpy as np
     from PIL import Image, ImageFilter
 
+    # A 3 × 3 erosion repeated is the erosion by the larger square, and costs one pass per pixel instead of a window
+    # that grows with the choke.
     grey = Image.fromarray(mask.astype(np.uint8) * 255, "L")
-    return np.asarray(grey.filter(ImageFilter.MinFilter(2 * pixels + 1))) >= 128
+    for _ in range(pixels):
+        grey = grey.filter(ImageFilter.MinFilter(3))
+        if not grey.getbbox():
+            break
+    return np.asarray(grey) >= 128
 
 
 def _write(session, path, save, overwrite, written):

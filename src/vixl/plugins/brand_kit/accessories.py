@@ -119,7 +119,7 @@ def socks():
         sock.curve(*t(430, 650), *t(560, 668), *t(680, 688)).curve(*t(780, 706), *t(840, 780), *t(808, 850))
         sock.curve(*t(786, 906), *t(700, 912), *t(620, 912)).line(*t(270, 912))
         sock.curve(*t(190, 912), *t(134, 860), *t(134, 780)).close()
-        base = f"sock-{name}"
+        base = f"sock-{name}-body"
         scene += [*drop_shadow(v, f"shadow-{name}", sock, 4, 16, 18, 0.3), v.path(base, sock, fill=BASE)]
         heel = Pen(*t(134, 700)).curve(*t(134, 830), *t(190, 912), *t(280, 912)).line(*t(360, 912))
         heel.curve(*t(380, 820), *t(330, 730), *t(250, 700)).close()
@@ -140,11 +140,12 @@ def socks():
         corners = rect_quad(t(273, 0)[0], t(0, 190)[1], *size)
         pad = polygon_pen([(corners[0][0] - 10, corners[0][1] - 4), (corners[1][0] + 10, corners[1][1] - 4),
                            (corners[2][0] + 10, corners[2][1] + 4), (corners[3][0] - 10, corners[3][1] + 4)])
-        areas[base] = {"corners": corners, "print_size_mm": [50, 94], "surface": "base",
+        areas[f"sock-{name}"] = {"corners": corners, "print_size_mm": [50, 94], "surface": "base",
                        "clip_path": v.clip_path_at(pad), "shade": False, "gloss": False}
     return {"description": "A pair of crew socks, flat; each has a print on the leg (50 × 94 mm). Areas: sock-l and "
                            "sock-r.", "width": w, "height": h, "background": BACKGROUND, "operations": scene,
-            "overlay": over, "base": ["sock-l", "sock-r"], "garment_color": "#f1efe9", "areas": areas}
+            "overlay": over, "base": ["sock-l-body", "sock-r-body"], "garment_color": "#f1efe9", "areas": areas,
+            "main": ["sock-l", "sock-r"]}
 
 
 def patch():

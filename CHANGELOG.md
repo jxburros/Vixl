@@ -158,7 +158,8 @@ packages.
 - **Named print areas on templates.** A template has `areas: {name: {corners, print_size_mm, clip_path?, surface?, finish?,
   cut?}}` besides its `slots`; the garments carry `front-chest`, `full-front`, `back`, `sleeve-l` (the wearer's left),
   `sleeve-r`, `hem-tag` and `inside-neck`, and every area keeps the aspect ratio of its print size. `mockup-save` takes
-  `areas`, `base` and `garment_color` too, and `mockup-list` shows each template's areas, print sizes and default colour.
+  `areas`, `base`, `garment_color` and `main` (the placements a bare `design` fills) too, and `mockup-list` shows each
+  template's areas, print sizes and default colour.
   `poster-wall`'s slot is now A3-proportioned (297 × 420 mm) and carries a print size (#444).
 - **`place: {area: design}` on `mockup`.** Each design is clipped to its area's path and fitted by `fit`; an entry can be
   `{design, fit, finish, source_page, artboard}`. A bare `design` fills the slots, or the main area of a template that has

@@ -86,7 +86,7 @@ AREA_KEYS = SLOT_KEYS - {"name"}
 CUT_KEYS = {"mode", "border_mm", "color"}
 CUT_MODES = ("die", "kiss", "pin", "patch")
 TEMPLATE_KEYS = {"description", "document", "width", "height", "background", "operations", "slots", "overlay", "areas",
-                 "base", "garment_color"}
+                 "base", "garment_color", "main"}
 
 DARK_SCREEN = "#0b0d12"
 
@@ -219,8 +219,11 @@ def placements(spec):
 
 
 def main_placements(spec):
-    """The placements a bare ``design`` fills: every slot, or the first area of a template that has only areas."""
+    """The placements a bare ``design`` fills: the template's ``main`` list, else every slot, or the first area of a
+    template that has only areas."""
     every = placements(spec)
+    if spec.get("main"):
+        return [name for name in spec["main"] if name in every]
     slots = [name for name, record in every.items() if not record["area"]]
     return slots or list(every)[:1]
 
@@ -327,9 +330,14 @@ def validate(value):
         missing = [n for n in base if "document" not in value and n not in names]
         require(not missing, f"base names layers the template does not draw: {', '.join(missing)}", field="value.base")
     if "garment_color" in value:
-        _colour(value["garment_color"], "value.garment_color")
+        require(isinstance(value["garment_color"], str) and _colour(value["garment_color"], "value.garment_color")[3] == 255,
+                "garment_color is an opaque colour", field="value.garment_color")
         require("base" in value or any(p.get("surface") == "base" for p in (*slots, *areas.values())),
                 "garment_color needs base layers (base) or a placement whose surface is 'base'", field="value.base")
+    if "main" in value:
+        main = value["main"]
+        require(isinstance(main, list) and main and all(n in taken for n in main),
+                f"main lists the placements a bare design fills; the template has {', '.join(taken)}", field="value.main")
 
 
 def _local_path(path, x0, y0):
@@ -524,7 +532,8 @@ def request_settings(request):
             allowed=[*finishes.FINISHES, "none"])
     if settings["garment_color"] is not None:
         require(isinstance(settings["garment_color"], str), "garment_color is a colour", field="garment_color")
-        _colour(settings["garment_color"], "garment_color")
+        require(_colour(settings["garment_color"], "garment_color")[3] == 255, "garment_color is an opaque colour",
+                field="garment_color")
     return settings
 
 
