@@ -72,7 +72,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DOC-10 | Set a document variable and render with an override | `variable set`, `render --set NAME=VALUE` | 2 · <1 |  |
 | DOC-11 | Close one of several open documents | `vixl_document(action='close')` | 1 · <1 | Multi-document sessions pass `document=`. |
 | DOC-12 | List the files in the workspace | `vixl_document(action='list')` | 1 · <1 |  |
-| DOC-13 | Inspect what a document depends on and check it reproduces | `vixl dependencies`, `vixl reproduce --check` | 1 · <1 | Since 0.25 `--reference PNG` verifies against an approved render and `--write-lock`/`--lock` record and check dependency, font, asset and render drift (#512); without them it only proves the document renders. |
+| DOC-13 | Inspect what a document depends on and check it reproduces | `vixl dependencies`, `vixl reproduce --check` | 1 · <1 | Since 0.25 `--reference PNG` verifies against an approved render and `--write-lock`/`--lock` record and check dependency, font, asset and render drift (#512); without them it only proves the document renders. A version 2 lockfile also covers every page, artboard and sampled frame and the exports you record with it (QA-44). |
 | BLK-16 | Relink the links in a copied `.vixl` | `links-relink {from, to}` | 1 · <1 | Since 0.22; sources beside the document are stored relative to it. |
 | DOC-31 | Import an image from a URL with its credit and licence | `import-image` step (`url`, `credit`, `license`) | 1 · <1 | Since 0.22; https only, private hosts refused. |
 | DOC-32 | Merge layers into one, or flatten the page | `merge-layers`, `flatten` | 1 · <1 | Since 0.22; undo restores the originals. |
@@ -400,6 +400,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PRD-03 | Place a saved library component into a document | `vixl_apply(workflow='library-place')` | 2–3 · <1 |  |
 | BLK-24 | Placing a library component as an editable group | `library-place` (editable group; `as: image` for a snapshot) | 2–3 · <1 | Unblocked by #381: was a raster snapshot. |
 | PRD-04 | Link another `.vixl` as a live layer and refresh it after edits | `link`, `link-refresh` | 2–3 · <1 |  |
+| PRD-36 | Package a campaign run's passing outputs into one delivery zip with a manifest, checksums, check report and proof page | `vixl_apply(workflow='package')`, `vixl package --production out/production.json` | 2–4 · 1 | Held variants are listed and left out; identical files once; a name collision or an existing package is refused; the manifest records source revision, export settings, check state, SHA-256, dimensions, colour and codec/frame rate/duration. See [delivery packages](guides/automation/production.md#delivery-packages). |
 | FRM-03 | Fill one form with values into a flattened or editable PDF | `form fill --set` | 1–2 · <1 |  |
 | FRM-04 | Check a form with worst-case sample values | `check --checks form --sample worst` | 1–2 · <1 |  |
 | QA-12 | Leave, list and resolve review notes | `vixl_document(action='notes')` | 2–3 · <1 |  |
@@ -413,6 +414,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | QA-29 | Check every document in a folder or project group into one report | `vixl_apply(workflow='check-all')`, `vixl check --all GLOB` / `--group NAME` | 1 · 1 | Parallel; JSON, Markdown, JUnit, SARIF, annotations, proof page. |
 | QA-30 | List documents that newly fail after an upgrade or an edit | `vixl check --all --since-last` | 1 · 1 | Compares with the previous recorded run; scheduling is up to CI. |
 | QA-31 | Check that a campaign's sizes agree: logo placement, type ratios, swatches, prices and names | `vixl_apply(workflow='group-check')`, facts in brand.json or the group | 1–3 · 1 | Majority or a reference member. |
+| QA-44 | Lock a document's pages, artboards, animation frames and exports, and later learn what moved | `vixl reproduce --write-lock F --export png jpg mp4`, `reproduce --lock F --export` (`vixl_apply(workflow='reproduce')`) | 2–3 · 1 | Version 2 lockfile: drift is located by page, frame, `jpg.quality` or `mp4.ffmpeg`; per export `byte_identical` (PNG, SVG, PDF) and `visually_equivalent` (JPEG, WebP, GIF, video) are reported apart. Byte-exact output across machines is not promised ([limits](guides/automation/ci.md#the-limits-of-exact-reproduction)). |
 
 ### Provider-backed
 

@@ -29,6 +29,7 @@ KNOWN_COUPLINGS = {
     ("mcp_tools", "ai.ai"): "the MCP AI action",
     ("mcp_tools", "ai.models"): "MCP model discovery",
     ("cli", "imposition.imposition"): "vixl merge",
+    ("cli", "workspace_qa.package"): "vixl package",
     ("cli", "workspace_qa.reproduce"): "vixl reproduce",
     ("cli", "workspace_qa.workspace_checks"): "vixl check --all and --group",
     ("group_consistency", "workspace_qa.workspace_checks"): "group checks load the group's documents",

@@ -174,16 +174,64 @@ report holds no layer contents or provider settings.
 | --- | --- |
 | `renderable` | It renders here; nothing to compare with. |
 | `environment-matched` | A lockfile was given and nothing it records drifted. |
-| `reference-verified` | The render matches a reference image within `--tolerance`/`--max-fraction`, or the lockfile's exact render hash. |
-| `reference-mismatch`, `drifted` | It does not; `outcome.validation` is `failed` and the CLI exits with an error. |
+| `reference-verified` | The render matches a reference image within `--tolerance`/`--max-fraction`, or the lockfile's exact render hash; with `--export`, every locked export matched too. |
+| `drifted`, `reference-mismatch`, `export-mismatch` | A locked item changed, the render differs from the reference or the locked render, or only a recorded export differs; `outcome.validation` is `failed` and the CLI exits with an error. |
 
-`--write-lock FILE` writes a lockfile: Vixl version and engine hash, Python and the imaging, shaping and
-encoding packages, font and embedded-asset hashes, linked sources, the document hash, canvas settings and the
-render hash. `--lock FILE` verifies it and lists each drifted item (`environment_drift`, `input_drift`).
-Lockfiles hold versions and hashes only, no credentials. Byte-identical renders across machines are not
-guaranteed (text rasterisation differs by platform), so compare with a reference image and a declared
-tolerance where exact hashes are too strict. Remote AI inference is not replayed: generated pixels are embedded
-assets and are locked like any other input.
+### The lockfile
+
+`--write-lock FILE` writes a lockfile (version 2; version 1 files still verify). It holds versions and SHA-256 hashes:
+
+- the Vixl version and engine hash, Python, and the imaging, shaping and encoding packages;
+- font and embedded-asset hashes, linked sources, the document hash and canvas settings;
+- the render hash and a `targets` list with the hash of **every page and artboard** and of sampled timeline frames
+  (`--frames N` spreads N frames over the duration, `--times 0 1.5s 50%` names them; an animated document gets three
+  by default);
+- `variables` (a hash of the variable set or campaign rows, with a hash per variable name) and `seeds` (every `seed` in
+  the document);
+- `exports`, when recorded with `--export`, and the `toolchain` they used (see below).
+
+`--lock FILE` verifies it and lists each drifted item, located: `page` named `page 2`, `artboard` by name, `frame` by
+time, `variables` and `seeds` by name, `export-setting` and `toolchain` by `FORMAT.OPTION` (`jpg.quality`,
+`mp4.ffmpeg`, `pdf.icc_profile`), besides the older `vixl`, `engine`, `python`, `dependencies`, `fonts`, `assets`,
+`settings`, `linked` and `document`. `environment_drift` holds the versions and tools, `input_drift` the rest.
+
+### Recorded exports
+
+`--write-lock FILE --export png "jpg:quality=80" mp4:fps=24` also encodes each export in memory and records its
+options (with defaults filled in, so `jpg` and `jpg:quality=90` are the same export), its bytes' SHA-256, the SHA-256
+of the decoded pixels or sampled frames (`visual_sha256`) and a coarse 16x16 block-average `signature` of each sampled
+frame. `--lock FILE --export` encodes each locked export again and reports two answers per export, separately:
+
+| | `byte_identical` | `visually_equivalent` |
+| --- | --- | --- |
+| Asks | the bytes match | the decoded pixels or frames match, or every block average moved by at most `--export-tolerance` (default 8 of 255) |
+| Decides for | PNG, SVG, PDF, HTML, PPTX, PSD, TIFF, ICO, APNG: Vixl or a lossless encoder writes them the same way every time | JPEG, WebP, AVIF, GIF, MP4, WebM: the bytes depend on the encoder version, so a re-encode is judged by its pixels |
+
+`--export-visual` judges every format by its pixels (a PNG from another zlib, a PDF from another producer).
+HTML, PPTX and PSD have no decoder here, so only their bytes are compared (`visually_equivalent` is null). The
+signature catches a changed colour, layout or picture, not a one-pixel shift; the exact `visual_sha256` does.
+Names after `--export` when verifying (`--lock FILE --export "jpg:quality=70"`) replace the locked settings of the
+same format and are reported as `export-setting` drift where they differ, so a changed quality or colour profile is
+found before any bytes are compared. The ffmpeg version used for MP4 and WebM and the SHA-256 of each ICC profile are
+recorded under `toolchain`; a different one is `toolchain` drift, located by format.
+
+`--report` (`reproduce(..., report=True)` in Python, `report: true` in the workflow) returns a compact summary that is
+ready to embed in a manifest: the level, the lock's version and SHA-256, drift counts and the first 20 located items, and
+`byte_identical` and `visually_equivalent` per export. `package` embeds it when given a lockfile
+([delivery packages](../guides/automation/production.md#delivery-packages)).
+
+### What a lockfile does not hold, and what it cannot promise
+
+Lockfiles hold versions, hashes and the coarse signatures, no layer contents or provider settings, and never a
+credential: a value from a variable named like a key, token, secret or password, or from a configured AI provider's key
+variable, is refused if it would be written (the error names the variable, not the value). Remote AI inference is not
+replayed: generated pixels are embedded assets and are locked like any other input.
+
+Byte-identical output across machines is not guaranteed. Text rasterisation differs by platform and font build, PNG
+bytes by the zlib in use, JPEG, WebP and GIF by the imaging libraries, and video by the encoder, its version and its
+threading. Compare with a reference image and a declared tolerance, or `--export-visual`, where exact hashes are too
+strict ([the limits of exact reproduction](../guides/automation/ci.md#the-limits-of-exact-reproduction)). A mismatching
+lock locates the page, frame or export that changed, not which pixels moved: pass a reference image for that.
 
 ```bash
 vixl new 400x300 -o trust.vixl
@@ -191,10 +239,9 @@ vixl -p trust.vixl check --checks bounds contrast --repair
 vixl -p trust.vixl export approved.png
 vixl -p trust.vixl reproduce --reference approved.png --write-lock trust.lock.json
 vixl -p trust.vixl reproduce --lock trust.lock.json
+vixl -p trust.vixl reproduce --write-lock trust.exports.lock.json --export png jpg:quality=80 svg
+vixl -p trust.vixl reproduce --lock trust.exports.lock.json --export
 ```
-
-Not yet covered: export settings (colour profile, video encoder) are not part of the lockfile, and a
-mismatching lock does not say which pixels moved (pass a reference image for that).
 
 ## Untrusted document text
 

@@ -107,6 +107,8 @@ History:   undo [N], redo [N], history, checkpoint NAME, branch NAME,
            checkout REF, branches, compare REF REF --out FILE [--isolate LAYER…], diff A B [--out D.png] (two documents or images)
 Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG [--isolate LAYER…]], run SCRIPT, batch GLOB --run SCRIPT --out DIR,
            workflow ACTION --request FILE [--workspace DIR] (workflow schema lists actions; proof, logo-package, brand-board …),
+           package (--production out/production.json | --files GLOB…) --out delivery.zip [--source DOC.vixl]
+           [--name TEMPLATE] [--layout by-format|by-artboard] [--lock FILE] [--dry-run] (outputs, manifest, report, proof),
            compose --request FILE [--preview P.png] (create → layout → look → operations → check → exports, atomic),
            each layer --name PATTERN -- COMMAND, preset save|apply|show NAME,
            transaction begin|commit|rollback, assert RULE, validate [PROFILE]
@@ -187,7 +189,7 @@ Motion:    timeline, keyframe, animate, export-timeline, export-animation
 Checks:    check, validate, assert, reproduce, diff, compare
 History:   undo, redo, history, checkpoint, branch, checkout
 Automate:  apply, run, batch, workflow, each, transaction
-Output:    render, export, export-icons, export-screens, catalog export
+Output:    render, export, export-icons, export-screens, catalog export, package
 Resources: guide, capabilities, commands, shapes, sizes, styles, emoji
 AI:        ask, generate, detect, ocr, ai, providers, models
 Services:  serve, view, mcp
@@ -529,6 +531,9 @@ def _dispatch(argv):
     if cmd == "merge":
         from .plugins.imposition.imposition import cli as merge_cli
         return merge_cli(args, options, limits), options.json
+    if cmd == "package":
+        from .plugins.workspace_qa.package import cli as package_cli
+        return package_cli(args, options, limits), options.json
     if cmd == "diff":
         from .image_diff import cli as diff_cli
         return diff_cli(args, limits), options.json
@@ -887,7 +892,9 @@ def command_help(cmd, args):
         "effects": "effects [LAYER]",
         "manifest": "manifest",
         "dependencies": "dependencies",
-        "reproduce": "reproduce [--reference PNG --tolerance N --max-fraction F] [--lock FILE] [--write-lock FILE]",
+        "reproduce": "reproduce [--reference PNG --tolerance N --max-fraction F] [--lock FILE] [--write-lock FILE] "
+                     "[--export [FORMAT[:OPTION=VALUE,...] …]] [--frames N | --times T …] [--export-tolerance N] "
+                     "[--export-visual] [--report]",
         "pixels": "pixels [LAYER]",
         "animation": "animation",
         "undo": "undo [COUNT]",
@@ -1065,7 +1072,7 @@ def project_command(project, cmd, args, *, detail="compact"):
     if cmd in ("dependencies", "reproduce"):
         result = dependencies(project)
         if cmd == "reproduce":
-            from .plugins.workspace_qa.reproduce import read_lock, reproduce, write_lock
+            from .plugins.workspace_qa.reproduce import alias_notes, covers, read_lock, reproduce, write_lock
 
             p = Parser(prog="vixl reproduce", description="Render and report the reproduction level reached: "
                        "renderable, environment-matched (--lock) or reference-verified (--reference or --lock)")
@@ -1075,13 +1082,41 @@ def project_command(project, cmd, args, *, detail="compact"):
             p.add_argument("--max-fraction", type=float, default=0.0, help="Fraction of pixels allowed to differ (0-1)")
             p.add_argument("--lock", help="Verify against this render lockfile (.json): reports located drift")
             p.add_argument("--write-lock", help="Write a render lockfile (.json) for the document as it renders now")
+            p.add_argument("--export", nargs="*", action="extend", metavar="FORMAT[:OPTION=VALUE,...]",
+                           help="With --write-lock: record these exports (png, jpg:quality=80, mp4:fps=24) with their "
+                           "byte and pixel hashes. With --lock: encode the locked exports again and compare them "
+                           "(bytes for PNG, SVG and PDF, pixels within --export-tolerance for JPEG, WebP, GIF and video); "
+                           "give formats to compare with those settings instead of the locked ones")
+            p.add_argument("--frames", type=int, help="With --write-lock: timeline frames to lock (default 3 for an "
+                           "animated document)")
+            p.add_argument("--times", nargs="+", metavar="TIME", help="With --write-lock: timeline times to lock "
+                           "(milliseconds, 1.5s, 50% or a marker)")
+            p.add_argument("--export-tolerance", type=int, help="How far a block average of a lossy export may move "
+                           "(0-254, default 8) and still be visually equivalent")
+            p.add_argument("--export-visual", action="store_true", help="Judge every export by its pixels, even those "
+                           "of formats whose bytes should match")
+            p.add_argument("--report", action="store_true", help="Print the compact manifest-ready summary")
             p.add_argument("--overwrite", action="store_true")
             a = p.parse_args(args)
+            require(a.export is None or a.write_lock or a.lock, "--export records exports with --write-lock or "
+                    "verifies them with --lock", "usage_error")
+            require(not (a.export == [] and a.write_lock and not a.lock), "--write-lock --export needs the formats to "
+                    "record, e.g. --export png jpg:quality=80", "usage_error")
+            require((a.frames is None and a.times is None) or a.write_lock, "--frames and --times choose what "
+                    "--write-lock records", "usage_error")
             if a.write_lock:
-                write_lock(project, a.write_lock, overwrite=a.overwrite)
+                written = write_lock(project, a.write_lock, overwrite=a.overwrite, exports=a.export or None,
+                                     frames=a.frames, times=a.times, limits=project.limits)
                 result["lock_written"] = a.write_lock
+                result["lock_covers"] = covers(written)
             result.update(reproduce(project, reference=a.reference, tolerance=a.tolerance, max_fraction=a.max_fraction,
-                                    locked=read_lock(a.lock) if a.lock else None, limits=project.limits))
+                                    locked=read_lock(a.lock) if a.lock else None, limits=project.limits,
+                                    exports=a.export or None if a.lock else None,
+                                    verify_exports=a.export is not None and bool(a.lock),
+                                    export_tolerance=a.export_tolerance, export_visual=a.export_visual,
+                                    report=a.report))
+            if notes := alias_notes(a.export):
+                result["normalized"] = notes
             result["note"] = (result.get("note", "") + " Remote model replay is not guaranteed.").strip()
             if not result["reproducible"]:
                 raise VixlError("reproduction_failed", "; ".join(result["outcome"]["review_reasons"]), report=result)

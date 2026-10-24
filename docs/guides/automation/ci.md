@@ -134,3 +134,37 @@ SVG files must be self-contained, as for SVG appearance import: an external `hre
 ENTITY, scripts, more than 64 levels or 10,000 elements fail with `unsupported_svg` or `resource_limit`, and the
 declared width × height is checked against the pixel limit before anything is rasterized. The same rules apply to
 SVG previews in proof pages, workspace diffs, `reproduce`, `replace-across` and logo packages.
+
+## Locking renders and exports
+
+A render lockfile records what a document draws and what its exports are, so a later run (a scheduled job, a release
+build, another machine) can say whether anything moved. Commit the lockfile next to the document:
+
+```bash
+vixl -p designs/poster.vixl reproduce --write-lock designs/poster.lock.json --export png "jpg:quality=85" pdf
+vixl -p designs/poster.vixl reproduce --lock designs/poster.lock.json --export --export-tolerance 8
+```
+
+The second command re-renders every page, artboard and sampled frame, encodes the locked exports again and exits
+nonzero when something differs. It names what: `page 2`, `jpg.quality`, `mp4.ffmpeg`, `pdf.icc_profile`
+([reproduction](../../reference/agent-trust.md#reproduction)). Run it on the runner that built the lockfile for an exact
+check, or on any runner with `--export-visual` to judge every export by its pixels.
+
+### The limits of exact reproduction
+
+Two runs of the same Vixl on the same machine give the same bytes. Across machines these differ, and each shows up as
+`environment_drift` or as an export that is `visually_equivalent` but not `byte_identical`:
+
+| What differs | What it changes | What to do |
+| --- | --- | --- |
+| Fonts: another build or version of a family, or the bundled proofing fallback standing in for a missing font | Text pixels, line breaks and every export of the page | Embed the fonts in the document (`vixl font install FAMILY`); the lockfile hashes each font file |
+| Text rasterisation: FreeType, HarfBuzz and the platform's hinting | The anti-aliased edge of every glyph, so the render hash changes while the pixels look the same | Compare with a reference image and `--tolerance`, not the hash; the golden-image suite runs on Linux only for this reason |
+| The platform's zlib (zlib-ng or system zlib) | PNG, APNG and PDF stream bytes, not their pixels | `--export-visual`; or build the lock and the check on one image |
+| Pillow, libjpeg, libwebp, libavif versions | JPEG, WebP, AVIF and GIF bytes and slightly their pixels | Judged by pixels within `--export-tolerance`; the versions are in `environment_drift` |
+| The ffmpeg and encoder version, and threading | MP4 and WebM bytes (VP9 output is not always byte-stable even on one machine) and slightly their pixels | Judged by decoded frames; `toolchain` drift names the ffmpeg version |
+| An ICC profile or its file | CMYK conversions | The profile's SHA-256 is locked; keep the profile in the repository |
+| Remote AI inference | Generated pixels | They are embedded assets and locked as inputs; the model call is not replayed |
+
+A lockfile that was written by a different Vixl, Python or imaging build reports `environment_drift` first; those
+differences explain the rest, and `input_drift` (the document, a page, a variable, an export setting) is what someone
+changed.

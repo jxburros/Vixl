@@ -13,6 +13,8 @@ from .errors import VixlError, require
 
 PERCENT = re.compile(r"^(-?\d+(?:\.\d+)?)%$")
 CLI_NOTES = ContextVar("vixl_cli_normalized", default=None)
+# Spellings of an export format that a render lockfile accepts (`reproduce --export jpeg`); the value is the canonical name.
+EXPORT_FORMAT_ALIASES = {"jpeg": "jpg", "tif": "tiff", "htm": "html"}
 
 
 def note_cli_output(args):

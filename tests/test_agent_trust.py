@@ -518,7 +518,7 @@ def test_reproduce_cli_exit_status(tmp_path):
     lock_path = tmp_path / "doc.lock.json"
     assert main(["--project", str(tmp_path / "doc.vixl"), "reproduce", "--reference", str(tmp_path / "approved.png"),
                  "--write-lock", str(lock_path)]) == 0
-    assert json.loads(lock_path.read_text())["version"] == 1
+    assert json.loads(lock_path.read_text())["version"] == 2
     Image.new("RGBA", (200, 200), "red").save(tmp_path / "other.png")
     assert main(["--project", str(tmp_path / "doc.vixl"), "reproduce", "--reference", str(tmp_path / "other.png")]) == 1
     assert main(["--project", str(tmp_path / "doc.vixl"), "reproduce", "--lock", str(lock_path)]) == 0

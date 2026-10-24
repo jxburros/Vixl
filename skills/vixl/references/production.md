@@ -119,6 +119,26 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    needs an interactive desktop and any OS permission; it is not part of rendering.
 18. Source folders for Git review: CLI `vixl unpack design.vixl design-source` and `vixl pack design-source reviewed.vixl`
    (see [cli](cli.md)).
+19. Delivery packages: `vixl_apply(workflow='package', request={production: "out/production.json" | files: [path | glob |
+   {path, source}], output: "delivery.zip", source?, name?, brand?, layout?, check?, proof?, lock?, decisions?,
+   export_settings?, dry_run?, overwrite?})` (CLI `vixl package --production out/production.json --source doc.vixl
+   --out delivery.zip`) writes one zip: the completed outputs of a campaign run (or the files) named from `name`
+   (`{brand}_{doc}_{artboard}_{w}x{h}.{ext}`; also `{locale}` `{row}` `{id}`; two files with one name refuse the whole
+   package, so a campaign of rows needs `{row}`), identical files once, `manifest.json` (per file: source document and
+   `revision`, export settings, check state, `sha256`, dimensions, colour, codec/fps/duration read from the encoded file;
+   per package: `vixl_version`, `validation` coverage, `visual_review`, `held`, `reproduction`), `SHA256SUMS`,
+   `report/check-report.json|md` and `proof.html`. Variants the run held (and files whose source fails its checks, or
+   that the proof page's `decisions` JSON rejects) are listed under `held` and left out; nothing left is an error.
+   `lock` is the source's render lockfile: its `reproduce` summary goes into the manifest. Stage with `dry_run: true`;
+   an existing package is kept unless `overwrite: true`. The `outcome` stays `needs_review` until nothing is held and
+   every file is validated and visually reviewed.
+20. Render locks: `vixl reproduce --write-lock doc.lock.json --export png "jpg:quality=85" mp4` records every page,
+   artboard and sampled frame (`--frames N`, `--times …`), the variables and seeds, and each export's bytes and decoded
+   pixels with the ffmpeg version or ICC profile; `vixl reproduce --lock doc.lock.json --export` encodes them again and
+   reports `byte_identical` (decides PNG, SVG, PDF, HTML, PPTX, PSD, TIFF) and `visually_equivalent` (decides JPEG, WebP,
+   AVIF, GIF, MP4, WebM; `--export-tolerance`, `--export-visual`) per export, with `page 2`, `jpg.quality`, `mp4.ffmpeg`
+   drift located. Workflow `reproduce` takes `exports`, `verify_exports`, `frames`, `times`, `report`. No credential
+   enters a lock. Byte-exact output across machines is not promised (fonts, zlib, encoder versions).
 
 MCP paths must remain inside the workspace. REST exposes check/act/plan/film-plan for
 its single project; filesystem, library and queue operations use CLI/Python/MCP.
