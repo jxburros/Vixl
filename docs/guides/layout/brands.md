@@ -27,7 +27,9 @@ The file is read on each operation/check, so a policy change takes effect withou
 
 Replace the logo placeholder with actual base64 image bytes, or omit `logos` and its required
 element. Logos embed in the document and stay above generated backgrounds. They are added once
-by layer name. Place/resize them to suit the composition after applying the layout.
+by layer name. Place/resize them to suit the composition after applying the layout, or give them a
+`place` (below). A `required_elements` entry is met by a layer of that name or by a pack asset placed with
+`asset-place` from the resource of that name ([agent resources](agent-resources.md#pack-assets)).
 
 `layout apply`, template creation/application, and `roll` use the brand palette and typography
 by default. Explicit layout palette/color/font options and roll locks take precedence. Unspecified
@@ -69,6 +71,83 @@ An embedded font wins for its role and the pairing supplies the other, so a kit 
 heading font. `font-pair`/`font-install` with `scope: "workspace"` write these fields for you,
 and new documents embed the workspace fonts at creation (see [Typography](../text/typography.md#workspace-default-fonts)).
 
+### Logos: purpose, placement and automatic logos
+
+A logo can say what it is for and where it goes:
+
+```json
+{"logos": [
+  {"name": "mark", "data_base64": "BASE64_PNG_BYTES", "purpose": "icon", "auto": true,
+   "place": {"anchor": "bottom-right", "margin": 0.05, "width_fraction": 0.12, "safe": true}},
+  {"name": "wordmark", "data_base64": "BASE64_PNG_BYTES", "purpose": "wordmark",
+   "place": {"anchor": "top", "width_fraction": 0.4}}
+]}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `purpose` | `icon` (default), `wordmark`, `avatar` or `lockup`. |
+| `place.anchor` | Where on the canvas: `top-left` (default), `top`, `top-right`, `left`, `center`, `right`, `bottom-left`, `bottom`, `bottom-right`. |
+| `place.margin` | Distance from the canvas edge as a share of the shorter side (default 0.05). |
+| `place.width_fraction` | Logo width as a share of the canvas width (default 0.2); the height follows the image. |
+| `place.safe` | Keep the logo inside the safe area (canvas `safe` plus bleed) as well; default true. |
+| `auto` | Add it to every layout, template and preset. Default true when the brand has one logo, false when it has several. |
+
+Layouts, templates and `brand-preset` add only the automatic logos. A brand with several logos (variants
+for different uses) therefore adds none on its own unless one says `"auto": true` (earlier releases added every
+logo). A logo without `place` keeps its `x`, `y`, `width` and `height` (or its own size at the top-left).
+
+`brand-logo` places one logo by purpose, at its own `place` or with `anchor`, `margin` and `width_fraction`
+overrides; placing it again moves the layer instead of adding a second. The logo rules below count it.
+A template that places its logo itself sets `"places_logo": true`, so applying it adds no automatic logo:
+
+```json
+{"type": "brand-logo", "purpose": "wordmark", "anchor": "bottom", "width_fraction": 0.3}
+```
+
+### Elements
+
+`elements` holds multi-part brand objects (a mascot, a badge, a lockup built from shapes and text): each is the
+record `object-save` keeps, with the files its layers use embedded under `assets` (base64, named by their
+SHA-256). `object-place` places one as `brand:NAME`, as an editable group with new layer IDs, before it looks
+in the document's own library; `width`, `height`, `scale`, `recolor` and `x`/`y` work as for saved objects
+([objects](../shapes/objects.md)).
+
+```json
+{"type": "object-place", "name": "brand:flame-mark", "x": 80, "y": 60, "width": 160}
+```
+
+`vixl brand element NAME --from FILE.vixl [--object GROUP]` saves an object group of a document in the
+workspace (or the whole document as one group) as an element; `--overwrite` replaces one of that name.
+Element files are checked against their SHA-256 and decoded when placed and by `brand validate`.
+
+### Brand styles
+
+`styles` defines the brand's own design styles next to the catalog ones ([styles](styles.md)): `guidance`
+text, `rules` of the catalog's rule kinds (`max_typefaces`, `hue_count`, `min_negative_space`, `text_align` …,
+with the same parameter names; `vixl styles show swiss` lists them with their parameters) and recommended
+`looks`. A document is tagged with one as `brand:NAME`, and `check --checks style` evaluates its rules while
+that brand is the workspace brand. Rule kinds and parameter names are validated when brand.json is read. In the
+workspace, `vixl styles list` and `vixl_reference('styles')` list the brand's styles first, `styles show brand:NAME`
+describes one and `styles apply brand:NAME` tags the document and stores its guidance.
+
+```json
+{"styles": {"one-voice": {
+  "title": "One voice", "guidance": "One typeface, flush left, generous margins.",
+  "rules": [{"kind": "max_typefaces", "params": {"max": 1}, "severity": "error", "summary": "One typeface only"},
+            {"kind": "min_negative_space", "params": {"fraction": 0.3}}],
+  "looks": ["clean-flat"]}}}
+```
+
+```json
+{"type": "style-set", "style": "brand:one-voice"}
+```
+
+Each rule takes `kind`, an optional `id` (needed when two rules share a kind), `severity` (`error`, `warning`
+or `info`), `summary`, `fix` and `params`. A document's `options` relax a rule as for catalog styles. A document
+opened in a workspace whose brand.json lacks the style keeps its tag; the style check reports that the rules were
+not checked.
+
 ### Font roles, text stages and extra colours
 
 `fonts` takes any lowercase role name, not only `heading` and `body`: a brand with four type voices lists
@@ -105,9 +184,9 @@ design one may cover. A list of colours is named `extra-1`, `extra-2` …
 ### Presets
 
 One workspace can hold several looks of one brand (an album era, a campaign) as named `presets`. A preset
-is a partial brand: `palette`, `fonts`, `stages`, `colors` and `logo` merge key by key over the base, any
-other field (`minimum_contrast`, `logos`, `required_elements`, `pairing`) replaces it, and `extends` builds
-on another preset. A document selects one with the `brand-preset` operation; layouts, templates, rolls and
+is a partial brand: `palette`, `fonts`, `stages`, `colors`, `logo`, `words`, `elements` and `styles` merge key
+by key over the base, any other field (`minimum_contrast`, `logos`, `required_elements`, `pairing`) replaces
+it, and `extends` builds on another preset. A document selects one with the `brand-preset` operation; layouts, templates, rolls and
 the brand check then use the preset, and `{"type": "brand-preset", "name": "none"}` returns to the base.
 Selecting a preset installs its swatches, fonts and stages at once.
 
@@ -164,8 +243,39 @@ backgrounds are not checked yet.
 preset must be valid; a stage that names a font role the brand does not define, an embedded font or logo
 that does not decode, and `colors.strict` without a palette are errors; palette roles left to derivation,
 missing heading or body fonts, `logo.layers` that name no embedded logo, and workspace guidance texts that
-name hex colours the palette does not approve are warnings. `vixl brand show [--preset NAME]` prints the
-resolved brand: roles, extra colours, fonts, the stage map, logos and rules.
+name hex colours the palette does not approve are warnings. Element files that do not match their SHA-256 or
+do not decode are errors; hex colours in brand style guidance that the palette does not approve, and workspace
+templates whose text sets a font role that is neither a text stage nor a brand font role, are warnings.
+`vixl brand show [--preset NAME]` prints the resolved brand: roles, extra colours, fonts, the stage map, logos
+(with purposes and which are automatic), elements, styles and rules.
+
+### Brand packages
+
+```bash
+vixl brand init --name Acme --palette ocean --pairing source-serif-sans --overwrite
+vixl brand validate
+vixl brand pack acme.vixlbrand
+vixl brand install acme.vixlbrand --preset-only --as acme
+```
+
+`init` writes a valid brand.json: `--palette` turns a palette resource into the seven palette roles (`--mode
+dark` for a dark brand), `--pairing` names a font pairing and each `--font ROLE=FILE` embeds a TTF/OTF font for a
+role. It refuses to replace an existing brand.json without `--overwrite`.
+
+`pack` writes one `.vixlbrand` file: a deterministic ZIP (the same brand and resources give the same bytes)
+holding `brand.json`, the workspace resource library by kind (`resources/palettes.json`, `templates`, `workflows`,
+`suites`, `guidance`, `assets` …; resources that belong to an installed plugin pack are left out and listed) with
+the asset files, and `manifest.json` with every member's SHA-256. It refuses to overwrite a file without
+`--overwrite`.
+
+`install` reads the package within fixed bounds (64 MiB file, 96 MiB expanded, 2,000 members, only the expected
+member names), checks every member against the manifest, then validates the brand (fonts, logos and element
+files must decode) and every resource as saving it would, before it writes anything. It then writes the asset
+files, the resource library and brand.json through temporary files renamed into place, and restores the
+previous files if any step fails. It never runs code. An existing different brand.json or resource is replaced
+only with `--overwrite`; a resource that belongs to an installed plugin pack is never replaced. `--preset-only`
+adds the package's brand to the existing brand.json as a preset (`--as NAME`, default from the brand name) and
+leaves the resource library alone.
 
 ### Brand board
 

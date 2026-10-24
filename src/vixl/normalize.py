@@ -266,10 +266,11 @@ GEOMETRY_TYPES = {
     "chart",
     "table",
     "organic",
+    "asset-place",
 }
 CENTER_TYPES = {
     "solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field", "link", "chart", "organic", "qr",
-    "barcode",
+    "barcode", "asset-place",
 }
 
 

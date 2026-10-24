@@ -577,7 +577,7 @@ def apply_workflow(
         require(ctx.allow_screen_capture, "Desktop capture is disabled; start vixl mcp with --allow-screen-capture "
                 "or VIXL_ALLOW_SCREEN_CAPTURE=1", "permission_denied")
     result = dispatch(ctx.session, workflow, request, document)
-    if workflow in ("film-preview", "video-sample", "audio-analyze"):
+    if workflow in ("film-preview", "video-sample", "audio-analyze", "variations"):
         from .assets import open_image
 
         paths = result.get("images", []) if isinstance(result, dict) else []
@@ -1235,7 +1235,8 @@ def reference_styles(ctx, name: Annotated[str | None, Field(description="One sty
     """Design styles (swiss, brutalist, art-deco, risograph …); apply one with the style-use operation."""
     from . import styles
 
-    return styles.describe(name) if name else styles.listing(query)
+    own = styles.workspace_styles(ctx.session.workspace)
+    return styles.describe(name, own) if name else styles.listing(query, own)
 
 
 @action("vixl_reference", "looks")

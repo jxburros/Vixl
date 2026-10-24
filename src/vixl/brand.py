@@ -18,14 +18,20 @@ from .assets import open_image, read_bounded
 from .errors import VixlError, require
 
 FIELDS = ("name", "palette", "pairing", "fonts", "logos", "minimum_contrast", "required_elements", "stages",
-          "colors", "logo", "facts", "words", "placeholders", "suites", "presets")
+          "colors", "logo", "facts", "words", "placeholders", "suites", "elements", "styles", "presets")
 # Fields a preset may override; ``extends`` names the preset it builds on.
 PRESET_FIELDS = tuple(field for field in FIELDS if field != "presets") + ("extends",)
 # Dict fields merge key by key when a preset overrides them; every other field is replaced.
-MERGED = ("palette", "fonts", "stages", "colors", "logo", "words")
+MERGED = ("palette", "fonts", "stages", "colors", "logo", "words", "elements", "styles")
 LENGTH = re.compile(r"^(\d+(?:\.\d+)?)\s*(px|mm|cm|in|pt)?$")
 UNIT_INCHES = {"mm": 1 / 25.4, "cm": 1 / 2.54, "in": 1, "pt": 1 / 72}
 LOGO_NAME = re.compile(r"(^|[-_ /])logo([-_ /]|$)", re.IGNORECASE)
+LOGO_FIELDS = ("name", "data_base64", "purpose", "place", "auto", "x", "y", "width", "height")
+LOGO_PURPOSES = ("icon", "wordmark", "avatar", "lockup")
+PLACE_FIELDS = ("anchor", "margin", "width_fraction", "safe")
+# A logo placed by ``place`` without its own numbers: a fifth of the canvas width, 5 % of the shorter side in.
+PLACE_DEFAULTS = {"anchor": "top-left", "margin": 0.05, "width_fraction": 0.2, "safe": True}
+ELEMENT_NAME = re.compile(r"[A-Za-z0-9][\w-]{0,63}")
 
 
 def load(workspace=None, preset=None):
@@ -262,12 +268,12 @@ def _validate(kit, preset=False):
         "Brand logos must be a list of at most 20 embedded images",
     )
     for spec in logos:
-        require(
-            isinstance(spec, dict)
-            and isinstance(spec.get("name"), str)
-            and isinstance(spec.get("data_base64"), str),
-            "Each brand logo needs name and data_base64",
-        )
+        validate_logo(spec)
+    validate_elements(kit.get("elements", {}))
+    if "styles" in kit:
+        from .styles import validate_brand_styles
+
+        validate_brand_styles(kit["styles"])
     colors = kit.get("colors", {})
     require(isinstance(colors, dict) and set(colors) <= {"strict", "tolerance"},
             "Brand colors takes strict (true/false) and tolerance (0–255)")
@@ -306,6 +312,217 @@ def _validate(kit, preset=False):
     return kit
 
 
+def _fraction(value, low, high, name, *, open_low=False):
+    require(isinstance(value, (int, float)) and not isinstance(value, bool)
+            and (low < value if open_low else low <= value) and value <= high,
+            f"{name} is a number {'above' if open_low else 'from'} {low:g} {'up ' if open_low else ''}to {high:g}")
+
+
+def validate_logo(spec):
+    """One ``logos`` entry: ``{name, data_base64, purpose?, place?, auto?, x?, y?, width?, height?}``."""
+    from .geometry import ANCHORS, canonical_anchor
+
+    require(isinstance(spec, dict) and isinstance(spec.get("name"), str) and spec["name"]
+            and isinstance(spec.get("data_base64"), str), "Each brand logo needs name and data_base64")
+    unknown = sorted(set(spec) - set(LOGO_FIELDS))
+    require(not unknown, f"Logo {spec['name']!r}: unknown field(s) {unknown}; fields: {', '.join(LOGO_FIELDS)}")
+    require(spec.get("purpose", "icon") in LOGO_PURPOSES,
+            f"Logo {spec['name']!r}: purpose is one of {', '.join(LOGO_PURPOSES)}")
+    require(isinstance(spec.get("auto", True), bool), f"Logo {spec['name']!r}: auto is true or false")
+    for key in ("x", "y", "width", "height"):
+        if key in spec:
+            require(isinstance(spec[key], (int, float)) and not isinstance(spec[key], bool)
+                    and (key in ("x", "y") or spec[key] > 0), f"Logo {spec['name']!r}: {key} is a number of pixels")
+    place = spec.get("place")
+    if place is None:
+        return
+    require(isinstance(place, dict) and set(place) <= set(PLACE_FIELDS),
+            f"Logo {spec['name']!r}: place takes {', '.join(PLACE_FIELDS)}")
+    if "anchor" in place:
+        require(canonical_anchor(place["anchor"]), f"Logo {spec['name']!r}: place.anchor is one of "
+                f"{', '.join(ANCHORS)}")
+    if "margin" in place:
+        _fraction(place["margin"], 0, 0.5, f"Logo {spec['name']!r}: place.margin (a share of the shorter canvas side)")
+    if "width_fraction" in place:
+        _fraction(place["width_fraction"], 0, 1, f"Logo {spec['name']!r}: place.width_fraction (a share of the "
+                  "canvas width)", open_low=True)
+    require(isinstance(place.get("safe", True), bool), f"Logo {spec['name']!r}: place.safe is true or false")
+
+
+def auto_logos(kit):
+    """The logos every layout and template gets: those with ``auto``, which defaults to true only when the brand
+    has a single logo (several logos are variants to choose from with ``brand-logo``)."""
+    logos = kit.get("logos") or []
+    return [spec for spec in logos if spec.get("auto", len(logos) == 1)]
+
+
+def choose_logo(kit, purpose=None):
+    """The logo ``brand-logo`` places: the first of ``purpose``, else the first automatic logo, else the first."""
+    logos = kit.get("logos") or []
+    require(logos, "Brand logo not found: brand.json has no logos; add logos to place one with brand-logo", "not_found",
+            field="purpose")
+    if purpose is None:
+        return (auto_logos(kit) or logos)[0]
+    found = [spec for spec in logos if spec.get("purpose", "icon") == purpose]
+    require(found, f"Brand logo not found: brand.json has no {purpose} logo; purposes: "
+            f"{', '.join(sorted({spec.get('purpose', 'icon') for spec in logos}))}", "not_found", field="purpose",
+            allowed=sorted({spec.get("purpose", "icon") for spec in logos}))
+    return found[0]
+
+
+def logo_geometry(project, spec, size, override=None):
+    """``{x, y, width, height}`` for a logo whose image is ``size``: its ``place`` (with ``override`` from
+    brand-logo) inside the canvas, or the fixed ``x``/``y``/``width``/``height`` a logo without ``place`` gives."""
+    from .geometry import ANCHORS, canonical_anchor
+    from .sizes import live_insets
+
+    override = {key: value for key, value in (override or {}).items() if value is not None}
+    if spec.get("place") is None and not override:
+        box = {"x": spec.get("x", 0), "y": spec.get("y", 0)}
+        box.update({key: spec[key] for key in ("width", "height") if key in spec})
+        return box
+    place = {**PLACE_DEFAULTS, **(spec.get("place") or {}), **override}
+    canvas = project.state["canvas"]
+    width, height = canvas["width"], canvas["height"]
+    margin = place["margin"] * min(width, height)
+    # The margin is measured from the canvas edge; safe keeps the logo inside the live (safe) area as well.
+    left, top, right, bottom = (max(margin, inset) for inset in (live_insets(canvas) if place["safe"] else (0,) * 4))
+    area = (left, top, max(1.0, width - left - right), max(1.0, height - top - bottom))
+    fraction_given = "width_fraction" in override or "width_fraction" in (spec.get("place") or {})
+    logo_w = spec["width"] if "width" in spec and not fraction_given else width * place["width_fraction"]
+    logo_h = logo_w * size[1] / size[0]
+    if logo_h > area[3]:
+        logo_w, logo_h = logo_w * area[3] / logo_h, area[3]
+    fx, fy = ANCHORS[canonical_anchor(place["anchor"])]
+    return {"x": round(area[0] + (area[2] - logo_w) * fx), "y": round(area[1] + (area[3] - logo_h) * fy),
+            "width": max(1, round(logo_w)), "height": max(1, round(logo_h))}
+
+
+def place_logo(project, spec, override=None, name=None):
+    """Add (or move, when a layer of that name exists) the logo ``spec`` as a raster layer."""
+    from .assets import add_encoded
+    from .operations import execute
+
+    asset, image = add_encoded(project, embedded(spec["data_base64"]))
+    box = logo_geometry(project, spec, image.size, override)
+    name = name or spec["name"]
+    provenance = {"type": "brand-logo", "logo": spec["name"], "purpose": spec.get("purpose", "icon")}
+    existing = next((layer for layer in project.state["layers"] if layer["name"] == name), None)
+    if existing is None:
+        execute(project, {"type": "add", "name": name, "asset": asset, "provenance": provenance, **box})
+        return
+    require(existing["type"] == "raster", f"{name!r} is a {existing['type']} layer; brand-logo places the logo as "
+            "an image layer (pass name for another layer)", field="name")
+    from .render import stored_origin
+
+    existing.update(asset=asset, provenance=provenance, constraints={},
+                    width=box.get("width", image.size[0]), height=box.get("height", image.size[1]))
+    existing["x"], existing["y"] = stored_origin(existing, (box["x"], box["y"]))
+    project.state["active_layer"] = existing["id"]
+
+
+def schemas(add):
+    from .geometry import ANCHORS
+    from .schema import S, field
+
+    add("brand-logo", {
+        "purpose": {"enum": list(LOGO_PURPOSES), "description": "Which brand logo: the first with this purpose "
+                    "(icon, wordmark, avatar, lockup); default the brand's automatic logo, else its first."},
+        "anchor": {"enum": list(ANCHORS), "description": "Where on the canvas: overrides the logo's place.anchor "
+                   "(default its own, else top-left)."},
+        "width_fraction": {"type": "number", "exclusiveMinimum": 0, "maximum": 1, "description": "Logo width as a "
+                           "share of the canvas width (default the logo's place.width_fraction, else 0.2)."},
+        "margin": {"type": "number", "minimum": 0, "maximum": 0.5, "description": "Distance from the canvas edge as a "
+                   "share of the shorter side (default the logo's place.margin, else 0.05); the logo also stays inside "
+                   "the safe area unless its place.safe is false."},
+        "name": field(S, "Layer name; default the logo's name. A layer of that name is moved, not duplicated."),
+    })
+
+
+def execute(project, op):
+    kit = for_project(project)
+    require(kit, "brand.json not found in the workspace; brand-logo places one of its logos", "not_found",
+            field="purpose")
+    spec = choose_logo(kit, op.get("purpose"))
+    place_logo(project, spec, {key: op.get(key) for key in ("anchor", "margin", "width_fraction")}, op.get("name"))
+
+
+def validate_elements(elements):
+    """``elements``: ``{name: portable object}``, the record ``object-save`` keeps, plus ``assets`` (the embedded
+    files its layers name, base64). The shape is checked on every read; the files decode when placed and in
+    ``brand validate``."""
+    from .objects import ASSET_REFERENCE
+
+    require(isinstance(elements, dict) and len(elements) <= 100, "elements maps up to 100 names to portable objects")
+    for name, item in elements.items():
+        require(isinstance(name, str) and ELEMENT_NAME.fullmatch(name),
+                "Element names are 1–64 letters, numbers, underscores or hyphens")
+        require(isinstance(item, dict) and isinstance(item.get("layers"), list) and item["layers"]
+                and all(isinstance(layer, dict) and isinstance(layer.get("id"), str) for layer in item["layers"])
+                and isinstance(item.get("root"), str)
+                and any(layer["id"] == item["root"] for layer in item["layers"]),
+                f"Element {name!r} is a portable object: {{root, layers, fonts?, assets?}} (object-save's record)")
+        assets = item.get("assets", {})
+        require(isinstance(assets, dict) and len(assets) <= 64
+                and all(isinstance(key, str) and ASSET_REFERENCE.fullmatch(key)
+                        and key.split("/")[0] in ("assets", "fonts", "masks") and isinstance(value, str)
+                        for key, value in assets.items()),
+                f"Element {name!r}: assets maps asset names (assets/<sha256>.png …) to base64 file bytes")
+
+
+def element_assets(item, limits):
+    """The decoded files of an element, each checked against the SHA-256 in its name and decoded."""
+    from .assets import decode
+    from .fonts import validate_font
+
+    found = {}
+    for key, value in (item.get("assets") or {}).items():
+        data = embedded(value)
+        require(len(data) <= limits.max_asset_bytes, f"Element asset {key} exceeds the byte limit", "resource_limit")
+        require(hashlib.sha256(data).hexdigest() == key.split("/")[1].split(".")[0],
+                f"Element asset {key} does not match its SHA-256", "invalid_brand")
+        if key.startswith("fonts/"):
+            validate_font(data)
+        else:
+            decode(data, limits)
+        found[key] = data
+    return found
+
+
+def element(project, name):
+    """``(record, assets)`` of the brand element ``name`` for ``object-place brand:NAME``."""
+    kit = for_project(project)
+    elements = kit.get("elements") or {}
+    require(name in elements, f"Brand element {name!r} not found" + (f"; elements: {', '.join(sorted(elements))}"
+            if elements else "; brand.json has no elements"), "not_found", field="name",
+            suggestions=sorted(elements)[:10])
+    item = deepcopy(elements[name])
+    assets = element_assets(item, project.limits)
+    item.pop("assets", None)
+    return item, assets
+
+
+def element_from_document(other, ref=None):
+    """A brand element from a document: the object ``ref`` (default the whole document as one group), with the
+    files its layers use embedded as base64."""
+    from .objects import from_document, snapshot
+
+    if ref is None:
+        item, assets = from_document(other)
+    else:
+        from .objects import ASSET_REFERENCE
+
+        root = other.layer(ref)
+        require(root["type"] == "group", f"{root['name']!r} is not a group; an element is a group (an object)",
+                field="object")
+        item = snapshot(other, root["id"])
+        assets = {key: other.assets[key] for key in set(ASSET_REFERENCE.findall(json.dumps(item)))
+                  if key in other.assets}
+    item["assets"] = {key: base64.b64encode(data).decode("ascii") for key, data in sorted(assets.items())
+                      if key.split("/")[0] in ("assets", "fonts", "masks")}
+    return item
+
+
 def for_project(project):
     workspace = getattr(project, "_workspace", None) or (Path(project.path).parent if project.path else None)
     preset = project.state.get("brand_preset")
@@ -328,30 +545,18 @@ def embedded(value):
         raise VixlError("invalid_brand", "Invalid embedded brand asset") from exc
 
 
-def install_kit(project, kit, skip=()):
-    """Swatches, fonts, stages and logos of ``kit`` into the document (inside an apply's candidate)."""
-    from .operations import execute
-
+def install_kit(project, kit, skip=(), logos=True):
+    """Swatches, fonts, stages and the automatic logos of ``kit`` into the document (inside an apply's
+    candidate). A logo is added once, by layer name; ``logos=False`` leaves them to the caller (a template that
+    places its own with ``brand-logo``)."""
     palette = role_colors(kit)
     swatches = project.state.setdefault("swatches", {})
     swatches.update(palette)
     swatches.update({name: spec["color"] for name, spec in extra_colors(kit).items()})
     register_fonts(project, kit, skip=skip)
-    for spec in kit.get("logos", []):
-        if any(layer["name"] == spec["name"] for layer in project.state["layers"]):
-            continue
-        from .assets import add_encoded
-
-        asset, _ = add_encoded(project, embedded(spec["data_base64"]))
-        execute(
-            project,
-            {
-                "type": "add",
-                "name": spec["name"],
-                "asset": asset,
-                **{k: spec[k] for k in ("x", "y", "width", "height") if k in spec},
-            },
-        )
+    for spec in auto_logos(kit) if logos else ():
+        if not any(layer["name"] == spec["name"] for layer in project.state["layers"]):
+            place_logo(project, spec)
 
 
 def prepare(project, operation):
@@ -361,7 +566,12 @@ def prepare(project, operation):
         return operation
     op = deepcopy(operation)
     palette = role_colors(kit)
-    install_kit(project, kit, skip={role for role, field in ROLE_FIELDS.items() if field in op})
+    logos = True
+    if op["type"] == "template-apply":
+        from .resources import get
+
+        logos = not get("templates", op["name"], workspace=getattr(project, "_workspace", None)).get("places_logo")
+    install_kit(project, kit, skip={role for role, field in ROLE_FIELDS.items() if field in op}, logos=logos)
     if op["type"] == "layout-apply" and "palette" not in op:
         if palette:
             op["palette"] = list(palette.values()) if len(palette) > 1 else [*palette.values(), "#ffffff"]
@@ -476,15 +686,24 @@ def save_font_default(workspace, *, pairing=None, role=None, name=None, data=Non
             replaced = [f"fonts.{role}"]
         fonts[role] = {"name": name, "data_base64": base64.b64encode(data).decode("ascii")}
     validate(deepcopy(raw))
-    tmp = path.with_name(".brand.json.tmp")
-    try:
-        tmp.write_text(json.dumps(raw, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-        tmp.replace(path)
-    finally:
-        tmp.unlink(missing_ok=True)
+    write_raw(path, raw)
     return {"path": "brand.json", "scope": "workspace", **({"pairing": pairing} if pairing else {"role": role, "name": name}),
             **({"replaced": replaced} if replaced else {}),
             "note": "New documents in this workspace get these fonts embedded at creation; existing documents are unchanged."}
+
+
+def encoded(raw):
+    return (json.dumps(raw, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def write_raw(path, raw):
+    """Replace ``brand.json`` at ``path`` in one step (a temporary file renamed over it)."""
+    tmp = Path(path).with_name(".brand.json.tmp")
+    try:
+        tmp.write_bytes(encoded(raw))
+        tmp.replace(path)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def use_preset(project, name):
@@ -523,8 +742,8 @@ def logo_layers(project, kit):
     logo (``logo``, ``logo-mark``, ``brand logo`` …). Children of a logo group belong to the group."""
     names = set((kit.get("logo") or {}).get("layers") or []) or {spec["name"] for spec in kit.get("logos", [])}
     layers = project.state["layers"]
-    found = [layer for layer in layers if layer["name"] in names]
-    if not names:
+    found = [layer for layer in layers if layer["name"] in names or placed_logo(layer)]
+    if not names and not found:
         found = [layer for layer in layers if LOGO_NAME.search(layer["name"])]
     ids = {layer["id"] for layer in found}
     by_id = {layer["id"]: layer for layer in layers}
@@ -741,7 +960,9 @@ def check(project, kit, issue):
         if (font_names and not allowed_fonts and layer["type"] == "text"
                 and layer.get("font") not in font_assets):
             issue("brand", "warning", "Font is outside the brand font pairing", [layer])
+    # A required element is a layer name, or an asset resource placed with asset-place (its provenance).
     names = {layer["name"] for layer in layers}
+    names |= {(layer.get("provenance") or {}).get("resource") for layer in layers} - {None}
     for name in kit.get("required_elements", []):
         if name not in names:
             issue("brand", "error", f"Required brand element is missing: {name}")
@@ -749,14 +970,21 @@ def check(project, kit, issue):
     check_fractions(project, kit, issue)
 
 
+def placed_logo(layer):
+    """True for a layer brand-logo (or an automatic logo) placed."""
+    return (layer.get("provenance") or {}).get("type") == "brand-logo"
+
+
 def finish(project):
     """Keep embedded logo layers visible above generated backgrounds."""
     kit = for_project(project)
     names = {spec["name"] for spec in kit.get("logos", [])}
     layers = project.state["layers"]
-    layers[:] = [layer for layer in layers if layer["name"] not in names] + [
-        layer for layer in layers if layer["name"] in names
-    ]
+
+    def logo(layer):
+        return layer["name"] in names or placed_logo(layer)
+
+    layers[:] = [layer for layer in layers if not logo(layer)] + [layer for layer in layers if logo(layer)]
 
 
 HEX = re.compile(r"#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b")
@@ -837,6 +1065,27 @@ def _report_kit(kit, where, errors, warnings):
                         "logo.layers to name them")
     if (kit.get("colors") or {}).get("strict") and not role_colors(kit):
         errors.append(f"{where}colors.strict needs a palette")
+    from .model import Limits
+
+    for name, item in (kit.get("elements") or {}).items():
+        try:
+            element_assets(item, Limits())
+        except VixlError as exc:
+            errors.append(f"{where}element {name!r}: {exc}")
+    approved = {parse_rgb(color) for color in role_colors(kit).values()}
+    approved |= {parse_rgb(spec["color"]) for spec in extra_colors(kit).values()}
+    for name, style in (kit.get("styles") or {}).items():
+        stray = [value for value in dict.fromkeys(HEX.findall(style.get("guidance", "")))
+                 if approved and parse_rgb(value) not in approved]
+        if stray:
+            warnings.append(f"{where}styles.{name} guidance names {', '.join(stray)}, which the palette does not "
+                            "approve; add them to palette.extra or correct the guidance")
+
+
+def parse_rgb(value):
+    from .colors import parse
+
+    return parse(value)[:3]
 
 
 def _report_guidance(raw, workspace, warnings):
@@ -849,10 +1098,12 @@ def _report_guidance(raw, workspace, warnings):
         library = json.loads(read_bounded(path, 1024 * 1024)) if path.exists() else {}
     except (VixlError, ValueError, OSError):
         return
-    approved = set()
+    approved, roles = set(), set()
     for kit in [raw, *(merge(raw, item) for item in (raw.get("presets") or {}).values())]:
         approved |= {parse(c)[:3] for c in role_colors(kit).values()}
         approved |= {parse(spec["color"])[:3] for spec in extra_colors(kit).values()}
+        roles |= set(font_specs(kit)) | ({"heading", "body"} if kit.get("pairing") else set())
+    _report_template_fonts(library, roles, warnings)
     if not approved:
         return
     for name, text in (library.get("guidance") or {}).items():
@@ -862,6 +1113,21 @@ def _report_guidance(raw, workspace, warnings):
         if stray:
             warnings.append(f"guidance {name!r} names {', '.join(stray)}, which brand.json does not approve; add "
                             "them to palette.extra or correct the guidance")
+
+
+def _report_template_fonts(library, roles, warnings):
+    """Workspace templates whose text names a font role that is neither a text stage nor defined by the brand."""
+    from .type_roles import STAGES
+
+    if not roles:
+        return
+    for name, item in (library.get("templates") or {}).items():
+        operations = item.get("operations") if isinstance(item, dict) else None
+        named_roles = {op["font"] for op in operations or [] if isinstance(op, dict) and isinstance(op.get("font"), str)
+                       and "${" not in op["font"]}
+        for role in sorted(named_roles - roles - set(STAGES)):
+            warnings.append(f"template {name!r} sets font {role!r}, which is not a text stage or a brand.json font "
+                            "role; define it under fonts or use heading, body or a stage")
 
 
 def summary(kit):
@@ -882,6 +1148,10 @@ def summary(kit):
         **({"allowed_fonts": kit["fonts"]["allowed"]} if (kit.get("fonts") or {}).get("allowed") else {}),
         "stages": {stage: table[stage]["font"] for stage in STAGES},
         "logos": [spec["name"] for spec in kit.get("logos", [])],
+        **({"logo_purposes": {spec["name"]: spec.get("purpose", "icon") for spec in kit["logos"]},
+            "auto_logos": [spec["name"] for spec in auto_logos(kit)]} if kit.get("logos") else {}),
+        **({"elements": sorted(kit["elements"])} if kit.get("elements") else {}),
+        **({"styles": [f"brand:{name}" for name in sorted(kit["styles"])]} if kit.get("styles") else {}),
         "minimum_contrast": kit.get("minimum_contrast", 4.5),
         **({"colors": kit["colors"]} if kit.get("colors") else {}),
         **({"logo": kit["logo"]} if kit.get("logo") else {}),
@@ -891,14 +1161,53 @@ def summary(kit):
 
 
 def cli(args):
-    """``vixl brand validate|show [--preset NAME] [--workspace DIR]``."""
+    """``vixl brand validate|show|init|pack|install|element … [--workspace DIR]``."""
+    from . import brand_pack
     from .commands import Parser
 
-    parser = Parser(prog="vixl brand", description="Check and summarize the workspace brand.json")
-    parser.add_argument("action", choices=["validate", "show"])
-    parser.add_argument("--preset", help="A preset name from brand.json presets")
+    parser = Parser(prog="vixl brand", description="Check, summarize, start, package and install the workspace "
+                    "brand.json")
+    parser.add_argument("action", choices=["validate", "show", "init", "pack", "install", "element"])
+    parser.add_argument("target", nargs="?", help="pack: the .vixlbrand file to write; install: the package to "
+                        "install; element: the element name")
+    parser.add_argument("--preset", help="validate/show: a preset name from brand.json presets")
     parser.add_argument("--workspace", default=str(Path.cwd()))
+    parser.add_argument("--name", help="init: the brand name (default the workspace folder name)")
+    parser.add_argument("--pairing", help="init: a font pairing (vixl font pairings)")
+    parser.add_argument("--font", action="append", default=[], help="init: ROLE=FILE embeds a TTF/OTF font for a role "
+                        "(heading, body or another role name); repeatable")
+    parser.add_argument("--palette", help="init: a palette resource whose colours become the seven palette roles")
+    parser.add_argument("--mode", choices=["light", "dark"], default="light", help="init: palette roles for a light "
+                        "or dark brand")
+    parser.add_argument("--preset-only", action="store_true", help="install: add the package's brand to the "
+                        "existing brand.json as a preset; resources are left alone")
+    parser.add_argument("--as", dest="as_name", help="install --preset-only: the preset name (default from the "
+                        "package's brand name)")
+    parser.add_argument("--from", dest="source", help="element: the .vixl document in the workspace to take it from")
+    parser.add_argument("--object", help="element: the object group in that document (default the whole document)")
+    parser.add_argument("--overwrite", action="store_true", help="init/pack/install/element: replace what exists")
     a = parser.parse_args(args)
+    if a.action in ("pack", "install", "element"):
+        require(a.target, f"vixl brand {a.action} needs " + {"pack": "OUT.vixlbrand", "install": "FILE.vixlbrand",
+                                                             "element": "NAME --from FILE.vixl"}[a.action],
+                field="target")
+    if a.action == "init":
+        fonts = []
+        for value in a.font:
+            role, sep, source = value.partition("=")
+            require(sep and role and source, "--font takes ROLE=FILE, e.g. --font heading=Brand-Bold.ttf",
+                    field="font")
+            fonts.append((role, source))
+        return brand_pack.init(a.workspace, name=a.name, pairing=a.pairing, fonts=fonts, palette=a.palette,
+                               mode=a.mode, overwrite=a.overwrite)
+    if a.action == "pack":
+        return brand_pack.pack(a.workspace, a.target, overwrite=a.overwrite)
+    if a.action == "install":
+        return brand_pack.install(a.workspace, a.target, preset_only=a.preset_only, as_name=a.as_name,
+                                  overwrite=a.overwrite)
+    if a.action == "element":
+        require(a.source, "vixl brand element NAME --from FILE.vixl [--object GROUP]", field="from")
+        return brand_pack.add_element(a.workspace, a.target, a.source, ref=a.object, overwrite=a.overwrite)
     if a.action == "validate":
         return report(a.workspace, a.preset)
     kit = load(a.workspace, a.preset)

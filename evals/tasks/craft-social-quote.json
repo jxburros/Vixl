@@ -1,0 +1,143 @@
+{
+  "prompt": "Make a square quote card, 1080x1080, on a dark background: 'Good design is as little design as possible.' by Dieter Rams. Save it as quote.vixl and export quote.png.",
+  "document": "quote.vixl",
+  "checks": [
+    {
+      "type": "canvas",
+      "width": 1080,
+      "height": 1080
+    },
+    {
+      "type": "layer",
+      "name": "quote",
+      "match": {
+        "type": "text",
+        "text_contains": "as little design as possible",
+        "min_size": 72
+      }
+    },
+    {
+      "type": "layer",
+      "name": "attribution",
+      "match": {
+        "type": "text",
+        "text_contains": "Dieter Rams"
+      }
+    },
+    {
+      "type": "design",
+      "name": "no design errors"
+    },
+    {
+      "type": "craft",
+      "name": "craft: composition and hierarchy",
+      "forbid": [
+        "flat_hierarchy",
+        "single_weight",
+        "no_focal",
+        "accent_unused"
+      ],
+      "max_findings": 3,
+      "min_score": 0.75
+    },
+    {
+      "type": "file",
+      "path": "quote.png",
+      "image_size": [
+        1080,
+        1080
+      ]
+    }
+  ],
+  "reference": [
+    {
+      "tool": "vixl_document",
+      "arguments": {
+        "action": "create",
+        "path": "quote.vixl",
+        "width": 1080,
+        "height": 1080,
+        "background": "#1c2733",
+        "seed": 7
+      }
+    },
+    {
+      "tool": "vixl_apply",
+      "arguments": {
+        "operations": [
+          {
+            "type": "font-pair",
+            "pairing": "source-serif-sans"
+          },
+          {
+            "type": "type-scale",
+            "base": 28
+          },
+          {
+            "type": "text",
+            "name": "quote-mark",
+            "text": "“",
+            "size": 160,
+            "x": 96,
+            "y": 110,
+            "color": "#fbbf24"
+          },
+          {
+            "type": "text",
+            "name": "quote",
+            "text": "Good design is as little design as possible.",
+            "size": 92,
+            "x": 96,
+            "y": 330,
+            "color": "#ffffff",
+            "line_height": 1.15
+          },
+          {
+            "type": "text-layout",
+            "target": "quote",
+            "width": 880
+          },
+          {
+            "type": "text",
+            "name": "attribution",
+            "text": "Dieter Rams",
+            "size": 36,
+            "x": 96,
+            "y": 880,
+            "color": "#cbd5e1"
+          }
+        ]
+      }
+    },
+    {
+      "tool": "vixl_check",
+      "arguments": {
+        "checks": [
+          "composition"
+        ]
+      }
+    },
+    {
+      "tool": "vixl_export",
+      "arguments": {
+        "path": "quote.png"
+      }
+    }
+  ],
+  "stripped": [
+    {
+      "type": "text",
+      "targets": [
+        "quote-mark",
+        "quote",
+        "attribution"
+      ],
+      "size": 28
+    }
+  ],
+  "setup": {
+    "font_pairings": [
+      "source-serif-sans"
+    ]
+  }
+}

@@ -312,7 +312,9 @@ def _structure(projects, reference, required):
     for document, found in names.items():
         if document == reference:
             continue
-        missing_required = sorted(set(required) - found)
+        # A placed pack asset (asset-place) satisfies a requirement named after its resource, as in the brand check.
+        placed = {(layer.get("provenance") or {}).get("resource") for layer in projects[document].state["layers"]}
+        missing_required = sorted(set(required) - found - placed)
         missing_common = sorted(expected - found - set(required))
         if missing_required:
             findings.append(_finding("structure", "required", f"{document} lacks required layer(s) "

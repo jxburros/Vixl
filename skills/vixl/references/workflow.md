@@ -40,8 +40,12 @@ instead of improvising freehand shapes:
 6. **Finishing pass, then export** — passing checks prove the piece is correct, not that it reads as
    designed. Once `vixl_check` and your suite pass:
    1. **Check composition**: `vixl_check(checks=["composition"])` reports dead bands, margin drift,
-      uneven rhythm, crowding and clumped scatter as `review` findings. `vixl_apply(workflow='repair-layout')`
-      repairs most of them without adding a finding (a dry run by default; see [composition checks](testing.md#composition-checks)).
+      uneven rhythm, crowding and clumped scatter as `review` findings, and flat type hierarchy, one weight, no focal
+      point and an unused accent. `vixl_apply(workflow='repair-layout')` repairs most spacing findings without adding a
+      finding (a dry run by default; see [composition checks](testing.md#composition-checks)); the hierarchy ones come
+      back as suggestions. [Finishing pairs](finishing-pairs.md) show the operations that close each gap.
+      If the whole composition is generic, `vixl_apply(workflow='variations')` shows 2–4 seeded rolls on one contact sheet
+      and changes nothing; apply the chosen tile's `roll` step.
    2. **Critique** in a few lines against the finishing checklist (`vixl_reference('finishing')`, CLI
       `vixl guide finishing`), naming the layer for each miss.
    3. **Fix** everything the critique found in **one** batch (`check=true, preview=true`), not a string

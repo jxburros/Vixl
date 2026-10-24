@@ -121,7 +121,9 @@ MCP: `vixl_check(checks=["guides", "alignment"])`; previews draw the guides with
 The `composition` family is on by default. It reports what reads as "not designed" even when every other check
 passes, as `review` warnings: they never fail a plain `check`, but they fail the `final` profile (and any run
 with `fail_on: review`) until they are fixed or waived with a reason. Distances are in the craft spacing unit, half
-the document's body size (`craft.spacing.unit` in the [house style](../../project/house-style.md)).
+the document's body size (`craft.spacing.unit` in the [house style](../../project/house-style.md)). Five codes
+measure space (`dead_band`, `margin_drift`, `uneven_rhythm`, `crowding`, `clumped_scatter`) and four measure
+hierarchy (`flat_hierarchy`, `single_weight`, `no_focal`, `accent_unused`).
 
 | Code | What it finds | Threshold |
 | --- | --- | --- |
@@ -130,6 +132,10 @@ the document's body size (`craft.spacing.unit` in the [house style](../../projec
 | `uneven_rhythm` | A stack of three lines where the middle line sits further from the line above it, which it matches more closely in size, than from the line below (a first name, a last name and a company); for lines of one size, gaps up to 3 units that differ. A subtitle tight under its title and away from what follows is by design. Also a small block (secondary text, a row of dots, a subtitle under a display title 2.5 times its size) as far from the block above as from the one below, between blocks of other kinds, so it belongs to neither | Gaps differing by 1.6× and 2 units (1 unit for lines of one size); a floating block has gaps of at least 3 units on both sides, within 1.5× of each other |
 | `crowding` | A rule, band or heading less than half a unit above the text below it | Half a unit |
 | `clumped_scatter` | A `pattern-scatter` or `scatter` whose motifs bunch in some cells of the tile and leave others empty | Coverage varies by more than 0.6 (coefficient of variation over 4×4 cells); seeded `pattern-scatter` tiles stay under 0.5 |
+| `flat_hierarchy` | Two or more text blocks whose largest text is barely larger than the body: the type has no clear steps | The largest size is under 1.6× the body size (`type-scale` base, else the canvas rule). The largest lines each sitting in a card of their own (name badges, a row of cards) are a series, and initials set in a mark are part of the mark |
+| `single_weight` | Three or more text blocks in one face and one weight (no bold, no second face): size is the only contrast | Counted from the font files each run is drawn in; the bundled proofing font is the `fonts` check's finding, and two registered names sharing one file cannot be told apart, so neither is judged |
+| `no_focal` | The two heaviest blocks of a page of type and pictures weigh about the same, so the eye has two places to start | A block of type weighs its size² × the square root of its characters (up to 40) × its size over the body size × its contrast against what it sits on; a picture weighs its area. The second is within 15% of the first and the third is lighter; three equals are a series. Not judged where non-text art covers over 8% of the canvas |
+| `accent_unused` | The page is built on the document's palette (a visible layer takes one of its colours) and the accent its rolled direction chose is drawn nowhere: no visible layer, nor the canvas, uses `@accent`, `@accent-text` or their colours | At least three blocks and a direction whose accent is not `none`. A page in its own colours (hex everywhere) is not asked for the document's accent, and pure white and black do not count as the palette |
 
 What is not judged: backgrounds and canvas-covering layers, gradient fills that run to two page edges and cover a
 fifth of it (a sky, the water), layers drawn fainter than 30% opacity (smoke, haze, the last stripes of a
@@ -153,8 +159,10 @@ vixl check --profile final --strict
 MCP: `vixl_check(checks=["composition"])`, or `vixl_check(profile="final")`. `vixl_apply` with
 `check=true` lists every composition finding with the batch, wherever it is, and `check.regions`: the two weakest
 regions; add `preview=true` and their real-size crops follow the preview ([interfaces](../../reference/interfaces.md)). Workflow
-`repair-layout` repairs most findings (snap the drift, re-space the stack, open the gap, spread the band, thin the
-tile) without adding any; see [layout repair](../../reference/agent-trust.md#layout-repair). A deliberate finding (an optical
+`repair-layout` repairs most spacing findings (snap the drift, re-space the stack, open the gap, spread the band, thin the
+tile) without adding any; the four hierarchy codes are judgement calls (which line leads, which weight, where the accent
+goes), so it applies nothing for them and lists `suggestions` with the finding under `reviews_remaining`; see [layout
+repair](../../reference/agent-trust.md#layout-repair). A deliberate finding (an optical
 indent, a field of space on purpose) is accepted with a reason, on the layer (`layer-intent waive`) or the
 document:
 
@@ -168,3 +176,11 @@ defects there, the family catches 12 (dead band 5 of 10, margin drift 4 of 5, un
 1, clumped scatter 0 of 1) with no false findings, and it finds nothing on the 144 rolled designs of the
 house-style eval. It misses bands that thin lines cross (three wave strokes in an empty third, faint ripples), dead space beside a
 lone footnote, and a scatter whose density is even but whose like motifs line up.
+
+The four hierarchy codes were gated on the same backtest and landed with no false finding, but it cannot show what
+they catch: no judged defect of the reconstructions is a hierarchy one, and the reconstructions are set in the proofing font and carry no
+rolled direction, so `single_weight` and `accent_unused` cannot fire there at all. On the 20 documents the closest
+`flat_hierarchy` call is 2.13× the body (the limit is 1.6×) and no page has two heaviest blocks within 15% of each
+other with a lighter third. The 144 rolled designs of the house-style eval stay free of all nine codes, and of the four
+hierarchy codes also when the heading and the body are given two different stand-in faces (the eval's own stand-ins
+share one file, which `single_weight` cannot judge).

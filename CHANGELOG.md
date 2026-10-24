@@ -42,11 +42,57 @@ packages.
 
 ### Craft checks and variations
 
+- **Four hierarchy findings join the composition check (breaking).** `flat_hierarchy` (two or more text blocks whose
+  largest text is under 1.6 times the body size), `single_weight` (three or more text blocks in one face and one
+  weight), `no_focal` (the two heaviest blocks of a page of type and pictures weigh within 15% of each other) and
+  `accent_unused` (a page built on the document's palette never draws the accent its direction rolled) are `review`
+  findings like the spacing codes: a plain `check` passes with them, the `final` profile fails until they are fixed or
+  waived with a reason, and `repair-layout` applies nothing for them (which line leads is a judgement call) and lists
+  `suggestions` under `reviews_remaining`. A document that passed `final` before can now fail it; the thresholds are in
+  `composition.THRESHOLDS`. On the craft backtest none of them adds a false finding, but no judged defect of the
+  reconstructions is of these kinds, so what they catch is not measured there; the 144 rolled designs of the
+  house-style eval still have no composition finding. Documented under [composition](docs/guides/layout/guides.md#composition). (#649)
+- **`variations` compares seeded rolls of the open document.** `vixl_apply(workflow='variations', request={output, count
+  or seeds, locks, slots})` renders 2 to 4 rolls on copies, writes one labelled contact sheet (the MCP tool also returns
+  it as an image) and gives each tile its seed, layout, palette, finding counts and the `roll` step that makes it real.
+  The open document is unchanged until you apply the chosen step. The `roll` step takes `replace` to re-roll a document
+  that already has a layout instead of failing on the name clash. See [safe variety](docs/guides/layout/safe-variety.md#comparing-variations). (#649)
+- **Finishing pairs for agents.** `skills/vixl/references/finishing-pairs.md` describes six generic pages and their
+  finished versions in words, each with the exact operations that close the gap (a flat type scale, one weight, two
+  rival headlines, an unused accent, a dead band, two left margins); a test applies every pair and checks that the
+  finding appears and then disappears. The `finishing` checklist now asks for steps in the type and for the accent to be
+  used, and points at `variations` when the composition itself is generic. (#649)
+
 ### Palette and decoration from the brief
 
 ### Layout and adaptation
 
 ### Atmosphere and motifs
+
+- **Fog for `haze`.** `haze` takes `form: "fog"`: two to five stacked soft horizontal bands (`layers`, default 3) that are
+  lighter, less saturated and denser toward the horizon, with the nearer bands taller. `density` sets how thick the fog is,
+  `seed` where the bands drift, `color` the nearest band's colour (default a pale blue-grey), and `target` or `x`, `y`,
+  `width`, `height` the zone. `behind` names the foreground layers the fog sits behind, so they stay crisp (default: below
+  the lowest text layer); run it once per gap for mist between ranges of hills. It is an editable group of gaussian
+  gradients, vector in every export, like the other atmosphere operations. `layers`, `density` and `behind` are refused on
+  the `band` and `round` forms instead of being ignored (#655).
+- **The atmosphere decision is recorded, with golden coverage.** The [atmosphere guide](docs/guides/finishing/atmosphere.md)
+  says why reflection, haze, star-field, string-lights and bokeh are operations that write editable layers and not stack
+  effects (an effect has no parts to edit and every exporter would have to learn to draw it), and that light falloff is the
+  `lighting` operation. A new visual fixture, `atmosphere_scene`, draws stars, a haze glow, fog behind the near hill, string
+  lights, bokeh and a reflection on one small canvas (#655).
+- **Five motif shapes.** Catalog shapes `microphone` (grille slots, cradle, stem, base), `snowflake` (six arms with two pairs
+  of branches, one merged outline; `thickness` sets the arm width), `leaf` (stem, midrib and veins), `book` (open, with
+  lines of text and the cover showing) and `balloon` (highlight, knot and wavy string) draw what composed shapes drew
+  badly. Each is one editable outline of plain curves with cut-outs wound against the body, so SVG, PDF, PowerPoint and the
+  preview flatten it with the same Bezier evaluator, and each reads at 24 px as well as at poster size. The visual fixture
+  `catalog_motif_shapes` shows them at both sizes (#651).
+- **Nine more motif themes, and three questions.** `vixl_reference(brief)` now also returns motifs for bakeries, gardens
+  and botanicals, winter and the holiday season, sport, tech and product launches, wellness, travel, books and reading,
+  and kids' parties (16 themes in all). `bakery` moved from the coffee theme's keywords to its own theme. Every theme
+  answers what the object is, what it emits or reflects and what frames it, and the `motifs` guidance now asks those three
+  questions before drawing. The music theme draws a stand microphone with the new `microphone` shape, and the coast and
+  lake themes draw morning fog and mist with `haze` `form: "fog"` (#651).
 
 ### Illustration defaults
 
@@ -80,6 +126,51 @@ packages.
 
 ### Brand packages
 
+- **Multi-logo brands no longer add every logo to every document (breaking).** A brand.json logo takes `purpose`
+  (`icon`, `wordmark`, `avatar`, `lockup`), `place` (`anchor`, `margin`, `width_fraction`, `safe`) and `auto`. Layouts,
+  templates and `brand-preset` add only automatic logos; `auto` defaults to true for a brand with one logo and false
+  when it has several, so give the one that should appear everywhere `"auto": true`. A logo with `place` sits at its
+  anchor, `margin` from the edge and inside the safe area; without `place` it keeps its `x`/`y`/`width`/`height` as
+  before. Unknown logo fields are now an error (#436).
+- **`brand-logo` places a brand logo by purpose.** `{"type": "brand-logo", "purpose": "wordmark", "anchor": "bottom"}`
+  places the first logo of that purpose (moving an existing layer of that name rather than adding a second), and the
+  logo rules (clear space, minimum size) count it. A template that places its own logo sets `"places_logo": true`, so
+  applying it adds no automatic logo (#436).
+- **Brand elements.** brand.json `elements` holds multi-part objects (the record `object-save` keeps, with the files
+  its layers use embedded), placed with `object-place` as `brand:NAME` before the document library is looked at.
+  `vixl brand element NAME --from FILE.vixl [--object GROUP]` saves one from a document (#436).
+- **Custom brand styles.** brand.json `styles` defines styles with guidance, rules of the catalog's rule kinds and
+  recommended looks. Documents tag one with `style-set` as `brand:NAME`, and `check --checks style` enforces its rules
+  while that brand is active (#436).
+- **`vixl brand init`, `pack` and `install`.** `init` writes a valid brand.json from a palette, a pairing and embedded
+  `--font ROLE=FILE` fonts. `pack OUT.vixlbrand` writes the brand and the workspace resource library (palettes,
+  templates, workflows, suites, guidance, assets …) as one deterministic ZIP with a SHA-256 manifest. `install`
+  validates the whole package first, then writes brand.json, the library and the asset files atomically and rolls back
+  on any failure; it never runs code, and `--preset-only` adds the package's brand as a preset instead (#436).
+- **`brand validate` checks more.** It also decodes element files, flags hex colours in brand style guidance that the
+  palette does not approve, and flags workspace templates that set a font role the brand does not define (#436).
+- **Packs can carry images.** A new `assets` resource kind, `{data_base64, media_type: png|jpeg|svg|webp, credit,
+  license}`, installs from plugin packs, brand packages and `resource-save`. Saving checks the base64, the file
+  signature, at most 2 MiB per asset and 20 MiB per plugin pack, a still image within the document limits, and SVG
+  through the static-SVG import rules. The bytes are stored by SHA-256 beside the resource library
+  (`.vixl-resources-assets/`), so the library file stays small (#530).
+- **`asset-place` places a pack image.** `{"type": "asset-place", "resource": "acme-badge", "x": "center", "y": 40,
+  "width": 200, "anchor": "top"}` embeds the asset once however often it is placed, renders SVG at the placed size,
+  and records `{resource, sha256}` (and credit and licence) in the layer's provenance. Templates may use it, and it
+  scales with `proportional`. A placed asset satisfies a brand `required_elements` entry or a `group-check` required
+  layer named after its resource (#530).
+- **Constraints read text line metrics.** `REF.line[N].start` and `REF.line[N].end` (where a line's pen starts and
+  ends; `-1` counts from the end) and `REF.baseline[N]` follow the copy as the renderer sets it, with offsets in pixels
+  or `em` of that text's size: `{"left": "lyric.line[-1].end+0.25em", "bottom": "lyric.baseline[-1]"}` keeps a mark
+  after the last word of a variable lyric. Line refs are checked for the right axis and an existing line (#529).
+- **Arithmetic in templates and workflows.** A template, container or workflow field whose whole value starts with
+  `=` is evaluated after its variables are filled (`"x": "=${pad} + 76.34 * ${k}"`) and reported under `normalized`;
+  `==` writes a literal `=`. A safe evaluator allows numbers, `+ - * / // %`, parentheses, `min`, `max`, `round` and
+  `abs`; names, attributes, other calls and `**` are refused, length and size are bounded, and division by zero is
+  an error. The `calc` variable filter does the same inside text: `${price|calc:x*0.8|number:2}` (#529).
+- **Proportional templates scale numbers from variables (breaking).** Variables and `=` expressions are now filled
+  before a `proportional` template scales, so a size or position a variable gives scales like a written one (#529).
+
 ### Merch
 
 ### Characters
@@ -87,6 +178,22 @@ packages.
 ### Reproducibility and delivery
 
 ### Evals
+
+- **A craft grader in the agent eval.** Task checks can be `craft`: the composition checks (spacing, rhythm, crowding and
+  the four hierarchy codes) run on the document the agent leaves, every finding counted whether or not it was waived.
+  The score is `1 - min(1, findings / max_findings)`; the check passes when no finding has a `forbid` code and the score
+  reaches `min_score`, and its detail lists each finding's code, layers and region. Four sparse briefs (an event poster,
+  a café menu with tab stops and dot leaders, a report cover, a quote card) have reference solutions that score 1.0, and
+  `evals/baseline.json` stores a floor per craft task and for their mean, so a check or default change that lowers what a
+  finished page scores fails `python -m evals.run --baseline`. Reports show a craft column. (#656)
+- **An optional rubric judge.** `python -m evals.run --judge` renders each craft task's document at delivery size and asks a
+  model for 1-5 scores on hierarchy, spacing, type, colour, motif and finish (`--judge-model`, `--judge-endpoint` or
+  `VIXL_JUDGE_ENDPOINT` for any Anthropic-compatible server). It is off by default, never used by the Agent eval workflow
+  or the tests (they script it), kept out of the baseline, and stores its scores, notes and images beside the run. No
+  re-judging has been run with it, so it measures nothing yet. (#656)
+- **The craft backtest scores the four hierarchy codes.** None fires on the 20 reconstructed documents, so none adds a
+  false finding; `single_weight` and `accent_unused` cannot fire there (proofing font, no rolled direction), which the
+  [backtest README](evals/craft_backtest/README.md) says. (#649)
 
 ## 0.30.5
 

@@ -71,7 +71,9 @@ unchanged; `vixl reproduce --reference PNG` or `--lock FILE` verifies an approve
 reports craft as `review` findings with a `code`: `dead_band` (an empty band much larger than the document's own
 gaps), `margin_drift` (stacked blocks a few pixels off one edge or centre axis), `uneven_rhythm` (a line further
 from the line it belongs with than from the next, or a small block floating midway between two others), `crowding` (a rule, band or heading under half a spacing unit
-above text) and `clumped_scatter`. Each names its layers, `region`, measured `values` and `threshold`, in spacing
+above text) and `clumped_scatter`; and four about hierarchy: `flat_hierarchy` (the largest text is under 1.6 times the
+body size), `single_weight` (three or more text blocks in one face and weight), `no_focal` (the two heaviest blocks weigh
+the same within 15%) and `accent_unused` (a page built on the document's palette never draws its rolled accent). Each names its layers, `region`, measured `values` and `threshold`, in spacing
 units of half the body size. They do not fail a plain check but fail `profile="final"`: fix them, or waive a
 deliberate one with a reason (`{type: waiver, check: composition, reason}`). Marked decoration, backgrounds,
 edge-to-edge gradient fills, layers under 30% opacity and bleeding art are not judged; text is measured by its glyphs. Workflow `repair-layout` repairs them after any failures, when its `checks` include
@@ -79,4 +81,6 @@ edge-to-edge gradient fills, layers under 30% opacity and bleeding art are not j
 to a spacing unit, spreads a dead band over the other gaps (or moves the blocks beside it) and thins or re-seeds a
 clumped `pattern-scatter` tile. Each candidate is kept only if its finding is gone and no finding of any check is new,
 and the least disruptive wins; drawings move whole, chips and glows move with their layer. What it cannot repair is
-listed under `reviews_remaining` with the reason, and never blocks the repair of failures.
+listed under `reviews_remaining` with the reason, and never blocks the repair of failures; the four hierarchy findings are
+judgement calls, so it lists `suggestions` for them (raise the headline, set it in the heading role, let one rival lead,
+put `@accent` on the call to action) and changes nothing. Worked fixes: [finishing pairs](finishing-pairs.md).

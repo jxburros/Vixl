@@ -200,7 +200,8 @@ COMMON = {
                   "description": "Variable overrides {name: string|number|boolean}."},
     "target": {"type": "string", "description": "Layer ID or unique name."},
     "kind": {"type": "string", "enum": ["palettes", "templates", "guidance", "containers", "shapes", "suites",
-                                        "workflows"], "description": "Resource category."},
+                                        "workflows", "mockups", "objects", "assets"],
+             "description": "Resource category (assets: images {data_base64, media_type, credit, license})."},
     "start": {"type": "boolean", "default": False, "description": "Start a background worker after submitting."},
 }
 
@@ -814,9 +815,12 @@ SUMMARIES = {
 
 
 def summary(action):
+    from .variations import SUMMARY as VARIATIONS_SUMMARY
     from .emoji_workflows import SUMMARIES as EMOJI_SUMMARIES
     from .plugins import workflow_actions, workflow_summary
 
     if action in workflow_actions() and workflow_summary(action):
         return workflow_summary(action)
+    if action == "variations":
+        return VARIATIONS_SUMMARY
     return EMOJI_SUMMARIES.get(action, SUMMARIES.get(action, ""))

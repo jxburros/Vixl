@@ -1,0 +1,152 @@
+{
+  "prompt": "Make a report cover for Northwind Co.: 'Annual Report 2026', with the line 'A year of steady growth'. A4 portrait, 794x1123. Save it as cover.vixl and export cover.pdf.",
+  "document": "cover.vixl",
+  "checks": [
+    {
+      "type": "canvas",
+      "width": 794,
+      "height": 1123
+    },
+    {
+      "type": "layer",
+      "name": "title",
+      "match": {
+        "type": "text",
+        "text_contains": "Report",
+        "min_size": 96
+      }
+    },
+    {
+      "type": "layer",
+      "name": "subtitle",
+      "match": {
+        "type": "text",
+        "text_contains": "steady growth"
+      }
+    },
+    {
+      "type": "layer",
+      "name": "company",
+      "match": {
+        "type": "text",
+        "text_contains": "Northwind"
+      }
+    },
+    {
+      "type": "design",
+      "name": "no design errors"
+    },
+    {
+      "type": "craft",
+      "name": "craft: composition and hierarchy",
+      "forbid": [
+        "flat_hierarchy",
+        "single_weight",
+        "no_focal",
+        "accent_unused"
+      ],
+      "max_findings": 3,
+      "min_score": 0.75
+    },
+    {
+      "type": "file",
+      "path": "cover.pdf"
+    }
+  ],
+  "reference": [
+    {
+      "tool": "vixl_document",
+      "arguments": {
+        "action": "create",
+        "path": "cover.vixl",
+        "width": 794,
+        "height": 1123,
+        "background": "#ffffff",
+        "seed": 7
+      }
+    },
+    {
+      "tool": "vixl_apply",
+      "arguments": {
+        "operations": [
+          {
+            "type": "font-pair",
+            "pairing": "source-serif-sans"
+          },
+          {
+            "type": "type-scale",
+            "base": 20
+          },
+          {
+            "type": "shape",
+            "name": "accent-bar",
+            "shape": "rectangle",
+            "x": 72,
+            "y": 120,
+            "width": 96,
+            "height": 8,
+            "fill": "#c2410c"
+          },
+          {
+            "type": "text",
+            "name": "title",
+            "text": "Annual\nReport\n2026",
+            "size": 120,
+            "x": 72,
+            "y": 170,
+            "color": "#1c2733",
+            "line_height": 1.0
+          },
+          {
+            "type": "text",
+            "name": "subtitle",
+            "text": "A year of steady growth",
+            "size": 34,
+            "x": 72,
+            "y": 600,
+            "color": "#5b6878"
+          },
+          {
+            "type": "text",
+            "name": "company",
+            "text": "Northwind Co.",
+            "size": 24,
+            "x": 72,
+            "y": 960,
+            "color": "#1c2733"
+          }
+        ]
+      }
+    },
+    {
+      "tool": "vixl_check",
+      "arguments": {
+        "checks": [
+          "composition"
+        ]
+      }
+    },
+    {
+      "tool": "vixl_export",
+      "arguments": {
+        "path": "cover.pdf"
+      }
+    }
+  ],
+  "stripped": [
+    {
+      "type": "text",
+      "targets": [
+        "title",
+        "subtitle",
+        "company"
+      ],
+      "size": 20
+    }
+  ],
+  "setup": {
+    "font_pairings": [
+      "source-serif-sans"
+    ]
+  }
+}

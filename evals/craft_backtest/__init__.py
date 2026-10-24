@@ -19,7 +19,8 @@ import json
 from pathlib import Path
 
 HERE = Path(__file__).parent
-CODES = ("dead_band", "margin_drift", "uneven_rhythm", "crowding", "clumped_scatter")
+CODES = ("dead_band", "margin_drift", "uneven_rhythm", "crowding", "clumped_scatter", "flat_hierarchy",
+         "single_weight", "no_focal", "accent_unused")
 
 
 def manifest():

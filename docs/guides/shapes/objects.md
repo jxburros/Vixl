@@ -214,7 +214,8 @@ vixl export guitar.vixl --isolate guitar
 - `{type: object-place, name: rex, x, y, scale | width | height, name_as, recolor}` inserts it again as an
   editable group with new IDs. `recolor` maps part names to colours (`{"body": "#c96", "ear": "#743"}`); each
   placement is independent. `source: "rex.vixl"` places a portable object document from the workspace instead,
-  so an exported object and a saved one are interchangeable.
+  so an exported object and a saved one are interchangeable, and `name: "brand:rex"` places an element of the
+  workspace brand.json ([brand elements](../layout/brands.md#elements)).
 - The component library's `library-place` workflow action places a component as an editable group (its
   layers, fonts and images). `as: "image"` keeps the old raster snapshot.
 

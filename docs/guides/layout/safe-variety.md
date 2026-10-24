@@ -174,6 +174,29 @@ looks and styles where the variety level allows their tier, and the answer's `re
 says, for each list, what was rolled, whether it is one of the recommendations and which
 recommendations are opt-in alternatives (with their tiers).
 
+## Comparing variations
+
+To choose between directions without trying them one by one, ask for variations of the open document. The `variations`
+workflow rolls 2–4 seeds, applies each roll (palette, layout, fonts, look) to a copy of the document with the same copy,
+and writes one labelled contact sheet; the document itself is not changed. The MCP tool returns the sheet as an image
+beside the result.
+
+```json
+{"output": "options.png", "count": 3, "locks": {"palette": "ocean"}}
+```
+
+That is the request of `vixl_apply(workflow='variations', request=…)` (CLI: `vixl workflow variations --request FILE`).
+`seeds` (2–4 different integers) replaces `count` fresh random seeds; `locks` fixes choices every tile keeps (lock the
+palette to compare layouts, or the layout to compare palettes); `slots` gives the copy when the document has no layout
+yet (otherwise the copy of its current layout is reused); `purpose`, `mood` and `variety` steer the rolls as they do
+for the `roll` step; `width` and `columns` shape the sheet; `overwrite` replaces an existing `output`.
+
+The result lists a tile per seed with its `layout`, `palette`, `pairing`, `mode` and `look`, its finding counts
+(`fix` and `review`: a tile with a fix finding is a worse candidate) and `apply`, the `roll` step that makes it real.
+Choose one and apply that step; it carries `replace: true`, so it takes the place of the layout the document has now,
+and the same seed gives the same result as the tile (`{type: roll, seed: 12, replace: true, slots: {title: …}}` in the
+operations of `vixl_apply`; `replace` also works on any `roll` step of a document that already has a layout).
+
 ## Reproducing and pinning
 
 Unseeded workspace rolls keep at most 32 entries in `.vixl/rolls.json`. Recent

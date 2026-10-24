@@ -11,6 +11,9 @@ Text, image assets, colours, link variables and imposition templates all substit
 - ``number[:DECIMALS]``: a number with thousands separators (``1234.5|number:2`` is ``1,234.50``).
 - ``format:SPEC``: a Python format spec applied to the number (``format:08.3f``) or, for text, to
   the string (``format:>10``).
+- ``calc[:EXPRESSION]``: arithmetic (``vixl.expressions``: numbers, ``+ - * / // %``, parentheses, ``min``,
+  ``max``, ``round``, ``abs``) with ``x`` standing for the value (``${price|calc:x*0.8|number:2}``); without an
+  expression the value itself is evaluated.
 
 Variable names are ``[\\w-]+``; an argument runs to the next ``|`` or ``}``. ``$${name}`` is the escape: it draws
 the literal text ``${name}`` and needs no variable.
@@ -25,7 +28,8 @@ NAME = re.compile(r"[\w-]+")
 PLACEHOLDER = re.compile(r"(?<!\$)\$\{([\w-]+)((?:\|[^|{}]*)*)\}")
 # ``$${name}`` writes a literal ``${name}``; substitution drops one dollar sign.
 _SUBSTITUTION = re.compile(r"\$(\$\{[\w-]+(?:\|[^|{}]*)*\})|\$\{([\w-]+)((?:\|[^|{}]*)*)\}")
-FILTERS = {"upper": False, "lower": False, "title": False, "default": True, "map": True, "number": None, "format": True}
+FILTERS = {"upper": False, "lower": False, "title": False, "default": True, "map": True, "number": None, "format": True,
+           "calc": None}
 # Maps travel with the variables under a key no ${name} can spell, so merged dicts keep them.
 MAPS = "|maps"
 MAX_MAPS, MAX_MAP_ENTRIES = 64, 1000
@@ -119,6 +123,12 @@ def _apply(name, value, filters, maps):
                 require(re.fullmatch(r"\d{1,2}", str(decimals)), "number takes a decimal count 0-99", "invalid_filter",
                         field="text")
                 text = f"{number:,.{int(decimals)}f}"
+        elif kind == "calc":
+            from .expressions import evaluate
+            from .geometry import compact_number
+
+            result = evaluate(str(text)) if argument is None else evaluate(argument, {"x": _number(text, name)})
+            text = compact_number(result, 6)
         elif kind == "format":
             try:
                 subject = _number(text, name)

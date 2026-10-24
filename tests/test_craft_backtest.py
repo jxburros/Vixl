@@ -18,6 +18,11 @@ PINNED = {
     "uneven_rhythm": (4, 2, 0),
     "crowding": (1, 1, 0),
     "clumped_scatter": (1, 0, 0),
+    # No judged defect of the reconstructions is a hierarchy one, so these can only be false: none of the four fires.
+    "flat_hierarchy": (0, 0, 0),
+    "single_weight": (0, 0, 0),
+    "no_focal": (0, 0, 0),
+    "accent_unused": (0, 0, 0),
 }
 
 
@@ -32,6 +37,15 @@ def test_backtest_numbers_are_pinned():
     text = table(result)
     assert "| all | 21 | 12 | 9 |" in text
     json.dumps(result)
+
+
+def test_the_backtest_scores_every_code_of_the_family():
+    from vixl import composition
+
+    assert CODES == composition.CODES
+    result = run()
+    assert all(f["code"] in CODES for f in result["findings"])
+    assert not [f for f in result["findings"] if f["code"] in composition.CODES[5:]]
 
 
 def test_manifest_is_complete_and_honest():
@@ -55,5 +69,6 @@ def test_repair_layout_resolves_composition_findings_on_the_backtest():
     assert (totals["findings"], totals["resolved"], totals["caught"], totals["caught_resolved"]) == (23, 18, 20, 16)
     assert totals["new"] == 0
     assert {code: row["resolved"] for code, row in result["by_code"].items()} == {
-        "dead_band": 3, "margin_drift": 10, "uneven_rhythm": 1, "crowding": 4, "clumped_scatter": 0}
+        "dead_band": 3, "margin_drift": 10, "uneven_rhythm": 1, "crowding": 4, "clumped_scatter": 0,
+        "flat_hierarchy": 0, "single_weight": 0, "no_focal": 0, "accent_unused": 0}
     assert "18 of 23 composition findings resolved" in repair_table(result)

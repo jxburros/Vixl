@@ -1,0 +1,174 @@
+{
+  "prompt": "Make a poster for the Harbor Night Market: Friday 21 June, 6 to 11 pm, Pier 4 on Harbor Road, free entry. Portrait, 1080x1440. Save it as poster.vixl and export poster.png.",
+  "document": "poster.vixl",
+  "checks": [
+    {
+      "type": "canvas",
+      "width": 1080,
+      "height": 1440
+    },
+    {
+      "type": "layer",
+      "name": "title",
+      "match": {
+        "type": "text",
+        "text_contains": "Night",
+        "min_size": 120
+      }
+    },
+    {
+      "type": "layer",
+      "name": "date",
+      "match": {
+        "type": "text",
+        "text_contains": "21 June"
+      }
+    },
+    {
+      "type": "layer",
+      "name": "venue",
+      "match": {
+        "type": "text",
+        "text_contains": "Pier 4"
+      }
+    },
+    {
+      "type": "layer",
+      "name": "entry",
+      "match": {
+        "type": "text",
+        "text_contains": "Free entry"
+      }
+    },
+    {
+      "type": "design",
+      "name": "no design errors"
+    },
+    {
+      "type": "craft",
+      "name": "craft: composition and hierarchy",
+      "forbid": [
+        "flat_hierarchy",
+        "single_weight",
+        "no_focal",
+        "accent_unused"
+      ],
+      "max_findings": 3,
+      "min_score": 0.75
+    },
+    {
+      "type": "file",
+      "path": "poster.png",
+      "image_size": [
+        1080,
+        1440
+      ]
+    }
+  ],
+  "reference": [
+    {
+      "tool": "vixl_document",
+      "arguments": {
+        "action": "create",
+        "path": "poster.vixl",
+        "width": 1080,
+        "height": 1440,
+        "background": "#f6efe6",
+        "seed": 7
+      }
+    },
+    {
+      "tool": "vixl_apply",
+      "arguments": {
+        "operations": [
+          {
+            "type": "font-pair",
+            "pairing": "source-serif-sans"
+          },
+          {
+            "type": "type-scale",
+            "base": 32
+          },
+          {
+            "type": "shape",
+            "name": "accent-bar",
+            "shape": "rectangle",
+            "x": 96,
+            "y": 150,
+            "width": 120,
+            "height": 10,
+            "fill": "#c2410c"
+          },
+          {
+            "type": "text",
+            "name": "title",
+            "text": "Harbor\nNight\nMarket",
+            "size": 176,
+            "x": 96,
+            "y": 230,
+            "color": "#1c2733",
+            "line_height": 1.0
+          },
+          {
+            "type": "text",
+            "name": "date",
+            "text": "Friday 21 June, 6 to 11 pm",
+            "size": 56,
+            "x": 96,
+            "y": 880,
+            "color": "#1c2733"
+          },
+          {
+            "type": "text",
+            "name": "venue",
+            "text": "Pier 4, Harbor Road",
+            "size": 40,
+            "x": 96,
+            "y": 970,
+            "color": "#5b6878"
+          },
+          {
+            "type": "text",
+            "name": "entry",
+            "text": "Free entry",
+            "size": 40,
+            "x": 96,
+            "y": 1180,
+            "color": "#c2410c"
+          }
+        ]
+      }
+    },
+    {
+      "tool": "vixl_check",
+      "arguments": {
+        "checks": [
+          "composition"
+        ]
+      }
+    },
+    {
+      "tool": "vixl_export",
+      "arguments": {
+        "path": "poster.png"
+      }
+    }
+  ],
+  "stripped": [
+    {
+      "type": "text",
+      "targets": [
+        "title",
+        "date",
+        "venue",
+        "entry"
+      ],
+      "size": 32
+    }
+  ],
+  "setup": {
+    "font_pairings": [
+      "source-serif-sans"
+    ]
+  }
+}

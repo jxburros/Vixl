@@ -9,8 +9,8 @@ motion) at each variety level, applies every roll to a real document, and scores
   more for wider spreads) of the rolled palette, layout, mode, pairing, look and style, and the mean pairwise distance between small
   renders (0 = identical images, 1 = opposite colours everywhere);
 * **quality**: the share of designs with no ``fix`` finding from ``check``, the share with no
-  ``composition`` finding (dead bands, margin drift, uneven rhythm, crowding, clumped scatter: the craft
-  the checks can measure), the share whose fonts are installed (the document typography, not the
+  ``composition`` finding (dead bands, margin drift, uneven rhythm, crowding, clumped scatter, flat hierarchy, one
+  weight, no focal point, an unused accent: the craft the checks can measure), the share whose fonts are installed (the document typography, not the
   proofing fallback), the share that pass the contrast check, and the lowest ink contrast seen.
 
 It runs offline: fonts come from a temporary cache filled with the bundled font under each
