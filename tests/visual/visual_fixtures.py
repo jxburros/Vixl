@@ -404,3 +404,52 @@ def text_hanging_quote():
          "color": "#1d3557", "align": "right", "hanging_punctuation": True},
         {"type": "text-layout", "target": "signoff", "width": 175},
     ])
+
+
+_MERCH = {}
+
+
+def _merch_views():
+    """The front of a tee and of a hoodie and a die-cut sticker, built by the mockup workflow around one badge and
+    reduced to thumbnails (rendered once per process)."""
+    if not _MERCH:
+        import tempfile
+        from pathlib import Path
+
+        from vixl.interfaces import Session
+        from vixl.workflows import dispatch
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            badge = Project(400, 400, "transparent")
+            badge.apply([
+                {"type": "shape", "shape": "ellipse", "name": "sun", "x": 20, "y": 20, "width": 360, "height": 360,
+                 "fill": "#f4a261"},
+                {"type": "shape", "shape": "ellipse", "name": "core", "x": 80, "y": 80, "width": 240, "height": 240,
+                 "fill": "#e9c46a"},
+                rect("wave", 20, 230, 360, 50, "#2a9d8f"),
+                rect("deep", 20, 300, 360, 50, "#264653"),
+            ])
+            badge.save(root / "badge.vixl")
+            session = Session(root / "badge.vixl", workspace=root)
+            for name, colour, crop in (("tee", "#2b3a55", (0, 0, 1100, 1000)),
+                                       ("hoodie", "#9c3d3d", (0, 0, 1100, 990)),
+                                       ("sticker", None, (240, 240, 960, 960))):
+                dispatch(session, "mockup", {"mockup": name, "output": f"{name}.vixl", "design": "badge.vixl",
+                                             **({"garment_color": colour} if colour else {})})
+                mockup = Project.load(root / f"{name}.vixl")
+                mockup._workspace = root
+                view = mockup.render().convert("RGBA").crop(crop)
+                _MERCH[name] = view.resize((84, round(84 * view.height / view.width)), Image.Resampling.BOX)
+    return _MERCH
+
+
+@fixture
+def merch_tee_hoodie_sticker():
+    # The vector merch mockups: a garment colour on a tee and a hoodie with the art on the chest, and a die-cut sticker
+    # whose border follows the art.
+    p = doc(256, 96, "#e6e9ee")
+    for i, view in enumerate(_merch_views().values()):
+        p.apply({"type": "add", "asset": add_image(p, view), "name": f"view-{i}", "x": 2 + i * 85,
+                 "y": (96 - view.height) // 2})
+    return p
