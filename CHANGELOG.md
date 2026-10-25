@@ -115,6 +115,41 @@ and `vixl host` for AI Server Studio.
 
 ### Hosting
 
+- **`vixl host` serves many workspaces to a host application.** A new core server for AI Server Studio and other
+  programs: a bearer token is always required, on loopback too (`VIXL_HOST_TOKEN`, `--token-env` or
+  `--token-file`/`VIXL_HOST_TOKEN_FILE`), and the host refuses to start without one. Routes under `/w/{ws}/` act in
+  the folder `ROOT/ws`, named `[a-z0-9_-]{1,64}` and kept inside `--root`; `GET /host/info` reports the version,
+  `host_api: 1`, capabilities, limits and the job TTL, and every error answers one shape,
+  `{code, message, hint, layer_id?}`. It takes `--offline`, `--bind` and the per-call limit flags, with the
+  shared-server defaults (#537).
+- **Host documents have ids, revisions and safe retries.** `POST /w/{ws}/documents` creates a document with an
+  opaque id (`d_1a2b3c4d`) recorded in the workspace's index; `import` takes a `.vixl` file under the archive
+  budgets, and `GET` returns its state with layer bounds, `blob` its bytes. Operations, raw-byte assets, SVG and PDF
+  artwork and `DELETE` wrap the `Session` methods. Each change raises a revision that every answer carries, and
+  `if_revision` makes a change conditional (`409 revision_conflict`). A `request_id` makes a retry return the first
+  answer, using the same request log as MCP, now `vixl.idempotency` (#538).
+- **Host compose, preview and check.** `POST /w/{ws}/documents/{id}/compose` builds a piece in one call and
+  replaces the document with it; `preview` takes `page` (or `all` for a contact sheet), `region`, `max_px` and
+  `max_bytes` with the MCP preview's size stepping; `check` answers findings as
+  `{rule, severity, action, message, layer_id, page}` with `outcome` and `passed`. All three are limited like the
+  REST routes (#539).
+- **Host exports are jobs with progress.** `POST /w/{ws}/documents/{id}/exports` always answers a job id after
+  the page and megapixel preflight; `GET /jobs/{id}` reports a progress fraction that never goes back,
+  `/download` returns the file until the job TTL passes (then `410 expired`, and a sweeper deletes it), and
+  `/events` streams progress and one `job-complete` event in the shape durable jobs send, which also reaches the
+  plugins' `job-complete` hook (#540).
+- **Host catalogs and a `studio` tool profile.** `GET /catalog/{kind}` serves the `vixl catalog export` sections,
+  the brief guide, the capability matrix (now with a Host column) and operation field schemas;
+  `GET /catalog/tools?profile=studio` lists 12 tools in the host's terms, kept in `vixl.guidance.TOOL_PROFILES`, with
+  input schemas derived from the operation, compose, check and export registries (#541).
+- **The host API has a published contract.** `vixl host --schema` (also `GET /host/schema`) prints
+  `host-api.schema.json`, with each endpoint's request and response and `host_api: 1`; releases attach it as
+  `vixl-host-api.schema.json`, and a test drives every endpoint against it. A change that removes an endpoint or a
+  field, or changes its meaning, raises `host_api` and needs a migration note here; additions do not. "Embed Vixl in
+  another app" (AGT-30) moves from a days-long T5 project on `vixl serve` to T1 with `vixl host` (#543).
+- **Offline mode covers content packs and plugins.** `VIXL_OFFLINE=1` now also stops content-pack downloads (as
+  `VIXL_PACK_DOWNLOAD=off` does) and refuses to enable third-party plugins, whose code it cannot bind;
+  `--plugins` with `--offline` is refused (#537).
 - **Design Profile import and export.** `vixl brand import --design-profile FILE.json` writes brand.json from a
   Design Profile (`schemaVersion: 2`: typography, colours, page, docText) and `vixl brand export --design-profile
   FILE.json` writes the workspace brand as one; both are brand kit workflow actions (`brand-import`, `brand-export`),

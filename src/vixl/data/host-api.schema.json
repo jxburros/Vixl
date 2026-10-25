@@ -1,0 +1,1409 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/jxburros/Vixl/blob/main/src/vixl/data/host-api.schema.json",
+ "title": "Vixl host API",
+ "description": "The vixl host HTTP contract: every endpoint's request and response. Every request needs Authorization: Bearer TOKEN; every error answers #/$defs/Error; a heavy call may answer 202 #/$defs/Running. host_api changes when an endpoint or field is removed or changes meaning; adding one does not change it.",
+ "host_api": 1,
+ "endpoints": {
+  "GET /host/info": {
+   "response": {
+    "$ref": "#/$defs/HostInfo"
+   }
+  },
+  "GET /host/health": {
+   "response": {
+    "$ref": "#/$defs/Health"
+   }
+  },
+  "GET /host/schema": {
+   "response": {
+    "type": "object"
+   },
+   "summary": "This contract."
+  },
+  "GET /w/{ws}": {
+   "response": {
+    "$ref": "#/$defs/Workspace"
+   }
+  },
+  "GET /w/{ws}/documents": {
+   "response": {
+    "$ref": "#/$defs/DocumentList"
+   }
+  },
+  "POST /w/{ws}/documents": {
+   "request": {
+    "$ref": "#/$defs/CreateRequest"
+   },
+   "response": {
+    "$ref": "#/$defs/DocumentState"
+   },
+   "status": 201
+  },
+  "POST /w/{ws}/documents/import": {
+   "body": "application/vnd.vixl+zip",
+   "query": [
+    "name",
+    "request_id"
+   ],
+   "response": {
+    "$ref": "#/$defs/DocumentState"
+   },
+   "status": 201
+  },
+  "GET /w/{ws}/documents/{id}": {
+   "query": [
+    "max_layers"
+   ],
+   "response": {
+    "$ref": "#/$defs/DocumentState"
+   }
+  },
+  "GET /w/{ws}/documents/{id}/blob": {
+   "produces": "application/vnd.vixl+zip",
+   "headers": [
+    "X-Vixl-Revision"
+   ]
+  },
+  "DELETE /w/{ws}/documents/{id}": {
+   "query": [
+    "if_revision"
+   ],
+   "response": {
+    "$ref": "#/$defs/Deleted"
+   }
+  },
+  "POST /w/{ws}/documents/{id}/operations": {
+   "request": {
+    "$ref": "#/$defs/OperationsRequest"
+   },
+   "response": {
+    "$ref": "#/$defs/Revisioned"
+   }
+  },
+  "POST /w/{ws}/documents/{id}/assets": {
+   "body": "image/*",
+   "query": [
+    "name",
+    "credit",
+    "license",
+    "if_revision",
+    "request_id"
+   ],
+   "response": {
+    "$ref": "#/$defs/Revisioned"
+   }
+  },
+  "POST /w/{ws}/documents/{id}/import": {
+   "body": "image/svg+xml or application/pdf",
+   "query": [
+    "format",
+    "name",
+    "page",
+    "dpi",
+    "svg_mode",
+    "if_revision",
+    "request_id"
+   ],
+   "response": {
+    "$ref": "#/$defs/Revisioned"
+   }
+  },
+  "POST /w/{ws}/documents/{id}/compose": {
+   "request": {
+    "$ref": "#/$defs/ComposeRequest"
+   },
+   "response": {
+    "$ref": "#/$defs/ComposeResult"
+   }
+  },
+  "POST /w/{ws}/documents/{id}/preview": {
+   "request": {
+    "$ref": "#/$defs/PreviewRequest"
+   },
+   "produces": "image/png",
+   "headers": [
+    "X-Vixl-Revision",
+    "X-Vixl-Width",
+    "X-Vixl-Height"
+   ]
+  },
+  "POST /w/{ws}/documents/{id}/check": {
+   "request": {
+    "$ref": "#/$defs/CheckRequest"
+   },
+   "response": {
+    "$ref": "#/$defs/CheckResult"
+   }
+  },
+  "POST /w/{ws}/documents/{id}/exports": {
+   "request": {
+    "$ref": "#/$defs/ExportRequest"
+   },
+   "response": {
+    "$ref": "#/$defs/ExportJob"
+   },
+   "status": 202
+  },
+  "GET /jobs/{id}": {
+   "query": [
+    "wait"
+   ],
+   "response": {
+    "$ref": "#/$defs/Job"
+   }
+  },
+  "GET /jobs/{id}/result": {
+   "query": [
+    "wait"
+   ],
+   "response": {
+    "$ref": "#/$defs/Any"
+   }
+  },
+  "GET /jobs/{id}/download": {
+   "produces": "the export's media type",
+   "headers": [
+    "X-Vixl-Revision"
+   ],
+   "errors": {
+    "409": [
+     "job_running",
+     "job_failed"
+    ],
+    "410": [
+     "expired"
+    ]
+   }
+  },
+  "GET /jobs/{id}/events": {
+   "produces": "text/event-stream",
+   "events": {
+    "progress": {
+     "$ref": "#/$defs/ProgressEvent"
+    },
+    "job-complete": {
+     "$ref": "#/$defs/JobCompleteEvent"
+    }
+   }
+  },
+  "GET /catalog/{kind}": {
+   "query": [
+    "brief",
+    "seed",
+    "profile",
+    "name"
+   ],
+   "response": {
+    "$ref": "#/$defs/CatalogSection"
+   },
+   "kinds": [
+    "sizes",
+    "palettes",
+    "typefaces",
+    "layouts",
+    "briefs",
+    "guidance",
+    "looks",
+    "styles",
+    "checks",
+    "guide",
+    "capabilities",
+    "operations",
+    "tools"
+   ],
+   "responses": {
+    "tools": {
+     "$ref": "#/$defs/ToolProfile"
+    }
+   }
+  }
+ },
+ "$defs": {
+  "Error": {
+   "type": "object",
+   "description": "Every error answers this shape.",
+   "properties": {
+    "code": {
+     "type": "string",
+     "description": "A stable error code (not_found, revision_conflict, limit_exceeded ...)."
+    },
+    "message": {
+     "type": "string",
+     "description": "What went wrong, for a person."
+    },
+    "hint": {
+     "type": "string",
+     "description": "What to do next; may be empty."
+    },
+    "layer_id": {
+     "type": [
+      "string",
+      "null"
+     ],
+     "description": "The layer the error is about."
+    },
+    "details": {
+     "type": "object",
+     "description": "The error's other fields (field, limit, revision ...)."
+    }
+   },
+   "required": [
+    "code",
+    "message",
+    "hint"
+   ],
+   "additionalProperties": false
+  },
+  "Running": {
+   "type": "object",
+   "properties": {
+    "status": {
+     "const": "running"
+    },
+    "job_id": {
+     "type": "string"
+    },
+    "poll": {
+     "type": "string"
+    },
+    "result_url": {
+     "type": "string"
+    },
+    "request_id": {
+     "type": "string"
+    },
+    "message": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "status"
+   ],
+   "description": "202: the call continues as a job (it outlived the timeout, or the first call with this request_id is still running). Poll /jobs/{job_id}."
+  },
+  "HostInfo": {
+   "type": "object",
+   "properties": {
+    "vixl": {
+     "type": "string",
+     "description": "The Vixl version."
+    },
+    "host_api": {
+     "const": 1
+    },
+    "capabilities": {
+     "type": "object",
+     "properties": {
+      "pptx": {
+       "type": "boolean"
+      },
+      "pdf_import": {
+       "type": "boolean"
+      },
+      "ffmpeg": {
+       "type": "boolean"
+      },
+      "ai": {
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "pptx",
+      "pdf_import",
+      "ffmpeg",
+      "ai"
+     ]
+    },
+    "limits": {
+     "type": "object",
+     "properties": {
+      "timeout_s": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "hard_timeout_s": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "max_megapixels": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "max_pages": {
+       "type": [
+        "integer",
+        "null"
+       ]
+      },
+      "max_concurrent_per_workspace": {
+       "type": [
+        "integer",
+        "null"
+       ]
+      },
+      "max_pixels": {
+       "type": "integer"
+      },
+      "max_dimension": {
+       "type": "integer"
+      },
+      "max_json_bytes": {
+       "type": "integer"
+      },
+      "max_upload_bytes": {
+       "type": "integer"
+      },
+      "source": {
+       "type": "object"
+      },
+      "configure": {
+       "type": "object"
+      }
+     },
+     "required": [
+      "timeout_s",
+      "hard_timeout_s",
+      "max_megapixels",
+      "max_pages",
+      "max_concurrent_per_workspace",
+      "max_pixels",
+      "max_json_bytes",
+      "max_upload_bytes"
+     ]
+    },
+    "job_ttl": {
+     "type": "number",
+     "description": "Seconds an export result stays downloadable after its job ends."
+    },
+    "offline": {
+     "type": "boolean"
+    },
+    "network": {
+     "type": "object"
+    },
+    "workspaces": {
+     "type": "object",
+     "properties": {
+      "pattern": {
+       "type": "string"
+      },
+      "max_loaded": {
+       "type": "integer"
+      }
+     },
+     "required": [
+      "pattern",
+      "max_loaded"
+     ]
+    }
+   },
+   "required": [
+    "vixl",
+    "host_api",
+    "capabilities",
+    "limits",
+    "job_ttl",
+    "offline",
+    "network",
+    "workspaces"
+   ]
+  },
+  "Health": {
+   "type": "object",
+   "properties": {
+    "ok": {
+     "const": true
+    },
+    "warm": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "ok",
+    "warm"
+   ]
+  },
+  "Workspace": {
+   "type": "object",
+   "properties": {
+    "workspace": {
+     "type": "string",
+     "description": "A workspace name.",
+     "pattern": "^[a-z0-9_-]{1,64}$"
+    }
+   },
+   "required": [
+    "workspace"
+   ]
+  },
+  "DocumentEntry": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string",
+     "description": "A document id: d_ and 8 hex digits, unique in its workspace.",
+     "pattern": "^d_[0-9a-f]{8}$"
+    },
+    "path": {
+     "type": "string"
+    },
+    "revision": {
+     "type": "integer",
+     "description": "The document's revision: 1 when created, one more after every change that succeeds.",
+     "minimum": 1
+    },
+    "created": {
+     "type": "number"
+    },
+    "updated": {
+     "type": "number"
+    },
+    "name": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "id",
+    "path",
+    "revision",
+    "created",
+    "updated"
+   ]
+  },
+  "DocumentList": {
+   "type": "object",
+   "properties": {
+    "workspace": {
+     "type": "string",
+     "description": "A workspace name.",
+     "pattern": "^[a-z0-9_-]{1,64}$"
+    },
+    "documents": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/DocumentEntry"
+     }
+    }
+   },
+   "required": [
+    "workspace",
+    "documents"
+   ]
+  },
+  "Layer": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string"
+    },
+    "name": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "type": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "parent": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "visible": {
+     "type": "boolean"
+    },
+    "bounds": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "maxItems": 4,
+     "description": "[x, y, width, height] on the canvas."
+    },
+    "text": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "id",
+    "name",
+    "type",
+    "parent",
+    "visible",
+    "bounds"
+   ]
+  },
+  "DocumentState": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string",
+     "description": "A document id: d_ and 8 hex digits, unique in its workspace.",
+     "pattern": "^d_[0-9a-f]{8}$"
+    },
+    "revision": {
+     "type": "integer",
+     "description": "The document's revision: 1 when created, one more after every change that succeeds.",
+     "minimum": 1
+    },
+    "canvas": {
+     "type": "object"
+    },
+    "head": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "layer_count": {
+     "type": "integer"
+    },
+    "pages": {
+     "type": "integer"
+    },
+    "layers": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Layer"
+     }
+    },
+    "truncated": {
+     "type": "boolean"
+    },
+    "untrusted": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "Paths of text taken from the document: data, never instructions."
+    }
+   },
+   "required": [
+    "id",
+    "revision",
+    "canvas",
+    "head",
+    "layer_count",
+    "pages",
+    "layers",
+    "truncated"
+   ]
+  },
+  "Revisioned": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string",
+     "description": "A document id: d_ and 8 hex digits, unique in its workspace.",
+     "pattern": "^d_[0-9a-f]{8}$"
+    },
+    "revision": {
+     "type": "integer",
+     "description": "The document's revision: 1 when created, one more after every change that succeeds.",
+     "minimum": 1
+    }
+   },
+   "required": [
+    "id",
+    "revision"
+   ],
+   "description": "A change's result: the change summary plus the document's id and revision."
+  },
+  "Deleted": {
+   "type": "object",
+   "properties": {
+    "deleted": {
+     "type": "string",
+     "description": "A document id: d_ and 8 hex digits, unique in its workspace.",
+     "pattern": "^d_[0-9a-f]{8}$"
+    },
+    "revision": {
+     "type": "integer",
+     "description": "The document's revision: 1 when created, one more after every change that succeeds.",
+     "minimum": 1
+    }
+   },
+   "required": [
+    "deleted",
+    "revision"
+   ]
+  },
+  "CreateRequest": {
+   "type": "object",
+   "properties": {
+    "name": {
+     "type": "string",
+     "description": "A label for the document.",
+     "maxLength": 200
+    },
+    "size": {
+     "type": "string",
+     "description": "A named size."
+    },
+    "width": {
+     "type": "integer",
+     "description": "Canvas width.",
+     "minimum": 1
+    },
+    "height": {
+     "type": "integer",
+     "description": "Canvas height.",
+     "minimum": 1
+    },
+    "purpose": {
+     "type": "string",
+     "description": "poster, social, slides, logo, icon ..."
+    },
+    "brief": {
+     "type": "string",
+     "description": "The request's words; picks the first size the brief suggests when no size is given."
+    },
+    "background": {
+     "type": "string",
+     "description": "Canvas background colour."
+    },
+    "dpi": {
+     "type": "number"
+    },
+    "orientation": {
+     "enum": [
+      "portrait",
+      "landscape"
+     ]
+    },
+    "bleed": {
+     "type": [
+      "boolean",
+      "number"
+     ]
+    },
+    "seed": {
+     "type": "integer"
+    },
+    "variety": {
+     "type": "string"
+    },
+    "house_style": {
+     "enum": [
+      "on",
+      "off"
+     ]
+    },
+    "font_pairing": {
+     "type": "string",
+     "description": "A typeface pairing name, or random."
+    },
+    "workspace_fonts": {
+     "type": "boolean",
+     "description": "Embed the workspace brand fonts (default true)."
+    },
+    "template": {
+     "type": "string",
+     "description": "Create from a named template."
+    },
+    "variables": {
+     "type": "object",
+     "description": "template: its variables."
+    },
+    "request_id": {
+     "type": "string",
+     "description": "A retry key: sending the same request again with it returns the first answer (replayed: true).",
+     "minLength": 1,
+     "maxLength": 64
+    }
+   },
+   "required": [],
+   "additionalProperties": false
+  },
+  "OperationsRequest": {
+   "type": "object",
+   "properties": {
+    "operations": {
+     "type": [
+      "array",
+      "object"
+     ],
+     "description": "Operations applied in order, all or none."
+    },
+    "dry_run": {
+     "type": "boolean",
+     "description": "Report the change without saving it."
+    },
+    "detail": {
+     "enum": [
+      "brief",
+      "compact",
+      "full"
+     ]
+    },
+    "check": {
+     "description": "true or check names: review the result."
+    },
+    "preview": {
+     "description": "true or preview options: preview_base64 of the result."
+    },
+    "suites": {
+     "description": "Check suites to run on the result."
+    },
+    "repair": {
+     "description": "Apply built-in repairs."
+    },
+    "if_revision": {
+     "type": "integer",
+     "description": "Apply only when the document is still at this revision; otherwise 409 revision_conflict.",
+     "minimum": 1
+    },
+    "request_id": {
+     "type": "string",
+     "description": "A retry key: sending the same request again with it returns the first answer (replayed: true).",
+     "minLength": 1,
+     "maxLength": 64
+    }
+   },
+   "required": [
+    "operations"
+   ],
+   "additionalProperties": false
+  },
+  "ComposeRequest": {
+   "type": "object",
+   "properties": {
+    "width": {},
+    "height": {},
+    "background": {},
+    "size": {},
+    "purpose": {},
+    "dpi": {},
+    "orientation": {},
+    "bleed": {},
+    "seed": {},
+    "variety": {},
+    "house_style": {},
+    "font_pairing": {},
+    "layout": {},
+    "style": {},
+    "look": {},
+    "operations": {},
+    "check": {},
+    "strict": {},
+    "preview": {},
+    "dry_run": {},
+    "if_revision": {
+     "type": "integer",
+     "description": "Apply only when the document is still at this revision; otherwise 409 revision_conflict.",
+     "minimum": 1
+    },
+    "request_id": {
+     "type": "string",
+     "description": "A retry key: sending the same request again with it returns the first answer (replayed: true).",
+     "minLength": 1,
+     "maxLength": 64
+    }
+   },
+   "required": [],
+   "additionalProperties": false,
+   "description": "vixl_apply(create=...) fields without path, exports, operations_path and overwrite."
+  },
+  "ComposeResult": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string",
+     "description": "A document id: d_ and 8 hex digits, unique in its workspace.",
+     "pattern": "^d_[0-9a-f]{8}$"
+    },
+    "revision": {
+     "type": "integer",
+     "description": "The document's revision: 1 when created, one more after every change that succeeds.",
+     "minimum": 1
+    },
+    "steps": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "check": {
+     "type": "object"
+    },
+    "preview_base64": {
+     "type": "string"
+    },
+    "dry_run": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "id",
+    "revision",
+    "steps"
+   ]
+  },
+  "PreviewRequest": {
+   "type": "object",
+   "properties": {
+    "page": {
+     "type": [
+      "integer",
+      "string"
+     ],
+     "description": "A page number, or 'all' for a contact sheet."
+    },
+    "region": {
+     "type": "array",
+     "minItems": 4,
+     "maxItems": 4,
+     "description": "[x, y, width, height], pixels or percentages."
+    },
+    "max_px": {
+     "type": "integer",
+     "description": "The longer side at most.",
+     "minimum": 1,
+     "maximum": 4096
+    },
+    "max_bytes": {
+     "type": "integer",
+     "description": "The PNG at most this many bytes.",
+     "minimum": 65536,
+     "maximum": 4194304
+    },
+    "variables": {},
+    "artboard": {},
+    "comp": {},
+    "time": {},
+    "proof": {},
+    "simulate": {},
+    "guides": {},
+    "values": {},
+    "show_fields": {},
+    "isolate": {},
+    "views": {},
+    "exploded": {}
+   },
+   "required": [],
+   "additionalProperties": false
+  },
+  "CheckRequest": {
+   "type": "object",
+   "properties": {
+    "checks": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "profile": {
+     "type": "string"
+    },
+    "suites": {},
+    "repair": {},
+    "if_revision": {
+     "type": "integer",
+     "description": "Apply only when the document is still at this revision; otherwise 409 revision_conflict.",
+     "minimum": 1
+    },
+    "request_id": {
+     "type": "string",
+     "description": "A retry key: sending the same request again with it returns the first answer (replayed: true).",
+     "minLength": 1,
+     "maxLength": 64
+    }
+   },
+   "required": [],
+   "additionalProperties": true,
+   "description": "vixl_check fields; checks, profile, suites and repair are the common ones."
+  },
+  "Finding": {
+   "type": "object",
+   "properties": {
+    "rule": {
+     "type": "string"
+    },
+    "check": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "severity": {
+     "enum": [
+      "error",
+      "warning",
+      "info"
+     ]
+    },
+    "action": {
+     "enum": [
+      "fix",
+      "review",
+      "informational",
+      null
+     ]
+    },
+    "message": {
+     "type": "string"
+    },
+    "layer_id": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "layer_ids": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "page": {
+     "type": [
+      "string",
+      "integer",
+      "null"
+     ]
+    },
+    "code": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "rule",
+    "severity",
+    "action",
+    "message",
+    "layer_id",
+    "page"
+   ]
+  },
+  "CheckResult": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string",
+     "description": "A document id: d_ and 8 hex digits, unique in its workspace.",
+     "pattern": "^d_[0-9a-f]{8}$"
+    },
+    "revision": {
+     "type": "integer",
+     "description": "The document's revision: 1 when created, one more after every change that succeeds.",
+     "minimum": 1
+    },
+    "outcome": {
+     "type": "object"
+    },
+    "passed": {
+     "type": "boolean"
+    },
+    "counts": {
+     "type": "object",
+     "properties": {
+      "errors": {
+       "type": "integer"
+      },
+      "warnings": {
+       "type": "integer"
+      },
+      "info": {
+       "type": "integer"
+      }
+     },
+     "required": [
+      "errors",
+      "warnings",
+      "info"
+     ]
+    },
+    "findings": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Finding"
+     }
+    },
+    "checked": {
+     "type": "object"
+    }
+   },
+   "required": [
+    "id",
+    "revision",
+    "outcome",
+    "passed",
+    "counts",
+    "findings"
+   ]
+  },
+  "ExportRequest": {
+   "type": "object",
+   "properties": {
+    "format": {
+     "enum": [
+      "AVIF",
+      "HTML",
+      "ICO",
+      "JPEG",
+      "JPG",
+      "OTF",
+      "PDF",
+      "PNG",
+      "PPTX",
+      "PSD",
+      "SVG",
+      "TIFF",
+      "TTF",
+      "WEBP",
+      "WOFF",
+      "WOFF2"
+     ]
+    },
+    "options": {
+     "type": "object",
+     "propertyNames": {
+      "enum": [
+       "alpha",
+       "artboard",
+       "background",
+       "black_generation",
+       "color_space",
+       "comp",
+       "dpi",
+       "fill_mode",
+       "fillable",
+       "icc_profile_base64",
+       "icon_sizes",
+       "ink_limit",
+       "intent",
+       "page",
+       "pages",
+       "pdf_content",
+       "presenter",
+       "profile",
+       "proof",
+       "quality",
+       "sampling",
+       "scale",
+       "simulate",
+       "svg_document",
+       "svg_policy",
+       "time",
+       "values",
+       "variables"
+      ]
+     },
+     "description": "The REST /export fields."
+    },
+    "request_id": {
+     "type": "string",
+     "description": "A retry key: sending the same request again with it returns the first answer (replayed: true).",
+     "minLength": 1,
+     "maxLength": 64
+    }
+   },
+   "required": [
+    "format"
+   ],
+   "additionalProperties": false
+  },
+  "ExportJob": {
+   "type": "object",
+   "properties": {
+    "job_id": {
+     "type": "string"
+    },
+    "status": {
+     "const": "running"
+    },
+    "id": {
+     "type": "string",
+     "description": "A document id: d_ and 8 hex digits, unique in its workspace.",
+     "pattern": "^d_[0-9a-f]{8}$"
+    },
+    "revision": {
+     "type": "integer",
+     "description": "The document's revision: 1 when created, one more after every change that succeeds.",
+     "minimum": 1
+    },
+    "format": {
+     "type": "string"
+    },
+    "poll": {
+     "type": "string"
+    },
+    "events": {
+     "type": "string"
+    },
+    "download": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "job_id",
+    "status",
+    "id",
+    "revision",
+    "format",
+    "poll",
+    "events",
+    "download"
+   ]
+  },
+  "Progress": {
+   "type": "object",
+   "properties": {
+    "done": {
+     "type": "number"
+    },
+    "total": {
+     "type": "number"
+    },
+    "fraction": {
+     "type": [
+      "number",
+      "null"
+     ],
+     "minimum": 0,
+     "maximum": 1
+    }
+   },
+   "required": [],
+   "description": "fraction never goes back."
+  },
+  "Job": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string"
+    },
+    "kind": {
+     "enum": [
+      "call",
+      "export"
+     ]
+    },
+    "status": {
+     "enum": [
+      "queued",
+      "running",
+      "completed",
+      "failed",
+      "cancelled",
+      "expired"
+     ]
+    },
+    "progress": {
+     "$ref": "#/$defs/Progress"
+    },
+    "elapsed_s": {
+     "type": "number"
+    },
+    "error": {
+     "$ref": "#/$defs/Error"
+    },
+    "route": {
+     "type": "string"
+    },
+    "result_url": {
+     "type": "string"
+    },
+    "workspace": {
+     "type": "string",
+     "description": "A workspace name.",
+     "pattern": "^[a-z0-9_-]{1,64}$"
+    },
+    "document": {
+     "type": "string",
+     "description": "A document id: d_ and 8 hex digits, unique in its workspace.",
+     "pattern": "^d_[0-9a-f]{8}$"
+    },
+    "format": {
+     "type": "string"
+    },
+    "revision": {
+     "type": "integer",
+     "description": "The document's revision: 1 when created, one more after every change that succeeds.",
+     "minimum": 1
+    },
+    "download": {
+     "type": "string"
+    },
+    "events": {
+     "type": "string"
+    },
+    "expires_at": {
+     "type": "number"
+    },
+    "retry_after_s": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "id",
+    "kind",
+    "status",
+    "progress",
+    "elapsed_s"
+   ]
+  },
+  "ProgressEvent": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string"
+    },
+    "status": {
+     "type": "string"
+    },
+    "progress": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Progress"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "id",
+    "status",
+    "progress"
+   ],
+   "description": "data of an `event: progress` message."
+  },
+  "JobCompleteEvent": {
+   "type": "object",
+   "properties": {
+    "event": {
+     "const": "job-complete"
+    },
+    "kind": {
+     "type": "string"
+    },
+    "id": {
+     "type": "string"
+    },
+    "status": {
+     "type": "string"
+    },
+    "state": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "counts": {
+     "type": "object"
+    },
+    "report": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "workspace": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "notify": {},
+    "error": {
+     "type": [
+      "string",
+      "null"
+     ]
+    }
+   },
+   "required": [
+    "event",
+    "kind",
+    "id",
+    "status",
+    "state",
+    "counts",
+    "report",
+    "workspace",
+    "notify",
+    "error"
+   ],
+   "description": "data of the one `event: job-complete` message: the event durable jobs hand the job-complete hook."
+  },
+  "Tool": {
+   "type": "object",
+   "properties": {
+    "name": {
+     "type": "string"
+    },
+    "description": {
+     "type": "string"
+    },
+    "method": {
+     "enum": [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE"
+     ]
+    },
+    "path": {
+     "type": "string"
+    },
+    "input_schema_ref": {
+     "type": "string"
+    },
+    "input_schema": {
+     "type": "object"
+    }
+   },
+   "required": [
+    "name",
+    "description",
+    "method",
+    "path",
+    "input_schema_ref",
+    "input_schema"
+   ]
+  },
+  "ToolProfile": {
+   "type": "object",
+   "properties": {
+    "profile": {
+     "type": "string"
+    },
+    "host_api": {
+     "const": 1
+    },
+    "tools": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Tool"
+     }
+    }
+   },
+   "required": [
+    "profile",
+    "host_api",
+    "tools"
+   ]
+  },
+  "CatalogSection": {
+   "type": "object",
+   "description": "A vixl catalog export section, the brief guide, capabilities or operation schemas."
+  },
+  "Any": {
+   "description": "What the original call would have answered."
+  }
+ }
+}

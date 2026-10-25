@@ -143,6 +143,13 @@ def test_docs_and_skills_name_only_real_mcp_tools():  # #252
                     and not allowed(name, path):
                 unknown.setdefault(name, set()).add(path.name)
     assert not unknown, f"code, evals or tests name MCP tools that do not exist: {unknown}"
+    # A host's tool profile (vixl host, GET /catalog/tools) describes its endpoints in the host's terms: it names no
+    # MCP tool at all, real or not (#541).
+    from vixl.guidance import TOOL_PROFILES
+
+    named = {(profile, tool["name"]): re.findall(r"\bvixl_\w+", " ".join(map(str, tool.values())))
+             for profile, tools in TOOL_PROFILES.items() for tool in tools}
+    assert not {key: names for key, names in named.items() if names}, "tool profiles name MCP tools"
 
 
 def test_operation_schema_tool_serves_summaries_and_examples_but_tools_list_stays_lean(tmp_path):

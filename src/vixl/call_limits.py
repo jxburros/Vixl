@@ -319,18 +319,22 @@ def watch(state, limits, future):
 
 
 class RestJobs:
-    """REST calls that outlived the timeout. Their futures keep running; the result waits here."""
+    """REST calls that outlived the timeout, and ``vixl host`` export jobs. Their futures keep running; the result
+    waits here. A job may carry ``fields`` of its own (``vixl host``: kind, workspace, document, ``result_path``,
+    ``expires``); ``progress`` records how far it got."""
 
-    def __init__(self, hard_timeout=None):
+    def __init__(self, hard_timeout=None, maximum=MAX_REST_JOBS):
         self.jobs = OrderedDict()
         self.lock = threading.Lock()
         self.hard_timeout = hard_timeout
+        self.maximum = maximum
 
-    def add(self, route, future):
-        ident = uuid.uuid4().hex[:16]
+    def add(self, route, future, ident=None, **fields):
+        ident = ident or uuid.uuid4().hex[:16]
         with self.lock:
-            self.jobs[ident] = {"id": ident, "route": route, "future": future, "created": time.time()}
-            while len(self.jobs) > MAX_REST_JOBS:
+            self.jobs[ident] = {**fields, "id": ident, "route": route, "future": future, "created": time.time(),
+                                "progress": None}
+            while len(self.jobs) > self.maximum:
                 # Forget the oldest finished job, else the oldest one still running past its hard timeout (it was
                 # cancelled and has not reached a checkpoint); a running job within its time is never dropped.
                 victim = next((k for k, j in self.jobs.items() if j["future"].done()), None)
@@ -345,9 +349,18 @@ class RestJobs:
     def get(self, ident):
         with self.lock:
             job = self.jobs.get(ident)
-        require(job is not None, f"Unknown job {ident!r}; this server remembers its last {MAX_REST_JOBS} jobs",
+        require(job is not None, f"Unknown job {ident!r}; this server remembers its last {self.maximum} jobs",
                 "not_found", field="id")
         return job
+
+    def progress(self, job, done, total=None):
+        """Record ``done`` of ``total``. ``fraction`` never goes back: a later, smaller report is clamped."""
+        with self.lock:
+            previous = (job.get("progress") or {}).get("fraction")
+            fraction = min(1.0, max(0.0, done / total)) if total else previous
+            if previous is not None and fraction is not None:
+                fraction = max(fraction, previous)
+            job["progress"] = {"done": done, **({"total": total} if total else {}), "fraction": fraction}
 
     def summary(self, job):
         from .errors import friendly
@@ -358,6 +371,8 @@ class RestJobs:
                   else "failed" if error is not None else "completed")
         result = {"id": job["id"], "status": status, "route": job["route"],
                   "elapsed_s": round(time.time() - job["created"], 1), "result_url": f"/jobs/{job['id']}/result"}
+        if job.get("progress"):
+            result["progress"] = job["progress"]
         if status == "running":
             result["retry_after_s"] = 3
         elif status in ("failed", "cancelled"):
@@ -367,6 +382,42 @@ class RestJobs:
     def recent(self):
         with self.lock:
             return list(reversed(self.jobs.values()))
+
+
+class Limiter:
+    """How a service runs a heavy call: counted against ``max_concurrent`` in its workspace, on a bounded pool, in a
+    copy of the request's context with a fresh ``CallState`` (so a render profile and ``check_cancelled`` see it),
+    cancelled at its next checkpoint after the hard timeout, and handed to ``jobs`` when it outlives the timeout.
+    ``vixl serve`` and ``vixl host`` share it."""
+
+    def __init__(self, limits, jobs, workers):
+        self.limits, self.jobs, self.workers = limits, jobs, workers
+
+    async def run(self, workspace, route, fn, *args, **kwargs):
+        """``("done", value)``, or ``("job", id)`` when the call is still running after the timeout."""
+        import asyncio
+        import contextvars
+
+        from .calls import CALL, CallState
+
+        key = GATE.acquire(workspace, self.limits.max_concurrent)
+        context, state = contextvars.copy_context(), CallState()
+        context.run(CALL.set, state)
+        try:
+            future = self.workers.submit(context.run, fn, *args, **kwargs)
+        except BaseException:
+            GATE.release(key)
+            raise
+        future.add_done_callback(lambda _: GATE.release(key))
+        watch(state, self.limits, future)
+        waiter = asyncio.wrap_future(future)
+        waiter.add_done_callback(lambda f: f.cancelled() or f.exception())  # Retrieved even if nobody waits.
+        if self.limits.timeout is None:
+            return "done", await waiter
+        try:
+            return "done", await asyncio.wait_for(asyncio.shield(waiter), self.limits.timeout)
+        except asyncio.TimeoutError:
+            return "job", self.jobs.add(route, future)
 
 
 def detached(job_id, route, timeout):

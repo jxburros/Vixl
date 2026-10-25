@@ -166,7 +166,8 @@ Updates:   update [--check | --rollback], updates [on | off | status]
 Cache:     cache info | cache clear (the disk render cache; VIXL_RENDER_CACHE=off, VIXL_CACHE_MAX_MB=256)
 Services:  serve | view [--host 127.0.0.1] [--port 8765], notes list|add|resolve
            mcp [--workspace DIR] [--http] [--tools default|ai] [--planner] [--require-document]
-           per-call limits (serve, view, mcp): [--call-timeout S] [--max-megapixels N] [--max-pages N] [--max-concurrent N]
+           host --root DIR [--port 8767] [--token-env VIXL_HOST_TOKEN | --token-file FILE] [--offline] [--bind ADDR]
+           per-call limits (serve, view, mcp, host): [--call-timeout S] [--max-megapixels N] [--max-pages N] [--max-concurrent N]
 Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144] [--font-map SRC=NAME]
            import PHOTO.jpg | https://HOST/photo.jpg [--name N] [--credit TEXT] [--license TEXT]
            import FIGMA_URL_OR_KEY --format figma [--node 1:2] [--rasterize-unsupported]
@@ -195,7 +196,7 @@ Automate:  apply, run, batch, workflow, each, transaction
 Output:    render, export, export-icons, export-screens, catalog export, package
 Resources: guide, capabilities, commands, shapes, sizes, styles, emoji
 AI:        ask, generate, detect, ocr, ai, providers, models
-Services:  serve, view, mcp
+Services:  serve, view, mcp, host
 Manage:    update, updates, cache
 
 Use --out FILE (or -o FILE) for output destinations.
@@ -451,6 +452,11 @@ def service_arguments(parser):
 def service_setup(args):
     """Apply ``--offline`` for the whole process; return the ``tls`` pair (or None)."""
     if args.offline:
+        from .plugins import external
+
+        # --plugins is a global option, so it ran before --offline was seen.
+        require(not external.enabled(), "--plugins cannot be combined with --offline: third-party plugin code is not "
+                "bound by offline mode", "network_disabled", field="plugins")
         os.environ["VIXL_OFFLINE"] = "1"
     return (args.tls_cert, args.tls_key) if args.tls_cert or args.tls_key else None
 
@@ -831,6 +837,10 @@ def _dispatch(argv):
         else:
             server.run()
         return None, options.json
+    if cmd == "host":
+        from .host import cli as host_cli
+
+        return host_cli(args, limits), options.json
     if "--help" in args or "-h" in args:
         return command_help(cmd, args), options.json
     try:

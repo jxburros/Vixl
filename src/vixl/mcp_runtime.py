@@ -17,7 +17,8 @@ worker thread through ``Runtime.wrap``:
   (operation batches, timeline frames, export targets).
 * ``request_id`` on the mutating tools makes a retry safe: the second call with the same id
   returns the first call's recorded result (``"replayed": true``) instead of applying twice, or
-  points at the job that is still running. A recent-id store is kept per document and bounded.
+  points at the job that is still running. A recent-id store (``idempotency.RequestLog``, shared with
+  ``vixl host``) is kept per document and bounded.
 * Results name the document they acted on. A call without ``document`` never falls back to a
   document another caller chose: the client identity is the MCP connection (``ctx.session``), which
   subagents of one host share, so once a connection has touched several open documents such a call
@@ -29,7 +30,6 @@ from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 import difflib
 import functools
-import hashlib
 import inspect
 import json
 import os
@@ -43,15 +43,13 @@ from pydantic import Field
 
 from .calls import CALL, UNKNOWN, CallState
 from .errors import Cancelled, VixlError, for_surface, friendly, memory_guard, require
+from .idempotency import MAX_PER_DOCUMENT, MAX_REMEMBERED_BYTES, MAX_REQUESTS, RequestLog, fingerprint  # noqa: F401
 
 DEFAULT_INLINE_SECONDS = 40
 DEFAULT_WORKERS = 32
 # Under load the inline wait shrinks, but never below this (or below inline_seconds when that is smaller).
 MIN_INLINE_SECONDS = 2.0
 MAX_JOBS = 100
-MAX_REQUESTS = 512
-MAX_PER_DOCUMENT = 64
-MAX_REMEMBERED_BYTES = 262_144
 
 # Tools that change documents or files, or spend provider calls: safe to retry with request_id.
 RETRYABLE = {"vixl_document", "vixl_apply", "vixl_export"}
@@ -73,11 +71,6 @@ def takes_request_id(name):
 
 def takes_job(name):
     return name not in NO_EXTRAS and (name in JOB_TOOLS or name.startswith("vixl_ai_"))
-
-
-def fingerprint(name, kwargs):
-    text = json.dumps({"tool": name, "args": kwargs}, sort_keys=True, default=str, ensure_ascii=False)
-    return hashlib.sha256(text.encode()).hexdigest()
 
 
 class Job:
@@ -153,49 +146,6 @@ class JobStore:
     def recent(self):
         with self.lock:
             return list(reversed(self.jobs.values()))
-
-
-class RequestLog:
-    """Recent request ids and their recorded results, bounded overall and per document."""
-
-    def __init__(self):
-        self.entries = OrderedDict()
-        self.lock = threading.Lock()
-
-    def start(self, request_id, tool, digest, document):
-        """('new', entry) for a first sight, ('replay'|'running', entry) for a repeat."""
-        with self.lock:
-            entry = self.entries.get(request_id)
-            if entry is not None:
-                if entry["tool"] != tool or entry["digest"] != digest:
-                    raise VixlError(
-                        "request_id_conflict",
-                        f"request_id {request_id!r} was already used for {entry['tool']} with different "
-                        "arguments; use a fresh id for a different call",
-                        field="request_id",
-                    )
-                self.entries.move_to_end(request_id)
-                return ("replay" if entry["result"] is not None else "running"), entry
-            entry = {"tool": tool, "digest": digest, "document": document, "result": None,
-                     "job": None, "done": threading.Event()}
-            self.entries[request_id] = entry
-            same = [k for k, e in self.entries.items() if e["document"] == document]
-            for key in same[: max(0, len(same) - MAX_PER_DOCUMENT)]:
-                del self.entries[key]
-            while len(self.entries) > MAX_REQUESTS:
-                self.entries.popitem(last=False)
-            return "new", entry
-
-    def finish(self, entry, text):
-        entry["result"] = text if len(text) <= MAX_REMEMBERED_BYTES else json.dumps(
-            {"note": "The first result was too large to keep; read the document to see its effect"})
-        entry["done"].set()
-
-    def discard(self, request_id, entry):
-        with self.lock:
-            if self.entries.get(request_id) is entry:
-                del self.entries[request_id]
-        entry["done"].set()
 
 
 class _Box:

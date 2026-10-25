@@ -79,6 +79,8 @@ HOOKS = {
                       "axes (such as locales)",
     "resource-kind": "fn(kind) -> {builtins: {name: value}, validate: fn(value)}, or None when the resource category is "
                      "not the plugin's; list the categories in fn.KINDS",
+    "host-route": "fn(app, host): add routes to the vixl host app (FastAPI); host.session(ws), host.workspace(ws) "
+                  "and host.answer(VixlError) are the helpers, and every route is already behind the bearer token",
 }
 MANIFEST_KEYS = {"name", "title", "summary", "kind", "modules", "requires", *ROLES, "hooks", "capabilities", "checks"}
 KINDS = ("operations", "workflows", "importer", "provider", "checks")

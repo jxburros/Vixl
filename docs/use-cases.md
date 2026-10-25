@@ -419,6 +419,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | COL-02 | Fork a branch, edit it and see its status | `vixl_apply(workflow=…)` branch-fork/branch-status | 3–4 · 1 |  |
 | AGT-10 | Connect an MCP client to a workspace | `vixl mcp --workspace .` | config · 1–3 |  |
 | AGT-11 | Display a design inline in a notebook | `Project.show()` | 1–2 · <1 |  |
+| AGT-30 | Embed Vixl in another app through REST with auth | `vixl host --root DIR`: workspaces, documents by id with revisions, compose, check and export jobs | 3–10 · 1–3 | [server] Was T5 (1–3 days dev on `vixl serve`); since `vixl host` (#537–#543) the app calls a documented contract (`vixl host --schema`). |
 | BLK-10 | Lookups or case changes inside a data merge | `${name\|upper}`, `${role\|map:colors}`, `variable-map` | 2–4 · 1 | Since 0.22. |
 | QA-22 | Proof page for human sign-off with approve/reject | `vixl_apply(workflow='proof')` | 1–2 · 1 | Since 0.22; offline HTML, decisions download as JSON. |
 | QA-23 | Check `.vixl` files in pull requests | GitHub Action (`action.yml`), `vixl diff` | 1 · CI | Since 0.22; see [CI](guides/automation/ci.md). Runs `vixl check --all`: annotations, JUnit and SARIF upload. |
@@ -709,7 +710,6 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PRD-50 | Personalised certificates or tickets for thousands of rows | merge-impose, durable jobs | setup 1 h, run unattended |  |
 | PRD-52 | Data-driven report generator (Python) re-run on each new dataset | `Project` API, `chart --csv`, templates | 1–2 days dev |  |
 | PRD-63 | Recurring checked delivery of a document family: checks, exports, export verification, approval and a package, resumed after an interruption | saved pipeline, `pipeline-run` or a `pipeline` job, `data-sync` for data changes | setup 1 h, then one call per run | Since #568; run it from CI or a scheduler (watch triggers are not built yet). |
-| AGT-30 | Embed Vixl in another app through REST with auth | `vixl serve` | 1–3 days dev | [server] |
 | AGT-31 | Gate pull requests on design checks in CI | `vixl validate`, suites, golden renders | 0.5–1 day | The bundled action covers checks and suites in one step (QA-23); this row is custom gates such as golden renders. |
 | AGT-32 | Run the agent eval suite against a new model or schema mode | `python -m evals.run --agent claude` | 1–2 h | Needs an API key. |
 | AGT-33 | Compare Vixl with other tools on the 16 briefs | [`evals/tool-comparison` kit](https://github.com/jxburros/VixlExamples/blob/main/evals/tool-comparison/README.md) in VixlExamples | 1 day |  |

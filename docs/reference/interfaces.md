@@ -11,16 +11,16 @@ See [design tools and template production](../guides/shapes/design-tools.md) for
 ## Capability matrix
 
 <!-- interface-capabilities:start -->
-| Capability | REST | MCP | CLI | Python |
-| --- | --- | --- | --- | --- |
-| Documents per session | One fixed document | Multiple, inside the workspace | One active document; workspace workflows | Multiple Project instances; Session for workflows |
-| Workflows | `act`, `check`, `drawing-report`, `effect-run`, `film-plan`, `form-fill`, `links`, `lyric-video-plan`, `organic-catalog`, `palette-check`, `plan`, `protected-edit`, `repair-layout`, `resource-get`, `resource-list`, `resource-save`, `shape-save`, `suite-use` | All 100 registered actions | All 100 registered actions | All 100 registered actions via workflows.dispatch(Session, ...) |
-| AI tools | Configured local providers via /ai | Configured local providers; a second server, vixl mcp --tools ai | Configured local providers | Configured local providers |
-| Linked files outside workspace | Forbidden | Forbidden | Explicit --allow-linked | Explicit allow_linked=True |
-| Screen capture | Unavailable | Disabled by default; --allow-screen-capture or VIXL_ALLOW_SCREEN_CAPTURE=1 | Explicit screen-capture workflow | Explicit screen-capture workflow |
-| Jobs | Detached timed-out calls via /jobs; no durable workflow queue | Durable workflow queue and detached calls | Durable workflow queue | Durable queue via Session/workflows |
-| Authentication | Optional bearer token; required beyond loopback | stdio: OS process access; HTTP: bearer token required beyond loopback | OS process access | Caller controls access |
-| Per-call limits | Configurable timeout, megapixels, pages, concurrency | Configurable timeout, megapixels, pages, concurrency | Resource Limits; service flags for serve/view/mcp | Resource Limits; CallLimits for service builders |
+| Capability | REST | MCP | CLI | Python | Host |
+| --- | --- | --- | --- | --- | --- |
+| Documents per session | One fixed document | Multiple, inside the workspace | One active document; workspace workflows | Multiple Project instances; Session for workflows | Many workspaces under --root; documents by opaque id with a revision |
+| Workflows | `act`, `check`, `drawing-report`, `effect-run`, `film-plan`, `form-fill`, `links`, `lyric-video-plan`, `organic-catalog`, `palette-check`, `plan`, `protected-edit`, `repair-layout`, `resource-get`, `resource-list`, `resource-save`, `shape-save`, `suite-use` | All 100 registered actions | All 100 registered actions | All 100 registered actions via workflows.dispatch(Session, ...) | None; documents, operations, compose, preview, check, exports and catalogs |
+| AI tools | Configured local providers via /ai | Configured local providers; a second server, vixl mcp --tools ai | Configured local providers | Configured local providers | Not served |
+| Linked files outside workspace | Forbidden | Forbidden | Explicit --allow-linked | Explicit allow_linked=True | Forbidden |
+| Screen capture | Unavailable | Disabled by default; --allow-screen-capture or VIXL_ALLOW_SCREEN_CAPTURE=1 | Explicit screen-capture workflow | Explicit screen-capture workflow | Unavailable |
+| Jobs | Detached timed-out calls via /jobs; no durable workflow queue | Durable workflow queue and detached calls | Durable workflow queue | Durable queue via Session/workflows | Export jobs with progress, events and expiring downloads; detached timed-out calls |
+| Authentication | Optional bearer token; required beyond loopback | stdio: OS process access; HTTP: bearer token required beyond loopback | OS process access | Caller controls access | Bearer token always required |
+| Per-call limits | Configurable timeout, megapixels, pages, concurrency | Configurable timeout, megapixels, pages, concurrency | Resource Limits; service flags for serve/view/mcp | Resource Limits; CallLimits for service builders | Shared-server defaults; the same flags as serve |
 <!-- interface-capabilities:end -->
 
 The workflow row is generated from the same allow-list enforced by REST and the shared workflow registry. The provider-backed MCP tools run as a second server (`--tools ai`), and screen capture requires its own opt-in. Service timeouts detach work into a job; they do not terminate the computation. Limits are opt-in unless configured in the environment.
@@ -313,6 +313,144 @@ REST and MCP retain loaded projects between calls. A file fingerprint (identity,
 `POST /check` (same options as `vixl_check`; `sample` is `"worst"` or a CSV path inside the workspace, and a path outside it answers `403 forbidden`), `POST /preview` (`max_width`, `max_height`, `max_bytes`, `region`, `isolate`, …; returns PNG) and `POST /compare` (`before`, `after`, `mode`, `isolate`; returns the summary plus `image_base64`). The CLI takes `--isolate LAYER…` on `compare` and on `apply --preview`. The REST service is bound to its one document and rejects a `document` field. `/check`, `/measure` and `/spacing`, like `/export`, `/preview` and `/compare`, answer `400` for a field they do not read and name it.
 
 The remaining routes mirror `vixl_check` and the saved-frame tools: `POST /measure` and `POST /spacing`, `GET /pixels/{target}`, `GET /animation`, `GET /animation/frame/{name}` and `POST /animation/export`; `GET /workflow/schema` and `POST /workflow/{action}` serve the fixed-document workflow allow-list shown in the [capability matrix](#capability-matrix); `GET /typefaces`, `GET /typefaces/installed` (fonts installed on the server, by `query`, `limit` and `styles`; no file paths), `GET /typefaces/pairings`, `POST /typefaces/pair`, `POST /typefaces/install` and `GET /roll` cover fonts and a rolled direction; `GET /limits` and `GET /jobs` report the [per-call limits](#per-call-limits) and detached calls.
+
+## Hosting Vixl
+
+`vixl host` serves documents in many workspaces to another program, such as AI Server Studio. `vixl serve` is one
+document for one person; the host is one process for a host application that holds a bearer token and keeps its own
+users apart by workspace.
+
+```bash
+python -m pip install 'vixl-engine[server]'
+export VIXL_HOST_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+vixl host --root ./host-data --offline
+```
+
+**Startup.** `--root DIR` holds one folder per workspace (created when missing; the home folder or a filesystem
+root is refused). The default address is `127.0.0.1:8767`; `--port` changes the port and `--bind ADDR` the address.
+`vixl host --schema` prints the API contract and exits.
+
+**Authentication.** Every request, on loopback too, needs `Authorization: Bearer TOKEN`, and the host refuses to
+start without a token. It reads `VIXL_HOST_TOKEN` (`--token-env NAME` names another variable) or a file:
+`--token-file FILE`, also `VIXL_HOST_TOKEN_FILE`, which wins over the variable. The token rules and the failed-token
+throttle are those of [REST](#rest): at least 24 characters, and 20 failures from one address in a minute answer
+`429`. There is no origin check, since the caller is a program, not a browser page. On a loopback bind the `Host`
+header must name a loopback address (else `400 forbidden_host`); with `--bind` set to another address it is not
+restricted. A non-loopback bind
+over plain HTTP prints a warning: put a TLS proxy in front, or pass `--tls-cert` and `--tls-key`.
+
+**Offline.** `--offline` (also `VIXL_OFFLINE=1`) turns off every network access for the process: URL imports, font
+downloads (the font cache still works), content-pack downloads and AI providers answer `network_disabled`, and
+third-party plugins cannot be enabled (`vixl --plugins host --offline` is refused).
+
+**Workspaces.** Routes under `/w/{ws}/` act in the folder `ROOT/ws`. A workspace name is 1-64 characters from
+`a-z`, `0-9`, `-` and `_`, so it cannot name a parent folder or an absolute path; the folder is created on first use
+and must resolve inside the root (a symlink out of it is refused with `403 forbidden`). Each workspace keeps one
+session with its documents loaded; the host keeps the 16 most recently used and reloads the others when they are
+next called (everything is saved after every call).
+
+**Errors.** Every error, including a wrong route or a malformed body, answers one shape:
+`{"code", "message", "hint", "layer_id"?, "details"?}`. `layer_id` names the layer an error is about; `details`
+holds the rest of the error's fields (`field`, `limit`, `revision` …). Status codes: `401 unauthorized`,
+`403 forbidden` or `network_disabled`, `404 not_found`, `409 revision_conflict` or `request_id_conflict`,
+`410 expired`, `413 resource_limit` (a body over the limit) or `limit_exceeded`, `429` when too many calls run at
+once, `503` when the host's queue is full, and `400` for the rest.
+
+**Limits.** The host starts with the [per-call limits](#per-call-limits) of a server other machines can reach (a
+120 s inline timeout, 40 megapixels and 200 pages per call, concurrency by CPU count, a 600 s hard timeout) and
+takes the same flags (`--call-timeout`, `--max-megapixels`, `--max-pages`, `--max-concurrent`,
+`--call-hard-timeout`, `--no-call-limits`). JSON bodies are limited to 1 MiB, uploads to 64 MiB.
+
+| Route | Request / result |
+| --- | --- |
+| `GET /host/info` | `{vixl, host_api: 1, capabilities: {pptx, pdf_import, ffmpeg, ai}, limits, job_ttl, offline, network, workspaces}` |
+| `GET /host/health` | `{ok: true, warm}`; `warm` is true once a workspace has been used |
+| `GET /host/schema` | The API contract, as `vixl host --schema` prints it |
+| `GET /w/{ws}` | `{workspace}`; creates the workspace folder |
+| `GET /w/{ws}/documents` | `{workspace, documents: [{id, path, revision, created, updated, name?}]}` |
+| `POST /w/{ws}/documents` | `{name?, size?, width?, height?, purpose?, brief?, template?, variables?, background?, dpi?, orientation?, bleed?, seed?, variety?, house_style?, font_pairing?, workspace_fonts?, request_id?}` → `201` and the document state at revision 1 |
+| `POST /w/{ws}/documents/import?name=` | A `.vixl` file as the body → `201` and its state at revision 1 |
+| `GET /w/{ws}/documents/{id}?max_layers=500` | `{id, revision, canvas, head, layer_count, pages, layers: [{id, name, type, parent, visible, bounds, text?}], truncated}` |
+| `GET /w/{ws}/documents/{id}/blob` | The saved `.vixl` bytes, with `X-Vixl-Revision` |
+| `POST /w/{ws}/documents/{id}/operations` | `{operations, dry_run?, detail?, check?, preview?, suites?, repair?, if_revision?, request_id?}` → the change summary with `revision` (`preview_base64` when asked) |
+| `POST /w/{ws}/documents/{id}/assets?name=&credit=&license=` | Raw image bytes → the imported layer and `revision` |
+| `POST /w/{ws}/documents/{id}/import?format=svg\|pdf&name=&page=&dpi=&svg_mode=` | SVG or PDF bytes imported as layers → `revision` |
+| `POST /w/{ws}/documents/{id}/compose` | `vixl_apply(create=…)` fields without `path`, `exports`, `operations_path` and `overwrite`, plus `if_revision?`, `request_id?` → the steps, findings, `preview_base64?` and `revision`; the composed piece replaces the document (`dry_run: true` only previews) |
+| `POST /w/{ws}/documents/{id}/preview` | `{page?, region?, max_px?: 1024, max_bytes?: 1048576, variables?, artboard?, comp?, time?, proof?, simulate?, guides?, values?, show_fields?, isolate?, views?, exploded?}` → PNG, with `X-Vixl-Revision`, `X-Vixl-Width` and `X-Vixl-Height` |
+| `POST /w/{ws}/documents/{id}/check` | `vixl_check` fields (`checks`, `profile`, `suites`, `repair` …) → `{outcome, passed, counts, findings: [{rule, check, severity, action, message, layer_id, layer_ids, page}], checked}` and `revision` |
+| `DELETE /w/{ws}/documents/{id}?if_revision=` | `{deleted, revision}`; removes the working copy |
+| `POST /w/{ws}/documents/{id}/exports` | `{format, options?, request_id?}` → `202 {job_id, status, revision, poll, events, download}`; `options` are the REST `/export` fields |
+| `GET /jobs/{id}?wait=` · `GET /jobs/{id}/result` | A job's status: an export, or a call that outlived the timeout (`202` with `job_id`); `result` is what that call would have answered |
+| `GET /jobs/{id}/download` | The export's file, with its media type, file name and `X-Vixl-Revision`; `409 job_running` or `job_failed`, `410 expired` |
+| `GET /jobs/{id}/events` | Server-sent events: `progress` while the job runs, then one `job-complete` |
+| `GET /catalog/{kind}` | `sizes`, `palettes`, `typefaces` (with pairings), `layouts`, `briefs`, `guidance`, `looks`, `styles`, `checks`: the `vixl catalog export` section; `guide?brief=&seed=`: the guide for a brief, as REST `/guide`; `capabilities`: `{host, interfaces}`; `operations?name=text&name=shape`: those operations' field schemas; `tools?profile=studio`: a tool profile |
+
+**Documents.** A document has an opaque id (`d_` and 8 hex digits) and lives at `ROOT/ws/ID.vixl`; the index
+`ROOT/ws/.vixl-host/index.json` maps ids to files and holds each document's revision. Ids belong to their
+workspace. Every route wraps the same `Session` methods as MCP and REST: creation rolls the design defaults as
+`vixl_document(action='create')` does (`brief` picks the first size the brief suggests unless a size is given),
+`import` loads the file under the [archive budgets](#archive-parsing-budgets), operations go through the service
+policy (no file paths, linked files or plugin enabling; fonts by registered name or role), and `assets` and
+`import` take raw bytes only, never a URL.
+
+**Revisions.** Each document has a whole-number revision, 1 when it is created and one more after every change
+that succeeds (a dry run changes nothing). Every answer carries it. Send `if_revision` with a change to make it
+conditional: when another change came first the host answers `409 revision_conflict` with the current revision in
+`details.revision`, and applies nothing.
+
+**Compose, preview and check.** `compose` runs the same chain as `vixl_apply(create=…)` (create, fonts, layout,
+style, look, operations, check, preview) and replaces the document with the piece, keeping its canvas size unless
+the request gives `size`, `width`/`height` or `purpose`; exports go through export jobs (below).
+`preview` renders a page (`page`: a number, or `all` for a contact sheet of every page), a `region`
+(`[x, y, width, height]` in pixels or percentages) or the whole canvas at most `max_px` on its longer side, and
+steps the size down until the PNG fits `max_bytes` (65,536-4,194,304), as `vixl_render` does. `check` answers each
+finding with its `rule` (`bounds.cut-off`), `severity`, `action` (`fix`, `review`, `informational`), `message`,
+`layer_id` (the first layer it is about, or null) and `page`; profiles and suites pass through, and `repair: true`
+applies the built-in repairs first and raises the revision. All three count against the concurrency limit and
+continue as a job after the timeout, like the REST routes.
+
+**Export jobs.** An export always runs as a job: `POST .../exports` answers `202` with `job_id` at once, after
+checking the page and megapixel limits (`413 limit_exceeded` before anything renders). `GET /jobs/{id}` reports
+`{id, kind: "export", status, progress: {done, total, fraction}, error?, revision, download, expires_at}`; the
+`fraction` never goes back. The file is written to `ROOT/ws/.vixl-host/jobs/ID/` and stays downloadable for
+`job_ttl` seconds after the job ends (`--job-ttl`, default 3600, reported by `/host/info`); after that the job
+reports `expired`, its download answers `410 expired`, and a sweeper deletes the folder (also folders an earlier
+process left). `GET /jobs/{id}/events` streams `text/event-stream`: `event: progress` with the job's progress,
+then exactly one `event: job-complete` whose data is the [job-complete event](plugins.md) durable jobs send
+(`{event, kind, id, status, state, counts, report, workspace, notify, error}`, `report` being the download path
+and `workspace` the workspace name), and the stream ends. The same event goes once to the plugins'
+`job-complete` hook. A failed export reports its error in the host shape under `error`.
+
+**Catalogs and the studio tool profile.** The catalogs a host shows its users come from the same registries as
+`vixl catalog export`, so `GET /catalog/layouts` equals that bundle's `layouts` section for the same release.
+`GET /catalog/capabilities` gives this installation's capabilities and the [capability matrix](#capability-matrix)
+as data. `GET /catalog/tools?profile=studio` is the set of 12 tools a host can offer its own model
+(`list_documents`, `create_document`, `get_document`, `describe_operations`, `apply_operations`,
+`compose_document`, `preview_document`, `check_document`, `export_document`, `get_job`, `add_image`,
+`browse_catalog`): each has `{name, description, method, path, input_schema_ref, input_schema}`, with
+descriptions written in the host's terms (endpoints, never MCP tool names) and input schemas built when asked from
+the registries that validate the calls: the operation types, layouts, check names and export formats of the
+running release. The profile text lives in `vixl.guidance.TOOL_PROFILES`.
+
+**Retries.** A change sent with `request_id` (1-64 characters) applies at most once per workspace: sending it
+again with the same body returns the first answer with `replayed: true`, a different body under the same id is
+`409 request_id_conflict`, and a repeat while the first is still running points at its job. The log is the one
+MCP uses (`vixl.idempotency`): the last 512 ids, 64 per document.
+
+**A call that outlives the timeout** answers `202` with `{status: "running", job_id, poll, result_url}` and
+continues as a job: poll `GET /jobs/{id}?wait=20`, then `GET /jobs/{id}/result` for what the call would have
+answered (its revision included). Do not send it again; a retry with the same `request_id` points at the job.
+
+**The contract.** `vixl host --schema` (also `GET /host/schema`, and the release asset `vixl-host-api.schema.json`)
+prints the API as JSON Schema: `endpoints` names every route with its request, response, status, query parameters
+and media types, and `$defs` holds the shapes (`Error`, `DocumentState`, `Job`, `JobCompleteEvent`, `ToolProfile`
+…). `tests/test_host_contract.py` drives every endpoint and validates each answer against it. `host_api` (1) is in
+the contract and in `GET /host/info`; it changes when an endpoint or field is removed or changes meaning, and such a
+change comes with a migration note in the changelog. Adding an endpoint, a field or an error code does not change
+it, so read answers leniently.
+
+Other modules add route groups with `vixl.host.add_routes(fn)` and plugins with the `host-route` hook; each `fn`
+receives `(app, host)` and its routes are behind the same token.
 
 ## Trusted extensions
 
