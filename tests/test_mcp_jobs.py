@@ -171,6 +171,33 @@ def test_batches_report_progress_notifications(tmp_path):
     assert seen and seen[-1][0] == seen[-1][1] == 40 and all(total == 40 for _, total, _ in seen)
 
 
+def test_the_last_progress_notification_reaches_the_client_before_the_result(tmp_path, monkeypatch):
+    # Notifications are sent from the worker thread onto the event loop; a slow send used to let the result
+    # overtake the last one, and a client that stops listening at the result never saw it.
+    from mcp.server.fastmcp import Context
+
+    original = Context.report_progress
+
+    async def slow(self, *args, **kwargs):
+        await asyncio.sleep(0.3)
+        return await original(self, *args, **kwargs)
+
+    monkeypatch.setattr(Context, "report_progress", slow)
+    server, session = prepared(tmp_path)
+    seen = []
+
+    async def collect(progress, total, message):
+        seen.append((progress, total))
+
+    async def scenario(client):
+        operations = [{"type": "shape", "shape": "rectangle", "name": f"s{i}", "width": 5, "height": 5, "x": i}
+                      for i in range(10)]
+        assert (await client.call("vixl_apply", operations=operations, _progress=collect))["success"]
+        return list(seen)
+
+    assert run(server, scenario)[-1:] == [(10, 10)]
+
+
 def test_cancelled_batch_leaves_the_document_untouched(tmp_path):
     p = Project(50, 50)
     p.save(tmp_path / "a.vixl")

@@ -37,9 +37,17 @@ RULE_FIELDS = {
     "count": {"target", "layer_type", "minimum", "maximum"},
     "focal": {"target", "grid", "tolerance"},
     "text": {"target", "pattern", "contains", "forbid", "min_characters", "max_characters", "min_words", "max_words",
-             "case", "brand"},
-    "budget": {"max_layers", "max_fonts", "max_bytes", "min_ppi"},
+             "case", "brand", "spelling"},
+    "budget": {"max_layers", "max_fonts", "max_bytes", "min_ppi", "max_ppi", "max_render_ms", "proxy"},
 }
+# The limits a budget rule sets (proxy only says how large max_render_ms renders).
+BUDGET_LIMITS = ("max_layers", "max_fonts", "max_bytes", "min_ppi", "max_ppi", "max_render_ms")
+# Measurements list at most this many worst offenders per limit.
+WORST = 5
+# Fields that may hold a reference to another document ({"ref": "doc.vixl#layer.field"} or
+# {"ref": "doc.vixl#suite:rule-id"}); one suite run resolves at most MAX_REFS of them, nested ones included.
+REF_FIELDS = ("expected", "to", "ratio")
+MAX_REFS = 8
 POSITIONS = ("left-of", "right-of", "above", "below", "inside", "contains", "overlapping", "apart")
 EDGES = ("left", "center-x", "right", "top", "center-y", "bottom")
 GRIDS = ("thirds", "golden", "center")
@@ -62,13 +70,19 @@ def validate_suite(suite):
         named(extends)
     rules = suite.get("rules")
     require(isinstance(rules, list) and (0 if extends else 1) <= len(rules) <= 256, "Suite needs 1–256 rules")
-    ids = set()
+    ids, refs = set(), 0
     for rule in rules:
         require(isinstance(rule, dict) and rule.get("kind") in RULE_FIELDS, "Unknown check kind")
         require(not set(rule) - RULE_FIELDS[rule["kind"]] - COMMON_FIELDS, "Unknown check field")
         ident = rule.get("id")
         require(isinstance(ident, str) and ident and ident not in ids, "Check IDs must be unique")
         ids.add(ident)
+        for field, value in rule.items():
+            if is_ref(value):
+                require(field in REF_FIELDS, f"rule {ident!r}: a ref is accepted in {', '.join(REF_FIELDS)}; "
+                                             f"not in {field}", field=field)
+                parse_ref(value["ref"], f"rule {ident!r}: {field}")
+                refs += 1
         require(rule.get("severity", "error") in ("error", "warning"), "Invalid check severity")
         if "pages" in rule:
             _validate_pages(rule["pages"], f"rule {ident!r}: pages")
@@ -77,6 +91,8 @@ def validate_suite(suite):
         if not extends:
             # An override may change one field of a library rule; it is checked once merged (``resolve``).
             _validate_fields(rule)
+    require(refs <= MAX_REFS, f"A suite holds at most {MAX_REFS} refs to other documents; this one has {refs}",
+            "resource_limit", field="ref")
     sampling = suite.get("sampling", {"mode": "still"})
     require(isinstance(sampling, dict) and set(sampling) <= SAMPLING_FIELDS, "Invalid sampling")
     for axis in ("artboards", "pages", "comps"):
@@ -127,6 +143,8 @@ def _validate_fields(rule):
     """Shape checks for the measured rule kinds, so a malformed rule fails when the suite is attached
     rather than reading as needs_review on every run."""
     kind, where = rule["kind"], f"rule {rule.get('id')!r}"
+    # A ref is checked once it is resolved (``resolve_refs``), against the value it reads.
+    original, rule = rule, {key: value for key, value in rule.items() if not is_ref(value)}
     for name in ("minimum", "maximum", "ratio"):
         if name in rule:
             finite(rule[name], f"{where}: {name}", 0, 1e9)
@@ -137,7 +155,8 @@ def _validate_fields(rule):
     if kind in ("relation", "contrast", "focal"):
         require(isinstance(rule.get("target"), str), f"{where}: needs a target layer", field="target")
     if kind == "relation":
-        require(isinstance(rule.get("to"), str), f"{where}: needs to (a layer or 'canvas')", field="to")
+        require(isinstance(rule.get("to"), str) or is_ref(original.get("to")),
+                f"{where}: needs to (a layer or 'canvas')", field="to")
         require(rule.get("position", "apart") in POSITIONS, f"{where}: position is one of {', '.join(POSITIONS)}",
                 field="position")
         align = rule.get("align", [])
@@ -149,7 +168,8 @@ def _validate_fields(rule):
                 field="axis")
     if kind == "color":
         require(("point" in rule) != ("region" in rule), f"{where}: give point or region", field="point")
-        require(isinstance(rule.get("expected"), str), f"{where}: expected is a color", field="expected")
+        require(isinstance(rule.get("expected"), str) or is_ref(original.get("expected")),
+                f"{where}: expected is a color", field="expected")
     if kind == "balance" and "expected" in rule:
         point = rule["expected"]
         require(isinstance(point, list) and len(point) == 2 and all(type(v) in (int, float) and 0 <= v <= 1 for v in point),
@@ -168,13 +188,187 @@ def _validate_fields(rule):
 
         validate_text_rule(rule, where)
     if kind == "budget":
-        require(any(name in rule for name in RULE_FIELDS["budget"]),
-                f"{where}: set max_layers, max_fonts, max_bytes or min_ppi", field="max_layers")
-        for name in ("max_layers", "max_fonts", "max_bytes"):
-            if name in rule:
-                require(type(rule[name]) is int and rule[name] >= 0, f"{where}: {name} is a whole number", field=name)
-        if "min_ppi" in rule:
-            finite(rule["min_ppi"], f"{where}: min_ppi", 1, 10000)
+        validate_budget(rule, where)
+
+
+def validate_budget(rule, where):
+    """The limits of a budget rule (or of the workspace ``budget`` the budget design check reads)."""
+    require(any(name in rule for name in BUDGET_LIMITS), f"{where}: set {', '.join(BUDGET_LIMITS)}",
+            field="max_layers")
+    for name in ("max_layers", "max_fonts", "max_bytes"):
+        if name in rule:
+            require(type(rule[name]) is int and rule[name] >= 0, f"{where}: {name} is a whole number", field=name)
+    for name in ("min_ppi", "max_ppi"):
+        if name in rule:
+            finite(rule[name], f"{where}: {name}", 1, 100000)
+    if "min_ppi" in rule and "max_ppi" in rule:
+        require(rule["min_ppi"] <= rule["max_ppi"], f"{where}: min_ppi is at most max_ppi", field="max_ppi")
+    if "max_render_ms" in rule:
+        finite(rule["max_render_ms"], f"{where}: max_render_ms", 1, 600000)
+        # Render time depends on the machine, so it is an advisory rule of its own, never mixed with the
+        # limits that fail a run.
+        others = [name for name in BUDGET_LIMITS if name in rule and name != "max_render_ms"]
+        require(not others, f"{where}: max_render_ms is advisory; put {', '.join(others)} in another budget rule",
+                field="max_render_ms")
+    if "proxy" in rule:
+        require("max_render_ms" in rule, f"{where}: proxy sets the render size of max_render_ms", field="proxy")
+        require(type(rule["proxy"]) is int and 64 <= rule["proxy"] <= 4096,
+                f"{where}: proxy is the longest side in pixels, 64-4096", field="proxy")
+
+
+# References to other documents (#558) ------------------------------------------------------------------------------
+
+def is_ref(value):
+    return isinstance(value, dict) and set(value) == {"ref"}
+
+
+def parse_ref(text, where="ref"):
+    """(document path, kind, target) of a ref string: ``doc.vixl#layer.field`` reads a field of a layer (or of
+    ``canvas``) of that document, as resolved for drawing; ``doc.vixl#suite:rule-id`` reads the same field of a
+    rule of that document's suite ``suite`` (an attached or inherited suite name)."""
+    require(isinstance(text, str) and 0 < len(text) <= 700 and "\0" not in text,
+            f"{where}: ref is text such as 'master.vixl#logo.fill' or 'master.vixl#brand:title-size'", field="ref")
+    path, sep, fragment = text.partition("#")
+    require(sep and path.strip() and fragment, f"{where}: ref {text!r} needs a document and a target after '#'",
+            field="ref")
+    require(path.lower().endswith(".vixl"), f"{where}: ref {text!r} names a .vixl document", field="ref")
+    if ":" in fragment:
+        suite, _, rule = fragment.partition(":")
+        require(suite and rule, f"{where}: ref {text!r} names a suite and a rule id (#suite:rule-id)", field="ref")
+        return path, "rule", (suite, rule)
+    layer, dot, name = fragment.rpartition(".")
+    require(dot and layer and name, f"{where}: ref {text!r} names a layer and a field (#layer.field)", field="ref")
+    return path, "field", (layer, name)
+
+
+def ref_memo(project):
+    """The per-run state ``resolve_ref`` shares between refs: resolved values and the count against MAX_REFS."""
+    return {"origin": project, "values": {}, "count": 0, "read": []}
+
+
+def _ref_key(origin, path):
+    """A referenced document as reports name it: workspace-relative when inside the workspace."""
+    from pathlib import Path
+
+    from .links import stored_source
+
+    workspace = getattr(origin, "_workspace", None)
+    if workspace:
+        try:
+            return path.relative_to(Path(workspace).resolve()).as_posix()
+        except ValueError:
+            pass
+    return stored_source(origin, path)
+
+
+def ref_target(project, value):
+    """The absolute path of the document a ref (a ``{"ref": ...}`` value or its string) names, resolved like a link
+    source (the document's folder, then the workspace; outside files are refused unless the project allows
+    linked files). It opens nothing, so the workspace dependency graph can read a suite's references cheaply."""
+    from .links import locate
+
+    path, _, _ = parse_ref(value["ref"] if is_ref(value) else value)
+    return locate(project, path)
+
+
+def suite_refs(suite):
+    """[(rule id, field, ref string)] for every ref a suite's rules hold (none are resolved)."""
+    return [(rule.get("id"), field, value["ref"]) for rule in suite.get("rules", []) for field, value in rule.items()
+            if is_ref(value)]
+
+
+def resolve_ref(project, value, field, chain=(), memo=None):
+    """(value, references) for a ref ``{"ref": ...}`` read for ``field`` of a rule. ``references`` lists
+    {path, digest} of every document read (nested rule refs included), ``digest`` being ``assurance.digest`` of
+    its state. Documents are opened read-only through the link source cache. ``chain`` holds the
+    (path, suite, rule) entries already being resolved: a rule ref back into it raises ``link_cycle`` and one
+    deeper than ``links.MAX_DEPTH`` raises ``link_depth``, in the shape ``links.check_cycle`` uses (code, message,
+    ``source``, ``chain``). A missing document, layer, field, suite or rule raises, so the rule needs review."""
+    from .links import MAX_DEPTH, locate, open_source
+
+    memo = memo if memo is not None else ref_memo(project)
+    text = value["ref"]
+    source, kind, target = parse_ref(text)
+    path = locate(project, source)
+    key = (str(path), kind, target, field)
+
+    def names(entries):
+        return [f"{item[0]}#{item[1]}:{item[2]}" for item in entries]
+
+    if kind == "rule":
+        entry = (str(path), *target)
+        if entry in chain:
+            stack = names((*chain, entry))
+            raise VixlError("link_cycle", "Suite references form a cycle: " + " → ".join(stack), source=text,
+                            chain=stack)
+        if len(chain) >= MAX_DEPTH:
+            stack = names((*chain, entry))
+            raise VixlError("link_depth", f"Suite references nest more than {MAX_DEPTH} levels deep: "
+                            + " → ".join(stack), source=text, chain=stack)
+    if key in memo["values"]:
+        found, references = memo["values"][key]
+        return deepcopy(found), list(references)
+    memo["count"] += 1
+    require(memo["count"] <= MAX_REFS, f"A suite run reads at most {MAX_REFS} refs to other documents (nested refs "
+                                       "count)", "resource_limit", source=text)
+    try:
+        child, _ = open_source(project, path, source)
+    except VixlError:
+        missing = {"path": _ref_key(memo["origin"], path), "digest": None}
+        if missing not in memo["read"]:
+            memo["read"].append(missing)
+        raise
+    references = [{"path": _ref_key(memo["origin"], path), "digest": digest(child.state)}]
+    if references[0] not in memo["read"]:
+        memo["read"].append(references[0])
+    if kind == "field":
+        from .render import resolved_layers
+
+        layer_ref, name = target
+        if layer_ref == "canvas":
+            record = child.state["canvas"]
+        else:
+            try:
+                ident = child.layer(layer_ref)["id"]
+            except (VixlError, KeyError) as exc:
+                raise VixlError("not_found", f"ref {text!r}: {source} has no layer {layer_ref!r}", source=text) from exc
+            record = next(item for item in resolved_layers(child) if item["id"] == ident)
+        require(name in record, f"ref {text!r}: {layer_ref!r} in {source} has no field {name!r}", "not_found",
+                source=text)
+        found = deepcopy(record[name])
+    else:
+        suite_name, rule_id = target
+        try:
+            suite, _ = resolve(child, suite_name)
+        except VixlError as exc:
+            raise VixlError("not_found", f"ref {text!r}: {source} has no suite {suite_name!r}", source=text) from exc
+        rule = next((item for item in suite["rules"] if item["id"] == rule_id), None)
+        require(rule is not None, f"ref {text!r}: suite {suite_name!r} in {source} has no rule {rule_id!r}",
+                "not_found", source=text)
+        require(field in rule, f"ref {text!r}: rule {rule_id!r} in {source} sets no {field}", "not_found",
+                source=text)
+        found = deepcopy(rule[field])
+        if is_ref(found):
+            found, nested = resolve_ref(child, found, field, (*chain, (str(path), suite_name, rule_id)), memo)
+            references += [item for item in nested if item not in references]
+    memo["values"][key] = (deepcopy(found), list(references))
+    return found, references
+
+
+def resolve_refs(project, rule, memo=None, suite_name=None):
+    """(rule with every ref replaced by the value it reads, references). Raises like ``resolve_ref``; the
+    resolved rule is shape-checked as an attached rule is."""
+    from pathlib import Path
+
+    resolved, references = deepcopy(rule), []
+    here = str(Path(project.path).resolve()) if getattr(project, "path", None) else None
+    chain = ((here, suite_name, rule.get("id")),) if here and suite_name else ()
+    for field in REF_FIELDS:
+        if is_ref(rule.get(field)):
+            resolved[field], found = resolve_ref(project, rule[field], field, chain, memo)
+            references += [item for item in found if item not in references]
+    _validate_fields(resolved)
+    return resolved, references
 
 
 def capture(project, targets=(), regions=()):
@@ -509,51 +703,157 @@ def document_bytes(project):
 
 
 def _budget(project, rule):
-    """Production budgets: drawn layers (as the count rule counts them), distinct fonts drawn, the saved size,
-    and the lowest effective resolution of placed images (as the print check measures it)."""
+    """Production budgets (``measure_budget``); a render-time rule reads as advisory: a warning to review."""
+    detail, problems = measure_budget(project, rule)
+    if problems:
+        detail["problems"] = [item["message"] for item in problems][:20]
+    if "max_render_ms" in rule:
+        detail.update(advisory=True, action="review")
+    return not problems, detail
+
+
+def measure_budget(project, rule):
+    """(measurements, problems) for the budget limits in ``rule``: drawn layers (as the count rule counts them),
+    distinct fonts drawn, the saved size, the effective resolution of placed images (as the print check measures
+    it: too low for ``min_ppi``, wastefully high for ``max_ppi``) and the proxy render time. Each problem is
+    {limit, message, layers (ids)}; ``worst`` lists the top offenders per limit as {layer, value}."""
     from .checks import effective_ppi
     from .copy_checks import shown_layers
     from .render import resolved_layers
     from .richtext import fonts_used
     from .spatial import canvas_boxes
 
-    detail, problems = {}, []
+    detail, problems, worst = {}, [], {}
     shown = shown_layers(project)
+    ids = {layer["id"] for layer in shown}
+    every = {layer["id"]: layer for layer in project.state["layers"]}
     if "max_layers" in rule:
         detail["layers"] = len(shown)
+        # Where the layers pile up: drawn layers under each top-level layer.
+        piles = {}
+        for layer in shown:
+            top = layer
+            while top.get("parent") in every:
+                top = every[top["parent"]]
+            piles[top["id"]] = piles.get(top["id"], 0) + 1
+        ranked = sorted(piles.items(), key=lambda item: -item[1])[:WORST]
+        worst["max_layers"] = [{"layer": every[ident]["name"], "value": count} for ident, count in ranked]
         if len(shown) > rule["max_layers"]:
-            problems.append(f"{len(shown)} layers drawn; at most {rule['max_layers']}")
-    ids = {layer["id"] for layer in shown}
+            problems.append({"limit": "max_layers", "layers": [ident for ident, _ in ranked],
+                             "message": f"{len(shown)} layers drawn; at most {rule['max_layers']}"})
     resolved = [item for item in resolved_layers(project) if item["id"] in ids]
     if "max_fonts" in rule:
         from .checks import FALLBACK_FONT
 
         reverse = {asset: name for name, asset in project.state.get("fonts", {}).items()}
-        fonts = sorted({reverse.get(font, font) for item in resolved if item["type"] == "text"
-                        for font in fonts_used(item, FALLBACK_FONT)})
+        users = {}
+        for item in resolved:
+            if item["type"] == "text":
+                for font in fonts_used(item, FALLBACK_FONT):
+                    users.setdefault(reverse.get(font, font), []).append(item)
+        fonts = sorted(users)
         detail["fonts"] = fonts
+        # The fonts drawn by the fewest layers are the cheapest to drop.
+        ranked = sorted(users.items(), key=lambda item: (len(item[1]), item[0]))[:WORST]
+        worst["max_fonts"] = [{"font": font, "layer": items[0]["name"], "value": len(items)} for font, items in ranked]
         if len(fonts) > rule["max_fonts"]:
-            problems.append(f"{len(fonts)} fonts drawn; at most {rule['max_fonts']}")
+            problems.append({"limit": "max_fonts", "layers": [items[0]["id"] for _, items in ranked],
+                             "message": f"{len(fonts)} fonts drawn; at most {rule['max_fonts']}"})
     if "max_bytes" in rule:
         size = document_bytes(project)
         detail["document_bytes"] = size
         if size > rule["max_bytes"]:
-            problems.append(f"The document is {size} bytes; at most {rule['max_bytes']} (history compact drops undo "
-                            "history and unused files)")
-    if "min_ppi" in rule:
+            problems.append({"limit": "max_bytes", "layers": [],
+                             "message": f"The document is {size} bytes; at most {rule['max_bytes']} (history compact "
+                                        "drops undo history and unused files)"})
+    if "min_ppi" in rule or "max_ppi" in rule:
         dpi = project.state["canvas"].get("dpi") or 300
         boxes = canvas_boxes(project)
-        low = []
+        placed = []
         for item in resolved:
             ppi = effective_ppi(project, item, boxes[item["id"]], dpi)
-            if ppi is not None and ppi < rule["min_ppi"]:
-                low.append({"layer": item["name"], "effective_ppi": round(ppi)})
-        detail.update(dpi=dpi, low_resolution=low[:20])
-        problems += [f"{entry['layer']!r} prints at about {entry['effective_ppi']} ppi; at least {rule['min_ppi']:g}"
-                     for entry in low]
-    if problems:
-        detail["problems"] = problems[:20]
-    return not problems, detail
+            if ppi is not None:
+                placed.append((item, ppi, boxes[item["id"]]))
+        detail["dpi"] = dpi
+        if "min_ppi" in rule:
+            low = sorted((entry for entry in placed if entry[1] < rule["min_ppi"]), key=lambda entry: entry[1])
+            detail["low_resolution"] = [{"layer": item["name"], "effective_ppi": round(ppi)} for item, ppi, _ in low[:20]]
+            worst["min_ppi"] = [{"layer": item["name"], "value": round(ppi)}
+                                for item, ppi, _ in sorted(placed, key=lambda entry: entry[1])[:WORST]]
+            problems += [{"limit": "min_ppi", "layers": [item["id"]],
+                          "message": f"{item['name']!r} prints at about {round(ppi)} ppi; at least {rule['min_ppi']:g}"}
+                         for item, ppi, _ in low]
+        if "max_ppi" in rule:
+            high = []
+            for item, ppi, box in placed:
+                source = _source_pixels(project, item)
+                # The pixels the placement needs at max_ppi; a source with over 4x that area carries pixels no
+                # output shows, even when one side alone stays under the limit.
+                needed = max(box[2], 1) * max(box[3], 1) * (rule["max_ppi"] / dpi) ** 2
+                if ppi > rule["max_ppi"] or source > 4 * needed:
+                    high.append({"layer": item["name"], "id": item["id"], "effective_ppi": round(ppi),
+                                 "source_pixels": source, "placed_pixels": round(box[2] * box[3])})
+            high.sort(key=lambda entry: -entry["effective_ppi"])
+            detail["over_resolution"] = [{k: v for k, v in entry.items() if k != "id"} for entry in high[:20]]
+            worst["max_ppi"] = [{"layer": item["name"], "value": round(ppi)}
+                                for item, ppi, _ in sorted(placed, key=lambda entry: -entry[1])[:WORST]]
+            problems += [{"limit": "max_ppi", "layers": [entry["id"]],
+                          "message": f"{entry['layer']!r} places about {entry['effective_ppi']} ppi "
+                                     f"({entry['source_pixels']} source pixels in {entry['placed_pixels']} placed); at "
+                                     f"most {rule['max_ppi']:g} (downsample it with image-resize, or place it larger)"}
+                         for entry in high]
+    if "max_render_ms" in rule:
+        from time import perf_counter
+
+        from .proxy import render_preview
+
+        size = rule.get("proxy", 1024)
+        timings = []
+        for _ in range(2):  # cold, then warm (caches filled); the warm time is compared
+            began = perf_counter()
+            render_preview(project, size, size)
+            timings.append((perf_counter() - began) * 1000)
+        detail.update(render_ms={"cold": round(timings[0], 1), "warm": round(timings[1], 1)}, proxy=size)
+        if timings[1] > rule["max_render_ms"]:
+            problems.append({"limit": "max_render_ms", "layers": [],
+                             "message": f"A {size} px proxy render takes about {timings[1]:.0f} ms warm "
+                                        f"({timings[0]:.0f} ms cold); at most {rule['max_render_ms']:g} ms (the cost "
+                                        "check names the slow layers)"})
+    if worst:
+        detail["worst"] = worst
+    return detail, problems
+
+
+def _source_pixels(project, layer):
+    """Source pixels a placed raster or frame draws (its crop when cropped)."""
+    if layer.get("crop"):
+        x0, y0, x1, y1 = layer["crop"]
+        return int((x1 - x0) * (y1 - y0))
+    width, height = project.image(layer["asset"]).size
+    return width * height
+
+
+# The workspace defaults of the budget design check (``check --checks budget``); the workspace check policy
+# (.vixl-checks.json ``budget``) overrides them field by field.
+DEFAULT_BUDGET = {"max_layers": 500, "max_fonts": 4, "max_bytes": 100_000_000, "max_ppi": 1200}
+
+
+def budget_findings(project, limits=None):
+    """Findings of the budget design check: the budget rule's limits without a suite. ``limits`` defaults to
+    ``DEFAULT_BUDGET`` under the workspace policy's ``budget``. Render time is left to suites (it is advisory)."""
+    if limits is None:
+        from .policy import for_project
+
+        limits = {**DEFAULT_BUDGET, **for_project(project).get("budget", {})}
+    detail, problems = measure_budget(project, limits)
+    findings = []
+    for item in problems:
+        finding = {"message": item["message"], "layers": item["layers"], "limit": item["limit"],
+                   "maximum" if item["limit"].startswith("max") else "minimum": limits[item["limit"]]}
+        if item["limit"] in detail.get("worst", {}):
+            finding["worst"] = detail["worst"][item["limit"]]
+        findings.append(finding)
+    return findings
 
 
 def _focal(project, rule):
@@ -757,6 +1057,8 @@ def run_suite(project, suite, *, variables=None, artboard=None, mode=None, page=
 
     name = suite if isinstance(suite, str) else None
     suite, info = resolve(project, suite)
+    suite_hash = digest(suite)
+    suite, unresolved, referenced = _resolved_refs(project, suite, name)
     sampling = suite.get("sampling", {})
     mode = mode or sampling.get("mode", "still")
     require(mode in ("still", "sampled", "all", "times"), "Unknown coverage mode")
@@ -794,22 +1096,29 @@ def run_suite(project, suite, *, variables=None, artboard=None, mode=None, page=
         for time in times:
             frame = candidate if time is None else project_at(candidate, time)
             for rule in suite["rules"]:
+                if rule["id"] in unresolved:
+                    exc = unresolved[rule["id"]]
+                    results.append({"id": rule["id"], "status": "needs_review", "severity": _severity(rule),
+                                    "time": time, **where, "message": str(exc), "code": exc.code,
+                                    **({"chain": exc.details["chain"]} if "chain" in exc.details else {}),
+                                    "references": referenced.get(rule["id"], [])})
+                    continue
                 limit = scoped.get(rule["id"])
                 if isinstance(limit, VixlError):
                     results.append({"id": rule["id"], "status": "needs_review",
-                                    "severity": rule.get("severity", "error"), "time": time, **where,
+                                    "severity": _severity(rule), "time": time, **where,
                                     "message": str(limit)})
                     continue
                 if limit is not None and page_id not in limit:
                     named = rule["pages"] if isinstance(rule["pages"], list) else [rule["pages"]]
                     results.append({"id": rule["id"], "status": "not_applicable",
-                                    "severity": rule.get("severity", "error"), "time": time, **where,
+                                    "severity": _severity(rule), "time": time, **where,
                                     "reason": "rule limited to pages " + ", ".join(map(str, named)),
                                     "pages": named})
                     continue
                 if elsewhere.get(rule["id"]):
                     results.append({"id": rule["id"], "status": "not_applicable",
-                                    "severity": rule.get("severity", "error"), "time": time, **where,
+                                    "severity": _severity(rule), "time": time, **where,
                                     "reason": "layer on another page", "layers": elsewhere[rule["id"]]})
                     continue
                 try:
@@ -817,7 +1126,9 @@ def run_suite(project, suite, *, variables=None, artboard=None, mode=None, page=
                     status = "passed" if passed else "needs_review" if passed is None else "failed"
                 except (VixlError, KeyError, TypeError, ValueError, StopIteration) as exc:
                     status, detail = "needs_review", {"message": str(exc)}
-                results.append({"id": rule["id"], "status": status, "severity": rule.get("severity", "error"),
+                if rule["id"] in referenced:
+                    detail["references"] = referenced[rule["id"]]
+                results.append({"id": rule["id"], "status": status, "severity": _severity(rule),
                                 "time": time, **where, **detail})
             # Every suite also fails on characters no font can draw (they render as empty boxes).
             missing = missing_glyphs(frame)
@@ -838,7 +1149,7 @@ def run_suite(project, suite, *, variables=None, artboard=None, mode=None, page=
 
     report = {
         "version": 1,
-        "suite_hash": digest(suite),
+        "suite_hash": suite_hash,
         "passed": errors == 0 and review == 0,
         "status": "failed" if errors else "needs_review" if review else "passed",
         "errors": errors,
@@ -848,6 +1159,8 @@ def run_suite(project, suite, *, variables=None, artboard=None, mode=None, page=
     }
     if info:
         report.update(info)
+    if referenced:
+        report["references"] = list({item["path"]: item for found in referenced.values() for item in found}.values())
     # A rule waiver (the waiver operation with rule) turns that rule's failures into "waived" results; the
     # outcome is computed after, so a waived rule neither fails validation nor asks for review.
     report = apply_suite(project, report, name)
@@ -866,6 +1179,34 @@ def run_suite(project, suite, *, variables=None, artboard=None, mode=None, page=
         if changed:
             report["contract_changed"] = changed
     return report
+
+
+def _severity(rule):
+    # Render time depends on the machine: a budget rule on it is a warning to review whatever it says.
+    if rule["kind"] == "budget" and "max_render_ms" in rule:
+        return "warning"
+    return rule.get("severity", "error")
+
+
+def _resolved_refs(project, suite, name):
+    """(suite with its refs resolved, {rule id: error} for refs that could not be, {rule id: references}). One
+    memo serves the whole run, so a document referenced twice is read once and counts once."""
+    if not any(is_ref(rule.get(field)) for rule in suite["rules"] for field in REF_FIELDS):
+        return suite, {}, {}
+    memo, rules, unresolved, referenced = ref_memo(project), [], {}, {}
+    for rule in suite["rules"]:
+        if not any(is_ref(rule.get(field)) for field in REF_FIELDS):
+            rules.append(rule)
+            continue
+        read = len(memo["read"])
+        try:
+            resolved, referenced[rule["id"]] = resolve_refs(project, rule, memo, name)
+            rules.append(resolved)
+        except VixlError as exc:
+            # The documents it did read are still named, so a later change to them shows as the cause.
+            unresolved[rule["id"]], referenced[rule["id"]] = exc, memo["read"][read:]
+            rules.append(rule)
+    return {**suite, "rules": rules}, unresolved, referenced
 
 
 def _tally(results):

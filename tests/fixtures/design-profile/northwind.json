@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "name": "Northwind Studio",
+  "typography": {
+    "heading": {"family": "Inter", "weight": 700, "letterSpacing": -0.01},
+    "body": {"family": "Source Serif 4", "weight": 400}
+  },
+  "colours": {
+    "background": "#fbf8f2",
+    "surface": "#efe9dd",
+    "ink": "#1d1b18",
+    "muted": "#5a554c",
+    "accent": "#c2410c",
+    "accentText": "#9a3412",
+    "onAccent": "#ffffff",
+    "brandDark": "#14213d"
+  },
+  "page": {"background": "#fbf8f2", "size": "A4", "margins": {"top": 20, "right": 18, "bottom": 20, "left": 18}},
+  "docText": {"font": "body", "color": "#1d1b18", "lineHeight": 1.5, "minContrast": 4.5, "largeMinContrast": 3,
+              "hyphenate": true},
+  "voice": {"tone": "warm"}
+}

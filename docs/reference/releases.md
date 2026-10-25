@@ -103,18 +103,74 @@ Python installations intentionally do not self-update or invoke pip. They return
 
 To publish a stable release:
 
-1. Update the single-sourced version in `src/vixl/__init__.py` (package, API and bundle versions derive from it), then the places that repeat it: `.claude-plugin/plugin.json`, the PyPI pin `vixl-engine==X.Y.Z` in `.mcp.json` (the `.mcpb` derives it), the install pins in `README.md` and `getting-started.md`, the release line in `README.md` and the documentation home, the action pin in [CI](../guides/automation/ci.md), the tag in step 3 and the sample manifest in [file format](file-format.md); update release notes (see [release notes](#release-notes)) and documentation as needed.
+1. Update the single-sourced version in `src/vixl/__init__.py` (package, API and bundle versions derive from it), then the places that repeat it: `.claude-plugin/plugin.json`, the PyPI pin `vixl-engine==X.Y.Z` in `.mcp.json` (the `.mcpb` derives it), the install pins in `README.md` and `getting-started.md`, the release line in `README.md` and the documentation home, the action pin in [CI](../guides/automation/ci.md), both `ARG VERSION=` lines in `distribution/container/Dockerfile` (the `ghcr.io/jxburros/vixl:X.Y.Z` image tag, checked by `tests/test_container.py`), the tag in step 3 and the sample manifest in [file format](file-format.md); update release notes (see [release notes](#release-notes)) and documentation as needed.
 2. Run tests and review the PR's **Windows installer and releases** workflow. It runs a real silent installer, verifies PATH lookup, creates/exports a project using the frozen runtime, activates an explicit update before any normal launch with mocked network transport, checks corrupted-candidate recovery, and uninstalls while preserving a user project and existing PATH entries.
 3. Tag the reviewed commit with its exact version and push the tag:
 
    ```bash
-   git tag v0.31.0 <reviewed-commit>
-   git push origin v0.31.0
+   git tag v0.32.0 <reviewed-commit>
+   git push origin v0.32.0
    ```
 
 4. The tag workflow re-runs tests, checks tag/package-version consistency and builds the distributions. The publish job then waits in the protected `release` environment until a required reviewer approves the deployment (Actions run, **Review deployments**). Approve only a run whose commit and version you reviewed. After approval it creates a **draft** GitHub release. It uploads every artifact before publishing it as the latest stable release. No release becomes visible to the updater while files are still being uploaded.
 
 The workflow's top-level permission is `contents: read`. Only the publish job, inside the `release` environment, gets GitHub's built-in token with `contents: write` and `actions: write`; the latter starts Python publication after a release from main. A `plan` job with read-only permissions first checks whether the version is already published, so a push to main that only edits `CHANGELOG.md` skips the publish job instead of asking for an approval. No personal token is required. If publication fails after draft creation, inspect that draft and the workflow logs; do not mutate assets of an already published version. Publish a new version for fixes. Release tags and assets are treated as immutable by convention.
+
+### Vixl host for AI Server Studio
+
+The installer's optional task **Run Vixl host for AI Server Studio** (off by default) registers a per-user Scheduled
+Task named `Vixl host`, so it needs no administrator rights: it starts at logon, restarts a minute after a failure and
+runs `vixl host --root %LOCALAPPDATA%\Vixl\host --offline --bind 127.0.0.1 --port 8767 --token-file
+%LOCALAPPDATA%\Vixl\host-token`. The installer (`distribution/windows/host-task.ps1`, run from its `[Code]`)
+generates a 32-byte random token, writes it to `host-token` and writes `%LOCALAPPDATA%\Vixl\host.json`:
+
+```json
+{"url": "http://127.0.0.1:8767", "token_file": "C:\\Users\\you\\AppData\\Local\\Vixl\\host-token"}
+```
+
+Both files are readable by the installing user only (inheritance removed, one access rule for the user's SID). After
+the updater activates a version (`vixl update`, `vixl update --rollback`, a pending update activated on a later
+launch, or an installer upgrade) it restarts the task with `schtasks /End` and `/Run` when `host.json` exists, so the
+host serves the new runtime; a failed restart never fails the update. The host task's own launch does not restart
+itself. The uninstaller stops and removes the task and deletes `host.json` and `host-token`; the workspaces under
+`%LOCALAPPDATA%\Vixl\host` stay.
+
+Not built: a machine-wide Windows service (`sc.exe` or NSSM), which needs an elevated installer and would write
+`%ProgramData%\Vixl\host.json`. Which of the two AI Server Studio's detection expects is not confirmed yet.
+
+Manual checklist, on a clean Windows account without administrator rights (`distribution/test_windows_install.ps1`
+runs the automated part with `VIXL_TEST_HOST_TASK=1`):
+
+1. Install with the task ticked: no UAC prompt.
+2. `host.json` and `host-token` exist; `icacls` lists only your account on each.
+3. Task Scheduler shows `Vixl host` (at logon, restart on failure, your account) running; `GET /host/health` with
+   the token answers `{"ok": true}`, without it `401`.
+4. Sign out and in: the task runs again. End `vixl-engine.exe`: it restarts within a minute.
+5. `vixl update` to a newer release: `GET /host/info` reports the new version.
+6. Uninstall: the task, `host.json` and `host-token` are gone and `%LOCALAPPDATA%\Vixl\host` remains.
+
+### Container image
+
+`distribution/container/Dockerfile` builds the official `vixl host` image from the published PyPI release:
+`ghcr.io/jxburros/vixl:X.Y.Z` (python-slim, `vixl-engine[server,pdf]`) and `ghcr.io/jxburros/vixl:X.Y.Z-full`
+(the same with ffmpeg, `--target full`). It runs as uid 10001 with `ENTRYPOINT vixl host --root /data --offline
+--bind 0.0.0.0` on port 8767, keeps workspaces in the `/data` volume and caches under `HOME=/tmp/vixl`, so it runs
+with `--read-only --tmpfs /tmp`. The token comes from `VIXL_HOST_TOKEN` or a file named by `VIXL_HOST_TOKEN_FILE` (a
+mounted secret); the `HEALTHCHECK` reads it the same way, since `/host/health` needs the token. Because the host is
+offline, the build fetches every content pack in `vixl.packs.PACKS` into `VIXL_PACK_DIR=/opt/vixl/packs`, each checked
+against its pinned SHA-256.
+
+```bash
+docker run -d --read-only --tmpfs /tmp -v vixl-data:/data -p 127.0.0.1:8767:8767 \
+  -e VIXL_HOST_TOKEN="$VIXL_HOST_TOKEN" ghcr.io/jxburros/vixl:0.32.0
+```
+
+`.github/workflows/container.yml` builds both tags on a `v*` tag push (also `workflow_dispatch` with a version, and
+`workflow_call`), waits for the version on PyPI, smoke-tests each image read-only (`/host/info` with the token, a
+document, `compose`, a PNG export job and its download, the health status, uid 10001, ffmpeg in `-full`) and pushes
+it with the built-in token (`packages: write`). It uses the runner's docker CLI rather than docker actions, so every
+`uses:` stays SHA-pinned. A tag the release workflow creates with the built-in token does not start other workflows,
+so after such a release run the container workflow manually (or call it from the release workflow).
 
 ### Repository setup (owner, once)
 
@@ -137,6 +193,7 @@ Release assets:
 - `SHA256SUMS.txt` — checksums of every release asset (the publish job rewrites it to cover the Windows files, the wheel, the source distribution, the `.mcpb` and the plugin ZIP).
 - Python wheel and source distribution — optional pip/developer installs.
 - `vixl-catalog.json` and `vixl-catalog.schema.json` — the design catalog bundle for host applications (`vixl catalog export`) and its JSON Schema.
+- `vixl-host-api.schema.json` — the `vixl host` API contract (`vixl host --schema`): every endpoint's request and response, with `host_api`.
 
 An update trusts HTTPS and access control of the official GitHub repository. The manifest and artifact have the same trust root; checksums detect corruption or mismatched downloads but do not defend against compromise of the repository's release permissions. A signed manifest ([#756](https://github.com/jxburros/Vixl/issues/756)) and Authenticode signing are future hardening options.
 

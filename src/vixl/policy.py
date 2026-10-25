@@ -4,7 +4,8 @@ A profile says how strict a check run is, so the same document can be sketched a
 checks::
 
     {"profiles": {"final": {"fail_on": "review", "optional": ["color_vision", "print"], "suites": "all"}},
-     "waivers": [{"check": "safe_area", "target": "title-bar", "reason": "...", "expires": "2026-12-31"}]}
+     "waivers": [{"check": "safe_area", "target": "title-bar", "reason": "...", "expires": "2026-12-31"}],
+     "budget": {"max_layers": 300, "max_fonts": 3}}
 
 - ``fail_on``: the findings that fail the run: ``error`` (severity error), ``warning`` (errors and warnings),
   ``fix`` (any finding whose action is fix, the default verdict), ``review`` (fix or review findings) or
@@ -12,6 +13,10 @@ checks::
 - ``checks``: the check names to run (default: the standard checks); ``optional``: opt-in checks added to them.
 - ``suites``: ``"all"`` attached suites, ``"none"``, or a list of suite names; a failed suite fails the run
   (a suite needing review fails it at ``warning`` and ``review``).
+
+``budget`` overrides the limits of the opt-in ``budget`` design check (``assurance.DEFAULT_BUDGET``) for the
+workspace, with the budget suite rule's fields (``max_layers``, ``max_fonts``, ``max_bytes``, ``min_ppi``,
+``max_ppi``).
 
 Built-in profiles ``draft``, ``review`` and ``final`` always exist; the workspace file adds profiles or
 overrides their fields, and a project group's ``profiles`` override both for that group's documents.
@@ -97,9 +102,17 @@ def validate(config):
     from .waivers import records
 
     require(isinstance(config, dict), f"{FILE} must be an object")
-    unknown = sorted(set(config) - {"profiles", "waivers"})
-    require(not unknown, f"Unknown {FILE} field(s) {unknown}; use profiles and waivers")
+    unknown = sorted(set(config) - {"profiles", "waivers", "budget"})
+    require(not unknown, f"Unknown {FILE} field(s) {unknown}; use profiles, waivers and budget")
     validate_profiles(config.get("profiles", {}))
+    if "budget" in config:
+        from .assurance import BUDGET_LIMITS, validate_budget
+
+        budget = config["budget"]
+        allowed = set(BUDGET_LIMITS) - {"max_render_ms"}
+        require(isinstance(budget, dict) and budget and set(budget) <= allowed,
+                f"{FILE} budget sets any of {', '.join(sorted(allowed))}", field="budget")
+        validate_budget(budget, f"{FILE} budget")
     records(config.get("waivers", []), scope="workspace", field="waivers")
     return config
 

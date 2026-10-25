@@ -37,7 +37,7 @@ jobs:
       security-events: write   # only for sarif: true
     steps:
       - uses: actions/checkout@v4
-      - uses: jxburros/Vixl@v0.31.0   # pin a release tag (or a commit SHA)
+      - uses: jxburros/Vixl@v0.32.0   # pin a release tag (or a commit SHA)
         with:
           paths: designs/**/*.vixl
           profile: final          # draft | review | final | a .vixl-checks.json profile (optional)
@@ -49,8 +49,8 @@ jobs:
           sarif: true             # findings in the Security tab and on the pull request
 ```
 
-A tag such as `v0.31.0` is easy to read but can be moved to other code. For a pin nothing can change, use the
-release's full commit SHA with the version in a comment, `uses: jxburros/Vixl@<40-character-sha>  # v0.31.0`, and
+A tag such as `v0.32.0` is easy to read but can be moved to other code. For a pin nothing can change, use the
+release's full commit SHA with the version in a comment, `uses: jxburros/Vixl@<40-character-sha>  # v0.32.0`, and
 let Dependabot (`package-ecosystem: github-actions`) propose updates. The action itself pins `setup-python`,
 `upload-artifact` and `upload-sarif` by commit SHA, and passes every input to its scripts through environment
 variables, never by pasting `${{ inputs.* }}` into a shell line.
@@ -105,6 +105,13 @@ the summary with their reason and expiry. A waiver past its `expires` date turns
 `expired waiver` fix finding, so the build fails until someone fixes the design or renews the waiver.
 `vixl check --all --no-waivers` reports every finding as if there were none.
 
+A document [approved](production.md#approved-baselines) with `vixl approve` (its `NAME.vixl.approval/` folder, or
+the group's in `.vixl-groups/`, committed with it) is held to that approval in the same run: a page or artboard that
+no longer matches is an `approval` warning with action `review`, so the document is `needs_review` and fails the build
+at `fail-on: warning` or `review` (the `final` profile) but not at the default `error`. The finding carries the
+changed fraction; the diff image is written beside the approval in the checkout. Re-approve the document in the pull
+request once the change is signed off.
+
 ## The same checks locally
 
 ```bash
@@ -124,6 +131,13 @@ Each local run is recorded in `.vixl-checks/history/`; `--since-last` reports th
 the previous run (and whether a Vixl upgrade or an edit caused it). The action passes `--no-history`, since a CI
 checkout starts empty; to track results over time, run `vixl check --all --since-last` on a schedule in a workflow
 that keeps `.vixl-checks/` (for example as a cached or committed folder).
+
+On a machine that keeps its workspace (a build server, a shared drive), `vixl watch` runs the checks itself: it
+re-checks a saved document, the documents that link to a changed source, everything after a `brand.json` change, and
+runs pipelines or data syncs on a schedule ([watch mode](production.md#watch-mode)). From a scheduled CI job, or
+cron, `vixl watch --once` makes one pass: it compares the workspace with the state the last pass left in
+`.vixl-runs/watch/` (keep that folder between runs), runs the triggers that fire and the schedules that are due, and
+exits 1 when a run failed.
 
 `vixl diff BEFORE AFTER` compares two `.vixl` documents or images (PNG, JPEG, WEBP, TIFF, SVG; PDF with the `pdf`
 extra), at the first one's size, and reports `changed_pixels`, `changed_fraction` and `changed_region`. `--out`

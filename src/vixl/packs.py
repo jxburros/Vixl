@@ -5,8 +5,8 @@ repository and checked by SHA-256, so a changed or tampered file is refused. Dow
 per-user pack directory (``VIXL_PACK_DIR``, default ``~/.cache/vixl/packs``).
 
 ``VIXL_<NAME>_PACK`` (for example ``VIXL_EMOJIS_PACK``) points at a local copy instead, and
-``VIXL_PACK_DOWNLOAD=off`` forbids downloads (offline machines, sandboxes); ``install`` with a
-source file still works then.
+``VIXL_PACK_DOWNLOAD=off`` forbids downloads (offline machines, sandboxes), and so does ``VIXL_OFFLINE=1``;
+``install`` with a source file still works then.
 
 ``cjk`` has no entry yet, only its override: ``VIXL_CJK_PACK`` names a font file, or a zip of font files named
 like the font cache (``noto-sans-sc-400.ttf``), that text draws CJK, Devanagari or Thai from when no document font
@@ -77,7 +77,9 @@ def _override(name):
 
 
 def downloads_allowed():
-    return os.environ.get("VIXL_PACK_DOWNLOAD", "").strip().lower() not in OFF
+    from .fetch import offline
+
+    return os.environ.get("VIXL_PACK_DOWNLOAD", "").strip().lower() not in OFF and not offline()
 
 
 def _digest(path):
@@ -127,7 +129,7 @@ def install(name, source=None):
         path = _store(name, source)
         _failed.pop(name, None)
         return {**status(name), "path": str(path), "installed": True, "source": "cache"}
-    require(downloads_allowed(), f"Downloads are off (VIXL_PACK_DOWNLOAD); install the {name} pack from a file: "
+    require(downloads_allowed(), f"Downloads are off (VIXL_PACK_DOWNLOAD or VIXL_OFFLINE); install the {name} pack from a file: "
             f"download {url(name)} and pass it as the source", "pack_unavailable")
     from .fetch import fetch_bounded
 

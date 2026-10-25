@@ -53,6 +53,8 @@ jobs:
         python -m vixl catalog export --out dist/vixl-catalog.json
         python -m vixl catalog schema --out dist/vixl-catalog.schema.json
         python -c "import json, jsonschema; jsonschema.validate(json.load(open('dist/vixl-catalog.json')), json.load(open('dist/vixl-catalog.schema.json')))"
+    - name: Export the vixl host API contract for host applications
+      run: python -m vixl --json host --schema > dist/vixl-host-api.schema.json
     - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       with:
         name: python-distributions
@@ -62,6 +64,7 @@ jobs:
           dist/*.mcpb
           dist/*-claude-code.zip
           dist/vixl-catalog*.json
+          dist/vixl-host-api.schema.json
     needs:
     - plan
     if: needs.plan.outputs.selected == 'true' && fromJSON(needs.plan.outputs.apps)['vixl'].selected

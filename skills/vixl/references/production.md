@@ -14,6 +14,15 @@ the base layers; `finish` is screen, puff, embroidery, enamel, woven or none. `v
 area at its `print_size_mm` × dpi (PNG, an editable source, film-positive separations as PNG or PDF pages, and a white
 underbase for dark garments only). See `docs/guides/output/merch-mockups.md`.
 
+Localization: `locales-set {locales: {de: {headline: "..."}}, same_ok, fonts, fit: shrink|flag, min_size, rtl}` stores
+per-locale variable values. `vixl_apply(workflow='locale-check', request={"locales": "all", "strings": "strings.csv"})`
+(or `check` with `locales`, `vixl check --locales de,ja`) checks each locale on a copy and returns a locale x finding
+`matrix` (overflow, fonts, untranslated, missing-key, line-count, design, suites). `workflow='localize'` writes
+`<master>.<code>.vixl` and `formats` exports into `output_dir` for passing locales, holds failing ones (`held`), mirrors
+ar/he/fa, and on re-run rebuilds only locales whose fingerprint changed; `spec` adds a locale axis to a campaign. A
+strings CSV has a `key` column and one column per locale; an empty cell is a missing key and holds the locale. See
+`docs/guides/automation/localization.md`.
+
 Discover actions with `vixl_reference('workflows')` or `vixl workflow schema`.
 Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/main/docs/guides/automation/production.md).
 
@@ -22,8 +31,8 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    baselines during an ordinary repair. Rule kinds: `assert`, `property`, `gap`, `spacing`,
    `relation`, `text-fit`, `contrast`, `hierarchy`, `color`, `palette`, `ink`, `balance`, `focal`,
    `count`, `text` (the drawn copy: `contains`, `forbid`/`pattern` regexes, `min_/max_characters`,
-   `min_/max_words`, `case`, `brand`), `budget` (`max_layers`, `max_fonts`, `max_bytes`, `min_ppi`), `alpha`,
-   `design`, `container`, `unchanged`, `pixels` (fields:
+   `min_/max_words`, `case`, `brand`, `spelling: true` for unknown words with suggestions), `budget` (`max_layers`, `max_fonts`, `max_bytes`, `min_ppi`, `max_ppi`; `max_render_ms` + `proxy` in a rule of its own, always an advisory review), `alpha`,
+   `design`, `container`, `unchanged`, `pixels`. `expected`, `to` and `ratio` may be `{ref: "master.vixl#layer.field"}` or `{ref: "master.vixl#suite:rule-id"}` to read a master document each run (at most 8; a missing one needs review) (fields:
    `vixl_reference('workflows').definitions.suite`; method: `vixl_reference("testing")`). Run suites with each
    batch (`vixl_apply(suites=true)`) and before every preview. `sampling` (or `check`'s request)
    takes `artboards`/`pages`/`comps` (`"all"` or names) to cover every variant in one run; each result names
@@ -47,7 +56,9 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    Inspect its count before `run`, which also needs an output directory. Every output
    gets checks; up to three named repair_actions can run without changing the suites (`auto` runs the
    built-in repair map). A row that leaves a variable undefined or draws placeholder copy is `needs_review`,
-   with findings naming the variant and `row`.
+   with findings naming the variant and `row`. `export_check` (`true`, a delivery spec preset such as
+   `instagram-feed`, or inline fields) reads each written output back; the report is the result's `export_check` in
+   `production.json`, and an output that fails it is held for review and not published.
 6. For long production, call `submit` with `start:true`, then `status` with its returned
    ID. The source is snapshotted. `cancel` is cooperative; `resume` preserves remote IDs.
    Never blindly repeat an uncertain provider request.
@@ -148,6 +159,54 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    AVIF, GIF, MP4, WebM; `--export-tolerance`, `--export-visual`) per export, with `page 2`, `jpg.quality`, `mp4.ffmpeg`
    drift located. Workflow `reproduce` takes `exports`, `verify_exports`, `frames`, `times`, `report`. No credential
    enters a lock. Byte-exact output across machines is not promised (fonts, zlib, encoder versions).
+21. Approved baselines: `vixl_apply(workflow='approve', request={group?, clear?, author?})` (CLI `vixl approve
+   [--group NAME] [--clear]`) stores per page and artboard a render hash and a 256 px reference, who (`author`, else
+   `VIXL_AUTHOR`, else agent) and when, in `NAME.vixl.approval/` or `.vixl-groups/GROUP.approval/` (at most 64 views).
+   The `approval` check then runs with the standard checks whenever approval data exists: a changed view is a
+   `warning`/`review` finding with `changed_fraction` and a `diff` image (needs_review in check-all; fails at
+   `fail_on` warning or review). Approve again to accept the change; `clear` removes it. `group-apply` and
+   `replace-across` dry runs and campaign `run` list `approved_members_changed`; proof pages show a badge.
+22. Link impact: `vixl_apply(workflow='link-impact', request={source, documents?, group?, apply?: "if-passing",
+   checks?, suites?, profile?, fail_on?, resize?, outputs?})` (CLI `vixl links impact SOURCE.vixl [--group|--glob]
+   [--apply]`) finds every document that links to `source` (nested up to 4 levels, from a cached reverse index in
+   `.vixl-checks/links-index.json`), refreshes its links on an unsaved copy (a resized source keeps the link's scale),
+   runs check + suites and diffs the render. Report: `passes`, `fails` (failing findings and suite `rules`),
+   `changed`, `tree`, `cycles`; formats as check-all. Read-only unless `apply`, which saves only passers through the
+   `link-impact` journal (`group-recover`).
+23. Pipelines: save `{version: 1, targets: {documents?: [globs], group?}, on_fail?: hold|stop, inputs?: [data files],
+   steps: [{act|check|repair|export|export_check|approve: {...}}, ..., {proof|package: {output, ...}}]}` with
+   `resource-save` kind `pipelines`, then `vixl_apply(workflow='pipeline-run', request={pipeline: NAME | {...}, run?,
+   documents?, group?, dry_run?, notify?})`. The first call is a dry run (planned steps and outputs, nothing written);
+   `dry_run: false` runs each document through its steps (`act`/`repair` change a working copy in `.vixl-runs/RUN/work`,
+   never the source; `export` paths take `{doc}`), holds a document whose step fails (`held` with findings) and goes
+   on, then writes the proof and package of what passed. Outcomes: `passed`, `held`, `visual-review-needed`, `failed`.
+   The record `.vixl-runs/RUN/run.json` has input digests (document, brand.json, links (nested too), data; a check
+   also keys on its suite file, library suites and `.vixl-checks.json`), per-step logs and outputs with SHA-256;
+   running the same `run` again reuses every step whose inputs are unchanged. Exports never replace a file the run did
+   not write for that document unless the step says `overwrite: true`, and two documents never write the same file.
+   CLI: `vixl pipeline run NAME [--dry-run | --execute] [--run ID] [--glob GLOB… | --group NAME]`. Job kind `pipeline`: `submit`
+   `{kind: "pipeline", output: ".vixl-runs/RUN", request: {pipeline}}`. `package` also takes `run: ".vixl-runs/RUN/run.json"`.
+24. Data sync: `vixl_apply(workflow='data-sync', request={bind: {data: "prices.csv", key: "sku", to: {group} | {spec:
+   "campaign.json"} | {merge: "sheets.vixl"}}, exports?, dry_run?})` diffs the CSV against the last snapshot
+   (`.vixl-runs/data/NAME.json`: rows added, changed, removed) and updates only what changed rows affect: group members
+   bound by their `sku` variable get the new variables on a checked copy, committed through a journal and re-exported;
+   a campaign re-runs with fingerprint reuse; a merge sheet re-merges. Members that fail checks are held and retried.
+25. Completion webhooks: `notify: {url, secret_env}` on `submit`, `pipeline-run` and `check-all`, or a default in
+   `.vixl/notify.json` (`{url?, secret_env?, allow: [hosts]}`; only allowed hosts receive anything). One signed POST
+   (`X-Vixl-Signature: sha256=…`, `X-Vixl-Delivery`) of kind, id, status, state, counts and report path, never
+   document content; 3 retries; nothing offline.
+26. Bulk upgrades: `vixl_apply(workflow='bulk-upgrade', request={documents | group, convert?, map?: {"Title*": {rename,
+   role}}, template?, dry_run?, journal?})` converts, renames/re-roles and optionally re-applies a layout, with checks
+   and a render diff before and after; dry run by default, `dry_run: false` commits through a journal
+   (`group-recover` with `journal`).
+27. Watch mode: `.vixl/watch.json` `{version: 1, triggers: [{on: save|source-change|brand-change|data-change|schedule,
+   run?: check|check-all|link-impact|pipeline|data-sync, documents?, group?, pipeline?, binding?, every?: "24h",
+   at?: "06:00" (UTC), request?: {action options}}]}`. `vixl watch` polls (1 s, content digests), debounces 500 ms,
+   coalesces repeated events and runs one job per document at a time; `vixl watch --once` (or
+   `vixl_apply(workflow='watch', request={ticks?, config? | watch?})`) makes one bounded pass against the state in
+   `.vixl-runs/watch/` and returns `runs` (trigger, files, documents, passed, failing). Check runs record history and
+   fire the completion webhook; a pipeline whose run-record digests match is skipped (`up-to-date`). The first start
+   only records the files; a schedule's first period starts then.
 
 MCP paths must remain inside the workspace. REST exposes check/act/plan/film-plan for
 its single project; filesystem, library and queue operations use CLI/Python/MCP.

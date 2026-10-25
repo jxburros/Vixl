@@ -13,8 +13,10 @@ Humans can follow progress with `vixl -p DOCUMENT view`.
 
 Workspace `brand.json` provides default palette roles (plus `palette.extra` approved colours), pairing/embedded
 fonts under any role name (`heading`, `body`, `hand` …) with `stages` mapping text stages onto them, embedded
-logos, minimum contrast, required layer names, compliance rules (`fonts.allowed`, `colors.strict`, `logo.clear_space`
-and `min_size`) and named `presets` (select one per document with `{"type": "brand-preset", "name": …}`).
+logos, minimum contrast, required layer names, compliance rules (`fonts.allowed`, `colors.strict`, `logo.clear_space`,
+`min_size` and `logo.variants`: `{"reversed": {"layers": "logo-rev*", "backgrounds": ["dark", "@brand-dark"]}}`, a
+`fix` when a variant sits on a background it is not mapped to), copy rules (`words.forbid`, `words.prefer`, and
+`words.allow` for names that forbid, prefer and the `spelling` check skip) and named `presets` (select one per document with `{"type": "brand-preset", "name": …}`).
 Layouts, templates, rolls and checks honor it, and new documents embed its fonts at creation (`workspace_fonts` in
 the result; `workspace_fonts: false` skips). `vixl brand validate` flags missing roles, fonts and logos; the
 `brand-board` workflow draws the brand as a guidelines PDF.
@@ -24,6 +26,9 @@ several), and `{"type": "brand-logo", "purpose": "wordmark", "anchor": "bottom"}
 `elements` place with `object-place` as `brand:NAME`; brand `styles` are tagged `brand:NAME` with `style-set` and
 checked by `check --checks style`. `vixl brand init`, `brand pack OUT.vixlbrand` and `brand install FILE` start,
 package and install a brand with its resource library (install validates everything, then writes atomically).
+`vixl brand import --design-profile FILE.json` writes brand.json from a Design Profile (`schemaVersion: 2`) and
+`vixl brand export --design-profile FILE.json` writes one (workflows `brand-import`/`brand-export`); both list the
+paths they could not map under `unmapped`.
 Set the workspace typography with a `font-pair` or `font-install` step and `scope: "workspace"`.
 Use a `roll` step in `vixl_apply` (CLI `roll --apply --set title=...`) to apply a whole direction, and
 `vixl_reference('roll')` to see one without applying it;

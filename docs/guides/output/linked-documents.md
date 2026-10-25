@@ -60,6 +60,49 @@ so you can tell what changed behind your back:
   `workspace` or `absolute`: which folder it was found in).
 - Production runs (`vixl_apply(workflow='run', request=…)`) include the revisions of linked sources in their
   fingerprints, so a changed source re-renders the variants that use it.
+- Check-suite rules can read their expected value from a master document without linking it:
+  `{"ref": "master.vixl#brand.fill"}` (a layer field) or `{"ref": "master.vixl#brand:type-scale"}` (a rule of its
+  suite), resolved like link sources and read-only, with the same depth limit and `link_cycle` refusal. See
+  [rules that reference another document](../automation/production.md#rules-that-reference-another-document).
+
+## Link impact
+
+`links` reports from one dependent's side. To see what a changed source does to **every** document that links to
+it, run link impact from the source's side:
+
+```bash
+vixl links impact logo.vixl                      # every document in the workspace that links to logo.vixl
+vixl links impact logo.vixl --group launch       # only the members of a project group
+vixl links impact logo.vixl --glob "cards/*.vixl" --format junit --write sarif=impact.sarif
+vixl links impact logo.vixl --apply              # save the refreshed dependents that pass
+```
+
+The workflow action is `link-impact` (`vixl_apply(workflow='link-impact', request={"source": "logo.vixl"})`;
+`documents`, `group`, `apply`, `checks`, `suites`, `profile`, `fail_on`, `resize` and `outputs` as below).
+
+1. The workspace dependency graph finds the dependents: documents with a link to the source, and the documents
+   that link to those, up to the 4-level depth limit. Each document's links are read from its state without
+   rendering and cached by file size and modification time in `.vixl-checks/links-index.json`.
+2. Each dependent is evaluated on a copy that is never saved: its links to the source (and to the documents in
+   between) are refreshed as `link-refresh` would, and a link whose source changed canvas size keeps its scale, so a
+   logo widened from 100 to 160 px is drawn 60 % wider (`resize: false`, `--keep-size`, keeps the box; a cropped
+   link always keeps it). The copy then runs `vixl check` and its attached suites, and its render is diffed with the
+   dependent's current render.
+3. The report lists `passes`, `fails` (each with the findings that reach `fail_on`, default `error`, and the suite
+   rules that did not pass), `changed` (the changed pixel fraction), the dependency `tree` and any `cycles` found on
+   disk (the documents on a cycle fail). Each entry in `documents` has the dependent's `depth`, the `via` chain from
+   the source, the refreshed `links` (`stale`, `resized`) and the same fields as a
+   [`check --all`](../automation/production.md#checking-many-documents) entry, so the report prints and writes as
+   Markdown, JSON, JUnit, SARIF or GitHub annotations (`--format`, `--write FORMAT=PATH`, `outputs`). Approved
+   dependents that the refresh would change are listed under `approved_members_changed`
+   ([approved baselines](../automation/production.md#approved-baselines)).
+
+Link impact is read-only by default: no document is written (the index cache is the only file). `--apply`
+(`apply: "if-passing"`) saves the refreshed dependents that pass and changed, together, through the journal
+`link-impact`; an interrupted save is rolled back with `vixl_apply(workflow='group-recover', request={"name":
+"link-impact"})`. Dependents that fail are left as they are. A nested dependent is checked against the documents in
+between as they are saved, so after `--apply` run it again to see the nested ones against the refreshed parents. The
+command exits 1 when a dependent fails.
 
 ## Freezing a link
 
@@ -126,6 +169,7 @@ vixl link-refresh [LAYER]
 vixl link-embed LAYER
 vixl links-relink FROM TO        # rewrite a source prefix in every link
 vixl links                       # every link with its state
+vixl links impact SOURCE.vixl [--group NAME | --glob GLOB…] [--apply]   # the documents that link to SOURCE
 ```
 
 Through MCP and REST the same operations go through `vixl_apply` / `POST /operations`

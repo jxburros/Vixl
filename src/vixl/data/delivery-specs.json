@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "specs": {
+    "default": {
+      "description": "What every delivered file should do: PDF fonts embedded, HTML and SVG self-contained, PowerPoint text left editable.",
+      "fonts_embedded": true,
+      "self_contained": true,
+      "editable_text": true
+    },
+    "print-letter-bleed": {
+      "description": "Press-ready US Letter PDF: 8.5 x 11 in trim, 0.125 in bleed with TrimBox and BleedBox, fonts embedded, CMYK, total ink at most 300%.",
+      "formats": ["pdf"],
+      "trim": "letter",
+      "bleed": "0.125in",
+      "fonts_embedded": true,
+      "color": "cmyk",
+      "ink_limit": 300
+    },
+    "print-a4-bleed": {
+      "description": "Press-ready A4 PDF: 210 x 297 mm trim, 3 mm bleed with TrimBox and BleedBox, fonts embedded, CMYK, total ink at most 300%.",
+      "formats": ["pdf"],
+      "trim": "a4",
+      "bleed": "3mm",
+      "fonts_embedded": true,
+      "color": "cmyk",
+      "ink_limit": 300
+    },
+    "office-pdf": {
+      "description": "A PDF for screen and office printers: fonts embedded, RGB, no bleed required.",
+      "formats": ["pdf"],
+      "fonts_embedded": true,
+      "color": "rgb"
+    },
+    "instagram-feed": {
+      "description": "Instagram feed post: 1080 px wide JPEG or PNG between 4:5 portrait and 1.91:1 landscape, RGB, no transparency, under 8 MB.",
+      "formats": ["jpg", "jpeg", "png"],
+      "width": 1080,
+      "aspect": [0.8, 1.91],
+      "color": "rgb",
+      "alpha": false,
+      "max_bytes": 8000000
+    },
+    "web-banner": {
+      "description": "Website banner image: PNG, JPEG, WebP or AVIF in RGB, at least 1200 px wide, under 300 KB.",
+      "formats": ["png", "jpg", "jpeg", "webp", "avif"],
+      "min_width": 1200,
+      "color": "rgb",
+      "max_bytes": 300000
+    },
+    "display-ad": {
+      "description": "IAB display ad: a standard size (300x250, 728x90, 160x600, 300x600, 320x50, 970x250), RGB, under 150 KB.",
+      "formats": ["png", "jpg", "jpeg", "webp", "gif"],
+      "sizes": [[300, 250], [728, 90], [160, 600], [300, 600], [320, 50], [970, 250]],
+      "color": "rgb",
+      "max_bytes": 150000
+    },
+    "slides-pptx": {
+      "description": "An editable PowerPoint deck: text kept as text frames and charts as native charts.",
+      "formats": ["pptx"],
+      "editable_text": true,
+      "native_charts": true
+    },
+    "web-html": {
+      "description": "A self-contained HTML page: nothing loaded from the network or from other files.",
+      "formats": ["html", "htm"],
+      "self_contained": true
+    }
+  }
+}

@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 
 from .commands import Parser, pairs, spacing
-from .errors import require
+from .errors import VixlError, require
 
 STANDALONE = ("color", "colors", "sizes", "layouts", "brushes", "easings", "organics")
 EDITING = (
@@ -477,3 +477,33 @@ def form_fill(project, args):
         return {"dry_run": True, "valid": not errors, "errors": errors}
     require(a.out, "form fill --set … needs --out FILE")
     return fill(project, values, a.out, format=a.format, mode=a.mode, unknown=a.unknown, dpi=a.dpi)
+
+
+def check_file(args, limits):
+    from .export_checks import SPEC_FIELDS, expectations, presets, verify
+
+    parser = Parser(prog="vixl check-file", description="Read an exported file back and check it against a delivery "
+                    "spec: PDF pages, boxes, fonts, colour, ink and forms; raster size, dpi, ICC and alpha; PowerPoint "
+                    "text and charts; HTML and SVG references. Read-only.")
+    parser.add_argument("file", nargs="?")
+    parser.add_argument("--spec", help=f"A preset ({', '.join(presets())}) or inline JSON fields "
+                                       "(default: the default preset)")
+    parser.add_argument("--document", help="The .vixl it was exported from, so text and chart counts are known")
+    parser.add_argument("--list", action="store_true", help="List the delivery spec presets")
+    a = parser.parse_args(args)
+    if a.list:
+        return {"specs": {name: entry.get("description", "") for name, entry in presets().items()},
+                "fields": SPEC_FIELDS}
+    require(a.file, "Give the exported file to check: vixl check-file FILE [--spec NAME]", "usage_error", field="file")
+    spec = a.spec
+    if spec and spec.lstrip().startswith("{"):
+        try:
+            spec = json.loads(spec)
+        except ValueError as exc:
+            raise VixlError("usage_error", f"--spec is not valid JSON: {exc}", field="spec") from exc
+    expect = None
+    if a.document:
+        from .project import Project
+
+        expect = expectations(Project.load(a.document, limits=limits))
+    return verify(a.file, spec, limits=limits, expect=expect)

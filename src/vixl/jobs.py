@@ -20,6 +20,9 @@ from .errors import VixlError, require
 from .model import Limits
 from .production import read_json, write_json, write_bytes, file_digest, publish_file
 
+BUILTIN_KINDS = ("production", "film", "generate", "video", "lyric-video", "form-fill")
+TERMINAL = ("completed", "failed", "cancelled", "needs_review")
+
 
 class Queue:
     def __init__(self, workspace, limits=None):
@@ -51,7 +54,16 @@ class Queue:
     def save(self, job):
         job["updated"] = time.time()
         job["outcome"] = job_outcome(job)
+        finished = job.get("status") in TERMINAL and not job.get("notified")
+        if finished:
+            # Set before the write, so a crash after it never sends the event twice.
+            job["notified"] = job["updated"]
         write_json(self.path(job["id"]), job)
+        if finished:
+            deliveries = notify_complete(completion_event(job, self.workspace))
+            if deliveries:
+                job["deliveries"] = deliveries
+                write_json(self.path(job["id"]), job)
 
     def submit(self, payload):
         from .project import Project
@@ -59,11 +71,19 @@ class Queue:
         from .plugins.film.film import plan as film_plan
 
         bounded_object(
-            payload, {"kind", "source", "spec", "output", "provider", "request"}, "Unknown job field"
+            payload, {"kind", "source", "spec", "output", "provider", "request", "notify"}, "Unknown job field"
         )
         payload = deepcopy(payload)
         kind = payload.get("kind")
-        require(kind in ("production", "film", "generate", "video", "lyric-video", "form-fill"), "Unknown job kind")
+        plugin_kind = None if kind in BUILTIN_KINDS else job_kind(kind)
+        require(kind in BUILTIN_KINDS or plugin_kind, "Unknown job kind", kinds=list(BUILTIN_KINDS) + plugin_kinds())
+        if plugin_kind:
+            require(isinstance(payload.get("output"), str), "Job needs an output path")
+            output = self.resolve(payload["output"])
+            require(not output.is_relative_to(self.directory) and output != self.workspace,
+                    "Output cannot target queue storage or workspace root")
+            plugin_kind["validate"](self, payload, output)
+            return self._enqueue(payload)
         fields = ({"spec"} if kind in ("production", "film") else {"request"} if kind in ("lyric-video", "form-fill")
                   else {"provider", "request"})
         require(fields <= payload.keys(), "Missing job fields", required=sorted(fields))
@@ -169,6 +189,11 @@ class Queue:
                 destination = folder / (f"input-{i}" + source.suffix)
                 write_bytes(destination, read_bounded(source, self.limits.max_project_bytes))
                 item["source"] = str(destination.relative_to(self.workspace))
+        return self._enqueue(payload, ident)
+
+    def _enqueue(self, payload, ident=None):
+        ident = ident or uuid.uuid4().hex
+        (self.directory / ident).mkdir(parents=True, exist_ok=True)
         job = {
             "version": 1,
             "id": ident,
@@ -276,6 +301,7 @@ class Queue:
                 marker.unlink()
             job.update(status="queued", next_poll=0)
             job["attempts"] = 0
+            job.pop("notified", None)  # A resumed job reports its next ending too.
             self.save(job)
             return job
 
@@ -421,7 +447,12 @@ class Queue:
 
                 try:
                     payload = job["payload"]
-                    if kind == "video":
+                    plugin_kind = None if kind in BUILTIN_KINDS else job_kind(kind)
+                    if plugin_kind:
+                        result = plugin_kind["run"](self, job, limits, progress, lambda: self.cancelled(ident))
+                        job.update(result=result, status=result.get("status", "completed")
+                                   if result.get("status") in TERMINAL else "completed")
+                    elif kind == "video":
                         self.video_step(job)
                     elif kind == "production":
                         from .production import run
@@ -547,6 +578,48 @@ def worker(workspace, workers=1):
         if not any(j["status"] in ("queued", "running", "waiting") for j in jobs):
             break
         time.sleep(2)
+
+
+def job_kind(kind):
+    """A plugin's durable job kind ({"validate": fn(queue, payload, output), "run": fn(queue, job, limits, progress,
+    cancelled) -> result}), or None."""
+    from . import plugins
+
+    return plugins.first("job-kind", kind) if isinstance(kind, str) else None
+
+
+def plugin_kinds():
+    from . import plugins
+
+    return sorted(name for fn in plugins.hooks("job-kind") for name in getattr(fn, "KINDS", ()))
+
+
+def completion_event(job, workspace):
+    """The one completion event shape shared by durable jobs, check-all and pipeline runs: what finished and how,
+    never document content."""
+    outcome = job.get("outcome") or {}
+    result = job.get("result") if isinstance(job.get("result"), dict) else {}
+    counts = (outcome.get("outputs") or {}).get("counts") or result.get("counts") or {}
+    return {"event": "job-complete", "kind": job["payload"]["kind"], "id": job["id"], "status": job["status"],
+            "state": outcome.get("state"), "counts": counts, "report": job["payload"].get("output"),
+            "workspace": str(workspace), "notify": job["payload"].get("notify"),
+            "error": (job.get("error") or {}).get("code")}
+
+
+def notify_complete(event):
+    """Hand a terminal event to every ``job-complete`` hook. A failing consumer is recorded, never raised: the work
+    it reports on is already done."""
+    from . import plugins
+
+    deliveries = []
+    for fn in plugins.hooks("job-complete"):
+        try:
+            result = fn(event)
+        except Exception as exc:  # noqa: BLE001 - a consumer's failure must not undo or fail the finished job
+            result = {"hook": f"{fn.__module__}.{fn.__name__}", "error": str(exc)[:200]}
+        if result:
+            deliveries.append(result)
+    return deliveries
 
 
 def job_outcome(job):

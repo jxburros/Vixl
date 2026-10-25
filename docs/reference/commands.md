@@ -31,6 +31,7 @@ project with appropriate layers or input files. See each guide for complete crea
 | Lyric video | `workflow lyric-video-export --request request.json --workspace .` | [Lyric videos](../guides/motion/lyric-video.md) |
 | Whole piece in one call | `compose --request req.json [--preview p.png] [--workspace DIR]` | [Interfaces](interfaces.md#build-a-piece-in-one-call) |
 | Pixel diff of two files | `diff before.vixl after.png [--out diff.png] [--mode diff\|side-by-side] [--threshold 8] [--max-fraction F] [--overwrite]` | [CI](../guides/automation/ci.md#the-same-checks-locally) |
+| Check an exported file against a delivery spec | `check-file FILE [--spec NAME\|JSON] [--document DOC.vixl] [--list]` | [Verify the delivered file](../guides/output/exporting.md#verify-the-delivered-file) |
 | Proof page | `workflow proof --request proof.json --workspace .` | [Proof pages](../guides/automation/production.md#proof-pages) |
 | Logo package | `workflow logo-package --request logo.json --workspace .` | [Logo packages](../guides/automation/production.md#logo-packages) |
 | Delivery package | `package (--production out/production.json \| --files GLOB…) --out delivery.zip [--source DOC.vixl] [--name TEMPLATE] [--layout by-format\|by-artboard] [--lock FILE] [--decisions FILE] [--no-check] [--no-proof] [--dry-run] [--overwrite]` | [Delivery packages](../guides/automation/production.md#delivery-packages) |
@@ -111,6 +112,7 @@ next export of the unchanged document, in a new process, reads the frame back in
 | `manifest`, `dependencies`, `reproduce --check` | List assets/fonts/providers; check current renderability |
 | `reproduce --reference PNG [--tolerance N] [--max-fraction F]`, `reproduce --write-lock FILE`, `reproduce --lock FILE` | Verify a render against an approved reference or a lockfile; reports `renderable`, `environment-matched` or `reference-verified` and located drift ([reproduction](agent-trust.md#reproduction)) |
 | `reproduce --write-lock FILE --export png jpg:quality=80 mp4:fps=24 [--frames N \| --times T…]`, `reproduce --lock FILE --export [FORMAT[:OPTION=VALUE,…]…] [--export-tolerance N] [--export-visual] [--report]` | Record exports (and sampled timeline frames) in a version 2 lockfile, then encode them again: `byte_identical` and `visually_equivalent` per export, `page`, `artboard`, `frame`, `export-setting` and `toolchain` drift located by name; `--report` prints the compact manifest-ready summary |
+| `approve [--group NAME] [--clear] [--author WHO]` | Record the approved look of every page and artboard (render hash, 256 px reference, who, when) beside the document or in the group folder; later checks report changed views for review ([approved baselines](../guides/automation/production.md#approved-baselines)) |
 | `render [project.vixl] --out preview.png --set title=Hello` | Render without persisting overrides |
 | `export image.jpg --quality 90 --scale 2x` | Export, preserving the editable document. `--quality` also compresses PDF images; `--title` sets the PDF title (default: the title layer, then the file name); `--max-bytes N` warns when a raster file is larger, and a PNG over 1 MB warns, naming texture looks (grain, paper, film) as the likely cause |
 | `export image.png --profile discord` | Contain in 512×512; Instagram contains in 1080×1080; print emits RGB/RGBA TIFF at 300 DPI |
@@ -347,6 +349,19 @@ Display text (24 px or larger) in a `text-layout` box whose wrapped paragraph en
 
 `cost` (opt-in: `check --checks cost`) draws the document once with empty caches and times every layer (a group's time excludes its children). A layer that takes over 10× the median layer and at least 50 ms is a `cost` warning with action `review`, its `ms`, the `median_ms`, the slowest `stage` (`draw`, `effects`, `transform`) and `causes` read from its fields (the largest blur radius, other effects, paint stroke and point counts, soft style blurs, very long text, repeated copies, a very large box). It does not fail a check; it says which layer to simplify or rasterize when renders, previews and timeline frames are slow.
 
+`budget` (opt-in: `check --checks budget`) holds the document to production budgets without a suite: drawn layers, distinct fonts, the saved size and over-resolved images (`max_layers` 500, `max_fonts` 4, `max_bytes` 100 MB, `max_ppi` 1200 unless `budget` in `.vixl-checks.json` sets others). Each finding is a `review` warning with the `limit`, its `maximum` or `minimum` and the `worst` offenders as `{layer, value}`. The `budget` suite rule takes the same limits plus `max_render_ms` (see [check suites](../guides/automation/production.md)).
+
+`spelling` (opt-in: `check --checks spelling`, from the spelling plugin) reads the drawn text of every visible text
+layer, after variables and per artboard, and reports each word the dictionary does not know as a `spelling` warning
+with `code: unknown-word`, action `review`, the `word` and up to three `suggestions`. URLs, domains, emails,
+`@handles`, `#hex` colours and hashtags, numbers, words with digits and all-capital words of four letters or fewer are
+skipped; brand.json `words.allow`, brand `facts` values and `.vixl/dictionary.txt` (one word or phrase per line) are
+accepted. The language is the form `lang`, else the document `lang`, else `en`; English is bundled, another language
+needs the `spelling-<lang>` content pack, and without it the check gives one `dictionary-unavailable` review finding
+instead of passing. See [brands](../guides/layout/brands.md#spelling).
+
+`approval` compares the document with the look recorded by `vixl approve`. It runs with the standard checks whenever the document has approval data, and by name (`check --checks approval`) otherwise. A page or artboard whose render changed since approval is a warning with action `review` (`code: changed`, the `view`, `changed_fraction`, a `diff` image, `approved_by`, `approved_at`); asked for by name, an unchanged document gets an `approved` note and one never approved a `never-approved` note. See [approved baselines](../guides/automation/production.md#approved-baselines).
+
 `accessibility` (opt-in: `check --checks accessibility`) adds `contrast` and `color_vision` to its own findings: the
 document language (fix), meaningful images, frames, links and charts without alt text (fix), small text (review),
 charts told apart by colour alone (review) and text whose export order jumps against its visual order (review). See
@@ -448,6 +463,7 @@ vixl link FILE.vixl [--name N] [--x X] [--y Y] [--width W] [--height H] [--fit f
 vixl link-set LAYER [--source F] [--fit …] [--position …] [--crop …] [--artboard …] [--source-page …]
     [--set NAME=VALUE]… [--corner-pin …] [--clear artboard|source_page|variables|crop|corner_pin]…
 vixl link-refresh [LAYER] | link-embed LAYER | links          # links: every link, ok / stale / missing / cycle
+vixl links impact SOURCE.vixl [--group NAME | --glob GLOB…] [--apply] [--format markdown|json|junit|sarif|github]
 
 vixl merge [TEMPLATE.vixl] --data rows.csv --out sheets.pdf [--sheet-document sheets.vixl]
     [--size letter] [--cols 2] [--rows 3] [--gutter 0.125] [--margin 0.5] [--bleed template|0.125]
@@ -508,6 +524,8 @@ vixl -p doc.vixl emoji install PACK | emoji reset [--emoji EMOJI]
 ## Servers
 
 `vixl mcp --workspace DIR` serves the seven MCP tools over stdio (`--http` for Streamable HTTP at `/mcp`, with `--host`, `--port` and `--token-env`). `vixl mcp --tools ai` serves the provider-backed `vixl_ai_*` tools and `vixl_models_list` as a second server (`--planner` adds `vixl_ai_plan`). `--require-document` (or `VIXL_REQUIRE_DOCUMENT=1`) makes `document=` mandatory on every document tool, and `--allow-screen-capture` enables desktop capture. `vixl serve` runs the REST API and `vixl view` the live viewer; `serve`, `view` and `mcp` share the per-call limits `--call-timeout`, `--call-hard-timeout`, `--max-megapixels`, `--max-pages` and `--max-concurrent` (with defaults when other machines can reach the server; `--no-call-limits` drops them). See [MCP tool surface](mcp-toolsets.md) and [interfaces](interfaces.md#mcp).
+
+`vixl host --root DIR` serves documents in many workspaces to a host application such as AI Server Studio: a bearer token is always required (`VIXL_HOST_TOKEN`, `--token-env` or `--token-file`), `--offline` turns network access off, `--bind ADDR` and `--port` (default 8767) set the address, and it takes the same per-call limit flags. `--provider studio --provider-url URL --provider-token-env ENV` sends every AI call to an AI Server Studio gateway ([Studio gateway](providers.md#studio-gateway-vixl-host---provider-studio)). `vixl host --schema` prints its API contract. See [hosting Vixl](interfaces.md#hosting-vixl).
 
 ## Output destinations and help
 

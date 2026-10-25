@@ -1,0 +1,1466 @@
+"""``vixl host``: one server for many workspaces, for host applications such as AI Server Studio.
+
+``vixl serve`` serves one fixed document to one user. ``vixl host`` serves documents in many workspaces
+to another program that holds the bearer token:
+
+* **Auth.** A bearer token is always required, on loopback too; the host refuses to start without one
+  (``--token-env``, default ``VIXL_HOST_TOKEN``, or ``--token-file``, default ``VIXL_HOST_TOKEN_FILE``).
+  The token rules and the failed-token throttle are those of ``vixl serve`` (``interfaces.require_token``,
+  ``interfaces.Failures``). There is no origin check (the caller is a program, not a browser page), and the
+  host names are restricted to loopback unless ``--bind`` names another address.
+* **Workspaces.** ``/w/{ws}/...`` where ``ws`` matches ``[a-z0-9_-]{1,64}``: the folder ``root/ws``,
+  created on first use and checked to resolve inside ``root``. Each workspace has one
+  ``Session(workspace=..., require_document=True)``, kept in a bounded LRU.
+* **Offline.** ``--offline`` sets ``VIXL_OFFLINE=1`` for the process (``fetch.offline``): URL fetches,
+  font downloads, content-pack downloads and AI providers refuse with ``network_disabled``, and
+  third-party plugins cannot be enabled.
+* **Errors.** Every error answers one shape, ``{code, message, hint, layer_id?, details?}``.
+* **Limits.** ``call_limits`` bound every heavy call as they do for ``vixl serve``; ``GET /host/info`` reports
+  them.
+
+Route groups other modules add register with ``add_routes``; a plugin adds routes through the ``host-route`` hook.
+Both receive ``(app, host)``.
+"""
+
+from collections import OrderedDict
+from functools import lru_cache
+import json
+import os
+from pathlib import Path
+import re
+import threading
+
+from .errors import VixlError, require
+
+HOST_API = 1
+DEFAULT_PORT = 8767
+TOKEN_ENV = "VIXL_HOST_TOKEN"
+TOKEN_FILE_ENV = "VIXL_HOST_TOKEN_FILE"
+WORKSPACE_PATTERN = r"[a-z0-9_-]{1,64}"
+WORKSPACE = re.compile(WORKSPACE_PATTERN)
+HOST_DIR = ".vixl-host"  # Per-workspace host state: the document index and export job results.
+DOCUMENT_ID = re.compile(r"d_[0-9a-f]{8}")
+MAX_JOBS = 200
+MAX_LAYERS = 2000  # Layers one document summary lists at most (``max_layers``).
+MAX_WORKSPACES = 16  # Workspace sessions kept loaded; the least recently used is dropped (everything is saved).
+MAX_JSON_BYTES = 1024 * 1024
+SCHEMA_PATH = Path(__file__).parent / "data" / "host-api.schema.json"
+
+# HTTP status per error code; anything else is 400.
+STATUS = {
+    "unauthorized": 401, "authentication_required": 401, "forbidden": 403, "network_disabled": 403,
+    "not_found": 404, "no_project": 404, "revision_conflict": 409, "request_id_conflict": 409, "document_busy": 409,
+    "job_running": 409, "job_failed": 409, "expired": 410, "resource_limit": 413, "too_many_attempts": 429,
+    "missing_dependency": 501, "internal_error": 500, "provider_error": 502, "provider_refused": 403,
+    "provider_not_configured": 501,
+}
+# What to do next, for codes whose message does not already say.
+HINTS = {
+    "unauthorized": "Send Authorization: Bearer TOKEN with the token the host was started with.",
+    "not_found": "Check the id; GET /w/{ws}/documents lists the documents of a workspace.",
+    "revision_conflict": "Read the document again (GET /w/{ws}/documents/{id}), then retry with its revision.",
+    "request_id_conflict": "Use a fresh request_id for a different request.",
+    "expired": "Export results are kept for job_ttl seconds (GET /host/info); export again.",
+    "invalid_workspace": "Use 1-64 characters from a-z, 0-9, '-' and '_'.",
+    "network_disabled": "The host runs offline; send the bytes instead of a URL.",
+    "limit_exceeded": "Make the call smaller, or wait for running calls to finish.",
+    "resource_limit": "Make it smaller: the canvas, the image or the request body.",
+}
+
+
+def _jsonable(value):
+    return json.loads(json.dumps(value, default=str))
+
+
+def error_body(exc):
+    """The one error shape: ``{code, message, hint, layer_id?, details?}``."""
+    details = dict(exc.details)
+    hint = details.pop("hint", None)
+    suggestions = details.get("suggestions")
+    if not hint and isinstance(suggestions, list) and suggestions:
+        hint = "; ".join(str(item) for item in suggestions[:3])
+    body = {"code": exc.code, "message": str(exc), "hint": hint or HINTS.get(exc.code, "")}
+    layer = details.pop("layer_id", None) or details.pop("layer", None)
+    if layer is not None:
+        body["layer_id"] = layer
+    if details:
+        body["details"] = _jsonable(details)
+    return body
+
+
+def status_of(exc):
+    if exc.code == "limit_exceeded":
+        return {"max_concurrent": 429, "max_queue": 503, "provider": 429}.get(exc.details.get("limit"), 413)
+    return STATUS.get(exc.code, 400)
+
+
+def capabilities():
+    """What this installation can do, probed without importing the optional packages."""
+    import importlib.util
+    import shutil
+
+    from . import plugins
+    from .fetch import offline
+
+    return {"pptx": True, "pdf_import": importlib.util.find_spec("pypdfium2") is not None,
+            "ffmpeg": shutil.which("ffmpeg") is not None, "ai": "ai" in plugins.BUILTIN and not offline()}
+
+
+ROUTES = []
+
+
+def add_routes(fn):
+    """Register ``fn(app, host)``, called by every ``create_host_app`` to add a group of routes."""
+    ROUTES.append(fn)
+    return fn
+
+
+class Host:
+    """The workspaces under ``root`` and what the routes share: their sessions, limits and job store."""
+
+    def __init__(self, root, *, limits=None, call_limits=None, job_ttl=3600.0, options=None):
+        from .call_limits import CallLimits
+        from .model import Limits
+
+        root = Path(root).expanduser()
+        require(not root.exists() or root.is_dir(), f"{root} is not a directory", field="root")
+        root.mkdir(parents=True, exist_ok=True)
+        self.root = root.resolve()
+        from .interfaces import broad_workspace
+
+        require(not broad_workspace(self.root), f"Refusing {self.root} as the host root: it is the home folder or a "
+                "filesystem root. Pass --root DIR, a folder for the host's workspaces", "unsafe_workspace",
+                field="root")
+        self.call_limits = call_limits if call_limits is not None else CallLimits.configure(network="rest")
+        self.limits = self.call_limits.apply_to(limits or Limits())
+        require(job_ttl > 0, "job_ttl must be positive", field="job_ttl")
+        self.job_ttl = float(job_ttl)
+        self.sessions = OrderedDict()
+        self.lock = threading.RLock()
+        self.doc_locks = {}
+        from .call_limits import BoundedExecutor, Limiter, RestJobs
+        from .idempotency import RequestLog
+
+        self.jobs = RestJobs(self.call_limits.hard_timeout, maximum=MAX_JOBS)
+        self.limiter = Limiter(self.call_limits, self.jobs, BoundedExecutor(16, name="vixl-host"))
+        self.export_workers = BoundedExecutor(8, name="vixl-host-export")
+        self.requests = RequestLog()
+        # The parsed ``vixl host`` flags (None when the app is made in Python): plugins that add flags through the
+        # ``host-flags`` hook read theirs here from their ``host-route`` hook.
+        self.options = options
+        self.provider = None  # {type, url} of the AI provider a plugin registered for this host, for /host/info.
+
+    def workspace(self, ws):
+        """``root/ws``, created on first use; refused unless ``ws`` matches the pattern and resolves inside root."""
+        require(isinstance(ws, str) and WORKSPACE.fullmatch(ws), f"Workspace names match {WORKSPACE_PATTERN}",
+                "invalid_workspace", field="ws")
+        folder = self.root / ws
+        if not folder.exists():
+            folder.mkdir()
+        resolved = folder.resolve()
+        require(resolved.is_dir() and resolved.is_relative_to(self.root) and resolved != self.root,
+                f"Workspace {ws!r} is outside the host root", "forbidden", field="ws")
+        return resolved
+
+    def state_dir(self, ws, *parts):
+        folder = self.workspace(ws).joinpath(HOST_DIR, *parts)
+        folder.mkdir(parents=True, exist_ok=True)
+        return folder
+
+    def session(self, ws):
+        """The workspace's session (one per workspace, the least recently used dropped past ``MAX_WORKSPACES``)."""
+        from .interfaces import Session
+
+        folder = self.workspace(ws)
+        with self.lock:
+            session = self.sessions.pop(ws, None)
+            if session is None:
+                session = Session(workspace=folder, require_document=True, limits=self.limits)
+                session.call_limits = self.call_limits
+            self.sessions[ws] = session
+            while len(self.sessions) > MAX_WORKSPACES:
+                self.sessions.popitem(last=False)
+            return session
+
+    # ------------------------------------------------------------------------------------------ documents
+
+    def index_path(self, ws):
+        return self.state_dir(ws) / "index.json"
+
+    def read_index(self, ws):
+        path = self.index_path(ws)
+        if not path.is_file():
+            return {"host_api": HOST_API, "documents": {}}
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except ValueError as exc:
+            raise VixlError("invalid_index", f"The document index of workspace {ws!r} is not valid JSON") from exc
+        require(isinstance(data, dict) and isinstance(data.get("documents"), dict),
+                f"The document index of workspace {ws!r} is malformed", "invalid_index")
+        return data
+
+    def update_index(self, ws, change):
+        """Apply ``change(index)`` under the workspace's lock and write the index atomically; returns its result."""
+        from .fileio import file_lock, temporary
+
+        path = self.index_path(ws)
+        with self.lock_for(ws, None), file_lock(str(path)):
+            data = self.read_index(ws)
+            result = change(data)
+            fd, staged = temporary(path.parent, ".json")
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                json.dump(data, handle, indent=1, sort_keys=True)
+            os.replace(staged, path)
+            return result
+
+    def lock_for(self, ws, doc):
+        with self.lock:
+            return self.doc_locks.setdefault((ws, doc), threading.RLock())
+
+    def entry(self, ws, doc):
+        """The index entry of document ``doc``; ``not_found`` for an unknown id."""
+        require(isinstance(doc, str) and DOCUMENT_ID.fullmatch(doc), f"Document ids look like d_1a2b3c4d, not {doc!r}",
+                "not_found", field="id")
+        entry = self.read_index(ws)["documents"].get(doc)
+        require(entry is not None, f"No document {doc!r} in workspace {ws!r}", "not_found", field="id")
+        return entry
+
+    @staticmethod
+    def relative(doc):
+        return f"{doc}.vixl"
+
+    def new_id(self, ws):
+        import uuid
+
+        existing = self.read_index(ws)["documents"]
+        while True:
+            doc = "d_" + uuid.uuid4().hex[:8]
+            if doc not in existing and not (self.workspace(ws) / self.relative(doc)).exists():
+                return doc
+
+    def register(self, ws, doc, name=None):
+        """Add a new document to the index at revision 1."""
+        import time
+
+        _check_name(name)
+        now = time.time()
+
+        def add(index):
+            index["documents"][doc] = {"id": doc, "path": self.relative(doc), "revision": 1, "created": now,
+                                       "updated": now, **({"name": name} if name else {})}
+            return dict(index["documents"][doc])
+
+        return self.update_index(ws, add)
+
+    def bump(self, ws, doc):
+        """The next revision of ``doc``, recorded in the index."""
+        import time
+
+        def advance(index):
+            entry = index["documents"].get(doc)
+            require(entry is not None, f"Document {doc!r} was deleted", "not_found", field="id")
+            entry["revision"] += 1
+            entry["updated"] = time.time()
+            return entry["revision"]
+
+        return self.update_index(ws, advance)
+
+    def mutate(self, ws, doc, if_revision, fn, *, bump=True):
+        """Run ``fn(session, path)`` on ``doc`` holding its lock: refused with ``revision_conflict`` when
+        ``if_revision`` is not the current revision; the revision goes up by one when ``bump`` and ``fn`` succeeded.
+        Returns ``(result, revision)``."""
+        require(if_revision is None or (type(if_revision) is int and if_revision >= 1),
+                "if_revision is the revision a change is based on: a positive whole number", field="if_revision")
+        with self.lock_for(ws, doc):
+            entry = self.entry(ws, doc)
+            if if_revision is not None and if_revision != entry["revision"]:
+                raise VixlError("revision_conflict", f"{doc} is at revision {entry['revision']}, not {if_revision}; "
+                                "another change came first", revision=entry["revision"], if_revision=if_revision,
+                                hint="Read the document again, then retry with its current revision")
+            result = fn(self.session(ws), self.relative(doc))
+            return result, (self.bump(ws, doc) if bump else entry["revision"])
+
+    def read(self, ws, doc, fn):
+        """``fn(session, path)`` on ``doc`` and its current revision, without changing it."""
+        return self.mutate(ws, doc, None, fn, bump=False)
+
+    async def call(self, ws, route, fn, *, request_id=None, body=None, document=None, heavy=True):
+        """Run ``fn()`` for a route: heavy calls through the limiter (they may answer 202 with a job), and with a
+        ``request_id`` at most once per workspace: a repeat with the same body returns the first result
+        (``replayed: true``), a different body is ``request_id_conflict``."""
+        from fastapi.responses import JSONResponse
+        from starlette.concurrency import run_in_threadpool
+
+        from .idempotency import fingerprint
+
+        folder = self.workspace(ws)
+        entry, key = None, (ws, request_id)
+        if request_id is not None:
+            require(isinstance(request_id, str) and 0 < len(request_id) <= 64,
+                    "request_id is a string of 1-64 characters", field="request_id")
+            digest = fingerprint(route, {"document": document, "body": body})
+            outcome, entry = self.requests.start(request_id, route, digest, (ws, document), key=key)
+            if outcome == "running":
+                await run_in_threadpool(entry["done"].wait, 20)
+                if entry["result"] is None:
+                    job = entry.get("job")
+                    return JSONResponse({"status": "running", "request_id": request_id,
+                                         **({"job_id": job, "poll": f"/jobs/{job}"} if job else {}),
+                                         "message": "The first call with this request_id is still running; poll "
+                                                    "its job or repeat this call shortly"}, status_code=202,
+                                        headers={"Retry-After": "3"})
+            if outcome != "new":
+                replay = json.loads(entry["result"])
+                if isinstance(replay, dict):
+                    replay.update(replayed=True, request_id=request_id)
+                return replay
+
+        def work():
+            try:
+                result = fn()
+            except BaseException:
+                if entry is not None:
+                    self.requests.discard(key, entry)
+                raise
+            if entry is not None:
+                self.requests.finish(entry, json.dumps(result, default=str))
+            return result
+
+        if not heavy:
+            return await run_in_threadpool(work)
+        outcome, value = await self.limiter.run(folder, route, work)
+        if outcome == "job":
+            from .call_limits import detached
+
+            if entry is not None:
+                entry["job"] = value
+            return JSONResponse({**detached(value, route, self.call_limits.timeout), "job_id": value},
+                                status_code=202, headers={"Location": f"/jobs/{value}", "Retry-After": "3"})
+        return value
+
+    # -------------------------------------------------------------------------------------------- exports
+
+    def submit_export(self, ws, doc, fmt, options):
+        """Start an export job: checked against the page and megapixel limits first, counted against the
+        workspace's concurrency limit while it runs, its file written under ``ROOT/ws/.vixl-host/jobs/ID/``."""
+        import contextvars
+        import time
+        import uuid
+
+        from .call_limits import GATE, check_export, export_pages, watch
+        from .calls import CALL, CallState
+        from .interfaces import EXPORT_MEDIA
+
+        if "icc_profile_base64" in options:
+            from .io_policy import decode_upload
+
+            options["icc_profile"] = decode_upload(options.pop("icc_profile_base64"), 16 * 1024 * 1024)
+
+        def preflight(session, path):
+            with session.project(document=path) as project:
+                check_export(self.call_limits, project, fmt, options)
+                return export_pages(project, fmt, options)
+
+        pages, revision = self.read(ws, doc, preflight)
+        ident = uuid.uuid4().hex[:16]
+        output = self.state_dir(ws, "jobs", ident)
+        filename = f"{doc}.{EXTENSIONS.get(fmt, fmt.lower())}"
+        holder = {}
+
+        def report(done, total=None, message=None, timing=None):
+            job = holder.get("job")
+            if job is not None:
+                self.jobs.progress(job, done, total)
+
+        def run():
+            def export(session, path):
+                with session.project(document=path) as project:
+                    return project.export(format=fmt, **options)
+
+            data, current = self.read(ws, doc, export)
+            with open(output / filename, "xb") as handle:  # A fresh folder per job: never overwrites.
+                handle.write(data)
+            return {"bytes": len(data), "revision": current}
+
+        key = GATE.acquire(self.workspace(ws), self.call_limits.max_concurrent)
+        state = CallState(report=report)
+        context = contextvars.copy_context()
+        context.run(CALL.set, state)
+        try:
+            future = self.export_workers.submit(context.run, run)
+        except BaseException:
+            GATE.release(key)
+            import shutil
+
+            shutil.rmtree(output, ignore_errors=True)
+            raise
+        self.jobs.add("exports", future, ident=ident, kind="export", workspace=ws, document=doc, format=fmt,
+                            filename=filename, media=EXPORT_MEDIA[fmt], result_path=str(output / filename),
+                            revision=revision, pages=pages, expires=None, event=None, terminal=threading.Event(),
+                      download=f"/jobs/{ident}/download", submitted=time.time())
+        job = holder["job"] = self.jobs.get(ident)
+        self.jobs.progress(job, 0, pages)
+        watch(state, self.call_limits, future)
+        future.add_done_callback(lambda _: (GATE.release(key), self.finished(job)))
+        return {"job_id": ident, "status": "running", "id": doc, "revision": revision, "format": fmt,
+                "poll": f"/jobs/{ident}", "events": f"/jobs/{ident}/events", "download": f"/jobs/{ident}/download"}
+
+    def finished(self, job):
+        """An export job ended: record its result and expiry, hand its event to the ``job-complete`` hook once."""
+        import shutil
+        import time
+
+        from .jobs import notify_complete
+
+        future = job["future"]
+        if not future.cancelled() and future.exception() is None:
+            result = future.result()
+            job.update(revision=result["revision"], counts={"files": 1, "bytes": result["bytes"]})
+            self.jobs.progress(job, job["pages"], job["pages"])
+        else:
+            shutil.rmtree(Path(job["result_path"]).parent, ignore_errors=True)
+        job["expires"] = time.time() + self.job_ttl
+        job["event"] = terminal_event(self, job)
+        job["deliveries"] = notify_complete(job["event"])
+        job["terminal"].set()
+
+    def sweep(self, now=None, *, orphans=False):
+        """Delete export results past their expiry; with ``orphans``, also result folders an earlier process left
+        that are older than ``job_ttl``."""
+        import shutil
+        import time
+
+        now = time.time() if now is None else now
+        known = set()
+        for job in self.jobs.recent():
+            if job.get("kind") != "export":
+                continue
+            known.add(job["id"])
+            if job.get("expires") is not None and now > job["expires"] and not job.get("swept"):
+                shutil.rmtree(Path(job["result_path"]).parent, ignore_errors=True)
+                job["swept"] = True
+        if orphans:
+            for folder in self.root.glob(f"*/{HOST_DIR}/jobs/*"):
+                if folder.is_dir() and folder.name not in known and now - folder.stat().st_mtime > self.job_ttl:
+                    shutil.rmtree(folder, ignore_errors=True)
+
+    def start_sweeper(self, interval=None):
+        """Sweep in a daemon thread every ``interval`` seconds (default: a tenth of ``job_ttl``, 10-300 s)."""
+        import time
+
+        interval = interval or min(300.0, max(10.0, self.job_ttl / 10))
+
+        def loop():
+            while True:
+                time.sleep(interval)
+                try:
+                    self.sweep(orphans=True)
+                except OSError:
+                    pass  # The next sweep tries again.
+
+        threading.Thread(target=loop, name="vixl-host-sweeper", daemon=True).start()
+
+    def info(self):
+        from . import __version__
+        from .fetch import offline, policy
+
+        found = capabilities()
+        if self.provider:
+            found["ai"] = True  # The host's own provider is allowed while offline.
+        return {"vixl": __version__, "host_api": HOST_API, "capabilities": found,
+                **({"provider": dict(self.provider)} if self.provider else {}),
+                "limits": {**self.call_limits.describe(), "max_pixels": self.limits.max_pixels,
+                           "max_dimension": self.limits.max_dimension, "max_json_bytes": MAX_JSON_BYTES,
+                           "max_upload_bytes": self.limits.max_asset_bytes},
+                "job_ttl": self.job_ttl, "offline": offline(), "network": policy(),
+                "workspaces": {"pattern": WORKSPACE_PATTERN, "max_loaded": MAX_WORKSPACES}}
+
+
+def create_host_app(root, token, *, offline=False, call_limits=None, limits=None, job_ttl=3600.0,
+                    bind="127.0.0.1", options=None):
+    """The ``vixl host`` app. ``token`` is required; ``offline`` turns network access off for the process;
+    ``options`` are the parsed ``vixl host`` flags, read by plugins that declare their own (``host-flags``)."""
+    try:
+        from fastapi import FastAPI, Request
+        from fastapi.exceptions import RequestValidationError
+        from fastapi.responses import JSONResponse
+        from starlette.exceptions import HTTPException
+    except ImportError as exc:
+        raise VixlError("missing_dependency", "vixl host needs the server extra: pip install 'vixl-engine[server]'",
+                        hint="pip install 'vixl-engine[server]'") from exc
+    from . import __version__
+    from .calls import CALL_CONTEXT, CALL_CONTEXT_HEADER, CALL_CONTEXT_MAX
+    from .interfaces import LOOPBACK, BodyLimit, Failures, require_token, token_matches
+
+    require(isinstance(token, str) and token, f"vixl host needs a bearer token: set {TOKEN_ENV} (or pass "
+            "--token-env NAME or --token-file FILE)", "authentication_required", field="token",
+            suggestions=['Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'])
+    require_token(token)
+    if offline:
+        from .fetch import OFFLINE_ENV
+        from .plugins import external
+
+        require(not external.enabled(), "Third-party plugins cannot run on an offline host", "network_disabled",
+                field="plugins")
+        os.environ[OFFLINE_ENV] = "1"
+    host = Host(root, limits=limits, call_limits=call_limits, job_ttl=job_ttl, options=options)
+    failures = Failures()
+
+    def answer(exc, headers=None):
+        status = status_of(exc)
+        if status in (429, 503) and not headers:
+            headers = {"Retry-After": str(exc.details.get("retry_after", 3))}
+        return JSONResponse(error_body(exc), status_code=status, headers=headers)
+
+    host.answer = answer
+    app = FastAPI(title="Vixl host", version=__version__)
+    app.state.host = host
+
+    class Body(BodyLimit):
+        @staticmethod
+        async def refuse(maximum, send):
+            exc = VixlError("resource_limit", f"The request body is larger than {maximum:,} bytes",
+                            hint="Send a smaller body: downsample images, split operations into several batches",
+                            limit=maximum)
+            payload = json.dumps(error_body(exc)).encode()
+            await send({"type": "http.response.start", "status": 413,
+                        "headers": [(b"content-type", b"application/json"),
+                                    (b"content-length", str(len(payload)).encode()), (b"connection", b"close")]})
+            await send({"type": "http.response.body", "body": payload})
+
+    def body_limit(path):
+        # brand.json may embed fonts and logos, so it takes the upload limit like the byte routes.
+        return host.limits.max_asset_bytes if path.endswith(("/assets", "/import", "/brand")) else MAX_JSON_BYTES
+
+    app.add_middleware(Body, maximum=body_limit)  # Inside the guard: an unauthorized body is never read.
+    loopback = bind in LOOPBACK
+
+    @app.middleware("http")
+    async def guard(request: Request, call_next):
+        if loopback:
+            # DNS rebinding: on a loopback bind the Host header must name loopback.
+            name = re.sub(r":\d+$", "", request.headers.get("host", ""))
+            if name not in ("localhost", "127.0.0.1", "[::1]", "testserver"):
+                return answer(VixlError("forbidden_host", f"Host {name!r} is not served on this loopback bind",
+                                        hint="Connect to 127.0.0.1, or start the host with --bind ADDRESS"))
+        client = request.client.host if request.client else "unknown"
+        wait = failures.retry_after(client)
+        if wait:
+            return answer(VixlError("too_many_attempts", "Too many failed bearer tokens; retry later",
+                                    hint=f"Retry after {wait} s with the right token"), {"Retry-After": str(wait)})
+        if not token_matches(request.headers.get("authorization", ""), token):
+            failures.failed(client)
+            return answer(VixlError("unauthorized", "This host needs a bearer token"), {"WWW-Authenticate": "Bearer"})
+        context = request.headers.get(CALL_CONTEXT_HEADER)
+        if context is not None and not (len(context) <= CALL_CONTEXT_MAX and context.isprintable()
+                                        and context.isascii()):
+            return answer(VixlError("invalid_request", f"{CALL_CONTEXT_HEADER} is at most {CALL_CONTEXT_MAX} "
+                                    "printable ASCII characters", field=CALL_CONTEXT_HEADER))
+        marker = CALL_CONTEXT.set(context)
+        try:
+            return await call_next(request)
+        finally:
+            CALL_CONTEXT.reset(marker)
+
+    @app.exception_handler(VixlError)
+    async def vixl_error(request: Request, exc: VixlError):
+        return answer(exc)
+
+    @app.exception_handler(RequestValidationError)
+    async def invalid_request(request: Request, exc: RequestValidationError):
+        problems = [{"field": ".".join(str(part) for part in error.get("loc", ())[1:]) or None,
+                     "message": error.get("msg")} for error in exc.errors()][:10]
+        field = problems[0]["field"] if problems else None
+        return answer(VixlError("invalid_request", "The request does not match this endpoint: "
+                                + "; ".join(f"{p['field']}: {p['message']}" for p in problems), field=field,
+                                errors=problems))
+
+    @app.exception_handler(HTTPException)
+    async def http_error(request: Request, exc: HTTPException):
+        code = {404: "not_found", 405: "method_not_allowed"}.get(exc.status_code, "http_error")
+        message = "No such endpoint" if exc.status_code == 404 else str(exc.detail)
+        response = answer(VixlError(code, message, hint="GET /host/schema lists the endpoints"))
+        response.status_code = exc.status_code
+        return response
+
+    @app.exception_handler(OSError)
+    async def os_error(request: Request, exc: OSError):
+        from .errors import friendly
+
+        return answer(friendly(exc, relative_to=host.root))  # Never an absolute path on the server.
+
+    @app.exception_handler(MemoryError)
+    @app.exception_handler(ValueError)
+    @app.exception_handler(UnicodeError)
+    async def friendly_error(request: Request, exc: Exception):
+        from .errors import friendly
+
+        return answer(friendly(exc))
+
+    @app.exception_handler(Exception)
+    async def internal(request: Request, exc: Exception):
+        return answer(VixlError("internal_error", f"The host failed: {type(exc).__name__}",
+                                hint="Retry; if it fails again, report it with the request"))
+
+    @app.get("/host/info")
+    def host_info():
+        return host.info()
+
+    @app.get("/host/health")
+    def host_health():
+        return {"ok": True, "warm": bool(host.sessions)}
+
+    @app.get("/host/schema")
+    def host_schema():
+        return schema()
+
+    @app.get("/w/{ws}")
+    def workspace_info(ws: str):
+        host.workspace(ws)
+        return {"workspace": ws}
+
+    from . import plugins
+
+    for fn in [*BUILTIN_ROUTES, *ROUTES, *plugins.hooks("host-route")]:
+        fn(app, host)
+    return app
+
+
+# ------------------------------------------------------------------------------------------------ route groups
+
+CREATE_FIELDS = {"name", "size", "width", "height", "purpose", "brief", "background", "dpi", "orientation", "bleed",
+                 "seed", "variety", "house_style", "font_pairing", "workspace_fonts", "template", "variables",
+                 "request_id"}
+OPERATION_FIELDS = {"operations", "dry_run", "detail", "check", "preview", "suites", "repair", "if_revision",
+                    "request_id"}
+IMPORT_FORMATS = ("svg", "pdf")
+
+
+def _summary(session, path, project, revision, doc, max_layers=MAX_LAYERS):
+    """A document's state: canvas, head and its layers (id, name, type, parent, visible and canvas bounds)."""
+    from .untrusted import mark
+
+    layers = project.inspect()["layers"]
+    shown = []
+    for layer in layers[:max_layers]:
+        item = {"id": layer["id"], "name": layer.get("name"), "type": layer.get("type"),
+                "parent": layer.get("parent"), "visible": layer.get("visible", True),
+                "bounds": [round(value, 3) for value in layer.get("canvas_bounds") or ()]}
+        if isinstance(layer.get("text"), str):
+            item["text"] = layer["text"][:500]
+        shown.append(item)
+    pages = project.state.get("pages") or []
+    result = {"id": doc, "revision": revision, "canvas": project.state["canvas"], "head": project.head,
+              "layer_count": len(layers), "pages": len(pages), "layers": shown, "truncated": len(layers) > len(shown)}
+    return mark(result)
+
+
+def _check_name(name):
+    require(name is None or (isinstance(name, str) and 0 < len(name) <= 200), "name is 1-200 characters",
+            field="name")
+
+
+def _known(body, allowed, route):
+    from .interfaces import known_fields
+
+    require(isinstance(body, dict), f"The {route} body is a JSON object", "invalid_request")
+    known_fields(body, allowed, route)
+
+
+def document_routes(app, host):
+    """Documents and operations (#538): create, import, list, read, blob, operations, assets, artwork import and
+    delete. Every route wraps ``Session`` methods; each change raises the document's revision by one."""
+    from fastapi import Request
+    from fastapi.responses import Response
+
+    @app.get("/w/{ws}/documents")
+    def list_documents(ws: str):
+        index = host.read_index(ws)
+        return {"workspace": ws, "documents": sorted(index["documents"].values(), key=lambda e: e["created"])}
+
+    @app.post("/w/{ws}/documents", status_code=201)
+    async def create_document(ws: str, body: dict):
+        _known(body, CREATE_FIELDS, "create")
+        _check_name(body.get("name"))
+        options = {key: value for key, value in body.items() if key != "request_id"}
+
+        def create():
+            doc = host.new_id(ws)
+            session, path = host.session(ws), host.relative(doc)
+            created = _create(session, path, dict(options))
+            entry = host.register(ws, doc, options.get("name"))
+            with session.project(document=path) as project:
+                summary = _summary(session, path, project, entry["revision"], doc)
+            return {**summary, **({"name": entry["name"]} if "name" in entry else {}),
+                    **{key: created[key] for key in ("creation", "template", "brief", "typography",
+                                                     "font_pairing_error", "workspace_fonts") if created.get(key)}}
+
+        return await host.call(ws, "create", create, request_id=body.get("request_id"), body=options)
+
+    @app.post("/w/{ws}/documents/import", status_code=201)
+    async def import_vixl(ws: str, request: Request, name: str | None = None, request_id: str | None = None):
+        import hashlib
+
+        _check_name(name)
+        data = await request.body()
+        require(data, "Send the .vixl file as the request body", "invalid_request", field="body")
+
+        def load():
+            from .project import Project
+
+            doc = host.new_id(ws)
+            staging = host.state_dir(ws, "tmp")
+            from .fileio import temporary
+
+            fd, staged = temporary(staging, ".vixl")
+            with os.fdopen(fd, "wb") as handle:
+                handle.write(data)
+            try:
+                # Loading applies the archive budgets (bytes, entries, image pixels, fonts) and the document checks.
+                project = Project.load(staged, limits=host.limits)
+                target = host.workspace(ws) / host.relative(doc)
+                require(not target.exists(), f"{doc} exists", "invalid_request")
+                os.replace(staged, target)
+            finally:
+                Path(staged).unlink(missing_ok=True)
+            entry = host.register(ws, doc, name)
+            session = host.session(ws)
+            return _summary(session, host.relative(doc), project, entry["revision"], doc)
+
+        return await host.call(ws, "import", load, request_id=request_id,
+                               body={"sha256": hashlib.sha256(data).hexdigest(), "name": name})
+
+    @app.get("/w/{ws}/documents/{doc}")
+    def get_document(ws: str, doc: str, max_layers: int = 500):
+        require(1 <= max_layers <= MAX_LAYERS, f"max_layers is 1-{MAX_LAYERS}", field="max_layers")
+
+        def state(session, path):
+            with session.project(document=path) as project:
+                return _summary(session, path, project, None, doc, max_layers)
+
+        summary, revision = host.read(ws, doc, state)
+        return {**summary, "revision": revision}
+
+    @app.get("/w/{ws}/documents/{doc}/blob")
+    def document_blob(ws: str, doc: str):
+        def blob(session, path):
+            with session.project(document=path):
+                return session.resolve(path).read_bytes()
+
+        data, revision = host.read(ws, doc, blob)
+        return Response(data, media_type="application/vnd.vixl+zip",
+                        headers={"X-Vixl-Revision": str(revision),
+                                 "Content-Disposition": f'attachment; filename="{doc}.vixl"'})
+
+    @app.post("/w/{ws}/documents/{doc}/operations")
+    async def apply_operations(ws: str, doc: str, body: dict):
+        import base64
+
+        _known(body, OPERATION_FIELDS, "operations")
+        operations = body.get("operations")
+        require(isinstance(operations, (list, dict)), "operations is a list of operations", field="operations")
+        dry_run = body.get("dry_run", False)
+        require(type(dry_run) is bool, "dry_run is a boolean", field="dry_run")
+
+        def apply(session, path):
+            from .critique import take_previews
+
+            result, image = session.apply_reviewed(
+                operations, dry_run, body.get("detail", "compact"), document=path, check=body.get("check"),
+                preview=body.get("preview"), suites=body.get("suites"), repair=body.get("repair"))
+            for entry, png in zip(result.get("check", {}).get("regions", []), take_previews(result)):
+                entry["preview_base64"] = base64.b64encode(png).decode()
+            if image is not None:
+                result["preview_base64"] = base64.b64encode(image).decode()
+            return result
+
+        def run():
+            result, revision = host.mutate(ws, doc, body.get("if_revision"), apply, bump=not dry_run)
+            return _marked({**result, "id": doc, "revision": revision})
+
+        return await host.call(ws, "operations", run, request_id=body.get("request_id"),
+                               body={k: v for k, v in body.items() if k != "request_id"}, document=doc)
+
+    @app.post("/w/{ws}/documents/{doc}/assets")
+    async def add_asset(ws: str, doc: str, request: Request, name: str = "image", credit: str | None = None,
+                        license: str | None = None, if_revision: int | None = None, request_id: str | None = None):
+        import hashlib
+
+        data = await request.body()
+        require(data, "Send the image bytes as the request body", "invalid_request", field="body")
+
+        def add(session, path):
+            return session.import_image(data, name, document=path, credit=credit, license=license)
+
+        def run():
+            result, revision = host.mutate(ws, doc, if_revision, add)
+            return {**result, "id": doc, "revision": revision}
+
+        return await host.call(ws, "assets", run, request_id=request_id, document=doc, heavy=False,
+                               body={"sha256": hashlib.sha256(data).hexdigest(), "name": name, "credit": credit,
+                                     "license": license, "if_revision": if_revision})
+
+    @app.post("/w/{ws}/documents/{doc}/import")
+    async def import_artwork(ws: str, doc: str, request: Request, format: str, name: str = "import", page: int = 1,
+                             dpi: int = 144, svg_mode: str = "editable", if_revision: int | None = None,
+                             request_id: str | None = None):
+        import hashlib
+
+        require(format in IMPORT_FORMATS, f"format is one of {', '.join(IMPORT_FORMATS)}", field="format")
+        data = await request.body()
+        require(data, "Send the file as the request body", "invalid_request", field="body")
+
+        def add(session, path):
+            from .imports import import_document
+
+            with session.project(write=True, document=path) as project:
+                return import_document(project, data, format, name, page, dpi, svg_mode)
+
+        def run():
+            result, revision = host.mutate(ws, doc, if_revision, add)
+            return _marked({**result, "id": doc, "revision": revision})
+
+        return await host.call(ws, "import-artwork", run, request_id=request_id, document=doc,
+                               body={"sha256": hashlib.sha256(data).hexdigest(), "format": format, "name": name,
+                                     "page": page, "dpi": dpi, "svg_mode": svg_mode, "if_revision": if_revision})
+
+    @app.delete("/w/{ws}/documents/{doc}")
+    def delete_document(ws: str, doc: str, if_revision: int | None = None):
+        def remove(session, path):
+            target = session.resolve(path)
+            session.forget(target)
+            for extra in (target, target.with_name(target.name + ".notes.json")):
+                extra.unlink(missing_ok=True)
+
+        _, revision = host.mutate(ws, doc, if_revision, remove, bump=False)
+        host.update_index(ws, lambda index: index["documents"].pop(doc, None))
+        return {"deleted": doc, "revision": revision}
+
+
+def _marked(result):
+    from .untrusted import mark
+
+    return mark(result)
+
+
+def _create(session, path, options):
+    """Create the document through ``Session.create`` (or a template, or the first size a brief suggests)."""
+    from .briefs import guide
+
+    options.pop("name", None)
+    template, variables = options.pop("template", None), options.pop("variables", None)
+    font_pairing = options.pop("font_pairing", None)
+    brief = options.pop("brief", None)
+    report = {}
+    if brief is not None:
+        require(isinstance(brief, str) and brief.strip(), "brief is the words of the request", field="brief")
+        found = guide(brief)
+        report["brief"] = {key: found.get(key) for key in ("matched", "kind", "title") if found.get(key)}
+        if not any(options.get(key) for key in ("size", "width", "height", "purpose")) and found.get("sizes"):
+            options["size"] = found["sizes"][0]
+            report["brief"]["size"] = options["size"]
+    if template is not None:
+        from .fileio import file_lock
+        from .resources import create_template
+
+        require(not options, "A template sets its own size and design; drop " + ", ".join(sorted(options)),
+                field="template")
+        destination = session.resolve(path)
+        with session._mutex, file_lock(str(destination)):
+            require(not destination.exists(), "Destination already exists", field="path")
+            project = create_template(template, variables, limits=session.limits, workspace=session.workspace)
+            project.save(destination)
+        report["template"] = project.state.get("template") or template
+        return report
+    require(variables is None, "variables fill a template; pass template too", field="variables")
+    workspace_fonts = options.pop("workspace_fonts", True)
+    created = session.create(path, options.pop("width", None), options.pop("height", None),
+                             options.pop("background", None), workspace_fonts=workspace_fonts and not font_pairing,
+                             **options)
+    report.update({key: created[key] for key in ("creation", "workspace_fonts") if created.get(key)})
+    if font_pairing:
+        from .typefaces import pair_fonts
+
+        try:
+            with session.project(write=True, document=path) as project:
+                report["typography"] = pair_fonts(project, font_pairing)
+        except VixlError as exc:  # The document exists; say the pairing did not apply.
+            report["font_pairing_error"] = str(exc)
+    return report
+
+
+PREVIEW_FIELDS = {"page", "region", "max_px", "max_bytes", "variables", "artboard", "comp", "time", "proof",
+                  "simulate", "guides", "values", "show_fields", "isolate", "views", "exploded"}
+SIZE_FIELDS = ("size", "width", "height", "purpose")
+
+
+def compose_fields():
+    from .compose import FIELDS
+
+    return (FIELDS - {"path", "operations_path", "exports", "overwrite"}) | {"if_revision", "request_id"}
+
+
+def findings(report):
+    """A check report's issues as ``{rule, check, severity, action, message, layer_id, layer_ids, page}``."""
+    result = []
+    for issue in report.get("issues", []):
+        ids = issue.get("layer_ids") or []
+        page = issue.get("page")
+        if page is None and isinstance(issue.get("variant"), dict):
+            page = issue["variant"].get("page")
+        result.append({"rule": issue.get("rule") or issue.get("check"), "check": issue.get("check"),
+                       "severity": issue.get("severity"), "action": issue.get("action"),
+                       "message": issue.get("message"), "layer_id": ids[0] if ids else None, "layer_ids": ids,
+                       "page": page, **({"code": issue["code"]} if issue.get("code") else {})})
+    return result
+
+
+def review_routes(app, host):
+    """Compose, preview and check (#539), each limited like the REST routes (concurrency, timeout, hard timeout)."""
+    from fastapi.responses import Response
+
+    @app.post("/w/{ws}/documents/{doc}/compose")
+    async def compose_document(ws: str, doc: str, body: dict):
+        """Rebuild the document as one composed piece (``compose``: create, fonts, layout, style, look, operations,
+        check, preview). Without a size it keeps the document's canvas size; the composed piece replaces the
+        document and raises its revision (``dry_run`` only previews)."""
+        import base64
+        import uuid
+
+        _known(body, compose_fields(), "compose")
+        options = {key: value for key, value in body.items() if key not in ("if_revision", "request_id")}
+        dry_run = options.pop("dry_run", False)
+        require(type(dry_run) is bool, "dry_run is a boolean", field="dry_run")
+
+        def build(session, path):
+            from .compose import compose
+
+            if not any(options.get(key) is not None for key in SIZE_FIELDS):
+                with session.project(document=path) as project:
+                    canvas = project.state["canvas"]
+                options.update(width=canvas["width"], height=canvas["height"])
+            if dry_run:
+                result, image = compose(session, dry_run=True, **options)
+            else:
+                staged = f"{HOST_DIR}/tmp/{uuid.uuid4().hex}.vixl"
+                host.state_dir(ws, "tmp")
+                try:
+                    result, image = compose(session, path=staged, **options)
+                    target = session.resolve(path)
+                    with session._exclusive(target):
+                        os.replace(session.resolve(staged), target)
+                        session.forget(target)
+                finally:
+                    session.forget(session.resolve(staged))
+                    session.resolve(staged).unlink(missing_ok=True)
+                for key in ("document", "active_document", "warnings"):
+                    result.pop(key, None)
+            if image is not None:
+                result["preview_base64"] = base64.b64encode(image).decode()
+            return result
+
+        def run():
+            result, revision = host.mutate(ws, doc, body.get("if_revision"), build, bump=not dry_run)
+            return _marked({**result, "id": doc, "revision": revision})
+
+        return await host.call(ws, "compose", run, request_id=body.get("request_id"), document=doc,
+                               body={k: v for k, v in body.items() if k != "request_id"})
+
+    @app.post("/w/{ws}/documents/{doc}/preview")
+    async def preview_document(ws: str, doc: str, body: dict | None = None):
+        """A PNG of the document, a page (``page``: a number, or ``all`` for a contact sheet) or a ``region``,
+        at most ``max_px`` on its longer side and ``max_bytes`` long: it steps the size down until it fits."""
+        from .mcp_tools import preview
+
+        body = body or {}
+        _known(body, PREVIEW_FIELDS, "preview")
+        options = dict(body)
+        side = options.pop("max_px", 1024)
+        require(type(side) is int and 1 <= side <= 4096, "max_px is a whole number of pixels, 1-4096",
+                field="max_px")
+        limit = options.pop("max_bytes", 1_048_576)
+        require(type(limit) is int, "max_bytes is a whole number of bytes", field="max_bytes")
+
+        def render(session, path):
+            return preview(session, max_width=side, max_height=side, max_bytes=limit, document=path, **options)
+
+        def run():
+
+            from .assets import open_image
+
+            data, revision = host.read(ws, doc, render)
+            if len(data) > limit:
+                raise VixlError("limit_exceeded", f"The preview does not fit in {limit} bytes", limit="max_bytes",
+                                value=len(data), maximum=limit, hint="Raise max_bytes or preview a region")
+            with open_image(data, ("PNG",)) as image:
+                width, height = image.size
+            return Response(data, media_type="image/png",
+                            headers={"X-Vixl-Revision": str(revision), "X-Vixl-Width": str(width),
+                                     "X-Vixl-Height": str(height)})
+
+        return await host.call(ws, "preview", run)
+
+    @app.post("/w/{ws}/documents/{doc}/check")
+    async def check_document(ws: str, doc: str, body: dict | None = None):
+        """The design checks, with findings as ``{rule, severity, action, message, layer_id, page}``. Profiles and
+        suites pass through; ``repair`` applies the built-in repairs first and raises the revision."""
+        from .interfaces import route_fields
+
+        body = body or {}
+        allowed = route_fields()[0] | {"if_revision", "request_id"}
+        _known(body, allowed, "check")
+        options = {key: value for key, value in body.items() if key not in ("if_revision", "request_id")}
+
+        def check(session, path):
+            return session.check(document=path, **options)
+
+        def run():
+            report, revision = host.mutate(ws, doc, body.get("if_revision"), check, bump=bool(options.get("repair")))
+            result = {"id": doc, "revision": revision, "outcome": report.get("outcome"),
+                      "passed": report.get("passed"),
+                      "counts": {key: report.get(key, 0) for key in ("errors", "warnings", "info")},
+                      "findings": findings(report)}
+            for key in ("checked", "pagination", "repairs", "suites", "variants", "waivers"):
+                if key in report:
+                    result[key] = report[key]
+            return _marked(result)
+
+        return await host.call(ws, "check", run, request_id=body.get("request_id"), document=doc,
+                               body=options)
+
+
+EXTENSIONS = {"JPEG": "jpg", "JPG": "jpg", "TIFF": "tif"}
+
+
+def export_routes(app, host):
+    """Export jobs (#540): ``POST .../exports`` always answers a job; its result is kept for ``job_ttl`` seconds."""
+
+    @app.post("/w/{ws}/documents/{doc}/exports", status_code=202)
+    async def export_document(ws: str, doc: str, body: dict):
+        _known(body, {"format", "options", "request_id"}, "exports")
+        from .interfaces import EXPORT_FIELDS, EXPORT_MEDIA
+
+        fmt = body.get("format", "PNG")
+        require(isinstance(fmt, str) and fmt.upper() in EXPORT_MEDIA,
+                f"format is one of {', '.join(sorted(EXPORT_MEDIA))}", field="format", allowed=sorted(EXPORT_MEDIA))
+        fmt = fmt.upper()
+        options = body.get("options") or {}
+        require(isinstance(options, dict), "options is an object of export fields", field="options")
+        _known(options, EXPORT_FIELDS - {"format"}, "export options")
+
+        def submit():
+            return host.submit_export(ws, doc, fmt, dict(options))
+
+        return await host.call(ws, "exports", submit, request_id=body.get("request_id"), document=doc,
+                               heavy=False, body={k: v for k, v in body.items() if k != "request_id"})
+
+    @app.get("/jobs/{ident}/download")
+    def download(ident: str):
+        from fastapi.responses import FileResponse
+
+        host.sweep()
+        job = host.jobs.get(ident)
+        require(job.get("kind") == "export", f"Job {ident} is not an export", "not_found", field="id")
+        status = job_summary(host, job)
+        require(status["status"] not in ("queued", "running"), f"Export {ident} is still running", "job_running",
+                field="id", hint=f"Wait for it: GET /jobs/{ident}?wait=20 or /jobs/{ident}/events")
+        if status["status"] == "expired":
+            raise VixlError("expired", f"The result of export {ident} has expired and was deleted", field="id",
+                            expired_at=job.get("expires"))
+        if status["status"] != "completed":
+            raise VixlError("job_failed", f"Export {ident} {status['status']}", field="id",
+                            error=status.get("error"), hint=(status.get("error") or {}).get("hint", ""))
+        return FileResponse(job["result_path"], media_type=job["media"], filename=job["filename"],
+                            headers={"X-Vixl-Revision": str(job["revision"])})
+
+    @app.get("/jobs/{ident}/events")
+    async def events(ident: str):
+        """Server-sent events: ``progress`` while the job runs (and once at the start), then one
+        ``job-complete`` with the event the plugins' ``job-complete`` hook receives, and the stream ends."""
+        import asyncio
+        import time
+
+        from fastapi.responses import StreamingResponse
+
+        job = host.jobs.get(ident)
+
+        def message(kind, data):
+            return f"event: {kind}\ndata: {json.dumps(data, default=str)}\n\n"
+
+        async def stream():
+            last, beat = None, time.monotonic()
+            while True:
+                done = job["future"].done() and (job.get("kind") != "export" or job["terminal"].is_set())
+                progress = job.get("progress")
+                if progress != last and not done:
+                    last = progress
+                    yield message("progress", {"id": ident, "status": job_summary(host, job)["status"],
+                                               "progress": progress})
+                if done:
+                    yield message("job-complete", terminal_event(host, job))
+                    return
+                if time.monotonic() - beat > 15:
+                    beat = time.monotonic()
+                    yield ": keep-alive\n\n"
+                await asyncio.sleep(0.05)
+
+        return StreamingResponse(stream(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
+
+
+def terminal_event(host, job):
+    """The F2 ``job-complete`` event of a host job (``jobs.completion_event``), with the workspace by name."""
+    if job.get("event") is not None:
+        return job["event"]
+    from .jobs import completion_event
+    from .outcomes import of_status
+
+    from .errors import friendly
+
+    status = host.jobs.summary(job)["status"]  # As the job ended, whatever has happened to its result since.
+    future = job["future"]
+    error = future.exception() if future.done() and not future.cancelled() else None
+    record = {"id": job["id"], "status": status, "outcome": of_status(status),
+              "payload": {"kind": job.get("kind", "call"), "output": job.get("download")},
+              "result": {"counts": job.get("counts") or {}},
+              "error": error_body(friendly(error)) if error is not None else None}
+    return {**completion_event(record, job.get("workspace")), "workspace": job.get("workspace")}
+
+
+CATALOG_KINDS = ("sizes", "palettes", "typefaces", "layouts", "briefs", "guidance", "looks", "styles", "checks",
+                 "guide", "capabilities", "operations", "tools")
+
+
+@lru_cache(maxsize=None)
+def _section(kind):
+    from .catalog import BUILDERS
+
+    return BUILDERS[kind]()
+
+
+def _operation_types():
+    from .schema import _properties
+
+    return sorted(_properties())
+
+
+def _field(kind, description, **extra):
+    return {"type": kind, "description": description, **extra} if kind else {"description": description, **extra}
+
+
+def input_schemas():
+    """The input schema of each ``input_schema_ref``, from the registries that validate the calls (operation types,
+    compose fields, check names, layouts, export formats)."""
+    from .catalog import CHECK_INFO
+    from .compose import CREATE
+    from .interfaces import EXPORT_FIELDS, EXPORT_MEDIA
+    from .layouts import LAYOUTS
+
+    def obj(properties, required=()):
+        return {"type": "object", "properties": properties, "required": list(required), "additionalProperties": False}
+
+    ident = _field("string", "The document id (d_ and 8 hex digits).", pattern=DOCUMENT_ID.pattern)
+    revision = _field("integer", "Apply only when the document is still at this revision.", minimum=1)
+    retry = _field("string", "A retry key: sending it again returns the first answer.", maxLength=64)
+    operation = {"type": "object", "required": ["type"], "description": "One operation; describe_operations "
+                 "gives the fields of each type.", "properties": {"type": {"enum": _operation_types()}}}
+    operations = {"type": "array", "items": operation, "minItems": 1, "description": "Applied in order, all or none."}
+    checks = {"type": "array", "items": {"enum": sorted(CHECK_INFO)}, "description": "Check names; default all."}
+    size = {"size": _field("string", "A named size (browse_catalog kind sizes)."),
+            "width": _field("integer", "Canvas width in pixels.", minimum=1),
+            "height": _field("integer", "Canvas height in pixels.", minimum=1),
+            "purpose": _field("string", "What it is for: poster, social, slides, logo, icon ...")}
+    creation = {key: _field(None, f"As in document creation: {key}.") for key in CREATE if key not in size}
+    layout = {"type": "object", "required": ["name"], "description": "A layout and its copy: {name, title, ...} "
+              "(browse_catalog kind layouts lists each layout's slots).",
+              "properties": {"name": {"enum": sorted(LAYOUTS)}}}
+    return {
+        "documents": obj({}),
+        "document": obj({"id": ident, "max_layers": _field("integer", "Layers to list.", minimum=1,
+                                                             maximum=MAX_LAYERS)}, ["id"]),
+        "create": obj({**size, "brief": _field("string", "The words of the request; picks a size when none is given."),
+                       "name": _field("string", "A label for the document.", maxLength=200),
+                       "template": _field("string", "Create from a named template."),
+                       "variables": _field("object", "template: values for its variables."),
+                       "font_pairing": _field("string", "A typeface pairing name, or random."),
+                       "workspace_fonts": _field("boolean", "Use the workspace brand fonts (default true)."),
+                       **creation, "request_id": retry}),
+        "operation_names": obj({"name": {"type": "array", "items": {"enum": _operation_types()}, "minItems": 1,
+                                         "maxItems": 20, "description": "Operation types."}}, ["name"]),
+        "operations": obj({"id": ident, "operations": operations,
+                           "dry_run": _field("boolean", "Report the change without saving it."),
+                           "check": _field(None, "true, or check names: review the result."),
+                           "preview": _field(None, "true, or preview options: return a PNG of the result."),
+                           "if_revision": revision, "request_id": retry}, ["id", "operations"]),
+        "compose": obj({"id": ident, **size, "layout": layout,
+                        "style": _field("string", "A style name (browse_catalog kind styles)."),
+                        "look": _field(None, "A finishing look {look, target?} or a list of them."),
+                        "font_pairing": _field("string", "A typeface pairing name."),
+                        "operations": {**operations, "minItems": 0},
+                        "check": _field(None, "false skips the design check; check names choose checks."),
+                        "strict": _field("boolean", "Refuse to save when a finding needs a fix."),
+                        "preview": _field(None, "true returns a PNG of the piece."),
+                        "dry_run": _field("boolean", "Preview without saving."),
+                        **{key: value for key, value in creation.items() if key != "background"},
+                        "background": _field("string", "Canvas background colour."),
+                        "if_revision": revision, "request_id": retry}, ["id"]),
+        "preview": obj({"id": ident, "page": _field(["integer", "string"], "A page number, or 'all'."),
+                        "region": _field("array", "[x, y, width, height] in pixels or percentages.", minItems=4,
+                                         maxItems=4),
+                        "max_px": _field("integer", "The longer side at most.", minimum=1, maximum=4096),
+                        "max_bytes": _field("integer", "The PNG at most this long.", minimum=65536,
+                                            maximum=4194304)}, ["id"]),
+        "check": obj({"id": ident, "checks": checks,
+                      "profile": _field("string", "draft, review, final or a workspace profile."),
+                      "repair": _field(None, "true applies the built-in repairs first."),
+                      "if_revision": revision, "request_id": retry}, ["id"]),
+        "export": obj({"id": ident, "format": {"enum": sorted(EXPORT_MEDIA), "description": "The file format."},
+                       "options": {"type": "object", "description": "Export fields: " + ", ".join(
+                           sorted(EXPORT_FIELDS - {"format"})), "propertyNames": {
+                           "enum": sorted(EXPORT_FIELDS - {"format"})}},
+                       "request_id": retry}, ["id", "format"]),
+        "job": obj({"job_id": _field("string", "The job id an export answered."),
+                    "wait": _field("number", "Seconds to wait for the job to end (at most 50).")}, ["job_id"]),
+        "asset": obj({"id": ident, "name": _field("string", "The layer name."),
+                      "credit": _field("string", "Who made the image."),
+                      "license": _field("string", "Its license or usage terms."),
+                      "if_revision": revision, "request_id": retry}, ["id"]),
+        "catalog": obj({"kind": {"enum": [kind for kind in CATALOG_KINDS if kind not in ("operations", "tools")]},
+                        "brief": _field("string", "kind guide: the words of the request."),
+                        "seed": _field("integer", "kind guide: the seed of the suggested direction.")}, ["kind"]),
+    }
+
+
+def tool_profile(name):
+    """A tool profile from ``guidance.TOOL_PROFILES``, each tool with its input schema."""
+    from .guidance import TOOL_PROFILES
+
+    require(name in TOOL_PROFILES, f"Unknown tool profile {name!r}; profiles: {', '.join(sorted(TOOL_PROFILES))}",
+            "not_found", field="profile", allowed=sorted(TOOL_PROFILES))
+    schemas = input_schemas()
+    return {"profile": name, "host_api": HOST_API,
+            "tools": [{**tool, "input_schema": schemas[tool["input_schema_ref"]]} for tool in TOOL_PROFILES[name]]}
+
+
+def catalog_routes(app, host):
+    """Catalogs (#541): the ``vixl catalog export`` sections, the brief guide, the interface capabilities, operation
+    schemas and the tool profiles."""
+    from fastapi import Query
+
+    @app.get("/catalog/{kind}")
+    def catalog_kind(kind: str, brief: str | None = None, profile: str = "studio", seed: int | None = None,
+                     name: list[str] | None = Query(None)):
+        require(kind in CATALOG_KINDS, f"Unknown catalog {kind!r}; catalogs: {', '.join(CATALOG_KINDS)}",
+                "not_found", field="kind", allowed=list(CATALOG_KINDS))
+        if kind == "guide":
+            from .briefs import guide
+
+            return guide(brief, seed=seed)
+        if kind == "capabilities":
+            from .interface_capabilities import matrix
+
+            return {"host": capabilities(), "interfaces": matrix()}
+        if kind == "tools":
+            return tool_profile(profile)
+        if kind == "operations":
+            from .mcp_actions import operation_variant
+
+            names = [part.strip() for item in name or () for part in item.split(",") if part.strip()]
+            require(0 < len(names) <= 20, "Name 1-20 operation types: ?name=text&name=shape", field="name")
+            found = {}
+            for kind_name in names:
+                variant = operation_variant(kind_name)
+                require(variant is not None, f"Unknown operation type {kind_name!r}", "not_found", field="name")
+                found[variant["properties"]["type"]["const"]] = variant
+            return {"operations": found}
+        return _section(kind)
+
+
+def job_routes(app, host):
+    """Calls that outlived the timeout, and export jobs (#540)."""
+
+    @app.get("/jobs/{ident}")
+    async def job_status(ident: str, wait: float = 0):
+        host.sweep()
+        return job_summary(host, await _finished(host, ident, wait))
+
+    @app.get("/jobs/{ident}/result")
+    async def job_result(ident: str, wait: float = 0):
+        job = await _finished(host, ident, wait)
+        require(job["future"].done(), f"Job {ident} is still running", "job_running", field="id",
+                hint=f"Poll /jobs/{ident}?wait=20")
+        return job["future"].result()  # A failure re-raises; the handlers answer as the call would have.
+
+
+async def _finished(host, ident, wait):
+    import asyncio
+
+    from starlette.concurrency import run_in_threadpool
+
+    job = host.jobs.get(ident)
+    if wait and not job["future"].done():
+        try:
+            await asyncio.wait_for(asyncio.shield(asyncio.wrap_future(job["future"])), min(float(wait), 50))
+        except Exception:  # noqa: BLE001 - Timed out or failed: the summary says which.
+            pass
+    if job.get("kind") == "export" and job["future"].done():
+        await run_in_threadpool(job["terminal"].wait, 5)  # The done callback is recording it.
+    return job
+
+
+def job_summary(host, job):
+    """``{id, kind, status, progress, error?, ...}`` with the error in the host's error shape."""
+    from .errors import friendly
+
+    import time
+
+    summary = host.jobs.summary(job)
+    future = job["future"]
+    error = future.exception() if future.done() and not future.cancelled() else None
+    status = summary["status"]
+    if job.get("kind") == "export":
+        if status == "completed" and not job["terminal"].is_set():
+            status = "running"  # Its result is being recorded.
+        elif status == "completed" and (job.get("swept") or time.time() > job["expires"]):
+            status = "expired"
+    result = {"id": job["id"], "kind": job.get("kind", "call"), "status": status,
+              "progress": job.get("progress") or {"fraction": 1.0 if future.done() else None},
+              "elapsed_s": summary["elapsed_s"]}
+    if job.get("kind", "call") == "call":
+        result.update(route=job["route"], result_url=f"/jobs/{job['id']}/result")
+    else:
+        result.update(workspace=job["workspace"], document=job["document"], format=job["format"],
+                      revision=job["revision"], download=job["download"], events=f"/jobs/{job['id']}/events",
+                      **({"expires_at": job["expires"]} if job.get("expires") else {}))
+    if error is not None:
+        result["error"] = error_body(friendly(error))
+    if status == "running":
+        result["retry_after_s"] = 3
+    return result
+
+
+def brand_digest(data):
+    """``sha256:HEX`` of the brand.json bytes: the version a conditional ``PUT`` names."""
+    import hashlib
+
+    return "sha256:" + hashlib.sha256(data).hexdigest()
+
+
+def _brand_answer(ws, kit, digest, **extra):
+    from .brand import summary
+
+    return _marked({"workspace": ws, "digest": digest, "brand": summary(kit), "kit": kit, **extra})
+
+
+def brand_routes(app, host):
+    """The workspace brand (#545): ``PUT /w/{ws}/brand`` takes brand.json or a Design Profile (``schemaVersion: 2``,
+    read by the brand kit plugin through the ``brand-format`` hook), validates it and writes ``ROOT/ws/brand.json``;
+    ``GET`` reads it back. New documents in the workspace use it; existing documents are unchanged."""
+
+    @app.get("/w/{ws}/brand")
+    def get_brand(ws: str):
+        from .brand import brand_path, load_raw
+
+        path = brand_path(host.workspace(ws))
+        require(path.is_file(), f"Workspace {ws!r} has no brand.json", "not_found", field="brand",
+                hint="PUT /w/{ws}/brand with brand.json or a Design Profile")
+        data = path.read_bytes()
+        return _brand_answer(ws, load_raw(path.parent), brand_digest(data))
+
+    @app.put("/w/{ws}/brand")
+    def put_brand(ws: str, body: dict, if_digest: str | None = None):
+        from .brand import brand_path, encoded, load_brand_or_profile, write_raw
+
+        kit, unmapped = load_brand_or_profile(body)
+        path = brand_path(host.workspace(ws))
+        with host.lock_for(ws, "brand"):
+            if if_digest is not None:
+                current = brand_digest(path.read_bytes()) if path.is_file() else None
+                if current != if_digest:
+                    raise VixlError("revision_conflict", f"The brand of {ws!r} changed since {if_digest}",
+                                    field="if_digest", digest=current,
+                                    hint="GET /w/{ws}/brand for the current digest, then retry with it")
+            write_raw(path, kit)
+        source = "design-profile" if body.get("schemaVersion") == 2 else "brand.json"
+        return _brand_answer(ws, kit, brand_digest(encoded(kit)), source=source, unmapped=sorted(unmapped))
+
+
+BUILTIN_ROUTES = [document_routes, review_routes, export_routes, job_routes, catalog_routes, brand_routes]
+
+
+def read_token(token_env=TOKEN_ENV, token_file=None, environ=None):
+    """The bearer token from ``token_file`` (default ``VIXL_HOST_TOKEN_FILE``), else the ``token_env`` variable."""
+    environ = os.environ if environ is None else environ
+    token_file = token_file or environ.get(TOKEN_FILE_ENV, "").strip() or None
+    if token_file:
+        path = Path(token_file).expanduser()
+        require(path.is_file(), f"No token file at {token_file}", "authentication_required", field="token_file")
+        token = path.read_text(encoding="utf-8").strip()
+        require(token, f"The token file {token_file} is empty", "authentication_required", field="token_file")
+        return token
+    token = environ.get(token_env, "").strip()
+    require(token, f"vixl host needs a bearer token: set {token_env}, or pass --token-file FILE",
+            "authentication_required", field="token",
+            suggestions=['Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'])
+    return token
+
+
+def host_parser():
+    """The ``vixl host`` flags. Integrations that add host options (an AI provider, for example) extend this."""
+    from .call_limits import add_arguments
+    from .commands import Parser
+
+    p = Parser(prog="vixl host", description="Serve documents in many workspaces to a host application")
+    p.add_argument("--root", help="The folder that holds one sub-folder per workspace")
+    p.add_argument("--port", type=int, default=DEFAULT_PORT)
+    p.add_argument("--bind", default="127.0.0.1", help="The address to listen on (default 127.0.0.1)")
+    p.add_argument("--token-env", default=TOKEN_ENV, help=f"The variable holding the bearer token (default {TOKEN_ENV})")
+    p.add_argument("--token-file", help=f"A file holding the bearer token (also {TOKEN_FILE_ENV})")
+    p.add_argument("--job-ttl", type=float, default=3600.0, help="Seconds an export result stays downloadable")
+    p.add_argument("--schema", action="store_true", help="Print the host API contract (JSON Schema) and exit")
+    p.add_argument("--offline", action="store_true",
+                   help="Turn off every network access (URL imports, font and pack downloads, providers); also "
+                   "VIXL_OFFLINE=1")
+    p.add_argument("--tls-cert", help="Serve HTTPS with this PEM certificate (with --tls-key)")
+    p.add_argument("--tls-key", help="The PEM private key for --tls-cert")
+    add_arguments(p)
+    from . import plugins
+
+    for fn in plugins.hooks("host-flags"):
+        fn(p)
+    return p
+
+
+def schema():
+    """The host API contract: JSON Schema definitions of every endpoint's request and response."""
+    return json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+
+
+def cli(args, limits=None):
+    """``vixl host``: print the contract with ``--schema``, else serve until stopped."""
+    from .call_limits import from_arguments
+    from .fetch import offline
+
+    a = host_parser().parse_args(args)
+    if a.schema:
+        return schema()
+    require(a.root, "Pass --root DIR: the folder that holds the workspaces", "usage_error", field="root")
+    token = read_token(a.token_env, a.token_file)
+    from .interfaces import serving_policy
+
+    tls = (a.tls_cert, a.tls_key) if a.tls_cert or a.tls_key else None
+    ssl = serving_policy(a.bind, token, tls)
+    try:
+        import uvicorn
+    except ImportError as exc:
+        raise VixlError("missing_dependency", "vixl host needs the server extra: pip install 'vixl-engine[server]'",
+                        hint="pip install 'vixl-engine[server]'") from exc
+    app = create_host_app(a.root, token, offline=a.offline or offline(), call_limits=from_arguments(a, "rest"),
+                          limits=limits, job_ttl=a.job_ttl, bind=a.bind, options=a)
+    import sys
+
+    app.state.host.sweep(orphans=True)
+    app.state.host.start_sweeper()
+    print(f"vixl host: root {app.state.host.root}, http{'s' if ssl else ''}://{a.bind}:{a.port}", file=sys.stderr)
+    uvicorn.run(app, host=a.bind, port=a.port, **ssl)
+    return None

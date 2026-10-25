@@ -54,6 +54,10 @@ At most 200 categories and 24 series.
   `chart-data` with `reload: true` reads it again, so the fix is one CSV row plus one operation.
   A path that leaves the workspace is refused (`forbidden`), also through MCP and REST.
 
+When many documents take their numbers from one keyed CSV (a price list, a product sheet), the `data-sync` workflow
+binds it to a group or a campaign and re-checks and re-exports only the documents whose rows changed; see
+[sync from a data source](../automation/production.md#sync-from-a-data-source).
+
 ## Editing the data: `chart-data`
 
 `target` is the chart group (default: the active layer, which is the chart right after it is drawn).

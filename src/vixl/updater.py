@@ -25,6 +25,10 @@ PROTOCOL = 1
 INTERVAL = 24 * 60 * 60
 MAX_DOWNLOAD = 256 * 1024 * 1024
 MAX_EXPANDED = 1024 * 1024 * 1024
+# The optional per-user scheduled task the installer registers for AI Server Studio (distribution/windows/vixl.iss),
+# and the file that says it exists: %LOCALAPPDATA%\Vixl\host.json, {url, token_file}.
+HOST_TASK = "Vixl host"
+HOST_CONFIG = ("Vixl", "host.json")
 
 
 class UpdateError(Exception):
@@ -178,6 +182,34 @@ def probe(root, release, folder=None):
         raise UpdateError(f"Vixl {release} could not start; the previous version was kept") from exc
 
 
+def host_config(environ=None):
+    """``%LOCALAPPDATA%\\Vixl\\host.json`` when the installer registered the host task, else None."""
+    environ = os.environ if environ is None else environ
+    base = environ.get("LOCALAPPDATA")
+    if not base:
+        return None
+    path = Path(base).joinpath(*HOST_CONFIG)
+    return path if path.is_file() else None
+
+
+def restart_host_task(environ=None):
+    """After a version is activated: restart the host task (``schtasks /End`` then ``/Run``) so it serves the new
+    runtime. Only when host.json exists; best effort, never raises, since the update itself has succeeded."""
+    if host_config(environ) is None:
+        return {"restarted": False}
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    try:
+        for action in ("/End", "/Run"):
+            done = subprocess.run(["schtasks", action, "/TN", HOST_TASK], capture_output=True, timeout=30,
+                                  creationflags=flags, check=False)
+            # /End fails when the task is not running; /Run must work.
+            if action == "/Run" and done.returncode != 0:
+                return {"restarted": False, "error": f"schtasks /Run exited with {done.returncode}"}
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"restarted": False, "error": f"{type(exc).__name__}: {exc}"[:300]}
+    return {"restarted": True}
+
+
 def initialize(root, release):
     version(release)
     with locked(root):
@@ -202,6 +234,8 @@ def initialize(root, release):
             state["previous"] = old
         state.update(current=release, pending=None, rejected=None, last_error=None)
         atomic_json(Path(root) / "install.json", state)
+    if old and old != release:
+        restart_host_task()  # An upgrade by the installer: the task keeps running the old runtime otherwise.
     return state
 
 
@@ -420,6 +454,7 @@ def update(root, check_only=False, automatic=False):
                     )
                 atomic_json(root / "install.json", state)
         if not automatic:
+            restart_host_task()
             return {
                 **result,
                 "previous": state["previous"],
@@ -468,6 +503,7 @@ def rollback(root):
         old = state["current"]
         state.update(current=target, previous=old, pending=None, auto=False, rejected=old, last_error=None)
         atomic_json(Path(root) / "install.json", state)
+    restart_host_task()
     return {
         "current": target,
         "automatic": False,
@@ -475,8 +511,10 @@ def rollback(root):
     }
 
 
-def prepare_launch(root, allow_updates=True):
-    """Activate only validated pending versions; never treat editing errors as failed updates."""
+def prepare_launch(root, allow_updates=True, restart_host=True):
+    """Activate only validated pending versions; never treat editing errors as failed updates. When a pending version
+    is activated, the host task restarts onto it unless ``restart_host`` is false (the launch is the host task's own,
+    which starts the new runtime itself)."""
     if not allow_updates:
         state = read_state(root)
         exe = executable(root, state["current"])
@@ -488,6 +526,7 @@ def prepare_launch(root, allow_updates=True):
             raise UpdateError(f"Cannot access the active Vixl runtime at {exe}: {exc}. Use vixl updates status to inspect the installation or run the installer to repair Vixl.") from exc
         require(exists, f"Active runtime is missing at {exe}; run the installer to repair Vixl")
         return exe, False
+    activated = False
     with locked(root):
         state = read_state(root)
         pending = state.get("pending")
@@ -495,6 +534,7 @@ def prepare_launch(root, allow_updates=True):
             try:
                 probe(root, pending)
                 state.update(previous=state["current"], current=pending, pending=None, last_error=None)
+                activated = True
             except UpdateError as exc:
                 state.update(pending=None, rejected=pending, last_error=str(exc))
             atomic_json(Path(root) / "install.json", state)
@@ -524,7 +564,9 @@ def prepare_launch(root, allow_updates=True):
         if due:
             state["last_check"] = time.time()
             atomic_json(Path(root) / "install.json", state)
-        return exe, due
+    if activated and restart_host:
+        restart_host_task()
+    return exe, due
 
 
 def background(root):

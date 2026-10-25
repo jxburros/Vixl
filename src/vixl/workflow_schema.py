@@ -23,6 +23,25 @@ REPAIR = {"anyOf": [{"type": "boolean"}, {"type": "array", "items": {
 COVERAGE_AXIS = {"anyOf": [{"type": "string", "enum": ["all"]},
                            {"type": "array", "items": {"type": ["string", "integer"]}, "minItems": 1}]}
 
+# A value read from another document when the suite runs (#558); accepted by expected, to and ratio.
+REF = {"type": "object", "properties": {"ref": {
+    "type": "string", "description": "'doc.vixl#layer.field' (a field of a layer, or of canvas, as drawn) or "
+                                     "'doc.vixl#suite:rule-id' (the same field of a rule of that document's suite)."}},
+    "required": ["ref"], "additionalProperties": False,
+    "description": "Read the value from another workspace document each run: {ref: 'master.vixl#logo.fill'}. "
+                   "At most 8 per suite; a missing document, layer or rule needs review."}
+
+
+def _or_ref(base, description):
+    """``base`` or a ref, with its own description (shared constants are never mutated)."""
+    plain = {key: value for key, value in base.items() if key != "default"}
+    types = [plain["type"]] if isinstance(plain["type"], str) else list(plain["type"])
+    found = {"type": sorted(set(types) | {"object"}), "anyOf": [plain, REF], "description": description}
+    if "default" in base:
+        found["default"] = base["default"]
+    return found
+
+
 # Check suite (assert-rule format). Rule fields per kind live in assurance.RULE_FIELDS; each
 # rule needs a unique id and a kind, and may set severity and pages.
 RULE_KINDS = ("container", "palette", "assert", "design", "property", "gap", "unchanged", "pixels", "text-fit", "alpha",
@@ -36,7 +55,7 @@ RULE_PROPERTIES = {
                             "text contrast), color (pixel or region colour), ink (how much of a region is drawn), "
                             "balance (visual centre of mass), hierarchy (type sizes step down), count (layers "
                             "matching a name), focal (on a thirds/golden/centre point), text (the copy: phrases, "
-                            "patterns, character and word limits) or budget (layers, fonts, bytes, image ppi)."},
+                            "patterns, character and word limits) or budget (layers, fonts, bytes, image ppi, render time)."},
     "severity": {"type": "string", "enum": ["error", "warning"], "default": "error",
                  "description": "A failed warning needs review instead of failing the suite."},
     "pages": {**COVERAGE_AXIS, "description": "Limit the rule to these pages (names, ids or 1-based numbers; "
@@ -51,7 +70,8 @@ RULE_PROPERTIES = {
     "targets": {"type": "array", "items": STR, "minItems": 2,
                 "description": "spacing: sibling layers whose gaps should be equal (or expected); hierarchy: text "
                                "layers from most to least important."},
-    "to": {"type": "string", "description": "relation: the other layer, or 'canvas'."},
+    "to": _or_ref({"type": "string"}, "relation: the other layer, or 'canvas' (or {ref} to read the name from "
+                                      "another document)."),
     "position": {"type": "string", "enum": ["left-of", "right-of", "above", "below", "inside", "contains",
                                             "overlapping", "apart"],
                  "description": "relation: where target must sit relative to to (apart: not overlapping)."},
@@ -65,15 +85,17 @@ RULE_PROPERTIES = {
     "background": {**COLOR, "description": "ink/balance: count pixels that differ from this colour. Omitted: "
                                             "everything except the canvas colour and backdrop layers (role "
                                             "background, or a full-canvas solid, gradient, image or rectangle)."},
-    "ratio": {"type": "number", "minimum": 1, "default": 1.2,
-              "description": "hierarchy: each rendered font size must be at least this many times the next."},
+    "ratio": _or_ref({"type": "number", "minimum": 1, "default": 1.2},
+                     "hierarchy: each rendered font size must be at least this many times the next (or {ref}, e.g. "
+                     "the ratio of a master document's rule: {ref: 'master.vixl#brand:type-scale'})."),
     "layer_type": {"type": "string", "description": "count: only layers of this type (text, shape, image …)."},
     "grid": {"type": "string", "enum": ["thirds", "golden", "center"], "default": "thirds",
              "description": "focal: the composition points target's centre should sit near."},
     "field": {"type": "string", "description": "property: the layer field to read, e.g. 'color', 'x', 'opacity'."},
     "expected": {"type": ["string", "number", "boolean", "array", "object", "null"],
                  "description": "property: required value; gap/spacing: required distance in pixels; color: the "
-                                "colour; balance: [x, y] centre as fractions of the region (default [0.5, 0.5])."},
+                                "colour; balance: [x, y] centre as fractions of the region (default [0.5, 0.5]). "
+                                "{ref: 'master.vixl#logo.fill'} reads it from another document each run."},
     "tolerance": {"type": "number", "minimum": 0,
                   "description": "Allowed difference: numbers for property/gap/spacing/relation (default 1 px), "
                                  "0–255 colour distance for palette, 0–255 channel difference for pixels and color "
@@ -120,6 +142,9 @@ RULE_PROPERTIES = {
              "description": "text: whether pattern, contains and forbid match letter case."},
     "brand": {"type": "boolean", "default": False,
               "description": "text: also forbid the words brand.json lists under words.forbid (whole words, any case)."},
+    "spelling": {"type": "boolean", "default": False,
+                 "description": "text: also fail on words the spelling dictionary does not know (brand words.allow, "
+                                "facts and .vixl/dictionary.txt are accepted); a missing dictionary is needs_review."},
     "max_layers": {"type": "integer", "minimum": 0, "description": "budget: most drawn layers (as count counts them)."},
     "max_fonts": {"type": "integer", "minimum": 0, "description": "budget: most distinct fonts drawn by text."},
     "max_bytes": {"type": "integer", "minimum": 0,
@@ -128,6 +153,15 @@ RULE_PROPERTIES = {
     "min_ppi": {"type": "number", "minimum": 1,
                 "description": "budget: lowest effective resolution of a placed image at the canvas dpi (300 when "
                                "unset), as the print check measures it."},
+    "max_ppi": {"type": "number", "minimum": 1,
+                "description": "budget: highest effective resolution of a placed image; an image with over 4x the "
+                               "source pixels it needs at this ppi is over-resolved too (wasted pixels)."},
+    "max_render_ms": {"type": "number", "minimum": 1, "maximum": 600000,
+                      "description": "budget: slowest warm proxy render in ms (cold and warm are reported). Advisory: "
+                                     "the result is always a warning to review, so set it in a budget rule of its "
+                                     "own."},
+    "proxy": {"type": "integer", "minimum": 64, "maximum": 4096, "default": 1024,
+              "description": "budget: longest side in pixels of the max_render_ms proxy render."},
     "asset": {"type": "string", "description": "pixels: embedded baseline image asset (written by suite-capture)."},
 }
 SUITE = {
@@ -200,7 +234,7 @@ COMMON = {
                   "description": "Variable overrides {name: string|number|boolean}."},
     "target": {"type": "string", "description": "Layer ID or unique name."},
     "kind": {"type": "string", "enum": ["palettes", "templates", "guidance", "containers", "shapes", "suites",
-                                        "workflows", "mockups", "objects", "assets"],
+                                        "workflows", "mockups", "objects", "assets", "pipelines"],
              "description": "Resource category (assets: images {data_base64, media_type, credit, license})."},
     "start": {"type": "boolean", "default": False, "description": "Start a background worker after submitting."},
 }
@@ -291,6 +325,11 @@ PRODUCTION_SPEC = {
         "workers": {"type": "integer", "minimum": 1, "maximum": 4, "default": 1, "description": "Parallel renders."},
         "motion": {"type": "string", "description": "Saved motion to apply."},
         "fps": {"type": "number", "minimum": 1, "maximum": 60, "description": "Timeline fps override."},
+        "export_check": {"type": ["boolean", "string", "object"],
+                         "description": "Read each written output back and check it: true (the default delivery "
+                                        "checks), a delivery spec preset (instagram-feed, web-banner ...) or inline "
+                                        "spec fields. A failing output is held for review and not published; the "
+                                        "result is the output's export_check."},
     },
 }
 FILM_SPEC = {
@@ -321,18 +360,26 @@ FILM_SPEC = {
     },
     "required": ["width", "height", "shots"],
 }
+NOTIFY = {"type": "object", "description": "Completion webhook: POST the completion event (no document content) to url "
+          "when the work ends; the host must be in the allow list of .vixl/notify.json.",
+          "properties": {"url": {"type": "string", "description": "The receiver: an https URL (http only to localhost)."},
+                         "secret_env": {"type": "string", "description": "Environment variable holding the signing "
+                                        "secret (X-Vixl-Signature: sha256=HMAC of the body)."}}}
 JOB = {
     "type": "object", "required": ["kind", "output"],
     "description": "Background job: kind plus the fields it needs (production/film: spec; lyric-video/form-fill: "
                    "request; video/generate: provider and request).",
     "properties": {
-        "kind": {"type": "string", "enum": ["production", "film", "generate", "video", "lyric-video", "form-fill"],
-                 "description": "Which kind of work to queue."},
+        "kind": {"type": "string", "enum": ["production", "film", "generate", "video", "lyric-video", "form-fill",
+                                            "pipeline"],
+                 "description": "Which kind of work to queue (pipeline: request {pipeline, documents?, group?}, output "
+                                ".vixl-runs/<run id>)."},
         "output": {**PATH, "description": "Where the result is written (must be new, except production folders)."},
         "source": {**PATH, "description": "Source .vixl document; production, generate and form-fill need it."},
         "spec": {"type": "object", "description": "production or film specification (see plan / film-plan)."},
         "request": {"type": "object", "description": "lyric-video, form-fill, video or generate request fields."},
         "provider": {"type": "string", "description": "video/generate: explicit configured provider."},
+        "notify": NOTIFY,
     },
 }
 RECIPE = {
@@ -406,6 +453,9 @@ ACTION_FIELDS = {
         "comps": {**COVERAGE_AXIS, "description": "'all' or layer comp names."},
         "include_hidden": {"type": "boolean", "default": False,
                            "description": "pages 'all' also covers pages hidden from export."},
+        "locales": {"type": ["string", "array"], "items": {"type": "string"},
+                    "description": "'all' or locale codes (de,ja): check each locale's values on a candidate copy and "
+                                   "return the locale x finding matrix (localization plugin; see locale-check)."},
     },
     "act": {
         "operations": {**COMMON["operations"], "description": "Operations applied to a candidate; committed only "
@@ -615,6 +665,7 @@ ACTION_FIELDS = {
                          "group)."},
         "reference": {**PATH, "description": "Group checks: the member to compare against."},
         "facts": FACTS,
+        "notify": NOTIFY,
         "outputs": {"type": "object", "description": "Write the report: {json, markdown, junit, sarif, github, proof: "
                     "workspace path}; github is workflow annotation lines, proof an .html page.",
                     "properties": {key: {**PATH, "description": f"Where to write the {key} report."}

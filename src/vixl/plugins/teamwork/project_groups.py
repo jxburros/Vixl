@@ -68,6 +68,10 @@ def dispatch(session, action, request):
                 **({"profiles": request["profiles"]} if request.get("profiles") else {}),
                 **({"suites": suites} if suites else {}),
             }
+            # Redefining a group keeps the locale table group-locales gave it.
+            locales = read_json(path).get("locales") if path.exists() else None
+            if locales:
+                value["locales"] = locales
             if "facts" in request:
                 from ...group_consistency import validate_facts
 
@@ -148,6 +152,11 @@ def apply_group(session, name, group, paths, request):
                   "passed": all(entry["passed"] for entry in report),
                   "outcome": merge(*(check.get("outcome") or from_suite(check)
                                      for entry in report for check in entry["checks"]))}
+        if dry_run:
+            from ..workspace_qa.approval import approved_changes
+
+            # Members approved with vixl approve that this change would move away from their approved look.
+            output["approved_members_changed"] = approved_changes(session, candidates)
         if request.get("review"):
             require(dry_run, "review is written by a dry run; apply with accept/reject or decisions", field="review")
             output.update(write_review(session, request["review"], originals, candidates, report,

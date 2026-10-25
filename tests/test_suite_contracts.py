@@ -107,6 +107,83 @@ def test_budget_rule_counts_layers_fonts_bytes_and_image_ppi():
         validate_suite({"rules": [{"id": "b", "kind": "budget"}]})
 
 
+def many_layers(count):
+    p = Project(800, 800, "white")
+    p.apply([{"type": "shape", "shape": "rectangle", "name": f"dot-{i}", "x": (i % 20) * 40, "y": (i // 20) * 40,
+              "width": 30, "height": 30, "fill": "#336699"} for i in range(count)])
+    return p
+
+
+def test_budget_layers_fails_naming_the_count_and_lists_the_worst_offenders():
+    p = many_layers(150)
+    p.apply({"type": "group", "name": "pile", "targets": [f"dot-{i}" for i in range(40)]})
+    found = statuses(p, [{"id": "layers", "kind": "budget", "max_layers": 100}])["layers"]
+    assert found["status"] == "failed" and found["layers"] == 151
+    assert "151 layers drawn; at most 100" in found["problems"][0]
+    worst = found["worst"]["max_layers"]
+    assert len(worst) == 5 and worst[0] == {"layer": "pile", "value": 41}
+    flat = statuses(many_layers(150), [{"id": "layers", "kind": "budget", "max_layers": 100}])["layers"]
+    assert flat["status"] == "failed" and "150 layers drawn" in flat["problems"][0]
+
+
+def test_render_time_budget_is_advisory_and_never_a_fix():
+    p = many_layers(10)
+    report = p.check_suite({"rules": [{"id": "slow", "kind": "budget", "max_render_ms": 1, "proxy": 256,
+                                       "severity": "error"}]})
+    found = {item["id"]: item for item in report["results"]}["slow"]
+    assert set(found["render_ms"]) == {"cold", "warm"} and found["proxy"] == 256
+    assert found["severity"] == "warning" and found["action"] == "review" and found["advisory"] is True
+    if found["status"] == "failed":
+        # A slow render needs review; it never fails validation.
+        assert report["errors"] == 0 and report["outcome"]["validation"] != "failed"
+    fast = statuses(p, [{"id": "fast", "kind": "budget", "max_render_ms": 600000}])["fast"]
+    assert fast["status"] == "passed" and fast["action"] == "review"
+    for rule in ({"id": "b", "kind": "budget", "max_render_ms": 100, "max_layers": 5},
+                 {"id": "b", "kind": "budget", "max_layers": 5, "proxy": 512},
+                 {"id": "b", "kind": "budget", "max_render_ms": 100, "proxy": 10}):
+        with pytest.raises(VixlError):
+            validate_suite({"rules": [rule]})
+
+
+def over_resolved():
+    from PIL import Image
+    from vixl.assets import add_image
+
+    p = Project(800, 600, "white")
+    asset = add_image(p, Image.new("RGBA", (6000, 4000), "red"))
+    p.apply({"type": "add", "name": "huge", "asset": asset, "x": 10, "y": 10, "width": 200, "height": 133})
+    small = add_image(p, Image.new("RGBA", (400, 300), "blue"))
+    p.apply({"type": "add", "name": "fine", "asset": small, "x": 300, "y": 10, "width": 400, "height": 300})
+    return p
+
+
+def test_max_ppi_flags_a_6000_px_image_placed_at_200_px():
+    found = statuses(over_resolved(), [{"id": "ppi", "kind": "budget", "max_ppi": 600}])["ppi"]
+    assert found["status"] == "failed"
+    assert [entry["layer"] for entry in found["over_resolution"]] == ["huge"]
+    assert found["over_resolution"][0]["source_pixels"] == 24_000_000
+    assert found["worst"]["max_ppi"][0] == {"layer": "huge", "value": 9000}
+    with pytest.raises(VixlError):
+        validate_suite({"rules": [{"id": "b", "kind": "budget", "min_ppi": 300, "max_ppi": 200}]})
+
+
+def test_budget_design_check_runs_without_a_suite_with_workspace_defaults(tmp_path):
+    p = over_resolved()
+    issues = [item for item in p.check(checks=["budget"])["issues"] if item["check"] == "budget"]
+    assert len(issues) == 1 and issues[0]["layers"] == ["huge"] and issues[0]["limit"] == "max_ppi"
+    assert issues[0]["action"] == "review" and issues[0]["maximum"] == 1200
+    assert issues[0]["worst"][0]["layer"] == "huge"
+    # The workspace check policy overrides the defaults.
+    (tmp_path / ".vixl-checks.json").write_text(json.dumps({"budget": {"max_layers": 1}}))
+    p.save(tmp_path / "doc.vixl")
+    p._workspace = str(tmp_path)
+    limits = {item["limit"] for item in p.check(checks=["budget"])["issues"] if item["check"] == "budget"}
+    assert limits == {"max_layers", "max_ppi"}
+    (tmp_path / ".vixl-checks.json").write_text(json.dumps({"budget": {"max_render_ms": 5}}))
+    with pytest.raises(VixlError):
+        p.check(checks=["budget"])
+
+
 # --- placeholders check and brand words (#553) ----------------------------------------------------------------------
 
 def placeholder_issues(project, **options):

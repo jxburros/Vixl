@@ -77,7 +77,8 @@ Drawings:  drawing import sketch.jpg --name house [--settings '{"ink": "original
            drawing report house, drawing compare house --out c.png, check --checks drawing, ai drawing-color house --prompt TEXT
 Linked:    link FILE.vixl [--name N] [--width W] [--fit fill|fit|stretch] [--position top-left] [--crop X,Y,W,H] [--artboard A] [--page P]
            [--set NAME=VALUE], link-set LAYER … (changes a link), link-refresh [LAYER], link-embed LAYER, links-relink FROM TO, links (each link: ok, stale or missing)
-Merge:     merge [TEMPLATE.vixl] --data rows.csv --out sheets.pdf [--sheet-document sheets.vixl] [--size letter] [--cols 2 --rows 3]
+           links impact SOURCE.vixl [--group NAME | --glob GLOB …] [--apply] (check every document that links to SOURCE)
+Merge:    merge [TEMPLATE.vixl] --data rows.csv --out sheets.pdf [--sheet-document sheets.vixl] [--size letter] [--cols 2 --rows 3]
            [--gutter 0.125] [--margin 0.5] [--bleed template|0.125] [--no-crop-marks] [--registration] [--slug TEXT] [--copies N]
            [--dry-run] [--skip-invalid] [--unknown warn|error|ignore] [--replace], merge --rerun sheets.vixl [--data new.csv]
 Measure:   info, sample X Y, histogram [--region X Y W H], info --target TEXT,
@@ -87,7 +88,8 @@ Measure:   info, sample X Y, histogram [--region X Y W H], info --target TEXT,
            check --checks print color_vision [--ink-limit 300] [--min-ppi 200]
            check --all [GLOB …] | --group NAME [--profile final] [--fail-on error|warning|fix|review|never] [--no-waivers]
            [--changed-since REF] [--base REF] [--since-last] [--format markdown|json|junit|sarif|github] [--write sarif=vixl.sarif] (many documents, one report)
-Pixels:    pixel-art, pixel-draw, pixel-palette, pixels [LAYER],
+           approve [--group NAME] [--clear] [--author WHO] (record the approved look; later checks flag changes)
+Pixels:   pixel-art, pixel-draw, pixel-palette, pixels [LAYER],
            frame-save NAME [--duration MS], frame-apply NAME, frame-delete NAME,
            animation, animation-set --loop N --order FRAME FRAME,
            animation-set --name walk --order FRAME FRAME [--duration MS | --durations MS MS] [--loop N] | --name walk --delete,
@@ -109,6 +111,8 @@ Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG [--isola
            workflow ACTION --request FILE [--workspace DIR] (workflow schema lists actions; proof, logo-package, brand-board …),
            package (--production out/production.json | --files GLOB…) --out delivery.zip [--source DOC.vixl]
            [--name TEMPLATE] [--layout by-format|by-artboard] [--lock FILE] [--dry-run] (outputs, manifest, report, proof),
+           pipeline run NAME [--dry-run|--execute] [--run ID] (a saved pipeline), watch [--config .vixl/watch.json]
+           [--once|--ticks N] (re-check, run pipelines or re-sync on save, source, brand and data changes and schedules),
            compose --request FILE [--preview P.png] (create → layout → look → operations → check → exports, atomic),
            each layer --name PATTERN -- COMMAND, preset save|apply|show NAME,
            transaction begin|commit|rollback, assert RULE, validate [PROFILE]
@@ -121,7 +125,8 @@ Type:      fonts [--category serif] [--mood M], font show FAMILY, font pairings 
            font pairing NAME, font principles, font install FAMILY [--weight 700] [--role heading|body], font pair NAME|random,
            font use NAME --role heading|body, font list|import, --scope workspace [--workspace DIR] (install/pair: brand.json
            default for new documents; install's role defaults to heading),
-           font cover [--text T] [--script Thai] (install Noto fallbacks for CJK, Devanagari, Thai ... text)
+           font cover [--text T] [--script Thai] (install Noto fallbacks for CJK, Devanagari, Thai ... text),
+           font system [QUERY] [--styles] [--limit N] (fonts installed on this machine; text font takes their names)
 Finish:   look LAYER NAME [--color C] [--amount 0-1] [--remove]  (clean-flat, subtle-grain, light-paper, glow, neon,
            soft-shadow, hard-shadow, outline, gradient, soft-halo, grain, paper, film, duotone, risograph, sketch,
            watercolor, halftone, hand-made, plush), looks (catalog),
@@ -163,7 +168,8 @@ Updates:   update [--check | --rollback], updates [on | off | status]
 Cache:     cache info | cache clear (the disk render cache; VIXL_RENDER_CACHE=off, VIXL_CACHE_MAX_MB=256)
 Services:  serve | view [--host 127.0.0.1] [--port 8765], notes list|add|resolve
            mcp [--workspace DIR] [--http] [--tools default|ai] [--planner] [--require-document]
-           per-call limits (serve, view, mcp): [--call-timeout S] [--max-megapixels N] [--max-pages N] [--max-concurrent N]
+           host --root DIR [--port 8767] [--token-env VIXL_HOST_TOKEN | --token-file FILE] [--offline] [--bind ADDR]
+           per-call limits (serve, view, mcp, host): [--call-timeout S] [--max-megapixels N] [--max-pages N] [--max-concurrent N]
 Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144] [--font-map SRC=NAME]
            import PHOTO.jpg | https://HOST/photo.jpg [--name N] [--credit TEXT] [--license TEXT]
            import FIGMA_URL_OR_KEY --format figma [--node 1:2] [--rasterize-unsupported]
@@ -192,7 +198,7 @@ Automate:  apply, run, batch, workflow, each, transaction
 Output:    render, export, export-icons, export-screens, catalog export, package
 Resources: guide, capabilities, commands, shapes, sizes, styles, emoji
 AI:        ask, generate, detect, ocr, ai, providers, models
-Services:  serve, view, mcp
+Services:  serve, view, mcp, host
 Manage:    update, updates, cache
 
 Use --out FILE (or -o FILE) for output destinations.
@@ -448,6 +454,11 @@ def service_arguments(parser):
 def service_setup(args):
     """Apply ``--offline`` for the whole process; return the ``tls`` pair (or None)."""
     if args.offline:
+        from .plugins import external
+
+        # --plugins is a global option, so it ran before --offline was seen.
+        require(not external.enabled(), "--plugins cannot be combined with --offline: third-party plugin code is not "
+                "bound by offline mode", "network_disabled", field="plugins")
         os.environ["VIXL_OFFLINE"] = "1"
     return (args.tls_cert, args.tls_key) if args.tls_cert or args.tls_key else None
 
@@ -483,6 +494,12 @@ def _dispatch(argv):
     limits = Limits(max_pixels=options.max_pixels)
     tokens = normalize(tokens) if tokens[0] != "text" else tokens
     cmd, args = tokens[0], tokens[1:]
+    from .plugins import hooks as plugin_hooks
+
+    for plugin_command in plugin_hooks("cli-command"):
+        result = plugin_command(cmd, args, options, limits)
+        if result is not None:
+            return result, options.json and isinstance(result, dict)
     if cmd == "adapt-layout" and "--sizes" in args:
         from .adapt import adapt_copies
         from .interfaces import Session
@@ -537,6 +554,9 @@ def _dispatch(argv):
     if cmd == "diff":
         from .image_diff import cli as diff_cli
         return diff_cli(args, limits), options.json
+    if cmd == "check-file":
+        from .feature_cli import check_file as check_file_cli
+        return check_file_cli(args, limits), options.json
     if cmd == "compose":
         from .compose import cli as compose_cli
         return compose_cli(args, options, limits), options.json
@@ -584,6 +604,10 @@ def _dispatch(argv):
         from .finishing_cli import standalone as finishing_standalone
 
         return finishing_standalone(cmd, args), options.json
+    if cmd == "brand" and args and args[0] in ("import", "export"):
+        from .workflows import brand_profile_cli
+
+        return brand_profile_cli(args), options.json
     if cmd == "brand" and "--help" not in args and "-h" not in args:
         from .brand import cli as brand_cli
 
@@ -591,7 +615,7 @@ def _dispatch(argv):
     # A roll preview reads the document --apply would use (its canvas and brand), so both pick
     # the same direction; without a document it rolls standalone.
     standalone_roll = cmd == "roll" and "--apply" not in args and not has_document(options.project)
-    if cmd == "fonts" or standalone_roll or (cmd == "font" and args and args[0] in ("show", "pairings", "pairing", "principles")):
+    if cmd == "fonts" or standalone_roll or (cmd == "font" and args and args[0] in ("show", "pairings", "pairing", "principles", "system")):
         from .resource_cli import font_standalone
 
         return font_standalone(cmd, args), options.json
@@ -815,6 +839,10 @@ def _dispatch(argv):
         else:
             server.run()
         return None, options.json
+    if cmd == "host":
+        from .host import cli as host_cli
+
+        return host_cli(args, limits), options.json
     if "--help" in args or "-h" in args:
         return command_help(cmd, args), options.json
     try:
@@ -855,6 +883,32 @@ def _dispatch(argv):
         result.setdefault("path", str(path))  # the document the command read or edited
     ambient_note(options.project, path, human_output(argv, sys.stderr))
     return result, options.json
+
+
+class LocaleReport(str):
+    """The Markdown text of ``vixl check --locales`` that still carries whether every locale passed (the exit code)."""
+
+    passed = True
+
+
+def locale_check(project, locales, strings, key_column, fmt, options, strict):
+    """``vixl check --locales``: the report of the plugin that owns the locale axis (hook ``check-variants``)."""
+    from .plugins import first
+
+    request = {"locales": locales, **({"checks": options["checks"]} if options.get("checks") else {}),
+               **({"format": "markdown"} if fmt == "markdown" else {})}
+    if strings:
+        request.update(strings=strings, key_column=key_column)
+    report = first("check-variants", project, request)
+    require(report is not None, "No plugin checks locales; the localization plugin is not available", field="locales")
+    if strict and not report["passed"]:
+        raise VixlError("design_check_failed", f"{sum(r['failing'] for r in report['results'].values())} locale "
+                        f"finding(s) reach fail_on {report['fail_on']}", report=report)
+    if fmt != "markdown" or "markdown" not in report:
+        return report
+    text = LocaleReport(report["markdown"].rstrip("\n"))
+    text.passed = report["passed"]
+    return text
 
 
 def schema_listing():
@@ -928,9 +982,10 @@ def command_help(cmd, args):
         "brand": "brand validate|show [--preset NAME]  (check the workspace brand.json: missing roles, fonts and logos; or "
                  "summarize it) | brand init [--name N] [--palette P] [--pairing P] [--font ROLE=FILE] | brand pack "
                  "OUT.vixlbrand | brand install FILE.vixlbrand [--preset-only [--as NAME]] [--overwrite] | brand element "
-                 "NAME --from FILE.vixl [--object GROUP]",
+                 "NAME --from FILE.vixl [--object GROUP] | brand import|export --design-profile FILE.json [--overwrite]",
         "guides": "guides (list guides and grids)",
-        "links": "links (list the linked documents and their state: ok, stale, missing, cycle)",
+        "links": "links (list the linked documents and their state: ok, stale, missing, cycle) | links impact "
+                 "SOURCE.vixl [--group NAME | --glob GLOB …] [--apply] (check the documents that link to SOURCE)",
     }
     if cmd in manual:
         return "Usage: vixl " + manual[cmd]
@@ -1361,8 +1416,18 @@ def project_command(project, cmd, args, *, detail="compact"):
                        "checks, suites and fail_on decide passed")
         p.add_argument("--no-waivers", dest="waivers", action="store_false",
                        help="report every finding as if the document had no waivers")
+        p.add_argument("--locales", help="check each locale (all, or codes such as de,ja) on a candidate copy and "
+                       "report a locale x finding matrix (localization plugin)")
+        p.add_argument("--strings", help="with --locales: a strings CSV (a key column and one column per locale)")
+        p.add_argument("--key-column", default="key", help="with --strings: the key column (default key)")
+        p.add_argument("--format", choices=["json", "markdown"], help="with --locales: print the report as json "
+                       "(the default) or a markdown matrix")
         options = vars(p.parse_args(args))
         strict = options.pop("strict")
+        locales, strings, key_column, fmt = (options.pop(key) for key in ("locales", "strings", "key_column", "format"))
+        if locales is not None:
+            return locale_check(project, locales, strings, key_column, fmt, options, strict), False
+        require(strings is None and fmt is None, "--strings and --format go with --locales", "usage_error")
         if options["repair"] is not None:
             options["repair"] = options["repair"] or True
         from .deck import DECK_CHECKS
@@ -1701,10 +1766,13 @@ def main(argv=None):
             # A result that is not a JSON object (an image on stdout, plain text) keeps stdout as it was.
             print(json.dumps({"render_profile": run.report()}), file=sys.stderr)
         emit(result, machine, command_of(argv), human_output(argv, sys.stdout))
-        if getattr(result, "passed", None) is False:  # a formatted vixl check --all report
+        if getattr(result, "passed", None) is False:  # a formatted vixl check --all or --locales report
             return 1
-        if ("workflow" in argv or ("check" in argv and ("--all" in argv or "--group" in argv)) or "emoji" in argv) and isinstance(result, dict):
+        if ("workflow" in argv or "check-file" in argv or ("check" in argv and ("--all" in argv or "--group" in argv)) or "emoji" in argv) and isinstance(result, dict):
             if result.get("passed") is False or result.get("success") is False or result.get("status") in ("failed", "needs_review", "cancelled"):
+                return 1
+        if "check" in argv and any(a.split("=")[0] == "--locales" for a in argv) and isinstance(result, dict) and result.get("check") == "locales":
+            if result.get("passed") is False:
                 return 1
         return 0
     except BrokenPipeError:

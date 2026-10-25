@@ -231,13 +231,25 @@ Selecting a preset installs its swatches, fonts and stages at once.
 | `palette.extra[].max_fraction` | An extra colour covering more of the rendered design than allowed (warning). |
 | `logo.clear_space` | Another layer closer to a logo than this fraction of the logo's height: an error with the measured `gap` and the `required` distance. A backdrop that contains the whole clear-space zone (the ground the logo sits on) and layers marked as background do not count. |
 | `logo.min_size`, `logo.min_width` | A logo shorter or narrower than the minimum: pixels, or a length such as `12mm`, `0.5in` or `24pt` converted with the canvas dpi (96 without one). |
+| `logo.variants` | A logo variant on a background it is not mapped to: an error (`code: logo-variant-background`) naming the `variant`, the sampled `background`, its `tone` and the `approved` backgrounds. |
 
 Logo layers are the names in `logo.layers`, else the embedded `logos` names, else layers named `logo`
-(`logo`, `logo-mark`, `brand logo` …); a logo group counts as one logo. Approved logo variants on approved
-backgrounds are not checked yet.
+(`logo`, `logo-mark`, `brand logo` …); a logo group counts as one logo.
 
 ```json
 {"colors": {"strict": true, "tolerance": 4}, "logo": {"clear_space": 0.5, "min_size": "10mm", "layers": ["logo"]}}
+```
+
+`logo.variants` maps each variant to the layers that draw it (a layer name glob such as `logo-rev*`, or a list) and
+the backgrounds it is approved on: `dark` or `light` (whichever of white or black text would read better on it),
+`@name` for a palette role or `palette.extra` colour (matched within `colors.tolerance`, at least 12), or a colour.
+The check hides the logo, samples the colour drawn under its box the way the contrast checks do (the median of
+the backdrop) and reports a variant that sits anywhere else:
+
+```json
+{"palette": {"extra": {"brand-dark": "#14213d"}},
+ "logo": {"variants": {"reversed": {"layers": "logo-rev*", "backgrounds": ["dark", "@brand-dark"]},
+                       "full": {"layers": ["logo", "logo-full"], "backgrounds": ["light"]}}}}
 ```
 
 ### Validate and show
@@ -279,6 +291,32 @@ previous files if any step fails. It never runs code. An existing different bran
 only with `--overwrite`; a resource that belongs to an installed plugin pack is never replaced. `--preset-only`
 adds the package's brand to the existing brand.json as a preset (`--as NAME`, default from the brand name) and
 leaves the resource library alone.
+
+### Design Profiles
+
+A Design Profile (`schemaVersion: 2`) describes a brand for another design tool. `vixl brand import` writes
+brand.json from one and `vixl brand export` writes the workspace brand (or `--preset NAME`) as one; both refuse to
+replace a file without `--overwrite`, and both are the brand kit's `brand-import` and `brand-export` workflow
+actions (`brand-import` also takes an inline `profile` and `dry_run`).
+
+```bash
+vixl brand export --design-profile design-profile.json
+vixl brand import --design-profile design-profile.json --overwrite
+```
+
+No public Design Profile schema exists, so the mapping follows this shape: `name`; `typography` (`{role: {family,
+weight}}`, camelCase roles become kebab-case brand font roles); `colours` or `colors` (the seven palette roles as
+`background`, `surface`, `ink`, `muted`, `accent`, `accentText`, `onAccent`; any other colour becomes a
+`palette.extra` entry); `page.background` and `docText.color` (the `background` and `ink` roles where they agree
+with `colours` or fill a role it leaves out); and `docText` (`font` and `lineHeight` set the `body` text stage,
+`minContrast` and `largeMinContrast` the `minimum_contrast`). Every path that does not map, in either direction,
+is listed in `unmapped` instead of being dropped: a profile's `page.size` or `typography.heading.letterSpacing`, a
+brand's `logo`, `words`, other text stages, embedded fonts or presets. Python and the host call
+`vixl.brand.load_brand_or_profile(data)`, which returns `(kit, unmapped)` for either a brand.json object or a profile.
+
+A host application sets a workspace's brand with `PUT /w/{ws}/brand` on [`vixl host`](../../reference/interfaces.md#hosting-vixl),
+sending either shape: the host validates it, writes `brand.json` in the workspace and answers the kit with its
+`unmapped` paths and a `digest` for conditional updates.
 
 ### Brand board
 
@@ -324,7 +362,8 @@ Three optional fields hold the brand's copy policy and its contract:
 
 ```json
 {
-  "words": {"forbid": ["cheap", "world-class"], "prefer": {"utilize": "use", "e-mail": "email"}},
+  "words": {"forbid": ["cheap", "world-class"], "prefer": {"utilize": "use", "e-mail": "email"},
+            "allow": ["Vixl", "Cheap Eats Co"]},
   "placeholders": ["\\bCOPY TK\\b", "\\[\\[.*?\\]\\]"],
   "suites": ["delivery"]
 }
@@ -332,9 +371,32 @@ Three optional fields hold the brand's copy policy and its contract:
 
 `words.forbid` phrases (whole words, any case) are `brand` errors in `check`; a `words.prefer` word is a
 `review` finding that names the preferred one; a `text` suite rule with `brand: true` also forbids them.
-Spelling against a dictionary is not checked. `placeholders` adds regular expressions to the
+`words.allow` lists names and terms the brand spells its own way (at most 5,000): a forbidden or preferred word
+inside an allowed phrase is skipped ("Cheap Eats Co" is not a use of "cheap"), and the spelling check accepts them.
+`placeholders` adds regular expressions to the
 `placeholders` check (leftover template copy). `suites` names library suites that every document in the
 workspace inherits by reference (see [library suites](../automation/production.md#library-suites-shared-by-a-group-or-the-workspace)).
+
+### Spelling
+
+`check --checks spelling` (opt-in, from the spelling plugin) lists every word of the drawn text that the
+dictionary does not know as a `review` finding with `code: unknown-word`, the `word` and up to three
+`suggestions`; a `text` suite rule with `spelling: true` fails on them instead. URLs, domains, emails, `@handles`,
+`#hex` colours and hashtags, numbers, words with digits and all-capital words of four letters or fewer are
+skipped. Besides `words.allow`, the values of brand `facts` and a workspace `.vixl/dictionary.txt` (one word or
+phrase per line, `#` comments) are accepted. Over MCP it is `vixl_check(checks=["spelling"])`; on the CLI:
+
+```bash
+vixl new 800x500 -o poster.vixl --no-fonts
+vixl -p poster.vixl text add 'Grand openning this Saturday' --size 48
+vixl -p poster.vixl check --checks spelling     # "openning": suggestions opening, openings, opining
+```
+
+The language is the form settings `lang`, else the document `lang` (the `accessibility` operation), else `en`.
+English is bundled (a word list built from SCOWL, whose licence is in the list's header). Other languages come
+from `spelling-<lang>` content packs fetched through `vixl.packs`; none is published yet. Without the pack (or with
+`VIXL_PACK_DOWNLOAD=off` and no cached copy) the check gives one `dictionary-unavailable` review finding and the
+suite rule needs review: it never passes unchecked.
 
 ## One brand across several documents
 

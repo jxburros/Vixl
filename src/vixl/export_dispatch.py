@@ -367,3 +367,22 @@ def export(
     if path:
         Path(path).write_bytes(data)
     return data
+
+
+def export_checked(project, path, spec, **options):
+    """``export`` followed by the delivery check (export_checks): the result goes to ``report['export_check']``;
+    without a ``report`` a failing check raises ``export_check_failed`` after the file is written."""
+    from .errors import VixlError
+    from .export_checks import after_export, resolve_spec
+
+    resolve_spec(spec)  # a misspelled spec fails before anything is written
+    given = options.get("report") is not None
+    report = options["report"] = options["report"] if given else {}
+    data = export(project, path, **options)
+    result = report["export_check"] = after_export(project, data, path, options.get("format"), report, True, spec,
+                                                   options)
+    if not given and not result["passed"]:
+        raise VixlError("export_check_failed", f"The exported file fails {result['errors']} delivery check(s): "
+                        + "; ".join(item["message"] for item in result["issues"] if item["action"] == "fix")[:600],
+                        report=result)
+    return data

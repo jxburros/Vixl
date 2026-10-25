@@ -11,7 +11,7 @@ from . import natural_guidance, object_plan, plugins, variations
 
 ACTIONS = {
     "check": ({"suite", "suites", "mode", "variables", "artboard", "page", "comp", "artboards", "pages", "comps",
-               "include_hidden"}, set()),
+               "include_hidden", "locales"}, set()),
     "act": ({"operations", "suites", "dry_run", "repair"}, {"operations"}),
     "capture": ({"recipe", "bindings", "output"}, {"recipe", "output"}),
     "plan": ({"spec"}, {"spec"}),
@@ -195,6 +195,8 @@ def dispatch(session, action, request, document=None):
     with session.project(document=document) as project:
         project = project.clone()
     if action == "check":
+        if "locales" in request:
+            return check_variants(project, request)
         return check_suites(project, request)
     if action == "run":
         return run(project, request["spec"], session.resolve(request["output"]))
@@ -232,6 +234,16 @@ def dispatch(session, action, request, document=None):
         "size": list(image.size),
         "generation_calls": 0,
     }
+
+
+def check_variants(project, request):
+    """Workflow check with ``locales``: the locale report from the plugin that owns the axis (``check-variants``)."""
+    extra = sorted(set(request) - {"locales", "suite", "suites", "variables"})
+    require(not extra, f"With locales, check takes suite, suites and variables only, not {', '.join(extra)}",
+            field=extra[0] if extra else None)
+    report = plugins.first("check-variants", project, request)
+    require(report is not None, "No plugin checks locales; the localization plugin is not available", field="locales")
+    return report
 
 
 def check_suites(project, request):
@@ -285,6 +297,30 @@ def cli(args, options, limits):
     request = read_json(a.request) if a.request else {}
     session = Session(options.project, limits, workspace=a.workspace)
     return dispatch(session, a.action, request)
+
+
+def brand_profile_cli(args):
+    """``vixl brand import|export --design-profile FILE.json [OUT] [--preset NAME] [--overwrite] [--workspace DIR]``:
+    the brand-import and brand-export workflow actions (the brand kit plugin), dispatched by name."""
+    from .commands import Parser
+    from .interfaces import Session
+
+    parser = Parser(prog="vixl brand", description="Import a Design Profile into brand.json, or export brand.json "
+                    "as one")
+    parser.add_argument("action", choices=["import", "export"])
+    parser.add_argument("target", nargs="?", help="import: the brand file to write (default brand.json)")
+    parser.add_argument("--design-profile", dest="design_profile", required=True,
+                        help="import: the Design Profile JSON to read; export: the one to write (workspace-relative)")
+    parser.add_argument("--preset", help="export: a preset name from brand.json presets")
+    parser.add_argument("--workspace", default=str(Path.cwd()))
+    parser.add_argument("--overwrite", action="store_true", help="Replace an existing output file")
+    a = parser.parse_args(args)
+    session = Session(workspace=a.workspace)
+    if a.action == "import":
+        request = {"profile": a.design_profile, "overwrite": a.overwrite, **({"output": a.target} if a.target else {})}
+        return dispatch(session, "brand-import", request)
+    request = {"output": a.design_profile, "overwrite": a.overwrite, **({"preset": a.preset} if a.preset else {})}
+    return dispatch(session, "brand-export", request)
 
 
 def _check_types(action, request):

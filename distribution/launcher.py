@@ -83,7 +83,8 @@ def main():
         controls = any(x in ("update", "updates") for x in args)
         read_only = any(arg in ("--version", "--help", "-h", "--runtime-info") for arg in args) or control_args[:1] == ["help"]
         allow = os.environ.get("VIXL_NO_UPDATE") != "1" and not controls and not read_only
-        exe, due = updater.prepare_launch(root, allow_updates=allow)
+        # The host task's own launch starts the activated runtime itself; any other launch restarts the task onto it.
+        exe, due = updater.prepare_launch(root, allow_updates=allow, restart_host=args[:1] != ["host"])
         env = updater.child_environment(root)
         if due:
             try:

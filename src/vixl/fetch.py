@@ -16,6 +16,9 @@ only the proxy can.
 servers); the HTTPS, credential, redirect and size rules still apply. ``VIXL_FETCH_HOSTS`` (a comma
 list of hosts and ``*.suffix`` patterns) limits explicit URL imports to those hosts.
 ``VIXL_OFFLINE=1`` turns off every network access Vixl makes on its own (``network_allowed``).
+
+``post_bounded`` sends a small POST (completion webhooks) under the same name, address and offline rules, never
+follows a redirect, and accepts plain HTTP only to a loopback address when the caller allows it.
 """
 
 from datetime import datetime, timezone
@@ -56,9 +59,27 @@ def offline():
     return _flag(OFFLINE_ENV)
 
 
-def network_allowed(purpose):
-    """Refuse with ``network_disabled`` when offline mode is on; every network entry point calls this first."""
-    if offline():
+# URL prefixes offline mode still lets through: the AI gateway ``vixl host --provider studio`` names, and nothing else.
+OFFLINE_EXCEPTIONS = set()
+
+
+def allow_offline(prefix):
+    """Let ``network_allowed(purpose, url)`` pass for URLs under ``prefix`` (scheme, host, port and path) while offline."""
+    OFFLINE_EXCEPTIONS.add(prefix.rstrip("/") + "/")
+
+
+def disallow_offline(prefix):
+    OFFLINE_EXCEPTIONS.discard(prefix.rstrip("/") + "/")
+
+
+def offline_exception(url):
+    return isinstance(url, str) and any(url.startswith(prefix) for prefix in OFFLINE_EXCEPTIONS)
+
+
+def network_allowed(purpose, url=None):
+    """Refuse with ``network_disabled`` when offline mode is on; every network entry point calls this first. A ``url``
+    under a prefix ``allow_offline`` registered passes."""
+    if offline() and not offline_exception(url):
         raise VixlError("network_disabled", f"{purpose} needs the network, and {OFFLINE_ENV}=1 turns network "
                         "access off", suggestions=[f"Unset {OFFLINE_ENV} (or drop --offline) to allow it",
                                                    "Use a local file or the font cache instead"])
@@ -138,11 +159,26 @@ def _proxied(host):
     return not urllib.request.proxy_bypass_environment(host, proxies)
 
 
-def check_url(url, label="URL", *, allow_list=True):
-    """Validate scheme, credentials and (with ``allow_list``) the ``VIXL_FETCH_HOSTS`` list; return the parsed URL."""
+def loopback(host):
+    """True for ``localhost`` and loopback address literals."""
+    host = (host or "").lower().rstrip(".")
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def check_url(url, label="URL", *, allow_list=True, loopback_http=False):
+    """Validate scheme, credentials and (with ``allow_list``) the ``VIXL_FETCH_HOSTS`` list; return the parsed URL.
+    ``loopback_http`` also accepts ``http://`` to a loopback host (a receiver on the same machine)."""
     require(isinstance(url, str) and url.strip(), f"{label} must be a non-empty string", field="url")
     parts = urlsplit(url.strip())
-    require(parts.scheme.lower() == "https", f"{label} downloads require HTTPS", "unsafe_url", field="url")
+    scheme = parts.scheme.lower()
+    plain = loopback_http and scheme == "http" and loopback(parts.hostname)
+    require(scheme == "https" or plain, f"{label} requires HTTPS (plain HTTP only to a loopback address)"
+            if loopback_http else f"{label} downloads require HTTPS", "unsafe_url", field="url")
     require(parts.username is None and parts.password is None, "URLs cannot contain credentials",
             "unsafe_url", field="url")
     require(parts.hostname, f"{label} has no host", "unsafe_url", field="url")
@@ -159,7 +195,7 @@ def check_url(url, label="URL", *, allow_list=True):
 
 def _target(parts, proxied, label):
     """Check the host's addresses; return the address to connect to (None: connect by name)."""
-    host, port = parts.hostname, parts.port or 443
+    host, port = parts.hostname, parts.port or (80 if parts.scheme.lower() == "http" else 443)
     try:
         literal = ipaddress.ip_address(host)
     except ValueError:
@@ -189,7 +225,7 @@ def _target(parts, proxied, label):
     return None if proxied else addresses[0]
 
 
-def _pinned_request(client, parts, address, accept):
+def _pinned_request(client, parts, address, accept, method="GET", content=None, headers=None):
     host = parts.hostname
     netloc = f"[{address}]" if ":" in address else address
     if parts.port:
@@ -198,8 +234,8 @@ def _pinned_request(client, parts, address, accept):
     if parts.port:
         host_header += f":{parts.port}"
     url = parts._replace(netloc=netloc).geturl()
-    headers = {"Host": host_header, "Accept": accept, "User-Agent": "vixl"}
-    return client.build_request("GET", url, headers=headers, extensions={"sni_hostname": host})
+    headers = {**(headers or {}), "Host": host_header, "Accept": accept, "User-Agent": "vixl"}
+    return client.build_request(method, url, headers=headers, content=content, extensions={"sni_hostname": host})
 
 
 def fetch_bounded(url, limit, *, accept="*/*", label="URL", allow_list=True):
@@ -252,3 +288,34 @@ def fetch_bounded(url, limit, *, accept="*/*", label="URL", allow_list=True):
             info["requested_url"] = url.strip()
         return data, info
     raise VixlError("fetch_failed", f"{label} redirected more than {MAX_REDIRECTS} times", field="url")
+
+
+def post_bounded(url, content, headers, *, label="Webhook", allow_list=False, loopback_http=False, limit=65536):
+    """POST ``content`` (bytes) to ``url`` under the network policy above and return ``{"status": HTTP status}``.
+    A redirect is not followed (it is returned as its status), and at most ``limit`` bytes of the answer are read and
+    dropped. Transport failures raise ``fetch_failed``."""
+    network_allowed(f"{label} delivery")
+    parts = check_url(url, label, allow_list=allow_list, loopback_http=loopback_http)
+    proxied = parts.scheme.lower() == "https" and _proxied(parts.hostname)
+    address = _target(parts, proxied, label)
+    client = httpx.Client(timeout=TIMEOUT, follow_redirects=False, trust_env=proxied)
+    try:
+        if address is None:
+            request = client.build_request("POST", url.strip(), content=content,
+                                           headers={**headers, "User-Agent": "vixl"})
+        else:
+            request = _pinned_request(client, parts, address, "*/*", "POST", content, headers)
+        response = client.send(request, stream=True)
+        try:
+            read = 0
+            for chunk in response.iter_bytes():
+                read += len(chunk)
+                if read > limit:
+                    break
+            return {"status": response.status_code}
+        finally:
+            response.close()
+    except httpx.HTTPError as exc:
+        raise VixlError("fetch_failed", f"{label} delivery failed ({type(exc).__name__})", field="url") from exc
+    finally:
+        client.close()

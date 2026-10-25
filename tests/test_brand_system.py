@@ -268,6 +268,43 @@ def test_logo_clear_space_and_minimum_size(tmp_path):
     assert small and small[0]["minimum"] == pytest.approx(118.11, abs=0.1) and small[0]["measured"] == 100
 
 
+def variant_document(tmp_path, ground):
+    write(tmp_path, {"palette": {**PALETTE, "extra": {"brand-dark": "#102040"}},
+                     "logo": {"variants": {"reversed": {"layers": "logo-rev*", "backgrounds": ["dark", "@brand-dark"]},
+                                           "full": {"layers": ["logo-full"], "backgrounds": ["light"]}}}})
+    p = document(tmp_path, 600, 400)
+    p.apply([{"type": "solid", "color": ground, "name": "paper"},
+             {"type": "shape", "shape": "rectangle", "name": "logo-rev-mark", "x": 40, "y": 40, "width": 120,
+              "height": 60, "fill": "#ffffff"},
+             {"type": "shape", "shape": "rectangle", "name": "panel", "x": 300, "y": 200, "width": 300, "height": 200,
+              "fill": "#102040"},
+             {"type": "shape", "shape": "rectangle", "name": "logo-rev-corner", "x": 400, "y": 260, "width": 120,
+              "height": 60, "fill": "#ffffff"}])
+    return p
+
+
+def test_reversed_logo_on_light_background_is_a_fix(tmp_path):
+    p = variant_document(tmp_path, "#ffffff")
+    found = [i for i in p.check(checks=["brand"])["issues"] if i.get("code") == "logo-variant-background"]
+    # The mark sits on white paper; the corner copy sits on the approved brand-dark panel.
+    assert [i["layers"] for i in found] == [["logo-rev-mark"]]
+    assert found[0]["action"] == "fix" and found[0]["severity"] == "error"
+    assert found[0]["tone"] == "light" and found[0]["background"] == "#ffffff"
+    assert found[0]["variant"] == "reversed" and found[0]["approved"] == ["dark", "@brand-dark"]
+    dark = variant_document(tmp_path, "#1a1a1a")
+    assert not [i for i in dark.check(checks=["brand"])["issues"] if i.get("code") == "logo-variant-background"]
+
+
+def test_logo_variants_are_validated(tmp_path):
+    write(tmp_path, {"palette": dict(PALETTE),
+                     "logo": {"variants": {"reversed": {"layers": "logo-rev*", "backgrounds": ["@brand-dark"]}}}})
+    with pytest.raises(VixlError, match="brand-dark"):
+        load(tmp_path)
+    write(tmp_path, {"logo": {"variants": {"reversed": {"layers": "logo-rev*"}}}})
+    with pytest.raises(VixlError, match="backgrounds"):
+        load(tmp_path)
+
+
 def test_brand_rules_run_as_a_suite_design_rule(tmp_path):
     write(tmp_path, {"palette": dict(PALETTE), "colors": {"strict": True}})
     p = document(tmp_path, 200, 200)
@@ -620,3 +657,21 @@ def test_validate_flags_style_guidance_colours_and_undefined_template_font_roles
     assert any("styles.loud" in w and "#ff00ff" in w and "#ffffff" not in w for w in warnings)
     assert any("'script'" in w and "aside" in w for w in warnings)
     assert not any("'hand'" in w for w in warnings)
+
+
+@pytest.mark.parametrize("extra", [{"wood": "#d2a465"},
+                                   {"wood": {"color": "#d2a465", "max_fraction": 0.15}, "ballpoint": "#1f3a93"}])
+def test_new_roll_and_layout_in_a_workspace_whose_brand_has_extra_colours(tmp_path, monkeypatch, extra):
+    # The rolled palette takes the brand's roles; palette.extra is a table of approved colours, not a role.
+    from vixl.cli import main
+
+    (tmp_path / "brand.json").write_text(json.dumps({"palette": {"background": "#fffaf0", "accent": "#c0392b",
+                                                                 "extra": extra}}))
+    monkeypatch.chdir(tmp_path)
+    doc = str(tmp_path / "card.vixl")
+    # Fixed seeds: with this pair layout-apply rolls a look onto a layer that lies off the canvas.
+    assert main(["new", "400x300", "-o", doc, "--no-fonts", "--seed", "1003002219"]) == 0
+    assert Project.load(doc).state["canvas"]["background"] == "#fffaf0"
+    assert main(["--project", doc, "roll", "--apply", "--seed", "32114233"]) == 0
+    assert main(["--project", doc, "layout", "apply", "event-poster", "--replace"]) == 0
+    assert Project.load(doc).state["swatches"]["accent"] == "#c0392b"

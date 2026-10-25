@@ -25,7 +25,81 @@ def install(tmp_path, monkeypatch):
         {"protocol": 1, "current": "0.7.0", "previous": None, "pending": None, "auto": True, "last_check": 0},
     )
     monkeypatch.setenv("VIXL_MANAGED_ROOT", str(root))
+    # No host.json from the machine running the tests: the host task restart stays off unless a test asks for it.
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "localappdata"))
     return root
+
+
+@pytest.fixture
+def host_task(tmp_path, monkeypatch):
+    """host.json as the installer writes it, and every schtasks call recorded instead of run."""
+    config = tmp_path / "localappdata" / "Vixl" / "host.json"
+    config.parent.mkdir(parents=True, exist_ok=True)
+    config.write_text(json.dumps({"url": "http://127.0.0.1:8767", "token_file": str(config.with_name("host-token"))}))
+    calls = []
+
+    def run(command, **kwargs):
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, b"", b"")
+
+    monkeypatch.setattr(u.subprocess, "run", run)
+    return calls
+
+
+RESTART = [["schtasks", "/End", "/TN", "Vixl host"], ["schtasks", "/Run", "/TN", "Vixl host"]]
+
+
+def test_activating_a_version_restarts_the_host_task_when_host_json_exists(install, monkeypatch, host_task):
+    release_fixture(monkeypatch)
+    monkeypatch.setattr(u, "probe", lambda *a, **kw: None)
+    assert u.update(install)["status"] == "updated"  # explicit update activates at once
+    assert host_task == RESTART
+    host_task.clear()
+    u.rollback(install)
+    assert host_task == RESTART
+
+
+def test_a_pending_activation_restarts_the_task_unless_the_launch_is_the_host(install, monkeypatch, host_task):
+    release_fixture(monkeypatch)
+    monkeypatch.setattr(u, "probe", lambda *a, **kw: None)
+    assert u.update(install, automatic=True)["status"] == "ready"
+    assert host_task == []  # staging a version restarts nothing
+    state = u.read_state(install)
+    u.prepare_launch(install, restart_host=False)  # the host task's own launch starts the new runtime itself
+    assert host_task == [] and u.read_state(install)["current"] == "0.8.0"
+    u.atomic_json(install / "install.json", {**state, "pending": "0.8.0"})
+    u.prepare_launch(install)
+    assert host_task == RESTART
+    host_task.clear()
+    u.prepare_launch(install)  # nothing pending: nothing to restart
+    assert host_task == []
+
+
+def test_an_installer_upgrade_restarts_the_host_task(install, monkeypatch, host_task):
+    monkeypatch.setattr(u, "probe", lambda *a, **kw: None)
+    u.initialize(install, "0.7.0")  # a repair of the same version restarts nothing
+    assert host_task == []
+    u.initialize(install, "0.9.0")
+    assert host_task == RESTART
+
+
+def test_no_host_json_means_no_restart(install, monkeypatch):
+    release_fixture(monkeypatch)
+    monkeypatch.setattr(u, "probe", lambda *a, **kw: None)
+    monkeypatch.setattr(u.subprocess, "run", lambda *a, **kw: pytest.fail("schtasks must not run"))
+    assert u.update(install)["status"] == "updated"
+    assert u.restart_host_task() == {"restarted": False}
+
+
+def test_a_failed_restart_never_fails_the_update(install, monkeypatch, host_task):
+    def broken(command, **kwargs):
+        raise OSError("schtasks is missing")
+
+    monkeypatch.setattr(u.subprocess, "run", broken)
+    result = u.restart_host_task()
+    assert result["restarted"] is False and "schtasks is missing" in result["error"]
+    monkeypatch.setattr(u.subprocess, "run", lambda command, **kw: subprocess.CompletedProcess(command, 1, b"", b""))
+    assert u.restart_host_task()["error"] == "schtasks /Run exited with 1"
 
 
 def bundle_bytes(members=None):
@@ -572,6 +646,21 @@ def test_launcher_alias_root_fallback_order(install, monkeypatch, alias, tmp_pat
     assert launcher.resolve_root(alias, {}) == alias.resolve().parent.parent
 
 
+@pytest.mark.parametrize("argv, restart", [(["host", "--root", "r"], False), (["--json", "info"], True)])
+def test_the_launcher_does_not_restart_the_host_task_from_its_own_launch(install, monkeypatch, argv, restart):
+    import sys
+
+    launcher = load_launcher(monkeypatch)
+    monkeypatch.setattr(sys, "executable", str(install / "bin/vixl.exe"))
+    monkeypatch.setattr(sys, "argv", ["vixl", *argv])
+    seen = []
+    monkeypatch.setattr(u, "prepare_launch", lambda root, allow_updates=True, restart_host=True: (
+        seen.append(restart_host) or (u.executable(root, "0.7.0"), False)))
+    monkeypatch.setattr(subprocess, "call", lambda cmd, env: 0)
+    assert launcher.main() == 0
+    assert seen == [restart]
+
+
 def test_registry_root_lookup_never_raises(monkeypatch):
     launcher = load_launcher(monkeypatch)
     value = launcher.registry_install_root()
@@ -589,7 +678,7 @@ def test_launcher_alias_copy_runs_installed_engine_and_respawns_itself(install, 
     monkeypatch.setattr(sys, "executable", str(alias))
     monkeypatch.setattr(sys, "argv", ["vixl", "--version"])
     monkeypatch.setattr(
-        u, "prepare_launch", lambda root, allow_updates=True: (u.executable(root, "0.7.0"), True)
+        u, "prepare_launch", lambda root, allow_updates=True, restart_host=True: (u.executable(root, "0.7.0"), True)
     )
     calls = []
     monkeypatch.setattr(subprocess, "call", lambda cmd, env: calls.append((cmd, env)) or 0)

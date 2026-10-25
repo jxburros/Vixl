@@ -87,7 +87,18 @@ def list_fonts(category=None, role=None, mood=None, query=None):
                 "mood": entry.get("mood", []),
             }
         )
-    return {"fonts": rows, "count": len(rows), "categories": sorted({e["category"] for e in fonts()})}
+    from . import system_fonts
+
+    installed = system_fonts.mode() != "off"
+    for row in rows if installed else ():
+        if system_fonts.installed_family(row["family"]):
+            row["installed"] = True
+    result = {"fonts": rows, "count": len(rows), "categories": sorted({e["category"] for e in fonts()})}
+    if installed:
+        result["installed_here"] = ("installed: true marks catalog families installed on this machine; any installed "
+                                    "family works as a text font by name (vixl font system, "
+                                    "vixl_reference('fonts', view='installed'))")
+    return result
 
 
 def show_font(family):
@@ -130,6 +141,11 @@ def list_pairings(mood=None, best_for=None, family=None, relationship=None, *, f
     result = {"pairings": rows, "count": len(rows)}
     if not full:
         result["detail"] = "vixl font pairing NAME (vixl_reference('fonts') view=pairing) explains why a pairing works"
+    from . import system_fonts
+
+    if system_fonts.mode() != "off":
+        result["installed_here"] = ("fonts installed on this machine work by name too (font: 'Family Style'); "
+                                    "vixl_reference('fonts', view='installed') lists them")
     return result
 
 
@@ -460,7 +476,8 @@ def cached_font(family, weight=400, italic=False):
 def local_script_faces(families):
     """Font bytes for ``families`` (catalog faces of scripts the bundled fonts lack, such as Noto Sans SC) that are
     already on this machine: the ``cjk`` content pack (``VIXL_CJK_PACK``: one font file, or a zip of files named like
-    the font cache), then every cached style of each family (left there by font-cover or font install). Never touches
+    the font cache), then every cached style of each family (left there by font-cover or font install), then the
+    regular face of each family installed on the machine (``system_fonts.script_faces``). Never touches
     the network: a render must not download, so a face that is not here leaves the characters to the apply warning."""
     from .packs import local
     from .text import file_bytes
@@ -486,6 +503,9 @@ def local_script_faces(families):
                 found.append(file_bytes(directory / name))
             except OSError:
                 continue
+    from .system_fonts import script_faces
+
+    found += script_faces(families)
     return [data for data in dict.fromkeys(found) if data is not None and _usable_face(data)]
 
 
@@ -828,15 +848,15 @@ def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood
 
     require(isinstance(slots or {}, dict) and set(slots or {}) <= set(CONTENT_KEYS),
             f"slots must contain layout content fields ({', '.join(CONTENT_KEYS)})", field="slots")
-    from .brand import for_project, load
+    from .brand import for_project, load, role_colors
     from .normalize import roll_locks
 
     kit = for_project(project) if project else load(workspace)
     choices = roll_locks(locks)
     if kit.get("pairing"):
         choices.setdefault("pairing", kit["pairing"])
-    if kit.get("palette"):
-        palette = list(kit["palette"].values())
+    if role_colors(kit):
+        palette = list(role_colors(kit).values())  # palette.extra holds approved colours, not roles to roll
         choices.setdefault("palette", palette if len(palette) > 1 else palette + ["#ffffff"])
     if project and canvas is None:
         c = project.state["canvas"]
@@ -852,8 +872,8 @@ def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood
                   variety=variety, recent=recent, recommend=recommend, content=tuple(slots or ()),
                   brief_moods=brief_moods)
     result["purpose_source"] = source
-    if kit.get("palette") and not (locks or {}).get("palette"):
-        result["operation"]["colors"] = kit["palette"]
+    if role_colors(kit) and not (locks or {}).get("palette"):
+        result["operation"]["colors"] = role_colors(kit)
     unfilled = unfilled or ("omit" if slots else "blank")
     if unfilled == "omit":
         result["operation"]["unfilled"] = unfilled

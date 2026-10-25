@@ -15,8 +15,8 @@ from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
 
-from ...assets import open_image
 from ...errors import VixlError, require
+from ...export_checks import pdf_metadata, raster_metadata
 from ...image_diff import RASTER, VISUAL, load_visual
 from ...model import Limits
 from ...outcomes import make, summarize
@@ -71,23 +71,6 @@ def _data_uri(image, max_size):
     return "data:image/png;base64," + base64.b64encode(encode_png(image, IMAGE_BYTES)).decode("ascii")
 
 
-def _pdf_metadata(data):
-    spaces = [name for name in ("DeviceCMYK", "DeviceRGB", "DeviceGray", "ICCBased") if f"/{name}".encode() in data]
-    meta = {"color": ", ".join(spaces) or "unknown"}
-    try:
-        import pypdfium2
-
-        document = pypdfium2.PdfDocument(data)
-        try:
-            width, height = document[0].get_size()
-            meta.update(pages=len(document), page_size=f"{width:g} × {height:g} pt")
-        finally:
-            document.close()
-    except Exception:  # noqa: BLE001 - metadata stays best-effort without pypdfium2 or for odd PDFs
-        pass
-    return meta
-
-
 def describe(path, limits, *, check=True, max_size=1200, overlay=False):
     """Thumbnail, metadata and (for documents) check findings of one file. ``overlay`` outlines the fix
     findings on the thumbnail with their rule and layer ID (feedback.draw_overlay)."""
@@ -128,6 +111,11 @@ def describe(path, limits, *, check=True, max_size=1200, overlay=False):
                 **({"omitted": len(report["issues"]) - MAX_ISSUES} if len(report.get("issues", [])) > MAX_ISSUES else {}),
             }
         record["image"] = _data_uri(image, max_size)
+        from .approval import report as approval_report
+
+        approval = approval_report(project)
+        if approval["state"] != "never-approved":
+            record["approval"] = {key: approval[key] for key in ("state", "who", "when", "changed_fraction")}
         return record
     if suffix == ".svg":
         text = data.decode("utf-8", "replace")
@@ -142,21 +130,14 @@ def describe(path, limits, *, check=True, max_size=1200, overlay=False):
         record["image"] = _data_uri(image, max_size)
         return record
     if suffix == ".pdf":
-        meta.update(_pdf_metadata(data))
+        meta.update(pdf_metadata(data))
         try:
             record["image"] = _data_uri(load_visual(path, limits, data=data), max_size)
         except VixlError as exc:
             record["note"] = exc.args[0]
         return record
     if suffix in RASTER:
-        with open_image(data) as source:
-            meta.update(size=f"{source.width} × {source.height} px", color=source.mode)
-            if source.info.get("dpi"):
-                meta["dpi"] = round(float(source.info["dpi"][0]))
-            if source.info.get("icc_profile"):
-                meta["icc_profile"] = True
-            if getattr(source, "n_frames", 1) > 1:
-                meta["frames"] = source.n_frames
+        meta.update(raster_metadata(data))
         record["image"] = _data_uri(load_visual(path, limits, data=data), max_size)
         return record
     record["note"] = "No preview for this format"
@@ -260,6 +241,13 @@ def _card(index, item, record, decisions):
         if waivers.get("active") or waivers.get("expired"):
             parts.append(f"<div><b>Waivers</b><ul>{''.join(_waiver_line(w, False) for w in waivers.get('active', []))}"
                          f"{''.join(_waiver_line(w, True) for w in waivers.get('expired', []))}</ul></div>")
+    approval = record.get("approval")
+    if approval:
+        changed = approval["state"] == "changed"
+        text = (f"changed since approval ({approval['changed_fraction']:.1%})" if changed else "approved") + \
+            f" · {approval['who']}, {str(approval['when'])[:10]}"
+        parts.append(f'<div><span class="badge {"warnc" if changed else "pass"}" data-approval="{approval["state"]}">'
+                     f'{escape(text)}</span></div>')
     compare = record.get("compare")
     if compare:
         region = compare["changed_region"]

@@ -929,10 +929,16 @@ class Project:
         return buffer.getvalue()
 
     @memory_guard
-    def export(self, path=None, **options):
-        from .export_dispatch import export
+    def export(self, path=None, *, check=False, spec=None, **options):
+        """Render and encode (export_dispatch.export lists the options). ``check=True`` or a delivery ``spec`` (a
+        preset name such as ``print-letter-bleed`` or inline fields, see export_checks) reads the written file back
+        and checks it: the result goes to ``report['export_check']``; without a ``report`` a failing check raises
+        ``export_check_failed`` (the file is still written)."""
+        from .export_dispatch import export, export_checked
 
-        return export(self, path, **options)
+        if not check and spec is None:
+            return export(self, path, **options)
+        return export_checked(self, path, spec, **options)
 
     def measure_spacing(self, **options):
         from .spacing import measure_spacing

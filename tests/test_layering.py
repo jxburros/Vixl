@@ -13,7 +13,7 @@ LEAF = {"errors", "constants", "hashing", "model", "house_style", "sdk_compat", 
 CORE = {"history", "fileio", "normalize", "schema", "validation", "targets", "project", "operations", "registry",
         "render"}
 INTERFACES = {"cli", "cli_summary", "commands", "interfaces", "mcp_actions", "mcp_runtime", "mcp_tools", "workflows",
-              "steps", "session", "design_cli", "feature_cli", "finishing_cli", "resource_cli", "__main__"}
+              "steps", "session", "design_cli", "feature_cli", "finishing_cli", "resource_cli", "host", "__main__"}
 BASELINE = Path(__file__).with_name("layering_baseline.json")
 
 

@@ -143,6 +143,59 @@ checks, render decisions and resume information. To send a set of exports for si
 [proof page](../automation/production.md#proof-pages): one offline HTML file with thumbnails, metadata, findings and
 approve/reject decisions; `vixl diff A B` shows what changed between two exports.
 
+## Verify the delivered file
+
+Checks look at the document; an export check reads the written file back and compares it with a **delivery spec**.
+It answers what the printer, platform or client will see: the PDF's page count, TrimBox and BleedBox, whether every
+font is embedded, its colour spaces, total ink and form fields; a raster file's size, dpi, ICC profile, mode, alpha
+and bytes; a PowerPoint deck's slides, text frames and native charts; and the external URLs of HTML and SVG.
+
+```bash
+vixl new letter --bleed -o flyer.vixl
+vixl -p flyer.vixl export flyer.pdf --cmyk
+vixl check-file flyer.pdf --spec print-letter-bleed
+vixl new 1080x1350 --background white -o post.vixl
+vixl -p post.vixl export post.jpg
+vixl check-file post.jpg --spec '{"preset": "instagram-feed", "max_bytes": 2000000}'
+vixl check-file post.jpg --document post.vixl
+vixl check-file --list
+```
+
+`check-file` exits with an error when a finding must be fixed, so it can gate a CI job. `--document` names the
+`.vixl` the file came from, so the fields that depend on the document (editable PowerPoint text when it has text,
+native charts when it has charts) know what to expect. Verification only reads the file.
+
+| Preset | What it asks for |
+| --- | --- |
+| `default` | PDF fonts embedded, HTML and SVG self-contained, PowerPoint text left editable (what `check: true` uses) |
+| `print-letter-bleed`, `print-a4-bleed` | PDF, Letter (A4) trim with 0.125 in (3 mm) bleed boxes, fonts embedded, CMYK, ink at most 300% |
+| `office-pdf` | PDF, fonts embedded, RGB |
+| `instagram-feed` | 1080 px wide JPEG or PNG between 4:5 and 1.91:1, RGB, no alpha, under 8 MB |
+| `web-banner` | PNG, JPEG, WebP or AVIF, RGB, at least 1200 px wide, under 300 KB |
+| `display-ad` | A standard IAB size, RGB, under 150 KB |
+| `slides-pptx` | PowerPoint with editable text and native charts |
+| `web-html` | HTML that loads nothing from the network or other files |
+
+Inline fields, alone or on top of a `preset`: `formats`, `max_bytes`, `pages` (a count or `[min, max]`), `trim` (a
+size name or `[width, height]` in points or with units such as `"8.5in"`), `bleed` (`"0.125in"`, `"3mm"`, points;
+`0` for none), `fonts_embedded`, `color` (`rgb`, `cmyk`, `gray`), `ink_limit` (percent), `fillable`, `width`, `height`,
+`min_width`, `min_height`, `sizes`, `aspect` (`[min, max]` width/height), `dpi` (minimum), `alpha`, `icc`,
+`editable_text`, `native_charts` (`true` or a minimum), `self_contained`, `notes` (HTML speaker notes) and
+`text_as_text` (SVG `<text>` kept).
+
+The same check runs on export: `vixl_export(path, options={"spec": "web-banner"})` (or `check: true` for the default
+checks), each target of a batch (`{"path": "a.png", "spec": "instagram-feed"}`) and `Project.export(path,
+spec=..., report=report)` put the result under `export_check`, and the export's `outcome` takes its validation. The
+export's own `max_bytes` and `fillable` become requirements. Without a `report`, `Project.export` raises
+`export_check_failed` when the file fails (the file is still written). Findings use the design-check shape:
+`check: "export"`, a `code` such as `font-not-embedded`, `bleed-box`, `trim-size`, `color`, `ink-limit`, `max-bytes`,
+`size`, `aspect`, `alpha`, `editable-text`, `remote-resource` or `linked-file`, `severity` and `action`.
+
+PDF pages, boxes, fonts and the rendered ink come from pypdfium2 (`pip install 'vixl-engine[pdf]'`). Without it a
+byte scan of the PDF's objects reads the boxes, fonts and form fields, and the ink of a CMYK file from its colour
+operators and images; ink that needs a render is reported as unmeasured (`validation: incomplete`), never as a pass.
+A file whose bytes do not match its extension, or that cannot be decoded, is a `format-mismatch` or `unreadable` fix.
+
 ## Package and re-check a delivery
 
 `vixl package` collects the finished exports of a campaign run (`--production out/production.json`) or a set of files

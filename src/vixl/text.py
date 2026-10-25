@@ -90,6 +90,12 @@ def primary_font_data(project, layer):
             return file_bytes(path)
         except OSError:
             _font_path.cache_clear()  # Uninstalled since it was found: font_for reports it.
+    if path is None and name and name not in BUNDLED_FONTS:
+        from .system_fonts import render_data
+
+        data = render_data(name)
+        if data is not None:
+            return data
     font = font_for(project, layer)
     path = font.path
     return path.getvalue() if hasattr(path, "getvalue") else file_bytes(path)
@@ -1311,3 +1317,26 @@ def font_digest(data):
 
     fonts = data if isinstance(data, tuple) else (data,)
     return hashlib.sha256(b"".join(hashlib.sha256(f).digest() for f in fonts)).hexdigest()
+
+
+# Fonts installed on this machine (system_fonts), for the renderer, which reaches font lookup through this module.
+FONT_FILE_EXTENSIONS = (".ttf", ".otf", ".ttc", ".otc")
+
+
+def installed_font_data(name):
+    from .system_fonts import render_data
+
+    return render_data(name)
+
+
+def installed_font_suggestions(name):
+    """(close installed family names, whether the installed-font lookup is on)."""
+    from .system_fonts import mode, suggest
+
+    return suggest(name), mode() != "off"
+
+
+def embed_installed_font(project, name):
+    from .system_fonts import embed
+
+    return embed(project, name)

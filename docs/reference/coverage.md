@@ -19,7 +19,7 @@ implementation, not a claim of production maturity or complete GIMP parity.
 | Add motion | Keyframe timelines, rigs, kinetic type, lyric videos, app-animation packages | No nested compositions or motion-path editor |
 | Use AI where it helps | Vision, generation and inpainting through providers you configure | Needs a real service; Vixl ships no model weights |
 
-Counts at 0.27: **261** operation types, **151** named sizes, **53** layouts, **61** templates, **74** palettes,
+Counts at 0.27: **262** operation types, **151** named sizes, **53** layouts, **61** templates, **74** palettes,
 **28** design styles, **20** looks, **17** brushes, **19** artistic filters and **34** organic presets. `vixl schema`,
 `vixl sizes`, `vixl layouts`, `vixl template list`, `vixl palette list`, `vixl styles list`, `vixl looks`,
 `vixl brushes` and `vixl organics` list the current sets, and a test fails when these numbers drift.
@@ -64,6 +64,7 @@ The table records the release in which each area arrived, for readers upgrading 
 | Gradient shapes, concurrency and speed (0.29) | `fill_gradient` on shapes in PNG, SVG, PDF and PPTX; default call limits, a hard timeout and a bounded REST queue on network servers; documents served in parallel; cheaper applies and saves; a thread pool for effect-heavy layers, incremental lit scenes and per-pixel adjustments, worker processes for long timeline exports ([render performance](../project/render-performance.md)) |
 | Textures (0.30) | 72 seamless, seeded built-in patterns for `pattern-fill` and `pattern-stroke` in four families (geometric, textile, material, natural), each described with a default cell size by `pattern-list`; 13 `drawn-texture` media presets ([media craft](../guides/images/media-craft.md)) |
 | Craft, objects and brand packages (0.31) | Small caps, hanging punctuation, accent words, `callout`/`band`/`labelled-rule` containers; hierarchy findings, `variations`, an eval craft grader; zero to three rolled accents and brief-weighted palettes; flex and grid stacks, recomposing `adapt-layout` with focal crops and arrangements; fog and motif shapes; the house illustration finish; Noto Sans proofing face and local CJK, Devanagari and Thai faces; object build blocks, the `object` check, outline policy, `object-plan`; pack assets, `asset-place`, text line anchors and `=` expressions, `brand-logo`, brand elements and styles, `vixl brand init|pack|install`; [merch mockups](../guides/output/merch-mockups.md) and print-ready art; `.vixlchar` character packages; render lockfile v2 and `vixl package` |
+| Multi-document automation and hosting (0.32) | Suite `ref` rules and `budget` limits; export checks with delivery specs and `vixl check-file`; `vixl approve`, `vixl links impact`, `check --locales` and the `spelling` check; `pipeline-run` with run records, completion webhooks, `vixl watch`, `data-sync`, `localize` and `bulk-upgrade`; [`vixl host`](interfaces.md#hosting-vixl) with its API schema, the `studio` provider, a container image and a Windows host task; fonts installed on the machine by name (`vixl font system`) |
 | Further concepts | Opt-in linked images; dependencies/reproducibility inspection; opt-in filter/provider entry-point plugins; bounded archives and images; structured errors; test/CI workflow |
 
 ## Explicit boundaries

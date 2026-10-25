@@ -2,7 +2,7 @@
 
 [Documentation home](../README.md) · [House style decisions](house-style.md) · [Releases](../reference/releases.md) · [Changelog](../../CHANGELOG.md)
 
-This plan ordered the open issues after 0.24.0. Releases 0.25.0 to 0.31.0 have shipped since: the "What … settled"
+This plan ordered the open issues after 0.24.0. Releases 0.25.0 to 0.31.0 have shipped since, and step 7 is built for the next: the "What … settled"
 sections record what each one settled, and the open work is under Craft and Later. Each issue was rated for **complexity** (C1 a few hours, C2 about a
 day, C3 several days, C4 one to two weeks, C5 several weeks or open-ended) and **payoff** (P1 cosmetic or rare, P2 a
 narrow workflow, P3 a common workflow, P4 changes results for most agents, P5 first impression or correctness of
@@ -16,7 +16,8 @@ tests and ratings, and a release order across all of them.
 Its steps 0 to 6 are done (housekeeping, release blockers, security and project hygiene, check noise, layout and
 agent cost in 0.28.0; concurrency, structure and rendering speed in 0.29.0, with the speed
 decisions in [render performance](render-performance.md); craft, objects and brand packages in 0.31.0, apart from
-the blind craft re-judge); step 7, multi-document automation and hosting, is next.
+the blind craft re-judge; step 7, multi-document automation and hosting, in the Unreleased section of the
+[changelog](../../CHANGELOG.md)); step 8, motion and media, is next.
 
 ## What 0.22.1 settled
 
@@ -144,6 +145,34 @@ which needs a paid agent run and judges:
   packages in one object library (#521), render lockfiles over every page, frame and export, and deliverable
   packages (#512, #573).
 
+## What step 7 settles (unreleased)
+
+Step 7 of the [implementation plan](implementation-plan.md#step-7-multi-document-automation-and-hosting), built for
+the next release, adds checks and automation across many documents (#549) and `vixl host` (#535), plus fonts
+installed on the machine:
+
+- **Foundations:** one `job-complete` event for durable jobs, check-all and pipeline runs, and plugin job kinds (F2);
+  the run record and pipeline runner (F1, #568); the workspace dependency graph (F3) and "evaluate a copy, commit only
+  if clean" (F4) in `workspace_qa`.
+- **Checks across documents:** suite rules that reference another document (#558), render-time and over-resolution
+  budgets and the `budget` check (#564), post-export checks with delivery specs and `vixl check-file` (#557),
+  approved baselines (#559), link impact (#560), the locale check (#565), spelling with brand word lists (#554) and
+  logo variants on approved backgrounds (#555).
+- **Automation:** pipelines with resumable run records (#568), completion webhooks (#579), watch mode with save,
+  source, brand, data and schedule triggers (#569, which absorbs the schedule part of #577), data sync (#572),
+  localized variants with right-to-left mirroring (#576, folding in #171) and bulk structure upgrades (#578).
+- **Hosting:** `vixl host` with workspaces, revisioned documents, compose, preview, check, export jobs, catalogs, a
+  `studio` tool profile and a published API schema (#537-#541, #543); the brand route and Design Profile mapping
+  (#545); a `studio` AI provider against a proposed gateway contract (#544); a container image (#546) and a per-user
+  Windows host task (#547).
+- **Fonts:** any font installed on the machine works by family, style or PostScript name, is embedded in the
+  document, and is listed in the CLI, MCP, REST and Python API.
+- **Already shipped, to close with evidence:** #567 (JUnit and SARIF), #577 (run history; its schedule is in #569),
+  #542 (per-call limits) and #555 (now with logo variants).
+
+Open decisions from this step: Studio's gateway contract and its detection path for the Windows host task (#544,
+#547); whether the release workflow should trigger the container build (#546); an admin Windows service (not built).
+
 ## Rules for every release below
 
 - **Pre-release: breaking changes are allowed; note them in the changelog.** Default changes must still pass the
@@ -222,7 +251,6 @@ re-judge is published.
 
 | Issue | What | C | P | Note |
 | --- | --- | --- | --- | --- |
-| #171 | Translated variants with an overflow check | 3 | 3 | |
 | #266 | Non-rectangular canvas | 3 | 3 | Irregular image frames shipped in 0.24.0; a page clip shape in every exporter remains |
 | #218 | Drawing pipeline polish | 3 | 2 | Partly shipped: the paper's extent and `edge_closes` in 0.25.0, fills registered to their lines in 0.27.0; split what remains |
 | #177 | Lottie export | 5 | 3 | After motion features settle |

@@ -17,10 +17,10 @@ TOP_LEVEL_COMMANDS = tuple(
     "pack unpack new session open save status inspect describe layers effects manifest dependencies reproduce schema "
     "check batch convert convert-batch render export export-screens export-animation spacing pixels animation info "
     "sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert "
-    "validate preset ai ask generate detect ocr serve view notes import mcp update updates cache commands shapes "
+    "validate preset ai ask generate detect ocr serve view host notes import mcp update updates cache commands shapes "
     "palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings "
     "timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose "
-    "house brand emoji capabilities catalog objects compact link-set package".split()
+    "house brand emoji capabilities catalog objects compact link-set package check-file approve".split()
 )
 
 

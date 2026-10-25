@@ -28,7 +28,8 @@ For any new piece, and above all an open-ended brief, follow this order instead 
 2. **Layout**: `vixl_reference('sizes')` → `vixl_document(action='create', size=…)` (or `purpose=`). With text,
    `vixl_reference('layouts')` → `layout-apply`, filling every slot it lists.
 3. **Fonts**: the first batch with text installs the pairing rolled at creation; to choose,
-   `vixl_reference('fonts')` → `font-pair`.
+   `vixl_reference('fonts')` → `font-pair`, or name a font installed on this machine
+   (`vixl_reference('fonts', view='installed')`).
 4. **Finish**: a `look` (glow, soft-shadow, grain, paper …); for a named style, `vixl_reference('styles')` and
    `style-set`.
 5. **Test**: write the brief's requirements as a suite before building (`suite-set`, or a starter with
@@ -73,7 +74,8 @@ Details: [workflow](references/workflow.md), [testing](references/testing.md).
 - **Palette roles follow light/dark mode** (`keep_order: true` to keep yours); small accent text uses
   `@accent-text`, not `@accent`.
 - **MCP/REST reject `path` and `linked` fields**: import files with an `import-image` step; `font` takes a
-  registered name or a role (`heading`, `body`).
+  registered name, a role (`heading`, `body`) or an installed font's name (`"Georgia Bold"`, embedded on use;
+  `vixl_reference('fonts', view='installed')` lists them).
 - **MCP paths are relative to `--workspace`.** Exports refuse to overwrite unless `overwrite: true`.
 - **Shared servers:** pass `document=` on every call. A slow call returns a `job`: poll
   `vixl_job(action="result", id, wait=30)`, never resend; use `request_id` on mutating calls.
@@ -116,7 +118,7 @@ The payload is always the operation list: when unsure of a field, `vixl_referenc
 | Brushes, timelines, video templates | [brushes-timeline](references/brushes-timeline.md) |
 | Artistic filters | [artistic-filters](references/artistic-filters.md) |
 | Emoji catalog, packs and exports | [emojis](references/emojis.md) |
-| Suites, campaigns, logo packages, lyric videos, jobs | [production](references/production.md) |
+| Suites, campaigns, pipelines, watch mode and schedules, data sync, webhooks, localization, approvals, link impact, packages, lyric videos, jobs | [production](references/production.md) |
 | Selections, palette tests, containers, groups, branches | [studio](references/studio.md) |
 | Brands, workspace fonts, SVG/PDF/Figma import | [workspace](references/workspace.md) |
 | Provider-backed generation and vision | [ai](references/ai.md) |

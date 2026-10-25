@@ -29,7 +29,7 @@ See the [provider matrix](reference/providers.md#capability-matrix) before choos
 5. [Resolve common problems](troubleshooting.md): installation, text, checks, imports and providers.
 
 Pre-1.0 and in Beta: breaking changes are allowed and noted in the [changelog](../CHANGELOG.md). Current tagged
-release: **0.31.0** ([release notes](../CHANGELOG.md#0310)).
+release: **0.32.0** ([release notes](../CHANGELOG.md#0320)).
 See [installation and updating](reference/releases.md) for Windows, source and agent bundles.
 
 ## Learn by making
@@ -71,7 +71,7 @@ The full index, by area. If you have a goal rather than a feature, start from th
 | Output | [Export guide](guides/output/exporting.md) (including the [SVG round trip](guides/output/exporting.md#svg-round-trip)), [accessibility](guides/output/accessibility.md), [slides](guides/output/slides.md), [marketing build options](guides/output/marketing-builds.md) (deck legibility profiles, image downsampling), [HTML presenter](guides/output/presenter.md), [forms](guides/output/forms.md) |
 | Data and reuse | [Charts](guides/output/charts.md), [linked documents](guides/output/linked-documents.md), [merch mockups and print-ready art](guides/output/merch-mockups.md), [data merge and print imposition](guides/output/imposition.md), [QR codes and barcodes](guides/output/codes.md) |
 | Motion | [Characters, rigs and scene authoring](guides/motion/animation-authoring.md), [Brushes and timelines](guides/motion/brushes-and-animation.md), [pixel animation and spacing](guides/motion/pixel-animation-spacing.md), [lyric video](guides/motion/lyric-video.md), [video templates](guides/motion/animation-authoring.md#joint-pose-keys-and-short-templates), [app animation packages](guides/motion/animation-authoring.md#app-animation-packages) |
-| Automation and collaboration | [Production workflows](guides/automation/production.md) (proof pages, logo packages), [outcomes, diagnostics and repair](reference/agent-trust.md), [studio and custom tests](guides/automation/studio.md), [checking designs in CI](guides/automation/ci.md), [Git-reviewable source folders](reference/commands.md#reviewing-editable-projects-in-git), [local screen capture](reference/commands.md#local-desktop-capture) |
+| Automation and collaboration | [Production workflows](guides/automation/production.md) (proof pages, logo packages), [outcomes, diagnostics and repair](reference/agent-trust.md), [studio and custom tests](guides/automation/studio.md), [checking designs in CI](guides/automation/ci.md), [localization](guides/automation/localization.md), [Git-reviewable source folders](reference/commands.md#reviewing-editable-projects-in-git), [local screen capture](reference/commands.md#local-desktop-capture) |
 | AI | [Provider setup and capability matrix](reference/providers.md) |
 | Integration | [Capability discovery](reference/agent-discovery.md), [MCP tool surface](reference/mcp-toolsets.md), [Python, REST and MCP](reference/interfaces.md), [agent skill](../skills/vixl/SKILL.md), [plugins and content packs](reference/plugins.md) |
 | Installation | [Releases, updates and rollback](reference/releases.md) |

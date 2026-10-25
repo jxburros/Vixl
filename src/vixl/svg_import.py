@@ -140,7 +140,8 @@ def resolve_fonts(fonts, project, assets, report, *, install=True):
     """Find each font the payload names by identity (``svg.font_identity``) and add its bytes to ``assets``. In
     order: the same file already in ``project`` (by hash), the bundled file, a font ``project`` registers under
     the same name or with the same family and style, the Google Fonts style from the font cache, then (with
-    ``install``) from Google Fonts. A font none of these has falls back to the bundled proofing face with a warning;
+    ``install``) from Google Fonts, then a face of that family installed on this machine. A font none of these
+    has falls back to the bundled proofing face with a warning;
     the import never fails for a font. Returns ``{old: new}`` asset names for fonts found as other bytes;
     ``report["fonts"]`` says how each registered font resolved."""
     from .text import BUNDLED_FONTS, font_style
@@ -166,6 +167,12 @@ def resolve_fonts(fonts, project, assets, report, *, install=True):
                        None)
         if raw is None and record.get("source") == "google":
             raw, how = google_font(family, weight, italic, install)
+        if raw is None and family:
+            from .system_fonts import face_bytes, lookup
+
+            face = lookup(family, weight, italic)
+            if face is not None and face["source"] != "bundled":
+                raw, how = face_bytes(face), "installed"
         if raw is None:
             raw, how = (folder / PROOFING_FONT).read_bytes(), "fallback"
             missing.append(f"{family} {weight}{' italic' if italic else ''}"

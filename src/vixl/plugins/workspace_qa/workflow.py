@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from ...errors import require
+from .link_impact import FIELD_TYPES as IMPACT_FIELDS, SUMMARY as IMPACT_SUMMARY
 from .package import FIELDS as PACKAGE_FIELDS, SUMMARY as PACKAGE_SUMMARY
 
 REPRODUCE_FIELDS = {"reference", "tolerance", "max_fraction", "lock", "write_lock", "overwrite", "exports",
@@ -15,10 +16,13 @@ ACTIONS = {
     "package": (set(PACKAGE_FIELDS), {"output"}),
     "check-all": ({"documents", "group", "checks", "suite", "suites", "fail_on", "profile", "waivers", "workers",
                    "changed_since", "base",
-                   "work", "since_last", "history", "group_checks", "reference", "facts", "outputs", "overwrite"},
+                   "work", "since_last", "history", "group_checks", "reference", "facts", "outputs", "overwrite",
+                   "notify"},
                   set()),
     "replace-across": ({"name", "documents", "replace", "dry_run", "suites", "accept", "reject", "decisions", "review",
                         "overwrite", "journal"}, {"replace"}),
+    "approve": ({"group", "clear", "author"}, set()),
+    "link-impact": (set(IMPACT_FIELDS), {"source"}),
 }
 FIELD_TYPES = {
     "reproduce": {
@@ -47,9 +51,21 @@ FIELD_TYPES = {
                    "description": "Return the compact, manifest-ready summary instead of the full result."},
     },
     "package": PACKAGE_FIELDS,
+    "approve": {
+        "group": {"type": "string", "description": "Approve every member of this project group (stored in "
+                  ".vixl-groups/NAME.approval/) instead of the open document."},
+        "clear": {"type": "boolean", "default": False, "description": "Remove the approval instead of recording one."},
+        "author": {"type": "string", "description": "Who approves (default: the VIXL_AUTHOR environment variable, "
+                   "else agent)."},
+    },
+    "link-impact": IMPACT_FIELDS,
 }
 SUMMARIES = {
     "package": PACKAGE_SUMMARY,
+    "approve": "Record how the open document (or every member of a group) looks now: per page and artboard a render "
+               "hash and a 256 px reference, who and when, beside the document; the approval check then flags later "
+               "changes for review. Approving again replaces it; clear removes it.",
+    "link-impact": IMPACT_SUMMARY,
     "reproduce": "Render and report renderable, environment-matched (lockfile) or reference-verified (reference image "
                  "or locked render hash), with located drift per page, artboard, frame, export setting and tool; a "
                  "lockfile can record exports, and verifying them reports byte_identical and visually_equivalent.",
@@ -122,6 +138,14 @@ def dispatch(session, action, request, document=None):
             return result
     if action == "check-all":
         from .workspace_checks import run
+
+        return run(session, request)
+    if action == "approve":
+        from .approval import run
+
+        return run(session, request, document)
+    if action == "link-impact":
+        from .link_impact import run
 
         return run(session, request)
     from .replace_across import run

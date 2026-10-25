@@ -241,6 +241,13 @@ is sequential, so this is not a cross-file filesystem transaction for readers ig
 the [waivers](production.md#waivers-and-check-profiles) of each member. Files live
 under `.vixl-groups/`; keep journals/backups until recovery finishes.
 
+To run the same steps over a group every time (check, export, verify, approve, proof, package) with a record that
+resumes, save them as a [pipeline](production.md#pipelines) and run `pipeline-run`. `data-sync` keeps members in step
+with a keyed CSV ([sync from a data source](production.md#sync-from-a-data-source)), and `bulk-upgrade` converts and
+re-roles many documents in place with before/after checks ([converting](../../reference/converting.md#upgrade-many-documents-in-place)).
+`watch` (`vixl watch`) runs checks, link impact, pipelines or data syncs when files change or on a schedule
+([watch mode](production.md#watch-mode)).
+
 `shared.waivers` (`[{check or rule, reason, expires}]`) are written into every member as document waivers by
 `group-apply`. `profiles` on `group-define` (`{name: {fail_on, checks, optional, suites}}`) override the workspace's
 and the built-in `draft`/`review`/`final` check profiles for the group, and `group-apply` with `profile` requires

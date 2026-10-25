@@ -73,7 +73,7 @@ then fetches it once and the render path finds it in the pack directory.
        "name": "comics",                 # the package name
        "title": "Comics",
        "summary": "Comic pages: ordered panels, gutters, artwork slots, captions and dialogue.",
-       "kind": "operations",             # operations | workflows | importer | provider
+       "kind": "operations",             # operations | workflows | importer | provider | checks
        "modules": ["comics"],            # every module in the package
        "operations": ["comics"],         # modules with TYPES, schemas(add) and execute(project, op)
        "commands": [],                   # modules with compile_command(cmd, args)
@@ -81,8 +81,12 @@ then fetches it once and the render path finds it in the pack directory.
        "hooks": {},                      # {"hook point": ["module:function", ...]}
        "requires": [],                   # other plugins this one imports
        "capabilities": {},               # {"topic": ("words that select it", ["guidance names"])}
+       "checks": [],                     # optional design check names this plugin adds
    }
    ```
+
+   `checks` names optional design checks (`check --checks NAME`); they join `checks.OPTIONAL_CHECKS` and the
+   plugin's `check` hook runs them. The `spelling` plugin adds `spelling` this way.
 
    `capabilities` adds topics to `vixl_reference('capabilities')` (the charts plugin adds `charts`). The guidance
    names must exist in the one guidance registry, `src/vixl/guidance.py`; add the text there, not in the plugin.
@@ -101,11 +105,38 @@ then fetches it once and the render path finds it in the pack directory.
 | `normalize` | `fn(kind, op, note) -> op` | For every operation, before schema validation |
 | `validate-layer` | `fn(layer, state, project)` | For every layer when a document is validated |
 | `validate-state` | `fn(project, state)` | Once per document validation |
-| `check` | `fn(checks, candidate, resolved, local_bounds, projection, issue)` | During design checks; act only when your check name is in `checks` |
+| `check` | `fn(checks, candidate, resolved, local_bounds, projection, issue, document, artboard, page)` | During design checks; act only when your check name is in `checks` (`document` is the checked document before its page view and candidate copy) |
 | `after-apply` | `fn(project)` | After a batch applies, before checks |
 | `apply-report` | `fn(project, operations, result)` | When the apply result is assembled |
 | `export-format` | `fn(project, path, format, report, **options) -> data or None` | On export; return None for formats that are not yours |
 | `import-format` | `fn(project, data, format, **options) -> result or None` | On import; return None for formats that are not yours |
+| `brand-format` | `fn(data) -> (kit, unmapped) or None` | `vixl.brand.load_brand_or_profile`: read an uploaded brand in another format (the brand kit reads a Design Profile); return None for shapes that are not yours |
+| `spell` | `fn(project, texts) -> {lang, available, message?, words} or None` | The `text` suite rule's `spelling: true`: unknown words in `{layer id: drawn text}` with suggestions |
+| `check-variants` | `fn(project, request) -> report or None` | `vixl check --locales` and the workflow `check` field `locales`; return None when the request names none of your variant axes |
+| `cli-command` | `fn(cmd, args, options, limits) -> result or None` | For every top-level CLI command (`vixl CMD …`) before the core's own; return None for commands that are not yours |
+| `production-report` | `fn(project, spec, report)` | When a campaign run (`production.run`) has its results, before `production.json` is final |
+| `job-kind` | `fn(kind) -> {validate, run} or None`, kinds in `fn.KINDS` | When a durable job is submitted or run; return None for kinds that are not yours |
+| `job-complete` | `fn(event) -> delivery record or None` | Once when a durable job, `check-all` or a pipeline run ends (`vixl.jobs.completion_event` shape) |
+| `resource-kind` | `fn(kind) -> {builtins, validate} or None`, categories in `fn.KINDS` | When the resource library lists, reads or saves a category that is not built in |
+| `host-route` | `fn(app, host)` | Once when `vixl host` builds its app: add routes; `host.session(ws)`, `host.workspace(ws)` and `host.answer(error)` are the helpers, and every route is already behind the bearer token; `host.options` holds the parsed `vixl host` flags (None when the app is made in Python) |
+| `host-flags` | `fn(parser)` | When `vixl host` builds its flag parser: add flags (the `ai` plugin adds `--provider studio`, `--provider-url`, `--provider-token-env`); the plugin's `host-route` hook reads them from `host.options` |
+
+## Helpers other plugins use
+
+A plugin that declares `requires: ["workspace_qa"]` can call these (see their module docstrings):
+
+- `workspace_qa.dependents`: the workspace dependency graph. `graph(workspace, documents=None)` reads every
+  document's links, `brand.json`, project groups, merge data and templates and library suites into a reverse index
+  (cached by mtime in `.vixl-checks/links-index.json`); `dependents(workspace, target, kinds=…, nested=…)`,
+  `walk(…)` (with the cycles found) and `tree(…)` answer who depends on a file or `suite:NAME`;
+  `register(reader)` adds an edge kind (`fn(state, path, workspace) -> [(kind, target)]`).
+- `workspace_qa.candidate`: evaluate a change on an unsaved copy and commit only if clean.
+  `evaluate(session, document, change, request=…, fail_on=…)` applies a function or operations, runs `check` and the
+  attached suites (`workspace_checks.check_document`) and diffs the render; `evaluate_all(…, apply="if-passing",
+  journal=NAME)` does it for many documents under their file locks; `commit(session, journal, evaluations)`
+  publishes through the project-group journal (`group-recover NAME` undoes an interrupted one).
+- `workspace_qa.approval`: `find(path, workspace)`, `status(project, approval)` and `report(project)` read a
+  document's approved baseline; `approved_changes(session, {path: candidate})` lists approved documents a change moves.
 
 ## Built-in plugins
 
@@ -123,16 +154,19 @@ then fetches it once and the render path finds it in the pack directory.
 | `film` (Film) | workflows | Assemble scenes and shots into MP4, WebM, GIF or WebP films; sample video and analyze audio. | `audio-analyze`, `film-export`, `film-plan`, `film-preview`, `video-sample` |
 | `lyrics` (Lyric videos) | workflows | Synced lyric videos from audio, an LRC file and a styled template document. | `lyric-video-build`, `lyric-video-export`, `lyric-video-plan` |
 | `imposition` (Print imposition) | workflows | Merge CSV rows into a template and impose the copies n-up on press sheets with marks and bleed. | `merge-impose` |
-| `brand_kit` (Brand kit) | workflows | Logo packages, brand guideline boards, device, print and merch mockups and print-ready art from a brand.json and a logo. | `brand-board`, `logo-package`, `mockup`, `mockup-list`, `mockup-save`, `print-art` |
+| `brand_kit` (Brand kit) | workflows | Logo packages, brand guideline boards, device, print and merch mockups and print-ready art from a brand.json and a logo. | `brand-board`, `brand-export`, `brand-import`, `logo-package`, `mockup`, `mockup-list`, `mockup-save`, `print-art` |
 | `deck_markdown` (Markdown to deck) | workflows | Turn a Markdown outline into a checked slide deck with charts, tables and speaker notes. | `deck-from-markdown` |
 | `teamwork` (Teamwork) | workflows | Workspace branches and merges, document groups with shared parameters and rollback, suite inference. | `branch-fork`, `branch-list`, `branch-merge`, `branch-status`, `group-apply`, `group-define`, `group-list`, `group-recover`, `group-show`, `suite-infer` |
-| `workspace_qa` (Workspace QA) | workflows | check-all and replace-across over many documents, protected edits, proof pages, render lockfiles and deliverable packages. | `check-all`, `package`, `proof`, `protected-edit`, `replace-across`, `reproduce` |
+| `workspace_qa` (Workspace QA) | workflows | check-all and replace-across over many documents, protected edits, proof pages, render lockfiles, deliverable packages, approved baselines and link impact. | `approve`, `check-all`, `link-impact`, `package`, `proof`, `protected-edit`, `replace-across`, `reproduce` |
 | `layout_repair` (Layout repair) | workflows | repair-layout: try ranked candidate fixes for failing checks and keep the least disruptive one. | `repair-layout` |
+| `pipelines` (Pipelines) | workflows | Saved, resumable pipelines over many documents with a run record, watch mode with triggers and schedules, completion webhooks, data sync from a CSV and bulk structure upgrades. | `bulk-upgrade`, `data-sync`, `pipeline-run`, `watch` |
 | `app_animation` (App animation packages) | workflows | Package animation states, theme variants, reduced-motion images and a sample consumer for apps. | `app-animation-package` |
 | `screen_capture` (Screen capture) | workflows | Capture the local desktop, a pixel rectangle or a Windows window to a PNG, only when asked. | `screen-capture` |
+| `localization` (Localization) | workflows | Locale variable tables and strings CSVs, a locale x finding check matrix, and localize fan-out with fit, RTL mirroring and font fallbacks. | `locales-set`, `group-locales`, `locale-check`, `localize` |
 | `figma_import` (Figma import) | importer | Import a Figma page or node as editable layers, with images, fonts and unsupported nodes rasterized. | hooks: import-format |
 | `pdf_import` (PDF import) | importer | Import a PDF page as editable layers (needs the optional pypdfium2 package). | hooks: import-format |
-| `ai` (AI providers) | provider | Generate, edit, detect and describe images through configured providers; model discovery and routing. | none: the core calls it directly |
+| `ai` (AI providers) | provider | Generate, edit, detect and describe images through configured providers; model discovery and routing. | hooks: host-flags, host-route |
+| `spelling` (Spelling) | checks | An optional spelling check of drawn text with suggestions; English is bundled, other languages are content packs. | hooks: check, spell |
 
 ## Not separable yet
 

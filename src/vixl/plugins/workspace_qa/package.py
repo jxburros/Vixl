@@ -10,8 +10,8 @@ proof page.
 Per file the manifest records the source document and its revision (the SHA-256 of the saved ``.vixl``), the export
 settings, the check outcome, the SHA-256, the dimensions, the colour space and the stream metadata read back from the
 encoded file. Per package it records the Vixl version, the validation coverage, the visual-review status and, when a
-render lockfile is given, the reproduction summary of #512. A run record from the pipeline runner becomes one more
-entry of ``INPUTS``: a collector returns the same candidates, held entries and input description for each kind.
+render lockfile is given, the reproduction summary of #512. A pipeline run record (``run``, ``.vixl-runs/<id>/run.json``)
+is the third input: each entry of ``INPUTS`` collects the same candidates, held entries and input description.
 
 The zip is staged and published atomically, and never replaces an existing file unless ``overwrite`` is true. Its
 entries have fixed timestamps and a fixed order, so the same inputs give the same archive members.
@@ -23,15 +23,11 @@ import hashlib
 import json
 from pathlib import Path
 import re
-import shutil
-import subprocess
 import tempfile
 import zipfile
-import zlib
 
-from ...assets import open_image
 from ...errors import VixlError, require
-from ...production import blocking_rules, file_digest, publish_file, read_json
+from ...production import file_digest, held_rules, publish_file, read_json
 
 DEFAULT_NAME = "{brand}_{doc}_{artboard}_{w}x{h}.{ext}"
 TOKENS = ("brand", "doc", "artboard", "w", "h", "size", "ext", "format", "locale", "row", "id")
@@ -51,7 +47,9 @@ FIELDS = {
                    "packaged; the variants it held for review are listed under held and left out."},
     "files": {"type": "array", "minItems": 1, "maxItems": MAX_FILES, "items": {"type": ["string", "object"]},
               "description": "Exported files to package: workspace paths or globs, or {path, source} to name the "
-                             "document a file was exported from. Give production or files."},
+                             "document a file was exported from. Give production, files or run."},
+    "run": {"type": "string", "description": "A pipeline run record (.vixl-runs/<run>/run.json): the outputs of its "
+            "documents that passed or need visual review; held and failed documents are listed under held."},
     "source": {"type": "string", "description": "The .vixl document the outputs were made from: its revision digest "
                "goes into the manifest, and with files its checks into the report."},
     "name": {"type": "string", "default": DEFAULT_NAME, "description": "File name template: {brand} {doc} {artboard} "
@@ -73,7 +71,7 @@ FIELDS = {
                 "without running checks or writing the package."},
     "overwrite": {"type": "boolean", "default": False, "description": "Replace an existing package."},
 }
-SUMMARY = ("Package a campaign run's outputs (production.json) or exported files into one zip: names from a template, "
+SUMMARY = ("Package a campaign run's outputs (production.json), a pipeline run's outputs or exported files into one zip: names from a template, "
            "duplicates dropped by hash, a manifest with source revision, export settings, check status, SHA-256, "
            "dimensions, colour and stream metadata, the check report and proof page, held outputs listed and left "
            "out. Refuses name collisions and existing packages.")
@@ -81,155 +79,12 @@ SUMMARY = ("Package a campaign run's outputs (production.json) or exported files
 
 # Inspecting a delivered file --------------------------------------------------------------------
 
-def _ffprobe(path):
-    ffprobe = shutil.which("ffprobe")
-    if not ffprobe:
-        return None
-    command = [ffprobe, "-v", "error", "-show_entries", "stream=codec_type,codec_name,width,height,r_frame_rate,"
-               "nb_frames,duration,pix_fmt,channels,sample_rate:format=format_name,duration", "-of", "json", str(path)]
-    try:
-        done = subprocess.run(command, capture_output=True, timeout=120)
-        return json.loads(done.stdout or b"{}") if done.returncode == 0 else None
-    except (OSError, subprocess.SubprocessError, ValueError):
-        return None
-
-
-def _seconds(*values):
-    for value in values:
-        try:
-            seconds = float(value)
-        except (TypeError, ValueError):
-            continue
-        if seconds >= 0:
-            return seconds
-    return None
-
-
-def _rate(value):
-    try:
-        top, _, bottom = str(value).partition("/")
-        return round(float(top) / float(bottom or 1), 3)
-    except (TypeError, ValueError, ZeroDivisionError):
-        return None
-
-
-def _whole(value):
-    return int(value) if str(value).isdigit() else None
-
-
-def _video_facts(path):
-    info = _ffprobe(path)
-    if info is None:
-        return {}
-    streams = info.get("streams") or []
-    video = next((s for s in streams if s.get("codec_type") == "video"), None)
-    audio = next((s for s in streams if s.get("codec_type") == "audio"), None)
-    container = info.get("format") or {}
-    facts = {"stream": {"container": container.get("format_name")}}
-    if video:
-        seconds = _seconds(video.get("duration"), container.get("duration"))
-        facts["width"], facts["height"] = video.get("width"), video.get("height")
-        facts["color"] = {"space": "RGB" if "rgb" in str(video.get("pix_fmt")) else "YUV", "pix_fmt": video.get("pix_fmt")}
-        facts["stream"]["video"] = {"codec": video.get("codec_name"), "fps": _rate(video.get("r_frame_rate")),
-                                    "frames": _whole(video.get("nb_frames")),
-                                    "duration_ms": None if seconds is None else round(seconds * 1000)}
-    if audio:
-        facts["stream"]["audio"] = {"codec": audio.get("codec_name"), "channels": audio.get("channels"),
-                                    "sample_rate": _whole(audio.get("sample_rate"))}
-    return facts
-
-
-def _pdf_spaces(data):
-    """The colour spaces a PDF names, plus those its (text) content streams paint with: rg/RG is RGB, k/K CMYK and
-    g/G gray. Vixl's own vector PDFs set colours by operator, so the names alone would show nothing."""
-    spaces = [name for name in ("DeviceCMYK", "DeviceRGB", "DeviceGray", "ICCBased") if f"/{name}".encode() in data]
-    for match in list(re.finditer(rb"stream\r?\n(.*?)\r?\nendstream", data, re.S))[:200]:
-        try:
-            text = zlib.decompressobj().decompress(match.group(1), 2_000_000)
-        except zlib.error:
-            text = match.group(1)[:2_000_000]
-        head = text[:300]
-        if not head or sum(32 <= byte < 127 or byte in (9, 10, 13) for byte in head) < 0.95 * len(head):
-            continue
-        for operator, name in ((rb"rg|RG", "DeviceRGB"), (rb"k|K", "DeviceCMYK"), (rb"g|G", "DeviceGray")):
-            if name not in spaces and re.search(rb"(?:^|\s)(?:" + operator + rb")(?:\s|$)", text):
-                spaces.append(name)
-    return spaces
-
-
-def _pdf_facts(path):
-    data = path.read_bytes()
-    spaces = _pdf_spaces(data)
-    facts = {"color": {"space": "CMYK" if "DeviceCMYK" in spaces else "RGB" if set(spaces) & {"DeviceRGB", "ICCBased"}
-                       else "Gray" if spaces else "unknown", "color_spaces": spaces}}
-    try:
-        import pypdfium2
-
-        document = pypdfium2.PdfDocument(data)
-        try:
-            width, height = document[0].get_size()
-            facts.update(pages=len(document), width=round(width, 2), height=round(height, 2), unit="pt")
-        finally:
-            document.close()
-    except Exception:  # noqa: BLE001 - page facts stay best-effort without pypdfium2 or for a PDF it cannot open
-        pass
-    return facts
-
-
-def _raster_facts(path):
-    with open_image(path) as image:
-        facts = {"width": image.width, "height": image.height}
-        mode = image.mode
-        facts["color"] = {"space": "CMYK" if mode == "CMYK" else "Gray" if mode in ("L", "LA", "1") else "RGB",
-                          "mode": mode, "alpha": "A" in mode or "transparency" in image.info,
-                          "icc_profile": bool(image.info.get("icc_profile"))}
-        if image.info.get("dpi"):
-            facts["dpi"] = round(float(image.info["dpi"][0]))
-        frames = getattr(image, "n_frames", 1)
-        if frames > 1:
-            milliseconds = 0
-            for index in range(frames):
-                image.seek(index)
-                milliseconds += int(image.info.get("duration") or 0)
-            facts["stream"] = {"container": str(image.format).lower(), "frames": frames, "loop": image.info.get("loop"),
-                               "duration_ms": milliseconds}
-    return facts
-
-
 def inspect_file(path):
-    """What the encoded file itself says: size, dimensions, colour space, frames or streams. It reads headers rather
-    than pixels, and video through ffprobe. A file that cannot be read keeps its size and an ``unreadable`` note."""
-    path = Path(path)
-    suffix = path.suffix.lower()
-    facts = {"format": suffix.lstrip(".") or "file", "bytes": path.stat().st_size}
-    try:
-        if suffix in RASTER:
-            facts.update(_raster_facts(path))
-        elif suffix in (".mp4", ".webm", ".mov"):
-            facts.update(_video_facts(path))
-        elif suffix == ".pdf":
-            facts.update(_pdf_facts(path))
-        elif suffix == ".svg":
-            head = path.read_bytes()[:4096].decode("utf-8", "replace")
-            box = re.search(r'viewBox="\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)', head)
-            size = [re.search(rf'<svg[^>]*\s{side}="([\d.]+)(?:px)?"', head) for side in ("width", "height")]
-            if all(size):
-                facts.update(width=float(size[0][1]), height=float(size[1][1]))
-            elif box:
-                facts.update(width=float(box[1]), height=float(box[2]))
-            facts["color"] = {"space": "RGB", "vector": True}
-        elif suffix == ".psd":
-            header = path.read_bytes()[:26]
-            if header[:4] == b"8BPS":
-                modes = {1: "Gray", 3: "RGB", 4: "CMYK"}
-                facts.update(height=int.from_bytes(header[14:18], "big"), width=int.from_bytes(header[18:22], "big"),
-                             color={"space": modes.get(int.from_bytes(header[24:26], "big"), "unknown")})
-        elif suffix == ".pptx":
-            with zipfile.ZipFile(path) as archive:
-                facts["pages"] = sum(1 for name in archive.namelist() if re.fullmatch(r"ppt/slides/slide\d+\.xml", name))
-    except Exception as exc:  # noqa: BLE001 - decoders raise many kinds of error for damaged files; the package notes it
-        facts["unreadable"] = f"{type(exc).__name__}: {str(exc)[:120]}"
-    return facts
+    """What the encoded file itself says (export_checks.inspect): size, SHA-256, dimensions, colour space, frames or
+    streams. A file that cannot be read keeps its size and an ``unreadable`` note."""
+    from ...export_checks import inspect
+
+    return inspect(path)
 
 
 # Collecting inputs ------------------------------------------------------------------------------
@@ -243,7 +98,7 @@ def _reason(result):
     """Why a variant that has no output was held, and the rules that held it."""
     status = result.get("status")
     if status == "needs_review":
-        rules = list(dict.fromkeys(blocking_rules(result.get("checks") or {})))
+        rules = list(dict.fromkeys(held_rules(result)))
         reasons = (result.get("outcome") or {}).get("review_reasons") or []
         detail = f": {', '.join(rules[:5])}" if rules else f": {reasons[0]}" if reasons else ""
         return "held for review" + detail, rules
@@ -322,8 +177,48 @@ def _files(session, request):
     return candidates, [], {"kind": "files", "patterns": patterns}
 
 
-# A run record from the pipeline runner (`.vixl-runs/<id>/run.json`) is one more collector with this signature.
-INPUTS = {"production": _production, "files": _files}
+def _run(session, request):
+    """Candidates, held entries and a description of the input for a pipeline run record (``.vixl-runs/<id>/run.json``):
+    the outputs of documents that passed or need visual review; held, failed and unfinished documents are held."""
+    from ...outcomes import make
+
+    path = session.resolve(request["run"])
+    require(path.is_file() and path.suffix == ".json", f"{request['run']} is not a pipeline run record", "not_found",
+            field="run")
+    record = read_json(path)
+    require(isinstance(record, dict) and record.get("format") == "vixl-pipeline-run"
+            and isinstance(record.get("documents"), dict), "run is a pipeline run record (.vixl-runs/<run>/run.json)",
+            field="run")
+    validated = ((record.get("outcome") or {}).get("validation") or "passed") != "not_run"
+    candidates, held = [], []
+    for relative, entry in sorted(record["documents"].items()):
+        state = entry.get("outcome")
+        if state not in ("passed", "visual-review-needed"):
+            held.append({"id": None, "path": relative, "status": "failed" if state == "failed" else "needs_review",
+                         "reason": entry.get("reason") or f"the document is {state or 'not finished'} in the run",
+                         **({"rules": entry["findings"][:10]} if entry.get("findings") else {})})
+            continue
+        reasons = [entry.get("reason") or "needs visual review"] if state == "visual-review-needed" else []
+        outcome = make("completed", "passed" if validated else "not_run", reasons, validated_by=["pipeline"])
+        for step in entry.get("steps") or []:
+            for item in step.get("outputs") or []:
+                file = session.resolve(item["path"])
+                if not file.is_file():
+                    held.append({"id": None, "path": item["path"], "status": "needs_review",
+                                 "reason": f"the output file {item['path']} is missing"})
+                elif file_digest(file) != item.get("sha256"):
+                    held.append({"id": None, "path": item["path"], "status": "needs_review",
+                                 "reason": f"{item['path']} changed after the run: its checksum differs from the record"})
+                else:
+                    candidates.append(_candidate(file, session.relative(file), source=relative, outcome=outcome,
+                                                 sha256=item["sha256"]))
+    info = {"kind": "run", "path": request["run"], "run": record.get("run"), "pipeline": record.get("pipeline"),
+            "status": record.get("status")}
+    return candidates, held, info
+
+
+# Each input kind is a collector returning (candidates, held entries, a description of the input).
+INPUTS = {"production": _production, "files": _files, "run": _run}
 
 
 def collect(session, request):
@@ -436,7 +331,7 @@ def _document_checks(session, files):
         return None
     from .workspace_checks import run
 
-    return run(session, {"documents": sources, "history": False})
+    return run(session, {"documents": sources, "history": False}, emit=False)
 
 
 def _production_report(files, held, info):
@@ -636,7 +531,7 @@ def build(session, request):
     require(final, f"Nothing to package: {len(held)} output(s) are held", "invalid_request", field="output",
             held=held[:50])
     final.sort(key=lambda item: item["name"])
-    if info["kind"] == "production" and request.get("check", True) and not request.get("dry_run"):
+    if info["kind"] in ("production", "run") and request.get("check", True) and not request.get("dry_run"):
         documents = _production_report(final, held, info)
     entries = [_entry(item, revisions, settings, _file_check(item, document_status)) for item in final]
     counts = Counter(entry["check"]["state"] for entry in entries)
@@ -720,6 +615,7 @@ def cli(args, options, limits):
                "a manifest, checksums, the check report and a proof page")
     p.add_argument("--production", help="A campaign run's production.json")
     p.add_argument("--files", nargs="+", metavar="PATH_OR_GLOB", help="Exported files to package")
+    p.add_argument("--run", help="A pipeline run record (.vixl-runs/RUN/run.json)")
     p.add_argument("--source", help="The .vixl document the outputs were made from")
     p.add_argument("--out", required=True, help="The package to write (.zip)")
     p.add_argument("--name", help=f"File name template (default {DEFAULT_NAME})")
@@ -736,7 +632,7 @@ def cli(args, options, limits):
     p.add_argument("--workspace", default=".", help="Workspace folder (default: the current folder)")
     a = p.parse_args(args)
     request = {"output": a.out}
-    for key in ("production", "files", "source", "name", "brand", "locale", "layout", "decisions"):
+    for key in ("production", "files", "run", "source", "name", "brand", "locale", "layout", "decisions"):
         if getattr(a, key) is not None:
             request[key] = getattr(a, key)
     if a.lock:

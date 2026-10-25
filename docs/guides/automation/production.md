@@ -113,8 +113,8 @@ Rules:
 | `hierarchy` | `targets` (text, most to least important), `ratio` (default 1.2); each rendered font size (after fitting) is at least `ratio` times the next |
 | `count` | `target` name, glob or `group:NAME` (default `*`), optional `layer_type`, `minimum`/`maximum`; counts visible layers |
 | `focal` | `target`, `grid` thirds/golden/center, `tolerance` px (default 5% of the shorter side); the layer's centre is near a power point |
-| `text` | `target` name, glob or `group:NAME` (default `*`), and any of `pattern` (regular expression each selected layer must match), `contains` (phrase or list that must appear somewhere in their copy), `forbid` (regular expression or list none may match), `min_characters`/`max_characters`, `min_words`/`max_words` (per layer; line breaks do not count as characters), `case` sensitive/insensitive (for pattern, contains and forbid), `brand: true` (also forbid brand.json `words.forbid`); measures the drawn text after variables, so `variables`, artboards and campaign rows are checked with their own copy; results list each layer's text, characters and words |
-| `budget` | any of `max_layers` (drawn layers, as `count` counts them), `max_fonts` (distinct fonts drawn by text), `max_bytes` (the document's JSON with undo history plus embedded files, before compression), `min_ppi` (lowest effective resolution of a placed image at the canvas dpi, 300 when unset, as the `print` check measures it) |
+| `text` | `target` name, glob or `group:NAME` (default `*`), and any of `pattern` (regular expression each selected layer must match), `contains` (phrase or list that must appear somewhere in their copy), `forbid` (regular expression or list none may match), `min_characters`/`max_characters`, `min_words`/`max_words` (per layer; line breaks do not count as characters), `case` sensitive/insensitive (for pattern, contains and forbid), `brand: true` (also forbid brand.json `words.forbid`, skipping `words.allow` phrases), `spelling: true` (words the spelling dictionary does not know fail the rule and are listed under `unknown_words` with suggestions; a missing dictionary needs review); measures the drawn text after variables, so `variables`, artboards and campaign rows are checked with their own copy; results list each layer's text, characters and words |
+| `budget` | any of `max_layers` (drawn layers, as `count` counts them), `max_fonts` (distinct fonts drawn by text), `max_bytes` (the document's JSON with undo history plus embedded files, before compression), `min_ppi` (lowest effective resolution of a placed image at the canvas dpi, 300 when unset, as the `print` check measures it), `max_ppi` (over-resolution: a placed image above this effective resolution, or with over 4× the source pixels it needs at it, carries pixels no output shows), `max_render_ms` with optional `proxy` (the warm time of a proxy render, longest side `proxy` px, default 1024; cold and warm are both reported). Results list `worst` per limit: the five top-level layers with the most drawn layers, the fonts drawn by the fewest layers, the lowest or highest image ppi, each as `{layer, value}`. Render time depends on the machine, so a `max_render_ms` rule is always a `warning` with `action: review` and `advisory: true`, and goes in a budget rule of its own |
 
 Every rule has a unique `id` and optional `severity` (`error` or `warning`). Each result carries what
 it measured (gaps, margins, ratios, the visual centre, the sampled colour), so a failure says what to change.
@@ -124,9 +124,39 @@ it measured (gaps, margins, ratios, the visual centre, the sampled colour), so a
   {"id":"headline-short","kind":"text","target":"headline","max_characters":40},
   {"id":"has-disclaimer","kind":"text","contains":"Terms apply"},
   {"id":"no-free","kind":"text","forbid":"(?i)\\bfree\\b"},
-  {"id":"light","kind":"budget","max_layers":120,"max_fonts":3,"max_bytes":20000000,"min_ppi":240}
+  {"id":"light","kind":"budget","max_layers":120,"max_fonts":3,"max_bytes":20000000,"min_ppi":240,"max_ppi":1200},
+  {"id":"quick","kind":"budget","max_render_ms":400,"proxy":1024}
 ]}}
 ```
+
+The same limits run without a suite as the opt-in `budget` design check (`vixl check --checks budget`), at the
+workspace defaults (`max_layers` 500, `max_fonts` 4, `max_bytes` 100 MB, `max_ppi` 1200) that `budget` in
+`.vixl-checks.json` overrides field by field. Each finding is a `review` warning naming the limit, its value and
+the `worst` offenders; render time is left to suites.
+
+### Rules that reference another document
+
+Where a rule compares against a value (`expected`, a relation's `to`, a hierarchy's `ratio`), it can read that
+value from another document each time it runs, so a master or brand document sets it once:
+
+- `{"ref": "master.vixl#brand.fill"}` reads a field of a layer (or `canvas`) as the master draws it.
+- `{"ref": "master.vixl#brand:type-scale"}` reads the same field of rule `type-scale` in the master's suite
+  `brand` (attached or inherited); that rule may itself hold a ref.
+
+```json
+{"type":"suite-set","name":"campaign","suite":{"rules":[
+  {"id":"brand-red","kind":"color","point":[40,40],"expected":{"ref":"master.vixl#brand.fill"}},
+  {"id":"type-scale","kind":"hierarchy","targets":["headline","body"],"ratio":{"ref":"master.vixl#brand:type-scale"}}
+]}}
+```
+
+Paths resolve like link sources (the document's folder, then the workspace; services never read outside it), and
+referenced documents are opened read-only. A suite holds at most 8 refs and one run reads at most 8 (nested refs
+count, a document read twice counts once); rule refs nest at most 4 deep, and a cycle is refused with the
+`link_cycle` error shape (`code`, `chain`). A missing document, layer, field, suite or rule makes the rule
+`needs_review`, never a pass. Each result lists `references: [{path, digest}]` (the digest of the referenced
+state), the report lists them all, and `check-all` keeps them per document, so `--since-last` names a changed
+master as the cause (`cause: reference`, `changed_references`) when the dependent itself did not change.
 
 ### Coverage over artboards, pages and comps
 
@@ -302,6 +332,9 @@ hierarchy, a single weight, no focal point or an unused accent) fail shipping
 until they are fixed or waived with a reason. Only a workspace that narrows `checks` and also sets `final.optional`
 replaces the built-in `optional` list (`color_vision`, `composition`); name `composition` in it to keep the gate.
 
+`.vixl-checks.json` may also set `budget`, the limits of the opt-in `budget` check for the workspace (any of
+`max_layers`, `max_fonts`, `max_bytes`, `min_ppi`, `max_ppi`), for example `{"budget": {"max_layers": 300, "max_fonts": 3}}`.
+
 A profile has `fail_on`, `checks` (default: the standard checks), `optional` (opt-in checks added to them),
 `suites` (`"all"`, `"none"` or a list of names) and `description`. The report's `outcome` follows the profile: what
 its `fail_on` fails is a validation failure, other fix and review findings stay review reasons, and waived findings
@@ -404,7 +437,9 @@ before any rendering. `run` adds `"output":"campaign"`:
 }}
 ```
 
-Rows can be assembled from a CSV by a caller; existing `render --data` remains available.
+Rows can be assembled from a CSV by a caller; existing `render --data` remains available. For languages, `localize`
+runs the same spec once per locale on a localized copy (its values, fonts, fit and right-to-left mirroring), so a
+campaign gains a locale axis; see [localization](localization.md).
 There are at most 10,000 outputs, ten variation axes and four concurrent workers.
 Row fields cannot also occur in the matrix. Explicit row values override artboard defaults.
 All attached suites run unless an explicit `suites` list selects others. With `profile` (for example `"final"`),
@@ -419,6 +454,17 @@ built-in repair map instead (fit-text, contrast ink, safe-area nudge; see
 [outcomes, diagnostics and repair](../../reference/agent-trust.md#built-in-repairs)); its operations are reported under
 `repair_operations`.
 Failed/unmeasurable outputs are held for review; successful outputs remain available.
+
+`export_check` reads each written output back before it is published: `true` runs the default delivery checks, a
+preset name (`instagram-feed`, `web-banner`, `display-ad` ...) or inline fields check it against a
+[delivery spec](../output/exporting.md#verify-the-delivered-file). Each result records the report as `export_check`
+in `production.json`. An output that fails it is held for review like a failed check and is not published, and its
+rules (`export.max-bytes`, `export.size` ...) count in `withheld`. A passing export check joins the validation of
+outputs whose suites or profile validated them; on its own it never validates the design.
+
+```json
+{"output":"campaign","spec":{"rows":[{"title":"Launch"}],"format":"jpg","export_check":"instagram-feed"}}
+```
 
 A held output is never written, and the run says so instead of leaving an empty directory unexplained: the report
 (and `production.json`) gains `withheld` (`count`, the effective `profile` and its `fail_on`, the held `variants`,
@@ -494,6 +540,39 @@ with `overwrite: true`.
 A missing file fails the call, but an item that cannot be previewed or checked becomes a card with its error and
 is listed in the result's `failed` (`[{path, error}]`); `checked` gives each document's `passed`, errors and
 warnings. Each thumbnail is embedded once and reused by the enlarged view (`max_size`, 128–2400 px, default 1200).
+A document approved with `approve` (below) gets a badge: approved, or changed since approval with the changed share.
+
+## Approved baselines
+
+Once a design is signed off, `approve` records how it looks, and every later check tells you what moved:
+
+```bash
+vixl approve --author "Ada"          # the current document
+vixl approve --group launch           # every member of a project group
+vixl approve --clear                  # remove the approval
+```
+
+Over MCP or REST it is the workflow action `approve` (`vixl_apply(workflow='approve', request={"author": "Ada"})`),
+with `group` and `clear` as on the command line.
+
+For each page and artboard (or the canvas, when there are neither) `approve` stores the render hash and a reference
+PNG of at most 256 px a side, with the document's state digest, the revisions of its linked sources, who approved it
+(`author`, else the `VIXL_AUTHOR` environment variable, else `agent`) and when. A document's approval lives beside it
+in `NAME.vixl.approval/`; a group's in `.vixl-groups/GROUP.approval/`, one folder per member. At most 64 views are
+recorded; a document with more is refused. Approving again replaces the earlier approval (that is how you unapprove
+a change), and `clear` removes it. The folder is small and meant to be committed with the document.
+
+The `approval` check then runs by itself whenever the standard checks run on a document with approval data (a plain
+`vixl check`, `check-all`, `apply` with `check`, a check profile), and by name (`check --checks approval`) otherwise.
+An unchanged document is settled from its state digest without rendering. A page or artboard whose render no longer
+matches is a `warning` with action `review` (code `changed`): it names the view, who approved it and when, the
+`changed_fraction` of the reference preview and a `diff` image (written to the approval's `diff/` folder). Asked for
+by name, an approved document gets an `approved` note and one never approved a `never-approved` note.
+
+Approval also shows where a change would land: a `group-apply` or `replace-across` dry run lists
+`approved_members_changed` (each approved member the change moves away from its approval, with the views and the
+changed fraction), and a [campaign run](#variant-production-and-draftfinal) from an approved template lists the
+template's approved views that changed since approval.
 
 ## Checking many documents
 
@@ -550,14 +629,23 @@ previous one over the same documents and settings:
 - `newly_passing`, `still_failing`, and documents `added` or `removed` since then.
 
 After an upgrade, `vixl check --all --since-last` therefore names the documents that the new version judges
-differently. Vixl does not schedule runs itself: run it from CI on a schedule (a cron workflow), or after an update.
+differently. To run it on a schedule, give [watch mode](#watch-mode) a `schedule` trigger (`vixl watch`, or
+`vixl watch --once` from CI or cron); a cron workflow that keeps `.vixl-checks/` works too.
+
+### Documents that link to a changed source
+
+`link-impact` (`vixl links impact SOURCE.vixl`) checks every document that links to a changed source, as a refreshed
+copy, before anything is saved: the dependents that pass, those that fail (with their findings and rule results) and
+how much each one's render changed. `--apply` then saves only the passers, through a journal. See
+[link impact](../output/linked-documents.md#link-impact).
 
 ## Delivery packages
 
 `package` (CLI `vixl package`) turns finished outputs into one zip that a client or a downstream system can trust: the
 files, a manifest that says where each came from and what it was checked against, checksums, the check report and a
 proof page. It takes the outputs of a [campaign run](#variant-production-and-draftfinal) (`production`, its
-`production.json`) or exported files (`files`: paths and globs, or `{path, source}`).
+`production.json`), a [pipeline run](#pipelines) (`run`, its `.vixl-runs/RUN/run.json`) or exported files (`files`:
+paths and globs, or `{path, source}`).
 
 ```bash
 vixl package --production out/production.json --source banner.vixl --out delivery.zip --name "{doc}_{row}_{artboard}.{ext}"
@@ -606,6 +694,174 @@ written package is never read as an approved delivery by itself.
 `dry_run` plans the names, duplicates and held list and writes nothing. The zip is staged and published atomically, its
 entries have fixed timestamps, and an existing package is never replaced unless `overwrite: true`. A package inside the
 folder being packaged is left out of itself.
+
+## Pipelines
+
+A pipeline saves the steps of a delivery once and runs them over many documents: check them, fix what can be fixed,
+export, verify the exports, collect approvals, and write a proof page and a package. Save it like a suite, with
+`resource-save` kind `pipelines`, and run it with `pipeline-run`:
+
+```json
+{"version": 1, "targets": {"group": "launch"}, "on_fail": "hold", "inputs": ["prices.csv"],
+ "steps": [
+   {"check": {"fail_on": "error"}},
+   {"export": {"targets": [{"path": "out/{doc}.png"}, {"path": "out/{doc}@2x.png", "scale": 2}]}},
+   {"export_check": {"spec": {"formats": ["png"], "max_bytes": 500000}}},
+   {"approve": {"decisions": "review/decisions.json"}},
+   {"proof": {"output": "out/proof.html"}},
+   {"package": {"output": "out/delivery.zip", "name": "{doc}_{w}x{h}.{ext}"}}
+ ]}
+```
+
+```json
+{"pipeline": "launch", "dry_run": false, "notify": {"url": "https://hooks.example.com/vixl", "secret_env": "VIXL_HOOK_SECRET"}}
+```
+
+`targets` is `{documents: [globs]}`, `{group: NAME}` or both; the request's `documents` or `group` replaces them for
+one run. Each step is an object with one key, its kind:
+
+| Step | Runs | What it does |
+| --- | --- | --- |
+| `act` | per document | Applies `operations` (with optional `suites` that must still pass) to the run's working copy |
+| `check` | per document | The design checks and attached suites, as [check-all](#checking-many-documents) (`checks`, `suites`, `suite`, `profile`, `waivers`, `fail_on`, default `error`) |
+| `repair` | per document | `repair-layout` on the working copy |
+| `export` | per document | Export `targets` (vixl_export options); `path` takes `{doc}`, `{dir}`, `{run}` and `{name}` |
+| `export_check` | per document | Verifies each export of the document against `spec`, a delivery spec preset or inline fields (see [Verify the delivered file](../output/exporting.md#verify-the-delivered-file)); a failing file holds the document and review findings make it `visual-review-needed` |
+| `approve` | per document | Reads a [proof page](#proof-pages)'s downloaded `decisions`: approved passes, rejected holds, otherwise it waits |
+| `proof` | once | A proof page of every output that was not held |
+| `package` | once | A [delivery package](#delivery-packages) of the run (package fields; `run` is filled in) |
+
+`act` and `repair` change a working copy under `.vixl-runs/RUN/work/`, never the source document; the steps after
+them check and export that copy. A step that fails holds its document: the document is `held` with the reason and
+findings, its remaining steps do not run, and with `on_fail: hold` (default) the other documents continue; `stop`
+ends the run at the first held document. Each document ends `passed`, `held`, `visual-review-needed` (nothing failed,
+but a suite needs review, an export could not be verified or an approval is pending) or `failed` (a step could not
+run). The run's `status` is `completed` only when every document passed.
+
+**Run record and resume.** The run id is `run` (default: the pipeline name) and its record is
+`.vixl-runs/RUN/run.json`: the Vixl version, the pipeline digest, per document the input digests (the document,
+`brand.json`, the documents it links, directly or nested, and the pipeline's `inputs` data files; a `check` step also
+keys on its suite file, the library suites and `.vixl-checks.json`), and per step its status, key, log file
+(`logs/`) and outputs with SHA-256. It is written atomically after every step. Running the same id again resumes: a
+step is reused when its key (the inputs plus every step up to it) is unchanged, it finished, and its outputs still
+hold the recorded bytes; the first step that differs runs again with every step after it. So an edited document
+re-runs only its own steps, a changed export step re-runs the export but reuses the check before it, and a changed
+`brand.json` re-runs everything. An interrupted or cancelled run continues where it stopped.
+
+**Dry run.** `dry_run` lists every planned step and output, which steps a run would reuse, and the exports it would
+refuse, and writes nothing. It is the default while the run has no record, so the first call shows the plan.
+
+**Files are never replaced** unless the step says `overwrite: true` or the file is one this run wrote for the same
+document and still holds the bytes it wrote. Two documents of a run never write the same file (`out/{doc}.png` for
+`a/poster.vixl` and `b/poster.vixl`): the second is refused, and the dry run lists the path under `refused`. The
+`pipeline` [job kind](#durable-jobs) runs a pipeline in the background (`submit` with
+`{"kind": "pipeline", "output": ".vixl-runs/nightly", "request": {"pipeline": "launch"}}`), and `resume` continues it.
+
+On the command line, `vixl pipeline run NAME` runs a saved pipeline (a dry run while the run has no record, as the
+action does); `--dry-run` plans, `--execute` runs, `--run ID` picks the record, and `--glob GLOB …` or `--group NAME`
+replaces the targets. The exit code is 1 unless the run completed.
+
+### Sync from a data source
+
+`data-sync` binds a CSV to what it drives and, on each sync, updates only what the changed rows affect:
+
+```json
+{"bind": {"data": "prices.csv", "key": "sku", "to": {"group": "shelf"}},
+ "exports": [{"path": "out/{doc}.png"}], "dry_run": true}
+```
+
+The sync compares the CSV with the snapshot of the last one (`.vixl-runs/data/NAME.json`, `name` defaults to the CSV's
+name) by `key` and reports the rows `added`, `changed` (with the columns) and `removed`. `to` is:
+
+- `{group: NAME}`: each member is bound to the row whose key equals its own variable of the key's name. A member is
+  changed when its row was added or changed in a column it uses (a `${column}` or a variable of that name): the values
+  are set as variables on a copy, which is checked next to the original (design checks and suites, `fail_on`) and
+  render-diffed. The copies that pass are published together through a journal (`group-recover` with
+  `data-sync-NAME`), then `exports` are written again for them only. A member that fails is `held`, keeps its old
+  values and is tried again on the next sync. Unchanged members and their files are not touched.
+- `{spec: campaign.json}`: a campaign file `{source, output, spec}`. The CSV rows become the spec's rows (existing keys
+  keep their place, new ones are appended) and the [campaign](#variant-production-and-draftfinal) runs again in its
+  folder, where the fingerprints reuse every variant whose row did not change.
+- `{merge: sheets.vixl}`: the sheet document's recorded [merge](#print-merge) runs again when a row changed.
+
+`dry_run` shows the row diff and the planned outputs and writes nothing.
+
+### Completion webhooks
+
+A durable job (`submit`), `pipeline-run` and `check-all` take `notify: {url, secret_env}`; `.vixl/notify.json` sets the
+workspace default and the hosts that may receive anything:
+
+```json
+{"url": "https://hooks.example.com/vixl", "secret_env": "VIXL_HOOK_SECRET", "allow": ["hooks.example.com", "*.example.net"]}
+```
+
+When the work ends, Vixl POSTs one JSON event: `event`, `kind`, `id`, `status`, the outcome `state`, `counts`, the
+`report` path, the `error` code, `vixl_version`, `time` and `delivery`. It never carries document content. The body is
+signed with the secret in the `secret_env` variable (`X-Vixl-Signature: sha256=` the HMAC-SHA256 of the body), and
+`X-Vixl-Delivery` names the delivery (the same across retries). A host not in `allow` is refused. The POST follows the
+download rules: HTTPS, public addresses only unless `VIXL_ALLOW_PRIVATE_FETCH=1`, plain HTTP only to a loopback
+address, no redirects. A 5xx, 408, 429 or a network failure is retried three times with backoff. With
+`VIXL_OFFLINE=1` nothing is sent. The delivery record goes into the job record (`deliveries`) or the result
+(`notify`).
+
+## Watch mode
+
+`vixl watch` keeps a workspace checked while people work in it: when a file changes, or a schedule comes round, it
+runs the check, link impact, pipeline or data sync that the change calls for. The triggers live in
+`.vixl/watch.json` (`--config` names another file):
+
+<!-- docs-test: save .vixl/watch.json -->
+```json
+{"version": 1, "triggers": [
+  {"on": "save", "documents": ["campaign/*.vixl"], "run": "check", "request": {"fail_on": "warning"}},
+  {"on": "source-change", "run": "link-impact"},
+  {"on": "brand-change", "run": "check-all"},
+  {"on": "data-change", "run": "data-sync", "request": {"exports": [{"path": "out/{doc}.png"}]}},
+  {"on": "schedule", "every": "24h", "run": "check-all", "request": {"since_last": true}},
+  {"id": "nightly", "on": "schedule", "at": "02:30", "run": "pipeline", "pipeline": "launch"}
+]}
+```
+
+| `on` | Fires when | Its documents |
+| --- | --- | --- |
+| `save` | A document matching `documents` (globs) or in `group` changed | That document |
+| `source-change` | A document others link to (or were merged from) changed | Its dependents in the [dependency graph](../../reference/plugins.md#helpers-other-plugins-use), nested links included; `documents`/`group` limit the sources watched |
+| `brand-change` | The content of `brand.json` changed | `documents`/`group`, else every document |
+| `data-change` | A CSV that a [data-sync](#sync-from-a-data-source) binding, a merged sheet or the pipeline's `inputs` reads changed | The documents bound to it (`binding` limits it to named bindings) |
+| `schedule` | `every` (`30m`, `24h`, `7d`, at least a minute) or `at` (`HH:MM` each day, UTC) came round | `documents`/`group`, else every document |
+
+`run` is `check` (the trigger's documents, as `check-all`), `check-all` (the trigger's `documents`/`group`, else every
+document), `link-impact` (each changed source; `save` and `source-change`), `pipeline` (a saved `pipeline`) or
+`data-sync` (the bindings whose CSV changed; `data-change` and `schedule`). `request` holds the action's options:
+`checks`, `suites`, `profile`, `fail_on`, `waivers`, `since_last`, `notify`; `apply` and `resize` for link impact;
+`exports`, `overwrite` for data sync; `run` (the run id) for a pipeline. Each trigger defaults to the first `run` in
+its row: `check`, `link-impact`, `check-all`, `data-sync`, `check-all`.
+
+**How it decides.** Vixl polls modification times every second (`poll`) and compares content digests, so a touched
+file is not a change; with the optional `watchdog` package installed, a file event wakes the poll early. An event
+waits 500 ms after the last change (`debounce`), and repeated events of a trigger coalesce into one run with the
+union of their documents. Each document has one run at a time: a run holds a lock per document, and an event whose
+documents are busy waits for the next poll. A schedule fires once per period however long the watch was stopped,
+and its first period starts when the watch first sees it. A pipeline is skipped (`up-to-date`) when its
+[run record](#pipelines)'s digests match every document's inputs; otherwise it runs, and reuses each unchanged step.
+
+**What it reports.** Every run is one entry: the trigger, the changed `files`, the `documents`, `passed` and the
+`failing` documents. Check runs record the [check-all history](#history-and-newly-failing-documents) (so
+`since_last` works across watches) and send the [completion event](#completion-webhooks), as pipeline runs do;
+link-impact and data-sync runs send a `watch` event, and link impact also records history. Exports follow the rules
+of the run that writes them: a pipeline replaces only its own files unless the step says `overwrite: true`, and a
+data sync only those it wrote unless `overwrite` is set.
+
+**Bounded runs.** The state (file digests and schedule times) is kept in `.vixl-runs/watch/NAME.json` (`name`,
+default `watch`), so a watch started again sees what changed while it was stopped; the very first start only records
+the files. `vixl watch` runs until Ctrl-C and prints one line per run (`--json`: one JSON object per line).
+`--once` makes a single pass and exits, 1 when a run failed, which suits cron and CI; `--ticks N` polls N times.
+The `watch` workflow action is the bounded form (`ticks`, default 1; `config` or an inline `watch`):
+
+```bash
+vixl watch --once
+vixl watch --once --json
+```
 
 ## Logo packages
 
@@ -728,6 +984,10 @@ Job kinds:
 - `video`: explicit provider, request, output MP4/WebM (gateway contract below).
 - `lyric-video`: request, output MP4/WebM ([lyric videos](../motion/lyric-video.md)).
 - `form-fill`: source, request, output ([forms](../output/forms.md)).
+- `pipeline`: request `{pipeline, documents?, group?}`, output `.vixl-runs/RUN` (the run id); the run resumes on
+  `resume` ([pipelines](#pipelines)).
+
+Any job also takes `notify` ([completion webhooks](#completion-webhooks)).
 
 An interrupted synchronous image request becomes `needs_review` and is never blindly
 repeated. Pollable video jobs keep their remote ID. Network failures back off; after

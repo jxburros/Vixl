@@ -41,7 +41,8 @@ REPAIRS = Literal["fit-text", "contrast-ink", "safe-area-nudge"]
 CHECKS = Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "placeholders", "fonts", "brand",
                  "print", "color_vision", "guides", "alignment", "deck", "title_position", "type_scale", "words",
                  "min_font", "notes", "empty", "form", "drawing", "links", "style", "diagram", "flow", "codes",
-                 "composition", "object", "motion", "character", "captions", "connected", "cost", "accessibility"]
+                 "composition", "object", "motion", "character", "captions", "connected", "cost", "accessibility",
+                 "budget"]
 
 
 class Context:
@@ -912,6 +913,12 @@ def export_one(
         description="Only these layers or objects, cropped to their ink on a transparent canvas; a .vixl path writes "
                     "a portable object document")] = None,
     padding: Annotated[float | None, Field(ge=0, le=4096, description="Pixels around the ink with isolate")] = None,
+    check: Annotated[bool, Field(description="Read the written file back and check it (fonts embedded, "
+                                             "self-contained, editable text); the result is export_check")] = False,
+    spec: Annotated[str | dict | None, Field(description="Delivery spec to check the file against: a preset "
+                                                         "(print-letter-bleed, instagram-feed, web-banner ...) or "
+                                                         "fields {max_bytes, pages, trim, bleed, fonts_embedded, "
+                                                         "color, dpi, alpha ...}")] = None,
     document: Document = None,
 ):
     """Export one file, full size by default (vixl_reference('exports') explains formats, CMYK, PDF, PPTX, HTML and
@@ -926,6 +933,8 @@ def export_one(
                    proof=proof, simulate=simulate, dpi=dpi, icon_sizes=icon_sizes, time=time, page=page, pages=pages,
                    pdf_content=pdf_content, fillable=fillable, values=values, fill_mode=fill_mode, alpha=alpha,
                    presenter=presenter, title=title, max_bytes=max_bytes, isolate=isolate, padding=padding)
+    if check or spec is not None:
+        options.update(check=check, spec=spec)
     return export_file(session, path, overwrite, document, **options)
 
 
@@ -1194,12 +1203,21 @@ def reference_layouts(ctx, name: Annotated[str | None, Field(description="One la
 @action("vixl_reference", "fonts")
 def reference_fonts(
     ctx, name: Annotated[str | None, Field(description="A family (view font) or pairing (view pairing)")] = None,
-    view: Literal["fonts", "font", "pairings", "pairing", "principles"] | None = None,
+    view: Literal["fonts", "font", "pairings", "pairing", "principles", "installed"] | None = None,
     category: str | None = None, role: str | None = None, mood: str | None = None, best_for: str | None = None,
+    query: Annotated[str | None, Field(description="view installed: words in a family, style or PostScript name")] = None,
 ):
     """Researched typefaces, curated heading/body pairings with the reason each works, and the pairing principles;
-    install with the font-pair or font-install operation."""
+    install with the font-pair or font-install operation. view installed lists the fonts installed on this machine,
+    which a text layer's font takes by family, style or PostScript name (embedded on use)."""
     from . import typefaces
+
+    if view == "installed":
+        from . import system_fonts
+
+        return {**system_fonts.families(query or name, limit=60, compact=True),
+                "use": "font: 'Family' or 'Family Style' (e.g. 'Georgia Bold Italic') or the PostScript name; the "
+                       "face is embedded in the document. Check a family's licence before shipping it."}
 
     if view is None and name:
         try:
