@@ -118,7 +118,8 @@ then fetches it once and the render path finds it in the pack directory.
 | `job-kind` | `fn(kind) -> {validate, run} or None`, kinds in `fn.KINDS` | When a durable job is submitted or run; return None for kinds that are not yours |
 | `job-complete` | `fn(event) -> delivery record or None` | Once when a durable job, `check-all` or a pipeline run ends (`vixl.jobs.completion_event` shape) |
 | `resource-kind` | `fn(kind) -> {builtins, validate} or None`, categories in `fn.KINDS` | When the resource library lists, reads or saves a category that is not built in |
-| `host-route` | `fn(app, host)` | Once when `vixl host` builds its app: add routes; `host.session(ws)`, `host.workspace(ws)` and `host.answer(error)` are the helpers, and every route is already behind the bearer token |
+| `host-route` | `fn(app, host)` | Once when `vixl host` builds its app: add routes; `host.session(ws)`, `host.workspace(ws)` and `host.answer(error)` are the helpers, and every route is already behind the bearer token; `host.options` holds the parsed `vixl host` flags (None when the app is made in Python) |
+| `host-flags` | `fn(parser)` | When `vixl host` builds its flag parser: add flags (the `ai` plugin adds `--provider studio`, `--provider-url`, `--provider-token-env`); the plugin's `host-route` hook reads them from `host.options` |
 
 ## Helpers other plugins use
 
@@ -164,7 +165,7 @@ A plugin that declares `requires: ["workspace_qa"]` can call these (see their mo
 | `localization` (Localization) | workflows | Locale variable tables and strings CSVs, a locale x finding check matrix, and localize fan-out with fit, RTL mirroring and font fallbacks. | `locales-set`, `group-locales`, `locale-check`, `localize` |
 | `figma_import` (Figma import) | importer | Import a Figma page or node as editable layers, with images, fonts and unsupported nodes rasterized. | hooks: import-format |
 | `pdf_import` (PDF import) | importer | Import a PDF page as editable layers (needs the optional pypdfium2 package). | hooks: import-format |
-| `ai` (AI providers) | provider | Generate, edit, detect and describe images through configured providers; model discovery and routing. | none: the core calls it directly |
+| `ai` (AI providers) | provider | Generate, edit, detect and describe images through configured providers; model discovery and routing. | hooks: host-flags, host-route |
 | `spelling` (Spelling) | checks | An optional spelling check of drawn text with suggestions; English is bundled, other languages are content packs. | hooks: check, spell |
 
 ## Not separable yet

@@ -1,0 +1,123 @@
+name: Container image
+# Builds ghcr.io/jxburros/vixl:VERSION and VERSION-full from the published PyPI release, smoke-tests both, then
+# pushes them. Uses the docker CLI on the runner only, so no third-party action is involved.
+'on':
+  push:
+    tags: ['v*']
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      version:
+        description: The published vixl-engine version (X.Y.Z)
+        type: string
+        required: true
+      push:
+        description: Push the images after the smoke test
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: container-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: true
+      matrix:
+        variant:
+          - {target: runtime, suffix: ''}
+          - {target: full, suffix: '-full'}
+    env:
+      IMAGE: ghcr.io/jxburros/vixl
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Resolve the version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          version="${INPUT_VERSION:-${REF_NAME#v}}"
+          echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "Not a release version: $version"; exit 1; }
+          grep -q "^ARG VERSION=$version\$" distribution/container/Dockerfile \
+            || { echo "distribution/container/Dockerfile ARG VERSION is not $version"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Wait for the release on PyPI
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          for attempt in $(seq 1 40); do
+            curl -fsS "https://pypi.org/pypi/vixl-engine/$VERSION/json" > /dev/null && exit 0
+            sleep 30
+          done
+          echo "vixl-engine $VERSION is not on PyPI"; exit 1
+      - name: Build
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TARGET: ${{ matrix.variant.target }}
+          TAG: ${{ steps.version.outputs.version }}${{ matrix.variant.suffix }}
+        run: |
+          docker build -f distribution/container/Dockerfile --build-arg "VERSION=$VERSION" --target "$TARGET" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" -t "$IMAGE:$TAG" .
+      - name: Smoke test (read-only, tmpfs /tmp, a data volume)
+        env:
+          TAG: ${{ steps.version.outputs.version }}${{ matrix.variant.suffix }}
+          TARGET: ${{ matrix.variant.target }}
+        run: |
+          set -euo pipefail
+          token="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
+          echo "::add-mask::$token"
+          docker volume create vixl-smoke
+          docker run -d --name vixl-smoke --read-only --tmpfs /tmp -v vixl-smoke:/data \
+            -e VIXL_HOST_TOKEN="$token" -p 127.0.0.1:8767:8767 "$IMAGE:$TAG"
+          auth=(-H "Authorization: Bearer $token")
+          for attempt in $(seq 1 60); do
+            curl -fsS "${auth[@]}" http://127.0.0.1:8767/host/health > /dev/null && break
+            sleep 1
+          done
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8767/host/info)" = 401
+          curl -fsS "${auth[@]}" http://127.0.0.1:8767/host/info | tee info.json
+          python3 -c "import json; d = json.load(open('info.json')); assert d['offline'] and d['host_api'] == 1, d"
+          doc="$(curl -fsS "${auth[@]}" -H 'Content-Type: application/json' -X POST \
+            -d '{"width": 640, "height": 400, "background": "#ffffff"}' \
+            http://127.0.0.1:8767/w/smoke/documents | python3 -c 'import json, sys; print(json.load(sys.stdin)["id"])')"
+          curl -fsS "${auth[@]}" -H 'Content-Type: application/json' -X POST \
+            -d '{"layout": {"name": "hero-statement", "title": "Container smoke test"}, "seed": 2}' \
+            "http://127.0.0.1:8767/w/smoke/documents/$doc/compose" > /dev/null
+          job="$(curl -fsS "${auth[@]}" -H 'Content-Type: application/json' -X POST -d '{"format": "PNG"}' \
+            "http://127.0.0.1:8767/w/smoke/documents/$doc/exports" | python3 -c 'import json, sys; print(json.load(sys.stdin)["job_id"])')"
+          curl -fsS "${auth[@]}" "http://127.0.0.1:8767/jobs/$job?wait=50" | tee job.json
+          python3 -c "import json; assert json.load(open('job.json'))['status'] == 'completed'"
+          curl -fsS "${auth[@]}" -o smoke.png "http://127.0.0.1:8767/jobs/$job/download"
+          python3 -c "assert open('smoke.png', 'rb').read(8) == b'\x89PNG\r\n\x1a\n'"
+          for attempt in $(seq 1 20); do
+            status="$(docker inspect -f '{{.State.Health.Status}}' vixl-smoke)"
+            [ "$status" = healthy ] && break
+            sleep 3
+          done
+          test "$status" = healthy
+          if [ "$TARGET" = full ]; then docker exec vixl-smoke ffmpeg -version > /dev/null; fi
+          test "$(docker exec vixl-smoke id -u)" = 10001
+      - name: Show the host log
+        if: always()
+        run: docker logs vixl-smoke || true
+      - name: Push
+        if: github.event_name != 'workflow_dispatch' || inputs.push
+        env:
+          TAG: ${{ steps.version.outputs.version }}${{ matrix.variant.suffix }}
+          GH_TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+          docker push "$IMAGE:$TAG"

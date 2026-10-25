@@ -18,8 +18,8 @@ to another program that holds the bearer token:
 * **Limits.** ``call_limits`` bound every heavy call as they do for ``vixl serve``; ``GET /host/info`` reports
   them.
 
-Route groups other modules add (a later ``PUT /w/{ws}/brand``, for example) register with ``add_routes``; a
-plugin adds routes through the ``host-route`` hook. Both receive ``(app, host)``.
+Route groups other modules add register with ``add_routes``; a plugin adds routes through the ``host-route`` hook.
+Both receive ``(app, host)``.
 """
 
 from collections import OrderedDict
@@ -51,7 +51,8 @@ STATUS = {
     "unauthorized": 401, "authentication_required": 401, "forbidden": 403, "network_disabled": 403,
     "not_found": 404, "no_project": 404, "revision_conflict": 409, "request_id_conflict": 409, "document_busy": 409,
     "job_running": 409, "job_failed": 409, "expired": 410, "resource_limit": 413, "too_many_attempts": 429,
-    "missing_dependency": 501, "internal_error": 500,
+    "missing_dependency": 501, "internal_error": 500, "provider_error": 502, "provider_refused": 403,
+    "provider_not_configured": 501,
 }
 # What to do next, for codes whose message does not already say.
 HINTS = {
@@ -89,7 +90,7 @@ def error_body(exc):
 
 def status_of(exc):
     if exc.code == "limit_exceeded":
-        return {"max_concurrent": 429, "max_queue": 503}.get(exc.details.get("limit"), 413)
+        return {"max_concurrent": 429, "max_queue": 503, "provider": 429}.get(exc.details.get("limit"), 413)
     return STATUS.get(exc.code, 400)
 
 
@@ -117,7 +118,7 @@ def add_routes(fn):
 class Host:
     """The workspaces under ``root`` and what the routes share: their sessions, limits and job store."""
 
-    def __init__(self, root, *, limits=None, call_limits=None, job_ttl=3600.0):
+    def __init__(self, root, *, limits=None, call_limits=None, job_ttl=3600.0, options=None):
         from .call_limits import CallLimits
         from .model import Limits
 
@@ -144,6 +145,10 @@ class Host:
         self.limiter = Limiter(self.call_limits, self.jobs, BoundedExecutor(16, name="vixl-host"))
         self.export_workers = BoundedExecutor(8, name="vixl-host-export")
         self.requests = RequestLog()
+        # The parsed ``vixl host`` flags (None when the app is made in Python): plugins that add flags through the
+        # ``host-flags`` hook read theirs here from their ``host-route`` hook.
+        self.options = options
+        self.provider = None  # {type, url} of the AI provider a plugin registered for this host, for /host/info.
 
     def workspace(self, ws):
         """``root/ws``, created on first use; refused unless ``ws`` matches the pattern and resolves inside root."""
@@ -459,7 +464,11 @@ class Host:
         from . import __version__
         from .fetch import offline, policy
 
-        return {"vixl": __version__, "host_api": HOST_API, "capabilities": capabilities(),
+        found = capabilities()
+        if self.provider:
+            found["ai"] = True  # The host's own provider is allowed while offline.
+        return {"vixl": __version__, "host_api": HOST_API, "capabilities": found,
+                **({"provider": dict(self.provider)} if self.provider else {}),
                 "limits": {**self.call_limits.describe(), "max_pixels": self.limits.max_pixels,
                            "max_dimension": self.limits.max_dimension, "max_json_bytes": MAX_JSON_BYTES,
                            "max_upload_bytes": self.limits.max_asset_bytes},
@@ -468,8 +477,9 @@ class Host:
 
 
 def create_host_app(root, token, *, offline=False, call_limits=None, limits=None, job_ttl=3600.0,
-                    bind="127.0.0.1"):
-    """The ``vixl host`` app. ``token`` is required; ``offline`` turns network access off for the process."""
+                    bind="127.0.0.1", options=None):
+    """The ``vixl host`` app. ``token`` is required; ``offline`` turns network access off for the process;
+    ``options`` are the parsed ``vixl host`` flags, read by plugins that declare their own (``host-flags``)."""
     try:
         from fastapi import FastAPI, Request
         from fastapi.exceptions import RequestValidationError
@@ -479,6 +489,7 @@ def create_host_app(root, token, *, offline=False, call_limits=None, limits=None
         raise VixlError("missing_dependency", "vixl host needs the server extra: pip install 'vixl-engine[server]'",
                         hint="pip install 'vixl-engine[server]'") from exc
     from . import __version__
+    from .calls import CALL_CONTEXT, CALL_CONTEXT_HEADER, CALL_CONTEXT_MAX
     from .interfaces import LOOPBACK, BodyLimit, Failures, require_token, token_matches
 
     require(isinstance(token, str) and token, f"vixl host needs a bearer token: set {TOKEN_ENV} (or pass "
@@ -492,7 +503,7 @@ def create_host_app(root, token, *, offline=False, call_limits=None, limits=None
         require(not external.enabled(), "Third-party plugins cannot run on an offline host", "network_disabled",
                 field="plugins")
         os.environ[OFFLINE_ENV] = "1"
-    host = Host(root, limits=limits, call_limits=call_limits, job_ttl=job_ttl)
+    host = Host(root, limits=limits, call_limits=call_limits, job_ttl=job_ttl, options=options)
     failures = Failures()
 
     def answer(exc, headers=None):
@@ -518,7 +529,8 @@ def create_host_app(root, token, *, offline=False, call_limits=None, limits=None
             await send({"type": "http.response.body", "body": payload})
 
     def body_limit(path):
-        return host.limits.max_asset_bytes if path.endswith(("/assets", "/import")) else MAX_JSON_BYTES
+        # brand.json may embed fonts and logos, so it takes the upload limit like the byte routes.
+        return host.limits.max_asset_bytes if path.endswith(("/assets", "/import", "/brand")) else MAX_JSON_BYTES
 
     app.add_middleware(Body, maximum=body_limit)  # Inside the guard: an unauthorized body is never read.
     loopback = bind in LOOPBACK
@@ -539,7 +551,16 @@ def create_host_app(root, token, *, offline=False, call_limits=None, limits=None
         if not token_matches(request.headers.get("authorization", ""), token):
             failures.failed(client)
             return answer(VixlError("unauthorized", "This host needs a bearer token"), {"WWW-Authenticate": "Bearer"})
-        return await call_next(request)
+        context = request.headers.get(CALL_CONTEXT_HEADER)
+        if context is not None and not (len(context) <= CALL_CONTEXT_MAX and context.isprintable()
+                                        and context.isascii()):
+            return answer(VixlError("invalid_request", f"{CALL_CONTEXT_HEADER} is at most {CALL_CONTEXT_MAX} "
+                                    "printable ASCII characters", field=CALL_CONTEXT_HEADER))
+        marker = CALL_CONTEXT.set(context)
+        try:
+            return await call_next(request)
+        finally:
+            CALL_CONTEXT.reset(marker)
 
     @app.exception_handler(VixlError)
     async def vixl_error(request: Request, exc: VixlError):
@@ -1318,7 +1339,53 @@ def job_summary(host, job):
     return result
 
 
-BUILTIN_ROUTES = [document_routes, review_routes, export_routes, job_routes, catalog_routes]
+def brand_digest(data):
+    """``sha256:HEX`` of the brand.json bytes: the version a conditional ``PUT`` names."""
+    import hashlib
+
+    return "sha256:" + hashlib.sha256(data).hexdigest()
+
+
+def _brand_answer(ws, kit, digest, **extra):
+    from .brand import summary
+
+    return _marked({"workspace": ws, "digest": digest, "brand": summary(kit), "kit": kit, **extra})
+
+
+def brand_routes(app, host):
+    """The workspace brand (#545): ``PUT /w/{ws}/brand`` takes brand.json or a Design Profile (``schemaVersion: 2``,
+    read by the brand kit plugin through the ``brand-format`` hook), validates it and writes ``ROOT/ws/brand.json``;
+    ``GET`` reads it back. New documents in the workspace use it; existing documents are unchanged."""
+
+    @app.get("/w/{ws}/brand")
+    def get_brand(ws: str):
+        from .brand import brand_path, load_raw
+
+        path = brand_path(host.workspace(ws))
+        require(path.is_file(), f"Workspace {ws!r} has no brand.json", "not_found", field="brand",
+                hint="PUT /w/{ws}/brand with brand.json or a Design Profile")
+        data = path.read_bytes()
+        return _brand_answer(ws, load_raw(path.parent), brand_digest(data))
+
+    @app.put("/w/{ws}/brand")
+    def put_brand(ws: str, body: dict, if_digest: str | None = None):
+        from .brand import brand_path, encoded, load_brand_or_profile, write_raw
+
+        kit, unmapped = load_brand_or_profile(body)
+        path = brand_path(host.workspace(ws))
+        with host.lock_for(ws, "brand"):
+            if if_digest is not None:
+                current = brand_digest(path.read_bytes()) if path.is_file() else None
+                if current != if_digest:
+                    raise VixlError("revision_conflict", f"The brand of {ws!r} changed since {if_digest}",
+                                    field="if_digest", digest=current,
+                                    hint="GET /w/{ws}/brand for the current digest, then retry with it")
+            write_raw(path, kit)
+        source = "design-profile" if body.get("schemaVersion") == 2 else "brand.json"
+        return _brand_answer(ws, kit, brand_digest(encoded(kit)), source=source, unmapped=sorted(unmapped))
+
+
+BUILTIN_ROUTES = [document_routes, review_routes, export_routes, job_routes, catalog_routes, brand_routes]
 
 
 def read_token(token_env=TOKEN_ENV, token_file=None, environ=None):
@@ -1357,6 +1424,10 @@ def host_parser():
     p.add_argument("--tls-cert", help="Serve HTTPS with this PEM certificate (with --tls-key)")
     p.add_argument("--tls-key", help="The PEM private key for --tls-cert")
     add_arguments(p)
+    from . import plugins
+
+    for fn in plugins.hooks("host-flags"):
+        fn(p)
     return p
 
 
@@ -1385,7 +1456,7 @@ def cli(args, limits=None):
         raise VixlError("missing_dependency", "vixl host needs the server extra: pip install 'vixl-engine[server]'",
                         hint="pip install 'vixl-engine[server]'") from exc
     app = create_host_app(a.root, token, offline=a.offline or offline(), call_limits=from_arguments(a, "rest"),
-                          limits=limits, job_ttl=a.job_ttl, bind=a.bind)
+                          limits=limits, job_ttl=a.job_ttl, bind=a.bind, options=a)
     import sys
 
     app.state.host.sweep(orphans=True)

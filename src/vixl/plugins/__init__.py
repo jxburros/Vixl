@@ -80,7 +80,10 @@ HOOKS = {
     "resource-kind": "fn(kind) -> {builtins: {name: value}, validate: fn(value)}, or None when the resource category is "
                      "not the plugin's; list the categories in fn.KINDS",
     "host-route": "fn(app, host): add routes to the vixl host app (FastAPI); host.session(ws), host.workspace(ws) "
-                  "and host.answer(VixlError) are the helpers, and every route is already behind the bearer token",
+                  "and host.answer(VixlError) are the helpers, and every route is already behind the bearer token; "
+                  "host.options holds the parsed vixl host flags (None when the app is made in Python)",
+    "host-flags": "fn(parser): add flags to vixl host (host.host_parser); the plugin's host-route hook reads them "
+                  "from host.options",
 }
 MANIFEST_KEYS = {"name", "title", "summary", "kind", "modules", "requires", *ROLES, "hooks", "capabilities", "checks"}
 KINDS = ("operations", "workflows", "importer", "provider", "checks")

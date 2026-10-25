@@ -105,6 +105,67 @@ Vision requests carry `source_image`, width/height, and a `label` for segmentati
 
 `/plan` receives `prompt`, the inspected document, an operation reference, allowed type names, and `source_image`. Return `{"operations":[...]}`. Vixl rejects filesystem and plugin requests, validates the entire batch, then previews it. Only `--apply` changes the project; there is no automatic execution based on model prose.
 
+## Studio gateway (`vixl host --provider studio`)
+
+AI Server Studio has not published a gateway contract yet. **This section is Vixl's proposal, pending Studio's
+contract**; it lives in one module (`src/vixl/plugins/ai/studio_provider.py`) so that it can follow Studio's
+contract when one arrives.
+
+```bash
+export STUDIO_GATEWAY_TOKEN=...   # issued by Studio
+vixl host --root ./host-data --offline \
+  --provider studio --provider-url https://127.0.0.1:7443/vixl --provider-token-env STUDIO_GATEWAY_TOKEN
+```
+
+**Configuration.** The `studio` provider is configured only by these `vixl host` flags. It is registered in the host
+process, never written to `providers.json`, and its token is read from the named variable and held in memory only.
+The URL must be `https://`, or plain `http://` to a loopback address; credentials, a query or a fragment in it are
+refused. While it is active, every capability routes to it (`route` returns it for all eight capabilities), any other
+provider is refused with `403 forbidden` (a `--provider` flag in a call's args, or regenerating a layer another
+provider made), and `--offline` lets exactly URLs under `URL/v1/` through. `GET /host/info` reports
+`provider: {type: "studio", url}` and `capabilities.ai: true`. The host's AI route is
+`POST /w/{ws}/documents/{id}/ai` with `{command, args, if_revision?, request_id?}` (the commands of `vixl ask`,
+`generate`, `ai`, `select`, `detect` and `ocr`); without the provider it answers `501 provider_not_configured`.
+
+**Requests.** One `POST URL/v1/<capability>` per call, for `plan`, `describe`, `detect`, `ocr`, `generate`, `segment`,
+`upscale` and `background-remove`. No redirects are followed and answers are bounded to 64 MiB. Headers:
+
+- `Authorization: Bearer TOKEN` (the `--provider-token-env` value);
+- `X-Call-Context`: the value of the `X-Call-Context` header of the host request that caused the call, echoed
+  unchanged on every gateway call it makes (absent when the host request had none). The host accepts at most 4096
+  printable ASCII characters and answers `400 invalid_request` otherwise;
+- `X-Vixl-Version` and `Content-Type: application/json`.
+
+The body names the capability and its constraints, never a model: the gateway chooses one. `constraints` holds
+`width`, `height`, `seed`, `strength`, `mode` and `scale` when set; `inputs` holds the rest of the
+[HTTP gateway](#http-gateway-contract) request for that capability (`prompt`, `negative_prompt`, `source_image`,
+`mask`, `query`, `label`; for `plan` the document, operation reference and allowed types). A `--model` given to
+the command is not sent.
+
+```json
+{"capability": "generate",
+ "constraints": {"width": 1024, "height": 1024, "seed": 42, "strength": 0.75, "mode": "generate"},
+ "inputs": {"prompt": "a red kite over a foggy forest"}}
+```
+
+**Responses.** A `2xx` answers the capability's result in the HTTP gateway shapes: `{"image", "model"?, "seed"?,
+"metadata"?}` for `generate` and `upscale` (exactly the requested size), `{"mask"}` for `segment` and
+`background-remove`, `{"operations"}` for `plan`, and a JSON object for `describe`, `detect` (objects with
+`box: [x, y, w, h]` or `x`, `y`, `width`, `height`, clipped to the image) and `ocr`. A returned `model` names what the
+gateway used, and provenance records it as for any provider.
+
+**Errors.** A non-`2xx` answer carries `{"error": {"code", "message", "retry_after"?}}`. Vixl maps it to its own codes
+in the host's error shape (`details.provider: "studio"`, `details.status`, `details.gateway_code`):
+
+| Gateway answer | Vixl code | Host status |
+| --- | --- | --- |
+| `code: "refused"`, or 403/451 without a code | `provider_refused` | 403 |
+| `code: "limit_exceeded"`, or 402/429 without a code (`retry_after` seconds kept) | `limit_exceeded` | 429 |
+| anything else, a malformed answer, or a failed connection | `provider_error` | 502 |
+
+The gateway's `message` is untrusted text: Vixl flattens it to one line of at most 300 characters. A failed call
+changes nothing in the document.
+
 ## ComfyUI workflows
 
 Export a workflow in ComfyUI's **API format**, not its UI graph format. Keep it as a local trusted configuration file. Values that are exactly `${prompt}`, `${negative_prompt}`, `${seed}`, `${width}`, `${height}`, `${model}`, `${strength}`, `${source_image}`, or `${mask}` are replaced with typed request values. Missing required substitutions fail explicitly.

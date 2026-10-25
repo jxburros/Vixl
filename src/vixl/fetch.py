@@ -59,9 +59,27 @@ def offline():
     return _flag(OFFLINE_ENV)
 
 
-def network_allowed(purpose):
-    """Refuse with ``network_disabled`` when offline mode is on; every network entry point calls this first."""
-    if offline():
+# URL prefixes offline mode still lets through: the AI gateway ``vixl host --provider studio`` names, and nothing else.
+OFFLINE_EXCEPTIONS = set()
+
+
+def allow_offline(prefix):
+    """Let ``network_allowed(purpose, url)`` pass for URLs under ``prefix`` (scheme, host, port and path) while offline."""
+    OFFLINE_EXCEPTIONS.add(prefix.rstrip("/") + "/")
+
+
+def disallow_offline(prefix):
+    OFFLINE_EXCEPTIONS.discard(prefix.rstrip("/") + "/")
+
+
+def offline_exception(url):
+    return isinstance(url, str) and any(url.startswith(prefix) for prefix in OFFLINE_EXCEPTIONS)
+
+
+def network_allowed(purpose, url=None):
+    """Refuse with ``network_disabled`` when offline mode is on; every network entry point calls this first. A ``url``
+    under a prefix ``allow_offline`` registered passes."""
+    if offline() and not offline_exception(url):
         raise VixlError("network_disabled", f"{purpose} needs the network, and {OFFLINE_ENV}=1 turns network "
                         "access off", suggestions=[f"Unset {OFFLINE_ENV} (or drop --offline) to allow it",
                                                    "Use a local file or the font cache instead"])

@@ -15,7 +15,7 @@ See [design tools and template production](../guides/shapes/design-tools.md) for
 | --- | --- | --- | --- | --- | --- |
 | Documents per session | One fixed document | Multiple, inside the workspace | One active document; workspace workflows | Multiple Project instances; Session for workflows | Many workspaces under --root; documents by opaque id with a revision |
 | Workflows | `act`, `check`, `drawing-report`, `effect-run`, `film-plan`, `form-fill`, `links`, `lyric-video-plan`, `organic-catalog`, `palette-check`, `plan`, `protected-edit`, `repair-layout`, `resource-get`, `resource-list`, `resource-save`, `shape-save`, `suite-use` | All 101 registered actions | All 101 registered actions | All 101 registered actions via workflows.dispatch(Session, ...) | None; documents, operations, compose, preview, check, exports and catalogs |
-| AI tools | Configured local providers via /ai | Configured local providers; a second server, vixl mcp --tools ai | Configured local providers | Configured local providers | Not served |
+| AI tools | Configured local providers via /ai | Configured local providers; a second server, vixl mcp --tools ai | Configured local providers | Configured local providers | Only the studio gateway, with --provider studio: /w/{ws}/documents/{id}/ai |
 | Linked files outside workspace | Forbidden | Forbidden | Explicit --allow-linked | Explicit allow_linked=True | Forbidden |
 | Screen capture | Unavailable | Disabled by default; --allow-screen-capture or VIXL_ALLOW_SCREEN_CAPTURE=1 | Explicit screen-capture workflow | Explicit screen-capture workflow | Unavailable |
 | Jobs | Detached timed-out calls via /jobs; no durable workflow queue | Durable workflow queue and detached calls | Durable workflow queue | Durable queue via Session/workflows | Export jobs with progress, events and expiring downloads; detached timed-out calls |
@@ -326,6 +326,15 @@ export VIXL_HOST_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe
 vixl host --root ./host-data --offline
 ```
 
+**Container.** `ghcr.io/jxburros/vixl:VERSION` (and `VERSION-full` with ffmpeg) runs `vixl host --root /data
+--offline --bind 0.0.0.0` as an unprivileged user, read-only apart from `/data` and a tmpfs `/tmp`, with the content
+packs built in; pass the token as `VIXL_HOST_TOKEN` or `VIXL_HOST_TOKEN_FILE` (see [container
+image](releases.md#container-image)).
+
+**Windows.** The installer can register a per-user `Vixl host` scheduled task for AI Server Studio, on loopback with
+a generated token named by `%LOCALAPPDATA%\Vixl\host.json` (see [Vixl host for AI Server
+Studio](releases.md#vixl-host-for-ai-server-studio)).
+
 **Startup.** `--root DIR` holds one folder per workspace (created when missing; the home folder or a filesystem
 root is refused). The default address is `127.0.0.1:8767`; `--port` changes the port and `--bind ADDR` the address.
 `vixl host --schema` prints the API contract and exits.
@@ -380,6 +389,9 @@ takes the same flags (`--call-timeout`, `--max-megapixels`, `--max-pages`, `--ma
 | `POST /w/{ws}/documents/{id}/check` | `vixl_check` fields (`checks`, `profile`, `suites`, `repair` …) → `{outcome, passed, counts, findings: [{rule, check, severity, action, message, layer_id, layer_ids, page}], checked}` and `revision` |
 | `DELETE /w/{ws}/documents/{id}?if_revision=` | `{deleted, revision}`; removes the working copy |
 | `POST /w/{ws}/documents/{id}/exports` | `{format, options?, request_id?}` → `202 {job_id, status, revision, poll, events, download}`; `options` are the REST `/export` fields |
+| `POST /w/{ws}/documents/{id}/ai` | `{command, args, if_revision?, request_id?}` (`ask`, `generate`, `ai`, `select`, `detect`, `ocr` and their words and flags) → the command's result with `revision`; only with `--provider studio`, else `501 provider_not_configured` |
+| `GET /w/{ws}/brand` | `{workspace, digest, brand, kit}`: the workspace brand.json, its summary and digest; `404 not_found` without one |
+| `PUT /w/{ws}/brand?if_digest=` | brand.json or a Design Profile (`schemaVersion: 2`) → `{workspace, digest, brand, kit, source, unmapped}`; written to `ROOT/ws/brand.json` |
 | `GET /jobs/{id}?wait=` · `GET /jobs/{id}/result` | A job's status: an export, or a call that outlived the timeout (`202` with `job_id`); `result` is what that call would have answered |
 | `GET /jobs/{id}/download` | The export's file, with its media type, file name and `X-Vixl-Revision`; `409 job_running` or `job_failed`, `410 expired` |
 | `GET /jobs/{id}/events` | Server-sent events: `progress` while the job runs, then one `job-complete` |
@@ -431,6 +443,25 @@ as data. `GET /catalog/tools?profile=studio` is the set of 12 tools a host can o
 descriptions written in the host's terms (endpoints, never MCP tool names) and input schemas built when asked from
 the registries that validate the calls: the operation types, layouts, check names and export formats of the
 running release. The profile text lives in `vixl.guidance.TOOL_PROFILES`.
+
+**AI through Studio.** `vixl host --provider studio --provider-url URL --provider-token-env ENV` sends every AI
+call to an AI Server Studio gateway and to nothing else: the provider is registered in the host process (never in
+`providers.json`), takes every capability, refuses any other provider with `403 forbidden`, and is the one address
+`--offline` still lets through. `POST /w/{ws}/documents/{id}/ai` runs an AI command on a document through it and raises
+the revision when the document changed. The value of a request's `X-Call-Context` header (at most 4096 printable
+ASCII characters) is echoed on every gateway call the request causes, so Studio can attribute it. Gateway refusals and
+limits answer `403 provider_refused` and `429 limit_exceeded`, other gateway failures `502 provider_error`. The
+gateway contract is a [proposal of Vixl's](providers.md#studio-gateway-vixl-host---provider-studio), pending Studio's.
+
+**The workspace brand.** `PUT /w/{ws}/brand` takes a brand.json object or a [Design
+Profile](../guides/layout/brands.md#design-profiles) (`schemaVersion: 2`, mapped by the brand kit plugin), validates it
+as `vixl brand validate` does and replaces `ROOT/ws/brand.json`. The answer is the kit as written, its summary
+(`brand`, as `vixl brand show`), `source` (`brand.json` or `design-profile`), `unmapped` (the profile paths with no
+brand.json counterpart, never dropped silently) and `digest` (`sha256:` of the file). Send `?if_digest=DIGEST` to
+replace only that version (else `409 revision_conflict` with the current `details.digest`). An invalid brand answers
+`400` and leaves the file alone. Documents created afterwards in the workspace use the brand's fonts and palette; the
+brand check reads it on every check; existing documents are not rewritten. The body may be as large as an upload, since
+brand.json can embed fonts and logos.
 
 **Retries.** A change sent with `request_id` (1-64 characters) applies at most once per workspace: sending it
 again with the same body returns the first answer with `replayed: true`, a different body under the same id is

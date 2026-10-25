@@ -22,6 +22,18 @@ function Test-PathEntry([string]$Value, [string]$Folder) {
 $AliasOnPath = (Test-PathEntry "$OriginalPath" $AliasDir) -or (Test-PathEntry $SessionPath $AliasDir)
 $ForeignAlias = if (Test-Path $Alias) { (Get-FileHash $Alias).Hash } else { $null }
 $AliasExpected = (Test-Path $AliasDir -PathType Container) -and $AliasOnPath -and -not $ForeignAlias
+# The "Run Vixl host for AI Server Studio" task path (#547) registers a real Scheduled Task, so it runs only when
+# VIXL_TEST_HOST_TASK=1. Manual checklist on a clean, non-admin Windows account (docs/reference/releases.md):
+#   1. Run the installer, tick "Run Vixl host for AI Server Studio"; it finishes without a UAC prompt.
+#   2. %LOCALAPPDATA%\Vixl\host.json is {url: http://127.0.0.1:8767, token_file}; icacls shows only your account on it
+#      and on host-token.
+#   3. Task Scheduler lists "Vixl host" (at logon, restart on failure, your account); it is running, and
+#      GET /host/health with the token answers {ok: true}; without the token it answers 401.
+#   4. Sign out and in: the task starts again. End vixl-engine.exe in Task Manager: it restarts within a minute.
+#   5. vixl update (or a pending update on the next launch) restarts the task onto the new version (GET /host/info).
+#   6. Uninstall: the task, host.json and host-token are gone; %LOCALAPPDATA%\Vixl\host\ (workspaces) stays.
+$HostTask = $env:VIXL_TEST_HOST_TASK -eq '1'
+$HostConfig = Join-Path $env:LOCALAPPDATA 'Vixl\host.json'
 try {
     $Process = Start-Process -FilePath $Installer -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=`"$Install`"") -Wait -PassThru
     if ($Process.ExitCode -ne 0) { throw "Installer failed: $($Process.ExitCode)" }
@@ -66,6 +78,29 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Installed MCP verification failed' }
     & $Python distribution/test_native_design.py "$Install\bin\vixl.exe"
     if ($LASTEXITCODE -ne 0) { throw 'Installed logo workflow verification failed' }
+    if ($HostTask) {
+        $Process = Start-Process -FilePath $Installer -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=`"$Install`"", '/TASKS="studiohost"') -Wait -PassThru
+        if ($Process.ExitCode -ne 0) { throw "Installer with the host task failed: $($Process.ExitCode)" }
+        $HostInfo = Get-Content -Raw $HostConfig | ConvertFrom-Json
+        if ($HostInfo.url -ne 'http://127.0.0.1:8767') { throw "host.json names $($HostInfo.url)" }
+        $Sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+        foreach ($Secret in @($HostConfig, $HostInfo.token_file)) {
+            $Rules = (Get-Acl $Secret).Access
+            if ($Rules.Count -ne 1 -or $Rules[0].IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value -ne $Sid) {
+                throw "$Secret is readable by more than the current user"
+            }
+        }
+        if (-not (Get-ScheduledTask -TaskName 'Vixl host' -ErrorAction SilentlyContinue)) { throw 'The host task was not registered' }
+        $Token = (Get-Content -Raw $HostInfo.token_file).Trim()
+        $Healthy = $false
+        foreach ($Attempt in 1..60) {
+            try {
+                $Health = Invoke-RestMethod -Uri "$($HostInfo.url)/host/health" -Headers @{ Authorization = "Bearer $Token" }
+                if ($Health.ok) { $Healthy = $true; break }
+            } catch { Start-Sleep -Seconds 1 }
+        }
+        if (-not $Healthy) { throw 'The host task did not answer /host/health' }
+    }
     vixl updates off
     if ($LASTEXITCODE -ne 0) { throw 'Update preferences failed' }
     $Status = (vixl updates status --json | ConvertFrom-Json)
@@ -81,6 +116,10 @@ try {
     if (Get-ItemProperty 'HKCU:\Software\Vixl' -Name InstallRoot -ErrorAction SilentlyContinue) { throw 'Install root record was not removed' }
     if (-not (Test-Path "$Install\test-project.vixl")) { throw 'Uninstaller removed a user project' }
     if ([Environment]::GetEnvironmentVariable('Path', 'User') -ne $OriginalPath) { throw 'Uninstaller changed unrelated PATH entries' }
+    if ($HostTask) {
+        if (Get-ScheduledTask -TaskName 'Vixl host' -ErrorAction SilentlyContinue) { throw 'Uninstaller left the host task' }
+        if (Test-Path $HostConfig) { throw 'Uninstaller left host.json' }
+    }
 } finally {
     [Environment]::SetEnvironmentVariable('Path', $OriginalPath, 'User')
     if ($AliasExpected -and (Test-Path $Alias)) { Remove-Item -Force $Alias }

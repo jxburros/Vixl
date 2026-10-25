@@ -95,6 +95,8 @@ def test_every_endpoint_answers_its_contract(driver, tmp_path):
     assert blob.headers["x-vixl-revision"] == "4"
     report = call("POST", "/w/{ws}/documents/{id}/check", params=ids, json={"checks": ["bounds"]}).json()
     assert any(finding["layer_id"] for finding in report["findings"])
+    # Without --provider studio the AI route answers provider_not_configured (tests/test_studio_provider.py drives it).
+    call("POST", "/w/{ws}/documents/{id}/ai", params=ids, json={"command": "ocr"}, status=501)
     preview = call("POST", "/w/{ws}/documents/{id}/preview", params=ids, json={"max_px": 200})
     assert preview.headers["content-type"] == "image/png" and int(preview.headers["x-vixl-width"]) <= 200
     call("POST", "/w/{ws}/documents/{id}/compose", params=ids, json={
@@ -116,6 +118,12 @@ def test_every_endpoint_answers_its_contract(driver, tmp_path):
         found = call("GET", "/catalog/{kind}" + query, params={"kind": kind}).json()
         if kind == "tools":
             validate("ToolProfile", found)
+    call("GET", "/w/{ws}/brand", params=ws, status=404)
+    palette = {"background": "#ffffff", "surface": "#eeeeee", "ink": "#111111", "muted": "#444444",
+               "accent": "#0044aa", "accent-text": "#0044aa", "on-accent": "#ffffff"}
+    written = call("PUT", "/w/{ws}/brand", params=ws, json={"name": "Plain", "palette": palette}).json()
+    assert written["source"] == "brand.json" and written["unmapped"] == []
+    assert call("GET", "/w/{ws}/brand", params=ws).json()["digest"] == written["digest"]
     source = Project(80, 60, "#203040")
     source.save(tmp_path / "in.vixl")
     imported = call("POST", "/w/{ws}/documents/import?name=in", params=ws, status=201,
@@ -176,6 +184,10 @@ def test_request_definitions_match_what_the_routes_accept():
     assert defs["ExportRequest"]["properties"]["options"]["propertyNames"]["enum"] == sorted(EXPORT_FIELDS
                                                                                               - {"format"})
     assert SCHEMA["endpoints"]["GET /catalog/{kind}"]["kinds"] == list(host.CATALOG_KINDS)
+    from vixl.plugins.ai import studio_provider
+
+    assert set(defs["AiRequest"]["properties"]) == studio_provider.AI_FIELDS
+    assert defs["AiRequest"]["properties"]["command"]["enum"] == list(studio_provider.AI_COMMANDS)
 
 
 def test_the_schema_is_valid_json_schema_and_published_by_the_cli():

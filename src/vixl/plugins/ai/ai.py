@@ -836,7 +836,11 @@ def make_provider(name, settings):
 
 def provider(name=None):
     from .models import BUILTIN, load_config
+    from .studio_provider import selected
 
+    studio = selected(name)
+    if studio is not None:
+        return studio
     config = load_config()
     name = name or os.environ.get("VIXL_AI_PROVIDER") or config.get("default")
     require(
