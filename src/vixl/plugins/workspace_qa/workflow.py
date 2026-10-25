@@ -19,6 +19,7 @@ ACTIONS = {
                   set()),
     "replace-across": ({"name", "documents", "replace", "dry_run", "suites", "accept", "reject", "decisions", "review",
                         "overwrite", "journal"}, {"replace"}),
+    "approve": ({"group", "clear", "author"}, set()),
 }
 FIELD_TYPES = {
     "reproduce": {
@@ -47,9 +48,19 @@ FIELD_TYPES = {
                    "description": "Return the compact, manifest-ready summary instead of the full result."},
     },
     "package": PACKAGE_FIELDS,
+    "approve": {
+        "group": {"type": "string", "description": "Approve every member of this project group (stored in "
+                  ".vixl-groups/NAME.approval/) instead of the open document."},
+        "clear": {"type": "boolean", "default": False, "description": "Remove the approval instead of recording one."},
+        "author": {"type": "string", "description": "Who approves (default: the VIXL_AUTHOR environment variable, "
+                   "else agent)."},
+    },
 }
 SUMMARIES = {
     "package": PACKAGE_SUMMARY,
+    "approve": "Record how the open document (or every member of a group) looks now: per page and artboard a render "
+               "hash and a 256 px reference, who and when, beside the document; the approval check then flags later "
+               "changes for review. Approving again replaces it; clear removes it.",
     "reproduce": "Render and report renderable, environment-matched (lockfile) or reference-verified (reference image "
                  "or locked render hash), with located drift per page, artboard, frame, export setting and tool; a "
                  "lockfile can record exports, and verifying them reports byte_identical and visually_equivalent.",
@@ -124,6 +135,10 @@ def dispatch(session, action, request, document=None):
         from .workspace_checks import run
 
         return run(session, request)
+    if action == "approve":
+        from .approval import run
+
+        return run(session, request, document)
     from .replace_across import run
 
     return run(session, request)

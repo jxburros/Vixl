@@ -128,6 +128,11 @@ def describe(path, limits, *, check=True, max_size=1200, overlay=False):
                 **({"omitted": len(report["issues"]) - MAX_ISSUES} if len(report.get("issues", [])) > MAX_ISSUES else {}),
             }
         record["image"] = _data_uri(image, max_size)
+        from .approval import report as approval_report
+
+        approval = approval_report(project)
+        if approval["state"] != "never-approved":
+            record["approval"] = {key: approval[key] for key in ("state", "who", "when", "changed_fraction")}
         return record
     if suffix == ".svg":
         text = data.decode("utf-8", "replace")
@@ -260,6 +265,13 @@ def _card(index, item, record, decisions):
         if waivers.get("active") or waivers.get("expired"):
             parts.append(f"<div><b>Waivers</b><ul>{''.join(_waiver_line(w, False) for w in waivers.get('active', []))}"
                          f"{''.join(_waiver_line(w, True) for w in waivers.get('expired', []))}</ul></div>")
+    approval = record.get("approval")
+    if approval:
+        changed = approval["state"] == "changed"
+        text = (f"changed since approval ({approval['changed_fraction']:.1%})" if changed else "approved") + \
+            f" · {approval['who']}, {str(approval['when'])[:10]}"
+        parts.append(f'<div><span class="badge {"warnc" if changed else "pass"}" data-approval="{approval["state"]}">'
+                     f'{escape(text)}</span></div>')
     compare = record.get("compare")
     if compare:
         region = compare["changed_region"]

@@ -483,6 +483,12 @@ def _dispatch(argv):
     limits = Limits(max_pixels=options.max_pixels)
     tokens = normalize(tokens) if tokens[0] != "text" else tokens
     cmd, args = tokens[0], tokens[1:]
+    from .plugins import hooks as plugin_hooks
+
+    for plugin_command in plugin_hooks("cli-command"):
+        result = plugin_command(cmd, args, options, limits)
+        if result is not None:
+            return result, options.json and isinstance(result, dict)
     if cmd == "adapt-layout" and "--sizes" in args:
         from .adapt import adapt_copies
         from .interfaces import Session

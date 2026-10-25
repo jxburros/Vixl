@@ -20,7 +20,7 @@ CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", 
           "form", "links", "diagram", "flow", "codes", "composition", "object")
 FALLBACK_FONT = PROOFING_FONT
 OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing", "style", "motion", "character", "captions",
-                   "connected", "cost", "accessibility")
+                   "connected", "cost", "accessibility", "approval")
 # The accessibility check bundles these with its own findings (alt text, language, text size, colour-only
 # charts, reading order).
 ACCESSIBILITY_BUNDLE = ("contrast", "color_vision")
@@ -525,6 +525,7 @@ def check_design(
     from .render import layer_canvas_alpha, layer_canvas_surface, resolve_layout, resolved_layers, resolving
 
     # A document with animation is also checked over time (loop seam, poster frame) unless checks are named.
+    document = project  # the document as saved, before a page view or the checks' own candidate copy
     animated = not checks and timeline_animated(project.state.get("timeline"))
     checks = list(checks or CHECKS) + (["motion"] if animated else [])
     from .deck import DECK_CHECKS
@@ -1218,7 +1219,7 @@ def check_design(
 
     for check_plugin in plugin_hooks("check"):
         check_plugin(checks, candidate=candidate, resolved=resolved, local_bounds=local_bounds,
-                     projection=projection, issue=issue)
+                     projection=projection, issue=issue, document=document, artboard=artboard, page=page)
 
     if "flow" in checks and candidate.state.get("flows"):
         from .textflow import check_flows
