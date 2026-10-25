@@ -537,6 +537,9 @@ def _dispatch(argv):
     if cmd == "diff":
         from .image_diff import cli as diff_cli
         return diff_cli(args, limits), options.json
+    if cmd == "check-file":
+        from .export_checks import cli as check_file_cli
+        return check_file_cli(args, limits), options.json
     if cmd == "compose":
         from .compose import cli as compose_cli
         return compose_cli(args, options, limits), options.json
@@ -1707,7 +1710,7 @@ def main(argv=None):
         emit(result, machine, command_of(argv), human_output(argv, sys.stdout))
         if getattr(result, "passed", None) is False:  # a formatted vixl check --all report
             return 1
-        if ("workflow" in argv or ("check" in argv and ("--all" in argv or "--group" in argv)) or "emoji" in argv) and isinstance(result, dict):
+        if ("workflow" in argv or "check-file" in argv or ("check" in argv and ("--all" in argv or "--group" in argv)) or "emoji" in argv) and isinstance(result, dict):
             if result.get("passed") is False or result.get("success") is False or result.get("status") in ("failed", "needs_review", "cancelled"):
                 return 1
         return 0

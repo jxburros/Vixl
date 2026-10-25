@@ -15,8 +15,8 @@ from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
 
-from ...assets import open_image
 from ...errors import VixlError, require
+from ...export_checks import pdf_metadata, raster_metadata
 from ...image_diff import RASTER, VISUAL, load_visual
 from ...model import Limits
 from ...outcomes import make, summarize
@@ -69,23 +69,6 @@ def _data_uri(image, max_size):
     image = image.convert("RGBA")
     image.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
     return "data:image/png;base64," + base64.b64encode(encode_png(image, IMAGE_BYTES)).decode("ascii")
-
-
-def _pdf_metadata(data):
-    spaces = [name for name in ("DeviceCMYK", "DeviceRGB", "DeviceGray", "ICCBased") if f"/{name}".encode() in data]
-    meta = {"color": ", ".join(spaces) or "unknown"}
-    try:
-        import pypdfium2
-
-        document = pypdfium2.PdfDocument(data)
-        try:
-            width, height = document[0].get_size()
-            meta.update(pages=len(document), page_size=f"{width:g} × {height:g} pt")
-        finally:
-            document.close()
-    except Exception:  # noqa: BLE001 - metadata stays best-effort without pypdfium2 or for odd PDFs
-        pass
-    return meta
 
 
 def describe(path, limits, *, check=True, max_size=1200, overlay=False):
@@ -142,21 +125,14 @@ def describe(path, limits, *, check=True, max_size=1200, overlay=False):
         record["image"] = _data_uri(image, max_size)
         return record
     if suffix == ".pdf":
-        meta.update(_pdf_metadata(data))
+        meta.update(pdf_metadata(data))
         try:
             record["image"] = _data_uri(load_visual(path, limits, data=data), max_size)
         except VixlError as exc:
             record["note"] = exc.args[0]
         return record
     if suffix in RASTER:
-        with open_image(data) as source:
-            meta.update(size=f"{source.width} × {source.height} px", color=source.mode)
-            if source.info.get("dpi"):
-                meta["dpi"] = round(float(source.info["dpi"][0]))
-            if source.info.get("icc_profile"):
-                meta["icc_profile"] = True
-            if getattr(source, "n_frames", 1) > 1:
-                meta["frames"] = source.n_frames
+        meta.update(raster_metadata(data))
         record["image"] = _data_uri(load_visual(path, limits, data=data), max_size)
         return record
     record["note"] = "No preview for this format"

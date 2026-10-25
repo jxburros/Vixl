@@ -76,6 +76,9 @@ def export_file(session, path, overwrite=False, document=None, **options):
     )
     require(destination.suffix.lower() != ".vixl" or options.get("isolate"),
             "A .vixl export writes a portable object document: pass isolate=[OBJECT]", field="path")
+    require(destination.suffix.lower() != ".vixl" or not (options.get("check") or options.get("spec") is not None),
+            "check and spec verify delivered files (image, PDF, PowerPoint, HTML, SVG), not .vixl objects",
+            field="check")
     session.make_parent(destination)
     with file_lock(str(destination)):
         require(
@@ -114,15 +117,24 @@ def export_file(session, path, overwrite=False, document=None, **options):
         finally:
             if os.path.exists(temporary_path):
                 os.unlink(temporary_path)
+    if report.get("export_check"):
+        report["export_check"] = {"path": session.relative(destination), **report["export_check"]}
     return {"path": session.relative(destination), "format": fmt, "bytes": len(data), **report,
             "outcome": export_outcome(report)}
 
 
 def export_outcome(report):
-    """A written export executed; it is not validated (exports run no checks) and its warnings need review."""
+    """A written export executed. Without ``check``/``spec`` it is not validated and its warnings need review; with
+    them the export check (export_checks.verify) validates the file, while the design still needs vixl_check."""
     from .outcomes import make
 
     warnings = [str(item) for item in report.get("warnings", [])]
+    verified = report.get("export_check")
+    if verified:
+        outcome = verified["outcome"]
+        return make("completed", outcome["validation"],
+                    [*outcome["review_reasons"], "the export check read the file back; design checks and suites "
+                     "are separate (vixl_check)", *warnings], validated_by=outcome.get("validated_by", ()))
     return make("completed", "not_run", ["export runs no checks: run vixl_check and the suites first", *warnings])
 
 

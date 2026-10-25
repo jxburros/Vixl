@@ -35,6 +35,16 @@ and `vixl host` for AI Server Studio.
   `logo-rev*`) to the backgrounds it is approved on (`dark`, `light`, `@palette-role`, `@extra-name` or a colour). The
   brand check samples the background under each logo with the logo hidden and reports a variant on another background
   as a `fix` (`code: logo-variant-background`) (#555).
+- **Export checks read the delivered file back.** `vixl check-file FILE --spec NAME` and `check`/`spec` on
+  `vixl_export`, batch targets and `Project.export` compare the written file with a delivery spec: PDF page count,
+  TrimBox and BleedBox, embedded fonts, colour spaces, total ink and form fields; raster size, dpi, ICC profile, alpha
+  and bytes; PowerPoint text frames and native charts; external URLs in HTML and SVG. Specs are data, presets
+  (`print-letter-bleed`, `print-a4-bleed`, `instagram-feed`, `web-banner`, `display-ad`, `slides-pptx`, `web-html`)
+  or inline fields on top of one. Findings use the check shape (`check: "export"`), the result is `export_check` and
+  the export's outcome takes its validation. A campaign's `export_check` records the report per output in
+  `production.json` and holds an output that fails it. Verification is read-only. PDF facts come from pypdfium2 when
+  it is installed and a byte scan otherwise; ink a byte scan cannot measure needs review. Proof pages and delivery
+  packages read file metadata through the same core inspector (#557).
 
 ### Automation
 

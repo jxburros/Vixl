@@ -240,6 +240,7 @@ vixl assert layer.logo.exists
 vixl assert layer.logo.bounds within canvas
 vixl assert text.title.font-size '>=' 48
 vixl diff before.vixl after.png [--out diff.png] [--mode diff|side-by-side] [--threshold 8] [--max-fraction 0.01]
+vixl check-file FILE [--spec print-letter-bleed|instagram-feed|web-banner|JSON] [--document DOC.vixl] [--list]
 ```
 
 All accept `--artboard NAME` / `--comp NAME` where relevant. `--check` (spacing), `check --strict`
@@ -247,6 +248,9 @@ and failing `validate`/`assert` exit nonzero with details (`--json` shows every 
 document: it compares two `.vixl` documents or images (PNG, JPEG, WEBP, TIFF, SVG, PDF) and reports `changed_pixels`,
 `changed_fraction` and `changed_region`; `--max-fraction` makes it exit nonzero above that share. SVG inputs must be
 self-contained (no external `href`/`url()`, no DOCTYPE) and within the pixel limit, as for SVG appearance import.
+`check-file` reads an exported file back (PDF boxes, embedded fonts, colour, ink and forms; raster size, dpi, ICC,
+alpha and bytes; PowerPoint text and charts; HTML/SVG external URLs) and checks it against a delivery spec preset or
+inline JSON fields; it exits nonzero when a finding must be fixed (`--list` names the presets).
 
 ## Output
 

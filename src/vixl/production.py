@@ -96,9 +96,14 @@ def plan(spec):
             "motion",
             "fps",
             "profile",
+            "export_check",
         },
         "Unknown production field",
     )
+    if spec.get("export_check") not in (None, False):
+        from .export_checks import resolve_spec
+
+        resolve_spec(spec["export_check"])
     require(isinstance(spec.get("profile", ""), str), "profile is a check profile name", field="profile")
     require(spec.get("version", 1) == 1, "Unsupported production version")
     rows, matrix = spec.get("rows", [{}]), spec.get("matrix", {})
@@ -251,12 +256,18 @@ def blocking_rules(checks):
     return found
 
 
+def held_rules(result):
+    """The rule ids that held one output back: its checks' blocking rules, then the export check's fix findings."""
+    return blocking_rules(result.get("checks") or {}) + [
+        item["rule"] for item in (result.get("export_check") or {}).get("issues", []) if item["action"] == "fix"]
+
+
 def withheld_summary(results, profile):
     """Why outputs were withheld: how many, the effective profile and its fail_on, and the rules that blocked most
     often, with a message that says what to do."""
     from collections import Counter
 
-    rules = Counter(rule for result in results for rule in dict.fromkeys(blocking_rules(result.get("checks") or {})))
+    rules = Counter(rule for result in results for rule in dict.fromkeys(held_rules(result)))
     designs = [((r.get("checks") or {}).get("design") or {}).get("profile") for r in results]
     fail_on = next((item.get("fail_on") for item in designs if item), None)
     count = len(results)
@@ -304,7 +315,7 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
             if output.is_file() and file_digest(output) == prior.get("sha256"):
                 return {**prior, "status": "reused", "outcome": prior.get("outcome") or variant_outcome(
                     prior.get("checks", {}), spec.get("suites", [] if check_profile(spec) else list(
-                        effective(candidate))), "completed", check_profile(spec))}
+                        effective(candidate))), "completed", check_profile(spec), prior.get("export_check"))}
     leftovers = placeholder_report(candidate, variant)
     if not leftovers["passed"]:
         # An undefined variable or leftover template copy in this row: report it naming the variant, before rendering.
@@ -358,7 +369,8 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
     output = directory / filename
     if prior and prior.get("fingerprint") == fingerprint and output.is_file():
         if file_digest(output) == prior.get("sha256"):
-            return {**prior, "status": "reused", "checks": checks, "outcome": variant_outcome(checks, suites, "completed", profile)}
+            return {**prior, "status": "reused", "checks": checks,
+                    "outcome": variant_outcome(checks, suites, "completed", profile, prior.get("export_check"))}
     # Crash recovery can encounter an already published output before its report was saved.
     # Render again to staging and only accept an existing result with identical bytes.
     import tempfile
@@ -385,6 +397,12 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
             candidate.export(staged)
         checksum = file_digest(staged)
         require(not cancelled(), "Production cancelled", "cancelled")
+        verified = export_check(candidate, spec, staged, filename)
+        if verified is not None and not verified["passed"]:
+            # The file does not meet the delivery spec: held for review like a failed check, never published.
+            return {**variant, "status": "needs_review", "checks": checks, "export_check": verified,
+                    "repairs": repairs, **extra,
+                    "outcome": variant_outcome(checks, suites, "completed", profile, verified)}
         if output.exists():
             require(
                 file_digest(output) == checksum,
@@ -401,18 +419,21 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
         "request_fingerprint": request_fingerprint,
         "sha256": checksum,
         "checks": checks,
+        **({"export_check": verified} if verified is not None else {}),
         "repairs": repairs,
         **extra,
-        "outcome": variant_outcome(checks, suites, "completed", profile),
+        "outcome": variant_outcome(checks, suites, "completed", profile, verified),
         "cache": ({"hits": candidate._disk_cache.hits, "misses": candidate._disk_cache.misses}
                   if candidate._disk_cache is not None else {"hits": 0, "misses": 0, "disabled": True}),
     }
 
 
-def variant_outcome(checks, suites, execution, profile=None):
+def variant_outcome(checks, suites, execution, profile=None, export_check=None):
     """One output's outcome. Its suites are the required validation, and with a check ``profile`` so is the
     profile's design check (its outcome follows the profile's fail_on); with neither only the default
-    bounds and flow checks ran, so a clean output is completed but unvalidated (a failure still fails it)."""
+    bounds and flow checks ran, so a clean output is completed but unvalidated (a failure still fails it).
+    ``export_check`` (the spec's ``export_check`` run on the written file) joins the validation when other
+    checks validated the output, and a failing one fails it either way; alone it never validates the design."""
     from .outcomes import from_findings, from_suite, make, merge
 
     reports = checks.get("suites") or {}
@@ -420,11 +441,28 @@ def variant_outcome(checks, suites, execution, profile=None):
     parts = [from_suite(reports[name], name) for name in suites if name in reports]
     if profile and (design or {}).get("outcome"):
         parts.append(design["outcome"])
+    verified = (export_check or {}).get("outcome")
     if parts:
-        return merge(*parts, execution=execution)
+        return merge(*parts, *([verified] if verified else []), execution=execution)
     if design and not design.get("passed", True):
-        return from_findings(design.get("issues", []), execution)
+        return merge(from_findings(design.get("issues", []), execution), *([verified] if verified else []),
+                     execution=execution)
+    if verified and verified["validation"] == "failed":
+        return verified
     return make(execution, "not_run", ["no suites: only the default bounds and flow checks ran"])
+
+
+def export_check(candidate, spec, staged, filename):
+    """The spec's ``export_check`` (true, a delivery spec name or fields) run on one staged output, or ``None``."""
+    wanted = spec.get("export_check")
+    if wanted in (None, False):
+        return None
+    from .export_checks import expectations, verify
+
+    result = verify(staged, None if wanted is True else wanted, limits=candidate.limits,
+                    expect=expectations(candidate))
+    result["path"] = filename
+    return result
 
 
 def placeholder_report(candidate, variant):
