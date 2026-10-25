@@ -97,6 +97,16 @@ def test_a_workspace_symlinked_out_of_the_root_is_refused(client, tmp_path):
     assert response.status_code == 403 and response.json()["code"] == "forbidden"
 
 
+def test_a_loopback_bind_answers_only_loopback_host_names(tmp_path):
+    rebound = TestClient(app_for(tmp_path / "root"), headers={**AUTH, "host": "attacker.example"})
+    refused = rebound.get("/host/info")
+    assert refused.status_code == 400 and refused.json()["code"] == "forbidden_host"
+    assert TestClient(app_for(tmp_path / "root"), headers={**AUTH, "host": "127.0.0.1:8767"}).get(
+        "/host/info").status_code == 200
+    remote = TestClient(app_for(tmp_path / "root", bind="0.0.0.0"), headers={**AUTH, "host": "vixl.internal"})
+    assert remote.get("/host/info").status_code == 200
+
+
 def test_host_info_reports_version_api_capabilities_limits_and_ttl(client):
     from vixl import __version__
 
@@ -260,6 +270,9 @@ def test_a_retried_request_id_applies_once_and_a_different_body_conflicts(client
     other = client.post(f"/w/team/documents/{doc}/operations",
                         json={"operations": [{**BOX, "x": 99}], "request_id": "op-1"})
     assert other.status_code == 409 and other.json()["code"] == "request_id_conflict"
+    second = create(client)["id"]
+    on_another = client.post(f"/w/team/documents/{second}/operations", json=request)
+    assert on_another.status_code == 409  # the same id for another document is a different request
     # Request ids are scoped to their workspace.
     elsewhere = create(client, ws="lab")["id"]
     assert client.post(f"/w/lab/documents/{elsewhere}/operations", json=request).json()["revision"] == 2

@@ -335,7 +335,8 @@ start without a token. It reads `VIXL_HOST_TOKEN` (`--token-env NAME` names anot
 `--token-file FILE`, also `VIXL_HOST_TOKEN_FILE`, which wins over the variable. The token rules and the failed-token
 throttle are those of [REST](#rest): at least 24 characters, and 20 failures from one address in a minute answer
 `429`. There is no origin check, since the caller is a program, not a browser page. On a loopback bind the `Host`
-header must name a loopback address; with `--bind` set to another address it is not restricted. A non-loopback bind
+header must name a loopback address (else `400 forbidden_host`); with `--bind` set to another address it is not
+restricted. A non-loopback bind
 over plain HTTP prints a warning: put a TLS proxy in front, or pass `--tls-cert` and `--tls-key`.
 
 **Offline.** `--offline` (also `VIXL_OFFLINE=1`) turns off every network access for the process: URL imports, font
@@ -379,10 +380,10 @@ takes the same flags (`--call-timeout`, `--max-megapixels`, `--max-pages`, `--ma
 | `POST /w/{ws}/documents/{id}/check` | `vixl_check` fields (`checks`, `profile`, `suites`, `repair` …) → `{outcome, passed, counts, findings: [{rule, check, severity, action, message, layer_id, layer_ids, page}], checked}` and `revision` |
 | `DELETE /w/{ws}/documents/{id}?if_revision=` | `{deleted, revision}`; removes the working copy |
 | `POST /w/{ws}/documents/{id}/exports` | `{format, options?, request_id?}` → `202 {job_id, status, revision, poll, events, download}`; `options` are the REST `/export` fields |
+| `GET /jobs/{id}?wait=` · `GET /jobs/{id}/result` | A job's status: an export, or a call that outlived the timeout (`202` with `job_id`); `result` is what that call would have answered |
 | `GET /jobs/{id}/download` | The export's file, with its media type, file name and `X-Vixl-Revision`; `409 job_running` or `job_failed`, `410 expired` |
 | `GET /jobs/{id}/events` | Server-sent events: `progress` while the job runs, then one `job-complete` |
 | `GET /catalog/{kind}` | `sizes`, `palettes`, `typefaces` (with pairings), `layouts`, `briefs`, `guidance`, `looks`, `styles`, `checks`: the `vixl catalog export` section; `guide?brief=&seed=`: the guide for a brief, as REST `/guide`; `capabilities`: `{host, interfaces}`; `operations?name=text&name=shape`: those operations' field schemas; `tools?profile=studio`: a tool profile |
-| `GET /jobs/{id}?wait=` · `GET /jobs/{id}/result` | A call that outlived the timeout (`202` with `job_id`): its status, then what the call would have answered |
 
 **Documents.** A document has an opaque id (`d_` and 8 hex digits) and lives at `ROOT/ws/ID.vixl`; the index
 `ROOT/ws/.vixl-host/index.json` maps ids to files and holds each document's revision. Ids belong to their
@@ -399,7 +400,7 @@ conditional: when another change came first the host answers `409 revision_confl
 
 **Compose, preview and check.** `compose` runs the same chain as `vixl_apply(create=…)` (create, fonts, layout,
 style, look, operations, check, preview) and replaces the document with the piece, keeping its canvas size unless
-the request gives `size`, `width`/`height` or `purpose`; exports go through [export jobs](#hosting-vixl).
+the request gives `size`, `width`/`height` or `purpose`; exports go through export jobs (below).
 `preview` renders a page (`page`: a number, or `all` for a contact sheet of every page), a `region`
 (`[x, y, width, height]` in pixels or percentages) or the whole canvas at most `max_px` on its longer side, and
 steps the size down until the PNG fits `max_bytes` (65,536-4,194,304), as `vixl_render` does. `check` answers each

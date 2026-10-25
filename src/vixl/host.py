@@ -237,6 +237,7 @@ class Host:
         """Add a new document to the index at revision 1."""
         import time
 
+        _check_name(name)
         now = time.time()
 
         def add(index):
@@ -292,8 +293,8 @@ class Host:
         if request_id is not None:
             require(isinstance(request_id, str) and 0 < len(request_id) <= 64,
                     "request_id is a string of 1-64 characters", field="request_id")
-            outcome, entry = self.requests.start(request_id, route, fingerprint(route, body), (ws, document),
-                                                 key=key)
+            digest = fingerprint(route, {"document": document, "body": body})
+            outcome, entry = self.requests.start(request_id, route, digest, (ws, document), key=key)
             if outcome == "running":
                 await run_in_threadpool(entry["done"].wait, 20)
                 if entry["result"] is None:
@@ -474,7 +475,6 @@ def create_host_app(root, token, *, offline=False, call_limits=None, limits=None
         from fastapi.exceptions import RequestValidationError
         from fastapi.responses import JSONResponse
         from starlette.exceptions import HTTPException
-        from starlette.middleware.trustedhost import TrustedHostMiddleware
     except ImportError as exc:
         raise VixlError("missing_dependency", "vixl host needs the server extra: pip install 'vixl-engine[server]'",
                         hint="pip install 'vixl-engine[server]'") from exc
@@ -521,11 +521,16 @@ def create_host_app(root, token, *, offline=False, call_limits=None, limits=None
         return host.limits.max_asset_bytes if path.endswith(("/assets", "/import")) else MAX_JSON_BYTES
 
     app.add_middleware(Body, maximum=body_limit)  # Inside the guard: an unauthorized body is never read.
-    if bind in LOOPBACK:
-        app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "[::1]", "testserver"])
+    loopback = bind in LOOPBACK
 
     @app.middleware("http")
     async def guard(request: Request, call_next):
+        if loopback:
+            # DNS rebinding: on a loopback bind the Host header must name loopback.
+            name = re.sub(r":\d+$", "", request.headers.get("host", ""))
+            if name not in ("localhost", "127.0.0.1", "[::1]", "testserver"):
+                return answer(VixlError("forbidden_host", f"Host {name!r} is not served on this loopback bind",
+                                        hint="Connect to 127.0.0.1, or start the host with --bind ADDRESS"))
         client = request.client.host if request.client else "unknown"
         wait = failures.retry_after(client)
         if wait:
@@ -564,10 +569,17 @@ def create_host_app(root, token, *, offline=False, call_limits=None, limits=None
         return answer(friendly(exc, relative_to=host.root))  # Never an absolute path on the server.
 
     @app.exception_handler(MemoryError)
-    async def out_of_memory(request: Request, exc: MemoryError):
+    @app.exception_handler(ValueError)
+    @app.exception_handler(UnicodeError)
+    async def friendly_error(request: Request, exc: Exception):
         from .errors import friendly
 
         return answer(friendly(exc))
+
+    @app.exception_handler(Exception)
+    async def internal(request: Request, exc: Exception):
+        return answer(VixlError("internal_error", f"The host failed: {type(exc).__name__}",
+                                hint="Retry; if it fails again, report it with the request"))
 
     @app.get("/host/info")
     def host_info():
@@ -622,6 +634,11 @@ def _summary(session, path, project, revision, doc, max_layers=MAX_LAYERS):
     return mark(result)
 
 
+def _check_name(name):
+    require(name is None or (isinstance(name, str) and 0 < len(name) <= 200), "name is 1-200 characters",
+            field="name")
+
+
 def _known(body, allowed, route):
     from .interfaces import known_fields
 
@@ -643,6 +660,7 @@ def document_routes(app, host):
     @app.post("/w/{ws}/documents", status_code=201)
     async def create_document(ws: str, body: dict):
         _known(body, CREATE_FIELDS, "create")
+        _check_name(body.get("name"))
         options = {key: value for key, value in body.items() if key != "request_id"}
 
         def create():
@@ -662,6 +680,7 @@ def document_routes(app, host):
     async def import_vixl(ws: str, request: Request, name: str | None = None, request_id: str | None = None):
         import hashlib
 
+        _check_name(name)
         data = await request.body()
         require(data, "Send the .vixl file as the request body", "invalid_request", field="body")
 
