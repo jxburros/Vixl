@@ -76,7 +76,7 @@ A slow render? `check --checks cost` names the costly layer; `VIXL_PROFILE=1` ad
 | `effects [LAYER]` | Effect stack with IDs/indices |
 | `manifest`, `dependencies`, `reproduce --check` | Assets, fonts, providers; can it re-render? |
 | `reproduce --write-lock F [--export FMT…] [--frames N]`, `reproduce --lock F [--export] [--export-visual] [--report]` | Lock every page, artboard, frame and export; verify them with located drift |
-| `package (--production P.json \| --files GLOB…) --out D.zip [--source DOC] [--name T] [--lock F] [--dry-run]` | Zip a run's outputs with manifest, checksums, check report and proof page |
+| `package (--production P.json \| --files GLOB… \| --run RUN.json) --out D.zip [--source DOC] [--name T] [--lock F] [--dry-run]` | Zip a run's outputs with manifest, checksums, check report and proof page |
 | `schema [OPERATION…]` | Without a name, every operation by purpose with a one-line summary; with names, their JSON Schema; `schema --all` is the whole schema (900 KB); `schema document` is the schema of a `.vixl` file's `project.json` |
 | `pixels [LAYER]` | Pixel layer as rows + palette |
 | `animation` | Frame names, sizes, durations |

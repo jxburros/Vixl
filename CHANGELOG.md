@@ -14,6 +14,34 @@ and `vixl host` for AI Server Studio.
 - **One completion event for durable jobs.** A job that ends (completed, failed, cancelled or needs review) is handed
   once to the plugins' `job-complete` hook with its kind, id, status, outcome and counts, never document content; a
   resumed job reports its next ending. Plugins add durable job kinds through the `job-kind` hook.
+- **Pipelines.** A new `pipelines` plugin runs saved steps over many documents: save a pipeline
+  (`{version: 1, targets, steps}`) with `resource-save` kind `pipelines` and run it with `pipeline-run`. Each document
+  goes through `act`, `check`, `repair`, `export`, `export_check` and `approve` steps, then `proof` and `package` run
+  once over what passed. A document whose step fails is held with its findings while the others continue
+  (`on_fail: stop` ends the run instead), and each ends `passed`, `held`, `visual-review-needed` or `failed`. The run
+  record `.vixl-runs/RUN/run.json` keeps the Vixl version, input digests (document, brand.json, linked documents,
+  data files), per-step logs and outputs with SHA-256; running it again reuses every step whose inputs are unchanged,
+  so an interrupted run resumes and an edited document re-runs only its own steps. The first call is a dry run that
+  lists every planned output. `act` and `repair` change a working copy, never the source, and exports never replace a
+  file the run did not write unless the step says `overwrite: true`. The durable job kind `pipeline` runs it through
+  `submit` and `work`, and `package` takes a run record as its input (`run`, `vixl package --run`) (#568).
+- **Completion webhooks.** `submit`, `pipeline-run` and `check-all` take `notify: {url, secret_env}`, and
+  `.vixl/notify.json` sets a workspace default and the `allow` list of hosts that may receive anything. When the work
+  ends, Vixl POSTs one event (kind, id, status, outcome state, counts, report path) signed with
+  `X-Vixl-Signature: sha256=…` and named by `X-Vixl-Delivery`, through the same address checks as downloads, with 3
+  retries and never any document content; nothing is sent with `VIXL_OFFLINE=1`. `check-all` now hands every finished
+  run to the `job-complete` hook in the shared event shape, and skips `.vixl-runs` (#579).
+- **Sync from a data source.** `data-sync` binds a keyed CSV to a project group, a campaign spec or a merge sheet,
+  diffs it against the last snapshot (`.vixl-runs/data/`; rows added, changed and removed) and changes only what the
+  changed rows affect: group members get the new values on a checked copy, committed through a journal and
+  re-exported; a campaign re-runs with its fingerprints reusing the unchanged variants; a merge sheet merges again.
+  Members that fail their checks are held and retried on the next sync. `dry_run` writes nothing (#572).
+- **Bulk structure upgrades.** `bulk-upgrade` converts a glob or group of documents with the conversion kit, renames
+  and re-roles layers by name pattern (`map`), and can re-apply a layout keeping the copy of its roles (`template`).
+  Each upgraded copy is checked next to the original and render-diffed, and a copy that newly fails is held. It is a
+  dry run by default; `dry_run: false` publishes through a journal that `group-recover` rolls back (#578).
+- **Plugin resource categories.** The `resource-kind` hook lets a plugin add a resource library category (the
+  pipelines plugin adds `pipelines`).
 
 ### Hosting
 

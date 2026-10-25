@@ -116,7 +116,7 @@ The payload is always the operation list: when unsure of a field, `vixl_referenc
 | Brushes, timelines, video templates | [brushes-timeline](references/brushes-timeline.md) |
 | Artistic filters | [artistic-filters](references/artistic-filters.md) |
 | Emoji catalog, packs and exports | [emojis](references/emojis.md) |
-| Suites, campaigns, logo packages, lyric videos, jobs | [production](references/production.md) |
+| Suites, campaigns, pipelines, data sync, webhooks, packages, lyric videos, jobs | [production](references/production.md) |
 | Selections, palette tests, containers, groups, branches | [studio](references/studio.md) |
 | Brands, workspace fonts, SVG/PDF/Figma import | [workspace](references/workspace.md) |
 | Provider-backed generation and vision | [ai](references/ai.md) |

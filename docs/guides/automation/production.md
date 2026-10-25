@@ -557,7 +557,8 @@ differently. Vixl does not schedule runs itself: run it from CI on a schedule (a
 `package` (CLI `vixl package`) turns finished outputs into one zip that a client or a downstream system can trust: the
 files, a manifest that says where each came from and what it was checked against, checksums, the check report and a
 proof page. It takes the outputs of a [campaign run](#variant-production-and-draftfinal) (`production`, its
-`production.json`) or exported files (`files`: paths and globs, or `{path, source}`).
+`production.json`), a [pipeline run](#pipelines) (`run`, its `.vixl-runs/RUN/run.json`) or exported files (`files`:
+paths and globs, or `{path, source}`).
 
 ```bash
 vixl package --production out/production.json --source banner.vixl --out delivery.zip --name "{doc}_{row}_{artboard}.{ext}"
@@ -606,6 +607,108 @@ written package is never read as an approved delivery by itself.
 `dry_run` plans the names, duplicates and held list and writes nothing. The zip is staged and published atomically, its
 entries have fixed timestamps, and an existing package is never replaced unless `overwrite: true`. A package inside the
 folder being packaged is left out of itself.
+
+## Pipelines
+
+A pipeline saves the steps of a delivery once and runs them over many documents: check them, fix what can be fixed,
+export, verify the exports, collect approvals, and write a proof page and a package. Save it like a suite, with
+`resource-save` kind `pipelines`, and run it with `pipeline-run`:
+
+```json
+{"version": 1, "targets": {"group": "launch"}, "on_fail": "hold", "inputs": ["prices.csv"],
+ "steps": [
+   {"check": {"fail_on": "error"}},
+   {"export": {"targets": [{"path": "out/{doc}.png"}, {"path": "out/{doc}@2x.png", "scale": 2}]}},
+   {"export_check": {"spec": {"format": "png"}}},
+   {"approve": {"decisions": "review/decisions.json"}},
+   {"proof": {"output": "out/proof.html"}},
+   {"package": {"output": "out/delivery.zip", "name": "{doc}_{w}x{h}.{ext}"}}
+ ]}
+```
+
+```json
+{"pipeline": "launch", "dry_run": false, "notify": {"url": "https://hooks.example.com/vixl", "secret_env": "VIXL_HOOK_SECRET"}}
+```
+
+`targets` is `{documents: [globs]}`, `{group: NAME}` or both; the request's `documents` or `group` replaces them for
+one run. Each step is an object with one key, its kind:
+
+| Step | Runs | What it does |
+| --- | --- | --- |
+| `act` | per document | Applies `operations` (with optional `suites` that must still pass) to the run's working copy |
+| `check` | per document | The design checks and attached suites, as [check-all](#checking-many-documents) (`checks`, `suites`, `suite`, `profile`, `waivers`, `fail_on`, default `error`) |
+| `repair` | per document | `repair-layout` on the working copy |
+| `export` | per document | Export `targets` (vixl_export options); `path` takes `{doc}`, `{dir}`, `{run}` and `{name}` |
+| `export_check` | per document | Verifies each export of the document against `spec` with the export checks (where they are not available the document is `visual-review-needed`) |
+| `approve` | per document | Reads a [proof page](#proof-pages)'s downloaded `decisions`: approved passes, rejected holds, otherwise it waits |
+| `proof` | once | A proof page of every output that was not held |
+| `package` | once | A [delivery package](#delivery-packages) of the run (package fields; `run` is filled in) |
+
+`act` and `repair` change a working copy under `.vixl-runs/RUN/work/`, never the source document; the steps after
+them check and export that copy. A step that fails holds its document: the document is `held` with the reason and
+findings, its remaining steps do not run, and with `on_fail: hold` (default) the other documents continue; `stop`
+ends the run at the first held document. Each document ends `passed`, `held`, `visual-review-needed` (nothing failed,
+but a suite needs review, an export could not be verified or an approval is pending) or `failed` (a step could not
+run). The run's `status` is `completed` only when every document passed.
+
+**Run record and resume.** The run id is `run` (default: the pipeline name) and its record is
+`.vixl-runs/RUN/run.json`: the Vixl version, the pipeline digest, per document the input digests (the document,
+`brand.json`, the documents it links and the pipeline's `inputs` data files), and per step its status, key, log file
+(`logs/`) and outputs with SHA-256. It is written atomically after every step. Running the same id again resumes: a
+step is reused when its key (the inputs plus every step up to it) is unchanged, it finished, and its outputs still
+hold the recorded bytes; the first step that differs runs again with every step after it. So an edited document
+re-runs only its own steps, a changed export step re-runs the export but reuses the check before it, and a changed
+`brand.json` re-runs everything. An interrupted or cancelled run continues where it stopped.
+
+**Dry run.** `dry_run` lists every planned step and output, which steps a run would reuse, and the exports it would
+refuse, and writes nothing. It is the default while the run has no record, so the first call shows the plan.
+
+**Files are never replaced** unless the step says `overwrite: true` or the file is one this run wrote and still holds
+the bytes it wrote. The `pipeline` [job kind](#durable-jobs) runs a pipeline in the background (`submit` with
+`{"kind": "pipeline", "output": ".vixl-runs/nightly", "request": {"pipeline": "launch"}}`), and `resume` continues it.
+
+### Sync from a data source
+
+`data-sync` binds a CSV to what it drives and, on each sync, updates only what the changed rows affect:
+
+```json
+{"bind": {"data": "prices.csv", "key": "sku", "to": {"group": "shelf"}},
+ "exports": [{"path": "out/{doc}.png"}], "dry_run": true}
+```
+
+The sync compares the CSV with the snapshot of the last one (`.vixl-runs/data/NAME.json`, `name` defaults to the CSV's
+name) by `key` and reports the rows `added`, `changed` (with the columns) and `removed`. `to` is:
+
+- `{group: NAME}`: each member is bound to the row whose key equals its own variable of the key's name. A member is
+  changed when its row was added or changed in a column it uses (a `${column}` or a variable of that name): the values
+  are set as variables on a copy, which is checked next to the original (design checks and suites, `fail_on`) and
+  render-diffed. The copies that pass are published together through a journal (`group-recover` with
+  `data-sync-NAME`), then `exports` are written again for them only. A member that fails is `held`, keeps its old
+  values and is tried again on the next sync. Unchanged members and their files are not touched.
+- `{spec: campaign.json}`: a campaign file `{source, output, spec}`. The CSV rows become the spec's rows (existing keys
+  keep their place, new ones are appended) and the [campaign](#variant-production-and-draftfinal) runs again in its
+  folder, where the fingerprints reuse every variant whose row did not change.
+- `{merge: sheets.vixl}`: the sheet document's recorded [merge](#print-merge) runs again when a row changed.
+
+`dry_run` shows the row diff and the planned outputs and writes nothing.
+
+### Completion webhooks
+
+A durable job (`submit`), `pipeline-run` and `check-all` take `notify: {url, secret_env}`; `.vixl/notify.json` sets the
+workspace default and the hosts that may receive anything:
+
+```json
+{"url": "https://hooks.example.com/vixl", "secret_env": "VIXL_HOOK_SECRET", "allow": ["hooks.example.com", "*.example.net"]}
+```
+
+When the work ends, Vixl POSTs one JSON event: `event`, `kind`, `id`, `status`, the outcome `state`, `counts`, the
+`report` path, the `error` code, `vixl_version`, `time` and `delivery`. It never carries document content. The body is
+signed with the secret in the `secret_env` variable (`X-Vixl-Signature: sha256=` the HMAC-SHA256 of the body), and
+`X-Vixl-Delivery` names the delivery (the same across retries). A host not in `allow` is refused. The POST follows the
+download rules: HTTPS, public addresses only unless `VIXL_ALLOW_PRIVATE_FETCH=1`, plain HTTP only to a loopback
+address, no redirects. A 5xx, 408, 429 or a network failure is retried three times with backoff. With
+`VIXL_OFFLINE=1` nothing is sent. The delivery record goes into the job record (`deliveries`) or the result
+(`notify`).
 
 ## Logo packages
 
@@ -728,6 +831,10 @@ Job kinds:
 - `video`: explicit provider, request, output MP4/WebM (gateway contract below).
 - `lyric-video`: request, output MP4/WebM ([lyric videos](../motion/lyric-video.md)).
 - `form-fill`: source, request, output ([forms](../output/forms.md)).
+- `pipeline`: request `{pipeline, documents?, group?}`, output `.vixl-runs/RUN` (the run id); the run resumes on
+  `resume` ([pipelines](#pipelines)).
+
+Any job also takes `notify` ([completion webhooks](#completion-webhooks)).
 
 An interrupted synchronous image request becomes `needs_review` and is never blindly
 repeated. Pollable video jobs keep their remote ID. Network failures back off; after
