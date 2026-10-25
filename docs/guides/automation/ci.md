@@ -132,6 +132,13 @@ the previous run (and whether a Vixl upgrade or an edit caused it). The action p
 checkout starts empty; to track results over time, run `vixl check --all --since-last` on a schedule in a workflow
 that keeps `.vixl-checks/` (for example as a cached or committed folder).
 
+On a machine that keeps its workspace (a build server, a shared drive), `vixl watch` runs the checks itself: it
+re-checks a saved document, the documents that link to a changed source, everything after a `brand.json` change, and
+runs pipelines or data syncs on a schedule ([watch mode](production.md#watch-mode)). From a scheduled CI job, or
+cron, `vixl watch --once` makes one pass: it compares the workspace with the state the last pass left in
+`.vixl-runs/watch/` (keep that folder between runs), runs the triggers that fire and the schedules that are due, and
+exits 1 when a run failed.
+
 `vixl diff BEFORE AFTER` compares two `.vixl` documents or images (PNG, JPEG, WEBP, TIFF, SVG; PDF with the `pdf`
 extra), at the first one's size, and reports `changed_pixels`, `changed_fraction` and `changed_region`. `--out`
 writes the after image dimmed with changed pixels in red (`--mode side-by-side` shows before | after | diff),

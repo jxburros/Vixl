@@ -111,6 +111,8 @@ Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG [--isola
            workflow ACTION --request FILE [--workspace DIR] (workflow schema lists actions; proof, logo-package, brand-board …),
            package (--production out/production.json | --files GLOB…) --out delivery.zip [--source DOC.vixl]
            [--name TEMPLATE] [--layout by-format|by-artboard] [--lock FILE] [--dry-run] (outputs, manifest, report, proof),
+           pipeline run NAME [--dry-run|--execute] [--run ID] (a saved pipeline), watch [--config .vixl/watch.json]
+           [--once|--ticks N] (re-check, run pipelines or re-sync on save, source, brand and data changes and schedules),
            compose --request FILE [--preview P.png] (create → layout → look → operations → check → exports, atomic),
            each layer --name PATTERN -- COMMAND, preset save|apply|show NAME,
            transaction begin|commit|rollback, assert RULE, validate [PROFILE]

@@ -245,6 +245,8 @@ To run the same steps over a group every time (check, export, verify, approve, p
 resumes, save them as a [pipeline](production.md#pipelines) and run `pipeline-run`. `data-sync` keeps members in step
 with a keyed CSV ([sync from a data source](production.md#sync-from-a-data-source)), and `bulk-upgrade` converts and
 re-roles many documents in place with before/after checks ([converting](../../reference/converting.md#upgrade-many-documents-in-place)).
+`watch` (`vixl watch`) runs checks, link impact, pipelines or data syncs when files change or on a schedule
+([watch mode](production.md#watch-mode)).
 
 `shared.waivers` (`[{check or rule, reason, expires}]`) are written into every member as document waivers by
 `group-apply`. `profiles` on `group-define` (`{name: {fail_on, checks, optional, suites}}`) override the workspace's
