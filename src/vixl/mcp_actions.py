@@ -1195,12 +1195,21 @@ def reference_layouts(ctx, name: Annotated[str | None, Field(description="One la
 @action("vixl_reference", "fonts")
 def reference_fonts(
     ctx, name: Annotated[str | None, Field(description="A family (view font) or pairing (view pairing)")] = None,
-    view: Literal["fonts", "font", "pairings", "pairing", "principles"] | None = None,
+    view: Literal["fonts", "font", "pairings", "pairing", "principles", "installed"] | None = None,
     category: str | None = None, role: str | None = None, mood: str | None = None, best_for: str | None = None,
+    query: Annotated[str | None, Field(description="view installed: words in a family, style or PostScript name")] = None,
 ):
     """Researched typefaces, curated heading/body pairings with the reason each works, and the pairing principles;
-    install with the font-pair or font-install operation."""
+    install with the font-pair or font-install operation. view installed lists the fonts installed on this machine,
+    which a text layer's font takes by family, style or PostScript name (embedded on use)."""
     from . import typefaces
+
+    if view == "installed":
+        from . import system_fonts
+
+        return {**system_fonts.families(query or name, limit=60, compact=True),
+                "use": "font: 'Family' or 'Family Style' (e.g. 'Georgia Bold Italic') or the PostScript name; the "
+                       "face is embedded in the document. Check a family's licence before shipping it."}
 
     if view is None and name:
         try:

@@ -6,6 +6,8 @@ import tempfile
 # weekly docs-online workflow sets VIXL_DOCS_ONLINE=1 to keep its own VIXL_AUTO_FONTS and use the real sources.
 if not os.environ.get("VIXL_DOCS_ONLINE"):
     os.environ["VIXL_AUTO_FONTS"] = "off"
+# Font names never match the fonts installed on the machine running the suite; tests/test_system_fonts.py builds its own.
+os.environ.setdefault("VIXL_SYSTEM_FONTS", "off")
 # Exports of saved documents use the per-user disk render cache: keep the suite's entries out of the real one.
 os.environ["VIXL_RENDER_CACHE"] = tempfile.mkdtemp(prefix="vixl-render-cache-")
 

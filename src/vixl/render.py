@@ -90,6 +90,11 @@ def font_for(project, layer):
         require("/" not in font and "\\" not in font, "Import custom fonts with text --font FILE")
         return ImageFont.truetype(str(Path(__file__).parent / "data" / font) if font in BUNDLED_FONTS else font, size)
     except OSError as exc:
+        from .system_fonts import render_data
+
+        data = render_data(font)
+        if data is not None:
+            return ImageFont.truetype(io.BytesIO(data), size)
         raise missing_font(project, layer.get("font", font)) from exc
 
 
@@ -98,13 +103,19 @@ def missing_font(project, name):
     typography = project.state.get("typography") or {}
     roles = [role for role in typography if typography[role]]
     known = ", ".join([*roles, *fonts]) if roles or fonts else "none yet"
+    from .system_fonts import mode, suggest
+
+    close = suggest(name)
+    installed = (f" Installed fonts with close names: {', '.join(close)}." if close else
+                 " No installed font has that name (vixl font system lists them)." if mode() != "off" else "")
     return VixlError(
         "missing_font",
-        f"Font {name!r} not found. Registered fonts: {known}. Install one with "
+        f"Font {name!r} not found. Registered fonts: {known}.{installed} Install one with "
         f"vixl font install FAMILY --weight N or vixl font pair NAME, or import a font file; "
         f"{PROOFING_FONT} is the proofing fallback.",
         field="font",
         allowed=[*roles, *fonts, PROOFING_FONT],
+        **({"suggestions": close} if close else {}),
     )
 
 
@@ -133,9 +144,19 @@ def resolve_font(project, name):
         project.assets[font] = data
     if font in project.assets or font in BUNDLED_FONTS:
         return font, role
+    from .system_fonts import EXTENSIONS, embed
+
+    # A font file name keeps Pillow's lookup first, as before; a family, style or PostScript name is matched
+    # against the fonts installed on this machine and embedded, and Pillow's file name lookup comes last.
+    by_file = font.lower().endswith(EXTENSIONS)
+    if not by_file and (installed := embed(project, font)):
+        return installed, role
     try:
         ImageFont.truetype(font, 12)
     except OSError as exc:
+        installed = embed(project, font) if by_file else None
+        if installed:
+            return installed, role
         raise missing_font(project, name) from exc
     return font, role
 

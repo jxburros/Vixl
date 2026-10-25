@@ -60,6 +60,11 @@ def embedding(data):
         fs_type = TTFont(BytesIO(data[0] if isinstance(data, tuple) else data), lazy=True)["OS/2"].fsType
     except Exception:  # noqa: BLE001 - a font without a readable OS/2 table has no stated permission
         return "unknown"
+    return permission(fs_type)
+
+
+def permission(fs_type):
+    """The embedding permission an OS/2 ``fsType`` value states (see ``embedding``)."""
     if not fs_type & 0x000E:
         return "installable"
     if fs_type & 0x0008:
@@ -75,6 +80,14 @@ def license_name(data):
 
     try:
         names = TTFont(BytesIO(data[0] if isinstance(data, tuple) else data), lazy=True)["name"]
+    except Exception:  # noqa: BLE001
+        return None
+    return license_from_names(names)
+
+
+def license_from_names(names):
+    """``license_name`` for a parsed name table."""
+    try:
         text = " ".join(record.toUnicode() for record in names.names if record.nameID in (13, 14)).lower()
     except Exception:  # noqa: BLE001
         return None

@@ -18,7 +18,8 @@ START_HERE = [
     "Size: pick a named size (vixl_reference('sizes')) and vixl_document(action='create', size=…).",
     "Structure: for anything with text, vixl_reference('layouts') then layout-apply, filling every slot it lists (seed makes it repeatable). "
     "For art without a text frame (icons, characters, scenes, patterns), build from shape, pen, pathfinder, organic and radial-repeat.",
-    "Type: vixl_reference('fonts') then font-pair (the bundled font is a proofing fallback).",
+    "Type: vixl_reference('fonts') then font-pair, or name a font installed on this machine "
+    "(vixl_reference('fonts', view='installed')); the bundled font is a proofing fallback.",
     "Finish: apply a look (glow, soft-shadow, hard-shadow, gradient, grain, paper …) so flat shapes read as finished; "
     "tag a style (vixl_reference('styles')) when the brief names a look. A look is part of building, not the finishing pass below.",
     "Tests: before building, write the brief's requirements as a check suite (suite-set; the kind's 'tests' lists a "
