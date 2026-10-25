@@ -28,6 +28,7 @@ worker thread through ``Runtime.wrap``:
 import asyncio
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
+import contextlib
 import difflib
 import functools
 import inspect
@@ -50,6 +51,7 @@ DEFAULT_WORKERS = 32
 # Under load the inline wait shrinks, but never below this (or below inline_seconds when that is smaller).
 MIN_INLINE_SECONDS = 2.0
 MAX_JOBS = 100
+FINAL_PROGRESS_SECONDS = 2.0  # how long a call waits for its last progress notification to be sent
 
 # Tools that change documents or files, or spend provider calls: safe to retry with request_id.
 RETRYABLE = {"vixl_document", "vixl_apply", "vixl_export"}
@@ -146,6 +148,13 @@ class JobStore:
     def recent(self):
         with self.lock:
             return list(reversed(self.jobs.values()))
+
+
+def _on_loop(loop):
+    try:
+        return asyncio.get_running_loop() is loop
+    except RuntimeError:
+        return False
 
 
 class _Box:
@@ -335,6 +344,11 @@ class Runtime:
                 box.inline = False
                 return
             future.add_done_callback(lambda f: f.cancelled() or f.exception())
+            if total and done >= total and not _on_loop(loop):
+                # The last notification must reach the client before the result does: the worker returns right
+                # after this, and a notification still queued on the loop could follow the result or be dropped.
+                with contextlib.suppress(Exception):
+                    future.result(timeout=FINAL_PROGRESS_SECONDS)
 
         return report
 

@@ -222,6 +222,8 @@ the machine work by name. Breaking changes are listed under Upgrading from 0.31.
 
 ### Fixes
 
+- **An MCP call's last progress notification reaches the client before its result.** It was sent without waiting,
+  so a fast client could receive the result first and miss it.
 - **A look on a layer wholly off the canvas no longer fails** with `Coordinate 'lower' is less than 'upper'`, which
   could crash `layout apply` after some rolls: the backdrop box of such a layer is empty instead of inverted.
 - **Installed font files keep their case on Windows** in listings and in the documents they are embedded from.
