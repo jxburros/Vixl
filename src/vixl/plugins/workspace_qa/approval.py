@@ -291,8 +291,7 @@ def status(project, approval, *, only=None, write_diff=False, workspace=None):
     """How ``project`` compares with ``approval``: ``{state, views, changed_fraction, who, when, source}``. Each
     view is approved or changed (with ``changed_fraction`` of its reference and, with ``write_diff``, a ``diff``
     image under the approval's ``diff/`` folder). ``only`` keeps the views that match ``(kind, name)``."""
-    from PIL import Image
-
+    from ...assets import open_image
     from ...image_diff import diff_images
     from .reproduce import render_hash
 
@@ -317,7 +316,7 @@ def status(project, approval, *, only=None, write_diff=False, workspace=None):
         reference = (approval.folder / str(view.get("reference", ""))).resolve()
         try:
             require(reference.is_relative_to(approval.folder.resolve()), "approval reference outside its folder")
-            with Image.open(reference) as stored:
+            with open_image(reference, ('PNG',)) as stored:
                 before = stored.convert("RGBA")
         except (OSError, ValueError, VixlError):
             found.append({**entry, "changed_fraction": 1.0, "note": "the approved reference image is missing"})
