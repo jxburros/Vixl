@@ -382,3 +382,108 @@ def test_a_call_over_the_timeout_continues_as_a_job_and_its_retry_points_at_it(t
     assert test.get(f"/jobs/{job}/result").json()["revision"] == 2
     assert test.post(f"/w/team/documents/{doc}/operations", json=request).json()["replayed"] is True
     assert test.get("/jobs/nope").status_code == 404
+
+
+# ---------------------------------------------------------------------------------- #539 compose, preview, check
+
+
+def noisy_png(width=900, height=700):
+    import io
+
+    import numpy as np
+    from PIL import Image
+
+    pixels = np.random.default_rng(1).integers(0, 256, (height, width, 3), dtype=np.uint8)
+    stream = io.BytesIO()
+    Image.fromarray(pixels).save(stream, format="PNG")
+    return stream.getvalue()
+
+
+def test_preview_respects_max_px_max_bytes_page_and_region(client):
+    import io
+
+    from PIL import Image
+
+    doc = create(client, width=1600, height=1200)["id"]
+    client.post(f"/w/team/documents/{doc}/assets?name=noise", content=noisy_png())
+    big = client.post(f"/w/team/documents/{doc}/preview", json={"max_px": 1024, "max_bytes": 4_194_304})
+    small = client.post(f"/w/team/documents/{doc}/preview", json={"max_px": 300, "max_bytes": 65_536})
+    assert big.status_code == small.status_code == 200
+    assert big.headers["content-type"] == "image/png" and big.headers["x-vixl-revision"] == "2"
+    assert len(small.content) <= 65_536 < len(big.content)
+    with Image.open(io.BytesIO(small.content)) as image:
+        assert max(image.size) <= 300
+        assert image.size == (int(small.headers["x-vixl-width"]), int(small.headers["x-vixl-height"]))
+    region = client.post(f"/w/team/documents/{doc}/preview", json={"region": [0, 0, 200, 100], "max_px": 1024})
+    with Image.open(io.BytesIO(region.content)) as image:
+        assert image.size[0] / image.size[1] == pytest.approx(2, rel=0.05)
+    bad = client.post(f"/w/team/documents/{doc}/preview", json={"max_bytes": 10})
+    assert bad.status_code == 400 and bad.json()["code"]
+    assert client.post(f"/w/team/documents/{doc}/preview", json={"max_width": 10}).status_code == 400
+
+
+def test_preview_page_all_is_a_contact_sheet(client):
+    doc = create(client, width=320, height=180)["id"]
+    applied = client.post(f"/w/team/documents/{doc}/operations", json={"operations": [
+        {"type": "page", "action": "add", "name": "One"}, {"type": "page", "action": "add", "name": "Two"}]})
+    assert applied.status_code == 200, applied.text
+    sheet = client.post(f"/w/team/documents/{doc}/preview", json={"page": "all", "max_px": 512})
+    first = client.post(f"/w/team/documents/{doc}/preview", json={"page": 1, "max_px": 512})
+    assert sheet.status_code == first.status_code == 200 and sheet.content != first.content
+
+
+def test_check_findings_carry_rule_severity_action_and_layer_id(client):
+    doc = create(client, width=300, height=200)["id"]
+    applied = client.post(f"/w/team/documents/{doc}/operations", json={"operations": [
+        {"type": "text", "name": "headline", "text": "Hello", "size": 40, "x": 260, "y": 20, "color": "#111111"}]})
+    layer_id = next(iter(applied.json()["changed"])) if isinstance(applied.json().get("changed"), dict) else None
+    report = client.post(f"/w/team/documents/{doc}/check", json={"checks": ["bounds"]}).json()
+    assert report["passed"] is False and report["outcome"]["validation"] == "failed"
+    assert report["revision"] == 2 and report["counts"]["errors"] >= 1
+    finding = report["findings"][0]
+    assert {"rule", "severity", "action", "message", "layer_id", "page"} <= set(finding)
+    assert finding["rule"].startswith("bounds") and finding["action"] == "fix"
+    state = client.get(f"/w/team/documents/{doc}").json()
+    assert finding["layer_id"] == state["layers"][0]["id"]
+    assert layer_id is None or layer_id == finding["layer_id"]
+    assert client.post(f"/w/team/documents/{doc}/check", json={"profile": "draft"}).status_code == 200
+    unknown = client.post(f"/w/team/documents/{doc}/check", json={"chekcs": ["bounds"]})
+    assert unknown.status_code == 400 and "checks" in unknown.json()["message"]
+
+
+def test_compose_rebuilds_the_document_and_raises_the_revision(client, monkeypatch):
+    monkeypatch.setenv("VIXL_AUTO_FONTS", "off")
+    doc = create(client, width=400, height=300)["id"]
+    piece = {"layout": {"name": "hero-statement", "title": "Make it simple", "subtitle": "One idea, said well.",
+                        "seed": 7}, "seed": 7, "preview": True}
+    dry = client.post(f"/w/team/documents/{doc}/compose", json={**piece, "dry_run": True})
+    assert dry.status_code == 200, dry.text
+    assert dry.json()["revision"] == 1 and dry.json()["preview_base64"]
+    assert client.get(f"/w/team/documents/{doc}").json()["layer_count"] == 0
+    made = client.post(f"/w/team/documents/{doc}/compose", json={**piece, "if_revision": 1, "request_id": "c-1"})
+    assert made.status_code == 200, made.text
+    result = made.json()
+    assert result["revision"] == 2 and "layout" in result["steps"] and "check" in result
+    state = client.get(f"/w/team/documents/{doc}").json()
+    assert state["canvas"]["width"] == 400 and state["layer_count"] > 0
+    assert client.post(f"/w/team/documents/{doc}/compose", json={**piece, "if_revision": 1}).status_code == 409
+    assert client.post(f"/w/team/documents/{doc}/compose", json={**piece, "exports": ["a.png"]}).status_code == 400
+    assert not list((client.app.state.host.root / "team" / ".vixl-host" / "tmp").iterdir())
+
+
+def test_a_host_composed_piece_renders_like_an_in_process_compose(client, tmp_path, monkeypatch):
+    """Stands in for the plan's golden image: the visual fixture set is full (tests/visual allows 30)."""
+    from vixl import Project
+    from vixl.compose import run
+
+    monkeypatch.setenv("VIXL_AUTO_FONTS", "off")
+    piece = {"layout": {"name": "event-poster", "title": "Jazz night", "body": "Fridays at nine", "seed": 3},
+             "seed": 3, "house_style": "on"}
+    doc = create(client, width=240, height=320, seed=3)["id"]
+    assert client.post(f"/w/team/documents/{doc}/compose", json=piece).status_code == 200
+    hosted = Project.load(tmp_path / "root" / "team" / f"{doc}.vixl")
+    local = tmp_path / "local"
+    local.mkdir()
+    run(local, path="piece.vixl", width=240, height=320, **piece)
+    direct = Project.load(local / "piece.vixl")
+    assert hosted.render().tobytes() == direct.render().tobytes()

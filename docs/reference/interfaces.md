@@ -373,6 +373,9 @@ takes the same flags (`--call-timeout`, `--max-megapixels`, `--max-pages`, `--ma
 | `POST /w/{ws}/documents/{id}/operations` | `{operations, dry_run?, detail?, check?, preview?, suites?, repair?, if_revision?, request_id?}` → the change summary with `revision` (`preview_base64` when asked) |
 | `POST /w/{ws}/documents/{id}/assets?name=&credit=&license=` | Raw image bytes → the imported layer and `revision` |
 | `POST /w/{ws}/documents/{id}/import?format=svg\|pdf&name=&page=&dpi=&svg_mode=` | SVG or PDF bytes imported as layers → `revision` |
+| `POST /w/{ws}/documents/{id}/compose` | `vixl_apply(create=…)` fields without `path`, `exports`, `operations_path` and `overwrite`, plus `if_revision?`, `request_id?` → the steps, findings, `preview_base64?` and `revision`; the composed piece replaces the document (`dry_run: true` only previews) |
+| `POST /w/{ws}/documents/{id}/preview` | `{page?, region?, max_px?: 1024, max_bytes?: 1048576, variables?, artboard?, comp?, time?, proof?, simulate?, guides?, values?, show_fields?, isolate?, views?, exploded?}` → PNG, with `X-Vixl-Revision`, `X-Vixl-Width` and `X-Vixl-Height` |
+| `POST /w/{ws}/documents/{id}/check` | `vixl_check` fields (`checks`, `profile`, `suites`, `repair` …) → `{outcome, passed, counts, findings: [{rule, check, severity, action, message, layer_id, layer_ids, page}], checked}` and `revision` |
 | `DELETE /w/{ws}/documents/{id}?if_revision=` | `{deleted, revision}`; removes the working copy |
 | `GET /jobs/{id}?wait=` · `GET /jobs/{id}/result` | A call that outlived the timeout (`202` with `job_id`): its status, then what the call would have answered |
 
@@ -388,6 +391,17 @@ policy (no file paths, linked files or plugin enabling; fonts by registered name
 that succeeds (a dry run changes nothing). Every answer carries it. Send `if_revision` with a change to make it
 conditional: when another change came first the host answers `409 revision_conflict` with the current revision in
 `details.revision`, and applies nothing.
+
+**Compose, preview and check.** `compose` runs the same chain as `vixl_apply(create=…)` (create, fonts, layout,
+style, look, operations, check, preview) and replaces the document with the piece, keeping its canvas size unless
+the request gives `size`, `width`/`height` or `purpose`; exports go through [export jobs](#hosting-vixl).
+`preview` renders a page (`page`: a number, or `all` for a contact sheet of every page), a `region`
+(`[x, y, width, height]` in pixels or percentages) or the whole canvas at most `max_px` on its longer side, and
+steps the size down until the PNG fits `max_bytes` (65,536-4,194,304), as `vixl_render` does. `check` answers each
+finding with its `rule` (`bounds.cut-off`), `severity`, `action` (`fix`, `review`, `informational`), `message`,
+`layer_id` (the first layer it is about, or null) and `page`; profiles and suites pass through, and `repair: true`
+applies the built-in repairs first and raises the revision. All three count against the concurrency limit and
+continue as a job after the timeout, like the REST routes.
 
 **Retries.** A change sent with `request_id` (1-64 characters) applies at most once per workspace: sending it
 again with the same body returns the first answer with `replayed: true`, a different body under the same id is

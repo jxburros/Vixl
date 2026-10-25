@@ -30,6 +30,11 @@ and `vixl host` for AI Server Studio.
   artwork and `DELETE` wrap the `Session` methods. Each change raises a revision that every answer carries, and
   `if_revision` makes a change conditional (`409 revision_conflict`). A `request_id` makes a retry return the first
   answer, using the same request log as MCP, now `vixl.idempotency` (#538).
+- **Host compose, preview and check.** `POST /w/{ws}/documents/{id}/compose` builds a piece in one call and
+  replaces the document with it; `preview` takes `page` (or `all` for a contact sheet), `region`, `max_px` and
+  `max_bytes` with the MCP preview's size stepping; `check` answers findings as
+  `{rule, severity, action, message, layer_id, page}` with `outcome` and `passed`. All three are limited like the
+  REST routes (#539).
 - **Offline mode covers content packs and plugins.** `VIXL_OFFLINE=1` now also stops content-pack downloads (as
   `VIXL_PACK_DOWNLOAD=off` does) and refuses to enable third-party plugins, whose code it cannot bind;
   `--plugins` with `--offline` is refused (#537).

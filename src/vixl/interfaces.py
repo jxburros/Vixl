@@ -314,6 +314,16 @@ class Session:
                 self.path = next(reversed(pool), None)
             return self.open_documents()
 
+    def forget(self, path):
+        """Drop ``path`` from the open documents (its file was replaced or removed outside a call); the next call
+        that names it loads it again."""
+        with self._registry:
+            self.documents.pop(path, None)
+            for seen in self._client_seen.values():
+                seen.pop(path, None)
+            if self._path == path:
+                self._path = None
+
     def open_documents(self):
         with self._registry:
             return {

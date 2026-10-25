@@ -658,11 +658,8 @@ def document_routes(app, host):
     @app.delete("/w/{ws}/documents/{doc}")
     def delete_document(ws: str, doc: str, if_revision: int | None = None):
         def remove(session, path):
-            try:
-                session.close(path)
-            except VixlError:
-                pass  # Not open in this session.
             target = session.resolve(path)
+            session.forget(target)
             for extra in (target, target.with_name(target.name + ".notes.json")):
                 extra.unlink(missing_ok=True)
 
@@ -723,6 +720,147 @@ def _create(session, path, options):
     return report
 
 
+PREVIEW_FIELDS = {"page", "region", "max_px", "max_bytes", "variables", "artboard", "comp", "time", "proof",
+                  "simulate", "guides", "values", "show_fields", "isolate", "views", "exploded"}
+SIZE_FIELDS = ("size", "width", "height", "purpose")
+
+
+def compose_fields():
+    from .compose import FIELDS
+
+    return (FIELDS - {"path", "operations_path", "exports", "overwrite"}) | {"if_revision", "request_id"}
+
+
+def findings(report):
+    """A check report's issues as ``{rule, check, severity, action, message, layer_id, layer_ids, page}``."""
+    result = []
+    for issue in report.get("issues", []):
+        ids = issue.get("layer_ids") or []
+        page = issue.get("page")
+        if page is None and isinstance(issue.get("variant"), dict):
+            page = issue["variant"].get("page")
+        result.append({"rule": issue.get("rule") or issue.get("check"), "check": issue.get("check"),
+                       "severity": issue.get("severity"), "action": issue.get("action"),
+                       "message": issue.get("message"), "layer_id": ids[0] if ids else None, "layer_ids": ids,
+                       "page": page, **({"code": issue["code"]} if issue.get("code") else {})})
+    return result
+
+
+def review_routes(app, host):
+    """Compose, preview and check (#539), each limited like the REST routes (concurrency, timeout, hard timeout)."""
+    from fastapi.responses import Response
+
+    @app.post("/w/{ws}/documents/{doc}/compose")
+    async def compose_document(ws: str, doc: str, body: dict):
+        """Rebuild the document as one composed piece (``compose``: create, fonts, layout, style, look, operations,
+        check, preview). Without a size it keeps the document's canvas size; the composed piece replaces the
+        document and raises its revision (``dry_run`` only previews)."""
+        import base64
+        import uuid
+
+        _known(body, compose_fields(), "compose")
+        options = {key: value for key, value in body.items() if key not in ("if_revision", "request_id")}
+        dry_run = options.pop("dry_run", False)
+        require(type(dry_run) is bool, "dry_run is a boolean", field="dry_run")
+
+        def build(session, path):
+            from .compose import compose
+
+            if not any(options.get(key) is not None for key in SIZE_FIELDS):
+                with session.project(document=path) as project:
+                    canvas = project.state["canvas"]
+                options.update(width=canvas["width"], height=canvas["height"])
+            if dry_run:
+                result, image = compose(session, dry_run=True, **options)
+            else:
+                staged = f"{HOST_DIR}/tmp/{uuid.uuid4().hex}.vixl"
+                host.state_dir(ws, "tmp")
+                try:
+                    result, image = compose(session, path=staged, **options)
+                    target = session.resolve(path)
+                    with session._exclusive(target):
+                        os.replace(session.resolve(staged), target)
+                        session.forget(target)
+                finally:
+                    session.forget(session.resolve(staged))
+                    session.resolve(staged).unlink(missing_ok=True)
+                for key in ("document", "active_document", "warnings"):
+                    result.pop(key, None)
+            if image is not None:
+                result["preview_base64"] = base64.b64encode(image).decode()
+            return result
+
+        def run():
+            result, revision = host.mutate(ws, doc, body.get("if_revision"), build, bump=not dry_run)
+            return _marked({**result, "id": doc, "revision": revision})
+
+        return await host.call(ws, "compose", run, request_id=body.get("request_id"), document=doc,
+                               body={k: v for k, v in body.items() if k != "request_id"})
+
+    @app.post("/w/{ws}/documents/{doc}/preview")
+    async def preview_document(ws: str, doc: str, body: dict | None = None):
+        """A PNG of the document, a page (``page``: a number, or ``all`` for a contact sheet) or a ``region``,
+        at most ``max_px`` on its longer side and ``max_bytes`` long: it steps the size down until it fits."""
+        from .mcp_tools import preview
+
+        body = body or {}
+        _known(body, PREVIEW_FIELDS, "preview")
+        options = dict(body)
+        side = options.pop("max_px", 1024)
+        require(type(side) is int and 1 <= side <= 4096, "max_px is a whole number of pixels, 1-4096",
+                field="max_px")
+        limit = options.pop("max_bytes", 1_048_576)
+        require(type(limit) is int, "max_bytes is a whole number of bytes", field="max_bytes")
+
+        def render(session, path):
+            return preview(session, max_width=side, max_height=side, max_bytes=limit, document=path, **options)
+
+        def run():
+            import io
+
+            from PIL import Image
+
+            data, revision = host.read(ws, doc, render)
+            if len(data) > limit:
+                raise VixlError("limit_exceeded", f"The preview does not fit in {limit} bytes", limit="max_bytes",
+                                value=len(data), maximum=limit, hint="Raise max_bytes or preview a region")
+            with Image.open(io.BytesIO(data)) as image:
+                width, height = image.size
+            return Response(data, media_type="image/png",
+                            headers={"X-Vixl-Revision": str(revision), "X-Vixl-Width": str(width),
+                                     "X-Vixl-Height": str(height)})
+
+        return await host.call(ws, "preview", run)
+
+    @app.post("/w/{ws}/documents/{doc}/check")
+    async def check_document(ws: str, doc: str, body: dict | None = None):
+        """The design checks, with findings as ``{rule, severity, action, message, layer_id, page}``. Profiles and
+        suites pass through; ``repair`` applies the built-in repairs first and raises the revision."""
+        from .interfaces import route_fields
+
+        body = body or {}
+        allowed = route_fields()[0] | {"if_revision", "request_id"}
+        _known(body, allowed, "check")
+        options = {key: value for key, value in body.items() if key not in ("if_revision", "request_id")}
+
+        def check(session, path):
+            return session.check(document=path, **options)
+
+        def run():
+            report, revision = host.mutate(ws, doc, body.get("if_revision"), check, bump=bool(options.get("repair")))
+            result = {"id": doc, "revision": revision, "outcome": report.get("outcome"),
+                      "passed": report.get("passed"),
+                      "counts": {key: report.get(key, 0) for key in ("errors", "warnings", "info")},
+                      "findings": findings(report)}
+            for key in ("checked", "pagination", "repairs", "suites", "variants", "waivers"):
+                if key in report:
+                    result[key] = report[key]
+            return _marked(result)
+
+        return await host.call(ws, "check", run, request_id=body.get("request_id"), document=doc,
+                               body=options)
+
+
 def job_routes(app, host):
     """Calls that outlived the timeout, and export jobs (#540)."""
 
@@ -769,7 +907,7 @@ def job_summary(host, job):
     return result
 
 
-BUILTIN_ROUTES = [document_routes, job_routes]
+BUILTIN_ROUTES = [document_routes, review_routes, job_routes]
 
 
 def read_token(token_env=TOKEN_ENV, token_file=None, environ=None):
