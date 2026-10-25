@@ -191,7 +191,8 @@ refuses URL imports, font downloads and providers with `network_disabled`. One f
 `vixl host --root DIR` is the server for another program (AI Server Studio) rather than one person: many workspaces
 (`/w/{ws}/…`), documents by opaque id with a revision per change (`if_revision` → 409 `revision_conflict`),
 `request_id` retries, compose/preview/check, export jobs with progress and expiring downloads, catalogs and a
-`studio` tool profile. A bearer token is always required (`VIXL_HOST_TOKEN`). The contract is `vixl host --schema`;
+`studio` tool profile, and `PUT /w/{ws}/brand` (brand.json or a Design Profile, answering `unmapped` paths and a
+`digest`). A bearer token is always required (`VIXL_HOST_TOKEN`). The contract is `vixl host --schema`;
 see `docs/reference/interfaces.md#hosting-vixl`.
 
 | Route | Body / query | Result |

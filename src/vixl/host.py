@@ -18,8 +18,8 @@ to another program that holds the bearer token:
 * **Limits.** ``call_limits`` bound every heavy call as they do for ``vixl serve``; ``GET /host/info`` reports
   them.
 
-Route groups other modules add (a later ``PUT /w/{ws}/brand``, for example) register with ``add_routes``; a
-plugin adds routes through the ``host-route`` hook. Both receive ``(app, host)``.
+Route groups other modules add register with ``add_routes``; a plugin adds routes through the ``host-route`` hook.
+Both receive ``(app, host)``.
 """
 
 from collections import OrderedDict
@@ -518,7 +518,8 @@ def create_host_app(root, token, *, offline=False, call_limits=None, limits=None
             await send({"type": "http.response.body", "body": payload})
 
     def body_limit(path):
-        return host.limits.max_asset_bytes if path.endswith(("/assets", "/import")) else MAX_JSON_BYTES
+        # brand.json may embed fonts and logos, so it takes the upload limit like the byte routes.
+        return host.limits.max_asset_bytes if path.endswith(("/assets", "/import", "/brand")) else MAX_JSON_BYTES
 
     app.add_middleware(Body, maximum=body_limit)  # Inside the guard: an unauthorized body is never read.
     loopback = bind in LOOPBACK
@@ -1318,7 +1319,53 @@ def job_summary(host, job):
     return result
 
 
-BUILTIN_ROUTES = [document_routes, review_routes, export_routes, job_routes, catalog_routes]
+def brand_digest(data):
+    """``sha256:HEX`` of the brand.json bytes: the version a conditional ``PUT`` names."""
+    import hashlib
+
+    return "sha256:" + hashlib.sha256(data).hexdigest()
+
+
+def _brand_answer(ws, kit, digest, **extra):
+    from .brand import summary
+
+    return _marked({"workspace": ws, "digest": digest, "brand": summary(kit), "kit": kit, **extra})
+
+
+def brand_routes(app, host):
+    """The workspace brand (#545): ``PUT /w/{ws}/brand`` takes brand.json or a Design Profile (``schemaVersion: 2``,
+    read by the brand kit plugin through the ``brand-format`` hook), validates it and writes ``ROOT/ws/brand.json``;
+    ``GET`` reads it back. New documents in the workspace use it; existing documents are unchanged."""
+
+    @app.get("/w/{ws}/brand")
+    def get_brand(ws: str):
+        from .brand import brand_path, load_raw
+
+        path = brand_path(host.workspace(ws))
+        require(path.is_file(), f"Workspace {ws!r} has no brand.json", "not_found", field="brand",
+                hint="PUT /w/{ws}/brand with brand.json or a Design Profile")
+        data = path.read_bytes()
+        return _brand_answer(ws, load_raw(path.parent), brand_digest(data))
+
+    @app.put("/w/{ws}/brand")
+    def put_brand(ws: str, body: dict, if_digest: str | None = None):
+        from .brand import brand_path, encoded, load_brand_or_profile, write_raw
+
+        kit, unmapped = load_brand_or_profile(body)
+        path = brand_path(host.workspace(ws))
+        with host.lock_for(ws, "brand"):
+            if if_digest is not None:
+                current = brand_digest(path.read_bytes()) if path.is_file() else None
+                if current != if_digest:
+                    raise VixlError("revision_conflict", f"The brand of {ws!r} changed since {if_digest}",
+                                    field="if_digest", digest=current,
+                                    hint="GET /w/{ws}/brand for the current digest, then retry with it")
+            write_raw(path, kit)
+        source = "design-profile" if body.get("schemaVersion") == 2 else "brand.json"
+        return _brand_answer(ws, kit, brand_digest(encoded(kit)), source=source, unmapped=sorted(unmapped))
+
+
+BUILTIN_ROUTES = [document_routes, review_routes, export_routes, job_routes, catalog_routes, brand_routes]
 
 
 def read_token(token_env=TOKEN_ENV, token_file=None, environ=None):

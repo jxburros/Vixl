@@ -116,6 +116,12 @@ def test_every_endpoint_answers_its_contract(driver, tmp_path):
         found = call("GET", "/catalog/{kind}" + query, params={"kind": kind}).json()
         if kind == "tools":
             validate("ToolProfile", found)
+    call("GET", "/w/{ws}/brand", params=ws, status=404)
+    palette = {"background": "#ffffff", "surface": "#eeeeee", "ink": "#111111", "muted": "#444444",
+               "accent": "#0044aa", "accent-text": "#0044aa", "on-accent": "#ffffff"}
+    written = call("PUT", "/w/{ws}/brand", params=ws, json={"name": "Plain", "palette": palette}).json()
+    assert written["source"] == "brand.json" and written["unmapped"] == []
+    assert call("GET", "/w/{ws}/brand", params=ws).json()["digest"] == written["digest"]
     source = Project(80, 60, "#203040")
     source.save(tmp_path / "in.vixl")
     imported = call("POST", "/w/{ws}/documents/import?name=in", params=ws, status=201,

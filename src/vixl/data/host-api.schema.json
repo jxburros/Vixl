@@ -145,6 +145,24 @@
    },
    "status": 202
   },
+  "GET /w/{ws}/brand": {
+   "response": {
+    "$ref": "#/$defs/Brand"
+   },
+   "summary": "The workspace brand.json; 404 not_found when it has none."
+  },
+  "PUT /w/{ws}/brand": {
+   "request": {
+    "$ref": "#/$defs/BrandRequest"
+   },
+   "query": [
+    "if_digest"
+   ],
+   "response": {
+    "$ref": "#/$defs/BrandWritten"
+   },
+   "summary": "Validate brand.json or a Design Profile (schemaVersion 2) and write ROOT/ws/brand.json; if_digest makes it conditional (409 revision_conflict)."
+  },
   "GET /jobs/{id}": {
    "query": [
     "wait"
@@ -1339,6 +1357,74 @@
     "error"
    ],
    "description": "data of the one `event: job-complete` message: the event durable jobs hand the job-complete hook."
+  },
+  "BrandRequest": {
+   "type": "object",
+   "description": "A brand.json object, or a Design Profile (schemaVersion 2) that the brand kit plugin maps to one.",
+   "properties": {
+    "schemaVersion": {
+     "description": "2 marks a Design Profile; brand.json has no such field."
+    }
+   }
+  },
+  "Brand": {
+   "type": "object",
+   "description": "The workspace brand.",
+   "properties": {
+    "workspace": {
+     "type": "string",
+     "description": "A workspace name.",
+     "pattern": "^[a-z0-9_-]{1,64}$"
+    },
+    "digest": {
+     "type": "string",
+     "description": "sha256: and the hex digest of the brand.json bytes; send it as if_digest to make the next PUT conditional.",
+     "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "brand": {
+     "type": "object",
+     "description": "What the brand defines: palette roles, extra colours, fonts, stages, logos, minimum_contrast and presets (vixl brand show)."
+    },
+    "kit": {
+     "type": "object",
+     "description": "The brand.json as written."
+    }
+   },
+   "required": [
+    "workspace",
+    "digest",
+    "brand",
+    "kit"
+   ]
+  },
+  "BrandWritten": {
+   "allOf": [
+    {
+     "$ref": "#/$defs/Brand"
+    }
+   ],
+   "type": "object",
+   "description": "The brand as written, with the shape the upload was read as and the paths it could not map.",
+   "properties": {
+    "source": {
+     "enum": [
+      "brand.json",
+      "design-profile"
+     ],
+     "description": "The shape the upload was read as."
+    },
+    "unmapped": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "Dotted Design Profile paths with no brand.json counterpart: listed, never dropped silently. Empty for brand.json."
+    }
+   },
+   "required": [
+    "source",
+    "unmapped"
+   ]
   },
   "Tool": {
    "type": "object",

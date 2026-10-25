@@ -155,6 +155,10 @@ and `vixl host` for AI Server Studio.
   FILE.json` writes the workspace brand as one; both are brand kit workflow actions (`brand-import`, `brand-export`),
   list every path they cannot map under `unmapped` and refuse to overwrite without `overwrite`.
   `vixl.brand.load_brand_or_profile(data)` reads either shape for the host through the new `brand-format` hook (#545).
+- **Host workspace brand.** `PUT /w/{ws}/brand` takes brand.json or a Design Profile (`schemaVersion: 2`), validates
+  it and writes `ROOT/ws/brand.json`, answering the kit, its summary, `source`, the profile paths it could not map
+  (`unmapped`) and a `digest`; `?if_digest=` makes the write conditional (`409 revision_conflict`). `GET /w/{ws}/brand`
+  reads it back. New documents in the workspace use the brand; existing ones are unchanged (#545).
 
 ### Fixes
 

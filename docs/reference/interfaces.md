@@ -380,6 +380,8 @@ takes the same flags (`--call-timeout`, `--max-megapixels`, `--max-pages`, `--ma
 | `POST /w/{ws}/documents/{id}/check` | `vixl_check` fields (`checks`, `profile`, `suites`, `repair` …) → `{outcome, passed, counts, findings: [{rule, check, severity, action, message, layer_id, layer_ids, page}], checked}` and `revision` |
 | `DELETE /w/{ws}/documents/{id}?if_revision=` | `{deleted, revision}`; removes the working copy |
 | `POST /w/{ws}/documents/{id}/exports` | `{format, options?, request_id?}` → `202 {job_id, status, revision, poll, events, download}`; `options` are the REST `/export` fields |
+| `GET /w/{ws}/brand` | `{workspace, digest, brand, kit}`: the workspace brand.json, its summary and digest; `404 not_found` without one |
+| `PUT /w/{ws}/brand?if_digest=` | brand.json or a Design Profile (`schemaVersion: 2`) → `{workspace, digest, brand, kit, source, unmapped}`; written to `ROOT/ws/brand.json` |
 | `GET /jobs/{id}?wait=` · `GET /jobs/{id}/result` | A job's status: an export, or a call that outlived the timeout (`202` with `job_id`); `result` is what that call would have answered |
 | `GET /jobs/{id}/download` | The export's file, with its media type, file name and `X-Vixl-Revision`; `409 job_running` or `job_failed`, `410 expired` |
 | `GET /jobs/{id}/events` | Server-sent events: `progress` while the job runs, then one `job-complete` |
@@ -431,6 +433,16 @@ as data. `GET /catalog/tools?profile=studio` is the set of 12 tools a host can o
 descriptions written in the host's terms (endpoints, never MCP tool names) and input schemas built when asked from
 the registries that validate the calls: the operation types, layouts, check names and export formats of the
 running release. The profile text lives in `vixl.guidance.TOOL_PROFILES`.
+
+**The workspace brand.** `PUT /w/{ws}/brand` takes a brand.json object or a [Design
+Profile](../guides/layout/brands.md#design-profiles) (`schemaVersion: 2`, mapped by the brand kit plugin), validates it
+as `vixl brand validate` does and replaces `ROOT/ws/brand.json`. The answer is the kit as written, its summary
+(`brand`, as `vixl brand show`), `source` (`brand.json` or `design-profile`), `unmapped` (the profile paths with no
+brand.json counterpart, never dropped silently) and `digest` (`sha256:` of the file). Send `?if_digest=DIGEST` to
+replace only that version (else `409 revision_conflict` with the current `details.digest`). An invalid brand answers
+`400` and leaves the file alone. Documents created afterwards in the workspace use the brand's fonts and palette; the
+brand check reads it on every check; existing documents are not rewritten. The body may be as large as an upload, since
+brand.json can embed fonts and logos.
 
 **Retries.** A change sent with `request_id` (1-64 characters) applies at most once per workspace: sending it
 again with the same body returns the first answer with `replayed: true`, a different body under the same id is

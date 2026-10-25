@@ -105,3 +105,35 @@ def test_import_workflow_dry_run_writes_nothing(tmp_path):
     result = dispatch(Session(workspace=tmp_path), "brand-import", {"profile": profile(), "dry_run": True})
     assert result["written"] is False and result["brand"]["name"] == "Northwind Studio"
     assert not (tmp_path / "brand.json").exists()
+
+
+def test_host_put_brand_accepts_brand_json_and_a_design_profile(tmp_path, monkeypatch):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    from vixl.host import create_host_app
+
+    monkeypatch.setenv("VIXL_AUTO_FONTS", "off")
+    token = "b" * 32
+    client = TestClient(create_host_app(tmp_path / "root", token), headers={"Authorization": f"Bearer {token}"})
+    assert client.get("/w/team/brand").json()["code"] == "not_found"
+
+    mapped = client.put("/w/team/brand", json=profile())
+    assert mapped.status_code == 200, mapped.text
+    body = mapped.json()
+    assert body["source"] == "design-profile" and "voice" in body["unmapped"]
+    assert body["kit"]["name"] == "Northwind Studio" and body["brand"]["palette"]["accent-text"] == "#9a3412"
+    written = tmp_path / "root" / "team" / "brand.json"
+    assert load(written.parent)["name"] == "Northwind Studio"
+    assert client.get("/w/team/brand").json()["digest"] == body["digest"]
+
+    plain = {"name": "Plain", "palette": dict(PALETTE)}
+    stale = client.put("/w/team/brand?if_digest=sha256:" + "0" * 64, json=plain)
+    assert stale.status_code == 409 and stale.json()["details"]["digest"] == body["digest"]
+    replaced = client.put(f"/w/team/brand?if_digest={body['digest']}", json=plain).json()
+    assert replaced["source"] == "brand.json" and replaced["unmapped"] == [] and replaced["digest"] != body["digest"]
+    assert load(written.parent)["name"] == "Plain"
+
+    invalid = client.put("/w/team/brand", json={"palette": {"nope": "#fff"}})
+    assert invalid.status_code == 400 and invalid.json()["code"]
+    assert load(written.parent)["name"] == "Plain"  # A refused upload leaves the brand alone.

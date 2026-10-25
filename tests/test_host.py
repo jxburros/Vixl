@@ -202,16 +202,16 @@ def test_cli_flags_include_the_call_limits_and_the_schema(tmp_path):
 def test_routes_registered_with_add_routes_join_the_app(tmp_path, monkeypatch):
     from vixl import host
 
-    def brand(app, served):
-        @app.put("/w/{ws}/brand")
-        def put_brand(ws: str):
+    def extra(app, served):
+        @app.put("/w/{ws}/extra")
+        def put_extra(ws: str):
             served.workspace(ws)
             return {"ok": True}
 
-    monkeypatch.setattr(host, "ROUTES", [brand])
+    monkeypatch.setattr(host, "ROUTES", [extra])
     test = TestClient(app_for(tmp_path / "root"), headers=AUTH)
-    assert test.put("/w/team/brand").json() == {"ok": True}
-    assert TestClient(app_for(tmp_path / "root")).put("/w/team/brand").status_code == 401
+    assert test.put("/w/team/extra").json() == {"ok": True}
+    assert TestClient(app_for(tmp_path / "root")).put("/w/team/extra").status_code == 401
 
 
 # ------------------------------------------------------------------------------- #538 documents and operations

@@ -314,6 +314,10 @@ is listed in `unmapped` instead of being dropped: a profile's `page.size` or `ty
 brand's `logo`, `words`, other text stages, embedded fonts or presets. Python and the host call
 `vixl.brand.load_brand_or_profile(data)`, which returns `(kit, unmapped)` for either a brand.json object or a profile.
 
+A host application sets a workspace's brand with `PUT /w/{ws}/brand` on [`vixl host`](../../reference/interfaces.md#hosting-vixl),
+sending either shape: the host validates it, writes `brand.json` in the workspace and answers the kit with its
+`unmapped` paths and a `digest` for conditional updates.
+
 ### Brand board
 
 The `brand-board` workflow draws the brand as a guidelines document, one slide-sized page per topic: a
