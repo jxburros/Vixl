@@ -73,7 +73,7 @@ then fetches it once and the render path finds it in the pack directory.
        "name": "comics",                 # the package name
        "title": "Comics",
        "summary": "Comic pages: ordered panels, gutters, artwork slots, captions and dialogue.",
-       "kind": "operations",             # operations | workflows | importer | provider
+       "kind": "operations",             # operations | workflows | importer | provider | checks
        "modules": ["comics"],            # every module in the package
        "operations": ["comics"],         # modules with TYPES, schemas(add) and execute(project, op)
        "commands": [],                   # modules with compile_command(cmd, args)
@@ -81,8 +81,12 @@ then fetches it once and the render path finds it in the pack directory.
        "hooks": {},                      # {"hook point": ["module:function", ...]}
        "requires": [],                   # other plugins this one imports
        "capabilities": {},               # {"topic": ("words that select it", ["guidance names"])}
+       "checks": [],                     # optional design check names this plugin adds
    }
    ```
+
+   `checks` names optional design checks (`check --checks NAME`); they join `checks.OPTIONAL_CHECKS` and the
+   plugin's `check` hook runs them. The `spelling` plugin adds `spelling` this way.
 
    `capabilities` adds topics to `vixl_reference('capabilities')` (the charts plugin adds `charts`). The guidance
    names must exist in the one guidance registry, `src/vixl/guidance.py`; add the text there, not in the plugin.
@@ -106,6 +110,8 @@ then fetches it once and the render path finds it in the pack directory.
 | `apply-report` | `fn(project, operations, result)` | When the apply result is assembled |
 | `export-format` | `fn(project, path, format, report, **options) -> data or None` | On export; return None for formats that are not yours |
 | `import-format` | `fn(project, data, format, **options) -> result or None` | On import; return None for formats that are not yours |
+| `brand-format` | `fn(data) -> (kit, unmapped) or None` | `vixl.brand.load_brand_or_profile`: read an uploaded brand in another format (the brand kit reads a Design Profile); return None for shapes that are not yours |
+| `spell` | `fn(project, texts) -> {lang, available, message?, words} or None` | The `text` suite rule's `spelling: true`: unknown words in `{layer id: drawn text}` with suggestions |
 
 ## Built-in plugins
 
@@ -123,7 +129,7 @@ then fetches it once and the render path finds it in the pack directory.
 | `film` (Film) | workflows | Assemble scenes and shots into MP4, WebM, GIF or WebP films; sample video and analyze audio. | `audio-analyze`, `film-export`, `film-plan`, `film-preview`, `video-sample` |
 | `lyrics` (Lyric videos) | workflows | Synced lyric videos from audio, an LRC file and a styled template document. | `lyric-video-build`, `lyric-video-export`, `lyric-video-plan` |
 | `imposition` (Print imposition) | workflows | Merge CSV rows into a template and impose the copies n-up on press sheets with marks and bleed. | `merge-impose` |
-| `brand_kit` (Brand kit) | workflows | Logo packages, brand guideline boards, device, print and merch mockups and print-ready art from a brand.json and a logo. | `brand-board`, `logo-package`, `mockup`, `mockup-list`, `mockup-save`, `print-art` |
+| `brand_kit` (Brand kit) | workflows | Logo packages, brand guideline boards, device, print and merch mockups and print-ready art from a brand.json and a logo. | `brand-board`, `brand-export`, `brand-import`, `logo-package`, `mockup`, `mockup-list`, `mockup-save`, `print-art` |
 | `deck_markdown` (Markdown to deck) | workflows | Turn a Markdown outline into a checked slide deck with charts, tables and speaker notes. | `deck-from-markdown` |
 | `teamwork` (Teamwork) | workflows | Workspace branches and merges, document groups with shared parameters and rollback, suite inference. | `branch-fork`, `branch-list`, `branch-merge`, `branch-status`, `group-apply`, `group-define`, `group-list`, `group-recover`, `group-show`, `suite-infer` |
 | `workspace_qa` (Workspace QA) | workflows | check-all and replace-across over many documents, protected edits, proof pages, render lockfiles and deliverable packages. | `check-all`, `package`, `proof`, `protected-edit`, `replace-across`, `reproduce` |
@@ -133,6 +139,7 @@ then fetches it once and the render path finds it in the pack directory.
 | `figma_import` (Figma import) | importer | Import a Figma page or node as editable layers, with images, fonts and unsupported nodes rasterized. | hooks: import-format |
 | `pdf_import` (PDF import) | importer | Import a PDF page as editable layers (needs the optional pypdfium2 package). | hooks: import-format |
 | `ai` (AI providers) | provider | Generate, edit, detect and describe images through configured providers; model discovery and routing. | none: the core calls it directly |
+| `spelling` (Spelling) | checks | An optional spelling check of drawn text with suggestions; English is bundled, other languages are content packs. | hooks: check, spell |
 
 ## Not separable yet
 

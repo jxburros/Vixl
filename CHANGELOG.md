@@ -21,6 +21,20 @@ and `vixl host` for AI Server Studio.
   times; always an advisory warning to review, in a rule of its own). Its measurements list the five `worst`
   offenders per limit. The opt-in `budget` design check runs the same limits without a suite, at defaults that
   `budget` in `.vixl-checks.json` overrides (#564).
+- **Spelling check.** The new `spelling` plugin adds the opt-in `spelling` check: each word of the drawn text (after
+  variables, per artboard) that the dictionary does not know is a `review` finding, `code: unknown-word`, with up to
+  three `suggestions`. URLs, domains, emails, `@handles`, `#hex` and hashtags, numbers, words with digits and short
+  all-capital acronyms are skipped; brand.json `words.allow`, brand `facts` values and `.vixl/dictionary.txt` are
+  accepted. English is bundled (a 320 KB list built from SCOWL); other languages are `spelling-<lang>` content packs,
+  and without one the check gives a `dictionary-unavailable` review finding, never a pass. The `text` suite rule takes
+  `spelling: true`. Plugins declare optional checks with a manifest `checks` list (#554).
+- **Allowed brand words.** brand.json `words.allow` lists names the brand spells its own way: `words.forbid` and
+  `words.prefer` skip matches inside them (also in a `text` rule with `brand: true`) and the spelling check accepts
+  them (#554).
+- **Logo variants on approved backgrounds.** brand.json `logo.variants` maps each variant's layers (a glob such as
+  `logo-rev*`) to the backgrounds it is approved on (`dark`, `light`, `@palette-role`, `@extra-name` or a colour). The
+  brand check samples the background under each logo with the logo hidden and reports a variant on another background
+  as a `fix` (`code: logo-variant-background`) (#555).
 
 ### Automation
 
@@ -29,6 +43,12 @@ and `vixl host` for AI Server Studio.
   resumed job reports its next ending. Plugins add durable job kinds through the `job-kind` hook.
 
 ### Hosting
+
+- **Design Profile import and export.** `vixl brand import --design-profile FILE.json` writes brand.json from a
+  Design Profile (`schemaVersion: 2`: typography, colours, page, docText) and `vixl brand export --design-profile
+  FILE.json` writes the workspace brand as one; both are brand kit workflow actions (`brand-import`, `brand-export`),
+  list every path they cannot map under `unmapped` and refuse to overwrite without `overwrite`.
+  `vixl.brand.load_brand_or_profile(data)` reads either shape for the host through the new `brand-format` hook (#545).
 
 ### Fonts
 

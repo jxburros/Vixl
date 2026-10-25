@@ -14,7 +14,7 @@ See [design tools and template production](../guides/shapes/design-tools.md) for
 | Capability | REST | MCP | CLI | Python |
 | --- | --- | --- | --- | --- |
 | Documents per session | One fixed document | Multiple, inside the workspace | One active document; workspace workflows | Multiple Project instances; Session for workflows |
-| Workflows | `act`, `check`, `drawing-report`, `effect-run`, `film-plan`, `form-fill`, `links`, `lyric-video-plan`, `organic-catalog`, `palette-check`, `plan`, `protected-edit`, `repair-layout`, `resource-get`, `resource-list`, `resource-save`, `shape-save`, `suite-use` | All 90 registered actions | All 90 registered actions | All 90 registered actions via workflows.dispatch(Session, ...) |
+| Workflows | `act`, `check`, `drawing-report`, `effect-run`, `film-plan`, `form-fill`, `links`, `lyric-video-plan`, `organic-catalog`, `palette-check`, `plan`, `protected-edit`, `repair-layout`, `resource-get`, `resource-list`, `resource-save`, `shape-save`, `suite-use` | All 92 registered actions | All 92 registered actions | All 92 registered actions via workflows.dispatch(Session, ...) |
 | AI tools | Configured local providers via /ai | Configured local providers; a second server, vixl mcp --tools ai | Configured local providers | Configured local providers |
 | Linked files outside workspace | Forbidden | Forbidden | Explicit --allow-linked | Explicit allow_linked=True |
 | Screen capture | Unavailable | Disabled by default; --allow-screen-capture or VIXL_ALLOW_SCREEN_CAPTURE=1 | Explicit screen-capture workflow | Explicit screen-capture workflow |
@@ -334,6 +334,11 @@ Enable plugins explicitly with `vixl --plugins ...` or `vixl.plugins.enable_plug
 MCP reads resources with `vixl_reference` (`palettes`, `templates`, `guidance`, `objects`), saves them with `vixl_apply(workflow='resource-save')`, creates from a template with `vixl_document(action='create', template=NAME)`, imports fonts with an `import-font` step (a workspace `path` or an `https://` `url`), and lists provider models with `vixl_models_list` (in `--tools ai`). Resource discovery needs no open document. Font paths and document destinations remain workspace scoped. `vixl_export` accepts `.svg`; operations accept registered font names while service operations continue to reject filesystem font paths.
 
 REST adds GET `/resources/{kind}`, GET/POST `/resources/{kind}/{name}` (POST body `{"value":...}`), POST `/fonts?name=brand` with raw TTF/OTF bytes (16 MiB maximum), and POST `/export` with options such as `{"format":"SVG"}`. Export returns bytes and accepts no destination path. Python exposes the matching `vixl.resources` and `vixl.fonts` helpers. [Detailed examples and boundaries](../guides/layout/agent-resources.md).
+
+A brand can arrive as brand.json or as a Design Profile (`schemaVersion: 2`): `vixl.brand.load_brand_or_profile(data)`
+returns `(kit, unmapped)` for either shape without writing anything (a profile is read by the brand kit plugin through
+the `brand-format` hook), and the `brand-import`/`brand-export` workflow actions (`vixl brand import|export
+--design-profile FILE`) write one from the other. See [Design Profiles](../guides/layout/brands.md#design-profiles).
 
 ## Sizes, layouts, color, brushes and timelines (0.13)
 
