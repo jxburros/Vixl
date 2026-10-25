@@ -1,11 +1,27 @@
 # Changelog
 
-## Unreleased
+## 0.32.0
 
-Step 7 of the [implementation plan](docs/project/implementation-plan.md): checks and automation across many documents,
-and `vixl host` for AI Server Studio.
+A multi-document automation and hosting release: step 7 of the
+[implementation plan](docs/project/implementation-plan.md). Suite rules read values from other documents and hold
+budgets; exported files are read back against delivery specs; approved baselines, link impact, a locale check and a
+spelling check cover documents that change together. The new `pipelines` plugin runs resumable pipelines, signed
+completion webhooks, `vixl watch`, data sync and bulk upgrades, and the `localization` plugin makes localized
+variants with right-to-left mirroring. `vixl host` serves workspaces to AI Server Studio and other programs, with a
+published API schema, a `studio` AI provider, a container image and a per-user Windows host task. Fonts installed on
+the machine work by name. Breaking changes are listed under Upgrading from 0.31.
 
 ### Upgrading from 0.31
+
+- **Font names that failed now resolve.** A text layer's `font` that named neither a registered font, a bundled face
+  nor a file used to fail with `missing_font`; an installed font of that name is now embedded instead. Set
+  `VIXL_SYSTEM_FONTS=off` to keep the old behaviour. Existing documents resolve exactly as before.
+- **Approved documents report changes.** Once a document has approval data (`vixl approve`), the standard checks
+  include the `approval` check, so a changed page or artboard is a review finding.
+- **Offline mode covers more.** `VIXL_OFFLINE=1` now also stops content-pack downloads and refuses to enable
+  third-party plugins; `--plugins` with `--offline` is refused.
+- **Pipeline run records re-run their check steps once,** because a step's key now covers its suite files and
+  `.vixl-checks.json`.
 
 ### Checks across documents
 

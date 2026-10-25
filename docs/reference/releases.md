@@ -108,8 +108,8 @@ To publish a stable release:
 3. Tag the reviewed commit with its exact version and push the tag:
 
    ```bash
-   git tag v0.31.0 <reviewed-commit>
-   git push origin v0.31.0
+   git tag v0.32.0 <reviewed-commit>
+   git push origin v0.32.0
    ```
 
 4. The tag workflow re-runs tests, checks tag/package-version consistency and builds the distributions. The publish job then waits in the protected `release` environment until a required reviewer approves the deployment (Actions run, **Review deployments**). Approve only a run whose commit and version you reviewed. After approval it creates a **draft** GitHub release. It uploads every artifact before publishing it as the latest stable release. No release becomes visible to the updater while files are still being uploaded.
@@ -162,7 +162,7 @@ against its pinned SHA-256.
 
 ```bash
 docker run -d --read-only --tmpfs /tmp -v vixl-data:/data -p 127.0.0.1:8767:8767 \
-  -e VIXL_HOST_TOKEN="$VIXL_HOST_TOKEN" ghcr.io/jxburros/vixl:0.31.0
+  -e VIXL_HOST_TOKEN="$VIXL_HOST_TOKEN" ghcr.io/jxburros/vixl:0.32.0
 ```
 
 `.github/workflows/container.yml` builds both tags on a `v*` tag push (also `workflow_dispatch` with a version, and
