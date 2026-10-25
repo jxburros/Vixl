@@ -116,6 +116,39 @@ To publish a stable release:
 
 The workflow's top-level permission is `contents: read`. Only the publish job, inside the `release` environment, gets GitHub's built-in token with `contents: write` and `actions: write`; the latter starts Python publication after a release from main. A `plan` job with read-only permissions first checks whether the version is already published, so a push to main that only edits `CHANGELOG.md` skips the publish job instead of asking for an approval. No personal token is required. If publication fails after draft creation, inspect that draft and the workflow logs; do not mutate assets of an already published version. Publish a new version for fixes. Release tags and assets are treated as immutable by convention.
 
+### Vixl host for AI Server Studio
+
+The installer's optional task **Run Vixl host for AI Server Studio** (off by default) registers a per-user Scheduled
+Task named `Vixl host`, so it needs no administrator rights: it starts at logon, restarts a minute after a failure and
+runs `vixl host --root %LOCALAPPDATA%\Vixl\host --offline --bind 127.0.0.1 --port 8767 --token-file
+%LOCALAPPDATA%\Vixl\host-token`. The installer (`distribution/windows/host-task.ps1`, run from its `[Code]`)
+generates a 32-byte random token, writes it to `host-token` and writes `%LOCALAPPDATA%\Vixl\host.json`:
+
+```json
+{"url": "http://127.0.0.1:8767", "token_file": "C:\\Users\\you\\AppData\\Local\\Vixl\\host-token"}
+```
+
+Both files are readable by the installing user only (inheritance removed, one access rule for the user's SID). After
+the updater activates a version (`vixl update`, `vixl update --rollback`, a pending update activated on a later
+launch, or an installer upgrade) it restarts the task with `schtasks /End` and `/Run` when `host.json` exists, so the
+host serves the new runtime; a failed restart never fails the update. The host task's own launch does not restart
+itself. The uninstaller stops and removes the task and deletes `host.json` and `host-token`; the workspaces under
+`%LOCALAPPDATA%\Vixl\host` stay.
+
+Not built: a machine-wide Windows service (`sc.exe` or NSSM), which needs an elevated installer and would write
+`%ProgramData%\Vixl\host.json`. Which of the two AI Server Studio's detection expects is not confirmed yet.
+
+Manual checklist, on a clean Windows account without administrator rights (`distribution/test_windows_install.ps1`
+runs the automated part with `VIXL_TEST_HOST_TASK=1`):
+
+1. Install with the task ticked: no UAC prompt.
+2. `host.json` and `host-token` exist; `icacls` lists only your account on each.
+3. Task Scheduler shows `Vixl host` (at logon, restart on failure, your account) running; `GET /host/health` with
+   the token answers `{"ok": true}`, without it `401`.
+4. Sign out and in: the task runs again. End `vixl-engine.exe`: it restarts within a minute.
+5. `vixl update` to a newer release: `GET /host/info` reports the new version.
+6. Uninstall: the task, `host.json` and `host-token` are gone and `%LOCALAPPDATA%\Vixl\host` remains.
+
 ### Container image
 
 `distribution/container/Dockerfile` builds the official `vixl host` image from the published PyPI release:

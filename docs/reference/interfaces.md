@@ -331,6 +331,10 @@ vixl host --root ./host-data --offline
 packs built in; pass the token as `VIXL_HOST_TOKEN` or `VIXL_HOST_TOKEN_FILE` (see [container
 image](releases.md#container-image)).
 
+**Windows.** The installer can register a per-user `Vixl host` scheduled task for AI Server Studio, on loopback with
+a generated token named by `%LOCALAPPDATA%\Vixl\host.json` (see [Vixl host for AI Server
+Studio](releases.md#vixl-host-for-ai-server-studio)).
+
 **Startup.** `--root DIR` holds one folder per workspace (created when missing; the home folder or a filesystem
 root is refused). The default address is `127.0.0.1:8767`; `--port` changes the port and `--bind ADDR` the address.
 `vixl host --schema` prints the API contract and exits.

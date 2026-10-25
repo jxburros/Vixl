@@ -30,6 +30,10 @@ UninstallDisplayName=Vixl
 SetupIconFile={#SourceRoot}\distribution\windows\vixl.ico
 UninstallDisplayIcon={app}\bin\vixl.exe
 
+[Tasks]
+; Optional and off by default: a per-user Scheduled Task, so no admin rights (a Windows service would need them).
+Name: "studiohost"; Description: "Run Vixl host for AI Server Studio (starts at logon, loopback only)"; Flags: unchecked
+
 [Files]
 Source: "{#SourceRoot}\dist\launcher\vixl.exe"; DestDir: "{app}\bin"; Flags: ignoreversion
 ; Second copy in the per-user WindowsApps folder, which Windows 10/11 already puts on the
@@ -37,6 +41,8 @@ Source: "{#SourceRoot}\dist\launcher\vixl.exe"; DestDir: "{app}\bin"; Flags: ign
 ; ShouldInstallAlias never replaces another program's vixl.exe; the uninstaller removes
 ; this copy itself (only when it still matches bin\vixl.exe), hence uninsneveruninstall.
 Source: "{#SourceRoot}\dist\launcher\vixl.exe"; DestDir: "{localappdata}\Microsoft\WindowsApps"; Flags: ignoreversion uninsneveruninstall; Check: ShouldInstallAlias
+; Registers or removes the "Vixl host" task; installed always, so the uninstaller can remove a task an earlier install made.
+Source: "{#SourceRoot}\distribution\windows\host-task.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceRoot}\dist\runtime\vixl-engine\*"; DestDir: "{app}\versions\{#VixlVersion}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
@@ -46,6 +52,10 @@ Name: "{userprograms}\Uninstall Vixl"; Filename: "{uninstallexe}"
 [Registry]
 ; Lets the WindowsApps copy of the launcher find a non-default installation folder.
 Root: HKCU; Subkey: "Software\Vixl"; ValueType: string; ValueName: "InstallRoot"; ValueData: "{app}"; Flags: uninsdeletevalue uninsdeletekeyifempty
+
+[UninstallRun]
+; Stops and unregisters the "Vixl host" task and deletes host.json and its token; workspaces under Vixl\host stay.
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File ""{app}\host-task.ps1"" -Action Remove"; Flags: runhidden waituntilterminated; RunOnceId: "RemoveVixlHostTask"
 
 [UninstallDelete]
 ; Only installer-managed data. User projects and AI configuration are never removed.
@@ -179,6 +189,22 @@ begin
   end;
 end;
 
+{ The studiohost task: host-task.ps1 generates the 32-byte token (Pascal Script has no secure random source), writes it
+  and %LOCALAPPDATA%\Vixl\host.json readable by this user only, and registers and starts the per-user task. A
+  failure is reported, never fatal: Vixl itself is installed. }
+procedure RegisterHostTask();
+var
+  Code: Integer;
+begin
+  if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+              '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\host-task.ps1') +
+              '" -Action Install -App "' + ExpandConstant('{app}') + '"',
+              ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
+    SuppressibleMsgBox('Vixl is installed, but the Vixl host task for AI Server Studio could not be registered (code ' +
+                       IntToStr(Code) + '). See docs/reference/releases.md, "Vixl host for AI Server Studio".',
+                       mbError, MB_OK, IDOK);
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   Code: Integer;
@@ -199,6 +225,8 @@ begin
     if ExistingPath <> '' then UpdatedPath := UpdatedPath + ';' + ExistingPath;
     if not RegWriteExpandStringValue(HKCU, 'Environment', 'Path', UpdatedPath) then
       RaiseException('Could not update your user PATH.');
+    if WizardIsTaskSelected('studiohost') then
+      RegisterHostTask();
   end;
 end;
 

@@ -170,6 +170,12 @@ and `vixl host` for AI Server Studio.
   `VIXL_HOST_TOKEN` or `VIXL_HOST_TOKEN_FILE`, a `HEALTHCHECK` on `/host/health` that sends it, and every content pack
   fetched and checked at build time. `.github/workflows/container.yml` builds, smoke-tests read-only and pushes both
   on a version tag; the Dockerfile's `ARG VERSION` joins the version-sync list (#546).
+- **Windows: Vixl host for AI Server Studio.** The installer's optional task registers a per-user Scheduled Task
+  (`Vixl host`, at logon, restart on failure, no admin rights) running `vixl host --root %LOCALAPPDATA%\Vixl\host
+  --offline --bind 127.0.0.1` with a generated 32-byte token, and writes `%LOCALAPPDATA%\Vixl\host.json`
+  `{url, token_file}`, both readable by the user only. The updater restarts the task after it activates a version
+  when host.json exists; the uninstaller removes the task and host.json. A machine-wide service is not built, and
+  which of the two Studio detects is not confirmed yet (#547).
 - **Host workspace brand.** `PUT /w/{ws}/brand` takes brand.json or a Design Profile (`schemaVersion: 2`), validates
   it and writes `ROOT/ws/brand.json`, answering the kit, its summary, `source`, the profile paths it could not map
   (`unmapped`) and a `digest`; `?if_digest=` makes the write conditional (`409 revision_conflict`). `GET /w/{ws}/brand`
