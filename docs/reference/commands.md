@@ -31,6 +31,7 @@ project with appropriate layers or input files. See each guide for complete crea
 | Lyric video | `workflow lyric-video-export --request request.json --workspace .` | [Lyric videos](../guides/motion/lyric-video.md) |
 | Whole piece in one call | `compose --request req.json [--preview p.png] [--workspace DIR]` | [Interfaces](interfaces.md#build-a-piece-in-one-call) |
 | Pixel diff of two files | `diff before.vixl after.png [--out diff.png] [--mode diff\|side-by-side] [--threshold 8] [--max-fraction F] [--overwrite]` | [CI](../guides/automation/ci.md#the-same-checks-locally) |
+| Check an exported file against a delivery spec | `check-file FILE [--spec NAME\|JSON] [--document DOC.vixl] [--list]` | [Verify the delivered file](../guides/output/exporting.md#verify-the-delivered-file) |
 | Proof page | `workflow proof --request proof.json --workspace .` | [Proof pages](../guides/automation/production.md#proof-pages) |
 | Logo package | `workflow logo-package --request logo.json --workspace .` | [Logo packages](../guides/automation/production.md#logo-packages) |
 | Delivery package | `package (--production out/production.json \| --files GLOB…) --out delivery.zip [--source DOC.vixl] [--name TEMPLATE] [--layout by-format\|by-artboard] [--lock FILE] [--decisions FILE] [--no-check] [--no-proof] [--dry-run] [--overwrite]` | [Delivery packages](../guides/automation/production.md#delivery-packages) |

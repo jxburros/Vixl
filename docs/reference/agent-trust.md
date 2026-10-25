@@ -29,8 +29,11 @@ Where it appears:
   (only bounds and flow ran). The report's `outcome` is the worst state with a count per state.
 - **Jobs** (`status`): execution follows the job status; a production job's validation comes from its
   outputs. A job left `needs_review` by an uncertain remote request did not complete.
-- **Exports** (`vixl_export`, `vixl_export(kind='batch')`): always `unvalidated` (exports run no checks); export
-  warnings are review reasons; a batch reports each file and an overall summary.
+- **Exports** (`vixl_export`, `vixl_export(kind='batch')`): `unvalidated` (exports run no design checks); export
+  warnings are review reasons; a batch reports each file and an overall summary. With `check` or a delivery `spec`
+  the written file is read back ([export checks](../guides/output/exporting.md#verify-the-delivered-file)): its
+  `export_check` sets the validation (`failed` on a fix finding, `incomplete` when a field could not be measured),
+  and review stays required because the design checks are separate.
 - **Proof pages**: each checked document shows its state next to the check badge, and the result lists it.
 
 Migration: `passed`, `errors`, `by_action`, `status` and `needs_review` are unchanged. Read `outcome.state`

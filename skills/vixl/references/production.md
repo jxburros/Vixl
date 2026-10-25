@@ -47,7 +47,9 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    Inspect its count before `run`, which also needs an output directory. Every output
    gets checks; up to three named repair_actions can run without changing the suites (`auto` runs the
    built-in repair map). A row that leaves a variable undefined or draws placeholder copy is `needs_review`,
-   with findings naming the variant and `row`.
+   with findings naming the variant and `row`. `export_check` (`true`, a delivery spec preset such as
+   `instagram-feed`, or inline fields) reads each written output back; the report is the result's `export_check` in
+   `production.json`, and an output that fails it is held for review and not published.
 6. For long production, call `submit` with `start:true`, then `status` with its returned
    ID. The source is snapshotted. `cancel` is cooperative; `resume` preserves remote IDs.
    Never blindly repeat an uncertain provider request.

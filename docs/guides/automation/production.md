@@ -453,6 +453,17 @@ built-in repair map instead (fit-text, contrast ink, safe-area nudge; see
 `repair_operations`.
 Failed/unmeasurable outputs are held for review; successful outputs remain available.
 
+`export_check` reads each written output back before it is published: `true` runs the default delivery checks, a
+preset name (`instagram-feed`, `web-banner`, `display-ad` ...) or inline fields check it against a
+[delivery spec](../output/exporting.md#verify-the-delivered-file). Each result records the report as `export_check`
+in `production.json`. An output that fails it is held for review like a failed check and is not published, and its
+rules (`export.max-bytes`, `export.size` ...) count in `withheld`. A passing export check joins the validation of
+outputs whose suites or profile validated them; on its own it never validates the design.
+
+```json
+{"output":"campaign","spec":{"rows":[{"title":"Launch"}],"format":"jpg","export_check":"instagram-feed"}}
+```
+
 A held output is never written, and the run says so instead of leaving an empty directory unexplained: the report
 (and `production.json`) gains `withheld` (`count`, the effective `profile` and its `fail_on`, the held `variants`,
 and the `rules` that blocked most often, each with the number of variants it held) and a `message` such as

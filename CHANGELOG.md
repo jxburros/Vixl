@@ -21,6 +21,16 @@ and `vixl host` for AI Server Studio.
   times; always an advisory warning to review, in a rule of its own). Its measurements list the five `worst`
   offenders per limit. The opt-in `budget` design check runs the same limits without a suite, at defaults that
   `budget` in `.vixl-checks.json` overrides (#564).
+- **Export checks read the delivered file back.** `vixl check-file FILE --spec NAME` and `check`/`spec` on
+  `vixl_export`, batch targets and `Project.export` compare the written file with a delivery spec: PDF page count,
+  TrimBox and BleedBox, embedded fonts, colour spaces, total ink and form fields; raster size, dpi, ICC profile, alpha
+  and bytes; PowerPoint text frames and native charts; external URLs in HTML and SVG. Specs are data, presets
+  (`print-letter-bleed`, `print-a4-bleed`, `instagram-feed`, `web-banner`, `display-ad`, `slides-pptx`, `web-html`)
+  or inline fields on top of one. Findings use the check shape (`check: "export"`), the result is `export_check` and
+  the export's outcome takes its validation. A campaign's `export_check` records the report per output in
+  `production.json` and holds an output that fails it. Verification is read-only. PDF facts come from pypdfium2 when
+  it is installed and a byte scan otherwise; ink a byte scan cannot measure needs review. Proof pages and delivery
+  packages read file metadata through the same core inspector (#557).
 
 ### Automation
 
