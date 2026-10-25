@@ -62,6 +62,28 @@ and `vixl host` for AI Server Studio.
 
 ### Fonts
 
+- **Fonts installed on this machine work by name.** A text layer's `font` (and `display_font`, a rich-text span's
+  `font`) takes any installed font by family (`"Georgia"`), family and style (`"Georgia Bold Italic"`,
+  `"Inter SemiBold"`), full or PostScript name (`"Georgia-BoldItalic"`) or file name, ignoring case and spaces; a
+  missing style takes the nearest weight with the same slope, as CSS does. Vixl finds the fonts other programs see:
+  fontconfig on Linux and BSD (the font folders without it), the font registry and folders on Windows, the font
+  folders on macOS, plus `VIXL_FONT_DIRS`. The face is embedded and registered as `family-weight[-italic]`, so the
+  document renders and exports on machines without it; a collection member is extracted and a variable instance made
+  static. Bold and italic rich-text spans embed the family's real bold and italic. Registered names, roles, bundled
+  faces and paths resolve as before, text without a font keeps the bundled proofing face, and only names that failed
+  now resolve. The result lists each face under `installed_fonts` with its embedding permission; a `restricted` or
+  `preview-print` face warns, and is refused through MCP and REST. Unknown names suggest close installed families.
+  `VIXL_SYSTEM_FONTS=off` turns it off, `extra` keeps only `VIXL_FONT_DIRS`. The test suite runs with it off.
+- **Listing installed fonts.** `vixl font system [QUERY] [--styles] [--limit N] [--refresh]`,
+  `vixl_reference('fonts', view='installed', query=…)`, `GET /typefaces/installed` (no file paths) and
+  `vixl.system_fonts.families()` / `lookup()` list each installed family's styles with weight, slope, PostScript name,
+  file, collection index, embedding permission and licence; catalog rows of installed families carry
+  `installed: true`. Faces are indexed once per process from an on-disk index keyed by file size and modification time
+  (`VIXL_SYSTEM_FONT_INDEX`), bounded to 6,000 files of at most 64 MB.
+- **Script fallbacks and SVG import use installed faces.** CJK, Devanagari and Thai text also draws from an installed
+  catalog Noto face (or Noto Sans CJK and Source Han Sans under their system names), and an SVG import that cannot
+  find a font again takes an installed face of that family before falling back to the proofing face.
+
 ## 0.31.0
 
 A craft, objects and brand packages release: steps 5 and 6 of the

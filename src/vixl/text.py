@@ -90,6 +90,12 @@ def primary_font_data(project, layer):
             return file_bytes(path)
         except OSError:
             _font_path.cache_clear()  # Uninstalled since it was found: font_for reports it.
+    if path is None and name and name not in BUNDLED_FONTS:
+        from .system_fonts import render_data
+
+        data = render_data(name)
+        if data is not None:
+            return data
     font = font_for(project, layer)
     path = font.path
     return path.getvalue() if hasattr(path, "getvalue") else file_bytes(path)

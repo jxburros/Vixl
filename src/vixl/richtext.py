@@ -1265,6 +1265,9 @@ def execute(project, op):
             from .lettering import store
 
             store(layer, {"hanging_punctuation": op["hanging_punctuation"]})
+        from .system_fonts import add_variants
+
+        add_variants(project, layer)
         if "width" in op or "height" in op:
             settings = layer.setdefault("text_layout", {})
             for key in ("width", "height"):
@@ -1375,6 +1378,9 @@ def execute(project, op):
         rich["line_height"] = op["line_height"]
     if op.get("font_variants"):
         rich["font_variants"] = _resolve_variants(project, op["font_variants"])
+    from .system_fonts import add_variants
+
+    add_variants(project, layer)
     if layer.get("auto_size", True) and not (layer.get("text_layout") or {}).get("width"):
         layer["width"], layer["height"], _ = measure(project, layer)
 

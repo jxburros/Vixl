@@ -57,7 +57,7 @@ def standalone(cmd, args, limits):
     return None, True
 
 
-FONT_STANDALONE = ("show", "pairings", "pairing", "principles")
+FONT_STANDALONE = ("show", "pairings", "pairing", "principles", "system")
 
 
 def _seed(value):
@@ -113,7 +113,16 @@ def font_standalone(cmd, args, project=None):
     p.add_argument("--for", dest="purpose")
     p.add_argument("--family", dest="with_family")
     p.add_argument("--relationship", choices=["contrast", "superfamily", "concord"])
+    p.add_argument("--limit", type=int, help="system: the most families to list")
+    p.add_argument("--styles", action="store_true", help="system: only the style names, not each face's file and details")
+    p.add_argument("--refresh", action="store_true", help="system: look for fonts installed since the last probe")
     a = p.parse_args(args)
+    if a.action == "system":
+        from . import system_fonts
+
+        if a.refresh:
+            system_fonts.refresh()
+        return system_fonts.families(a.family, limit=a.limit, compact=a.styles)
     if a.action == "show":
         require(a.family, "Use font show FAMILY")
         return typefaces.show_font(a.family)

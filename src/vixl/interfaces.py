@@ -968,6 +968,13 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
 
         return list_fonts(category, role, mood)
 
+    @app.get("/typefaces/installed")
+    def typeface_installed(query: str | None = None, limit: int = 200, styles: bool = False):
+        """Fonts installed on the server (its own font folders; no client path), usable as text fonts by name."""
+        from .system_fonts import families
+
+        return families(query, limit=max(1, min(limit, 2000)), compact=styles, paths=False)
+
     @app.get("/typefaces/pairings")
     def typeface_pairings(mood: str | None = None, best_for: str | None = None, family: str | None = None):
         from .typefaces import list_pairings

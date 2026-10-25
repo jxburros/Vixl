@@ -121,7 +121,8 @@ Type:      fonts [--category serif] [--mood M], font show FAMILY, font pairings 
            font pairing NAME, font principles, font install FAMILY [--weight 700] [--role heading|body], font pair NAME|random,
            font use NAME --role heading|body, font list|import, --scope workspace [--workspace DIR] (install/pair: brand.json
            default for new documents; install's role defaults to heading),
-           font cover [--text T] [--script Thai] (install Noto fallbacks for CJK, Devanagari, Thai ... text)
+           font cover [--text T] [--script Thai] (install Noto fallbacks for CJK, Devanagari, Thai ... text),
+           font system [QUERY] [--styles] [--limit N] (fonts installed on this machine; text font takes their names)
 Finish:   look LAYER NAME [--color C] [--amount 0-1] [--remove]  (clean-flat, subtle-grain, light-paper, glow, neon,
            soft-shadow, hard-shadow, outline, gradient, soft-halo, grain, paper, film, duotone, risograph, sketch,
            watercolor, halftone, hand-made, plush), looks (catalog),
@@ -598,7 +599,7 @@ def _dispatch(argv):
     # A roll preview reads the document --apply would use (its canvas and brand), so both pick
     # the same direction; without a document it rolls standalone.
     standalone_roll = cmd == "roll" and "--apply" not in args and not has_document(options.project)
-    if cmd == "fonts" or standalone_roll or (cmd == "font" and args and args[0] in ("show", "pairings", "pairing", "principles")):
+    if cmd == "fonts" or standalone_roll or (cmd == "font" and args and args[0] in ("show", "pairings", "pairing", "principles", "system")):
         from .resource_cli import font_standalone
 
         return font_standalone(cmd, args), options.json
