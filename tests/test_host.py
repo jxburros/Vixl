@@ -614,3 +614,92 @@ def test_the_sweeper_removes_results_an_earlier_process_left(tmp_path):
     fresh = host.state_dir("team", "jobs", "fedcba9876543210")
     host.sweep(orphans=True)
     assert not stale.exists() and fresh.exists()
+
+
+# --------------------------------------------------------------------------- #541 catalogs and the studio profile
+
+
+def test_each_catalog_kind_equals_the_catalog_bundle_section(client):
+    from vixl.catalog import BUILDERS
+
+    for kind, build in BUILDERS.items():
+        response = client.get(f"/catalog/{kind}")
+        assert response.status_code == 200, kind
+        assert response.json() == json.loads(json.dumps(build())), kind
+    assert client.get("/catalog/nope").status_code == 404
+
+
+def test_the_guide_catalog_is_the_rest_guide(client, tmp_path):
+    from vixl import Project
+    from vixl.briefs import guide
+    from vixl.interfaces import create_app
+
+    Project(10, 10).save(tmp_path / "one.vixl")
+    rest = TestClient(create_app(tmp_path / "one.vixl"))
+    for brief in ("a poster for a jazz night", None):
+        query = f"?brief={brief}" if brief else ""
+        hosted, served = client.get(f"/catalog/guide{query}").json(), rest.get(f"/guide{query}").json()
+        for found in (hosted, served):  # the suggested direction is a fresh roll on each call
+            found.pop("direction", None), found.pop("recommendations", None)
+        assert hosted == served
+    seeded = client.get("/catalog/guide?brief=a jazz poster&seed=4").json()
+    assert seeded == json.loads(json.dumps(guide("a jazz poster", seed=4)))
+
+
+def test_the_capabilities_catalog_has_the_host_column_and_probes(client):
+    from vixl.interface_capabilities import matrix
+
+    found = client.get("/catalog/capabilities").json()
+    assert found["interfaces"] == matrix() and "Host" in found["interfaces"]["Authentication"]
+    assert set(found["host"]) == {"pptx", "pdf_import", "ffmpeg", "ai"}
+
+
+def test_operations_catalog_gives_field_schemas(client):
+    found = client.get("/catalog/operations?name=text,shape").json()["operations"]
+    assert set(found) == {"text", "shape"} and "properties" in found["text"]
+    assert client.get("/catalog/operations").status_code == 400
+    assert client.get("/catalog/operations?name=nope").status_code == 404
+
+
+def test_the_studio_profile_names_real_endpoints_with_valid_input_schemas(client):
+    import jsonschema
+
+    profile = client.get("/catalog/tools?profile=studio").json()
+    tools = profile["tools"]
+    assert profile["host_api"] == 1 and 10 <= len(tools) <= 14
+    sample = {"{ws}": "team", "{id}": "d_1a2b3c4d", "{job_id}": "0123456789abcdef", "{kind}": "sizes"}
+    for tool in tools:
+        url = tool["path"]
+        for key, value in sample.items():
+            url = url.replace(key, value)
+        assert any(route.path_regex.fullmatch(url) and tool["method"] in route.methods
+                   for route in client.app.routes if hasattr(route, "methods")), tool["name"]
+        jsonschema.Draft202012Validator.check_schema(tool["input_schema"])
+        assert "vixl_" not in tool["description"] and tool["description"].endswith(".")
+    names = [tool["name"] for tool in tools]
+    assert len(set(names)) == len(names)
+    apply = next(tool for tool in tools if tool["name"] == "apply_operations")["input_schema"]
+    jsonschema.validate({"id": "d_1a2b3c4d", "operations": [{"type": "text", "text": "Hi"}]}, apply)
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate({"id": "d_1a2b3c4d", "operations": [{"type": "no-such-operation"}]}, apply)
+    assert client.get("/catalog/tools?profile=nope").status_code == 404
+
+
+def test_the_studio_profile_inputs_are_accepted_by_the_endpoints(client):
+    """A call built from each input schema's fields reaches its endpoint without an unknown-field error."""
+    import jsonschema
+
+    from vixl.host import tool_profile
+
+    schemas = {tool["name"]: tool["input_schema"] for tool in tool_profile("studio")["tools"]}
+    request = {"width": 200, "height": 120, "workspace_fonts": False}
+    jsonschema.validate(request, schemas["create_document"])
+    doc = client.post("/w/team/documents", json=request).json()["id"]
+    calls = {"apply_operations": {"operations": [BOX], "check": True, "if_revision": 1},
+             "check_document": {"checks": ["bounds"]}, "preview_document": {"max_px": 200, "page": 1},
+             "compose_document": {"dry_run": True, "check": False}}
+    for name, body in calls.items():
+        jsonschema.validate({"id": doc, **body}, schemas[name])
+        path = next(tool["path"] for tool in tool_profile("studio")["tools"] if tool["name"] == name)
+        response = client.post(path.replace("{ws}", "team").replace("{id}", doc), json=body)
+        assert response.status_code == 200, (name, response.text)

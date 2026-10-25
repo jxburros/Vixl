@@ -380,6 +380,7 @@ takes the same flags (`--call-timeout`, `--max-megapixels`, `--max-pages`, `--ma
 | `POST /w/{ws}/documents/{id}/exports` | `{format, options?, request_id?}` → `202 {job_id, status, revision, poll, events, download}`; `options` are the REST `/export` fields |
 | `GET /jobs/{id}/download` | The export's file, with its media type, file name and `X-Vixl-Revision`; `409 job_running` or `job_failed`, `410 expired` |
 | `GET /jobs/{id}/events` | Server-sent events: `progress` while the job runs, then one `job-complete` |
+| `GET /catalog/{kind}` | `sizes`, `palettes`, `typefaces` (with pairings), `layouts`, `briefs`, `guidance`, `looks`, `styles`, `checks`: the `vixl catalog export` section; `guide?brief=&seed=`: the guide for a brief, as REST `/guide`; `capabilities`: `{host, interfaces}`; `operations?name=text&name=shape`: those operations' field schemas; `tools?profile=studio`: a tool profile |
 | `GET /jobs/{id}?wait=` · `GET /jobs/{id}/result` | A call that outlived the timeout (`202` with `job_id`): its status, then what the call would have answered |
 
 **Documents.** A document has an opaque id (`d_` and 8 hex digits) and lives at `ROOT/ws/ID.vixl`; the index
@@ -417,6 +418,17 @@ then exactly one `event: job-complete` whose data is the [job-complete event](pl
 (`{event, kind, id, status, state, counts, report, workspace, notify, error}`, `report` being the download path
 and `workspace` the workspace name), and the stream ends. The same event goes once to the plugins'
 `job-complete` hook. A failed export reports its error in the host shape under `error`.
+
+**Catalogs and the studio tool profile.** The catalogs a host shows its users come from the same registries as
+`vixl catalog export`, so `GET /catalog/layouts` equals that bundle's `layouts` section for the same release.
+`GET /catalog/capabilities` gives this installation's capabilities and the [capability matrix](#capability-matrix)
+as data. `GET /catalog/tools?profile=studio` is the set of 12 tools a host can offer its own model
+(`list_documents`, `create_document`, `get_document`, `describe_operations`, `apply_operations`,
+`compose_document`, `preview_document`, `check_document`, `export_document`, `get_job`, `add_image`,
+`browse_catalog`): each has `{name, description, method, path, input_schema_ref, input_schema}`, with
+descriptions written in the host's terms (endpoints, never MCP tool names) and input schemas built when asked from
+the registries that validate the calls: the operation types, layouts, check names and export formats of the
+running release. The profile text lives in `vixl.guidance.TOOL_PROFILES`.
 
 **Retries.** A change sent with `request_id` (1-64 characters) applies at most once per workspace: sending it
 again with the same body returns the first answer with `replayed: true`, a different body under the same id is

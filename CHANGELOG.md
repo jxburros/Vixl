@@ -40,6 +40,10 @@ and `vixl host` for AI Server Studio.
   `/download` returns the file until the job TTL passes (then `410 expired`, and a sweeper deletes it), and
   `/events` streams progress and one `job-complete` event in the shape durable jobs send, which also reaches the
   plugins' `job-complete` hook (#540).
+- **Host catalogs and a `studio` tool profile.** `GET /catalog/{kind}` serves the `vixl catalog export` sections,
+  the brief guide, the capability matrix (now with a Host column) and operation field schemas;
+  `GET /catalog/tools?profile=studio` lists 12 tools in the host's terms, kept in `vixl.guidance.TOOL_PROFILES`, with
+  input schemas derived from the operation, compose, check and export registries (#541).
 - **Offline mode covers content packs and plugins.** `VIXL_OFFLINE=1` now also stops content-pack downloads (as
   `VIXL_PACK_DOWNLOAD=off` does) and refuses to enable third-party plugins, whose code it cannot bind;
   `--plugins` with `--offline` is refused (#537).

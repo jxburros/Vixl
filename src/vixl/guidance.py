@@ -1,4 +1,4 @@
-"""One registry of named craft guidance.
+"""One registry of named craft guidance, and the tool profiles a host application offers its model.
 
 ``vixl_reference(NAME)``, ``vixl_reference('guidance', name=NAME)``, ``vixl_reference``,
 the guidance names a ``vixl_reference`` kind points at and the ``guidance`` that ``vixl_reference('capabilities')`` lists
@@ -155,6 +155,54 @@ Other actions: validate (rules and saved suites against a profile), measure (ren
     "exports": """Exports: vixl_export
 The extension picks the format: PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF, ICO, HTML, PPTX, PSD (or .vixl with isolate: a portable object document). Full size by default; scale, dpi and profile resize. color_space='cmyk' separates JPEG, TIFF and PDF for print (icc_profile for press accuracy, else device-naive GCR with black_generation and ink_limit); proof and simulate preview print and colour-blind views. PDF is vector by default, CMYK too: real text, vector shapes and DeviceCMYK colours, images only for effects (raster_fallbacks says which); pdf_content='raster' writes one image per page; print sizes measure exactly trim + bleed with TrimBox and BleedBox. A multi-page document exports every shown page to PDF, PowerPoint (editable slides with speaker notes) or HTML (a self-contained presentation: keyboard, overview, transitions, speaker view; presenter options); pages= picks pages. fillable writes PDF form fields; values fills them (fill_mode flatten or editable). PNG and other alpha formats are RGB when opaque; alpha='keep' forces RGBA, 'flatten' composites onto background. svg_policy='strict' rejects raster fallbacks. PSD is a layered handoff (one pixel layer per layer, groups as layer groups, text as pixels). TTF, OTF and WOFF (WOFF2 with brotli) write the font drawn in the document (font-design, font-grid, font-glyph). isolate exports only some layers or objects, cropped to their ink. time exports one timeline frame. Exports refuse existing files unless overwrite=true and run no checks: vixl_check first.
 Other kinds: batch (targets=[{path, …options}], defaults: several sizes, formats, artboards or documents in one call, all validated first); timeline (.gif .apng .webp .mp4 .webm, a sprite sheet or a PNG-sequence .zip of keyframed motion: fps, scale, colors, dither, poster, target_bytes or preset chat|web|email fit a size budget); animation (saved frame-by-frame animation and named animations: nearest sampling keeps pixel art crisp); audio (.wav mix of the audio tracks); icons (a folder: web favicon set, apple, android, windows or all); character (a .vixl character library for character-load). The kind follows the extension and the document (a .gif of a document with only saved frames is an animation); pass kind to choose.""",
+}
+
+
+# Tool profiles: the tools a host application offers its own model, described in the host's terms (endpoints, not
+# MCP tools). ``vixl host`` serves them at GET /catalog/tools?profile=NAME, with each tool's input schema derived at
+# request time from the operation, compose, check and export schemas (``input_schema_ref`` names which).
+TOOL_PROFILES = {
+    "studio": (
+        {"name": "list_documents", "method": "GET", "path": "/w/{ws}/documents", "input_schema_ref": "documents",
+         "description": "List the design documents in this workspace with their ids and revisions."},
+        {"name": "create_document", "method": "POST", "path": "/w/{ws}/documents", "input_schema_ref": "create",
+         "description": "Create an empty design document from a named size, a width and height, a purpose (poster, "
+                        "social, slides, logo) or a brief; it gets a palette, a font pairing and design defaults."},
+        {"name": "get_document", "method": "GET", "path": "/w/{ws}/documents/{id}", "input_schema_ref": "document",
+         "description": "Read a document: canvas, revision and every layer with its id, name, type and bounds."},
+        {"name": "describe_operations", "method": "GET", "path": "/catalog/operations", "input_schema_ref":
+         "operation_names", "description": "The exact fields of up to 20 operation types, before using them."},
+        {"name": "apply_operations", "method": "POST", "path": "/w/{ws}/documents/{id}/operations",
+         "input_schema_ref": "operations",
+         "description": "Change a document with a batch of operations (add text, shapes, images, layouts, styles, "
+                        "effects). The batch applies all or nothing; set check to review the result and "
+                        "if_revision to refuse a stale edit."},
+        {"name": "compose_document", "method": "POST", "path": "/w/{ws}/documents/{id}/compose",
+         "input_schema_ref": "compose",
+         "description": "Build a whole piece in one call: layout with its copy, style, look, extra operations and a "
+                        "design check. It replaces the document's content; dry_run previews without saving."},
+        {"name": "preview_document", "method": "POST", "path": "/w/{ws}/documents/{id}/preview",
+         "input_schema_ref": "preview",
+         "description": "A PNG preview of the document, one page, every page as a contact sheet, or a region, "
+                        "within a size and byte budget. Look at it before exporting."},
+        {"name": "check_document", "method": "POST", "path": "/w/{ws}/documents/{id}/check",
+         "input_schema_ref": "check",
+         "description": "Run the design checks: each finding has a rule, a severity, an action (fix, review or "
+                        "informational), a message and the layer it is about. Fix every 'fix' finding."},
+        {"name": "export_document", "method": "POST", "path": "/w/{ws}/documents/{id}/exports",
+         "input_schema_ref": "export",
+         "description": "Export to PNG, JPEG, SVG, PDF, PowerPoint and other formats as a job; follow the job, then "
+                        "download the file."},
+        {"name": "get_job", "method": "GET", "path": "/jobs/{job_id}", "input_schema_ref": "job",
+         "description": "How far an export or a long call has got, its error if it failed, and where to download "
+                        "the result."},
+        {"name": "add_image", "method": "POST", "path": "/w/{ws}/documents/{id}/assets", "input_schema_ref": "asset",
+         "description": "Place an image the user supplied (the request body is the image bytes) as a new layer, "
+                        "with its credit and license."},
+        {"name": "browse_catalog", "method": "GET", "path": "/catalog/{kind}", "input_schema_ref": "catalog",
+         "description": "Look up what to design with: sizes, layouts, palettes, typefaces and pairings, styles, "
+                        "looks, checks, or a guide for a brief (what to make and how)."},
+    ),
 }
 
 

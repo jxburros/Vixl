@@ -23,6 +23,7 @@ plugin adds routes through the ``host-route`` hook. Both receive ``(app, host)``
 """
 
 from collections import OrderedDict
+from functools import lru_cache
 import json
 import os
 from pathlib import Path
@@ -1083,6 +1084,155 @@ def terminal_event(host, job):
     return {**completion_event(record, job.get("workspace")), "workspace": job.get("workspace")}
 
 
+CATALOG_KINDS = ("sizes", "palettes", "typefaces", "layouts", "briefs", "guidance", "looks", "styles", "checks",
+                 "guide", "capabilities", "operations", "tools")
+
+
+@lru_cache(maxsize=None)
+def _section(kind):
+    from .catalog import BUILDERS
+
+    return BUILDERS[kind]()
+
+
+def _operation_types():
+    from .schema import _properties
+
+    return sorted(_properties())
+
+
+def _field(kind, description, **extra):
+    return {"type": kind, "description": description, **extra} if kind else {"description": description, **extra}
+
+
+def input_schemas():
+    """The input schema of each ``input_schema_ref``, from the registries that validate the calls (operation types,
+    compose fields, check names, layouts, export formats)."""
+    from .catalog import CHECK_INFO
+    from .compose import CREATE
+    from .interfaces import EXPORT_FIELDS, EXPORT_MEDIA
+    from .layouts import LAYOUTS
+
+    def obj(properties, required=()):
+        return {"type": "object", "properties": properties, "required": list(required), "additionalProperties": False}
+
+    ident = _field("string", "The document id (d_ and 8 hex digits).", pattern=DOCUMENT_ID.pattern)
+    revision = _field("integer", "Apply only when the document is still at this revision.", minimum=1)
+    retry = _field("string", "A retry key: sending it again returns the first answer.", maxLength=64)
+    operation = {"type": "object", "required": ["type"], "description": "One operation; describe_operations "
+                 "gives the fields of each type.", "properties": {"type": {"enum": _operation_types()}}}
+    operations = {"type": "array", "items": operation, "minItems": 1, "description": "Applied in order, all or none."}
+    checks = {"type": "array", "items": {"enum": sorted(CHECK_INFO)}, "description": "Check names; default all."}
+    size = {"size": _field("string", "A named size (browse_catalog kind sizes)."),
+            "width": _field("integer", "Canvas width in pixels.", minimum=1),
+            "height": _field("integer", "Canvas height in pixels.", minimum=1),
+            "purpose": _field("string", "What it is for: poster, social, slides, logo, icon ...")}
+    creation = {key: _field(None, f"As in document creation: {key}.") for key in CREATE if key not in size}
+    layout = {"type": "object", "required": ["name"], "description": "A layout and its copy: {name, title, ...} "
+              "(browse_catalog kind layouts lists each layout's slots).",
+              "properties": {"name": {"enum": sorted(LAYOUTS)}}}
+    return {
+        "documents": obj({}),
+        "document": obj({"id": ident, "max_layers": _field("integer", "Layers to list.", minimum=1,
+                                                             maximum=MAX_LAYERS)}, ["id"]),
+        "create": obj({**size, "brief": _field("string", "The words of the request; picks a size when none is given."),
+                       "name": _field("string", "A label for the document.", maxLength=200),
+                       "template": _field("string", "Create from a named template."),
+                       "variables": _field("object", "template: values for its variables."),
+                       "font_pairing": _field("string", "A typeface pairing name, or random."),
+                       "workspace_fonts": _field("boolean", "Use the workspace brand fonts (default true)."),
+                       **creation, "request_id": retry}),
+        "operation_names": obj({"name": {"type": "array", "items": {"enum": _operation_types()}, "minItems": 1,
+                                         "maxItems": 20, "description": "Operation types."}}, ["name"]),
+        "operations": obj({"id": ident, "operations": operations,
+                           "dry_run": _field("boolean", "Report the change without saving it."),
+                           "check": _field(None, "true, or check names: review the result."),
+                           "preview": _field(None, "true, or preview options: return a PNG of the result."),
+                           "if_revision": revision, "request_id": retry}, ["id", "operations"]),
+        "compose": obj({"id": ident, **size, "layout": layout,
+                        "style": _field("string", "A style name (browse_catalog kind styles)."),
+                        "look": _field(None, "A finishing look {look, target?} or a list of them."),
+                        "font_pairing": _field("string", "A typeface pairing name."),
+                        "operations": {**operations, "minItems": 0},
+                        "check": _field(None, "false skips the design check; check names choose checks."),
+                        "strict": _field("boolean", "Refuse to save when a finding needs a fix."),
+                        "preview": _field(None, "true returns a PNG of the piece."),
+                        "dry_run": _field("boolean", "Preview without saving."),
+                        **{key: value for key, value in creation.items() if key != "background"},
+                        "background": _field("string", "Canvas background colour."),
+                        "if_revision": revision, "request_id": retry}, ["id"]),
+        "preview": obj({"id": ident, "page": _field(["integer", "string"], "A page number, or 'all'."),
+                        "region": _field("array", "[x, y, width, height] in pixels or percentages.", minItems=4,
+                                         maxItems=4),
+                        "max_px": _field("integer", "The longer side at most.", minimum=1, maximum=4096),
+                        "max_bytes": _field("integer", "The PNG at most this long.", minimum=65536,
+                                            maximum=4194304)}, ["id"]),
+        "check": obj({"id": ident, "checks": checks,
+                      "profile": _field("string", "draft, review, final or a workspace profile."),
+                      "repair": _field(None, "true applies the built-in repairs first."),
+                      "if_revision": revision, "request_id": retry}, ["id"]),
+        "export": obj({"id": ident, "format": {"enum": sorted(EXPORT_MEDIA), "description": "The file format."},
+                       "options": {"type": "object", "description": "Export fields: " + ", ".join(
+                           sorted(EXPORT_FIELDS - {"format"})), "propertyNames": {
+                           "enum": sorted(EXPORT_FIELDS - {"format"})}},
+                       "request_id": retry}, ["id", "format"]),
+        "job": obj({"job_id": _field("string", "The job id an export answered."),
+                    "wait": _field("number", "Seconds to wait for the job to end (at most 50).")}, ["job_id"]),
+        "asset": obj({"id": ident, "name": _field("string", "The layer name."),
+                      "credit": _field("string", "Who made the image."),
+                      "license": _field("string", "Its license or usage terms."),
+                      "if_revision": revision, "request_id": retry}, ["id"]),
+        "catalog": obj({"kind": {"enum": [kind for kind in CATALOG_KINDS if kind not in ("operations", "tools")]},
+                        "brief": _field("string", "kind guide: the words of the request."),
+                        "seed": _field("integer", "kind guide: the seed of the suggested direction.")}, ["kind"]),
+    }
+
+
+def tool_profile(name):
+    """A tool profile from ``guidance.TOOL_PROFILES``, each tool with its input schema."""
+    from .guidance import TOOL_PROFILES
+
+    require(name in TOOL_PROFILES, f"Unknown tool profile {name!r}; profiles: {', '.join(sorted(TOOL_PROFILES))}",
+            "not_found", field="profile", allowed=sorted(TOOL_PROFILES))
+    schemas = input_schemas()
+    return {"profile": name, "host_api": HOST_API,
+            "tools": [{**tool, "input_schema": schemas[tool["input_schema_ref"]]} for tool in TOOL_PROFILES[name]]}
+
+
+def catalog_routes(app, host):
+    """Catalogs (#541): the ``vixl catalog export`` sections, the brief guide, the interface capabilities, operation
+    schemas and the tool profiles."""
+    from fastapi import Query
+
+    @app.get("/catalog/{kind}")
+    def catalog_kind(kind: str, brief: str | None = None, profile: str = "studio", seed: int | None = None,
+                     name: list[str] | None = Query(None)):
+        require(kind in CATALOG_KINDS, f"Unknown catalog {kind!r}; catalogs: {', '.join(CATALOG_KINDS)}",
+                "not_found", field="kind", allowed=list(CATALOG_KINDS))
+        if kind == "guide":
+            from .briefs import guide
+
+            return guide(brief, seed=seed)
+        if kind == "capabilities":
+            from .interface_capabilities import matrix
+
+            return {"host": capabilities(), "interfaces": matrix()}
+        if kind == "tools":
+            return tool_profile(profile)
+        if kind == "operations":
+            from .mcp_actions import operation_variant
+
+            names = [part.strip() for item in name or () for part in item.split(",") if part.strip()]
+            require(0 < len(names) <= 20, "Name 1-20 operation types: ?name=text&name=shape", field="name")
+            found = {}
+            for kind_name in names:
+                variant = operation_variant(kind_name)
+                require(variant is not None, f"Unknown operation type {kind_name!r}", "not_found", field="name")
+                found[variant["properties"]["type"]["const"]] = variant
+            return {"operations": found}
+        return _section(kind)
+
+
 def job_routes(app, host):
     """Calls that outlived the timeout, and export jobs (#540)."""
 
@@ -1146,7 +1296,7 @@ def job_summary(host, job):
     return result
 
 
-BUILTIN_ROUTES = [document_routes, review_routes, export_routes, job_routes]
+BUILTIN_ROUTES = [document_routes, review_routes, export_routes, job_routes, catalog_routes]
 
 
 def read_token(token_env=TOKEN_ENV, token_file=None, environ=None):
