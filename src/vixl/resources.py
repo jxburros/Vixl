@@ -437,7 +437,7 @@ def execute_resource(project, op):
         from .typefaces import resolve_seed
         import random
         from .layouts import assign_roles, ROLES
-        from .brand import for_project
+        from .brand import for_project, role_colors
         kit = for_project(project)
         from .variety import sparse_options
 
@@ -447,12 +447,12 @@ def execute_resource(project, op):
         role_options = {k: op[k] for k in ("palette", "mode", "direction") if k in op}
         if explicit_palette:
             role_options["policy"] = "strict"
-        if kit.get("palette") and not explicit_palette:
-            role_options["colors"] = kit["palette"]
+        if role_colors(kit) and not explicit_palette:
+            role_options["colors"] = role_colors(kit)
         chosen_roles = assign_roles(role_options, random.Random(op["seed"]))
         swatches = project.state.setdefault("swatches", {})
         for role in ROLES:
-            if role in kit.get("palette", {}) and not explicit_palette:
+            if role in role_colors(kit) and not explicit_palette:
                 swatches[role] = kit["palette"][role]
             elif "palette" in op or role not in swatches:
                 swatches[role] = chosen_roles[role]

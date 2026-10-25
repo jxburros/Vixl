@@ -2150,7 +2150,7 @@ def execute_layout(project, op):
     op = deepcopy(op)
     explicit_palette = "palette" in op or "colors" in op
     from .variety import seed_for
-    from .brand import for_project
+    from .brand import for_project, role_colors
 
     defaults = state.get("design_defaults", {})
     if "seed" not in op:
@@ -2165,8 +2165,8 @@ def execute_layout(project, op):
         if inherited:
             op["direction"] = {**inherited, **op.get("direction", {})}
     kit = for_project(project)
-    if kit.get("palette") and not explicit_palette:
-        op["colors"] = kit["palette"]
+    if role_colors(kit) and not explicit_palette:
+        op["colors"] = role_colors(kit)
     if op.get("mode", "inherit") == "inherit":
         from .render import color
         rgba = color(state["canvas"].get("background", "transparent"))

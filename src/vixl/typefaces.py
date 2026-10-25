@@ -872,8 +872,8 @@ def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood
                   variety=variety, recent=recent, recommend=recommend, content=tuple(slots or ()),
                   brief_moods=brief_moods)
     result["purpose_source"] = source
-    if kit.get("palette") and not (locks or {}).get("palette"):
-        result["operation"]["colors"] = kit["palette"]
+    if role_colors(kit) and not (locks or {}).get("palette"):
+        result["operation"]["colors"] = role_colors(kit)
     unfilled = unfilled or ("omit" if slots else "blank")
     if unfilled == "omit":
         result["operation"]["unfilled"] = unfilled

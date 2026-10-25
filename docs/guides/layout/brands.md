@@ -380,8 +380,13 @@ dictionary does not know as a `review` finding with `code: unknown-word`, the `w
 `suggestions`; a `text` suite rule with `spelling: true` fails on them instead. URLs, domains, emails, `@handles`,
 `#hex` colours and hashtags, numbers, words with digits and all-capital words of four letters or fewer are
 skipped. Besides `words.allow`, the values of brand `facts` and a workspace `.vixl/dictionary.txt` (one word or
-phrase per line, `#` comments) are accepted. On the CLI: `vixl -p poster.vixl check --checks spelling`; over MCP:
-`vixl_check(checks=["spelling"])`.
+phrase per line, `#` comments) are accepted. Over MCP it is `vixl_check(checks=["spelling"])`; on the CLI:
+
+```bash
+vixl new 800x500 -o poster.vixl --no-fonts
+vixl -p poster.vixl text add 'Grand openning this Saturday' --size 48
+vixl -p poster.vixl check --checks spelling     # "openning": suggestions opening, openings, opining
+```
 
 The language is the form settings `lang`, else the document `lang` (the `accessibility` operation), else `en`.
 English is bundled (a word list built from SCOWL, whose licence is in the list's header). Other languages come

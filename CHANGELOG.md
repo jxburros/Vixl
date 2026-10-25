@@ -95,8 +95,9 @@ and `vixl host` for AI Server Studio.
 
 ### Fixes
 
-- **`vixl new` in a workspace whose brand has `palette.extra`** no longer fails with `unhashable type: 'dict'`: the
-  rolled palette takes the brand's palette roles, not the table of extra colours.
+- **A brand with `palette.extra` no longer breaks `vixl new`, `roll --apply`, `layout apply` or templates.** `vixl new`
+  failed with `unhashable type: 'dict'` and the others with `colors keys are …`: rolls and layouts take the brand's
+  palette roles, not the table of extra colours.
 
 ### Fonts
 
