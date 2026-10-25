@@ -90,9 +90,9 @@ def font_for(project, layer):
         require("/" not in font and "\\" not in font, "Import custom fonts with text --font FILE")
         return ImageFont.truetype(str(Path(__file__).parent / "data" / font) if font in BUNDLED_FONTS else font, size)
     except OSError as exc:
-        from .system_fonts import render_data
+        from .text import installed_font_data
 
-        data = render_data(font)
+        data = installed_font_data(font)
         if data is not None:
             return ImageFont.truetype(io.BytesIO(data), size)
         raise missing_font(project, layer.get("font", font)) from exc
@@ -103,11 +103,11 @@ def missing_font(project, name):
     typography = project.state.get("typography") or {}
     roles = [role for role in typography if typography[role]]
     known = ", ".join([*roles, *fonts]) if roles or fonts else "none yet"
-    from .system_fonts import mode, suggest
+    from .text import installed_font_suggestions
 
-    close = suggest(name)
+    close, lookup_on = installed_font_suggestions(name)
     installed = (f" Installed fonts with close names: {', '.join(close)}." if close else
-                 " No installed font has that name (vixl font system lists them)." if mode() != "off" else "")
+                 " No installed font has that name (vixl font system lists them)." if lookup_on else "")
     return VixlError(
         "missing_font",
         f"Font {name!r} not found. Registered fonts: {known}.{installed} Install one with "
@@ -144,7 +144,7 @@ def resolve_font(project, name):
         project.assets[font] = data
     if font in project.assets or font in BUNDLED_FONTS:
         return font, role
-    from .system_fonts import EXTENSIONS, embed
+    from .text import FONT_FILE_EXTENSIONS as EXTENSIONS, embed_installed_font as embed
 
     # A font file name keeps Pillow's lookup first, as before; a family, style or PostScript name is matched
     # against the fonts installed on this machine and embedded, and Pillow's file name lookup comes last.

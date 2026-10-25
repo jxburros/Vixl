@@ -36,8 +36,8 @@ import threading
 import time
 
 from .errors import VixlError
+from .text import FONT_FILE_EXTENSIONS as EXTENSIONS
 
-EXTENSIONS = (".ttf", ".otf", ".ttc", ".otc")
 MAX_FILES = 6000  # font files indexed in all
 MAX_FILE_BYTES = 64 * 1024 * 1024  # larger files are skipped (the largest CJK collections are ~40 MB)
 MAX_FACES = 64  # faces per collection and named instances per variable font
