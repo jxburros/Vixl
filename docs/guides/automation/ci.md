@@ -105,6 +105,13 @@ the summary with their reason and expiry. A waiver past its `expires` date turns
 `expired waiver` fix finding, so the build fails until someone fixes the design or renews the waiver.
 `vixl check --all --no-waivers` reports every finding as if there were none.
 
+A document [approved](production.md#approved-baselines) with `vixl approve` (its `NAME.vixl.approval/` folder, or
+the group's in `.vixl-groups/`, committed with it) is held to that approval in the same run: a page or artboard that
+no longer matches is an `approval` warning with action `review`, so the document is `needs_review` and fails the build
+at `fail-on: warning` or `review` (the `final` profile) but not at the default `error`. The finding carries the
+changed fraction; the diff image is written beside the approval in the checkout. Re-approve the document in the pull
+request once the change is signed off.
+
 ## The same checks locally
 
 ```bash

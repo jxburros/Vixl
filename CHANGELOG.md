@@ -9,6 +9,27 @@ and `vixl host` for AI Server Studio.
 
 ### Checks across documents
 
+- **Approved baselines.** `vixl approve` (workflow `approve`) records how a document, or every member of a project
+  group with `--group`, looks once it is signed off: per page and artboard a render hash and a reference image of at
+  most 256 px, who and when, in `NAME.vixl.approval/` or `.vixl-groups/GROUP.approval/` (at most 64 views). The new
+  `approval` check runs with the standard checks whenever approval data exists and reports each changed page or
+  artboard as a review warning with the changed fraction and a diff image, so `check --all` marks the document
+  needs_review. Approving again accepts the change, and `--clear` removes the approval. `group-apply` and
+  `replace-across` dry runs and campaign runs list `approved_members_changed`, and proof pages show an approval
+  badge (#559).
+- **Link impact.** `vixl links impact SOURCE.vixl` (workflow `link-impact`) checks every document that links to a
+  changed source, directly or through nested links, on a refreshed copy that is never saved: a source that changed
+  size keeps the link's scale, and each copy runs its checks and suites and is diffed with its current render. The
+  report lists the dependents that pass, those that fail with their findings and rule results, the changed pixels,
+  the dependency tree and any cycles, in the formats of `check --all`. `--apply` saves only the passing dependents,
+  through a journal that `group-recover` can roll back (#560).
+- **Workspace dependency graph and candidate evaluation for plugins.** `workspace_qa.dependents` reads who depends on
+  which link source, `brand.json`, project group, merge data and library suite from each document's state, cached by
+  modification time in `.vixl-checks/links-index.json`. `workspace_qa.candidate` evaluates a change on a copy (checks,
+  suites and a render diff) and commits only the clean ones through the group journal. Link impact uses both, and
+  other plugins can too. Two new plugin hook points: `cli-command` for command-line shorthands and
+  `production-report` for keys in a campaign run's report.
+
 ### Automation
 
 - **One completion event for durable jobs.** A job that ends (completed, failed, cancelled or needs review) is handed

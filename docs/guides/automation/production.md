@@ -494,6 +494,39 @@ with `overwrite: true`.
 A missing file fails the call, but an item that cannot be previewed or checked becomes a card with its error and
 is listed in the result's `failed` (`[{path, error}]`); `checked` gives each document's `passed`, errors and
 warnings. Each thumbnail is embedded once and reused by the enlarged view (`max_size`, 128–2400 px, default 1200).
+A document approved with `approve` (below) gets a badge: approved, or changed since approval with the changed share.
+
+## Approved baselines
+
+Once a design is signed off, `approve` records how it looks, and every later check tells you what moved:
+
+```bash
+vixl approve --author "Ada"          # the current document
+vixl approve --group launch           # every member of a project group
+vixl approve --clear                  # remove the approval
+```
+
+Over MCP or REST it is the workflow action `approve` (`vixl_apply(workflow='approve', request={"author": "Ada"})`),
+with `group` and `clear` as on the command line.
+
+For each page and artboard (or the canvas, when there are neither) `approve` stores the render hash and a reference
+PNG of at most 256 px a side, with the document's state digest, the revisions of its linked sources, who approved it
+(`author`, else the `VIXL_AUTHOR` environment variable, else `agent`) and when. A document's approval lives beside it
+in `NAME.vixl.approval/`; a group's in `.vixl-groups/GROUP.approval/`, one folder per member. At most 64 views are
+recorded; a document with more is refused. Approving again replaces the earlier approval (that is how you unapprove
+a change), and `clear` removes it. The folder is small and meant to be committed with the document.
+
+The `approval` check then runs by itself whenever the standard checks run on a document with approval data (a plain
+`vixl check`, `check-all`, `apply` with `check`, a check profile), and by name (`check --checks approval`) otherwise.
+An unchanged document is settled from its state digest without rendering. A page or artboard whose render no longer
+matches is a `warning` with action `review` (code `changed`): it names the view, who approved it and when, the
+`changed_fraction` of the reference preview and a `diff` image (written to the approval's `diff/` folder). Asked for
+by name, an approved document gets an `approved` note and one never approved a `never-approved` note.
+
+Approval also shows where a change would land: a `group-apply` or `replace-across` dry run lists
+`approved_members_changed` (each approved member the change moves away from its approval, with the views and the
+changed fraction), and a [campaign run](#variant-production-and-draftfinal) from an approved template lists the
+template's approved views that changed since approval.
 
 ## Checking many documents
 
@@ -551,6 +584,13 @@ previous one over the same documents and settings:
 
 After an upgrade, `vixl check --all --since-last` therefore names the documents that the new version judges
 differently. Vixl does not schedule runs itself: run it from CI on a schedule (a cron workflow), or after an update.
+
+### Documents that link to a changed source
+
+`link-impact` (`vixl links impact SOURCE.vixl`) checks every document that links to a changed source, as a refreshed
+copy, before anything is saved: the dependents that pass, those that fail (with their findings and rule results) and
+how much each one's render changed. `--apply` then saves only the passers, through a journal. See
+[link impact](../output/linked-documents.md#link-impact).
 
 ## Delivery packages
 

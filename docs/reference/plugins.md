@@ -101,11 +101,30 @@ then fetches it once and the render path finds it in the pack directory.
 | `normalize` | `fn(kind, op, note) -> op` | For every operation, before schema validation |
 | `validate-layer` | `fn(layer, state, project)` | For every layer when a document is validated |
 | `validate-state` | `fn(project, state)` | Once per document validation |
-| `check` | `fn(checks, candidate, resolved, local_bounds, projection, issue)` | During design checks; act only when your check name is in `checks` |
+| `check` | `fn(checks, candidate, resolved, local_bounds, projection, issue, document, artboard, page)` | During design checks; act only when your check name is in `checks` (`document` is the checked document before its page view and candidate copy) |
 | `after-apply` | `fn(project)` | After a batch applies, before checks |
 | `apply-report` | `fn(project, operations, result)` | When the apply result is assembled |
 | `export-format` | `fn(project, path, format, report, **options) -> data or None` | On export; return None for formats that are not yours |
 | `import-format` | `fn(project, data, format, **options) -> result or None` | On import; return None for formats that are not yours |
+| `cli-command` | `fn(cmd, args, options, limits) -> result or None` | For every top-level CLI command (`vixl CMD …`) before the core's own; return None for commands that are not yours |
+| `production-report` | `fn(project, spec, report)` | When a campaign run (`production.run`) has its results, before `production.json` is final |
+
+## Helpers other plugins use
+
+A plugin that declares `requires: ["workspace_qa"]` can call these (see their module docstrings):
+
+- `workspace_qa.dependents`: the workspace dependency graph. `graph(workspace, documents=None)` reads every
+  document's links, `brand.json`, project groups, merge data and templates and library suites into a reverse index
+  (cached by mtime in `.vixl-checks/links-index.json`); `dependents(workspace, target, kinds=…, nested=…)`,
+  `walk(…)` (with the cycles found) and `tree(…)` answer who depends on a file or `suite:NAME`;
+  `register(reader)` adds an edge kind (`fn(state, path, workspace) -> [(kind, target)]`).
+- `workspace_qa.candidate`: evaluate a change on an unsaved copy and commit only if clean.
+  `evaluate(session, document, change, request=…, fail_on=…)` applies a function or operations, runs `check` and the
+  attached suites (`workspace_checks.check_document`) and diffs the render; `evaluate_all(…, apply="if-passing",
+  journal=NAME)` does it for many documents under their file locks; `commit(session, journal, evaluations)`
+  publishes through the project-group journal (`group-recover NAME` undoes an interrupted one).
+- `workspace_qa.approval`: `find(path, workspace)`, `status(project, approval)` and `report(project)` read a
+  document's approved baseline; `approved_changes(session, {path: candidate})` lists approved documents a change moves.
 
 ## Built-in plugins
 
@@ -126,7 +145,7 @@ then fetches it once and the render path finds it in the pack directory.
 | `brand_kit` (Brand kit) | workflows | Logo packages, brand guideline boards, device, print and merch mockups and print-ready art from a brand.json and a logo. | `brand-board`, `logo-package`, `mockup`, `mockup-list`, `mockup-save`, `print-art` |
 | `deck_markdown` (Markdown to deck) | workflows | Turn a Markdown outline into a checked slide deck with charts, tables and speaker notes. | `deck-from-markdown` |
 | `teamwork` (Teamwork) | workflows | Workspace branches and merges, document groups with shared parameters and rollback, suite inference. | `branch-fork`, `branch-list`, `branch-merge`, `branch-status`, `group-apply`, `group-define`, `group-list`, `group-recover`, `group-show`, `suite-infer` |
-| `workspace_qa` (Workspace QA) | workflows | check-all and replace-across over many documents, protected edits, proof pages, render lockfiles and deliverable packages. | `check-all`, `package`, `proof`, `protected-edit`, `replace-across`, `reproduce` |
+| `workspace_qa` (Workspace QA) | workflows | check-all and replace-across over many documents, protected edits, proof pages, render lockfiles, deliverable packages, approved baselines and link impact. | `approve`, `check-all`, `link-impact`, `package`, `proof`, `protected-edit`, `replace-across`, `reproduce` |
 | `layout_repair` (Layout repair) | workflows | repair-layout: try ranked candidate fixes for failing checks and keep the least disruptive one. | `repair-layout` |
 | `app_animation` (App animation packages) | workflows | Package animation states, theme variants, reduced-motion images and a sample consumer for apps. | `app-animation-package` |
 | `screen_capture` (Screen capture) | workflows | Capture the local desktop, a pixel rectangle or a Windows window to a PNG, only when asked. | `screen-capture` |
