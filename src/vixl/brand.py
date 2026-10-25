@@ -284,8 +284,8 @@ def _validate(kit, preset=False):
     tolerance = colors.get("tolerance", 0)
     require(isinstance(tolerance, (int, float)) and 0 <= tolerance <= 255, "colors.tolerance is 0–255")
     logo = kit.get("logo", {})
-    require(isinstance(logo, dict) and set(logo) <= {"clear_space", "min_size", "min_width", "layers"},
-            "Brand logo takes clear_space, min_size, min_width and layers")
+    require(isinstance(logo, dict) and set(logo) <= {"clear_space", "min_size", "min_width", "layers", "variants"},
+            "Brand logo takes clear_space, min_size, min_width, layers and variants")
     if "clear_space" in logo:
         require(isinstance(logo["clear_space"], (int, float)) and 0 <= logo["clear_space"] <= 4,
                 "logo.clear_space is a fraction of the logo height, 0–4")
@@ -294,6 +294,7 @@ def _validate(kit, preset=False):
             length_px(logo[key])
     require(isinstance(logo.get("layers", []), list) and all(isinstance(x, str) and x for x in logo.get("layers", [])),
             "logo.layers lists the layer names that are logos")
+    validate_variants(kit, logo.get("variants", {}))
     presets = kit.get("presets", {})
     require(isinstance(presets, dict), "presets maps preset names to partial brands")
     for name, item in presets.items():
@@ -775,8 +776,92 @@ def _contains(outer, inner):
             and outer[1] + outer[3] >= inner[1] + inner[3])
 
 
+LOGO_GROUNDS = ("dark", "light")
+VARIANT_TOLERANCE = 12  # Channel difference (0-255) within which a sampled ground counts as a named brand colour.
+
+
+def validate_variants(kit, variants):
+    """``logo.variants``: {name: {layers: glob or [globs], backgrounds: ["dark" | "light" | "@role" | colour]}}."""
+    from .colors import parse
+
+    require(isinstance(variants, dict) and len(variants) <= 20, "logo.variants maps variant names to "
+            "{layers, backgrounds} (at most 20)", field="logo.variants")
+    named = {*role_colors(kit), *extra_colors(kit)}
+    for name, spec in variants.items():
+        where = f"logo.variants.{name}"
+        require(isinstance(name, str) and name and isinstance(spec, dict) and set(spec) == {"layers", "backgrounds"},
+                f"{where} takes layers (a layer name glob or a list) and backgrounds", field=where)
+        globs = [spec["layers"]] if isinstance(spec["layers"], str) else spec["layers"]
+        require(isinstance(globs, list) and globs and all(isinstance(g, str) and g for g in globs),
+                f"{where}.layers is a layer name glob such as logo-rev* or a list of them", field=where)
+        grounds = spec["backgrounds"]
+        require(isinstance(grounds, list) and grounds and all(isinstance(g, str) and g for g in grounds),
+                f"{where}.backgrounds lists dark, light, @palette-role or @extra-name, or colours", field=where)
+        for ground in grounds:
+            if ground in LOGO_GROUNDS:
+                continue
+            if ground.startswith("@"):
+                require(ground[1:] in named, f"{where}.backgrounds names {ground}, which is not a palette role or "
+                        f"palette.extra colour; known: {', '.join(sorted(named)) or 'none'}", field=where)
+            else:
+                parse(ground)
+
+
+def _ground_matches(kit, ground, rgb):
+    """Whether a sampled background (sRGB 0-1) is the approved ``ground`` (dark, light, @name or a colour)."""
+    from .colors import contrast_ratio, parse
+
+    if ground in LOGO_GROUNDS:
+        dark = contrast_ratio(rgb, (1, 1, 1)) >= contrast_ratio(rgb, (0, 0, 0))
+        return dark == (ground == "dark")
+    if ground.startswith("@"):
+        named = {**role_colors(kit), **{n: spec["color"] for n, spec in extra_colors(kit).items()}}
+        ground = named.get(ground[1:])
+        if ground is None:
+            return False
+    tolerance = max((kit.get("colors") or {}).get("tolerance", 0), VARIANT_TOLERANCE)
+    return max(abs(a - b) for a, b in zip(parse(ground)[:3], rgb)) * 255 <= tolerance
+
+
+def check_variants(project, kit, issue, visible, bounds):
+    """``logo.variants``: each variant's logo layers must sit on one of its approved backgrounds, sampled under the
+    logo box with the logo hidden (the contrast sampler, ``checks.backdrop_colors``)."""
+    from fnmatch import fnmatchcase
+
+    from .checks import backdrop_colors
+    from .design import descendants
+
+    variants = (kit.get("logo") or {}).get("variants") or {}
+    placed = {}
+    for name, spec in variants.items():
+        globs = [spec["layers"]] if isinstance(spec["layers"], str) else spec["layers"]
+        for layer in project.state["layers"]:
+            if any(fnmatchcase(layer["name"], g) for g in globs) and visible(layer) and layer["id"] in bounds:
+                placed.setdefault(layer["id"], (layer, {}))[1][name] = spec["backgrounds"]
+    # A layer inside a matched logo group belongs to the group.
+    inside = {child for ident in placed for child in descendants(project, ident)}
+    placed = {ident: value for ident, value in placed.items() if ident not in inside}
+    if not placed:
+        return
+    samples = backdrop_colors(project, set(placed) | inside, [bounds[ident] for ident in placed])
+    for (layer, mapped), rgb in zip(placed.values(), samples):
+        if rgb is None:
+            continue
+        approved = [ground for grounds in mapped.values() for ground in grounds]
+        if any(_ground_matches(kit, ground, rgb) for ground in approved):
+            continue
+        tone = "dark" if _ground_matches(kit, "dark", rgb) else "light"
+        sampled = "#" + "".join(f"{round(v * 255):02x}" for v in rgb)
+        variant = ", ".join(mapped)
+        issue("brand", "error", f"Logo {layer['name']!r} is the {variant} variant, which the brand approves on "
+              f"{', '.join(approved)}; it sits on {sampled} ({tone}). Use the variant made for this background, or "
+              "change the background", [layer], code="logo-variant-background", variant=variant,
+              background=sampled, tone=tone, approved=approved)
+
+
 def check_logos(project, kit, issue, visible):
-    """Clear space around each logo and its minimum size (``logo.clear_space``, ``min_size``, ``min_width``)."""
+    """Clear space around each logo and its minimum size (``logo.clear_space``, ``min_size``, ``min_width``), and
+    logo variants on their approved backgrounds (``logo.variants``)."""
     rules = kit.get("logo") or {}
     if not rules:
         return
@@ -786,6 +871,8 @@ def check_logos(project, kit, issue, visible):
     bounds = resolve_layout(project)
     dpi = project.state["canvas"].get("dpi")
     by_id = {layer["id"]: layer for layer in project.state["layers"]}
+    if rules.get("variants"):
+        check_variants(project, kit, issue, visible, bounds)
     for logo in logo_layers(project, kit):
         if not visible(logo) or logo["id"] not in bounds:
             continue
@@ -1063,7 +1150,7 @@ def _report_kit(kit, where, errors, warnings):
     for name in (kit.get("logo") or {}).get("layers", []):
         if kit.get("logos") and name not in logo_names:
             warnings.append(f"{where}logo.layers names {name!r}, which is not one of the embedded logos")
-    if (kit.get("logo") or {}) and not (kit.get("logos") or (kit.get("logo") or {}).get("layers")):
+    if set(kit.get("logo") or {}) - {"variants"} and not (kit.get("logos") or (kit.get("logo") or {}).get("layers")):
         warnings.append(f"{where}logo rules apply to layers named logo (logo, logo-mark …); embed logos or list "
                         "logo.layers to name them")
     if (kit.get("colors") or {}).get("strict") and not role_colors(kit):
@@ -1163,8 +1250,21 @@ def summary(kit):
     }
 
 
+def load_brand_or_profile(data):
+    """(validated brand.json kit, unmapped paths) for an uploaded brand: a brand.json object, or another format a
+    plugin reads through the ``brand-format`` hook (the brand kit plugin reads a Design Profile, ``schemaVersion:
+    2``, and lists the profile paths it could not map). Nothing is written."""
+    from .plugins import first
+
+    found = first("brand-format", data)
+    if found is not None:
+        return found
+    return validate(deepcopy(data)), []
+
+
 def cli(args):
-    """``vixl brand validate|show|init|pack|install|element … [--workspace DIR]``."""
+    """``vixl brand validate|show|init|pack|install|element … [--workspace DIR]`` (``vixl brand import|export
+    --design-profile`` is ``workflows.brand_profile_cli``, which runs the brand-import/brand-export actions)."""
     from . import brand_pack
     from .commands import Parser
 
