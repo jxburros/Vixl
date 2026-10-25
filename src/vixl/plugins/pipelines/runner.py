@@ -252,6 +252,20 @@ class Run:
                 start = last
         return start, old[:start]
 
+    def stale(self):
+        """The documents a real run would work on, read from the run record's digests: every one when the record is
+        missing, unfinished or for another pipeline; otherwise those with a step whose key changed (a held document
+        whose inputs did not change is not run again). Watch skips a run when this is empty."""
+        if not self.previous or self.previous.get("pipeline_digest") != self.digest or \
+                self.previous.get("status") in ("running", "cancelled"):
+            return list(self.documents)
+        found = []
+        for relative in self.documents:
+            start, reused = self.resume_point(relative, self.keys(self._inputs(relative)))
+            if start < len(self.document_steps) and not (reused and reused[-1]["status"] == "held"):
+                found.append(relative)
+        return found
+
     # Steps ---------------------------------------------------------------------------------------
 
     def _log(self, relative, index, kind, payload):
