@@ -344,6 +344,8 @@ STATE_FIELDS = {
     "actions": (OBJECT, "Recorded actions (operation lists) by name."),
     "recipe": (OBJECT, "Automation recipe."),
     "accessibility": (OBJECT, "Document language and title."),
+    "locales": (OBJECT, "Locale tables: locale code → {variable: value} (localization plugin, locales-set)."),
+    "locale_options": (OBJECT, "How locales are checked and built: source, same_ok, fonts, fit, min_size, rtl, mirror."),
     "font_design": (OBJECT, "Custom font being drawn: family, metrics in pixels, kerning and glyphs (char → layers, origin, advance)."),
     "page_accessibility": (OBJECT, "Page language and reading order."),
     "form": (OBJECT, "Form settings (title, language, submit)."),

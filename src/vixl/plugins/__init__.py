@@ -46,6 +46,7 @@ BUILTIN = (
     "layout_repair",
     "app_animation",
     "screen_capture",
+    "localization",
     "figma_import",
     "pdf_import",
     "ai",
@@ -70,6 +71,8 @@ HOOKS = {
                 "-> result}, or None when the durable job kind is not the plugin's; list the kinds in fn.KINDS",
     "job-complete": "fn(event) -> delivery record or None: called once when a durable job, check-all or pipeline run "
                     "ends; event is {event, kind, id, status, state, counts, report, workspace, notify, error}",
+    "check-variants": "fn(project, request) -> report, or None when the request names none of the plugin's variant "
+                      "axes (such as locales)",
 }
 MANIFEST_KEYS = {"name", "title", "summary", "kind", "modules", "requires", *ROLES, "hooks", "capabilities", "checks"}
 KINDS = ("operations", "workflows", "importer", "provider", "checks")

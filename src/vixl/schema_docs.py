@@ -120,6 +120,8 @@ SUMMARIES = {
     "brand-preset": "Use a named preset of the workspace brand (brand.json presets) for this document: its palette, "
                     "fonts, stages and rules apply to layouts, templates and the brand check; none returns to the base brand.",
     "font-design": "Name the font drawn in this document and set its metrics in canvas pixels (em, ascent, descent, x-height, cap height, side bearing, space) and kerning pairs.",
+    "locales-set": "Set the locale tables ({locale: {variable: value}}) and locale options (source, same_ok, fonts, "
+                   "fit, rtl) that the locale check and localize use.",
     "font-glyph": "Make a character's glyph from named layers or from the layers drawn in its cell (origin on the baseline, advance width); remove drops it.",
     "font-grid": "Lay out one glyph cell per character with ascent, cap-height, x-height, baseline and descent guides; shapes drawn in a cell become its glyph.",
     "font-build": "Build the document's font design and register it under a name so text layers can use it (export .ttf, .otf or .woff to write it out).",

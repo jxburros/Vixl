@@ -88,4 +88,5 @@ end-to-end walkthroughs live in the [tutorials](../README.md#learn-by-making).
 | --- | --- |
 | [Checked production workflows](automation/production.md) | Proof pages, logo packages and batch work |
 | [Check designs in CI](automation/ci.md) | The GitHub Action and local checks |
+| [Localization](automation/localization.md) | Locale tables and strings CSVs, the locale check matrix and localized variants |
 | [Creative tools and collaborative projects](automation/studio.md) | Review, custom tests and branch documents |

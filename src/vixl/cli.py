@@ -865,6 +865,32 @@ def _dispatch(argv):
     return result, options.json
 
 
+class LocaleReport(str):
+    """The Markdown text of ``vixl check --locales`` that still carries whether every locale passed (the exit code)."""
+
+    passed = True
+
+
+def locale_check(project, locales, strings, key_column, fmt, options, strict):
+    """``vixl check --locales``: the report of the plugin that owns the locale axis (hook ``check-variants``)."""
+    from .plugins import first
+
+    request = {"locales": locales, **({"checks": options["checks"]} if options.get("checks") else {}),
+               **({"format": "markdown"} if fmt == "markdown" else {})}
+    if strings:
+        request.update(strings=strings, key_column=key_column)
+    report = first("check-variants", project, request)
+    require(report is not None, "No plugin checks locales; the localization plugin is not available", field="locales")
+    if strict and not report["passed"]:
+        raise VixlError("design_check_failed", f"{sum(r['failing'] for r in report['results'].values())} locale "
+                        f"finding(s) reach fail_on {report['fail_on']}", report=report)
+    if fmt != "markdown" or "markdown" not in report:
+        return report
+    text = LocaleReport(report["markdown"].rstrip("\n"))
+    text.passed = report["passed"]
+    return text
+
+
 def schema_listing():
     """``vixl schema`` without arguments: every operation by purpose with a one-line summary (the full JSON Schema
     is ``vixl schema --all``, about 900 KB)."""
@@ -1369,8 +1395,18 @@ def project_command(project, cmd, args, *, detail="compact"):
                        "checks, suites and fail_on decide passed")
         p.add_argument("--no-waivers", dest="waivers", action="store_false",
                        help="report every finding as if the document had no waivers")
+        p.add_argument("--locales", help="check each locale (all, or codes such as de,ja) on a candidate copy and "
+                       "report a locale x finding matrix (localization plugin)")
+        p.add_argument("--strings", help="with --locales: a strings CSV (a key column and one column per locale)")
+        p.add_argument("--key-column", default="key", help="with --strings: the key column (default key)")
+        p.add_argument("--format", choices=["json", "markdown"], help="with --locales: print the report as json "
+                       "(the default) or a markdown matrix")
         options = vars(p.parse_args(args))
         strict = options.pop("strict")
+        locales, strings, key_column, fmt = (options.pop(key) for key in ("locales", "strings", "key_column", "format"))
+        if locales is not None:
+            return locale_check(project, locales, strings, key_column, fmt, options, strict), False
+        require(strings is None and fmt is None, "--strings and --format go with --locales", "usage_error")
         if options["repair"] is not None:
             options["repair"] = options["repair"] or True
         from .deck import DECK_CHECKS
@@ -1709,10 +1745,13 @@ def main(argv=None):
             # A result that is not a JSON object (an image on stdout, plain text) keeps stdout as it was.
             print(json.dumps({"render_profile": run.report()}), file=sys.stderr)
         emit(result, machine, command_of(argv), human_output(argv, sys.stdout))
-        if getattr(result, "passed", None) is False:  # a formatted vixl check --all report
+        if getattr(result, "passed", None) is False:  # a formatted vixl check --all or --locales report
             return 1
         if ("workflow" in argv or "check-file" in argv or ("check" in argv and ("--all" in argv or "--group" in argv)) or "emoji" in argv) and isinstance(result, dict):
             if result.get("passed") is False or result.get("success") is False or result.get("status") in ("failed", "needs_review", "cancelled"):
+                return 1
+        if "check" in argv and any(a.split("=")[0] == "--locales" for a in argv) and isinstance(result, dict) and result.get("check") == "locales":
+            if result.get("passed") is False:
                 return 1
         return 0
     except BrokenPipeError:

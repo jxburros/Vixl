@@ -14,6 +14,15 @@ the base layers; `finish` is screen, puff, embroidery, enamel, woven or none. `v
 area at its `print_size_mm` × dpi (PNG, an editable source, film-positive separations as PNG or PDF pages, and a white
 underbase for dark garments only). See `docs/guides/output/merch-mockups.md`.
 
+Localization: `locales-set {locales: {de: {headline: "..."}}, same_ok, fonts, fit: shrink|flag, min_size, rtl}` stores
+per-locale variable values. `vixl_apply(workflow='locale-check', request={"locales": "all", "strings": "strings.csv"})`
+(or `check` with `locales`, `vixl check --locales de,ja`) checks each locale on a copy and returns a locale x finding
+`matrix` (overflow, fonts, untranslated, missing-key, line-count, design, suites). `workflow='localize'` writes
+`<master>.<code>.vixl` and `formats` exports into `output_dir` for passing locales, holds failing ones (`held`), mirrors
+ar/he/fa, and on re-run rebuilds only locales whose fingerprint changed; `spec` adds a locale axis to a campaign. A
+strings CSV has a `key` column and one column per locale; an empty cell is a missing key and holds the locale. See
+`docs/guides/automation/localization.md`.
+
 Discover actions with `vixl_reference('workflows')` or `vixl workflow schema`.
 Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/main/docs/guides/automation/production.md).
 

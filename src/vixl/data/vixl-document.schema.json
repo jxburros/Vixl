@@ -408,6 +408,14 @@
      "type": "object",
      "description": "Document language and title."
     },
+    "locales": {
+     "type": "object",
+     "description": "Locale tables: locale code → {variable: value} (localization plugin, locales-set)."
+    },
+    "locale_options": {
+     "type": "object",
+     "description": "How locales are checked and built: source, same_ok, fonts, fit, min_size, rtl, mirror."
+    },
     "font_design": {
      "type": "object",
      "description": "Custom font being drawn: family, metrics in pixels, kerning and glyphs (char → layers, origin, advance)."

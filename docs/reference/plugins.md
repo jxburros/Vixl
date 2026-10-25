@@ -112,6 +112,7 @@ then fetches it once and the render path finds it in the pack directory.
 | `import-format` | `fn(project, data, format, **options) -> result or None` | On import; return None for formats that are not yours |
 | `brand-format` | `fn(data) -> (kit, unmapped) or None` | `vixl.brand.load_brand_or_profile`: read an uploaded brand in another format (the brand kit reads a Design Profile); return None for shapes that are not yours |
 | `spell` | `fn(project, texts) -> {lang, available, message?, words} or None` | The `text` suite rule's `spelling: true`: unknown words in `{layer id: drawn text}` with suggestions |
+| `check-variants` | `fn(project, request) -> report or None` | `vixl check --locales` and the workflow `check` field `locales`; return None when the request names none of your variant axes |
 
 ## Built-in plugins
 
@@ -136,6 +137,7 @@ then fetches it once and the render path finds it in the pack directory.
 | `layout_repair` (Layout repair) | workflows | repair-layout: try ranked candidate fixes for failing checks and keep the least disruptive one. | `repair-layout` |
 | `app_animation` (App animation packages) | workflows | Package animation states, theme variants, reduced-motion images and a sample consumer for apps. | `app-animation-package` |
 | `screen_capture` (Screen capture) | workflows | Capture the local desktop, a pixel rectangle or a Windows window to a PNG, only when asked. | `screen-capture` |
+| `localization` (Localization) | workflows | Locale variable tables and strings CSVs, a locale x finding check matrix, and localize fan-out with fit, RTL mirroring and font fallbacks. | `locales-set`, `group-locales`, `locale-check`, `localize` |
 | `figma_import` (Figma import) | importer | Import a Figma page or node as editable layers, with images, fonts and unsupported nodes rasterized. | hooks: import-format |
 | `pdf_import` (PDF import) | importer | Import a PDF page as editable layers (needs the optional pypdfium2 package). | hooks: import-format |
 | `ai` (AI providers) | provider | Generate, edit, detect and describe images through configured providers; model discovery and routing. | none: the core calls it directly |

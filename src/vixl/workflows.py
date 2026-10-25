@@ -11,7 +11,7 @@ from . import natural_guidance, object_plan, plugins, variations
 
 ACTIONS = {
     "check": ({"suite", "suites", "mode", "variables", "artboard", "page", "comp", "artboards", "pages", "comps",
-               "include_hidden"}, set()),
+               "include_hidden", "locales"}, set()),
     "act": ({"operations", "suites", "dry_run", "repair"}, {"operations"}),
     "capture": ({"recipe", "bindings", "output"}, {"recipe", "output"}),
     "plan": ({"spec"}, {"spec"}),
@@ -195,6 +195,8 @@ def dispatch(session, action, request, document=None):
     with session.project(document=document) as project:
         project = project.clone()
     if action == "check":
+        if "locales" in request:
+            return check_variants(project, request)
         return check_suites(project, request)
     if action == "run":
         return run(project, request["spec"], session.resolve(request["output"]))
@@ -232,6 +234,16 @@ def dispatch(session, action, request, document=None):
         "size": list(image.size),
         "generation_calls": 0,
     }
+
+
+def check_variants(project, request):
+    """Workflow check with ``locales``: the locale report from the plugin that owns the axis (``check-variants``)."""
+    extra = sorted(set(request) - {"locales", "suite", "suites", "variables"})
+    require(not extra, f"With locales, check takes suite, suites and variables only, not {', '.join(extra)}",
+            field=extra[0] if extra else None)
+    report = plugins.first("check-variants", project, request)
+    require(report is not None, "No plugin checks locales; the localization plugin is not available", field="locales")
+    return report
 
 
 def check_suites(project, request):
