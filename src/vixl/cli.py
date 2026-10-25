@@ -538,7 +538,7 @@ def _dispatch(argv):
         from .image_diff import cli as diff_cli
         return diff_cli(args, limits), options.json
     if cmd == "check-file":
-        from .export_checks import cli as check_file_cli
+        from .feature_cli import check_file as check_file_cli
         return check_file_cli(args, limits), options.json
     if cmd == "compose":
         from .compose import cli as compose_cli

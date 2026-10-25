@@ -934,23 +934,11 @@ class Project:
         preset name such as ``print-letter-bleed`` or inline fields, see export_checks) reads the written file back
         and checks it: the result goes to ``report['export_check']``; without a ``report`` a failing check raises
         ``export_check_failed`` (the file is still written)."""
-        from .export_dispatch import export
+        from .export_dispatch import export, export_checked
 
         if not check and spec is None:
             return export(self, path, **options)
-        from .export_checks import after_export, resolve_spec
-
-        resolve_spec(spec)  # a misspelled spec fails before anything is written
-        given = options.get("report") is not None
-        report = options["report"] = options["report"] if given else {}
-        data = export(self, path, **options)
-        result = report["export_check"] = after_export(self, data, path, options.get("format"), report, True, spec,
-                                                       options)
-        if not given and not result["passed"]:
-            raise VixlError("export_check_failed", f"The exported file fails {result['errors']} delivery check(s): "
-                            + "; ".join(item["message"] for item in result["issues"] if item["action"] == "fix")[:600],
-                            report=result)
-        return data
+        return export_checked(self, path, spec, **options)
 
     def measure_spacing(self, **options):
         from .spacing import measure_spacing
