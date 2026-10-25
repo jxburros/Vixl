@@ -322,6 +322,52 @@ The original step 6 list:
 
 ### Step 7: multi-document automation and hosting
 
+Done on 2026-10-25, on the same branch, for the release after 0.31.0: every item below, each with its regression
+tests, docs and a changelog entry; no golden changed. The owner also asked for fonts installed on the machine to work
+by name, which was built alongside. Where the work departed from the plan:
+
+- F2: `jobs.Queue.save` sends the event once per ending (a resumed job reports again) and records what each
+  consumer returned under `deliveries`; plugins add durable job kinds through a `job-kind` hook.
+- #558: a `max_render_ms` limit must sit in a budget rule of its own (#564), because one result cannot be both an
+  advisory review and a hard failure. The wasted-pixel test is measured at `max_ppi`, not at canvas DPI.
+  Workspace budget defaults live in `.vixl-checks.json`.
+- #557: `check-file` lives in `feature_cli` and `Project.export` reaches the check through `export_dispatch`, to
+  keep the layering. A passing export check alone never makes a campaign output validated.
+- #559, #560: link refreshes render live, so link impact adds resize-follow (a resized source keeps the link's
+  scale; `--keep-size` turns it off). Nested dependents are checked against their saved parents. New hook points
+  `cli-command` and `production-report`.
+- #568: `act` and `repair` steps change a working copy under `.vixl-runs/RUN/work/`, never the source; pipeline
+  resources are a plugin resource kind through a `resource-kind` hook. The `approve` step reads a proof page's
+  decisions.
+- #579: nothing is sent without an `allow` list; plain HTTP only to loopback.
+- #569: watch locks live in `.vixl-runs/watch/locks/`; a pipeline trigger runs all its targets and relies on resume;
+  `at` is UTC; `data-sync` is also a run type. Review fixes: export collisions within a run and within a data
+  sync are refused, nested-link changes and suite file changes invalidate steps, and locks are held from evaluation
+  to commit.
+- #565, #576: `vixl check --locales` goes through a `check-variants` hook. `localize` runs a campaign once per
+  localized document instead of adding a row axis (rows set only variables; mirroring and fonts need a changed
+  document). Only top-level layers mirror. Per-locale fonts live in `locale_options.fonts`, not brand.json.
+- #554: the English list is built from SCOWL (levels up to 60, licence in its header); no `spelling-<lang>` pack is
+  published yet. Plugins declare optional check names with a manifest `checks` key; a `spell` hook serves the
+  `text` rule. Hashtags are skipped.
+- #545: `vixl brand import|export --design-profile` dispatches from `workflows`, not `brand.cli` (layering). There is
+  no official Design Profile sample; the fixture follows the plan's description. The host route is core.
+- #537-#543: `fetch.offline()` already existed, so the gaps were closed instead of adding `network.py` (content
+  packs and plugin enabling). `/host/health` needs the token. The visual suite is at its 30-fixture cap, so a test
+  compares a host compose with an in-process one pixel for pixel instead of a new golden. The request log moved to
+  `vixl.idempotency`.
+- #544: the gateway contract in `docs/reference/providers.md` is Vixl's proposal pending Studio's. A host route
+  `POST /w/{ws}/documents/{id}/ai` was added, since nothing else reached the provider.
+- #546, #547: not run here (no Docker or Windows). The base image is pinned by tag; the container workflow is not
+  wired into the release workflow (tags pushed with `GITHUB_TOKEN` do not trigger it). Only the per-user scheduled
+  task is built; the admin service is not.
+- Fonts: fontconfig, the Windows font registry and the macOS folders are read once per process and cached on disk;
+  only Linux was tested on a real machine. Faces with restricted embedding are used locally with a warning and
+  refused over MCP and REST.
+- Close #567, #577, #542 and #555 with the evidence in their sections, and #549 and #535 when their children close.
+
+The original step 7 list:
+
 - **Shared foundations:**
   - F1, a step-run record and pipeline runner (#568);
   - F2, one job-completion event in `jobs.py`;
