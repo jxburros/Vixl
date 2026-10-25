@@ -384,7 +384,7 @@ def test_stack_needs_a_group_and_valid_settings():
         p.apply({"type": "stack", "target": "first"})
     with pytest.raises(VixlError, match="name"):
         p.apply({"type": "stack", "targets": ["first", "last"]})
-    for bad in ({"direction": "diagonal"}, {"gap": -1}, {"align": "middle"}, {"padding": -2}):
+    for bad in ({"direction": "diagonal"}, {"gap": -1}, {"align": "sideways"}, {"padding": -2}):
         with pytest.raises(VixlError):
             p.apply({"type": "stack", "name": "s", "targets": ["first", "last"], **bad})
     assert not any(layer["type"] == "group" for layer in p.state["layers"])

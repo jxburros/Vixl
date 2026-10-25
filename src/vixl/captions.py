@@ -1,6 +1,7 @@
 """Editable speech/thought balloons and styled timeline/film caption overlays."""
 from copy import copy, deepcopy
 import math
+from .constants import PROOFING_FONT
 from .errors import require
 from .model import finite
 
@@ -57,7 +58,7 @@ def _text(project, name, text, op, width):
     from .operations import execute as apply
     style = op.get("style", {}) if isinstance(op.get("style"), dict) else {}
     span = {"text": text, **{k: v for k, v in style.items() if k in ("bold", "italic", "underline", "tracking")}}
-    apply(project, {"type": "rich-text", "name": name, "spans": [span], "font": op.get("font", "DejaVuSans.ttf"), "size": op.get("size", 24),
+    apply(project, {"type": "rich-text", "name": name, "spans": [span], "font": op.get("font", PROOFING_FONT), "size": op.get("size", 24),
                     "color": op.get("color", "#17202a"), "width": max(1, round(width)), "align": style.get("align", "left"), "fit": True})
     layer = project.layer()
     for key in ("stroke_width", "stroke_color"):

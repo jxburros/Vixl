@@ -45,9 +45,39 @@ export writes native paths.
 | `naturalness` | 0–1 (default 0.5). Scales jitter, asymmetry and wobble in every rule that uses it. 0 is perfectly regular. |
 | `fill` | One fill for every filled part, so a form stays inside a palette. `colors` names single parts and wins over it; line-only parts (a fern, veins) stay unfilled. |
 | `stroke`, `stroke_width` | Applied to every part and to every extra line output (shell chambers, leaf veins, feather barbs), so the preset's own line colors never show through. |
+| `illustration` | `house` or `plain`: whether the form gets the [house illustration finish](#house-illustration-finish). Default `house` in a document with a house style, `plain` without one. `outline: false` is read as `plain`. |
 | `padding` | Pixels between the form and its box. |
 | `stretch` | Fill the box without keeping proportions. |
 | `target` | Regrow an existing organic layer or group. |
+
+### House illustration finish
+
+In a document that has a house style (made with `vixl new`, `Project.new` or from a size; not `house_style: off`, and
+not a bare `Project(width, height)`), a new form is drawn as the house style's flat vector illustration
+([decision F5](../../project/house-style.md#f5-illustration-defaults), data `craft.illustration`):
+
+- **Thin part lines.** Every filled part gets an ink (`@ink`) stroke 1.2% of the form's larger side. A part made of
+  small elements (the seeds of a flower centre, spots, leaves) gets a finer line, at most a fifth of its elements'
+  thickness, so it is not drowned in ink.
+- **A hard offset shadow.** A `drop-shadow` layer style on the form: blur 0, ink, 35% opacity, 3% of the larger
+  side toward the bottom right (the light is at the top left).
+- **A slight imperfection.** The outline of the larger parts wobbles by the `subtle` `irregular` preset (the wobble
+  only; a part of small elements keeps its exact shape).
+- **Double and triple lines.** About one form in seven (15%, decided by the form's `seed`) gets one or two thin extra
+  lines inside its outline, generated path layers `NAME/outline-1` and `-2` in the group.
+
+Forms that have no filled part (a fern) keep their strokes and get no shadow, and the presets that cover
+a surface rather than draw a form (`spots`, `scales`, `cells`, `giraffe`, `water`) are always plain. A `stroke`,
+`stroke_width`, `fill` or `colors` you give still wins. Regrowing a form (`target`) draws the finish again for the new
+shape and keeps its shadow; a form made before the finish stays plain.
+
+```json
+{"type": "organic", "preset": "mushroom", "name": "shroom", "seed": 4, "width": 300, "illustration": "plain"}
+```
+
+`illustration: "plain"` (or `outline: false`) draws the preset as it was before the finish; `illustration: "house"`
+applies it in a document without a house style. `object-plan` scaffolds get the same finish
+([objects](objects.md#scaffold-with-object-plan)).
 
 ## Presets
 

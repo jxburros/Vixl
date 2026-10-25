@@ -72,6 +72,79 @@ def test_layers_that_sit_together_move_together_unless_turned_off():
 
 def test_options_validate():
     p = campaign()
-    for bad in ({"safe": "yes"}, {"together": 1}, {"min_text": -1}):
+    for bad in ({"safe": "yes"}, {"together": 1}, {"min_text": -1}, {"recompose": "yes"}):
         with pytest.raises(VixlError):
             p.apply({"type": "adapt-layout", "size": "story", **bad})
+
+
+# Recompose by default (#653) ------------------------------------------------------------------------------------
+
+
+def layout_card():
+    p = Project(1080, 1080, "#ffffff")
+    p.apply({"type": "layout-apply", "name": "hero-statement", "title": "Launch day",
+             "subtitle": "Everything you need to start", "cta": "Join us", "unfilled": "omit", "seed": 2})
+    return p
+
+
+def adapt(p, **fields):
+    return p.apply({"type": "adapt-layout", **fields}, detail="brief")["adapt_layout"][0]
+
+
+def test_an_unedited_layout_is_rebuilt_at_the_new_size_by_default(tmp_path):
+    p = layout_card()
+    report = adapt(p, size="story")
+    assert report["mode"] == "recompose" and report["recomposed"] is True
+    assert report["reason"] == "made by layout-apply (hero-statement) and not edited since"
+    assert p.state["canvas"]["width"] == 1080 and p.state["canvas"]["height"] == 1920
+    assert {layer["id"] for layer in p.state["layers"]} == set(p.state["layout"]["layers"])
+    # The rebuilt layout is unedited too, and a saved and reopened document is still recognised.
+    assert adapt(p, size="youtube-thumbnail")["recomposed"] is True
+    layout_card().save(tmp_path / "card.vixl")
+    assert adapt(Project.load(tmp_path / "card.vixl"), size="story")["recomposed"] is True
+
+
+@pytest.mark.parametrize("edit", [
+    {"type": "text-set", "target": "headline", "text": "Launch night"},
+    {"type": "move", "target": "headline", "x": 12, "relative": True},
+    {"type": "shape", "shape": "ellipse", "name": "logo", "width": 60, "height": 60, "x": 20, "y": 20},
+], ids=["copy", "move", "new-layer"])
+def test_a_hand_edit_since_layout_apply_keeps_the_anchoring_rules(edit):
+    p = layout_card()
+    p.apply(edit)
+    report = adapt(p, size="story")
+    assert report["recomposed"] is False and "mode" not in report and report["moved"] > 0
+    assert "recompose: true" in report["reason"]
+    edited = layout_card()
+    edited.apply(edit)
+    assert adapt(edited, size="story", recompose=True)["recomposed"] is True  # an explicit recompose still rebuilds
+
+
+def test_proportional_options_and_recompose_false_choose_the_anchoring_rules():
+    report = adapt(layout_card(), size="story", recompose=False)
+    assert report["recomposed"] is False and report["reason"] == "recompose: false"
+    report = adapt(layout_card(), size="story", anchors={"headline": "top"})
+    assert report["recomposed"] is False and report["reason"] == "proportional options were given (anchors)"
+    report = adapt(campaign(), size="story")
+    assert report["recomposed"] is False and report["reason"] == "no layout-apply recipe to rebuild"
+
+
+def test_the_layout_fingerprint_ignores_layer_ids():
+    from vixl.adapt import fingerprint
+
+    first, second = layout_card(), layout_card()
+    assert first.state["layout"]["fingerprint"] == second.state["layout"]["fingerprint"] == fingerprint(first.state)
+    assert {layer["id"] for layer in first.state["layers"]} != {layer["id"] for layer in second.state["layers"]}
+
+
+def test_adapt_copies_rebuild_an_unedited_layout_by_default(tmp_path):
+    from vixl.adapt import adapt_copies
+    from vixl.interfaces import Session
+    from vixl.mcp_tools import export_file
+
+    session = Session(workspace=tmp_path)
+    session.create("card.vixl", 1080, 1080, "white")
+    session.apply([{"type": "layout-apply", "name": "hero-statement", "unfilled": "omit", "title": "Launch day"}])
+    result = adapt_copies(session, export_file, ["story", "1200x628"], directory="out", document="card.vixl")
+    assert [item["moved"] for item in result["documents"]] == ["recomposed", "recomposed"]
+    assert all(item["recomposed"] for item in result["documents"])

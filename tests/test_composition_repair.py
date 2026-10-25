@@ -6,7 +6,7 @@ import pytest
 from vixl import Project
 from vixl.plugins.layout_repair.layout_repair import repair_layout
 
-from test_composition import card, doc, scatter, text
+from test_composition import HIERARCHY, card, doc, scatter, text
 
 CHECKS = ["bounds", "overlap", "safe_area", "composition"]
 
@@ -18,7 +18,8 @@ def findings(p, checks=CHECKS):
 
 
 def codes(p):
-    return sorted(x["code"] for x in p.check(checks=["composition"])["issues"] if x["check"] == "composition")
+    return sorted(x["code"] for x in p.check(checks=["composition"])["issues"]
+                  if x["check"] == "composition" and x["code"] not in HIERARCHY)
 
 
 def repaired(p, code, checks=CHECKS, **options):
@@ -41,7 +42,7 @@ def test_margin_drift_snaps_the_stray_edge_to_the_margin():
 
 
 def test_margin_drift_moves_the_chip_with_its_text():
-    chip = {"type": "shape", "name": "pill", "shape": "rectangle", "x": 70, "y": 52, "width": 110, "height": 40,
+    chip = {"type": "shape", "name": "pill", "shape": "rectangle", "x": 70, "y": 52, "width": 96, "height": 40,
             "fill": "#ffcc00"}
     p = doc(chip, text("date", 82, 60), text("headline", 60, 140, size=48), text("subtitle", 60, 220))
     repaired(p, "margin_drift")
@@ -111,7 +112,7 @@ def test_dry_run_plans_without_changing_the_document():
     assert plan["dry_run"] and not plan["committed"] and p.state["layers"] == state
     assert plan["operations"] == [{"type": "move", "target": p.layer("subtitle")["id"], "x": -12, "y": 0,
                                    "relative": True}]
-    assert plan["initial"] == [{"rule": "composition.margin_drift", "layers": ["subtitle", "title"]}]
+    assert {"rule": "composition.margin_drift", "layers": ["subtitle", "title"]} in plan["initial"]
     again = repair_layout(p, checks=CHECKS)
     assert (again["selected"], again["attempts"]) == (plan["selected"], plan["attempts"])  # the same plan
     p.apply(plan["operations"])

@@ -88,7 +88,7 @@ pages), `max_pages` (export a page range, then the next) or `max_concurrent` (wa
 
 | Action | Parameters | Returns |
 | --- | --- | --- |
-| `design` (default) | `checks` (default: bounds, overlap, contrast, safe_area, legibility, blanks, placeholders, fonts, brand, content, form, links, diagram, flow, codes, composition; opt-in: print, color_vision, guides, alignment, drawing, style, motion, character, captions, connected, cost, deck, accessibility …; an explicit list replaces the defaults; `vixl_reference("checks")` describes each), `targets`, `safe_area` (px, `"5%"` or `{left,top,right,bottom}`), `avoid`, `thumbnail_width="auto"` (320; null disables), `min_thumbnail_text=10`, `min_contrast`, `ink_limit`, `min_ppi`, `page`, `deck`, `sample`, `style`, `connect_tolerance`, `artboard`, `comp`, `repair`, `offset`/`limit`, `profile`, `waivers`, `artboards`/`pages`/`comps` (`"all"` or names), `include_hidden` | `{passed, errors, warnings, issues[{check,severity,action,layers,message,…}], by_action, outcome}` — only problems. `passed` is false while any issue has action `fix`; `by_action` lists issue indexes under fix / review / informational |
+| `design` (default) | `checks` (default: bounds, overlap, contrast, safe_area, legibility, blanks, placeholders, fonts, brand, content, form, links, diagram, flow, codes, composition, object; opt-in: print, color_vision, guides, alignment, drawing, style, motion, character, captions, connected, cost, deck, accessibility …; an explicit list replaces the defaults; `vixl_reference("checks")` describes each), `targets`, `safe_area` (px, `"5%"` or `{left,top,right,bottom}`), `avoid`, `thumbnail_width="auto"` (320; null disables), `min_thumbnail_text=10`, `min_contrast`, `ink_limit`, `min_ppi`, `page`, `deck`, `sample`, `style`, `connect_tolerance`, `artboard`, `comp`, `repair`, `offset`/`limit`, `profile`, `waivers`, `artboards`/`pages`/`comps` (`"all"` or names), `include_hidden` | `{passed, errors, warnings, issues[{check,severity,action,layers,message,…}], by_action, outcome}` — only problems. `passed` is false while any issue has action `fix`; `by_action` lists issue indexes under fix / review / informational |
 | `measure` | `point=[x,y]`, `region=[x,y,w,h]`, `foreground`, `target`, `histogram="summary"\|"full"\|"none"`, `artboard`, `comp` | RGBA/hex sample, alpha-weighted average, channel percentiles (or 256-bin histograms), WCAG contrast |
 | `spacing` | `targets`, `axis="vertical"`, `around`/`before`/`after`, `expected`, `tolerance=1`, `artboard`, `comp` | Per-gap pixels, overlap, min/max/mean/spread, `passed` |
 | `validate` | `profile`, `rules`, `verbose` (include passes), `targets`, `severity`, `suppress`, `offset`, `limit=50` (≤200) | Overall `valid`, counts and paginated findings |
@@ -119,7 +119,7 @@ Assertion grammar: `canvas.width == 1920`, `layer.NAME.exists`, `layer.NAME.boun
 | `animation` | **`path`**, `format`, `animation=NAME`, `scale` (0.05–32), `sampling`, `colors`, `dither`, `max_bytes`, `quality`, `columns`, `overwrite` | Saved frames; a sheet also writes `same-stem.json` with frame rects, durations and the `animations` map |
 | `audio` | **`path`** (.wav), `sample_rate` | Mix of the audio tracks at the highest source rate (≤48 kHz), mono when every source is mono and unpanned |
 | `icons` | **`path`** (a folder), `icon_set` `web\|apple\|android\|windows\|all`, `sampling` | favicon.ico, PNG sizes, site.webmanifest |
-| `character` | **`path`** (.vixl), **`target`** | A portable character library for `character-load` |
+| `character` | **`path`** (.vixl), **`target`** | A portable character document for `character-load source` (packages with poses, expressions and motions: workflow `character-package`) |
 
 Without `kind`, `.wav` is audio, `targets` is a batch, and `.gif`/`.apng`/`.mp4`/`.webm`/`.zip` are the
 timeline, or the saved-frame animation when the document has frames and no timeline.
@@ -128,7 +128,9 @@ timeline, or the saved-frame animation when the document has frames and no timel
 
 `vixl_reference()` is the first call for an open brief: the start-here recipe and every kind of work.
 `vixl_reference("a mascot for a coffee brand")` (a kind or free text) returns the approach, operations, layouts,
-looks, styles, a working example and `motifs`; a guidance name (`finishing`, `testing`, `batches`, `checks`,
+looks, styles, a working example and `motifs`; its rolled `direction` favours palettes with the moods the brief's
+words imply (`direction.mood_source: "brief"`, `brief_moods`, `mood_words`) and suggests the motif to draw
+(`motif_suggestion`, no layers added); a guidance name (`finishing`, `testing`, `batches`, `checks`,
 `exports`, `looping-motion` …) returns its text. Topics with `name` (and `options`):
 `operations` (`name=[types]`: exact schemas; none: every operation by purpose), `workflows`, `capabilities`
 (`name=TOPIC`, `fields`), `sizes` (`name` search, `category`), `layouts`, `fonts` (a pairing or family name, or

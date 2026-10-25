@@ -48,8 +48,9 @@ CHECK_INFO = {
     "diagram": ("Diagram nodes and edges: overlaps, crossings, labels and routing.", ("error", "warning")),
     "flow": ("Text flows: overset text, widows, orphans and broken frame chains.", ("error", "warning")),
     "codes": ("QR codes and barcodes: quiet zone, size, contrast and decodability.", ("error", "warning")),
-    "composition": ("Craft review: dead bands, margin drift, uneven rhythm, crowding under a rule or heading and "
-                    "clumped scatters, each with a code, region, measured values and threshold.", ("warning",)),
+    "composition": ("Craft review: dead bands, margin drift, uneven rhythm, crowding under a rule or heading, "
+                    "clumped scatters, flat type hierarchy, one weight, no focal point and an unused accent, each "
+                    "with a code, region, measured values and threshold.", ("warning",)),
     "print": ("Print readiness: dpi, image resolution, ink limit, small type and the live area.",
               ("error", "warning")),
     "color_vision": ("Text and chart series that become hard to tell apart under color-vision deficiencies.",
@@ -62,6 +63,8 @@ CHECK_INFO = {
     "character": ("Character rigs: detached parts and joints that tear apart in poses.", ("error", "warning")),
     "captions": ("Timed captions: overlap, reading speed and placement.", ("error", "warning")),
     "connected": ("Parts of a group that float free of its main body.", ("warning",)),
+    "object": ("Declared objects against their kind: missing or miscounted parts, gaps between parts that must "
+               "touch, proportions, mirrored pairs and back-to-front layering.", ("warning",)),
     "accessibility": ("Document language, alt text on meaningful images and charts, small text, colour-only charts "
                       "and reading order (plus contrast and color_vision).", ("warning",)),
     "cost": ("Layers that take over 10× the median layer to draw, with the blur, effects or strokes behind it.",

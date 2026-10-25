@@ -1,9 +1,13 @@
 {
-  "description": "Offline reference acceptance baseline. Every listed brief must pass; this is not a measured Claude performance baseline. tool_call_budgets caps the MCP calls per task (about twice the calls of the recorded live run in evals/live-runs of the VixlExamples repository, at least 10, or a set budget for newer tasks) and max_mean_tool_calls caps the mean: a run over either is a regression.",
+  "description": "Offline reference acceptance baseline. Every listed brief must pass; this is not a measured Claude performance baseline. tool_call_budgets caps the MCP calls per task (about twice the calls of the recorded live run in evals/live-runs of the VixlExamples repository, at least 10, or a set budget for newer tasks) and max_mean_tool_calls caps the mean: a run over either is a regression. craft_scores is the floor of each craft task's score (the composition checks on the finished document, 1.0 when they find nothing) and min_mean_craft_score the floor of their mean: a reference solution that scores lower means a check or a default changed what a finished page looks like.",
   "required_passes": [
     "adapt-sizes",
     "chart-fix-value",
     "copy-between-documents",
+    "craft-menu-prices",
+    "craft-poster-event",
+    "craft-report-cover",
+    "craft-social-quote",
     "deck-pptx",
     "drawing-vectorize",
     "equal-spacing",
@@ -37,6 +41,10 @@
     "adapt-sizes": 10,
     "chart-fix-value": 12,
     "copy-between-documents": 10,
+    "craft-menu-prices": 12,
+    "craft-poster-event": 12,
+    "craft-report-cover": 12,
+    "craft-social-quote": 12,
     "deck-pptx": 12,
     "drawing-vectorize": 14,
     "equal-spacing": 10,
@@ -66,5 +74,12 @@
     "workflow-checked-edit": 16,
     "youtube-thumbnail": 26
   },
-  "max_mean_tool_calls": 10
+  "max_mean_tool_calls": 10,
+  "craft_scores": {
+    "craft-menu-prices": 1.0,
+    "craft-poster-event": 1.0,
+    "craft-report-cover": 1.0,
+    "craft-social-quote": 1.0
+  },
+  "min_mean_craft_score": 1.0
 }

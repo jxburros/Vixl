@@ -217,7 +217,8 @@ class PageReader:
 
         require(any(op["type"] != "canvas" for op in self.operations) or self.background, "The PDF page draws nothing",
                 field="page")
-        operations = [*self.font_operations, *anchor_text(self.candidate, self.operations, self.anchored)]
+        # The fonts are registered first, also in the copy anchor_text measures the anchored text in.
+        operations = anchor_text(self.candidate, [*self.font_operations, *self.operations], self.anchored)
         require(len(operations) <= self.project.limits.max_operations, "PDF page has too many objects",
                 "resource_limit")
         result = self.candidate.apply(operations, detail="compact") if operations else {"success": True}

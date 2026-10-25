@@ -1,8 +1,10 @@
 """Objects: a group declared as one thing (a dog, a guitar, a person) with a kind, named parts and sub-objects.
 
 The kind taxonomy (domain > class > kind, ``data/objects.json``) describes what each kind is made of: its
-parts, the parts that must touch, proportions, layering and outline policy. A kind inherits every field from
-its parent; ``parts+`` and ``connections+`` extend the inherited lists. Workspace and user resources of kind
+parts, the parts that must touch, proportions, layering and outline policy, and how to build one (``build``:
+approach, placements, research notes and a working example batch). A kind inherits every field from its parent;
+``parts+`` and ``connections+`` extend the inherited lists and ``build`` merges field by field
+(``merge_build``). ``object_check`` measures declared objects against their kind. Workspace and user resources of kind
 ``objects`` add kinds (a brand mascot, a product) that may extend a built-in parent.
 
 In a document, ``group["object"]`` declares the object (``{version, kind, label?, notes?, references?}``) and
@@ -26,10 +28,24 @@ from .errors import VixlError, require
 TYPES = ("object", "object-save", "object-place")
 DATA = Path(__file__).resolve().parent / "data" / "objects.json"
 ENTRY_FIELDS = ("parent", "aliases", "summary", "parts", "parts+", "proportions", "symmetry", "connections",
-                "connections+", "layering", "outline", "texture")
+                "connections+", "layering", "outline", "texture", "build")
 INHERITED = ("parts", "proportions", "symmetry", "connections", "layering", "outline", "texture")
 PART_FIELDS = ("name", "required", "count", "side", "sub_object")
 SIDES = ("left", "right", "center")
+DEPTHS = ("far", "near")
+PROPORTIONS = ("check", "ignore")
+SET_FIELDS = ("kind", "label", "notes", "references", "stylized", "proportions")
+ACTIONS = ("set", "unset", "part", "outline", "outline-remove")
+RECORD_FIELDS = ("version", *SET_FIELDS, "outline", "interior", "outline_color", "outline_width", "outline_lines", "outlined")
+PART_RECORD = ("name", "side", "depth", "outline", "interior")
+# How to build a kind. List fields merge down the chain (the child's items first, duplicates dropped); palette and
+# example are replaced by the child's.
+BUILD_FIELDS = ("approach", "workflows", "operations", "organic", "shapes", "patterns", "looks", "palette",
+                "placements", "guidance", "research", "checks", "example")
+BUILD_NAMES = ("workflows", "operations", "organic", "shapes", "looks", "guidance", "checks")
+PLACEMENT_FIELDS = ("part", "anchor", "at", "spread", "side", "mirror", "note")
+SPREAD = re.compile(r"^(?P<a>0(?:\.\d+)?|1(?:\.0+)?)-(?P<b>0(?:\.\d+)?|1(?:\.0+)?)$")
+MAX_EXAMPLE = 40
 RECORD_VERSION = 1
 MAX_REFERENCES = 32
 MAX_KINDS = 2000
@@ -107,6 +123,117 @@ def validate_entry(name, entry):
     require(isinstance(entry.get("symmetry", ""), str), f"{name}.symmetry must be text", field=f"{name}.symmetry")
     require(isinstance(entry.get("outline", {}), dict), f"{name}.outline must be an object", field=f"{name}.outline")
     require(isinstance(entry.get("texture", False), bool), f"{name}.texture must be true or false", field=f"{name}.texture")
+    if "build" in entry:
+        validate_build(name, entry["build"])
+
+
+def _strings(value, limit, size=400):
+    return (isinstance(value, list) and len(value) <= limit
+            and all(isinstance(item, str) and item.strip() and len(item) <= size for item in value))
+
+
+def placement_anchor(text):
+    """``(part, anchor)`` for ``"body.bottom"`` with the anchor canonical (``geometry.ANCHORS``), or None."""
+    from .geometry import canonical_anchor
+
+    if not isinstance(text, str) or "." not in text:
+        return None
+    part, _, anchor = text.rpartition(".")
+    anchor = canonical_anchor(anchor)
+    return (part, anchor) if part and anchor else None
+
+
+def spread(text):
+    """``(start, end)`` fractions for a placement spread such as ``"0.15-0.85"``, or None."""
+    match = SPREAD.match(text) if isinstance(text, str) else None
+    if not match or float(match["a"]) > float(match["b"]):
+        return None
+    return float(match["a"]), float(match["b"])
+
+
+def validate_build(name, build):
+    """The shape of a kind's ``build`` block. Whether the names it uses exist is ``unknown_references``."""
+    from .geometry import canonical_anchor
+
+    where = f"{name}.build"
+    require(isinstance(build, dict), f"{where} must be an object", field=where)
+    unknown = sorted(set(build) - set(BUILD_FIELDS))
+    require(not unknown, f"{where} has unknown field(s) {unknown}; fields: {', '.join(BUILD_FIELDS)}", field=where,
+            allowed=list(BUILD_FIELDS))
+    require(_strings(build.get("approach", []), 12), f"{where}.approach is a list of at most 12 steps (text)",
+            field=f"{where}.approach")
+    for key in BUILD_NAMES:
+        require(_strings(build.get(key, []), 32, 80), f"{where}.{key} is a list of at most 32 names",
+                field=f"{where}.{key}")
+    require(isinstance(build.get("palette", ""), str), f"{where}.palette is a palette name or natural:SUBJECT",
+            field=f"{where}.palette")
+    patterns = build.get("patterns", [])
+    require(isinstance(patterns, list) and len(patterns) <= 16 and all(
+        isinstance(p, dict) and isinstance(p.get("op"), str) and set(p) <= {"op", "preset", "note"}
+        and all(isinstance(p.get(k, ""), str) for k in ("preset", "note")) for p in patterns),
+        f"{where}.patterns entries are {{op, preset?, note?}}", field=f"{where}.patterns")
+    placements = build.get("placements", [])
+    require(isinstance(placements, list) and len(placements) <= 64, f"{where}.placements is a list of at most 64",
+            field=f"{where}.placements")
+    for item in placements:
+        require(isinstance(item, dict) and set(item) <= set(PLACEMENT_FIELDS) and isinstance(item.get("part"), str)
+                and item["part"] and placement_anchor(item.get("anchor")) is not None,
+                f"{where}.placements entries are {{part, anchor: 'PART.ANCHOR', at?, spread?: 'a-b', side?, mirror?, "
+                f"note?}} with an anchor from {', '.join(_anchor_names())}", field=f"{where}.placements")
+        require("at" not in item or canonical_anchor(item["at"]) is not None,
+                f"{where}.placements: at is an anchor ({', '.join(_anchor_names())})", field=f"{where}.placements")
+        require("spread" not in item or spread(item["spread"]) is not None,
+                f"{where}.placements: spread is two fractions 'a-b' with a <= b, such as '0.15-0.85'",
+                field=f"{where}.placements")
+        require(item.get("side", "left") in SIDES and isinstance(item.get("mirror", False), bool)
+                and isinstance(item.get("note", ""), str),
+                f"{where}.placements: side is left, right or center; mirror is true or false", field=f"{where}.placements")
+    research = build.get("research", [])
+    require(isinstance(research, list) and len(research) <= 12 and all(
+        isinstance(r, dict) and set(r) <= {"title", "notes", "url"} and isinstance(r.get("title"), str) and r["title"]
+        and isinstance(r.get("notes"), str) and len(r["notes"]) <= 1000
+        and (r.get("url") is None or (isinstance(r["url"], str) and r["url"].startswith("https://")))
+        for r in research), f"{where}.research entries are {{title, notes, url?: https://…}}", field=f"{where}.research")
+    example = build.get("example", [])
+    require(isinstance(example, list) and len(example) <= MAX_EXAMPLE
+            and all(isinstance(op, dict) and isinstance(op.get("type"), str) for op in example),
+            f"{where}.example is a batch of at most {MAX_EXAMPLE} operations", field=f"{where}.example")
+
+
+def _anchor_names():
+    from .geometry import ANCHORS
+
+    return list(ANCHORS)
+
+
+def unknown_references(build):
+    """``{field: [names]}`` the build block names that do not exist (operations, workflows, organic presets,
+    shapes, looks, palettes, guidance, checks and pattern operations)."""
+    from .checks import CHECKS, OPTIONAL_CHECKS
+    from .guidance import GUIDANCE
+    from .looks import LOOKS
+    from .natural_guidance import PALETTES as NATURAL
+    from .operations import OPERATION_TYPES
+    from .resources import PALETTES
+    from .workflow_schema import SUMMARIES
+
+    known = {"workflows": set(SUMMARIES), "operations": set(OPERATION_TYPES), "organic": set(organic_presets()),
+             "shapes": set(_shape_names()), "looks": set(LOOKS), "guidance": set(GUIDANCE),
+             "checks": set(CHECKS + OPTIONAL_CHECKS)}
+    missing = {key: [n for n in build.get(key, []) if n not in names] for key, names in known.items()}
+    missing["patterns"] = [p["op"] for p in build.get("patterns", []) if p["op"] not in OPERATION_TYPES]
+    palette = build.get("palette")
+    if palette and palette not in PALETTES and not (palette.startswith("natural:") and palette[8:] in NATURAL):
+        missing["palette"] = [palette]
+    return {key: names for key, names in missing.items() if names}
+
+
+def _shape_names():
+    from .schema import operation_schema
+
+    variants = operation_schema()["properties"]["operations"]["items"]["oneOf"]
+    shape = next(v for v in variants if v["properties"]["type"]["const"] == "shape")["properties"]["shape"]
+    return shape.get("enum") or [name for option in shape.get("anyOf", []) for name in option.get("enum", [])]
 
 
 def validate_registry(kinds):
@@ -136,6 +263,8 @@ def validate_registry(kinds):
 def validate_user_kind(name, entry, workspace=None):
     """A workspace or user kind: a valid entry whose parent is known, merged without cycles or alias clashes."""
     validate_entry(name, entry)
+    missing = unknown_references(entry.get("build", {}))
+    require(not missing, f"{name}.build names things Vixl does not have: {missing}", field=f"{name}.build")
     kinds = registry(workspace)
     require(entry.get("parent") in kinds, f"A new object kind needs a parent kind (organic, animal, instrument …); "
             f"got {entry.get('parent')!r}", field="parent",
@@ -230,7 +359,8 @@ def descends(kind, ancestor, kinds=None):
 
 
 def merged(name, kinds=None):
-    """The kind's fields with inheritance applied (parts and connections extended by ``parts+``/``connections+``)."""
+    """The kind's fields with inheritance applied (parts and connections extended by ``parts+``/``connections+``,
+    ``build`` merged field by field, see ``merge_build``)."""
     kinds = kinds if kinds is not None else registry()
     result = {}
     for level in chain(name, kinds):
@@ -246,7 +376,58 @@ def merged(name, kinds=None):
                     names = {part["name"] for part in extra}
                     existing = [part for part in existing if part["name"] not in names]
                 result[key] = existing + extra
+        if entry.get("build"):
+            result["build"] = merge_build(result.get("build", {}), entry["build"])
+    if result.get("build"):
+        result["build"] = _fit_build(result["build"], result.get("parts", []))
     return result
+
+
+def _build_key(field, item):
+    """What makes two items of a build list the same: a placement is per part and side, research per title."""
+    if not isinstance(item, dict):
+        return item
+    if field == "placements":
+        return item["part"], item.get("side")
+    if field == "research":
+        return item["title"]
+    return json.dumps(item, sort_keys=True)
+
+
+def merge_build(parent, child):
+    """``child`` over ``parent``: lists concatenate with the child's items first and duplicates dropped (the
+    child's placement for a part replaces the parent's); palette and example are the child's when it has them."""
+    result = deepcopy(parent)
+    for field, value in child.items():
+        if field in ("palette", "example"):
+            result[field] = deepcopy(value)
+            continue
+        items, seen = [], set()
+        for item in [*value, *parent.get(field, [])]:
+            key = _build_key(field, item)
+            if key not in seen:
+                seen.add(key)
+                items.append(deepcopy(item))
+        result[field] = items
+    return result
+
+
+def _fit_build(build, parts):
+    """Inherited placements apply only to parts the kind has (an insect inherits no eye placement); anchors and
+    ``at`` are written canonically (``bottom-center`` reads ``bottom``)."""
+    from .geometry import canonical_anchor
+
+    names = {part["name"] for part in parts} | {part["sub_object"] for part in parts if part.get("sub_object")}
+    placements = []
+    for item in build.get("placements", []):
+        target, anchor = placement_anchor(item["anchor"])
+        if item["part"] not in names or (target not in names and target != "object"):
+            continue
+        placements.append({**item, "anchor": f"{target}.{anchor}",
+                           **({"at": canonical_anchor(item["at"])} if item.get("at") else {})})
+    if "placements" in build:
+        build["placements"] = placements
+    return {key: build[key] for key in BUILD_FIELDS if key in build}
 
 
 def level(name, kinds):
@@ -255,8 +436,15 @@ def level(name, kinds):
     return "class" if any(entry.get("parent") == name for entry in kinds.values()) else "kind"
 
 
+def _default_outline(kind, kinds):
+    from .object_outline import default_policy
+
+    return default_policy(kind, kinds)
+
+
 def describe(name, workspace=None):
-    """One kind with inherited parts, connections, proportions and its chain (``organic › animal › mammal › dog``)."""
+    """One kind with inherited parts, connections, proportions, its chain (``organic › animal › mammal › dog``) and
+    its merged ``build`` block (how to construct one, with a working example batch)."""
     kinds = registry(workspace)
     kind = resolve_kind(name, kinds, field="name")
     fields = merged(kind, kinds)
@@ -275,9 +463,11 @@ def describe(name, workspace=None):
         "symmetry": fields.get("symmetry", "none"),
         "layering": fields.get("layering", []),
         "outline": fields.get("outline", {}),
+        "outline_policy": dict(zip(("outline", "interior"), _default_outline(kind, kinds))),
         **({"texture": True} if fields.get("texture") else {}),
         "children": sorted(k for k, entry in kinds.items() if entry.get("parent") == kind),
         "organic_presets": sorted(p for p, k in organic_presets().items() if k == kind),
+        **({"build": fields["build"]} if fields.get("build") else {}),
     }
 
 
@@ -308,7 +498,8 @@ def catalog_command(args, workspace=None):
     if any(arg in ("--help", "-h") for arg in args):
         return ("Usage: vixl objects [QUERY] | vixl objects show KIND | vixl objects tree\n"
                 "The object taxonomy (domain > class > kind): search kinds, show one kind's inherited parts, "
-                "connections, proportions and chain, or print the whole tree. Workspace kinds come from "
+                "connections, proportions, chain and build block (how to draw one, with an example batch), or print "
+                "the whole tree. Workspace kinds come from "
                 ".vixl-resources.json (resource kind objects).")
     if args and args[0] == "show":
         require(len(args) == 2, "Use vixl objects show KIND")
@@ -319,7 +510,7 @@ def catalog_command(args, workspace=None):
     if query and find(query, registry(workspace)):
         return describe(query, workspace)
     return {"kinds": search(query, workspace),
-            "next": "vixl objects show KIND prints the inherited parts, connections and proportions"}
+            "next": "vixl objects show KIND prints the inherited parts, connections, proportions and build block"}
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -620,24 +811,29 @@ def tree(project, ref):
             part = part_of(layer)
             count = len(descendants(project, layer["id"])) + 1 if layer["type"] == "group" else 1
             parts.append({"part": part["name"], **({"side": part["side"]} if part.get("side") else {}),
+                          **({"depth": part["depth"]} if part.get("depth") else {}),
                           "layer": layer["name"], "path": path_of(project, layer, index),
                           "bounds": _round(canvas[layer["id"]]), "layers": count})
         inside = descendants(project, group["id"])
         unnamed = [layer["name"] for layer in project.state["layers"]
                    if layer["id"] in inside and owner(index, layer) is group
                    and not part_of(layer) and not record(layer) and layer["type"] != "group"
+                   and not layer.get("generated")
                    and not any(part_of(a) for a in _ancestors(index, layer, group))]
+        outlined = found.get("outlined")
         result = {
             "object": group["name"],
             "path": path_of(project, group, index),
             "kind": kind,
             **({"chain": chain(kind, kinds), "path_in_taxonomy": " › ".join(chain(kind, kinds))} if kind in kinds else {}),
-            **({k: found[k] for k in ("label", "notes", "references") if found.get(k)}),
+            **({k: found[k] for k in ("label", "notes", "references", "stylized", "proportions") if found.get(k)}),
             **({"implicit": True, "from": "character"} if found.get("implicit") else {}),
             "bounds": {"canvas": _round(canvas[group["id"]]), "group": _round(local[group["id"]])},
             "layers": len(inside),
             "parts": parts,
             "missing_parts": missing_parts(project, group, kinds, children),
+            **({"outline": {key: outlined[key] for key in ("outline", "interior", "color", "width")}}
+               if outlined else {"outline": {"outline": found["outline"]}} if found.get("outline") else {}),
             **({"unnamed_layers": unnamed[:40]} if unnamed else {}),
             "sub_objects": [describe_object(sub) for sub in sub_objects(project, group, children)],
         }
@@ -676,23 +872,74 @@ def validate_layers(project, state):
         if found is not None:
             require(layer["type"] == "group", f"Only groups can be objects ({layer['name']!r})", "invalid_project")
             require(isinstance(found, dict) and isinstance(found.get("kind"), str) and found["kind"]
-                    and set(found) <= {"version", "kind", "label", "notes", "references"},
+                    and set(found) <= set(RECORD_FIELDS),
                     f"Invalid object record on {layer['name']!r}", "invalid_project")
-            require(isinstance(found.get("label", ""), str) and isinstance(found.get("notes", ""), str),
+            require(isinstance(found.get("label", ""), str) and isinstance(found.get("notes", ""), str)
+                    and isinstance(found.get("stylized", False), bool)
+                    and found.get("proportions", "ignore") in PROPORTIONS,
                     f"Invalid object record on {layer['name']!r}", "invalid_project")
+            _validate_outline(layer, found)
             refs = found.get("references", [])
             require(isinstance(refs, list) and len(refs) <= MAX_REFERENCES and all(isinstance(r, dict) for r in refs),
                     f"Invalid object references on {layer['name']!r}", "invalid_project")
         part = layer.get("object_part")
         if part is not None:
+            from .object_outline import INTERIORS, POLICIES
+
             require(isinstance(part, dict) and isinstance(part.get("name"), str) and part["name"]
-                    and set(part) <= {"name", "side"} and part.get("side", "left") in SIDES,
+                    and set(part) <= set(PART_RECORD) and part.get("side", "left") in SIDES
+                    and part.get("depth", "far") in DEPTHS and part.get("outline", "none") in POLICIES
+                    and part.get("interior", "thin") in INTERIORS,
                     f"Invalid object part on {layer['name']!r}", "invalid_project")
+        if layer.get("generated") is not None:
+            from .model import is_int
+
+            require(isinstance(layer["generated"], dict) and isinstance(layer["generated"].get("by"), str)
+                    and set(layer["generated"]) <= {"by", "line"}
+                    and is_int(layer["generated"].get("line", 1)),
+                    f"Invalid generated record on {layer['name']!r}", "invalid_project")
     library = state.get("object_library", {})
     require(isinstance(library, dict), "Invalid object library", "invalid_project")
     for name, item in library.items():
         require(isinstance(item, dict) and isinstance(item.get("layers"), list) and item["layers"]
                 and isinstance(item.get("root"), str), f"Invalid saved object {name!r}", "invalid_project")
+
+
+def _validate_outline(layer, found):
+    from .model import is_number
+    from .object_outline import INTERIORS, POLICIES, check_lines
+
+    invalid = f"Invalid outline policy on {layer['name']!r}"
+    require(found.get("outline", "none") in POLICIES and found.get("interior", "thin") in INTERIORS
+            and isinstance(found.get("outline_color", ""), str), invalid, "invalid_project")
+    require("outline_width" not in found or (is_number(found["outline_width"]) and 0 < found["outline_width"] <= 100),
+            invalid, "invalid_project")
+    if "outline_lines" in found:
+        check_lines(found["outline_lines"])
+    stored = found.get("outlined")
+    if stored is not None:
+        require(isinstance(stored, dict) and stored.get("outline") in ("silhouette", "parts")
+                and stored.get("interior") in INTERIORS and isinstance(stored.get("color"), str)
+                and is_number(stored.get("width")) and isinstance(stored.get("hash"), str)
+                and isinstance(stored.get("strokes"), dict)
+                and all(isinstance(value, dict) for value in stored["strokes"].values()), invalid, "invalid_project")
+
+
+def refresh_outlines(project):
+    """Redraw the outline of every outlined object whose geometry changed (``object_outline.refresh``)."""
+    if any((layer.get("object") or {}).get("outlined") for layer in project.state["layers"]):
+        from .object_outline import refresh
+
+        refresh(project)
+
+
+def remap_records(layers, mapping):
+    """After ``duplicate``: the copies' object records name the copied layers, not the originals."""
+    from .object_outline import remap
+
+    for layer in layers:
+        if layer.get("object"):
+            remap(layer["object"], mapping)
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -709,18 +956,53 @@ def schemas(add):
         "license": field(S, "License or usage terms of the reference."),
         "note": field(S, "What the reference shows."),
     }, "additionalProperties": False, "description": "A reference: {url or asset, credit?, license?, note?}."}
+    from .object_outline import INTERIORS, MAX_LINES as MAX_OUTLINE_LINES, POLICIES
+
     add("object", {
-        "action": {"enum": ["set", "unset", "part"], "description": "set (default): declare the target group an object "
+        "action": {"enum": list(ACTIONS), "description": "set (default): declare the target group an object "
                    "of a kind (again: update it); unset: remove the declaration and its direct part names; part: name the "
-                   "target layer as a part of the object it belongs to."},
+                   "target layer as a part of the object it belongs to; outline: apply an outline policy to the object "
+                   "(outline, interior, outline_color, outline_width, outline_lines); outline-remove: restore the part "
+                   "strokes and delete the outline layer and its extra lines."},
         "kind": field(S, "set: what the object is, a kind or class of the taxonomy (dog, guitar, person, tree, "
                       "instrument …) or an alias such as puppy; vixl objects lists them."),
         "label": field(S, "set: a display name (accessibility title, exports); default the group's name."),
         "notes": {"type": "string", "maxLength": 2000, "description": "set: short design intent kept with the object."},
         "references": {"type": "array", "items": reference, "maxItems": MAX_REFERENCES,
                        "description": "set: research links or image asset IDs with optional credit and license."},
+        "stylized": field(B, "set: true when the drawing exaggerates proportions on purpose (a mascot's big head); "
+                          "the object check then reports no proportion findings for it. false clears it."),
+        "proportions": {"enum": list(PROPORTIONS), "description": "set: ignore skips the object check's proportion "
+                        "findings for this object (the kind's ranges do not apply); check (default) measures them."},
         "part": field(S, "part: the part name, from the kind's part list (head, leg, neck …) or free text (warned)."),
         "side": {"enum": list(SIDES), "description": "part: left, right or center, for symmetric parts."},
+        "depth": {"enum": list(DEPTHS), "description": "part: in a side view, far (behind the body) or near (in "
+                  "front of it); the object check orders it by the kind's layering (far limbs, near limbs) and does "
+                  "not mirror a far/near pair."},
+        "outline": {"enum": list(POLICIES), "description": "outline: silhouette (one outline layer around the "
+                    "object's union, part strokes set by interior), parts (every part outlined alike), none (no "
+                    "outline: the part strokes come back) or inherit (default: the kind's policy; organic and "
+                    "constructed kinds are silhouette with thin interior lines, natural none). part: this part's "
+                    "override; none leaves it out of the outline with its own stroke, parts gives it the full "
+                    "outline, inherit clears it."},
+        "interior": {"enum": list(INTERIORS), "description": "outline: under silhouette, the part strokes inside it: "
+                     "hide, thin (40% of the outline width) or show (as wide as the outline); default from the kind. "
+                     "part: this part's own interior."},
+        "outline_color": field(S, "outline: the outline colour (default #1d1d24)."),
+        "outline_width": {"type": "number", "exclusiveMinimum": 0, "maximum": 100, "description": "outline: the "
+                          "outline width in pixels of the object's own space (default 1.2% of its larger side under "
+                          "parts, the house style's part line, and 1% under silhouette)."},
+        "outline_lines": {"type": "array", "maxItems": MAX_OUTLINE_LINES, "description": "outline: thin extra lines "
+                          "inside the outline, parallel to it (a double or triple line), each {gap, width} in pixels: "
+                          "gap is the space from the outline's inner edge or the line before, width the line's stroke "
+                          "width. [] removes them.",
+                          "items": {"type": "object", "properties": {
+                              "gap": {"type": "number", "exclusiveMinimum": 0, "maximum": 100,
+                                      "description": "Space between the previous ink and this line, in pixels."},
+                              "width": {"type": "number", "exclusiveMinimum": 0, "maximum": 100,
+                                        "description": "The line's stroke width in pixels."}},
+                              "required": ["gap", "width"], "additionalProperties": False,
+                              "description": "One extra line."}},
     })
     add("object-save", {
         "name": field(S, "Library name (letters, digits, hyphens, underscores)."),
@@ -728,7 +1010,8 @@ def schemas(add):
         "tags": {"type": "array", "items": S, "maxItems": 32, "description": "Search tags."},
     }, ["name"])
     add("object-place", {
-        "name": field(S, "Saved object to place (object-save), or with source the new object's name."),
+        "name": field(S, "Saved object to place (object-save), brand:NAME for an element of the workspace brand.json "
+                      "(placed before the document library is consulted), or with source the new object's name."),
         "source": field(S, "A portable object .vixl file in the workspace (vixl_export(isolate=[OBJ], path=…vixl)) "
                         "to place instead of a saved object."),
         "name_as": field(S, "Name of the placed object group; default the saved name (made unique)."),
@@ -771,13 +1054,21 @@ def execute(project, op):
 def _object(project, op):
     from .notices import note
 
+    from .object_outline import FIELDS as OUTLINE_FIELDS
+
     action = op.get("action", "set")
     layer = project.layer(op.get("target"))
     index = {item["id"]: item for item in project.state["layers"]}
+    if action in ("outline", "outline-remove"):
+        return _outline(project, layer, op, action)
+    require(action == "part" or not any(k in op for k in OUTLINE_FIELDS),
+            "outline, interior, outline_color, outline_width and outline_lines belong to action outline (a part takes "
+            "outline and interior as its override)", field="action")
     if action == "part":
         require("part" in op, "object action part needs part (the part name)", field="part")
-        require(not any(k in op for k in ("kind", "label", "notes", "references")),
-                "part names a part; kind, label, notes and references belong to action set", field="action")
+        require(not any(k in op for k in (*SET_FIELDS, "outline_color", "outline_width", "outline_lines")),
+                "part names a part; kind, label, notes, references, stylized and proportions belong to action set, "
+                "outline_color, outline_width and outline_lines to action outline", field="action")
         group = owner(index, layer)
         require(group is not None, f"{layer['name']!r} is not inside an object; declare its group first with "
                 "{type: object, target: GROUP, kind: KIND}", field="target")
@@ -785,17 +1076,24 @@ def _object(project, op):
         require(re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", name), "Part names are 1-64 letters, digits or hyphens",
                 field="part")
         _warn_unknown_part(project, group, name)
-        layer["object_part"] = {"name": name, **({"side": op["side"]} if op.get("side") else {})}
+        layer["object_part"] = {"name": name, **({"side": op["side"]} if op.get("side") else {}),
+                                **({"depth": op["depth"]} if op.get("depth") else {}),
+                                **({"outline": op["outline"]} if op.get("outline", "inherit") != "inherit" else {}),
+                                **({"interior": op["interior"]} if op.get("interior") else {})}
         return
-    require("part" not in op and "side" not in op, "part and side name a part: use action part", field="action")
+    require(not any(k in op for k in ("part", "side", "depth")), "part, side and depth name a part: use action part",
+            field="action")
     require(layer["type"] == "group", f"{layer['name']!r} is a {layer['type']} layer; an object is a group. Group its "
             "layers first ({type: group, name, targets}) and declare the group", field="target")
     if action == "unset":
-        require(not any(k in op for k in ("kind", "label", "notes", "references")), "unset takes only target",
-                field="action")
+        require(not any(k in op for k in SET_FIELDS), "unset takes only target", field="action")
         require(layer.get("object") or not layer.get("character"),
                 f"{layer['name']!r} is a character: it reads as a person object until its character record goes",
                 field="target")
+        if (layer.get("object") or {}).get("outlined"):
+            from .object_outline import remove
+
+            remove(project, layer)
         for part in object_parts(project, layer):
             part.pop("object_part", None)
         layer.pop("object", None)
@@ -828,8 +1126,46 @@ def _object(project, op):
             if item.get("asset"):
                 require(item["asset"] in project.assets, f"Unknown asset {item['asset']!r}", field="references")
         entry["references"] = deepcopy(op["references"])
+    if "stylized" in op:
+        if op["stylized"]:
+            entry["stylized"] = True
+        else:
+            entry.pop("stylized", None)
+    if "proportions" in op:
+        if op["proportions"] == "ignore":
+            entry["proportions"] = "ignore"
+        else:
+            entry.pop("proportions", None)
     entry["version"] = RECORD_VERSION
     layer["object"] = entry
+    if "kind" in op or not existing:
+        from .selectors import record as report
+
+        kind = entry["kind"]
+        report(project, "next_steps", {
+            "object": layer["name"], "kind": kind, "action": "build",
+            "how": f"vixl_reference('objects', name={kind!r}) returns how to build a {kind}: approach, placements and "
+                   "a working example batch; name each part, then vixl_check(checks=['object']) tests its parts, "
+                   "connections, proportions, symmetry and layering"})
+
+
+def _outline(project, layer, op, action):
+    """``action: outline`` applies an outline policy (``object_outline``); ``outline-remove`` takes it away: the part
+    strokes come back, the outline layer goes and the record's outline fields are cleared."""
+    from .object_outline import FIELDS, apply, remove
+
+    require(layer["type"] == "group" and layer.get("object"), f"{layer['name']!r} is not a declared object; declare "
+            "it first with {type: object, target: GROUP, kind: KIND}", field="target")
+    extra = [key for key in op if key not in ("type", "action", "target", *(FIELDS if action == "outline" else ()))]
+    require(not extra, f"action {action} takes " + ("target, outline, interior, outline_color, outline_width and "
+                                                   "outline_lines" if action == "outline" else "only target")
+            + f"; got {extra}",
+            field=extra[0] if extra else "action")
+    if action == "outline":
+        return apply(project, layer, op)
+    remove(project, layer)
+    for key in FIELDS:
+        layer["object"].pop(key, None)
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -850,24 +1186,32 @@ def subtree(project, root_id):
 def snapshot(project, root_id, motion=True):
     """A portable record of the subtree under ``root_id``: its layers (the root re-based to the page), the fonts
     and resources they use and, with ``motion``, the timeline tracks that move them."""
-    layers = deepcopy(subtree(project, root_id))
-    root = next(layer for layer in layers if layer["id"] == root_id)
-    root.pop("parent", None)
-    text = json.dumps(layers)
-    fonts = {name: asset for name, asset in project.state.get("fonts", {}).items()
-             if asset in text or f'"{name}"' in text}
+    layers = subtree(project, root_id)
     tracks = []
     if motion:
         ids = {layer["id"] for layer in layers}
-        tracks = deepcopy([track for track in (project.state.get("timeline") or {}).get("tracks", [])
-                           if track.get("target") in ids])
+        tracks = [track for track in (project.state.get("timeline") or {}).get("tracks", [])
+                  if track.get("target") in ids]
+    return portable_record(layers, root_id, project.state, tracks)
+
+
+def portable_record(layers, root_id, state, tracks=()):
+    """The saved-object record of ``layers``, one subtree whose root is ``root_id``: the layers (the root
+    re-based to the page), the fonts and resources of ``state`` they use, and ``tracks``. Its ``kind`` is the
+    root's object kind (``person`` for a standard character)."""
+    layers = deepcopy(list(layers))
+    root = next(layer for layer in layers if layer["id"] == root_id)
+    root.pop("parent", None)
+    text = json.dumps(layers)
+    fonts = {name: asset for name, asset in state.get("fonts", {}).items()
+             if asset in text or f'"{name}"' in text}
     item = {"version": RECORD_VERSION, "root": root_id, "layers": layers, "fonts": fonts}
     if tracks:
-        item["tracks"] = tracks
+        item["tracks"] = deepcopy(list(tracks))
     for key in RESOURCE_KEYS:
-        if project.state.get(key):
-            item.setdefault("resources", {})[key] = deepcopy(project.state[key])
-    found = record(project.layer(root_id))
+        if state.get(key):
+            item.setdefault("resources", {})[key] = deepcopy(state[key])
+    found = record(root)
     if found:
         item["kind"] = found["kind"]
     return item
@@ -932,10 +1276,16 @@ def place(project, op, record_and_assets=None):
     from .operations import append_layer, default_name, unique_name
 
     assets = {}
+    base = op["name"]
     if record_and_assets is not None:
         item, assets = record_and_assets
     elif op.get("source"):
         item, assets = _from_file(project, op["source"])
+    elif op["name"].startswith("brand:"):
+        from .brand import element
+
+        base = op["name"][6:]
+        item, assets = element(project, base)
     else:
         library = project.state.get("object_library", {})
         require(op["name"] in library, f"No saved object {op['name']!r}"
@@ -958,7 +1308,7 @@ def place(project, op, record_and_assets=None):
     if op.get("name_as"):
         root_name = unique_name(project, op["name_as"])
     else:
-        root_name = default_name(project, op["name"])
+        root_name = default_name(project, base)
     scale = finite(op.get("scale", 1), "scale", 0.0001, 100)
     if "width" in op or "height" in op:
         require(not ("width" in op and "height" in op), "Give width or height (the aspect ratio is kept), not both",
@@ -1252,6 +1602,7 @@ def parts_sheet(project, refs, max_width=1024, max_height=1024, *, explode=False
 
 def compile_command(cmd, args):
     """``vixl object TARGET --kind dog``, ``vixl object part LAYER --part head [--side left]``, ``vixl object unset
+    TARGET``, ``vixl object outline TARGET [--outline silhouette] [--interior thin]``, ``vixl object outline-remove
     TARGET``, ``vixl object-save TARGET --name N`` and ``vixl object-place NAME [--x X --y Y]``."""
     if cmd not in TYPES:
         return None
@@ -1260,18 +1611,32 @@ def compile_command(cmd, args):
     from .commands import Parser
 
     if cmd == "object":
-        action = args[0] if args and args[0] in ("set", "unset", "part") else "set"
-        args = args[1:] if args and args[0] in ("set", "unset", "part") else args
+        from .object_outline import INTERIORS, POLICIES
+
+        action = args[0] if args and args[0] in ACTIONS else "set"
+        args = args[1:] if args and args[0] in ACTIONS else args
         p = Parser(prog=f"vixl object {action}")
         p.add_argument("target")
+        if action in ("outline", "part"):
+            p.add_argument("--outline", choices=list(POLICIES), help="silhouette, parts, none or inherit (the kind's)")
+            p.add_argument("--interior", choices=list(INTERIORS), help="part strokes inside a silhouette")
+        if action == "outline":
+            p.add_argument("--outline-color")
+            p.add_argument("--outline-width", type=float)
+            p.add_argument("--outline-lines", type=json.loads,
+                           help='JSON list of extra lines inside the outline [{"gap": 2.5, "width": 2}]; [] removes them')
         if action == "set":
             p.add_argument("--kind")
             p.add_argument("--label")
             p.add_argument("--notes")
             p.add_argument("--references", type=json.loads, help='JSON list [{"url": …, "credit": …}]')
+            p.add_argument("--stylized", action=argparse.BooleanOptionalAction, default=None,
+                           help="proportions are exaggerated on purpose: the object check skips them")
+            p.add_argument("--proportions", choices=list(PROPORTIONS))
         elif action == "part":
             p.add_argument("--part", required=True)
             p.add_argument("--side", choices=list(SIDES))
+            p.add_argument("--depth", choices=list(DEPTHS), help="side view: far (behind the body) or near")
         values = {k: v for k, v in vars(p.parse_args(args)).items() if v is not None}
         return {"type": "object", **({"action": action} if action != "set" else {}), **values}
     p = Parser(prog=f"vixl {cmd}")

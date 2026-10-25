@@ -35,6 +35,7 @@ from .scene import TYPES as SCENE_TYPES
 from .vector_paths import TYPES as VECTOR_TYPES
 from .merging import TYPES as MERGE_TYPES
 from .objects import TYPES as OBJECT_TYPES
+from .constants import BRAND_TYPES, PACK_ASSET_TYPES
 from .accessibility import TYPES as ACCESSIBILITY_TYPES
 
 from . import plugins
@@ -113,7 +114,7 @@ BASE_TYPES = (
     "preset-apply",
 )
 
-OPERATION_TYPES = list(EMOJI_TYPES + tuple(plugins.operation_types()) + DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CODE_TYPES + DIECUT_TYPES + SPLIT_TYPES + FINISHING_TYPES + FLOW_TYPES + TRANSFORM_TYPES + MOTION_TYPES + TEXTURE_TYPES + AUDIO_TYPES + VECTOR_TYPES + CAPTION_TYPES + SCENE_TYPES + MERGE_TYPES + OBJECT_TYPES + ACCESSIBILITY_TYPES) + list(BASE_TYPES)
+OPERATION_TYPES = list(EMOJI_TYPES + tuple(plugins.operation_types()) + DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CODE_TYPES + DIECUT_TYPES + SPLIT_TYPES + FINISHING_TYPES + FLOW_TYPES + TRANSFORM_TYPES + MOTION_TYPES + TEXTURE_TYPES + AUDIO_TYPES + VECTOR_TYPES + CAPTION_TYPES + SCENE_TYPES + MERGE_TYPES + OBJECT_TYPES + PACK_ASSET_TYPES + BRAND_TYPES + ACCESSIBILITY_TYPES) + list(BASE_TYPES)
 
 
 def _align_baselines(project, op, targets, ref):
@@ -546,6 +547,10 @@ def execute(project, op):
             require(not {"x", "y"} & set(op), "within positions the text; drop x and y (or use place with within "
                     "and an anchor)", field="within")
             place_within(project, layer["id"], op["within"])
+        if kind == "text" and op.get("accent_words") is not None:
+            from .richtext import accent_layer
+
+            accent_layer(project, layer, op["accent_words"])
         return
     if kind == "canvas":
         c = project.state["canvas"]
@@ -645,6 +650,9 @@ def execute(project, op):
                     if item["field"].get("label_layer") in mapping:
                         item["field"]["label_layer"] = mapping[item["field"]["label_layer"]]
                 append_layer(project, item)
+            from .objects import remap_records
+
+            remap_records([duplicate, *copies], mapping)
             project.state["active_layer"] = duplicate["id"]
     elif kind == "text-set":
         require(layer["type"] == "text", "Layer is not editable text")
@@ -708,6 +716,10 @@ def execute(project, op):
             # A text-layout box keeps its wrapping dimensions; plain text re-fits its content.
             layer["width"], layer["height"], _ = text_metrics(project, layer)
             layer["auto_size"] = True
+        if op.get("accent_words") is not None:
+            from .richtext import accent_layer
+
+            accent_layer(project, layer, op["accent_words"])
     elif kind in ("rotate", "pivot", "flip") and layer["type"] == "field":
         raise VixlError("invalid_operation", f"{kind} does not apply to fields: PDF form fields are upright rectangles",
                         field="target")
@@ -857,12 +869,22 @@ def execute(project, op):
                 "Unknown constraint anchor",
             )
             if isinstance(expression, str):
-                match = re.fullmatch(
-                    r"(.+)\.(left|right|top|bottom|center-x|center-y)([+-]\d+(?:\.\d+)?)?", expression
-                )
-                require(match, "Invalid constraint expression")
-                if match[1] != "canvas" and not match[1].startswith("guide:"):
-                    expression = project.layer(match[1])["id"] + "." + match[2] + (match[3] or "")
+                from .render import parse_constraint
+
+                parsed = parse_constraint(expression)
+                require(parsed, f"Invalid constraint expression {expression!r}: use REF.left|right|top|bottom|"
+                        "center-x|center-y, or on text REF.line[N].start|end or REF.baseline[N], with an optional "
+                        "offset such as +8 or +0.25em", field="constraints")
+                if parsed.anchor not in ("left", "right", "top", "bottom", "center-x", "center-y"):
+                    horizontal = anchor in ("left", "right", "center-x")
+                    require(parsed.horizontal == horizontal,
+                            f"{expression!r} is a {'horizontal' if parsed.horizontal else 'vertical'} position; "
+                            f"constrain {'left, right or center-x' if parsed.horizontal else 'top, bottom or center-y'}"
+                            " with it", field="constraints")
+                ref = parsed.ref
+                if ref != "canvas" and not ref.startswith("guide:"):
+                    ref = project.layer(ref)["id"]
+                expression = parsed.text(ref)
             layer["constraints"][anchor] = expression
         for axes in (("left", "right", "center-x"), ("top", "bottom", "center-y")):
             present = [x for x in axes if x in layer["constraints"]]

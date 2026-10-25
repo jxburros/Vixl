@@ -245,3 +245,61 @@ def text_defaults(project, layer, op):
     check_spacing(layer)
     if filled:
         record(project, "defaults", {"layer": layer["name"], **filled})
+
+
+def illustration_on(project, choice=None):
+    """Whether a new illustrated form (an organic shape, an ``object-plan`` scaffold) gets the house illustration
+    finish. ``choice`` is the operation's ``illustration``: ``plain`` never, ``house`` always, and without it a
+    document that has design defaults which are not ``house_style: "off"`` (a bare ``Project(width, height)`` has none)."""
+    if choice in ("plain", "house"):
+        return choice == "house"
+    defaults = project.state.get("design_defaults") if project is not None else None
+    return bool(defaults) and defaults.get("house_style") != house_style.OFF
+
+
+def illustration_style(project, box, rng):
+    """The house illustration finish for one object drawn in ``box`` ([x, y, width, height]): ``stroke`` (ink) and
+    ``stroke_width`` of the part lines (``craft.illustration.outline``: its width share of the box's larger side) under the
+    ``policy`` (parts), ``shadow`` (the settings of a hard ``drop-shadow``: blur 0, ink colour, offset cast away from
+    the light), ``irregular`` (the strength and effects of the wobble; ``wobble_element`` is the smallest element, in
+    pixels, a layer that holds many should have to be wobbled) and ``strokes``, the extra lines inside the outline:
+    usually none, with the data's probability one or two ``{gap, width}`` lines, drawn from ``rng`` (a
+    ``random.Random``) so a seed decides them. ``gap`` is the space between the outline's inner edge (or the previous
+    line) and the line."""
+    from .geometry import ANCHORS, canonical_anchor
+
+    rule = house_style.illustration()
+    outline, shadow, extra = rule["outline"], rule["shadow"], rule["extra_lines"]
+    larger = max(float(box[2]), float(box[3]), 1.0)
+    ink = stroke_color(project)
+    width = max(outline["minimum"], round(larger * outline["width_share"], 2))
+    cast = None
+    if shadow["kind"] != "none":
+        light = ANCHORS[canonical_anchor(rule["light"] if shadow["angle_from"] == "light" else shadow["angle_from"])]
+        vx, vy = 0.5 - light[0], 0.5 - light[1]
+        scale = max(abs(vx), abs(vy))
+        vx, vy = (vx / scale, vy / scale) if scale else (0.0, 1.0)
+        distance = larger * shadow["distance_share"]
+        cast = {"color": ink, "dx": round(distance * vx, 2), "dy": round(distance * vy, 2), "blur": 0,
+                "opacity": shadow["opacity"]}
+    strokes = []
+    if rng.random() < extra["probability"]:
+        gap = max(outline["minimum"], round(larger * extra["offset_share"], 2))
+        line = max(outline["minimum"], round(width * extra["width"], 2))
+        strokes = [{"gap": gap, "width": line} for _ in range(rng.randint(*extra["count"]))]
+    wobble = {key: value for key, value in rule["irregular"].items() if key != "element_widths"}
+    return {"policy": outline["policy"], "stroke": ink, "stroke_width": width, "shadow": cast, "irregular": wobble,
+            "wobble_element": round(rule["irregular"]["element_widths"] * width, 2), "strokes": strokes}
+
+
+def illustration_small(width, element):
+    """Whether a part ``element`` pixels across is too small for part lines ``width`` wide: its line would have to be
+    under half that width (``illustration_part_width``). A flat illustration draws an eye or a spot without an outline."""
+    return element * house_style.rule("illustration")["outline"]["element_share"] < width / 2
+
+
+def illustration_part_width(width, element):
+    """The part-line width for a part whose elements are about ``element`` pixels across: ``width``, but at most the
+    data's ``element_share`` of the element, so a seed head or a spot is not drowned by the outline of a petal."""
+    outline = house_style.rule("illustration")["outline"]
+    return round(min(width, max(outline["minimum"], element * outline["element_share"])), 2)

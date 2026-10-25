@@ -332,6 +332,40 @@ def chart_padding(ctx, state):
                    layer, "chart.padding", after=recipe["padding"])
 
 
+# Recipe fields that name the face of text a group redraws on every edit, and the role each falls back to.
+RECIPE_FONTS = {"chart": (("title_font", "heading"), ("label_font", "body")),
+                "table": (("header_font", "body"), ("body_font", "body")),
+                "key_values": (("font", "body"), ("value_font", "body"))}
+OLD_PROOFING_FONT = "DejaVuSans.ttf"
+
+
+def proofing_font(ctx, state):
+    """Text without a typeface was drawn in DejaVu Sans; it is now drawn in Noto Sans. Text layers name their face, but
+    charts, tables, key-value lists and diagrams redraw their text from a recipe on every edit."""
+    if not ctx.older(CURRENT_SINCE):
+        return
+    typography = state.get("typography") or {}
+    found = []
+    for layer in layers(state):
+        for key, fields in RECIPE_FONTS.items():
+            recipe = layer.get(key)
+            if layer.get("type") == "group" and isinstance(recipe, dict):
+                found += [(layer, recipe, field, f"{key}.{field}") for field, role in fields
+                          if not recipe.get(field) and not typography.get(role)]
+    for name, record in (state.get("diagrams") or {}).items():
+        spec = record.get("spec") if isinstance(record, dict) else None
+        if isinstance(spec, dict) and not spec.get("font") and not spec.get("font_role") and not typography.get("body"):
+            found.append((None, spec, "font", f"diagrams.{name}.spec.font"))
+    for layer, recipe, field, path in found:
+        if not ctx.preserve:
+            ctx.warn("proofing-font", "The next edit redraws this text in Noto Sans, the proofing face, instead of "
+                     "DejaVu Sans", layer, path)
+            continue
+        recipe[field] = OLD_PROOFING_FONT
+        ctx.change("proofing-font", "The face is now explicit, so an edit keeps drawing DejaVu Sans", layer, path,
+                   after=OLD_PROOFING_FONT)
+
+
 def heading_wrap(ctx, state):
     """Before house style 4 a heading's text box broke lines greedily; a new box on a heading now balances them."""
     if ctx.house_style >= 4:
@@ -502,6 +536,45 @@ def pdf_bleed(ctx, state):
                  "the canvas operation's size to get the exact bleed", field="canvas.physical")
 
 
+def character_library(ctx, state):
+    """Saved characters had a library of their own (``character_library``: name -> layers); they are entries of the
+    object library, which ``character-load`` and ``object-place`` read. A name the object library already uses gets a
+    ``-character`` suffix."""
+    legacy = state.pop("character_library", None)
+    if legacy is None:
+        return
+    from ..objects import portable_record
+
+    if not isinstance(legacy, dict):
+        ctx.warn("character-library", "The character library was not a name → layers map; it was dropped",
+                 field="character_library")
+        return
+    library = state.setdefault("object_library", {})
+    for name, layers in legacy.items():
+        roots = [layer for layer in layers if isinstance(layer, dict) and "character" in layer
+                 and not layer.get("parent")] if isinstance(layers, list) else []
+        if len(roots) != 1:
+            ctx.warn("character-library", "The saved character has no character group; it was dropped",
+                     field=f"character_library.{name}")
+            continue
+        target, number = name, 1
+        while target in library:
+            target = f"{name}-character" + (f"-{number}" if number > 1 else "")
+            number += 1
+        library[target] = {**portable_record(layers, roots[0]["id"], state), "description": "", "tags": []}
+        ctx.change("character-library", "The saved character moved into the object library, the one library of "
+                   "saved characters and objects", field=f"object_library.{target}", before=name, after=target)
+
+
+# Rules that a stored state field triggers, whatever release saved the document: they run on current documents too.
+KEYED = {"character-library": "character_library"}
+
+
+def keyed(state):
+    """The keyed rules ``state`` needs (empty when it holds none of their fields)."""
+    return tuple(rule for rule, key in KEYED.items() if isinstance(state, dict) and key in state)
+
+
 def _comps(state):
     """Every layer comp (``{layer id: fields}``) in the state, the page's and those kept in pages and masters."""
     found = []
@@ -538,6 +611,7 @@ RULES = (
     ("irregular-strength", irregular_strength),
     ("diagram-line-height", diagram_line_height),
     ("chart-padding", chart_padding),
+    ("proofing-font", proofing_font),
     ("heading-wrap", heading_wrap),
     ("scatter-distribution", scatter_distribution),
     ("rectangle-radius", rectangle_radius),
@@ -547,4 +621,5 @@ RULES = (
     ("thick-stroke", thick_stroke),
     ("dash-fit", dash_fit),
     ("pdf-bleed", pdf_bleed),
+    ("character-library", character_library),
 )

@@ -668,6 +668,9 @@ class Project:
 
         for refresh_plugin in plugin_hooks("after-apply"):
             refresh_plugin(candidate)
+        from .objects import refresh_outlines
+
+        refresh_outlines(candidate)  # an outline follows its object's parts within the same history step
         reflowed = []
         if candidate.state.get("flows"):
             from .textflow import refresh as refresh_flows
@@ -750,6 +753,8 @@ class Project:
         if warnings:
             result["warnings"] = [*result.get("warnings", []), *warnings]
         notes = [*notes, *interpreted, *reports.pop("normalized", [])]
+        if reports.get("next_steps") and result.get("next_steps"):
+            reports["next_steps"] = [*result["next_steps"], *reports["next_steps"]]
         result.update(reports)
         if font_install is not None:
             result["font_install"] = font_install

@@ -2,7 +2,7 @@
 
 [Documentation home](../../README.md) · [Getting started](../../getting-started.md) · [Visual gallery](../../gallery.md)
 
-Vixl bundles DejaVu Sans only as a proofing fallback, so text renders before anyone has chosen type. Characters a font lacks fall back to the document's `font-fallbacks`, then to DejaVu Sans and the bundled Noto Sans, Noto Sans Symbols, Noto Sans Symbols 2 and Noto Sans Math, so mixed Latin, Greek, Cyrillic, Arabic, Hebrew and symbol text draws without empty boxes offline. CJK, Devanagari and Thai are not bundled (those faces are large): an apply that sets such text says so in its `warnings`, naming the scripts and the catalog face for each (see [Scripts the bundled fonts do not draw](#scripts-the-bundled-fonts-do-not-draw)). Design type comes from a researched catalog and is downloaded only when you ask. The default `fonts` check warns while any text still uses the fallback (a fix-level finding, so `check.passed` stays false until real type is installed), and an apply that asks for the `heading` or `body` role before the document has typography says so in its `warnings`. Pass `font_pairing` to `vixl_document(action='create')` (or call `font-pair`) to give the roles real typefaces.
+Vixl bundles Noto Sans (`NotoSans-Regular.ttf`) only as a proofing fallback, so text renders before anyone has chosen type. Characters a font lacks fall back to the document's `font-fallbacks`, then to the bundled Noto Sans, DejaVu Sans, Noto Sans Symbols, Noto Sans Symbols 2 and Noto Sans Math, so mixed Latin, Greek, Cyrillic, Arabic, Hebrew and symbol text draws without empty boxes offline. CJK, Devanagari and Thai are not bundled (those faces are large): they draw from a matching face already on the machine, else an apply that sets such text says so in its `warnings`, naming the scripts and the `font-cover` step that fixes them (see [Scripts the bundled fonts do not draw](#scripts-the-bundled-fonts-do-not-draw)). DejaVu Sans was the proofing face before Noto Sans and stays bundled: see [Keeping DejaVu Sans](#keeping-dejavu-sans). Design type comes from a researched catalog and is downloaded only when you ask. The default `fonts` check warns while any text still uses the fallback (a fix-level finding, so `check.passed` stays false until real type is installed), and an apply that asks for the `heading` or `body` role before the document has typography says so in its `warnings`. Pass `font_pairing` to `vixl_document(action='create')` (or call `font-pair`) to give the roles real typefaces.
 
 ## The catalog
 
@@ -98,11 +98,23 @@ vixl font list                         # registered fonts, the document typograp
 
 Installs fetch one static TTF per style from the Google Fonts CSS API (`fonts.gstatic.com`, HTTPS only, bounded size). Any Google Fonts family works, not only catalog entries. Files are validated and cached in `~/.cache/vixl/fonts` (set `VIXL_FONT_CACHE` to move it), then embedded in the document and registered as `family-weight` (for example `dm-serif-display-400`). A saved `.vixl` file therefore renders anywhere without the network. `font pair` and `--role` set `state.typography`, and layouts use it for headings and body unless you pass `font`/`display_font`. The structured operation is `{"type": "font-register", "name": "dm-sans-400", "role": "body"}`.
 
-Each install reports where the font came from, so agents and CI can verify offline behaviour: `source.origin` is `cache` (served from `source.cache_file` with no network) or `download` (with the Google Fonts stylesheet in `source.stylesheet` and the font file in `source.url`; `cache_file` is the copy it was stored as, or null when the cache is not writable). `source.cache_dir` is the cache directory and `source.cache_dir_from` says whether `VIXL_FONT_CACHE` or the default chose it. `family`, `weight`, `italic` and `name` give the resolved style, and `file` names the embedded asset (`fonts/<sha256>.ttf`), its byte size and hash. `font pair` returns this for both the heading and body fonts plus `origin` (`cache`, `download` or `mixed`); an applied roll (the `roll` step of `vixl_apply`, `vixl roll --apply`) returns the same under `fonts`. `source.bundled_fallback` is always false: a font that cannot be downloaded or found in the cache fails with `font_download_failed` (or `unknown_font`), and the bundled DejaVu Sans is never substituted silently. To run offline, pre-fill the cache (or set `VIXL_FONT_CACHE` to a directory holding `family-weight[-italic].ttf` files such as `inter-400.ttf`) and check for `origin: "cache"`. Set `VIXL_OFFLINE=1` (or start the server with `--offline`) to make sure nothing is downloaded: a style that is not in the cache then fails with `network_disabled` instead of reaching Google Fonts, and font imports from a URL are refused the same way.
+**Body italics.** `font pair`, and `font install` with `--role body`, also fetch the italic of a body face that is a
+catalog text face with an italic (one more file, registered as `family-weight-italic`, such as
+`source-sans-3-400-italic`), so italic rich text in body copy draws the real italic instead of a slanted roman. The
+result names it under `body.body_italic` (`font install`: `body_italic`) with its `origin`; when it cannot be fetched
+(offline, not in the cache) the pair still succeeds and `body_italic.skipped` says why. Rolls and new documents
+install the two styles only. Installs are static files: optical sizes (`opsz`) are not used.
+
+Each install reports where the font came from, so agents and CI can verify offline behaviour: `source.origin` is `cache` (served from `source.cache_file` with no network) or `download` (with the Google Fonts stylesheet in `source.stylesheet` and the font file in `source.url`; `cache_file` is the copy it was stored as, or null when the cache is not writable). `source.cache_dir` is the cache directory and `source.cache_dir_from` says whether `VIXL_FONT_CACHE` or the default chose it. `family`, `weight`, `italic` and `name` give the resolved style, and `file` names the embedded asset (`fonts/<sha256>.ttf`), its byte size and hash. `font pair` returns this for both the heading and body fonts plus `origin` (`cache`, `download` or `mixed`); an applied roll (the `roll` step of `vixl_apply`, `vixl roll --apply`) returns the same under `fonts`. `source.bundled_fallback` is always false: a font that cannot be downloaded or found in the cache fails with `font_download_failed` (or `unknown_font`), and the bundled proofing face is never substituted silently. To run offline, pre-fill the cache (or set `VIXL_FONT_CACHE` to a directory holding `family-weight[-italic].ttf` files such as `inter-400.ttf`) and check for `origin: "cache"`. Set `VIXL_OFFLINE=1` (or start the server with `--offline`) to make sure nothing is downloaded: a style that is not in the cache then fails with `network_disabled` instead of reaching Google Fonts, and font imports from a URL are refused the same way.
 
 ### Scripts the bundled fonts do not draw
 
-The bundled faces cover Latin, Greek, Cyrillic, Arabic, Hebrew, symbols and math. Devanagari, Chinese, Japanese, Korean and Thai draw as empty boxes until a face that covers them is in `font-fallbacks`. An apply that adds or changes such text returns one warning per layer, naming the scripts with a sample of the characters and the fix; `vixl check` reports the same characters as a `fonts` error.
+The bundled faces cover Latin, Greek, Cyrillic, Arabic, Hebrew, symbols and math. Devanagari, Chinese, Japanese, Korean and Thai need a face that covers them. When no document font does, text draws them from a matching face already on this machine, without the document registering it:
+
+- the `cjk` content pack: `VIXL_CJK_PACK` names a font file, or a zip of font files named like the font cache (`noto-sans-sc-400.ttf`);
+- the font cache (`VIXL_FONT_CACHE`): every style of the script's catalog Noto face that `font-cover` or `font install` left there (Noto Sans SC, JP, KR, Devanagari or Thai; for Han, a Traditional Chinese, Japanese or Korean face serves too).
+
+A render never downloads one. The document does not embed such a face, so the apply warns that the characters would be empty boxes on another machine and names the step that embeds it, and `vixl check` reports a `fonts` warning; exports draw it like any fallback face (a PDF embeds the subset it draws, SVG draws outlines, PPTX names the face). With no face on the machine either, the characters draw as empty boxes: the apply returns one warning per layer naming the scripts with a sample of the characters and the exact `font-cover` step and command, and `vixl check` reports them as a `fonts` error.
 
 One step fixes it: `font-cover` installs the catalog Noto face for each script no available font draws and appends it to `font-fallbacks` (existing fallbacks stay first). It uses the font cache first; a download honours `VIXL_OFFLINE`, and when a face is neither cached nor downloadable nothing is changed and the error (`network_disabled` or `font_download_failed`) names the families under `families`. Without arguments it covers every text layer's characters; `text` covers given characters and `scripts` names the scripts (`Devanagari`, `Han`, `Hiragana/Katakana`, `Hangul`, `Thai`, `Arabic`, or `japanese`, `chinese`, `korean`, `hindi`). Han text with kana gets Noto Sans JP, Han alone Noto Sans SC (Noto Sans TC is in the catalog for Traditional Chinese: install it and list it yourself).
 
@@ -111,7 +123,18 @@ vixl font cover                        # every text layer's uncovered scripts
 vixl font cover --script Thai --script Hangul
 ```
 
-In a batch: `{"type": "font-cover"}`. The result lists the `scripts`, the `families`, each `installed` face with its `origin` (`cache` or `download`) and the new `font_fallbacks`. The manual route is the same as for any face: `font install "Noto Sans JP"`, then `{"type": "font-fallbacks", "fonts": ["noto-sans-jp-400"]}` (the list replaces the previous one; repeat its entries to keep them).
+In a batch: `{"type": "font-cover"}`. The result lists the `scripts`, the `families`, each `installed` face with its `origin` (`cache` or `download`) and the new `font_fallbacks`. Without arguments it also embeds the faces text draws only from the machine. The manual route is the same as for any face: `font install "Noto Sans JP"`, then `{"type": "font-fallbacks", "fonts": ["noto-sans-jp-400"]}` (the list replaces the previous one; repeat its entries to keep them).
+
+### Keeping DejaVu Sans
+
+Noto Sans replaced DejaVu Sans as the proofing face; DejaVu Sans stays bundled, after Noto Sans in the fallback order. Layers that name `DejaVuSans.ttf` (text without a chosen font in documents saved while it was the proofing face) keep drawing it, and the [conversion kit](../../reference/converting.md)'s `preserve` look writes it into the chart, table and diagram recipes of documents saved before 0.27 (recipes in later documents that name no face redraw in Noto Sans on their next edit). To set new text in it, name it on the layer (`"font": "DejaVuSans.ttf"`), or embed it as a role's face:
+
+```json
+[{"type": "font-register", "name": "dejavu", "asset": "DejaVuSans.ttf", "role": "body"},
+ {"type": "font-register", "name": "dejavu", "role": "heading"}]
+```
+
+`font-register` embeds a bundled face named as its `asset` (`NotoSans-Regular.ttf` or `DejaVuSans.ttf`) like an imported file. The `fonts` check reports text in either bundled face as the proofing fallback, and text in a registered (embedded) copy as chosen type.
 
 ### Your own font
 
@@ -176,7 +199,26 @@ A roll picks a pairing first, then a palette whose mood fits it, a layout suited
 
 Tracking is letter spacing in local pixels between characters (never after the last one on a line); negative values tighten text. Set it on the layer with `text` or `text-set`, for example `{"type":"text-set","target":"headline","tracking":4}`: layer tracking applies to whatever text the layer holds, including text changed later by `text` keyframes, typewriter or captions, and `${variable}` values. `text-style` tracking styles a matched phrase, range or paragraph, and rich-text spans take `tracking` too; a span's own (nonzero) tracking replaces the layer's. `letter_spacing` is accepted as an alias. This is the letter-spacing control, distinct from `spacing` and `line_height` (line spacing). Inspect and preview after tracking changes because the text may wrap differently. Tracked text is laid out by the rich-text engine; a layer whose text had no rich formatting keeps its line pitch and its box (top at the ink), so adding tracking, on the layer or with a first `text-style`, does not move the text. Because no tracking follows a line's last letter, tracked text measures, wraps, centres and right-aligns by its glyphs, and PNG, SVG, PDF, PPTX, scaled previews and linked documents agree.
 
-`text_transform` draws the text in a case without changing the stored text: `uppercase`, `lowercase`, `capitalize` (the first letter of each word) or `none`. Like tracking it is a layer property, so `{"type":"text-set","target":"lyric","text_transform":"uppercase","tracking":4}` gives keyed lyric lines and merge-field values the brand's caps and tracking. `text-transform`, `case`, and values such as `caps`, `upper` and `title` are accepted and reported under `normalized`. Rendering, `inspect`, `check`, `fit-text` and the SVG, PDF and PPTX exports all use the cased, tracked text.
+`text_transform` draws the text in a case without changing the stored text: `uppercase`, `lowercase`, `capitalize` (the first letter of each word), `small-caps` or `none`. Like tracking it is a layer property, so `{"type":"text-set","target":"lyric","text_transform":"uppercase","tracking":4}` gives keyed lyric lines and merge-field values the brand's caps and tracking. `text-transform`, `case`, `font_variant`, and values such as `caps`, `upper`, `title` and `smallcaps` are accepted and reported under `normalized`. Rendering, `inspect`, `check`, `fit-text` and the SVG, PDF and PPTX exports all use the cased, tracked text.
+
+## Small caps
+
+`text_transform: "small-caps"` draws lowercase letters as small capitals and leaves capitals, figures and
+punctuation as they are, so "Summer Night Market" reads as a capital S, N and M over small capitals. When the font has
+its own small capitals (the OpenType `smcp` feature, as the bundled Noto Sans and many text faces do), those glyphs are
+used; otherwise they are synthesized from the capitals at 0.7 of the size with 5% of the size added between them, so
+they keep their weight and colour next to full capitals. The stored text keeps its case.
+
+```json
+{"type": "text", "name": "eyebrow", "text": "The Harbour Review", "size": 32, "x": 60, "y": 60,
+ "text_transform": "small-caps", "tracking": 2}
+```
+
+A rich-text span takes `small_caps` (Markdown `[words]{small-caps}`, `text-style` `small_caps: true`, CLI
+`--small-caps`), for small capitals inside a line: an acronym in running text, a byline. Small caps are laid out by the
+rich-text engine, like tracking: PNG, SVG and PDF draw the same glyphs at the same places, and PPTX writes the run's own
+text with `cap="small"`, so PowerPoint sets it in small capitals too. A PDF reads synthesized small capitals back as
+the capitals they are drawn with. On a layer with tab stops, small caps set its tabs as four spaces, as tracking does.
 
 Width-only `text-layout` boxes grow vertically after `text-set` or variable substitution. Give both width and height to keep a fixed box and let overflow checks report copy that does not fit. Markdown text-flow retains its size-based line-height calculation when splitting across frames.
 
@@ -207,6 +249,31 @@ for PowerPoint to wrap, as before). `wrap` is kept when the box is resized with 
 **Headings balance by default.** A new `text-layout` box on a heading (a heading font role or stage, or text whose size
 reads as the h2 step or larger) and every layout headline take `wrap: "balance"`. Rich text keeps `greedy` unless you ask. Pass `wrap: "greedy"` on the
 `text-layout` for greedy breaks.
+
+## Hanging punctuation
+
+A quotation mark at the start of a line makes the letters look indented. `hanging_punctuation: true` on `text`,
+`text-set` or `rich-text` sets such marks outside the text edge, so the letters line up with it:
+
+- at the start of lines aligned left (or justified): opening quotes and brackets (`“ ‘ " ' « ( [`), and a bullet with
+  the space after it;
+- at the end of right-aligned lines: closing quotes and brackets, stops and commas;
+- in centred lines, both, so the words are centred between the marks.
+
+```json
+[{"type": "text", "name": "quote", "text": "“The tide waits for no one,” she said.", "size": 48, "x": 80, "y": 60,
+  "hanging_punctuation": true},
+ {"type": "text-layout", "target": "quote", "width": 600}]
+```
+
+The marks reach past the layer's box: auto-sized text gets a box that starts at the first letter, and in a text box a
+hung mark needs no room, so a line holding one fits as if it were not there, and `fit-text` sizes the letters to the box.
+The bounds and safe-area checks count the hung marks, so text placed at the canvas edge is still reported as cut off;
+leave a margin for them. Lists keep their marker column, and a line with tab stops does not hang. Text without a mark
+that could hang draws exactly as before. PNG, SVG and PDF draw the marks where the layout puts them; PPTX writes
+`hangingPunct` on the paragraph and hangs the first line of a left-aligned paragraph with a negative first-line indent
+(PowerPoint does not hang wrapped lines or line ends). `hanging`, `hang_quotes` and `optical_margin` are accepted and
+reported under `normalized`; `false` removes it. It is opt-in: no default sets it.
 
 ## Tab stops and leaders
 

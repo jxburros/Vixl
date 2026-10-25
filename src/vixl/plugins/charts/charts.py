@@ -19,6 +19,7 @@ from pathlib import Path
 import re
 
 from ...craft import line_height
+from ...constants import BUNDLED_FONTS
 from ...errors import VixlError, require
 from ...model import finite, new_layer
 
@@ -495,15 +496,18 @@ class Style:
         return int(round(max(lower))) if lower else size - 1
 
     def colors(self, count):
-        """One color per series (or slice): explicit colors first, then the document palette, then a
-        color-blind-safe default set."""
+        """One color per series (or slice): explicit colors first, then the document's accents (all of them on a
+        page whose layout drew two or three), then the document palette, then a color-blind-safe default set."""
         state = self.project.state
         pool = [c for c in (self.recipe.get("colors") or [])]
         explicit = len(pool)
         palette = (state.get("palettes") or {}).get(state.get("active_palette")) or layout_palette(state)
         usable = [c for c in palette if contrast(state, c, self.bg) >= 1.6]
-        if count == 1 and not explicit and "accent" in state.get("swatches", {}):
+        swatches = state.get("swatches", {})
+        if count == 1 and not explicit and "accent" in swatches:
             pool.append("@accent")
+        elif count > 1 and not explicit and "accent" in swatches and "accent-2" in swatches:
+            pool.extend(f"@{role}" for role in ("accent", "accent-2", "accent-3") if role in swatches)
         pool += [c for c in usable + DEFAULT_COLORS if c not in pool]
         return [pool[i % len(pool)] for i in range(count)]
 
@@ -1636,7 +1640,7 @@ def check_options(state, recipe):
             "ticks must be a whole number from 2 to 20", field="ticks")
     if "number_format" in recipe:
         parse_format(recipe["number_format"])
-    allowed = ["heading", "body", "DejaVuSans.ttf", *state.get("fonts", {})]
+    allowed = ["heading", "body", *BUNDLED_FONTS[:2], *state.get("fonts", {})]
     for key in ("title_font", "label_font"):
         require(recipe.get(key, "body") in allowed, f"{key} must be a registered font or the heading or body role; "
                 f"available: {', '.join(allowed)}", field=key, allowed=allowed)

@@ -37,6 +37,7 @@ Layers:    add FILE --name NAME, solid --color COLOR, gradient --start A --end B
            remove, rename, duplicate, hide, show, raise, lower, top, bottom, reorder
 Objects:   objects [QUERY] | objects show KIND | objects tree (taxonomy), object GROUP --kind dog [--label L],
            object part LAYER --part leg [--side left], object unset GROUP, inspect --object NAME|PATH|*,
+           object plan KIND [--height N] [--apply] (placeholder parts), object outline GROUP [--outline parts],
            object-save GROUP --name N, object-place N [--x X --y Y --scale S] [--source obj.vixl],
            export dog.svg --isolate dog [--padding 8], export dog.vixl --isolate dog (portable object)
 Access:    accessibility --lang en-GB [--title T] [--page-alt TEXT] [--reading-order A B], layer-intent LAYER --alt TEXT
@@ -106,6 +107,8 @@ History:   undo [N], redo [N], history, checkpoint NAME, branch NAME,
            checkout REF, branches, compare REF REF --out FILE [--isolate LAYER…], diff A B [--out D.png] (two documents or images)
 Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG [--isolate LAYER…]], run SCRIPT, batch GLOB --run SCRIPT --out DIR,
            workflow ACTION --request FILE [--workspace DIR] (workflow schema lists actions; proof, logo-package, brand-board …),
+           package (--production out/production.json | --files GLOB…) --out delivery.zip [--source DOC.vixl]
+           [--name TEMPLATE] [--layout by-format|by-artboard] [--lock FILE] [--dry-run] (outputs, manifest, report, proof),
            compose --request FILE [--preview P.png] (create → layout → look → operations → check → exports, atomic),
            each layer --name PATTERN -- COMMAND, preset save|apply|show NAME,
            transaction begin|commit|rollback, assert RULE, validate [PROFILE]
@@ -132,7 +135,9 @@ Styles:    styles [list [QUERY] | show NAME | apply NAME [--palette] | check [NA
            check --checks style [--style NAME…] (premade rules for swiss, brutalist, minimalist, art-deco …)
 Dice:      roll [--apply] [--set title=…] [--for poster] [--mood M] [--size NAME] [--seed N|random] [--lock palette=sage]
            [--variety low|medium|high] [--unfilled omit|blank], house [show PURPOSE] (the house style)
-Brand:     brand validate [--preset NAME] (missing roles, fonts, logos), brand show [--preset NAME]; workflow brand-board
+Brand:     brand validate [--preset NAME] (missing roles, fonts, logos), brand show [--preset NAME]; workflow brand-board;
+           brand init [--palette P] [--pairing P] [--font ROLE=FILE], brand pack OUT.vixlbrand, brand install FILE
+           [--preset-only], brand element NAME --from FILE.vixl [--object GROUP]
 Color:     color [info] COLOR…, color convert COLOR --to oklch|cmyk|…, color harmony COLOR --scheme triadic,
            color scale COLOR | A B [--count N], color mix A B, color contrast FG BG, color names QUERY,
            palette-generate NAME COLOR [--scheme scale|triadic|…], type-scale --base 16 --ratio golden
@@ -184,7 +189,7 @@ Motion:    timeline, keyframe, animate, export-timeline, export-animation
 Checks:    check, validate, assert, reproduce, diff, compare
 History:   undo, redo, history, checkpoint, branch, checkout
 Automate:  apply, run, batch, workflow, each, transaction
-Output:    render, export, export-icons, export-screens, catalog export
+Output:    render, export, export-icons, export-screens, catalog export, package
 Resources: guide, capabilities, commands, shapes, sizes, styles, emoji
 AI:        ask, generate, detect, ocr, ai, providers, models
 Services:  serve, view, mcp
@@ -490,11 +495,13 @@ def _dispatch(argv):
         p.add_argument("--formats", nargs="+")
         p.add_argument("--options", help="Inline JSON, file, or - for stdin")
         p.add_argument("--overwrite", action="store_true")
+        p.add_argument("--no-suites", dest="suites", action="store_false",
+                       help="do not run the document's check suites on each copy")
         a = p.parse_args(args)
         session = Session(current_path(options.project), limits, workspace=Path.cwd())
         return adapt_copies(session, export_file, a.sizes, a.directory, a.name,
                             read_json(a.options) if a.options else None,
-                            overwrite=a.overwrite, formats=a.formats), options.json
+                            overwrite=a.overwrite, formats=a.formats, suites=a.suites), options.json
     if cmd in ("pack", "unpack"):
         from .project_folder import pack, unpack
         parser = Parser(prog="vixl " + cmd)
@@ -524,6 +531,9 @@ def _dispatch(argv):
     if cmd == "merge":
         from .plugins.imposition.imposition import cli as merge_cli
         return merge_cli(args, options, limits), options.json
+    if cmd == "package":
+        from .plugins.workspace_qa.package import cli as package_cli
+        return package_cli(args, options, limits), options.json
     if cmd == "diff":
         from .image_diff import cli as diff_cli
         return diff_cli(args, limits), options.json
@@ -589,6 +599,9 @@ def _dispatch(argv):
         from .objects import catalog_command
 
         return catalog_command(args, workspace=Path.cwd()), options.json
+    if (cmd == "object" and args[:1] == ["plan"] and not has_document(options.project)
+            and "--help" not in args and "-h" not in args):
+        return object_plan_command(None, args[1:])[0], options.json
     if cmd in ("color", "colors", "sizes", "layouts", "brushes", "easings", "organics") or (
         cmd == "layout" and (not args or args[0] in ("list", "show"))
     ):
@@ -879,7 +892,9 @@ def command_help(cmd, args):
         "effects": "effects [LAYER]",
         "manifest": "manifest",
         "dependencies": "dependencies",
-        "reproduce": "reproduce [--reference PNG --tolerance N --max-fraction F] [--lock FILE] [--write-lock FILE]",
+        "reproduce": "reproduce [--reference PNG --tolerance N --max-fraction F] [--lock FILE] [--write-lock FILE] "
+                     "[--export [FORMAT[:OPTION=VALUE,...] …]] [--frames N | --times T …] [--export-tolerance N] "
+                     "[--export-visual] [--report]",
         "pixels": "pixels [LAYER]",
         "animation": "animation",
         "undo": "undo [COUNT]",
@@ -910,7 +925,10 @@ def command_help(cmd, args):
         "capabilities": "capabilities [TOPIC]  (e.g. capabilities animation: operations with fields, workflows, gotchas, guidance)",
         "looks": "looks  (the finishing looks; apply with look LAYER NAME)",
         "house": "house [show [PURPOSE]]  (the house style: craft rules, tiered pools, variety levels; or one purpose's profile)",
-        "brand": "brand validate|show [--preset NAME]  (check the workspace brand.json: missing roles, fonts and logos; or summarize it)",
+        "brand": "brand validate|show [--preset NAME]  (check the workspace brand.json: missing roles, fonts and logos; or "
+                 "summarize it) | brand init [--name N] [--palette P] [--pairing P] [--font ROLE=FILE] | brand pack "
+                 "OUT.vixlbrand | brand install FILE.vixlbrand [--preset-only [--as NAME]] [--overwrite] | brand element "
+                 "NAME --from FILE.vixl [--object GROUP]",
         "guides": "guides (list guides and grids)",
         "links": "links (list the linked documents and their state: ok, stale, missing, cycle)",
     }
@@ -920,9 +938,39 @@ def command_help(cmd, args):
     return project_command(Project(1, 1), cmd, args)[0]
 
 
+def object_plan_command(project, args):
+    """``vixl object plan KIND [--height N] [--x X --y Y | --box X Y W H] [--name N] [--with KIND …] [--seed N]
+    [--apply]``: the object-plan workflow (``object_plan.command``); ``(result, changed)``."""
+    from .object_plan import VIEWS, command
+
+    p = Parser(prog="vixl object plan", description="Scaffold an object of a kind as named placeholder parts "
+               "(object-plan): prints the batch, or applies it to the document with --apply.")
+    p.add_argument("kind")
+    p.add_argument("--name")
+    p.add_argument("--height", type=float)
+    p.add_argument("--x", type=float)
+    p.add_argument("--y", type=float)
+    p.add_argument("--box", type=float, nargs=4, metavar=("X", "Y", "W", "H"))
+    p.add_argument("--view", choices=list(VIEWS))
+    p.add_argument("--with", dest="with_", action="append", metavar="KIND", help="nest a sub-object (repeatable)")
+    p.add_argument("--seed", type=int)
+    p.add_argument("--head-units", type=float)
+    p.add_argument("--width-ratio", type=float)
+    p.add_argument("--color")
+    p.add_argument("--template", choices=["figure-plan"])
+    p.add_argument("--illustration", choices=["house", "plain"],
+                   help="plain leaves the bare scaffold (default: the house illustration finish in a house-style document)")
+    p.add_argument("--apply", action="store_true", help="apply the batch to the document as one undo step")
+    request = {key.rstrip("_"): value for key, value in vars(p.parse_args(args)).items()
+               if value is not None and value is not False}
+    return command(project, request)
+
+
 def project_command(project, cmd, args, *, detail="compact"):
     from .validation import assert_rule, dependencies, validate
 
+    if cmd == "object" and args[:1] == ["plan"]:
+        return object_plan_command(project, args[1:])
     if cmd == "styles":
         from .finishing_cli import bound as styles_bound
 
@@ -1026,7 +1074,7 @@ def project_command(project, cmd, args, *, detail="compact"):
     if cmd in ("dependencies", "reproduce"):
         result = dependencies(project)
         if cmd == "reproduce":
-            from .plugins.workspace_qa.reproduce import read_lock, reproduce, write_lock
+            from .plugins.workspace_qa.reproduce import alias_notes, covers, read_lock, reproduce, write_lock
 
             p = Parser(prog="vixl reproduce", description="Render and report the reproduction level reached: "
                        "renderable, environment-matched (--lock) or reference-verified (--reference or --lock)")
@@ -1036,13 +1084,41 @@ def project_command(project, cmd, args, *, detail="compact"):
             p.add_argument("--max-fraction", type=float, default=0.0, help="Fraction of pixels allowed to differ (0-1)")
             p.add_argument("--lock", help="Verify against this render lockfile (.json): reports located drift")
             p.add_argument("--write-lock", help="Write a render lockfile (.json) for the document as it renders now")
+            p.add_argument("--export", nargs="*", action="extend", metavar="FORMAT[:OPTION=VALUE,...]",
+                           help="With --write-lock: record these exports (png, jpg:quality=80, mp4:fps=24) with their "
+                           "byte and pixel hashes. With --lock: encode the locked exports again and compare them "
+                           "(bytes for PNG, SVG and PDF, pixels within --export-tolerance for JPEG, WebP, GIF and video); "
+                           "give formats to compare with those settings instead of the locked ones")
+            p.add_argument("--frames", type=int, help="With --write-lock: timeline frames to lock (default 3 for an "
+                           "animated document)")
+            p.add_argument("--times", nargs="+", metavar="TIME", help="With --write-lock: timeline times to lock "
+                           "(milliseconds, 1.5s, 50%% or a marker)")
+            p.add_argument("--export-tolerance", type=int, help="How far a block average of a lossy export may move "
+                           "(0-254, default 8) and still be visually equivalent")
+            p.add_argument("--export-visual", action="store_true", help="Judge every export by its pixels, even those "
+                           "of formats whose bytes should match")
+            p.add_argument("--report", action="store_true", help="Print the compact manifest-ready summary")
             p.add_argument("--overwrite", action="store_true")
             a = p.parse_args(args)
+            require(a.export is None or a.write_lock or a.lock, "--export records exports with --write-lock or "
+                    "verifies them with --lock", "usage_error")
+            require(not (a.export == [] and a.write_lock and not a.lock), "--write-lock --export needs the formats to "
+                    "record, e.g. --export png jpg:quality=80", "usage_error")
+            require((a.frames is None and a.times is None) or a.write_lock, "--frames and --times choose what "
+                    "--write-lock records", "usage_error")
             if a.write_lock:
-                write_lock(project, a.write_lock, overwrite=a.overwrite)
+                written = write_lock(project, a.write_lock, overwrite=a.overwrite, exports=a.export or None,
+                                     frames=a.frames, times=a.times, limits=project.limits)
                 result["lock_written"] = a.write_lock
+                result["lock_covers"] = covers(written)
             result.update(reproduce(project, reference=a.reference, tolerance=a.tolerance, max_fraction=a.max_fraction,
-                                    locked=read_lock(a.lock) if a.lock else None, limits=project.limits))
+                                    locked=read_lock(a.lock) if a.lock else None, limits=project.limits,
+                                    exports=a.export or None if a.lock else None,
+                                    verify_exports=a.export is not None and bool(a.lock),
+                                    export_tolerance=a.export_tolerance, export_visual=a.export_visual,
+                                    report=a.report))
+            if notes := alias_notes(a.export):
+                result["normalized"] = notes
             result["note"] = (result.get("note", "") + " Remote model replay is not guaranteed.").strip()
             if not result["reproducible"]:
                 raise VixlError("reproduction_failed", "; ".join(result["outcome"]["review_reasons"]), report=result)
@@ -1250,7 +1326,7 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("--checks", nargs="+", choices=check_names(), metavar="CHECK",
                        help="run only these checks (listed below)")
         p.add_argument("--connect-tolerance", type=float, default=2,
-                       help="connected check: pixels of gap still counted as touching (default 2)")
+                       help="connected and object checks: pixels of gap still counted as touching (default 2)")
         p.add_argument("--style", nargs="+", help="style checks: evaluate this style (or styles) instead of the document's tag")
         p.add_argument("--page", help="Check one page of a multi-page document (default: the active page)")
         p.add_argument("--pages", help="the pages to check, e.g. 1-3,5 or all (every page shown on export), each "

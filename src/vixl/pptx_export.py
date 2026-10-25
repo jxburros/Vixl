@@ -19,6 +19,7 @@ import unicodedata
 import zipfile
 from xml.sax.saxutils import escape, quoteattr
 
+from .constants import PROOFING_FONT
 from .errors import require
 
 NS = ('xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
@@ -392,12 +393,15 @@ class Slide:
             raise Unsupported("warped text")
         pt = emu / 12700
         boxed = "width" in (layer.get("text_layout") or {})
-        paragraphs, first_top, pen_left = (self.rich_paragraphs(layer, pt) if active(layer) else self.plain_paragraphs(layer, pt))
+        paragraphs, first_top, pen_left, hang = (self.rich_paragraphs(layer, pt) if active(layer)
+                                                 else self.plain_paragraphs(layer, pt))
         from .render import rest_size
 
         w, h = rest_size(layer)
         title = self.exporter.title_ids.get(self.number) == layer["id"]
-        left, width = 0.0, w
+        # Hung first lines start left of the box: the frame starts there, and the other lines keep the box's edge
+        # through each paragraph's left margin (see rich_paragraphs).
+        left, width = -hang, w + hang
         if not boxed:
             # Unboxed text gets a wrapping frame with room to spare on the side its alignment grows
             # toward: applications disagree on where unwrapped text sits inside a wider frame
@@ -431,6 +435,8 @@ class Slide:
             attrs += ' baseline="-25000"'
         if style.get("tracking"):
             attrs += f' spc="{round(style["tracking"] * 100)}"'
+        if style.get("small_caps"):
+            attrs += ' cap="small"'
         fill_xml, _ = self.color(rgba, opacity)
         highlight = f"<a:highlight>{self.color(style['highlight'])[0]}</a:highlight>" if style.get("highlight") else ""
         face = _attr(font)
@@ -467,7 +473,7 @@ class Slide:
         pen_left = layout.box[0] if layer.get("align", "left") == "left" else 0
         align = {"left": "l", "center": "ctr", "right": "r"}[layer.get("align", "left")]
         # A bold or italic registered face (inter-700, inter-400-italic) is the style of plain text too.
-        font = layer.get("font", "DejaVuSans.ttf")
+        font = layer.get("font", PROOFING_FONT)
         span = {"font": self.view.state.get("fonts", {}).get(font, font)}
         style = {"bold": self.exporter.is_bold(span), "italic": self.exporter.is_italic(span)}
         out = []
@@ -487,7 +493,7 @@ class Slide:
                                                 layer["opacity"]) if piece else "" for piece in pieces)
             out.append(f'<a:p><a:pPr algn="{align}"><a:lnSpc><a:spcPts val="{round(line * pt * 100)}"/></a:lnSpc>'
                        f'<a:buNone/>{stops}</a:pPr>{run}<a:endParaRPr lang="en-US" sz="{round(size * pt * 100)}" dirty="0"/></a:p>')
-        return out, first_top, pen_left
+        return out, first_top, pen_left, 0.0
 
     def rich_paragraphs(self, layer, pt):
         from .richtext import _paragraphs, fitted, styled_spans
@@ -501,14 +507,19 @@ class Slide:
         list_indent = float(rich["list_indent"]) * scale if rich.get("list_indent") else base * 1.4
         # Size-based leading (line_basis "size") is the whole pitch; the layer's pixel spacing does not add.
         gap = 0.0 if rich.get("line_basis") == "size" else float(layer.get("spacing", 0)) * scale
+        # PowerPoint draws no line left of its frame: a first line that hangs is a negative first-line indent inside
+        # a left margin as wide as the widest hang, in a frame that starts that much further left.
+        hang = max(result.hangs.values(), default=0.0)
         out = []
         counters = {}
         for index, paragraph in enumerate(_paragraphs(spans)):
             para = settings[index] if index < len(settings) else {}
             kind, level = para.get("list", "none"), para.get("level", 0)
             align = {"left": "l", "center": "ctr", "right": "r", "justify": "just"}[para.get("align", layer.get("align", "left"))]
-            left = float(para.get("indent", 0)) * scale + (level * list_indent if kind != "none" or level else 0)
+            left = float(para.get("indent", 0)) * scale + (level * list_indent if kind != "none" or level else 0) + hang
             attrs = f' algn="{align}"'
+            if layer.get("hanging_punctuation"):
+                attrs += ' hangingPunct="1"'
             bullet = "<a:buNone/>"
             if kind != "none":
                 attrs += f' marL="{round((left + list_indent) * pt * 12700)}" indent="{-round(list_indent * pt * 12700)}" lvl="{level}"'
@@ -523,6 +534,8 @@ class Slide:
                     bullet = f'<a:buAutoNum type="{scheme}"' + (f' startAt="{start}"' if start and start != 1 else "") + "/>"
             elif left:
                 attrs += f' marL="{round(left * pt * 12700)}"'
+                if index in result.hangs:
+                    attrs += f' indent="{-round(result.hangs[index] * pt * 12700)}"'
             row = next((line for line in result.lines if line[3] == index), None)
             pitch = (row[2] if row else base * 1.2) + gap
             spacing = f'<a:lnSpc><a:spcPts val="{round(pitch * pt * 100)}"/></a:lnSpc>'
@@ -542,7 +555,7 @@ class Slide:
                 offset += len(span["text"])
                 style = {"bold": span["fake_bold"] or self.exporter.is_bold(span), "italic": span["fake_italic"] or self.exporter.is_italic(span),
                          "underline": span["underline"], "strike": span["strike"], "baseline": span["baseline"],
-                         "tracking": span["tracking"] * scale * pt,
+                         "tracking": span["tracking"] * scale * pt, "small_caps": span["small_caps"],
                          "highlight": span["highlight"]}
                 from .richtext import style_font_data
 
@@ -572,7 +585,7 @@ class Slide:
             top, baseline, height, first, descent = result.lines[0]
             before = float((settings[first] if first < len(settings) else {}).get("space_before", 0)) * scale
             first_top = baseline - (height + gap) - descent - before
-        return out, first_top, 0.0
+        return out, first_top, 0.0, hang
 
 
 NOT_NATIVE = ("dash", "width_profile", "taper_start", "taper_end", "strokes", "marker_start", "marker_end")

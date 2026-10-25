@@ -251,6 +251,7 @@ def test_capabilities_topic_lists_the_atmosphere_operations():
     found = lookup("atmosphere")
     assert set(found["operations"]) >= {"reflection", "haze", "star-field", "string-lights", "bokeh"}
     assert "motifs" in found["guidance"]
+    assert "haze" in lookup("fog")["operations"]  # a search for the effect finds the operation
 
 
 def test_atmosphere_exports_stay_vector_except_the_reflection():
@@ -269,3 +270,142 @@ def test_atmosphere_exports_stay_vector_except_the_reflection():
     assert p.export(format="SVG").count(b"<image") == 1
     assert p.export(format="PDF").startswith(b"%PDF")
     assert p.export(format="PPTX")[:2] == b"PK"
+
+
+def fog_scene():
+    p = Project(480, 320, "#9fbfd8")
+    p.apply([
+        {"type": "gradient", "name": "sky", "width": 480, "height": 320, "direction": "vertical",
+         "stops": [{"offset": 0, "color": "#9fbfd8"}, {"offset": 1, "color": "#e9eef2"}]},
+        {"type": "shape", "shape": "triangle", "name": "far-hill", "x": 40, "y": 120, "width": 420, "height": 200,
+         "fill": "#7d97ad"},
+        {"type": "shape", "shape": "triangle", "name": "near-hill", "x": 160, "y": 200, "width": 380, "height": 140,
+         "fill": "#2c4452"},
+        {"type": "text", "name": "title", "text": "Misty Morning", "size": 34, "color": "#14263b", "x": 24, "y": 20},
+    ])
+    return p
+
+
+def fog_bands(p, name="fog"):
+    """Per band (farthest first): canvas centre y, the tone and opacity of its puffs, and their height."""
+    from vixl.colors import parse, srgb_to_hsl
+
+    bands = {}
+    for layer in children(p, name):
+        band = int(layer["name"].split("/")[1].split("-")[1])
+        bands.setdefault(band, []).append(layer)
+    result = []
+    for band in sorted(bands):
+        puffs = bands[band]
+        boxes = _boxes(p, puffs)
+        r, g, b, a = parse(puffs[0]["stops"][0]["color"])
+        hue, saturation, light = srgb_to_hsl((r, g, b))
+        result.append({"y": float(np.mean([(box[1] + box[3]) / 2 for box in boxes])), "saturation": saturation,
+                       "light": light, "alpha": float(np.mean([parse(item["stops"][0]["color"])[3] for item in puffs])),
+                       "height": float(np.mean([box[3] - box[1] for box in boxes])), "puffs": len(puffs)})
+    return result
+
+
+def test_fog_stacks_soft_bands_that_wash_out_toward_the_horizon():
+    p = fog_scene()
+    result = p.apply({"type": "haze", "form": "fog", "layers": 4, "y": 240, "height": 160, "seed": 3})
+    assert any("4 bands" in text for text in result["normalized"])
+    bands = fog_bands(p)
+    assert len(bands) == 4
+    ys = [band["y"] for band in bands]
+    assert ys == sorted(ys) and ys[0] < 200 < ys[-1] and abs(np.mean(ys) - 240) < 12  # the zone is centred on y
+    assert all(a["light"] > b["light"] for a, b in zip(bands, bands[1:]))  # lighter toward the horizon
+    assert all(a["saturation"] < b["saturation"] for a, b in zip(bands, bands[1:]))  # and less saturated
+    assert all(a["alpha"] > b["alpha"] for a, b in zip(bands, bands[1:]))  # the farthest band is the densest
+    assert all(a["height"] < b["height"] for a, b in zip(bands, bands[1:]))  # near bands are taller
+    for layer in children(p, "fog"):
+        assert layer["type"] == "gradient" and layer["falloff"] == "gaussian" and layer["stops"][-1]["color"].endswith("00")
+    assert p.layer("fog")["allow_crop"] is True
+
+
+@pytest.mark.parametrize("count", [2, 3, 5])
+def test_fog_layers_sets_the_number_of_bands_and_density_its_strength(count):
+    thin, thick = fog_scene(), fog_scene()
+    thin.apply({"type": "haze", "form": "fog", "layers": count, "density": 0.2})
+    thick.apply({"type": "haze", "form": "fog", "layers": count, "density": 0.8})
+    a, b = fog_bands(thin), fog_bands(thick)
+    assert len(a) == len(b) == count
+    assert all(y["alpha"] > 2.5 * x["alpha"] for x, y in zip(a, b))
+    assert max(band["alpha"] for band in b) <= 0.9  # heavy fog still lets the scene show through
+
+
+def test_fog_rejects_layer_counts_outside_two_to_five_and_options_of_the_other_forms():
+    p = fog_scene()
+    for bad in (1, 6):
+        with pytest.raises(VixlError, match="layers"):
+            p.apply({"type": "haze", "form": "fog", "layers": bad})
+    for key, value in (("layers", 3), ("density", 0.5), ("behind", ["near-hill"])):
+        with pytest.raises(VixlError, match="only apply to form fog"):
+            p.apply({"type": "haze", "x": 200, "y": 200, key: value})
+    with pytest.raises(VixlError, match="behind or below"):
+        p.apply({"type": "haze", "form": "fog", "behind": ["near-hill"], "below": "far-hill"})
+    with pytest.raises(VixlError, match="form"):
+        p.apply({"type": "haze", "x": 10, "y": 10, "form": "smoke"})
+
+
+def test_fog_is_seeded():
+    def build(seed):
+        p = fog_scene()
+        p.apply({"type": "haze", "form": "fog", "seed": seed})
+        return geometry(p, "fog")
+
+    assert build(5) == build(5)
+    assert build(5) != build(6)
+
+
+def test_fog_sits_directly_below_the_lowest_named_foreground_layer():
+    p = fog_scene()
+    p.apply({"type": "haze", "form": "fog", "behind": ["near-hill", "far-hill"]})
+    order = [layer["name"] for layer in p.state["layers"] if not layer.get("parent")]
+    assert order == ["sky", "fog", "far-hill", "near-hill", "title"]
+    # Without behind the fog veils the scene and leaves the copy on top.
+    q = fog_scene()
+    q.apply({"type": "haze", "form": "fog"})
+    assert [layer["name"] for layer in q.state["layers"] if not layer.get("parent")] == \
+        ["sky", "far-hill", "near-hill", "fog", "title"]
+    # A layer inside a group counts as its group.
+    g = fog_scene()
+    g.apply({"type": "group", "name": "hills", "targets": ["far-hill", "near-hill"]})
+    g.apply({"type": "haze", "form": "fog", "behind": ["near-hill"]})
+    assert [layer["name"] for layer in g.state["layers"] if not layer.get("parent")] == ["sky", "fog", "hills", "title"]
+
+
+def test_fog_veils_what_is_behind_it_and_leaves_the_named_foreground_crisp():
+    plain, misty = fog_scene(), fog_scene()
+    misty.apply({"type": "haze", "form": "fog", "layers": 3, "density": 0.9, "y": 250, "height": 120,
+                 "behind": ["near-hill"], "color": "#ffffff"})
+    a, b = (np.asarray(p.render().convert("RGB")).astype(int) for p in (plain, misty))
+    assert np.array_equal(a[290:300, 300:320], b[290:300, 300:320])  # the near hill is in front of the fog
+    assert b[240:260, 140:240].mean() > a[240:260, 140:240].mean() + 25  # the far hill is veiled
+    assert np.array_equal(a[:100], b[:100])  # the fog stays in its zone
+
+
+def test_fog_takes_its_zone_from_a_target_layer_and_overrides():
+    p = fog_scene()
+    p.apply({"type": "solid", "name": "valley", "x": 0, "y": 200, "width": 480, "height": 120, "color": "#4f6f80"})
+    p.apply({"type": "haze", "form": "fog", "target": "valley", "layers": 3})
+    ys = [band["y"] for band in fog_bands(p)]
+    assert 200 <= ys[0] < ys[-1] <= 320
+    q = fog_scene()
+    q.apply({"type": "solid", "name": "valley", "x": 0, "y": 200, "width": 480, "height": 120, "color": "#4f6f80"})
+    q.apply({"type": "haze", "form": "fog", "target": "valley", "layers": 3, "height": 60, "y": 150})
+    ys = [band["y"] for band in fog_bands(q)]
+    assert ys[0] >= 120 and ys[-1] <= 180
+
+
+def test_fog_exports_stay_vector_and_the_band_form_is_unchanged():
+    p = fog_scene()
+    p.apply({"type": "haze", "form": "fog", "layers": 5, "behind": ["near-hill"], "seed": 1})
+    svg = p.export(format="SVG")
+    assert b"<image" not in svg and b"radialGradient" in svg
+    assert p.export(format="PDF").startswith(b"%PDF") and p.export(format="PPTX")[:2] == b"PK"
+    q = Project(600, 400, "#0b1730")
+    q.apply({"type": "shape", "shape": "ellipse", "name": "lamp", "x": 280, "y": 180, "width": 40, "height": 40,
+             "fill": "#ffcf6e"})
+    q.apply({"type": "haze", "target": "lamp", "form": "band", "strength": 0.5})
+    assert [layer["name"] for layer in children(q, "haze")] == ["haze/band", "haze/core"]

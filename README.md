@@ -16,7 +16,7 @@ It runs through MCP, CLI, Python or REST, so there is no canvas to open. People 
 interfaces; the product is built for the agent at the keyboard.
 
 Pre-1.0 and in Beta: breaking changes are allowed and noted in the [changelog](CHANGELOG.md#0270).
-Current tagged release: **0.30.5**. Run `vixl --version` to check your runtime; record the Git commit when using a
+Current tagged release: **0.31.0**. Run `vixl --version` to check your runtime; record the Git commit when using a
 source checkout.
 
 **[Documentation home](docs/README.md)** · [Getting started](docs/getting-started.md) ·
@@ -50,7 +50,7 @@ Change the headline next week and nothing is redrawn.
 For a pinned release with uv (an exact PyPI version, which cannot be replaced once published):
 
 ```bash
-uvx --from vixl-engine==0.30.5 vixl mcp --workspace .
+uvx --from vixl-engine==0.31.0 vixl mcp --workspace .
 ```
 
 The workspace must exist. The server offers seven tools (`vixl_document`, `vixl_apply`, `vixl_check`,
@@ -197,8 +197,9 @@ companies need a commercial licence from the licensor (to ask about one, open an
 [@jxburros](https://github.com/jxburros) on GitHub). Copies of Vixl must carry the licence and
 its `Required Notice:` lines. If Vixl helped make your work, please credit it ("Made with Vixl").
 
-Bundled assets keep their own terms: DejaVu Sans ([font licence](src/vixl/data/FONT-LICENSE.txt)), the Noto Sans,
-Noto Sans Symbols, Noto Sans Symbols 2 and Noto Sans Math fallback fonts ([SIL OFL 1.1](src/vixl/data/NOTO-LICENSE.txt)),
+Bundled assets keep their own terms: the Noto Sans proofing font and the Noto Sans Symbols, Noto Sans Symbols 2 and
+Noto Sans Math fallback fonts ([SIL OFL 1.1](src/vixl/data/NOTO-LICENSE.txt)), the DejaVu Sans fallback font
+([font licence](src/vixl/data/FONT-LICENSE.txt)),
 the xkcd colour names (CC0), and VIXL Line emoji artwork adapted from OpenMoji
 ([CC BY-SA 4.0](src/vixl/data/emojis/LICENSE.txt); [Unicode data license](src/vixl/data/emojis/UNICODE-LICENSE.txt)).
 

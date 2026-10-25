@@ -65,7 +65,7 @@ def test_fallback_face_follows_the_primary_weight(document, primary, expected):
     assert [font_style(data)[0] for data in chain[1:5]] == ["Fallback Sans"] * 4
     # Family order is kept; the bundled fonts stay last.
     assert [font_style(data)[0] for data in chain[-5:]] == [
-        "DejaVu Sans", "Noto Sans", "Noto Sans Symbols", "Noto Sans Symbols 2", "Noto Sans Math"]
+        "Noto Sans", "DejaVu Sans", "Noto Sans Symbols", "Noto Sans Symbols 2", "Noto Sans Math"]
 
 
 def test_pdf_and_rich_text_embed_the_matching_face(document):

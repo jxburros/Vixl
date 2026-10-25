@@ -184,7 +184,7 @@ KINDS = {
                      "Add a sun or moon with a glow; plant organic trees, flowers or ferns.",
                      "Water is filled layered bands (organic preset water), not stroked wave lines; draw the specific motif "
                      "the brief names (the result's motifs lists them) and finish the atmosphere with single operations: "
-                     "haze behind lights, star-field (clear of the copy), string-lights along a sag, bokeh, and reflection "
+                     "haze behind lights (form fog for mist between hills), star-field (clear of the copy), string-lights along a sag, bokeh, and reflection "
                      "below the waterline.",
                      "For an illustrated rather than computed feel, irregular (subtle) the drawn shapes and tear any paper; keep "
                      "the sky and frame clean.", "Finish with grain; check the preview."],
@@ -515,19 +515,47 @@ def entry(kind):
     return result
 
 
-def _directed(result, kind, seed, variety, workspace):
+def brief_moods(brief, implied=None):
+    """What a free-text brief says about mood, for a roll: ``{moods, words, motif}``, or None when nothing matches.
+    ``moods`` are the moods of the motif themes it names (``implied``, else ``guidance.motifs(brief)``) and every
+    mood of the house style's keyword table whose name or keywords it contains; ``words`` the brief words that
+    implied them; ``motif`` the best theme's first element (what to draw), a suggestion that adds no layers."""
+    from .guidance import motifs, phrases
+    from .house_style import mood_keywords
+
+    implied = motifs(brief) if implied is None else implied
+    moods = [mood for theme in implied for mood in theme.get("moods", [])]
+    words = [word for theme in implied for word in theme["matched"]]
+    for mood, keywords in mood_keywords().items():
+        hits = phrases(brief, [mood, *keywords])
+        if hits:
+            moods.append(mood)
+            words.extend(hits)
+    if not moods:
+        return None
+    motif = None
+    if implied:
+        first = implied[0]["elements"][0]
+        motif = {"theme": implied[0]["theme"], "element": first["element"], "draw": first["draw"],
+                 **{key: first[key] for key in ("shapes", "organic_presets", "object", "operations") if key in first}}
+    return {"moods": sorted(set(moods)), "words": list(dict.fromkeys(words)), "motif": motif}
+
+
+def _directed(result, kind, seed, variety, workspace, moods=None):
     """Attach a rolled direction drawn with the kind's recommendations, and say which choices are in them.
 
     The roll favours the kind's layouts, looks and styles where the variety level allows their tier
     (at ``low`` only safe entries roll), so a recommendation outside the roll is an opt-in alternative,
-    and ``recommendations`` says so for each list instead of leaving two directions to reconcile."""
+    and ``recommendations`` says so for each list instead of leaving two directions to reconcile. ``moods``
+    (``brief_moods``) weights the palettes toward the brief's moods."""
     if kind not in NO_DIRECTION:
         from .house_style import tier_of
         from .typefaces import roll_document
 
         item = KINDS[kind]
         recommend = {"layouts": item["layouts"], "looks": item["looks"], "styles": item["styles"]}
-        direction = roll_document(workspace=workspace, seed=seed, variety=variety, kind=kind, recommend=recommend)
+        direction = roll_document(workspace=workspace, seed=seed, variety=variety, kind=kind, recommend=recommend,
+                                  brief_moods=moods)
         result["direction"] = direction
         chosen = direction["direction"]
         purpose = direction.get("purpose")
@@ -626,7 +654,7 @@ def guide(brief=None, *, seed=None, variety=None, workspace=None):
                                     "recipe and the guidance names.", field="brief", suggestions=list(KINDS)[:6], allowed=list(KINDS))
     best = ranked[0]
     result = _directed({"matched": best, **entry(best), "alternatives": ranked[1:4], "start_here": START_HERE},
-                       best, seed, variety, workspace)
+                       best, seed, variety, workspace, brief_moods(brief, implied))
     if subject:
         result["object"] = object_summary(subject, workspace)
     if implied:
@@ -634,42 +662,60 @@ def guide(brief=None, *, seed=None, variety=None, workspace=None):
     return result
 
 
+SUMMARY_BUILD = ("approach", "operations", "organic", "shapes", "palette", "placements")
+
+
 def object_summary(kind, workspace=None):
     """What a brief's subject is made of, from the object taxonomy, and how to declare it."""
     from .objects import describe
 
     item = describe(kind, workspace)
+    # What drawing the subject needs inside a larger piece; research, looks and the example stay one call away.
+    build = {key: value for key, value in item.get("build", {}).items() if key in SUMMARY_BUILD}
     return {"kind": item["kind"], "path": item["path"], "parts": [p["name"] for p in item["parts"]],
             "required_parts": item["required_parts"], "connections": item["connections"],
             "layering": item["layering"],
+            **({"build": build} if build else {}),
             "declare": {"type": "object", "target": "GROUP", "kind": item["kind"]},
-            "more": f"vixl_reference('objects', name={item['kind']!r})"}
+            "more": f"vixl_reference('objects', name={item['kind']!r}) adds research notes"
+                    + (" and a working example batch" if item.get("build", {}).get("example") else "")}
+
+
+# The declare-and-review loop every object shares; a kind's build block adds how to draw it.
+OBJECT_LOOP = [
+    "Group the parts and declare the object: {type: object, target: GROUP, kind: KIND}; name each part with "
+    "{type: object, action: part, target: LAYER, part: NAME, side: left|right} (depth: far|near in a side view).",
+    "Read vixl_document(action='inspect', object=GROUP): it lists the parts and the required parts still missing; "
+    "paths such as GROUP/head work wherever a layer name does.",
+    "Test, then look: vixl_check(checks=['object']) reports missing parts, gaps between parts that must touch, "
+    "proportions, symmetry and layering; vixl_render(isolate=[GROUP], views=['parts'], exploded=true) shows each "
+    "part alone.",
+    "Reuse and hand off: object-save / object-place, vixl_export(isolate=[GROUP]) to SVG, PNG, PDF, PSD or "
+    "a portable .vixl object.",
+]
 
 
 def object_guide(kind, workspace=None):
-    """vixl_reference for a subject (dog, guitar, cactus …): the object's parts and the build and review loop."""
+    """vixl_reference for a subject (dog, guitar, cactus …): the object's parts, its kind's build block (approach,
+    placements, operations, research and a working example) and the declare-and-review loop. A kind without a
+    build block gets the generic drawing step."""
     from .objects import describe
 
     item = describe(kind, workspace)
+    build = item.pop("build", {})
     presets = item["organic_presets"]
+    loop = [step.replace("KIND", repr(item["kind"])) for step in OBJECT_LOOP]
+    draw = build.get("approach") or [
+        "Draw each part as its own layer (shape, pen, organic"
+        + (f" with preset {presets[0]!r}" if presets else "") + ", pathfinder) in the group's coordinates, "
+        "back to front as layering says; parts that meet overlap by a few pixels."]
     return {
         "object": item,
-        "approach": [
-            "Draw each part as its own layer (shape, pen, organic"
-            + (f" with preset {presets[0]!r}" if presets else "") + ", pathfinder) in the group's coordinates, "
-            "back to front as layering says; parts that meet overlap by a few pixels.",
-            f"Group the parts and declare the object: {{type: object, target: GROUP, kind: {item['kind']!r}}}; name "
-            "each part with {type: object, action: part, target: LAYER, part: NAME, side: left|right}.",
-            "Read vixl_document(action='inspect', object=GROUP): it lists the parts and the required parts still missing; "
-            "paths such as GROUP/head work wherever a layer name does.",
-            "Test, then look: vixl_check(checks=[connected]) for parts that float free, then "
-            "vixl_render(isolate=[GROUP], views=['parts'], exploded=true) to judge each part alone.",
-            "Reuse and hand off: object-save / object-place, vixl_export(isolate=[GROUP]) to SVG, PNG, PDF, PSD or "
-            "a portable .vixl object.",
-        ],
-        "operations": ["object", "group", "shape", "pen", "organic", "pathfinder", "reparent", "object-save",
-                       "object-place"],
-        "guidance": ["multi-part-objects", "anatomy-proportions", "imperfection"],
+        **({"build": build} if build else {}),
+        "approach": [*draw, *loop],
+        "operations": build.get("operations") or ["object", "group", "shape", "pen", "organic", "pathfinder",
+                                                  "reparent", "object-save", "object-place"],
+        "guidance": build.get("guidance") or ["multi-part-objects", "anatomy-proportions", "imperfection"],
         "read_guidance": "vixl_reference(NAME) returns each guidance text",
         "start_here": START_HERE,
     }

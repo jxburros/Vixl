@@ -73,7 +73,10 @@ presets; `parts` compose your own. Regrow with a new `seed` and the same `target
 form inside a brand palette pass `fill` (every filled part), `stroke` and `stroke_width` (every
 line, extra outputs such as shell chambers and leaf veins included); `colors` names single
 parts and wins over `fill`. A regrow with `stroke`/`fill` restyles the same way as creating
-with them. Full reference: `docs/guides/shapes/organic.md`.
+with them. In a document with a house style a new form is drawn flat vector: ink part lines at 1.2% of its larger
+side, a hard offset shadow (light top left), a subtle wobble and, on about one form in seven, a second or third line
+inside the outline; `illustration: "plain"` (or `outline: false`) leaves a preset as it is, and `stroke`/`fill`/`colors`
+you give win. Full reference: `docs/guides/shapes/organic.md`.
 
 Water is the scene preset `water`: filled bands lighter at the horizon and darker in front, with crests, filling its
 box edge to edge (`{"type": "organic", "preset": "water", "name": "sea", "x": 0, "y": 700, "width": 1080, "height":
@@ -82,14 +85,16 @@ lighthouse or pier in it by ordering it below the front band.
 
 ## Scene atmosphere and motifs
 
-One operation each, deterministic for `seed`: `haze` (a glow band behind a light, `target` the light), `star-field`
+One operation each, deterministic for `seed`: `haze` (a glow band behind a light, `target` the light; `form: fog` stacks
+soft bands of mist, `layers`, `density`, `behind` the layers that stay crisp), `star-field`
 (stars and sparkles in a `region`, clear of every text layer), `string-lights` (bulbs or `bulb: lantern` evenly along
 `from`/`to`/`sag` or a `target` path, with glows), `bokeh` (soft light discs) and `reflection` (the layers above a
 `horizon` mirrored, rippled and faded below it; one raster layer that `{type: reflection, target: reflection}`
 re-renders after the scene changes). The first four make editable groups of vector shapes and gradients.
 `vixl_reference(brief)` returns `motifs` for a brief that implies a setting: the concrete things to draw (a cup with
 steam, a lighthouse in filled water, strung lanterns, an irregular skyline) and the catalog shapes (`cup`, `steam`,
-`lighthouse`, `lantern`), presets and operations that draw them. Full reference: `docs/guides/finishing/atmosphere.md`.
+`lighthouse`, `lantern`, `microphone`, `snowflake`, `leaf`, `book`, `balloon`), presets and operations that draw them: ask what the
+object is, what it emits or reflects and what frames it. Full reference: `docs/guides/finishing/atmosphere.md`.
 
 ## Imperfection: irregular and tear
 

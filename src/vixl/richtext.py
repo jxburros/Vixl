@@ -12,9 +12,11 @@ line pitch and default to 1.2), ``paragraph_spacing`` (px after each paragraph),
 
 Character styles override the layer's own font, size and color: ``bold``, ``italic``,
 ``underline``, ``strike``, ``color``, ``size``, ``font``, ``highlight``, ``baseline`` (super or
-sub) and ``tracking`` (extra px between letters). Bold and italic use a registered variant when
-one exists (``inter-700``, ``inter-400-italic``, or ``font_variants``) and are synthesized
-otherwise. One shaped layout (``layout``) feeds PNG, SVG, PDF and PPTX output.
+sub), ``tracking`` (extra px between letters) and ``small_caps``. Bold and italic use a registered
+variant when one exists (``inter-700``, ``inter-400-italic``, or ``font_variants``) and are
+synthesized otherwise; small caps use the font's own small capitals (OpenType ``smcp``) or are
+synthesized. One shaped layout (``layout``) feeds PNG, SVG, PDF and PPTX output, and applies the
+layer's ``hanging_punctuation``.
 """
 
 from copy import deepcopy
@@ -22,13 +24,20 @@ from dataclasses import dataclass, field
 import io
 import math
 import re
+import unicodedata
 import xml.etree.ElementTree as ET
 
-from .errors import require
+from .constants import PROOFING_FONT
+from .errors import VixlError, require
 from .model import finite
 from .notices import note
 
-STYLE_KEYS = ("bold", "italic", "underline", "strike", "color", "size", "font", "highlight", "baseline", "tracking")
+STYLE_KEYS = ("bold", "italic", "underline", "strike", "color", "size", "font", "highlight", "baseline", "tracking",
+              "small_caps")
+FLAGS = ("bold", "italic", "underline", "strike", "super", "sub", "small-caps", "accent", "accent-bg")
+# The accent flags as styles: the palette's accent text color, or accent ink on an accent highlight.
+ACCENT = {"color": "@accent-text"}
+ACCENT_BACKGROUND = {"highlight": "@accent", "color": "@on-accent"}
 PARAGRAPH_KEYS = ("list", "level", "align", "space_before", "space_after", "indent", "line_height", "start")
 ROOT_KEYS = ("spans", "paragraphs", "line_height", "line_basis", "paragraph_spacing", "list_indent", "font_variants",
              "ink_box")
@@ -75,15 +84,22 @@ INLINE = re.compile(
 
 
 def _attributes(text):
-    """``color=#f00 size=40 font=heading bold italic`` → a style dict."""
+    """``color=#f00 size=40 font=heading bold italic small-caps accent`` → a style dict."""
     style = {}
-    for token in re.findall(r'(\w+)=("[^"]*"|\S+)|(\w+)', text):
+    for token in re.findall(r'([\w-]+)=("[^"]*"|\S+)|([\w-]+)', text):
         key, value, flag = token
         if flag:
-            require(flag in ("bold", "italic", "underline", "strike", "super", "sub"),
-                    f"Unknown rich-text flag {flag!r}", field="markdown")
+            flag = flag.replace("_", "-")
+            require(flag in FLAGS, f"Unknown rich-text flag {flag!r}; flags are {', '.join(FLAGS)}", field="markdown",
+                    allowed=list(FLAGS))
             if flag in ("super", "sub"):
                 style["baseline"] = flag
+            elif flag == "small-caps":
+                style["small_caps"] = True
+            elif flag == "accent":
+                style.update(ACCENT)
+            elif flag == "accent-bg":
+                style.update(ACCENT_BACKGROUND)
             else:
                 style[flag] = True
             continue
@@ -212,7 +228,7 @@ def validate_rich(rich, state, text=None):
 
 
 def validate_style(style, state):
-    for key in ("bold", "italic", "underline", "strike"):
+    for key in ("bold", "italic", "underline", "strike", "small_caps"):
         if key in style:
             require(isinstance(style[key], bool), f"{key} must be true or false", field=key)
     if "size" in style:
@@ -299,6 +315,7 @@ class Placed:
     bold: bool = False
     italic: bool = False
     line: int = 0  # index into Layout.lines
+    hung: bool = False  # punctuation hanging_punctuation sets outside the line's edge
 
 
 @dataclass
@@ -313,6 +330,9 @@ class Layout:
     # {paragraph: [character offsets where a wrapped line starts]} for balance and pretty wrapping, whose
     # breaks PowerPoint cannot work out itself, so PPTX writes them as line breaks.
     breaks: dict = field(default_factory=dict)
+    # {paragraph: px} the first line of a start-aligned paragraph hangs into the margin (hanging_punctuation),
+    # which PPTX writes as a negative first-line indent.
+    hangs: dict = field(default_factory=dict)
 
 
 def _metrics(data):
@@ -332,7 +352,7 @@ def styled_spans(project, layer, variables=None):
 
     rich = layer["rich"]
     variables = {**document_variables(project), **(variables or {})}
-    base_font = layer.get("font", "DejaVuSans.ttf")
+    base_font = layer.get("font", PROOFING_FONT)
     result = []
     for span in rich["spans"]:
         text = span["text"] if layer.get(RESOLVED) else substitute(span["text"], variables)
@@ -349,6 +369,7 @@ def styled_spans(project, layer, variables=None):
             "baseline": span.get("baseline", "normal"),
             # A span's own tracking replaces the layer's.
             "tracking": float(span.get("tracking", layer.get("tracking", 0))),
+            "small_caps": bool(span.get("small_caps")),
             "fake_bold": fake_bold,
             "fake_italic": fake_italic,
         })
@@ -405,7 +426,7 @@ def _tokens(project, paragraph, scale):
             size = span["size"] * scale * (0.65 if span["baseline"] in ("super", "sub") else 1)
             data = style_font_data(project, span["font"], piece)
             tracking = span["tracking"] * scale
-            glyphs, advance, trail = tracked(*shape(data, piece, size), tracking)
+            glyphs, advance, trail = tracked(*shape(data, piece, size, span["small_caps"]), tracking)
             ascent, descent = _metrics(data)
             tokens.append({"space": piece.isspace() and "\u00a0" not in piece, "glyphs": glyphs, "width": advance, "style": span, "size": size,
                            "ascent": ascent * span["size"] * scale, "descent": descent * span["size"] * scale,
@@ -433,10 +454,11 @@ def _split_word(project, token, width):
     from .text import clusters, shape
 
     tracking = token.get("tracking", 0.0)
+    small_caps = token["style"]["small_caps"]
     pieces, current, count = [], "", 0
     for cluster in clusters(token["data"], token["text"]):
         # A line ends after this piece, so its last character carries no tracking.
-        if current and shape(token["data"], current + cluster, token["size"])[1] + tracking * count > width:
+        if current and shape(token["data"], current + cluster, token["size"], small_caps)[1] + tracking * count > width:
             pieces.append(current)
             current, count = "", 0
         current += cluster
@@ -445,25 +467,30 @@ def _split_word(project, token, width):
         pieces.append(current)
     result = []
     for piece in pieces:
-        glyphs, advance, trail = tracked(*shape(token["data"], piece, token["size"]), tracking)
+        glyphs, advance, trail = tracked(*shape(token["data"], piece, token["size"], small_caps), tracking)
         result.append({**token, "glyphs": glyphs, "width": advance, "text": piece, "trail": trail})
     return result
 
 
-def _wrap(project, tokens, limit):
-    """Greedy line breaking of shaped tokens at ``limit`` pixels (None: no wrapping)."""
-    lines, current, x = [], [], 0.0
+def _wrap(project, tokens, limit, hang=(False, False)):
+    """Greedy line breaking of shaped tokens at ``limit`` pixels (None: no wrapping). ``hang`` says whether
+    punctuation hangs past a line's (start, end): what hangs needs no room inside the limit."""
+    lines, current, x, lead = [], [], 0.0, 0.0
     for token in tokens:
+        tail = _tail(token)[0] if hang[1] and limit is not None and not token["space"] else 0.0
         # A line ends at its last character: the tracking after it does not need room.
-        if limit is not None and not token["space"] and current and x + token["width"] - token["trail"] > limit:
+        if limit is not None and not token["space"] and current and x - lead + token["width"] - token["trail"] - tail > limit:
             while current and current[-1]["space"]:
                 current.pop()
             lines.append(current)
-            current, x = [], 0.0
-        if limit is not None and not token["space"] and not current and token["width"] - token["trail"] > limit:
+            current, x, lead = [], 0.0, 0.0
+        if hang[0] and not current and not token["space"]:
+            lead = _lead([token])[0]
+        if limit is not None and not token["space"] and not current and token["width"] - token["trail"] - lead - tail > limit:
             pieces = _split_word(project, token, limit)
             lines.extend([piece] for piece in pieces[:-1])
             token = pieces[-1]
+            lead = _lead([token])[0] if hang[0] and len(pieces) == 1 else 0.0
         current.append(token)
         x += token["width"]
     if current:
@@ -484,7 +511,7 @@ def _words(line):
     return words + ([current] if current else [])
 
 
-def _rewrap(project, tokens, limit, greedy, wrap):
+def _rewrap(project, tokens, limit, greedy, wrap, hang=(False, False)):
     """``balance`` or ``pretty`` line breaks for a paragraph (see ``text.lines``, which plain text uses)."""
     from .text import narrowest_width
 
@@ -492,8 +519,8 @@ def _rewrap(project, tokens, limit, greedy, wrap):
     if widest > limit:
         return greedy
     if wrap == "balance":
-        narrowest = narrowest_width(lambda width: len(_wrap(project, tokens, width)), widest, limit)
-        return _wrap(project, tokens, narrowest) if narrowest < limit else greedy
+        narrowest = narrowest_width(lambda width: len(_wrap(project, tokens, width, hang)), widest, limit)
+        return _wrap(project, tokens, narrowest, hang) if narrowest < limit else greedy
     before, last = greedy[-2], greedy[-1]
     if len(_words(last)) != 1 or len(_words(before)) < 3:
         return greedy
@@ -506,6 +533,90 @@ def _rewrap(project, tokens, limit, greedy, wrap):
     if sum(t["width"] for t in moved) > limit:
         return greedy
     return [*greedy[:-2], head, moved]
+
+
+# hanging_punctuation sets these outside a line's aligned edge, so the letters line up with the margin: opening
+# quotes and brackets (and a bullet with the space after it) at the start, closing quotes and brackets, stops and
+# commas at the end.
+HANG_BULLETS = frozenset("•◦▪‣")
+
+
+def opens(char):
+    return char in "\"'" or char in HANG_BULLETS or unicodedata.category(char) in ("Ps", "Pi")
+
+
+def closes(char):
+    return char in "\"'.," or unicodedata.category(char) in ("Pe", "Pf")
+
+
+def hangable(text, align="left"):
+    """Whether hanging punctuation can move anything in ``text``: an opening mark that starts a word, or for centred
+    and right-aligned text a closing mark that ends one (lines break between words)."""
+    last = len(text) - 1
+    return any(opens(char) and (i == 0 or text[i - 1].isspace()) for i, char in enumerate(text)) or (
+        align in ("center", "right") and any(closes(char) and (i == last or text[i + 1].isspace())
+                                            for i, char in enumerate(text)))
+
+
+def _lead(tokens):
+    """``(width, glyphs)``: how far a line's opening punctuation reaches from its start, and how many glyphs of
+    each leading token that is (by token index)."""
+    first = tokens[0]
+    glyphs = first["glyphs"]
+    if first["space"] or not glyphs or not opens(first["text"][0]) or not glyphs[0].text \
+            or not first["text"].startswith(glyphs[0].text):
+        return 0.0, {}
+    for index, glyph in enumerate(glyphs):
+        if glyph.text and not all(opens(char) for char in glyph.text):
+            return (glyph.x, {0: index}) if index else (0.0, {})
+    # A token of punctuation alone (a bullet) hangs with the spaces after it.
+    width, counts = first["width"], {0: len(glyphs)}
+    for number, token in enumerate(tokens[1:], 1):
+        if not token["space"]:
+            break
+        width += token["width"]
+        counts[number] = len(token["glyphs"])
+    return width, counts
+
+
+def _tail(token):
+    """``(width, first)``: how far a line's closing punctuation reaches back from its end, and the index of its
+    first glyph in the line's last token."""
+    glyphs = token["glyphs"]
+    if token["space"] or not glyphs or not closes(token["text"][-1]):
+        return 0.0, len(glyphs)
+    first = len(glyphs)
+    for index in range(len(glyphs) - 1, -1, -1):
+        text = glyphs[index].text
+        if text:
+            if not all(closes(char) for char in text):
+                break
+            first = index
+    if first == len(glyphs):
+        return 0.0, first
+    return token["width"] - token["trail"] - glyphs[first].x, first
+
+
+def _hang(row, available):
+    """``(lead, tail, hung)`` of a laid-out row: the punctuation hanging_punctuation sets past its start and end
+    edge, and ``{(token, glyph)}`` of the glyphs that hang. Only an edge the row is aligned to hangs; list items
+    keep their marker column."""
+    tokens = row["tokens"]
+    if not tokens or row["listed"]:
+        return 0.0, 0.0, set()
+    align = row["align"]
+    justified = align == "justify" and available is not None and not row["last"] and any(t["space"] for t in tokens)
+    lead, counts = _lead(tokens) if align in ("left", "justify", "center") else (0.0, {})
+    hung = {(number, index) for number, count in counts.items() for index in range(count)}
+    tail = 0.0
+    if align in ("right", "center") or justified:
+        number = len(tokens) - 1
+        tail, first = _tail(tokens[number])
+        if any((number, index) in hung for index in range(first, len(tokens[number]["glyphs"]))):
+            tail = 0.0
+        else:
+            hung |= {(number, index) for index in range(first, len(tokens[number]["glyphs"]))}
+    return lead, tail, hung
 
 
 def layout(project, layer, *, width=None, scale=1.0, variables=None):
@@ -532,6 +643,7 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
     after_default = float(rich.get("paragraph_spacing", 0)) * scale
     list_indent = float(rich["list_indent"]) * scale if rich.get("list_indent") else base_size * 1.4
     wrap = box.get("wrap", "greedy")
+    hanging = bool(layer.get("hanging_punctuation"))
 
     # Pass 1: break every paragraph into lines.
     rows, counters, breaks = [], {}, {}
@@ -554,9 +666,12 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
         after = float(para["space_after"]) * scale if "space_after" in para else after_default
         tokens = _tokens(project, paragraph, scale)
         limit = None if available is None else max(1.0, available - text_left)
-        lines = _wrap(project, tokens, limit)
+        align = para.get("align", layer.get("align", "left"))
+        hang = ((align in ("left", "justify", "center"), align in ("right", "center")) if hanging and kind == "none"
+                else (False, False))
+        lines = _wrap(project, tokens, limit, hang)
         if wrap != "greedy" and len(lines) > 1:
-            lines = _rewrap(project, tokens, limit, lines, wrap)
+            lines = _rewrap(project, tokens, limit, lines, wrap, hang)
             offsets, count = {}, 0
             for token in tokens:
                 offsets[id(token)] = count
@@ -567,7 +682,7 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
                 ascent = max(t["ascent"] for t in line)
                 descent = min(t["descent"] for t in line)
             else:
-                data = style_font_data(project, layer.get("font", "DejaVuSans.ttf"), " ")
+                data = style_font_data(project, layer.get("font", PROOFING_FONT), " ")
                 a, d = _metrics(data)
                 ascent, descent = a * base_size, d * base_size
             rows.append({
@@ -577,14 +692,18 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
                 "align": para.get("align", layer.get("align", "left")), "limit": limit,
                 "last": number == len(lines) - 1, "before": before if number == 0 else 0.0,
                 "after": after if number == len(lines) - 1 else 0.0, "paragraph": index,
+                "listed": kind != "none", "first": number == 0,
             })
 
     # Pass 2: the container width (the box, or the widest line for auto-sized text).
     # A line ends at its last character: the tracking after it is not part of the line.
     contents = [sum(t["width"] for t in row["tokens"]) - (row["tokens"][-1]["trail"] if row["tokens"] else 0.0)
                 for row in rows]
+    # Hanging punctuation sits outside the edge, so a line is aligned and measured by what lies between.
+    hangs = [_hang(row, available) if hanging else (0.0, 0.0, set()) for row in rows]
+    visible = [content - lead - tail for content, (lead, tail, _) in zip(contents, hangs)]
     container = available if available is not None else max(
-        [row["text_left"] + content for row, content in zip(rows, contents)] + [0.0])
+        [row["text_left"] + width for row, width in zip(rows, visible)] + [0.0])
 
     # Pass 3: place glyphs and decorations.
     result = Layout(0, 0, size_scale=scale, breaks=breaks)
@@ -595,7 +714,7 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
 
     y = float(stroke) + (overhang(rows[0]) if rows else 0.0)
     widest = 0.0
-    for row, content in zip(rows, contents):
+    for row, content, (lead, tail, hung) in zip(rows, visible, hangs):
         y += row["before"]
         natural = row["ascent"] - row["descent"]
         height = (row["em"] if by_size else natural) * row["factor"]
@@ -609,7 +728,9 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
             offset = span_width - content
         elif row["align"] == "justify" and available is not None and not row["last"] and gaps:
             extra = (span_width - content) / gaps
-        cursor = stroke + row["text_left"] + max(0.0, offset)
+        cursor = stroke + row["text_left"] + max(0.0, offset) - lead
+        if lead and row["first"] and row["align"] in ("left", "justify"):
+            result.hangs[row["paragraph"]] = lead
         if row["marker"] and row["tokens"]:
             first = row["tokens"][0]
             mstyle = first["style"]
@@ -620,7 +741,7 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
                 result.glyphs.append(Placed(glyph.data, glyph.name, mx + glyph.x, baseline + glyph.y, first["size"],
                                             mstyle["color"], glyph.text, line=len(result.lines)))
         last = row["tokens"][-1] if row["tokens"] else None
-        for token in row["tokens"]:
+        for number, token in enumerate(row["tokens"]):
             style = token["style"]
             shift = {"super": -0.35, "sub": 0.15}.get(style["baseline"], 0.0) * style["size"] * scale
             advance = token["width"] + (extra if token["space"] else 0) - (token["trail"] if token is last else 0.0)
@@ -628,17 +749,17 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
                 result.rects.append((cursor, baseline - token["ascent"], advance, token["ascent"] - token["descent"],
                                      style["highlight"], "highlight"))
             # Space glyphs draw nothing, but PDF text extraction reads them as word breaks.
-            for glyph in token["glyphs"]:
+            for index, glyph in enumerate(token["glyphs"]):
                 result.glyphs.append(Placed(glyph.data, glyph.name, cursor + glyph.x, baseline + shift + glyph.y,
-                                            token["size"], style["color"], glyph.text, style["fake_bold"],
-                                            style["fake_italic"], len(result.lines)))
+                                            token["size"] * glyph.scale, style["color"], glyph.text, style["fake_bold"],
+                                            style["fake_italic"], len(result.lines), (number, index) in hung))
             thickness = max(1.0, token["size"] * 0.06)
             if style["underline"]:
                 result.rects.append((cursor, baseline + token["size"] * 0.12, advance, thickness, style["color"], "underline"))
             if style["strike"]:
                 result.rects.append((cursor, baseline - token["size"] * 0.3, advance, thickness, style["color"], "strike"))
             cursor += advance
-        widest = max(widest, cursor + stroke)
+        widest = max(widest, cursor - tail + stroke)
         result.lines.append((y, baseline, height, row["paragraph"], row["descent"]))
         y += height + spacing + row["after"]
     y -= spacing if rows else 0
@@ -657,16 +778,18 @@ def _ink_box(result, stroke, width):
     plain engine put it."""
     from .text import face, glyph_outline
 
-    boxes = []
+    boxes, hung = [], []
     for glyph in result.glyphs:
         path, bounds = glyph_outline(glyph.data, glyph.name)
         if path and bounds:
             f = glyph.size / face(glyph.data)[0]["head"].unitsPerEm
-            boxes.append((glyph.x + bounds[0] * f, glyph.y - bounds[3] * f, glyph.x + bounds[2] * f, glyph.y - bounds[1] * f))
+            box = (glyph.x + bounds[0] * f, glyph.y - bounds[3] * f, glyph.x + bounds[2] * f, glyph.y - bounds[1] * f)
+            (hung if glyph.hung else boxes).append(box)
     if not boxes:
         return
-    left, top = min(b[0] for b in boxes), min(b[1] for b in boxes)
-    right, bottom = max(b[2] for b in boxes), max(b[3] for b in boxes)
+    # Hung punctuation reaches past the sides by design; the box follows the letters.
+    left, right = min(b[0] for b in boxes), max(b[2] for b in boxes)
+    top, bottom = min(b[1] for b in boxes + hung), max(b[3] for b in boxes + hung)
     dx, dy = max(0.0, stroke - left), stroke - top
     for glyph in result.glyphs:
         glyph.x += dx
@@ -815,6 +938,28 @@ def ink_overhang(project, layer, result, box=None):
     return left, top, right, bottom
 
 
+def hung_reach(project, layer):
+    """``(left, right)``: how far punctuation set by ``hanging_punctuation`` reaches past the sides of a resolved
+    text layer's box, in the layer's own pixels (0 where nothing hangs), or None when nothing hangs. The bounds
+    and margin checks judge the layer by this wider extent."""
+    from .text import face, glyph_outline
+
+    if not layer.get("hanging_punctuation") or not active(layer):
+        return None
+    result = fitted(project, layer)
+    xs = []
+    for glyph in result.glyphs:
+        path, bounds = glyph_outline(glyph.data, glyph.name)
+        if glyph.hung and path and bounds:
+            f = glyph.size / face(glyph.data)[0]["head"].unitsPerEm
+            xs += [glyph.x + bounds[0] * f, glyph.x + bounds[2] * f]
+    if not xs:
+        return None
+    width, _ = layout_box(layer, result)
+    scale = layer["width"] / max(1e-6, width)
+    return max(0.0, -min(xs)) * scale, max(0.0, max(xs) - width) * scale
+
+
 def render(project, layer, size=None, matrix=None):
     """The rich text layer as an RGBA image of its box (or natural size when auto-sized). Ink that
     reaches past the box (swashes, slants) is drawn on a padded canvas centred on the box. ``size`` and
@@ -885,7 +1030,7 @@ def active(layer):
     return bool(rich) and plain(rich) == layer.get("text")
 
 
-def fonts_used(layer, fallback="DejaVuSans.ttf"):
+def fonts_used(layer, fallback=PROOFING_FONT):
     """The stored font of each run of visible text a text layer draws: the layer font for plain
     text, and for rich text each span's own font (``font`` on the span) or else the layer font."""
     base = layer.get("font", fallback)
@@ -900,12 +1045,17 @@ def glyph_coverage(project, layer):
     document and bundled fallbacks, the way it is drawn."""
     from .text import glyph_coverage as span_coverage
 
-    missing, fallback = set(), set()
+    missing, fallback, local, local_fonts = set(), set(), set(), set()
     for span in styled_spans(project, layer):
         report = span_coverage(project, {"font": span["font"], "text": span["text"]})
         missing.update(report["missing"])
         fallback.update(report["fallback"])
-    return {"missing": sorted(missing), "fallback": sorted(fallback - missing)}
+        local.update(report.get("local", ()))
+        local_fonts.update(report.get("local_fonts", ()))
+    result = {"missing": sorted(missing), "fallback": sorted(fallback - missing)}
+    if local - missing:
+        result.update(local=sorted(local - missing), local_fonts=sorted(local_fonts))
+    return result
 
 
 def fill_variables(rich, variables):
@@ -922,10 +1072,13 @@ TYPES = ("rich-text", "text-style")
 
 
 def schemas(add):
-    from .schema import S, N, B, COORD, SIZE, FONT
+    from .schema import S, N, B, COORD, SIZE, FONT, HANGING_FIELD, field
 
     style = {"bold": B, "italic": B, "underline": B, "strike": B, "color": S, "size": N, "font": FONT, "highlight": S,
-             "baseline": {"enum": ["super", "sub", "normal"]}, "tracking": N}
+             "baseline": {"enum": ["super", "sub", "normal"]}, "tracking": N,
+             "small_caps": field(B, "Small capitals on or off: lowercase letters drawn as small capitals, from the "
+                                    "font's own (OpenType smcp) or synthesized at 0.7 of the size; capitals keep "
+                                    "their size.")}
     para = {"list": {"enum": ["none", "bullet", "number"]}, "level": {"type": "integer", "minimum": 0, "maximum": 8},
             "align": {"enum": ["left", "center", "right", "justify"]}, "space_before": N, "space_after": N, "indent": N,
             "line_height": N, "start": {"type": "integer", "minimum": 0}}
@@ -935,7 +1088,8 @@ def schemas(add):
                       "align": {"enum": ["left", "center", "right", "justify"]}, "line_height": N, "paragraph_spacing": N,
                       "list_indent": N, "font_variants": obj, "width": SIZE, "height": SIZE, "fit": B,
                       "wrap": {"enum": ["greedy", "balance", "pretty"]}, "x": COORD,
-                      "y": COORD}, anyOf=[{"required": ["markdown"]}, {"required": ["spans"]}])
+                      "y": COORD, "hanging_punctuation": HANGING_FIELD},
+        anyOf=[{"required": ["markdown"]}, {"required": ["spans"]}])
     add("text-style", {"match": {**S, "description": "Style every occurrence of this text (see occurrence)."},
                        "occurrence": {"anyOf": [{"type": "integer", "minimum": 1}, {"enum": ["all"]}]},
                        "start": {"type": "integer", "minimum": 0, "description": "First character of a range (with end)."},
@@ -981,6 +1135,58 @@ def _stage_fonts(project, spans):
         if stage and "font" not in span and role_font(project, stage):
             span["font"] = stage
             span.pop("bold", None)
+
+
+def accent_spans(text, words):
+    """``(ranges, missing)``: the ``(start, end)`` of every whole-word match of ``words`` in ``text``, without regard
+    to case (``winter`` matches ``Winter`` but not ``winterland``), and the words that have none."""
+    ranges, missing = [], []
+    for word in words:
+        found = [(m.start(), m.end()) for m in re.finditer(rf"(?<!\w){re.escape(word.strip())}(?!\w)", text, re.IGNORECASE)]
+        if found:
+            ranges.extend(found)
+        else:
+            missing.append(word)
+    return ranges, missing
+
+
+def accent_layer(project, layer, words):
+    """Set ``words`` of a text layer in the accent text color through rich-text spans (``accent_words`` on text and
+    text-set), and warn about the words it does not contain."""
+    from .notices import warn
+
+    require(isinstance(words, list) and len(words) <= 32 and all(isinstance(w, str) and w.strip() for w in words),
+            "accent_words must be a list of up to 32 words", field="accent_words")
+    if not words:
+        return
+    if layer.get("color") in ("@accent", "@accent-text"):
+        warn(project, f"accent_words were not accented: {layer['name']!r} is already set in the accent color")
+        return
+    _require_roles(project.state, [ACCENT], "accent_words")
+    ranges, missing = accent_spans(layer["text"], words)
+    for start, end in ranges:
+        execute(project, {"type": "text-style", "target": layer["id"], "start": start, "end": end, **ACCENT})
+    if missing:
+        warn(project, f"accent_words {', '.join(map(repr, missing))} not found as whole words in {layer['name']!r}; "
+                      "nothing was accented for them")
+
+
+def _require_roles(state, spans, field="markdown"):
+    """Refuse, with the remedy, a span color that names a palette role (as the accent flags do) the document does
+    not define; otherwise the commit would fail on an unknown swatch."""
+    from .palette_roles import ROLES
+
+    swatches = state.get("swatches", {})
+    for span in spans:
+        for key in ("color", "highlight"):
+            value = span.get(key)
+            if isinstance(value, str) and value.startswith("@") and value[1:] in ROLES and value[1:] not in swatches:
+                raise VixlError("invalid_operation", f"{value} is a palette role this document does not define yet "
+                                "(the accent flags and accent_words use @accent-text, @accent and @on-accent); apply "
+                                "a palette with roles first (palette-apply, layout-apply or a rolled direction) or "
+                                "give the color directly", field=field, suggestions=[
+                                    "Apply a palette with roles first (palette-apply with roles: true, layout-apply or "
+                                    "roll --apply)", "Or give the color directly: [word]{color=#c2410c}"])
 
 
 def _make_rich(project, op, size):
@@ -1054,6 +1260,11 @@ def execute(project, op):
                 item.setdefault("align", op["align"])
         layer["rich"] = rich
         layer["text"] = plain(rich)
+        _require_roles(project.state, rich["spans"], "markdown" if "markdown" in op else "spans")
+        if "hanging_punctuation" in op:
+            from .lettering import store
+
+            store(layer, {"hanging_punctuation": op["hanging_punctuation"]})
         if "width" in op or "height" in op:
             settings = layer.setdefault("text_layout", {})
             for key in ("width", "height"):
@@ -1169,8 +1380,8 @@ def execute(project, op):
 
 
 TEXT_STYLE_FIELDS = ("match", "occurrence", "start", "end", "paragraphs", "clear", "bold", "italic", "underline", "strike",
-                     "highlight", "baseline", "tracking", "list", "level", "paragraph_align", "space_before", "space_after",
-                     "indent")
+                     "highlight", "baseline", "tracking", "small_caps", "list", "level", "paragraph_align", "space_before",
+                     "space_after", "indent")
 TEXT_SET_FIELDS = ("text", "spacing", "stroke_width", "stroke_color", "align", "content")
 
 
@@ -1224,7 +1435,7 @@ def compile_command(cmd, args):
     p.add_argument("--occurrence", type=lambda v: v if v == "all" else int(v))
     for key in ("start", "end", "level", "number-start"):
         p.add_argument("--" + key, type=int)
-    for flag in ("bold", "italic", "underline", "strike", "clear"):
+    for flag in ("bold", "italic", "underline", "strike", "small-caps", "clear"):
         p.add_argument("--" + flag, action="store_true", default=None)
     for key in ("color", "font", "highlight"):
         p.add_argument("--" + key)

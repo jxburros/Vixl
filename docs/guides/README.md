@@ -77,6 +77,7 @@ end-to-end walkthroughs live in the [tutorials](../README.md#learn-by-making).
 | [Charts](output/charts.md) | Data-to-geometry charts |
 | [QR codes and barcodes](output/codes.md) | Generated codes |
 | [Linked documents](output/linked-documents.md) | Reusing one document inside another |
+| [Merch mockups and print-ready art](output/merch-mockups.md) | Tees, hoodies, totes, stickers and pins with print areas, finishes and separations |
 | [Data merge and print imposition](output/imposition.md) | Variable data and print sheets |
 | [Marketing builds](output/marketing-builds.md) | Deck legibility profiles and image downsampling |
 | [Accessibility](output/accessibility.md) | Alt text, contrast and reading order |

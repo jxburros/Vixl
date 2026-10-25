@@ -182,3 +182,56 @@ def test_one_move_on_a_large_lit_scene():  # #595
     # layer's neighbourhood is composited and lit again (about 0.15 s; a loaded macOS runner took 0.9 s).
     elapsed, _ = timed(p.render)
     assert elapsed < 2.5
+
+
+def test_object_check_on_many_declared_objects_over_animation_frames():  # #378
+    from vixl.objects import merged
+
+    example = merged("dog")["build"]["example"]
+    p = Project(4000, 3000, "white")
+    batch = []
+    for i in range(24):
+        dx, dy = (i % 6) * 600, (i // 6) * 600
+        names = {op["name"]: f"{op['name']}-{i}" for op in example if op["type"] in ("shape", "group")}
+        for op in example:
+            op = {**op, **({"x": op["x"] + dx, "y": op["y"] + dy} if "x" in op else {})}
+            op.update({key: names.get(op[key], op[key]) for key in ("name", "target") if key in op})
+            if "targets" in op:
+                op["targets"] = [names.get(ref, ref) for ref in op["targets"]]
+            batch.append(op)
+    p.apply(batch, detail="brief")
+    p.apply([{"type": "timeline-set", "duration": 2000, "fps": 24},
+             {"type": "keyframe", "target": "tail-0", "property": "rotation", "time": 0, "value": -25},
+             {"type": "keyframe", "target": "tail-0", "property": "rotation", "time": 1000, "value": 10}], detail="brief")
+    # 240 parts at three sampled frames: about 1.7 s. Each part is drawn once per frame onto a tile the size of its
+    # object; drawn on canvas-sized tiles, as the connected check draws them, it took over 15 s.
+    elapsed, report = timed(lambda: p.check(checks=["object"]))
+    assert report["passed"] and "object" in report["checked"]["checks"]
+    assert elapsed < 8
+
+
+def test_adapting_a_poster_to_three_sizes_with_arrangements(tmp_path):  # #519
+    from PIL import Image
+
+    Image.new("RGB", (1200, 800), "#3a86ff").save(tmp_path / "photo.png")
+    master = Project(1080, 1080, "#fdf6ec")
+    master.apply([{"type": "add", "path": str(tmp_path / "photo.png"), "name": "photo", "x": 80, "y": 80,
+                   "width": 920, "height": 520},
+                  {"type": "text", "name": "headline", "text": "Tide Pool Nights", "size": 96, "x": 80, "y": 640,
+                   "color": "#1d3557"},
+                  {"type": "text", "name": "body", "text": "Live music by the water every Friday in June", "size": 40,
+                   "x": 80, "y": 770, "color": "#1d3557"},
+                  *({"type": "shape", "shape": "ellipse", "name": f"dot{i}", "width": 12, "height": 12,
+                     "x": 40 + i * 25, "y": 1040, "fill": "#3a86ff"} for i in range(40))], detail="brief")
+    copies = [master.clone() for _ in range(3)]
+    sizes = ({"size": "story"}, {"size": "leaderboard"}, {"width": 1920, "height": 1080})
+    arrangements = ["stack-vertical", "side-by-side", "hero-top", "proportional"]
+
+    def adapt():
+        return [copy.apply({"type": "adapt-layout", **size, "arrangements": arrangements}, detail="brief")
+                ["adapt_layout"][0] for copy, size in zip(copies, sizes)]
+
+    # Each size builds and checks four candidates: about 0.8 s for all three on a developer machine.
+    elapsed, reports = timed(adapt)
+    assert all(len(report["candidates"]) == 4 for report in reports)
+    assert elapsed < 8

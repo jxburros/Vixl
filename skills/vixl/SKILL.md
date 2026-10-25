@@ -49,8 +49,8 @@ Details: [workflow](references/workflow.md), [testing](references/testing.md).
 2. **Plan one batch** of canonical operations; dry-run anything risky (`dry_run: true`).
 3. **Apply** and read the change summary, its `warnings` and `normalized` (use that spelling next time).
 4. **Check without looking**: `vixl_check` lists only problems (bounds, overlap, contrast, safe area, legibility,
-   composition, `use-size`); then run your suite. Measure, don't eyeball: `vixl_check(action='measure')`,
-   `action='spacing'`, `action='validate'`.
+   composition, `use-size`, declared objects against their kind); then run your suite. Measure, don't eyeball:
+   `vixl_check(action='measure')`, `action='spacing'`, `action='validate'`.
 5. **Finishing pass** (above), or `undo` an edit that did not help.
 6. **Look**: `vixl_render()` returns a reduced preview; `region` with `max_width`/`max_height` is 1:1,
    `isolate=["mascot"]` shows one object, `action='compare'` shows before and after. Never declare a visual task
@@ -105,14 +105,14 @@ The payload is always the operation list: when unsure of a field, `vixl_referenc
 | Every operation, by need and by field | [operations](references/operations.md) |
 | Worked batches and minimal examples | [recipes](references/recipes.md) |
 | The full start-here path and core loop | [workflow](references/workflow.md) |
-| Test suites, outcomes, repair, composition checks | [testing](references/testing.md) |
+| Test suites, outcomes, repair, composition checks, finishing pairs | [testing](references/testing.md), [finishing-pairs](references/finishing-pairs.md) |
 | Sizes, layouts, palettes, looks, print | [design-system](references/design-system.md) |
 | Fonts, pairings, rolls, making a font | [typography](references/typography.md) |
 | Palettes, templates, guidance, SVG output | [resources](references/resources.md) |
 | Rich text, pages and decks, forms | [documents](references/documents.md) |
 | Charts, tables, key-value lists | [charts](references/charts.md) |
 | Hand drawings, diagrams, organic shapes, scatter, guides | [drawing-shapes-guides](references/drawing-shapes-guides.md) |
-| Objects with parts, accessibility | [objects](references/objects.md) |
+| Objects with parts (object-plan, outline), accessibility | [objects](references/objects.md) |
 | Brushes, timelines, video templates | [brushes-timeline](references/brushes-timeline.md) |
 | Artistic filters | [artistic-filters](references/artistic-filters.md) |
 | Emoji catalog, packs and exports | [emojis](references/emojis.md) |

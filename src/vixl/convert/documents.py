@@ -98,12 +98,14 @@ def scratch(state, assets):
     return project
 
 
-def convert_state(state, assets, *, look="preserve", saved=None, stroke_model=None, quiet=False):
-    """Convert one document state in place; returns the rules' context (its ``changes`` and ``warnings``)."""
+def convert_state(state, assets, *, look="preserve", saved=None, stroke_model=None, quiet=False, only=None):
+    """Convert one document state in place; returns the rules' context (its ``changes`` and ``warnings``).
+    ``only`` limits it to those rule IDs."""
     require(look in LOOKS, f"look is one of {', '.join(LOOKS)}", field="look")
     ctx = rule_table.Context(look, saved, scratch(state, assets), stroke_model or engine_model(), quiet=quiet)
-    for _, rule in rule_table.RULES:
-        rule(ctx, state)
+    for name, rule in rule_table.RULES:
+        if only is None or name in only:
+            rule(ctx, state)
     return ctx
 
 
@@ -188,9 +190,11 @@ def convert_manifest(manifest, assets, *, look="preserve", history="keep", saved
     if isinstance(transaction, dict) and isinstance(transaction.get("state"), dict):
         manifest["state"] = transaction["state"]  # what rollback restores: the last committed state
     state = manifest["state"]
-    if not current:
-        # A document saved by a current release needs no state rule; its archive is still normalized.
-        ctx = convert_state(state, assets, look=look, saved=saved, stroke_model=model)
+    # A document saved by a current release needs only the rules a stored field triggers; its archive is still
+    # normalized.
+    if not current or rule_table.keyed(state):
+        ctx = convert_state(state, assets, look=look, saved=saved, stroke_model=model,
+                            only=rule_table.keyed(state) if current else None)
         changes += ctx.changes
         warnings += ctx.warnings
 
@@ -202,8 +206,9 @@ def convert_manifest(manifest, assets, *, look="preserve", history="keep", saved
             # Revisions rebuilt from deltas can share parts, so each one is converted on its own copy.
             for ident, revision in _states(nodes).items():
                 revision = deepcopy(revision)
-                if ident != head and not current:
-                    convert_state(revision, assets, look=look, saved=saved, stroke_model=model, quiet=True)
+                if ident != head and (not current or rule_table.keyed(revision)):
+                    convert_state(revision, assets, look=look, saved=saved, stroke_model=model, quiet=True,
+                                  only=rule_table.keyed(revision) if current else None)
                 states[ident] = revision
             states[head] = deepcopy(state)
             nodes = _rebuild(nodes, states)

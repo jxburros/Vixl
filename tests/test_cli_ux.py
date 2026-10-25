@@ -97,6 +97,15 @@ def test_missing_folder_is_named(workspace):
     assert "the folder gone does not exist" in str(friendly_error)
 
 
+def test_help_strings_must_expand_on_every_python():
+    """Python 3.14 refuses `help="50% or a marker"` when the option is added; every version refuses it here."""
+    from vixl.commands import Parser
+
+    with pytest.raises(ValueError, match="badly formed help string"):
+        Parser(prog="x").add_argument("--times", help="milliseconds, 1.5s, 50% or a marker")
+    Parser(prog="x").add_argument("--times", help="milliseconds, 1.5s, 50%% or a marker (default %(default)s)")
+
+
 def test_help_shows_text_option_and_short_check_lines(workspace, capsys):
     for argv in (["text", "--help"], ["check", "--help"]):
         try:

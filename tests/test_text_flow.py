@@ -67,7 +67,9 @@ def test_each_frame_wraps_like_the_continuous_text_would():
     assert pieces == whole, "the slices break exactly where the continuous text breaks"
     # and every frame's text really fits its box, by the same measure the bounds check uses
     assert p.check(checks=["bounds"])["issues"] == []
-    assert spacing == 4
+    from vixl.craft import line_height, natural_height
+
+    assert spacing == round(size * line_height("body") - natural_height(font_data(p, layer), size))
 
 
 def test_overflow_is_reported_in_results_checks_and_warnings():
@@ -256,7 +258,10 @@ def split_flow(height, **rules):
 
 
 def test_orphan_and_widow_rules_change_where_paragraphs_split():
-    height = next(h for h in range(100, 260, 7) if min((min(pair) for pair in paragraphs_at_frame_ends(split_flow(h))), default=9) == 1)
+    # A height that leaves a single line alone without the rules, and still splits a paragraph with them.
+    height = next(h for h in range(100, 260, 7)
+                  if min((min(pair) for pair in paragraphs_at_frame_ends(split_flow(h))), default=9) == 1
+                  and paragraphs_at_frame_ends(split_flow(h, orphans=2, widows=2)))
     plain_split = split_flow(height)
     assert min(min(pair) for pair in paragraphs_at_frame_ends(plain_split)) == 1, "without rules a single line is left alone"
     ruled = split_flow(height, orphans=2, widows=2)

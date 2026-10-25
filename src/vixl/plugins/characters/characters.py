@@ -1,10 +1,17 @@
-"""Portable standard-part characters, constrained planar rigs and retargetable cycles."""
-from copy import deepcopy
-import math
-from ...errors import require
-from ...model import finite, uid
+"""Portable standard-part characters, constrained planar rigs and retargetable cycles.
 
-TYPES = ("character", "character-save", "character-load", "character-rig", "character-pose", "character-ik", "character-cycle", "character-lipsync")
+Saved characters are entries of the document's object library (``object_library``, the records ``object-save``
+keeps); ``character-save`` and ``character-load`` read and write it. A document saved before the one library may
+still hold ``character_library`` (name -> layers): ``character-load`` reads it as the same record, and
+``vixl convert`` moves it into the object library.
+"""
+from copy import deepcopy
+import difflib
+import math
+from ...errors import VixlError, require
+from ...model import finite
+
+TYPES =("character", "character-save", "character-load", "character-rig", "character-pose", "character-ik", "character-cycle", "character-lipsync")
 PARTS = ("torso", "head", "left-eye", "right-eye", "left-brow", "right-brow", "mouth", "hair",
          "left-upper-arm", "left-lower-arm", "left-hand", "right-upper-arm", "right-lower-arm", "right-hand",
          "left-upper-leg", "left-lower-leg", "left-foot", "right-upper-leg", "right-lower-leg", "right-foot", "accessories")
@@ -12,17 +19,28 @@ REQUIRED = ("torso", "head", "left-eye", "right-eye", "mouth", "left-upper-arm",
 VISEMES = ("rest", "A", "E", "O", "U", "M", "F", "L")
 VIEWS = ("front", "side")
 FRONT_SWING = 15  # degrees: a front-facing leg swinging further in the picture plane reads as a split
+LEGS = ("left-upper-leg", "right-upper-leg")
+# The bones each cycle drives; any rig drives idle and react.
+CYCLE_BONES = {"walk": LEGS, "run": LEGS, "ride": LEGS, "wave": ("right-upper-arm", "right-lower-arm"), "idle": (),
+               "react": ()}
+JOINT_WORDS = {"shoulder": "upper-arm", "elbow": "lower-arm", "forearm": "lower-arm", "wrist": "hand",
+               "hip": "upper-leg", "thigh": "upper-leg", "knee": "lower-leg", "shin": "lower-leg", "ankle": "foot"}
 
 
 def schemas(add):
     from ...motion_schema import documented
     add = documented(add)
-    from ...schema import S, N
+    from ...schema import S, N, field
     obj = {"type": "object"}
     time = {"type": ["string", "number"]}
     add("character", {"name": S, "x": N, "y": N, "height": {"type": "integer", "minimum": 40, "maximum": 8192}, "colors": obj, "parts": {"type": "object", "additionalProperties": S}}, ["name"])
-    add("character-save", {"name": S}, ["name"])
-    add("character-load", {"name": S, "template": S, "source": S, "x": N, "y": N, "scale": N, "colors": obj, "outfit": obj}, ["name"], anyOf=[{"required": ["template"]}, {"required": ["source"]}])
+    add("character-save", {"name": field(S, "Name of the entry in the document's object library (object-save for a character)."),
+                           "description": {"type": "string", "maxLength": 2000, "description": "What the character is, for search."},
+                           "tags": {"type": "array", "items": S, "maxItems": 32, "description": "Search tags."}}, ["name"])
+    add("character-load", {"name": field(S, "Name of the placed character group."),
+                           "template": field(S, "A character saved in the document's object library (character-save or object-save)."),
+                           "source": field(S, "A workspace .vixl holding one character (vixl_export kind character), saved to the object library as NAME-imported and placed."),
+                           "x": N, "y": N, "scale": N, "colors": obj, "outfit": obj}, ["name"], anyOf=[{"required": ["template"]}, {"required": ["source"]}])
     add("character-rig", {"bones": obj}, ["bones"])
     from ...timeline import easing_schema
     add("character-pose", {"angles": {"type": "object", "additionalProperties": N},
@@ -85,9 +103,53 @@ def rig(project, target):
     return group
 
 
+def _joint_guess(name, bones):
+    """The bone a joint name most likely means: anatomy words map to the standard bones (left-elbow ->
+    left-lower-arm), else the closest spelling."""
+    for word, bone in JOINT_WORDS.items():
+        if word in name and name.replace(word, bone) in bones:
+            return name.replace(word, bone)
+    close = difflib.get_close_matches(name, list(bones), 1, 0.6)
+    return close[0] if close else None
+
+
+def check_joints(group, angles, field="angles"):
+    """Every joint ``angles`` names is a bone of the character's rig, else an error naming the character, the
+    unknown joints and the bones it has."""
+    bones = group["character"]["bones"]
+    unknown = [name for name in angles if name not in bones]
+    if not unknown:
+        return
+    close = list(dict.fromkeys(match for name in unknown if (match := _joint_guess(name, bones))))
+    raise VixlError("invalid_operation", f"{field}: {group['name']!r} has no joint {', '.join(map(repr, unknown))}; "
+                    + (f"its rig has {', '.join(bones)}" if bones else "it has no rig; add one with character-rig")
+                    + (f". Did you mean {' or '.join(map(repr, close))}?" if close else ""),
+                    field=f"{field}.{unknown[0]}", character=group["name"], unknown=unknown, available=list(bones),
+                    suggestions=close)
+
+
+def compatible_cycles(bones):
+    return [name for name, needed in CYCLE_BONES.items() if bones and all(bone in bones for bone in needed)]
+
+
+def check_motion(group, name, field="cycle"):
+    """A cycle drives only the bones it names (``CYCLE_BONES``): a rig without them is an error that names the
+    missing bones and the cycles this rig can drive."""
+    bones = group["character"]["bones"]
+    require(bones, f"{field}: {group['name']!r} needs a rig before a {name} cycle; add one with character-rig",
+            field=field, character=group["name"])
+    missing = [bone for bone in CYCLE_BONES[name] if bone not in bones]
+    if missing:
+        usable = compatible_cycles(bones)
+        raise VixlError("invalid_operation", f"{field}: a {name} cycle moves {', '.join(CYCLE_BONES[name])}, and the rig "
+                        f"of {group['name']!r} has no {', '.join(missing)} (its bones: {', '.join(bones)}). Add the "
+                        f"bones with character-rig, or use a cycle this rig can drive: {', '.join(usable) or 'none'}",
+                        field=field, character=group["name"], missing=missing, available=list(bones), suggestions=usable)
+
+
 def pose(project, group, angles):
     bones = group["character"]["bones"]
-    require(set(angles) <= set(bones), "Pose references an unknown bone")
+    check_joints(group, angles)
     solved = {}
     pending = set()
     def visit(name):
@@ -146,51 +208,20 @@ def execute(project, op):
             template = op.get("template", op["name"] + "-imported")
             import_character(project, local_path(root, op["source"]), template)
             op = {**op, "template": template}
-        library = project.state.get("character_library", {})
-        require(op["template"] in library, "Unknown character template; save one with character-save")
-        snapshot = deepcopy(library[op["template"]])
-        mapping = {layer["id"]: uid("lyr") for layer in snapshot}
-        from ...operations import append_layer
-        for layer in snapshot:
-            old = layer["id"]
-            layer["id"] = mapping[old]
-            layer["name"] = op["name"] if "character" in layer else f"{op['name']}/{layer.get('character_part', old)}"
-            if layer.get("parent"):
-                layer["parent"] = mapping.get(layer["parent"])
-            if layer.get("clip") in mapping:
-                layer["clip"] = mapping[layer["clip"]]
-            for anchor, expression in list(layer.get("constraints", {}).items()):
-                if isinstance(expression, str):
-                    for previous, replacement in mapping.items():
-                        if expression.startswith(previous + "."):
-                            layer["constraints"][anchor] = replacement + expression[len(previous):]
-                            break
-            if "character" in layer:
-                layer["character"]["parts"] = {p: mapping[i] for p, i in layer["character"]["parts"].items()}
-                for bone in layer["character"]["bones"].values():
-                    bone["layer"] = mapping[bone["layer"]]
-                layer.update(x=op.get("x", 0), y=op.get("y", 0))
-                scale = finite(op.get("scale", 1), "scale", 0.01, 100)
-                layer.update(width=max(1, round(layer["width"] * scale)), height=max(1, round(layer["height"] * scale)))
-                root = layer
-            role = layer.get("character_color")
-            if role in op.get("colors", {}):
-                layer["fill"] = op["colors"][role]
-            if layer.get("character_part") in op.get("outfit", {}):
-                layer["fill"] = op["outfit"][layer["character_part"]]
-            append_layer(project, layer)
-        project.state["active_layer"] = root["id"]
+        from ...objects import place
+        scale = finite(op.get("scale", 1), "scale", 0.01, 100)
+        root = place(project, {"name": op["name"], "name_as": op["name"], "x": op.get("x", 0), "y": op.get("y", 0),
+                               "scale": scale, "motion": False}, (saved_character(project, op["template"]), {}))
+        recolor(project, root, op.get("colors"), op.get("outfit"))
         return
     group = rig(project, op.get("target"))
     character = group["character"]
     if kind == "character-save":
-        from ...design import descendants, named
-        ids = descendants(project, group["id"]) | {group["id"]}
-        layers = deepcopy([layer for layer in project.state["layers"] if layer["id"] in ids])
-        for layer in layers:
-            if layer["id"] == group["id"]:
-                layer.pop("parent", None)
-        project.state.setdefault("character_library", {})[named(op["name"])] = layers
+        from ...design import named
+        from ...objects import snapshot
+        item = snapshot(project, group["id"], motion=False)
+        item.update(description=op.get("description", ""), tags=list(op.get("tags", [])))
+        project.state.setdefault("object_library", {})[named(op["name"])] = item
     elif kind == "character-rig":
         require(1 <= len(op["bones"]) <= 64, "Rig needs 1–64 bones")
         bones = deepcopy(op["bones"])
@@ -215,20 +246,7 @@ def execute(project, op):
         if "time" not in op:
             pose(project, group, op["angles"])
         else:
-            from ...timeline import _timeline, _track, _set_key, parse_time, MAX_DURATION
-            timeline = _timeline(project)
-            time = parse_time(op["time"], timeline["duration"], timeline.get("markers"))
-            require(0 <= time <= MAX_DURATION, "Pose key time exceeds timeline limits")
-            bones = character["bones"]
-            require(set(op["angles"]) <= set(bones), "Pose references an unknown bone")
-            for name, angle in op["angles"].items():
-                angle = finite(angle, "joint angle", -3600, 3600)
-                lo, hi = bones[name].get("limits", [-180, 180])
-                track = _track(timeline, group["id"], "joint:" + name)
-                if time and not track["keys"]:
-                    _set_key(track, 0, bones[name].get("angle", 0), op.get("easing", "ease-in-out"))
-                _set_key(track, time, min(hi, max(lo, angle)), op.get("easing", "ease-in-out"))
-            timeline["duration"] = max(timeline["duration"], time)
+            pose_key(project, group, op["angles"], op["time"], op.get("easing", "ease-in-out"))
     elif kind == "character-ik":
         upper, lower = op["chain"]
         bones = character["bones"]
@@ -250,6 +268,88 @@ def execute(project, op):
         cycle(project, group, op)
     else:
         lipsync(project, group, op)
+
+
+def pose_key(project, group, angles, at, easing="ease-in-out"):
+    """Joint keys (``joint:BONE`` tracks) for ``angles`` at time ``at``; a track's first key at a later time
+    also keys the rest angle at 0."""
+    from ...timeline import _timeline, _track, _set_key, parse_time, MAX_DURATION
+    timeline = _timeline(project)
+    time = parse_time(at, timeline["duration"], timeline.get("markers"))
+    require(0 <= time <= MAX_DURATION, "Pose key time exceeds timeline limits")
+    bones = group["character"]["bones"]
+    check_joints(group, angles)
+    for name, angle in angles.items():
+        angle = finite(angle, "joint angle", -3600, 3600)
+        lo, hi = bones[name].get("limits", [-180, 180])
+        track = _track(timeline, group["id"], "joint:" + name)
+        if time and not track["keys"]:
+            _set_key(track, 0, bones[name].get("angle", 0), easing)
+        _set_key(track, time, min(hi, max(lo, angle)), easing)
+    timeline["duration"] = max(timeline["duration"], time)
+
+
+def saved_character(project, name, field="template"):
+    """The object-library record of a saved character (deep-copied). A document saved before the one library may
+    keep it in ``character_library`` instead; that entry is read as the same record (``vixl convert`` moves it)."""
+    from ...notices import note
+    from ...objects import portable_record
+
+    library = project.state.get("object_library", {})
+    if name in library:
+        item = library[name]
+        root = next((layer for layer in item["layers"] if layer["id"] == item["root"]), {})
+        require("character" in root, f"{name!r} in the object library is not a character; place it with object-place",
+                field=field)
+        return deepcopy(item)
+    legacy = project.state.get("character_library", {})
+    if name in legacy:
+        root = next((layer for layer in legacy[name] if "character" in layer and not layer.get("parent")), None)
+        require(root is not None, f"Saved character {name!r} has no character group", field=field)
+        note(project, f"character {name!r} read from character_library; vixl convert moves it into object_library")
+        return portable_record(legacy[name], root["id"], project.state)
+    names = library_characters(project)
+    raise VixlError("invalid_operation", f"No saved character {name!r}" + (
+        f"; saved characters: {', '.join(names[:20])}" if names else "; save one with character-save"), field=field,
+        suggestions=difflib.get_close_matches(name, names, 3, 0.5))
+
+
+def library_characters(project):
+    """The names of the saved characters in the document: object-library entries whose root is a character, and
+    any left in a ``character_library`` from before the one library."""
+    found = [name for name, item in project.state.get("object_library", {}).items()
+             if any(layer["id"] == item["root"] and "character" in layer for layer in item["layers"])]
+    return found + [name for name in project.state.get("character_library", {}) if name not in found]
+
+
+def recolor(project, root, colors=None, outfit=None, strict=False):
+    """``colors`` by colour role (skin, outfit, hair, eyes) and ``outfit`` by part. ``strict`` refuses a role or
+    part the character does not have."""
+    from ...design import descendants
+    from ...render import color as parse
+    from ...design import resolve_color
+
+    colors, outfit = colors or {}, outfit or {}
+    ids = descendants(project, root["id"])
+    layers = [layer for layer in project.state["layers"] if layer["id"] in ids]
+    if strict:
+        roles = sorted({layer["character_color"] for layer in layers if layer.get("character_color")})
+        parts = sorted({layer["character_part"] for layer in layers if layer.get("character_part")})
+        unknown = sorted(set(colors) - set(roles))
+        require(not unknown, f"colors names role(s) {unknown} {root['name']!r} does not have; roles: "
+                f"{', '.join(roles) or 'none (bound artwork has no colour roles; use outfit by part)'}", field="colors",
+                allowed=roles)
+        unknown = sorted(set(outfit) - set(parts))
+        require(not unknown, f"outfit names part(s) {unknown} {root['name']!r} does not have; parts: {', '.join(parts)}",
+                field="outfit", allowed=parts)
+        for value in [*colors.values(), *outfit.values()]:
+            parse(resolve_color(value, project.state))
+    for layer in layers:
+        role = layer.get("character_color")
+        if role in colors:
+            layer["fill"] = colors[role]
+        if layer.get("character_part") in outfit:
+            layer["fill"] = outfit[layer["character_part"]]
 
 
 def facing(project, group):
@@ -274,7 +374,7 @@ def cycle(project, group, op):
     candidate.state = deepcopy(project.state)
     cg = candidate.layer(group["id"])
     bones = cg["character"]["bones"]
-    require(bones, "Character needs a rig before applying a cycle")
+    check_motion(cg, op["cycle"])
     front_gait = view == "front" and op["cycle"] in ("walk", "run")
     # Seen from the front, a step lifts the foot and the body rises over the planted leg; a leg swinging
     # in the picture plane would read as the splits. Parts outside the rig (torso, head, face) bob.
@@ -429,9 +529,10 @@ def export_character(project, target, path):
 
 
 def import_character(project, path, name):
-    """Import a portable character asset as a library template, without instantiating it."""
+    """Import a portable character asset into the object library, without instantiating it."""
     from ...project import Project
     from ...design import descendants, named
+    from ...objects import portable_record
     from ...render import resolved_layers
     source = Project.load(path, limits=project.limits)
     groups = [layer for layer in source.state['layers'] if 'character' in layer]
@@ -442,8 +543,9 @@ def import_character(project, path, name):
     layers = deepcopy([layer for layer in resolved_layers(source) if layer['id'] in ids])
     for layer in layers:
         if layer['id'] == group['id']:
-            layer.pop('parent', None)
             layer.update(x=0, y=0, constraints={})
     project.assets.update(source.assets)
-    project.state.setdefault('character_library', {})[named(name)] = layers
+    item = portable_record(layers, group['id'], source.state)
+    item.update(description='', tags=[])
+    project.state.setdefault('object_library', {})[named(name)] = item
     return {'template': name, 'parts': sorted(group['character']['parts'])}

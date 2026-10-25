@@ -39,14 +39,14 @@ are stored uncompressed (they are already compressed); `project.json` and fonts 
 ```json
 {
   "format_version": 2,
-  "vixl_version": "0.30.5",
+  "vixl_version": "0.31.0",
   "state": {
     "canvas": {"width": 400, "height": 300, "background": "#ffffff", "color_mode": "rgba8"},
     "layers": [
       {"id": "lyr_fabf55c98c3bc34a", "name": "title", "type": "text", "parent": "lyr_fef4caa18a7d242e",
        "x": 0, "y": 0, "width": 122, "height": 38, "rotation": 0, "flip_x": false, "flip_y": false,
        "opacity": 1.0, "blend": "normal", "visible": true, "effects": [], "mask": null, "constraints": {},
-       "text": "Hello", "font": "DejaVuSans.ttf", "size": 48, "color": "#1d3557", "align": "left",
+       "text": "Hello", "font": "NotoSans-Regular.ttf", "size": 48, "color": "#1d3557", "align": "left",
        "auto_size": true, "line_height": 1.0, "spacing": -8},
       {"id": "lyr_fef4caa18a7d242e", "name": "badge", "type": "group", "parent": null,
        "x": 40, "y": 40, "width": 320, "height": 200, "content_width": 320, "content_height": 200,
@@ -114,7 +114,7 @@ The rest depend on the type. The main ones:
 | Type | Fields |
 | --- | --- |
 | `shape` | `shape` (rectangle, rounded-rectangle, capsule, ellipse, line, polygon, star, path or a catalog shape), `fill`, `fill_gradient` (a gradient fill spanning the box, with the gradient layer's `start`/`end` or `stops`, `direction`, `angle`, `center`, `falloff`; `fill` then holds its middle colour), `stroke`, `stroke_width`, `radius` (pixels, a percentage string such as `"25%"` of the shorter side, or four corner radii `[top-left, top-right, bottom-right, bottom-left]`), `sides`, `inner_radius`; paths store SVG path data in `path` within a `path_view` box `[w, h]` that is stretched to the layer. Stroke details: `line_cap`, `line_join`, `dash` (with `dash_fit`, default true: the pattern fitted to corners), markers, trims and `stroke_align` (`inside`, `center` or `outside`; unset it is `inside` for closed shapes, flush with the outline, and `center` for paths, arcs, lines and open shapes). |
-| `text` | `text`, `font` (a `state.fonts` name, a `fonts/` member or the bundled `DejaVuSans.ttf`; the typography role it follows is `font_role`), `size` in pixels, `color`, `align`, `line_height`, `spacing`, `tracking`, `auto_size` (the box follows the text) or `text_layout` (a fixed box it wraps in), and `rich` for styled spans. Text stays live: it is laid out with the embedded font each time the document is drawn. |
+| `text` | `text`, `font` (a `state.fonts` name, a `fonts/` member or a bundled face, `NotoSans-Regular.ttf` (the proofing face) or `DejaVuSans.ttf`; the typography role it follows is `font_role`), `size` in pixels, `color`, `align`, `line_height`, `spacing`, `tracking`, `auto_size` (the box follows the text) or `text_layout` (a fixed box it wraps in), and `rich` for styled spans. Text stays live: it is laid out with the embedded font each time the document is drawn. |
 | `solid` | `fill`. |
 | `gradient` | `start` and `end` or `stops` (`[{offset, color}]`), `direction` (horizontal, vertical, radial, angled), `angle`, `center`, `falloff`. |
 | `raster`, `frame` | `asset`: an `assets/` member drawn into the box. |
@@ -128,8 +128,9 @@ The rest depend on the type. The main ones:
 | `adjustment` | Only `effects`; they apply to what is beneath. |
 
 Optional fields on any layer include `clip` (the ID of the layer whose alpha clips it), `styles` (drop-shadow, stroke,
-outer-glow, color-overlay, gradient-overlay), `repeat`, `alt` and `decorative` (accessibility), `role`, `tags`, and
-intent flags read by the checks (`allow_overlap`, `allow_crop` …). The schema's `$defs/layer` lists every field
+outer-glow, color-overlay, gradient-overlay), `repeat`, `alt` and `decorative` (accessibility), `role`, `tags`,
+intent flags read by the checks (`allow_overlap`, `allow_crop` …) and by `adapt-layout` (`priority`, and `focal` on
+images and frames), and a stack member's `stack_grow` and `stack_span`. The schema's `$defs/layer` lists every field
 (it rejects fields it does not know).
 
 ## Groups and nesting
@@ -151,7 +152,8 @@ a page with `master` draws that master's layers underneath its own.
 
 Layers refer to archive members by name (`assets/…`, `masks/…`). Fonts are registered by name in `state.fonts`
 (`name → fonts/<sha256>.ttf`), and a text layer's `font` is such a name, the `fonts/` member itself (what the
-operations store) or the bundled `DejaVuSans.ttf`. A layer that follows a typography role (`heading`, `body`) names it
+operations store) or a bundled face (`NotoSans-Regular.ttf`, the proofing face, or `DejaVuSans.ttf`, which documents saved
+before Noto Sans became the proofing face name). A layer that follows a typography role (`heading`, `body`) names it
 in `font_role`; `state.typography` maps the role to a registered font, and the layer's `font` follows it when the
 typography changes. `state.font_fallbacks` lists font members tried for glyphs the main font lacks. Fonts are
 embedded so a document renders the same on any machine.

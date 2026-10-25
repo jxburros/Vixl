@@ -48,7 +48,9 @@ def test_text_at_a_fractional_position_stays_as_sharp_as_on_whole_pixels(place):
     whole = coverage(text_project(x=10, y=10).render())
     moved = coverage(text_project(**place).render())
     assert sharpness(moved) > 0.97 * sharpness(whole)
-    assert moved.sum() == pytest.approx(whole.sum(), rel=0.01)
+    # The rasterizer antialiases on a quarter-pixel grid, so an offset between its steps moves up to about 2% of the
+    # ink of small type; resampling the drawn box added 5%.
+    assert moved.sum() == pytest.approx(whole.sum(), rel=0.025)
 
 
 def test_shapes_at_fractional_positions_match_their_exact_coverage():

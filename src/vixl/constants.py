@@ -59,3 +59,18 @@ STACK_EFFECTS = EFFECTS + ("lookup",)
 EFFECT_DEFAULTS = {**ARTISTIC_DEFAULTS, "white-balance": 100, "lookup": 1}
 
 BLENDS = ("normal", "multiply", "screen", "overlay", "darken", "lighten", "difference", "add", "subtract")
+
+# Operation types of feature modules that operations.py lists without importing them (registry.py names the
+# module that runs each).
+PACK_ASSET_TYPES = ("asset-place",)
+BRAND_TYPES = ("brand-logo",)
+
+# The bundled face text is drawn in until the document has type: a proofing face, not a design choice. Documents
+# saved while DejaVu Sans was the proofing face name it on their layers and keep drawing it.
+PROOFING_FONT = "NotoSans-Regular.ttf"
+# Bundled outline faces that draw what the proofing face lacks, in fallback order after the document's own
+# font-fallbacks: DejaVu Sans (Arabic, Hebrew, Armenian, Georgian, box drawing ...), then symbols, dingbats, arrows and
+# math. CJK, Devanagari and Thai are not bundled (see text.local_faces).
+BUNDLED_FALLBACKS = ("DejaVuSans.ttf", "NotoSansSymbols-Regular.ttf", "NotoSansSymbols2-Regular.ttf",
+                     "NotoSansMath-Regular.ttf")
+BUNDLED_FONTS = (PROOFING_FONT, *BUNDLED_FALLBACKS)

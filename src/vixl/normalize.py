@@ -13,6 +13,8 @@ from .errors import VixlError, require
 
 PERCENT = re.compile(r"^(-?\d+(?:\.\d+)?)%$")
 CLI_NOTES = ContextVar("vixl_cli_normalized", default=None)
+# Spellings of an export format that a render lockfile accepts (`reproduce --export jpeg`); the value is the canonical name.
+EXPORT_FORMAT_ALIASES = {"jpeg": "jpg", "tif": "tiff", "htm": "html"}
 
 
 def note_cli_output(args):
@@ -163,7 +165,14 @@ FIELD_ALIASES = {
         **{key: "hide_if_empty" for key in ("hide_when_empty", "collapse_if_empty", "collapse_when_empty", "hide_empty")},
         "tab_stops": "tabs",
         "tabstops": "tabs",
+        "font_variant": "text_transform",
+        "font_variant_caps": "text_transform",
+        **{key: "hanging_punctuation" for key in ("hanging", "hang_punctuation", "hanging_quotes", "hang_quotes",
+                                                  "optical_margin", "optical_margins")},
+        **{key: "accent_words" for key in ("accent", "accent_word", "accents", "highlight_words", "emphasis",
+                                           "accent_text")},
     },
+    "text-style": {"smallcaps": "small_caps", "small_capitals": "small_caps"},
     "shape": {
         "color": "fill",
         "colour": "fill",
@@ -216,17 +225,30 @@ FIELD_ALIASES = {
     "link": {"path": "source", "file": "source", "src": "source", "document": "source", "doc": "source"},
     # ``type`` names the operation, so the object's kind is never spelled ``type`` here.
     "object": {"object_kind": "kind", "object_type": "kind", "subject": "kind", "name": "label", "title": "label",
-               "part_name": "part"},
+               "part_name": "part", "stylised": "stylized"},
     "object-place": {"as": "name_as", "rename": "name_as"},
     "layer-intent": {"alt_text": "alt", "description": "alt", "aria_label": "alt"},
     "layout-apply": {key: "accent_words" for key in ("accent_word", "accents", "highlight_words", "highlight",
                                                      "emphasis", "accent_text")},
     "text-layout": {"text_wrap": "wrap", "wrapping": "wrap", "line_breaks": "wrap"},
+    # The CSS flexbox and grid property names for the stack's fields.
+    "stack": {"flex_direction": "direction", "justify_content": "justify", "align_items": "align", "flex_wrap": "wrap",
+              "grid_template_columns": "columns", "flex_grow": "grow", "grid_column": "span", "column_span": "span"},
     "accessibility": {"language": "lang", "locale": "lang", "page_description": "page_alt",
                       "page_language": "page_lang"},
 }
 FIELD_ALIASES["text-set"] = FIELD_ALIASES["text"]
 # CSS text-wrap values and the usual guesses for them.
+# CSS flexbox values for the stack's fields.
+STACK_VALUES = {
+    "direction": {"row": "horizontal", "column": "vertical", "columns": "vertical", "rows": "horizontal",
+                  "col": "vertical"},
+    "justify": {"flex-start": "start", "flex-end": "end", "left": "start", "right": "end", "top": "start",
+                "bottom": "end", "middle": "center", "between": "space-between", "around": "space-around",
+                "evenly": "space-evenly"},
+    "align": {"flex-start": "start", "flex-end": "end", "left": "start", "right": "end", "top": "start",
+              "bottom": "end", "middle": "center", "fill": "stretch"},
+}
 WRAP_ALIASES = {"balanced": "balance", "even": "balance", "wrap": "greedy", "normal": "greedy", "auto": "greedy",
                 "stable": "greedy", "no-runts": "pretty", "avoid-runts": "pretty", "no-orphans": "pretty"}
 # CSS text-transform values and the usual guesses for them.
@@ -234,8 +256,10 @@ TEXT_TRANSFORMS = {
     **{key: "uppercase" for key in ("uppercase", "upper", "caps", "all-caps", "allcaps", "upper-case")},
     **{key: "lowercase" for key in ("lowercase", "lower", "lower-case")},
     **{key: "capitalize" for key in ("capitalize", "capitalise", "title", "title-case", "titlecase")},
+    **{key: "small-caps" for key in ("small-caps", "smallcaps", "small-capitals", "smcp")},
     **{key: "none" for key in ("none", "normal", "as-is", "original")},
 }
+SPAN_ALIASES = {"smallcaps": "small_caps", "small_capitals": "small_caps"}
 GEOMETRY_TYPES = {
     "qr",
     "barcode",
@@ -257,15 +281,35 @@ GEOMETRY_TYPES = {
     "chart",
     "table",
     "organic",
+    "asset-place",
 }
 CENTER_TYPES = {
     "solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field", "link", "chart", "organic", "qr",
-    "barcode",
+    "barcode", "asset-place",
 }
 
 
 def _snake(key):
     return re.sub(r"(?<=[a-z0-9])([A-Z])", r"_\1", key).lower().replace("-", "_")
+
+
+# Short names a roll's locks accept for direction fields.
+LOCK_ALIASES = {"accents": "accent_count"}
+
+
+def roll_locks(locks):
+    """A roll's locks with the short names (``accents: 2``) spelled as their direction fields (``accent_count``),
+    and a count given as text (``--lock accents=2``) as a number."""
+    result = dict(locks or {})
+    for alias, field in LOCK_ALIASES.items():
+        if alias in result:
+            value = result.pop(alias)
+            require(result.get(field, value) == value, f"locks.{alias} and locks.{field} disagree; give one",
+                    field="locks")
+            result[field] = value
+    if isinstance(result.get("accent_count"), str) and result["accent_count"].strip().isdigit():
+        result["accent_count"] = int(result["accent_count"])
+    return result
 
 
 def _canonical_type(kind, known):
@@ -379,6 +423,22 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
         from .forms import normalize as normalize_field
 
         op = normalize_field(op, note)
+    if kind == "stack":
+        for key, values in STACK_VALUES.items():
+            given = op.get(key)
+            if isinstance(given, str) and values.get(given.strip().lower()):
+                op[key] = values[given.strip().lower()]
+                note(f"{key} {given!r} → {op[key]!r}")
+        if isinstance(op.get("wrap"), str) and op["wrap"].strip().lower() in ("wrap", "nowrap", "no-wrap"):
+            given = op["wrap"]
+            op["wrap"] = given.strip().lower() == "wrap"
+            note(f"wrap {given!r} → {op['wrap']}")
+    if kind == "layer-intent" and isinstance(op.get("tags"), list) and "optional" in op["tags"] \
+            and "priority" not in op:
+        # The optional tag was adapt-layout's priority before priority existed.
+        op["tags"] = [tag for tag in op["tags"] if tag != "optional"]
+        op["priority"] = "optional"
+        note("tags ['optional'] → priority: 'optional'")
     if kind == "layer-intent" and "allow_low_contrast" in op and "waive" not in op:
         # The flag agents guess for faint decorative text: a contrast waiver on the layer.
         op["waive"] = ["contrast"] if op.pop("allow_low_contrast") else []
@@ -394,6 +454,21 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
         if isinstance(op.get("accent_words"), str):
             op["accent_words"] = [op["accent_words"]]
             note("accent_words 'word' → ['word']")
+    if kind in ("text", "text-set") and isinstance(op.get("accent_words"), str) and "accent_words" in allowed:
+        op["accent_words"] = [op["accent_words"]]
+        note("accent_words 'word' → ['word']")
+    if kind == "rich-text" and isinstance(op.get("spans"), list):
+        spans = []
+        for number, span in enumerate(op["spans"]):
+            if isinstance(span, dict):
+                span = dict(span)
+                for key in list(span):
+                    canonical = SPAN_ALIASES.get(_snake(key), _snake(key))
+                    if canonical == "small_caps" and key != canonical and canonical not in span:
+                        span[canonical] = span.pop(key)
+                        note(f"spans[{number}].{key} → {canonical}")
+            spans.append(span)
+        op["spans"] = spans
     if kind == "text-layout" and isinstance(op.get("wrap"), str):
         wrap = WRAP_ALIASES.get(op["wrap"].strip().lower(), op["wrap"])
         if wrap != op["wrap"]:
@@ -546,6 +621,17 @@ def _clamped_rgb(value, key, note):
         return value
     note(f"{key} {value!r} has channels outside 0–255; clamped to {clip['to']}")
     return clip["to"]
+
+
+def illustration_alias(op, note):
+    """``outline: false`` on an illustrated form (an organic shape, an ``object-plan`` request) is
+    ``illustration: "plain"``, and ``outline: true`` is ``illustration: "house"``."""
+    if isinstance(op.get("outline"), bool):
+        word = "house" if op["outline"] else "plain"
+        note(f"outline {str(op['outline']).lower()} → illustration: {word!r}")
+        op = {key: value for key, value in op.items() if key != "outline"}
+        op.setdefault("illustration", word)
+    return op
 
 
 def opacity(value, field, note):

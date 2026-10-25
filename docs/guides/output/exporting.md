@@ -69,9 +69,10 @@ vixl -p flyer.vixl export flyer.pdf --cmyk --icc printer.icc
 
 `printer.icc` is the profile supplied for your actual press/paper. Without an ICC profile,
 CMYK uses a device-naive GCR approximation with optional ink limiting. Documents edit in
-RGBA8 sRGB; CMYK is an export setting, not an editing space. Spot colors and RAW development
-are outside the implementation. A proof image helps assess separations but does not replace
-a printer proof. See [color and print](../finishing/color-and-print.md) for ink limits and simulations.
+RGBA8 sRGB; CMYK is an export setting, not an editing space. Spot-colour (Pantone) inks and RAW
+development are outside the implementation; the one separation Vixl writes is the flat-ink film
+positives of [print-ready art](merch-mockups.md#print-ready-art), for screen printing a design on a
+garment. A proof image helps assess separations but does not replace a printer proof. See [color and print](../finishing/color-and-print.md) for ink limits and simulations.
 
 A document made from a print size exports a PDF page of exactly trim plus bleed on every side, with a
 TrimBox and BleedBox, including when the bleed is a fraction of a pixel (raster PDFs too). Verify the
@@ -142,6 +143,30 @@ checks, render decisions and resume information. To send a set of exports for si
 [proof page](../automation/production.md#proof-pages): one offline HTML file with thumbnails, metadata, findings and
 approve/reject decisions; `vixl diff A B` shows what changed between two exports.
 
+## Package and re-check a delivery
+
+`vixl package` collects the finished exports of a campaign run (`--production out/production.json`) or a set of files
+(`--files "exports/*.png"`) into one zip:
+
+```bash
+vixl package --production out/production.json --source banner.vixl --out delivery.zip --name "{doc}_{row}.{ext}"
+```
+
+Files are named from a template (a name two files would share is refused up front), identical files are packaged once,
+and the outputs a run held for review are listed and left out. The zip carries `manifest.json` (per file: the source
+document and its revision, export settings, check state, SHA-256, dimensions, colour space and the codec, frame rate
+and duration read back from the encoded file), `SHA256SUMS`, the check report and a proof page. It is written atomically
+and never replaces an existing package without `--overwrite`. See
+[delivery packages](../automation/production.md#delivery-packages).
+
+To know later whether an export would come out the same, record it in a render lockfile and verify it:
+`vixl reproduce --write-lock poster.lock.json --export png "jpg:quality=85" mp4`, then
+`vixl reproduce --lock poster.lock.json --export`. PNG, SVG and PDF are compared by their bytes; JPEG, WebP, GIF and
+video by their decoded pixels, because their bytes depend on the encoder; the report gives `byte_identical` and
+`visually_equivalent` separately ([reproduction](../../reference/agent-trust.md#reproduction), and
+[what differs between machines](../automation/ci.md#the-limits-of-exact-reproduction)). Pass the lockfile to `package`
+(`--lock poster.lock.json`) to put the result in the manifest.
+
 ## Python export consistency
 
 `Project.export`, `Project.export_animation`, `export_timeline` and MCP `vixl_export`
@@ -207,7 +232,7 @@ vixl -p copy.vixl import poster.svg
   document registers under the same name (or with the same family and style), then the Google Fonts style from the
   font cache, downloading it when the cache does not have it (`install_fonts=False` in Python keeps the import
   offline). The result's `fonts` says how each registered font was found. A font none of these supplies (an
-  imported file you do not have registered) is drawn with the bundled DejaVu Sans and listed in `warnings`; the
+  imported file you do not have registered) is drawn with the bundled Noto Sans and listed in `warnings`; the
   import does not fail, and importing and registering the font under the same name restores it. Everything except
   the font files round-trips exactly.
 - Importing into a document without layers takes the embedded canvas and resources too, so the result equals the
@@ -283,7 +308,9 @@ found again, in this order:
    family and style the PDF names are looked up in the font cache.
 4. With `install_fonts: true` (CLI `--install-fonts`), a Google Fonts download. Nothing is downloaded by default,
    and with `VIXL_OFFLINE=1` the download is refused and reported as a warning.
-5. A registration of the family in another style, or the bundled DejaVu Sans when the PDF names it.
+5. A registration of the family in another style, or the bundled DejaVu Sans when the PDF names it (an embedded
+   Noto Sans is found in the cache or downloaded and registered, since text in the bundled proofing face counts as
+   type still to choose).
 
 Anything else uses the document's default face, with a warning. The result's `fonts` lists one
 `{source, used, how}` entry per PDF font, where `how` is `mapped`, `registered`, `cache`, `installed` or `default`;

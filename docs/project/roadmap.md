@@ -2,7 +2,7 @@
 
 [Documentation home](../README.md) · [House style decisions](house-style.md) · [Releases](../reference/releases.md) · [Changelog](../../CHANGELOG.md)
 
-This plan ordered the open issues after 0.24.0. Releases 0.25.0 to 0.28.0 have shipped since: the "What … settled"
+This plan ordered the open issues after 0.24.0. Releases 0.25.0 to 0.31.0 have shipped since: the "What … settled"
 sections record what each one settled, and the open work is under Craft and Later. Each issue was rated for **complexity** (C1 a few hours, C2 about a
 day, C3 several days, C4 one to two weeks, C5 several weeks or open-ended) and **payoff** (P1 cosmetic or rare, P2 a
 narrow workflow, P3 a common workflow, P4 changes results for most agents, P5 first impression or correctness of
@@ -13,9 +13,10 @@ The order is a recommendation. Re-rate an issue when it is picked up; move it wh
 
 The [implementation plan](implementation-plan.md) covers every issue open on 2026-10-16, with its status, cause, steps,
 tests and ratings, and a release order across all of them.
-Its steps 0 to 4 are done (housekeeping, release blockers, security and project hygiene, check noise, layout and
+Its steps 0 to 6 are done (housekeeping, release blockers, security and project hygiene, check noise, layout and
 agent cost in 0.28.0; concurrency, structure and rendering speed in 0.29.0, with the speed
-decisions in [render performance](render-performance.md)); step 5, craft, is next.
+decisions in [render performance](render-performance.md); craft, objects and brand packages in 0.31.0, apart from
+the blind craft re-judge); step 7, multi-document automation and hosting, is next.
 
 ## What 0.22.1 settled
 
@@ -123,6 +124,26 @@ capability matrix (#640) and native opaque blending (#585). Showcases and media 
   and worker processes for long timeline exports (#717). #588 is deferred, #584 waits on a parity decision, and
   #591 and #593 are closed with numbers ([render performance](render-performance.md)).
 
+## What 0.31.0 settles
+
+0.31.0 completes steps 5 and 6 of the [implementation plan](implementation-plan.md), except the blind craft re-judge,
+which needs a paid agent run and judges:
+
+- **Craft:** small caps, hanging punctuation, accent words on plain text and the callout, band and labelled-rule
+  containers (#652, #650); four hierarchy findings, a `variations` contact sheet and a craft grader in the agent eval
+  (#649, #656); zero to three rolled accents and palettes weighted by the brief's words (#404, #654); flex and grid
+  stacks, recomposition by default, focal crops and alternative arrangements in `adapt-layout` (#653, #519); fog and
+  nine more motif themes with five catalog shapes (#655, #651); the house illustration finish for organic forms and
+  `object-plan` (#427); Noto Sans as the proofing face, with CJK, Devanagari and Thai drawn from faces already on the
+  machine (#419).
+- **Objects:** build knowledge per kind, the `object` check, the outline policy and `object-plan` (#376, #378, #379,
+  #380).
+- **Brand packages:** image assets in packs, text line anchors and safe arithmetic in templates, and logos by purpose,
+  brand elements, brand styles and `vixl brand init|pack|install` (#530, #529, #436).
+- **Delivery and content:** merch mockups with print areas, finishes and print-ready art (#444), portable character
+  packages in one object library (#521), render lockfiles over every page, frame and export, and deliverable
+  packages (#512, #573).
+
 ## Rules for every release below
 
 - **Pre-release: breaking changes are allowed; note them in the changelog.** Default changes must still pass the
@@ -183,8 +204,8 @@ guides, C2 P2), #404 (accent count, C3 P2), #427 (illustration defaults, after #
 ### Fonts (#191 phase 1 + #419)
 
 Noto Sans, Noto Sans Symbols, Symbols 2 and Math are bundled behind DejaVu Sans, so Latin, Greek, Cyrillic and symbol
-text renders without tofu offline. Still open: making a Noto face the default proofing font instead of DejaVu Sans
-(it changes every default render) and fetching CJK faces on demand (C2 + C4, P3–P4).
+text renders without tofu offline. Noto Sans became the proofing face in 0.31.0, and CJK, Devanagari and Thai text
+draws from a matching face already on the machine; a pinned CJK content pack in VixlPacks is still open (C2, P3).
 Emoji artwork, editable masters, custom packs and destination exports are now implemented; see [Emojis](../guides/text/emojis.md).
 Color emoji font support remains subject to the text engine's font format limits.
 
@@ -192,8 +213,10 @@ Color emoji font support remains subject to the text engine's font format limits
 
 The [craft plan](craft-plan.md) orders the work on the quality of finished pieces that came out of the 2026-10-13
 blind re-judging: composition checks and repair, a finishing pass in the agent loop, typography, components,
-scene effects and tool finish, measured by re-judging the Vixl lane. Every item is built in 0.27.0; none is judged yet,
-which is the open step (`python -m evals.craft_rerun`, [evals/README.md](../../evals/README.md#craft-re-run)).
+scene effects and tool finish, measured by re-judging the Vixl lane. Every item was built in 0.27.0, and the remainders of the craft issues
+(#649 to #656, #404, #419, #427) in 0.31.0; none is judged yet, which is the open step
+(`python -m evals.craft_rerun`, [evals/README.md](../../evals/README.md#craft-re-run)). #648 and #388 close when a
+re-judge is published.
 
 ## Later
 

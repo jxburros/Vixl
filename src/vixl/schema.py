@@ -55,6 +55,12 @@ def field(base, description):
     return {**base, "description": description}
 
 
+HANGING_FIELD = field(B, "Hang punctuation outside the text edge so the letters line up with it: opening quotes, "
+                         "brackets and bullets at the start of left-aligned lines, closing quotes, stops and commas at "
+                         "the end of right-aligned ones (both in centred lines). The hung marks reach past the layer's "
+                         "box, and the bounds checks count them. false removes it.")
+
+
 def gradient_fields():
     """The colour fields of a gradient layer, shared by a shape's ``fill_gradient`` (one definition, so both
     accept the same gradients)."""
@@ -174,10 +180,17 @@ def _operation_schema():
                      "layer: it applies to whatever text the layer holds, including text changed by keyframes and "
                      "${variable} values. Rich-text spans with their own tracking keep it. 0 removes it. Not line "
                      "spacing (that is spacing or line_height)."},
-        "text_transform": {"enum": ["none", "uppercase", "lowercase", "capitalize"],
+        "text_transform": {"enum": ["none", "uppercase", "lowercase", "capitalize", "small-caps"],
                            "description": "Draw the layer's text in this case without changing the stored text "
-                           "(capitalize upper-cases the first letter of each word); applies to text changed by "
-                           "keyframes and ${variable} values too. none removes it."},
+                           "(capitalize upper-cases the first letter of each word; small-caps draws lowercase letters "
+                           "as small capitals, the font's own (OpenType smcp) or synthesized at 0.7 of the size); "
+                           "applies to text changed by keyframes and ${variable} values too. none removes it."},
+        "hanging_punctuation": HANGING_FIELD,
+        "accent_words": {"type": "array", "items": S, "maxItems": 32,
+                         "description": "Words to set in the accent text color (@accent-text): whole words, matched "
+                         "without regard to case. The layer becomes rich text with those spans; words not found are "
+                         "listed in the warnings. Needs the palette roles (palette-apply roles, layout-apply or a "
+                         "rolled direction)."},
         "tabs": {"type": "array", "maxItems": 32,
                  "items": {"type": "object", "properties": {
                      "at": {"type": ["number", "string"], "description": "Stop position in pixels from the text's left "

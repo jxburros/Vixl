@@ -2,6 +2,7 @@
 
 from collections import OrderedDict
 from copy import deepcopy
+from dataclasses import dataclass
 import io
 import math
 from pathlib import Path
@@ -12,7 +13,7 @@ import numpy as np
 from PIL import Image, ImageColor, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 
 from .assets import decode, read_bounded
-from .constants import BLENDS as BLENDS, EFFECTS as EFFECTS
+from .constants import BLENDS as BLENDS, BUNDLED_FONTS, EFFECTS as EFFECTS, PROOFING_FONT
 from .errors import VixlError, require
 from .hashing import content_hash
 from .model import MAX_LAYERS, finite
@@ -80,16 +81,14 @@ def color(value):
 def font_for(project, layer):
     size = int(layer.get("size", 48))
     require(1 <= size <= 4096, "Font size must be 1–4096")
-    font = layer.get("font", "DejaVuSans.ttf")
+    font = layer.get("font", PROOFING_FONT)
     font = project.state.get("fonts", {}).get(font, font)
     try:
         if font in project.assets:
             return ImageFont.truetype(io.BytesIO(project.assets[font]), size)
         # Only explicitly imported fonts or Pillow's bundled/system font lookup, never project paths.
         require("/" not in font and "\\" not in font, "Import custom fonts with text --font FILE")
-        return ImageFont.truetype(
-            str(Path(__file__).parent / "data" / font) if font == "DejaVuSans.ttf" else font, size
-        )
+        return ImageFont.truetype(str(Path(__file__).parent / "data" / font) if font in BUNDLED_FONTS else font, size)
     except OSError as exc:
         raise missing_font(project, layer.get("font", font)) from exc
 
@@ -102,29 +101,29 @@ def missing_font(project, name):
     return VixlError(
         "missing_font",
         f"Font {name!r} not found. Registered fonts: {known}. Install one with "
-        "vixl font install FAMILY --weight N or vixl font pair NAME, or import a font file; "
-        "DejaVuSans.ttf is the proofing fallback.",
+        f"vixl font install FAMILY --weight N or vixl font pair NAME, or import a font file; "
+        f"{PROOFING_FONT} is the proofing fallback.",
         field="font",
-        allowed=[*roles, *fonts, "DejaVuSans.ttf"],
+        allowed=[*roles, *fonts, PROOFING_FONT],
     )
 
 
 def resolve_font(project, name):
     """A text layer's stored font and role for a requested font name, role or file."""
     if name is None:
-        return "DejaVuSans.ttf", None
+        return PROOFING_FONT, None
     from .type_roles import is_role, role_font
 
     fonts = project.state.get("fonts", {})
     role = None
     if is_role(project, name):
         # A role or text stage uses the proofing fallback until the document typography sets it.
-        role, name = name, role_font(project, name) or "DejaVuSans.ttf"
-        if name == "DejaVuSans.ttf":
+        role, name = name, role_font(project, name) or PROOFING_FONT
+        if name == PROOFING_FONT:
             from .notices import warn
 
             warn(project, f"font role {role!r} has no typeface in this document, so text uses the bundled proofing "
-                          "font (DejaVu Sans); choose type with vixl_reference('fonts') then font-pair (or font-install)")
+                          "font (Noto Sans); choose type with vixl_reference('fonts') then font-pair (or font-install)")
     font = fonts.get(name, name)
     if font not in project.assets and Path(font).is_file():
         from .assets import read_bounded
@@ -132,7 +131,7 @@ def resolve_font(project, name):
         data = read_bounded(font, project.limits.max_asset_bytes)
         font = f"fonts/{hashlib.sha256(data).hexdigest()}.ttf"
         project.assets[font] = data
-    if font in project.assets or font == "DejaVuSans.ttf":
+    if font in project.assets or font in BUNDLED_FONTS:
         return font, role
     try:
         ImageFont.truetype(font, 12)
@@ -389,13 +388,63 @@ def _resolved_layers(project, variables=None, subset=None):
         project.limits.size(layer["width"], layer["height"], vector=True)
     from .stacks import collapse
 
-    collapse(layers)
+    collapse(layers, project)
     from .vector_paths import attach_ancestors
     attach_ancestors(layers)
     return layers
 
 
-CONSTRAINT_REF = re.compile(r"(.+)\.(?:left|right|top|bottom|center-x|center-y)(?:[+-]\d+(?:\.\d+)?)?")
+# A constraint expression: REF.ANCHOR plus an optional offset. ANCHOR is a box edge or centre, or on a text layer a
+# line's pen start or end (``line[-1].end``) or a line's baseline (``baseline[0]``); the offset is pixels, or ``em``
+# of the referenced text's drawn size. The first group is always the reference.
+CONSTRAINT_REF = re.compile(
+    r"(.+?)\.(?:(left|right|top|bottom|center-x|center-y)|line\[(-?\d{1,4})\]\.(start|end)|baseline\[(-?\d{1,4})\])"
+    r"(?:\s*([+-])\s*(\d+(?:\.\d+)?|\.\d+)\s*(px|em)?)?")
+BOX_ANCHORS = ("left", "right", "top", "bottom", "center-x", "center-y")
+HORIZONTAL_ANCHORS = ("left", "right", "center-x")
+
+
+@dataclass(frozen=True)
+class ConstraintRef:
+    """One parsed constraint expression (``parse_constraint``)."""
+
+    ref: str
+    anchor: str  # a box anchor, or "line-start", "line-end", "baseline"
+    line: int | None = None
+    offset: float = 0.0
+    unit: str = "px"
+
+    @property
+    def horizontal(self):
+        return self.anchor in HORIZONTAL_ANCHORS or self.anchor in ("line-start", "line-end")
+
+    def text(self, ref=None, number=None):
+        """The canonical spelling (``ref`` replaces the reference, e.g. a name with its stable ID; ``number`` is
+        the offset already formatted). The offset keeps its full precision."""
+        if self.anchor in BOX_ANCHORS:
+            where = self.anchor
+        elif self.anchor == "baseline":
+            where = f"baseline[{self.line}]"
+        else:
+            where = f"line[{self.line}].{self.anchor[5:]}"
+        if number is None and self.offset:
+            number = f"{int(self.offset):+d}" if float(self.offset).is_integer() else f"{self.offset:+}"
+        unit = "em" if self.unit == "em" and number else ""
+        return f"{ref or self.ref}.{where}{number or ''}{unit}"
+
+
+def parse_constraint(expression):
+    """A ``ConstraintRef`` for a constraint expression string, else None."""
+    match = CONSTRAINT_REF.fullmatch(expression.strip()) if isinstance(expression, str) else None
+    if match is None:
+        return None
+    ref, box, line, side, baseline, sign, number, unit = match.groups()
+    offset = float(number) * (-1 if sign == "-" else 1) if number else 0.0
+    if box:
+        return ConstraintRef(ref, box, None, offset, unit or "px")
+    if side:
+        return ConstraintRef(ref, f"line-{side}", int(line), offset, unit or "px")
+    return ConstraintRef(ref, "baseline", int(baseline), offset, unit or "px")
 
 
 def layer_box(project, layer):
@@ -417,11 +466,11 @@ def layer_box(project, layer):
             return resolve_layout(project)[layer["id"]]
         refs = []
         for expression in item.get("constraints", {}).values():
-            match = CONSTRAINT_REF.fullmatch(expression) if isinstance(expression, str) else None
-            if match is None or match[1].startswith("guide:"):
+            parsed = parse_constraint(expression)
+            if parsed is None or parsed.ref.startswith("guide:"):
                 continue
-            if match[1] != "canvas":
-                refs.append(match[1])
+            if parsed.ref != "canvas":
+                refs.append(parsed.ref)
             elif item.get("parent"):
                 refs.append(item["parent"])  # canvas.* inside a group is the parent's content box.
         if item["type"] == "symbol":
@@ -443,23 +492,29 @@ def resolve_layout(project, variables=None, layers=None):
     bounds = {"canvas": (0, 0, canvas["width"], canvas["height"])}
     index = {key: layer for layer in layers for key in (layer["id"], layer["name"])}
     visiting = set()
+    lines = {}
 
     def edge(expression):
         if isinstance(expression, (int, float)):
             return finite(expression)
-        match = re.fullmatch(
-            r"(.+)\.(left|right|top|bottom|center-x|center-y)([+-]\d+(?:\.\d+)?)?", expression
-        )
-        require(match, f"Invalid constraint expression: {expression}")
-        ref, anchor, offset = match.groups()
+        parsed = parse_constraint(expression)
+        require(parsed, f"Invalid constraint expression: {expression}")
+        ref, anchor = parsed.ref, parsed.anchor
+        offset = parsed.offset
+        if parsed.unit == "em":
+            offset *= text_size(ref, expression)
         if ref.startswith("guide:"):
+            require(anchor in BOX_ANCHORS, f"{expression}: guides take box anchors (left, center-x …)",
+                    "invalid_constraint")
             guide = project.state.get("guides", {}).get(ref[6:])
             require(guide is not None, f"Unknown guide: {ref}")
             from .guides import resolve_constraint
 
-            return resolve_constraint(guide, anchor, ref) + float(offset or 0)
+            return resolve_constraint(guide, anchor, ref) + offset
         b = bounds["canvas"] if ref == "canvas" else solve(ref)
         x, y, w, h = b
+        if anchor not in BOX_ANCHORS:
+            return line_edge(ref, parsed, x, y, expression) + offset
         return {
             "left": x,
             "right": x + w,
@@ -467,7 +522,39 @@ def resolve_layout(project, variables=None, layers=None):
             "bottom": y + h,
             "center-x": x + w / 2,
             "center-y": y + h / 2,
-        }[anchor] + float(offset or 0)
+        }[anchor] + offset
+
+    def text_layer(ref, expression):
+        layer = index.get(ref)
+        require(layer is not None and layer["type"] == "text", f"{expression}: line, baseline and em refs name a "
+                f"text layer; {ref!r} is {'a ' + layer['type'] + ' layer' if layer else 'not a layer'}",
+                "invalid_constraint", field="constraints")
+        return layer
+
+    def text_size(ref, expression):
+        layer = text_layer(ref, expression)
+        if (layer.get("text_layout") or {}).get("fit"):
+            from .text import plan
+
+            return plan(project, layer).size
+        return layer["size"]
+
+    def line_edge(ref, parsed, x, y, expression):
+        layer = text_layer(ref, expression)
+        require(not layer.get("rotation", 0) % 360 and not layer.get("skew_x") and not layer.get("skew_y"),
+                f"{expression}: {layer['name']!r} is rotated or skewed; line and baseline refs need upright text",
+                "invalid_constraint", field="constraints")
+        key = layer["id"]
+        if key not in lines:
+            from .text import line_edges
+
+            lines[key] = line_edges(project, layer)
+        found = lines[key]
+        require(found and -len(found) <= parsed.line < len(found),
+                f"{expression}: {layer['name']!r} has {len(found)} line(s); use line[0] to line[{len(found) - 1}] "
+                "or count from the end with line[-1]", "invalid_constraint", field="constraints")
+        start, end, baseline = found[parsed.line]
+        return {"line-start": x + start, "line-end": x + end, "baseline": y + baseline}[parsed.anchor]
 
     def solve(ref):
         require(ref in index, f"Unknown constraint target: {ref}")

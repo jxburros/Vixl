@@ -244,6 +244,19 @@ def test_font_from_the_cache_is_reused_without_a_warning_or_network(tmp_path, mo
     assert target.head == head and not target.state["layers"] and not target.state.get("fonts")
 
 
+def test_a_cached_face_is_registered_before_rotated_text_is_measured(tmp_path, monkeypatch):
+    # Rotated text is measured in a scratch copy to place its anchor; the face it names must be registered there too.
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    (cache / "noto-sans-400.ttf").write_bytes(NOTO.read_bytes())
+    monkeypatch.setenv("VIXL_FONT_CACHE", str(cache))
+    restored = Project(10, 10)
+    result = import_document(restored, poster().export(format="PDF"), "pdf")
+    assert {"source": "NotoSans-Regular", "used": "noto-sans-400", "how": "cache"} in result["fonts"]
+    tilt = next(x for x in restored.state["layers"] if x["type"] == "text" and x["text"] == "Free entry")
+    assert tilt["font"] == restored.state["fonts"]["noto-sans-400"] and abs(tilt["rotation"] % 360 - 348) < 0.01
+
+
 def test_same_face_already_embedded_in_the_document_is_reused(tmp_path, monkeypatch):
     from vixl.fonts import register_font_data
 

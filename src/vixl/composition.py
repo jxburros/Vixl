@@ -1,6 +1,6 @@
 """The ``composition`` check family: spacing, rhythm and alignment defects a reader sees as "not designed".
 
-Five kinds of finding, each a ``review`` warning with a stable ``code``:
+Nine kinds of finding, each a ``review`` warning with a stable ``code``:
 
 - ``dead_band``: an empty horizontal band between content blocks, or between content and an edge, that is
   much larger than the document's own gaps (from ``spatial``'s free rectangles); a hole of 30-70% of the frame
@@ -13,7 +13,17 @@ Five kinds of finding, each a ``review`` warning with a stable ``code``:
   other kinds;
 - ``crowding``: a rule, band or heading closer to the text below it than half a spacing unit;
 - ``clumped_scatter``: a scatter (``pattern-scatter``, ``scatter``) whose motifs bunch in some cells of the
-  tile and leave others empty.
+  tile and leave others empty;
+- ``flat_hierarchy``: two or more text blocks whose largest size is under about 1.6 times the body size, so the
+  type has no clear steps;
+- ``single_weight``: three or more text blocks set in one face and one weight (no bold, no second face);
+- ``no_focal``: the two heaviest blocks (size, contrast and area) within 15% of each other, so the eye has two
+  places to start and no first one;
+- ``accent_unused``: the page is built on the document's palette, whose rolled accent (or second or third accent,
+  when the direction rolled two or three) no visible layer uses.
+
+The last four are judgement calls about hierarchy, not geometry: they carry suggestions in the repair plugin's
+output and no automatic repair.
 
 Distances are measured in the craft spacing unit (half the body size, ``craft.spacing_unit``). Backgrounds,
 glows that fade out and the insides of charts, scatters and repeats are not blocks; layers marked
@@ -28,7 +38,11 @@ import re
 from bisect import bisect_left, bisect_right
 from statistics import median
 
-CODES = ("dead_band", "margin_drift", "uneven_rhythm", "crowding", "clumped_scatter")
+CODES = ("dead_band", "margin_drift", "uneven_rhythm", "crowding", "clumped_scatter", "flat_hierarchy",
+         "single_weight", "no_focal", "accent_unused")
+# Codes whose measure is a ratio (the rest are pixels, or a count for single_weight and accent_unused).
+RATIO_CODES = ("clumped_scatter", "uneven_rhythm", "flat_hierarchy", "no_focal")
+COUNT_CODES = ("single_weight", "accent_unused")
 
 # Tuned on evals/craft_backtest (see its README for the catches and false findings at these values).
 THRESHOLDS = {
@@ -66,6 +80,21 @@ THRESHOLDS = {
     # Clumped scatter: the coefficient of variation of motif coverage over the tile's cells.
     "scatter_cv": 0.6,
     "scatter_min_items": 8,
+    # Flat hierarchy: the largest text over the body size, with at least this many text blocks.
+    "hierarchy_ratio": 1.6,
+    "hierarchy_min_blocks": 2,
+    # Single weight: this many text blocks, all in one face and weight.
+    "weight_min_blocks": 3,
+    # No focal point: the heaviest block must outweigh the next by this share, among at least this many blocks;
+    # a series of three or more equals (a list, a grid of cards) is a rhythm, not a rivalry. A page whose
+    # non-text art covers more than this share of the canvas is judged by that art, not by its type.
+    "focal_margin": 0.15,
+    "focal_min_blocks": 3,
+    "focal_art_share": 0.08,
+    # A line of type weighs size² × this many characters at most (longer copy is texture, not mass).
+    "focal_chars": 40,
+    # Accent unused: this many blocks, so a bare note is not asked to carry an accent.
+    "accent_min_blocks": 3,
 }
 
 # A signed value or a share set beside its data (a bar's "−9", "+6", "38%"): placed by the data, not by a margin.
@@ -285,7 +314,7 @@ def geometry_boxes(project):
 
     resolved = {item["id"]: item for item in resolved_layers(project)}
     local = resolve_layout(project, layers=list(resolved.values()))
-    return resolved, canvas_projection(resolved, local)["geometry_bounds"]
+    return resolved, canvas_projection(resolved, local, project)["geometry_bounds"]
 
 
 def frame_of(block, grounds):
@@ -757,6 +786,282 @@ def clumped_scatter(candidate, resolved, geometry, scatters, emit):
              threshold={"max_cv": t["scatter_cv"]})
 
 
+def _monogram(block, resolved):
+    """Initials set in a mark (up to three letters inside a badge or disc) are part of the mark, not a line of
+    type; a figure such as 94% in a panel is."""
+    if block.kind != "text" or block.container is None:
+        return False
+    text = str(resolved[block.item["id"]].get("text", "")).strip()
+    return 0 < len(text) <= 3 and text.isalpha()
+
+
+def _type_blocks(blocks, resolved):
+    """The text blocks that carry copy: not marked decoration, not a monogram, with a size."""
+    return [b for b in blocks if b.kind == "text" and not b.decoration and b.size and not _monogram(b, resolved)]
+
+
+def _top_size(block, resolved):
+    """The largest size a text block draws: its own, or a larger one set on a rich-text span."""
+    size = float(block.size)
+    rich = resolved[block.item["id"]].get("rich")
+    for span in (rich or {}).get("spans", []):
+        value = span.get("size")
+        if isinstance(value, (int, float)) and not isinstance(value, bool) and str(span.get("text", "")).strip():
+            size = max(size, float(value))
+    return size
+
+
+def flat_hierarchy(blocks, resolved, body, emit):
+    """The largest text is under ``hierarchy_ratio`` times the document's body size."""
+    t = THRESHOLDS
+    texts = _type_blocks(blocks, resolved)
+    if len(texts) < t["hierarchy_min_blocks"]:
+        return
+    sizes = {id(b): _top_size(b, resolved) for b in texts}
+    ranked = sorted(texts, key=lambda b: -sizes[id(b)])
+    biggest = sizes[id(ranked[0])]
+    # The largest lines each in a card of their own (name badges, a row of cards) are a series, not a rivalry.
+    top = [b for b in texts if sizes[id(b)] >= 0.95 * biggest]
+    if len(top) > 1 and all(b.container is not None for b in top) and len({id(b.container) for b in top}) == len(top):
+        return
+    ratio = biggest / body
+    if ratio >= t["hierarchy_ratio"]:
+        return
+    raise_to = math.ceil(2 * body)
+    emit("flat_hierarchy", f"The type has no clear steps: the largest text, {ranked[0].item['name']!r} "
+         f"({biggest:g} px), is only {ratio:.2f} times the body size ({body:g} px) across {len(texts)} text "
+         f"blocks. Give the headline a step of its own (about {raise_to} px, twice the body size) and keep the "
+         "supporting lines at one size",
+         ranked[:4], _union([b.box for b in texts]), actual=round(ratio, 2), expected=t["hierarchy_ratio"],
+         values={"largest": round(biggest, 1), "body": body, "ratio": round(ratio, 2), "blocks": len(texts),
+                 "raise_to": raise_to, "headline_id": ranked[0].item["id"]},
+         threshold={"min_ratio": t["hierarchy_ratio"], "min_blocks": t["hierarchy_min_blocks"]})
+
+
+def _faces(candidate, resolved, texts):
+    """``(faces, styled)``: the ``(family, weight, italic)`` of every face the texts draw, and whether any rich-text
+    span asks for bold or italic; None when the faces cannot be told apart (the proofing fallback, which the
+    fonts check reports, or two registered names that share one font file, as an offline stand-in does)."""
+    from .checks import FALLBACK_FONT
+    from .constants import BUNDLED_FONTS
+    from .errors import VixlError
+    from .richtext import active, fonts_used
+    from .text import font_style, primary_font_data
+
+    typography = candidate.state.get("typography") or {}
+    registered = candidate.state.get("fonts") or {}
+    names = {name for name in typography.values() if name}
+    if len(names) > len({registered.get(name, name) for name in names}):
+        return None
+    faces, styled = set(), False
+    for block in texts:
+        layer = resolved[block.item["id"]]
+        for key in fonts_used(layer, FALLBACK_FONT):
+            if key in BUNDLED_FONTS:
+                return None
+            try:
+                faces.add(font_style(primary_font_data(candidate, {"font": key, "size": 48})))
+            except (VixlError, OSError):
+                return None
+        if active(layer) and any(span.get("bold") or span.get("italic") for span in layer["rich"]["spans"]):
+            styled = True
+    return faces, styled
+
+
+def single_weight(candidate, blocks, resolved, emit):
+    t = THRESHOLDS
+    texts = _type_blocks(blocks, resolved)
+    if len(texts) < t["weight_min_blocks"]:
+        return
+    found = _faces(candidate, resolved, texts)
+    if found is None or found[1] or len(found[0]) != 1:
+        return
+    ((family, weight, italic),) = found[0]
+    face = f"{family} {weight}" + (" italic" if italic else "")
+    emit("single_weight", f"All {len(texts)} text blocks are set in one face and one weight ({face}): size is the "
+         "only contrast the type has. Set the headline in a heavier weight or the heading face, and keep the body "
+         "in a regular weight",
+         texts[:4], _union([b.box for b in texts]), actual=1, expected=2,
+         values={"face": face, "family": family, "weight": weight, "blocks": len(texts)},
+         threshold={"min_weights": 2, "min_blocks": t["weight_min_blocks"]})
+
+
+def _ground_colour(candidate, resolved, geometry, block):
+    """The flat colour a block is read against: the topmost opaque solid, shape or gradient beneath it that
+    contains its centre, else the canvas. None when it is unreadable."""
+    from .colors import parse
+    from .errors import VixlError
+
+    order = list(resolved)
+    centre = (block.center, block.top + block.box[3] / 2)
+    for ident in reversed(order[:order.index(block.item["id"])]):
+        layer = resolved[ident]
+        if layer["type"] not in ("shape", "solid", "gradient") or not layer.get("visible", True) or layer.get(
+                "opacity", 1) < 0.5:
+            continue
+        box = geometry.get(ident)
+        if box is None or not (box[0] <= centre[0] <= box[0] + box[2] and box[1] <= centre[1] <= box[1] + box[3]):
+            continue
+        stops = layer.get("stops") or []
+        paint = layer.get("fill") or layer.get("color") or (stops[0].get("color") if stops else layer.get("start"))
+        try:
+            rgba = parse(paint) if isinstance(paint, str) else None
+        except VixlError:
+            return None
+        if rgba is not None and rgba[3] >= 0.5:
+            return rgba[:3]
+    try:
+        rgba = parse(candidate.state["canvas"].get("background") or "white")
+    except VixlError:
+        return None
+    return rgba[:3] if rgba[3] >= 0.5 else (1.0, 1.0, 1.0)
+
+
+def _ink_contrast(candidate, resolved, geometry, block):
+    """How much a text block stands out from what it sits on, 0.15-1: its colour against its ground, the WCAG
+    ratio scaled so 7:1 and above weigh in full. Unreadable colours weigh in full."""
+    from .colors import contrast_ratio, parse
+    from .errors import VixlError
+
+    ground = _ground_colour(candidate, resolved, geometry, block)
+    try:
+        ink = parse(resolved[block.item["id"]]["color"])
+    except (VixlError, KeyError, TypeError):
+        return 1.0
+    if ground is None:
+        return 1.0
+    return max(0.15, min(1.0, (contrast_ratio(ink[:3], ground) - 1) / 6))
+
+
+def no_focal(candidate, blocks, resolved, geometry, width, height, emit):
+    """The two heaviest blocks of a page of type and pictures weigh about the same. A block of type weighs half its
+    size squared times its length (the square root of its characters, up to a line of ``focal_chars``, so a longer
+    line does not outweigh a larger one) times its size over the body size (the larger type is seen first) times
+    its contrast; a picture weighs its area. Three or more equals are a series, and a page whose non-text art
+    covers a share of the canvas is judged by that art."""
+    from .craft import body_size
+
+    t = THRESHOLDS
+    body = body_size(candidate)
+    judged = _type_blocks(blocks, resolved) + [b for b in blocks if b.kind == "image" and not b.decoration]
+    if len(judged) < t["focal_min_blocks"]:
+        return
+    holders = {id(b.container) for b in blocks if b.container is not None}
+    art = sum(b.box[2] * b.box[3] for b in blocks if b.kind not in ("text", "image", "rule", "band")
+              and id(b) not in holders)
+    if art > t["focal_art_share"] * width * height:
+        return
+
+    def mass(block):
+        if block.kind == "image":
+            return block.box[2] * block.box[3]
+        chars = min(len(str(resolved[block.item["id"]].get("text", "")).strip()), t["focal_chars"])
+        size = _top_size(block, resolved)
+        return 0.5 * size ** 2 * math.sqrt(chars * t["focal_chars"]) * (size / body)
+
+    # Contrast (a lookup under each block) is read for the heaviest few only: it can only lower a weight.
+    raw = sorted(((mass(b), b) for b in judged), key=lambda entry: -entry[0])
+    ranked = sorted([(w * _ink_contrast(candidate, resolved, geometry, b) if b.kind == "text" else w, b)
+                     for w, b in raw[:8]] + raw[8:], key=lambda entry: -entry[0])
+    first, second = ranked[0][0], ranked[1][0]
+    equal = 1 - t["focal_margin"]
+    if first <= 0 or second < equal * first or (len(ranked) > 2 and ranked[2][0] >= equal * second):
+        return
+    pair = [ranked[0][1], ranked[1][1]]
+    emit("no_focal", f"{pair[0].item['name']!r} and {pair[1].item['name']!r} weigh about the same "
+         f"({second / first:.0%} of each other by size, contrast and area), so the eye has two places to start and "
+         "no first one. Let one lead: enlarge it, set it in a heavier weight or a stronger contrast, or quiet the other",
+         pair, _union([b.box for b in pair]), actual=round(second / first, 3), expected=round(equal, 2),
+         values={"weights": [round(first), round(second)], "ids": [b.item["id"] for b in pair],
+                 "blocks": len(judged)},
+         threshold={"max_share": equal, "min_blocks": t["focal_min_blocks"]})
+
+
+def _mentions(value, pattern):
+    if isinstance(value, str):
+        return bool(pattern.search(value))
+    if isinstance(value, dict):
+        return any(_mentions(v, pattern) for k, v in value.items() if k not in ("text", "name", "id"))
+    if isinstance(value, (list, tuple)):
+        return any(_mentions(v, pattern) for v in value)
+    return False
+
+
+def _reference(names):
+    return re.compile(r"@(?:" + "|".join(re.escape(name) for name in names) + r")(?![\w-])") if names else None
+
+
+EXTRA_ACCENTS = ("accent-2", "accent-3")
+
+
+def _accent_missing(state, resolved, ancestors, swatches, names):
+    """Whether the page is on the document's palette (a visible layer takes one of its colours) and draws none of
+    the swatches ``names`` (nor their colours, nor on the canvas)."""
+    from .design import resolve_color
+
+    others = [name for name in swatches if name not in names]
+    accent_ref, other_ref = _reference(names), _reference(others)
+    values = {"accent": set(), "other": set()}
+    for name in swatches:
+        try:
+            values["accent" if name in names else "other"].add(str(resolve_color(f"@{name}", state)).lower())
+        except Exception:  # noqa: BLE001 - an unreadable swatch cannot be matched by value
+            continue
+    # Pure white and black turn up in every palette and every page: they do not say the page is on this one.
+    values["other"] -= values["accent"] | {"#ffffff", "#000000", "white", "black"}
+    if _mentions(state["canvas"], accent_ref) or str(state["canvas"].get("background", "")).lower() in values["accent"]:
+        return False
+    stored = {layer["id"]: layer for layer in state["layers"]}
+    on_palette = False
+    for ident, item in resolved.items():
+        if not all(x["visible"] and x["opacity"] > 0 for x in (item, *ancestors(item))):
+            continue
+        blob = str({k: v for k, v in item.items() if k not in ("text", "name", "id")}).lower()
+        if _mentions(stored.get(ident, {}), accent_ref) or any(colour in blob for colour in values["accent"]):
+            return False
+        on_palette = on_palette or (other_ref is not None and _mentions(stored.get(ident, {}), other_ref)) or any(
+            colour in blob for colour in values["other"])
+    return on_palette
+
+
+def accent_unused(candidate, blocks, resolved, ancestors, width, height, emit):
+    """The page is built on the document's palette (a visible layer takes one of its colours) and an accent the
+    rolled direction chose is drawn nowhere: no visible layer, nor the canvas, takes ``@accent`` or
+    ``@accent-text`` or their colours. The second and third accents of a direction with two or three
+    (``@accent-2``, ``@accent-3``: their layout adds them only where it draws them) are judged the same way; a
+    direction with no accent (``accent_count`` 0) is not. A page in its own colours, whatever the document rolled,
+    is not judged."""
+    t = THRESHOLDS
+    state = candidate.state
+    direction = (state.get("design_defaults") or {}).get("direction") or {}
+    swatches = state.get("swatches") or {}
+    # A layout records the accents it applied (one, unless it says otherwise); the stored direction is the roll made
+    # when the document was created, which a later seeded roll or layout replaces.
+    layout = state.get("layout") or {}
+    count = (layout.get("accents") or {}).get("count", 1) if layout.get("name") else direction.get("accent_count")
+    if count == 0:
+        return
+    style = direction.get("accent")
+    roles = (["accent"] if style and style != "none" and "accent" in swatches else []) + [
+        role for role in EXTRA_ACCENTS if role in swatches]
+    if not roles or sum(1 for b in blocks if not b.decoration) < t["accent_min_blocks"]:
+        return
+    for role in roles:
+        if not _accent_missing(state, resolved, ancestors, swatches, (role, f"{role}-text")):
+            continue
+        what = f"its accent ({style}, {swatches[role]})" if role == "accent" else (
+            f"its {'second' if role == 'accent-2' else 'third'} accent (@{role}, {swatches[role]})")
+        advice = ("it reads as one colour. Apply @accent to the one element that should be found first "
+                  "(the call to action, a rule, the key word), or waive this if the page is meant to be monochrome"
+                  if role == "accent" else
+                  f"the direction rolled more accents than the page shows. Apply @{role} to a secondary element (a "
+                  f"rule, a label in @{role}-text, a marker), or waive this if the page is meant to have fewer accents")
+        emit("accent_unused", f"The page is built on the document's palette and {what} is drawn nowhere: {advice}",
+             [], (0.0, 0.0, float(width), float(height)), actual=0, expected=1,
+             values={"accent": swatches[role], **({"style": style} if role == "accent" else {"role": role})},
+             threshold={"min_layers": 1, "min_blocks": t["accent_min_blocks"]})
+
+
 def check(candidate, resolved, geometry, content, role, ancestors, issue, local_bounds=None):
     """Run the composition family on a check_design candidate, reporting through ``issue``. With the candidate's
     ``local_bounds`` (layout boxes), text is measured from the top to the bottom of its glyphs."""
@@ -779,7 +1084,7 @@ def check(candidate, resolved, geometry, content, role, ancestors, issue, local_
         pending.append((code, message, items, {
             "code": code, "action": "review", "region": _round(region),
             "measured": {"actual": actual, "expected": expected,
-                         "unit": "ratio" if code in ("clumped_scatter", "uneven_rhythm") else "px"},
+                         "unit": "ratio" if code in RATIO_CODES else "count" if code in COUNT_CODES else "px"},
             "values": values, "threshold": threshold, "spacing_unit": unit}))
 
     dead_bands(blocks, grounds, unit, width, height, emit)
@@ -788,6 +1093,10 @@ def check(candidate, resolved, geometry, content, role, ancestors, issue, local_
     floating(blocks, unit, emit, [entry[3]["region"] for entry in pending if entry[0] == "dead_band"])
     crowding(blocks, unit, emit)
     clumped_scatter(candidate, resolved, geometry, scatters, emit)
+    flat_hierarchy(blocks, resolved, body_size(candidate), emit)
+    single_weight(candidate, blocks, resolved, emit)
+    no_focal(candidate, blocks, resolved, geometry, width, height, emit)
+    accent_unused(candidate, blocks, resolved, ancestors, width, height, emit)
     # A page of scattered labels can drift in hundreds of pairs: report the first few of each kind and count
     # the rest on the last one, so the findings stay readable.
     for code in CODES:

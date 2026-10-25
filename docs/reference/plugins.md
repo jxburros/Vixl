@@ -46,6 +46,14 @@ and checked by SHA-256. Small indexes that the core needs to answer queries offl
 catalog, stay in `src/vixl/data/`. The built-in packs are `emojis` (the artwork) and `fonts` (third-party fonts the
 examples use, named like the font cache); the fallback fonts that make text render offline ship in the package.
 
+`cjk` has a seam but no published pack yet. Text whose CJK, Devanagari or Thai characters no document font covers
+draws them from a face already on the machine: `vixl.packs.local("cjk")` (the `VIXL_CJK_PACK` override: a font
+file, or a zip of files named like the font cache, `noto-sans-sc-400.ttf`), then the font cache
+(`typefaces.local_script_faces`). Rendering never downloads a pack. To publish one, commit a zip of the Noto Sans
+SC, TC, JP and KR regular styles under those names (OFL, with its licence) to VixlPacks and add a `PACKS["cjk"]`
+entry with the commit, SHA-256 and size, in the shape the `vixl.packs` docstring shows; `vixl.packs.install("cjk")`
+then fetches it once and the render path finds it in the pack directory.
+
 ### Grey areas
 
 - **It needs a hook point that does not exist yet.** Add the hook point to `vixl.plugins.HOOKS` with its call
@@ -110,15 +118,15 @@ examples use, named like the font cache); the fallback fonts that make text rend
 | `comics` (Comics) | operations | Comic pages: ordered panels, gutters, artwork slots, captions and dialogue. | `comic-layout` |
 | `atmosphere` (Atmosphere) | operations | Reflection, haze, star-field, string-lights and bokeh, each one operation. | `bokeh`, `haze`, `reflection`, `star-field`, `string-lights` |
 | `organic` (Organic shapes) | operations | Composable organic shapes: generators, growth rules and presets for living things. | `organic`, `organic-catalog` |
-| `characters` (Characters) | operations | Standard-part characters with planar rigs, poses and retargetable walk, idle and other cycles. | `character`, `character-cycle`, `character-ik`, `character-lipsync`, `character-load`, `character-pose`, `character-rig`, `character-save` |
+| `characters` (Characters) | operations | Standard-part characters with planar rigs, poses and retargetable walk, idle and other cycles, shared as .vixlchar packages with named expressions, poses and motions. | `character`, `character-cycle`, `character-ik`, `character-lipsync`, `character-load`, `character-pose`, `character-rig`, `character-save`, `character-discover`, `character-inspect`, `character-package`, `character-place` |
 | `fontmaker` (Font maker) | operations | Design a font in a document (metrics, glyph grid, kerning) and export TTF, OTF, WOFF and WOFF2. | `font-build`, `font-design`, `font-glyph`, `font-grid` |
 | `film` (Film) | workflows | Assemble scenes and shots into MP4, WebM, GIF or WebP films; sample video and analyze audio. | `audio-analyze`, `film-export`, `film-plan`, `film-preview`, `video-sample` |
 | `lyrics` (Lyric videos) | workflows | Synced lyric videos from audio, an LRC file and a styled template document. | `lyric-video-build`, `lyric-video-export`, `lyric-video-plan` |
 | `imposition` (Print imposition) | workflows | Merge CSV rows into a template and impose the copies n-up on press sheets with marks and bleed. | `merge-impose` |
-| `brand_kit` (Brand kit) | workflows | Logo packages, brand guideline boards and device or print mockups from a brand.json and a logo. | `brand-board`, `logo-package`, `mockup`, `mockup-list`, `mockup-save` |
+| `brand_kit` (Brand kit) | workflows | Logo packages, brand guideline boards, device, print and merch mockups and print-ready art from a brand.json and a logo. | `brand-board`, `logo-package`, `mockup`, `mockup-list`, `mockup-save`, `print-art` |
 | `deck_markdown` (Markdown to deck) | workflows | Turn a Markdown outline into a checked slide deck with charts, tables and speaker notes. | `deck-from-markdown` |
 | `teamwork` (Teamwork) | workflows | Workspace branches and merges, document groups with shared parameters and rollback, suite inference. | `branch-fork`, `branch-list`, `branch-merge`, `branch-status`, `group-apply`, `group-define`, `group-list`, `group-recover`, `group-show`, `suite-infer` |
-| `workspace_qa` (Workspace QA) | workflows | check-all and replace-across over many documents, protected edits, proof pages and render lockfiles. | `check-all`, `proof`, `protected-edit`, `replace-across`, `reproduce` |
+| `workspace_qa` (Workspace QA) | workflows | check-all and replace-across over many documents, protected edits, proof pages, render lockfiles and deliverable packages. | `check-all`, `package`, `proof`, `protected-edit`, `replace-across`, `reproduce` |
 | `layout_repair` (Layout repair) | workflows | repair-layout: try ranked candidate fixes for failing checks and keep the least disruptive one. | `repair-layout` |
 | `app_animation` (App animation packages) | workflows | Package animation states, theme variants, reduced-motion images and a sample consumer for apps. | `app-animation-package` |
 | `screen_capture` (Screen capture) | workflows | Capture the local desktop, a pixel rectangle or a Windows window to a PNG, only when asked. | `screen-capture` |
@@ -132,7 +140,7 @@ These core modules still import plugin code directly. Each is listed with its re
 `tests/test_plugins.py` (`KNOWN_COUPLINGS`). Remove an entry when its import moves behind a hook. A plugin can
 ship separately only when it has no entries left.
 
-- The CLI, REST and MCP surfaces call the AI provider plugin, workspace checks, reproduce and imposition
+- The CLI, REST and MCP surfaces call the AI provider plugin, workspace checks, reproduce, package and imposition
   directly for their own commands.
 - The job queue runs film, lyric video and AI generation jobs by kind.
 - Design checks and accessibility read chart data for chart contrast and series colors. PPTX export writes

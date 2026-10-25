@@ -3,7 +3,16 @@
 Mockups: `vixl_apply(workflow='mockup', request={"design": "poster.vixl", "mockup": "poster-wall", "output": "wall.vixl"})` places
 a design in a phone, laptop, browser, poster-wall, business-card or mug template as a live, corner-pinned link
 (a list of templates and `"output": "folder"` makes one each; `export: ["png"]` renders them). `mockup-list` lists
-templates and their slots; `mockup-save` adds the workspace's own. See `docs/guides/output/linked-documents.md#mockups`.
+templates, their slots and print areas; `mockup-save` adds the workspace's own. See `docs/guides/output/linked-documents.md#mockups`.
+
+Merch: the same workflow shows a design on a product, `vixl_apply(workflow='mockup', request={"mockup": "tee", "output":
+"tee.vixl", "place": {"front-chest": "logo.vixl", "back": "art.vixl"}, "garment_color": "#14161c", "finish": "screen"})`.
+Products: tee, long-sleeve, crewneck, hoodie (areas front-chest, full-front, back, sleeve-l, sleeve-r, hem-tag, inside-neck),
+tote (front), sticker, sticker-kiss-cut, enamel-pin, patch, button (face), cap, beanie, socks. `garment_color` recolours only
+the base layers; `finish` is screen, puff, embroidery, enamel, woven or none. `vixl_apply(workflow='print-art', request={
+"mockup": "tee", "output": "print", "place": {...}, "dpi": 300, "spot_colors": 3, "underbase": true})` then writes each
+area at its `print_size_mm` × dpi (PNG, an editable source, film-positive separations as PNG or PDF pages, and a white
+underbase for dark garments only). See `docs/guides/output/merch-mockups.md`.
 
 Discover actions with `vixl_reference('workflows')` or `vixl workflow schema`.
 Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/main/docs/guides/automation/production.md).
@@ -23,8 +32,9 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    Library suites listed under `suites` in `group-define` or brand.json are inherited by reference; a
    document overrides a rule by `id` with a suite that has `extends: NAME`. Workflow `check` with no
    `suite` runs every attached and inherited suite.
-2. Use `fit-text`, `arrange-grid`, or `adapt-layout` (`recompose: true` rebuilds a stored layout recipe at the
-   new size and may replace manual edits) for predictable layout tasks;
+2. Use `fit-text`, `arrange-grid`, or `adapt-layout` (an unedited `layout-apply` document is rebuilt from its recipe
+   at the new size by default; `recompose: true` forces it after edits and replaces them; `arrangements` keeps the
+   best-scoring re-arrangement) for predictable layout tasks;
    save a bounded sequence with `action-define`. `role-set`, `motion-define`, and
    `motion-apply` produce editable staggered/relative animation tracks.
 3. Workflow `act` accepts operations, suites, dry_run and repair. It returns measurements and
@@ -118,6 +128,26 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    needs an interactive desktop and any OS permission; it is not part of rendering.
 18. Source folders for Git review: CLI `vixl unpack design.vixl design-source` and `vixl pack design-source reviewed.vixl`
    (see [cli](cli.md)).
+19. Delivery packages: `vixl_apply(workflow='package', request={production: "out/production.json" | files: [path | glob |
+   {path, source}], output: "delivery.zip", source?, name?, brand?, layout?, check?, proof?, lock?, decisions?,
+   export_settings?, dry_run?, overwrite?})` (CLI `vixl package --production out/production.json --source doc.vixl
+   --out delivery.zip`) writes one zip: the completed outputs of a campaign run (or the files) named from `name`
+   (`{brand}_{doc}_{artboard}_{w}x{h}.{ext}`; also `{locale}` `{row}` `{id}`; two files with one name refuse the whole
+   package, so a campaign of rows needs `{row}`), identical files once, `manifest.json` (per file: source document and
+   `revision`, export settings, check state, `sha256`, dimensions, colour, codec/fps/duration read from the encoded file;
+   per package: `vixl_version`, `validation` coverage, `visual_review`, `held`, `reproduction`), `SHA256SUMS`,
+   `report/check-report.json|md` and `proof.html`. Variants the run held (and files whose source fails its checks, or
+   that the proof page's `decisions` JSON rejects) are listed under `held` and left out; nothing left is an error.
+   `lock` is the source's render lockfile: its `reproduce` summary goes into the manifest. Stage with `dry_run: true`;
+   an existing package is kept unless `overwrite: true`. The `outcome` stays `needs_review` until nothing is held and
+   every file is validated and visually reviewed.
+20. Render locks: `vixl reproduce --write-lock doc.lock.json --export png "jpg:quality=85" mp4` records every page,
+   artboard and sampled frame (`--frames N`, `--times …`), the variables and seeds, and each export's bytes and decoded
+   pixels with the ffmpeg version or ICC profile; `vixl reproduce --lock doc.lock.json --export` encodes them again and
+   reports `byte_identical` (decides PNG, SVG, PDF, HTML, PPTX, PSD, TIFF) and `visually_equivalent` (decides JPEG, WebP,
+   AVIF, GIF, MP4, WebM; `--export-tolerance`, `--export-visual`) per export, with `page 2`, `jpg.quality`, `mp4.ffmpeg`
+   drift located. Workflow `reproduce` takes `exports`, `verify_exports`, `frames`, `times`, `report`. No credential
+   enters a lock. Byte-exact output across machines is not promised (fonts, zlib, encoder versions).
 
 MCP paths must remain inside the workspace. REST exposes check/act/plan/film-plan for
 its single project; filesystem, library and queue operations use CLI/Python/MCP.

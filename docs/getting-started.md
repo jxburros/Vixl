@@ -35,7 +35,7 @@ For reproducible work, install an exact release rather than tracking `main` (a p
 replaced):
 
 ```bash
-python -m pip install 'vixl-engine==0.30.5'
+python -m pip install 'vixl-engine==0.31.0'
 ```
 
 Latest `main` may include changes beyond the tagged release while reporting the same
@@ -65,7 +65,7 @@ get JSON.
 
 You now have an editable `hello.vixl` and a PNG export. Open the PNG to inspect the actual
 appearance. `check` covers the rules requested, not every possible design problem. The
-bundled DejaVu Sans font makes proofing work offline; for finished brand work, choose a
+bundled Noto Sans font makes proofing work offline; for finished brand work, choose a
 font with `vixl font pairings` and install a pairing or import your licensed font. A new document rolls a
 pairing and installs it with its first text, from the font cache or by downloading it from Google Fonts;
 `VIXL_AUTO_FONTS=cache` uses the cache only, `VIXL_AUTO_FONTS=off` never installs it, and `VIXL_OFFLINE=1` turns
@@ -73,7 +73,8 @@ off every download. See
 [typography](guides/text/typography.md).
 
 Passing checks make a design correct, not finished. Before you hand one over, make a finishing pass:
-check the composition (dead bands, two left margins, uneven gaps, crowded rules, clumped scatters), and
+check the composition (dead bands, two left margins, uneven gaps, crowded rules, clumped scatters, flat type
+hierarchy), and
 walk the finishing checklist that `vixl guide finishing` prints (`vixl_reference('finishing')` over MCP). Fix
 what it turns up in one batch, then look at the export at its real size, not as a thumbnail.
 

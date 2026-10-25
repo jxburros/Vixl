@@ -88,7 +88,7 @@ def font_standalone(cmd, args, project=None):
         p.add_argument("--seed", type=_seed, help="Integer or 'random' (default)")
         p.add_argument("--apply", action="store_true", help="Apply the direction and fonts to the current document")
         p.add_argument("--set", action="append", help="Fill a layout slot: title=…")
-        p.add_argument("--lock", action="append", help="Keep a choice: layout=…, pairing=…, palette=…, mode=…")
+        p.add_argument("--lock", action="append", help="Keep a choice: layout=…, pairing=…, palette=…, mode=…, accents=0-3")
         p.add_argument("--unfilled", choices=["omit", "blank"],
                        help="Unfilled slots: leave out (default with --set) or show as [Label] blanks")
         a = p.parse_args(args)
@@ -178,11 +178,12 @@ def project_command(project, cmd, args):
 
         if a.action == "install":
             require(a.source, "Use font install FAMILY [--weight 700] [--italic] [--role heading|body]")
-            return typefaces.install_font(project, a.source, a.weight, a.italic, a.name, a.role), True
+            return typefaces.install_font(project, a.source, a.weight, a.italic, a.name, a.role, body_italic=True), True
         if a.action == "cover":
             return typefaces.cover_fonts(project, a.text, a.scripts, a.weight), True
         if a.action == "pair":
-            return typefaces.pair_fonts(project, a.source, seed=a.seed, mood=a.mood, best_for=a.purpose), True
+            return typefaces.pair_fonts(project, a.source, seed=a.seed, mood=a.mood, best_for=a.purpose,
+                                        body_italic=True), True
         if a.action == "use":
             require(a.source and a.role, "Use font use NAME --role heading|body")
             return project.apply({"type": "font-register", "name": a.source, "role": a.role}, detail="compact"), True

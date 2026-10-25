@@ -1,7 +1,8 @@
 """Which palette color became which role, and why.
 
 ``layout-apply`` and ``palette-apply`` turn a list of colors into role swatches (``@background``,
-``@surface``, ``@ink``, ``@muted``, ``@accent``, ``@accent-text``, ``@on-accent``). By default the
+``@surface``, ``@ink``, ``@muted``, ``@accent``, ``@accent-text``, ``@on-accent``; a direction with two or three
+accents adds ``@accent-2`` and ``@accent-3`` with their ``-text`` variants). By default the
 roles come from luminance and chroma and follow light or dark mode, so a palette passed as
 "background, surface, accents" can come back rearranged. These helpers record the decision so
 it can be echoed in the result: for every role the color, whether it is a palette entry (and
@@ -12,6 +13,85 @@ take the decision back.
 from .errors import VixlError, require
 
 ROLES = ("background", "surface", "ink", "muted", "accent", "accent-text", "on-accent")
+# Added by a direction with two or three accents (accent_count), only for the accents its layout draws.
+EXTRA_ROLES = ("accent-2", "accent-2-text", "accent-3", "accent-3-text")
+
+
+def accent_roles(count):
+    """The fill roles of ``count`` accents, first accent first: ``["accent", "accent-2", …]``."""
+    return ["accent", *(f"accent-{n}" for n in range(2, count + 1))]
+
+
+def hue_distance(a, b):
+    """The angle between two hues in degrees (0-180)."""
+    turn = abs(a - b) % 360
+    return min(turn, 360 - turn)
+
+
+def extra_accents(candidates, accent, count, *, derive=True, ordered=False):
+    """``[(rgba, source)]`` for accent-2 … accent-``count``: the most colourful of ``candidates`` (the first, when
+    ``ordered``) whose OKLCH hue is at least ``min_hue_distance`` degrees from every accent chosen so far, else, when
+    ``derive``, the first ``accent`` turned at the same lightness and chroma by the first ``rotation`` that lands as
+    far from every chosen accent. ``source``
+    is ``palette`` or ``derived``. Without ``derive`` (colours the caller fixed) the list can come back shorter."""
+    from . import house_style
+    from .colors import from_polar, gamut_map, srgb_to_oklab, to_polar
+
+    rules = house_style.accents()
+
+    def lch(color):
+        return to_polar(srgb_to_oklab(color[:3]))
+
+    chosen, result = [lch(accent)], []
+    for index in range(count - 1):
+        pool = [c for c in candidates if lch(c)[1] >= rules["min_chroma"] and all(c != r for r, _ in result)
+                and all(hue_distance(lch(c)[2], hue) >= rules["min_hue_distance"] for _, _, hue in chosen)]
+        if pool:
+            pick, source = (pool[0] if ordered else max(pool, key=lambda c: lch(c)[1])), "palette"
+        elif derive and chosen[0][1] < rules["min_chroma"]:
+            # A grey turned in hue stays the same grey: its next accents are lighter tones (darker on a light grey).
+            light, chroma, hue = chosen[0]
+            step = rules["tone_step"] * (index + 1) * (1 if light < 0.5 else -1)
+            pick, source = gamut_map(from_polar((min(max(light + step, 0.1), 0.95), chroma, hue))) + (1.0,), "toned"
+        elif derive:
+            light, chroma, hue = chosen[0]
+
+            def apart(turn):
+                return min(hue_distance((hue + turn) % 360, other) for _, _, other in chosen)
+
+            turns = rules["rotation"]
+            turn = next((t for t in turns if apart(t) >= rules["min_hue_distance"]), max(turns, key=apart))
+            pick, source = gamut_map(from_polar((light, chroma, (hue + turn) % 360))) + (1.0,), "derived"
+        else:
+            break
+        chosen.append(lch(pick))
+        result.append((pick, source))
+    return result
+
+
+def accent_reasons(count, sources=(), adjusted=()):
+    """Reasons for the roles an accent count changes: none (accents take ink and muted) or accent-2/accent-3."""
+    if count == 0:
+        return {"accent": "no accent rolled (accent_count 0): accent shapes take the ink color",
+                "accent-text": "no accent rolled (accent_count 0): accent text takes the muted color",
+                "on-accent": "whichever of background, ink, white or black reads best on the ink-colored accent"}
+    from . import house_style
+
+    rules = house_style.accents()
+    reasons = {}
+    for index, source in enumerate(sources):
+        role = f"accent-{index + 2}"
+        reasons[role] = {"palette": f"next most colorful palette color whose hue is at least "
+                                    f"{rules['min_hue_distance']}° from the accents before it",
+                         "derived": f"the accent turned in hue at the same lightness and chroma (no palette color is "
+                                    f"{rules['min_hue_distance']}° from the accents before it)",
+                         "toned": "a lighter or darker tone of the grey accent, which has no hue to turn",
+                         "explicit": "set in colors"}[source]
+        if role in adjusted:
+            reasons[role] += ", nudged until it reads 3:1 on the background and surface"
+        reasons[f"{role}-text"] = (f"{role} adjusted until small text in it reads 4.5:1" if f"{role}-text" in adjusted
+                                   else f"{role} itself already reads on the background")
+    return reasons
 
 
 def role_schema():
@@ -37,8 +117,10 @@ def explicit(colors, spec):
     return result
 
 
-def describe(colors, roles, *, mode, mode_source, keep_order=False, policy="accessible", explicit_roles=(), adjusted=()):
-    """The role mapping with a source and reason per role. ``adjusted`` lists roles nudged for contrast."""
+def describe(colors, roles, *, mode, mode_source, keep_order=False, policy="accessible", explicit_roles=(), adjusted=(),
+             reasons=None):
+    """The role mapping with a source and reason per role. ``adjusted`` lists roles nudged for contrast; ``reasons``
+    replaces the reason of some roles (``accent_reasons``) and lists the extra accent roles present in ``roles``."""
     from .colors import hex_of, parse
 
     palette = [hex_of(parse(c)) for c in colors]
@@ -51,7 +133,7 @@ def describe(colors, roles, *, mode, mode_source, keep_order=False, policy="acce
         return f"palette[{palette.index(value)}]" if value in palette else "derived"
 
     extreme = "darkest" if mode == "light" else "lightest"
-    reasons = {
+    table = {
         "background": (f"{'first' if keep_order else extreme} palette color" +
                        ("" if keep_order else f" because mode is {mode} ({mode_source})")),
         "surface": ("second palette color" if keep_order and source("surface") != "derived" else
@@ -64,11 +146,12 @@ def describe(colors, roles, *, mode, mode_source, keep_order=False, policy="acce
                        else "the accent itself already reads on the background",
         "on-accent": "whichever of background, ink, white or black reads best on the accent",
     }
+    table.update(reasons or {})
     entries = []
-    for role in ROLES:
+    for role in (*ROLES, *(role for role in EXTRA_ROLES if role in roles)):
         mine = role in explicit_roles
         entries.append({"role": role, "color": roles[role], "source": "explicit" if mine else source(role),
-                        "reason": "set by you in roles/colors" if mine else reasons[role]})
+                        "reason": "set by you in roles/colors" if mine else table.get(role, "")})
     return entries
 
 

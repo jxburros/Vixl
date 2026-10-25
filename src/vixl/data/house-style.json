@@ -53,6 +53,14 @@
                "blur": [0.04, 0.12, 4, 100], "opacity": [0.35, 0.25]},
       "halo": {"max_core": 0.7},
       "dash_fit": true
+    },
+    "illustration": {
+      "summary": "Flat vector: thin ink lines around every part, a hard offset shadow cast away from the light, a slight hand-made waver and, now and then, a second or third line inside the outline.",
+      "outline": {"policy": "parts", "width_share": 0.012, "silhouette_share": 0.01, "element_share": 0.2, "minimum": 0.5},
+      "light": "top-left",
+      "shadow": {"kind": "offset", "distance_share": 0.03, "angle_from": "light", "opacity": 0.35},
+      "irregular": {"strength": "subtle", "only": ["wobble"], "element_widths": 12},
+      "extra_lines": {"probability": 0.15, "count": [1, 2], "offset_share": 0.006, "width": 0.5}
     }
   },
   "taste": {
@@ -62,6 +70,16 @@
       "cta_pill": {"safe": 0.4, "bold": 0.6, "avant-garde": 0.6},
       "date_highlight": {"safe": 0.35, "bold": 0.55, "avant-garde": 0.6},
       "square_styles": ["swiss", "brutalist", "neo-brutalist", "bauhaus", "editorial", "vintage-letterpress", "art-deco", "pixel-art"]
+    },
+    "accents": {
+      "summary": "How many accent colours a roll draws and how they share the accent-bearing elements. One accent usually, two often, none or three rarely. With none the accent elements take the ink colour (text the muted one); with two or three, accent-2 and accent-3 come from the palette's next most colourful entries whose hue is at least min_hue_distance degrees (OKLCH) from the accents already chosen, else they are the first accent turned by the first of the rotation angles that lands min_hue_distance from every accent already chosen; a grey first accent (chroma under min_chroma) has no hue to turn, so the next accents are tones of it, tone_step lighter (or darker, on a light grey) each. Equal gives each accent about the same number of elements; skewed gives them the skew shares, the first accent keeping the call to action and anything carrying text on the accent.",
+      "count_weights": {"0": 0.075, "1": 0.55, "2": 0.3, "3": 0.075},
+      "representation": {"equal": 0.5, "skewed": 0.5},
+      "skew": {"2": [0.7, 0.3], "3": [0.6, 0.25, 0.15]},
+      "min_hue_distance": 30,
+      "min_chroma": 0.03,
+      "rotation": [150, 210, 90, 270],
+      "tone_step": 0.2
     },
     "tiers": ["safe", "bold", "avant-garde"],
     "tier_notes": {
@@ -99,7 +117,36 @@
       "quiet": ["calm", "minimal", "quiet", "serious", "corporate", "formal", "academic", "trustworthy", "neutral", "clean"],
       "expressive_tier_scale": {"safe": 0.4, "bold": 1.6, "avant-garde": 2.0},
       "quiet_tier_scale": {"safe": 1.5, "bold": 0.7, "avant-garde": 0.3},
-      "match_weight": 4
+      "match_weight": 4,
+      "brief_weight": 3,
+      "brief_note": "Moods a free-text brief implies (vixl_reference(brief)): the moods of the motif themes it matches, plus every mood below whose name or keywords it contains. They weight palettes with a matching mood by brief_weight (never filter them) within the rolled tier; a brief with no match rolls as if it had no words.",
+      "keywords": {
+        "warm": ["cozy", "cosy", "autumn", "fall", "harvest", "fireside", "fireplace", "candle", "candlelit", "spice", "cinnamon", "amber", "sunset", "golden hour"],
+        "cool": ["icy", "ice", "glacier", "arctic", "nordic", "frost", "crisp", "mint"],
+        "calm": ["peaceful", "serene", "quiet", "gentle", "slow", "restful", "mindful", "tranquil"],
+        "fresh": ["spring", "morning", "breeze", "citrus", "zest", "new season"],
+        "natural": ["eco", "sustainable", "green", "outdoors", "forest", "farm", "local", "seasonal"],
+        "earthy": ["clay", "pottery", "ceramics", "harvest", "rustic", "soil", "terracotta", "farm"],
+        "organic": ["plant-based", "vegan", "botanical"],
+        "playful": ["fun", "kids", "children", "games", "toy", "toys", "silly", "quirky"],
+        "energetic": ["summer", "sale", "flash sale", "race", "workout", "dance", "party", "rave"],
+        "bold": ["loud", "launch", "announcement", "grand opening"],
+        "elegant": ["wedding", "gala", "classic", "refined", "boutique"],
+        "luxurious": ["luxury", "premium", "exclusive", "gold", "vip", "black tie"],
+        "romantic": ["valentine", "valentines", "love", "anniversary", "date night"],
+        "soft": ["pastel", "baby", "nursery", "blush", "gentle"],
+        "dreamy": ["dream", "lullaby", "moonlit", "fantasy", "magic"],
+        "vintage": ["antique", "heritage", "old-fashioned", "nostalgic", "letterpress"],
+        "retro": ["80s", "70s", "arcade", "disco", "synthwave"],
+        "tech": ["software", "digital", "app", "ai", "data", "developer", "cyber"],
+        "futuristic": ["future", "space", "sci-fi", "robot", "neon"],
+        "corporate": ["business", "quarterly", "report", "finance", "investor", "enterprise", "b2b"],
+        "trustworthy": ["bank", "insurance", "health", "clinic", "policy", "safety"],
+        "academic": ["research", "university", "lecture", "thesis", "study", "science"],
+        "minimal": ["minimalist", "simple", "clean"],
+        "dramatic": ["drama", "theatre", "theater", "halloween", "mystery", "noir"],
+        "crafted": ["handmade", "artisan", "craft", "workshop", "maker", "studio"]
+      }
     },
     "mode": {"dark": 0.34},
     "type_scales": ["minor-third", "major-third", "perfect-fourth", "perfect-fifth", "golden"],
@@ -456,7 +503,9 @@
                    "weight": 3},
       "layouts": {"prefer": ["logo-horizontal", "logo-stacked", "monogram", "emblem"], "weight": 2},
       "styles": {"prefer": ["minimalist", "line-art", "swiss", "bauhaus", "art-deco"], "weight": 4},
-      "look": {"amount": 0, "weights": {"none": 1}}
+      "look": {"amount": 0, "weights": {"none": 1}},
+      "accents": {"count_weights": {"0": 0.15, "1": 0.7, "2": 0.15},
+                  "note": "A mark is one colour or two: often only the accent, sometimes ink alone, rarely two accents."}
     },
     "motion": {
       "summary": "Video frames and animation: bold scale, about half dark, a visible finish.",

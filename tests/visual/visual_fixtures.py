@@ -10,9 +10,12 @@ from vixl import Project
 from vixl.assets import add_image
 
 FIXTURES = {}
-SVG_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "gradients", "text_plain", "groups", "dashes_fitted")
-PDF_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "text_plain", "dashes_fitted")
-PPTX_FIXTURES = ("shapes_and_strokes", "text_plain", "groups", "dashes_fitted")
+SVG_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "gradients", "text_plain", "groups", "dashes_fitted",
+                "text_small_caps", "text_hanging_quote", "object_outline_policies")
+PDF_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "text_plain", "dashes_fitted", "text_small_caps",
+                "text_hanging_quote", "object_outline_policies")
+PPTX_FIXTURES = ("shapes_and_strokes", "text_plain", "groups", "dashes_fitted", "text_small_caps", "text_hanging_quote",
+                 "object_outline_policies")
 
 
 def fixture(builder):
@@ -363,4 +366,161 @@ def finish_glow_shadow():
         {"type": "group", "name": "card", "targets": ["panel", "button"]},
         {"type": "look", "target": "button", "look": "soft-shadow", "amount": 0.8},
     ])
+    return p
+
+
+@fixture
+def text_small_caps():
+    # Small caps synthesized from capitals (DejaVu Sans has no smcp), from a font's own small capitals (Noto Sans
+    # has smcp), and on one rich-text span in the proofing face (Noto Sans, so its own small capitals too).
+    from pathlib import Path
+
+    import vixl
+    from vixl.fonts import import_font
+
+    p = doc(220, 150)
+    import_font(p, str(Path(vixl.__file__).parent / "data" / "NotoSans-Regular.ttf"), "noto")
+    p.apply([
+        {"type": "text", "text": "Small Caps", "name": "synthesized", "font": "DejaVuSans.ttf", "size": 30, "x": 12,
+         "y": 10, "color": "#264653", "text_transform": "small-caps"},
+        {"type": "text", "text": "Small Caps", "name": "smcp", "font": "noto", "size": 30, "x": 12, "y": 54,
+         "color": "#264653", "text_transform": "small-caps"},
+        {"type": "rich-text", "name": "span", "markdown": "In [small caps]{small-caps} now", "size": 16, "x": 12,
+         "y": 108, "color": "#333333"},
+    ])
+    return p
+
+
+@fixture
+def text_hanging_quote():
+    # Hanging punctuation: the opening quote of a boxed paragraph sits left of the margin rule, the letters on it;
+    # the closing quote of a right-aligned line hangs past the right rule.
+    return doc(220, 150, ops=[
+        rect("margin-left", 22, 8, 1, 134, "#e07a5f"),
+        rect("margin-right", 198, 8, 1, 134, "#e07a5f"),
+        {"type": "text", "text": "“Hang the quote,” she said, “and the line reads straight.”",
+         "name": "quote", "size": 18, "x": 23, "y": 12, "color": "#1d3557", "hanging_punctuation": True},
+        {"type": "text-layout", "target": "quote", "width": 175},
+        {"type": "text", "text": "— “The end.”", "name": "signoff", "size": 18, "x": 23, "y": 108,
+         "color": "#1d3557", "align": "right", "hanging_punctuation": True},
+        {"type": "text-layout", "target": "signoff", "width": 175},
+    ])
+
+
+@fixture
+def atmosphere_scene():
+    # One night harbor with every atmosphere operation: stars, a haze glow, fog behind the near hill, string lights,
+    # bokeh in the water and a reflection of what stands above the waterline. No text, so no font dependency.
+    return doc(256, 192, "#0b1730", ops=[
+        {"type": "gradient", "name": "sky", "width": 256, "height": 130, "direction": "vertical",
+         "stops": [{"offset": 0, "color": "#07101f"}, {"offset": 1, "color": "#35507a"}]},
+        {"type": "solid", "name": "water", "x": 0, "y": 130, "width": 256, "height": 62, "color": "#0d1a30"},
+        {"type": "star-field", "region": [0, 0, 256, 100], "count": 46, "seed": 5, "sparkles": 3},
+        {"type": "shape", "shape": "triangle", "name": "far-hill", "x": 10, "y": 62, "width": 180, "height": 68, "fill": "#2e4b78"},
+        {"type": "shape", "shape": "triangle", "name": "near-hill", "x": 120, "y": 86, "width": 150, "height": 44, "fill": "#0f1d36"},
+        {"type": "haze", "form": "fog", "y": 116, "height": 36, "layers": 3, "density": 0.5, "color": "#aebfd8",
+         "behind": ["near-hill"], "seed": 4},
+        {"type": "shape", "shape": "lighthouse", "name": "lighthouse", "x": 30, "y": 58, "width": 22, "height": 72, "fill": "#0a1424"},
+        {"type": "shape", "shape": "ellipse", "name": "lamp", "x": 37, "y": 67, "width": 8, "height": 8, "fill": "#ffcf6e"},
+        {"type": "haze", "target": "lamp", "strength": 0.7},
+        {"type": "reflection", "horizon": 130, "squash": 0.8, "ripple": 0.3, "seed": 1, "tint": "#13284a"},
+        {"type": "string-lights", "from": [-8, 14], "to": [264, 22], "sag": 16, "count": 7, "size": 9,
+         "colors": ["#f4b942", "#e8743b", "#f7d488"], "seed": 2},
+        {"type": "bokeh", "region": [0, 134, 256, 58], "count": 7, "size": [10, 26], "seed": 3},
+    ])
+
+
+@fixture
+def catalog_motif_shapes():
+    # The motif shapes at a large and a small size: they must read as the thing at both.
+    kinds = [("microphone", 0.43), ("snowflake", 1.0), ("leaf", 0.63), ("book", 1.335), ("balloon", 0.585)]
+    ops = []
+    for row, (first, last) in enumerate(((0, 3), (3, 5))):
+        x = 10
+        for kind, aspect in kinds[first:last]:
+            width = round(96 * aspect)
+            ops.append({"type": "shape", "shape": kind, "name": f"{kind}-large", "x": x, "y": 8 + 108 * row,
+                        "width": width, "height": 96, "fill": "#14263b"})
+            x += width + 16
+    x = 10
+    for kind, aspect in kinds:
+        width = round(28 * aspect)
+        ops.append({"type": "shape", "shape": kind, "name": f"{kind}-small", "x": x, "y": 224, "width": width,
+                    "height": 28, "fill": "#c1121f"})
+        x += width + 16
+    return doc(256, 256, "#f4efe6", ops=ops)
+
+
+@fixture
+def object_outline_policies():
+    # A three-part mushroom (a stem with its own grey stroke, a cap, a spot) in each outline policy, left to right:
+    # silhouette with interior hide, silhouette with thin interior lines, parts, and none (the stem's stroke is back).
+    ops = []
+    policies = [("silhouette", "hide"), ("silhouette", "thin"), ("parts", None), ("none", None)]
+    for index, (outline, interior) in enumerate(policies):
+        name, x = f"m{index}", 8 + index * 60
+        ops += [
+            {"type": "shape", "shape": "rounded-rectangle", "name": f"{name}-stem", "x": x + 16, "y": 50, "width": 20,
+             "height": 52, "fill": "#f1e3d3", "stroke": "#8d99ae", "stroke_width": 2},
+            {"type": "shape", "shape": "semicircle", "name": f"{name}-cap", "x": x, "y": 18, "width": 52, "height": 36,
+             "fill": "#d62828"},
+            {"type": "shape", "shape": "ellipse", "name": f"{name}-spot", "x": x + 20, "y": 28, "width": 12,
+             "height": 10, "fill": "#fdf0d5"},
+            {"type": "group", "name": name, "targets": [f"{name}-stem", f"{name}-cap", f"{name}-spot"]},
+            {"type": "object", "target": name, "kind": "mushroom"},
+            {"type": "object", "action": "part", "target": f"{name}-stem", "part": "stem"},
+            {"type": "object", "action": "part", "target": f"{name}-cap", "part": "cap"},
+            {"type": "object", "action": "part", "target": f"{name}-spot", "part": "spots"},
+            {"type": "object", "action": "outline", "target": name, "outline": outline, "outline_width": 2.5,
+             **({"interior": interior} if interior else {})},
+        ]
+    return doc(248, 116, "#f4efe6", ops=ops)
+
+
+_MERCH = {}
+
+
+def _merch_views():
+    """The front of a tee and of a hoodie and a die-cut sticker, built by the mockup workflow around one badge and
+    reduced to thumbnails (rendered once per process)."""
+    if not _MERCH:
+        import tempfile
+        from pathlib import Path
+
+        from vixl.interfaces import Session
+        from vixl.workflows import dispatch
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            badge = Project(400, 400, "transparent")
+            badge.apply([
+                {"type": "shape", "shape": "ellipse", "name": "sun", "x": 20, "y": 20, "width": 360, "height": 360,
+                 "fill": "#f4a261"},
+                {"type": "shape", "shape": "ellipse", "name": "core", "x": 80, "y": 80, "width": 240, "height": 240,
+                 "fill": "#e9c46a"},
+                rect("wave", 20, 230, 360, 50, "#2a9d8f"),
+                rect("deep", 20, 300, 360, 50, "#264653"),
+            ])
+            badge.save(root / "badge.vixl")
+            session = Session(root / "badge.vixl", workspace=root)
+            for name, colour, crop in (("tee", "#2b3a55", (0, 0, 1100, 1000)),
+                                       ("hoodie", "#9c3d3d", (0, 0, 1100, 990)),
+                                       ("sticker", None, (240, 240, 960, 960))):
+                dispatch(session, "mockup", {"mockup": name, "output": f"{name}.vixl", "design": "badge.vixl",
+                                             **({"garment_color": colour} if colour else {})})
+                mockup = Project.load(root / f"{name}.vixl")
+                mockup._workspace = root
+                view = mockup.render().convert("RGBA").crop(crop)
+                _MERCH[name] = view.resize((84, round(84 * view.height / view.width)), Image.Resampling.BOX)
+    return _MERCH
+
+
+@fixture
+def merch_tee_hoodie_sticker():
+    # The vector merch mockups: a garment colour on a tee and a hoodie with the art on the chest, and a die-cut sticker
+    # whose border follows the art.
+    p = doc(256, 96, "#e6e9ee")
+    for i, view in enumerate(_merch_views().values()):
+        p.apply({"type": "add", "asset": add_image(p, view), "name": f"view-{i}", "x": 2 + i * 85,
+                 "y": (96 - view.height) // 2})
     return p

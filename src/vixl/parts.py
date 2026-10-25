@@ -45,6 +45,21 @@ def _gap(a, b):
     return best
 
 
+def part_mask(frame, layer, local, index):
+    """The canvas-sized ink mask of one layer drawn through its ancestors (what a check compares)."""
+    from .render import layer_canvas_surface
+
+    return np.asarray(layer_canvas_surface(frame, layer, local, index).getchannel("A")) > ALPHA
+
+
+def touches(a, b, tolerance):
+    """Whether the ink of mask ``a``, grown by ``tolerance`` pixels, meets the ink of mask ``b``."""
+    from .plugins.drawing.drawing import dilate
+
+    grown = dilate(a, int(np.ceil(tolerance))) if tolerance > 0 else a
+    return bool((grown & b).any())
+
+
 def _components(masks, tolerance):
     from .plugins.drawing.drawing import dilate
 
@@ -68,9 +83,10 @@ def _components(masks, tolerance):
     return list(groups.values())
 
 
-def floating_parts(frame, tolerance=2, targets=None):
-    """``[(group, part, gap_px)]`` for every visible part of a group that floats free of its main body."""
-    from .render import layer_canvas_surface, resolve_layout, resolved_layers
+def floating_parts(frame, tolerance=2, targets=None, skip=()):
+    """``[(group, part, gap_px)]`` for every visible part of a group that floats free of its main body. Groups in
+    ``skip`` (declared objects, when the object check measures them) are left out."""
+    from .render import resolve_layout, resolved_layers
 
     layers = resolved_layers(frame)
     index = {item["id"]: item for item in layers}
@@ -90,15 +106,16 @@ def floating_parts(frame, tolerance=2, targets=None):
     result = []
     for group in layers:
         if (group["type"] != "group" or group.get("detached_ok") or any(group.get(key) for key in COLLECTIONS)
-                or not _shown(group, index) or (wanted is not None and not selected(group))):
+                or group["id"] in skip or not _shown(group, index) or (wanted is not None and not selected(group))):
             continue
+        # A generated layer (an object's outline) draws over the parts it was made from; it would bridge their gaps.
         parts = [item for item in layers if item.get("parent") == group["id"] and _shown(item, index)
-                 and item["type"] not in ("text", "adjustment")]
+                 and item["type"] not in ("text", "adjustment") and not item.get("generated")]
         if len(parts) < 2:
             continue
         masks, kept = [], []
         for part in parts:
-            alpha = np.asarray(layer_canvas_surface(frame, part, local, index).getchannel("A")) > ALPHA
+            alpha = part_mask(frame, part, local, index)
             if alpha.any():
                 masks.append(alpha)
                 kept.append(part)
@@ -124,8 +141,9 @@ def floating_parts(frame, tolerance=2, targets=None):
     return result
 
 
-def check_connected(project, issue, tolerance=2, targets=None, resolved=None):
-    """Report floating parts as ``connected`` warnings, at each sampled frame of a timeline."""
+def check_connected(project, issue, tolerance=2, targets=None, resolved=None, skip=()):
+    """Report floating parts as ``connected`` warnings, at each sampled frame of a timeline. Groups in ``skip`` are
+    left to the object check, so one gap is not reported twice."""
     from .model import finite
 
     tolerance = finite(tolerance, "connect_tolerance", 0, 100)
@@ -137,7 +155,7 @@ def check_connected(project, issue, tolerance=2, targets=None, resolved=None):
         frames = [(label, project_at(project, time)) for label, time in sample_frame_times(timeline)]
     seen = set()
     for label, frame in frames:
-        for group, part, gap in floating_parts(frame, tolerance, targets):
+        for group, part, gap in floating_parts(frame, tolerance, targets, skip):
             if part["id"] in seen:
                 continue
             seen.add(part["id"])

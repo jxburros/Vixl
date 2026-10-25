@@ -20,7 +20,7 @@ TOP_LEVEL_COMMANDS = tuple(
     "validate preset ai ask generate detect ocr serve view notes import mcp update updates cache commands shapes "
     "palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings "
     "timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose "
-    "house brand emoji capabilities catalog objects compact link-set".split()
+    "house brand emoji capabilities catalog objects compact link-set package".split()
 )
 
 
@@ -39,7 +39,14 @@ class Parser(argparse.ArgumentParser):
             # Keep destinations stable for existing command implementations.
             kwargs.setdefault("dest", "out" if "--out" in args else "output")
             args = tuple(dict.fromkeys(("--out", "-o", *args)))
-        return super().add_argument(*args, **kwargs)
+        action = super().add_argument(*args, **kwargs)
+        if sys.version_info < (3, 14) and isinstance(action.help, str):
+            # Python 3.14 refuses a help string that does not expand (a bare "%"); refuse it on older versions too.
+            try:
+                action.help % dict(vars(action), prog=self.prog)
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError("badly formed help string") from exc
+        return action
 
     def parse_known_args(self, args=None, namespace=None):
         if args is not None and "--output" in self._option_string_actions:

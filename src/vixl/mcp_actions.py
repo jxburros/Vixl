@@ -41,7 +41,7 @@ REPAIRS = Literal["fit-text", "contrast-ink", "safe-area-nudge"]
 CHECKS = Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "placeholders", "fonts", "brand",
                  "print", "color_vision", "guides", "alignment", "deck", "title_position", "type_scale", "words",
                  "min_font", "notes", "empty", "form", "drawing", "links", "style", "diagram", "flow", "codes",
-                 "composition", "motion", "character", "captions", "connected", "cost", "accessibility"]
+                 "composition", "object", "motion", "character", "captions", "connected", "cost", "accessibility"]
 
 
 class Context:
@@ -577,7 +577,7 @@ def apply_workflow(
         require(ctx.allow_screen_capture, "Desktop capture is disabled; start vixl mcp with --allow-screen-capture "
                 "or VIXL_ALLOW_SCREEN_CAPTURE=1", "permission_denied")
     result = dispatch(ctx.session, workflow, request, document)
-    if workflow in ("film-preview", "video-sample", "audio-analyze"):
+    if workflow in ("film-preview", "video-sample", "audio-analyze", "variations"):
         from .assets import open_image
 
         paths = result.get("images", []) if isinstance(result, dict) else []
@@ -624,7 +624,7 @@ def check_design(
     sample: Annotated[str | None, Field(description="form checks: 'worst' or a workspace CSV of rows")] = None,
     style: Annotated[str | list[str] | None, Field(description="style check: this style (or list) instead of the "
                                                                "document's style tag")] = None,
-    connect_tolerance: Annotated[float, Field(ge=0, le=100, description="connected check: gap still touching, px")] = 2,
+    connect_tolerance: Annotated[float, Field(ge=0, le=100, description="connected and object checks: gap still touching, px")] = 2,
     repair: Annotated[bool | list[REPAIRS] | None, Field(
         description="Apply the suggested built-in repairs first (one undoable batch), then check")] = None,
     offset: Annotated[int, Field(ge=0, description="First finding to list")] = 0,
@@ -1235,7 +1235,8 @@ def reference_styles(ctx, name: Annotated[str | None, Field(description="One sty
     """Design styles (swiss, brutalist, art-deco, risograph …); apply one with the style-use operation."""
     from . import styles
 
-    return styles.describe(name) if name else styles.listing(query)
+    own = styles.workspace_styles(ctx.session.workspace)
+    return styles.describe(name, own) if name else styles.listing(query, own)
 
 
 @action("vixl_reference", "looks")
@@ -1315,7 +1316,8 @@ def _resource(kind):
         "palettes": "Built-in and saved palettes; name reads one.",
         "templates": "Document templates (vixl_document create template=NAME); name reads one.",
         "guidance": "Craft guidance names; name reads one text (user additions included).",
-        "objects": "Object kinds (dog, guitar, person …); name reads its parts, connections, proportions and layering.",
+        "objects": "Object kinds (dog, guitar, person …); name reads its parts, connections, proportions, layering "
+                   "and build block (approach, placements, a working example).",
         "house-style": "The built-in default brand: craft rules, tiers and levels, or a purpose's profile (name).",
     }[kind]
     return read

@@ -5,7 +5,8 @@
 Every new illustration here was created with Vixl's operation engine. They are actual
 exports, with editable masters and canonical recipes. Charts use labeled illustrative
 data. These examples require no network service or AI credentials. Documentation artwork
-uses the bundled DejaVu Sans proofing font; select suitable brand typography for production.
+uses the bundled proofing font (Noto Sans; DejaVu Sans in images made before it); select suitable brand
+typography for production.
 
 ## Editable design and reusable campaigns
 

@@ -66,7 +66,72 @@ vixl template apply my-card --set title='Next variant'
 
 Templates fix structure, not content or look. Built-in templates have no sample copy: an unsupplied `title` or `subtitle` renders as a `[Headline]`/`[Subheading]` blank that `check` reports as an error. Unsupplied colors are rolled from a safe palette with checked contrast (`template-apply` accepts `seed`, an integer or `"random"`; an omitted seed is fresh, or the document's own design seed when it has one, unless workspace variety is fixed). The result reports `rolled`, `seed`, any `blanks`, and the selected font pairing's explicit installation step when needed. Custom templates can do the same with `"blanks": {"title": "[Headline]"}` and `"roll": {"accent": "accent"}`, which map variables to placeholder text or to a color role (`background`, `surface`, `ink`, `muted`, `accent`, `accent-text`, `on-accent`).
 
-Parameters can replace strings or whole typed values. Templates contain bounded canonical operations, not scripts or executable code. They cannot load files, import fonts, or recursively invoke templates. Import image/font assets explicitly first. Template text may set `font` to a typography role or text stage (`heading`, `body`, `h2`, `label`, a brand role such as `hand`) or a registered font name, never a file, or set `stage`; text that names neither takes the heading role when it is the largest and body otherwise. `"proportional": true` on a template scales its positions, sizes and font sizes from its own `width`/`height` to the canvas by one factor (and stretches a full-template `solid` to the canvas), so it keeps its relative layout on any size. The user library is stored in `~/.config/vixl/resources.json`; set `VIXL_RESOURCES` to isolate it in automation.
+Parameters can replace strings or whole typed values. Templates contain bounded canonical operations, not scripts or executable code. They cannot load files, import fonts, or recursively invoke templates. Import image/font assets explicitly first, or place an image from the resource library with `asset-place` ([pack assets](#pack-assets)), which reads no file and so works in templates. Template text may set `font` to a typography role or text stage (`heading`, `body`, `h2`, `label`, a brand role such as `hand`) or a registered font name, never a file, or set `stage`; text that names neither takes the heading role when it is the largest and body otherwise. `"proportional": true` on a template scales its positions, sizes and font sizes from its own `width`/`height` to the canvas by one factor (and stretches a full-template `solid` to the canvas), so it keeps its relative layout on any size. Variables and expressions are filled in first, so a number they give scales like a number written in the template. The user library is stored in `~/.config/vixl/resources.json`; set `VIXL_RESOURCES` to isolate it in automation.
+
+### Expressions and line anchors
+
+A field of a template, container or workflow whose whole value starts with `=` is arithmetic, evaluated after
+its `${variables}` are filled: `"x": "=${pad} + 76.34 * ${k}"`. The result is a number, and the apply result lists
+each evaluated field under `normalized`. Plain text is never evaluated; `==` writes a literal leading `=`. The
+evaluator reads numbers, `+ - * / // %`, parentheses and `min`, `max`, `round` and `abs`; anything else (names,
+attributes, other calls, `**`) is an error, as is division by zero, an expression over 500 characters or a result
+beyond ±10¹². The `calc` variable filter does the same inside text, with `x` standing for the value:
+`${price|calc:x*0.8|number:2}`; `${total|calc}` evaluates a value that is itself an expression.
+
+Constraints can anchor to a text layer's lines as the renderer sets them, so a mark follows variable copy:
+`NAME.line[N].start` and `NAME.line[N].end` are where line N's pen starts and ends (`line[-1]` is the last line),
+and `NAME.baseline[N]` is its baseline. Offsets are pixels or `em` of that text's size:
+
+```json
+{"width": 1080, "height": 1080, "operations": [
+  {"type": "variable", "name": "lyric", "value": "We were the fire"},
+  {"type": "text", "name": "lyric", "text": "${lyric}", "size": 72, "x": 80, "y": 420},
+  {"type": "shape", "shape": "star", "name": "spark", "width": 48, "height": 48, "fill": "#e8562a"},
+  {"type": "constrain", "target": "spark",
+   "constraints": {"left": "lyric.line[-1].end+0.25em", "bottom": "lyric.baseline[-1]"}}
+]}
+```
+
+A line ref sets a horizontal anchor (`left`, `right`, `center-x`) and a baseline ref a vertical one; the text
+must be upright and straight (not on a path or warped).
+
+### Motifs that scale as a unit
+
+A multi-part motif stays one thing when it is a group: `scale` with an `anchor` grows or shrinks it about a fixed
+point, and `object-save` / `object-place` with `width` or `scale` reuse it at any size. Both work in templates.
+
+```json
+{"width": 800, "height": 600, "operations": [
+  {"type": "shape", "shape": "ellipse", "name": "flame", "x": 100, "y": 100, "width": 60, "height": 90, "fill": "#e8562a"},
+  {"type": "shape", "shape": "ellipse", "name": "core", "x": 115, "y": 140, "width": 30, "height": 45, "fill": "#ffd166"},
+  {"type": "group", "name": "flame-mark", "targets": ["flame", "core"]},
+  {"type": "scale", "target": "flame-mark", "value": 2, "anchor": "bottom"},
+  {"type": "object-save", "target": "flame-mark", "name": "flame-mark"},
+  {"type": "object-place", "name": "flame-mark", "name_as": "small-flame", "x": 500, "y": 300, "width": 40}
+]}
+```
+
+### Pack assets
+
+The `assets` resource kind holds images for templates, workflows and brands: `{data_base64, media_type, credit?,
+license?}`, where `media_type` is `png`, `jpeg`, `svg` or `webp`. Save one with
+`vixl_apply(workflow='resource-save', request={"kind": "assets", "name": "acme-badge", "value": {...}})` (REST: POST
+`/resources/assets/acme-badge`), or ship it in a plugin pack (`resources.assets`) or a brand package. Saving checks
+the bytes before anything is written: valid base64, the file signature of the stated type, at most 2 MiB per asset
+(20 MiB for all assets of one plugin pack), one still image whose size is within the document limits, and SVG
+through the same static-SVG rules as imports (no scripts, event attributes or external references). The library
+keeps a small record (`sha256`, `media_type`, `bytes`, `width`, `height`, `credit`, `license`); the bytes are stored
+by SHA-256 in a folder beside it (`.vixl-resources-assets/` in a workspace), and removed when no record names them.
+
+`asset-place` puts one on the canvas as an image layer. `x`/`y` name where its `anchor` point goes (default
+top-left; pixels, `center` or a percentage); give `width` or `height` alone to keep the aspect ratio. Placing the
+same asset twice stores one copy. An SVG is rendered at the placed size and its source kept with the document. The
+layer's provenance records `{resource, sha256}` with the asset's credit and licence, so a brand
+`required_elements` entry or a `group-check` required layer named after the resource is met by it.
+
+```json
+{"type": "asset-place", "resource": "acme-badge", "x": "center", "y": 40, "width": 200, "anchor": "top"}
+```
 
 ## Overall and style-specific guidance
 

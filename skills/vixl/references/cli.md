@@ -75,6 +75,8 @@ A slow render? `check --checks cost` names the costly layer; `VIXL_PROFILE=1` ad
 | `describe` | Document description |
 | `effects [LAYER]` | Effect stack with IDs/indices |
 | `manifest`, `dependencies`, `reproduce --check` | Assets, fonts, providers; can it re-render? |
+| `reproduce --write-lock F [--export FMT…] [--frames N]`, `reproduce --lock F [--export] [--export-visual] [--report]` | Lock every page, artboard, frame and export; verify them with located drift |
+| `package (--production P.json \| --files GLOB…) --out D.zip [--source DOC] [--name T] [--lock F] [--dry-run]` | Zip a run's outputs with manifest, checksums, check report and proof page |
 | `schema [OPERATION…]` | Without a name, every operation by purpose with a one-line summary; with names, their JSON Schema; `schema --all` is the whole schema (900 KB); `schema document` is the schema of a `.vixl` file's `project.json` |
 | `pixels [LAYER]` | Pixel layer as rows + palette |
 | `animation` | Frame names, sizes, durations |
@@ -138,6 +140,8 @@ vixl group stripes stripe1 stripe2 [--above LAYER|--below LAYER] ; vixl ungroup 
 vixl reparent tail --into dog [--above L|--below L|--index N] [--keep appearance|local] [--no-fit] ; vixl reparent tail --into page
 vixl stack names --targets first last company --gap 20 --align center --justify center --width 1000 --height 400   # auto-layout; empty hide_if_empty text collapses
 vixl stack names --direction horizontal --gap 8 ; vixl stack names --remove ; vixl text first --hide-if-empty
+vixl stack names --justify space-between --align stretch --grow last=1   # CSS justify-content / align-items / flex-grow
+vixl stack names --direction grid --columns 1fr,2fr --span first=2 --row-gap 2u   # CSS grid; --wrap for rows
 vixl shape --target bar --fill '#6b3f69'    # solid/gradient/shape/text add --target edit a layer in place
 vixl clip TARGET BASE ; vixl clip TARGET --release
 ```
@@ -386,7 +390,7 @@ timeline exists. Since 0.24.1 the other 0.24 fields have flags too: `animate --i
 
 ### Field-report corrections
 
-Use `schema text shape` for focused schemas, inline JSON or stdin for workflow requests, and batches up to 64 MiB. Workspace resources use the CLI current directory. Ignore `.vixl-session.json` in Git. Multi-size copies: `adapt-layout --sizes instagram-post story --directory out --formats png`; review each output. Layout recomposition: `adapt-layout --size story --recompose` (or `--options '{"recompose": true}'` with `--sizes`).
+Use `schema text shape` for focused schemas, inline JSON or stdin for workflow requests, and batches up to 64 MiB. Workspace resources use the CLI current directory. Ignore `.vixl-session.json` in Git. Multi-size copies: `adapt-layout --sizes instagram-post story --directory out --formats png`; review each output. Layout recomposition: an unedited `layout-apply` document is rebuilt at the new size by default (the report says `recomposed` and why); `--recompose` forces it after edits, `--no-recompose` adapts proportionally, and `--arrangements stack-vertical side-by-side hero-top` (or `--options '{"arrangements": [...]}'` with `--sizes`) keeps the best-scoring arrangement. `--sizes` runs the document's suites on each copy (`--no-suites` skips).
 
 A document saved by 0.26 or earlier opens after `vixl convert OLD.vixl -o NEW.vixl [--look preserve|current] [--dry-run] [--report R.json]` (a folder: `vixl convert DIR --out OUTDIR`); saved MCP calls convert with `vixl convert-batch OLD.json`. Nothing is overwritten without `--overwrite`.
 

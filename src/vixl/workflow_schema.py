@@ -200,7 +200,8 @@ COMMON = {
                   "description": "Variable overrides {name: string|number|boolean}."},
     "target": {"type": "string", "description": "Layer ID or unique name."},
     "kind": {"type": "string", "enum": ["palettes", "templates", "guidance", "containers", "shapes", "suites",
-                                        "workflows"], "description": "Resource category."},
+                                        "workflows", "mockups", "objects", "assets"],
+             "description": "Resource category (assets: images {data_base64, media_type, credit, license})."},
     "start": {"type": "boolean", "default": False, "description": "Start a background worker after submitting."},
 }
 
@@ -627,11 +628,15 @@ ACTION_FIELDS = {
         "directory": {**PATH, "description": "Folder for the adapted copies (default: the workspace root)."},
         "name": {"type": "string", "default": "{name}-{size}",
                  "description": "File name template for each copy: {name} {size} {index}."},
-        "options": {"type": "object", "description": "adapt-layout settings for every size: scale, anchors, where, text."},
+        "options": {"type": "object", "description": "adapt-layout settings for every size: scale, anchors, where, "
+                    "text, recompose, arrangements, safe, min_text, together."},
         "formats": {**STRINGS, "description": "Also export each copy, e.g. ['png']."},
         "overwrite": {"type": "boolean", "default": False, "description": "Replace existing copies and exports."},
         "report": {"type": "string", "enum": ["summary", "layers"], "default": "summary",
                    "description": "layers also lists where each layer went."},
+        "suites": {"type": ["boolean", "string", "array"], "items": {"type": "string"}, "default": True,
+                   "description": "Run the document's check suites on every copy and attach each copy's results and "
+                   "outcome: true (default) runs every attached suite, a name or list runs those, false none."},
     },
     "replace-across": {
         "name": {"type": "string", "description": "Project group whose members to edit (or give documents)."},
@@ -721,7 +726,11 @@ def properties(action, fields):
 SUMMARIES = {
     "guide-check": "Check explicit lighting, anatomy, perspective and illustration measurements against advisory rules.",
     "perspective-guides": "Plan vanishing-point guides and scale-by-depth object sizes.",
-    "figure-plan": "Plan an editable figure from head units with a named part map.",
+    "figure-plan": "Plan an editable blocking figure from head units with a named part map (object-plan with kind "
+                   "person and template figure-plan).",
+    "object-plan": "Scaffold an object of a kind as named placeholder parts, placed and proportioned from its build "
+                   "block and grouped, declared and named; returns the batch and per-part next steps, or applies it "
+                   "as one undo step.",
     "pattern-list": "List built-in and document-defined repeatable textures and patterns.",
     "pattern-check": "Measure edge discontinuity in a pattern tile before repeating it.",
     "check": "Run an attached, inherited or inline check suite (or every one) against the document, optionally over "
@@ -766,10 +775,6 @@ SUMMARIES = {
     "drawing-report": "Measure a hand-drawing layer: strokes, closures, straightness and cleanup suggestions.",
     "deck-from-markdown": "Build a checked slide deck from a Markdown file: a page per heading with a fitting layout, "
                           "rich text, tables, charts, images and speaker notes; re-running rebuilds only changed slides.",
-    "mockup": "Place a design into device or print mockups (phone, laptop, browser, framed poster, business card, mug "
-              "or a saved template) as a live, corner-pinned link; optionally export each.",
-    "mockup-list": "List the mockup templates: built-in and the workspace's own, with their slots.",
-    "mockup-save": "Save a mockup template (a scene and its four-corner slots) to the workspace resource library.",
     "drawing-compare": "Write a before/after comparison PNG of a drawing layer; the result reports fidelity (IoU, pixel mismatch).",
     "resource-list": "List built-in and user resources of one category.",
     "resource-get": "Read one named resource.",
@@ -798,7 +803,8 @@ SUMMARIES = {
                       "match, apply publishes through the group journal (group-recover undoes an interrupted run).",
     "group-recover": "Roll back an interrupted group edit from its journal.",
     "adapt-sizes": "Adapt the open document to several sizes (a campaign: square, story, banner, print): each size is a "
-                   "saved copy re-laid out by adapt-layout and optionally exported; the source is not changed.",
+                   "saved copy re-composed by adapt-layout, checked by the document's suites and optionally exported; "
+                   "the source is not changed.",
     "repair-layout": "Bounded layout repair: try several candidates per overflow, overlap, spacing, contrast or "
                      "safe-area failure, then per composition finding (drift, rhythm, crowding, dead band, clumped "
                      "tile), keep the least disruptive that adds no finding; infeasible leaves the document "
@@ -814,9 +820,12 @@ SUMMARIES = {
 
 
 def summary(action):
+    from .variations import SUMMARY as VARIATIONS_SUMMARY
     from .emoji_workflows import SUMMARIES as EMOJI_SUMMARIES
     from .plugins import workflow_actions, workflow_summary
 
     if action in workflow_actions() and workflow_summary(action):
         return workflow_summary(action)
+    if action == "variations":
+        return VARIATIONS_SUMMARY
     return EMOJI_SUMMARIES.get(action, SUMMARIES.get(action, ""))

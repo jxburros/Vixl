@@ -297,7 +297,8 @@ built-in ones, in `.vixl-checks.json` at its root; a project group's `profiles` 
 ```
 
 `final` keeps `composition` even when a workspace narrows its `checks`, so unresolved [composition
-reviews](../layout/guides.md#composition) (dead bands, margin drift, uneven rhythm, crowding, clumped scatter) fail shipping
+reviews](../layout/guides.md#composition) (dead bands, margin drift, uneven rhythm, crowding, clumped scatter, and flat
+hierarchy, a single weight, no focal point or an unused accent) fail shipping
 until they are fixed or waived with a reason. Only a workspace that narrows `checks` and also sets `final.optional`
 replaces the built-in `optional` list (`color_vision`, `composition`); name `composition` in it to keep the gate.
 
@@ -321,8 +322,12 @@ Higher-level operations:
   given priority order. Refuses content that cannot fit; this is not a general constraint solver.
   Without `targets` the same verb re-lays out every layer proportionally at another size and reports
   where each layer moved (see [operations](../../reference/operations.md#bulk-edits-and-resizing-a-whole-layout-019)).
-  `recompose: true` instead re-applies the document's saved `layout-apply` recipe at the new size,
-  replacing the generated layers (and manual edits to them); it fails when there is no saved recipe.
+  A document built by `layout-apply` and not edited since is instead rebuilt from its saved recipe at the
+  new size by default; `recompose: true` forces that after edits (replacing the generated layers and the edits
+  to them; it fails when there is no saved recipe) and `recompose: false` never does it. `arrangements`
+  (`stack-vertical`, `side-by-side`, `hero-top`, `proportional`) builds each candidate arrangement of the
+  content, scores it with the composition, legibility, bounds and overlap checks and keeps the best, with an
+  `outcome`. Every result says `recomposed` and why.
 - Existing `replace-contents` preserves a frame's placement, effects and identity.
 
 An `action-define` stores bounded canonical operations under a name; `action-apply`
@@ -546,6 +551,61 @@ previous one over the same documents and settings:
 
 After an upgrade, `vixl check --all --since-last` therefore names the documents that the new version judges
 differently. Vixl does not schedule runs itself: run it from CI on a schedule (a cron workflow), or after an update.
+
+## Delivery packages
+
+`package` (CLI `vixl package`) turns finished outputs into one zip that a client or a downstream system can trust: the
+files, a manifest that says where each came from and what it was checked against, checksums, the check report and a
+proof page. It takes the outputs of a [campaign run](#variant-production-and-draftfinal) (`production`, its
+`production.json`) or exported files (`files`: paths and globs, or `{path, source}`).
+
+```bash
+vixl package --production out/production.json --source banner.vixl --out delivery.zip --name "{doc}_{row}_{artboard}.{ext}"
+vixl package --files "exports/*.png" "exports/*.pdf" --source poster.vixl --out poster-delivery.zip --dry-run
+```
+
+```json
+{"production": "out/production.json", "source": "banner.vixl", "output": "delivery.zip",
+ "name": "{brand}_{doc}_{row}_{artboard}.{ext}", "layout": "by-format",
+ "lock": "banner.lock.json", "decisions": "review/round-2-decisions.json"}
+```
+
+**Names.** `name` is a template of `{brand}` (the `brand` field, else the name in the workspace `brand.json`), `{doc}`
+(the source document's name, else the output's own), `{artboard}`, `{w}`, `{h}` (or `{size}`: `1080x1350`), `{ext}`,
+`{locale}` (a `locale` or `lang` value of the row, else the `locale` field), `{row}` and `{id}`. The default is
+`{brand}_{doc}_{artboard}_{w}x{h}.{ext}`; a field with no value disappears with the separator next to it. Two files
+that would get the same name (compared without regard to case) refuse the whole package before anything is checked or
+written, with every clash listed under `collisions` and a longer template suggested; a campaign of several rows needs
+`{row}` or `{id}`. `layout` is `flat` (default), `by-format` or `by-artboard` (one folder each).
+
+**What goes in.** Each completed output of a run once: outputs with identical bytes are packaged once, and the kept
+file lists the others under `duplicates`. A variant the run held for review (`needs_review`), failed or cancelled, an
+output whose file is missing or no longer matches the checksum in `production.json`, a file whose source document fails
+its checks (with `files` and `source`), and a file rejected on the proof page are listed under `held` with the reason
+and the rules, and are not in the zip. If nothing is left the call fails and lists them.
+
+The zip holds the files, `manifest.json`, `SHA256SUMS` (`sha256sum -c` format), `proof.html` (an offline
+[proof page](#proof-pages), up to 200 files) and, with `check` (default), `report/check-report.json` and `.md`. For
+a run the report lists what each output's checks recorded and the held ones; for `files` with a source it is the
+[check-all](#checking-many-documents) report over the source documents (it never writes the check history). The
+manifest records:
+
+| | |
+| --- | --- |
+| Package | `vixl_version`, `created`, the `inputs`, `naming`, `held`, `duplicates`, `totals`, the `outcome`, `validation` (coverage: files validated, needing review or with no required check, and the validated fraction) and `visual_review` |
+| Each file | `name`, `sha256`, `bytes`, `format`, `source` (the document and its `revision`, the SHA-256 of the saved `.vixl`), `variant` (id, row, artboard), `export` settings (from `export_settings` by format), `check` (state and what validated it), `review`, `dimensions` (pixels, or `pt` and `pages` for a PDF), `color` (space, mode, alpha, ICC profile), `stream` (container, codec, fps, frames, duration, audio) read back from the encoded file, and a run's recorded `export_check` |
+
+`decisions` takes the JSON a [proof page](#proof-pages) with `decisions: true` downloads (or its path): each file is
+`approved`, `rejected` (held) or `pending`, and `visual_review` is `not_reviewed` without decisions, `pending`, or
+`approved` once every packaged file is. `lock` is the render lockfile of the source document (or `{source: lockfile}`):
+the package runs [`reproduce`](../../reference/agent-trust.md#reproduction) against it, re-encoding the exports it
+recorded, and stores the compact `reproduction` summary; a failed check does not stop the package but fails its
+`outcome`. The `outcome` is `needs_review` while anything is held, not fully validated or not visually reviewed, so a
+written package is never read as an approved delivery by itself.
+
+`dry_run` plans the names, duplicates and held list and writes nothing. The zip is staged and published atomically, its
+entries have fixed timestamps, and an existing package is never replaced unless `overwrite: true`. A package inside the
+folder being packaged is left out of itself.
 
 ## Logo packages
 

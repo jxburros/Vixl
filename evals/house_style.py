@@ -9,9 +9,11 @@ motion) at each variety level, applies every roll to a real document, and scores
   more for wider spreads) of the rolled palette, layout, mode, pairing, look and style, and the mean pairwise distance between small
   renders (0 = identical images, 1 = opposite colours everywhere);
 * **quality**: the share of designs with no ``fix`` finding from ``check``, the share with no
-  ``composition`` finding (dead bands, margin drift, uneven rhythm, crowding, clumped scatter: the craft
-  the checks can measure), the share whose fonts are installed (the document typography, not the
-  proofing fallback), the share that pass the contrast check, and the lowest ink contrast seen.
+  ``composition`` finding (dead bands, margin drift, uneven rhythm, crowding, clumped scatter, flat hierarchy, one
+  weight, no focal point, an unused accent: the craft the checks can measure), the share whose fonts are installed (the document typography, not the
+  proofing fallback), the share that pass the contrast check, the lowest ink contrast seen, and the share of designs
+  rolled with two or three accents whose layout draws all of them (``accents_drawn``; the accent count rolled is a
+  diversity dimension, ``accents``).
 
 It runs offline: fonts come from a temporary cache filled with the bundled font under each
 pairing's file names, as in the agent eval, so it measures font installation, not font design.
@@ -37,7 +39,7 @@ import tempfile
 import time
 
 LEVELS = ("low", "medium", "high")
-DIMENSIONS = ("palette", "layout", "mode", "pairing", "look", "style")
+DIMENSIONS = ("palette", "layout", "mode", "pairing", "look", "style", "accents")
 BASELINE = Path(__file__).parent / "house-style-baseline.json"
 
 
@@ -199,6 +201,8 @@ def run_one(brief, seed, level, workspace):
     contrast = [i for i in issues if i.get("check") == "contrast" and i.get("action") == "fix"]
     composition = [i for i in issues if i.get("check") == "composition" and i.get("action") != "informational"]
     direction = result["direction"]
+    rolled = direction.get("accent_count", 1)
+    drawn = len((project.state["layout"].get("accents") or {}).get("drawn", [])) if rolled != 1 else 1
     from vixl.colors import contrast_ratio, parse
 
     swatches = project.state.get("swatches", {})
@@ -207,7 +211,8 @@ def run_one(brief, seed, level, workspace):
         ink_contrast = round(contrast_ratio(parse(swatches["ink"])[:3], parse(swatches["background"])[:3]), 2)
     return {
         "purpose": purpose, "size": size, "seed": seed, "level": level,
-        "choices": {key: str(direction.get(key)) for key in DIMENSIONS},
+        "choices": {key: str(direction.get("accent_count" if key == "accents" else key)) for key in DIMENSIONS},
+        "accents": {"rolled": rolled, "drawn": drawn},
         "tier": direction.get("tier"),
         "fix": [f"{i.get('check')}:{i.get('code', i.get('message', ''))[:60]}" for i in fixes],
         "composition": [f"{size}:{i['code']}" for i in composition],
@@ -249,6 +254,9 @@ def evaluate(briefs=BRIEFS, levels=LEVELS, seed_base=1000, progress=None):
                 "fonts_installed": round(sum(row["fonts"] for row in rows) / len(rows), 3),
                 "contrast_pass": round(sum(row["contrast_ok"] for row in rows) / len(rows), 3),
                 "min_ink_contrast": min(contrasts) if contrasts else None,
+                "accents_drawn": round(sum(row["accents"]["drawn"] >= row["accents"]["rolled"] for row in several)
+                                       / len(several), 3) if (several := [r for r in rows if r["accents"]["rolled"] >= 2])
+                else 1.0,
             }
             tiers = Counter(row["tier"] for row in rows if row["tier"])
             scores[level] = {"diversity": diversity, "quality": quality,
@@ -285,16 +293,16 @@ def markdown(result):
     lines = [f"House-style eval: {result['briefs']} sparse briefs per level", "",
              "Diversity is entropy in bits per dimension, then mean pairwise image and layout-structure distance; "
              "quality is the share of designs with no fix finding, with no composition finding, with fonts installed and "
-             "passing contrast.", "",
-             "| Level | palette | layout | mode | pairing | look | style | image dist. | same-mode dist. | structure dist. "
-             "| no fix | no composition | fonts | contrast |",
-             "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+             "passing contrast, and of those rolled with two or three accents, the share that draw them all.", "",
+             "| Level | palette | layout | mode | pairing | look | style | accents | image dist. | same-mode dist. "
+             "| structure dist. | no fix | no composition | fonts | contrast | accents drawn |",
+             "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
     for level, score in result["scores"].items():
         d, q = score["diversity"], score["quality"]
         lines.append(f"| {level} | {d['palette']} | {d['layout']} | {d['mode']} | {d['pairing']} | {d['look']} | {d['style']} "
-                     f"| {d['image_distance']} | {d['same_mode_distance']} | {d['structure_distance']} "
+                     f"| {d.get('accents', '')} | {d['image_distance']} | {d['same_mode_distance']} | {d['structure_distance']} "
                      f"| {q['no_fix_findings']} | {q.get('no_composition_findings', '')} | {q['fonts_installed']} "
-                     f"| {q['contrast_pass']} |")
+                     f"| {q['contrast_pass']} | {q.get('accents_drawn', '')} |")
     return "\n".join(lines) + "\n"
 
 

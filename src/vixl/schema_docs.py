@@ -11,6 +11,7 @@ from copy import deepcopy
 
 SUMMARIES = {
     "add": "Embed an image as a new raster layer (an embedded asset id from import-image, or a path in the CLI).",
+    "asset-place": "Place an image from an assets resource (a pack or brand asset) as a raster layer; templates may use it.",
     "solid": "Add a flat-color rectangle layer, by default covering the canvas (a background).",
     "gradient": "Add a linear, angled or radial gradient layer between two colors or several stops.",
     "text": "Add an editable text layer (auto-sized to its text).",
@@ -114,6 +115,8 @@ SUMMARIES = {
     "palette-generate": "Generate swatches from one color: a 50-950 scale or a harmony (complementary, triadic …).",
     "template-apply": "Create layers from a named template with variables.",
     "guidance": "Store or remove a written design guide (brand voice, rules) in the document.",
+    "brand-logo": "Place a brand.json logo by purpose (icon, wordmark, avatar, lockup) at its anchor, inside the safe "
+                  "area; templates use it to place their own logo.",
     "brand-preset": "Use a named preset of the workspace brand (brand.json presets) for this document: its palette, "
                     "fonts, stages and rules apply to layouts, templates and the brand check; none returns to the base brand.",
     "font-design": "Name the font drawn in this document and set its metrics in canvas pixels (em, ascent, descent, x-height, cap height, side bearing, space) and kerning pairs.",
@@ -180,7 +183,7 @@ SUMMARIES = {
     "diagram-set": "Change a diagram's nodes, edges or options and lay it out again in place, keeping layer IDs.",
     "text-flow": "Flow one story through linked text frames (columns, pages, shapes), reflow it and report overflow.",
     "reflection": "Mirror what stands above a horizon into the water below it, with ripples, ripple bands and a fade (one raster layer that re-renders).",
-    "haze": "Add a soft glow band behind a light source (two radial gradients in a group).",
+    "haze": "Add a soft glow band or halo behind a light source, or form fog: stacked soft horizontal bands that wash out toward the horizon (an editable group).",
     "star-field": "Scatter seeded stars and a few sparkles over a region, keeping clear of text (an editable group).",
     "string-lights": "Hang bulbs or paper lanterns with glows evenly along a path or a sagging wire (an editable group).",
     "bokeh": "Scatter soft out-of-focus light discs over a region (radial gradients in an editable group).",
@@ -422,7 +425,9 @@ OVERRIDES = {
                        "seed": "Seed for templates that vary."},
     "guidance": {"name": "Guidance name (a built-in guide, or any name when text is given).",
                  "text": "Guidance text to store.", "style": "Slot to store it in (default 'overall')."},
-    "font-register": {"name": "Name to register the font under.", "asset": "Imported font asset ID.",
+    "font-register": {"name": "Name to register the font under.",
+                      "asset": "Imported font asset ID (fonts/…), or a bundled face to embed: NotoSans-Regular.ttf "
+                               "(the proofing face) or DejaVuSans.ttf.",
                       "role": "Make it the font of this role: heading, body, a text stage (h1, label …) or any lowercase role name (accent, hand, mono); text that follows the role, or a stage inheriting it, changes with it."},
     "text": {"size": "Font size in pixels. Without one, the body size of the document's type scale (about 2.6% of "
                      "the canvas short side when it has none).", "color": "Text color. Without one, the document @ink swatch, else black or white, whichever reads on the canvas background.", "align": "Alignment within the text box.",
@@ -456,7 +461,10 @@ OVERRIDES = {
               "relative_to": "canvas, selection, or a layer name (default canvas, or the selection for targets).",
               "targets": "Layers to align together (default the target)."},
     "constrain": {"constraints": "Anchors to expressions: {left|right|top|bottom|center-x|center-y: a number, "
-                                 "'canvas.right-40', 'layer.left+8' or 'guide:name.center-x'}; one per axis."},
+                                 "'canvas.right-40', 'layer.left+8' or 'guide:name.center-x'}; one per axis. On a "
+                                 "text layer 'lyric.line[-1].end' (where its last line's pen ends; line[0].start, "
+                                 "counted from the end with -1) and 'lyric.baseline[-1]' (a line's baseline) follow "
+                                 "the rendered copy; offsets are pixels or em of that text's size ('+0.25em')."},
     "canvas": {"width": "Canvas width in pixels.", "height": "Canvas height in pixels.",
                "size": "Named size from vixl_reference('sizes') (letter, instagram-post, favicon …).",
                "preset": "Same as size.", "dpi": "Dots per inch for print metadata (36-2400).",
@@ -623,7 +631,8 @@ OVERRIDES = {
                      "palette": "Palette name or colors; roles are assigned by luminance and mode unless keep_order "
                                 "or colors says otherwise.",
                      "colors": "Explicit role colors {background, surface, ink, muted, accent, accent-text, "
-                               "on-accent}; they win over the palette.",
+                               "on-accent; accent-2 and accent-3 for a direction with two or three accents}; they "
+                               "win over the palette, and fixed colors get no derived second accent.",
                      "keep_order": "true uses the palette in the order given: background, surface, then accents "
                                    "(ink and muted are derived for contrast).",
                      "mode": "light or dark (default: from the canvas background).",
@@ -884,6 +893,7 @@ EXAMPLES = {
     "haze": [
         {"type": "haze", "target": "moon", "color": "#ffd38a", "strength": 0.45},
         {"type": "haze", "x": 400, "y": 300, "width": 600, "form": "band"},
+        {"type": "haze", "form": "fog", "y": 420, "height": 180, "layers": 3, "density": 0.5, "color": "#dfe6ee", "seed": 2},
     ],
     "star-field": [
         {"type": "star-field", "region": [0, 0, 800, 300], "count": 80, "seed": 4},

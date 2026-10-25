@@ -372,3 +372,45 @@ def test_carousel_finish_is_applied_to_every_generated_page():
         background = next(layer for layer in layers if layer["name"] == "background")
         assert "paper" in background["looks"]
     assert selected == p.state["pages"][-1]["id"]
+
+
+FINISHING = {"callout": {"title": "Heads up", "body": "Doors open at seven; the bar closes at midnight.", "icon": "!"},
+             "band": {"title": "Summer Night Market", "detail": "June 21"},
+             "labelled-rule": {"label": "Chapter two"}}
+
+
+@pytest.mark.parametrize("name", sorted(FINISHING))
+@pytest.mark.parametrize("palette", ["slate", "midnight"])
+def test_finishing_containers_build_check_and_export(name, palette, tmp_path):
+    import zipfile
+
+    item = CONTAINERS[name]
+    p = Project(1200, 800)
+    p.apply([{"type": "palette-apply", "name": palette}, {"type": "solid", "name": "bg", "color": "@background"},
+             {"type": "container-place", "name": "card", "resource": name, "variables": FINISHING[name],
+              "width": item["width"], "height": item["height"], "x": 100, "y": 100, "seed": 1}])
+    assert measure(p)["passed"]
+    fixes = [issue for issue in p.check()["issues"] if issue.get("action") == "fix" and issue["check"] != "fonts"]
+    assert not fixes, fixes
+    p.export(str(tmp_path / "card.svg"))
+    p.export(str(tmp_path / "card.pptx"))
+    with zipfile.ZipFile(tmp_path / "card.pptx") as archive:
+        slide = archive.read("ppt/slides/slide1.xml").decode()
+    assert all(text in slide for text in FINISHING[name].values() if text != "!")
+    # Placed on purpose, never rolled: the rolled component pool stays as it was.
+    assert not item["safe"]
+
+
+def test_optional_parts_of_finishing_containers_hide_when_empty():
+    p = Project(1200, 800)
+    p.apply([{"type": "palette-apply", "name": "slate"},
+             {"type": "container-place", "name": "note", "resource": "callout", "x": 100, "y": 100,
+              "variables": {"title": "Heads up", "body": "Bring a coat."}},
+             {"type": "container-place", "name": "strip", "resource": "band", "x": 100, "y": 500, "width": 960,
+              "height": 120, "variables": {"title": "Summer Night Market"}}])
+    assert measure(p)["passed"]
+    from vixl.containers import collapsed
+
+    hidden = collapsed(p)
+    assert {p.layer("note/icon")["id"], p.layer("strip/detail")["id"]} <= hidden
+    assert not {p.layer(name)["id"] for name in ("note/title", "note/body", "strip/title")} & hidden

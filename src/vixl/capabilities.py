@@ -18,12 +18,13 @@ TOPICS = {
         ["looping-motion", "scatter", "natural-motion", "character-rigging", "motion", "cut-paper", "audio-composition"],
     ),
     "shapes": ("shape shapes heart bubble badge star content", []),
-    "atmosphere": ("atmosphere reflection haze star stars string lights bokeh water motif motifs",
+    "atmosphere": ("atmosphere reflection haze fog mist star stars string lights bokeh water motif motifs",
                    ["motifs", "natural-color-light"]),
     "film": ("film video audio caption", ["film-review", "audio-composition"]),
     "layout": (
-        "layout container template stack fit align distribute spatial grid snap guide comic",
-        ["layout", "overall", "finishing"],
+        "layout container template stack flex flexbox css fit align distribute spatial grid snap guide comic adapt "
+        "responsive",
+        ["layout", "stacks", "overall", "finishing"],
     ),
     "color": ("palette color swatch look style lighting", ["color", "natural-color-light", "accessibility"]),
     "export": ("export film merge form", ["print"]),
@@ -136,7 +137,12 @@ def lookup(topic=None, *, fields=False):
             "vixl_render(isolate=[NAME] or ['object:KIND'], views=['parts'], exploded=true) shows each part; "
             "vixl_export(isolate=[NAME]) exports it alone (.vixl: a portable object for object-place source=). "
             "object-save/object-place reuse an editable object. vixl_reference('objects', name=KIND) reads a "
-            "kind; vixl_apply(workflow='resource-save', request={kind: 'objects', name, value}) adds one.")
+            "kind with its build block (approach, placements, a working example batch); vixl_apply(workflow="
+            "'object-plan', request={kind, height, apply}) scaffolds one as named placeholder parts; {type: object, "
+            "action: outline, target: NAME, outline: silhouette|parts|none} applies its outline policy; vixl_check measures "
+            "declared objects against their kind (the object check: parts, gaps, proportions, mirrored pairs, "
+            "layering; stylized: true skips proportions, depth: far|near orders side-view limbs); "
+            "vixl_apply(workflow='resource-save', request={kind: 'objects', name, value}) adds a kind.")
         extra["taxonomy"] = taxonomy()
     if "accessibility" in chosen:
         extra["accessibility"] = (

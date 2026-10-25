@@ -15,6 +15,7 @@ import random
 import re
 import secrets
 from urllib.parse import quote_plus, urlparse
+import zipfile
 
 import httpx
 
@@ -160,13 +161,29 @@ def roll_pairing(seed=None, mood=None, best_for=None):
     return random.Random(seed).choice(pool), seed
 
 
+# What a brief adds to a direction: reported, never passed on to layout-apply.
+BRIEF_KEYS = ("mood_source", "brief_moods", "mood_words", "motif_suggestion")
+
+
+def _brief_moods(value):
+    """``{moods, words, motif}`` from ``brief_moods``: what ``briefs.brief_moods`` returns, or a list of moods."""
+    if not value:
+        return {"moods": set(), "words": [], "motif": None}
+    if isinstance(value, (list, tuple, set)):
+        value = {"moods": list(value)}
+    require(isinstance(value, dict) and isinstance(value.get("moods", []), (list, tuple, set)),
+            "brief_moods is a list of moods or {moods, words, motif}", field="brief_moods")
+    return {"moods": {slug(m) for m in value.get("moods", [])}, "words": list(value.get("words", [])),
+            "motif": value.get("motif")}
+
+
 def _weighted_choice(rng, weights):
     names = sorted(name for name, value in weights.items() if value > 0)
     return rng.choices(names, weights=[weights[name] for name in names], k=1)[0]
 
 
 def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety="medium", recent=None,
-         recommend=None, content=None):
+         recommend=None, content=None, brief_moods=None):
     """Roll a coherent design direction from the house style: a tier, then pairing, mode, palette and layout.
 
     The variety level gates the tiers (low: safe only; medium: mostly safe; high: every tier) and the
@@ -179,12 +196,19 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
     preview's), so applying it reports the slots it leaves out as ``unused_slot`` (#700); ``direction.pool``
     says which pool the layout came from. Every field that ``locks`` fixes is kept; the rest come from the seed, which is returned so
     a direction worth keeping can be reproduced exactly.
+
+    ``brief_moods`` (from ``briefs.brief_moods``: the moods, the brief words that implied them and a motif) only
+    weights the palettes whose mood matches, within the rolled tier, and is reported in the direction
+    (``mood_source: "brief"``, ``brief_moods``, ``mood_words``, ``motif_suggestion``); empty, the roll is unchanged.
+    The accent count (0-3) and how the accents share the page (``accent_representation``) come from a separate
+    stream of the seed, so they never change the other choices; ``locks={accents: N}`` fixes the count.
     """
     from .layouts import ACCENTS, DENSITY_CHOICES, IMAGE_KEYS, LAYOUTS, RATIOS, placeable, places, slot_spec
+    from .normalize import roll_locks
     from .resources import PALETTES
     from .variety import VARIETIES, choose, dimensions, orientation, pick_tier, tier_pool
 
-    locks = dict(locks or {})
+    locks = roll_locks(locks)
     contrast = locks.get("weight_contrast")
     require(contrast in (None, "moderate", "strong"), "weight_contrast must be moderate or strong", field="locks")
     require(variety in VARIETIES, "variety must be low, medium, high or fixed", field="variety")
@@ -231,8 +255,14 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
     moods = {slug(m) for m in pairing.get("mood", [])} | wanted
     palette_meta = house_style.entries("palettes")
     palettes = tier_pool("palettes", tier, goal, lambda name: name in PALETTES and mode in house_style.palette_modes(name))
-    palette_weights = {name: tuning["match_weight"] if moods & {slug(m) for m in palette_meta[name].get("mood", [])} else 1
-                       for name in palettes}
+    brief = _brief_moods(brief_moods)
+
+    def palette_weight(name):
+        meta = {slug(m) for m in palette_meta[name].get("mood", [])}
+        return ((tuning["match_weight"] if moods & meta else 1)
+                * (tuning["brief_weight"] if brief["moods"] & meta else 1))
+
+    palette_weights = {name: palette_weight(name) for name in palettes}
     shape = orientation(*canvas) if canvas else None
     layout_meta = house_style.entries("layouts")
 
@@ -309,9 +339,22 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
     pill = 1 if corner == "pill" else 0 if style in details["square_styles"] else details["cta_pill"][direction["tier"]]
     direction["cta"] = "pill" if pick.random() < pill else "button"
     direction["date"] = "highlight" if pick.random() < details["date_highlight"][direction["tier"]] else "plain"
+    # The accents have their own stream too, so a seed keeps everything it rolled before, its first accent included.
+    rules, pick = house_style.accents(goal), random.Random(seed ^ 0xACC)
+    direction["accent_count"] = int(_weighted_choice(pick, rules["count_weights"]))
+    direction["accent_representation"] = _weighted_choice(pick, rules["representation"])
     unknown = set(locks) - set(direction)
     require(not unknown, f"Unknown lock(s) {sorted(unknown)}; lockable: {', '.join(direction)}", field="locks")
     direction.update(locks)
+    count = direction["accent_count"]
+    require(isinstance(count, int) and not isinstance(count, bool) and 0 <= count <= 3,
+            "accent_count (locks.accents) is 0, 1, 2 or 3", field="locks")
+    require(direction["accent_representation"] in rules["representation"],
+            f"accent_representation is one of {', '.join(rules['representation'])}", field="locks")
+    if brief["moods"]:
+        direction.update(mood_source="brief", brief_moods=sorted(brief["moods"]), mood_words=brief["words"])
+    if brief["motif"]:
+        direction["motif_suggestion"] = brief["motif"]
     if "container" in locks:
         from .resources import get
 
@@ -343,7 +386,7 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
         "accent": direction["accent"],
         "direction": {key: value for key, value in direction.items()
                       if key not in ("layout", "palette", "mode", "type_scale", "density", "accent", "layout_seed", "pairing",
-                                     "tier", "purpose", "pool")},
+                                     "tier", "purpose", "pool", *BRIEF_KEYS)},
     }
     if "container" in locks:
         operation["direction"]["place_container"] = True
@@ -414,6 +457,84 @@ def cached_font(family, weight=400, italic=False):
     return data
 
 
+def local_script_faces(families):
+    """Font bytes for ``families`` (catalog faces of scripts the bundled fonts lack, such as Noto Sans SC) that are
+    already on this machine: the ``cjk`` content pack (``VIXL_CJK_PACK``: one font file, or a zip of files named like
+    the font cache), then every cached style of each family (left there by font-cover or font install). Never touches
+    the network: a render must not download, so a face that is not here leaves the characters to the apply warning."""
+    from .packs import local
+    from .text import file_bytes
+
+    found = []
+    pack = local("cjk")
+    if pack is not None:
+        stat = pack.stat()
+        if zipfile.is_zipfile(pack):
+            members = _pack_members(str(pack), stat.st_mtime_ns, stat.st_size)
+            found += [_pack_member(str(pack), stat.st_mtime_ns, stat.st_size, member)
+                      for family in families for member in members.get(slug(family), ())]
+        else:
+            found.append(file_bytes(pack))
+    directory = _cache_dir()
+    try:
+        listing = _cache_listing(str(directory), directory.stat().st_mtime_ns)
+    except OSError:
+        listing = {}
+    for family in families:
+        for name in listing.get(slug(family), ()):
+            try:
+                found.append(file_bytes(directory / name))
+            except OSError:
+                continue
+    return [data for data in dict.fromkeys(found) if data is not None and _usable_face(data)]
+
+
+_STYLE_FILE = re.compile(r"(?P<family>[a-z0-9-]+?)-(?P<weight>[1-9]00)(?:-italic)?\.ttf")
+
+
+def _styles(names):
+    """``{family slug: [file names]}`` for font files named like the font cache (``noto-sans-sc-400.ttf``)."""
+    found = {}
+    for name in sorted(names):
+        match = _STYLE_FILE.fullmatch(Path(name).name)
+        if match:
+            found.setdefault(match["family"], []).append(name)
+    return found
+
+
+@lru_cache(maxsize=4)
+def _cache_listing(directory, mtime):
+    return _styles(entry.name for entry in os.scandir(directory) if entry.is_file())
+
+
+@lru_cache(maxsize=4)
+def _pack_members(path, mtime, size):
+    with zipfile.ZipFile(path) as archive:
+        return _styles(info.filename for info in archive.infolist() if not info.is_dir()
+                       and info.file_size <= LIMIT)
+
+
+@lru_cache(maxsize=8)
+def _pack_member(path, mtime, size, member):
+    try:
+        with zipfile.ZipFile(path) as archive:
+            return archive.read(member)
+    except (OSError, KeyError, zipfile.BadZipFile):
+        return None
+
+
+@lru_cache(maxsize=16)
+def _usable_face(data):
+    """Whether the outline renderer can draw from ``data`` (a damaged or colour font is skipped, not fatal)."""
+    from .text import coverage, face
+
+    try:
+        face(data)
+        return bool(coverage(data))
+    except Exception:  # noqa: BLE001 - an unreadable or colour font file is just not a usable face
+        return False
+
+
 def fetch_font(family, weight=400, italic=False, *, client=None, source=None):
     """Return TTF bytes for one static style of a Google Fonts family, using the user cache.
     A ``source`` dict is filled with where the bytes came from: ``origin`` (``cache`` or
@@ -478,8 +599,9 @@ def fetch_font(family, weight=400, italic=False, *, client=None, source=None):
     return data, family
 
 
-def install_font(project, family, weight=400, italic=False, name=None, role=None, *, client=None):
-    """Download (or reuse from cache), embed and register one style; optionally give it a role."""
+def install_font(project, family, weight=400, italic=False, name=None, role=None, *, client=None, body_italic=False):
+    """Download (or reuse from cache), embed and register one style; optionally give it a role. With
+    ``body_italic``, a body text face also brings its italic (see ``install_body_italic``)."""
     import hashlib
 
     from .design import named
@@ -495,9 +617,36 @@ def install_font(project, family, weight=400, italic=False, name=None, role=None
     candidate.apply(op, detail="compact")
     project.__dict__.update(candidate.__dict__)
     cache_dir, chosen_by = cache_location()
-    return {"name": name, "family": family, "weight": weight, "italic": italic, **({"role": role} if role else {}),
-            "source": {**found, "cache_dir": str(cache_dir), "cache_dir_from": chosen_by, "bundled_fallback": False},
-            "file": {"asset": asset, "bytes": len(data), "sha256": digest}}
+    result = {"name": name, "family": family, "weight": weight, "italic": italic, **({"role": role} if role else {}),
+              "source": {**found, "cache_dir": str(cache_dir), "cache_dir_from": chosen_by, "bundled_fallback": False},
+              "file": {"asset": asset, "bytes": len(data), "sha256": digest}}
+    if body_italic and role == "body" and not italic:
+        companion = install_body_italic(project, family, weight, name, client=client)
+        if companion:
+            result["body_italic"] = companion
+    return result
+
+
+def text_face(family):
+    """Whether a catalog family is a text face that has an italic (role ``text``, ``italic`` true)."""
+    entry = find_font(family)
+    return bool(entry and entry.get("italic") and "text" in entry.get("roles", []))
+
+
+def install_body_italic(project, family, weight, roman, *, client=None):
+    """Also install the italic of a body text face, registered as ``<roman>-italic`` (``source-sans-3-400-italic``),
+    so italic rich text draws the real italic instead of slanting the roman (one more file). Families that are not
+    catalog text faces with an italic return None. A failed download changes nothing and is reported as
+    ``{"skipped": reason}``. Only static files are fetched: optical sizes (``opsz``) are not used."""
+    if not text_face(family):
+        return None
+    try:
+        installed = install_font(project, family, weight, True, f"{roman}-italic", client=client)
+    except VixlError as exc:
+        if exc.code not in ("network_disabled", "font_download_failed", "unknown_font", "unavailable_weight"):
+            raise
+        return {"skipped": str(exc)}
+    return {"name": installed["name"], "origin": installed["source"].get("origin")}
 
 
 SCRIPT_ALIASES = {"devanagari": "Devanagari", "hindi": "Devanagari", "han": "Han", "chinese": "Han",
@@ -512,7 +661,7 @@ def cover_fonts(project, text=None, scripts=None, weight=400, *, client=None):
     Thai, Arabic, or a language name such as japanese), else from the characters of ``text`` the document cannot draw,
     else from every text layer's. Faces come from the font cache first; a download honours the network policy
     (``VIXL_OFFLINE``), and when one is not allowed or fails nothing is changed and the error names the families."""
-    from .text import SCRIPT_FONTS, cover_families, glyph_coverage, scripts_of, uncovered
+    from .text import SCRIPT_FONTS, cover_families, glyph_coverage, layer_coverage, scripts_of
 
     if scripts:
         require(isinstance(scripts, (list, tuple)) and all(isinstance(item, str) for item in scripts),
@@ -523,11 +672,14 @@ def cover_fonts(project, text=None, scripts=None, weight=400, *, client=None):
         wanted = list(dict.fromkeys(SCRIPT_ALIASES[item.lower()] for item in scripts))
         missing = []
     else:
+        # Characters drawn only from a face on this machine (text.local_faces) count too: font-cover embeds it.
         if text is not None:
-            missing = glyph_coverage(project, {"text": text})["missing"]
+            report = glyph_coverage(project, {"text": text})
+            missing = sorted({*report["missing"], *report.get("local", ())})
         else:
             missing = sorted({char for layer in project.state["layers"] if layer["type"] == "text"
-                              for char in uncovered(project, layer)})
+                              for report in (layer_coverage(project, layer),)
+                              for char in (*report["missing"], *report.get("local", ()))})
         wanted = [name for name in scripts_of(missing) if name]
     families = cover_families(wanted)
     result = {"scripts": wanted, "families": families, "installed": [],
@@ -585,15 +737,17 @@ def origin_of(*installed):
     return origins.pop() if len(origins) == 1 else "mixed"
 
 
-def pair_fonts(project, pairing=None, *, seed=None, mood=None, best_for=None, client=None):
-    """Install a pairing's heading and body styles and make them the document typography."""
+def pair_fonts(project, pairing=None, *, seed=None, mood=None, best_for=None, client=None, body_italic=False):
+    """Install a pairing's heading and body styles and make them the document typography. With ``body_italic``
+    (the font pair command), a body text face also brings its italic."""
     rolled = None
     if pairing in (None, "random"):
         item, rolled = roll_pairing(seed, mood, best_for)
     else:
         item = get_pairing(pairing)
     heading = install_font(project, item["heading"]["family"], item["heading"]["weight"], role="heading", client=client)
-    body = install_font(project, item["body"]["family"], item["body"]["weight"], role="body", client=client)
+    body = install_font(project, item["body"]["family"], item["body"]["weight"], role="body", client=client,
+                        body_italic=body_italic)
     result = {
         "pairing": item["name"],
         "heading": heading,
@@ -654,7 +808,7 @@ def install_workspace(workspace, family, weight=400, italic=False, name=None, ro
 
 def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood=None, canvas=None,
                   locks=None, apply=False, slots=None, unfilled=None, variety=None,
-                  recommend=None, kind=None):
+                  recommend=None, kind=None, replace=False, brief_moods=None):
     """Choose brand defaults and optionally commit the whole direction in one undo step.
 
     Precedence: explicit ``locks`` > the workspace brand > the purpose profile > the document's stored
@@ -666,6 +820,8 @@ def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood
     direction is final and passes ``check``; ``blank`` shows a ``[Label]`` placeholder that ``check``
     rejects until it is filled. The default is ``omit`` when ``slots`` supplies copy and ``blank``
     when it supplies none (an all-omitted layout would be empty, so the placeholders show what to fill).
+    ``replace`` removes the layers of the document's previous layout first (a re-roll of a rolled document).
+    ``brief_moods`` (``briefs.brief_moods(brief)``) weights palettes toward the moods a brief implies (see ``roll``).
     """
     require(unfilled in (None, "blank", "omit"), "unfilled must be blank or omit", field="unfilled")
     from .layouts import CONTENT_KEYS
@@ -673,8 +829,10 @@ def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood
     require(isinstance(slots or {}, dict) and set(slots or {}) <= set(CONTENT_KEYS),
             f"slots must contain layout content fields ({', '.join(CONTENT_KEYS)})", field="slots")
     from .brand import for_project, load
+    from .normalize import roll_locks
+
     kit = for_project(project) if project else load(workspace)
-    choices = dict(locks or {})
+    choices = roll_locks(locks)
     if kit.get("pairing"):
         choices.setdefault("pairing", kit["pairing"])
     if kit.get("palette"):
@@ -691,7 +849,8 @@ def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood
     recent = [] if explicit_seed or variety == "fixed" else history(workspace)
     goal, source = house_style.resolve_purpose(purpose, project=project, kind=kind)
     result = roll(seed, purpose=goal or purpose, mood=mood, canvas=canvas, locks=choices,
-                  variety=variety, recent=recent, recommend=recommend, content=tuple(slots or ()))
+                  variety=variety, recent=recent, recommend=recommend, content=tuple(slots or ()),
+                  brief_moods=brief_moods)
     result["purpose_source"] = source
     if kit.get("palette") and not (locks or {}).get("palette"):
         result["operation"]["colors"] = kit["palette"]
@@ -712,6 +871,8 @@ def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood
         if own_transaction:
             candidate.begin()
         operation = {**result["operation"], **(slots or {})}
+        if replace and candidate.state.get("layout"):
+            operation["replace"] = True
         if not embedded_pair:
             installed = pair_fonts(candidate, result["direction"]["pairing"])
             result["fonts"] = {key: installed[key] for key in ("origin", "heading", "body")}

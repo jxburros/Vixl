@@ -7,7 +7,7 @@ from .emoji_workflows import ACTIONS as EMOJI_ACTIONS
 from .automation import bounded_object
 from .errors import require, VixlError
 from .links import ACTIONS as LINK_ACTIONS
-from . import natural_guidance, plugins
+from . import natural_guidance, object_plan, plugins, variations
 
 ACTIONS = {
     "check": ({"suite", "suites", "mode", "variables", "artboard", "page", "comp", "artboards", "pages", "comps",
@@ -29,12 +29,14 @@ ACTIONS = {
     "start": ({"workers"}, set()),
     "form-fill": ({"data", "values", "output", "name", "format", "combine", "mode", "skip_invalid", "dry_run", "check",
                    "unknown", "dpi"}, set()),
-    "adapt-sizes": ({"sizes", "directory", "name", "options", "formats", "overwrite", "report"}, {"sizes"}),
+    "adapt-sizes": ({"sizes", "directory", "name", "options", "formats", "overwrite", "report", "suites"}, {"sizes"}),
 }
 
 
 ACTIONS.update(EMOJI_ACTIONS)
 ACTIONS.update(natural_guidance.ACTIONS)
+ACTIONS.update(object_plan.ACTIONS)
+ACTIONS.update(variations.ACTIONS)
 ACTIONS.update(STUDIO_ACTIONS)
 ACTIONS.update(LINK_ACTIONS)
 # Built-in plugins (vixl.plugins) add their own workflow actions.
@@ -71,7 +73,7 @@ ACTION_FIELD_TYPES = {
     },
 }
 
-for _module in (natural_guidance,):
+for _module in (natural_guidance, object_plan, variations):
     for _action in _module.ACTIONS:
         ACTION_FIELD_TYPES[_action] = _module.FIELD_TYPES
 
@@ -120,6 +122,10 @@ def dispatch(session, action, request, document=None):
         return emoji_dispatch(session, action, request, document)
     if action in natural_guidance.ACTIONS:
         return natural_guidance.dispatch(session, action, request, document)
+    if action in object_plan.ACTIONS:
+        return object_plan.dispatch(session, request, document)
+    if action in variations.ACTIONS:
+        return variations.dispatch(session, action, request, document)
     if action in LINK_ACTIONS:
         from .links import dispatch as links_dispatch
 
@@ -136,7 +142,8 @@ def dispatch(session, action, request, document=None):
 
         return adapt_copies(session, export_file, request["sizes"], request.get("directory", "."),
                             request.get("name", "{name}-{size}"), request.get("options"), document,
-                            request.get("overwrite", False), request.get("formats"), request.get("report", "summary"))
+                            request.get("overwrite", False), request.get("formats"), request.get("report", "summary"),
+                            request.get("suites", True))
     if action == "plan":
         return plan(request["spec"])
     if action == "form-fill":

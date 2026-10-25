@@ -31,6 +31,8 @@ Each line is one paragraph.
 | `__underline__`, `~~strike~~`, `==highlight==` | underline, strikethrough, yellow highlight |
 | `x^2^`, `H~2~O` | superscript, subscript |
 | `[text]{color=#e33 size=40 font=heading bold italic underline highlight=#ff0 tracking=2}` | any combination of styles |
+| `[Winter]{accent}`, `[Sale]{accent-bg}` | the palette's accent text color; accent ink on an accent highlight |
+| `[note]{small-caps}` | small capitals |
 | `- item`, `* item`, `+ item` | bullet; indent two spaces (or a tab) per level |
 | `1. item` | numbered; the first number sets the start, levels count 1. / a. / i. |
 | `# `, `## `, `### ` | bold heading at 1.6×, 1.3× or 1.15× the size |
@@ -52,6 +54,23 @@ bundled fallback, and fallback glyphs are checked against each span's own font.
 | `font` | a registered font name, `heading`, `body` or a font file |
 | `baseline` | `super`, `sub` or `normal` |
 | `tracking` | extra pixels between letters (negative tightens) |
+| `small_caps` | true or false: lowercase letters as small capitals ([typography](typography.md#small-caps)) |
+
+**Accent words.** The `accent` flag sets a word in `@accent-text`, the palette color made for accent type that reads
+on the background, and `accent-bg` sets it in `@on-accent` on an `@accent` highlight. Both name palette roles, so the
+document needs them first (`palette-apply` with roles, `layout-apply` or a rolled direction); without them the
+operation is refused and says so. To accent words of plain text without writing Markdown, give `text` or `text-set`
+`accent_words`: whole words, matched without regard to case (`winter` matches "Winter" but not "winterland"), become
+`@accent-text` spans of rich text, and words that are not found are listed in the warnings. A layer already set in an
+accent color is left alone with a warning. `accent`, `accents` and `highlight_words` are accepted for `accent_words`.
+
+```json
+[{"type": "palette-apply", "name": "slate"},
+ {"type": "text", "name": "headline", "text": "Winter warmers on the quay", "size": 64, "x": 60, "y": 60,
+  "accent_words": ["winter"]},
+ {"type": "rich-text", "name": "note", "markdown": "Doors at [seven]{accent}, [free entry]{accent-bg}", "size": 28,
+  "x": 60, "y": 180}]
+```
 
 **Tracking goes between letters, not after the last one on a line.** A tracked line measures from its first
 glyph to its last, so auto-sized boxes, wrapping, `center` and `right` alignment and centring the layer on the
