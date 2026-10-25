@@ -365,6 +365,34 @@ takes the same flags (`--call-timeout`, `--max-megapixels`, `--max-pages`, `--ma
 | `GET /host/info` | `{vixl, host_api: 1, capabilities: {pptx, pdf_import, ffmpeg, ai}, limits, job_ttl, offline, network, workspaces}` |
 | `GET /host/health` | `{ok: true, warm}`; `warm` is true once a workspace has been used |
 | `GET /w/{ws}` | `{workspace}`; creates the workspace folder |
+| `GET /w/{ws}/documents` | `{workspace, documents: [{id, path, revision, created, updated, name?}]}` |
+| `POST /w/{ws}/documents` | `{name?, size?, width?, height?, purpose?, brief?, template?, variables?, background?, dpi?, orientation?, bleed?, seed?, variety?, house_style?, font_pairing?, workspace_fonts?, request_id?}` → `201` and the document state at revision 1 |
+| `POST /w/{ws}/documents/import?name=` | A `.vixl` file as the body → `201` and its state at revision 1 |
+| `GET /w/{ws}/documents/{id}?max_layers=500` | `{id, revision, canvas, head, layer_count, pages, layers: [{id, name, type, parent, visible, bounds, text?}], truncated}` |
+| `GET /w/{ws}/documents/{id}/blob` | The saved `.vixl` bytes, with `X-Vixl-Revision` |
+| `POST /w/{ws}/documents/{id}/operations` | `{operations, dry_run?, detail?, check?, preview?, suites?, repair?, if_revision?, request_id?}` → the change summary with `revision` (`preview_base64` when asked) |
+| `POST /w/{ws}/documents/{id}/assets?name=&credit=&license=` | Raw image bytes → the imported layer and `revision` |
+| `POST /w/{ws}/documents/{id}/import?format=svg\|pdf&name=&page=&dpi=&svg_mode=` | SVG or PDF bytes imported as layers → `revision` |
+| `DELETE /w/{ws}/documents/{id}?if_revision=` | `{deleted, revision}`; removes the working copy |
+| `GET /jobs/{id}?wait=` · `GET /jobs/{id}/result` | A call that outlived the timeout (`202` with `job_id`): its status, then what the call would have answered |
+
+**Documents.** A document has an opaque id (`d_` and 8 hex digits) and lives at `ROOT/ws/ID.vixl`; the index
+`ROOT/ws/.vixl-host/index.json` maps ids to files and holds each document's revision. Ids belong to their
+workspace. Every route wraps the same `Session` methods as MCP and REST: creation rolls the design defaults as
+`vixl_document(action='create')` does (`brief` picks the first size the brief suggests unless a size is given),
+`import` loads the file under the [archive budgets](#archive-parsing-budgets), operations go through the service
+policy (no file paths, linked files or plugin enabling; fonts by registered name or role), and `assets` and
+`import` take raw bytes only, never a URL.
+
+**Revisions.** Each document has a whole-number revision, 1 when it is created and one more after every change
+that succeeds (a dry run changes nothing). Every answer carries it. Send `if_revision` with a change to make it
+conditional: when another change came first the host answers `409 revision_conflict` with the current revision in
+`details.revision`, and applies nothing.
+
+**Retries.** A change sent with `request_id` (1-64 characters) applies at most once per workspace: sending it
+again with the same body returns the first answer with `replayed: true`, a different body under the same id is
+`409 request_id_conflict`, and a repeat while the first is still running points at its job. The log is the one
+MCP uses (`vixl.idempotency`): the last 512 ids, 64 per document.
 
 Other modules add route groups with `vixl.host.add_routes(fn)` and plugins with the `host-route` hook; each `fn`
 receives `(app, host)` and its routes are behind the same token.

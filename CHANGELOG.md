@@ -24,6 +24,12 @@ and `vixl host` for AI Server Studio.
   `host_api: 1`, capabilities, limits and the job TTL, and every error answers one shape,
   `{code, message, hint, layer_id?}`. It takes `--offline`, `--bind` and the per-call limit flags, with the
   shared-server defaults (#537).
+- **Host documents have ids, revisions and safe retries.** `POST /w/{ws}/documents` creates a document with an
+  opaque id (`d_1a2b3c4d`) recorded in the workspace's index; `import` takes a `.vixl` file under the archive
+  budgets, and `GET` returns its state with layer bounds, `blob` its bytes. Operations, raw-byte assets, SVG and PDF
+  artwork and `DELETE` wrap the `Session` methods. Each change raises a revision that every answer carries, and
+  `if_revision` makes a change conditional (`409 revision_conflict`). A `request_id` makes a retry return the first
+  answer, using the same request log as MCP, now `vixl.idempotency` (#538).
 - **Offline mode covers content packs and plugins.** `VIXL_OFFLINE=1` now also stops content-pack downloads (as
   `VIXL_PACK_DOWNLOAD=off` does) and refuses to enable third-party plugins, whose code it cannot bind;
   `--plugins` with `--offline` is refused (#537).

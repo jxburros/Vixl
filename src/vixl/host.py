@@ -38,6 +38,9 @@ TOKEN_FILE_ENV = "VIXL_HOST_TOKEN_FILE"
 WORKSPACE_PATTERN = r"[a-z0-9_-]{1,64}"
 WORKSPACE = re.compile(WORKSPACE_PATTERN)
 HOST_DIR = ".vixl-host"  # Per-workspace host state: the document index and export job results.
+DOCUMENT_ID = re.compile(r"d_[0-9a-f]{8}")
+MAX_JOBS = 200
+MAX_LAYERS = 2000  # Layers one document summary lists at most (``max_layers``).
 MAX_WORKSPACES = 16  # Workspace sessions kept loaded; the least recently used is dropped (everything is saved).
 MAX_JSON_BYTES = 1024 * 1024
 SCHEMA_PATH = Path(__file__).parent / "data" / "host-api.schema.json"
@@ -131,6 +134,13 @@ class Host:
         self.job_ttl = float(job_ttl)
         self.sessions = OrderedDict()
         self.lock = threading.RLock()
+        self.doc_locks = {}
+        from .call_limits import BoundedExecutor, Limiter, RestJobs
+        from .idempotency import RequestLog
+
+        self.jobs = RestJobs(self.call_limits.hard_timeout, maximum=MAX_JOBS)
+        self.limiter = Limiter(self.call_limits, self.jobs, BoundedExecutor(16, name="vixl-host"))
+        self.requests = RequestLog()
 
     def workspace(self, ws):
         """``root/ws``, created on first use; refused unless ``ws`` matches the pattern and resolves inside root."""
@@ -163,6 +173,161 @@ class Host:
             while len(self.sessions) > MAX_WORKSPACES:
                 self.sessions.popitem(last=False)
             return session
+
+    # ------------------------------------------------------------------------------------------ documents
+
+    def index_path(self, ws):
+        return self.state_dir(ws) / "index.json"
+
+    def read_index(self, ws):
+        path = self.index_path(ws)
+        if not path.is_file():
+            return {"host_api": HOST_API, "documents": {}}
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except ValueError as exc:
+            raise VixlError("invalid_index", f"The document index of workspace {ws!r} is not valid JSON") from exc
+        require(isinstance(data, dict) and isinstance(data.get("documents"), dict),
+                f"The document index of workspace {ws!r} is malformed", "invalid_index")
+        return data
+
+    def update_index(self, ws, change):
+        """Apply ``change(index)`` under the workspace's lock and write the index atomically; returns its result."""
+        from .fileio import file_lock, temporary
+
+        path = self.index_path(ws)
+        with self.lock_for(ws, None), file_lock(str(path)):
+            data = self.read_index(ws)
+            result = change(data)
+            fd, staged = temporary(path.parent, ".json")
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                json.dump(data, handle, indent=1, sort_keys=True)
+            os.replace(staged, path)
+            return result
+
+    def lock_for(self, ws, doc):
+        with self.lock:
+            return self.doc_locks.setdefault((ws, doc), threading.RLock())
+
+    def entry(self, ws, doc):
+        """The index entry of document ``doc``; ``not_found`` for an unknown id."""
+        require(isinstance(doc, str) and DOCUMENT_ID.fullmatch(doc), f"Document ids look like d_1a2b3c4d, not {doc!r}",
+                "not_found", field="id")
+        entry = self.read_index(ws)["documents"].get(doc)
+        require(entry is not None, f"No document {doc!r} in workspace {ws!r}", "not_found", field="id")
+        return entry
+
+    @staticmethod
+    def relative(doc):
+        return f"{doc}.vixl"
+
+    def new_id(self, ws):
+        import uuid
+
+        existing = self.read_index(ws)["documents"]
+        while True:
+            doc = "d_" + uuid.uuid4().hex[:8]
+            if doc not in existing and not (self.workspace(ws) / self.relative(doc)).exists():
+                return doc
+
+    def register(self, ws, doc, name=None):
+        """Add a new document to the index at revision 1."""
+        import time
+
+        now = time.time()
+
+        def add(index):
+            index["documents"][doc] = {"id": doc, "path": self.relative(doc), "revision": 1, "created": now,
+                                       "updated": now, **({"name": name} if name else {})}
+            return dict(index["documents"][doc])
+
+        return self.update_index(ws, add)
+
+    def bump(self, ws, doc):
+        """The next revision of ``doc``, recorded in the index."""
+        import time
+
+        def advance(index):
+            entry = index["documents"].get(doc)
+            require(entry is not None, f"Document {doc!r} was deleted", "not_found", field="id")
+            entry["revision"] += 1
+            entry["updated"] = time.time()
+            return entry["revision"]
+
+        return self.update_index(ws, advance)
+
+    def mutate(self, ws, doc, if_revision, fn, *, bump=True):
+        """Run ``fn(session, path)`` on ``doc`` holding its lock: refused with ``revision_conflict`` when
+        ``if_revision`` is not the current revision; the revision goes up by one when ``bump`` and ``fn`` succeeded.
+        Returns ``(result, revision)``."""
+        require(if_revision is None or (type(if_revision) is int and if_revision >= 1),
+                "if_revision is the revision a change is based on: a positive whole number", field="if_revision")
+        with self.lock_for(ws, doc):
+            entry = self.entry(ws, doc)
+            if if_revision is not None and if_revision != entry["revision"]:
+                raise VixlError("revision_conflict", f"{doc} is at revision {entry['revision']}, not {if_revision}; "
+                                "another change came first", revision=entry["revision"], if_revision=if_revision,
+                                hint="Read the document again, then retry with its current revision")
+            result = fn(self.session(ws), self.relative(doc))
+            return result, (self.bump(ws, doc) if bump else entry["revision"])
+
+    def read(self, ws, doc, fn):
+        """``fn(session, path)`` on ``doc`` and its current revision, without changing it."""
+        return self.mutate(ws, doc, None, fn, bump=False)
+
+    async def call(self, ws, route, fn, *, request_id=None, body=None, document=None, heavy=True):
+        """Run ``fn()`` for a route: heavy calls through the limiter (they may answer 202 with a job), and with a
+        ``request_id`` at most once per workspace: a repeat with the same body returns the first result
+        (``replayed: true``), a different body is ``request_id_conflict``."""
+        from fastapi.responses import JSONResponse
+        from starlette.concurrency import run_in_threadpool
+
+        from .idempotency import fingerprint
+
+        folder = self.workspace(ws)
+        entry, key = None, (ws, request_id)
+        if request_id is not None:
+            require(isinstance(request_id, str) and 0 < len(request_id) <= 64,
+                    "request_id is a string of 1-64 characters", field="request_id")
+            outcome, entry = self.requests.start(request_id, route, fingerprint(route, body), (ws, document),
+                                                 key=key)
+            if outcome == "running":
+                await run_in_threadpool(entry["done"].wait, 20)
+                if entry["result"] is None:
+                    job = entry.get("job")
+                    return JSONResponse({"status": "running", "request_id": request_id,
+                                         **({"job_id": job, "poll": f"/jobs/{job}"} if job else {}),
+                                         "message": "The first call with this request_id is still running; poll "
+                                                    "its job or repeat this call shortly"}, status_code=202,
+                                        headers={"Retry-After": "3"})
+            if outcome != "new":
+                replay = json.loads(entry["result"])
+                if isinstance(replay, dict):
+                    replay.update(replayed=True, request_id=request_id)
+                return replay
+
+        def work():
+            try:
+                result = fn()
+            except BaseException:
+                if entry is not None:
+                    self.requests.discard(key, entry)
+                raise
+            if entry is not None:
+                self.requests.finish(entry, json.dumps(result, default=str))
+            return result
+
+        if not heavy:
+            return await run_in_threadpool(work)
+        outcome, value = await self.limiter.run(folder, route, work)
+        if outcome == "job":
+            from .call_limits import detached
+
+            if entry is not None:
+                entry["job"] = value
+            return JSONResponse({**detached(value, route, self.call_limits.timeout), "job_id": value},
+                                status_code=202, headers={"Location": f"/jobs/{value}", "Retry-After": "3"})
+        return value
 
     def info(self):
         from . import __version__
@@ -294,9 +459,317 @@ def create_host_app(root, token, *, offline=False, call_limits=None, limits=None
 
     from . import plugins
 
-    for fn in [*ROUTES, *plugins.hooks("host-route")]:
+    for fn in [*BUILTIN_ROUTES, *ROUTES, *plugins.hooks("host-route")]:
         fn(app, host)
     return app
+
+
+# ------------------------------------------------------------------------------------------------ route groups
+
+CREATE_FIELDS = {"name", "size", "width", "height", "purpose", "brief", "background", "dpi", "orientation", "bleed",
+                 "seed", "variety", "house_style", "font_pairing", "workspace_fonts", "template", "variables",
+                 "request_id"}
+OPERATION_FIELDS = {"operations", "dry_run", "detail", "check", "preview", "suites", "repair", "if_revision",
+                    "request_id"}
+IMPORT_FORMATS = ("svg", "pdf")
+
+
+def _summary(session, path, project, revision, doc, max_layers=MAX_LAYERS):
+    """A document's state: canvas, head and its layers (id, name, type, parent, visible and canvas bounds)."""
+    from .untrusted import mark
+
+    layers = project.inspect()["layers"]
+    shown = []
+    for layer in layers[:max_layers]:
+        item = {"id": layer["id"], "name": layer.get("name"), "type": layer.get("type"),
+                "parent": layer.get("parent"), "visible": layer.get("visible", True),
+                "bounds": [round(value, 3) for value in layer.get("canvas_bounds") or ()]}
+        if isinstance(layer.get("text"), str):
+            item["text"] = layer["text"][:500]
+        shown.append(item)
+    pages = project.state.get("pages") or []
+    result = {"id": doc, "revision": revision, "canvas": project.state["canvas"], "head": project.head,
+              "layer_count": len(layers), "pages": len(pages), "layers": shown, "truncated": len(layers) > len(shown)}
+    return mark(result)
+
+
+def _known(body, allowed, route):
+    from .interfaces import known_fields
+
+    require(isinstance(body, dict), f"The {route} body is a JSON object", "invalid_request")
+    known_fields(body, allowed, route)
+
+
+def document_routes(app, host):
+    """Documents and operations (#538): create, import, list, read, blob, operations, assets, artwork import and
+    delete. Every route wraps ``Session`` methods; each change raises the document's revision by one."""
+    from fastapi import Request
+    from fastapi.responses import Response
+
+    @app.get("/w/{ws}/documents")
+    def list_documents(ws: str):
+        index = host.read_index(ws)
+        return {"workspace": ws, "documents": sorted(index["documents"].values(), key=lambda e: e["created"])}
+
+    @app.post("/w/{ws}/documents", status_code=201)
+    async def create_document(ws: str, body: dict):
+        _known(body, CREATE_FIELDS, "create")
+        options = {key: value for key, value in body.items() if key != "request_id"}
+
+        def create():
+            doc = host.new_id(ws)
+            session, path = host.session(ws), host.relative(doc)
+            created = _create(session, path, dict(options))
+            entry = host.register(ws, doc, options.get("name"))
+            with session.project(document=path) as project:
+                summary = _summary(session, path, project, entry["revision"], doc)
+            return {**summary, **({"name": entry["name"]} if "name" in entry else {}),
+                    **{key: created[key] for key in ("creation", "template", "brief", "typography",
+                                                     "font_pairing_error", "workspace_fonts") if created.get(key)}}
+
+        return await host.call(ws, "create", create, request_id=body.get("request_id"), body=options)
+
+    @app.post("/w/{ws}/documents/import", status_code=201)
+    async def import_vixl(ws: str, request: Request, name: str | None = None, request_id: str | None = None):
+        import hashlib
+
+        data = await request.body()
+        require(data, "Send the .vixl file as the request body", "invalid_request", field="body")
+
+        def load():
+            from .project import Project
+
+            doc = host.new_id(ws)
+            staging = host.state_dir(ws, "tmp")
+            from .fileio import temporary
+
+            fd, staged = temporary(staging, ".vixl")
+            with os.fdopen(fd, "wb") as handle:
+                handle.write(data)
+            try:
+                # Loading applies the archive budgets (bytes, entries, image pixels, fonts) and the document checks.
+                project = Project.load(staged, limits=host.limits)
+                target = host.workspace(ws) / host.relative(doc)
+                require(not target.exists(), f"{doc} exists", "invalid_request")
+                os.replace(staged, target)
+            finally:
+                Path(staged).unlink(missing_ok=True)
+            entry = host.register(ws, doc, name)
+            session = host.session(ws)
+            return _summary(session, host.relative(doc), project, entry["revision"], doc)
+
+        return await host.call(ws, "import", load, request_id=request_id,
+                               body={"sha256": hashlib.sha256(data).hexdigest(), "name": name})
+
+    @app.get("/w/{ws}/documents/{doc}")
+    def get_document(ws: str, doc: str, max_layers: int = 500):
+        require(1 <= max_layers <= MAX_LAYERS, f"max_layers is 1-{MAX_LAYERS}", field="max_layers")
+
+        def state(session, path):
+            with session.project(document=path) as project:
+                return _summary(session, path, project, None, doc, max_layers)
+
+        summary, revision = host.read(ws, doc, state)
+        return {**summary, "revision": revision}
+
+    @app.get("/w/{ws}/documents/{doc}/blob")
+    def document_blob(ws: str, doc: str):
+        def blob(session, path):
+            with session.project(document=path):
+                return session.resolve(path).read_bytes()
+
+        data, revision = host.read(ws, doc, blob)
+        return Response(data, media_type="application/vnd.vixl+zip",
+                        headers={"X-Vixl-Revision": str(revision),
+                                 "Content-Disposition": f'attachment; filename="{doc}.vixl"'})
+
+    @app.post("/w/{ws}/documents/{doc}/operations")
+    async def apply_operations(ws: str, doc: str, body: dict):
+        import base64
+
+        _known(body, OPERATION_FIELDS, "operations")
+        operations = body.get("operations")
+        require(isinstance(operations, (list, dict)), "operations is a list of operations", field="operations")
+        dry_run = body.get("dry_run", False)
+        require(type(dry_run) is bool, "dry_run is a boolean", field="dry_run")
+
+        def apply(session, path):
+            from .critique import take_previews
+
+            result, image = session.apply_reviewed(
+                operations, dry_run, body.get("detail", "compact"), document=path, check=body.get("check"),
+                preview=body.get("preview"), suites=body.get("suites"), repair=body.get("repair"))
+            for entry, png in zip(result.get("check", {}).get("regions", []), take_previews(result)):
+                entry["preview_base64"] = base64.b64encode(png).decode()
+            if image is not None:
+                result["preview_base64"] = base64.b64encode(image).decode()
+            return result
+
+        def run():
+            result, revision = host.mutate(ws, doc, body.get("if_revision"), apply, bump=not dry_run)
+            return _marked({**result, "id": doc, "revision": revision})
+
+        return await host.call(ws, "operations", run, request_id=body.get("request_id"),
+                               body={k: v for k, v in body.items() if k != "request_id"}, document=doc)
+
+    @app.post("/w/{ws}/documents/{doc}/assets")
+    async def add_asset(ws: str, doc: str, request: Request, name: str = "image", credit: str | None = None,
+                        license: str | None = None, if_revision: int | None = None, request_id: str | None = None):
+        import hashlib
+
+        data = await request.body()
+        require(data, "Send the image bytes as the request body", "invalid_request", field="body")
+
+        def add(session, path):
+            return session.import_image(data, name, document=path, credit=credit, license=license)
+
+        def run():
+            result, revision = host.mutate(ws, doc, if_revision, add)
+            return {**result, "id": doc, "revision": revision}
+
+        return await host.call(ws, "assets", run, request_id=request_id, document=doc, heavy=False,
+                               body={"sha256": hashlib.sha256(data).hexdigest(), "name": name, "credit": credit,
+                                     "license": license, "if_revision": if_revision})
+
+    @app.post("/w/{ws}/documents/{doc}/import")
+    async def import_artwork(ws: str, doc: str, request: Request, format: str, name: str = "import", page: int = 1,
+                             dpi: int = 144, svg_mode: str = "editable", if_revision: int | None = None,
+                             request_id: str | None = None):
+        import hashlib
+
+        require(format in IMPORT_FORMATS, f"format is one of {', '.join(IMPORT_FORMATS)}", field="format")
+        data = await request.body()
+        require(data, "Send the file as the request body", "invalid_request", field="body")
+
+        def add(session, path):
+            from .imports import import_document
+
+            with session.project(write=True, document=path) as project:
+                return import_document(project, data, format, name, page, dpi, svg_mode)
+
+        def run():
+            result, revision = host.mutate(ws, doc, if_revision, add)
+            return _marked({**result, "id": doc, "revision": revision})
+
+        return await host.call(ws, "import-artwork", run, request_id=request_id, document=doc,
+                               body={"sha256": hashlib.sha256(data).hexdigest(), "format": format, "name": name,
+                                     "page": page, "dpi": dpi, "svg_mode": svg_mode, "if_revision": if_revision})
+
+    @app.delete("/w/{ws}/documents/{doc}")
+    def delete_document(ws: str, doc: str, if_revision: int | None = None):
+        def remove(session, path):
+            try:
+                session.close(path)
+            except VixlError:
+                pass  # Not open in this session.
+            target = session.resolve(path)
+            for extra in (target, target.with_name(target.name + ".notes.json")):
+                extra.unlink(missing_ok=True)
+
+        _, revision = host.mutate(ws, doc, if_revision, remove, bump=False)
+        host.update_index(ws, lambda index: index["documents"].pop(doc, None))
+        return {"deleted": doc, "revision": revision}
+
+
+def _marked(result):
+    from .untrusted import mark
+
+    return mark(result)
+
+
+def _create(session, path, options):
+    """Create the document through ``Session.create`` (or a template, or the first size a brief suggests)."""
+    from .briefs import guide
+
+    options.pop("name", None)
+    template, variables = options.pop("template", None), options.pop("variables", None)
+    font_pairing = options.pop("font_pairing", None)
+    brief = options.pop("brief", None)
+    report = {}
+    if brief is not None:
+        require(isinstance(brief, str) and brief.strip(), "brief is the words of the request", field="brief")
+        found = guide(brief)
+        report["brief"] = {key: found.get(key) for key in ("matched", "kind", "title") if found.get(key)}
+        if not any(options.get(key) for key in ("size", "width", "height", "purpose")) and found.get("sizes"):
+            options["size"] = found["sizes"][0]
+            report["brief"]["size"] = options["size"]
+    if template is not None:
+        from .fileio import file_lock
+        from .resources import create_template
+
+        require(not options, "A template sets its own size and design; drop " + ", ".join(sorted(options)),
+                field="template")
+        destination = session.resolve(path)
+        with session._mutex, file_lock(str(destination)):
+            require(not destination.exists(), "Destination already exists", field="path")
+            project = create_template(template, variables, limits=session.limits, workspace=session.workspace)
+            project.save(destination)
+        report["template"] = project.state.get("template") or template
+        return report
+    require(variables is None, "variables fill a template; pass template too", field="variables")
+    workspace_fonts = options.pop("workspace_fonts", True)
+    created = session.create(path, options.pop("width", None), options.pop("height", None),
+                             options.pop("background", None), workspace_fonts=workspace_fonts and not font_pairing,
+                             **options)
+    report.update({key: created[key] for key in ("creation", "workspace_fonts") if created.get(key)})
+    if font_pairing:
+        from .typefaces import pair_fonts
+
+        try:
+            with session.project(write=True, document=path) as project:
+                report["typography"] = pair_fonts(project, font_pairing)
+        except VixlError as exc:  # The document exists; say the pairing did not apply.
+            report["font_pairing_error"] = str(exc)
+    return report
+
+
+def job_routes(app, host):
+    """Calls that outlived the timeout, and export jobs (#540)."""
+
+    @app.get("/jobs/{ident}")
+    async def job_status(ident: str, wait: float = 0):
+        return job_summary(host, await _finished(host, ident, wait))
+
+    @app.get("/jobs/{ident}/result")
+    async def job_result(ident: str, wait: float = 0):
+        job = await _finished(host, ident, wait)
+        require(job["future"].done(), f"Job {ident} is still running", "job_running", field="id",
+                hint=f"Poll /jobs/{ident}?wait=20")
+        return job["future"].result()  # A failure re-raises; the handlers answer as the call would have.
+
+
+async def _finished(host, ident, wait):
+    import asyncio
+
+    job = host.jobs.get(ident)
+    if wait and not job["future"].done():
+        try:
+            await asyncio.wait_for(asyncio.shield(asyncio.wrap_future(job["future"])), min(float(wait), 50))
+        except Exception:  # noqa: BLE001 - Timed out or failed: the summary says which.
+            pass
+    return job
+
+
+def job_summary(host, job):
+    """``{id, kind, status, progress, error?, ...}`` with the error in the host's error shape."""
+    from .errors import friendly
+
+    summary = host.jobs.summary(job)
+    future = job["future"]
+    error = future.exception() if future.done() and not future.cancelled() else None
+    result = {"id": job["id"], "kind": job.get("kind", "call"), "status": summary["status"],
+              "progress": job.get("progress") or {"fraction": 1.0 if future.done() else None},
+              "elapsed_s": summary["elapsed_s"]}
+    if job.get("kind", "call") == "call":
+        result.update(route=job["route"], result_url=f"/jobs/{job['id']}/result")
+    if error is not None:
+        result["error"] = error_body(friendly(error))
+    if summary["status"] == "running":
+        result["retry_after_s"] = 3
+    return result
+
+
+BUILTIN_ROUTES = [document_routes, job_routes]
 
 
 def read_token(token_env=TOKEN_ENV, token_file=None, environ=None):

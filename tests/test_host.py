@@ -1,6 +1,8 @@
 """``vixl host``: the multi-workspace server for host applications (#537-#541)."""
 
+import json
 import os
+import re
 
 import pytest
 
@@ -200,3 +202,183 @@ def test_routes_registered_with_add_routes_join_the_app(tmp_path, monkeypatch):
     test = TestClient(app_for(tmp_path / "root"), headers=AUTH)
     assert test.put("/w/team/brand").json() == {"ok": True}
     assert TestClient(app_for(tmp_path / "root")).put("/w/team/brand").status_code == 401
+
+
+# ------------------------------------------------------------------------------- #538 documents and operations
+
+
+def create(client, ws="team", **body):
+    response = client.post(f"/w/{ws}/documents", json={"width": 200, "height": 120, "background": "#ffffff",
+                                                       "workspace_fonts": False, **body})
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+BOX = {"type": "shape", "shape": "rectangle", "name": "box", "x": 10, "y": 10, "width": 40, "height": 30,
+       "fill": "#d63c3c"}
+
+
+def test_documents_get_opaque_ids_an_index_and_revision_one(client, tmp_path):
+    made = create(client, name="Spring card")
+    doc = made["id"]
+    assert re.fullmatch(r"d_[0-9a-f]{8}", doc) and made["revision"] == 1 and made["name"] == "Spring card"
+    assert made["canvas"]["width"] == 200
+    folder = tmp_path / "root" / "team"
+    assert (folder / f"{doc}.vixl").is_file()
+    index = json.loads((folder / ".vixl-host" / "index.json").read_text())
+    assert index["documents"][doc]["revision"] == 1 and index["documents"][doc]["path"] == f"{doc}.vixl"
+    listed = client.get("/w/team/documents").json()["documents"]
+    assert [entry["id"] for entry in listed] == [doc]
+    assert client.get("/w/team/documents/d_00000000").status_code == 404
+    assert client.get("/w/team/documents/..%2Fx").status_code == 404
+    assert client.get(f"/w/other/documents/{doc}").status_code == 404  # ids are per workspace
+
+
+def test_each_change_raises_the_revision_and_a_stale_one_conflicts(client):
+    doc = create(client)["id"]
+    first = client.post(f"/w/team/documents/{doc}/operations", json={"operations": [BOX], "if_revision": 1})
+    assert first.status_code == 200 and first.json()["revision"] == 2
+    dry = client.post(f"/w/team/documents/{doc}/operations",
+                      json={"operations": [{**BOX, "name": "other"}], "dry_run": True})
+    assert dry.json()["revision"] == 2  # a dry run changes nothing
+    stale = client.post(f"/w/team/documents/{doc}/operations",
+                        json={"operations": [{**BOX, "name": "late"}], "if_revision": 1})
+    assert stale.status_code == 409
+    body = stale.json()
+    assert body["code"] == "revision_conflict" and body["details"]["revision"] == 2 and body["hint"]
+    state = client.get(f"/w/team/documents/{doc}").json()
+    assert state["revision"] == 2 and [layer["name"] for layer in state["layers"]] == ["box"]
+
+
+def test_a_retried_request_id_applies_once_and_a_different_body_conflicts(client):
+    doc = create(client)["id"]
+    request = {"operations": [BOX], "request_id": "op-1"}
+    first = client.post(f"/w/team/documents/{doc}/operations", json=request).json()
+    again = client.post(f"/w/team/documents/{doc}/operations", json=request).json()
+    assert again["replayed"] is True and again["revision"] == first["revision"] == 2
+    assert client.get(f"/w/team/documents/{doc}").json()["layer_count"] == 1
+    other = client.post(f"/w/team/documents/{doc}/operations",
+                        json={"operations": [{**BOX, "x": 99}], "request_id": "op-1"})
+    assert other.status_code == 409 and other.json()["code"] == "request_id_conflict"
+    # Request ids are scoped to their workspace.
+    elsewhere = create(client, ws="lab")["id"]
+    assert client.post(f"/w/lab/documents/{elsewhere}/operations", json=request).json()["revision"] == 2
+
+
+def test_a_retried_create_makes_one_document(client):
+    first = create(client, request_id="new-1")
+    again = create(client, request_id="new-1")
+    assert again["id"] == first["id"] and again["replayed"] is True
+    assert len(client.get("/w/team/documents").json()["documents"]) == 1
+
+
+def test_import_then_blob_round_trips_the_document(client, tmp_path):
+    from vixl import Project
+
+    source = Project(160, 90, "#102030")
+    source.apply([BOX, {"type": "text", "name": "title", "text": "Hello", "size": 20, "x": 60, "y": 30}])
+    source.save(tmp_path / "card.vixl")
+    data = (tmp_path / "card.vixl").read_bytes()
+    made = client.post("/w/team/documents/import?name=card", content=data)
+    assert made.status_code == 201, made.text
+    doc = made.json()["id"]
+    assert made.json()["revision"] == 1 and made.json()["untrusted"]  # layer names and text are document data
+    blob = client.get(f"/w/team/documents/{doc}/blob")
+    assert blob.status_code == 200 and blob.headers["x-vixl-revision"] == "1"
+    (tmp_path / "back.vixl").write_bytes(blob.content)
+    assert Project.load(tmp_path / "back.vixl").state == Project.load(tmp_path / "card.vixl").state
+    refused = client.post("/w/team/documents/import", content=b"not a zip")
+    assert refused.status_code == 400 and set(refused.json()) >= {"code", "message", "hint"}
+    assert len(client.get("/w/team/documents").json()["documents"]) == 1
+    assert not list((tmp_path / "root" / "team" / ".vixl-host" / "tmp").iterdir())
+
+
+def test_layer_bounds_equal_the_measured_render_bounds(client, tmp_path):
+    from vixl import Project
+
+    doc = create(client)["id"]
+    client.post(f"/w/team/documents/{doc}/operations", json={"operations": [
+        BOX, {**BOX, "name": "turned", "x": 100, "rotation": 30},
+        {"type": "group", "name": "pair", "targets": ["box", "turned"]}]})
+    state = client.get(f"/w/team/documents/{doc}").json()
+    project = Project.load(tmp_path / "root" / "team" / f"{doc}.vixl")
+    for layer in state["layers"]:
+        measured = project.measure(target=layer["id"])["bounds"]
+        assert layer["bounds"] == pytest.approx(measured, abs=1e-3), layer["name"]
+    parents = {layer["name"]: layer["parent"] for layer in state["layers"]}
+    assert parents["box"] == next(layer["id"] for layer in state["layers"] if layer["name"] == "pair")
+    assert client.get(f"/w/team/documents/{doc}?max_layers=1").json()["truncated"] is True
+
+
+def test_operations_refuse_files_and_unknown_fields(client):
+    doc = create(client)["id"]
+    linked = client.post(f"/w/team/documents/{doc}/operations",
+                         json={"operations": [{"type": "add", "path": "/etc/passwd"}]})
+    assert linked.status_code in (400, 403)
+    unknown = client.post(f"/w/team/documents/{doc}/operations", json={"operations": [BOX], "operations_path": "x"})
+    assert unknown.status_code == 400 and unknown.json()["details"]["field"] == "operations_path"
+
+
+def test_assets_take_raw_bytes_and_bump_the_revision(client):
+    import io
+
+    from PIL import Image
+
+    doc = create(client)["id"]
+    stream = io.BytesIO()
+    Image.new("RGB", (8, 6), "#2c5aa0").save(stream, format="PNG")
+    added = client.post(f"/w/team/documents/{doc}/assets?name=photo&credit=Me", content=stream.getvalue())
+    assert added.status_code == 200, added.text
+    assert added.json()["revision"] == 2
+    assert client.post(f"/w/team/documents/{doc}/assets", content=b"").status_code == 400
+
+
+def test_svg_artwork_imports_into_a_document(client):
+    doc = create(client)["id"]
+    svg = (b'<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect id="bar" width="40" '
+           b'height="20" fill="#123456"/></svg>')
+    imported = client.post(f"/w/team/documents/{doc}/import?format=svg&name=logo", content=svg)
+    assert imported.status_code == 200, imported.text
+    assert imported.json()["revision"] == 2
+
+
+def test_delete_removes_the_working_copy_and_the_index_entry(client, tmp_path):
+    doc = create(client)["id"]
+    assert client.delete(f"/w/team/documents/{doc}?if_revision=7").status_code == 409
+    assert client.delete(f"/w/team/documents/{doc}").json() == {"deleted": doc, "revision": 1}
+    assert not (tmp_path / "root" / "team" / f"{doc}.vixl").exists()
+    assert client.get(f"/w/team/documents/{doc}").status_code == 404
+    assert client.get("/w/team/documents").json()["documents"] == []
+
+
+def test_a_call_over_the_timeout_continues_as_a_job_and_its_retry_points_at_it(tmp_path, monkeypatch):
+    import threading
+    import time
+
+    from vixl.call_limits import CallLimits
+    from vixl.interfaces import Session
+
+    gate = threading.Event()
+    original = Session.apply_reviewed
+
+    def slow(self, *args, **kwargs):
+        gate.wait(5)
+        return original(self, *args, **kwargs)
+
+    doc = create(TestClient(app_for(tmp_path / "root"), headers=AUTH))["id"]
+    test = TestClient(app_for(tmp_path / "root", call_limits=CallLimits(timeout=0.05)), headers=AUTH)
+    monkeypatch.setattr(Session, "apply_reviewed", slow)
+    request = {"operations": [BOX], "request_id": "slow-1"}
+    started = test.post(f"/w/team/documents/{doc}/operations", json=request)
+    assert started.status_code == 202
+    job = started.json()["job_id"]
+    gate.set()
+    for _ in range(100):
+        status = test.get(f"/jobs/{job}?wait=1").json()
+        if status["status"] != "running":
+            break
+        time.sleep(0.05)
+    assert status["status"] == "completed" and status["kind"] == "call"
+    assert test.get(f"/jobs/{job}/result").json()["revision"] == 2
+    assert test.post(f"/w/team/documents/{doc}/operations", json=request).json()["replayed"] is True
+    assert test.get("/jobs/nope").status_code == 404
