@@ -101,8 +101,11 @@ def validate_step(kind, options, where):
         require(isinstance(options.get("defaults", {}), dict), f"{where}.export.defaults is an object",
                 field=f"{where}.export.defaults")
     if kind == "export_check" and "spec" in options:
-        require(isinstance(options["spec"], dict), f"{where}.export_check.spec is an object",
-                field=f"{where}.export_check.spec")
+        require(isinstance(options["spec"], (dict, str)), f"{where}.export_check.spec is a delivery spec preset name "
+                "or an object of spec fields", field=f"{where}.export_check.spec")
+        from ...export_checks import resolve_spec
+
+        resolve_spec(options["spec"])  # a misspelled preset or field fails before the run starts
     if kind == "approve" and "decisions" in options:
         require(isinstance(options["decisions"], str) and options["decisions"],
                 f"{where}.approve.decisions is the path of a proof page's decisions JSON",

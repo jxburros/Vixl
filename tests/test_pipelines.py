@@ -1,10 +1,7 @@
 """Pipelines (#568, foundation F1): saved pipelines, the per-document run with holds, the resumable run record and
 the durable pipeline job kind."""
 
-import importlib.util
 import json
-import sys
-import types
 import zipfile
 
 import pytest
@@ -196,29 +193,30 @@ def test_approval_holds_review_until_decided(workspace):
 
 def export_check_pipeline():
     return {"version": 1, "targets": {"documents": ["a.vixl"]}, "steps": [
-        {"export": {"targets": [{"path": "out/{doc}.png"}]}}, {"export_check": {"spec": {"format": "png"}}}]}
+        {"export": {"targets": [{"path": "out/{doc}.png"}]}}, {"export_check": {"spec": {"formats": ["png"]}}}]}
 
 
-def test_the_export_check_step_verifies_each_export_or_says_it_could_not(workspace):
+def test_the_export_check_step_verifies_each_export(workspace):
     result = dispatch(workspace, "pipeline-run", {"pipeline": export_check_pipeline(), "run": "verify",
                                                   "dry_run": False})
     step = record(workspace, "verify")["documents"]["a.vixl"]["steps"][1]
-    if importlib.util.find_spec("vixl.export_checks") is None:
-        assert step["status"] == "visual-review-needed" and step["summary"]["skipped"]
-        assert result["documents"][0]["outcome"] == "visual-review-needed"
-    else:
-        assert not step["summary"].get("skipped") and step["status"] in ("passed", "held", "visual-review-needed")
+    assert step["status"] == "passed" and result["documents"][0]["outcome"] == "passed"
+    log = json.loads(workspace.resolve(step["log"]).read_text())
+    assert log["result"]["verdicts"]["out/a.png"]["passed"] is True
 
 
-def test_a_failed_export_check_holds_the_document(workspace, monkeypatch):
-    seen = []
-    fake = types.ModuleType("vixl.export_checks")
-    fake.verify = lambda path, spec: seen.append((path.name, spec)) or {"status": "failed", "findings": ["bad"]}
-    monkeypatch.setitem(sys.modules, "vixl.export_checks", fake)
-    result = dispatch(workspace, "pipeline-run", {"pipeline": export_check_pipeline(), "run": "verify-fake",
-                                                  "dry_run": False})
-    assert seen == [("a.png", {"format": "png"})]
+def test_a_failed_export_check_holds_the_document(workspace):
+    pipeline = export_check_pipeline()
+    pipeline["steps"][1]["export_check"]["spec"] = {"formats": ["pdf"]}
+    result = dispatch(workspace, "pipeline-run", {"pipeline": pipeline, "run": "verify-pdf", "dry_run": False})
     assert result["documents"][0]["outcome"] == "held" and "export check failed" in result["documents"][0]["reason"]
+
+
+def test_a_misspelled_export_check_spec_is_refused_before_the_run(workspace):
+    pipeline = export_check_pipeline()
+    pipeline["steps"][1]["export_check"]["spec"] = {"format": "png"}
+    with pytest.raises(VixlError, match="formats"):
+        dispatch(workspace, "pipeline-run", {"pipeline": pipeline, "run": "verify-bad", "dry_run": False})
 
 
 def test_the_pipeline_job_kind_runs_through_submit_and_work(workspace):

@@ -307,21 +307,18 @@ class Run:
         raise VixlError("invalid_request", f"Unknown document step {kind}")
 
     def _export_check(self, options, outputs):
-        try:
-            from ...export_checks import verify
-        except ImportError:
-            return ("visual-review-needed", {"needs_review": "export checks (vixl.export_checks) are not available in "
-                    "this Vixl build, so the exports were not verified", "skipped": True}, [])
+        from ...export_checks import verify
+
         require(outputs, "export_check needs an export step before it", field="steps")
         verdicts, held, review = {}, [], []
         for item in outputs:
-            verdict = verify(self.session.resolve(item["path"]), deepcopy(options.get("spec") or {}))
-            if isinstance(verdict, dict):
-                status = verdict.get("status") or ("passed" if verdict.get("passed") else "failed")
-            else:
-                status = "passed" if verdict else "failed"
-            verdicts[item["path"]] = verdict if isinstance(verdict, dict) else {"passed": bool(verdict)}
-            (held if status == "failed" else review if status == "needs_review" else []).append(item["path"])
+            verdict = verify(self.session.resolve(item["path"]), deepcopy(options.get("spec")))
+            verdicts[item["path"]] = {key: verdict[key] for key in ("passed", "spec", "issues", "outcome")
+                                      if key in verdict}
+            if not verdict["passed"]:
+                held.append(item["path"])
+            elif any(issue.get("action") == "review" for issue in verdict.get("issues", ())):
+                review.append(item["path"])
         summary = {"verdicts": verdicts}
         if held:
             return "held", {**summary, "reason": f"export check failed for {', '.join(held[:5])}"}, []

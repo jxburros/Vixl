@@ -705,7 +705,7 @@ export, verify the exports, collect approvals, and write a proof page and a pack
  "steps": [
    {"check": {"fail_on": "error"}},
    {"export": {"targets": [{"path": "out/{doc}.png"}, {"path": "out/{doc}@2x.png", "scale": 2}]}},
-   {"export_check": {"spec": {"format": "png"}}},
+   {"export_check": {"spec": {"formats": ["png"], "max_bytes": 500000}}},
    {"approve": {"decisions": "review/decisions.json"}},
    {"proof": {"output": "out/proof.html"}},
    {"package": {"output": "out/delivery.zip", "name": "{doc}_{w}x{h}.{ext}"}}
@@ -725,7 +725,7 @@ one run. Each step is an object with one key, its kind:
 | `check` | per document | The design checks and attached suites, as [check-all](#checking-many-documents) (`checks`, `suites`, `suite`, `profile`, `waivers`, `fail_on`, default `error`) |
 | `repair` | per document | `repair-layout` on the working copy |
 | `export` | per document | Export `targets` (vixl_export options); `path` takes `{doc}`, `{dir}`, `{run}` and `{name}` |
-| `export_check` | per document | Verifies each export of the document against `spec` with the export checks (where they are not available the document is `visual-review-needed`) |
+| `export_check` | per document | Verifies each export of the document against `spec`, a delivery spec preset or inline fields (see [Verify the delivered file](../output/exporting.md#verify-the-delivered-file)); a failing file holds the document and review findings make it `visual-review-needed` |
 | `approve` | per document | Reads a [proof page](#proof-pages)'s downloaded `decisions`: approved passes, rejected holds, otherwise it waits |
 | `proof` | once | A proof page of every output that was not held |
 | `package` | once | A [delivery package](#delivery-packages) of the run (package fields; `run` is filled in) |
