@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+Step 7 of the [implementation plan](docs/project/implementation-plan.md): checks and automation across many documents,
+and `vixl host` for AI Server Studio.
+
+### Upgrading from 0.31
+
+### Checks across documents
+
+### Automation
+
+- **One completion event for durable jobs.** A job that ends (completed, failed, cancelled or needs review) is handed
+  once to the plugins' `job-complete` hook with its kind, id, status, outcome and counts, never document content; a
+  resumed job reports its next ending. Plugins add durable job kinds through the `job-kind` hook.
+
+### Hosting
+
+### Fonts
+
 ## 0.31.0
 
 A craft, objects and brand packages release: steps 5 and 6 of the

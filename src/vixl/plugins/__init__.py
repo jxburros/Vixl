@@ -60,6 +60,10 @@ HOOKS = {
     "apply-report": "fn(project, operations, result): add plugin keys to the apply result",
     "export-format": "fn(project, path, format, report, **options) -> data, or None when the format is not the plugin's",
     "import-format": "fn(project, data, format, **options) -> result, or None when the format is not the plugin's",
+    "job-kind": "fn(kind) -> {validate: fn(queue, payload, output), run: fn(queue, job, limits, progress, cancelled) "
+                "-> result}, or None when the durable job kind is not the plugin's; list the kinds in fn.KINDS",
+    "job-complete": "fn(event) -> delivery record or None: called once when a durable job, check-all or pipeline run "
+                    "ends; event is {event, kind, id, status, state, counts, report, workspace, notify, error}",
 }
 MANIFEST_KEYS = {"name", "title", "summary", "kind", "modules", "requires", *ROLES, "hooks", "capabilities"}
 KINDS = ("operations", "workflows", "importer", "provider")
