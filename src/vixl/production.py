@@ -561,6 +561,10 @@ def run(project, spec, directory, *, cancelled=lambda: False, progress=lambda va
         from .outcomes import summarize
 
         report["outcome"] = summarize(r.get("outcome") or {"state": "pending"} for r in report["results"])
+        from .plugins import hooks as plugin_hooks
+
+        for production_report in plugin_hooks("production-report"):
+            production_report(project, spec, report)
         contact_sheet(directory, report)
         write_json(manifest, report)
         return report

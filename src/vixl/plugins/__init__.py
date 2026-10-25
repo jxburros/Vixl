@@ -69,6 +69,9 @@ HOOKS = {
     "import-format": "fn(project, data, format, **options) -> result, or None when the format is not the plugin's",
     "job-kind": "fn(kind) -> {validate: fn(queue, payload, output), run: fn(queue, job, limits, progress, cancelled) "
                 "-> result}, or None when the durable job kind is not the plugin's; list the kinds in fn.KINDS",
+    "cli-command": "fn(cmd, args, options, limits) -> result, or None when the top-level CLI command (vixl CMD ...) is "
+                   "not the plugin's",
+    "production-report": "fn(project, spec, report): add plugin keys to a campaign run's report (production.run)",
     "job-complete": "fn(event) -> delivery record or None: called once when a durable job, check-all or pipeline run "
                     "ends; event is {event, kind, id, status, state, counts, report, workspace, notify, error}",
     "check-variants": "fn(project, request) -> report, or None when the request names none of the plugin's variant "

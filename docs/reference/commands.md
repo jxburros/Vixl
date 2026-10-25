@@ -112,6 +112,7 @@ next export of the unchanged document, in a new process, reads the frame back in
 | `manifest`, `dependencies`, `reproduce --check` | List assets/fonts/providers; check current renderability |
 | `reproduce --reference PNG [--tolerance N] [--max-fraction F]`, `reproduce --write-lock FILE`, `reproduce --lock FILE` | Verify a render against an approved reference or a lockfile; reports `renderable`, `environment-matched` or `reference-verified` and located drift ([reproduction](agent-trust.md#reproduction)) |
 | `reproduce --write-lock FILE --export png jpg:quality=80 mp4:fps=24 [--frames N \| --times T…]`, `reproduce --lock FILE --export [FORMAT[:OPTION=VALUE,…]…] [--export-tolerance N] [--export-visual] [--report]` | Record exports (and sampled timeline frames) in a version 2 lockfile, then encode them again: `byte_identical` and `visually_equivalent` per export, `page`, `artboard`, `frame`, `export-setting` and `toolchain` drift located by name; `--report` prints the compact manifest-ready summary |
+| `approve [--group NAME] [--clear] [--author WHO]` | Record the approved look of every page and artboard (render hash, 256 px reference, who, when) beside the document or in the group folder; later checks report changed views for review ([approved baselines](../guides/automation/production.md#approved-baselines)) |
 | `render [project.vixl] --out preview.png --set title=Hello` | Render without persisting overrides |
 | `export image.jpg --quality 90 --scale 2x` | Export, preserving the editable document. `--quality` also compresses PDF images; `--title` sets the PDF title (default: the title layer, then the file name); `--max-bytes N` warns when a raster file is larger, and a PNG over 1 MB warns, naming texture looks (grain, paper, film) as the likely cause |
 | `export image.png --profile discord` | Contain in 512×512; Instagram contains in 1080×1080; print emits RGB/RGBA TIFF at 300 DPI |
@@ -359,6 +360,8 @@ accepted. The language is the form `lang`, else the document `lang`, else `en`; 
 needs the `spelling-<lang>` content pack, and without it the check gives one `dictionary-unavailable` review finding
 instead of passing. See [brands](../guides/layout/brands.md#spelling).
 
+`approval` compares the document with the look recorded by `vixl approve`. It runs with the standard checks whenever the document has approval data, and by name (`check --checks approval`) otherwise. A page or artboard whose render changed since approval is a warning with action `review` (`code: changed`, the `view`, `changed_fraction`, a `diff` image, `approved_by`, `approved_at`); asked for by name, an unchanged document gets an `approved` note and one never approved a `never-approved` note. See [approved baselines](../guides/automation/production.md#approved-baselines).
+
 `accessibility` (opt-in: `check --checks accessibility`) adds `contrast` and `color_vision` to its own findings: the
 document language (fix), meaningful images, frames, links and charts without alt text (fix), small text (review),
 charts told apart by colour alone (review) and text whose export order jumps against its visual order (review). See
@@ -460,6 +463,7 @@ vixl link FILE.vixl [--name N] [--x X] [--y Y] [--width W] [--height H] [--fit f
 vixl link-set LAYER [--source F] [--fit …] [--position …] [--crop …] [--artboard …] [--source-page …]
     [--set NAME=VALUE]… [--corner-pin …] [--clear artboard|source_page|variables|crop|corner_pin]…
 vixl link-refresh [LAYER] | link-embed LAYER | links          # links: every link, ok / stale / missing / cycle
+vixl links impact SOURCE.vixl [--group NAME | --glob GLOB…] [--apply] [--format markdown|json|junit|sarif|github]
 
 vixl merge [TEMPLATE.vixl] --data rows.csv --out sheets.pdf [--sheet-document sheets.vixl]
     [--size letter] [--cols 2] [--rows 3] [--gutter 0.125] [--margin 0.5] [--bleed template|0.125]

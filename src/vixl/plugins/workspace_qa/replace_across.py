@@ -298,6 +298,10 @@ def run(session, request):
         output = {"dry_run": dry_run, "journal": journal, "documents": report,
                   "matches": sum(entry.get("count", 0) for entry in report), "changed": len(changed),
                   **({"group": group["name"]} if group else {})}
+        if dry_run:
+            from .approval import approved_changes
+
+            output["approved_members_changed"] = approved_changes(session, candidates)
         if request.get("review"):
             require(dry_run, "review is written by a dry run; apply with accept/reject or decisions", field="review")
             if candidates:

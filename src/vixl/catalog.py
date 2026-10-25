@@ -74,6 +74,9 @@ CHECK_INFO = {
              ("warning",)),
     "budget": ("Production budgets without a suite: drawn layers, fonts, document size and over-resolved images "
                "against the workspace budget (.vixl-checks.json budget), with the worst offenders.", ("warning",)),
+    "approval": ("Approved baseline: pages and artboards whose render changed since vixl approve recorded them (review, "
+                 "with a diff image), or a document never approved. On by itself when approval data exists.",
+                 ("warning", "info")),
     "suite": ("A failed check-suite rule restated as a finding so the built-in repairs (repair-layout, "
               "repair=true) can act on it.", ("error", "warning")),
     "coverage": ("Checks that could not inspect part of the document (reported, never a failure).", ("warning",)),

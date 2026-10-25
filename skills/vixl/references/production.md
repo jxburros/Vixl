@@ -159,6 +159,20 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    AVIF, GIF, MP4, WebM; `--export-tolerance`, `--export-visual`) per export, with `page 2`, `jpg.quality`, `mp4.ffmpeg`
    drift located. Workflow `reproduce` takes `exports`, `verify_exports`, `frames`, `times`, `report`. No credential
    enters a lock. Byte-exact output across machines is not promised (fonts, zlib, encoder versions).
+21. Approved baselines: `vixl_apply(workflow='approve', request={group?, clear?, author?})` (CLI `vixl approve
+   [--group NAME] [--clear]`) stores per page and artboard a render hash and a 256 px reference, who (`author`, else
+   `VIXL_AUTHOR`, else agent) and when, in `NAME.vixl.approval/` or `.vixl-groups/GROUP.approval/` (at most 64 views).
+   The `approval` check then runs with the standard checks whenever approval data exists: a changed view is a
+   `warning`/`review` finding with `changed_fraction` and a `diff` image (needs_review in check-all; fails at
+   `fail_on` warning or review). Approve again to accept the change; `clear` removes it. `group-apply` and
+   `replace-across` dry runs and campaign `run` list `approved_members_changed`; proof pages show a badge.
+22. Link impact: `vixl_apply(workflow='link-impact', request={source, documents?, group?, apply?: "if-passing",
+   checks?, suites?, profile?, fail_on?, resize?, outputs?})` (CLI `vixl links impact SOURCE.vixl [--group|--glob]
+   [--apply]`) finds every document that links to `source` (nested up to 4 levels, from a cached reverse index in
+   `.vixl-checks/links-index.json`), refreshes its links on an unsaved copy (a resized source keeps the link's scale),
+   runs check + suites and diffs the render. Report: `passes`, `fails` (failing findings and suite `rules`),
+   `changed`, `tree`, `cycles`; formats as check-all. Read-only unless `apply`, which saves only passers through the
+   `link-impact` journal (`group-recover`).
 
 MCP paths must remain inside the workspace. REST exposes check/act/plan/film-plan for
 its single project; filesystem, library and queue operations use CLI/Python/MCP.
