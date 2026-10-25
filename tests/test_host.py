@@ -186,7 +186,7 @@ def test_cli_flags_include_the_call_limits_and_the_schema(tmp_path):
                                   "--token-file", "tok"])
     assert (a.root, a.offline, a.bind, a.max_pages, a.token_file, a.port) == ("r", True, "0.0.0.0", 5, "tok", 8767)
     contract, _ = dispatch(["host", "--schema"])
-    assert contract["properties"]["host_api"]["const"] == 1
+    assert contract["host_api"] == 1 and "GET /host/info" in contract["endpoints"]
 
 
 def test_routes_registered_with_add_routes_join_the_app(tmp_path, monkeypatch):

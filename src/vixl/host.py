@@ -577,6 +577,10 @@ def create_host_app(root, token, *, offline=False, call_limits=None, limits=None
     def host_health():
         return {"ok": True, "warm": bool(host.sessions)}
 
+    @app.get("/host/schema")
+    def host_schema():
+        return schema()
+
     @app.get("/w/{ws}")
     def workspace_info(ws: str):
         host.workspace(ws)

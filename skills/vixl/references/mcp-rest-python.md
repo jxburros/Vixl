@@ -188,6 +188,12 @@ send `Authorization: Bearer …`. 20 bad tokens from one address within 60 s ans
 bind over plain HTTP warns on stderr: use a TLS proxy or `--tls-cert`/`--tls-key`. `--offline` (`VIXL_OFFLINE=1`)
 refuses URL imports, font downloads and providers with `network_disabled`. One fixed project per server.
 
+`vixl host --root DIR` is the server for another program (AI Server Studio) rather than one person: many workspaces
+(`/w/{ws}/…`), documents by opaque id with a revision per change (`if_revision` → 409 `revision_conflict`),
+`request_id` retries, compose/preview/check, export jobs with progress and expiring downloads, catalogs and a
+`studio` tool profile. A bearer token is always required (`VIXL_HOST_TOKEN`). The contract is `vixl host --schema`;
+see `docs/reference/interfaces.md#hosting-vixl`.
+
 | Route | Body / query | Result |
 | --- | --- | --- |
 | `GET /schema` | | Operation JSON Schema |

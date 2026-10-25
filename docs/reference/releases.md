@@ -137,6 +137,7 @@ Release assets:
 - `SHA256SUMS.txt` — checksums of every release asset (the publish job rewrites it to cover the Windows files, the wheel, the source distribution, the `.mcpb` and the plugin ZIP).
 - Python wheel and source distribution — optional pip/developer installs.
 - `vixl-catalog.json` and `vixl-catalog.schema.json` — the design catalog bundle for host applications (`vixl catalog export`) and its JSON Schema.
+- `vixl-host-api.schema.json` — the `vixl host` API contract (`vixl host --schema`): every endpoint's request and response, with `host_api`.
 
 An update trusts HTTPS and access control of the official GitHub repository. The manifest and artifact have the same trust root; checksums detect corruption or mismatched downloads but do not defend against compromise of the repository's release permissions. A signed manifest ([#756](https://github.com/jxburros/Vixl/issues/756)) and Authenticode signing are future hardening options.
 

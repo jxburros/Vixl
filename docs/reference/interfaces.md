@@ -364,6 +364,7 @@ takes the same flags (`--call-timeout`, `--max-megapixels`, `--max-pages`, `--ma
 | --- | --- |
 | `GET /host/info` | `{vixl, host_api: 1, capabilities: {pptx, pdf_import, ffmpeg, ai}, limits, job_ttl, offline, network, workspaces}` |
 | `GET /host/health` | `{ok: true, warm}`; `warm` is true once a workspace has been used |
+| `GET /host/schema` | The API contract, as `vixl host --schema` prints it |
 | `GET /w/{ws}` | `{workspace}`; creates the workspace folder |
 | `GET /w/{ws}/documents` | `{workspace, documents: [{id, path, revision, created, updated, name?}]}` |
 | `POST /w/{ws}/documents` | `{name?, size?, width?, height?, purpose?, brief?, template?, variables?, background?, dpi?, orientation?, bleed?, seed?, variety?, house_style?, font_pairing?, workspace_fonts?, request_id?}` → `201` and the document state at revision 1 |
@@ -434,6 +435,18 @@ running release. The profile text lives in `vixl.guidance.TOOL_PROFILES`.
 again with the same body returns the first answer with `replayed: true`, a different body under the same id is
 `409 request_id_conflict`, and a repeat while the first is still running points at its job. The log is the one
 MCP uses (`vixl.idempotency`): the last 512 ids, 64 per document.
+
+**A call that outlives the timeout** answers `202` with `{status: "running", job_id, poll, result_url}` and
+continues as a job: poll `GET /jobs/{id}?wait=20`, then `GET /jobs/{id}/result` for what the call would have
+answered (its revision included). Do not send it again; a retry with the same `request_id` points at the job.
+
+**The contract.** `vixl host --schema` (also `GET /host/schema`, and the release asset `vixl-host-api.schema.json`)
+prints the API as JSON Schema: `endpoints` names every route with its request, response, status, query parameters
+and media types, and `$defs` holds the shapes (`Error`, `DocumentState`, `Job`, `JobCompleteEvent`, `ToolProfile`
+…). `tests/test_host_contract.py` drives every endpoint and validates each answer against it. `host_api` (1) is in
+the contract and in `GET /host/info`; it changes when an endpoint or field is removed or changes meaning, and such a
+change comes with a migration note in the changelog. Adding an endpoint, a field or an error code does not change
+it, so read answers leniently.
 
 Other modules add route groups with `vixl.host.add_routes(fn)` and plugins with the `host-route` hook; each `fn`
 receives `(app, host)` and its routes are behind the same token.

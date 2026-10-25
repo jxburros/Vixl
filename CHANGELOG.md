@@ -44,6 +44,11 @@ and `vixl host` for AI Server Studio.
   the brief guide, the capability matrix (now with a Host column) and operation field schemas;
   `GET /catalog/tools?profile=studio` lists 12 tools in the host's terms, kept in `vixl.guidance.TOOL_PROFILES`, with
   input schemas derived from the operation, compose, check and export registries (#541).
+- **The host API has a published contract.** `vixl host --schema` (also `GET /host/schema`) prints
+  `host-api.schema.json`, with each endpoint's request and response and `host_api: 1`; releases attach it as
+  `vixl-host-api.schema.json`, and a test drives every endpoint against it. A change that removes an endpoint or a
+  field, or changes its meaning, raises `host_api` and needs a migration note here; additions do not. "Embed Vixl in
+  another app" (AGT-30) moves from a days-long T5 project on `vixl serve` to T1 with `vixl host` (#543).
 - **Offline mode covers content packs and plugins.** `VIXL_OFFLINE=1` now also stops content-pack downloads (as
   `VIXL_PACK_DOWNLOAD=off` does) and refuses to enable third-party plugins, whose code it cannot bind;
   `--plugins` with `--offline` is refused (#537).
