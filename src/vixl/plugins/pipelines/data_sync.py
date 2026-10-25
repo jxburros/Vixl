@@ -29,6 +29,7 @@ import re
 
 from ...design import named
 from ...errors import VixlError, require
+from .candidate import judge, locked
 
 SNAPSHOTS = ".vixl-runs/data"
 MAX_ROWS = 10000
@@ -162,19 +163,29 @@ def run(session, request):
 
 def _group(session, request, bind, name, rows, previous, diff, snapshot):
     from ..workspace_qa.workspace_checks import members
-    from .candidate import commit, evaluate, load
+
+    paths, _ = members(session, {"group": bind["to"]["group"]})
+    # Every member stays locked from its evaluation to the commit, so no one else's save lands in between.
+    with locked(session, [session.relative(path) for path in paths]):
+        return _group_locked(session, request, bind, name, rows, diff, snapshot, previous, paths)
+
+
+def _group_locked(session, request, bind, name, rows, diff, snapshot, previous, paths):
+    from ..workspace_qa.candidate import commit, evaluate, load
 
     key = bind["key"]
-    paths, _ = members(session, {"group": bind["to"]["group"]})
     old_outputs = (snapshot or {}).get("outputs") or {}
     touched = set(diff["added"]) | set(diff["changed"])
-    entries, candidates, synced = [], {}, dict(previous)
+    entries, candidates, synced = [], [], dict(previous)
     for key_value in diff["removed"]:
         synced.pop(key_value, None)
     held_keys = set()
+    check = {"suites": request.get("suites", True)}
+    fail_on = request.get("fail_on", "error")
     for path in paths:
         relative = session.relative(path)
-        project = load(session, relative)
+        loaded = load(session, path)
+        project = loaded[1]
         value = project.state.get("variables", {}).get(key)
         entry = {"document": relative, "key": value}
         uses = referenced(project.state)
@@ -197,16 +208,14 @@ def _group(session, request, bind, name, rows, previous, diff, snapshot):
             entries.append({**entry, "status": "unaffected", "reason": "the changed columns are not used by it",
                             "outputs": old_outputs.get(relative, [])})
             continue
-        candidate = project.clone()
-        candidate.apply([{"type": "variable", "name": column, "value": rows[value][column]} for column in wanted],
-                        detail="compact")
-        check = {"suites": request.get("suites", True)}
-        evaluated = evaluate(session, relative, candidate, request=check, fail_on=request.get("fail_on", "error"))
+        operations = [{"type": "variable", "name": column, "value": rows[value][column]} for column in wanted]
+        evaluation = evaluate(session, path, operations, request=check, fail_on=fail_on, loaded=loaded)
+        evaluated = judge(session, evaluation, request=check, fail_on=fail_on)
         entry.update(columns=wanted, check=evaluated["after"], diff=evaluated.get("diff"),
                      newly_failing=evaluated["newly_failing"])
         if evaluated["passed"]:
             entry["status"] = "updated"
-            candidates[relative] = candidate
+            candidates.append(evaluation)
         else:
             entry["status"] = "held"
             entry["reason"] = "the updated document fails its checks"
@@ -219,6 +228,11 @@ def _group(session, request, bind, name, rows, previous, diff, snapshot):
     planned = {relative: _planned(session, request, relative, value, old_outputs.get(relative, []))
                for relative, value in ((e["document"], e["key"]) for e in entries if e["status"] == "updated")}
     refused = [item["path"] for items in planned.values() for item in items if not item["replace_allowed"]]
+    claimed = {}
+    for relative, items in planned.items():
+        for item in items:
+            claimed.setdefault(item["path"], []).append(relative)
+    shared = {path: owners for path, owners in claimed.items() if len(owners) > 1}
     extra = {"documents": entries, "journal": f"data-sync-{name}",
              "counts": {status: sum(1 for e in entries if e["status"] == status)
                         for status in sorted({e["status"] for e in entries})}}
@@ -226,7 +240,12 @@ def _group(session, request, bind, name, rows, previous, diff, snapshot):
         extra["planned_exports"] = planned
         if refused:
             extra["refused"] = refused
+        if shared:
+            extra["collisions"] = shared
         return synced, outputs, extra
+    require(not shared, "Two members would write the same export file ("
+            + "; ".join(f"{path}: {', '.join(owners)}" for path, owners in list(shared.items())[:3])
+            + "); use {doc}, {dir} or {key} in the export path", "output_exists", field="exports")
     require(not refused, f"Re-export would replace file(s) data-sync did not write: {', '.join(refused[:5])}; set "
             "overwrite: true", "output_exists", field="exports")
     if candidates:
@@ -291,7 +310,7 @@ def _coerce(value, kind):
 
 def _spec(session, request, bind, order, rows, previous, diff, snapshot):
     from ...production import plan, read_json, run as produce
-    from .candidate import load
+    from ..workspace_qa.candidate import load
 
     to = bind["to"]
     campaign = read_json(session.resolve(to["spec"]))
@@ -300,7 +319,7 @@ def _spec(session, request, bind, order, rows, previous, diff, snapshot):
     source, output = to.get("source") or campaign.get("source"), to.get("output") or campaign.get("output")
     require(isinstance(source, str) and isinstance(output, str), "The campaign needs a source document and an output "
             "folder (in the campaign file or bind.to)", field="bind.to")
-    project = load(session, source)
+    _, project, _ = load(session, source)
     inputs = (project.state.get("recipe") or {}).get("inputs")
     kept = [key for key in (snapshot or {}).get("order", []) if key in rows]
     ordered = kept + [key for key in order if key not in kept]
