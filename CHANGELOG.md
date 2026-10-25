@@ -35,6 +35,11 @@ and `vixl host` for AI Server Studio.
   `max_bytes` with the MCP preview's size stepping; `check` answers findings as
   `{rule, severity, action, message, layer_id, page}` with `outcome` and `passed`. All three are limited like the
   REST routes (#539).
+- **Host exports are jobs with progress.** `POST /w/{ws}/documents/{id}/exports` always answers a job id after
+  the page and megapixel preflight; `GET /jobs/{id}` reports a progress fraction that never goes back,
+  `/download` returns the file until the job TTL passes (then `410 expired`, and a sweeper deletes it), and
+  `/events` streams progress and one `job-complete` event in the shape durable jobs send, which also reaches the
+  plugins' `job-complete` hook (#540).
 - **Offline mode covers content packs and plugins.** `VIXL_OFFLINE=1` now also stops content-pack downloads (as
   `VIXL_PACK_DOWNLOAD=off` does) and refuses to enable third-party plugins, whose code it cannot bind;
   `--plugins` with `--offline` is refused (#537).

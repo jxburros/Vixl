@@ -487,3 +487,130 @@ def test_a_host_composed_piece_renders_like_an_in_process_compose(client, tmp_pa
     run(local, path="piece.vixl", width=240, height=320, **piece)
     direct = Project.load(local / "piece.vixl")
     assert hosted.render().tobytes() == direct.render().tobytes()
+
+
+# ------------------------------------------------------------------------------------------- #540 export jobs
+
+
+def exported(client, doc, ws="team", **body):
+    started = client.post(f"/w/{ws}/documents/{doc}/exports", json=body)
+    assert started.status_code == 202, started.text
+    job = started.json()
+    assert job["job_id"] and job["download"] == f"/jobs/{job['job_id']}/download"
+    status = client.get(f"/jobs/{job['job_id']}?wait=20").json()
+    return job["job_id"], status
+
+
+@pytest.mark.parametrize("fmt, media, magic", [
+    ("PNG", "image/png", b"\x89PNG"), ("PDF", "application/pdf", b"%PDF"),
+    ("PPTX", "application/vnd.openxmlformats-officedocument.presentationml.presentation", b"PK")])
+def test_png_pdf_and_pptx_export_through_a_job(client, tmp_path, fmt, media, magic):
+    doc = create(client)["id"]
+    client.post(f"/w/team/documents/{doc}/operations", json={"operations": [BOX]})
+    ident, status = exported(client, doc, format=fmt)
+    assert status["status"] == "completed" and status["kind"] == "export", status
+    assert status["progress"]["fraction"] == 1.0 and status["revision"] == 2 and status["expires_at"]
+    download = client.get(f"/jobs/{ident}/download")
+    assert download.status_code == 200 and download.headers["content-type"].startswith(media)
+    assert download.content.startswith(magic)
+    assert f'{doc}.{fmt.lower()}' in download.headers["content-disposition"]
+    assert (tmp_path / "root" / "team" / ".vixl-host" / "jobs" / ident / f"{doc}.{fmt.lower()}").is_file()
+
+
+def test_progress_never_goes_back():
+    from concurrent.futures import Future
+
+    from vixl.call_limits import RestJobs
+
+    jobs = RestJobs()
+    job = jobs.get(jobs.add("exports", Future()))
+    seen = []
+    for done, total in ((0, 4), (2, 4), (1, 4), (3, 10), (4, 4)):
+        jobs.progress(job, done, total)
+        seen.append(job["progress"]["fraction"])
+    assert seen == sorted(seen) and seen[-1] == 1.0 and seen[2] == 0.5
+
+
+def test_events_stream_progress_then_one_terminal_event(client, monkeypatch):
+    from vixl import plugins
+
+    delivered = []
+    original = plugins.hooks
+    monkeypatch.setattr(plugins, "hooks", lambda point: (delivered.append,) if point == "job-complete"
+                        else original(point))
+    doc = create(client)["id"]
+    ident = client.post(f"/w/team/documents/{doc}/exports", json={"format": "PNG"}).json()["job_id"]
+    with client.stream("GET", f"/jobs/{ident}/events") as stream:
+        assert stream.headers["content-type"].startswith("text/event-stream")
+        lines = [line for line in stream.iter_lines() if line]
+    kinds = [line.split(": ", 1)[1] for line in lines if line.startswith("event: ")]
+    assert kinds.count("job-complete") == 1 and kinds[-1] == "job-complete"
+    payloads = [json.loads(line.split(": ", 1)[1]) for line in lines if line.startswith("data: ")]
+    fractions = [p["progress"]["fraction"] for p in payloads[:-1] if (p.get("progress") or {}).get("fraction")
+                 is not None]
+    assert fractions == sorted(fractions)
+    event = payloads[-1]
+    assert {"event", "kind", "id", "status", "state", "counts", "report", "workspace", "notify", "error"} <= set(event)
+    assert (event["event"], event["kind"], event["id"], event["status"], event["workspace"]) == (
+        "job-complete", "export", ident, "completed", "team")
+    assert event["counts"]["files"] == 1 and event["report"] == f"/jobs/{ident}/download"
+    assert delivered == [event]  # the plugins' job-complete hook got it once
+    again = [line for line in client.get(f"/jobs/{ident}/events").text.splitlines() if line.startswith("event: ")]
+    assert again == ["event: job-complete"]
+
+
+def test_a_failed_export_reports_a_structured_error(client):
+    doc = create(client)["id"]
+    ident, status = exported(client, doc, format="TTF")
+    assert status["status"] == "failed"
+    assert set(status["error"]) >= {"code", "message", "hint"}
+    refused = client.get(f"/jobs/{ident}/download")
+    assert refused.status_code == 409 and refused.json()["code"] == "job_failed"
+
+
+def test_bad_export_requests_are_refused_before_a_job_starts(client):
+    doc = create(client)["id"]
+    assert client.post(f"/w/team/documents/{doc}/exports", json={"format": "BMP"}).status_code == 400
+    unknown = client.post(f"/w/team/documents/{doc}/exports", json={"format": "PNG", "options": {"scael": 2}})
+    assert unknown.status_code == 400 and "scale" in unknown.json()["message"]
+
+
+def test_export_limits_come_from_the_call_limits(tmp_path):
+    from vixl.call_limits import CallLimits
+
+    test = TestClient(app_for(tmp_path / "root", call_limits=CallLimits(max_megapixels=0.05)), headers=AUTH)
+    doc = create(test)["id"]
+    refused = test.post(f"/w/team/documents/{doc}/exports", json={"format": "PNG", "options": {"scale": 4}})
+    assert refused.status_code == 413
+    assert refused.json()["code"] == "limit_exceeded" and refused.json()["details"]["limit"] == "max_megapixels"
+
+
+def test_a_download_after_the_ttl_is_gone(tmp_path):
+    import time
+
+    test = TestClient(app_for(tmp_path / "root", job_ttl=0.3), headers=AUTH)
+    assert test.get("/host/info").json()["job_ttl"] == 0.3
+    doc = create(test)["id"]
+    ident, status = exported(test, doc, format="PNG")
+    assert status["status"] == "completed"
+    folder = tmp_path / "root" / "team" / ".vixl-host" / "jobs" / ident
+    assert folder.is_dir()
+    time.sleep(0.4)
+    gone = test.get(f"/jobs/{ident}/download")
+    assert gone.status_code == 410 and gone.json()["code"] == "expired"
+    assert not folder.exists()  # the sweeper deleted it
+    assert test.get(f"/jobs/{ident}").json()["status"] == "expired"
+
+
+def test_the_sweeper_removes_results_an_earlier_process_left(tmp_path):
+    import os as _os
+
+    from vixl.host import Host
+
+    host = Host(tmp_path / "root", job_ttl=60)
+    stale = host.state_dir("team", "jobs", "0123456789abcdef")
+    (stale / "old.png").write_bytes(b"x")
+    _os.utime(stale, (0, 0))
+    fresh = host.state_dir("team", "jobs", "fedcba9876543210")
+    host.sweep(orphans=True)
+    assert not stale.exists() and fresh.exists()

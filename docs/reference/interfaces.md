@@ -377,6 +377,9 @@ takes the same flags (`--call-timeout`, `--max-megapixels`, `--max-pages`, `--ma
 | `POST /w/{ws}/documents/{id}/preview` | `{page?, region?, max_px?: 1024, max_bytes?: 1048576, variables?, artboard?, comp?, time?, proof?, simulate?, guides?, values?, show_fields?, isolate?, views?, exploded?}` → PNG, with `X-Vixl-Revision`, `X-Vixl-Width` and `X-Vixl-Height` |
 | `POST /w/{ws}/documents/{id}/check` | `vixl_check` fields (`checks`, `profile`, `suites`, `repair` …) → `{outcome, passed, counts, findings: [{rule, check, severity, action, message, layer_id, layer_ids, page}], checked}` and `revision` |
 | `DELETE /w/{ws}/documents/{id}?if_revision=` | `{deleted, revision}`; removes the working copy |
+| `POST /w/{ws}/documents/{id}/exports` | `{format, options?, request_id?}` → `202 {job_id, status, revision, poll, events, download}`; `options` are the REST `/export` fields |
+| `GET /jobs/{id}/download` | The export's file, with its media type, file name and `X-Vixl-Revision`; `409 job_running` or `job_failed`, `410 expired` |
+| `GET /jobs/{id}/events` | Server-sent events: `progress` while the job runs, then one `job-complete` |
 | `GET /jobs/{id}?wait=` · `GET /jobs/{id}/result` | A call that outlived the timeout (`202` with `job_id`): its status, then what the call would have answered |
 
 **Documents.** A document has an opaque id (`d_` and 8 hex digits) and lives at `ROOT/ws/ID.vixl`; the index
@@ -402,6 +405,18 @@ finding with its `rule` (`bounds.cut-off`), `severity`, `action` (`fix`, `review
 `layer_id` (the first layer it is about, or null) and `page`; profiles and suites pass through, and `repair: true`
 applies the built-in repairs first and raises the revision. All three count against the concurrency limit and
 continue as a job after the timeout, like the REST routes.
+
+**Export jobs.** An export always runs as a job: `POST .../exports` answers `202` with `job_id` at once, after
+checking the page and megapixel limits (`413 limit_exceeded` before anything renders). `GET /jobs/{id}` reports
+`{id, kind: "export", status, progress: {done, total, fraction}, error?, revision, download, expires_at}`; the
+`fraction` never goes back. The file is written to `ROOT/ws/.vixl-host/jobs/ID/` and stays downloadable for
+`job_ttl` seconds after the job ends (`--job-ttl`, default 3600, reported by `/host/info`); after that the job
+reports `expired`, its download answers `410 expired`, and a sweeper deletes the folder (also folders an earlier
+process left). `GET /jobs/{id}/events` streams `text/event-stream`: `event: progress` with the job's progress,
+then exactly one `event: job-complete` whose data is the [job-complete event](plugins.md) durable jobs send
+(`{event, kind, id, status, state, counts, report, workspace, notify, error}`, `report` being the download path
+and `workspace` the workspace name), and the stream ends. The same event goes once to the plugins'
+`job-complete` hook. A failed export reports its error in the host shape under `error`.
 
 **Retries.** A change sent with `request_id` (1-64 characters) applies at most once per workspace: sending it
 again with the same body returns the first answer with `replayed: true`, a different body under the same id is

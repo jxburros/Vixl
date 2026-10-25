@@ -62,6 +62,7 @@ HINTS = {
     "invalid_workspace": "Use 1-64 characters from a-z, 0-9, '-' and '_'.",
     "network_disabled": "The host runs offline; send the bytes instead of a URL.",
     "limit_exceeded": "Make the call smaller, or wait for running calls to finish.",
+    "resource_limit": "Make it smaller: the canvas, the image or the request body.",
 }
 
 
@@ -140,6 +141,7 @@ class Host:
 
         self.jobs = RestJobs(self.call_limits.hard_timeout, maximum=MAX_JOBS)
         self.limiter = Limiter(self.call_limits, self.jobs, BoundedExecutor(16, name="vixl-host"))
+        self.export_workers = BoundedExecutor(8, name="vixl-host-export")
         self.requests = RequestLog()
 
     def workspace(self, ws):
@@ -328,6 +330,128 @@ class Host:
             return JSONResponse({**detached(value, route, self.call_limits.timeout), "job_id": value},
                                 status_code=202, headers={"Location": f"/jobs/{value}", "Retry-After": "3"})
         return value
+
+    # -------------------------------------------------------------------------------------------- exports
+
+    def submit_export(self, ws, doc, fmt, options):
+        """Start an export job: checked against the page and megapixel limits first, counted against the
+        workspace's concurrency limit while it runs, its file written under ``ROOT/ws/.vixl-host/jobs/ID/``."""
+        import contextvars
+        import time
+        import uuid
+
+        from .call_limits import GATE, check_export, export_pages, watch
+        from .calls import CALL, CallState
+        from .interfaces import EXPORT_MEDIA
+
+        if "icc_profile_base64" in options:
+            from .io_policy import decode_upload
+
+            options["icc_profile"] = decode_upload(options.pop("icc_profile_base64"), 16 * 1024 * 1024)
+
+        def preflight(session, path):
+            with session.project(document=path) as project:
+                check_export(self.call_limits, project, fmt, options)
+                return export_pages(project, fmt, options)
+
+        pages, revision = self.read(ws, doc, preflight)
+        ident = uuid.uuid4().hex[:16]
+        output = self.state_dir(ws, "jobs", ident)
+        filename = f"{doc}.{EXTENSIONS.get(fmt, fmt.lower())}"
+        holder = {}
+
+        def report(done, total=None, message=None, timing=None):
+            job = holder.get("job")
+            if job is not None:
+                self.jobs.progress(job, done, total)
+
+        def run():
+            def export(session, path):
+                with session.project(document=path) as project:
+                    return project.export(format=fmt, **options)
+
+            data, current = self.read(ws, doc, export)
+            with open(output / filename, "xb") as handle:  # A fresh folder per job: never overwrites.
+                handle.write(data)
+            return {"bytes": len(data), "revision": current}
+
+        key = GATE.acquire(self.workspace(ws), self.call_limits.max_concurrent)
+        state = CallState(report=report)
+        context = contextvars.copy_context()
+        context.run(CALL.set, state)
+        try:
+            future = self.export_workers.submit(context.run, run)
+        except BaseException:
+            GATE.release(key)
+            import shutil
+
+            shutil.rmtree(output, ignore_errors=True)
+            raise
+        self.jobs.add("exports", future, ident=ident, kind="export", workspace=ws, document=doc, format=fmt,
+                            filename=filename, media=EXPORT_MEDIA[fmt], result_path=str(output / filename),
+                            revision=revision, pages=pages, expires=None, event=None, terminal=threading.Event(),
+                      download=f"/jobs/{ident}/download", submitted=time.time())
+        job = holder["job"] = self.jobs.get(ident)
+        self.jobs.progress(job, 0, pages)
+        watch(state, self.call_limits, future)
+        future.add_done_callback(lambda _: (GATE.release(key), self.finished(job)))
+        return {"job_id": ident, "status": "running", "id": doc, "revision": revision, "format": fmt,
+                "poll": f"/jobs/{ident}", "events": f"/jobs/{ident}/events", "download": f"/jobs/{ident}/download"}
+
+    def finished(self, job):
+        """An export job ended: record its result and expiry, hand its event to the ``job-complete`` hook once."""
+        import shutil
+        import time
+
+        from .jobs import notify_complete
+
+        future = job["future"]
+        if not future.cancelled() and future.exception() is None:
+            result = future.result()
+            job.update(revision=result["revision"], counts={"files": 1, "bytes": result["bytes"]})
+            self.jobs.progress(job, job["pages"], job["pages"])
+        else:
+            shutil.rmtree(Path(job["result_path"]).parent, ignore_errors=True)
+        job["expires"] = time.time() + self.job_ttl
+        job["event"] = terminal_event(self, job)
+        job["deliveries"] = notify_complete(job["event"])
+        job["terminal"].set()
+
+    def sweep(self, now=None, *, orphans=False):
+        """Delete export results past their expiry; with ``orphans``, also result folders an earlier process left
+        that are older than ``job_ttl``."""
+        import shutil
+        import time
+
+        now = time.time() if now is None else now
+        known = set()
+        for job in self.jobs.recent():
+            if job.get("kind") != "export":
+                continue
+            known.add(job["id"])
+            if job.get("expires") is not None and now > job["expires"] and not job.get("swept"):
+                shutil.rmtree(Path(job["result_path"]).parent, ignore_errors=True)
+                job["swept"] = True
+        if orphans:
+            for folder in self.root.glob(f"*/{HOST_DIR}/jobs/*"):
+                if folder.is_dir() and folder.name not in known and now - folder.stat().st_mtime > self.job_ttl:
+                    shutil.rmtree(folder, ignore_errors=True)
+
+    def start_sweeper(self, interval=None):
+        """Sweep in a daemon thread every ``interval`` seconds (default: a tenth of ``job_ttl``, 10-300 s)."""
+        import time
+
+        interval = interval or min(300.0, max(10.0, self.job_ttl / 10))
+
+        def loop():
+            while True:
+                time.sleep(interval)
+                try:
+                    self.sweep(orphans=True)
+                except OSError:
+                    pass  # The next sweep tries again.
+
+        threading.Thread(target=loop, name="vixl-host-sweeper", daemon=True).start()
 
     def info(self):
         from . import __version__
@@ -861,11 +985,110 @@ def review_routes(app, host):
                                body=options)
 
 
+EXTENSIONS = {"JPEG": "jpg", "JPG": "jpg", "TIFF": "tif"}
+
+
+def export_routes(app, host):
+    """Export jobs (#540): ``POST .../exports`` always answers a job; its result is kept for ``job_ttl`` seconds."""
+
+    @app.post("/w/{ws}/documents/{doc}/exports", status_code=202)
+    async def export_document(ws: str, doc: str, body: dict):
+        _known(body, {"format", "options", "request_id"}, "exports")
+        from .interfaces import EXPORT_FIELDS, EXPORT_MEDIA
+
+        fmt = body.get("format", "PNG")
+        require(isinstance(fmt, str) and fmt.upper() in EXPORT_MEDIA,
+                f"format is one of {', '.join(sorted(EXPORT_MEDIA))}", field="format", allowed=sorted(EXPORT_MEDIA))
+        fmt = fmt.upper()
+        options = body.get("options") or {}
+        require(isinstance(options, dict), "options is an object of export fields", field="options")
+        _known(options, EXPORT_FIELDS - {"format"}, "export options")
+
+        def submit():
+            return host.submit_export(ws, doc, fmt, dict(options))
+
+        return await host.call(ws, "exports", submit, request_id=body.get("request_id"), document=doc,
+                               heavy=False, body={k: v for k, v in body.items() if k != "request_id"})
+
+    @app.get("/jobs/{ident}/download")
+    def download(ident: str):
+        from fastapi.responses import FileResponse
+
+        host.sweep()
+        job = host.jobs.get(ident)
+        require(job.get("kind") == "export", f"Job {ident} is not an export", "not_found", field="id")
+        status = job_summary(host, job)
+        require(status["status"] not in ("queued", "running"), f"Export {ident} is still running", "job_running",
+                field="id", hint=f"Wait for it: GET /jobs/{ident}?wait=20 or /jobs/{ident}/events")
+        if status["status"] == "expired":
+            raise VixlError("expired", f"The result of export {ident} has expired and was deleted", field="id",
+                            expired_at=job.get("expires"))
+        if status["status"] != "completed":
+            raise VixlError("job_failed", f"Export {ident} {status['status']}", field="id",
+                            error=status.get("error"), hint=(status.get("error") or {}).get("hint", ""))
+        return FileResponse(job["result_path"], media_type=job["media"], filename=job["filename"],
+                            headers={"X-Vixl-Revision": str(job["revision"])})
+
+    @app.get("/jobs/{ident}/events")
+    async def events(ident: str):
+        """Server-sent events: ``progress`` while the job runs (and once at the start), then one
+        ``job-complete`` with the event the plugins' ``job-complete`` hook receives, and the stream ends."""
+        import asyncio
+        import time
+
+        from fastapi.responses import StreamingResponse
+
+        job = host.jobs.get(ident)
+
+        def message(kind, data):
+            return f"event: {kind}\ndata: {json.dumps(data, default=str)}\n\n"
+
+        async def stream():
+            last, beat = None, time.monotonic()
+            while True:
+                done = job["future"].done() and (job.get("kind") != "export" or job["terminal"].is_set())
+                progress = job.get("progress")
+                if progress != last and not done:
+                    last = progress
+                    yield message("progress", {"id": ident, "status": job_summary(host, job)["status"],
+                                               "progress": progress})
+                if done:
+                    yield message("job-complete", terminal_event(host, job))
+                    return
+                if time.monotonic() - beat > 15:
+                    beat = time.monotonic()
+                    yield ": keep-alive\n\n"
+                await asyncio.sleep(0.05)
+
+        return StreamingResponse(stream(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
+
+
+def terminal_event(host, job):
+    """The F2 ``job-complete`` event of a host job (``jobs.completion_event``), with the workspace by name."""
+    if job.get("event") is not None:
+        return job["event"]
+    from .jobs import completion_event
+    from .outcomes import of_status
+
+    from .errors import friendly
+
+    status = host.jobs.summary(job)["status"]  # As the job ended, whatever has happened to its result since.
+    future = job["future"]
+    error = future.exception() if future.done() and not future.cancelled() else None
+    record = {"id": job["id"], "status": status, "outcome": of_status(status),
+              "payload": {"kind": job.get("kind", "call"), "output": job.get("download")},
+              "result": {"counts": job.get("counts") or {}},
+              "error": error_body(friendly(error)) if error is not None else None}
+    return {**completion_event(record, job.get("workspace")), "workspace": job.get("workspace")}
+
+
 def job_routes(app, host):
     """Calls that outlived the timeout, and export jobs (#540)."""
 
     @app.get("/jobs/{ident}")
     async def job_status(ident: str, wait: float = 0):
+        host.sweep()
         return job_summary(host, await _finished(host, ident, wait))
 
     @app.get("/jobs/{ident}/result")
@@ -879,12 +1102,16 @@ def job_routes(app, host):
 async def _finished(host, ident, wait):
     import asyncio
 
+    from starlette.concurrency import run_in_threadpool
+
     job = host.jobs.get(ident)
     if wait and not job["future"].done():
         try:
             await asyncio.wait_for(asyncio.shield(asyncio.wrap_future(job["future"])), min(float(wait), 50))
         except Exception:  # noqa: BLE001 - Timed out or failed: the summary says which.
             pass
+    if job.get("kind") == "export" and job["future"].done():
+        await run_in_threadpool(job["terminal"].wait, 5)  # The done callback is recording it.
     return job
 
 
@@ -892,22 +1119,34 @@ def job_summary(host, job):
     """``{id, kind, status, progress, error?, ...}`` with the error in the host's error shape."""
     from .errors import friendly
 
+    import time
+
     summary = host.jobs.summary(job)
     future = job["future"]
     error = future.exception() if future.done() and not future.cancelled() else None
-    result = {"id": job["id"], "kind": job.get("kind", "call"), "status": summary["status"],
+    status = summary["status"]
+    if job.get("kind") == "export":
+        if status == "completed" and not job["terminal"].is_set():
+            status = "running"  # Its result is being recorded.
+        elif status == "completed" and (job.get("swept") or time.time() > job["expires"]):
+            status = "expired"
+    result = {"id": job["id"], "kind": job.get("kind", "call"), "status": status,
               "progress": job.get("progress") or {"fraction": 1.0 if future.done() else None},
               "elapsed_s": summary["elapsed_s"]}
     if job.get("kind", "call") == "call":
         result.update(route=job["route"], result_url=f"/jobs/{job['id']}/result")
+    else:
+        result.update(workspace=job["workspace"], document=job["document"], format=job["format"],
+                      revision=job["revision"], download=job["download"], events=f"/jobs/{job['id']}/events",
+                      **({"expires_at": job["expires"]} if job.get("expires") else {}))
     if error is not None:
         result["error"] = error_body(friendly(error))
-    if summary["status"] == "running":
+    if status == "running":
         result["retry_after_s"] = 3
     return result
 
 
-BUILTIN_ROUTES = [document_routes, review_routes, job_routes]
+BUILTIN_ROUTES = [document_routes, review_routes, export_routes, job_routes]
 
 
 def read_token(token_env=TOKEN_ENV, token_file=None, environ=None):
@@ -977,6 +1216,8 @@ def cli(args, limits=None):
                           limits=limits, job_ttl=a.job_ttl, bind=a.bind)
     import sys
 
+    app.state.host.sweep(orphans=True)
+    app.state.host.start_sweeper()
     print(f"vixl host: root {app.state.host.root}, http{'s' if ssl else ''}://{a.bind}:{a.port}", file=sys.stderr)
     uvicorn.run(app, host=a.bind, port=a.port, **ssl)
     return None
