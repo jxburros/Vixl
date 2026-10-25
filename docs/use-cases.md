@@ -665,6 +665,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PRD-35 | Hold every document in a group or workspace to one library suite, inherited by reference | group-define / brand.json `suites`, `vixl_apply(workflow='check')` | 3–6 · 1 | A library edit reaches every member's next check; members override rules by `id` (`extends`). |
 | PRD-33 | Install a plugin pack of palettes, templates and suites | `vixl_apply(workflow='plugin-install')` | 2–4 · 1 | Packs are trusted code. |
 | PRD-34 | Rebuild a merge after the CSV changed | `merge --rerun sheets.vixl --data new.csv` | 2–4 · 1 |  |
+| PRD-51 | Localised campaign in 10 languages with font fallbacks and checks | `locales-set` or a strings CSV, `vixl check --locales all`, `vixl_apply(workflow='localize')` | 10–20 · 5+ render | Estimate. Failing locales are held with a locale x finding matrix; RTL locales are mirrored; re-runs rebuild only changed locales. Moved from T5 (#565, #576). |
 
 ---
 
@@ -698,7 +699,6 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SOC-81 | Monthly social calendar (30 posts) from a content CSV | recipe capture + production run | 1 session setup, minutes per month | Cheap once the recipe exists. |
 | BRD-50 | Brand system as a plugin pack with templates, palettes and check suites | resources, plugin pack, suites | 1–2 days | Building the templates and suites is the work; packaging and installing are one command each since brand packages (BRD-56). |
 | PRD-50 | Personalised certificates or tickets for thousands of rows | merge-impose, durable jobs | setup 1 h, run unattended |  |
-| PRD-51 | Localised campaign in 10 languages with font fallbacks and checks | variables, `font-fallbacks`, suites | several hours | Automatic multi-font fallback is not implemented. |
 | PRD-52 | Data-driven report generator (Python) re-run on each new dataset | `Project` API, `chart --csv`, templates | 1–2 days dev |  |
 | AGT-30 | Embed Vixl in another app through REST with auth | `vixl serve` | 1–3 days dev | [server] |
 | AGT-31 | Gate pull requests on design checks in CI | `vixl validate`, suites, golden renders | 0.5–1 day | The bundled action covers checks and suites in one step (QA-23); this row is custom gates such as golden renders. |

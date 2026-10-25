@@ -437,7 +437,9 @@ before any rendering. `run` adds `"output":"campaign"`:
 }}
 ```
 
-Rows can be assembled from a CSV by a caller; existing `render --data` remains available.
+Rows can be assembled from a CSV by a caller; existing `render --data` remains available. For languages, `localize`
+runs the same spec once per locale on a localized copy (its values, fonts, fit and right-to-left mirroring), so a
+campaign gains a locale axis; see [localization](localization.md).
 There are at most 10,000 outputs, ten variation axes and four concurrent workers.
 Row fields cannot also occur in the matrix. Explicit row values override artboard defaults.
 All attached suites run unless an explicit `suites` list selects others. With `profile` (for example `"final"`),

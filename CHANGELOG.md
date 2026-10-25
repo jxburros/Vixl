@@ -42,6 +42,19 @@ and `vixl host` for AI Server Studio.
   once to the plugins' `job-complete` hook with its kind, id, status, outcome and counts, never document content; a
   resumed job reports its next ending. Plugins add durable job kinds through the `job-kind` hook.
 
+- **Localization check.** The new `localization` plugin keeps per-locale variable values on a document
+  (`locales-set`: `locales: {code: {variable: value}}` plus `source`, `same_ok`, `fonts`, `fit`, `min_size`, `rtl`),
+  on a project group (`group-locales`) or in a strings CSV (a key column and one column per locale).
+  `vixl check --locales all|de,ja`, the workflow `check` field `locales` and the `locale-check` action check each
+  locale on a candidate copy with the design checks and suites, and report a locale x finding `matrix`: overflow,
+  missing glyphs (`fonts`), untranslated values, missing keys and line-count changes that break a `hierarchy` rule,
+  as JSON or Markdown. Plugins answer such variant checks through the new `check-variants` hook (#565).
+- **Localized variants.** `localize` builds one checked variant per locale: derived `<master>.<code>.vixl` documents,
+  exports, or a campaign `spec` run per locale. Text fits by policy (`shrink` through `fit-text` down to `min_size`,
+  or `flag`), `ar`, `he` and `fa` are mirrored right to left, per-locale fonts go ahead of the `font-fallbacks`, and a
+  locale with a missing key or a failing finding is held with its findings and repairs. `localize.json` fingerprints
+  each locale, so a re-run rebuilds only the locales that changed (#576, #171).
+
 ### Hosting
 
 - **Design Profile import and export.** `vixl brand import --design-profile FILE.json` writes brand.json from a
