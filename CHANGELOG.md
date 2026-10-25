@@ -164,6 +164,12 @@ and `vixl host` for AI Server Studio.
   `POST /w/{ws}/documents/{id}/ai` runs AI commands through it. Studio has not published a gateway contract, so the
   one in docs/reference/providers.md is Vixl's proposal. Plugins add `vixl host` flags with the new `host-flags`
   hook and read them as `host.options` (#544).
+- **An official container image.** `ghcr.io/jxburros/vixl:VERSION` and `VERSION-full` (with ffmpeg) run
+  `vixl host --root /data --offline --bind 0.0.0.0` as uid 10001 from `distribution/container/Dockerfile`: the
+  published `vixl-engine[server,pdf]`, a `/data` volume, caches on `/tmp` so `--read-only` works, the token from
+  `VIXL_HOST_TOKEN` or `VIXL_HOST_TOKEN_FILE`, a `HEALTHCHECK` on `/host/health` that sends it, and every content pack
+  fetched and checked at build time. `.github/workflows/container.yml` builds, smoke-tests read-only and pushes both
+  on a version tag; the Dockerfile's `ARG VERSION` joins the version-sync list (#546).
 - **Host workspace brand.** `PUT /w/{ws}/brand` takes brand.json or a Design Profile (`schemaVersion: 2`), validates
   it and writes `ROOT/ws/brand.json`, answering the kit, its summary, `source`, the profile paths it could not map
   (`unmapped`) and a `digest`; `?if_digest=` makes the write conditional (`409 revision_conflict`). `GET /w/{ws}/brand`

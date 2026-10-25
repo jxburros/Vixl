@@ -103,7 +103,7 @@ Python installations intentionally do not self-update or invoke pip. They return
 
 To publish a stable release:
 
-1. Update the single-sourced version in `src/vixl/__init__.py` (package, API and bundle versions derive from it), then the places that repeat it: `.claude-plugin/plugin.json`, the PyPI pin `vixl-engine==X.Y.Z` in `.mcp.json` (the `.mcpb` derives it), the install pins in `README.md` and `getting-started.md`, the release line in `README.md` and the documentation home, the action pin in [CI](../guides/automation/ci.md), the tag in step 3 and the sample manifest in [file format](file-format.md); update release notes (see [release notes](#release-notes)) and documentation as needed.
+1. Update the single-sourced version in `src/vixl/__init__.py` (package, API and bundle versions derive from it), then the places that repeat it: `.claude-plugin/plugin.json`, the PyPI pin `vixl-engine==X.Y.Z` in `.mcp.json` (the `.mcpb` derives it), the install pins in `README.md` and `getting-started.md`, the release line in `README.md` and the documentation home, the action pin in [CI](../guides/automation/ci.md), both `ARG VERSION=` lines in `distribution/container/Dockerfile` (the `ghcr.io/jxburros/vixl:X.Y.Z` image tag, checked by `tests/test_container.py`), the tag in step 3 and the sample manifest in [file format](file-format.md); update release notes (see [release notes](#release-notes)) and documentation as needed.
 2. Run tests and review the PR's **Windows installer and releases** workflow. It runs a real silent installer, verifies PATH lookup, creates/exports a project using the frozen runtime, activates an explicit update before any normal launch with mocked network transport, checks corrupted-candidate recovery, and uninstalls while preserving a user project and existing PATH entries.
 3. Tag the reviewed commit with its exact version and push the tag:
 
@@ -115,6 +115,29 @@ To publish a stable release:
 4. The tag workflow re-runs tests, checks tag/package-version consistency and builds the distributions. The publish job then waits in the protected `release` environment until a required reviewer approves the deployment (Actions run, **Review deployments**). Approve only a run whose commit and version you reviewed. After approval it creates a **draft** GitHub release. It uploads every artifact before publishing it as the latest stable release. No release becomes visible to the updater while files are still being uploaded.
 
 The workflow's top-level permission is `contents: read`. Only the publish job, inside the `release` environment, gets GitHub's built-in token with `contents: write` and `actions: write`; the latter starts Python publication after a release from main. A `plan` job with read-only permissions first checks whether the version is already published, so a push to main that only edits `CHANGELOG.md` skips the publish job instead of asking for an approval. No personal token is required. If publication fails after draft creation, inspect that draft and the workflow logs; do not mutate assets of an already published version. Publish a new version for fixes. Release tags and assets are treated as immutable by convention.
+
+### Container image
+
+`distribution/container/Dockerfile` builds the official `vixl host` image from the published PyPI release:
+`ghcr.io/jxburros/vixl:X.Y.Z` (python-slim, `vixl-engine[server,pdf]`) and `ghcr.io/jxburros/vixl:X.Y.Z-full`
+(the same with ffmpeg, `--target full`). It runs as uid 10001 with `ENTRYPOINT vixl host --root /data --offline
+--bind 0.0.0.0` on port 8767, keeps workspaces in the `/data` volume and caches under `HOME=/tmp/vixl`, so it runs
+with `--read-only --tmpfs /tmp`. The token comes from `VIXL_HOST_TOKEN` or a file named by `VIXL_HOST_TOKEN_FILE` (a
+mounted secret); the `HEALTHCHECK` reads it the same way, since `/host/health` needs the token. Because the host is
+offline, the build fetches every content pack in `vixl.packs.PACKS` into `VIXL_PACK_DIR=/opt/vixl/packs`, each checked
+against its pinned SHA-256.
+
+```bash
+docker run -d --read-only --tmpfs /tmp -v vixl-data:/data -p 127.0.0.1:8767:8767 \
+  -e VIXL_HOST_TOKEN="$VIXL_HOST_TOKEN" ghcr.io/jxburros/vixl:0.31.0
+```
+
+`.github/workflows/container.yml` builds both tags on a `v*` tag push (also `workflow_dispatch` with a version, and
+`workflow_call`), waits for the version on PyPI, smoke-tests each image read-only (`/host/info` with the token, a
+document, `compose`, a PNG export job and its download, the health status, uid 10001, ffmpeg in `-full`) and pushes
+it with the built-in token (`packages: write`). It uses the runner's docker CLI rather than docker actions, so every
+`uses:` stays SHA-pinned. A tag the release workflow creates with the built-in token does not start other workflows,
+so after such a release run the container workflow manually (or call it from the release workflow).
 
 ### Repository setup (owner, once)
 
