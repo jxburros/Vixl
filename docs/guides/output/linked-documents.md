@@ -60,6 +60,10 @@ so you can tell what changed behind your back:
   `workspace` or `absolute`: which folder it was found in).
 - Production runs (`vixl_apply(workflow='run', request=…)`) include the revisions of linked sources in their
   fingerprints, so a changed source re-renders the variants that use it.
+- Check-suite rules can read their expected value from a master document without linking it:
+  `{"ref": "master.vixl#brand.fill"}` (a layer field) or `{"ref": "master.vixl#brand:type-scale"}` (a rule of its
+  suite), resolved like link sources and read-only, with the same depth limit and `link_cycle` refusal. See
+  [rules that reference another document](../automation/production.md#rules-that-reference-another-document).
 
 ## Freezing a link
 

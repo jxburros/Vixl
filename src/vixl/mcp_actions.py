@@ -41,7 +41,8 @@ REPAIRS = Literal["fit-text", "contrast-ink", "safe-area-nudge"]
 CHECKS = Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "placeholders", "fonts", "brand",
                  "print", "color_vision", "guides", "alignment", "deck", "title_position", "type_scale", "words",
                  "min_font", "notes", "empty", "form", "drawing", "links", "style", "diagram", "flow", "codes",
-                 "composition", "object", "motion", "character", "captions", "connected", "cost", "accessibility"]
+                 "composition", "object", "motion", "character", "captions", "connected", "cost", "accessibility",
+                 "budget"]
 
 
 class Context:

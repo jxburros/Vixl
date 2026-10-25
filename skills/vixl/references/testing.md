@@ -37,6 +37,8 @@ likeness, mood). `vixl_reference("testing")` is the full method; every `vixl_ref
 | Exactly three bullets, no text on an icon | `{kind: count, target: "bullet-*", minimum: 3, maximum: 3}`, `{kind: count, layer_type: text, maximum: 0}` |
 | Headline ≤ 40 characters, must say "Terms apply", never "free" | `{kind: text, target: headline, max_characters: 40}`, `{kind: text, contains: "Terms apply"}`, `{kind: text, forbid: "(?i)\\bfree\\b"}` |
 | At most 3 fonts, images print at 240 ppi | `{kind: budget, max_fonts: 3, min_ppi: 240}` |
+| No oversized images, quick to render | `{kind: budget, max_ppi: 1200}`, `{kind: budget, max_render_ms: 400}` (advisory: always a review) |
+| Same colour or type scale as the master | `{kind: color, point: [x, y], expected: {ref: "master.vixl#brand.fill"}}`, `{kind: hierarchy, targets: [...], ratio: {ref: "master.vixl#brand:type-scale"}}` |
 | A finished part must not change | `suite-capture` (unchanged and pixels rules) |
 | Holds through an animation | add `sampling: {mode: sampled, count: 8}` |
 | Holds on every format | add `sampling: {artboards: "all", pages: "all"}` (results name their `variant`) |

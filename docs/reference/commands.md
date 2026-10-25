@@ -347,6 +347,8 @@ Display text (24 px or larger) in a `text-layout` box whose wrapped paragraph en
 
 `cost` (opt-in: `check --checks cost`) draws the document once with empty caches and times every layer (a group's time excludes its children). A layer that takes over 10× the median layer and at least 50 ms is a `cost` warning with action `review`, its `ms`, the `median_ms`, the slowest `stage` (`draw`, `effects`, `transform`) and `causes` read from its fields (the largest blur radius, other effects, paint stroke and point counts, soft style blurs, very long text, repeated copies, a very large box). It does not fail a check; it says which layer to simplify or rasterize when renders, previews and timeline frames are slow.
 
+`budget` (opt-in: `check --checks budget`) holds the document to production budgets without a suite: drawn layers, distinct fonts, the saved size and over-resolved images (`max_layers` 500, `max_fonts` 4, `max_bytes` 100 MB, `max_ppi` 1200 unless `budget` in `.vixl-checks.json` sets others). Each finding is a `review` warning with the `limit`, its `maximum` or `minimum` and the `worst` offenders as `{layer, value}`. The `budget` suite rule takes the same limits plus `max_render_ms` (see [check suites](../guides/automation/production.md)).
+
 `accessibility` (opt-in: `check --checks accessibility`) adds `contrast` and `color_vision` to its own findings: the
 document language (fix), meaningful images, frames, links and charts without alt text (fix), small text (review),
 charts told apart by colour alone (review) and text whose export order jumps against its visual order (review). See

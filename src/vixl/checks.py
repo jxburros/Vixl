@@ -20,7 +20,7 @@ CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", 
           "form", "links", "diagram", "flow", "codes", "composition", "object")
 FALLBACK_FONT = PROOFING_FONT
 OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing", "style", "motion", "character", "captions",
-                   "connected", "cost", "accessibility")
+                   "connected", "cost", "accessibility", "budget")
 # The accessibility check bundles these with its own findings (alt text, language, text size, colour-only
 # charts, reading order).
 ACCESSIBILITY_BUNDLE = ("contrast", "color_vision")
@@ -1236,6 +1236,13 @@ def check_design(
         for finding in cost_findings(candidate):
             target = resolved.get(finding.pop("layer"))
             issue("cost", "warning", finding.pop("message"), [target] if target else [], **finding)
+
+    if "budget" in checks:
+        from .assurance import budget_findings
+
+        for finding in budget_findings(candidate):
+            message, targets = finding.pop("message"), [resolved[i] for i in finding.pop("layers") if i in resolved]
+            issue("budget", "warning", message, targets, **finding)
 
     if "form" in checks:
         from .forms import check_form

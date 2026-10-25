@@ -9,6 +9,19 @@ and `vixl host` for AI Server Studio.
 
 ### Checks across documents
 
+- **Suite rules that read another document.** `expected`, a relation's `to` and a hierarchy's `ratio` take
+  `{"ref": "master.vixl#layer.field"}` (a layer or canvas field as the master draws it) or
+  `{"ref": "master.vixl#suite:rule-id"}` (the same field of a master's rule), so a campaign follows its master's colour
+  and type scale. References resolve like link sources inside the workspace and are read-only; a suite holds and a run
+  reads at most 8, rule refs nest at most 4 deep and a cycle is refused as `link_cycle`. A missing document, layer or
+  rule needs review, never passes. Results record `references: [{path, digest}]`, and `check --all --since-last`
+  names a changed master as the cause (`cause: reference`) (#558).
+- **Render time and over-resolution budgets.** The `budget` rule adds `max_ppi` (an image placed above that
+  resolution, or with over 4x the pixels it needs) and `max_render_ms` with `proxy` (cold and warm proxy render
+  times; always an advisory warning to review, in a rule of its own). Its measurements list the five `worst`
+  offenders per limit. The opt-in `budget` design check runs the same limits without a suite, at defaults that
+  `budget` in `.vixl-checks.json` overrides (#564).
+
 ### Automation
 
 - **One completion event for durable jobs.** A job that ends (completed, failed, cancelled or needs review) is handed

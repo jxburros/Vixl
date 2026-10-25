@@ -22,8 +22,8 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    baselines during an ordinary repair. Rule kinds: `assert`, `property`, `gap`, `spacing`,
    `relation`, `text-fit`, `contrast`, `hierarchy`, `color`, `palette`, `ink`, `balance`, `focal`,
    `count`, `text` (the drawn copy: `contains`, `forbid`/`pattern` regexes, `min_/max_characters`,
-   `min_/max_words`, `case`, `brand`), `budget` (`max_layers`, `max_fonts`, `max_bytes`, `min_ppi`), `alpha`,
-   `design`, `container`, `unchanged`, `pixels` (fields:
+   `min_/max_words`, `case`, `brand`), `budget` (`max_layers`, `max_fonts`, `max_bytes`, `min_ppi`, `max_ppi`; `max_render_ms` + `proxy` in a rule of its own, always an advisory review), `alpha`,
+   `design`, `container`, `unchanged`, `pixels`. `expected`, `to` and `ratio` may be `{ref: "master.vixl#layer.field"}` or `{ref: "master.vixl#suite:rule-id"}` to read a master document each run (at most 8; a missing one needs review) (fields:
    `vixl_reference('workflows').definitions.suite`; method: `vixl_reference("testing")`). Run suites with each
    batch (`vixl_apply(suites=true)`) and before every preview. `sampling` (or `check`'s request)
    takes `artboards`/`pages`/`comps` (`"all"` or names) to cover every variant in one run; each result names
