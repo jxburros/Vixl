@@ -142,6 +142,9 @@ RULE_PROPERTIES = {
              "description": "text: whether pattern, contains and forbid match letter case."},
     "brand": {"type": "boolean", "default": False,
               "description": "text: also forbid the words brand.json lists under words.forbid (whole words, any case)."},
+    "spelling": {"type": "boolean", "default": False,
+                 "description": "text: also fail on words the spelling dictionary does not know (brand words.allow, "
+                                "facts and .vixl/dictionary.txt are accepted); a missing dictionary is needs_review."},
     "max_layers": {"type": "integer", "minimum": 0, "description": "budget: most drawn layers (as count counts them)."},
     "max_fonts": {"type": "integer", "minimum": 0, "description": "budget: most distinct fonts drawn by text."},
     "max_bytes": {"type": "integer", "minimum": 0,

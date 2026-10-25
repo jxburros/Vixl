@@ -14,13 +14,14 @@ from .constants import BUNDLED_FONTS, PROOFING_FONT
 from .errors import VixlError, require
 from .geometry import compact_number
 from .model import finite
+from .plugins import optional_checks as plugin_checks
 from .timeline import animated as timeline_animated
 
 CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "placeholders", "fonts", "brand", "content",
           "form", "links", "diagram", "flow", "codes", "composition", "object")
 FALLBACK_FONT = PROOFING_FONT
 OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing", "style", "motion", "character", "captions",
-                   "connected", "cost", "accessibility", "budget")
+                   "connected", "cost", "accessibility", "budget") + plugin_checks()
 # The accessibility check bundles these with its own findings (alt text, language, text size, colour-only
 # charts, reading order).
 ACCESSIBILITY_BUNDLE = ("contrast", "color_vision")
@@ -1565,6 +1566,23 @@ def _series_color_vision(candidate, resolved, issue):
                               vision=kind, distance=round(simulated, 3))
 
 
+def backdrop_colors(project, hidden, boxes):
+    """The colour drawn behind each canvas box once the ``hidden`` layer IDs are hidden: the median sRGB (0-1) of
+    one shared render, or None for a box off the canvas. The color-vision check and the brand logo variants use it."""
+    view = project.clone()
+    for layer in view.state["layers"]:
+        if layer["id"] in hidden:
+            layer["visible"] = False
+    backdrop = np.asarray(view.render().convert("RGB"))
+    found = []
+    for x, y, w, h in boxes:
+        x, y = int(math.floor(x)), int(math.floor(y))
+        w, h = int(math.ceil(w)), int(math.ceil(h))
+        crop = backdrop[max(0, y): max(0, y + h), max(0, x): max(0, x + w)]
+        found.append(None if crop.size == 0 else tuple(np.median(crop.reshape(-1, 3), axis=0) / 255))
+    return found
+
+
 def _color_vision(candidate, resolved, bounds, texts, floor, text_scales, issue):
     """Text whose contrast holds for typical vision but collapses for a color-vision deficiency."""
     from PIL import Image
@@ -1573,19 +1591,13 @@ def _color_vision(candidate, resolved, bounds, texts, floor, text_scales, issue)
     from .design import resolve_color
     from .render import color as rgba
 
-    hidden = candidate.clone()
-    ids = {item["id"] for item in texts}
-    for layer in hidden.state["layers"]:
-        if layer["id"] in ids:
-            layer["visible"] = False
-    backdrop = np.asarray(hidden.render().convert("RGB"))
-    for item in texts[:64]:
+    sampled = texts[:64]
+    backgrounds = backdrop_colors(candidate, {item["id"] for item in texts},
+                                  [bounds[item["id"]] for item in sampled])
+    for item, background in zip(sampled, backgrounds):
         layer = resolved[item["id"]]
-        x, y, w, h = bounds[item["id"]]
-        crop = backdrop[max(0, y): max(0, y + h), max(0, x): max(0, x + w)]
-        if crop.size == 0:
+        if background is None:
             continue
-        background = tuple(np.median(crop.reshape(-1, 3), axis=0) / 255)
         foreground = tuple(v / 255 for v in rgba(resolve_color(layer.get("color", "black"), candidate.state))[:3])
         from .brand import required_contrast
 
