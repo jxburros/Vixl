@@ -343,7 +343,9 @@ def test_warm_lookup_is_fast(installed):
     start = time.perf_counter()
     for _ in range(1000):
         system_fonts.lookup("Vixl Test Serif Bold Italic")
-    assert warm < 0.25 and time.perf_counter() - start < 0.05
+    # About 25 ms here and up to 60 ms on a loaded CI runner; a lookup that rescanned (about 80 ms each) or
+    # re-parsed the fonts would take over a minute.
+    assert warm < 0.25 and time.perf_counter() - start < 0.25
 
 
 def test_script_faces_include_installed_catalog_families_and_their_system_names(installed):
