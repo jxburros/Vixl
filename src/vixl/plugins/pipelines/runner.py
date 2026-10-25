@@ -444,12 +444,16 @@ class Run:
         entries[relative] = entry
         for step in reused:
             entry["steps"].append({**step, "reused": True})
-        current = self._work(relative) if self.mutating else relative
-        if self.mutating and start < len(self.document_steps):
-            self._prepare(relative, start)
         if inputs["document"] is None:
             entry.update(outcome="failed", reason="the document is missing")
             return entry
+        current = self._work(relative) if self.mutating else relative
+        if self.mutating and start < len(self.document_steps):
+            try:
+                self._prepare(relative, start)
+            except (VixlError, OSError, ValueError) as exc:
+                entry.update(outcome="failed", reason=f"the working copy could not be made: {str(exc)[:300]}")
+                return entry
         if not (entry["steps"] and entry["steps"][-1]["status"] == "held"):
             for index in range(start, len(self.document_steps)):
                 if self.cancelled():
