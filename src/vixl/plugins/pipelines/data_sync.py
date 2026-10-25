@@ -32,6 +32,7 @@ from ...errors import VixlError, require
 from .candidate import judge, locked
 
 SNAPSHOTS = ".vixl-runs/data"
+BINDINGS = f"{SNAPSHOTS}/bindings.json"
 MAX_ROWS = 10000
 MAX_BYTES = 16 * 1024 * 1024
 REQUEST = {"bind", "name", "dry_run", "exports", "fail_on", "suites", "overwrite"}
@@ -153,10 +154,132 @@ def run(session, request):
                                    + [key for key in order if key not in (snapshot or {}).get("order", [])
                                       and key in synced],
                                    "rows": synced, "outputs": outputs})
+        remember(session.workspace, name, bind)
         result["written"] = True
     else:
         result["written"] = False
     return result
+
+
+# Bindings in the dependency graph ---------------------------------------------------------------
+
+def bindings(workspace):
+    """``{name: bind}`` of every binding synced in ``workspace`` (``.vixl-runs/data/bindings.json``, else read from
+    the snapshots of syncs made before the index existed)."""
+    from ...production import read_json
+
+    root = Path(workspace)
+    path = root / BINDINGS
+    try:
+        if path.is_file():
+            value = read_json(path)
+            return {str(k): v for k, v in (value.get("bindings") or {}).items() if isinstance(v, dict)}
+        found = {}
+        for snapshot in sorted((root / SNAPSHOTS).glob("*.json")):
+            value = read_json(snapshot)
+            if isinstance(value, dict) and isinstance(value.get("binding"), dict):
+                found[snapshot.stem] = value["binding"]
+        return found
+    except (VixlError, OSError, AttributeError):
+        return {}
+
+
+def remember(workspace, name, bind):
+    """Add the binding to the index the dependency graph reads (rewritten only when it changes)."""
+    from ...production import write_json
+
+    known = bindings(workspace)
+    if known.get(name) != bind:
+        known[name] = bind
+        write_json(Path(workspace) / BINDINGS, {"version": 1, "bindings": dict(sorted(known.items()))})
+
+
+def _bound(root, bind):
+    """Workspace-relative documents a binding drives: the group's members, the campaign's source, the sheet."""
+    from ...production import read_json
+
+    to = bind.get("to") or {}
+    try:
+        if "group" in to:
+            group = read_json(root / ".vixl-groups" / f"{named(to['group'])}.json")
+            return [str(item) for item in group.get("documents", [])]
+        if "spec" in to:
+            source = to.get("source") or (read_json(root / to["spec"]) or {}).get("source")
+            return [source] if isinstance(source, str) else []
+        if "merge" in to:
+            return [to["merge"]]
+    except (VixlError, OSError, ValueError, AttributeError, TypeError):
+        pass
+    return []
+
+
+def _files(root, bound):
+    """The files a binding's documents are read from, which the edge cache must notice changing."""
+    files = [root / BINDINGS]
+    for bind in bound.values():
+        to = bind.get("to") or {}
+        if "group" in to:
+            files.append(root / ".vixl-groups" / f"{named(str(to['group']))}.json")
+        if "spec" in to:
+            files.append(root / str(to["spec"]))
+    return files
+
+
+def _stamp(path):
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    return [stat.st_size, stat.st_mtime_ns]
+
+
+_EDGES = {}
+
+
+def _index(root):
+    root = Path(root)
+    bound = bindings(root)
+    stamp = [[str(path), _stamp(path)] for path in _files(root, bound)]
+    cached = _EDGES.get(str(root))
+    if cached and cached[0] == stamp:
+        return cached[1]
+    edges = {}
+    for bind in bound.values():
+        data = Path(str(bind.get("data", ""))).as_posix()
+        for document in _bound(root, bind):
+            edges.setdefault(Path(document).as_posix(), set()).add(data)
+    _EDGES[str(root)] = (stamp, edges)
+    return edges
+
+
+def data_edges(state, path, workspace):
+    """The F3 dependency-graph reader (``workspace_qa.dependents.register``): a ``data`` edge from every document a
+    data-sync binding drives to the binding's CSV, so link impact and watch find the documents a CSV change reaches."""
+    root = Path(workspace)
+    try:
+        relative = Path(path).resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return []
+    return [("data", data) for data in sorted(_index(root).get(relative, ()))]
+
+
+def _edges_stamp(workspace):
+    """What the graph's edge cache keys this reader on: bindings, and the groups and campaign files they name."""
+    root = Path(workspace)
+    return [[str(path.relative_to(root)) if path.is_relative_to(root) else str(path), _stamp(path)]
+            for path in _files(root, bindings(root))]
+
+
+data_edges.stamp = _edges_stamp
+
+
+def _register():
+    from ..workspace_qa.dependents import register
+
+    register(data_edges)
+
+
+_register()
 
 
 # Groups ---------------------------------------------------------------------------------------

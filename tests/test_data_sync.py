@@ -145,3 +145,25 @@ def test_a_binding_keeps_its_target(group):
     sync(group)
     with pytest.raises(VixlError, match="another target"):
         dispatch(group, "data-sync", {"bind": {"data": "prices.csv", "key": "sku", "to": {"merge": "x.vixl"}}})
+
+
+def test_members_that_would_write_the_same_export_are_refused(group):
+    member(group.resolve("p4.vixl"), "A1")  # a second member bound to row A1
+    dispatch(group, "group-define", {"name": "shelf", "documents": ["p1.vixl", "p2.vixl", "p3.vixl", "p4.vixl"]})
+    request = {"bind": {"data": "prices.csv", "key": "sku", "to": {"group": "shelf"}},
+               "exports": [{"path": "out/{key}.png"}]}
+    plan = dispatch(group, "data-sync", {**request, "dry_run": True})
+    assert plan["collisions"] == {"out/A1.png": ["p1.vixl", "p4.vixl"]}
+    with pytest.raises(VixlError, match="same export file"):
+        dispatch(group, "data-sync", request)
+    assert not group.resolve("out").exists()
+
+
+def test_a_binding_is_a_data_edge_of_the_dependency_graph(group):
+    from vixl.plugins.workspace_qa import dependents
+
+    assert dependents.dependents(group, "prices.csv") == []
+    sync(group)
+    assert [d["document"] for d in dependents.dependents(group, "prices.csv")] == ["p1.vixl", "p2.vixl", "p3.vixl"]
+    dispatch(group, "group-define", {"name": "shelf", "documents": ["p1.vixl"]})  # the edge follows the group
+    assert [d["document"] for d in dependents.dependents(group, "prices.csv", kinds=["data"])] == ["p1.vixl"]

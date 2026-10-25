@@ -9,8 +9,9 @@ library suite. The kinds:
 - ``data`` and ``template``: the CSV and the template document a merged sheet was made from (``merge`` record);
 - ``suite``: a library suite the document is held to, by ``extends`` or through a group or brand.json.
 
-Other plugins add kinds with ``register(reader)``; a reader is ``fn(state, path, workspace) -> [(kind, target)]``.
-Each document's edges are cached by file size and mtime in ``.vixl-checks/links-index.json``, so a graph over a
+Other plugins add kinds with ``register(reader)``; a reader is ``fn(state, path, workspace) -> [(kind, target)]``,
+optionally with ``reader.stamp(workspace)``: what its edges depend on besides the document (the pipelines plugin's
+data-sync bindings), so the cache is read again when that changes. Each document's edges are cached by file size and mtime in ``.vixl-checks/links-index.json``, so a graph over a
 large workspace re-reads only the documents that changed.
 
 Public API (other plugins call these): ``graph(workspace, documents=None)``, ``dependents(workspace, target, ...)``,
@@ -144,8 +145,23 @@ def _document_edges(root, relative, state):
     return [list(edge) for edge in dict.fromkeys(tuple(edge) for edge in edges)]
 
 
-def _readers_key():
-    return [f"{reader.__module__}.{getattr(reader, '__qualname__', reader)}" for reader in _READERS]
+def _readers_key(root=None):
+    """The readers, and what each reader's edges depend on besides the document (its ``stamp(workspace)``), so the
+    cache is read again when a reader's own inputs change."""
+    _load_readers()
+    key = []
+    for reader in _READERS:
+        name = f"{reader.__module__}.{getattr(reader, '__qualname__', reader)}"
+        stamp = getattr(reader, "stamp", None)
+        key.append([name, stamp(root)] if stamp and root is not None else name)
+    return key
+
+
+def _load_readers():
+    """Import every plugin's workflow modules once, so the readers they register are in place before a graph."""
+    from ... import plugins
+
+    plugins.modules("workflows")
 
 
 def _load_index(root):
@@ -154,8 +170,9 @@ def _load_index(root):
         index = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
     except (OSError, ValueError):
         index = None
-    if not isinstance(index, dict) or index.get("version") != VERSION or index.get("readers") != _readers_key():
-        return {"version": VERSION, "readers": _readers_key(), "documents": {}}
+    readers = json.loads(json.dumps(_readers_key(root)))
+    if not isinstance(index, dict) or index.get("version") != VERSION or index.get("readers") != readers:
+        return {"version": VERSION, "readers": readers, "documents": {}}
     return index
 
 
@@ -205,7 +222,7 @@ def graph(workspace, documents=None, *, cache=True):
     unless ``cache`` is false)."""
     root = _root(workspace)
     limits = _limits(workspace)
-    index = _load_index(root) if cache else {"version": VERSION, "readers": _readers_key(), "documents": {}}
+    index = _load_index(root) if cache else {"version": VERSION, "readers": _readers_key(root), "documents": {}}
     known = index["documents"]
     chosen = collect(root, documents)
     dirty = False
