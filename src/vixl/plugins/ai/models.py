@@ -196,7 +196,11 @@ def refresh(name):
 
 def route(capability, name=None, model=None):
     from .ai import provider
+    from .studio_provider import selected
 
+    studio = selected(name)  # While vixl host runs the studio provider, it takes every capability.
+    if studio is not None:
+        return studio
     config = load_config()
     selected = name or os.environ.get("VIXL_AI_PROVIDER") or config.get("default")
     candidates = configured()

@@ -420,6 +420,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | AGT-10 | Connect an MCP client to a workspace | `vixl mcp --workspace .` | config · 1–3 |  |
 | AGT-11 | Display a design inline in a notebook | `Project.show()` | 1–2 · <1 |  |
 | AGT-30 | Embed Vixl in another app through REST with auth | `vixl host --root DIR`: workspaces, documents by id with revisions, compose, check and export jobs | 3–10 · 1–3 | [server] Was T5 (1–3 days dev on `vixl serve`); since `vixl host` (#537–#543) the app calls a documented contract (`vixl host --schema`). |
+| AGT-46 | Let a host application's own AI gateway do every AI step | `vixl host --provider studio --provider-url URL --provider-token-env ENV`; `POST /w/{ws}/documents/{id}/ai` | 1–2 · <1 | [server] Since #544; the gateway contract is Vixl's proposal until Studio publishes one. `X-Call-Context` is echoed for attribution. |
+| AGT-47 | Set a workspace's brand from a host app, as brand.json or a Design Profile | `PUT /w/{ws}/brand` | 1 · <1 | [server] Since #545; unmapped profile paths are listed, `if_digest` makes it conditional. |
 | BLK-10 | Lookups or case changes inside a data merge | `${name\|upper}`, `${role\|map:colors}`, `variable-map` | 2–4 · 1 | Since 0.22. |
 | QA-22 | Proof page for human sign-off with approve/reject | `vixl_apply(workflow='proof')` | 1–2 · 1 | Since 0.22; offline HTML, decisions download as JSON. |
 | QA-23 | Check `.vixl` files in pull requests | GitHub Action (`action.yml`), `vixl diff` | 1 · CI | Since 0.22; see [CI](guides/automation/ci.md). Runs `vixl check --all`: annotations, JUnit and SARIF upload. |

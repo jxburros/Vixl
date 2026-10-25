@@ -155,6 +155,15 @@ and `vixl host` for AI Server Studio.
   FILE.json` writes the workspace brand as one; both are brand kit workflow actions (`brand-import`, `brand-export`),
   list every path they cannot map under `unmapped` and refuse to overwrite without `overwrite`.
   `vixl.brand.load_brand_or_profile(data)` reads either shape for the host through the new `brand-format` hook (#545).
+- **A `studio` AI provider for the host.** `vixl host --provider studio --provider-url URL --provider-token-env ENV`
+  sends plan, describe, detect, ocr, generate, segment, upscale and background-remove to an AI Server Studio gateway:
+  one `POST URL/v1/<capability>` with the capability, its constraints and inputs, never a model. It is registered in
+  the host process only (never providers.json), takes every capability while active and refuses other providers, and
+  is the one URL `--offline` lets through. A host request's `X-Call-Context` header is echoed on every gateway call;
+  gateway errors answer `provider_refused`, `limit_exceeded` or `provider_error`; provenance is recorded as before.
+  `POST /w/{ws}/documents/{id}/ai` runs AI commands through it. Studio has not published a gateway contract, so the
+  one in docs/reference/providers.md is Vixl's proposal. Plugins add `vixl host` flags with the new `host-flags`
+  hook and read them as `host.options` (#544).
 - **Host workspace brand.** `PUT /w/{ws}/brand` takes brand.json or a Design Profile (`schemaVersion: 2`), validates
   it and writes `ROOT/ws/brand.json`, answering the kit, its summary, `source`, the profile paths it could not map
   (`unmapped`) and a `digest`; `?if_digest=` makes the write conditional (`409 revision_conflict`). `GET /w/{ws}/brand`

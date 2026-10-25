@@ -5,6 +5,7 @@ PLUGIN = {
     "title": "AI providers",
     "summary": "Generate, edit, detect and describe images through configured providers; model discovery and routing.",
     "kind": "provider",
-    "modules": ["ai", "models"],
+    "modules": ["ai", "models", "studio_provider"],
+    "hooks": {"host-flags": ["studio_provider:host_flags"], "host-route": ["studio_provider:host_routes"]},
     "requires": ["drawing"],
 }

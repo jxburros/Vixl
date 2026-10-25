@@ -15,7 +15,7 @@ See [design tools and template production](../guides/shapes/design-tools.md) for
 | --- | --- | --- | --- | --- | --- |
 | Documents per session | One fixed document | Multiple, inside the workspace | One active document; workspace workflows | Multiple Project instances; Session for workflows | Many workspaces under --root; documents by opaque id with a revision |
 | Workflows | `act`, `check`, `drawing-report`, `effect-run`, `film-plan`, `form-fill`, `links`, `lyric-video-plan`, `organic-catalog`, `palette-check`, `plan`, `protected-edit`, `repair-layout`, `resource-get`, `resource-list`, `resource-save`, `shape-save`, `suite-use` | All 100 registered actions | All 100 registered actions | All 100 registered actions via workflows.dispatch(Session, ...) | None; documents, operations, compose, preview, check, exports and catalogs |
-| AI tools | Configured local providers via /ai | Configured local providers; a second server, vixl mcp --tools ai | Configured local providers | Configured local providers | Not served |
+| AI tools | Configured local providers via /ai | Configured local providers; a second server, vixl mcp --tools ai | Configured local providers | Configured local providers | Only the studio gateway, with --provider studio: /w/{ws}/documents/{id}/ai |
 | Linked files outside workspace | Forbidden | Forbidden | Explicit --allow-linked | Explicit allow_linked=True | Forbidden |
 | Screen capture | Unavailable | Disabled by default; --allow-screen-capture or VIXL_ALLOW_SCREEN_CAPTURE=1 | Explicit screen-capture workflow | Explicit screen-capture workflow | Unavailable |
 | Jobs | Detached timed-out calls via /jobs; no durable workflow queue | Durable workflow queue and detached calls | Durable workflow queue | Durable queue via Session/workflows | Export jobs with progress, events and expiring downloads; detached timed-out calls |
@@ -380,6 +380,7 @@ takes the same flags (`--call-timeout`, `--max-megapixels`, `--max-pages`, `--ma
 | `POST /w/{ws}/documents/{id}/check` | `vixl_check` fields (`checks`, `profile`, `suites`, `repair` …) → `{outcome, passed, counts, findings: [{rule, check, severity, action, message, layer_id, layer_ids, page}], checked}` and `revision` |
 | `DELETE /w/{ws}/documents/{id}?if_revision=` | `{deleted, revision}`; removes the working copy |
 | `POST /w/{ws}/documents/{id}/exports` | `{format, options?, request_id?}` → `202 {job_id, status, revision, poll, events, download}`; `options` are the REST `/export` fields |
+| `POST /w/{ws}/documents/{id}/ai` | `{command, args, if_revision?, request_id?}` (`ask`, `generate`, `ai`, `select`, `detect`, `ocr` and their words and flags) → the command's result with `revision`; only with `--provider studio`, else `501 provider_not_configured` |
 | `GET /w/{ws}/brand` | `{workspace, digest, brand, kit}`: the workspace brand.json, its summary and digest; `404 not_found` without one |
 | `PUT /w/{ws}/brand?if_digest=` | brand.json or a Design Profile (`schemaVersion: 2`) → `{workspace, digest, brand, kit, source, unmapped}`; written to `ROOT/ws/brand.json` |
 | `GET /jobs/{id}?wait=` · `GET /jobs/{id}/result` | A job's status: an export, or a call that outlived the timeout (`202` with `job_id`); `result` is what that call would have answered |
@@ -433,6 +434,15 @@ as data. `GET /catalog/tools?profile=studio` is the set of 12 tools a host can o
 descriptions written in the host's terms (endpoints, never MCP tool names) and input schemas built when asked from
 the registries that validate the calls: the operation types, layouts, check names and export formats of the
 running release. The profile text lives in `vixl.guidance.TOOL_PROFILES`.
+
+**AI through Studio.** `vixl host --provider studio --provider-url URL --provider-token-env ENV` sends every AI
+call to an AI Server Studio gateway and to nothing else: the provider is registered in the host process (never in
+`providers.json`), takes every capability, refuses any other provider with `403 forbidden`, and is the one address
+`--offline` still lets through. `POST /w/{ws}/documents/{id}/ai` runs an AI command on a document through it and raises
+the revision when the document changed. The value of a request's `X-Call-Context` header (at most 4096 printable
+ASCII characters) is echoed on every gateway call the request causes, so Studio can attribute it. Gateway refusals and
+limits answer `403 provider_refused` and `429 limit_exceeded`, other gateway failures `502 provider_error`. The
+gateway contract is a [proposal of Vixl's](providers.md#studio-gateway-vixl-host---provider-studio), pending Studio's.
 
 **The workspace brand.** `PUT /w/{ws}/brand` takes a brand.json object or a [Design
 Profile](../guides/layout/brands.md#design-profiles) (`schemaVersion: 2`, mapped by the brand kit plugin), validates it

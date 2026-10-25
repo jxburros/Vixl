@@ -20,7 +20,7 @@ def rows():
     table = [
         ("Documents per session", "One fixed document", "Multiple, inside the workspace", "One active document; workspace workflows", "Multiple Project instances; Session for workflows", "Many workspaces under --root; documents by opaque id with a revision"),
         ("Workflows", rest, all_actions, all_actions, all_actions + " via workflows.dispatch(Session, ...)", "None; documents, operations, compose, preview, check, exports and catalogs"),
-        ("AI tools", "Configured local providers via /ai", "Configured local providers; a second server, vixl mcp --tools ai", "Configured local providers", "Configured local providers", "Not served"),
+        ("AI tools", "Configured local providers via /ai", "Configured local providers; a second server, vixl mcp --tools ai", "Configured local providers", "Configured local providers", "Only the studio gateway, with --provider studio: /w/{ws}/documents/{id}/ai"),
         ("Linked files outside workspace", "Forbidden", "Forbidden", "Explicit --allow-linked", "Explicit allow_linked=True", "Forbidden"),
         ("Screen capture", "Unavailable", "Disabled by default; --allow-screen-capture or VIXL_ALLOW_SCREEN_CAPTURE=1", "Explicit screen-capture workflow", "Explicit screen-capture workflow", "Unavailable"),
         ("Jobs", "Detached timed-out calls via /jobs; no durable workflow queue", "Durable workflow queue and detached calls", "Durable workflow queue", "Durable queue via Session/workflows", "Export jobs with progress, events and expiring downloads; detached timed-out calls"),

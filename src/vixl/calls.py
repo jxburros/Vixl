@@ -14,6 +14,11 @@ from .errors import Cancelled
 
 CALL = ContextVar("vixl_call", default=None)
 UNKNOWN = ContextVar("vixl_unknown_arguments", default=())  # Tool arguments the client sent that no parameter takes.
+# The ``X-Call-Context`` header of the ``vixl host`` request being served: an opaque value of the host application's
+# that its AI gateway callbacks echo, so the gateway can attribute the call (``vixl host --provider studio``).
+CALL_CONTEXT = ContextVar("vixl_call_context", default=None)
+CALL_CONTEXT_HEADER = "X-Call-Context"
+CALL_CONTEXT_MAX = 4096
 
 
 class CallState:

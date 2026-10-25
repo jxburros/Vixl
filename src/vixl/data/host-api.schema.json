@@ -136,6 +136,15 @@
     "$ref": "#/$defs/CheckResult"
    }
   },
+  "POST /w/{ws}/documents/{id}/ai": {
+   "request": {
+    "$ref": "#/$defs/AiRequest"
+   },
+   "response": {
+    "$ref": "#/$defs/Revisioned"
+   },
+   "summary": "Run an AI command on the document through the provider the host was started with (--provider studio); 501 provider_not_configured without one. Changes raise the revision."
+  },
   "POST /w/{ws}/documents/{id}/exports": {
    "request": {
     "$ref": "#/$defs/ExportRequest"
@@ -419,6 +428,23 @@
      "required": [
       "pattern",
       "max_loaded"
+     ]
+    },
+    "provider": {
+     "type": "object",
+     "description": "The AI provider the host was started with (--provider studio); absent without one.",
+     "properties": {
+      "type": {
+       "const": "studio"
+      },
+      "url": {
+       "type": "string",
+       "description": "The gateway's base URL."
+      }
+     },
+     "required": [
+      "type",
+      "url"
      ]
     }
    },
@@ -942,6 +968,44 @@
    "required": [],
    "additionalProperties": true,
    "description": "vixl_check fields; checks, profile, suites and repair are the common ones."
+  },
+  "AiRequest": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "command"
+   ],
+   "description": "An AI command, as vixl ask/generate/ai/select/detect/ocr take it; the host chooses the provider, so args never name one.",
+   "properties": {
+    "command": {
+     "enum": [
+      "ask",
+      "generate",
+      "ai",
+      "select",
+      "detect",
+      "ocr"
+     ],
+     "description": "The command: ask (plan), generate, ai (describe, upscale, background-remove, extend, remove, regenerate ...), select, detect, ocr."
+    },
+    "args": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "The command's words and flags, such as [\"--prompt\", \"a red kite\"]."
+    },
+    "if_revision": {
+     "type": "integer",
+     "minimum": 1,
+     "description": "Apply only when the document is still at this revision."
+    },
+    "request_id": {
+     "type": "string",
+     "maxLength": 64,
+     "description": "A retry key: sending it again returns the first answer."
+    }
+   }
   },
   "Finding": {
    "type": "object",
