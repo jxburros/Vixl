@@ -964,15 +964,14 @@ def review_routes(app, host):
             return preview(session, max_width=side, max_height=side, max_bytes=limit, document=path, **options)
 
         def run():
-            import io
 
-            from PIL import Image
+            from .assets import open_image
 
             data, revision = host.read(ws, doc, render)
             if len(data) > limit:
                 raise VixlError("limit_exceeded", f"The preview does not fit in {limit} bytes", limit="max_bytes",
                                 value=len(data), maximum=limit, hint="Raise max_bytes or preview a region")
-            with Image.open(io.BytesIO(data)) as image:
+            with open_image(data, ("PNG",)) as image:
                 width, height = image.size
             return Response(data, media_type="image/png",
                             headers={"X-Vixl-Revision": str(revision), "X-Vixl-Width": str(width),

@@ -529,13 +529,17 @@ def test_docs_describe_every_rule_and_the_generated_tool_table():
     assert table == markdown_table(), "regenerate the table from vixl.convert.batches.markdown_table()"
 
 
+# Entry points that hand documents to the kit, as the CLI does; neither holds migration logic.
+KIT_CALLERS = {"cli.py", "bulk_upgrade.py"}  # vixl convert, and the pipelines plugin's bulk-upgrade action (#578)
+
+
 def test_the_engine_never_imports_the_kit():
     for path in (ROOT / "src" / "vixl").rglob("*.py"):
         if "convert" in path.relative_to(ROOT / "src" / "vixl").parts[:1] or path.name == "convert":
             continue
         text = path.read_text(encoding="utf-8")
         users = "from .convert" in text or "vixl.convert" in text
-        assert not users or path.name == "cli.py", path
+        assert not users or path.name in KIT_CALLERS, path
 
 
 def test_documents_from_current_releases_pass_through():
