@@ -43,6 +43,7 @@ BUILTIN = (
     "teamwork",
     "workspace_qa",
     "layout_repair",
+    "pipelines",
     "app_animation",
     "screen_capture",
     "figma_import",
@@ -64,6 +65,8 @@ HOOKS = {
                 "-> result}, or None when the durable job kind is not the plugin's; list the kinds in fn.KINDS",
     "job-complete": "fn(event) -> delivery record or None: called once when a durable job, check-all or pipeline run "
                     "ends; event is {event, kind, id, status, state, counts, report, workspace, notify, error}",
+    "resource-kind": "fn(kind) -> {builtins: {name: value}, validate: fn(value)}, or None when the resource category is "
+                     "not the plugin's; list the categories in fn.KINDS",
 }
 MANIFEST_KEYS = {"name", "title", "summary", "kind", "modules", "requires", *ROLES, "hooks", "capabilities"}
 KINDS = ("operations", "workflows", "importer", "provider")

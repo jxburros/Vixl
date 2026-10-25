@@ -106,6 +106,9 @@ then fetches it once and the render path finds it in the pack directory.
 | `apply-report` | `fn(project, operations, result)` | When the apply result is assembled |
 | `export-format` | `fn(project, path, format, report, **options) -> data or None` | On export; return None for formats that are not yours |
 | `import-format` | `fn(project, data, format, **options) -> result or None` | On import; return None for formats that are not yours |
+| `job-kind` | `fn(kind) -> {validate, run} or None`, kinds in `fn.KINDS` | When a durable job is submitted or run; return None for kinds that are not yours |
+| `job-complete` | `fn(event) -> delivery record or None` | Once when a durable job, `check-all` or a pipeline run ends (`vixl.jobs.completion_event` shape) |
+| `resource-kind` | `fn(kind) -> {builtins, validate} or None`, categories in `fn.KINDS` | When the resource library lists, reads or saves a category that is not built in |
 
 ## Built-in plugins
 
@@ -128,6 +131,7 @@ then fetches it once and the render path finds it in the pack directory.
 | `teamwork` (Teamwork) | workflows | Workspace branches and merges, document groups with shared parameters and rollback, suite inference. | `branch-fork`, `branch-list`, `branch-merge`, `branch-status`, `group-apply`, `group-define`, `group-list`, `group-recover`, `group-show`, `suite-infer` |
 | `workspace_qa` (Workspace QA) | workflows | check-all and replace-across over many documents, protected edits, proof pages, render lockfiles and deliverable packages. | `check-all`, `package`, `proof`, `protected-edit`, `replace-across`, `reproduce` |
 | `layout_repair` (Layout repair) | workflows | repair-layout: try ranked candidate fixes for failing checks and keep the least disruptive one. | `repair-layout` |
+| `pipelines` (Pipelines) | workflows | Saved, resumable pipelines over many documents with a run record, completion webhooks, data sync from a CSV and bulk structure upgrades. | `bulk-upgrade`, `data-sync`, `pipeline-run` |
 | `app_animation` (App animation packages) | workflows | Package animation states, theme variants, reduced-motion images and a sample consumer for apps. | `app-animation-package` |
 | `screen_capture` (Screen capture) | workflows | Capture the local desktop, a pixel rectangle or a Windows window to a PNG, only when asked. | `screen-capture` |
 | `figma_import` (Figma import) | importer | Import a Figma page or node as editable layers, with images, fonts and unsupported nodes rasterized. | hooks: import-format |

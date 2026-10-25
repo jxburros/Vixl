@@ -10,8 +10,8 @@ proof page.
 Per file the manifest records the source document and its revision (the SHA-256 of the saved ``.vixl``), the export
 settings, the check outcome, the SHA-256, the dimensions, the colour space and the stream metadata read back from the
 encoded file. Per package it records the Vixl version, the validation coverage, the visual-review status and, when a
-render lockfile is given, the reproduction summary of #512. A run record from the pipeline runner becomes one more
-entry of ``INPUTS``: a collector returns the same candidates, held entries and input description for each kind.
+render lockfile is given, the reproduction summary of #512. A pipeline run record (``run``, ``.vixl-runs/<id>/run.json``)
+is the third input: each entry of ``INPUTS`` collects the same candidates, held entries and input description.
 
 The zip is staged and published atomically, and never replaces an existing file unless ``overwrite`` is true. Its
 entries have fixed timestamps and a fixed order, so the same inputs give the same archive members.
@@ -51,7 +51,9 @@ FIELDS = {
                    "packaged; the variants it held for review are listed under held and left out."},
     "files": {"type": "array", "minItems": 1, "maxItems": MAX_FILES, "items": {"type": ["string", "object"]},
               "description": "Exported files to package: workspace paths or globs, or {path, source} to name the "
-                             "document a file was exported from. Give production or files."},
+                             "document a file was exported from. Give production, files or run."},
+    "run": {"type": "string", "description": "A pipeline run record (.vixl-runs/<run>/run.json): the outputs of its "
+            "documents that passed or need visual review; held and failed documents are listed under held."},
     "source": {"type": "string", "description": "The .vixl document the outputs were made from: its revision digest "
                "goes into the manifest, and with files its checks into the report."},
     "name": {"type": "string", "default": DEFAULT_NAME, "description": "File name template: {brand} {doc} {artboard} "
@@ -73,7 +75,7 @@ FIELDS = {
                 "without running checks or writing the package."},
     "overwrite": {"type": "boolean", "default": False, "description": "Replace an existing package."},
 }
-SUMMARY = ("Package a campaign run's outputs (production.json) or exported files into one zip: names from a template, "
+SUMMARY = ("Package a campaign run's outputs (production.json), a pipeline run's outputs or exported files into one zip: names from a template, "
            "duplicates dropped by hash, a manifest with source revision, export settings, check status, SHA-256, "
            "dimensions, colour and stream metadata, the check report and proof page, held outputs listed and left "
            "out. Refuses name collisions and existing packages.")
@@ -322,8 +324,48 @@ def _files(session, request):
     return candidates, [], {"kind": "files", "patterns": patterns}
 
 
-# A run record from the pipeline runner (`.vixl-runs/<id>/run.json`) is one more collector with this signature.
-INPUTS = {"production": _production, "files": _files}
+def _run(session, request):
+    """Candidates, held entries and a description of the input for a pipeline run record (``.vixl-runs/<id>/run.json``):
+    the outputs of documents that passed or need visual review; held, failed and unfinished documents are held."""
+    from ...outcomes import make
+
+    path = session.resolve(request["run"])
+    require(path.is_file() and path.suffix == ".json", f"{request['run']} is not a pipeline run record", "not_found",
+            field="run")
+    record = read_json(path)
+    require(isinstance(record, dict) and record.get("format") == "vixl-pipeline-run"
+            and isinstance(record.get("documents"), dict), "run is a pipeline run record (.vixl-runs/<run>/run.json)",
+            field="run")
+    validated = ((record.get("outcome") or {}).get("validation") or "passed") != "not_run"
+    candidates, held = [], []
+    for relative, entry in sorted(record["documents"].items()):
+        state = entry.get("outcome")
+        if state not in ("passed", "visual-review-needed"):
+            held.append({"id": None, "path": relative, "status": "failed" if state == "failed" else "needs_review",
+                         "reason": entry.get("reason") or f"the document is {state or 'not finished'} in the run",
+                         **({"rules": entry["findings"][:10]} if entry.get("findings") else {})})
+            continue
+        reasons = [entry.get("reason") or "needs visual review"] if state == "visual-review-needed" else []
+        outcome = make("completed", "passed" if validated else "not_run", reasons, validated_by=["pipeline"])
+        for step in entry.get("steps") or []:
+            for item in step.get("outputs") or []:
+                file = session.resolve(item["path"])
+                if not file.is_file():
+                    held.append({"id": None, "path": item["path"], "status": "needs_review",
+                                 "reason": f"the output file {item['path']} is missing"})
+                elif file_digest(file) != item.get("sha256"):
+                    held.append({"id": None, "path": item["path"], "status": "needs_review",
+                                 "reason": f"{item['path']} changed after the run: its checksum differs from the record"})
+                else:
+                    candidates.append(_candidate(file, session.relative(file), source=relative, outcome=outcome,
+                                                 sha256=item["sha256"]))
+    info = {"kind": "run", "path": request["run"], "run": record.get("run"), "pipeline": record.get("pipeline"),
+            "status": record.get("status")}
+    return candidates, held, info
+
+
+# Each input kind is a collector returning (candidates, held entries, a description of the input).
+INPUTS = {"production": _production, "files": _files, "run": _run}
 
 
 def collect(session, request):
@@ -436,7 +478,7 @@ def _document_checks(session, files):
         return None
     from .workspace_checks import run
 
-    return run(session, {"documents": sources, "history": False})
+    return run(session, {"documents": sources, "history": False}, emit=False)
 
 
 def _production_report(files, held, info):
@@ -636,7 +678,7 @@ def build(session, request):
     require(final, f"Nothing to package: {len(held)} output(s) are held", "invalid_request", field="output",
             held=held[:50])
     final.sort(key=lambda item: item["name"])
-    if info["kind"] == "production" and request.get("check", True) and not request.get("dry_run"):
+    if info["kind"] in ("production", "run") and request.get("check", True) and not request.get("dry_run"):
         documents = _production_report(final, held, info)
     entries = [_entry(item, revisions, settings, _file_check(item, document_status)) for item in final]
     counts = Counter(entry["check"]["state"] for entry in entries)
@@ -720,6 +762,7 @@ def cli(args, options, limits):
                "a manifest, checksums, the check report and a proof page")
     p.add_argument("--production", help="A campaign run's production.json")
     p.add_argument("--files", nargs="+", metavar="PATH_OR_GLOB", help="Exported files to package")
+    p.add_argument("--run", help="A pipeline run record (.vixl-runs/RUN/run.json)")
     p.add_argument("--source", help="The .vixl document the outputs were made from")
     p.add_argument("--out", required=True, help="The package to write (.zip)")
     p.add_argument("--name", help=f"File name template (default {DEFAULT_NAME})")
@@ -736,7 +779,7 @@ def cli(args, options, limits):
     p.add_argument("--workspace", default=".", help="Workspace folder (default: the current folder)")
     a = p.parse_args(args)
     request = {"output": a.out}
-    for key in ("production", "files", "source", "name", "brand", "locale", "layout", "decisions"):
+    for key in ("production", "files", "run", "source", "name", "brand", "locale", "layout", "decisions"):
         if getattr(a, key) is not None:
             request[key] = getattr(a, key)
     if a.lock:
