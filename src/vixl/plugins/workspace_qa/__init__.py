@@ -7,7 +7,7 @@ PLUGIN = {
                "deliverable packages.",
     "kind": "workflows",
     "modules": ["workspace_checks", "replace_across", "protected_edit", "proof", "reproduce", "export_lock", "package",
-                "workflow"],
+                "dependents", "candidate", "workflow"],
     "workflows": ["workflow"],
     "requires": ["teamwork", "ai"],
 }

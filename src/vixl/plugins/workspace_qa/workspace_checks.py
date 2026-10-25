@@ -194,19 +194,20 @@ def failing(record, level):
     return messages
 
 
-def check_document(session, relative, request, suite=None, keep=False, group=None):
+def check_document(session, relative, request, suite=None, keep=False, group=None, project=None):
     """Check one document. Returns its record (and the loaded project when ``keep``). With ``profile`` in the
-    request the profile picks the checks and the suites (``suites: false`` still skips attached suites)."""
+    request the profile picks the checks and the suites (``suites: false`` still skips attached suites). ``project``
+    checks that (unsaved) copy of the document instead of loading the file, as a candidate evaluation does."""
     from ...project import Project
 
     path = session.resolve(relative)
     record = {"path": relative}
-    project = None
     profile = request.get("profile")
     try:
-        record["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
-        project = Project.load(path, limits=session.limits)
-        project._workspace = session.workspace
+        if project is None:
+            record["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+            project = Project.load(path, limits=session.limits)
+            project._workspace = session.workspace
         options = {"checks": request["checks"]} if request.get("checks") else {}
         if not request.get("waivers", True):
             options["waivers"] = False
@@ -559,7 +560,7 @@ def render(result, fmt):
 
 def markdown(result):
     base = result.get("base")
-    lines = ["## Vixl document check", ""]
+    lines = [f"## {result.get('title', 'Vixl document check')}", ""]
     if not result["documents"]:
         lines += ["No documents matched." if "changed_since" not in result else
                   f"No documents changed since `{result['changed_since']}`.", ""]
