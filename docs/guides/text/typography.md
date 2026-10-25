@@ -94,6 +94,7 @@ vixl font pair dm-serif-dm-sans        # heading + body; or: vixl font pair rand
 vixl font install "Fraunces" --weight 700 --role heading
 vixl font use dm-sans-400 --role body  # reassign an installed font
 vixl font list                         # registered fonts, the document typography and the text stages
+vixl font system                       # fonts installed on this machine (any of them works by name)
 ```
 
 Installs fetch one static TTF per style from the Google Fonts CSS API (`fonts.gstatic.com`, HTTPS only, bounded size). Any Google Fonts family works, not only catalog entries. Files are validated and cached in `~/.cache/vixl/fonts` (set `VIXL_FONT_CACHE` to move it), then embedded in the document and registered as `family-weight` (for example `dm-serif-display-400`). A saved `.vixl` file therefore renders anywhere without the network. `font pair` and `--role` set `state.typography`, and layouts use it for headings and body unless you pass `font`/`display_font`. The structured operation is `{"type": "font-register", "name": "dm-sans-400", "role": "body"}`.
@@ -136,6 +137,64 @@ Noto Sans replaced DejaVu Sans as the proofing face; DejaVu Sans stays bundled, 
 
 `font-register` embeds a bundled face named as its `asset` (`NotoSans-Regular.ttf` or `DejaVuSans.ttf`) like an imported file. The `fonts` check reports text in either bundled face as the proofing fallback, and text in a registered (embedded) copy as chosen type.
 
+### Fonts installed on this machine
+
+Any font installed on the machine works by name, as in other design apps. Vixl finds the same fonts other programs
+see: on Linux and BSD through fontconfig (`fc-list`, so the directories in your `fonts.conf` count), or, without
+fontconfig, `/usr/share/fonts`, `/usr/local/share/fonts`, `~/.local/share/fonts`, `~/.fonts` and
+`$XDG_DATA_DIRS/fonts`; on Windows from the font registrations in the registry (machine and per-user, so fonts
+installed for one user outside `%WINDIR%\Fonts` count) plus `%WINDIR%\Fonts` and
+`%LOCALAPPDATA%\Microsoft\Windows\Fonts`; on macOS from `/System/Library/Fonts`, `/Library/Fonts` and
+`~/Library/Fonts`. `VIXL_FONT_DIRS` adds directories (separated like `PATH`) searched first. `.ttf`, `.otf`, `.ttc`
+and `.otc` files are read; every face of a collection and every named instance of a variable font is a style.
+
+```bash
+vixl font system                       # installed families with each style's weight, slope, PostScript name, file
+vixl font system georgia --styles      # filter; --styles lists only the style names; --refresh probes again
+vixl text "Quarterly report" --font "Georgia Bold Italic"
+```
+
+A text layer's `font` (and `display_font`, a rich-text span's `font`) takes:
+
+- a family, `"Georgia"` (its regular face);
+- a family and a style, `"Georgia Bold Italic"`, `"Inter SemiBold"`, `"Inter 600 Italic"`;
+- a full or PostScript name, `"Georgia-BoldItalic"`;
+- a font file name, `"georgia.ttf"`;
+
+all compared ignoring case, spaces, hyphens and underscores. When the family lacks the style asked for, the nearest
+weight with the same slope is used, as CSS font matching does (heavier first above 500, lighter first below 400).
+Names that already meant something keep their meaning: a registered font, a role or stage, a bundled face, a file
+path, then the installed fonts; only names that failed before now resolve. Text without a font still uses the
+bundled proofing face on every machine, and `DejaVu Sans` and `Noto Sans` name the bundled files whatever is
+installed.
+
+The chosen face is embedded in the document (`fonts/<sha256>.ttf`) and registered as `family-weight[-italic]`
+(`georgia-700-italic`), so the document renders, and exports to SVG, PDF and PPTX, on a machine without the font. A
+collection member is extracted as a standalone font and a variable font's instance is made static, so exporters get
+one face. The result lists each one under `installed_fonts` (family, style, weight, PostScript name, embedding
+permission and licence when the font names one). Bold and italic rich-text spans in an installed family embed that
+family's bold and italic faces too, instead of synthesizing them. Faces of the catalog script families (Noto Sans
+SC, JP, Devanagari …, and Noto Sans CJK or Source Han Sans under their system names) also serve as the
+[script fallbacks](#scripts-the-bundled-fonts-do-not-draw).
+
+Licences: the font's OS/2 embedding permission is reported. A face marked `restricted` or `preview-print` is still
+embedded locally, with a warning to check its licence before sharing the document; through MCP and REST it is
+refused, since the client receives the document. An unknown name fails with `missing_font`, and the error suggests
+installed families with close names.
+
+MCP lists the fonts with `vixl_reference('fonts', view='installed', query=…)` (style names only, at most 60
+families), REST with `GET /typefaces/installed?query=…&styles=true` (no file paths), Python with
+`vixl.system_fonts.families(query)` and `vixl.system_fonts.lookup(name)`. `vixl fonts` and
+`vixl_reference('fonts', view='fonts')` mark catalog families that are installed with `installed: true`. Services
+accept installed names because they read only the host's own font folders, never a path a client sends.
+
+The sources are probed once per process (again on a miss after 30 seconds) and the faces of each file are kept in
+`~/.cache/vixl/system-fonts.json` (`VIXL_SYSTEM_FONT_INDEX`; `off` keeps no index), keyed by file size and
+modification time, so a process parses only the fonts that changed. At most 6,000 files are indexed and files over
+64 MB are skipped, as are files that cannot be read. `VIXL_SYSTEM_FONTS=off` turns installed fonts off (documents then
+use only embedded, registered and bundled fonts); `VIXL_SYSTEM_FONTS=extra` keeps only `VIXL_FONT_DIRS`, for
+reproducible servers and CI.
+
 ### Your own font
 
 A font you draw in Vixl (glyphs made of shapes and paths) is embedded the same way: `font-build` registers it
@@ -148,7 +207,7 @@ A workspace can give every new document the same typography. A `{type: font-pair
 
 `vixl_document(action='create')`, `Session.create` and `vixl new` then download (or reuse from the cache) and embed the workspace fonts as part of the creation step, and report them under `workspace_fonts` (`pairing`, and `applied.heading`/`applied.body` with each font's `name` and whether it came `from` the pairing or `fonts`). Fonts are embedded in each document, so files stay portable. Passing `font_pairing` to `vixl_document(action='create')`, `workspace_fonts: false` (CLI `--no-workspace-fonts`) skips them. When a pairing cannot be fetched (offline, empty cache), the document is still created and `workspace_fonts.error` says why; run `font-pair` later. The CLI uses the `brand.json` beside the new document (`--scope workspace` writes it in the current directory).
 
-MCP: `vixl_reference('fonts')` (a pairing or family as `name`, or `view` `fonts`, `font`, `pairings`, `pairing`, `principles`) and the `font-pair` and `font-install` steps of `vixl_apply`. REST: `GET /typefaces`, `GET /typefaces/pairings`, `POST /typefaces/pair`, `POST /typefaces/install`.
+MCP: `vixl_reference('fonts')` (a pairing or family as `name`, or `view` `fonts`, `font`, `pairings`, `pairing`, `principles`, `installed`) and the `font-pair` and `font-install` steps of `vixl_apply`. REST: `GET /typefaces`, `GET /typefaces/installed`, `GET /typefaces/pairings`, `POST /typefaces/pair`, `POST /typefaces/install`.
 
 ## Baselines
 
