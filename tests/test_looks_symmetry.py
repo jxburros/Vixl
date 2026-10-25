@@ -323,3 +323,18 @@ def test_radial_repeat_cli(tmp_path, capsys, monkeypatch):
     looked = run("-p", "r.vixl", "look", "flower", "glow", "--amount", "0.8")
     assert looked["success"]
     assert "glow" in run("looks")["looks"]
+
+
+@pytest.mark.parametrize("x,y", [(900, 100), (100, 700), (-500, 100), (100, -400)])
+def test_a_look_on_a_layer_wholly_off_the_canvas_applies(x, y):
+    # The backdrop is read through pixel_box, which gave an inverted box for a layer past an edge and made the
+    # crop fail ("Coordinate 'lower' is less than 'upper'"), so layout-apply with a rolled look could crash.
+    from vixl.render import pixel_box
+
+    project = stage()
+    project.apply({"type": "move", "target": "card", "x": x, "y": y})
+    from vixl.looks import FINISHED
+
+    project.apply({"type": "look", "target": "card", "look": sorted(FINISHED)[0]})  # these read the backdrop
+    box = pixel_box((x, y, 300, 200), (800, 600))
+    assert box[2] >= box[0] and box[3] >= box[1]

@@ -669,8 +669,9 @@ def test_new_roll_and_layout_in_a_workspace_whose_brand_has_extra_colours(tmp_pa
                                                                  "extra": extra}}))
     monkeypatch.chdir(tmp_path)
     doc = str(tmp_path / "card.vixl")
-    assert main(["new", "400x300", "-o", doc, "--no-fonts"]) == 0
+    # Fixed seeds: with this pair layout-apply rolls a look onto a layer that lies off the canvas.
+    assert main(["new", "400x300", "-o", doc, "--no-fonts", "--seed", "1003002219"]) == 0
     assert Project.load(doc).state["canvas"]["background"] == "#fffaf0"
-    assert main(["--project", doc, "roll", "--apply"]) == 0
+    assert main(["--project", doc, "roll", "--apply", "--seed", "32114233"]) == 0
     assert main(["--project", doc, "layout", "apply", "event-poster", "--replace"]) == 0
     assert Project.load(doc).state["swatches"]["accent"] == "#c0392b"

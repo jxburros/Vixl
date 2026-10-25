@@ -326,20 +326,22 @@ def _scan():
         if not file.lower().endswith(EXTENSIONS):
             continue
         try:
-            real = os.path.normcase(os.path.realpath(file))
-            if real in seen:
+            real = os.path.realpath(file)
+            # Windows paths compare without case; the key folds it, the reported file keeps it.
+            key = os.path.normcase(real)
+            if key in seen:
                 continue
             stat = os.stat(real)
         except OSError:
             continue
-        seen.add(real)
+        seen.add(key)
         if stat.st_size > MAX_FILE_BYTES:
             continue
-        entry = known.get(real)
+        entry = known.get(key)
         if not (entry and entry.get("m") == stat.st_mtime_ns and entry.get("s") == stat.st_size):
             entry = {"m": stat.st_mtime_ns, "s": stat.st_size, "faces": faces_of(real)}
             changed = True
-        files[real] = entry
+        files[key] = entry
         faces += [{**face, "file": real, "source": source} for face in entry["faces"]]
     if changed or set(files) != set(known) or walks != stored.get("walks", {}):
         _save_index(path, {"version": INDEX_VERSION, "files": files, "walks": walks})

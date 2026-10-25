@@ -355,3 +355,11 @@ def test_script_faces_include_installed_catalog_families_and_their_system_names(
     from vixl.typefaces import local_script_faces
 
     assert (installed / "cjk.ttf").read_bytes() in local_script_faces(["Noto Sans SC"])
+
+
+def test_listed_files_keep_their_case_where_paths_compare_without_it(installed, monkeypatch):
+    # Windows folds case in os.path.normcase: the scan may compare paths that way, but must report the real path.
+    monkeypatch.setattr(system_fonts.os.path, "normcase", str.lower)
+    system_fonts._clear()
+    files = [face["file"] for face in system_fonts.faces() if face["file"].lower().endswith("vixltestserif-bold.ttf")]
+    assert len(files) == 1 and files[0].endswith("VixlTestSerif-Bold.ttf")

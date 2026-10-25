@@ -2096,10 +2096,12 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
 
 def pixel_box(bounds, size):
     """The whole-pixel (left, top, right, bottom) box covering fractional layout ``bounds``, clamped
-    to an image of ``size``. Every crop of a layer's pixels uses it so the images stay the same shape."""
+    to an image of ``size``. Every crop of a layer's pixels uses it so the images stay the same shape. A layer wholly
+    outside the image gets an empty box (right == left or bottom == top), never an inverted one."""
     x, y, w, h = bounds
-    return (max(0, math.floor(x + 1e-8)), max(0, math.floor(y + 1e-8)),
-            min(size[0], math.ceil(x + w - 1e-8)), min(size[1], math.ceil(y + h - 1e-8)))
+    left = min(size[0], max(0, math.floor(x + 1e-8)))
+    top = min(size[1], max(0, math.floor(y + 1e-8)))
+    return left, top, max(left, min(size[0], math.ceil(x + w - 1e-8))), max(top, min(size[1], math.ceil(y + h - 1e-8)))
 
 
 def trim_overflow(image, content, ax, ay):

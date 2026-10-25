@@ -222,6 +222,9 @@ the machine work by name. Breaking changes are listed under Upgrading from 0.31.
 
 ### Fixes
 
+- **A look on a layer wholly off the canvas no longer fails** with `Coordinate 'lower' is less than 'upper'`, which
+  could crash `layout apply` after some rolls: the backdrop box of such a layer is empty instead of inverted.
+- **Installed font files keep their case on Windows** in listings and in the documents they are embedded from.
 - **A brand with `palette.extra` no longer breaks `vixl new`, `roll --apply`, `layout apply` or templates.** `vixl new`
   failed with `unhashable type: 'dict'` and the others with `colors keys are …`: rolls and layouts take the brand's
   palette roles, not the table of extra colours.
