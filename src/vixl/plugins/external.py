@@ -7,8 +7,19 @@ _ENABLED = False
 
 
 def enable_plugins():
+    """Allow third-party extensions. Refused in offline mode (``VIXL_OFFLINE``): their code is not bound by it."""
+    from ..fetch import OFFLINE_ENV, offline
+
+    if offline():
+        raise VixlError("network_disabled", f"Third-party plugins cannot be enabled with {OFFLINE_ENV}=1: their code "
+                        "is not bound by offline mode", suggestions=[f"Unset {OFFLINE_ENV} (or drop --offline) to "
+                                                                     "enable plugins"])
     global _ENABLED
     _ENABLED = True
+
+
+def enabled():
+    return _ENABLED
 
 
 def load(group, name):

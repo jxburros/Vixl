@@ -64,6 +64,8 @@ HOOKS = {
                 "-> result}, or None when the durable job kind is not the plugin's; list the kinds in fn.KINDS",
     "job-complete": "fn(event) -> delivery record or None: called once when a durable job, check-all or pipeline run "
                     "ends; event is {event, kind, id, status, state, counts, report, workspace, notify, error}",
+    "host-route": "fn(app, host): add routes to the vixl host app (FastAPI); host.session(ws), host.workspace(ws) "
+                  "and host.answer(VixlError) are the helpers, and every route is already behind the bearer token",
 }
 MANIFEST_KEYS = {"name", "title", "summary", "kind", "modules", "requires", *ROLES, "hooks", "capabilities"}
 KINDS = ("operations", "workflows", "importer", "provider")

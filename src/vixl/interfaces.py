@@ -665,11 +665,9 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     except ImportError as exc:
         raise VixlError("missing_dependency", "Install vixl-engine[server]") from exc
     import asyncio
-    import contextvars
     import functools
 
-    from .call_limits import GATE, BoundedExecutor, CallLimits, RestJobs, check_export, detached, watch
-    from .calls import CALL, CallState
+    from .call_limits import BoundedExecutor, CallLimits, Limiter, RestJobs, check_export, detached
     from .untrusted import mark
 
     require_token(token)
@@ -681,33 +679,18 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     jobs = RestJobs(call_limits.hard_timeout)
     workers = BoundedExecutor(16)
 
+    limiter = Limiter(call_limits, jobs, workers)
+
     def limited(fn):
         """A heavy route: counted against max_concurrent, detached into a job after the timeout and cancelled at
-        its next checkpoint after the hard timeout."""
+        its next checkpoint after the hard timeout (call_limits.Limiter)."""
         @functools.wraps(fn)
         async def wrapper(*args, **kwargs):
-            key = GATE.acquire(session.workspace, call_limits.max_concurrent)
-            # Run in a copy of the request's context, so a VIXL_PROFILE render profile sees the work, with the
-            # call state that check_cancelled reads.
-            context, state = contextvars.copy_context(), CallState()
-            context.run(CALL.set, state)
-            try:
-                future = workers.submit(context.run, fn, *args, **kwargs)
-            except BaseException:
-                GATE.release(key)
-                raise
-            future.add_done_callback(lambda _: GATE.release(key))
-            watch(state, call_limits, future)
-            waiter = asyncio.wrap_future(future)
-            waiter.add_done_callback(lambda f: f.cancelled() or f.exception())  # Retrieved even if nobody waits.
-            if call_limits.timeout is None:
-                return await waiter
-            try:
-                return await asyncio.wait_for(asyncio.shield(waiter), call_limits.timeout)
-            except asyncio.TimeoutError:
-                ident = jobs.add(fn.__name__, future)
-                return JSONResponse(detached(ident, fn.__name__, call_limits.timeout), status_code=202,
-                                    headers={"Location": f"/jobs/{ident}", "Retry-After": "3"})
+            outcome, value = await limiter.run(session.workspace, fn.__name__, fn, *args, **kwargs)
+            if outcome == "job":
+                return JSONResponse(detached(value, fn.__name__, call_limits.timeout), status_code=202,
+                                    headers={"Location": f"/jobs/{value}", "Retry-After": "3"})
+            return value
 
         return wrapper
     app = FastAPI(title="Vixl Engine", version=__version__)
@@ -870,57 +853,9 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     @app.post("/export")
     @limited
     def export_document(body: dict):
-        allowed = {
-            "format",
-            "quality",
-            "scale",
-            "variables",
-            "background",
-            "artboard",
-            "comp",
-            "sampling",
-            "profile",
-            "svg_policy",
-            "svg_document",
-            "color_space",
-            "icc_profile_base64",
-            "intent",
-            "black_generation",
-            "ink_limit",
-            "proof",
-            "simulate",
-            "dpi",
-            "icon_sizes",
-            "time",
-            "page",
-            "pages",
-            "pdf_content",
-            "fillable",
-            "values",
-            "fill_mode",
-            "alpha",
-            "presenter",
-        }
-        known_fields(body, allowed, "export")
+        known_fields(body, EXPORT_FIELDS, "export")
         fmt = body.get("format", "PNG").upper()
-        media = {
-            "PNG": "image/png",
-            "JPEG": "image/jpeg",
-            "JPG": "image/jpeg",
-            "SVG": "image/svg+xml",
-            "HTML": "text/html",
-            "WEBP": "image/webp",
-            "TIFF": "image/tiff",
-            "AVIF": "image/avif",
-            "PDF": "application/pdf",
-            "ICO": "image/x-icon",
-            "PPTX": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            "PSD": "image/vnd.adobe.photoshop",
-            "TTF": "font/ttf",
-            "OTF": "font/otf",
-            "WOFF": "font/woff",
-            "WOFF2": "font/woff2",
-        }
+        media = EXPORT_MEDIA
         require(fmt in media, "Unsupported export format")
         body = dict(body)
         if "icc_profile_base64" in body:
@@ -1283,6 +1218,20 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
 
 
 LOOPBACK = ("127.0.0.1", "localhost", "::1")
+# The fields REST ``/export`` and ``vixl host`` export jobs accept, and the media type of each format.
+EXPORT_FIELDS = frozenset({
+    "format", "quality", "scale", "variables", "background", "artboard", "comp", "sampling", "profile", "svg_policy",
+    "svg_document", "color_space", "icc_profile_base64", "intent", "black_generation", "ink_limit", "proof",
+    "simulate", "dpi", "icon_sizes", "time", "page", "pages", "pdf_content", "fillable", "values", "fill_mode",
+    "alpha", "presenter",
+})
+EXPORT_MEDIA = {
+    "PNG": "image/png", "JPEG": "image/jpeg", "JPG": "image/jpeg", "SVG": "image/svg+xml", "HTML": "text/html",
+    "WEBP": "image/webp", "TIFF": "image/tiff", "AVIF": "image/avif", "PDF": "application/pdf",
+    "ICO": "image/x-icon", "PPTX": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "PSD": "image/vnd.adobe.photoshop", "TTF": "font/ttf", "OTF": "font/otf", "WOFF": "font/woff",
+    "WOFF2": "font/woff2",
+}
 
 
 def serving_policy(host, token, tls):

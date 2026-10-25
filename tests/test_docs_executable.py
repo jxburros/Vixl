@@ -69,6 +69,7 @@ SKIP_COMMANDS = {
     "<shell>": "starts the interactive shell",
     "mcp": "starts an MCP server that waits for a client",
     "serve": "starts the REST server",
+    "host": "starts the multi-workspace host server",
     "view": "starts the local viewer server",
     "session": "reads requests from stdin until it closes",
     "update": "contacts the release server",

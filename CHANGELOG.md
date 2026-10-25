@@ -17,6 +17,17 @@ and `vixl host` for AI Server Studio.
 
 ### Hosting
 
+- **`vixl host` serves many workspaces to a host application.** A new core server for AI Server Studio and other
+  programs: a bearer token is always required, on loopback too (`VIXL_HOST_TOKEN`, `--token-env` or
+  `--token-file`/`VIXL_HOST_TOKEN_FILE`), and the host refuses to start without one. Routes under `/w/{ws}/` act in
+  the folder `ROOT/ws`, named `[a-z0-9_-]{1,64}` and kept inside `--root`; `GET /host/info` reports the version,
+  `host_api: 1`, capabilities, limits and the job TTL, and every error answers one shape,
+  `{code, message, hint, layer_id?}`. It takes `--offline`, `--bind` and the per-call limit flags, with the
+  shared-server defaults (#537).
+- **Offline mode covers content packs and plugins.** `VIXL_OFFLINE=1` now also stops content-pack downloads (as
+  `VIXL_PACK_DOWNLOAD=off` does) and refuses to enable third-party plugins, whose code it cannot bind;
+  `--plugins` with `--offline` is refused (#537).
+
 ### Fonts
 
 ## 0.31.0

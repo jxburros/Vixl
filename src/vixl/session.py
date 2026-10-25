@@ -30,7 +30,7 @@ def run(project, source=None, sink=None, detail="compact"):
             else:
                 command = request["command"]
                 require(isinstance(command, list) and command and all(isinstance(x, str) for x in command), "command is an argv array")
-                require(command[0] not in ("save", "transaction", "serve", "view", "mcp", "session"), "Command is unavailable inside a session")
+                require(command[0] not in ("save", "transaction", "serve", "view", "host", "mcp", "session"), "Command is unavailable inside a session")
                 require("-" not in command[1:], "stdin/stdout file streams are unavailable inside a session; use operation requests or file paths")
                 require("dry_run" not in request, "dry_run applies to operation requests")
                 captured = io.StringIO()

@@ -11,16 +11,16 @@ See [design tools and template production](../guides/shapes/design-tools.md) for
 ## Capability matrix
 
 <!-- interface-capabilities:start -->
-| Capability | REST | MCP | CLI | Python |
-| --- | --- | --- | --- | --- |
-| Documents per session | One fixed document | Multiple, inside the workspace | One active document; workspace workflows | Multiple Project instances; Session for workflows |
-| Workflows | `act`, `check`, `drawing-report`, `effect-run`, `film-plan`, `form-fill`, `links`, `lyric-video-plan`, `organic-catalog`, `palette-check`, `plan`, `protected-edit`, `repair-layout`, `resource-get`, `resource-list`, `resource-save`, `shape-save`, `suite-use` | All 90 registered actions | All 90 registered actions | All 90 registered actions via workflows.dispatch(Session, ...) |
-| AI tools | Configured local providers via /ai | Configured local providers; a second server, vixl mcp --tools ai | Configured local providers | Configured local providers |
-| Linked files outside workspace | Forbidden | Forbidden | Explicit --allow-linked | Explicit allow_linked=True |
-| Screen capture | Unavailable | Disabled by default; --allow-screen-capture or VIXL_ALLOW_SCREEN_CAPTURE=1 | Explicit screen-capture workflow | Explicit screen-capture workflow |
-| Jobs | Detached timed-out calls via /jobs; no durable workflow queue | Durable workflow queue and detached calls | Durable workflow queue | Durable queue via Session/workflows |
-| Authentication | Optional bearer token; required beyond loopback | stdio: OS process access; HTTP: bearer token required beyond loopback | OS process access | Caller controls access |
-| Per-call limits | Configurable timeout, megapixels, pages, concurrency | Configurable timeout, megapixels, pages, concurrency | Resource Limits; service flags for serve/view/mcp | Resource Limits; CallLimits for service builders |
+| Capability | REST | MCP | CLI | Python | Host |
+| --- | --- | --- | --- | --- | --- |
+| Documents per session | One fixed document | Multiple, inside the workspace | One active document; workspace workflows | Multiple Project instances; Session for workflows | Many workspaces under --root; documents by opaque id with a revision |
+| Workflows | `act`, `check`, `drawing-report`, `effect-run`, `film-plan`, `form-fill`, `links`, `lyric-video-plan`, `organic-catalog`, `palette-check`, `plan`, `protected-edit`, `repair-layout`, `resource-get`, `resource-list`, `resource-save`, `shape-save`, `suite-use` | All 90 registered actions | All 90 registered actions | All 90 registered actions via workflows.dispatch(Session, ...) | None; documents, operations, compose, preview, check, exports and catalogs |
+| AI tools | Configured local providers via /ai | Configured local providers; a second server, vixl mcp --tools ai | Configured local providers | Configured local providers | Not served |
+| Linked files outside workspace | Forbidden | Forbidden | Explicit --allow-linked | Explicit allow_linked=True | Forbidden |
+| Screen capture | Unavailable | Disabled by default; --allow-screen-capture or VIXL_ALLOW_SCREEN_CAPTURE=1 | Explicit screen-capture workflow | Explicit screen-capture workflow | Unavailable |
+| Jobs | Detached timed-out calls via /jobs; no durable workflow queue | Durable workflow queue and detached calls | Durable workflow queue | Durable queue via Session/workflows | Export jobs with progress, events and expiring downloads; detached timed-out calls |
+| Authentication | Optional bearer token; required beyond loopback | stdio: OS process access; HTTP: bearer token required beyond loopback | OS process access | Caller controls access | Bearer token always required |
+| Per-call limits | Configurable timeout, megapixels, pages, concurrency | Configurable timeout, megapixels, pages, concurrency | Resource Limits; service flags for serve/view/mcp | Resource Limits; CallLimits for service builders | Shared-server defaults; the same flags as serve |
 <!-- interface-capabilities:end -->
 
 The workflow row is generated from the same allow-list enforced by REST and the shared workflow registry. The provider-backed MCP tools run as a second server (`--tools ai`), and screen capture requires its own opt-in. Service timeouts detach work into a job; they do not terminate the computation. Limits are opt-in unless configured in the environment.
@@ -313,6 +313,61 @@ REST and MCP retain loaded projects between calls. A file fingerprint (identity,
 `POST /check` (same options as `vixl_check`; `sample` is `"worst"` or a CSV path inside the workspace, and a path outside it answers `403 forbidden`), `POST /preview` (`max_width`, `max_height`, `max_bytes`, `region`, `isolate`, …; returns PNG) and `POST /compare` (`before`, `after`, `mode`, `isolate`; returns the summary plus `image_base64`). The CLI takes `--isolate LAYER…` on `compare` and on `apply --preview`. The REST service is bound to its one document and rejects a `document` field. `/check`, `/measure` and `/spacing`, like `/export`, `/preview` and `/compare`, answer `400` for a field they do not read and name it.
 
 The remaining routes mirror `vixl_check` and the saved-frame tools: `POST /measure` and `POST /spacing`, `GET /pixels/{target}`, `GET /animation`, `GET /animation/frame/{name}` and `POST /animation/export`; `GET /workflow/schema` and `POST /workflow/{action}` serve the fixed-document workflow allow-list shown in the [capability matrix](#capability-matrix); `GET /typefaces`, `GET /typefaces/pairings`, `POST /typefaces/pair`, `POST /typefaces/install` and `GET /roll` cover fonts and a rolled direction; `GET /limits` and `GET /jobs` report the [per-call limits](#per-call-limits) and detached calls.
+
+## Hosting Vixl
+
+`vixl host` serves documents in many workspaces to another program, such as AI Server Studio. `vixl serve` is one
+document for one person; the host is one process for a host application that holds a bearer token and keeps its own
+users apart by workspace.
+
+```bash
+python -m pip install 'vixl-engine[server]'
+export VIXL_HOST_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+vixl host --root ./host-data --offline
+```
+
+**Startup.** `--root DIR` holds one folder per workspace (created when missing; the home folder or a filesystem
+root is refused). The default address is `127.0.0.1:8767`; `--port` changes the port and `--bind ADDR` the address.
+`vixl host --schema` prints the API contract and exits.
+
+**Authentication.** Every request, on loopback too, needs `Authorization: Bearer TOKEN`, and the host refuses to
+start without a token. It reads `VIXL_HOST_TOKEN` (`--token-env NAME` names another variable) or a file:
+`--token-file FILE`, also `VIXL_HOST_TOKEN_FILE`, which wins over the variable. The token rules and the failed-token
+throttle are those of [REST](#rest): at least 24 characters, and 20 failures from one address in a minute answer
+`429`. There is no origin check, since the caller is a program, not a browser page. On a loopback bind the `Host`
+header must name a loopback address; with `--bind` set to another address it is not restricted. A non-loopback bind
+over plain HTTP prints a warning: put a TLS proxy in front, or pass `--tls-cert` and `--tls-key`.
+
+**Offline.** `--offline` (also `VIXL_OFFLINE=1`) turns off every network access for the process: URL imports, font
+downloads (the font cache still works), content-pack downloads and AI providers answer `network_disabled`, and
+third-party plugins cannot be enabled (`vixl --plugins host --offline` is refused).
+
+**Workspaces.** Routes under `/w/{ws}/` act in the folder `ROOT/ws`. A workspace name is 1-64 characters from
+`a-z`, `0-9`, `-` and `_`, so it cannot name a parent folder or an absolute path; the folder is created on first use
+and must resolve inside the root (a symlink out of it is refused with `403 forbidden`). Each workspace keeps one
+session with its documents loaded; the host keeps the 16 most recently used and reloads the others when they are
+next called (everything is saved after every call).
+
+**Errors.** Every error, including a wrong route or a malformed body, answers one shape:
+`{"code", "message", "hint", "layer_id"?, "details"?}`. `layer_id` names the layer an error is about; `details`
+holds the rest of the error's fields (`field`, `limit`, `revision` …). Status codes: `401 unauthorized`,
+`403 forbidden` or `network_disabled`, `404 not_found`, `409 revision_conflict` or `request_id_conflict`,
+`410 expired`, `413 resource_limit` (a body over the limit) or `limit_exceeded`, `429` when too many calls run at
+once, `503` when the host's queue is full, and `400` for the rest.
+
+**Limits.** The host starts with the [per-call limits](#per-call-limits) of a server other machines can reach (a
+120 s inline timeout, 40 megapixels and 200 pages per call, concurrency by CPU count, a 600 s hard timeout) and
+takes the same flags (`--call-timeout`, `--max-megapixels`, `--max-pages`, `--max-concurrent`,
+`--call-hard-timeout`, `--no-call-limits`). JSON bodies are limited to 1 MiB, uploads to 64 MiB.
+
+| Route | Request / result |
+| --- | --- |
+| `GET /host/info` | `{vixl, host_api: 1, capabilities: {pptx, pdf_import, ffmpeg, ai}, limits, job_ttl, offline, network, workspaces}` |
+| `GET /host/health` | `{ok: true, warm}`; `warm` is true once a workspace has been used |
+| `GET /w/{ws}` | `{workspace}`; creates the workspace folder |
+
+Other modules add route groups with `vixl.host.add_routes(fn)` and plugins with the `host-route` hook; each `fn`
+receives `(app, host)` and its routes are behind the same token.
 
 ## Trusted extensions
 

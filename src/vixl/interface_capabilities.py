@@ -14,14 +14,14 @@ def markdown_table():
     rest = ", ".join(f"`{name}`" for name in sorted(REST_WORKFLOWS))
     all_actions = f"All {len(ACTIONS)} registered actions"
     rows = [
-        ("Documents per session", "One fixed document", "Multiple, inside the workspace", "One active document; workspace workflows", "Multiple Project instances; Session for workflows"),
-        ("Workflows", rest, all_actions, all_actions, all_actions + " via workflows.dispatch(Session, ...)"),
-        ("AI tools", "Configured local providers via /ai", "Configured local providers; a second server, vixl mcp --tools ai", "Configured local providers", "Configured local providers"),
-        ("Linked files outside workspace", "Forbidden", "Forbidden", "Explicit --allow-linked", "Explicit allow_linked=True"),
-        ("Screen capture", "Unavailable", "Disabled by default; --allow-screen-capture or VIXL_ALLOW_SCREEN_CAPTURE=1", "Explicit screen-capture workflow", "Explicit screen-capture workflow"),
-        ("Jobs", "Detached timed-out calls via /jobs; no durable workflow queue", "Durable workflow queue and detached calls", "Durable workflow queue", "Durable queue via Session/workflows"),
-        ("Authentication", "Optional bearer token; required beyond loopback", "stdio: OS process access; HTTP: bearer token required beyond loopback", "OS process access", "Caller controls access"),
-        ("Per-call limits", "Configurable timeout, megapixels, pages, concurrency", "Configurable timeout, megapixels, pages, concurrency", "Resource Limits; service flags for serve/view/mcp", "Resource Limits; CallLimits for service builders"),
+        ("Documents per session", "One fixed document", "Multiple, inside the workspace", "One active document; workspace workflows", "Multiple Project instances; Session for workflows", "Many workspaces under --root; documents by opaque id with a revision"),
+        ("Workflows", rest, all_actions, all_actions, all_actions + " via workflows.dispatch(Session, ...)", "None; documents, operations, compose, preview, check, exports and catalogs"),
+        ("AI tools", "Configured local providers via /ai", "Configured local providers; a second server, vixl mcp --tools ai", "Configured local providers", "Configured local providers", "Not served"),
+        ("Linked files outside workspace", "Forbidden", "Forbidden", "Explicit --allow-linked", "Explicit allow_linked=True", "Forbidden"),
+        ("Screen capture", "Unavailable", "Disabled by default; --allow-screen-capture or VIXL_ALLOW_SCREEN_CAPTURE=1", "Explicit screen-capture workflow", "Explicit screen-capture workflow", "Unavailable"),
+        ("Jobs", "Detached timed-out calls via /jobs; no durable workflow queue", "Durable workflow queue and detached calls", "Durable workflow queue", "Durable queue via Session/workflows", "Export jobs with progress, events and expiring downloads; detached timed-out calls"),
+        ("Authentication", "Optional bearer token; required beyond loopback", "stdio: OS process access; HTTP: bearer token required beyond loopback", "OS process access", "Caller controls access", "Bearer token always required"),
+        ("Per-call limits", "Configurable timeout, megapixels, pages, concurrency", "Configurable timeout, megapixels, pages, concurrency", "Resource Limits; service flags for serve/view/mcp", "Resource Limits; CallLimits for service builders", "Shared-server defaults; the same flags as serve"),
     ]
-    return "\n".join(["| Capability | REST | MCP | CLI | Python |", "| --- | --- | --- | --- | --- |",
+    return "\n".join(["| Capability | REST | MCP | CLI | Python | Host |", "| --- | --- | --- | --- | --- | --- |",
                       *("| " + " | ".join(row) + " |" for row in rows)])
