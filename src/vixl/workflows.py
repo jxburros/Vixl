@@ -287,6 +287,30 @@ def cli(args, options, limits):
     return dispatch(session, a.action, request)
 
 
+def brand_profile_cli(args):
+    """``vixl brand import|export --design-profile FILE.json [OUT] [--preset NAME] [--overwrite] [--workspace DIR]``:
+    the brand-import and brand-export workflow actions (the brand kit plugin), dispatched by name."""
+    from .commands import Parser
+    from .interfaces import Session
+
+    parser = Parser(prog="vixl brand", description="Import a Design Profile into brand.json, or export brand.json "
+                    "as one")
+    parser.add_argument("action", choices=["import", "export"])
+    parser.add_argument("target", nargs="?", help="import: the brand file to write (default brand.json)")
+    parser.add_argument("--design-profile", dest="design_profile", required=True,
+                        help="import: the Design Profile JSON to read; export: the one to write (workspace-relative)")
+    parser.add_argument("--preset", help="export: a preset name from brand.json presets")
+    parser.add_argument("--workspace", default=str(Path.cwd()))
+    parser.add_argument("--overwrite", action="store_true", help="Replace an existing output file")
+    a = parser.parse_args(args)
+    session = Session(workspace=a.workspace)
+    if a.action == "import":
+        request = {"profile": a.design_profile, "overwrite": a.overwrite, **({"output": a.target} if a.target else {})}
+        return dispatch(session, "brand-import", request)
+    request = {"output": a.design_profile, "overwrite": a.overwrite, **({"preset": a.preset} if a.preset else {})}
+    return dispatch(session, "brand-export", request)
+
+
 def _check_types(action, request):
     """Reject a wrongly typed field with the expected type and an example, instead of a raw error."""
     for field, schema in ACTION_FIELD_TYPES.get(action, {}).items():

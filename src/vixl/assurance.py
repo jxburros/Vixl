@@ -37,7 +37,7 @@ RULE_FIELDS = {
     "count": {"target", "layer_type", "minimum", "maximum"},
     "focal": {"target", "grid", "tolerance"},
     "text": {"target", "pattern", "contains", "forbid", "min_characters", "max_characters", "min_words", "max_words",
-             "case", "brand"},
+             "case", "brand", "spelling"},
     "budget": {"max_layers", "max_fonts", "max_bytes", "min_ppi", "max_ppi", "max_render_ms", "proxy"},
 }
 # The limits a budget rule sets (proxy only says how large max_render_ms renders).

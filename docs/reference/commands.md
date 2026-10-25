@@ -349,6 +349,15 @@ Display text (24 px or larger) in a `text-layout` box whose wrapped paragraph en
 
 `budget` (opt-in: `check --checks budget`) holds the document to production budgets without a suite: drawn layers, distinct fonts, the saved size and over-resolved images (`max_layers` 500, `max_fonts` 4, `max_bytes` 100 MB, `max_ppi` 1200 unless `budget` in `.vixl-checks.json` sets others). Each finding is a `review` warning with the `limit`, its `maximum` or `minimum` and the `worst` offenders as `{layer, value}`. The `budget` suite rule takes the same limits plus `max_render_ms` (see [check suites](../guides/automation/production.md)).
 
+`spelling` (opt-in: `check --checks spelling`, from the spelling plugin) reads the drawn text of every visible text
+layer, after variables and per artboard, and reports each word the dictionary does not know as a `spelling` warning
+with `code: unknown-word`, action `review`, the `word` and up to three `suggestions`. URLs, domains, emails,
+`@handles`, `#hex` colours and hashtags, numbers, words with digits and all-capital words of four letters or fewer are
+skipped; brand.json `words.allow`, brand `facts` values and `.vixl/dictionary.txt` (one word or phrase per line) are
+accepted. The language is the form `lang`, else the document `lang`, else `en`; English is bundled, another language
+needs the `spelling-<lang>` content pack, and without it the check gives one `dictionary-unavailable` review finding
+instead of passing. See [brands](../guides/layout/brands.md#spelling).
+
 `accessibility` (opt-in: `check --checks accessibility`) adds `contrast` and `color_vision` to its own findings: the
 document language (fix), meaningful images, frames, links and charts without alt text (fix), small text (review),
 charts told apart by colour alone (review) and text whose export order jumps against its visual order (review). See

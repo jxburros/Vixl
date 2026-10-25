@@ -9,6 +9,7 @@ from .errors import require
 
 MAX_PATTERN = 1000
 MAX_PHRASES = 100
+MAX_ALLOWED = 5000
 CASES = ("sensitive", "insensitive")
 
 # Leftover template copy. Upper-case markers only, so ordinary words ("todo list") are not flagged.
@@ -54,6 +55,19 @@ def word_pattern(phrase):
     return re.compile(r"(?<![\w-])" + r"\s+".join(words) + r"(?![\w-])", re.IGNORECASE)
 
 
+def allowed_spans(text, patterns):
+    """Character spans of ``text`` covered by allowed words or phrases (brand.json ``words.allow``)."""
+    return [match.span() for pattern in patterns for match in pattern.finditer(text)]
+
+
+def first_match(pattern, text, spans=()):
+    """The first match of ``pattern`` in ``text`` that is not inside one of ``spans``, or None."""
+    for match in pattern.finditer(text):
+        if not any(start <= match.start() and match.end() <= end for start, end in spans):
+            return match
+    return None
+
+
 def count_words(text):
     return len(text.split())
 
@@ -96,7 +110,7 @@ def drawn_text(project, layers):
 # --- the ``text`` suite rule -------------------------------------------------------------------------------------
 
 TEXT_FIELDS = {"target", "pattern", "contains", "forbid", "min_characters", "max_characters", "min_words",
-               "max_words", "case", "brand"}
+               "max_words", "case", "brand", "spelling"}
 
 
 def validate_text_rule(rule, where):
@@ -116,15 +130,36 @@ def validate_text_rule(rule, where):
             finite(rule[name], f"{where}: {name}", 0, 1e7)
     require(isinstance(rule.get("target", "*"), str), f"{where}: target is a layer name, glob or group:NAME",
             field="target")
-    require(type(rule.get("brand", False)) is bool, f"{where}: brand is true or false", field="brand")
+    for name in ("brand", "spelling"):
+        require(type(rule.get(name, False)) is bool, f"{where}: {name} is true or false", field=name)
     require(any(name in rule for name in TEXT_FIELDS - {"target", "case"}),
-            f"{where}: set pattern, contains, forbid, brand or a character/word limit", field="pattern")
+            f"{where}: set pattern, contains, forbid, brand, spelling or a character/word limit", field="pattern")
 
 
 def brand_forbidden(project):
     from .brand import for_project
 
     return list((for_project(project).get("words") or {}).get("forbid", []))
+
+
+def brand_allowed(kit):
+    """brand.json ``words.allow`` as whole-word patterns."""
+    return [word_pattern(phrase) for phrase in (kit.get("words") or {}).get("allow", [])]
+
+
+def spelling_findings(project, texts):
+    """Unknown words in ``texts`` ({layer id: drawn text}) through the ``spell`` plugin hook (the spelling
+    plugin): ``{"lang", "words": [{"layer", "word", "suggestions"}]}``. A missing dictionary raises
+    ``pack_unavailable``, so a suite rule reads it as needs_review, never as a pass."""
+    from .errors import VixlError
+    from .plugins import first
+
+    result = first("spell", project, texts)
+    if result is None:
+        raise VixlError("unavailable", "Spelling needs the spelling plugin, which is not registered")
+    if not result.get("available", True):
+        raise VixlError("pack_unavailable", result["message"])
+    return result
 
 
 def text_rule(project, rule):
@@ -153,16 +188,31 @@ def text_rule(project, rule):
                 if not pattern.search(text):
                     problems.append(f"{layer['name']!r} does not match {pattern.pattern!r}")
     forbidden = []
-    patterns = compile_patterns(rule["forbid"], "forbid", "text", flags) if "forbid" in rule else []
+    patterns = [(pattern, False) for pattern in
+                (compile_patterns(rule["forbid"], "forbid", "text", flags) if "forbid" in rule else [])]
+    allow = []
     if rule.get("brand"):
-        patterns += [word_pattern(word) for word in brand_forbidden(project)]
-    for pattern in patterns:
+        from .brand import for_project
+
+        patterns += [(word_pattern(word), True) for word in brand_forbidden(project)]
+        allow = brand_allowed(for_project(project))
+    for pattern, from_brand in patterns:
         for layer in layers:
-            match = pattern.search(texts.get(layer["id"], ""))
+            text = texts.get(layer["id"], "")
+            match = first_match(pattern, text, allowed_spans(text, allow) if from_brand else ())
             if match:
                 forbidden.append({"layer": layer["name"], "match": match[0], "pattern": pattern.pattern})
     for item in forbidden:
         problems.append(f"{item['layer']!r} contains forbidden {item['match']!r}")
+    misspelled = []
+    if rule.get("spelling"):
+        names = {layer["id"]: layer["name"] for layer in layers}
+        found = spelling_findings(project, {layer["id"]: texts.get(layer["id"], "") for layer in layers})
+        misspelled = [{"layer": names[item["layer"]], "word": item["word"], "suggestions": item["suggestions"]}
+                      for item in found["words"]]
+        problems += [f"{item['layer']!r} has the unknown word {item['word']!r}"
+                     + (f" (did you mean {', '.join(item['suggestions'])}?)" if item["suggestions"] else "")
+                     for item in misspelled]
     missing = []
     if "contains" in rule:
         combined = "\n".join(texts.get(layer["id"], "") for layer in layers)
@@ -178,6 +228,8 @@ def text_rule(project, rule):
         detail["forbidden"] = forbidden[:20]
     if missing:
         detail["missing"] = missing
+    if misspelled:
+        detail["unknown_words"] = misspelled[:50]
     if not layers:
         detail["note"] = f"No visible text layers match {target!r}"
     return not problems, detail
@@ -268,12 +320,18 @@ def check_placeholders(project, resolved, layers, issue, variant=None, undefined
 # --- brand.json word lists ------------------------------------------------------------------------------------------
 
 def validate_brand(kit):
-    """The copy fields of brand.json: ``words`` {forbid: [phrases], prefer: {avoid: use}} and ``placeholders``
-    (extra regular expressions that mark leftover template copy)."""
+    """The copy fields of brand.json: ``words`` {forbid: [phrases], prefer: {avoid: use}, allow: [words]} and
+    ``placeholders`` (extra regular expressions that mark leftover template copy). ``allow`` lists names and terms
+    the brand spells its own way: forbid and prefer skip them, and the spelling check accepts them."""
     words = kit.get("words", {})
-    require(isinstance(words, dict) and set(words) <= {"forbid", "prefer"}, "brand words has forbid and prefer")
+    require(isinstance(words, dict) and set(words) <= {"forbid", "prefer", "allow"},
+            "brand words has forbid, prefer and allow")
     if "forbid" in words:
         phrases(words["forbid"], "forbid", "brand words")
+    allow = words.get("allow", [])
+    require(isinstance(allow, list) and len(allow) <= MAX_ALLOWED
+            and all(isinstance(item, str) and item.strip() and len(item) <= 200 for item in allow),
+            f"brand words allow is a list of at most {MAX_ALLOWED} words or phrases")
     prefer = words.get("prefer", {})
     require(isinstance(prefer, dict) and len(prefer) <= 1000
             and all(isinstance(k, str) and k.strip() and isinstance(v, str) and v for k, v in prefer.items()),
@@ -283,24 +341,27 @@ def validate_brand(kit):
 
 
 def check_brand_words(project, kit, resolved, layers, issue):
-    """brand.json ``words``: a forbidden phrase is a fix; a word with a preferred replacement is a review."""
+    """brand.json ``words``: a forbidden phrase is a fix; a word with a preferred replacement is a review. A match
+    inside an allowed word or phrase (``words.allow``, such as a product name) is skipped."""
     words = kit.get("words") or {}
     forbid = [(phrase, word_pattern(phrase)) for phrase in words.get("forbid", [])]
     prefer = [(avoid, use, word_pattern(avoid)) for avoid, use in (words.get("prefer") or {}).items()]
     if not forbid and not prefer:
         return
+    allow = brand_allowed(kit)
     for item in layers:
         layer = resolved[item["id"]]
         if layer["type"] != "text":
             continue
         text = layer.get("text", "")
+        spans = allowed_spans(text, allow)
         for phrase, pattern in forbid:
-            match = pattern.search(text)
+            match = first_match(pattern, text, spans)
             if match:
                 issue("brand", "error", f"{item['name']!r} uses {match[0]!r}, which brand.json forbids", [item],
                       code="forbidden-word", match=match[0])
         for avoid, use, pattern in prefer:
-            match = pattern.search(text)
+            match = first_match(pattern, text, spans)
             if match:
                 issue("brand", "warning", f"{item['name']!r} uses {match[0]!r}; the brand prefers {use!r}", [item],
                       code="preferred-word", match=match[0], prefer=use, action="review")

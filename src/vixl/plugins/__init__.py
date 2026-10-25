@@ -10,6 +10,7 @@ below, so a plugin can later ship separately without core changes:
   request, document)`` and optionally ``FIELD_TYPES`` ({action: {field: schema}}) and ``SUMMARIES``.
 - ``hooks``: {hook point: ["module:function", ...]}; see ``HOOKS`` for each point's call signature.
 - ``requires``: other plugins this one imports.
+- ``checks``: optional design check names the plugin adds (``checks.OPTIONAL_CHECKS``); its ``check`` hook runs them.
 - ``capabilities``: {topic: (words that select it, [guidance names])}, merged into the topics of
   ``vixl_reference('capabilities')``; the guidance texts live in the core registry, ``vixl.guidance``.
 
@@ -48,6 +49,7 @@ BUILTIN = (
     "figma_import",
     "pdf_import",
     "ai",
+    "spelling",
 )
 
 ROLES = ("operations", "commands", "workflows")
@@ -56,6 +58,10 @@ HOOKS = {
     "validate-layer": "fn(layer, state, project): raise VixlError for an invalid layer the plugin owns",
     "validate-state": "fn(project, state): raise VixlError for invalid document-level plugin state",
     "check": "fn(name, checks, **context): add design findings with context['issue'] when name is in checks",
+    "brand-format": "fn(data) -> (brand.json kit, unmapped paths) or None: read a brand in another format "
+                    "(a Design Profile)",
+    "spell": "fn(project, texts) -> {lang, available, message?, words: [{layer, word, suggestions}]} or None: "
+             "unknown words in {layer id: drawn text}",
     "after-apply": "fn(project): refresh derived plugin state once a batch has applied",
     "apply-report": "fn(project, operations, result): add plugin keys to the apply result",
     "export-format": "fn(project, path, format, report, **options) -> data, or None when the format is not the plugin's",
@@ -65,8 +71,8 @@ HOOKS = {
     "job-complete": "fn(event) -> delivery record or None: called once when a durable job, check-all or pipeline run "
                     "ends; event is {event, kind, id, status, state, counts, report, workspace, notify, error}",
 }
-MANIFEST_KEYS = {"name", "title", "summary", "kind", "modules", "requires", *ROLES, "hooks", "capabilities"}
-KINDS = ("operations", "workflows", "importer", "provider")
+MANIFEST_KEYS = {"name", "title", "summary", "kind", "modules", "requires", *ROLES, "hooks", "capabilities", "checks"}
+KINDS = ("operations", "workflows", "importer", "provider", "checks")
 
 
 @lru_cache(maxsize=None)
@@ -164,6 +170,11 @@ def normalize(kind, op, note):
     for fn in hooks("normalize"):
         op = fn(kind, op, note)
     return op
+
+
+def optional_checks():
+    """Optional design check names the plugins declare (manifest ``checks``), run through their ``check`` hook."""
+    return tuple(name for m in manifests() for name in m.get("checks", ()))
 
 
 def first(point, *args, **kwargs):

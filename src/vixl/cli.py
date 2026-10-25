@@ -584,6 +584,10 @@ def _dispatch(argv):
         from .finishing_cli import standalone as finishing_standalone
 
         return finishing_standalone(cmd, args), options.json
+    if cmd == "brand" and args and args[0] in ("import", "export"):
+        from .workflows import brand_profile_cli
+
+        return brand_profile_cli(args), options.json
     if cmd == "brand" and "--help" not in args and "-h" not in args:
         from .brand import cli as brand_cli
 
@@ -928,7 +932,7 @@ def command_help(cmd, args):
         "brand": "brand validate|show [--preset NAME]  (check the workspace brand.json: missing roles, fonts and logos; or "
                  "summarize it) | brand init [--name N] [--palette P] [--pairing P] [--font ROLE=FILE] | brand pack "
                  "OUT.vixlbrand | brand install FILE.vixlbrand [--preset-only [--as NAME]] [--overwrite] | brand element "
-                 "NAME --from FILE.vixl [--object GROUP]",
+                 "NAME --from FILE.vixl [--object GROUP] | brand import|export --design-profile FILE.json [--overwrite]",
         "guides": "guides (list guides and grids)",
         "links": "links (list the linked documents and their state: ok, stale, missing, cycle)",
     }

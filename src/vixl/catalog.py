@@ -67,6 +67,9 @@ CHECK_INFO = {
                "touch, proportions, mirrored pairs and back-to-front layering.", ("warning",)),
     "accessibility": ("Document language, alt text on meaningful images and charts, small text, colour-only charts "
                       "and reading order (plus contrast and color_vision).", ("warning",)),
+    "spelling": ("Words the dictionary does not know (spelling plugin), with up to 3 suggestions; brand words.allow, "
+                 "facts and .vixl/dictionary.txt are accepted. A missing dictionary is a review finding.",
+                 ("warning",)),
     "cost": ("Layers that take over 10× the median layer to draw, with the blur, effects or strokes behind it.",
              ("warning",)),
     "budget": ("Production budgets without a suite: drawn layers, fonts, document size and over-resolved images "

@@ -8,7 +8,8 @@ PLUGIN = {
                "brand.json and a logo.",
     "kind": "workflows",
     "modules": ["logo_package", "brand_board", "mockups", "drawing", "garments", "goods", "accessories", "products", "finishes", "print_art",
-                "workflow"],
+                "workflow", "design_profile"],
     "workflows": ["workflow"],
+    "hooks": {"brand-format": ["design_profile:brand_format"]},
     "requires": ["drawing", "workspace_qa"],
 }
