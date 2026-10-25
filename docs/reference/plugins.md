@@ -118,6 +118,7 @@ then fetches it once and the render path finds it in the pack directory.
 | `job-kind` | `fn(kind) -> {validate, run} or None`, kinds in `fn.KINDS` | When a durable job is submitted or run; return None for kinds that are not yours |
 | `job-complete` | `fn(event) -> delivery record or None` | Once when a durable job, `check-all` or a pipeline run ends (`vixl.jobs.completion_event` shape) |
 | `resource-kind` | `fn(kind) -> {builtins, validate} or None`, categories in `fn.KINDS` | When the resource library lists, reads or saves a category that is not built in |
+| `host-route` | `fn(app, host)` | Once when `vixl host` builds its app: add routes; `host.session(ws)`, `host.workspace(ws)` and `host.answer(error)` are the helpers, and every route is already behind the bearer token |
 
 ## Helpers other plugins use
 
