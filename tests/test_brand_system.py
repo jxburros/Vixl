@@ -657,3 +657,16 @@ def test_validate_flags_style_guidance_colours_and_undefined_template_font_roles
     assert any("styles.loud" in w and "#ff00ff" in w and "#ffffff" not in w for w in warnings)
     assert any("'script'" in w and "aside" in w for w in warnings)
     assert not any("'hand'" in w for w in warnings)
+
+
+@pytest.mark.parametrize("extra", [{"wood": "#d2a465"},
+                                   {"wood": {"color": "#d2a465", "max_fraction": 0.15}, "ballpoint": "#1f3a93"}])
+def test_new_document_in_a_workspace_whose_brand_has_extra_colours(tmp_path, monkeypatch, extra):
+    # The rolled palette takes the brand's roles; palette.extra is a table of approved colours, not a role.
+    from vixl.cli import main
+
+    (tmp_path / "brand.json").write_text(json.dumps({"palette": {"background": "#fffaf0", "accent": "#c0392b",
+                                                                 "extra": extra}}))
+    monkeypatch.chdir(tmp_path)
+    assert main(["new", "400x300", "-o", str(tmp_path / "card.vixl"), "--no-fonts"]) == 0
+    assert Project.load(tmp_path / "card.vixl").state["canvas"]["background"] == "#fffaf0"

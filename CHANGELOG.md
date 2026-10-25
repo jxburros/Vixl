@@ -73,6 +73,11 @@ and `vixl host` for AI Server Studio.
   list every path they cannot map under `unmapped` and refuse to overwrite without `overwrite`.
   `vixl.brand.load_brand_or_profile(data)` reads either shape for the host through the new `brand-format` hook (#545).
 
+### Fixes
+
+- **`vixl new` in a workspace whose brand has `palette.extra`** no longer fails with `unhashable type: 'dict'`: the
+  rolled palette takes the brand's palette roles, not the table of extra colours.
+
 ### Fonts
 
 - **Fonts installed on this machine work by name.** A text layer's `font` (and `display_font`, a rich-text span's

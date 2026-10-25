@@ -848,15 +848,15 @@ def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood
 
     require(isinstance(slots or {}, dict) and set(slots or {}) <= set(CONTENT_KEYS),
             f"slots must contain layout content fields ({', '.join(CONTENT_KEYS)})", field="slots")
-    from .brand import for_project, load
+    from .brand import for_project, load, role_colors
     from .normalize import roll_locks
 
     kit = for_project(project) if project else load(workspace)
     choices = roll_locks(locks)
     if kit.get("pairing"):
         choices.setdefault("pairing", kit["pairing"])
-    if kit.get("palette"):
-        palette = list(kit["palette"].values())
+    if role_colors(kit):
+        palette = list(role_colors(kit).values())  # palette.extra holds approved colours, not roles to roll
         choices.setdefault("palette", palette if len(palette) > 1 else palette + ["#ffffff"])
     if project and canvas is None:
         c = project.state["canvas"]
