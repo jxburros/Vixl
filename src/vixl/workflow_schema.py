@@ -322,6 +322,11 @@ PRODUCTION_SPEC = {
         "workers": {"type": "integer", "minimum": 1, "maximum": 4, "default": 1, "description": "Parallel renders."},
         "motion": {"type": "string", "description": "Saved motion to apply."},
         "fps": {"type": "number", "minimum": 1, "maximum": 60, "description": "Timeline fps override."},
+        "export_check": {"type": ["boolean", "string", "object"],
+                         "description": "Read each written output back and check it: true (the default delivery "
+                                        "checks), a delivery spec preset (instagram-feed, web-banner ...) or inline "
+                                        "spec fields. A failing output is held for review and not published; the "
+                                        "result is the output's export_check."},
     },
 }
 FILM_SPEC = {

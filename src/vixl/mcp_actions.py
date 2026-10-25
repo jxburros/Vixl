@@ -913,6 +913,12 @@ def export_one(
         description="Only these layers or objects, cropped to their ink on a transparent canvas; a .vixl path writes "
                     "a portable object document")] = None,
     padding: Annotated[float | None, Field(ge=0, le=4096, description="Pixels around the ink with isolate")] = None,
+    check: Annotated[bool, Field(description="Read the written file back and check it (fonts embedded, "
+                                             "self-contained, editable text); the result is export_check")] = False,
+    spec: Annotated[str | dict | None, Field(description="Delivery spec to check the file against: a preset "
+                                                         "(print-letter-bleed, instagram-feed, web-banner ...) or "
+                                                         "fields {max_bytes, pages, trim, bleed, fonts_embedded, "
+                                                         "color, dpi, alpha ...}")] = None,
     document: Document = None,
 ):
     """Export one file, full size by default (vixl_reference('exports') explains formats, CMYK, PDF, PPTX, HTML and
@@ -927,6 +933,8 @@ def export_one(
                    proof=proof, simulate=simulate, dpi=dpi, icon_sizes=icon_sizes, time=time, page=page, pages=pages,
                    pdf_content=pdf_content, fillable=fillable, values=values, fill_mode=fill_mode, alpha=alpha,
                    presenter=presenter, title=title, max_bytes=max_bytes, isolate=isolate, padding=padding)
+    if check or spec is not None:
+        options.update(check=check, spec=spec)
     return export_file(session, path, overwrite, document, **options)
 
 

@@ -53,6 +53,8 @@ class Target(BaseModel):
     alpha: Literal["auto", "keep", "flatten"] = "auto"
     title: str | None = None
     max_bytes: int | None = Field(None, ge=1)
+    check: bool = False
+    spec: str | dict | None = None
 
 
 SPECIAL = {"path", "document", "overwrite", "icc_profile"}
