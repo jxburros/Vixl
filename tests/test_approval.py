@@ -174,6 +174,19 @@ def test_proof_page_shows_the_approval_badge(session):
     assert 'data-approval="approved"' in page and 'data-approval="changed"' in page
 
 
+def test_a_comparison_that_fails_is_a_finding_not_a_crash(session, monkeypatch):
+    poster(session.resolve("a.vixl"))
+    dispatch(session, "approve", {}, document="a.vixl")
+    edit(session.resolve("a.vixl"), [{"type": "move", "target": "box", "x": 220, "y": 40}])
+
+    def broken(*args, **kwargs):
+        raise VixlError("render_failed", "cannot draw")
+
+    monkeypatch.setattr(approval, "status", broken)
+    found = approval_issues(checked(session, "a.vixl"))
+    assert [(i["severity"], i["code"]) for i in found] == [("warning", "error")]
+
+
 def test_cli_approve_and_clear(session, monkeypatch, capsys):
     from vixl.cli import main
 

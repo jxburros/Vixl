@@ -384,7 +384,12 @@ def check(checks, document=None, issue=None, artboard=None, page=None, **context
         only = lambda view: view["kind"] == "artboard" and view["name"] == artboard  # noqa: E731
     elif page is not None and isinstance(page, int):
         only = lambda view: view["kind"] == "page" and view["name"] == f"page {page}"  # noqa: E731
-    result = status(document, found, only=only, write_diff=True, workspace=workspace)
+    try:
+        result = status(document, found, only=only, write_diff=True, workspace=workspace)
+    except VixlError as exc:
+        issue("approval", "warning", f"The document could not be compared with its approval: {exc}", code="error",
+              approval="error")
+        return
     who, when = result.get("who"), result.get("when")
     if result["state"] == APPROVED:
         if named:
@@ -429,7 +434,11 @@ def production_report(project, spec, report):
         return
     boards = spec.get("artboards")
     only = (lambda view: view["kind"] != "artboard" or view["name"] in boards) if boards else None
-    result = status(project, approval, only=only, workspace=getattr(project, "_workspace", None))
+    try:
+        result = status(project, approval, only=only, workspace=getattr(project, "_workspace", None))
+    except VixlError as exc:
+        report["approved_members_changed"] = [{"document": Path(project.path).name, "error": str(exc)[:300]}]
+        return
     changed = [view["name"] for view in result["views"] if view["state"] == CHANGED]
     report["approved_members_changed"] = ([{"document": Path(project.path).name, "views": changed,
                                             "changed_fraction": result["changed_fraction"],
