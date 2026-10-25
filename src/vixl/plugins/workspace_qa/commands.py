@@ -1,4 +1,5 @@
-"""Command-line shorthands of the workspace QA actions, through the ``cli-command`` hook: ``vixl approve``."""
+"""Command-line shorthands of the workspace QA actions, through the ``cli-command`` hook: ``vixl approve`` and
+``vixl links impact``."""
 
 from pathlib import Path
 
@@ -6,6 +7,10 @@ from pathlib import Path
 def command(cmd, args, options, limits):
     if cmd == "approve":
         return approve_cli(args, options, limits)
+    if cmd == "links" and args[:1] == ["impact"]:
+        from .link_impact import cli
+
+        return cli(args[1:], options, limits)
     return None
 
 
