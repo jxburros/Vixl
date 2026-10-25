@@ -74,7 +74,8 @@ def evaluate(session, document, change=None, *, request=None, fail_on="error", d
     it: ``Evaluation.report`` is ``{document, status (passed, failed or error), changed, failing, check, diff,
     result}``. ``request`` holds the check options of ``check-all`` (``checks``, ``suites``, ``profile``,
     ``waivers``); a finding at ``fail_on`` or a suite that does not pass fails it. ``loaded`` reuses the
-    ``(path, original, candidate)`` of ``load``."""
+    ``(path, original, candidate)`` of ``load``; ``original`` may be None when the saved file cannot be opened (a
+    converted copy), and the report then has no render diff."""
     from ...hashing import content_hash
     from .workspace_checks import check_document, failing
 
@@ -87,7 +88,9 @@ def evaluate(session, document, change=None, *, request=None, fail_on="error", d
     except VixlError as exc:
         report.update(status="error", error=exc.as_dict(), changed=False)
         return Evaluation(path, original, candidate, report)
-    report["changed"] = content_hash(candidate.state, default=str) != content_hash(original.state, default=str)
+    # No original: the saved file cannot be opened by this release (a candidate made by the conversion kit).
+    report["changed"] = original is None or (content_hash(candidate.state, default=str)
+                                             != content_hash(original.state, default=str))
     if result is not None and not hasattr(result, "state"):
         report["result"] = result
     record = check_document(session, relative, request, project=candidate)
@@ -95,7 +98,9 @@ def evaluate(session, document, change=None, *, request=None, fail_on="error", d
     report["check"] = record
     report["failing"] = record["failing"]
     report["status"] = "error" if record.get("status") == "error" else "failed" if record["failing"] else "passed"
-    if diff and record.get("status") != "error":
+    if diff and record.get("status") != "error" and original is None:
+        report["diff"] = {"error": "the saved document cannot be opened, so there is no render to compare"}
+    elif diff and record.get("status") != "error":
         try:
             report["diff"] = _diff(original, candidate, threshold)
         except (VixlError, OSError, ValueError) as exc:

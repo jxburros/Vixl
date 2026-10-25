@@ -99,6 +99,29 @@ and `vixl host` for AI Server Studio.
   dry run by default; `dry_run: false` publishes through a journal that `group-recover` rolls back (#578).
 - **Plugin resource categories.** The `resource-kind` hook lets a plugin add a resource library category (the
   pipelines plugin adds `pipelines`).
+- **Watch mode and schedules.** `vixl watch` (config `.vixl/watch.json`, workflow `watch` for a bounded run, `--once`
+  for one pass from cron or CI) re-runs work when files change or a schedule comes round. Triggers are `save` (a
+  glob or group), `source-change` (a document others link to, through the dependency graph), `brand-change`,
+  `data-change` (a CSV a data-sync binding, a merged sheet or a pipeline's `inputs` reads) and `schedule`
+  (`every: "24h"` or a daily UTC `at: "06:00"`, fired once per period however long the watch was stopped); each runs
+  `check`, `check-all`, `link-impact`, `pipeline` or `data-sync`. It polls modification times each second and
+  compares content, so a touched file is not a change (the optional `watchdog` package wakes it early); events wait
+  500 ms and repeated ones coalesce; each document has one run at a time. Results go to the check-all history and the
+  completion event, so webhooks fire. A pipeline whose run record's digests match its inputs is not run again, and
+  exports keep the pipeline's and data-sync's overwrite rules. The state in `.vixl-runs/watch/` lets a restarted
+  watch see what changed while it was stopped. This is the scheduling `check --all --since-last` lacked (#569, #577).
+- **`vixl pipeline run NAME`.** `[--dry-run | --execute] [--run ID] [--glob GLOB … | --group NAME]` runs a saved
+  pipeline from the command line; the exit code is 1 unless the run completed (#568).
+- **Pipelines use the shared candidate evaluation and dependency graph.** `data-sync` and `bulk-upgrade` evaluate
+  through `workspace_qa.candidate` and hold the documents' locks from evaluation to commit, so a save in between is no
+  longer overwritten. `data-sync` bindings are `data` edges of the dependency graph (indexed in
+  `.vixl-runs/data/bindings.json`). Graph readers can declare a `stamp(workspace)` so the edge cache notices their own
+  inputs.
+- **Pipeline fixes.** A run's input digests now include documents reached through nested links, so a change two
+  links away re-runs the steps; a `check` step's key includes its suite file, the library suites and
+  `.vixl-checks.json`, so editing them re-runs the check instead of reusing a stale pass; and two documents of a run
+  (or two data-sync members) can no longer write the same export file: the second is refused and the dry run reports
+  the collision. Run keys of `check` steps changed, so the first run after the upgrade re-runs them once.
 
 - **Localization check.** The new `localization` plugin keeps per-locale variable values on a document
   (`locales-set`: `locales: {code: {variable: value}}` plus `source`, `same_ok`, `fonts`, `fit`, `min_size`, `rtl`),

@@ -180,9 +180,11 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    `dry_run: false` runs each document through its steps (`act`/`repair` change a working copy in `.vixl-runs/RUN/work`,
    never the source; `export` paths take `{doc}`), holds a document whose step fails (`held` with findings) and goes
    on, then writes the proof and package of what passed. Outcomes: `passed`, `held`, `visual-review-needed`, `failed`.
-   The record `.vixl-runs/RUN/run.json` has input digests (document, brand.json, links, data), per-step logs and
-   outputs with SHA-256; running the same `run` again reuses every step whose inputs are unchanged. Exports never
-   replace a file the run did not write unless the step says `overwrite: true`. Job kind `pipeline`: `submit`
+   The record `.vixl-runs/RUN/run.json` has input digests (document, brand.json, links (nested too), data; a check
+   also keys on its suite file, library suites and `.vixl-checks.json`), per-step logs and outputs with SHA-256;
+   running the same `run` again reuses every step whose inputs are unchanged. Exports never replace a file the run did
+   not write for that document unless the step says `overwrite: true`, and two documents never write the same file.
+   CLI: `vixl pipeline run NAME [--dry-run | --execute] [--run ID] [--glob GLOB… | --group NAME]`. Job kind `pipeline`: `submit`
    `{kind: "pipeline", output: ".vixl-runs/RUN", request: {pipeline}}`. `package` also takes `run: ".vixl-runs/RUN/run.json"`.
 24. Data sync: `vixl_apply(workflow='data-sync', request={bind: {data: "prices.csv", key: "sku", to: {group} | {spec:
    "campaign.json"} | {merge: "sheets.vixl"}}, exports?, dry_run?})` diffs the CSV against the last snapshot
@@ -197,6 +199,14 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    role}}, template?, dry_run?, journal?})` converts, renames/re-roles and optionally re-applies a layout, with checks
    and a render diff before and after; dry run by default, `dry_run: false` commits through a journal
    (`group-recover` with `journal`).
+27. Watch mode: `.vixl/watch.json` `{version: 1, triggers: [{on: save|source-change|brand-change|data-change|schedule,
+   run?: check|check-all|link-impact|pipeline|data-sync, documents?, group?, pipeline?, binding?, every?: "24h",
+   at?: "06:00" (UTC), request?: {action options}}]}`. `vixl watch` polls (1 s, content digests), debounces 500 ms,
+   coalesces repeated events and runs one job per document at a time; `vixl watch --once` (or
+   `vixl_apply(workflow='watch', request={ticks?, config? | watch?})`) makes one bounded pass against the state in
+   `.vixl-runs/watch/` and returns `runs` (trigger, files, documents, passed, failing). Check runs record history and
+   fire the completion webhook; a pipeline whose run-record digests match is skipped (`up-to-date`). The first start
+   only records the files; a schedule's first period starts then.
 
 MCP paths must remain inside the workspace. REST exposes check/act/plan/film-plan for
 its single project; filesystem, library and queue operations use CLI/Python/MCP.

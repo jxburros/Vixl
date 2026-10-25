@@ -1,15 +1,17 @@
-"""Workflow actions for pipelines, data sync and bulk upgrades."""
+"""Workflow actions for pipelines, watch, data sync and bulk upgrades."""
 
 from ...errors import VixlError
 from .notify import SCHEMA as NOTIFY
 from .runner import REQUEST as RUN_FIELDS
 from .data_sync import REQUEST as SYNC_FIELDS
 from .bulk_upgrade import REQUEST as UPGRADE_FIELDS
+from .watch import REQUEST as WATCH_FIELDS
 
 ACTIONS = {
     "pipeline-run": (RUN_FIELDS, {"pipeline"}),
     "data-sync": (SYNC_FIELDS, {"bind"}),
     "bulk-upgrade": (UPGRADE_FIELDS, set()),
+    "watch": (WATCH_FIELDS, set()),
 }
 PATH = {"type": "string", "description": "Workspace-relative path."}
 DOCUMENTS = {"type": "array", "items": {"type": "string", "description": "A glob or path."},
@@ -68,12 +70,26 @@ FIELD_TYPES = {
         "suites": {"type": "boolean", "default": True, "description": "Run each document's attached suites."},
     },
 }
+FIELD_TYPES["watch"] = {
+    "config": {**PATH, "description": "The watch config file (default .vixl/watch.json)."},
+    "watch": {"type": "object", "description": "An inline watch config instead of the file: {version: 1, name?, "
+              "poll?, debounce?, triggers: [{on: save|source-change|brand-change|data-change|schedule, run: "
+              "check|check-all|link-impact|pipeline|data-sync, documents?, group?, pipeline?, binding?, request?, "
+              "every?, at?}]}."},
+    "ticks": {"type": "integer", "minimum": 1, "maximum": 600, "default": 1, "description": "Polls before the "
+              "watch returns (one poll a second by default); pending events then run at once."},
+    "name": {"type": "string", "description": "State name: .vixl-runs/watch/<name>.json keeps the file digests and "
+             "schedule times between watches (default the config's name, else watch)."},
+}
 SUMMARIES = {
     "pipeline-run": "Run a saved or inline pipeline (act, check, repair, export, export_check, approve per document; "
                     "proof and package once) over its documents: failing documents are held, the run record "
                     ".vixl-runs/<run>/run.json resumes unchanged steps; dry run first.",
     "data-sync": "Sync a CSV bound to a group, campaign spec or merge sheet: row diff against the last snapshot, then "
                  "check, commit and re-export only what the changed rows affect.",
+    "watch": "A bounded watch: compare the workspace with the last watch's state and run the triggers that fire "
+             "(save, source-change, brand-change, data-change, schedule) as check, check-all, link-impact, pipeline "
+             "or data-sync; debounced, one run per document at a time. vixl watch keeps polling.",
     "bulk-upgrade": "Convert, rename/re-role and optionally re-apply the layout of many documents with checks and a "
                     "render diff before and after; dry run by default, journalled commit.",
 }
@@ -87,6 +103,10 @@ def dispatch(session, action, request, document=None):
             return run(session, request)
         if action == "data-sync":
             from .data_sync import run
+
+            return run(session, request)
+        if action == "watch":
+            from .watch import run
 
             return run(session, request)
         from .bulk_upgrade import run

@@ -21,6 +21,7 @@ from fnmatch import fnmatchcase
 
 from ...design import named
 from ...errors import VixlError, require
+from .candidate import judge, locked
 
 REQUEST = {"documents", "group", "convert", "look", "map", "template", "dry_run", "journal", "fail_on", "suites"}
 SLOTS = ("title", "subtitle", "body", "label", "cta", "caption", "items")
@@ -99,19 +100,39 @@ def template_operation(project, template):
 
 def run(session, request):
     """The ``bulk-upgrade`` workflow action."""
-    from ...convert import convert_project
-    from ..workspace_qa.workspace_checks import check_document, members
-    from .candidate import commit, evaluate, load
+    from ..workspace_qa.workspace_checks import members
 
     _validate(request)
-    dry_run = request.get("dry_run", True)
-    journal = named(request.get("journal", "bulk-upgrade"))
     paths, _ = members(session, {key: request[key] for key in ("documents", "group") if key in request})
     require(len(paths) <= MAX_DOCUMENTS, f"At most {MAX_DOCUMENTS} documents per upgrade", "resource_limit",
             field="documents")
+    # The documents stay locked from their evaluation to the commit, so no one else's save lands in between.
+    with locked(session, [session.relative(path) for path in paths]):
+        return _run(session, request, paths)
+
+
+def _original(session, path):
+    """The saved document, or None when this release cannot open it (only its converted copy can be checked)."""
+    from ...project import Project
+
+    try:
+        project = Project.load(path, limits=session.limits)
+    except (VixlError, OSError, ValueError, KeyError):
+        return None
+    project._workspace = session.workspace
+    return project
+
+
+def _run(session, request, paths):
+    from ...convert import convert_project
+    from ..workspace_qa.candidate import commit, evaluate, load
+    from ..workspace_qa.workspace_checks import check_document
+
+    dry_run = request.get("dry_run", True)
+    journal = named(request.get("journal", "bulk-upgrade"))
     check = {"suites": request.get("suites", True)}
     fail_on = request.get("fail_on", "error")
-    entries, candidates = [], {}
+    entries, candidates = [], []
     for path in paths:
         relative = session.relative(path)
         entry = {"document": relative}
@@ -124,8 +145,12 @@ def run(session, request):
                                        "changes": sorted({c["change"] for c in report["changes"]}),
                                        "warnings": len(report["warnings"])}
                 changed = bool(report["changes"])
+                # Checked as the document at its own path, so its relative link sources resolve.
+                candidate.path, candidate._revision = path, None
+                loaded = (path, _original(session, path), candidate)
             else:
-                candidate, changed = load(session, relative), False
+                loaded = load(session, path)
+                candidate, changed = loaded[2], False
             candidate._workspace = session.workspace
             operations, renamed, roles = mapping_operations(candidate, request.get("map", {}))
             if operations:
@@ -141,7 +166,8 @@ def run(session, request):
         if not (changed or operations or request.get("template")):
             entries.append({**entry, "status": "unchanged", "before": {"status": before.get("status")}})
             continue
-        evaluated = evaluate(session, relative, candidate, request=check, before=before, fail_on=fail_on)
+        evaluation = evaluate(session, path, None, request=check, fail_on=fail_on, loaded=loaded)
+        evaluated = judge(session, evaluation, request=check, before=before, fail_on=fail_on)
         entry.update(before=evaluated["before"], after=evaluated["after"], diff=evaluated.get("diff"),
                      newly_failing=evaluated["newly_failing"])
         if evaluated["newly_failing"]:
@@ -150,7 +176,7 @@ def run(session, request):
                          "original could not be checked to compare")
         else:
             entry["status"] = "upgraded"
-            candidates[relative] = candidate
+            candidates.append(evaluation)
         entries.append(entry)
     counts = {status: sum(1 for e in entries if e["status"] == status) for status in sorted({e["status"] for e in entries})}
     result = {"dry_run": dry_run, "journal": journal, "count": len(entries), "counts": counts, "documents": entries}

@@ -8,7 +8,8 @@ through the document steps in order; a step that fails holds that document (``he
 ``.vixl-runs/<run>/work/``, never the source document, and the later steps export and check that copy.
 
 The run record ``.vixl-runs/<run>/run.json`` holds the Vixl version, the pipeline digest, per document its input
-digests (the document, brand.json, the documents it links and the pipeline's ``inputs`` data files), every step's
+digests (the document, brand.json, the documents it links, directly or nested, and the pipeline's ``inputs`` data
+files), every step's
 status, key, log file (``logs/``) and outputs (path, SHA-256, bytes), and an outcome: ``passed``, ``held``,
 ``visual-review-needed`` (nothing failed, but a suite, an export check or an approval still needs a person) or
 ``failed`` (a step could not run). It is written atomically after every step.
@@ -16,8 +17,10 @@ status, key, log file (``logs/``) and outputs (path, SHA-256, bytes), and an out
 Running the same run id again resumes: a step is reused when its key (a digest of the document inputs and every step
 up to it) matches the record, it finished, and its outputs are still on disk with the recorded checksum; the first
 step that does not match runs again, and so does every step after it. So a changed input (the document, brand.json, a
-linked source, a data file or the pipeline) invalidates exactly the steps that depend on it. Exports never replace a
-file unless the step says ``overwrite: true`` or the file is one this run wrote and has not changed since.
+linked source, a data file or the pipeline; for a check, also its suite file, the library suites and the workspace
+check policy) invalidates exactly the steps that depend on it. Exports never replace a file unless the step says
+``overwrite: true`` or the file is one this run wrote for the same document and has not changed since, and two
+documents of a run never write the same file.
 
 The dry run (the default when the run has no record yet) lists every planned step and output, and which steps a real
 run would reuse, and writes nothing. A real run ends with the shared completion event (``vixl.jobs.notify_complete``),
@@ -81,10 +84,11 @@ def documents(session, pipeline, request):
     return [session.relative(path) for path in paths]
 
 
-def environment(session, relative, pipeline):
-    """The inputs besides the document that its results depend on: brand.json, linked documents, data files."""
+def environment(session, relative, pipeline, graph=None):
+    """The inputs besides the document that its results depend on: brand.json, linked documents (and the documents
+    those link, as they draw nested, read from the dependency graph ``graph()``), data files."""
     from ...brand import brand_path
-    from ...links import link_layers, locate
+    from ...links import MAX_DEPTH, link_layers, locate
     from ...project import Project
 
     found = {"brand.json": _digest(brand_path(session.workspace)), "links": {}, "data": {}}
@@ -101,6 +105,18 @@ def environment(session, relative, pipeline):
                 _digest(path)
     except (VixlError, OSError, ValueError):
         pass  # The check or export step reports a document it cannot open.
+    if graph is not None and found["links"]:
+        nodes = graph()["documents"]
+        frontier = [path for path in found["links"] if path in nodes]
+        for _ in range(MAX_DEPTH - 1):
+            following = []
+            for path in frontier:
+                for kind, target in nodes[path]["edges"]:
+                    if kind == "link" and target not in found["links"] and target != relative:
+                        found["links"][target] = _digest(session.resolve(target))
+                        if target in nodes:
+                            following.append(target)
+            frontier = following
     for name in pipeline.get("inputs", []):
         found["data"][name] = _digest(session.resolve(name))
     return found
@@ -136,6 +152,9 @@ class Run:
         self.digest = content_hash(self.pipeline)
         self.previous = self._previous()
         self.owned = self._owned()
+        self.owners = {item["path"]: item.get("document") for item in (self.previous or {}).get("outputs", [])}
+        self.claims = {}
+        self._graph = None
         self._cancelled = cancelled
         self._progress = progress
 
@@ -166,14 +185,32 @@ class Run:
 
     # Keys ----------------------------------------------------------------------------------------
 
+    def graph(self):
+        """The workspace dependency graph (F3), built once per run."""
+        if self._graph is None:
+            from ..workspace_qa.dependents import graph
+
+            self._graph = graph(self.session)
+        return self._graph
+
     def _inputs(self, relative):
         return {"document": _digest(self.session.resolve(relative)),
-                **environment(self.session, relative, self.pipeline), "vixl_version": self.version}
+                **environment(self.session, relative, self.pipeline, self.graph), "vixl_version": self.version}
 
     def _extra(self, kind, options):
-        """Inputs a step reads besides the document: an approval's decisions file."""
+        """Inputs a step reads besides the document: an approval's decisions file; for checks, a suite file, the
+        library suites and the workspace check policy (profiles and waivers)."""
         if kind == "approve" and options.get("decisions"):
             return {"decisions": _digest(self.session.resolve(options["decisions"]))}
+        if kind == "check" or (kind == "act" and options.get("suites")):
+            from ... import policy
+            from ...resources import catalog
+
+            extra = {"library_suites": content_hash(catalog("suites", workspace=self.session.workspace)),
+                     "policy": _digest(policy.path(self.session.workspace))}
+            if isinstance(options.get("suite"), str):
+                extra["suite"] = _digest(self.session.resolve(options["suite"]))
+            return extra
         return None
 
     def keys(self, inputs):
@@ -215,6 +252,20 @@ class Run:
                 start = last
         return start, old[:start]
 
+    def stale(self):
+        """The documents a real run would work on, read from the run record's digests: every one when the record is
+        missing, unfinished or for another pipeline; otherwise those with a step whose key changed (a held document
+        whose inputs did not change is not run again). Watch skips a run when this is empty."""
+        if not self.previous or self.previous.get("pipeline_digest") != self.digest or \
+                self.previous.get("status") in ("running", "cancelled"):
+            return list(self.documents)
+        found = []
+        for relative in self.documents:
+            start, reused = self.resume_point(relative, self.keys(self._inputs(relative)))
+            if start < len(self.document_steps) and not (reused and reused[-1]["status"] == "held"):
+                found.append(relative)
+        return found
+
     # Steps ---------------------------------------------------------------------------------------
 
     def _log(self, relative, index, kind, payload):
@@ -232,19 +283,26 @@ class Run:
         path = Path(relative)
         return {"doc": path.stem, "dir": path.parent.as_posix(), "run": self.id, "name": self.name or "inline"}
 
-    def _allowed(self, path, overwrite):
+    def _allowed(self, path, overwrite, document=None):
         relative = self.session.relative(self.session.resolve(path))
-        return overwrite or relative in self.owned or not self.session.resolve(path).exists()
+        # A file an earlier attempt wrote is this document's to replace, not another document's.
+        mine = relative in self.owned and self.owners.get(relative) in (None, document)
+        return overwrite or mine or not self.session.resolve(path).exists()
 
-    def planned_outputs(self, relative, kind, options):
+    def planned_outputs(self, relative, kind, options, claims=None):
+        """The export step's files; ``collision`` names another document of the run that writes the same file."""
         if kind != "export":
             return []
+        claims = self.claims if claims is None else claims
         tokens = self._tokens(relative)
         found = []
         for target in options["targets"]:
             path = self.session.relative(self.session.resolve(fill(target["path"], tokens)))
-            found.append({"path": path, "exists": self.session.resolve(path).exists(),
-                          "replace_allowed": self._allowed(path, options.get("overwrite", False))})
+            item = {"path": path, "exists": self.session.resolve(path).exists(),
+                    "replace_allowed": self._allowed(path, options.get("overwrite", False), relative)}
+            if claims.get(path, relative) != relative:
+                item.update(replace_allowed=False, collision=claims[path])
+            found.append(item)
         return found
 
     def execute(self, relative, current, kind, options, outputs):
@@ -288,9 +346,15 @@ class Run:
             from ...io_policy import export_file
 
             planned = self.planned_outputs(relative, kind, options)
+            shared = [f"{item['path']} (written by {item['collision']})" for item in planned if item.get("collision")]
+            require(not shared, f"Export would write the same file as another document of this run: "
+                    f"{', '.join(shared[:5])}; put {{doc}} or {{dir}} in the export path", "output_exists",
+                    field="steps")
             refused = [item["path"] for item in planned if not item["replace_allowed"]]
             require(not refused, f"Export would replace existing file(s) {', '.join(refused[:5])}; set overwrite: true "
                     "on the export step", "output_exists", field="steps")
+            for item in planned:
+                self.claims[item["path"]] = relative
             targets = [{**deepcopy(target), "path": item["path"], "overwrite": item["exists"]}
                        for target, item in zip(options["targets"], planned)]
             result = export_batch(session, export_file, targets, options.get("defaults"), document=current)
@@ -388,15 +452,17 @@ class Run:
 
     def plan(self):
         """The dry run: every step per document with its planned outputs and whether a real run would reuse it."""
-        entries = []
+        entries, claims = [], {}
         for relative in self.documents:
             keys = self.keys(self._inputs(relative))
             start, _ = self.resume_point(relative, keys)
             steps = []
             for index, (kind, options, ident) in enumerate(self.document_steps):
+                outputs = self.planned_outputs(relative, kind, options, claims)
+                for item in outputs:
+                    claims.setdefault(item["path"], relative)
                 steps.append({"index": index, "kind": kind, **({"id": ident} if ident else {}),
-                              "plan": "reuse" if index < start else "run",
-                              "outputs": self.planned_outputs(relative, kind, options)})
+                              "plan": "reuse" if index < start else "run", "outputs": outputs})
             entries.append({"path": relative, "steps": steps,
                             **({"working_copy": self._work(relative)} if self.mutating else {})})
         run_steps = [{"kind": kind, **({"id": ident} if ident else {}), "output": options["output"],

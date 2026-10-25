@@ -29,8 +29,10 @@ import re
 
 from ...design import named
 from ...errors import VixlError, require
+from .candidate import judge, locked
 
 SNAPSHOTS = ".vixl-runs/data"
+BINDINGS = f"{SNAPSHOTS}/bindings.json"
 MAX_ROWS = 10000
 MAX_BYTES = 16 * 1024 * 1024
 REQUEST = {"bind", "name", "dry_run", "exports", "fail_on", "suites", "overwrite"}
@@ -152,29 +154,161 @@ def run(session, request):
                                    + [key for key in order if key not in (snapshot or {}).get("order", [])
                                       and key in synced],
                                    "rows": synced, "outputs": outputs})
+        remember(session.workspace, name, bind)
         result["written"] = True
     else:
         result["written"] = False
     return result
 
 
+# Bindings in the dependency graph ---------------------------------------------------------------
+
+def bindings(workspace):
+    """``{name: bind}`` of every binding synced in ``workspace`` (``.vixl-runs/data/bindings.json``, else read from
+    the snapshots of syncs made before the index existed)."""
+    from ...production import read_json
+
+    root = Path(workspace)
+    path = root / BINDINGS
+    try:
+        if path.is_file():
+            value = read_json(path)
+            return {str(k): v for k, v in (value.get("bindings") or {}).items() if isinstance(v, dict)}
+        found = {}
+        for snapshot in sorted((root / SNAPSHOTS).glob("*.json")):
+            value = read_json(snapshot)
+            if isinstance(value, dict) and isinstance(value.get("binding"), dict):
+                found[snapshot.stem] = value["binding"]
+        return found
+    except (VixlError, OSError, AttributeError):
+        return {}
+
+
+def remember(workspace, name, bind):
+    """Add the binding to the index the dependency graph reads (rewritten only when it changes)."""
+    from ...production import write_json
+
+    known = bindings(workspace)
+    if known.get(name) != bind:
+        known[name] = bind
+        write_json(Path(workspace) / BINDINGS, {"version": 1, "bindings": dict(sorted(known.items()))})
+
+
+def _bound(root, bind):
+    """Workspace-relative documents a binding drives: the group's members, the campaign's source, the sheet."""
+    from ...production import read_json
+
+    to = bind.get("to") or {}
+    try:
+        if "group" in to:
+            group = read_json(root / ".vixl-groups" / f"{named(to['group'])}.json")
+            return [str(item) for item in group.get("documents", [])]
+        if "spec" in to:
+            source = to.get("source") or (read_json(root / to["spec"]) or {}).get("source")
+            return [source] if isinstance(source, str) else []
+        if "merge" in to:
+            return [to["merge"]]
+    except (VixlError, OSError, ValueError, AttributeError, TypeError):
+        pass
+    return []
+
+
+def _files(root, bound):
+    """The files a binding's documents are read from, which the edge cache must notice changing."""
+    files = [root / BINDINGS]
+    for bind in bound.values():
+        to = bind.get("to") or {}
+        if "group" in to:
+            files.append(root / ".vixl-groups" / f"{named(str(to['group']))}.json")
+        if "spec" in to:
+            files.append(root / str(to["spec"]))
+    return files
+
+
+def _stamp(path):
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    return [stat.st_size, stat.st_mtime_ns]
+
+
+_EDGES = {}
+
+
+def _index(root):
+    root = Path(root)
+    bound = bindings(root)
+    stamp = [[str(path), _stamp(path)] for path in _files(root, bound)]
+    cached = _EDGES.get(str(root))
+    if cached and cached[0] == stamp:
+        return cached[1]
+    edges = {}
+    for bind in bound.values():
+        data = Path(str(bind.get("data", ""))).as_posix()
+        for document in _bound(root, bind):
+            edges.setdefault(Path(document).as_posix(), set()).add(data)
+    _EDGES[str(root)] = (stamp, edges)
+    return edges
+
+
+def data_edges(state, path, workspace):
+    """The F3 dependency-graph reader (``workspace_qa.dependents.register``): a ``data`` edge from every document a
+    data-sync binding drives to the binding's CSV, so link impact and watch find the documents a CSV change reaches."""
+    root = Path(workspace)
+    try:
+        relative = Path(path).resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return []
+    return [("data", data) for data in sorted(_index(root).get(relative, ()))]
+
+
+def _edges_stamp(workspace):
+    """What the graph's edge cache keys this reader on: bindings, and the groups and campaign files they name."""
+    root = Path(workspace)
+    return [[str(path.relative_to(root)) if path.is_relative_to(root) else str(path), _stamp(path)]
+            for path in _files(root, bindings(root))]
+
+
+data_edges.stamp = _edges_stamp
+
+
+def _register():
+    from ..workspace_qa.dependents import register
+
+    register(data_edges)
+
+
+_register()
+
+
 # Groups ---------------------------------------------------------------------------------------
 
 def _group(session, request, bind, name, rows, previous, diff, snapshot):
     from ..workspace_qa.workspace_checks import members
-    from .candidate import commit, evaluate, load
+
+    paths, _ = members(session, {"group": bind["to"]["group"]})
+    # Every member stays locked from its evaluation to the commit, so no one else's save lands in between.
+    with locked(session, [session.relative(path) for path in paths]):
+        return _group_locked(session, request, bind, name, rows, diff, snapshot, previous, paths)
+
+
+def _group_locked(session, request, bind, name, rows, diff, snapshot, previous, paths):
+    from ..workspace_qa.candidate import commit, evaluate, load
 
     key = bind["key"]
-    paths, _ = members(session, {"group": bind["to"]["group"]})
     old_outputs = (snapshot or {}).get("outputs") or {}
     touched = set(diff["added"]) | set(diff["changed"])
-    entries, candidates, synced = [], {}, dict(previous)
+    entries, candidates, synced = [], [], dict(previous)
     for key_value in diff["removed"]:
         synced.pop(key_value, None)
     held_keys = set()
+    check = {"suites": request.get("suites", True)}
+    fail_on = request.get("fail_on", "error")
     for path in paths:
         relative = session.relative(path)
-        project = load(session, relative)
+        loaded = load(session, path)
+        project = loaded[1]
         value = project.state.get("variables", {}).get(key)
         entry = {"document": relative, "key": value}
         uses = referenced(project.state)
@@ -197,16 +331,14 @@ def _group(session, request, bind, name, rows, previous, diff, snapshot):
             entries.append({**entry, "status": "unaffected", "reason": "the changed columns are not used by it",
                             "outputs": old_outputs.get(relative, [])})
             continue
-        candidate = project.clone()
-        candidate.apply([{"type": "variable", "name": column, "value": rows[value][column]} for column in wanted],
-                        detail="compact")
-        check = {"suites": request.get("suites", True)}
-        evaluated = evaluate(session, relative, candidate, request=check, fail_on=request.get("fail_on", "error"))
+        operations = [{"type": "variable", "name": column, "value": rows[value][column]} for column in wanted]
+        evaluation = evaluate(session, path, operations, request=check, fail_on=fail_on, loaded=loaded)
+        evaluated = judge(session, evaluation, request=check, fail_on=fail_on)
         entry.update(columns=wanted, check=evaluated["after"], diff=evaluated.get("diff"),
                      newly_failing=evaluated["newly_failing"])
         if evaluated["passed"]:
             entry["status"] = "updated"
-            candidates[relative] = candidate
+            candidates.append(evaluation)
         else:
             entry["status"] = "held"
             entry["reason"] = "the updated document fails its checks"
@@ -219,6 +351,11 @@ def _group(session, request, bind, name, rows, previous, diff, snapshot):
     planned = {relative: _planned(session, request, relative, value, old_outputs.get(relative, []))
                for relative, value in ((e["document"], e["key"]) for e in entries if e["status"] == "updated")}
     refused = [item["path"] for items in planned.values() for item in items if not item["replace_allowed"]]
+    claimed = {}
+    for relative, items in planned.items():
+        for item in items:
+            claimed.setdefault(item["path"], []).append(relative)
+    shared = {path: owners for path, owners in claimed.items() if len(owners) > 1}
     extra = {"documents": entries, "journal": f"data-sync-{name}",
              "counts": {status: sum(1 for e in entries if e["status"] == status)
                         for status in sorted({e["status"] for e in entries})}}
@@ -226,7 +363,12 @@ def _group(session, request, bind, name, rows, previous, diff, snapshot):
         extra["planned_exports"] = planned
         if refused:
             extra["refused"] = refused
+        if shared:
+            extra["collisions"] = shared
         return synced, outputs, extra
+    require(not shared, "Two members would write the same export file ("
+            + "; ".join(f"{path}: {', '.join(owners)}" for path, owners in list(shared.items())[:3])
+            + "); use {doc}, {dir} or {key} in the export path", "output_exists", field="exports")
     require(not refused, f"Re-export would replace file(s) data-sync did not write: {', '.join(refused[:5])}; set "
             "overwrite: true", "output_exists", field="exports")
     if candidates:
@@ -291,7 +433,7 @@ def _coerce(value, kind):
 
 def _spec(session, request, bind, order, rows, previous, diff, snapshot):
     from ...production import plan, read_json, run as produce
-    from .candidate import load
+    from ..workspace_qa.candidate import load
 
     to = bind["to"]
     campaign = read_json(session.resolve(to["spec"]))
@@ -300,7 +442,7 @@ def _spec(session, request, bind, order, rows, previous, diff, snapshot):
     source, output = to.get("source") or campaign.get("source"), to.get("output") or campaign.get("output")
     require(isinstance(source, str) and isinstance(output, str), "The campaign needs a source document and an output "
             "folder (in the campaign file or bind.to)", field="bind.to")
-    project = load(session, source)
+    _, project, _ = load(session, source)
     inputs = (project.state.get("recipe") or {}).get("inputs")
     kept = [key for key in (snapshot or {}).get("order", []) if key in rows]
     ordered = kept + [key for key in order if key not in kept]

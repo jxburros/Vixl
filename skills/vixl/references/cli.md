@@ -79,6 +79,8 @@ A slow render? `check --checks cost` names the costly layer; `VIXL_PROFILE=1` ad
 | `package (--production P.json \| --files GLOB… \| --run RUN.json) --out D.zip [--source DOC] [--name T] [--lock F] [--dry-run]` | Zip a run's outputs with manifest, checksums, check report and proof page |
 | `approve [--group NAME] [--clear] [--author WHO]` | Record the approved look; later checks flag changed pages/artboards for review |
 | `links impact SOURCE.vixl [--group NAME \| --glob GLOB…] [--apply]` | Check every document linking to SOURCE on a refreshed copy; `--apply` saves the passers |
+| `pipeline run NAME [--dry-run \| --execute] [--run ID] [--glob GLOB… \| --group NAME]` | Plan or run a saved pipeline; exit 1 unless it completed |
+| `watch [--config .vixl/watch.json] [--once \| --ticks N] [--name N]` | Run the watch triggers (save, source-change, brand-change, data-change, schedule) as files change; `--once` is one pass for cron or CI, without it it runs until Ctrl-C |
 | `schema [OPERATION…]` | Without a name, every operation by purpose with a one-line summary; with names, their JSON Schema; `schema --all` is the whole schema (900 KB); `schema document` is the schema of a `.vixl` file's `project.json` |
 | `pixels [LAYER]` | Pixel layer as rows + palette |
 | `animation` | Frame names, sizes, durations |

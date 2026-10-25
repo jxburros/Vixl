@@ -230,3 +230,48 @@ def test_the_pipeline_job_kind_runs_through_submit_and_work(workspace):
     assert status["status"] == "needs_review" and status["result"]["counts"] == {"passed": 2, "held": 1}
     assert done and record(workspace, "nightly")["counts"]["held"] == 1
     assert workspace.resolve("out/delivery.zip").is_file()
+
+
+def test_two_documents_never_write_the_same_export_file(workspace):
+    poster(workspace.resolve("x/a.vixl"), "Ex")
+    poster(workspace.resolve("y/a.vixl"), "Why")
+    pipeline = {"version": 1, "targets": {"documents": ["x/a.vixl", "y/a.vixl"]},
+                "steps": [{"export": {"targets": [{"path": "out/{doc}.png"}], "overwrite": True}}]}
+    plan = dispatch(workspace, "pipeline-run", {"pipeline": pipeline, "run": "same"})
+    assert plan["refused"] == ["out/a.png"]
+    result = dispatch(workspace, "pipeline-run", {"pipeline": pipeline, "run": "same", "dry_run": False})
+    outcomes = {d["path"]: d for d in result["documents"]}
+    assert outcomes["x/a.vixl"]["outcome"] == "passed"
+    assert outcomes["y/a.vixl"]["outcome"] == "failed" and "x/a.vixl" in outcomes["y/a.vixl"]["reason"]
+    assert [item["path"] for item in result["outputs"]] == ["out/a.png"]
+
+
+def test_a_change_two_links_away_invalidates_the_document(workspace):
+    poster(workspace.resolve("c2.vixl"), "Deep")
+    for name, source in (("b2", "c2.vixl"), ("a2", "b2.vixl")):
+        p = Project(320, 200, "#ffffff", workspace=workspace.workspace)
+        p.path = str(workspace.resolve(f"{name}.vixl"))
+        p.apply({"type": "link", "source": source, "name": "linked", "x": 0, "y": 0})
+        p.save(p.path, overwrite=True)
+    pipeline = {"version": 1, "targets": {"documents": ["a2.vixl"]},
+                "steps": [{"export": {"targets": [{"path": "out/{doc}.png"}]}}]}
+    request = {"pipeline": pipeline, "run": "nested", "dry_run": False}
+    dispatch(workspace, "pipeline-run", request)
+    assert "c2.vixl" in record(workspace, "nested")["documents"]["a2.vixl"]["input"]["links"]
+    deep = Project.load(workspace.resolve("c2.vixl"))
+    deep.apply({"type": "text-set", "target": "title", "text": "Deeper"})
+    deep.save()
+    again = dispatch(workspace, "pipeline-run", request)
+    assert not again["documents"][0]["steps"][0].get("reused")
+
+
+def test_an_edited_suite_file_re_runs_the_check(workspace):
+    workspace.resolve("rules.json").write_text(json.dumps(SUITE))
+    pipeline = {"version": 1, "targets": {"documents": ["a.vixl"]}, "steps": [{"check": {"suite": "rules.json"}}]}
+    request = {"pipeline": pipeline, "run": "rules", "dry_run": False}
+    assert dispatch(workspace, "pipeline-run", request)["documents"][0]["outcome"] == "passed"
+    assert dispatch(workspace, "pipeline-run", request)["documents"][0]["steps"][0].get("reused")
+    strict = {"version": 1, "rules": [{"id": "title", "kind": "text", "target": "title", "max_characters": 2}]}
+    workspace.resolve("rules.json").write_text(json.dumps(strict))
+    changed = dispatch(workspace, "pipeline-run", request)["documents"][0]
+    assert not changed["steps"][0].get("reused") and changed["outcome"] == "held"

@@ -629,7 +629,8 @@ previous one over the same documents and settings:
 - `newly_passing`, `still_failing`, and documents `added` or `removed` since then.
 
 After an upgrade, `vixl check --all --since-last` therefore names the documents that the new version judges
-differently. Vixl does not schedule runs itself: run it from CI on a schedule (a cron workflow), or after an update.
+differently. To run it on a schedule, give [watch mode](#watch-mode) a `schedule` trigger (`vixl watch`, or
+`vixl watch --once` from CI or cron); a cron workflow that keeps `.vixl-checks/` works too.
 
 ### Documents that link to a changed source
 
@@ -739,7 +740,8 @@ run). The run's `status` is `completed` only when every document passed.
 
 **Run record and resume.** The run id is `run` (default: the pipeline name) and its record is
 `.vixl-runs/RUN/run.json`: the Vixl version, the pipeline digest, per document the input digests (the document,
-`brand.json`, the documents it links and the pipeline's `inputs` data files), and per step its status, key, log file
+`brand.json`, the documents it links, directly or nested, and the pipeline's `inputs` data files; a `check` step also
+keys on its suite file, the library suites and `.vixl-checks.json`), and per step its status, key, log file
 (`logs/`) and outputs with SHA-256. It is written atomically after every step. Running the same id again resumes: a
 step is reused when its key (the inputs plus every step up to it) is unchanged, it finished, and its outputs still
 hold the recorded bytes; the first step that differs runs again with every step after it. So an edited document
@@ -749,9 +751,15 @@ re-runs only its own steps, a changed export step re-runs the export but reuses 
 **Dry run.** `dry_run` lists every planned step and output, which steps a run would reuse, and the exports it would
 refuse, and writes nothing. It is the default while the run has no record, so the first call shows the plan.
 
-**Files are never replaced** unless the step says `overwrite: true` or the file is one this run wrote and still holds
-the bytes it wrote. The `pipeline` [job kind](#durable-jobs) runs a pipeline in the background (`submit` with
+**Files are never replaced** unless the step says `overwrite: true` or the file is one this run wrote for the same
+document and still holds the bytes it wrote. Two documents of a run never write the same file (`out/{doc}.png` for
+`a/poster.vixl` and `b/poster.vixl`): the second is refused, and the dry run lists the path under `refused`. The
+`pipeline` [job kind](#durable-jobs) runs a pipeline in the background (`submit` with
 `{"kind": "pipeline", "output": ".vixl-runs/nightly", "request": {"pipeline": "launch"}}`), and `resume` continues it.
+
+On the command line, `vixl pipeline run NAME` runs a saved pipeline (a dry run while the run has no record, as the
+action does); `--dry-run` plans, `--execute` runs, `--run ID` picks the record, and `--glob GLOB …` or `--group NAME`
+replaces the targets. The exit code is 1 unless the run completed.
 
 ### Sync from a data source
 
@@ -795,6 +803,65 @@ download rules: HTTPS, public addresses only unless `VIXL_ALLOW_PRIVATE_FETCH=1`
 address, no redirects. A 5xx, 408, 429 or a network failure is retried three times with backoff. With
 `VIXL_OFFLINE=1` nothing is sent. The delivery record goes into the job record (`deliveries`) or the result
 (`notify`).
+
+## Watch mode
+
+`vixl watch` keeps a workspace checked while people work in it: when a file changes, or a schedule comes round, it
+runs the check, link impact, pipeline or data sync that the change calls for. The triggers live in
+`.vixl/watch.json` (`--config` names another file):
+
+<!-- docs-test: save .vixl/watch.json -->
+```json
+{"version": 1, "triggers": [
+  {"on": "save", "documents": ["campaign/*.vixl"], "run": "check", "request": {"fail_on": "warning"}},
+  {"on": "source-change", "run": "link-impact"},
+  {"on": "brand-change", "run": "check-all"},
+  {"on": "data-change", "run": "data-sync", "request": {"exports": [{"path": "out/{doc}.png"}]}},
+  {"on": "schedule", "every": "24h", "run": "check-all", "request": {"since_last": true}},
+  {"id": "nightly", "on": "schedule", "at": "02:30", "run": "pipeline", "pipeline": "launch"}
+]}
+```
+
+| `on` | Fires when | Its documents |
+| --- | --- | --- |
+| `save` | A document matching `documents` (globs) or in `group` changed | That document |
+| `source-change` | A document others link to (or were merged from) changed | Its dependents in the [dependency graph](../../reference/plugins.md#helpers-other-plugins-use), nested links included; `documents`/`group` limit the sources watched |
+| `brand-change` | The content of `brand.json` changed | `documents`/`group`, else every document |
+| `data-change` | A CSV that a [data-sync](#sync-from-a-data-source) binding, a merged sheet or the pipeline's `inputs` reads changed | The documents bound to it (`binding` limits it to named bindings) |
+| `schedule` | `every` (`30m`, `24h`, `7d`, at least a minute) or `at` (`HH:MM` each day, UTC) came round | `documents`/`group`, else every document |
+
+`run` is `check` (the trigger's documents, as `check-all`), `check-all` (the trigger's `documents`/`group`, else every
+document), `link-impact` (each changed source; `save` and `source-change`), `pipeline` (a saved `pipeline`) or
+`data-sync` (the bindings whose CSV changed; `data-change` and `schedule`). `request` holds the action's options:
+`checks`, `suites`, `profile`, `fail_on`, `waivers`, `since_last`, `notify`; `apply` and `resize` for link impact;
+`exports`, `overwrite` for data sync; `run` (the run id) for a pipeline. Each trigger defaults to the first `run` in
+its row: `check`, `link-impact`, `check-all`, `data-sync`, `check-all`.
+
+**How it decides.** Vixl polls modification times every second (`poll`) and compares content digests, so a touched
+file is not a change; with the optional `watchdog` package installed, a file event wakes the poll early. An event
+waits 500 ms after the last change (`debounce`), and repeated events of a trigger coalesce into one run with the
+union of their documents. Each document has one run at a time: a run holds a lock per document, and an event whose
+documents are busy waits for the next poll. A schedule fires once per period however long the watch was stopped,
+and its first period starts when the watch first sees it. A pipeline is skipped (`up-to-date`) when its
+[run record](#pipelines)'s digests match every document's inputs; otherwise it runs, and reuses each unchanged step.
+
+**What it reports.** Every run is one entry: the trigger, the changed `files`, the `documents`, `passed` and the
+`failing` documents. Check runs record the [check-all history](#history-and-newly-failing-documents) (so
+`since_last` works across watches) and send the [completion event](#completion-webhooks), as pipeline runs do;
+link-impact and data-sync runs send a `watch` event, and link impact also records history. Exports follow the rules
+of the run that writes them: a pipeline replaces only its own files unless the step says `overwrite: true`, and a
+data sync only those it wrote unless `overwrite` is set.
+
+**Bounded runs.** The state (file digests and schedule times) is kept in `.vixl-runs/watch/NAME.json` (`name`,
+default `watch`), so a watch started again sees what changed while it was stopped; the very first start only records
+the files. `vixl watch` runs until Ctrl-C and prints one line per run (`--json`: one JSON object per line).
+`--once` makes a single pass and exits, 1 when a run failed, which suits cron and CI; `--ticks N` polls N times.
+The `watch` workflow action is the bounded form (`ticks`, default 1; `config` or an inline `watch`):
+
+```bash
+vixl watch --once
+vixl watch --once --json
+```
 
 ## Logo packages
 
