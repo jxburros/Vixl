@@ -114,7 +114,7 @@ Rules:
 | `count` | `target` name, glob or `group:NAME` (default `*`), optional `layer_type`, `minimum`/`maximum`; counts visible layers |
 | `focal` | `target`, `grid` thirds/golden/center, `tolerance` px (default 5% of the shorter side); the layer's centre is near a power point |
 | `text` | `target` name, glob or `group:NAME` (default `*`), and any of `pattern` (regular expression each selected layer must match), `contains` (phrase or list that must appear somewhere in their copy), `forbid` (regular expression or list none may match), `min_characters`/`max_characters`, `min_words`/`max_words` (per layer; line breaks do not count as characters), `case` sensitive/insensitive (for pattern, contains and forbid), `brand: true` (also forbid brand.json `words.forbid`); measures the drawn text after variables, so `variables`, artboards and campaign rows are checked with their own copy; results list each layer's text, characters and words |
-| `budget` | any of `max_layers` (drawn layers, as `count` counts them), `max_fonts` (distinct fonts drawn by text), `max_bytes` (the document's JSON with undo history plus embedded files, before compression), `min_ppi` (lowest effective resolution of a placed image at the canvas dpi, 300 when unset, as the `print` check measures it) |
+| `budget` | any of `max_layers` (drawn layers, as `count` counts them), `max_fonts` (distinct fonts drawn by text), `max_bytes` (the document's JSON with undo history plus embedded files, before compression), `min_ppi` (lowest effective resolution of a placed image at the canvas dpi, 300 when unset, as the `print` check measures it), `max_ppi` (over-resolution: a placed image above this effective resolution, or with over 4× the source pixels it needs at it, carries pixels no output shows), `max_render_ms` with optional `proxy` (the warm time of a proxy render, longest side `proxy` px, default 1024; cold and warm are both reported). Results list `worst` per limit: the five top-level layers with the most drawn layers, the fonts drawn by the fewest layers, the lowest or highest image ppi, each as `{layer, value}`. Render time depends on the machine, so a `max_render_ms` rule is always a `warning` with `action: review` and `advisory: true`, and goes in a budget rule of its own |
 
 Every rule has a unique `id` and optional `severity` (`error` or `warning`). Each result carries what
 it measured (gaps, margins, ratios, the visual centre, the sampled colour), so a failure says what to change.
@@ -124,9 +124,39 @@ it measured (gaps, margins, ratios, the visual centre, the sampled colour), so a
   {"id":"headline-short","kind":"text","target":"headline","max_characters":40},
   {"id":"has-disclaimer","kind":"text","contains":"Terms apply"},
   {"id":"no-free","kind":"text","forbid":"(?i)\\bfree\\b"},
-  {"id":"light","kind":"budget","max_layers":120,"max_fonts":3,"max_bytes":20000000,"min_ppi":240}
+  {"id":"light","kind":"budget","max_layers":120,"max_fonts":3,"max_bytes":20000000,"min_ppi":240,"max_ppi":1200},
+  {"id":"quick","kind":"budget","max_render_ms":400,"proxy":1024}
 ]}}
 ```
+
+The same limits run without a suite as the opt-in `budget` design check (`vixl check --checks budget`), at the
+workspace defaults (`max_layers` 500, `max_fonts` 4, `max_bytes` 100 MB, `max_ppi` 1200) that `budget` in
+`.vixl-checks.json` overrides field by field. Each finding is a `review` warning naming the limit, its value and
+the `worst` offenders; render time is left to suites.
+
+### Rules that reference another document
+
+Where a rule compares against a value (`expected`, a relation's `to`, a hierarchy's `ratio`), it can read that
+value from another document each time it runs, so a master or brand document sets it once:
+
+- `{"ref": "master.vixl#brand.fill"}` reads a field of a layer (or `canvas`) as the master draws it.
+- `{"ref": "master.vixl#brand:type-scale"}` reads the same field of rule `type-scale` in the master's suite
+  `brand` (attached or inherited); that rule may itself hold a ref.
+
+```json
+{"type":"suite-set","name":"campaign","suite":{"rules":[
+  {"id":"brand-red","kind":"color","point":[40,40],"expected":{"ref":"master.vixl#brand.fill"}},
+  {"id":"type-scale","kind":"hierarchy","targets":["headline","body"],"ratio":{"ref":"master.vixl#brand:type-scale"}}
+]}}
+```
+
+Paths resolve like link sources (the document's folder, then the workspace; services never read outside it), and
+referenced documents are opened read-only. A suite holds at most 8 refs and one run reads at most 8 (nested refs
+count, a document read twice counts once); rule refs nest at most 4 deep, and a cycle is refused with the
+`link_cycle` error shape (`code`, `chain`). A missing document, layer, field, suite or rule makes the rule
+`needs_review`, never a pass. Each result lists `references: [{path, digest}]` (the digest of the referenced
+state), the report lists them all, and `check-all` keeps them per document, so `--since-last` names a changed
+master as the cause (`cause: reference`, `changed_references`) when the dependent itself did not change.
 
 ### Coverage over artboards, pages and comps
 
@@ -301,6 +331,9 @@ reviews](../layout/guides.md#composition) (dead bands, margin drift, uneven rhyt
 hierarchy, a single weight, no focal point or an unused accent) fail shipping
 until they are fixed or waived with a reason. Only a workspace that narrows `checks` and also sets `final.optional`
 replaces the built-in `optional` list (`color_vision`, `composition`); name `composition` in it to keep the gate.
+
+`.vixl-checks.json` may also set `budget`, the limits of the opt-in `budget` check for the workspace (any of
+`max_layers`, `max_fonts`, `max_bytes`, `min_ppi`, `max_ppi`), for example `{"budget": {"max_layers": 300, "max_fonts": 3}}`.
 
 A profile has `fail_on`, `checks` (default: the standard checks), `optional` (opt-in checks added to them),
 `suites` (`"all"`, `"none"` or a list of names) and `description`. The report's `outcome` follows the profile: what

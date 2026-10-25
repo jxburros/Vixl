@@ -23,6 +23,25 @@ REPAIR = {"anyOf": [{"type": "boolean"}, {"type": "array", "items": {
 COVERAGE_AXIS = {"anyOf": [{"type": "string", "enum": ["all"]},
                            {"type": "array", "items": {"type": ["string", "integer"]}, "minItems": 1}]}
 
+# A value read from another document when the suite runs (#558); accepted by expected, to and ratio.
+REF = {"type": "object", "properties": {"ref": {
+    "type": "string", "description": "'doc.vixl#layer.field' (a field of a layer, or of canvas, as drawn) or "
+                                     "'doc.vixl#suite:rule-id' (the same field of a rule of that document's suite)."}},
+    "required": ["ref"], "additionalProperties": False,
+    "description": "Read the value from another workspace document each run: {ref: 'master.vixl#logo.fill'}. "
+                   "At most 8 per suite; a missing document, layer or rule needs review."}
+
+
+def _or_ref(base, description):
+    """``base`` or a ref, with its own description (shared constants are never mutated)."""
+    plain = {key: value for key, value in base.items() if key != "default"}
+    types = [plain["type"]] if isinstance(plain["type"], str) else list(plain["type"])
+    found = {"type": sorted(set(types) | {"object"}), "anyOf": [plain, REF], "description": description}
+    if "default" in base:
+        found["default"] = base["default"]
+    return found
+
+
 # Check suite (assert-rule format). Rule fields per kind live in assurance.RULE_FIELDS; each
 # rule needs a unique id and a kind, and may set severity and pages.
 RULE_KINDS = ("container", "palette", "assert", "design", "property", "gap", "unchanged", "pixels", "text-fit", "alpha",
@@ -36,7 +55,7 @@ RULE_PROPERTIES = {
                             "text contrast), color (pixel or region colour), ink (how much of a region is drawn), "
                             "balance (visual centre of mass), hierarchy (type sizes step down), count (layers "
                             "matching a name), focal (on a thirds/golden/centre point), text (the copy: phrases, "
-                            "patterns, character and word limits) or budget (layers, fonts, bytes, image ppi)."},
+                            "patterns, character and word limits) or budget (layers, fonts, bytes, image ppi, render time)."},
     "severity": {"type": "string", "enum": ["error", "warning"], "default": "error",
                  "description": "A failed warning needs review instead of failing the suite."},
     "pages": {**COVERAGE_AXIS, "description": "Limit the rule to these pages (names, ids or 1-based numbers; "
@@ -51,7 +70,8 @@ RULE_PROPERTIES = {
     "targets": {"type": "array", "items": STR, "minItems": 2,
                 "description": "spacing: sibling layers whose gaps should be equal (or expected); hierarchy: text "
                                "layers from most to least important."},
-    "to": {"type": "string", "description": "relation: the other layer, or 'canvas'."},
+    "to": _or_ref({"type": "string"}, "relation: the other layer, or 'canvas' (or {ref} to read the name from "
+                                      "another document)."),
     "position": {"type": "string", "enum": ["left-of", "right-of", "above", "below", "inside", "contains",
                                             "overlapping", "apart"],
                  "description": "relation: where target must sit relative to to (apart: not overlapping)."},
@@ -65,15 +85,17 @@ RULE_PROPERTIES = {
     "background": {**COLOR, "description": "ink/balance: count pixels that differ from this colour. Omitted: "
                                             "everything except the canvas colour and backdrop layers (role "
                                             "background, or a full-canvas solid, gradient, image or rectangle)."},
-    "ratio": {"type": "number", "minimum": 1, "default": 1.2,
-              "description": "hierarchy: each rendered font size must be at least this many times the next."},
+    "ratio": _or_ref({"type": "number", "minimum": 1, "default": 1.2},
+                     "hierarchy: each rendered font size must be at least this many times the next (or {ref}, e.g. "
+                     "the ratio of a master document's rule: {ref: 'master.vixl#brand:type-scale'})."),
     "layer_type": {"type": "string", "description": "count: only layers of this type (text, shape, image …)."},
     "grid": {"type": "string", "enum": ["thirds", "golden", "center"], "default": "thirds",
              "description": "focal: the composition points target's centre should sit near."},
     "field": {"type": "string", "description": "property: the layer field to read, e.g. 'color', 'x', 'opacity'."},
     "expected": {"type": ["string", "number", "boolean", "array", "object", "null"],
                  "description": "property: required value; gap/spacing: required distance in pixels; color: the "
-                                "colour; balance: [x, y] centre as fractions of the region (default [0.5, 0.5])."},
+                                "colour; balance: [x, y] centre as fractions of the region (default [0.5, 0.5]). "
+                                "{ref: 'master.vixl#logo.fill'} reads it from another document each run."},
     "tolerance": {"type": "number", "minimum": 0,
                   "description": "Allowed difference: numbers for property/gap/spacing/relation (default 1 px), "
                                  "0–255 colour distance for palette, 0–255 channel difference for pixels and color "
@@ -128,6 +150,15 @@ RULE_PROPERTIES = {
     "min_ppi": {"type": "number", "minimum": 1,
                 "description": "budget: lowest effective resolution of a placed image at the canvas dpi (300 when "
                                "unset), as the print check measures it."},
+    "max_ppi": {"type": "number", "minimum": 1,
+                "description": "budget: highest effective resolution of a placed image; an image with over 4x the "
+                               "source pixels it needs at this ppi is over-resolved too (wasted pixels)."},
+    "max_render_ms": {"type": "number", "minimum": 1, "maximum": 600000,
+                      "description": "budget: slowest warm proxy render in ms (cold and warm are reported). Advisory: "
+                                     "the result is always a warning to review, so set it in a budget rule of its "
+                                     "own."},
+    "proxy": {"type": "integer", "minimum": 64, "maximum": 4096, "default": 1024,
+              "description": "budget: longest side in pixels of the max_render_ms proxy render."},
     "asset": {"type": "string", "description": "pixels: embedded baseline image asset (written by suite-capture)."},
 }
 SUITE = {

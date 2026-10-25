@@ -13,7 +13,7 @@ and waived findings stay listed as informational.
 
 Every run appends a history entry under ``.vixl-checks/history``; ``since_last`` compares the run
 with the previous one over the same scope (newly failing, newly passing, still failing) and notes
-a Vixl version change between them. The same result renders as Markdown, JUnit XML, SARIF 2.1.0
+a Vixl version change between them, or a changed document that a suite rule references (#558). The same result renders as Markdown, JUnit XML, SARIF 2.1.0
 and GitHub workflow annotations (``FORMATS``), written through ``outputs`` or printed by the CLI.
 """
 
@@ -244,10 +244,17 @@ def check_document(session, relative, request, suite=None, keep=False, group=Non
                  if key in issue} for issue in issues],
         suites={name: {"status": result["status"], "errors": result["errors"],
                        "needs_review": result["needs_review"],
-                       "rules": [{key: rule.get(key) for key in ("id", "status", "severity", "message", "reason") if
+                       "rules": [{key: rule.get(key) for key in ("id", "status", "severity", "message", "reason",
+                                                                 "references") if
                                   rule.get(key) is not None} for rule in result["results"]]}
                 for name, result in suites.items()},
     )
+    # Documents the suites read through refs (#558), with the digest each was read at, so a later run can name
+    # a changed master as the cause.
+    references = {item["path"]: item["digest"] for result in suites.values()
+                  for item in result.get("references", [])}
+    if references:
+        record["references"] = references
     if report.get("waivers") and (report["waivers"].get("active") or report["waivers"].get("expired")):
         record["waivers"] = report["waivers"]
     if report.get("profile"):
@@ -290,7 +297,8 @@ def _diff(session, record, ref, work):
 def _summarize(record):
     """The compact per-document entry of the report."""
     entry = {key: record[key] for key in ("path", "status", "errors", "warnings", "fix", "by_check", "error", "diff",
-                                          "failing", "checks_run", "sha256", "waivers") if key in record}
+                                          "failing", "checks_run", "sha256", "waivers", "references")
+             if key in record}
     entry["findings"] = record["issues"][:TOP_FINDINGS]
     if len(record["issues"]) > TOP_FINDINGS:
         entry["more_findings"] = len(record["issues"]) - TOP_FINDINGS
@@ -506,7 +514,9 @@ def _record_history(session, scope, result):
     entry = {"version": 1, "vixl_version": result["vixl_version"], "time": result["time"], "scope": scope,
              "fail_on": result["fail_on"],
              "documents": {e["path"]: {"status": e["status"], "failing": bool(e["failing"]), "sha256": e.get("sha256"),
-                                       "findings": e["finding_ids"]} for e in result["documents"]}}
+                                       "findings": e["finding_ids"],
+                                       **({"references": e["references"]} if e.get("references") else {})}
+                           for e in result["documents"]}}
     index = 0
     while True:
         path = folder / f"{stamp}-{index:03d}-{scope}.json"
@@ -534,10 +544,16 @@ def since_last(previous, result):
             continue
         if entry["failing"] and not old["failing"]:
             changed = old.get("sha256") != entry.get("sha256")
-            newly_failing.append({
-                "path": path, "status": entry["status"], "document_changed": changed,
-                "cause": "document" if changed else "vixl version" if version_changed else "unknown",
-                "new_findings": sorted(set(entry["finding_ids"]) - set(old.get("findings", [])))})
+            # A document its suites reference (#558) that changed since the last run.
+            earlier = old.get("references", {})
+            masters = sorted(ref for ref, value in (entry.get("references") or {}).items() if earlier.get(ref) != value)
+            item = {"path": path, "status": entry["status"], "document_changed": changed,
+                    "cause": "document" if changed else "reference" if masters else
+                    "vixl version" if version_changed else "unknown",
+                    "new_findings": sorted(set(entry["finding_ids"]) - set(old.get("findings", [])))}
+            if masters:
+                item["changed_references"] = masters
+            newly_failing.append(item)
         elif old["failing"] and not entry["failing"]:
             newly_passing.append({"path": path, "status": entry["status"]})
         elif old["failing"] and entry["failing"]:
@@ -614,9 +630,14 @@ def markdown(result):
         for key, label in (("newly_failing", "Newly failing"), ("newly_passing", "Newly passing"),
                            ("still_failing", "Still failing")):
             items = since[key]
-            lines.append(f"- {label}: " + (", ".join(f"`{i['path']}`" + (f" ({i['cause']})" if i.get("cause") else "")
-                                                       for i in items) or "none"))
+            lines.append(f"- {label}: " + (", ".join(f"`{i['path']}`" + _cause(i) for i in items) or "none"))
     return "\n".join(lines) + "\n"
+
+
+def _cause(item):
+    if item.get("changed_references"):
+        return " (reference " + ", ".join(f"`{ref}`" for ref in item["changed_references"]) + " changed)"
+    return f" ({item['cause']})" if item.get("cause") else ""
 
 
 def _level(severity):

@@ -69,6 +69,8 @@ CHECK_INFO = {
                       "and reading order (plus contrast and color_vision).", ("warning",)),
     "cost": ("Layers that take over 10× the median layer to draw, with the blur, effects or strokes behind it.",
              ("warning",)),
+    "budget": ("Production budgets without a suite: drawn layers, fonts, document size and over-resolved images "
+               "against the workspace budget (.vixl-checks.json budget), with the worst offenders.", ("warning",)),
     "suite": ("A failed check-suite rule restated as a finding so the built-in repairs (repair-layout, "
               "repair=true) can act on it.", ("error", "warning")),
     "coverage": ("Checks that could not inspect part of the document (reported, never a failure).", ("warning",)),
