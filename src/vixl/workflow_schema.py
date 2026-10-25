@@ -440,6 +440,9 @@ ACTION_FIELDS = {
         "comps": {**COVERAGE_AXIS, "description": "'all' or layer comp names."},
         "include_hidden": {"type": "boolean", "default": False,
                            "description": "pages 'all' also covers pages hidden from export."},
+        "locales": {"type": ["string", "array"], "items": {"type": "string"},
+                    "description": "'all' or locale codes (de,ja): check each locale's values on a candidate copy and "
+                                   "return the locale x finding matrix (localization plugin; see locale-check)."},
     },
     "act": {
         "operations": {**COMMON["operations"], "description": "Operations applied to a candidate; committed only "

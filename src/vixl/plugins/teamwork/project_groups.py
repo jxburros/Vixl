@@ -68,6 +68,10 @@ def dispatch(session, action, request):
                 **({"profiles": request["profiles"]} if request.get("profiles") else {}),
                 **({"suites": suites} if suites else {}),
             }
+            # Redefining a group keeps the locale table group-locales gave it.
+            locales = read_json(path).get("locales") if path.exists() else None
+            if locales:
+                value["locales"] = locales
             if "facts" in request:
                 from ...group_consistency import validate_facts
 
