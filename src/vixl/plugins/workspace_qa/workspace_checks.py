@@ -38,7 +38,7 @@ MAX_WORKERS = 8
 TOP_FINDINGS = 10
 HISTORY = ".vixl-checks/history"
 KEEP_HISTORY = 200
-SKIP_DIRS = (".vixl-groups", ".vixl-checks", ".vixl-ci", ".vixl-branches", ".vixl-cache", ".git")
+SKIP_DIRS = (".vixl-groups", ".vixl-checks", ".vixl-ci", ".vixl-branches", ".vixl-cache", ".vixl-runs", ".git")
 SEVERITY_ORDER = {"error": 0, "warning": 1, "info": 2}
 REF = re.compile(r"^[\w./~^@{}+-]{1,200}$")
 
@@ -334,11 +334,15 @@ def _group_failing(findings, level):
     return [f for f in findings if f["severity"] in wanted and f["action"] != "review"]
 
 
-def run(session, request):
-    """The ``check-all`` workflow action."""
+def run(session, request, *, emit=True):
+    """The ``check-all`` workflow action. With ``emit`` (not for checks other actions run inside themselves) the
+    finished run is handed to the ``job-complete`` hook as the shared completion event (completion webhooks)."""
     from ... import __version__, calls
     from ...group_consistency import compare, facts_for
 
+    notify = request.get("notify")
+    require(notify is None or (isinstance(notify, dict) and isinstance(notify.get("url"), str)),
+            "notify is {url, secret_env}", field="notify")
     profile = request.get("profile")
     require(profile is None or (isinstance(profile, str) and profile), "profile is a check profile name",
             field="profile")
@@ -471,7 +475,24 @@ def run(session, request):
         written["proof"] = session.relative(Path(proof["output"]))
     if written:
         result["outputs"] = written
+    if emit:
+        _emit(session, request, result)
     return result
+
+
+def _emit(session, request, result):
+    """The completion event of a check-all run, in the shape of ``vixl.jobs.completion_event``."""
+    from ...jobs import notify_complete
+
+    totals = result["totals"]
+    event = {"event": "job-complete", "kind": "check-all", "id": result.get("history") or result["time"],
+             "status": "completed", "state": "validated" if result["passed"] else "validation_failed",
+             "counts": {key: totals[key] for key in ("passed", "failed", "needs_review", "error", "failing")},
+             "report": (result.get("outputs") or {}).get("json"), "workspace": str(session.workspace),
+             "notify": request.get("notify"), "error": None}
+    deliveries = notify_complete(event)
+    if deliveries:
+        result["notify"] = deliveries
 
 
 # History ----------------------------------------------------------------------------------------

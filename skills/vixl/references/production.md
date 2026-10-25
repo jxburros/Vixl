@@ -173,6 +173,30 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    runs check + suites and diffs the render. Report: `passes`, `fails` (failing findings and suite `rules`),
    `changed`, `tree`, `cycles`; formats as check-all. Read-only unless `apply`, which saves only passers through the
    `link-impact` journal (`group-recover`).
+23. Pipelines: save `{version: 1, targets: {documents?: [globs], group?}, on_fail?: hold|stop, inputs?: [data files],
+   steps: [{act|check|repair|export|export_check|approve: {...}}, ..., {proof|package: {output, ...}}]}` with
+   `resource-save` kind `pipelines`, then `vixl_apply(workflow='pipeline-run', request={pipeline: NAME | {...}, run?,
+   documents?, group?, dry_run?, notify?})`. The first call is a dry run (planned steps and outputs, nothing written);
+   `dry_run: false` runs each document through its steps (`act`/`repair` change a working copy in `.vixl-runs/RUN/work`,
+   never the source; `export` paths take `{doc}`), holds a document whose step fails (`held` with findings) and goes
+   on, then writes the proof and package of what passed. Outcomes: `passed`, `held`, `visual-review-needed`, `failed`.
+   The record `.vixl-runs/RUN/run.json` has input digests (document, brand.json, links, data), per-step logs and
+   outputs with SHA-256; running the same `run` again reuses every step whose inputs are unchanged. Exports never
+   replace a file the run did not write unless the step says `overwrite: true`. Job kind `pipeline`: `submit`
+   `{kind: "pipeline", output: ".vixl-runs/RUN", request: {pipeline}}`. `package` also takes `run: ".vixl-runs/RUN/run.json"`.
+24. Data sync: `vixl_apply(workflow='data-sync', request={bind: {data: "prices.csv", key: "sku", to: {group} | {spec:
+   "campaign.json"} | {merge: "sheets.vixl"}}, exports?, dry_run?})` diffs the CSV against the last snapshot
+   (`.vixl-runs/data/NAME.json`: rows added, changed, removed) and updates only what changed rows affect: group members
+   bound by their `sku` variable get the new variables on a checked copy, committed through a journal and re-exported;
+   a campaign re-runs with fingerprint reuse; a merge sheet re-merges. Members that fail checks are held and retried.
+25. Completion webhooks: `notify: {url, secret_env}` on `submit`, `pipeline-run` and `check-all`, or a default in
+   `.vixl/notify.json` (`{url?, secret_env?, allow: [hosts]}`; only allowed hosts receive anything). One signed POST
+   (`X-Vixl-Signature: sha256=…`, `X-Vixl-Delivery`) of kind, id, status, state, counts and report path, never
+   document content; 3 retries; nothing offline.
+26. Bulk upgrades: `vixl_apply(workflow='bulk-upgrade', request={documents | group, convert?, map?: {"Title*": {rename,
+   role}}, template?, dry_run?, journal?})` converts, renames/re-roles and optionally re-applies a layout, with checks
+   and a render diff before and after; dry run by default, `dry_run: false` commits through a journal
+   (`group-recover` with `journal`).
 
 MCP paths must remain inside the workspace. REST exposes check/act/plan/film-plan for
 its single project; filesystem, library and queue operations use CLI/Python/MCP.

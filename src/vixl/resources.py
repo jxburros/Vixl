@@ -190,6 +190,20 @@ def proportional(project, item, operations):
     return result
 
 
+def plugin_kind(kind):
+    """A plugin's resource category ({builtins, validate}) through the ``resource-kind`` hook, or None."""
+    from . import plugins
+
+    return None if kind in BUILTINS or not isinstance(kind, str) else plugins.first("resource-kind", kind)
+
+
+def kinds():
+    """Every resource category: the built-in ones, then those plugins add."""
+    from . import plugins
+
+    return [*BUILTINS, *(name for fn in plugins.hooks("resource-kind") for name in getattr(fn, "KINDS", ()))]
+
+
 def resource_path(workspace=None):
     if workspace is not None:
         root = Path(workspace).resolve()
@@ -200,11 +214,12 @@ def resource_path(workspace=None):
 
 
 def catalog(kind, *, workspace=None):
-    require(kind in BUILTINS, "Unknown resource category")
+    extra = plugin_kind(kind)
+    require(kind in BUILTINS or extra, "Unknown resource category", allowed=kinds())
     path = resource_path(workspace)
     user = json.loads(read_bounded(path, 1024 * 1024)) if path.exists() else {}
     require(isinstance(user, dict) and isinstance(user.get(kind, {}), dict), "Invalid resource library")
-    inherited = catalog(kind) if workspace is not None else BUILTINS[kind]
+    inherited = catalog(kind) if workspace is not None else BUILTINS[kind] if extra is None else extra["builtins"]
     return deepcopy({**inherited, **user.get(kind, {})})
 
 
@@ -220,7 +235,10 @@ def validate(kind, value):
     from .render import color
     from .schema import validate_operation
 
-    if kind == "palettes":
+    extra = plugin_kind(kind)
+    if extra is not None:
+        extra["validate"](value)
+    elif kind == "palettes":
         require(isinstance(value, list) and 2 <= len(value) <= 256, "Palette needs 2–256 colors")
         for c in value:
             color(c)
@@ -293,7 +311,7 @@ def validate(kind, value):
 
 
 def register(kind, name, value, *, workspace=None):
-    require(kind in BUILTINS, "Unknown resource category")
+    require(kind in BUILTINS or plugin_kind(kind), "Unknown resource category", allowed=kinds())
     named(name)
     if kind == "assets":
         # Checked in full by pack_assets.store, under the library lock, before anything is written.

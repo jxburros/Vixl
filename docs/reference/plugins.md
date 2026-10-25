@@ -115,6 +115,9 @@ then fetches it once and the render path finds it in the pack directory.
 | `check-variants` | `fn(project, request) -> report or None` | `vixl check --locales` and the workflow `check` field `locales`; return None when the request names none of your variant axes |
 | `cli-command` | `fn(cmd, args, options, limits) -> result or None` | For every top-level CLI command (`vixl CMD …`) before the core's own; return None for commands that are not yours |
 | `production-report` | `fn(project, spec, report)` | When a campaign run (`production.run`) has its results, before `production.json` is final |
+| `job-kind` | `fn(kind) -> {validate, run} or None`, kinds in `fn.KINDS` | When a durable job is submitted or run; return None for kinds that are not yours |
+| `job-complete` | `fn(event) -> delivery record or None` | Once when a durable job, `check-all` or a pipeline run ends (`vixl.jobs.completion_event` shape) |
+| `resource-kind` | `fn(kind) -> {builtins, validate} or None`, categories in `fn.KINDS` | When the resource library lists, reads or saves a category that is not built in |
 
 ## Helpers other plugins use
 
@@ -154,6 +157,7 @@ A plugin that declares `requires: ["workspace_qa"]` can call these (see their mo
 | `teamwork` (Teamwork) | workflows | Workspace branches and merges, document groups with shared parameters and rollback, suite inference. | `branch-fork`, `branch-list`, `branch-merge`, `branch-status`, `group-apply`, `group-define`, `group-list`, `group-recover`, `group-show`, `suite-infer` |
 | `workspace_qa` (Workspace QA) | workflows | check-all and replace-across over many documents, protected edits, proof pages, render lockfiles, deliverable packages, approved baselines and link impact. | `approve`, `check-all`, `link-impact`, `package`, `proof`, `protected-edit`, `replace-across`, `reproduce` |
 | `layout_repair` (Layout repair) | workflows | repair-layout: try ranked candidate fixes for failing checks and keep the least disruptive one. | `repair-layout` |
+| `pipelines` (Pipelines) | workflows | Saved, resumable pipelines over many documents with a run record, completion webhooks, data sync from a CSV and bulk structure upgrades. | `bulk-upgrade`, `data-sync`, `pipeline-run` |
 | `app_animation` (App animation packages) | workflows | Package animation states, theme variants, reduced-motion images and a sample consumer for apps. | `app-animation-package` |
 | `screen_capture` (Screen capture) | workflows | Capture the local desktop, a pixel rectangle or a Windows window to a PNG, only when asked. | `screen-capture` |
 | `localization` (Localization) | workflows | Locale variable tables and strings CSVs, a locale x finding check matrix, and localize fan-out with fit, RTL mirroring and font fallbacks. | `locales-set`, `group-locales`, `locale-check`, `localize` |

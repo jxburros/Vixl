@@ -234,7 +234,7 @@ COMMON = {
                   "description": "Variable overrides {name: string|number|boolean}."},
     "target": {"type": "string", "description": "Layer ID or unique name."},
     "kind": {"type": "string", "enum": ["palettes", "templates", "guidance", "containers", "shapes", "suites",
-                                        "workflows", "mockups", "objects", "assets"],
+                                        "workflows", "mockups", "objects", "assets", "pipelines"],
              "description": "Resource category (assets: images {data_base64, media_type, credit, license})."},
     "start": {"type": "boolean", "default": False, "description": "Start a background worker after submitting."},
 }
@@ -360,18 +360,26 @@ FILM_SPEC = {
     },
     "required": ["width", "height", "shots"],
 }
+NOTIFY = {"type": "object", "description": "Completion webhook: POST the completion event (no document content) to url "
+          "when the work ends; the host must be in the allow list of .vixl/notify.json.",
+          "properties": {"url": {"type": "string", "description": "The receiver: an https URL (http only to localhost)."},
+                         "secret_env": {"type": "string", "description": "Environment variable holding the signing "
+                                        "secret (X-Vixl-Signature: sha256=HMAC of the body)."}}}
 JOB = {
     "type": "object", "required": ["kind", "output"],
     "description": "Background job: kind plus the fields it needs (production/film: spec; lyric-video/form-fill: "
                    "request; video/generate: provider and request).",
     "properties": {
-        "kind": {"type": "string", "enum": ["production", "film", "generate", "video", "lyric-video", "form-fill"],
-                 "description": "Which kind of work to queue."},
+        "kind": {"type": "string", "enum": ["production", "film", "generate", "video", "lyric-video", "form-fill",
+                                            "pipeline"],
+                 "description": "Which kind of work to queue (pipeline: request {pipeline, documents?, group?}, output "
+                                ".vixl-runs/<run id>)."},
         "output": {**PATH, "description": "Where the result is written (must be new, except production folders)."},
         "source": {**PATH, "description": "Source .vixl document; production, generate and form-fill need it."},
         "spec": {"type": "object", "description": "production or film specification (see plan / film-plan)."},
         "request": {"type": "object", "description": "lyric-video, form-fill, video or generate request fields."},
         "provider": {"type": "string", "description": "video/generate: explicit configured provider."},
+        "notify": NOTIFY,
     },
 }
 RECIPE = {
@@ -657,6 +665,7 @@ ACTION_FIELDS = {
                          "group)."},
         "reference": {**PATH, "description": "Group checks: the member to compare against."},
         "facts": FACTS,
+        "notify": NOTIFY,
         "outputs": {"type": "object", "description": "Write the report: {json, markdown, junit, sarif, github, proof: "
                     "workspace path}; github is workflow annotation lines, proof an .html page.",
                     "properties": {key: {**PATH, "description": f"Where to write the {key} report."}

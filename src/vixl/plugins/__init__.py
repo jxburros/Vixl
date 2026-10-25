@@ -44,6 +44,7 @@ BUILTIN = (
     "teamwork",
     "workspace_qa",
     "layout_repair",
+    "pipelines",
     "app_animation",
     "screen_capture",
     "localization",
@@ -76,6 +77,8 @@ HOOKS = {
                     "ends; event is {event, kind, id, status, state, counts, report, workspace, notify, error}",
     "check-variants": "fn(project, request) -> report, or None when the request names none of the plugin's variant "
                       "axes (such as locales)",
+    "resource-kind": "fn(kind) -> {builtins: {name: value}, validate: fn(value)}, or None when the resource category is "
+                     "not the plugin's; list the categories in fn.KINDS",
 }
 MANIFEST_KEYS = {"name", "title", "summary", "kind", "modules", "requires", *ROLES, "hooks", "capabilities", "checks"}
 KINDS = ("operations", "workflows", "importer", "provider", "checks")

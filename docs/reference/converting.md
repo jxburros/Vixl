@@ -54,6 +54,26 @@ Other options: `--history drop` starts a new undo history instead of converting 
 `--saved-by VERSION` names the release that saved a document whose `vixl_version` is missing or wrong. `--batch`
 treats the source as saved tool calls, like `vixl convert-batch`.
 
+### Upgrade many documents in place
+
+The `bulk-upgrade` workflow action upgrades a glob (`documents`) or a project `group` in place, together with the
+structure changes that usually come with it:
+
+```json
+{"documents": ["campaigns/**/*.vixl"], "map": {"Title*": {"rename": "headline", "role": "headline"}},
+ "template": "hero-statement", "dry_run": true}
+```
+
+Per document it converts (`convert`, default true, with `look`), renames and re-roles the layers whose names match a
+`map` pattern (`rename` and `role-set` operations), and with `template` re-applies that layout (`layout-apply` with
+`replace`), filling its slots from the text of the roles named after them (`headline` fills `title`) or of text layers
+with those names. The upgraded copy is checked next to the original (design checks and suites) and the two renders are
+diffed; the report lists per document the conversion changes, the renames and roles, `before` and `after` checks,
+`newly_failing` findings and the `diff`. A copy that fails a check the original passed (at `fail_on`, default
+`error`), or that fails its checks when the original could not be opened to compare, is `held`. `dry_run` is the
+default and writes nothing; with `dry_run: false` the upgraded documents are published together through a journal,
+and `group-recover` with `journal` (default `bulk-upgrade`) rolls an interrupted commit back.
+
 ## Two modes
 
 | Mode | What it does | Use it when |
