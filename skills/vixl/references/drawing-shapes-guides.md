@@ -19,10 +19,11 @@ When a person gives you a photo or scan of their drawing, keep their lines and b
   photographed at an angle is flattened first (`perspective: false` skips it). The lines are `#1d1d1f` (near-black) unless you
   set `ink` (or `color`) on `import`; `drawing report` tells you `paper_found`, `perspective_corrected`, `tilt_corrected`.
 - `vectorize` makes editable strokes `NAME/s001…` (longest first); `settings.width: "uniform"` gives every stroke one
-  weight (a number sets it). `straighten` (only the strokes the user asked about — pass `strokes`), `smooth`, `restyle`
+  weight (a number sets it). Centerlines get light smoothing (`settings.smooth: 0.3`); set 0 to keep raw traced points.
+  `straighten` (only the strokes the user asked about — pass `strokes`), `smooth`, `restyle`
   and `stroke` change them. `straighten` keeps each line at the angle it was drawn at; add `angles: "axes"` to square up
   walls and floors or `"45"` for diagonals only when asked, and `close_gaps: 30` (or `"auto"`) to close corner and
-  T gaps (corners get sharp, lines keep their angles). `smooth` leaves straightened lines and polylines alone
+  T gaps (corners get sharp, lines keep their angles); facing curved ends get tangent-following bridges. `smooth` leaves straightened lines and polylines alone
   (`corners: "round"` smooths them too, and the drawing check then warns).
 - Logos and flat art: `vectorize` with `settings: {"mode": "outline", "curves": true, "split": "components"}` gives one
   Bézier path per connected part (`NAME/part-001` … in reading order) instead of one polyline layer; `path-split`

@@ -286,10 +286,9 @@ def test_a_line_broken_in_the_middle_meets_halfway_and_curves_are_bridged():
     assert left["points"][-1].tolist() == [110, 0] and right["points"][0].tolist() == [110, 3], "each stays on its own line"
     a = stroke(np.column_stack([np.linspace(0, 100, 30), np.sin(np.linspace(0, 3, 30)) * 20]), None)
     b = stroke(np.column_stack([np.linspace(130, 230, 30), np.sin(np.linspace(0, 3, 30)) * 20]), None)
-    middle = (a["points"][-1] + b["points"][0]) / 2
     assert gaps.close_gaps([a, b], 40) == 1
-    assert len(a["points"]) == 31 and np.allclose(a["points"][-1], middle)
-    assert len(b["points"]) == 31 and np.allclose(b["points"][0], middle)
+    assert len(a["points"]) > 31 and len(b["points"]) > 31
+    assert np.allclose(a["points"][-1], b["points"][0])
 
 
 def test_a_box_with_a_corner_gap_closes_into_a_box():

@@ -976,7 +976,8 @@ def schemas(add):
     from ...schema import S
 
     settings = ("Per-action settings (see docs/guides/images/drawing.md). import/clean: ink (line colour, default #1d1d1f), sheet, "
-                "perspective, deskew, crop, weight, threshold. vectorize: mode, width (pixels or 'uniform'), color; outline "
+                "perspective, deskew, crop, weight, threshold. vectorize: mode, width (pixels or 'uniform'), color, "
+                "smooth (0-1, default 0.3, centerline only; 0 keeps the traced points); outline "
                 "mode also curves (fit Bézier curves), tolerance, corner_threshold, split ('components': one layer per "
                 "connected part, in reading order), min_area. "
                 "straighten: angles ('drawn' keeps each line's angle, 'axes', '45', 'guides' or degrees), tolerance, "
@@ -1254,7 +1255,7 @@ def clean_in_frame(image, settings, record, state):
 
 VECTORIZE = {"mode": "centerline", "min_length": 6, "detail": 0.75, "max_strokes": MAX_STROKES, "keep_ink": False,
              "color": None, "width": None, "curves": False, "tolerance": 1.0, "corner_threshold": 60.0, "split": "none",
-             "min_area": 4}
+             "min_area": 4, "smooth": 0.3}
 MAX_PARTS = 256  # split: components makes at most this many part layers; smaller parts beyond it share one
 
 
@@ -1382,9 +1383,10 @@ def _width_setting(value, records):
 
 
 def _vectorize(project, group, op):
-    from ...trace import simplify
+    from ...trace import chaikin, simplify
 
     settings = _settings(op.get("settings"), VECTORIZE)
+    smooth = finite(settings["smooth"], "smooth", 0, 1)
     require(settings["mode"] in ("centerline", "outline"), "mode is centerline or outline", field="settings")
     require(settings["width"] is None or settings["mode"] == "centerline",
             "width applies to centerline mode; outline mode keeps the pen's own pressure", field="settings")
@@ -1406,7 +1408,12 @@ def _vectorize(project, group, op):
         strokes = strokes_from_mask(mask, min_length=float(settings["min_length"]))
         require(strokes, "No lines to trace", field="target")
         limit = int(finite(settings["max_strokes"], "max_strokes", 1, MAX_STROKES))
-        records = [{"points": simplify(s["points"], float(settings["detail"]), s["closed"]), "closed": s["closed"],
+        # Smooth the pixel trace before simplifying; cutting corners on a sparse polyline would
+        # round deliberate large corners and move a fill away from its original outline.
+        records = [{"points": simplify(chaikin(s["points"], max(1, round(smooth * 4)), s["closed"])
+                                        if smooth else s["points"],
+                                        max(0.5, float(settings["detail"])) if smooth else float(settings["detail"]),
+                                        s["closed"]), "closed": s["closed"],
                     "width": s["width"], "smooth": True, "origin": "traced"} for s in strokes]
         if settings["width"] is not None:
             # One pen width for every stroke (the pen's own pressure and the line's angle vary it a little).
