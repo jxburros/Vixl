@@ -449,7 +449,7 @@ def test_export_keeps_hand_edits_to_the_build(workspace):
     built = Project.load(workspace / "b.vixl")
     record = built.state["lyric_build"]
     assert record["options"]["lead"] == 150 and record["options"]["fps"] == 4
-    assert set(record["sources"]) == {"lyrics", "template", "audio_ms"}
+    assert set(record["sources"]) == {"lyrics", "template", "audio", "audio_ms"}
 
     def pixel(video):
         out = workspace / "shot.png"

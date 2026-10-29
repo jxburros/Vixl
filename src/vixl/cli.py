@@ -116,6 +116,8 @@ Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG [--isola
            compose --request FILE [--preview P.png] (create → layout → look → operations → check → exports, atomic),
            each layer --name PATTERN -- COMMAND, preset save|apply|show NAME,
            transaction begin|commit|rollback, assert RULE, validate [PROFILE]
+Lyrics:    lyrics align AUDIO LYRICS -o TIMING [--provider NAME], timing-edit TIMING --edits JSON -o TIMING,
+           timing-export TIMING -o LRC, preview BUILD --cue N -o FILE, review BUILD --approve|--changes-requested
 Emoji:     emoji list|get|template|settings|replace|install|reset|artwork|destinations|requirements|export (emoji --help)
 Resources: commands, shapes, sizes [--category print], palette list|show|add|apply,
            template list|show|add|new|apply, layout list|show|apply NAME [--seed N|random] [--set title=…],

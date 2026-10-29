@@ -5,10 +5,10 @@
 The `lyric-video` workflow turns three files into an MP4 or WebM with the lyrics in sync:
 
 - a song (any format ffmpeg reads: MP3, WAV, FLAC, M4A, OGG);
-- a user-timed [LRC](#lrc-rules) file;
+- a user-timed [LRC](#lrc-rules) file or a reviewed [alignment record](#aligned-timing);
 - a styled `.vixl` [template](#template-contract) that follows a naming contract.
 
-Vixl does no audio analysis. Every timestamp comes from the LRC file. The workflow compiles the
+Timestamps come from the LRC file or an explicitly configured alignment provider. The workflow compiles the
 lyrics into an ordinary keyframed timeline document, then renders it with the film exporter and
 the song as its audio track. The generated document stays editable: open it, change a keyframe or
 a style, and export again without rebuilding (see [Editing a build](#editing-a-build)).
@@ -196,7 +196,8 @@ not a one-time `x: "center"`, so it stays centred when the variables are filled 
 | `width`, `height` | template canvas | Video size. |
 | `section_styles` | none | Restyle the lyric per section without extra layers: `{"chorus": {"size": 72, "color": "#ffd166", "y": 400}, "default": {...}}`. Each section takes `size`, `color`, `x` and `y`; a section is matched like `bg-<section>`, then `default`, else the template's own values come back. The keys are written on `lyric` and every `lyric-<section>` layer when a line from a differently styled section shows. Fonts cannot change by keyframe: use a `lyric-<section>` layer. Part of the build: changing it rebuilds an unedited build and makes an edited one `build_stale`. |
 | `sample_rate` | the song's, up to 48000 | Audio rate in Hz (8000–96000). WebM uses the nearest Opus rate at or above it. The result's `video` reports `sample_rate` and `channels`. |
-| `check` | false | Run the design checks on one frame per unique line and return the findings. |
+| `check` | false | Run the design checks on one settled frame per cue occurrence, including repeated choruses. |
+| `verify` | `basic` | `basic` checks encoded streams and every cue's timing/text; `full` also decodes the entire file and samples visual and brand checks. |
 | `replace` | false | Allow `output` to replace an existing file, and `lyric-video-build` (or an export that has to build again) to replace `build`. |
 | `rebuild` | false | Export only: build `build` again from the template and LRC even though it exists, discarding hand edits in it. |
 
@@ -265,7 +266,7 @@ for a stretch, and keep going. `lyric-video-export` keeps those edits.
 - If it exists and its recorded settings and sources (`fps`, `offset`, `lead`, `gap`, `max_hold`,
   `animation`, `cue_animation` with its per-cue `cues`, `next_line`, `section_styles`, `lead_in`, `tail`,
   `end_at_audio`, a windowing `end`, the LRC file, the template file and the
-  audio length) still match the request, export renders the document as it is, edits and all, and
+  audio content and length) still match the request, export renders the document as it is, edits and all, and
   reports `build_reused: true`. Rendering-only fields (`quality`, `width`, `height`, `camera`, `start`,
   `segments`, `check`) do not matter, and an `end` inside the built range is fine. The build file is never touched.
 - If something that shapes the build changed and the document has hand edits, export stops with
@@ -328,7 +329,7 @@ discarded. The result's `video.segments` reports `parts`, `reused`, `rendered` a
 The camera move is the same as in a single render, so the parts join without a jump. A durable
 `lyric-video` job with `segments` resumes the same way when it is run again.
 
-### Verification
+### Verification and review
 
 After the file is written, export reads it back with ffprobe and returns `verification`: whether the
 encoded video has the rendered width and height (odd sizes are padded to even ones), fps, frame count
@@ -336,5 +337,110 @@ and duration, whether the audio stream is present with the mixed sample rate and
 the frame quantisation: a video is a whole number of frames, so its length can differ from the
 requested length by less than one frame (`delta_ms`; 5,170 frames at 24 fps run 16.7 ms past a 215.4 s
 song). That is reported, not treated as a failure. `status` is `passed`, `failed` (with a
-`verification_failed` warning naming the checks) or `skipped` when ffprobe is not on `PATH`. This
-checks the encoded file only; it is not a review of the design.
+`verification_failed` warning naming the checks) or `skipped` when ffprobe is not on `PATH`.
+
+Every export also checks each cue occurrence's show/hide range and compares its source text with
+the visible lyric layer after its entrance. Repeated choruses are checked separately. Set
+`verify: "full"` to decode the complete encoded file and check bounds, overlap, contrast, safe area,
+blank content and brand rules at entrance start, midpoint, settled and exit frames. There are at
+most four samples per cue and 400 samples total. These are source-document design checks; they do
+not measure compression quality or inspect every encoded frame.
+
+The report separates `execution`, `structural`, `brand`, `visual_sampled`, `unreviewed` and `review`.
+`coverage.sampled_ms` lists sampled times; `checked_ms` totals their one-frame windows, and
+`unsampled_intervals` explicitly lists the remaining ranges. `sources` records SHA-256 identities
+for the audio, lyrics (or timing file) and built document, plus audio codecs, rates and trims.
+Sources changed during an export fail verification.
+
+Export leaves `review.status: "pending"`. After reviewing the build, its motion and synchronization,
+record the decision with `vixl lyrics review song-lyrics.vixl --approve --workspace .`, or
+`--changes-requested --findings '["Adjust the second chorus"]'`. The equivalent workflow is
+`lyric-video-review` with `build`, `approve` or `changes_requested`, and optional `findings`.
+The decision is saved in the build and becomes pending again if its content or source audio/lyrics
+change, including a replacement song of the same length. Review requires the recorded sources to
+still match the build; rebuild older documents that do not yet record audio identities. Approval
+alone does not validate an encoded delivery: `validated` is true only after full verification
+passes and no required checks or reviews remain. Basic verification never claims full validation.
+
+## Aligned timing
+
+`vixl lyrics align song.wav lyrics.txt -o song.timing.json --provider aligner` calls one explicitly
+configured [alignment adapter](../../reference/providers.md#lyric-alignment). Input lyrics can be plain text
+(one occurrence per line) or LRC. There is no bundled speech model. The timing JSON is independent of any
+`.vixl` document and records audio/lyric hashes, provider identity, each line and word's start/end in
+milliseconds, confidence, and whether its timing is `aligned`, `lrc` or `edited`.
+
+Repeated chorus lines keep distinct indices. Supplied LRC line starts are preserved; pass `--replace-lines`
+only when they should be replaced. Low confidence and detected silence need review. Unmatched lines,
+non-monotonic times, words outside their line, and ranges beyond the audio set `valid: false`; the record
+is still saved for repair, but cannot be built or exported as LRC until those findings are fixed. A valid
+record is structurally usable and still has `review.status: pending`; it is not a claim of musical accuracy.
+
+Edit without another provider call:
+
+```bash
+vixl lyrics timing-edit song.timing.json -o corrected.timing.json \
+  --edits '[{"line":0,"shift":100},{"line":1,"word":2,"start":2500,"end":2900}]'
+vixl lyrics timing-export corrected.timing.json -o corrected.lrc
+```
+
+`line` and `word` are zero-based indices. A line `shift` moves its words too; `start`/`end` set only the
+selected line or word. `--replace` explicitly permits overwriting an output. Enhanced LRC preserves word
+starts; the JSON keeps word ends, confidence and provenance that LRC cannot express.
+
+A build request can use `"timing": "corrected.timing.json"` instead of `lyrics`. The audio must match its
+recorded hash and duration. `"animation": {"in": "typewriter", "out": "fade-out", "unit": "word"}` reveals
+whole words at their timestamps and writes ordinary editable text keys. Every line needs complete word
+timings for this mode. Offsets and `lead_in` move word times together with their lines. Queued lyric jobs
+freeze the timing JSON along with the song and template.
+
+The equivalent workflow actions are `lyrics-align`, `lyrics-timing-edit` and `lyrics-timing-export`;
+use `audio`, `lyrics`, `output`, `provider`, `replace_lines`, `confidence` (default 0.7), and `replace`
+for alignment, or `timing`, `output`, `edits` and `replace` for edits.
+
+## Compositions
+
+`compositions` selects a dedicated editable group for each matching cue. Rules are evaluated in order;
+the first matching rule wins. `match` accepts `section` (the section slug), `occurrence` (one-based
+occurrence of that section), `cue` (zero-based lyric index), and `contains` (case-insensitive text).
+A `variant` is a template group name, a layout object, or a list of either. `assign: "cycle"` walks the
+list in order; `assign: "seeded"` with an integer `seed` makes a repeatable random choice.
+
+For example, this alternates the two repeated choruses' opening lines:
+
+```json
+{"compositions":[{"match":{"contains":"city lights"},"assign":"cycle","variant":[
+  {"layout":{"kind":"stack","fit":{"min_size":16,"max_size":64},"entrance":"fade-up","unit":"line"}},
+  {"layout":{"kind":"setup-payoff","fit":{"min_size":16,"max_size":64},"entrance":"pop","unit":"word"}}
+]}]}
+```
+
+`single` uses one text layer. `stack` uses one per phrase. `setup-payoff` gives the first phrase a smaller
+maximum size. `|` marks a phrase break in the source lyric and is omitted from the displayed text. Without
+it, the largest gap in word timings selects the break; without word timings, the split is near the middle.
+The existing `fit-text` operation sizes each phrase inside the requested `x`, `y`, `width`, `height` and
+`gap` (default region: the middle 80% × 60% of the canvas). The minimum must fit, or the build fails
+without replacing the previous build. Entrances use `text-animate` presets, with zero stagger so all
+words/lines settle inside the cue. This is distinct from the aligned, sequential word reveal described above.
+
+A named template group is duplicated per cue; its first text layer is the lyric placeholder, and other
+children retain their artwork and labels. The source group is hidden in the build. Put `layout.fit` beside
+the named `variant` to fit its placeholder. Template group descendants keep stable names prefixed by
+`composition-NNNN/`, allowing `motion: {parts: {"flame*": {preset: "flicker", amplitude: 2}}, span: "cue"}`.
+`flicker` uses the existing seeded wiggle recipe; `hover` and `wiggle` also work. Motion is vertical and
+bounded to 0–10 pixels. `span: "entrance"` limits motion to the entry instead of the whole cue.
+
+`attach: {symbol: "saved-badge", to: "baseline", gap: 8, width: 24}` places a saved object beside the
+last phrase. `baseline`, `cap-height` and `ink-right` anchors use rendered text metrics; the object becomes
+a child of that cue's group. Attachment and motion fields may sit on the rule or a layout variant.
+
+After editing a cue's generated layers, approve the build with `vixl lyrics review BUILD --approve`.
+A rebuild preserves those approved field edits and removals by the generated layer names, while recording
+new IDs in `lyric_build.overrides`. The rebuilt content still needs a fresh review. Previously approved
+overrides survive later rebuilds; new unapproved edits are discarded by `rebuild`. Overrides carry forward only while the cue index, text, section and occurrence still match, so timing-only
+edits keep approved styles and changed lyrics do not inherit another cue’s edits.
+
+Preview just one built cue with `vixl lyrics preview BUILD --cue 2 -o cue.png`; PNG shows its settled
+frame, while GIF, ZIP or video outputs use that cue's interval through the film preview writer.
+The equivalent workflow is `lyrics-preview` with `build`, `cue` and `output`. Builds support at most
+200 composed cues, leaving the existing timeline/resource limits in force.

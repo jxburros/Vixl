@@ -238,3 +238,28 @@ vixl providers add midjourney --type midjourney --key-env MIDJOURNEY_GATEWAY_KEY
 The gateway must implement the HTTP contract below and GET `/models` returning `{"data":[{"id":"your-model","capabilities":["generate"]}]}`. It remains responsible for Midjourney access and job execution. Merely setting a Midjourney key cannot create official API access.
 
 All provider contracts are tested offline with mocked transports, including native headers, paginated discovery, failed onboarding, capability routing, and credential omission. CI stays offline; the adapters have also been used successfully against the live vendor services. Over MCP, `vixl mcp --tools ai` serves the same capabilities as typed `vixl_ai_*` tools and `vixl_models_list` for typed discovery ([interfaces](interfaces.md#typed-ai-tools)); model keys remain in the server process environment.
+
+## Lyric alignment
+
+Alignment is an opt-in `align` capability. Configure an HTTP gateway or a trusted local command in the
+same `providers.json` used above. Neither the executable nor its arguments can come from a document,
+workflow request or remote caller. A command runs an argv array directly, without a shell. For example,
+a local wrapper entry is `{"type":"command","command":["python","/path/to/align-wrapper.py"],
+"capabilities":["align"],"timeout":120}`. An HTTP entry uses `{"type":"http","url":"https://align.example",
+"key_env":"ALIGN_API_KEY","capabilities":["align"]}`. Credentials remain in environment variables.
+
+HTTP sends `POST /align`; a command reads the same JSON on stdin and writes one JSON object to stdout.
+The request contains `audio` (base64 source bytes), `audio_format` (extension), `duration_ms`,
+`units: "milliseconds"`, and `lines: [{index, text, start?}]`. A configured `model` is optional.
+Return `lines: [{index?, text?, start, end, confidence?, words: [{text, start, end, confidence?}]}]`.
+All times are milliseconds and confidences are 0–1. Explicit indices let an adapter report unmatched
+lines without shifting later chorus occurrences; absent indices mean source order. The local adapter's
+stdout/stderr are capped at 4 MiB, its timeout is 1–600 seconds, and cancellation terminates the child.
+Errors do not copy adapter output or credentials into the timing record. The saved provenance contains
+only the provider name, adapter type and configured model identifier.
+
+`vixl lyrics align` also identifies long silent intervals for review. Forced alignment can be uncertain
+with backing vocals, overlapping singers, instrumental passages or dense mixes. Inspect and edit the
+record before building; low confidence is a review finding, never an automatic approval. `timing-edit`
+and `timing-export` run locally without inference. Remote HTTP adapters respect the existing offline and
+TLS rules; an explicitly configured local command may run offline.

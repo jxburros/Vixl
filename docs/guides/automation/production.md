@@ -989,6 +989,11 @@ Job kinds:
 
 Any job also takes `notify` ([completion webhooks](#completion-webhooks)).
 
+Lyric-video requests accept `verify: "full"` for full-file decode checks and bounded visual/brand
+frame sampling. Their result separates encoded-media and cue checks from human review and records
+the exact audio, lyric and build source hashes. An exported job remains pending review; successful
+rendering alone does not make `validated` true. See [verification and review](../motion/lyric-video.md#verification-and-review).
+
 An interrupted synchronous image request becomes `needs_review` and is never blindly
 repeated. Pollable video jobs keep their remote ID. Network failures back off; after
 60 worker attempts they need review. Resume preserves remote identity. Background workers

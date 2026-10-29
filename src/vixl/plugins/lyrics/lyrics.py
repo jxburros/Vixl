@@ -1,6 +1,6 @@
 """Lyric videos: a song, a user-timed LRC file and a styled template become a synced MP4/WebM.
 
-Vixl does no audio analysis; every timestamp comes from the LRC file. ``parse_lrc`` reads the
+Timestamps come from an LRC file or a reviewed alignment timing record. ``parse_lrc`` reads the
 file, ``plan`` turns it into show/hide times, ``build`` writes those times as an ordinary
 keyframed timeline onto a copy of the template, and ``export`` renders that document with the
 film exporter and the song as its audio track.
@@ -74,9 +74,10 @@ CUE_FIELDS = ("in", "out", "duration", "distance", "motion", "amount", "period",
 MAX_PADDING_MS = 60_000
 RECORD = "lyric_build"  # The document state key that records how a build was made.
 REQUEST_FIELDS = {
-    "audio", "lyrics", "template", "build", "output", "fps", "quality", "offset", "lead", "gap",
+    "audio", "lyrics", "timing", "compositions", "template", "build", "output", "fps", "quality", "offset", "lead", "gap",
     "max_hold", "animation", "cue_animation", "next_line", "camera", "start", "end", "check", "replace",
     "rebuild", "width", "height", "sample_rate", "section_styles", "lead_in", "tail", "end_at_audio", "segments",
+    "verify",
 }
 SECTION_STYLE_FIELDS = ("size", "color", "x", "y")
 
@@ -138,7 +139,7 @@ def parse_lrc(text):
             raise VixlError("lrc_parse", f"Line {number} has text but no timestamp", field="lyrics", source_line=number)
         require(not re.match(r"\[\d", line), f"Line {number}: malformed timestamp; use [mm:ss.xx] or [mm:ss.xxx]",
                 "lrc_parse", field="lyrics", source_line=number)
-        # Enhanced LRC word tags: kept for later karaoke styling, stripped from the displayed line.
+        # Enhanced LRC word tags drive word entrances; the displayed line contains only text.
         words, plain, cursor = [], [], 0
         for match in WORD.finditer(line):
             plain.append(line[cursor:match.start()])
@@ -296,8 +297,8 @@ def _section_styles(request, template):
 
 def _animation(request):
     settings = request.get("animation", {})
-    require(isinstance(settings, dict) and not set(settings) - {"in", "out", "duration", "distance"},
-            "animation takes in, out, duration and distance", field="animation")
+    require(isinstance(settings, dict) and not set(settings) - {"in", "out", "duration", "distance", "unit"},
+            "animation takes in, out, duration, distance and unit", field="animation")
     entry, exit_ = settings.get("in", "fade-in"), settings.get("out", "fade-out")
     entry = SHORT_NAMES.get(entry, (entry,))[0]
     exit_ = SHORT_NAMES.get(exit_, (None, exit_))[1]
@@ -307,7 +308,11 @@ def _animation(request):
     distance = settings.get("distance")
     if distance is not None:
         finite(distance, "animation.distance", 0, 100000)
-    return {"in": entry, "out": exit_, "duration": round(duration), "distance": distance}
+    unit = settings.get("unit", "line")
+    require(unit in ("line", "word"), "animation.unit must be line or word", field="animation.unit")
+    require(unit != "word" or entry == "typewriter", "Word timing entrances use animation.in: typewriter", field="animation.in")
+    return {"in": entry, "out": exit_, "duration": round(duration), "distance": distance,
+            **({"unit": unit} if unit != "line" else {})}
 
 
 def _cue_settings(settings, field):
@@ -407,6 +412,8 @@ def line_plans(lines, animation):
         exit_end = min(hide, following - 1) if following is not None and following <= hide else hide
         exit_end = max(exit_end, show + entry_length)
         exit_length = min(exit_length, exit_end - show - entry_length) if leaving else 0
+        if animation.get("unit") == "word" and line.get("words"):
+            exit_length = min(exit_length, max(0, exit_end - line["words"][-1]["time"] - 1))
         plans.append((entering, leaving, entry_length, exit_length, exit_end))
     return plans
 
@@ -453,6 +460,11 @@ def timing(parsed, request, duration):
                             f"Line {line['source_line']} starts at {line['time']} ms, after the end of the audio "
                             f"({duration} ms)", field="lyrics", source_line=line["source_line"])
         line["time"] += lead_in
+        line["words"] = [{**w, "time": max(0, w["time"] - offset) + lead_in,
+                          **({"end": max(0, w["end"] - offset) + lead_in} if "end" in w else {})}
+                         for w in line["words"]]
+        if "end" in line:
+            line["end"] = max(0, line["end"] - offset) + lead_in
     sections = []
     for item in parsed["sections"]:
         time = max(0, item["time"] - offset)
@@ -486,6 +498,8 @@ def timing(parsed, request, duration):
             show = previous_hide
         show = max(0, show)
         candidates = [line["time"] + max_hold, end] + ([audio_end] if end_at_audio else [])
+        if "end" in line:
+            candidates.append(line["end"])
         follow = None
         if nxt is not None:
             # The next line shows ``lead`` early; an empty-text break hides at its own timestamp.
@@ -512,7 +526,7 @@ def timing(parsed, request, duration):
         if nxt is not None and not nxt["text"] and nxt["time"] - gap < end:
             item["break_at"] = round(max(hide, nxt["time"] - gap))  # An empty timestamp follows: the screen clears here.
         lines.append(item)
-        carried = handed_on and nxt["text"] == line["text"]
+        carried = handed_on and nxt["text"] == line["text"] and animation.get("unit") != "word"
         previous_hide = hide
     for i, item in enumerate(lines):
         span = item["hide"] - item["show"]
@@ -527,6 +541,11 @@ def timing(parsed, request, duration):
     # can time extra motion or checks without re-deriving the animation rules.
     for item, (_, leaving, entry_length, exit_length, exit_end) in zip(lines, line_plans(lines, animation)):
         item["settled"] = item["show"] + entry_length
+        if animation.get("unit") == "word":
+            require(item.get("words"), "Word entrances need word timings for every lyric line", field="animation.unit")
+            require(all(item["show"] <= w["time"] < item["hide"] for w in item["words"]),
+                    "Word timing falls outside its displayed line; reduce lead/gap or adjust timing", field="animation.unit")
+            item["settled"] = min(item["hide"] - 1, max(item["settled"], item["words"][-1]["time"]))
         item["exit"] = exit_end - exit_length if leaving else item["hide"]
     return {
         "start": start,
@@ -556,15 +575,25 @@ def _inputs(request, root, limits):
     from ...automation import bounded_object
 
     bounded_object(request, REQUEST_FIELDS, "Unknown lyric-video request field")
-    for key in ("audio", "lyrics", "template"):
+    require(bool(request.get("lyrics")) != bool(request.get("timing")), "Give lyrics or timing, not both", field="timing")
+    lyric_key = "timing" if request.get("timing") else "lyrics"
+    for key in ("audio", lyric_key, "template"):
         require(isinstance(request.get(key), str) and request[key], f"Lyric videos need {key}", field=key)
-    paths = {key: local_path(root, request[key]) for key in ("audio", "lyrics", "template")}
+    paths = {key: local_path(root, request[key]) for key in ("audio", lyric_key, "template")}
     for key, path in paths.items():
         require(path.is_file(), f"{request[key]!r} does not exist in the workspace", "missing_file", field=key)
     require(paths["template"].suffix == ".vixl", "template must be a .vixl document", field="template")
-    parsed = parse_lrc(read_bounded(paths["lyrics"], MAX_LRC_BYTES))
     template = Project.load(paths["template"], limits=limits)
     duration = audio_duration(paths["audio"])
+    if lyric_key == "timing":
+        from .timing import load, parsed as timing_parsed
+        record = load(paths["timing"])
+        require(record.get("sources", {}).get("audio_sha256") == hashlib.sha256(read_bounded(paths["audio"], 64 * 1024 * 1024)).hexdigest(),
+                "Timing record belongs to different audio", "invalid_timing")
+        parsed = timing_parsed(record, duration)
+        paths["lyrics"] = paths["timing"]
+    else:
+        parsed = parse_lrc(read_bounded(paths["lyrics"], MAX_LRC_BYTES))
     require(duration <= MAX_VIDEO_MS, "Audio is longer than the 10 minute video limit; pass end to render part of it",
             "resource_limit", field="audio")
     return paths, parsed, template, duration
@@ -575,6 +604,7 @@ def _settings(request, template):
     require(isinstance(fps, (int, float)) and not isinstance(fps, bool) and 1 <= fps <= 60, "fps must be 1–60", field="fps")
     quality = request.get("quality", "final")
     require(quality in ("draft", "final"), "quality must be draft or final", field="quality")
+    require(request.get("verify", "basic") in ("basic", "full"), "verify must be basic or full", field="verify")
     canvas = template.state["canvas"]
     width, height = request.get("width", canvas["width"]), request.get("height", canvas["height"])
     for key, value in (("width", width), ("height", height)):
@@ -605,6 +635,8 @@ def plan(request, root, limits=None):
 
 
 def _prepare(request, root, limits=None):
+    from ..film.film import file_sha256
+
     limits = limits or Limits()
     paths, parsed, template, duration = _inputs(request, root, limits)
     settings = _settings(request, template)
@@ -615,6 +647,8 @@ def _prepare(request, root, limits=None):
         first = contract["errors"][0]
         raise VixlError("template_invalid", first["message"], field=first["field"], errors=contract["errors"])
     roles = contract["roles"]
+    from .compositions import select
+    select(template, timed, request)
     names = sorted(f"cue-{phrase}" for phrase in roles["cues"])
     unknown = sorted(set(timed["cue_animation"].get("cues", {})) - set(names))
     require(not unknown, f"cue_animation.cues names {', '.join(unknown)}, but the template's cue layers are "
@@ -665,7 +699,7 @@ def _prepare(request, root, limits=None):
         "notes": contract["notes"],
     }
     sources = {"lyrics": hashlib.sha256(paths["lyrics"].read_bytes()).hexdigest(), "template": template._revision,
-               "audio_ms": duration}
+               "audio": file_sha256(paths["audio"]), "audio_ms": duration}
     return report, parsed, template, timed, contract, sources
 
 
@@ -772,7 +806,9 @@ def write_timeline(project, timed, roles, request):
     "replaced"}``: all keys in the timeline, the keys the build wrote, the template tracks kept and
     the ones the build replaced."""
     from ...timeline import MAX_DURATION, MAX_KEYS, MAX_TRACKS, default_timeline
+    from .compositions import install, animate
 
+    made = install(project, timed, roles, request)
     state = project.state
     canvas = state["canvas"]
     layers = {layer["id"]: layer for layer in state["layers"]}
@@ -810,9 +846,18 @@ def write_timeline(project, timed, roles, request):
             if entering:
                 if animation["in"] == "typewriter":
                     text = line["text"]
-                    steps = max(1, min(len(text), steps_budget, 24))
-                    for step in range(steps + 1):
-                        key(lyric, "text", show + entry_length * step / steps, text[: round(len(text) * step / steps)])
+                    if animation.get("unit") == "word":
+                        key(lyric, "text", show, "")
+                        cursor = 0
+                        for word in line["words"]:
+                            position = text.find(word["text"], cursor)
+                            require(position >= cursor, "Timed words do not match the lyric text", field="timing")
+                            cursor = position + len(word["text"])
+                            key(lyric, "text", word["time"], text[:cursor])
+                    else:
+                        steps = max(1, min(len(text), steps_budget, 24))
+                        for step in range(steps + 1):
+                            key(lyric, "text", show + entry_length * step / steps, text[: round(len(text) * step / steps)])
                     entry = {"opacity": [(show, base, "hold")]}
                 else:
                     key(lyric, "text", show, line["text"])
@@ -923,6 +968,9 @@ def write_timeline(project, timed, roles, request):
     for line in lines:
         timeline["markers"][f"line-{line['index'] + 1:03d}"] = line["show"]
     state["timeline"] = timeline
+    if made:
+        animate(project, timed, roles, made)
+        timeline = project.state["timeline"]
     names = {layer["id"]: layer["name"] for layer in state["layers"]}
     return {
         "keyframes": sum(len(track["keys"]) for track in timeline["tracks"]),
@@ -1009,6 +1057,7 @@ def _build_options(request, timed):
         "next_line": request.get("next_line", True),
         "end": None if request.get("end") is None else timed["end"],
         "section_styles": request.get("section_styles"),
+        **({"compositions": request["compositions"]} if request.get("compositions") else {}),
     }
     # Recorded only when set, so builds made before these fields existed still match.
     for name, default in (("lead_in", 0), ("tail", 0), ("end_at_audio", False)):
@@ -1058,7 +1107,27 @@ def _write_build(request, root, limits, prepared, destination):
             variables[name] = parsed["metadata"][name]
         else:
             variables.setdefault(name, "")
+    from .compositions import approved_overrides, baseline, restore
+    overrides = {}
+    if destination.exists() and request.get("compositions"):
+        from ...project import Project
+        previous = Project.load(destination, limits=limits)
+        overrides = approved_overrides(previous)
+        prior_cues = previous.state.get(RECORD, {}).get("cue_windows", [])
+        from .compositions import select
+        selected = select(project, timed, request)
+        preserved = set()
+        for line, prior in zip(timed["lines"], prior_cues):
+            composition = prior.get("composition", {})
+            chosen = selected.get(line["index"], {})
+            if (composition.get("text") == " ".join(line["text"].replace("|", " ").split())
+                    and composition.get("section") == line.get("section")
+                    and composition.get("occurrence") == chosen.get("occurrence")):
+                preserved.add(f"composition-{line['index']:04d}")
+        overrides = {name: fields for name, fields in overrides.items() if name.split("/", 1)[0] in preserved}
     written = write_timeline(project, timed, contract["roles"], request)
+    composition_baseline = baseline(project)
+    applied_overrides = restore(project, overrides)
     if written["replaced"]:
         report = {**report, "warnings": report["warnings"] + [{
             "code": "template_track_replaced", "tracks": written["replaced"],
@@ -1066,9 +1135,15 @@ def _write_build(request, root, limits, prepared, destination):
                        (" and more" if len(written["replaced"]) > 5 else "") + ", so the template's own keys for "
                        "them were replaced; animate another property, or a group around the layer, to keep that motion"}]}
     project.state[RECORD] = {"version": 1, "options": _build_options(request, timed), "sources": sources,
-                             "state": _fingerprint(project.state)}
+                             "source_paths": {"audio": request["audio"],
+                                              "lyrics": request.get("lyrics") or request.get("timing")},
+                             "state": _fingerprint(project.state),
+                             **({"composition_baseline": composition_baseline, "overrides": applied_overrides}
+                                if composition_baseline else {}),
+                             "cue_windows": [{key: deepcopy(line[key]) for key in ("show", "hide", "settled", "composition") if key in line}
+                                             for line in timed["lines"]]}
     check_state(project, project.state)
-    project._record([], f"Build lyric video from {Path(request['lyrics']).name}")
+    project._record([], f"Build lyric video from {Path(request.get('lyrics') or request['timing']).name}")
     if destination.exists():
         destination.unlink()
     project.save(destination)
@@ -1089,6 +1164,8 @@ def _differences(record, options, sources):
     for name in ("lyrics", "template"):
         if (record.get("sources") or {}).get(name) != sources[name]:
             changed.append(f"the {name} file")
+    if "audio" in (record.get("sources") or {}) and record["sources"]["audio"] != sources["audio"]:
+        changed.append("the audio file")
     if (record.get("sources") or {}).get("audio_ms") != sources["audio_ms"]:
         changed.append("the audio length")
     return changed
@@ -1120,6 +1197,9 @@ def _kept_build(request, limits, prepared, destination):
                 "edits), choose a new build path, or restore the earlier settings",
                 field="build", changed=changed)
         return None
+    for line, saved in zip(report["lines"], record.get("cue_windows", [])):
+        if "composition" in saved:
+            line.update({key: deepcopy(saved[key]) for key in ("settled", "composition")})
     keyframes = sum(len(track["keys"]) for track in (existing.state.get("timeline") or {}).get("tracks", []))
     warnings = list(report["warnings"])
     if edited:
@@ -1170,26 +1250,33 @@ def camera_window(camera, start, duration, total, fps):
 
 
 def check_lines(project, report, settle=300, limit=200):
-    """Design checks on one frame per unique line, once its entry animation has finished."""
+    """Design checks on one settled frame per cue occurrence, including repeated choruses."""
     from ...timeline import project_at
 
-    findings, seen = [], set()
+    findings, checked = [], 0
     for line in report["lines"]:
-        if line["text"] in seen or len(seen) >= limit or line["hide"] <= report["start"] or line["show"] >= report["end"]:
+        if checked >= limit or line["hide"] <= report["start"] or line["show"] >= report["end"]:
             continue
-        seen.add(line["text"])
+        checked += 1
         time = max(line["show"], min(line["hide"] - 1, line["show"] + settle))
         result = project_at(project, time).check(checks=["bounds", "overlap", "contrast", "safe_area", "blanks"])
         if result["issues"]:
             findings.append({"line": line["index"], "time": time, "text": line["text"][:80],
                              "passed": result["passed"], "issues": result["issues"]})
-    return {"passed": all(item["passed"] for item in findings), "checked_lines": len(seen), "lines": findings}
+    return {"passed": all(item["passed"] for item in findings), "checked_lines": checked, "lines": findings}
+
+
+def verify(report, project, **options):
+    """Verify cue timing/text and optionally sample visual/brand checks; see verification.verify."""
+    from .verification import verify as verify_delivery
+
+    return verify_delivery(report, project, **options)
 
 
 def export(request, root, limits=None, *, cancelled=lambda: False, progress=lambda value: None):
     """Build, then render the MP4/WebM with the song as its audio track. A build that already exists
     and still matches the request is rendered as it is, hand edits included (``build_reused``)."""
-    from ..film.film import export as film_export, export_segments, local_path, verify_video
+    from ..film.film import export as film_export, export_segments, file_sha256, local_path, verify_video
     from ...project import Project
 
     limits = limits or Limits()
@@ -1211,6 +1298,11 @@ def export(request, root, limits=None, *, cancelled=lambda: False, progress=lamb
     if report is None:
         _may_replace(request, destination)
         report = _write_build(request, root, limits, prepared, destination)
+    source_paths = {name: local_path(root, source) for name, source in (
+        ("audio", request["audio"]), ("lyrics", request.get("lyrics") or request.get("timing")),
+        ("build", request["build"]))}
+    identities = {name: file_sha256(path) for name, path in source_paths.items()}
+    project = Project.load(destination, limits=limits)
     if output.exists():
         output.unlink()
     spec = film_spec(request, report)
@@ -1220,14 +1312,21 @@ def export(request, root, limits=None, *, cancelled=lambda: False, progress=lamb
     else:
         result = film_export(spec, root, output, limits=limits, cancelled=cancelled, progress=progress)
     response = {**report, "output": request["output"], "video": result}
-    response["verification"] = verify_video(output, result, requested_ms=report["duration_ms"])
+    media = verify_video(output, result, requested_ms=report["duration_ms"], decode=request.get("verify") == "full")
+    changed = [name for name, path in source_paths.items() if not path.is_file() or file_sha256(path) != identities[name]]
+    response["verification"] = verify(report, project, mode=request.get("verify", "basic"), media=media,
+                                      sources={**identities, "changed_during_export": changed,
+                                               "audio_transcode": result.get("audio_transcode")})
+    response["outcome"] = response["verification"]["outcome"]
+    response["validated"] = response["verification"]["validated"]
     if response["verification"].get("passed") is False:
-        failed = [check["check"] for check in response["verification"]["checks"] if not check["passed"]]
+        failed = list(dict.fromkeys(check["check"] for check in
+            response["verification"].get("checks", []) + response["verification"]["structural"]["checks"]
+            if not check["passed"]))
         response["warnings"] = response["warnings"] + [{
             "code": "verification_failed", "checks": failed,
-            "message": f"The encoded file does not match what was rendered: {', '.join(failed)}; see verification"}]
+            "message": f"Delivery checks failed: {', '.join(failed) or 'sampled design checks'}; see verification"}]
     if request.get("check"):
-        project = Project.load(local_path(root, request["build"]), limits=limits)
         response["checks"] = check_lines(project, report, _animation(request)["duration"])
     return response
 
