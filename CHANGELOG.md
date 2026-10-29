@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.33.0
+
+### Upgrading from 0.32
+
+- New centerline traces smooth pixel stairs by default. Set `settings.smooth: 0` to restore unsmoothed tracing.
+- Frame ZIPs use faster PNG compression with identical pixels and potentially larger files. Video delivery defaults
+  to `preset: "final"`; choose `"draft"` for quicker reviews.
+- Validated lyric deliveries now require full verification and explicit approval of the current build and sources.
+  Existing basic exports remain available and report their unreviewed status.
 
 ### Motion and media
 
