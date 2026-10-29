@@ -1,5 +1,13 @@
 # Charts
 
+For several charts, tables and numeric callouts, define one `dataset` (`name`, `table` or workspace `csv`) and bind
+consumers with `data: "NAME"`. `dataset` cell edits (`set: [{category, series, value}]`) update them atomically.
+`derive: {kind: "sum"|"share"|"max", by: "series"|"category"}` aggregates to one series; `share` yields fractions.
+Text reads `${data.NAME.total|number}`, `.max.value`, `.max.label`, `.max.series`, or `.SERIES.CATEGORY` (spaces in
+labels become hyphens). Missing keys need a fix; `|default:TEXT` supplies an intentional fallback.
+CSV reload is explicit (`action: "reload"`); `from: "chart-name"` follows another chart and refuses cycles.
+Supplying inline data detaches a consumer; bound consumers refuse independent `chart-data`/`table-data` cell edits.
+
 Use `chart` for any bar, line, area, pie or donut instead of drawing shapes and computing heights,
 totals and percentages yourself. The chart is a group of ordinary vector layers bound to a table;
 fixing a number is one operation and nothing is recomputed by hand. Full reference: `docs/guides/output/charts.md`;

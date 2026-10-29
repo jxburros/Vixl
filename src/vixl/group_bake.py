@@ -95,7 +95,34 @@ def _refuse(group, tracks, reason):
     )
 
 
-def ungroup_tracks(project, group, children, offset):
+def children_overlap(project, children):
+    """Conservatively test the children's ink extents, including animated poses and effects."""
+    from .render import child_index, extent, resolve_layout, resolved_layers
+    from .timeline import project_at
+
+    if len(children) < 2:
+        return False
+    times = [None]
+    if (project.state.get("timeline") or {}).get("tracks"):
+        times += sample_times(project)
+    ids = {child["id"] for child in children}
+    for time in times:
+        frame = project if time is None else project_at(project, time)
+        layers = resolved_layers(frame)
+        bounds = resolve_layout(frame, layers=layers)
+        members, memo, boxes = child_index(layers), {}, []
+        for child in layers:
+            if child["id"] not in ids or not child["visible"]:
+                continue
+            box = extent(child, bounds, members, memo)
+            if any(box[0] < other[2] and other[0] < box[2]
+                   and box[1] < other[3] and other[1] < box[3] for other in boxes):
+                return True
+            boxes.append(box)
+    return False
+
+
+def ungroup_tracks(project, group, children, offset, *, appearance=False):
     """Prepare ``ungroup`` for a timeline: sample the group's animation now, before the group is
     dissolved, and return a function that, run after it, rewrites the children's tracks so every
     frame looks the same. Raises before anything changes when the animation cannot move."""
@@ -110,10 +137,17 @@ def ungroup_tracks(project, group, children, offset):
         if unsupported:
             raise _refuse(group, unsupported, "have no equivalent on the children")
         fading = [t for t in keyed if t["property"] == "opacity" and any(k["value"] != 1 for k in t["keys"])]
-        if fading and len(children) > 1:
+        if fading and len(children) > 1 and (not appearance or children_overlap(project, children)):
             raise _refuse(group, fading, "fade the group as one picture, and fading each overlapping child would not "
                           "look the same")
     original = snapshot(project) if keyed else None
+    static_scale = (1.0, 1.0)
+    static_rotation = group.get("rotation", 0) if appearance else 0
+    if appearance and keyed:
+        gparent, gfull, grest, _ = placement(project, group["id"])
+        linear = (np.linalg.inv(gparent) @ gfull @ np.diag([
+            grest[0] / group["content_width"], grest[1] / group["content_height"], 1.0]))[:2, :2]
+        static_scale = (float(np.linalg.norm(linear[:, 0])), float(np.linalg.norm(linear[:, 1])))
     samples = []
     if keyed:
         times = sample_times(project, (k["time"] for t in keyed for k in t["keys"]))
@@ -129,7 +163,8 @@ def ungroup_tracks(project, group, children, offset):
             if np.linalg.det(linear) < 0:
                 raise _refuse(group, [t for t in keyed if t["property"].startswith("scale")],
                               "mirror the group (a negative scale)")
-            record = {"time": time, "sx": float(np.linalg.norm(linear[:, 0])), "sy": float(np.linalg.norm(linear[:, 1])),
+            record = {"time": time, "sx": float(np.linalg.norm(linear[:, 0])) / static_scale[0],
+                      "sy": float(np.linalg.norm(linear[:, 1])) / static_scale[1],
                       "rotation": sample_track(original, rotation, time) if rotation else 0.0,
                       "opacity": frame.layer(group["id"])["opacity"], "visible": frame.layer(group["id"])["visible"],
                       "children": {}}
@@ -147,6 +182,14 @@ def ungroup_tracks(project, group, children, offset):
                 shift = offset[0 if track["property"] == "x" else 1]
                 for key in track["keys"]:
                     key["value"] += shift
+            if appearance and track["target"] in ids:
+                if track["property"] == "opacity" and not any(t["property"] == "opacity" for t in keyed):
+                    for key in track["keys"]:
+                        key["value"] *= group["opacity"]
+                if track["property"] == "visible" and not group["visible"] and not any(
+                        t["property"] == "visible" for t in keyed):
+                    for key in track["keys"]:
+                        key["value"] = False
         from .timeline import prune_targets
 
         prune_targets(project.state, {group["id"]})
@@ -158,8 +201,10 @@ def ungroup_tracks(project, group, children, offset):
         scaled = any(abs(s["sx"] - 1) > 1e-9 or abs(s["sy"] - 1) > 1e-9 for s in samples)
         for ident in ids:
             if "rotation" in props:
+                adjusted = project.layer(ident)["rotation"] - original.layer(ident)["rotation"] - static_rotation
                 write_keys(project, ident, "rotation",
-                           [(s["time"], track_value(original, ident, "rotation", s["time"]) + s["rotation"]) for s in samples])
+                           [(s["time"], track_value(original, ident, "rotation", s["time"]) + s["rotation"]
+                             + (adjusted if appearance else 0)) for s in samples])
             if scaled:
                 xs, ys = [], []
                 for s in samples:

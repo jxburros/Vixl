@@ -12,6 +12,28 @@ from vixl import Project
 pytestmark = pytest.mark.perf
 
 
+@pytest.mark.parametrize('format_,workers', [('frames', 1), ('frames', 3), ('mp4', 1), ('mp4', 3)])
+def test_fading_animation_export_budget(tmp_path, monkeypatch, format_, workers):
+    import shutil
+
+    from vixl.timeline import export_timeline
+
+    if format_ == 'mp4' and not shutil.which('ffmpeg'):
+        pytest.skip('ffmpeg is optional')
+    monkeypatch.setenv('VIXL_FRAME_WORKERS', str(workers))
+    p = Project(640, 360, '#162030')
+    p.apply([{'type': 'shape', 'shape': 'ellipse', 'name': f'dot{i}', 'width': 80, 'height': 80,
+              'x': i % 8 * 78, 'y': i // 8 * 115, 'fill': '#e98040'} for i in range(24)] +
+            [{'type': 'timeline-set', 'duration': 2400, 'fps': 30, 'loop': 1},
+             {'type': 'animate', 'targets': [f'dot{i}' for i in range(24)], 'property': 'opacity',
+              'from': 0.2, 'to': 1, 'duration': 2400, 'easing': 'linear'}], detail='brief')
+    path = tmp_path / ('fade.zip' if format_ == 'frames' else 'fade.mp4')
+    elapsed, report = timed(lambda: export_timeline(p, path, format=format_))
+    assert report['frames'] == 72 and report['bytes'] == path.stat().st_size
+    # Includes process startup and encoder work; leave room for several exports sharing a CI runner.
+    assert elapsed < (12 if workers == 1 else 20), (format_, workers, elapsed)
+
+
 def timed(function):
     start = time.perf_counter()
     result = function()

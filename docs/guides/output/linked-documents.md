@@ -26,6 +26,7 @@ a sheet of badges built from one template) stop going out of date.
 | `source_page` | Draw one page (name or number) of a multi-page source. (`page` on an operation names the page of *this* document that it edits, so the linked page has its own field.) |
 | `corner_pin` | Four `[x, y]` corners in the layer's own pixels (top-left, top-right, bottom-right, bottom-left; a convex quadrilateral): the placed design is warped into them, as a screen seen at an angle or a card on a desk. `null` (or `--clear corner_pin`) removes it. Used by [mockups](#mockups). |
 | `variables` | Overrides for the source's `${variables}`. A value may itself contain `${name}`, which reads this document's variable. A value for an image variable names a workspace image file. |
+| `time` | Independent animation timing: offset, playback speed, source trim and repetition. See [Animated instances](#animated-instances). `null` resets the timing. |
 
 Rotation, flips, opacity, blend, masks, effects, layer styles, clipping, constraints and groups work on a
 link exactly as on an image layer (`rotate`, `flip`, `opacity`, `blur`, `group`, `align` …). `resize` and
@@ -35,10 +36,40 @@ that is shown larger than its own pixels runs the `denoise` effects that open it
 is scaled up, so a linked crop of a corrected master shows the cleaned photo, not enlarged grain.
 
 A `link` operation with a `target` (CLI: `link-set LAYER`) changes `source`, `artboard`, `source_page`, `variables`,
-`fit`, `position` or `crop` (`null` clears an optional setting) and checks the result against the source; the layer's
+`fit`, `position`, `crop`, `corner_pin` or `time` (`null` clears an optional setting) and checks the result against the source; the layer's
 name, position and size have their own operations (`rename`, `move`, `resize`). A link layer stores the
 source's `source_hash` (SHA-256) and `source_size` as of the last `link`, change of `source` or
 `link-refresh`.
+
+## Animated instances
+
+A link to a source with a timeline samples that timeline at the parent's frame time. Each instance can have its
+own timing and variable overrides; rendering never changes the source. `animation-instance` is an alias for
+`link`. A still render or export samples parent time 0; a sampled frame (`project_at`, preview `time`, or a timeline
+export) carries its time through nested links. PDF keeps supported sampled artwork as vectors; SVG embeds the
+sampled image as it does for static links.
+
+```json
+{"type": "animation-instance", "source": "mascot.vixl", "name": "second-mascot", "x": 320,
+ "time": {"offset": 300, "speed": 2, "trim_start": 100, "trim_end": 900,
+          "loop": "pingpong", "before": "hidden"}}
+```
+
+All times are milliseconds. `offset` is the parent time at which the trimmed source starts; a negative offset
+starts partway through the animation. `speed` ranges from 0.1 to 10 (default 1). `trim_start` defaults to 0 and
+`trim_end` to the source duration; the end must follow the start and both must be inside that duration.
+`loop` is `none` (default), `loop`, or `pingpong`. Looping repeats only the trimmed interval; ping-pong plays it
+forward then backward. `before` is `hold-first` (default) or `hidden`; `after` is `hold-last` (default) or `hidden`
+and applies to non-looping instances. The exact end is still visible; hiding begins after it. Child frames are
+sampled at the source's fps, so a fast parent can reuse a child frame without changing the pixels.
+
+The CLI accepts the same object with `link --time '{"offset":300,"speed":2}'` or `link-set LAYER --time …`;
+`link-set LAYER --clear time` resets it. Link refreshes and relinks preserve the timing. `links` and the `links`
+list in `inspect` include `timing`, with `source_duration` and the effective parent `window: [start, end]` of
+one playthrough. Rendering allows at most 256 nested animation frame evaluations per parent render by default
+(`Limits.max_nested_frames` in Python), in addition to the existing link-depth and draw limits.
+
+See [Reuse an animation](../../tutorials/nested-animation.md) for a two-instance example.
 
 ## Keeping track of changes
 

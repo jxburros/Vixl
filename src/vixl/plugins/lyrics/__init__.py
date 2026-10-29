@@ -5,7 +5,8 @@ PLUGIN = {
     "title": "Lyric videos",
     "summary": "Synced lyric videos from audio, an LRC file and a styled template document.",
     "kind": "workflows",
-    "modules": ["lyrics", "workflow"],
+    "modules": ["lyrics", "workflow", "timing", "cli", "verification", "compositions"],
+    "hooks": {"cli-command": ["cli:command"]},
     "workflows": ["workflow"],
-    "requires": ["film"],
+    "requires": ["film", "ai"],
 }

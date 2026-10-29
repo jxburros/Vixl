@@ -25,7 +25,7 @@ DEFAULTS = {
 # Providers usable without a config entry once their key is set: the catalog defaults plus FLUX (Black Forest Labs),
 # whose image API has no model catalog to refresh.
 BUILTIN = {**DEFAULTS, "flux": {"type": "bfl", "key_env": "BFL_API_KEY"}}
-CAPABILITIES = ("plan", "describe", "detect", "ocr", "generate", "segment", "upscale", "background-remove")
+CAPABILITIES = ("plan", "describe", "detect", "ocr", "generate", "segment", "upscale", "background-remove", "align")
 
 
 def config_path():
@@ -209,6 +209,8 @@ def route(capability, name=None, model=None):
     order = ([selected] if selected else []) + [n for n in candidates if n != selected]
     failures = []
     for candidate in order:
+        if capability == "align" and candidates.get(candidate, {}).get("type", "http") not in ("http", "command"):
+            continue
         if name and candidate != name:
             continue
         saved = candidates.get(candidate, {}).get("models")
@@ -222,6 +224,8 @@ def route(capability, name=None, model=None):
             if not hasattr(backend, "config"):
                 return backend
             settings = backend.config
+            if settings.get("type") == "command" and capability != "align":
+                continue
             models = settings.get("models")
             # Preserve official SDK login/profile inference when no HTTP discovery key exists.
             sdk_only = settings.get("type") == "anthropic" and not os.environ.get(

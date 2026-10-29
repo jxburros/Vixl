@@ -93,6 +93,10 @@
    "type": "object",
    "description": "A document state: the canvas, its layers and every document-level resource.",
    "properties": {
+    "datasets": {
+     "type": "object",
+     "description": "Named numeric tables shared by charts, tables and data.* text variables."
+    },
     "canvas": {
      "type": "object",
      "description": "Canvas size, background and print settings.",
@@ -1349,6 +1353,10 @@
     "source_size": {
      "type": "array",
      "description": "link: [width, height] of the linked page."
+    },
+    "time": {
+     "type": "object",
+     "description": "link: animation offset, speed, source trim_start/end in milliseconds, loop and before/after behavior."
     },
     "artboard": {
      "type": "string",

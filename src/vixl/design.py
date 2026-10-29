@@ -132,9 +132,14 @@ def execute_design(project, op):
             raise Refusal("invalid_operation", f"{group['name']!r} is a declared {group['object']['kind']} object; "
                             "ungrouping would lose it. Run {type: object, action: unset} first, or pass force: true",
                             field="target")
-        group.pop("object", None)
-        require(
+        keep = op.get("keep", "strict")
+        require(keep in ("strict", "appearance"), "keep is strict or appearance", field="keep")
+        if keep == "strict":
+            require(
             not group["rotation"]
+            and not group.get("skew_x")
+            and not group.get("skew_y")
+            and not group.get("affine")
             and group["opacity"] == 1
             and not group["mask"]
             and not group["effects"]
@@ -147,24 +152,54 @@ def execute_design(project, op):
             and group["visible"]
             and (group["width"], group["height"]) == (group["content_width"], group["content_height"]),
             "Reset group transforms, masks and effects before ungrouping",
-        )
+            )
         all_bounds = resolve_layout(project)
         b = all_bounds[group["id"]]
         children = [item for item in state["layers"] if item.get("parent") == group["id"]]
-        from .group_bake import ungroup_tracks
+        from .group_bake import children_overlap, ungroup_tracks
+
+        require(not any(item.get("clip") == group["id"] for item in state["layers"]),
+                "Cannot ungroup referenced clipping base")
+        plans = None
+        if keep == "appearance":
+            from .reparent import apply_moves, plan_moves
+
+            for field in ("mask", "effects", "styles", "clip", "repeat", "distort"):
+                require(not group.get(field), f"Cannot ungroup {group['name']!r} keeping appearance: "
+                        f"remove its {field} first", field="keep")
+            require(group["blend"] == "normal", f"Cannot ungroup {group['name']!r} keeping appearance: "
+                    "reset its blend mode first", field="keep")
+            require(not any(child["type"] == "adjustment" or child["blend"] != "normal" for child in children),
+                    "Cannot ungroup keeping appearance: child adjustments or blend modes need the group's "
+                    "isolated backdrop", field="keep")
+            require(group["opacity"] == 1 or not children_overlap(project, children),
+                    "Cannot ungroup keeping appearance: fading overlapping children separately would change "
+                    "the picture", field="keep")
+            plans = plan_moves(project, children, group.get("parent"))
 
         # Sample the group's own animation before it is dissolved; refuses what cannot move.
-        finish = ungroup_tracks(project, group, children, b[:2])
+        offset = plans[0][2] if plans else b[:2]
+        finish = ungroup_tracks(project, group, children, offset, appearance=keep == "appearance")
+        constrained = [child["name"] for child in children if child.get("constraints")]
+        if plans is not None:
+            apply_moves(project, plans, shift_tracks=False)
         for child in children:
-            require(child.get("clip") != group["id"], "Cannot ungroup referenced clipping base")
-            local = all_bounds[child["id"]]
-            child.update(parent=group.get("parent"), constraints={})
-            child["x"], child["y"] = stored_origin(child, (local[0] + b[0], local[1] + b[1]))
+            if plans is None:
+                local = all_bounds[child["id"]]
+                child.update(parent=group.get("parent"), constraints={})
+                child["x"], child["y"] = stored_origin(child, (local[0] + b[0], local[1] + b[1]))
+            else:
+                child["opacity"] *= group["opacity"]
+                child["visible"] = child["visible"] and group["visible"]
             state["layers"].remove(child)
         index = state["layers"].index(group)
         state["layers"][index : index + 1] = children
         state["active_layer"] = children[-1]["id"] if children else None
         finish()
+        if constrained:
+            from .notices import warn
+
+            warn(project, "ungroup cleared parent-relative constraints on " + ", ".join(constrained))
     elif kind == "clip":
         layer = project.layer(op.get("target"))
         if op.get("release"):

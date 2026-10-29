@@ -9,6 +9,53 @@ export and check treats it like any other group. The data stays attached to the 
 labels, totals, gridlines and legend all follow, on the same layers with the same IDs. When the
 document is exported to PowerPoint the group becomes a **native chart with an embedded data table**.
 
+## Shared datasets
+
+Use `dataset` when charts, tables and callout text must agree. A named dataset holds a numeric table, an explicit
+snapshot of a workspace CSV, or a live reference to another chart. Bind a chart or table with `data: "sales"`;
+the generated parts remain ordinary editable layers. One dataset edit redraws every dependent in the same atomic
+apply, keeping the existing part IDs and styles. Edit shared values with `dataset`; `chart-data` and `table-data`
+refuse cell edits while bound. Supplying a new inline `table` or `csv` detaches a consumer.
+
+```json
+[
+  {"type":"dataset","name":"sales","table":[["Month","Tea","Coffee"],["Jan",10,30],["Feb",20,40]]},
+  {"type":"chart","name":"sales-bars","data":"sales","width":400,"height":300},
+  {"type":"chart","name":"sales-shares","kind":"donut","data":"sales","derive":{"kind":"share","by":"series"},"x":420,"width":350,"height":300},
+  {"type":"text","name":"sales-total","text":"Total: ${data.sales.total|number}","size":24,"y":340},
+  {"type":"dataset","name":"sales","set":[{"category":"Jan","series":"Tea","value":70}]}
+]
+```
+
+`derive` aggregates into one series. `by: "series"` produces one category for each original series;
+`by: "category"` (the default) produces one for each original category. `sum` totals the group, `max` takes its
+largest nonempty cell, and `share` divides each group total by the grand total, giving fractions from 0 to 1.
+Shares require non-negative data; all-zero data gives zero shares. Null cells are omitted from aggregates.
+`derive: null` restores the original dataset. Derivations work on both charts and tables.
+
+Text fields use the existing filters: `${data.sales.total|number}`, `${data.sales.max.value|number:2}`,
+`${data.sales.max.label}`, `${data.sales.max.series}`, and `${data.sales.Tea.Jan}`. Dataset names use letters,
+numbers, underscores or hyphens. In series/category field segments, punctuation and spaces become hyphens,
+preserving case: `Cold brew` becomes `Cold-brew`. Ambiguous keys are refused. Empty cells have no value; use
+`|default:—` to show a fallback. The `placeholders` check reports a missing dataset key as a fix. Escape a literal
+field with `$${data.sales.total}`.
+
+`dataset` accepts `table`, `categories` plus `series`, `csv` (with optional `category_column` and
+`series_columns`), or `from` naming a chart. `from` follows source-chart edits, including its derivation, and cycles
+are refused. CSV data is saved in the document and only re-read with `action: "reload"`; rendering stays offline.
+`action: "remove"` refuses removal while a chart or table needs the dataset. Documents hold at most 64 datasets,
+each with up to 200 categories and 24 series. The CLI exposes the same fields:
+
+```bash
+vixl dataset sales --csv cups.csv
+vixl chart bar --name sales-bars --data sales
+vixl table --name sales-table --data sales
+vixl dataset sales --set Dec:Tea=3330
+vixl dataset sales --action reload
+```
+
+## Individual charts
+
 ```bash
 vixl chart bar --name sales --csv cups.csv --title "Cups sold" --x 60 --y 80 --width 1000 --height 560
 vixl chart-data --target sales --set Dec=3330            # December's number was wrong

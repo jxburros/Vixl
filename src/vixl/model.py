@@ -39,6 +39,7 @@ class Limits:
     max_history: int = 2000
     max_load_pixels: int = 160_000_000
     max_load_fonts: int = 64
+    max_nested_frames: int = 256
 
     def size(self, width: float, height: float, *, vector: bool = False) -> None:
         if vector:

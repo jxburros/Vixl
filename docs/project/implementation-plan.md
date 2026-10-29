@@ -24,6 +24,9 @@ render change, and the house-style quality and diversity eval for every default 
 
 ## Summary
 
+The table below is the original 2026-10-16 triage. The release-order sections record implementation since then;
+steps 0–7 shipped through 0.32.0 and the step 8 record tracks the current unreleased work.
+
 | Group | Issues | Already done or close now | Remaining work |
 | --- | --- | --- | --- |
 | [A. Security, robustness, concurrency](#a-security-robustness-concurrency-and-trackers) | 19 | none (5 partly fixed) | untrusted-input budgets, service and network policy, release chain, agent trust, locks and apply cost |
@@ -377,6 +380,24 @@ The original step 7 list:
 - **Host track:** #537, #538, #539, #540, #541, #543, #546, #545, #544, #547.
 
 ### Step 8: motion and media
+
+Implementation record (unreleased, 2026-10-29):
+
+| Track | Status and evidence |
+| --- | --- |
+| #611 transformed ungroup | Implemented; exact affine geometry, safe opacity and sampled animation; resampling can change antialiasing. |
+| #513 nested compositions | Implemented; per-instance timing, source-fps cache, nested budgets and export tests; existing depth cap stays 4. |
+| #613 delivery verification | Implemented; full decode, occurrence checks, coverage, source identity and explicit review. |
+| #612 lyric compositions | Implemented; deterministic occurrence variants, phrase fitting, attachments, part motion and preserved approved edits. |
+| #523 aligned lyric timing | Implemented; configured adapters, independent repairable timing records and word-timed builds; no bundled model. |
+| #214 shared data | Implemented; charts, tables and filtered text update atomically across pages. |
+| #662 Figma interchange | Implemented and offline-tested; live Figma visual verification remains pending. |
+| #177 Lottie | Supported subset implemented and reference-tested; native source easing and linked precomposition time maps remain open. |
+| #218 drawing finish | Implemented; curved bridges, smooth traces and tilt regression coverage. |
+| Export speed 1–6, 8 | Implemented with MP4/frame-ZIP budgets and pixel-parity tests; ZIP files are larger, VP9 encoding changes. |
+| Export speed 7, 9 | Deferred: no measured case yet justifies another fade-cache path or machine-specific hardware encoding. |
+
+Original feature order and performance proposals follow.
 
 #611, #613, #523, #612, #513, #177 (Lottie, as a plugin with a timeline export hook), the #214 remainder, the #218
 remainder, #662 (Figma export).
@@ -2904,6 +2925,15 @@ solutions to 1.0 and a stripped version below threshold, offline.
 
 ### #662 Export Vixl documents to Figma as editable layers
 
+**Status:** Implemented (unreleased), pending live Figma visual review. The interchange writer, published schema,
+CLI/Python/MCP/REST routing, bounded offline images, affine re-import and local Figma import plugin are covered by
+`tests/test_figma_export.py` and `tests/test_figma_export_geometry.py`. The plugin compiles with official typings
+and passes a mocked import. Native groups/text/vectors/gradients/images and supported stacks remain editable;
+unsupported appearances rasterize with reports, and resized/grid/wrapped stacks keep fixed editable positions.
+Manual poster/deck/chart verification in Figma has not been performed; timeline output is a still.
+
+**Original diagnosis and plan:**
+
 **Status:** Not started. Import shipped (`src/vixl/plugins/figma_import/`, `docs/guides/images/figma.md`, use-case DOC-42);
 BLK-26 in `docs/use-cases.md:723` says export is tracked here.
 
@@ -3273,8 +3303,12 @@ Checked against main at f26ba45 (Unreleased after 0.27.0). Ratings: C1 (hours) .
 
 ### #611 Allow ungrouping affine-transformed groups while preserving child appearance
 
+**Status**: Implemented (unreleased). Shared reparent planning preserves affine geometry, carries safe opacity and bakes supported group tracks; strict remains the default. `tests/test_ungroup_appearance.py` covers atomic refusals and static/animated geometry. Raster antialiasing can differ after changing the transform hierarchy, so acceptance uses exact geometry and bounded pixel error rather than the original max-2 channel target.
+
+**Original diagnosis and plan:**
+
 **Status**: Open, not started. The refusal is at src/vixl/design.py:131-146. The machinery to fix it exists: `reparent` with `keep: appearance` (src/vixl/reparent.py:227+, `_relinearize` :83 turns rotation and mirrors into rotation/flip and uneven scale into `affine`). Group animation baking exists in `group_bake.ungroup_tracks` (src/vixl/group_bake.py:98).
-**Cause / current state**: `ungroup` requires an identity transform, opacity 1, no mask/effects/styles/clip/repeat/flip, normal blend and an unresized group. It moves children by translation only (design.py:147-160).
+**Original cause**: `ungroup` requires an identity transform, opacity 1, no mask/effects/styles/clip/repeat/flip, normal blend and an unresized group. It moves children by translation only (design.py:147-160).
 **Plan**:
 1. Add the `ungroup` field `keep: "strict" | "appearance"`, defaulting to `strict` (today's refusal) as the issue asks; re-evaluate the default later. Schema in src/vixl/design_schema.py:94 with `schema.field` descriptions.
 2. With `appearance`, still refuse with a specific reason: mask, effects, styles, clip, repeat, non-normal blend, and opacity < 1 with > 1 overlapping child (reuse group_bake's overlap rule). The refusal is atomic: validate everything before mutating.
@@ -3293,8 +3327,15 @@ Checked against main at f26ba45 (Unreleased after 0.27.0). Ratings: C1 (hours) .
 
 ### #612 Lyric-video workflow: per-cue layout variants and reusable multi-part brand motion
 
+**Status**: Implemented (unreleased). Deterministic per-occurrence layouts and group variants, fitted phrases,
+kinetic entrances, metric-anchored saved objects, bounded part motion, cue previews and approved field overrides
+are covered by `tests/test_lyric_compositions.py`. Verification follows selected cue layers, including reused
+exports; timing-only source edits preserve approved styles. Provider alignment remains optional.
+
+**Original diagnosis and plan:**
+
 **Status**: Open, not started. Today: `section_styles` is limited to size/color/x/y (src/vixl/plugins/lyrics/lyrics.py:265-296), and there are `lyric-<section>` alternate layers and `cue-<words>` layers with `cue_animation` (:343). Symbols and objects exist (#381 closed).
-**Cause / current state**: A build writes one shared template's timeline (`write_timeline` :769, `_style_keys` :979). There is no per-occurrence selection, phrase layout or part-level motion resource.
+**Original cause**: A build writes one shared template's timeline (`write_timeline` :769, `_style_keys` :979). There is no per-occurrence selection, phrase layout or part-level motion resource.
 **Plan** (lyrics plugin only; no core change):
 1. Add a `compositions` request field: a list of `{match: {section?, occurrence?, cue?, contains?}, variant: <template group name> | {layout, ...}, assign: "cycle"|"seeded", seed}`. Assignment is deterministic, and repeated choruses get per-occurrence indices.
 2. Phrase layout: `layout: {kind: "setup-payoff"|"stack"|"single", fit: {min_size, max_size}, entrance: <kinetic preset>, unit: word|line}`. Lines are split at the cue's phrase break (`|` in LRC, or the longest-pause heuristic), sized with the existing `fit-text`, and entrances use `text-animate` presets (src/vixl/kinetic.py).
@@ -3314,8 +3355,12 @@ Checked against main at f26ba45 (Unreleased after 0.27.0). Ratings: C1 (hours) .
 
 ### #613 Film delivery verification: encoded-media checks, cue coverage, and explicit review status
 
+**Status**: Implemented (unreleased). Full decode, cue-occurrence/timing/text checks, bounded sampled design/brand checks, source hashes/transcode records, coverage and explicit approval are covered by `tests/test_film_delivery_verification.py`. Basic verification does not claim validation. Source replacement, including same-duration audio, invalidates approval; sources changing during export fail verification.
+
+**Original diagnosis and plan:**
+
 **Status**: Partly shipped. `film.verify_video` (src/vixl/plugins/film/film.py:618-680) checks the streams with ffprobe (dimensions, fps, frames, duration, audio stream, sample rate, channels) and reports frame quantization as expected (CHANGELOG.md:492, #601). Lyric export attaches it and warns `verification_failed` (src/vixl/plugins/lyrics/lyrics.py:1219-1225). `check_lines` (:1171) runs design checks on one settled frame per unique line. Outcome states exist (#525 closed). Missing: full-decode validation, cue text/timing coverage, animation extrema sampling, explicit structural/brand/visual/unreviewed split, and source identities.
-**Cause / current state**: The verification is a flat `checks` list. `check_lines` dedupes by text, so repeated choruses are never checked separately, and it does not sample entrance or exit extrema.
+**Original cause**: The verification is a flat `checks` list. `check_lines` dedupes by text, so repeated choruses are never checked separately, and it does not sample entrance or exit extrema.
 **Plan** (film + lyrics plugins):
 1. `verify_video(..., decode=False)`. With `decode=True`, run `ffmpeg -v error -i out -f null -`, add `decode` with stderr lines, and fail on any error.
 2. Add source identities: SHA-256 of the audio, LRC and build, the audio transcode (`source codec/rate -> output`) and the trim, all from `_mux_audio` (film.py:373).
@@ -3353,8 +3398,12 @@ Checked against main at f26ba45 (Unreleased after 0.27.0). Ratings: C1 (hours) .
 
 ### #523 Automatic lyric timing through forced alignment with reviewable timestamps
 
+**Status**: Implemented (unreleased). Configured HTTP/command alignment, independent timing records, repair/export actions and word-timed editable builds are covered by `tests/test_lyric_timing.py`. No model is bundled; musical timing remains an explicit review, and invalid records cannot build/export until repaired.
+
+**Original diagnosis and plan:**
+
 **Status**: Open, not started. The plugin states "Vixl does no audio analysis" (src/vixl/plugins/lyrics/lyrics.py:3). Enhanced-LRC word tags are parsed and kept "for later karaoke styling" (:141-162) but not used. Audio decode and resample exist (`audio.read_audio` src/vixl/audio.py:234), as does the `audio_analyze` silence detection (src/vixl/plugins/film/media_analysis.py:121-205). There is a provider registry in the ai plugin (`make_provider` src/vixl/plugins/ai/ai.py:787).
-**Cause / current state**: No aligner capability. Timestamps come only from the LRC.
+**Original cause**: No aligner capability. Timestamps come only from the LRC.
 **Plan** (lyrics plugin plus an ai-provider capability; no bundled model):
 1. Add a provider capability `align` to the ai plugin's provider types. There are two adapters:
    - `http`: POST audio plus lyric lines, receive `{lines:[{start,end,confidence,words:[...]}]}`.
@@ -3376,8 +3425,12 @@ Checked against main at f26ba45 (Unreleased after 0.27.0). Ratings: C1 (hours) .
 
 ### #513 Nested animation compositions with independent timing, looping and instance overrides
 
+**Status**: Implemented (unreleased). Link timing, source-fps caching, loop/trim/visibility, inspection, alias, tutorial and nested frame budgets are covered by `tests/test_nested_animation.py`, including a 60-frame/four-instance export budget. The existing stricter depth cap of 4 is retained instead of the original plan’s stated 8.
+
+**Original diagnosis and plan:**
+
 **Status**: Open, not started. `link` layers embed another `.vixl` with `variables` overrides, page and artboard (src/vixl/links.py:229-258, `prepare` :605). They always render the child statically: `_rendered` calls `render(prepared.view)` (:674-700), and `project_at` does not pass time into links.
-**Cause / current state**: There is no time mapping on link layers, and the link render cache key (`prepare` key :622) has no time. `prune_hidden` deliberately keeps links (src/vixl/timeline.py:712-715). Cycle detection exists (`check_cycle` :505, `entering` :544).
+**Original cause**: There is no time mapping on link layers, and the link render cache key (`prepare` key :622) has no time. `prune_hidden` deliberately keeps links (src/vixl/timeline.py:712-715). Cycle detection exists (`check_cycle` :505, `entering` :544).
 **Plan** (core: renderer and timeline must know):
 1. Add link layer fields `time: {offset, speed (0.1-10), trim_start, trim_end, loop: "none"|"loop"|"pingpong", before: "hold-first"|"hidden", after: "hold-last"|"hidden"}`, validated in `links.validate` (:343).
 2. In `project_at`, stamp each visible link layer with a private `_time` (parent time, mapped). `link_image` (:652) renders `timeline.render_at(prepared.view, child_time)` when the child has a timeline, and the cache key adds `child_time` quantised to the child fps.
@@ -3399,8 +3452,16 @@ Checked against main at f26ba45 (Unreleased after 0.27.0). Ratings: C1 (hours) .
 
 ### #177 Lottie export for vector animations
 
+**Status**: Partly implemented (unreleased). JSON, dotLottie and TGS export, native vectors/outlined text,
+group precompositions, sampled motion, animated raster fallbacks, strict refusals and resource budgets are covered
+by `tests/test_lottie.py`, including optional reference-player comparisons at five frames for seven scenes.
+CLI, MCP, REST and Python routes are covered. Motion is baked at export fps: preserving original easing handles
+and linked-precomposition time maps remains open. The `lottie-test` extra makes parity validation reproducible.
+
+**Original diagnosis and plan:**
+
 **Status**: Open, not started. No Lottie or TGS code in `src/vixl` (`grep -ri lottie` finds only a false hit in pdf_export).
-**Cause / current state**:
+**Original cause**:
 - Timeline tracks cover the main Lottie properties (`timeline.NUMERIC` src/vixl/timeline.py:29-30: x, y, opacity, rotation, scale, trim_start/end, dash_offset, stroke_width). Colours are separate.
 - Easing is a cubic bezier (`_bezier` :112), so it maps to Lottie `i`/`o` handles.
 - Vector paths and HarfBuzz glyph outlines (`text.glyph_outline` src/vixl/text.py:413) give the shapes.
@@ -3465,6 +3526,10 @@ Not done:
 
 ### #218 Drawing pipeline: fill at the canvas edge, curved gap closing, fill fit and crop
 
+**Status**: Implemented (unreleased). Tangent-following curved joins and default light centerline smoothing are covered by `tests/test_drawing_finish.py` plus the existing drawing/photo/fill-registration suites. Smoothing runs before simplification to retain large corners. Synthetic ±2° regressions pass within 0.15° without an algorithm change; the house-style comparison remains clean.
+
+**Original diagnosis and plan:**
+
 **Status**: Partly shipped. Shipped:
 - `edge_closes` and `edge_reach` (CHANGELOG.md:484, :324);
 - fills registered to their lines (0.27.0, :324);
@@ -3475,7 +3540,7 @@ Remaining:
 - (a) curved ends are still bridged with a straight midpoint join (`gaps._join` src/vixl/plugins/drawing/gaps.py:159-164);
 - (b) tilt overshoot (2.2 deg against 2.0 deg) was never investigated (`_deskew` search, drawing.py:275-285: a 0.5 deg grid then a 0.1 deg refine on a projection score);
 - (c) the traced stair steps are only removed by an explicit `smooth`.
-**Cause / current state**: As above.
+**Original cause**: As above.
 **Plan**:
 1. Curved bridge: for non-straight ends, insert a cubic Hermite with the end tangents from `_end` (gaps.py:26) and handle length = 0.4 x gap distance, sampled to points every 3 px. Use it only when both directions face each other (dot < 0) and the curve's max deviation is < gap. Otherwise keep the midpoint join.
 2. Tilt: add a regression with a synthetic 2.0 deg rotated drawing. If it overshoots, score on the line-mask Hough peak instead of the projection, or apply a parabolic sub-step fit around the best angle.
@@ -3492,6 +3557,10 @@ Remaining:
 
 ### #214 Bind chart data across charts and into text; warn when series colours override colors
 
+**Status**: Implemented (unreleased). Shared datasets, CSV reload, source charts, sum/share/max, atomic chart/table redraw and dotted text bindings are covered by `tests/test_datasets.py`, including inactive pages, masters, PDF and native PPTX delivery. Missing keys use the existing placeholders fix finding.
+
+**Original diagnosis and plan:**
+
 **Status**: Partly shipped:
 - the warning that series colours override `colors` and the tighter axis maximum (CHANGELOG.md:909);
 - charts and tables read a workspace CSV with `chart-data reload` (src/vixl/plugins/charts/charts.py:59, :238-245, :322-333, :1766).
@@ -3499,7 +3568,7 @@ Not done:
 - one dataset shared across charts;
 - derived series (sum, share);
 - text binding to computed values.
-**Cause / current state**:
+**Original cause**:
 - Each chart stores its own table in its recipe, and the CSV is re-read only on an explicit reload.
 - Text variables come from `render.document_variables` (src/vixl/render.py:164-182, plus form fields and `variables.with_maps` src/vixl/variables.py:74).
 - There is no hook through which plugins can contribute variables.

@@ -60,11 +60,21 @@ _DRAWS = ContextVar("link_draws", default=None)
 def schemas(add):
     """Operation schemas. position, crop, source_page and variables are typed here and checked in more detail
     when the operation runs (with specific messages); null clears one on a link with a target."""
-    from .schema import S, SIZE, COORD, enum
+    from .schema import S, SIZE, COORD, enum, field
 
     settings = {"fit": enum(*FITS), "position": {"type": ["string", "array", "null"]}, "crop": {"type": ["object", "null"]},
                 "artboard": {"type": ["string", "null"]}, "source_page": {"type": ["string", "integer", "null"]},
                 "variables": {"type": ["object", "null"]},
+                "time": {"type": ["object", "null"], "additionalProperties": False,
+                         "description": "Source animation timing in milliseconds: offset, speed, trim_start/end, loop, before and after. null resets it.",
+                         "properties": {
+                             "offset": field({"type": "number"}, "Parent time at which the trimmed source starts (default 0)."),
+                             "speed": field({"type": "number", "minimum": 0.1, "maximum": 10}, "Source playback rate (default 1)."),
+                             "trim_start": field({"type": "number", "minimum": 0}, "First source time (default 0 ms)."),
+                             "trim_end": field({"type": "number", "minimum": 0}, "Last source time (default source duration)."),
+                             "loop": field(enum("none", "loop", "pingpong"), "Repeat the trimmed interval (default none)."),
+                             "before": field(enum("hold-first", "hidden"), "Before the offset (default hold-first)."),
+                             "after": field(enum("hold-last", "hidden"), "After a non-looping interval (default hold-last).")}},
                 "corner_pin": {"type": ["array", "null"], "items": {"type": "array", "items": {"type": "number"},
                                                                      "minItems": 2, "maxItems": 2},
                                "minItems": 4, "maxItems": 4,
@@ -92,7 +102,7 @@ def execute(project, op):
         return _embed(project, layer)
     require(not {"name", "x", "y", "width", "height"} & op.keys(),
             "Changing a link layer's name, position or size takes rename, move or resize; link with a target changes "
-            "its source, fit, position, crop, artboard, source_page, variables or corner_pin")
+            "its source, fit, position, crop, artboard, source_page, variables, time or corner_pin")
     return _set(project, layer, op)
 
 
@@ -104,6 +114,7 @@ def _add(project, op):
     child, revision = open_source(project, path, op["source"])
     size = _canvas_size(child, settings.get("source_page"), settings.get("artboard"), op["source"])
     check_cycle(project, path, op["source"])
+    timing(child, settings, page=settings.get("source_page"))
     region = settings.get("crop") or [0, 0, *size]
     _crop_within(region, size, op["source"])
     rw, rh = region[2] - region[0], region[3] - region[1]
@@ -125,7 +136,7 @@ def _add(project, op):
 def _set(project, layer, op):
     settings = _settings(op, nullable=True, project=project)
     require(settings or "source" in op or "fit" in op, "A link with a target needs something to change: source, artboard, "
-            "source_page, variables, fit, position, crop or corner_pin", field="source")
+            "source_page, variables, fit, position, crop, time or corner_pin", field="source")
     if "source" in op:
         layer["source"] = stored_source(project, locate(project, op["source"]))
     for key, value in settings.items():
@@ -205,6 +216,7 @@ def _record(project, layer, accept=True):
     path = locate(project, layer["source"])
     child, revision = open_source(project, path, layer["source"])
     size = _canvas_size(child, layer.get("source_page"), layer.get("artboard"), layer["source"])
+    timing(child, layer, page=layer.get("source_page"))
     if layer.get("crop"):
         _crop_within(layer["crop"], size, layer["source"])
     check_cycle(project, path, layer["source"])
@@ -222,11 +234,11 @@ def _embed(project, layer):
     image = layer_ink(project, layer, bounds)
     x, y = ink_origin(image, bounds)
     provenance = {"type": "linked-document", **{key: deepcopy(layer[key]) for key in
-                                                ("source", "source_hash", "artboard", "source_page", "variables") if key in layer}}
+                                                ("source", "source_hash", "artboard", "source_page", "variables", "time") if key in layer}}
     layer.update(type="raster", asset=add_image(project, image), width=image.width, height=image.height, x=x, y=y,
                  rotation=0, flip_x=False, flip_y=False, effects=[], mask=None, opacity=1, constraints={},
                  provenance=provenance)
-    for key in ("source", "source_hash", "source_size", "artboard", "source_page", "variables", "fit", "position", "crop"):
+    for key in ("source", "source_hash", "source_size", "artboard", "source_page", "variables", "fit", "position", "crop", "time", "_time"):
         layer.pop(key, None)
 
 
@@ -234,7 +246,7 @@ def _settings(op, nullable=False, project=None):
     """The validated page, artboard, variables, position and crop of a link operation. ``None`` (when
     ``nullable``) clears a setting. Given the ``project``, ``${name}`` references must name its variables."""
     settings = {}
-    for key in ("artboard", "source_page", "variables", "position", "crop", "corner_pin"):
+    for key in ("artboard", "source_page", "variables", "position", "crop", "corner_pin", "time"):
         if key not in op:
             continue
         value = op[key]
@@ -255,10 +267,73 @@ def _settings(op, nullable=False, project=None):
             value = _position(value)
         elif key == "corner_pin":
             value = corner_pin(value)
+        elif key == "time":
+            value = _time_settings(value)
         else:
             value = _crop(value)
         settings[key] = value
     return settings
+
+
+def _time_settings(value):
+    from .timeline import MAX_DURATION
+
+    require(isinstance(value, dict) and set(value) <= {"offset", "speed", "trim_start", "trim_end", "loop", "before", "after"},
+            "Link time accepts offset, speed, trim_start, trim_end, loop, before and after", field="time")
+    for key in ("offset", "speed", "trim_start", "trim_end"):
+        if key in value:
+            low, high = (0.1, 10) if key == "speed" else (-MAX_DURATION if key == "offset" else 0, MAX_DURATION)
+            finite(value[key], f"time.{key}", low, high)
+    for key, allowed in (("loop", ("none", "loop", "pingpong")), ("before", ("hold-first", "hidden")),
+                         ("after", ("hold-last", "hidden"))):
+        if key in value:
+            require(isinstance(value[key], str) and value[key] in allowed,
+                    f"time.{key} must be {' or '.join(allowed)}", field=f"time.{key}")
+    if "trim_end" in value:
+        require(value["trim_end"] > value.get("trim_start", 0), "time.trim_end must follow time.trim_start", field="time.trim_end")
+    return dict(value)
+
+
+def timing(child, layer, page=None):
+    """The instance's effective interval, in parent and source milliseconds."""
+    from .render import view_page
+
+    timeline = view_page(child, page).state.get("timeline")
+    settings = _time_settings(layer.get("time", {}))
+    duration = timeline["duration"] if timeline else 0
+    start, end = settings.get("trim_start", 0), settings.get("trim_end", duration)
+    require((start == end == 0 and not timeline) or 0 <= start < end <= duration,
+            f"Link trim must be inside the source duration ({duration} ms)", field="time")
+    offset, speed = settings.get("offset", 0), settings.get("speed", 1)
+    return {"source_duration": duration, "offset": offset, "speed": speed, "trim_start": start, "trim_end": end,
+            "loop": settings.get("loop", "none"), "before": settings.get("before", "hold-first"),
+            "after": settings.get("after", "hold-last"), "window": [offset, offset + (end - start) / speed]}
+
+
+def mapped_time(settings, parent_time, fps):
+    """Source frame time, or None when this instance is hidden outside its interval."""
+    start, end = settings["trim_start"], settings["trim_end"]
+    span = end - start
+    elapsed = (parent_time - settings["offset"]) * settings["speed"]
+    if elapsed < 0:
+        if settings["before"] == "hidden":
+            return None
+        value = start
+    elif span == 0:
+        value = start
+    elif settings["loop"] == "loop":
+        value = start + elapsed % span
+    elif settings["loop"] == "pingpong":
+        phase = elapsed % (2 * span)
+        value = start + min(phase, 2 * span - phase)
+    elif elapsed > span:
+        if settings["after"] == "hidden":
+            return None
+        value = end
+    else:
+        value = start + elapsed
+    # Sampling and the cache key use the same frame, so two parent frames cannot disagree about a hit.
+    return min(end, max(start, math.floor(value * fps / 1000 + 1e-9) * 1000 / fps))
 
 
 def _variables(value):
@@ -370,6 +445,8 @@ def validate(layer, state):
                 "Invalid link source page", "invalid_project")
     if "corner_pin" in layer:
         corner_pin(layer["corner_pin"])
+    if "time" in layer:
+        _time_settings(layer["time"])
     if "source_hash" in layer:
         require(isinstance(layer["source_hash"], str) and re.fullmatch(r"[0-9a-f]{64}", layer["source_hash"]),
                 "Invalid link source hash", "invalid_project")
@@ -575,7 +652,7 @@ def draw_scope():
     if _DRAWS.get() is not None:
         yield
         return
-    token = _DRAWS.set([0])
+    token = _DRAWS.set([0, 0])
     try:
         yield
     finally:
@@ -591,6 +668,17 @@ def count_draw(source):
             f"Drawing this document draws linked documents more than {MAX_LINK_DRAWS} times (counting nested "
             "links); link fewer copies, or embed some with link-embed", "resource_limit", field="links",
             source=source)
+
+
+def count_frame(project, source):
+    """Bound animated source evaluations, including nested instances, within one parent render."""
+    counter = _DRAWS.get()
+    if counter is None:
+        return
+    counter[1] += 1
+    require(counter[1] <= project.limits.max_nested_frames,
+            f"Drawing this frame samples more than {project.limits.max_nested_frames} nested animation frames; "
+            "use fewer animated instances", "resource_limit", field="max_nested_frames", source=source)
 
 
 @contextmanager
@@ -667,14 +755,34 @@ def prepare(project, layer):
     size = _canvas_size(child, layer.get("source_page"), layer.get("artboard"), source)
     values = overrides(project, layer)
     view = child.clone()
+    view.limits = project.limits
     view._workspace = getattr(project, "_workspace", None)
     view.allow_linked = getattr(project, "allow_linked", False)
     stamps = _image_variables(project, view, values, source)
-    candidate = artboard_project(view_page(view, layer.get("source_page")), layer.get("artboard"), None, values or None)
+    selected = view_page(view, layer.get("source_page"))
+    interval = timing(selected, layer)
+    parent_time = layer.get("_time", getattr(project, "_link_time", 0))
+    timeline = selected.state.get("timeline")
+    child_time = mapped_time(interval, parent_time, timeline.get("fps", 30)) if timeline else parent_time
+    if child_time is None:
+        selected.state["layers"] = []
+        selected.state["canvas"]["background"] = "transparent"
+    elif timeline:
+        from .timeline import project_at
+
+        count_frame(project, source)
+        selected = project_at(selected, child_time)
+    else:
+        selected._link_time = child_time
+    candidate = artboard_project(selected, layer.get("artboard"), None, values or None)
+    if child_time is None:
+        # An artboard can choose its own background after the source frame has been sampled.
+        candidate.state["canvas"]["background"] = "transparent"
     project.limits.size(*size)
     # Nested links change what a source draws without changing its own file: they are part of the key.
     key = (revision, tuple(fingerprint(child)), layer.get("source_page"), layer.get("artboard"),
-           json.dumps(values, sort_keys=True), tuple(stamps))
+           json.dumps(values, sort_keys=True), tuple(stamps),
+           child_time if timeline or link_layers(selected.state) else None)
     return Prepared(path, revision, candidate, size, key)
 
 
@@ -821,6 +929,9 @@ def status(project):
             child, revision = open_source(project, path, layer["source"])
             size = _canvas_size(child, layer.get("source_page"), layer.get("artboard"), layer["source"])
             item.update(revision=revision[:12], size=list(size))
+            interval = timing(child, layer, page=layer.get("source_page"))
+            if interval["source_duration"] or "time" in layer:
+                item["timing"] = interval
             recorded = layer.get("source_hash")
             if recorded:
                 item["recorded"] = recorded[:12]
@@ -931,7 +1042,7 @@ def compile_command(cmd, args):
     elif cmd == "link-set":
         p.add_argument("target")
         p.add_argument("--source")
-        p.add_argument("--clear", action="append", choices=["artboard", "source_page", "variables", "crop", "corner_pin"],
+        p.add_argument("--clear", action="append", choices=["artboard", "source_page", "variables", "crop", "corner_pin", "time"],
                        help="Remove a setting (repeat)")
     else:
         p.add_argument("target", nargs="?", help="The link layer" + (" (default: every link)" if cmd == "link-refresh" else ""))
@@ -944,6 +1055,7 @@ def compile_command(cmd, args):
         p.add_argument("--set", action="append", metavar="NAME=VALUE", help="Override a source variable (repeat)")
         p.add_argument("--corner-pin", dest="corner_pin", type=json.loads,
                        help="JSON [[x, y] ×4]: top-left, top-right, bottom-right, bottom-left in the layer's pixels")
+        p.add_argument("--time", type=json.loads, help="JSON animation timing: offset, speed, trim_start/end, loop, before, after")
     a = vars(p.parse_args(args))
     op = {"type": "link" if cmd == "link-set" else cmd}
     clear = a.pop("clear", None) or []

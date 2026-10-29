@@ -814,9 +814,12 @@ def parse_json_object(text):
 
 
 def make_provider(name, settings):
+    from .command_provider import CommandProvider
+
     kind = settings.get("type", "http")
     cls = {
         "http": HTTPProvider,
+        "command": CommandProvider,
         "openai": OpenAIProvider,
         "mistral": OpenAIProvider,
         "meta": MetaProvider,

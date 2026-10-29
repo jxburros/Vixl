@@ -29,7 +29,7 @@ See the [provider matrix](reference/providers.md#capability-matrix) before choos
 5. [Resolve common problems](troubleshooting.md): installation, text, checks, imports and providers.
 
 Pre-1.0 and in Beta: breaking changes are allowed and noted in the [changelog](../CHANGELOG.md). Current tagged
-release: **0.32.0** ([release notes](../CHANGELOG.md#0320)).
+source version: **0.33.0** (release pending) ([release notes](../CHANGELOG.md#0330)).
 See [installation and updating](reference/releases.md) for Windows, source and agent bundles.
 
 ## Learn by making

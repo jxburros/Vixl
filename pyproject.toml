@@ -32,6 +32,7 @@ dependencies = ["mcp>=1.21.1,<2", "Pillow>=13,<14", "numpy>=2.0,<3", "httpx>=0.2
 pdf = ["pypdfium2>=5.0,<6"]
 server = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1"]
 anthropic = ["anthropic>=1.11,<2"]
+lottie-test = ["rlottie-python>=1.3.8,<2"]
 dev = ["pypdfium2>=5.0,<6", "pypdf>=5,<7", "python-pptx>=1.0,<2", "pytest>=8,<10", "pytest-xdist>=3.6,<4", "pyyaml>=6.0.2,<7", "fastapi>=0.115,<1", "uvicorn>=0.30,<1", "mcp>=1.21.1,<2", "anthropic>=1.11,<2", "ruff>=0.12"]
 
 [project.urls]
@@ -51,7 +52,11 @@ path = "src/vixl/__init__.py"
 packages = ["src/vixl"]
 
 [tool.hatch.build.targets.sdist]
-include = ["/src/vixl", "/tests", "/docs", "/skills", "/CHANGELOG.md", "/pyproject.toml", "/README.md", "/LICENSE"]
+include = ["/src/vixl", "/tests", "/docs", "/skills", "/CHANGELOG.md", "/pyproject.toml", "/README.md", "/LICENSE",
+    "/integrations/figma-plugin/manifest.json", "/integrations/figma-plugin/code.ts",
+    "/integrations/figma-plugin/code.js", "/integrations/figma-plugin/ui.html",
+    "/integrations/figma-plugin/README.md", "/integrations/figma-plugin/package.json",
+    "/integrations/figma-plugin/package-lock.json", "/integrations/figma-plugin/tsconfig.json"]
 exclude = ["/tests/visual/_failures", "__pycache__"]
 
 [tool.mypy]

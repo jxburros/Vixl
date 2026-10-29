@@ -175,7 +175,7 @@ class Queue:
             from .assets import read_bounded
 
             request = payload["request"]
-            for key in ("audio", "lyrics", "template"):
+            for key in ("audio", "timing" if request.get("timing") else "lyrics", "template"):
                 source = self.resolve(request[key])
                 destination = folder / (f"input-{key}" + source.suffix)
                 write_bytes(destination, read_bounded(source, self.limits.max_project_bytes))

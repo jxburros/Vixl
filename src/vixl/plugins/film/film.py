@@ -394,7 +394,32 @@ def _mux_audio(spec, root, video, temp, settings, first, last, suffix):
     ])
     result = subprocess.run(command, capture_output=True, timeout=600)
     require(result.returncode == 0, "Audio mix failed", "codec_error")
-    return mixed, sound
+    sources = []
+    ffprobe = shutil.which("ffprobe")
+    for track in spec["audio"]:
+        if "source" not in track:
+            continue
+        path = local_path(root, track["source"])
+        info = _probe_media(ffprobe, path) if ffprobe else None
+        stream = next((s for s in (info or {}).get("streams", []) if s.get("codec_type") == "audio"), {})
+        sources.append({"source": track["source"], "sha256": file_sha256(path),
+                        "codec": stream.get("codec_name"), "sample_rate": stream.get("sample_rate"),
+                        "channels": stream.get("channels"), "trim_ms": track.get("trim", 0),
+                        "start_ms": track.get("start", 0)})
+    return mixed, {**sound, "audio_transcode": {
+        "sources": sources, "output": {"codec": "aac" if suffix == ".mp4" else "opus", **sound},
+        "trim": {"start_ms": first * 1000 / settings["fps"], "end_ms": last * 1000 / settings["fps"]}}}
+
+
+def file_sha256(path):
+    """Hash source bytes without loading a song or a built archive into memory."""
+    import hashlib
+
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for block in iter(lambda: stream.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def export(spec, root, output, *, limits=None, cancelled=lambda: False, progress=lambda value: None,
@@ -614,19 +639,47 @@ def _seconds(*values):
     return None
 
 
-def verify_video(path, result, *, requested_ms=None):
+def _decode_video(path):
+    """Decode every stream; stderr at error level is a failure even when ffmpeg exits zero."""
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        return {"check": "decode", "passed": False, "reason": "ffmpeg is not on PATH", "stderr": []}
+    try:
+        with tempfile.TemporaryFile() as errors:
+            decoded = subprocess.run([ffmpeg, "-nostdin", "-v", "error", "-i", str(path), "-map", "0:v?",
+                                      "-map", "0:a?", "-f", "null", "-"],
+                                     stdout=subprocess.DEVNULL, stderr=errors, timeout=600)
+            errors.seek(0)
+            detail = errors.read(16_385)
+        lines = detail[:16_384].decode("utf-8", "replace").strip().splitlines()
+        return {"check": "decode", "passed": decoded.returncode == 0 and not lines,
+                "returncode": decoded.returncode, "stderr": lines, "stderr_truncated": len(detail) > 16_384}
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"check": "decode", "passed": False, "reason": type(exc).__name__, "stderr": []}
+
+
+def verify_video(path, result, *, requested_ms=None, decode=False):
     """Read an encoded MP4/WebM back with ffprobe and compare it with what the export rendered
     (``result``: its width, height, fps, frames and, with audio, sample_rate and channels).
 
     Returns ``{"status", "passed", "checks", "video", "audio", "quantization"}``. ``status`` is
     ``passed``, ``failed`` or ``skipped`` (no ffprobe, or nothing to compare); ``quantization``
     reports how far the whole-frame length is from ``requested_ms``, which is expected and at most
-    one frame, not drift."""
+    one frame, not drift. ``decode=True`` also decodes every video/audio stream with ffmpeg; an
+    error on stderr, nonzero exit or timeout fails the decode check."""
+    def finish(report):
+        if decode:
+            report.setdefault("checks", []).append(_decode_video(path))
+            if any(not item["passed"] for item in report["checks"]):
+                report.update(status="failed", passed=False)
+        report["validated"] = report.get("passed") is True
+        return report
+
     ffprobe = shutil.which("ffprobe")
     if not ffprobe:
-        return {"status": "skipped", "passed": None, "reason": "ffprobe is not on PATH"}
+        return finish({"status": "skipped", "passed": None, "reason": "ffprobe is not on PATH"})
     if not {"width", "height", "fps", "frames"} <= set(result):
-        return {"status": "skipped", "passed": None, "reason": "the export did not report the encoded size"}
+        return finish({"status": "skipped", "passed": None, "reason": "the export did not report the encoded size"})
     info = _probe_media(ffprobe, path)
     checks = []
 
@@ -635,7 +688,7 @@ def verify_video(path, result, *, requested_ms=None):
 
     if info is None:
         check("readable", True, False, False)
-        return {"status": "failed", "passed": False, "checks": checks}
+        return finish({"status": "failed", "passed": False, "checks": checks})
     streams = info.get("streams") or []
     video = next((s for s in streams if s.get("codec_type") == "video"), None)
     audio = next((s for s in streams if s.get("codec_type") == "audio"), None)
@@ -676,7 +729,7 @@ def verify_video(path, result, *, requested_ms=None):
         check("quantization", f"under {round(frame_ms, 3)} ms", delta, abs(delta) < frame_ms)
     report["passed"] = all(item["passed"] for item in checks)
     report["status"] = "passed" if report["passed"] else "failed"
-    return report
+    return finish(report)
 
 
 def preview_interval(settings, *, start=None, end=None, shot=None):

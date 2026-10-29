@@ -99,7 +99,10 @@ def schemas(add):
                   "below": {**S, "description": "Place the new group directly below this layer (same parent)."}},
         ["name", "targets"])
     add("ungroup", {"force": {"type": "boolean", "description": "Ungroup a declared object too, dropping its object "
-                              "record (its parts keep their names); without it an object refuses"}})
+                              "record (its parts keep their names); without it an object refuses"},
+                    "keep": field(enum("strict", "appearance"), "strict (default) requires reset group transforms; "
+                                  "appearance maps rotation, flips, skew and scale onto the editable children. "
+                                  "Masks, effects, blend isolation and overlapping fades still refuse.")})
     from .reparent import schema as reparent_schema
 
     reparent_schema(add)

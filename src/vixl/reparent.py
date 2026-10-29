@@ -9,6 +9,7 @@ tracks, when a sampled frame would not look the same.
 """
 
 import math
+from copy import deepcopy
 
 import numpy as np
 
@@ -137,6 +138,58 @@ def _place(layer, centre):
     tw, th = transformed_size(layer)
     x, y = stored_origin(layer, (centre[0] - tw / 2, centre[1] - th / 2))
     layer["x"], layer["y"] = _clean(x), _clean(y)
+
+
+def plan_moves(project, targets, parent_id):
+    """Plan appearance-preserving moves without changing layers or their tracks.
+
+    Ungroup uses the same mapping as reparent, but replaces the group's stacking slot and
+    bakes its animation separately. Validate every target before either caller changes one.
+    """
+    from .affine import layer_matrix
+    from .render import rest_size
+
+    index, local = _matrices(project)
+    destination = np.linalg.inv(_parent_matrix(parent_id, index, local))
+    parent_name = project.layer(parent_id)["name"] if parent_id else "the page"
+    plans = []
+    for item in targets:
+        resolved = index[item["id"]]
+        source = _parent_matrix(item.get("parent"), index, local)
+        transform = destination @ source
+        full = transform @ layer_matrix(resolved, local[item["id"]])
+        q = transform[:2, :2]
+        keyed = _keyed(project, item["id"])
+        if keyed and not np.allclose(q, np.eye(2), atol=1e-9):
+            fixed = sorted(t["property"] for t in keyed if t["property"] in PARENT_SPACE)
+            if fixed:
+                raise VixlError(
+                    "invalid_operation",
+                    f"Cannot move {item['name']!r} into {parent_name!r} keeping its "
+                    f"animation: its {', '.join(fixed)} track(s) are in its parent's coordinates, and the new "
+                    "parent is rotated, mirrored or scaled differently. Remove those tracks (keyframe-remove), "
+                    "use keep: local, or move it into a group with the same orientation and scale",
+                    field="targets", tracks=fixed)
+        rest = rest_size(resolved)
+        centre = full @ np.array([rest[0] / 2, rest[1] / 2, 1.0])
+        moved = deepcopy(item)
+        _relinearize(moved, q, keyed)
+        _set_parent(moved, parent_id)
+        moved["constraints"] = {}
+        _place(moved, centre[:2])
+        plans.append((item, moved, transform[:2, 2]))
+    return plans
+
+
+def apply_moves(project, plans, *, shift_tracks=True):
+    for item, moved, offset in plans:
+        item.clear()
+        item.update(moved)
+        if shift_tracks:
+            for track in _keyed(project, item["id"]):
+                if track["property"] in ("x", "y"):
+                    for key in track["keys"]:
+                        key["value"] += float(offset[0 if track["property"] == "x" else 1])
 
 
 def _insert(state, moved, parent, op, project, old_parents):
@@ -268,41 +321,7 @@ def execute(project, op):
     animated = {item["id"]: _keyed(project, item["id"]) for item in targets}
     notes = []
     if keep == "appearance":
-        from .affine import layer_matrix
-        from .render import rest_size
-
-        index, local = _matrices(project)
-        destination = np.linalg.inv(_parent_matrix(parent_id, index, local))
-        plans = []
-        for item in targets:
-            resolved = index[item["id"]]
-            source = _parent_matrix(item.get("parent"), index, local)
-            full = destination @ source @ layer_matrix(resolved, local[item["id"]])
-            q = (destination @ source)[:2, :2]
-            rest = rest_size(resolved)
-            plans.append((item, q, full @ np.array([rest[0] / 2, rest[1] / 2, 1.0]),
-                          (destination @ source)[:2, 2]))
-        for item, q, centre, offset in plans:
-            keyed = animated[item["id"]]
-            if keyed and not np.allclose(q, np.eye(2), atol=1e-9):
-                fixed = sorted(t["property"] for t in keyed if t["property"] in PARENT_SPACE)
-                if fixed:
-                    raise VixlError(
-                        "invalid_operation",
-                        f"Cannot move {item['name']!r} into {parent['name'] if parent else 'the page'!r} keeping its "
-                        f"animation: its {', '.join(fixed)} track(s) are in its parent's coordinates, and the new "
-                        "parent is rotated, mirrored or scaled differently. Remove those tracks (keyframe-remove), "
-                        "use keep: local, or move it into a group with the same orientation and scale",
-                        field="targets", tracks=fixed)
-            _relinearize(item, q, keyed)
-            _set_parent(item, parent_id)
-            item["constraints"] = {}
-            _place(item, centre[:2])
-            if keyed and np.allclose(q, np.eye(2), atol=1e-9):
-                for track in keyed:
-                    if track["property"] in ("x", "y"):
-                        for key in track["keys"]:
-                            key["value"] += float(offset[0 if track["property"] == "x" else 1])
+        apply_moves(project, plan_moves(project, targets, parent_id))
     else:
         for item in targets:
             _set_parent(item, parent_id)

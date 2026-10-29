@@ -89,7 +89,11 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    line's hide time); `end_at_audio` ends the last line with the song. `section_styles` (`{chorus: {size, color, x, y}}`) restyles
    the lyric per section; `sample_rate` sets the audio rate (default the song's). `segments: 10000` renders in
    parts that a re-run resumes; long songs also run as the `lyric-video` job kind. See
-   `docs/guides/motion/lyric-video.md`.
+   `docs/guides/motion/lyric-video.md`. Every export verifies cue timing/text per occurrence; `verify: "full"`
+   also decodes the entire file and samples up to four visual/brand frames per cue (400 total), with explicit
+   unsampled coverage and source hashes. Export leaves review pending. After human review, `lyric-video-review`
+   (`build`, `approve: true` or `changes_requested: true`, optional `findings`) records a decision that expires
+   when the build changes. Only full passing verification with current approval can return `validated: true`.
 10. Form filling: `form-fill` fills the open form from `values` (one copy) or a `data` CSV (one
    file per row, or `combine` into one PDF); the `form-fill` job kind freezes the form and the data
    and deletes the data copy when done. See `docs/guides/output/forms.md`.
@@ -226,3 +230,16 @@ never written: the run reports `withheld` (count, profile, fail_on, variants, to
 Each result's `checks` is `{suites: {name: suite report}, design: report or null, placeholders: report or null}`. The `final`
 profile also checks `composition` and fails on `review` findings, so a `final` campaign or `check-all` run fails on
 unresolved composition findings unless they are waived with a reason or repaired (`repair-layout`).
+
+For unsynchronized lyric text, `lyrics-align` explicitly calls a configured HTTP/command alignment provider
+and saves a reviewable timing JSON. Review its warnings and per-word confidence, repair with
+`lyrics-timing-edit`, and optionally write enhanced LRC with `lyrics-timing-export`. Build with `timing`
+in place of `lyrics`; `animation: {in: "typewriter", unit: "word"}` uses the recorded word times.
+No provider configuration or executable is accepted from a document or request. Timing edits do not
+re-run inference. See the lyric-video guide's Aligned timing section and the provider setup reference.
+
+Use lyric `compositions` rules for per-occurrence layouts: match section/occurrence/cue/contains and
+cycle or seed choices among named template groups or single/stack/setup-payoff layouts. Layouts fit
+phrases (`|` marks a break), use kinetic entrances, optionally attach a saved object at text ink/baseline
+anchors, and add bounded part motion. `lyrics-preview` reviews one built cue. Approved per-cue field
+overrides survive rebuilds with the same lyric source; rebuilds need fresh review.

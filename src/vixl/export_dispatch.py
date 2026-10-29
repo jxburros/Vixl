@@ -110,8 +110,11 @@ def export(
     if isinstance(page, str) and page.isdigit():
         page = int(page)
     suffix = Path(path).suffix.lower() if path else ""
+    if format is None and path and str(path).lower().endswith(".figma.json"):
+        format = "FIGMA"
     requested = (format or suffix.lstrip(".") or "PNG").upper()
-    sheet = page == "all" or (all_pages or bool(pages)) and requested not in ("PDF", "PPTX", "HTML", "HTM")
+    sheet = page == "all" and requested != "FIGMA" or (all_pages or bool(pages)) and requested not in (
+        "PDF", "PPTX", "HTML", "HTM", "FIGMA")
     require(page is None or not pages, "Pass page or pages, not both")
     if sheet:
         require(requested in ("PNG", "JPG", "JPEG", "WEBP", "TIFF", "TIF", "AVIF"),
@@ -161,7 +164,7 @@ def export(
     from .plugins import first as plugin_first
 
     exported = plugin_first("export-format", project, path, (format or suffix.lstrip(".")).lower(), report,
-                            pages=pages, page=page, artwork=artwork, isolate=isolate)
+                            pages=pages, page=page, artwork=artwork, isolate=isolate, variables=variables)
     if exported is not None:
         return exported
     if (format or "").upper() == "PSD" or suffix == ".psd":

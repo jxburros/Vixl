@@ -61,6 +61,8 @@ vixl_export(kind='timeline', path="sprites.png", format="sheet", columns=6)
 - Poster frame: `vixl_export(kind='timeline', poster="end")` puts that frame first in GIF/WebP/APNG (loop stays seamless) and warns when it is empty. `vixl_render(action='timeline', thumbnail=360)` shows poster/middle/last at phone width; `times=[...]` picks frames; frame 0 is labelled "poster".
 - Export results report the written file: sheet `size`, and GIF/WebP/APNG `frames` after identical frames merged (`rendered_frames` = rendered).
 - GIF: `dither` auto/none/ordered/floyd (shared palette; ordered never shimmers), `max_bytes` soft target. Results include `bytes` and a `warnings` entry above 1 MB (not when `target_bytes`/`preset` set the size) or max_bytes that suggests MP4/WebP with a measured WebP size (gradient GIFs get it at any size). `target_bytes` fits timeline GIF/WebP/APNG to a size (colors or WebP quality, then fps, then scale; reports `chosen`), and `preset` `chat`/`web`/`email` sets fps, width, colors and target_bytes. `colors=64` (2–256) plus lower `fps` shrink GIFs a lot (728×90, 4 s banner: 190 KB default → 41 KB with `colors=32, fps=10`); prefer WebP/MP4 where accepted.
+- MP4/WebM: `preset: "draft"` encodes faster, often making larger files; `"final"` is the default. Both keep `quality`, dimensions and frame rate. The export reports its preset. Automatic render workers start only when the first chunk's measured rendering cost predicts a benefit; `VIXL_FRAME_WORKERS=1` forces sequential rendering.
+- Lottie: timeline `.json`, `.lottie` or `.tgs` exports keep supported shapes and outlined text vector, sample motion at `fps`, and report animated raster `fallbacks`. `strict: true` refuses fallbacks. TGS is always strict, 512×512, at most 60 fps and 3 seconds, at most 64 KiB. Original easing curves and linked time maps are baked, and audio is refused. For `.json` use `vixl_export kind:"timeline"`. See [exporting](../../../docs/guides/output/exporting.md#lottie-dotlottie-and-telegram-stickers).
 - Frame snapshots (`frame-save`, `vixl_export(kind='animation')`) work at any canvas size within the pixel budget; `sampling="smooth"` allows scales like 0.5 or 1.5 for illustrated (non-pixel-art) frames.
 
 
@@ -80,3 +82,5 @@ Promo video templates: `video-promo-kinetic`, `video-promo-editorial`, `video-pr
 accept `title`, `subtitle`, `cta`, and optional `background`, `foreground`, `accent`, `on_accent`
 color variables; otherwise colors use seeded palette roles. Check bounds, contrast and a contact
 sheet with supplied copy; use a visible poster near 2.5s (the loop begins on the background).
+
+Animated `.vixl` sources can be placed with `animation-instance` (alias of `link`) and `time: {offset, speed, trim_start, trim_end, loop, before, after}`. Times are milliseconds; `loop` is `none`, `loop` or `pingpong`. Instances retain independent variables and sample at source fps. See `docs/tutorials/nested-animation.md`.

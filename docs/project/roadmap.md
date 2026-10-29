@@ -2,7 +2,7 @@
 
 [Documentation home](../README.md) · [House style decisions](house-style.md) · [Releases](../reference/releases.md) · [Changelog](../../CHANGELOG.md)
 
-This plan ordered the open issues after 0.24.0. Releases 0.25.0 to 0.31.0 have shipped since, and step 7 is built for the next: the "What … settled"
+This plan ordered the open issues after 0.24.0. Releases 0.25.0 to 0.32.0 have shipped since: the "What … settled"
 sections record what each one settled, and the open work is under Craft and Later. Each issue was rated for **complexity** (C1 a few hours, C2 about a
 day, C3 several days, C4 one to two weeks, C5 several weeks or open-ended) and **payoff** (P1 cosmetic or rare, P2 a
 narrow workflow, P3 a common workflow, P4 changes results for most agents, P5 first impression or correctness of
@@ -16,8 +16,8 @@ tests and ratings, and a release order across all of them.
 Its steps 0 to 6 are done (housekeeping, release blockers, security and project hygiene, check noise, layout and
 agent cost in 0.28.0; concurrency, structure and rendering speed in 0.29.0, with the speed
 decisions in [render performance](render-performance.md); craft, objects and brand packages in 0.31.0, apart from
-the blind craft re-judge; step 7, multi-document automation and hosting, in the Unreleased section of the
-[changelog](../../CHANGELOG.md)); step 8, motion and media, is next.
+the blind craft re-judge; step 7, multi-document automation and hosting, in 0.32.0). Step 8 motion and media work is recorded in the
+Unreleased [changelog](../../CHANGELOG.md) and the implementation plan; remaining validation and deferred work are explicit there.
 
 ## What 0.22.1 settled
 
@@ -145,10 +145,10 @@ which needs a paid agent run and judges:
   packages in one object library (#521), render lockfiles over every page, frame and export, and deliverable
   packages (#512, #573).
 
-## What step 7 settles (unreleased)
+## What 0.32.0 settled
 
-Step 7 of the [implementation plan](implementation-plan.md#step-7-multi-document-automation-and-hosting), built for
-the next release, adds checks and automation across many documents (#549) and `vixl host` (#535), plus fonts
+Step 7 of the [implementation plan](implementation-plan.md#step-7-multi-document-automation-and-hosting), shipped
+in 0.32.0, adds checks and automation across many documents (#549) and `vixl host` (#535), plus fonts
 installed on the machine:
 
 - **Foundations:** one `job-complete` event for durable jobs, check-all and pipeline runs, and plugin job kinds (F2);
@@ -172,6 +172,19 @@ installed on the machine:
 
 Open decisions from this step: Studio's gateway contract and its detection path for the Windows host task (#544,
 #547); whether the release workflow should trigger the container build (#546); an admin Windows service (not built).
+
+## Step 8: motion and media (unreleased)
+
+Implemented with focused regression coverage: appearance-preserving ungroup (#611), independent nested animation
+instances (#513), film/lyric delivery verification and explicit review (#613), reviewable provider-assisted lyric
+alignment (#523), per-cue compositions and preserved edits (#612), shared datasets and bound text (#214), and the drawing-pipeline remainder (#218).
+
+The export-speed track has budgets, measured worker selection, VP9 settings, fast frame ZIPs, opaque-frame handling,
+scalar frame copies and draft/final presets (items 1–6 and 8). Fade-cache changes (7) and hardware encoding (9)
+remain deferred; software encoding stays the default. See the [step 8 implementation record](implementation-plan.md#step-8-motion-and-media)
+for feature-specific limits. Lottie JSON/dotLottie/TGS has a reference-tested sampled-motion implementation
+(native easing and linked time maps remain open). Figma interchange and its offline import plugin are implemented;
+live Figma visual review remains pending.
 
 ## Rules for every release below
 
@@ -252,10 +265,8 @@ re-judge is published.
 | Issue | What | C | P | Note |
 | --- | --- | --- | --- | --- |
 | #266 | Non-rectangular canvas | 3 | 3 | Irregular image frames shipped in 0.24.0; a page clip shape in every exporter remains |
-| #218 | Drawing pipeline polish | 3 | 2 | Partly shipped: the paper's extent and `edge_closes` in 0.25.0, fills registered to their lines in 0.27.0; split what remains |
-| #177 | Lottie export | 5 | 3 | After motion features settle |
+| #177 | Lottie export remainder | 3 | 3 | JSON/dotLottie/TGS and reference-tested sampled motion are implemented; preserve original easing and linked precomposition time maps next |
 | #166 | PPTX font embedding | 4 | 3 | Re-scope: warnings and licences shipped; PDF is the fidelity route |
-| #214 | Remainder of a partly shipped issue: bind chart data across charts and into text | 3 | 3 | |
 | — | Animation export speed: an export perf budget, faster VP9 settings, measured worker count, cheaper frame setup and fades, encoder presets, opt-in hardware encoding | 1–3 | 2–3 | Step 8 of the [implementation plan](implementation-plan.md#step-8-motion-and-media); numbers in [render performance](render-performance.md#animation-export-2026-10-22) |
 
 ## Needs a decision or a spec

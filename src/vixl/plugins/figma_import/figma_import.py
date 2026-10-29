@@ -396,16 +396,38 @@ class Builder:
         angle = (angle + 180) % 360 - 180
         skew = abs(a * c + b * d) > 0.02 * max(1e-9, math.hypot(a, b) * math.hypot(c, d))
         return {"x": number(cx - w / 2), "y": number(cy - h / 2), "width": number(w), "height": number(h),
-                "rotation": number(angle, 2), "flip": det < 0, "skew": skew}
+                "rotation": number(angle, 2), "flip": det < 0, "skew": skew,
+                "linear": (a, b, c, d), "centre": (cx, cy)}
 
     def finish_transform(self, place, node):
         """Mirror then rotate the layer just created (rotation keeps its centre)."""
+        a, b, c, d = place["linear"]
+        if (place["skew"] or abs(math.hypot(a, b) - 1) > 1e-6 or abs(math.hypot(c, d) - 1) > 1e-6):
+            # A temporary group scales glyphs and strokes as artwork, instead of changing the text box
+            # or stroke weight. Dissolving it retains the exact affine on the editable child.
+            target = next(op["name"] for op in reversed(self.ops)
+                          if op["type"] in ("shape", "text", "frame", "add"))
+            group = self.unique("Figma transform")
+            w, h = place["width"], place["height"]
+            cx, cy = place["centre"]
+            from ...render import transformed_size
+
+            sx = math.hypot(a, b)
+            sy = (a * d - b * c) / sx
+            tw, th = transformed_size({"type": "group", "width": w * sx, "height": h * abs(sy),
+                                       "rotation": math.degrees(math.atan2(b, a)) % 360,
+                                       "skew_x": math.degrees(math.atan((a * c + b * d) / (sx * sy)))})
+            self.ops.extend([
+                {"type": "group", "name": group, "targets": [target]},
+                {"type": "transform", "target": group, "matrix": [a, b, c, d, 0, 0]},
+                {"type": "move", "target": group, "x": cx - tw / 2, "y": cy - th / 2},
+                {"type": "ungroup", "target": group, "keep": "appearance"},
+            ])
+            return
         if place["flip"]:
             self.ops.append({"type": "flip", "direction": "horizontal"})
         if abs(place["rotation"]) > 0.005:
             self.ops.append({"type": "rotate", "value": place["rotation"]})
-        if place["skew"]:
-            self.lost(node, "skewed transform: the skew was dropped")
 
     def geometry_box(self, node):
         size = node.get("size") or {}
@@ -1216,14 +1238,22 @@ def font_resolver(project, install=True):
     """A ``fonts`` callable for :func:`build`: a registered ``family-weight`` font, else (with ``install``) the
     nearest Google Fonts weight installed through the font cache, else None (the bundled fallback is used)."""
     from ... import typefaces
+    from ...text import BUNDLED_FONTS, font_style, primary_font_data
+
+    bundled = None
 
     def resolve(family, weight, italic):
+        nonlocal bundled
         registered = project.state.get("fonts", {})
         slug = typefaces.slug(family)
         suffix = "-italic" if italic else ""
         for candidate in (f"{slug}-{weight}{suffix}", family):
             if candidate in registered and (candidate != family or not italic):
                 return candidate
+        if bundled is None:
+            bundled = {font_style(primary_font_data(project, {"font": name})): name for name in BUNDLED_FONTS}
+        if (family, weight, italic) in bundled:
+            return bundled[(family, weight, italic)]
         entry = typefaces.find_font(family)
         if entry is None or not install:
             return None
@@ -1284,6 +1314,38 @@ def import_figma_document(project, data, *, images=None, rasters=None, fonts=Non
                           node_id=None, page=None, rasterize_unsupported=False):
     """Apply Figma file JSON (a dict, already fetched) to ``project``; no network access except font installs when
     ``install_fonts`` is true. ``images`` maps imageRef to bytes, ``rasters`` node id to PNG bytes."""
+    if isinstance(data, dict) and isinstance(data.get("format"), str) and data["format"].startswith("vixl-figma"):
+        from .figma_export import VERSION
+        import base64
+        import binascii
+
+        require(data.get("format") == VERSION, "Unsupported Vixl Figma interchange version", "invalid_figma_document")
+        from pathlib import Path
+        from jsonschema import Draft202012Validator
+
+        schema = json.loads((Path(__file__).parents[2] / "data" / "figma-interchange.schema.json").read_text())
+        error = next(Draft202012Validator(schema).iter_errors(data), None)
+        require(error is None, "Invalid Vixl Figma interchange" + (f": {error.message}" if error else ""),
+                "invalid_figma_document")
+        embedded = data.get("images", {})
+        require(isinstance(embedded, dict) and len(embedded) <= MAX_IMAGES,
+                f"Figma interchange holds at most {MAX_IMAGES} embedded images", "resource_limit")
+        decoded, total = {}, 0
+        for ref, record in embedded.items():
+            require(isinstance(record, dict) and record.get("mime") == "image/png"
+                    and isinstance(record.get("base64"), str), "Invalid embedded Figma image", "invalid_figma_document")
+            encoded = record["base64"]
+            require(len(encoded) <= (project.limits.max_asset_bytes + 2) // 3 * 4,
+                    "Embedded Figma image exceeds asset limit", "resource_limit")
+            try:
+                raw = base64.b64decode(encoded, validate=True)
+            except (ValueError, binascii.Error) as exc:
+                raise VixlError("invalid_figma_document", "Malformed embedded Figma image") from exc
+            total += len(raw)
+            require(len(raw) <= project.limits.max_asset_bytes and total <= project.limits.max_project_bytes,
+                    "Embedded Figma images exceed the import limit", "resource_limit")
+            decoded[ref] = raw
+        images = {**decoded, **(images or {})}
     return _run(project, data, images=images, node_id=normalize_node_id(node_id), page=page,
                 rasterize_unsupported=rasterize_unsupported, install_fonts=install_fonts, fonts=fonts, rasters=rasters)
 

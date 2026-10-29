@@ -20,7 +20,7 @@ TOP_LEVEL_COMMANDS = tuple(
     "validate preset ai ask generate detect ocr serve view host notes import mcp update updates cache commands shapes "
     "palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings "
     "timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose "
-    "house brand emoji capabilities catalog objects compact link-set package check-file approve".split()
+    "house brand emoji capabilities catalog objects compact link-set package check-file approve lyrics".split()
 )
 
 

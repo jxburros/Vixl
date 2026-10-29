@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jxburros/Vixl/blob/main/src/vixl/data/figma-interchange.schema.json",
+  "title": "Vixl Figma interchange version 1",
+  "description": "Figma REST-shaped editable nodes with embedded PNG assets and explicit loss reports.",
+  "type": "object",
+  "required": ["format", "name", "document", "images", "report"],
+  "additionalProperties": false,
+  "properties": {
+    "format": {"const": "vixl-figma-1"},
+    "name": {"type": "string"},
+    "document": {
+      "type": "object", "required": ["id", "type", "children"],
+      "properties": {
+        "id": {"type": "string"}, "type": {"const": "DOCUMENT"},
+        "children": {"type": "array", "minItems": 1, "maxItems": 500, "items": {"$ref": "#/$defs/page"}}
+      },
+      "additionalProperties": false
+    },
+    "images": {
+      "type": "object", "maxProperties": 200,
+      "additionalProperties": {
+        "type": "object", "required": ["mime", "base64"], "additionalProperties": false,
+        "properties": {"mime": {"const": "image/png"}, "base64": {"type": "string", "contentEncoding": "base64"}}
+      }
+    },
+    "report": {
+      "type": "object", "required": ["format", "unmapped", "pages", "images"],
+      "properties": {
+        "format": {"const": "FIGMA"}, "pages": {"type": "integer", "minimum": 1},
+        "images": {"type": "integer", "minimum": 0},
+        "unmapped": {"type": "array", "items": {"type": "object", "required": ["reason"],
+          "properties": {"reason": {"type": "string"}, "layer": {"type": "string"},
+            "id": {"type": "string"}, "page": {"type": "string"}}}}
+      }
+    }
+  },
+  "$defs": {
+    "page": {
+      "type": "object", "required": ["id", "name", "type", "children"], "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string"}, "name": {"type": "string"}, "type": {"const": "CANVAS"},
+        "children": {"type": "array", "items": {"$ref": "#/$defs/node"}}
+      }
+    },
+    "transform": {
+      "type": "array", "minItems": 2, "maxItems": 2,
+      "items": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "number"}}
+    },
+    "size": {
+      "type": "object", "required": ["x", "y"], "additionalProperties": false,
+      "properties": {"x": {"type": "number", "exclusiveMinimum": 0}, "y": {"type": "number", "exclusiveMinimum": 0}}
+    },
+    "paint": {
+      "type": "object", "required": ["type"],
+      "properties": {
+        "type": {"enum": ["SOLID", "GRADIENT_LINEAR", "GRADIENT_RADIAL", "IMAGE"]},
+        "opacity": {"type": "number", "minimum": 0, "maximum": 1},
+        "color": {"type": "object"}, "imageRef": {"type": "string"}, "scaleMode": {"const": "FILL"},
+        "gradientTransform": {"$ref": "#/$defs/transform"},
+        "gradientHandlePositions": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "object"}},
+        "gradientStops": {"type": "array", "minItems": 2, "items": {"type": "object", "required": ["position", "color"]}}
+      },
+      "allOf": [
+        {"if": {"properties": {"type": {"const": "IMAGE"}}}, "then": {"required": ["imageRef", "scaleMode"]}},
+        {"if": {"properties": {"type": {"const": "SOLID"}}}, "then": {"required": ["color"]}},
+        {"if": {"properties": {"type": {"enum": ["GRADIENT_LINEAR", "GRADIENT_RADIAL"]}}},
+          "then": {"required": ["gradientTransform", "gradientHandlePositions", "gradientStops"]}}
+      ]
+    },
+    "node": {
+      "type": "object", "required": ["id", "name", "type", "size", "relativeTransform"],
+      "properties": {
+        "id": {"type": "string"}, "name": {"type": "string"},
+        "type": {"enum": ["FRAME", "GROUP", "RECTANGLE", "ELLIPSE", "LINE", "VECTOR", "TEXT"]},
+        "size": {"$ref": "#/$defs/size"}, "relativeTransform": {"$ref": "#/$defs/transform"},
+        "opacity": {"type": "number", "minimum": 0, "maximum": 1},
+        "visible": {"type": "boolean"}, "isMask": {"type": "boolean"},
+        "fills": {"type": "array", "items": {"$ref": "#/$defs/paint"}},
+        "strokes": {"type": "array", "items": {"$ref": "#/$defs/paint"}},
+        "children": {"type": "array", "items": {"$ref": "#/$defs/node"}},
+        "characters": {"type": "string"}, "style": {"type": "object"},
+        "characterStyleOverrides": {"type": "array", "items": {"type": "integer", "minimum": 0}},
+        "styleOverrideTable": {"type": "object", "additionalProperties": {"type": "object"}},
+        "fillGeometry": {"type": "array", "items": {"type": "object", "required": ["path", "windingRule"],
+          "properties": {"path": {"type": "string"}, "windingRule": {"enum": ["NONZERO", "EVENODD"]}}}}
+      }
+    }
+  }
+}

@@ -13,6 +13,8 @@ import math
 
 import numpy as np
 
+from ...geometry import bezier_points
+
 MIN_SIDE = 6.0         # an end counts as straight when its last side is at least this long (pixels)
 PARALLEL = math.sin(math.radians(12))
 COLLINEAR = math.cos(math.radians(25))
@@ -130,6 +132,26 @@ def _add_end(stroke, which, point):
     stroke["points"] = np.vstack([point[None], points]) if which == 0 else np.vstack([points, point[None]])
 
 
+def _curved_bridge(pa, da, pb, db, gap):
+    """Sample a tangent-preserving bridge only when both ends point into the gap."""
+    chord = pb - pa
+    distance = float(np.linalg.norm(chord))
+    if distance < 1e-9 or float(da @ db) >= 0 or float(da @ chord) <= 0 or float(db @ chord) >= 0:
+        return None
+    ca, cb = pa + da * distance * 0.4, pb + db * distance * 0.4
+    # The control polygon bounds the arc length; an even count includes the shared midpoint.
+    length = float(np.linalg.norm(ca - pa) + np.linalg.norm(cb - ca) + np.linalg.norm(pb - cb))
+    steps = max(2, 2 * math.ceil(length / 6))
+    curve = bezier_points([pa, ca, cb, pb], np.linspace(0, 1, steps + 1))
+    deviation = np.abs(_cross(chord / distance, curve - pa))
+    return curve if float(deviation.max()) < gap else None
+
+
+def _extend_end(stroke, which, points):
+    old = np.asarray(stroke["points"], float)
+    stroke["points"] = np.vstack([points[::-1], old]) if which == 0 else np.vstack([old, points])
+
+
 def _join(strokes, a, b, gap):
     """Join two open ends; False when they should be left alone."""
     sa, sb = strokes[a["stroke"]], strokes[b["stroke"]]
@@ -155,6 +177,17 @@ def _join(strokes, a, b, gap):
                 _set_end(stroke, end, p + d * float((middle - p) @ d))
             return True
         return False
+    curve = _curved_bridge(pa, da, pb, db, gap)
+    if curve is not None:
+        if sa is sb:
+            # Keep the original point order and close the final segment back to its first point.
+            _extend_end(sa, -1, (curve if a["which"] == -1 else curve[::-1])[1:-1])
+            sa["closed"] = True
+        else:
+            middle = len(curve) // 2
+            _extend_end(sa, a["which"], curve[1:middle + 1])
+            _extend_end(sb, b["which"], curve[middle:-1][::-1])
+        return True
     if sa is sb:
         sa["closed"] = True
         return True

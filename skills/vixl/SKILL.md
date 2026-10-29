@@ -57,7 +57,7 @@ Details: [workflow](references/workflow.md), [testing](references/testing.md).
    `isolate=["mascot"]` shows one object, `action='compare'` shows before and after. Never declare a visual task
    done without looking.
 7. **Export** once `vixl_check(profile="final")` passes: `vixl_export` (PNG, JPEG, WebP, SVG, PDF, PPTX, PSD,
-   HTML, fonts, animation).
+   HTML, fonts, animation, Lottie, FIGMA).
 
 ## Top gotchas
 
@@ -112,14 +112,14 @@ The payload is always the operation list: when unsure of a field, `vixl_referenc
 | Fonts, pairings, rolls, making a font | [typography](references/typography.md) |
 | Palettes, templates, guidance, SVG output | [resources](references/resources.md) |
 | Rich text, pages and decks, forms | [documents](references/documents.md) |
-| Charts, tables, key-value lists | [charts](references/charts.md) |
+| Charts, shared datasets, bound text, tables, key-value lists | [charts](references/charts.md) |
 | Hand drawings, diagrams, organic shapes, scatter, guides | [drawing-shapes-guides](references/drawing-shapes-guides.md) |
 | Objects with parts (object-plan, outline), accessibility | [objects](references/objects.md) |
-| Brushes, timelines, video templates | [brushes-timeline](references/brushes-timeline.md) |
+| Brushes, timelines, nested animation instances, video templates | [brushes-timeline](references/brushes-timeline.md) |
 | Artistic filters | [artistic-filters](references/artistic-filters.md) |
 | Emoji catalog, packs and exports | [emojis](references/emojis.md) |
 | Suites, campaigns, pipelines, watch mode and schedules, data sync, webhooks, localization, approvals, link impact, packages, lyric videos, jobs | [production](references/production.md) |
 | Selections, palette tests, containers, groups, branches | [studio](references/studio.md) |
-| Brands, workspace fonts, SVG/PDF/Figma import | [workspace](references/workspace.md) |
-| Provider-backed generation and vision | [ai](references/ai.md) |
+| Brands, workspace fonts, SVG/PDF import, Figma interchange | [workspace](references/workspace.md) |
+| Provider-backed generation, vision and lyric alignment | [ai](references/ai.md) |
 | Additions by release | [whats-new](references/whats-new.md) |
