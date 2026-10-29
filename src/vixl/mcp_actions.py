@@ -986,7 +986,7 @@ def export_animation(
 @action("vixl_export", "timeline")
 def export_timeline(
     ctx, path: str, overwrite: Overwrite = False,
-    format: Literal["gif", "apng", "webp", "sheet", "frames", "mp4", "webm"] | None = None,
+    format: Literal["gif", "apng", "webp", "sheet", "frames", "mp4", "webm", "json", "lottie", "tgs"] | None = None,
     fps: Annotated[float | None, Field(ge=1, le=60)] = None, scale: Annotated[float, Field(ge=0.05, le=16)] = 1.0,
     start: float | str | None = None, end: float | str | None = None, background: str | None = None,
     columns: Positive | None = None, quality: Annotated[int, Field(ge=1, le=100)] = 90,
@@ -998,7 +998,9 @@ def export_timeline(
     sample_rate: Annotated[int | None, Field(ge=8000, le=96000, description="MP4/WebM audio rate, Hz")] = None,
     target_bytes: Annotated[int | None, Field(ge=1, description="GIF/WebP/APNG size to fit (steps down colors, fps, "
                                                                 "scale)")] = None,
-    preset: Annotated[Literal["chat", "web", "email"] | None, Field(description="GIF/WebP/APNG size presets")] = None,
+    preset: Annotated[Literal["chat", "web", "email", "draft", "final"] | None,
+                      Field(description="GIF/WebP/APNG size presets; MP4/WebM draft (faster) or final (default)")] = None,
+    strict: Annotated[bool, Field(description="Lottie: refuse raster fallbacks; always true for TGS")] = False,
     document: Document = None,
 ):
     """The keyframe timeline as GIF, APNG, animated WebP, sprite sheet (+JSON), PNG-sequence ZIP or MP4/WebM
@@ -1012,7 +1014,7 @@ def export_timeline(
                        fps=int(fps) if fps and float(fps).is_integer() else fps, scale=scale, start=start, end=end,
                        background=background, columns=columns, quality=quality, colors=colors, overwrite=overwrite,
                        dither=dither, max_bytes=max_bytes, poster=poster, sample_rate=sample_rate,
-                       target_bytes=target_bytes, preset=preset, progress=calls.progress_dict,
+                       target_bytes=target_bytes, preset=preset, strict=strict, progress=calls.progress_dict,
                        cancelled=calls.cancelled)
         result["output"] = session.relative(destination)
         if "metadata" in result:
@@ -1084,6 +1086,8 @@ def export_kind(ctx, path, values, document):
     if "targets" in values:
         return "batch"
     suffix = os.path.splitext(path or "")[1].lower()
+    if suffix in (".lottie", ".tgs"):
+        return "timeline"
     if suffix == ".wav":
         return "audio"
     if suffix in MOTION_SUFFIXES or (suffix == ".webp" and ("fps" in values or "animation" in values)):

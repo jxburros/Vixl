@@ -23,7 +23,7 @@ from ...errors import VixlError, require
 from ...model import finite, new_layer
 
 TYPES = ("table", "table-data")
-DATA_KEYS = ("table", "csv")
+DATA_KEYS = ("table", "csv", "data")
 MAX_ROWS = 200
 MAX_COLUMNS = 24
 MAX_CELL = 1000
@@ -97,11 +97,19 @@ def normalize(op, note):
 
 def read_data(project, op, recipe):
     """Replace ``recipe``'s rows when the operation brings them (inline or a CSV)."""
+    from .datasets import binding, detach, rows
+
     given = [k for k in DATA_KEYS if k in op]
+    if not given and "derive" in op:
+        recipe["rows"] = clean_rows(rows(*binding(project, op, recipe)))
+        return True
     if not given:
         return False
-    require(len(given) == 1, "Give the rows once: table or csv", field=given[0])
-    if "csv" in op:
+    require(len(given) == 1, "Give the rows once: table, csv or a dataset name", field=given[0])
+    if "data" in op:
+        recipe["rows"] = clean_rows(rows(*binding(project, op, recipe)))
+        recipe.setdefault("header", True)
+    elif "csv" in op:
         source = {"csv": op["csv"], **({"columns": op["csv_columns"]} if op.get("csv_columns") else {})}
         recipe["rows"] = rows_from_csv(project, source)
         recipe["source"] = source
@@ -109,6 +117,9 @@ def read_data(project, op, recipe):
     else:
         recipe["rows"] = clean_rows(op["table"])
         recipe.pop("source", None)
+    if "data" not in op:
+        require("derive" not in op, "derive needs a dataset binding", field="derive")
+        detach(recipe)
     return True
 
 
@@ -152,6 +163,9 @@ def find_column(recipe, wanted, field):
 def edit_data(project, op, recipe):
     """Apply a ``table-data`` operation: replace or reload, then remove, add and set."""
     changed = read_data(project, op, recipe)
+    require("data" not in recipe or not any(key in op for key in
+            ("set", "append", "remove_rows", "remove_columns", "add_columns", "reload")),
+            "Edit the shared dataset with dataset, or provide inline data to detach this table", field="data")
     if op.get("reload"):
         require(recipe.get("source"), "This table is not bound to a CSV; give a csv, or edit its cells directly",
                 field="reload")
@@ -535,7 +549,7 @@ def execute(project, op):
     recipe = deepcopy(target["table"]) if target else {"header": True}
     merge_options(recipe, op)
     if not read_data(project, op, recipe):
-        require(target is not None, "A table needs rows: table (a header row, then one list per row) or csv",
+        require(target is not None, "A table needs rows: table (header first), csv or a dataset name",
                 field="table")
     if target is not None:
         if "name" in op and op["name"] != target["name"]:
@@ -614,6 +628,7 @@ def validate_table(layer, state):
 
 def schemas(add):
     from ...schema import COORD, SIZE
+    from .datasets import binding_schema
 
     S, B, N = {"type": "string"}, {"type": "boolean"}, {"type": "number"}
     value = {"type": ["string", "number", "null"]}
@@ -642,6 +657,7 @@ def schemas(add):
                     "next cell's text in the row, such as '.' for a menu's dot leader (default: none).")},
         "additionalProperties": False}
     data = {
+        **binding_schema(),
         "table": d({"type": "array", "items": {"type": "array", "items": value, "maxItems": MAX_COLUMNS},
                     "minItems": 1, "maxItems": MAX_ROWS + 1},
                    "Rows of cells (text, numbers or null): the header row first (unless header is false), then the body."),
@@ -708,6 +724,8 @@ def compile_command(cmd, args):
     p = Parser(prog=f"vixl {cmd}", description="Data-bound tables; vixl schema lists every field.")
     op = {"type": cmd}
     p.add_argument("--target")
+    p.add_argument("--data", help="named shared dataset")
+    p.add_argument("--derive", type=json.loads, help='JSON {"kind":"sum|share|max","by":"series|category"}')
     p.add_argument("--csv", help="workspace CSV: its header row and records")
     p.add_argument("--table", type=json.loads, help='JSON rows, e.g. [["Item","Price"],["Tea",3.25]]')
     if cmd == "table":

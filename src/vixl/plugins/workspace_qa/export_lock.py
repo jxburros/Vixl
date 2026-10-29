@@ -61,7 +61,7 @@ TIMELINE_OPTIONS = {
     "fps": ("number", 1, 60), "scale": ("number", 0.05, 16), "start": ("time",), "end": ("time",),
     "background": ("str",), "quality": ("int", 1, 100), "colors": ("int", 2, 256),
     "dither": ("enum", ("auto", "none", "ordered", "floyd")), "poster": ("time",),
-    "preset": ("enum", ("chat", "web", "email")),
+    "preset": ("enum", ("chat", "web", "email", "draft", "final")),
 }
 # What an unset option means, so "jpg" and "jpg:quality=90" are the same export and a changed quality is not.
 DEFAULTS = {
@@ -70,7 +70,7 @@ DEFAULTS = {
     "tiff": {"scale": 1, "alpha": "auto", "color_space": "rgb"}, "pdf": {"scale": 1, "color_space": "rgb"},
     "svg": {"scale": 1}, "html": {"scale": 1}, "pptx": {}, "psd": {}, "ico": {"scale": 1, "alpha": "auto"},
     "gif": {"scale": 1, "colors": 256, "dither": "auto"}, "apng": {"scale": 1},
-    "mp4": {"scale": 1, "quality": 90}, "webm": {"scale": 1, "quality": 90},
+    "mp4": {"scale": 1, "quality": 90, "preset": "final"}, "webm": {"scale": 1, "quality": 90, "preset": "final"},
 }
 
 
@@ -155,6 +155,9 @@ def parse(spec):
             _fail(f"{name}: unknown option {key!r}" + (f"; did you mean {close[0]!r}?" if close else "")
                   + f". Options: {', '.join(sorted(table))}", allowed=sorted(table), suggestions=close)
         clean[key] = _coerce(key, value, table[key], name)
+    if "preset" in clean:
+        choices = ("draft", "final") if name in VIDEO else ("chat", "web", "email")
+        require(clean["preset"] in choices, f"{name}: preset is one of {', '.join(choices)}", field="exports")
     if animated:
         clean["animated"] = True
     defaults = DEFAULTS[name] if not animated else {"scale": 1, "quality": 90}

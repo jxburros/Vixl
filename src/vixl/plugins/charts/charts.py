@@ -57,7 +57,7 @@ OPTIONS = (
     "label_font", "text_color", "grid_color", "axis_color", "background", "bar_gap", "line_width", "markers",
     "hole", "start_angle", "center_text", "padding",
 )
-DATA_KEYS = ("categories", "series", "table", "csv")
+DATA_KEYS = ("categories", "series", "table", "csv", "data")
 # Stacking order of generated layers, bottom to top.
 Z_BACKGROUND, Z_GRID, Z_AXIS, Z_MARKS, Z_LINES, Z_MARKERS, Z_VALUES, Z_AXIS_TEXT, Z_LEGEND, Z_TITLE = range(10)
 KIND_ALIASES = {
@@ -315,12 +315,19 @@ def normalize(op, note):
 
 def read_data(project, op, recipe):
     """Replace ``recipe``'s table when the operation brings one (inline, rows or a CSV)."""
+    from .datasets import binding, detach
+
     given = [k for k in DATA_KEYS if k in op]
+    if not given and "derive" in op:
+        recipe["categories"], recipe["series"] = binding(project, op, recipe)
+        return True
     if not given:
         return False
     require(len(given) == 1 or set(given) == {"categories", "series"},
-            f"Give the data once: categories + series, a table, or a csv; got {', '.join(given)}", field=given[0])
-    if "csv" in op:
+            f"Give data once: categories + series, table, csv or a dataset name; got {', '.join(given)}", field=given[0])
+    if "data" in op:
+        categories, series = binding(project, op, recipe)
+    elif "csv" in op:
         source = {k: op[k] for k in ("csv", "category_column", "series_columns") if op.get(k)}
         categories, series = table_from_csv(project, source)
         recipe["source"] = source
@@ -333,6 +340,9 @@ def read_data(project, op, recipe):
         categories, series = clean_table(op["categories"], op["series"])
         recipe.pop("source", None)
     recipe["categories"], recipe["series"] = categories, series
+    if "data" not in op:
+        require("derive" not in op, "derive needs a dataset binding", field="derive")
+        detach(recipe)
     return True
 
 
@@ -349,6 +359,9 @@ def find(names, wanted, what, field):
 def edit_data(project, op, recipe):
     """Apply a ``chart-data`` operation to the recipe's table: replace or reload, then remove, add, set."""
     changed = read_data(project, op, recipe)
+    require("data" not in recipe or not any(key in op for key in
+            ("set", "append", "remove_categories", "remove_series", "add_series", "reload")),
+            "Edit the shared dataset with dataset, or provide inline data to detach this chart", field="data")
     if op.get("reload"):
         require(recipe.get("source"), "This chart is not bound to a CSV; give a csv, or edit its values directly",
                 field="reload")
@@ -1575,7 +1588,7 @@ def execute(project, op):
         warn(project, f"colors does not recolour series {', '.join(map(repr, pinned[:6]))}: each stores its own "
                       "color, which wins; resend series with new colors, or without color to take colors")
     if not read_data(project, op, recipe):
-        require(target is not None, "A chart needs data: categories + series, a table, or a csv", field="categories")
+        require(target is not None, "A chart needs data: categories + series, table, csv or a dataset name", field="categories")
     if target is not None:
         if "name" in op and op["name"] != target["name"]:
             from ...operations import unique_name
@@ -1672,6 +1685,7 @@ def validate_chart(layer, state):
 
 def schemas(add):
     from ...schema import COORD, SIZE
+    from .datasets import binding_schema
 
     S, B, N = {"type": "string"}, {"type": "boolean"}, {"type": "number"}
     cell = {"type": ["number", "null"]}
@@ -1695,6 +1709,7 @@ def schemas(add):
                                                "color": d(S, "Fill color; defaults come from the palette.")},
               "required": ["name", "values"], "additionalProperties": False}
     data = {
+        **binding_schema(),
         "categories": d({"type": "array", "items": {"type": ["string", "number"]}, "minItems": 1, "maxItems": MAX_CATEGORIES},
                         "Category labels (x axis, or the slices of a pie), unique."),
         "series": d({"type": "array", "items": series, "minItems": 1, "maxItems": MAX_SERIES},
@@ -1780,6 +1795,8 @@ def compile_command(cmd, args):
 
     p = Parser(prog=f"vixl {cmd}", description="Data-bound charts; vixl schema lists every field.")
     op = {"type": cmd}
+    p.add_argument("--data", help="named shared dataset")
+    p.add_argument("--derive", type=json.loads, help='JSON {"kind":"sum|share|max","by":"series|category"}')
     if cmd == "chart":
         p.add_argument("kind", nargs="?", choices=list(KINDS))
         p.add_argument("--target")

@@ -3,13 +3,16 @@ import tomllib
 
 
 def test_source_distribution_carries_the_sources_tests_and_what_tests_read():
-    """Tests read docs/, skills/ and the changelog, so the sdist ships them (large media stay in VixlExamples)."""
+    """The sdist includes what its tests read, including the offline Figma plugin."""
     root = Path(__file__).resolve().parent.parent
     config = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
     sdist = config["tool"]["hatch"]["build"]["targets"]["sdist"]
     includes = sdist["include"]
     assert set(includes) == {"/src/vixl", "/tests", "/docs", "/skills", "/CHANGELOG.md", "/pyproject.toml",
-                             "/README.md", "/LICENSE"}
+                             "/README.md", "/LICENSE", *{
+                                 f"/integrations/figma-plugin/{name}" for name in (
+                                     "manifest.json", "code.ts", "code.js", "ui.html", "README.md",
+                                     "package.json", "package-lock.json", "tsconfig.json")}}
     assert all((root / path.lstrip("/")).exists() for path in includes)
     assert "/tests/visual/_failures" in sdist["exclude"]
 

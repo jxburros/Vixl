@@ -366,7 +366,7 @@ def project_feature(project, cmd, args):
 
         p = Parser(prog="vixl export-timeline")
         p.add_argument("--out", required=True)
-        p.add_argument("--format", choices=["gif", "apng", "webp", "sheet", "frames", "mp4", "webm"])
+        p.add_argument("--format", choices=["gif", "apng", "webp", "sheet", "frames", "mp4", "webm", "json", "lottie", "tgs"])
         p.add_argument("--fps", type=float)
         p.add_argument("--scale", type=float, default=1.0)
         p.add_argument("--start", type=_time)
@@ -380,9 +380,11 @@ def project_feature(project, cmd, args):
         p.add_argument("--poster", type=_time, help="Time/marker/'end' whose frame comes first (GIF/WebP/APNG)")
         p.add_argument("--sample-rate", type=int, help="MP4/WebM audio rate in Hz (default: highest source rate up to 48000)")
         p.add_argument("--target-bytes", type=int, help="GIF/WebP/APNG size to fit by lowering colors, fps, then scale")
-        p.add_argument("--preset", choices=["chat", "web", "email"], help="GIF/WebP/APNG defaults for fps, width, colors and size")
+        p.add_argument("--preset", choices=["chat", "web", "email", "draft", "final"],
+                       help="GIF/WebP/APNG size defaults; MP4/WebM draft (faster) or final (default)")
         p.add_argument("--overwrite", action="store_true")
         p.add_argument("--progress", action="store_true", help="Write frame progress to stderr")
+        p.add_argument("--strict", action="store_true", help="Lottie: refuse raster fallbacks (always on for TGS)")
         a = p.parse_args(args)
         fps = int(a.fps) if a.fps and a.fps.is_integer() else a.fps
         return export_timeline(
@@ -403,6 +405,7 @@ def project_feature(project, cmd, args):
             sample_rate=a.sample_rate,
             target_bytes=a.target_bytes,
             preset=a.preset,
+            strict=a.strict,
             overwrite=a.overwrite,
             progress=(lambda event: print(json.dumps({"progress": event}), file=__import__("sys").stderr, flush=True)) if a.progress else None,
         ), False

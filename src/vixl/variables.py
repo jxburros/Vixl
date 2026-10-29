@@ -15,7 +15,7 @@ Text, image assets, colours, link variables and imposition templates all substit
   ``max``, ``round``, ``abs``) with ``x`` standing for the value (``${price|calc:x*0.8|number:2}``); without an
   expression the value itself is evaluated.
 
-Variable names are ``[\\w-]+``; an argument runs to the next ``|`` or ``}``. ``$${name}`` is the escape: it draws
+Variable names are ``[\\w-]+``, with dotted paths for derived data; an argument runs to the next ``|`` or ``}``. ``$${name}`` is the escape: it draws
 the literal text ``${name}`` and needs no variable.
 """
 
@@ -25,9 +25,9 @@ import re
 from .errors import VixlError, require
 
 NAME = re.compile(r"[\w-]+")
-PLACEHOLDER = re.compile(r"(?<!\$)\$\{([\w-]+)((?:\|[^|{}]*)*)\}")
+PLACEHOLDER = re.compile(r"(?<!\$)\$\{([\w-]+(?:\.[\w-]+)*)((?:\|[^|{}]*)*)\}")
 # ``$${name}`` writes a literal ``${name}``; substitution drops one dollar sign.
-_SUBSTITUTION = re.compile(r"\$(\$\{[\w-]+(?:\|[^|{}]*)*\})|\$\{([\w-]+)((?:\|[^|{}]*)*)\}")
+_SUBSTITUTION = re.compile(r"\$(\$\{[\w-]+(?:\.[\w-]+)*(?:\|[^|{}]*)*\})|\$\{([\w-]+(?:\.[\w-]+)*)((?:\|[^|{}]*)*)\}")
 FILTERS = {"upper": False, "lower": False, "title": False, "default": True, "map": True, "number": None, "format": True,
            "calc": None}
 # Maps travel with the variables under a key no ${name} can spell, so merged dicts keep them.

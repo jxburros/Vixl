@@ -247,6 +247,7 @@ LAYER_FIELDS = {
     "source_page": ((INTEGER, STRING), "link: page of the linked document to show."),
     "source_hash": (STRING, "link: SHA-256 of the linked file when it was last placed or updated."),
     "source_size": (ARRAY, "link: [width, height] of the linked page."),
+    "time": (OBJECT, "link: animation offset, speed, source trim_start/end in milliseconds, loop and before/after behavior."),
     "artboard": (STRING, "link: artboard of the linked document to show."),
     "variables": (OBJECT, "link: variable values passed to the linked document."),
     "corner_pin": (ARRAY, "link: four corner points for a perspective placement."),
@@ -283,12 +284,13 @@ LAYER_FIELDS = {
 
 # Fields that appear only on ``inspect`` output or render copies, never in a saved document.
 # Fields render and timeline code put on throwaway copies of a layer while drawing; never saved.
-TRANSIENT = ("_kinetic", "_distort_groups", "_style")
+TRANSIENT = ("_kinetic", "_distort_groups", "_style", "_time")
 INSPECT_ONLY = ("resolved_bounds", "canvas_bounds", "content_bounds", "coordinate_space", "collapsed",
                 "drawn_bounds", "path_nodes", "source_bounds", "path_local_bounds")
 
 # Document state: name → (type, description). The first block is every document's (``model.new_state``).
 STATE_FIELDS = {
+    "datasets": (OBJECT, "Named numeric tables shared by charts, tables and data.* text variables."),
     "canvas": (OBJECT, "Canvas size, background and print settings."),
     "layers": (ARRAY, "Layers bottom to top (of the active page in a paged document)."),
     "active_layer": ((LAYER_ID, "null"), "ID of the active layer, or null."),

@@ -83,7 +83,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DOC-39 | Import a third-party SVG (shapes, text, groups, gradients, images, class styles) as editable layers | `import-document` svg | 1 · <1 | `<text>` stays live; filters, masks and clip paths need `svg_mode=auto`, which draws just those elements as images. |
 | DOC-40 | Import a PDF page as editable text, paths and images | `import-document` pdf | 1 · <1 | `[pdf]`. Vixl's own PDFs come back at their pixel size; shadings and clipped content become image layers. Fonts (SVG import takes `font_map` too): `font_map`, registered families, then (Vixl's own PDFs) the same face from the document or the font cache; `fonts` in the result says how each matched, only `default` warns (#712). |
 | DOC-41 | Read, generate or validate a `.vixl` file without Vixl | [file format](reference/file-format.md), `vixl schema document` | 1 · <1 | JSON Schema of `project.json`, checked against every `.vixl` in the repository. |
-| DOC-42 | Import a Figma frame or page as editable layers, live text and stacks `[Figma]` | `import-document` format=figma, `vixl import URL --format figma`, `import_document(format="figma")`, REST `POST /import?format=figma` | 1 · <1 | [Mapping and known losses](guides/images/figma.md); the `report` lists every unmapped feature. Export back to Figma: #662. |
+| DOC-42 | Import a Figma frame or page as editable layers, live text and stacks `[Figma]` | `import-document` format=figma, `vixl import URL --format figma`, `import_document(format="figma")`, REST `POST /import?format=figma` | 1 · <1 | [Mapping and known losses](guides/images/figma.md); the `report` lists every unmapped feature. Export back with `.figma.json` and the offline Figma plugin (DOC-48). |
+| DOC-48 | Export a Vixl design as editable Figma layers | `export --out design.figma.json`, then Import Vixl file in the local Figma plugin | 1 export + 1 import · depends on file | Offline interchange; named fallbacks and font substitutions are reported. Native/live Figma visual review remains pending. |
 | DOC-43 | Open a document saved by an earlier release (format 1, pre-0.21 lookups, house-style versions, inset strokes) with its old look | `vixl convert OLD.vixl -o NEW.vixl`, `vixl convert DIR --out OUTDIR`, `vixl.convert.convert_file` | 1 · <1 | [Conversion kit](reference/converting.md): `--look preserve` writes formerly implicit behaviour into fields, `--look current` reports what changes; the report lists every change and what was not converted. |
 | DOC-37 | Capture the desktop, a rectangle or a Windows window to PNG | `vixl_apply(workflow='screen-capture')` | 1 · <1 | Since 0.24 (#259); interactive local desktop only; OS screen permission may be needed. |
 
@@ -532,7 +533,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | --- | --- | --- | --- | --- |
 | DAT-30 | Process or swimlane-style flowchart with styled nodes | `diagram --nodes --edges`, check diagram | 10–20 · 2–3 |  |
 | DAT-31 | Timeline infographic (milestones on a line) | shapes, `repeat`, `place` on guide | 15–25 · 3 |  |
-| DAT-32 | KPI tiles / dashboard card | `stack`, `big-number`, small charts | 15–25 · 3 | No data binding between tiles and text. |
+| DAT-32 | KPI tiles / dashboard card | `stack`, `big-number`, small charts | 15–25 · 3 | Shared datasets bind charts and `${data.NAME.total}` callouts; one data edit updates both. |
 | DAT-33 | Comparison card (A vs B) | `slide-comparison` template or `split-screen` | 10–18 · 2–3 |  |
 | DAT-34 | Isometric illustration on an isometric grid | `grid --kind isometric`, `snap` | 20–35 · 3–5 |  |
 | DEK-20 | One-pager with title, body text and an image | `business-one-pager` template, rich text | 12–20 · 2–3 |  |
@@ -643,7 +644,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 
 | ID | Use case | Main route | Calls · min | Notes |
 | --- | --- | --- | --- | --- |
-| DAT-40 | Multi-chart infographic poster with callouts | several `chart` groups, grid, text | 40–60 · 5–7 | Callout numbers typed by hand (no chart→text binding). |
+| DAT-40 | Multi-chart infographic poster with callouts | several `chart` groups, grid, text | 40–60 · 5–7 | Shared `dataset` values bind charts and callout text with ordinary merge-field filters. |
 | DAT-41 | One-page annual-report spread | charts, text flow, `editorial-grid` | 50–70 · 6–8 |  |
 | DAT-42 | Architecture or system diagram with grouped zones | `diagram`, groups, connectors | 40–60 · 5–7 |  |
 | DEK-31 | Pitch or teaching deck of 8–12 slides with notes | pages, masters, slide templates | 50–70 · 6–8 |  |
@@ -666,9 +667,13 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PIX-22 | Pixel UI kit (buttons, panels, health bar) | pixel-draw, 9-slice by hand | 40–60 · 5–7 |  |
 | MOT-31 | Rigged character walk cycle | rig, two-bone IK, cycles, motion check | 40–60 · 5–8 |  |
 | MOT-32 | Parallax scene with a camera move | depth parallax, camera choreography | 40–60 · 5–8 |  |
-| MOT-33 | Explainer GIF with three short scenes | timeline markers, presets, captions | 40–60 · 5–8 | No nested compositions. |
+| MOT-33 | Explainer GIF with three short scenes | timeline markers, presets, captions | 40–60 · 5–8 | Timed `animation-instance` links compose reusable scenes with independent offsets, speeds and loops. |
 | MOT-34 | Talking character with viseme cues and audio | visemes, audio tracks, MP4 | 40–70 · 6–8 | [ffmpeg] |
-| MOT-35 | Lyric video with a title card, an end card and animated template graphics | `lyric-video-*` with `lead_in`, `tail`, an `outro` layer, template keyframes, per-cue `cue_animation` | 45–65 · 6–8 + render | [ffmpeg] No audio padding or post-build keyframe script; `segments` makes the full render resumable. |
+| MOT-35 | Lyric video with a title card, an end card and animated template graphics | `lyric-video-*` with `lead_in`, `tail`, an `outro` layer, template keyframes, per-cue `cue_animation` and `compositions` | 45–65 · 6–8 + render | [ffmpeg] No audio padding or post-build keyframe script; `segments` makes the full render resumable. |
+| MOT-36 | Align lyrics, repair word timestamps and build an editable lyric video | `lyrics-align`, `lyrics-timing-edit`, `lyrics-timing-export`, `lyric-video-build` with `timing` | 1 per action · provider-dependent | A configured alignment provider is required. Repeated occurrences stay separate; invalid records need repair and musical timing needs review. |
+| MOT-37 | Verify an encoded lyric delivery and record approval | `lyric-video-export` with `verify: full`, `lyric-video-review` | 1 per action · render-dependent | Full decode, per-cue checks, bounded visual/brand sampling and source hashes; basic exports remain unvalidated and source edits invalidate approval. |
+| MOT-38 | Reuse an animated scene with independent timing and variables | `animation-instance` with `time` | 1 batch · render-dependent | Ordinary links with offsets, speed, trims, loop/ping-pong and hold/hidden edges; no source mutation. |
+
 
 ### Production
 
@@ -722,7 +727,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | AGT-39 | Score the composition checks and `repair-layout` against the defects the judges named | `python -m evals.craft_backtest` (`--repair`) | minutes | Craft plan 1b; offline, on the 16 reconstructed round-1 documents. |
 | AGT-40 | Measure raster output against headless Chromium and exact references | `python -m evals.render_parity` | 1–2 h | Needs `pip install playwright`; findings in [render parity](project/render-parity.md). |
 | PIX-50 | Complete small game art set (characters, tiles, UI, title screen) | pixel tools, timelines, sheets | days |  |
-| MOT-50 | Music video beyond lyrics (scenes, characters, camera, audio) | film spec, rigs, parallax | days | No nested compositions or motion-path editor. |
+| MOT-50 | Music video beyond lyrics (scenes, characters, camera, audio) | film spec, rigs, parallax | days | Nested compositions use timed links; a motion-path editor remains open. |
 | DEK-50 | Course slide library (100+ slides) on shared masters and components | pages, library components, group apply | days |  |
 
 ---
@@ -750,7 +755,6 @@ note the version.
 | BLK-21 | Dielines, folds and packaging nets | Not implemented as a feature | Draw with guides and paths. |
 | BLK-23 | Live (active/scripted) SVG content | Not implemented; static SVG only | – |
 | BLK-25 | Hard memory cap or execution timeout per call | Partial: servers bound each call's megapixels, export pages and per-workspace concurrency, and detach calls over a timeout into jobs (#542); no hard memory cap or kill | [Per-call limits](reference/interfaces.md#per-call-limits); OS/container limits for memory. |
-| BLK-26 | Export a Vixl design to Figma as editable layers | Not implemented (import only; export is tracked in #662) | Export SVG or PDF and open it in Figma; import back with `vixl import --format figma` (DOC-42). |
 
 ## Cost notes
 

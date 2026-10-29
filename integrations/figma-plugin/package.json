@@ -1,0 +1,6 @@
+{
+  "name": "vixl-figma-import",
+  "private": true,
+  "scripts": {"build": "tsc", "check": "tsc --noEmit"},
+  "devDependencies": {"@figma/plugin-typings": "1.117.0", "typescript": "5.9.3"}
+}

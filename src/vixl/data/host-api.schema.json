@@ -1132,6 +1132,7 @@
     "format": {
      "enum": [
       "AVIF",
+      "FIGMA",
       "HTML",
       "ICO",
       "JPEG",

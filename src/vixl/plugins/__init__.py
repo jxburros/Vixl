@@ -52,6 +52,7 @@ BUILTIN = (
     "pdf_import",
     "ai",
     "spelling",
+    "lottie",
 )
 
 ROLES = ("operations", "commands", "workflows")
@@ -65,8 +66,10 @@ HOOKS = {
     "spell": "fn(project, texts) -> {lang, available, message?, words: [{layer, word, suggestions}]} or None: "
              "unknown words in {layer id: drawn text}",
     "after-apply": "fn(project): refresh derived plugin state once a batch has applied",
+    "variables": "fn(project) -> {name: value}: derived variables merged under the data. prefix once per resolve pass",
     "apply-report": "fn(project, operations, result): add plugin keys to the apply result",
     "export-format": "fn(project, path, format, report, **options) -> data, or None when the format is not the plugin's",
+    "timeline-export-format": "fn(project, path, format, **options) -> report or None: export a timeline interchange format",
     "import-format": "fn(project, data, format, **options) -> result, or None when the format is not the plugin's",
     "job-kind": "fn(kind) -> {validate: fn(queue, payload, output), run: fn(queue, job, limits, progress, cancelled) "
                 "-> result}, or None when the durable job kind is not the plugin's; list the kinds in fn.KINDS",

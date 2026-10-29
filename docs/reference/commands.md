@@ -447,9 +447,9 @@ vixl text-animate TEXT PRESET [--unit char|word|line] [--start T] [--duration T]
     [--rotate DEG] [--from C] [--repeat] [--remove] [--no-extend]
 vixl marker NAME TIME | marker NAME --delete
 vixl render --time T --out FILE | timeline-sheet --out FILE [--count 8] [--columns N] [--times T…]
-vixl export-timeline --out FILE.gif|.png|.webp|.zip|.mp4|.webm [--format sheet] [--fps N] [--scale F]
+vixl export-timeline --out FILE.gif|.png|.webp|.zip|.mp4|.webm|.json|.lottie|.tgs [--format sheet] [--fps N] [--scale F]
     [--start T] [--end T] [--background C] [--columns N] [--quality N] [--colors N] [--dither auto|none|ordered|floyd]
-    [--max-bytes N] [--target-bytes N] [--preset chat|web|email] [--poster T] [--overwrite]
+    [--max-bytes N] [--target-bytes N] [--preset chat|web|email|draft|final] [--poster T] [--strict] [--overwrite]
 ```
 
 Times are milliseconds or `1.5s`, `250ms`, `50%` or a marker name. Details: [sizes and layouts](../guides/layout/sizes-and-layouts.md), [color and print](../guides/finishing/color-and-print.md), [brushes and animation](../guides/motion/brushes-and-animation.md).

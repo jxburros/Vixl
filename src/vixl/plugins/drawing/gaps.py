@@ -13,6 +13,8 @@ import math
 
 import numpy as np
 
+from ...geometry import bezier_points
+
 MIN_SIDE = 6.0         # an end counts as straight when its last side is at least this long (pixels)
 PARALLEL = math.sin(math.radians(12))
 COLLINEAR = math.cos(math.radians(25))
@@ -140,8 +142,7 @@ def _curved_bridge(pa, da, pb, db, gap):
     # The control polygon bounds the arc length; an even count includes the shared midpoint.
     length = float(np.linalg.norm(ca - pa) + np.linalg.norm(cb - ca) + np.linalg.norm(pb - cb))
     steps = max(2, 2 * math.ceil(length / 6))
-    t = np.linspace(0, 1, steps + 1)[:, None]
-    curve = (1 - t) ** 3 * pa + 3 * (1 - t) ** 2 * t * ca + 3 * (1 - t) * t ** 2 * cb + t ** 3 * pb
+    curve = bezier_points([pa, ca, cb, pb], np.linspace(0, 1, steps + 1))
     deviation = np.abs(_cross(chord / distance, curve - pa))
     return curve if float(deviation.max()) < gap else None
 

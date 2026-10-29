@@ -117,6 +117,9 @@ The complete list; the [skill entry point](../SKILL.md) keeps the most common on
   automatically, so long sessions never lock. Pixel-art frames ≤ 256×256, ≤ 256 frames; timelines
   ≤ 10 min, 60 fps, 3 600 frames; 4 096 strokes per paint layer.
 - **Not supported** (don't promise them): a faithful editable import of every SVG, PDF or Figma feature (filters,
-  masks, clip paths, shadings and unmapped Figma nodes become image layers or are listed in `report`), export to Figma,
+  masks, clip paths, shadings and unmapped Figma nodes become image layers or are listed in `report`),
   CMYK *editing* or spot colors, live tablet input, RAW, PSD/XCF import (PSD *export* is layered pixels: text is not
   editable type), a GUI editor.
+- **Figma export:** use `.figma.json` or format `FIGMA`, then the repository's local Figma import plugin. Read
+  `report.unmapped` and the plugin's font substitutions; unsupported appearances rasterize per layer, and
+  timelines export only a still frame. Review wrapping and alignment in Figma before approving the handoff.

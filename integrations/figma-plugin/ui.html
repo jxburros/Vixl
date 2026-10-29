@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Import Vixl file</title>
+<style>
+  body { font: 13px system-ui,sans-serif; padding: 16px; color: var(--figma-color-text); background: var(--figma-color-bg); }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  input { display: block; margin: 18px 0; max-width: 100%; }
+  #result { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 200px; overflow: auto; }
+</style>
+<h1>Import Vixl file</h1>
+<p>Choose a .figma.json export. Each page is added to this file. Fonts unavailable in Figma are replaced with Inter and listed below.</p>
+<input id="file" type="file" accept=".json,application/json" aria-label="Choose Vixl Figma export">
+<div id="result" role="status" aria-live="polite"></div>
+<script>
+  const file = document.getElementById('file');
+  const result = document.getElementById('result');
+  file.onchange = async () => {
+    const selected = file.files[0];
+    if (!selected) return;
+    try {
+      if (selected.size > 268435456) throw new Error('Choose a file smaller than 256 MB.');
+      const data = JSON.parse(await selected.text());
+      file.disabled = true;
+      result.textContent = 'Importing pages…';
+      parent.postMessage({ pluginMessage: { type: 'import', data } }, '*');
+    } catch (error) { result.textContent = error.message; }
+  };
+  onmessage = event => {
+    const message = event.data.pluginMessage;
+    if (!message) return;
+    file.disabled = false;
+    if (message.type === 'error') result.textContent = message.message;
+    if (message.type === 'done') {
+      const report = message.report;
+      result.textContent = `Imported ${report.pages} page(s).\n`
+        + [...report.substitutions, ...report.warnings].join('\n');
+    }
+  };
+</script>
+</html>

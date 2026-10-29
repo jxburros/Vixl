@@ -998,12 +998,14 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
 
         from .timeline import export_timeline
 
-        allowed = {"format", "fps", "scale", "start", "end", "background", "columns", "quality", "colors", "dither", "max_bytes", "poster", "sample_rate", "target_bytes", "preset"}
+        allowed = {"format", "fps", "scale", "start", "end", "background", "columns", "quality", "colors", "dither", "max_bytes", "poster", "sample_rate", "target_bytes", "preset", "strict"}
         require(set(body) <= allowed, f"Timeline export accepts {sorted(allowed)}", field="body")
         fmt = body.get("format", "gif")
-        suffix = {"gif": ".gif", "apng": ".png", "webp": ".webp", "sheet": ".png", "frames": ".zip", "mp4": ".mp4", "webm": ".webm"}
+        suffix = {"gif": ".gif", "apng": ".png", "webp": ".webp", "sheet": ".png", "frames": ".zip", "mp4": ".mp4", "webm": ".webm",
+                  "json": ".json", "lottie": ".lottie", "tgs": ".tgs"}
         require(fmt in suffix, "Unsupported timeline format", field="format")
-        media = {"gif": "image/gif", "apng": "image/apng", "webp": "image/webp", "sheet": "image/png", "frames": "application/zip", "mp4": "video/mp4", "webm": "video/webm"}
+        media = {"gif": "image/gif", "apng": "image/apng", "webp": "image/webp", "sheet": "image/png", "frames": "application/zip", "mp4": "video/mp4", "webm": "video/webm",
+                 "json": "application/json", "lottie": "application/zip", "tgs": "application/gzip"}
         with tempfile.TemporaryDirectory(prefix="vixl-timeline-") as staging:
             path = Path(staging) / ("animation" + suffix[fmt])
             with session.project() as p:
@@ -1247,7 +1249,7 @@ EXPORT_MEDIA = {
     "WEBP": "image/webp", "TIFF": "image/tiff", "AVIF": "image/avif", "PDF": "application/pdf",
     "ICO": "image/x-icon", "PPTX": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     "PSD": "image/vnd.adobe.photoshop", "TTF": "font/ttf", "OTF": "font/otf", "WOFF": "font/woff",
-    "WOFF2": "font/woff2",
+    "WOFF2": "font/woff2", "FIGMA": "application/json",
 }
 
 

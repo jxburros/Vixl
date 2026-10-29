@@ -1,12 +1,50 @@
-# Import from Figma
+# Figma interchange
 
 [Documentation home](../../README.md) · [Providers](../../reference/providers.md) · [Interfaces](../../reference/interfaces.md) · [Use cases](../../use-cases.md)
 
 Vixl reads a Figma file with **your** personal access token and turns a page or a single frame into an editable
 Vixl document: layers stay layers, text stays live text, rounded rectangles keep their radius, and gradients,
 shadows, groups and auto layout map to their Vixl counterparts. Whatever cannot map is listed in a report instead of
-disappearing silently. Exporting a Vixl document back to Figma is tracked in
-[issue 662](https://github.com/jxburros/Vixl/issues/662).
+disappearing silently. Vixl also exports editable `.figma.json` files for the local Figma plugin below.
+
+## Export to Figma
+
+Export with `vixl -p poster.vixl export poster.figma.json`, `Project.export("poster.figma.json")`,
+MCP `vixl_export` with that path, or REST `POST /export` with `{"format":"FIGMA"}`. The suffix selects the
+format; an arbitrary `.json` filename needs `format="FIGMA"`. Existing files require `overwrite=True`
+(CLI `--overwrite`). No Figma token or network connection is used for export.
+
+Every visible document page becomes a Figma page. Artboards become separate frames; without artboards, the canvas
+becomes one frame. Use `page` or `pages` to select pages. Names, stacking order and transforms are retained.
+Shapes and paths stay editable, basic row/column stacks become auto-layout frames, text keeps its family/style,
+size, leading, tracking and rich-text ranges, and images are embedded as PNG fills. Linear/radial gradients,
+drop/inner shadows, layer blur, supported blend modes and sibling clipping mask groups are included.
+
+The export report's `unmapped` list names every conversion that needs review. Unsupported appearances such as grain,
+LUTs, raster masks and warped text become individual images named `RASTER: <layer name>`. Special strokes become
+editable outlines. Grid, wrapping and resized stacks retain fixed editable positions. Timelines are omitted;
+pass `time` to select a still frame. Custom tab stops, paragraph formatting, small caps, baseline shifts and
+highlighted text need review. Figma's font metrics can differ from Vixl's, so check wrapping and alignment there.
+
+To install the import plugin in Figma desktop:
+
+1. Download or check out the repository's `integrations/figma-plugin` folder, including `manifest.json`, `code.js`
+   and `ui.html`.
+2. In Figma choose **Plugins → Development → Import plugin from manifest**, then select that `manifest.json`.
+3. Run **Import Vixl file** and choose the exported `.figma.json`. Each page is added to the open Figma file.
+4. Read the result's font substitution and conversion report, then review the imported artwork. Missing fonts
+   substitute Inter Regular and are listed by name. The plugin has no network access.
+
+Plugin source is `code.ts`; contributors run `npm ci && npm run build` in that folder. The compiled plugin is
+tested against a mock Figma API, and its types against Figma's official declarations. A live Figma visual review
+of representative posters, decks and charts is still required before treating the handoff as approved.
+
+The versioned interchange schema is [`figma-interchange.schema.json`](../../../src/vixl/data/figma-interchange.schema.json).
+It contains a Figma REST-shaped document tree, embedded PNGs and the loss report. Import it back into Vixl with
+`vixl import poster.figma.json --format figma`; embedded images load offline. Vixl's existing importer reports its
+own limitations, including Figma masks, separately.
+
+## Import authentication
 
 Vixl contains no Figma credentials. The token is read from the environment, used for the import, and is never
 written to a document, a project folder, a job record or the provider configuration.

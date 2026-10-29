@@ -34,6 +34,13 @@ Natural movement has a cause: prepare a large action with a small opposite actio
 
 `motion` findings warn about abrupt two-key linear starts/stops (not a `spin`, whose whole turns are constant speed by design) and accelerations over 100,000 units/s². Findings name the layer (`translate-y on 'ball' ends at -5.6 but starts at 0`) and carry its id in `layer` and the track in `property`. They are heuristics: a conveyor, camera pan, deliberate jump cut or collision can justify the finding. Pixel units have no inherent physical scale; choose gravity and timing consistently with the scene. Source references: Frank Thomas and Ollie Johnston, *The Illusion of Life* (1981), and Richard Williams, *The Animator's Survival Kit* (2001), plus Newtonian projectile and damped oscillator equations.
 
+## Nested animation instances
+
+Place an animated `.vixl` as a [linked instance](../output/linked-documents.md#animated-instances): `link` (also
+`animation-instance`) accepts `time: {offset, speed, trim_start, trim_end, loop, before, after}`. Each instance
+samples its own source time while keeping the source and its tracks editable. Variables, crop, fit, transforms
+and source-page selection work as for any other link. See [Reuse an animation](../../tutorials/nested-animation.md).
+
 ## Standard parts and reusable rigs
 
 `character` generates a simple editable character, or accepts a `parts` mapping from standard part names to artwork. Required names: `torso`, `head`, `left-eye`, `right-eye`, `mouth`; `left/right-upper-arm`, `left/right-lower-arm`, `left/right-hand`; `left/right-upper-leg`, `left/right-lower-leg`, `left/right-foot`. Brows, hair and accessories are optional. Proximal limb pivots are `[0.5,0]`; standard shapes are ordered with limbs behind the torso, facial features in front of the head. Custom bound artwork keeps its authored draw order.

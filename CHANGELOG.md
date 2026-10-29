@@ -1,5 +1,75 @@
 # Changelog
 
+## Unreleased
+
+### Motion and media
+
+- **Editable Figma interchange.** `FIGMA` / `.figma.json` exports pages, artboards, groups, supported auto-layout
+  stacks, live/rich text, vector geometry, gradients and embedded images. The offline Figma import plugin loads
+  the interchange and reports font substitutions. Unsupported appearances become named raster fallbacks with
+  `unmapped` explanations; resized/grid/wrapped stacks retain fixed editable positions and timeline output is a
+  still. Vixl re-import preserves affine group geometry. A published schema, offline plugin mock and round-trip
+  tests cover the contract; visual review in a live Figma session remains outstanding (#662).
+
+- **Lottie export, supported subset.** The built-in `lottie` plugin exports JSON, self-contained dotLottie ZIPs
+  and constrained Telegram TGS through the `timeline-export-format` hook. Supported paths, outlined text,
+  gradients, strokes and group precompositions remain vector; motion is sampled at export fps. Unsupported
+  appearances use reported animated raster fallbacks; `strict` and TGS refuse them. Output, geometry and image
+  budgets bound work. Native source easing curves and linked precomposition time maps remain open (#177).
+  The optional `lottie-test` extra installs the reference player for seven scene comparisons.
+
+- **Ungroup transformed artwork.** `ungroup` accepts `keep: "appearance"` (CLI `--keep appearance`) to carry a
+  group's rotation, scale, flips and skew into its children through the shared reparent planner. IDs remain stable,
+  safe opacity is distributed, and group animation is baked with sampled geometry checks. Masks, effects, clipping,
+  unsafe blends and conflicting parent-space animation fail atomically with a reason. The default `strict` keeps
+  the previous refusals. Geometry is preserved; resampling transformed text and edges can change antialiasing (#611).
+- **Nested animation instances.** A link's `time` maps parent milliseconds through an offset, playback speed,
+  trim interval, loop or ping-pong, and hold/hidden behavior before and after playback. The `animation-instance`
+  alias creates an ordinary link. Instances keep variable overrides and source identity, sample/cache at source
+  frame rate, and work in previews, still exports and timeline delivery. Link inspection reports effective timing;
+  `Limits.max_nested_frames` bounds nested frame evaluations, alongside the existing link depth limit (#513).
+- **Faster export paths.** Automatic frame workers use a measured first chunk before paying process startup costs;
+  explicit worker counts remain available. Frame ZIPs use fast PNG compression (larger files, identical pixels),
+  opaque MP4 frames skip the white composite, and scalar animation tracks avoid deep-copying untouched layer data.
+  VP9 uses row multithreading and the `good` deadline with CPU level 4. Video exports accept `preset: "draft"` or
+  `"final"` (the default); draft trades file size for encoding speed. MP4/frame-ZIP performance budgets cover one
+  and several workers. Software encoding remains the default.
+
+### Lyric timing and delivery
+
+- **Per-cue compositions.** Lyric builds select deterministic layout or template-group variants by section,
+  occurrence, cue or matching text. Single, stacked and setup/payoff phrases fit within configured sizes and gain
+  kinetic entrances. Saved objects attach at text metrics, bounded part motion keeps them registered, and
+  `lyrics preview --cue` reviews one cue. Approved per-cue style edits and optional-field removals survive rebuilds,
+  including timing-only lyric changes; reused exports retain composition verification metadata (#612).
+
+- **Reviewable alignment.** Configured HTTP or local command providers implement `align`; no model ships with
+  Vixl. `lyrics-align` writes independent timing JSON with occurrence indices, line/word times, confidence and
+  sanitized provenance. Existing LRC line starts remain unless explicitly replaced. `lyrics-timing-edit` repairs
+  timestamps without another provider call, and `lyrics-timing-export` writes enhanced LRC. Builds accept `timing`
+  in place of `lyrics` and word-timed typewriter entrances remain editable. Invalid ranges, missing matches and
+  non-monotonic times block building until repaired; low confidence and silence are review findings (#523).
+- **Encoded delivery verification.** `verify: "full"` adds complete ffmpeg decode and up to four visual/brand
+  samples per cue (400 total) to the basic stream, exact cue-text and timing checks. Reports separate structural,
+  brand, sampled visual and unreviewed work, with explicit unsampled intervals and source hashes/transcode details.
+  `lyric-video-review` records approval or requested changes against the build and source identities. Basic export
+  stays unvalidated; full checks and current approval are required to validate a delivery. Same-duration audio
+  replacement invalidates approval, and sources changing during export fail verification (#613).
+
+### Shared data and drawing finish
+
+- **Datasets shared by charts, tables and text.** `dataset` sets, edits, reloads or removes named numeric data;
+  charts and tables bind through `data` and derive sums, shares or maxima by category or series. A single edit
+  redraws dependents atomically while keeping their layer IDs. `${data.sales.total|number}`, maximum labels/values,
+  and individual cells use ordinary merge-field filters. Missing bindings, ambiguous labels and dependency cycles
+  are reported. The new `variables` plugin hook supplies names under `data.` without coupling the renderer to
+  charts (#214).
+- **Drawing finish.** Facing curved stroke ends receive a sampled cubic bridge following both tangents; straight
+  corners and ends pointing away retain their bounded joins. Centerline vectorization now smooths pixel stairs
+  before simplification (`settings.smooth: 0.3`, default); set 0 for the previous unsmoothed trace. This changes
+  newly traced centerlines, preserves open endpoints and avoids rounding large simplified corners. Synthetic
+  ±2° drawings verify deskew within 0.15° without changing its algorithm (#218).
+
 ## 0.32.0
 
 A multi-document automation and hosting release: step 7 of the

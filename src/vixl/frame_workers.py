@@ -6,9 +6,9 @@ consecutive chunks of frames, so its incremental canvas stays warm within a chun
 two chunks per worker at a time and yields the frames in order, so memory stays bounded and the encoders see
 the same frames as a one-process export, byte for byte.
 
-``VIXL_FRAME_WORKERS`` sets the number of processes (``0`` or ``1`` renders in this process); the default is one
-fewer than the cores, at most four. Short exports (under ``MIN_FRAMES_PER_WORKER`` frames a worker), previews and
-documents with linked layers render here: starting a process costs about a second.
+``VIXL_FRAME_WORKERS`` sets the number of processes (``0`` or ``1`` renders in this process). Without an override,
+the first chunk renders here; its warm frame time decides whether the remaining work can repay process startup
+and pixel transfer, leaving a core for the encoder. Short exports, previews and linked documents render here.
 """
 
 from collections import deque
@@ -24,12 +24,20 @@ MIN_FRAMES_PER_WORKER = 16
 # CHUNK, and fewer when the frames held in flight (two tasks a worker) would pass IN_FLIGHT_BYTES.
 CHUNK = 16
 IN_FLIGHT_BYTES = 256 * 1024 * 1024
+# Conservative estimates from the animation-export measurements. A small predicted gain does not justify
+# throwing away a warm canvas and starting processes. Explicit VIXL_FRAME_WORKERS bypasses this estimate.
+STARTUP_SECONDS = 1.0
+TRANSFER_BYTES_PER_SECOND = 512 * 1024 * 1024
 
 _PROJECT = None  # The document a worker process renders.
 
 
-def workers_for(project, count, preview=False):
-    """How many worker processes an export of ``count`` frames uses (1: none)."""
+def workers_for(project, count, preview=False, *, frame_seconds=None, frame_bytes=0):
+    """Workers for the remaining frames (1: in-process), after measuring a warm ``frame_seconds``.
+
+    An explicit environment override is honoured without a sample. Automatic selection stays sequential
+    until measured, and requires at least a second and 25% predicted saving after startup and transfers.
+    """
     value = os.environ.get("VIXL_FRAME_WORKERS", "").strip()
     try:
         workers = int(value) if value else min(4, (os.cpu_count() or 1) - 1)
@@ -42,7 +50,18 @@ def workers_for(project, count, preview=False):
     state = project.state
     if link_layers(state) or any(layer.get("linked") for layer in state.get("layers", [])):
         return 1  # Linked files are read relative to the workspace: render them where the workspace is.
-    return max(1, min(workers, count // MIN_FRAMES_PER_WORKER))
+    workers = max(1, min(workers, count // MIN_FRAMES_PER_WORKER))
+    if value:
+        return workers
+    if frame_seconds is None or frame_seconds <= 0:
+        return 1
+    serial = count * frame_seconds
+    costs = {n: serial / n + n * STARTUP_SECONDS + count * frame_bytes / TRANSFER_BYTES_PER_SECOND
+             for n in range(2, workers + 1)}
+    if not costs:
+        return 1
+    chosen = min(costs, key=costs.get)
+    return chosen if serial - costs[chosen] >= max(1.0, serial * 0.25) else 1
 
 
 def _start(archive, limits, workspace, disk):

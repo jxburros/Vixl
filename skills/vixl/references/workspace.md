@@ -50,3 +50,8 @@ A Figma file or frame imports as editable layers, live text, stacks and gradient
 `vixl import URL --format figma [--node 1:2] [--rasterize-unsupported]`, Python `import_document(project, b"URL", "figma")`, REST
 `POST /import?format=figma`); the user's read-only token is the `FIGMA_TOKEN` (or `VIXL_FIGMA_TOKEN`) environment variable of
 the process that runs Vixl, and the result's `report` lists what could not map. See [Import from Figma](../../../docs/guides/images/figma.md).
+
+For export, use `vixl_export` with a `.figma.json` path or Python `Project.export(..., format="FIGMA")`.
+The file embeds images and reports unsupported appearances in `unmapped`. The local Figma import plugin in
+`integrations/figma-plugin` adds editable pages to a Figma file and reports missing-font substitutions; review
+the imported artwork. No Figma token is needed for this file-based handoff.

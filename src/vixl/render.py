@@ -192,13 +192,14 @@ def document_variables(project):
 
 def _document_variables(project):
     from .forms import current_values, has_fields
+    from .plugins import hooks as plugin_hooks
 
     maps = project.state.get("maps")
-    if not has_fields(project):
-        return with_maps(project.state.get("variables", {}), maps)
-    fields = current_values(project)
-    return with_maps({**{key: display for key, (_, display) in fields.items()}, **project.state.get("variables", {})},
-                     maps)
+    fields = current_values(project) if has_fields(project) else {}
+    values = {**{key: display for key, (_, display) in fields.items()}, **project.state.get("variables", {})}
+    for provider in plugin_hooks("variables"):
+        values.update({f"data.{name}": value for name, value in provider(project).items()})
+    return with_maps(values, maps)
 
 
 def text_metrics(project, layer, variables=None):

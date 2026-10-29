@@ -17,6 +17,7 @@ can substitute fonts, emphasize form fields or handle animation differently.
 | Scalable supported geometry | SVG | Shapes/text/gradients and supported effects; appearance policy may embed raster fallbacks; carries the editable document ([round trip](#svg-round-trip)) |
 | Print or selectable-text pages | PDF | Vector pages where supported; effects can fall back to raster; CMYK PDF stays vector (DeviceCMYK) |
 | Editable presentation | PPTX | Real text, supported shapes, images, notes; unsupported appearances become pictures |
+| Editable Figma handoff | `.figma.json` / FIGMA | Pages, frames, native shapes, text and basic auto layout; embedded images and an explicit loss report; import with the local [Figma plugin](../images/figma.md#export-to-figma) |
 | Layered handoff to Photoshop and similar editors | PSD | One 8-bit RGBA pixel layer per layer with names, opacity, visibility, blend modes and layer groups, plus the flattened composite; text is pixels, not editable type |
 | Interactive form | Fillable PDF | AcroForm widgets over artwork; RGB output; verify target PDF viewer |
 | A font drawn in the document | TTF, OTF, WOFF (WOFF2 with `brotli`) | The document's font design as an installable font; see [making a font](../text/custom-fonts.md) |
@@ -101,6 +102,39 @@ or remain editable; values are validated and do not mutate the blank master.
 For motion, check time coverage and final playback. `render --time 1s` produces one pose;
 `timeline-sheet` produces an overview; `export-timeline` produces the sequence. Pixel-frame
 animations use `export-animation` instead. See [motion tutorial](../../tutorials/motion.md).
+
+MP4 and WebM accept `--preset draft` for a faster encode, or `--preset final` (the default).
+The preset keeps the same `quality`, dimensions, frame rate and rendered pixels; draft files can be larger
+and compression can differ. MP4 uses x264 `veryfast` for draft and `medium` for final. WebM uses threaded
+VP9 with `cpu-used` 6 for draft and 4 for final. Python, MCP and REST use `preset: "draft"` or `"final"` too.
+
+Timeline exports measure the first chunk of frames before starting render workers. Short or cheap animations
+stay in one process; expensive remaining frames use up to four workers, leaving a core for the encoder.
+`VIXL_FRAME_WORKERS=1` keeps all rendering in-process; another positive count requests that many workers
+when the export has enough frames. Previews and linked documents stay in-process. Frame ZIPs use faster PNG
+compression: they preserve every pixel and can be larger than individually exported PNGs.
+
+### Lottie, dotLottie and Telegram stickers
+
+`export-timeline --out motion.json` writes a Lottie animation; `.lottie` writes a self-contained dotLottie ZIP,
+and `.tgs` writes a Telegram sticker. MCP uses `vixl_export` with `kind: "timeline"` (required for a plain
+`.json` filename); REST's timeline export route and Python's `export_timeline` accept the same extensions.
+
+Shapes, paths, outlined text, ordinary transforms, fills, strokes, linear gradients and circular radial gradients
+stay vector. Groups become precompositions so overlapping children retain their group's opacity. Motion is sampled
+at the selected `fps`: held keys preserve each exported frame, including custom easing and constraints. Original
+easing curves and linked-instance time maps are baked; the result is not a round-trip of the Vixl timeline.
+
+Unsupported layers and appearances become embedded PNG sequences that remain animated. The result's `fallbacks`
+lists each affected layer and why: images and linked documents, effects, styles, kinetic text, changing path topology,
+affine shear, elliptical radial gradients and clipped vector geometry. Backdrop-dependent blends, adjustments or
+clipping rasterize the whole composition. `--strict` (`strict: true`) refuses every raster fallback before writing.
+Audio and raster-encoder options such as `quality`, `preset`, `poster` and `target_bytes` are refused.
+
+TGS is always strict: 512 × 512 pixels, at most 60 fps, at most three seconds after frame quantization, and at most
+64 KiB compressed. Simplify the artwork or choose JSON/dotLottie when those constraints cannot be met. The exporter
+also bounds sampled geometry and embedded image bytes; lower `fps`, duration, scale or complexity if a budget fails.
+The published [export schema](../../../src/vixl/data/lottie-export.schema.json) describes Vixl's supported subset.
 
 ## Layered PSD for designer handoff
 

@@ -115,6 +115,12 @@ its feature map. See [documentation maintenance](docs/project/documentation-main
 - New fixtures: add a builder to `tests/visual/visual_fixtures.py` (canvas at most 256 px), then generate its references as above.
 - References are generated on Linux, because text rasterization differs across operating systems and FreeType versions. The suite is skipped on other platforms; set `VIXL_VISUAL=1` to run it anyway (expect text differences). CI runs it in a dedicated Linux job.
 
+## Optional Lottie reference tests
+
+`uv sync --extra dev --extra lottie-test` installs the reference player used by `tests/test_lottie.py`.
+The exporter itself has no player dependency. Without this extra, its reference-frame comparisons skip;
+structural, packaging, budget, cancellation and interface tests still run.
+
 ## Performance tests
 
 `tests/test_perf.py` (marker `perf`, so `pytest -m perf` runs only these) gives the paths that once grew with the document a time budget: one move on 4,096 layers, a batch of moves, the overlap check on dense text, the composition check on 1,500 scattered labels, a poster's design check, re-rendering a large canvas of styled layers after a move, a full-canvas multiply, a dithered full-canvas gradient and a 100,000-character text flow. They run in the default suite and take a few seconds each. A budget is several times what the code needs on a loaded CI runner and far below what the old behaviour took; when a speed claim goes into the changelog, add or tighten a budget here instead of quoting a number. Caches that make these fast need a test that changes each input the cached value reads (see `tests/test_apply_speed.py`).

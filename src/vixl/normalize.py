@@ -30,6 +30,7 @@ def note_cli_output(args):
                 notes.append(note)
 
 TYPE_ALIASES = {
+    "animation-instance": "link",
     "image": "add",
     "add-image": "add",
     "import": "add",

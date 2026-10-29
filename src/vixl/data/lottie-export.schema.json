@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vixl.dev/schemas/lottie-export.schema.json",
+  "title": "Vixl's supported Lottie export subset",
+  "type": "object",
+  "required": ["v", "fr", "ip", "op", "w", "h", "layers", "assets"],
+  "properties": {
+    "v": {"const": "5.7.4"},
+    "fr": {"type": "number", "minimum": 1, "maximum": 60},
+    "ip": {"const": 0},
+    "op": {"type": "integer", "minimum": 1},
+    "w": {"type": "integer", "minimum": 1},
+    "h": {"type": "integer", "minimum": 1},
+    "layers": {"type": "array", "items": {"$ref": "#/$defs/layer"}},
+    "assets": {"type": "array", "items": {"$ref": "#/$defs/asset"}}
+  },
+  "$defs": {
+    "property": {
+      "oneOf": [
+        {"type": "object", "required": ["a", "k"], "properties": {"a": {"const": 0}, "k": {}}},
+        {"type": "object", "required": ["a", "k"], "properties": {"a": {"const": 1}, "k": {
+          "type": "array", "minItems": 1,
+          "items": {"type": "object", "required": ["t", "s", "h"], "properties": {
+            "t": {"type": "number", "minimum": 0}, "s": {"type": "array"}, "h": {"const": 1}
+          }}
+        }}}
+      ]
+    },
+    "transform": {
+      "type": "object", "required": ["a", "p", "s", "r", "o"],
+      "properties": {
+        "a": {"$ref": "#/$defs/property"}, "p": {"$ref": "#/$defs/property"},
+        "s": {"$ref": "#/$defs/property"}, "r": {"$ref": "#/$defs/property"},
+        "o": {"$ref": "#/$defs/property"}, "sk": {"$ref": "#/$defs/property"},
+        "sa": {"$ref": "#/$defs/property"}
+      }
+    },
+    "shape": {
+      "type": "object", "required": ["ty"],
+      "properties": {
+        "ty": {"enum": ["gr", "sh", "rc", "fl", "st", "gf", "gs", "tr"]},
+        "it": {"type": "array", "items": {"$ref": "#/$defs/shape"}},
+        "ks": {"$ref": "#/$defs/property"}
+      }
+    },
+    "layer": {
+      "type": "object", "required": ["ind", "ty", "nm", "ks", "ip", "op", "st"],
+      "properties": {
+        "ind": {"type": "integer", "minimum": 1}, "ty": {"enum": [0, 2, 4]},
+        "nm": {"type": "string"}, "ks": {"$ref": "#/$defs/transform"},
+        "ip": {"type": "number", "minimum": 0}, "op": {"type": "number", "minimum": 1},
+        "st": {"const": 0}, "refId": {"type": "string"},
+        "shapes": {"type": "array", "items": {"$ref": "#/$defs/shape"}}
+      },
+      "allOf": [
+        {"if": {"properties": {"ty": {"enum": [0, 2]}}}, "then": {"required": ["refId"]}},
+        {"if": {"properties": {"ty": {"const": 4}}}, "then": {"required": ["shapes"]}}
+      ]
+    },
+    "asset": {
+      "type": "object", "required": ["id", "w", "h"],
+      "properties": {
+        "id": {"type": "string"}, "w": {"type": "integer", "minimum": 1}, "h": {"type": "integer", "minimum": 1},
+        "layers": {"type": "array", "items": {"$ref": "#/$defs/layer"}},
+        "p": {"type": "string", "pattern": "^data:image/png;base64,"}, "e": {"const": 1}
+      },
+      "oneOf": [{"required": ["layers"]}, {"required": ["p", "e"]}]
+    }
+  }
+}

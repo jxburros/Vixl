@@ -667,18 +667,19 @@ def _value_at(project, timeline, target, prop, time):
 
 class FrameState:
     """Copy-on-write layers of a render-only frame: the frame shares every layer with the document and
-    copies one (deeply) the first time the frame changes it, so a frame of a document with thousands
-    of layers and one moving dot does not copy thousands of layers."""
+    copies one the first time the frame changes it. Scalar tracks share its nested geometry; callers
+    that mutate nested data request a deep copy, upgrading a previous shallow copy when necessary."""
 
     def __init__(self, state):
         self.layers = state["layers"]
         self.position = {layer["id"]: i for i, layer in enumerate(self.layers)}
         self.copied = set()
+        self.deep_copied = set()
 
     def reindex(self):
         self.position = {layer["id"]: i for i, layer in enumerate(self.layers)}
 
-    def writable(self, ref):
+    def writable(self, ref, *, deep=True):
         """The frame's own copy of the layer with ID (or name) ``ref``, or None."""
         i = self.position.get(ref)
         if i is None:
@@ -686,8 +687,12 @@ class FrameState:
             if i is None:
                 return None
         layer = self.layers[i]
-        if layer["id"] not in self.copied:
+        if deep and layer["id"] not in self.deep_copied:
             layer = self.layers[i] = deepcopy(layer)
+            self.deep_copied.add(layer["id"])
+            self.copied.add(layer["id"])
+        elif layer["id"] not in self.copied:
+            layer = self.layers[i] = dict(layer)
             self.copied.add(layer["id"])
         return layer
 
@@ -794,6 +799,10 @@ def project_at(project, time, prune=False):
     state["layers"] = list(project.state["layers"])
     state["canvas"] = dict(project.state["canvas"])
     cow = FrameState(state)
+    candidate._link_time = time
+    for layer in list(state["layers"]):
+        if layer["type"] == "link":
+            cow.writable(layer["id"])["_time"] = time
     if not timeline or not timeline.get("tracks"):
         if timeline and timeline.get("text_animations"):
             from .kinetic import apply_frame, specs_by_layer
@@ -816,7 +825,8 @@ def project_at(project, time, prune=False):
         if target == "canvas":
             state["canvas"]["background"] = value
             return
-        layer = cow.writable(target) if target in layers else None
+        nested = prop.startswith(("distort:", "effect:", "joint:"))
+        layer = cow.writable(target, deep=nested) if target in layers else None
         if layer is None:
             return
         layers[target] = layer
@@ -871,7 +881,7 @@ def project_at(project, time, prune=False):
         if layer["type"] == "text" and layer.get("auto_size", True):
             width, height, _ = text_metrics(candidate, layer)
             if (layer["width"], layer["height"]) != (width, height):
-                layer = cow.writable(layer["id"])
+                layer = cow.writable(layer["id"], deep=False)
                 layer["width"], layer["height"] = width, height
     if geometry:
         from .transforms import dimension
@@ -1483,23 +1493,28 @@ def _frames(project, times, scale, preview=False, cancelled=None, progress=None)
     size = (max(1, round(c["width"] * scale)), max(1, round(c["height"] * scale)))
     project.limits.size(*size)
     began = clock.perf_counter()
-    from .frame_workers import frames as parallel_frames, workers_for
+    from .frame_workers import CHUNK, frames as parallel_frames, workers_for
 
     workers = workers_for(project, len(times), preview)
-    if workers > 1:
-        for index, image in enumerate(parallel_frames(project, times, scale, workers, cancelled)):
-            if progress:
-                elapsed, done = clock.perf_counter() - began, index + 1
-                progress({"done": done, "total": len(times), "timing": {
-                    "elapsed_s": round(elapsed, 3), "eta_s": round(elapsed / done * (len(times) - done), 3),
-                    "workers": workers}})
-            yield image if image.size == size else image.resize(size, Image.Resampling.LANCZOS)
-        return
+    measured = []
+    sample_count = min(CHUNK, len(times))
+    index = 0
     try:
-        for index, time in enumerate(times):
+        while index < len(times):
+            if workers > 1:
+                for image in parallel_frames(project, times[index:], scale, workers, cancelled):
+                    index += 1
+                    if progress:
+                        elapsed = clock.perf_counter() - began
+                        progress({"done": index, "total": len(times), "timing": {
+                            "elapsed_s": round(elapsed, 3), "eta_s": round(elapsed / index * (len(times) - index), 3),
+                            "workers": workers}})
+                    yield image if image.size == size else image.resize(size, Image.Resampling.LANCZOS)
+                break
             require(not cancelled or not cancelled(), "Timeline cancelled", "cancelled")
             check_cancelled()
             start = clock.perf_counter()
+            time = times[index]
             if preview:
                 from .proxy import render_preview
                 frame, image = None, render_preview(project, *size, time=time)
@@ -1513,19 +1528,28 @@ def _frames(project, times, scale, preview=False, cancelled=None, progress=None)
             if profile is not None:
                 profile.phase("frame_setup", setup)
                 profile.phase("frame_raster", now - start - setup)
+            index += 1
+            if index <= sample_count:
+                measured.append(now - start)
             if progress:
-                elapsed, done = now - began, index + 1
-                progress({"done": done, "total": len(times), "timing": {
-                    "elapsed_s": round(elapsed, 3), "eta_s": round(elapsed / done * (len(times) - done), 3),
-                    "setup_ms": round(setup * 1000, 2), "raster_ms": round((now - start - setup) * 1000, 2)}})
+                elapsed = now - began
+                progress({"done": index, "total": len(times), "timing": {
+                    "elapsed_s": round(elapsed, 3), "eta_s": round(elapsed / index * (len(times) - index), 3),
+                    "setup_ms": round(setup * 1000, 2), "raster_ms": round((now - start - setup) * 1000, 2),
+                    "workers": 1}})
             yield image if image.size == size else image.resize(size, Image.Resampling.LANCZOS)
+            if index == sample_count:
+                # Exclude the cold first frame and encoder time (the generator yields outside this measurement).
+                warm = measured[1:] or measured
+                workers = workers_for(project, len(times) - index, preview,
+                                      frame_seconds=sum(warm) / len(warm), frame_bytes=4 * size[0] * size[1])
     finally:
         disk = getattr(project, "_disk_cache", None)
         if disk is not None:
             disk.flush()
 
 
-def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=None, end=None, background=None, columns=None, quality=90, colors=256, overwrite=False, preview=False, cancelled=None, progress=None, dither="auto", max_bytes=None, poster=None, sample_rate=None, target_bytes=None, preset=None):
+def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=None, end=None, background=None, columns=None, quality=90, colors=256, overwrite=False, preview=False, cancelled=None, progress=None, dither="auto", max_bytes=None, poster=None, sample_rate=None, target_bytes=None, preset=None, strict=False):
     """Write the timeline as an animation, sheet or frame sequence. Never clobbers by default.
     Frames render at the target resolution (``scale`` 0.05–16, bounded by the pixel budget);
     ``colors`` (2–256) caps the GIF palette and ``dither`` ("auto", "none", "ordered", "floyd") sets how
@@ -1535,9 +1559,20 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     the MP4/WebM audio rate (default: the highest source rate up to 48 kHz; 48 kHz for synthesized sound).
     ``target_bytes`` (GIF/WebP/APNG) encodes, measures and steps down colors (WebP quality), then fps, then
     scale until the file fits, reporting the settings it chose; ``preset`` ("chat", "web", "email") fills in
-    fps, size, colors and target_bytes left at their defaults."""
+    fps, size, colors and target_bytes left at their defaults. For MP4/WebM, ``preset`` is "final" (default)
+    or "draft": draft encodes faster at the same quality setting, usually making a larger file."""
     from .animation import (PRESETS, alternatives, check_colors, check_dither, encoded_frames, fit_encode, fit_steps, gif_bytes,
                             has_gradients, save_webp, size_warnings, webp_trial)
+    from .plugins import first as plugin_export
+
+    result = plugin_export("timeline-export-format", project, path, format, fps=fps, scale=scale, start=start,
+                           end=end, background=background, columns=columns, quality=quality, colors=colors,
+                           overwrite=overwrite, preview=preview, cancelled=cancelled, progress=progress,
+                           dither=dither, max_bytes=max_bytes, poster=poster, sample_rate=sample_rate,
+                           target_bytes=target_bytes, preset=preset, strict=strict)
+    if result is not None:
+        return result
+    require(strict is False, "strict applies to timeline interchange exports", field="strict")
 
     project = cached(project)
     path = Path(path)
@@ -1553,9 +1588,13 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     require(dither == "auto" or format == "gif", "dither applies to GIF export", field="dither")
     require(max_bytes is None or (isinstance(max_bytes, int) and not isinstance(max_bytes, bool) and max_bytes > 0), "max_bytes must be a positive whole number", field="max_bytes")
     require(poster is None or format in ("gif", "apng", "webp"), "poster applies to gif, apng and webp exports", field="poster")
-    if preset is not None:
+    if format in ("mp4", "webm"):
+        require(preset in (None, "draft", "final"), "Video preset must be draft or final", field="preset",
+                allowed=["draft", "final"])
+        preset = preset or "final"
+    elif preset is not None:
         require(preset in PRESETS, f"preset must be one of {', '.join(PRESETS)}", field="preset", allowed=list(PRESETS))
-        require(format in ("gif", "apng", "webp"), "preset applies to gif, apng and webp exports", field="preset")
+        require(format in ("gif", "apng", "webp"), "Size presets apply to gif, apng and webp exports", field="preset")
         defaults = PRESETS[preset]
         fps = defaults["fps"] if fps is None else fps
         if scale == 1.0:
@@ -1635,7 +1674,7 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
             rate = chosen["sample_rate"]
             with tempfile.TemporaryDirectory(prefix="vixl-score-") as staging:
                 silent = Path(staging) / ("silent." + format)
-                result = _video(silent, frames, fps, format, quality, False, len(times), (w, h))
+                result = _video(silent, frames, fps, format, quality, False, len(times), (w, h), preset)
                 audio_path = Path(staging) / "score.wav"
                 samples = mix_tracks(project.state["audio_tracks"], timeline["duration"], project=project, rate=rate,
                                      channels=chosen["channels"])
@@ -1648,13 +1687,13 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
                 size_bytes = mixed.stat().st_size
                 publish_file(path, mixed, replace=overwrite)
                 return {**result, "output": str(path), "bytes": size_bytes, "audio_tracks": len(project.state["audio_tracks"]), **chosen}
-        return _video(path, frames, fps, format, quality, overwrite, len(times), (w, h))
+        return _video(path, frames, fps, format, quality, overwrite, len(times), (w, h), preset)
     stream = io.BytesIO()
     if format == "frames":
         with zipfile.ZipFile(stream, "w", zipfile.ZIP_STORED) as archive:
             for i, image in enumerate(frames):
                 buffer = io.BytesIO()
-                image.save(buffer, format="PNG")
+                image.save(buffer, format="PNG", compress_level=1)
                 archive.writestr(f"frame_{i:05d}.png", buffer.getvalue())
             archive.writestr("timing.json", json.dumps({"fps": fps, "frame_ms": 1000 / fps, "frames": len(times), "width": w, "height": h, "durations": durations}))
     elif format == "sheet":
@@ -1745,7 +1784,7 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     }
 
 
-def _video(path, frames, fps, format, quality, overwrite, count, size):
+def _video(path, frames, fps, format, quality, overwrite, count, size, preset="final"):
     """Encode frames with ffmpeg as they arrive. Frames are piped as raw pixels, one at a time,
     so memory does not grow with the video's length."""
     ffmpeg = shutil.which("ffmpeg")
@@ -1754,7 +1793,10 @@ def _video(path, frames, fps, format, quality, overwrite, count, size):
     w, h = size
     even = (w + w % 2, h + h % 2)
     crf = str(max(0, min(51, round(51 - quality * 0.33))))
-    codec = ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", crf, "-movflags", "+faststart"] if format == "mp4" else ["-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p", "-crf", crf, "-b:v", "0"]
+    codec = (["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", crf, "-preset",
+              "veryfast" if preset == "draft" else "medium", "-movflags", "+faststart"] if format == "mp4" else
+             ["-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p", "-crf", crf, "-b:v", "0", "-row-mt", "1",
+              "-deadline", "good", "-cpu-used", "6" if preset == "draft" else "4"])
     pixels = "rgb24" if format == "mp4" else "rgba"
     with tempfile.TemporaryDirectory(prefix="vixl-video-") as staging, tempfile.TemporaryFile() as errors:
         staged = Path(staging) / ("out" + path.suffix)
@@ -1768,9 +1810,7 @@ def _video(path, frames, fps, format, quality, overwrite, count, size):
                 if image.size != (w, h):
                     image = image.resize((w, h), Image.Resampling.LANCZOS)
                 if format == "mp4":
-                    base = Image.new("RGBA", image.size, (255, 255, 255, 255))
-                    base.alpha_composite(image.convert("RGBA"))
-                    image = base.convert("RGB")
+                    image = _video_rgb(image)
                 else:
                     image = image.convert("RGBA")
                 process.stdin.write(image.tobytes())
@@ -1789,7 +1829,21 @@ def _video(path, frames, fps, format, quality, overwrite, count, size):
         from .production import publish_file
         byte_count = staged.stat().st_size
         publish_file(path, staged, replace=overwrite)
-    return {"output": str(path), "format": format, "frames": written or count, "fps": fps, "duration": round((written or count) * 1000 / fps), "size": [w, h], "bytes": byte_count}
+    return {"output": str(path), "format": format, "frames": written or count, "fps": fps,
+            "duration": round((written or count) * 1000 / fps), "size": [w, h], "bytes": byte_count,
+            "preset": preset}
+
+
+def _video_rgb(image):
+    """Flatten video transparency on white, skipping the backdrop for already opaque frames."""
+    if image.mode == "RGB":
+        return image
+    image = image.convert("RGBA") if image.mode != "RGBA" else image
+    if image.getchannel("A").getextrema() == (255, 255):
+        return image.convert("RGB")
+    base = Image.new("RGBA", image.size, (255, 255, 255, 255))
+    base.alpha_composite(image)
+    return base.convert("RGB")
 
 
 def schemas(add):
