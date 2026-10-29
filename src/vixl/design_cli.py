@@ -165,6 +165,10 @@ def compile_design(cmd, args):
         p.add_argument("name")
     elif cmd == "symbol-instance":
         p.add_argument("symbol")
+    elif cmd == "ungroup":
+        p.add_argument("target", nargs="?")
+        p.add_argument("--keep", choices=("strict", "appearance"))
+        p.add_argument("--force", action="store_true", default=None)
     else:
         p.add_argument("target", nargs="?")
     if cmd in ("shape", "frame", "symbol-instance"):

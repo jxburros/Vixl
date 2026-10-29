@@ -69,7 +69,20 @@ or a clip pair apart is refused. Animated targets keep their tracks: position ke
 only translated, rotation and scale tracks carry over through any parent, and position or size tracks under a turned or
 scaled parent are refused with the tracks named. The whole call is one undoable step.
 
-`clip TARGET BASE` multiplies TARGET's rendered alpha by the sibling BASE's alpha. It follows base transforms and masks, works on groups, and rejects cycles. The base remains an ordinary visible layer. `clip TARGET --release` removes the relationship. `ungroup NAME` restores local members to their parent; reset group appearance and transforms first when ungrouping would discard those settings. A group's timeline tracks (position, rotation, scale, size, visibility, and opacity on a one-layer group) move onto its children as per-frame keys, so the animation looks the same; tracks that cannot be rewritten exactly (effects, mirroring, opacity over several overlapping children, uneven scaling of a rotated child) refuse the ungroup and are named in the error. `remove GROUP` removes its descendants. Reordering always stays among siblings.
+`clip TARGET BASE` multiplies TARGET's rendered alpha by the sibling BASE's alpha. It follows base transforms and masks, works on groups, and rejects cycles. The base remains an ordinary visible layer. `clip TARGET --release` removes the relationship.
+
+`ungroup NAME` restores local members to their parent. Its default `keep: strict` requires reset group transforms.
+Use `ungroup NAME --keep appearance` to carry rotation, flips, skew and scale onto the editable children while
+keeping their IDs, geometry and stacking order. Transformed text and raster edges can differ slightly because the
+children are resampled separately instead of as one group surface. Parent-relative constraints are cleared and
+reported. Declared objects still need `--force`.
+
+A group's timeline tracks (position, rotation, scale, size and visibility) move onto its children as per-frame keys.
+Opacity transfers to a single child or, with `keep: appearance`, to children whose ink extents never overlap at the
+sampled frames. Masks, effects, styles, clips, repeats, non-normal blending and child adjustments still refuse the
+appearance-preserving ungroup. Child position/size tracks under a rotated or scaled group also refuse, naming the
+tracks; other animation that cannot be rewritten within half a pixel refuses atomically. `remove GROUP` removes its
+descendants. Reordering always stays among siblings.
 
 ## Examples: gradients, glows, shadows and radial repeats
 

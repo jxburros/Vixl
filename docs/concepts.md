@@ -57,6 +57,9 @@ Stacking inside groups follows three rules:
   `ungroup` keeps every child where it was drawn, also over time: a group's animation (position,
   rotation, scale, size, visibility, and opacity on a group of one) becomes per-frame keys on its
   children, and an animation that cannot be rewritten exactly is refused with the tracks named.
+  Use `ungroup --keep appearance` for a rotated, flipped, skewed or resized group; its children stay editable and
+  keep their geometry, though separately resampled edges can differ slightly. Masks, effects and overlapping
+  group fades must be removed first. The default `keep: strict` still requires reset transforms.
 
 `move` changes position, `resize` changes dimensions and `scale` uses a factor (`0.8`
 means 80%). Procedural shapes retain geometry. Raster images have a fixed original
