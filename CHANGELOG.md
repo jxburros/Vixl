@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.33.3
+
+Install commands that always resolve, and the first stage of the roadmap.
+
+### Changed
+
+- **Install pins follow the newest published release.** The `uvx` and `pip` commands in the README and getting
+  started, the action pin in the CI guide and the repository's `.mcp.json` now name the newest `vixl-engine` on PyPI
+  (`distribution/published.json`, 0.32.0 today) instead of the source version, which reaches PyPI days later. Before,
+  a new user's first command failed and an MCP client opening the repository reported the server as closed.
+  `python scripts/published_pins.py --latest` advances them with each version bump, and a new `install-pins` job in
+  release validation fails when the pinned version is not on PyPI or has no release tag. The `.mcpb` and the Claude
+  Code bundle still pin the release they ship with (#762).
+- **The review page says what each revision did.** `GET /review` gives each history node a `summary` such as
+  "3 operations: text, move ×2" (with "(squashed)" for folded revisions), and the viewer shows it when a node has no
+  label, with the revision id in the tooltip.
+- **MCP and REST job results no longer show the workspace path.** `workflow` `start`, and `submit` with
+  `start: true`, report `"workspace": "."` as `vixl_document list` does.
+
+### Fixed
+
+- **Escaped variables in rich text pass the design check.** A `$${name}` in a rich-text span or a text flow drew the
+  literal `${name}` but made `check()` and `check(pages="all")` fail with an undefined variable, because span coverage
+  substituted variables a second time (#776).
+- **Oversized files are refused before they are read.** `read_bounded` refuses a file larger than the limit from its
+  size, and reads pipes and growing files in 1 MiB chunks, so a refusal no longer costs a buffer the size of the
+  limit (64 MiB for assets).
+- **Releases attach the host API contract.** `vixl-host-api.schema.json` was built but missing from the release
+  inventory, so no release carried it, though the 0.32.0 notes said releases attach it. It is now in
+  `.release/config.json`, and a test fails when a file the release build uploads is missing there (#543). The 0.32.0
+  container-image line also described intent: `release.yml` does not yet run `container.yml`, so no image has been
+  published.
+
+### Documentation
+
+- **The use-case catalog names releases, not issues.** Issue numbers ("(#512)", "Since #169") in
+  `docs/use-cases.md` became release numbers or were dropped; each row's issues are listed in
+  `docs/project/use-case-evidence.md`, and a docs test fails on issue references in user pages. QA-20 no longer says
+  logo variants go unchecked: `logo.variants` has checked them since 0.32.
+- **Stage 1 of the roadmap is done.** `ROADMAP.md` keeps only its two follow-ups for the next release.
+
 ## 0.33.2
 
 One development plan: the open issues and every earlier plan are folded into `ROADMAP.md`.

@@ -801,10 +801,11 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
 
     @app.get("/review")
     def review():
-        from .review import notes
+        from .review import node_summary, notes
         with session.project() as project:
+            history = [{**node, "summary": node_summary(node)} for node in session.history()["nodes"]]
             return mark({"head": project.head, "layers": project.inspect()["layers"],
-                         "history": session.history()["nodes"], **notes(session.path)})
+                         "history": history, **notes(session.path)})
 
     @app.get("/notes")
     def review_notes():

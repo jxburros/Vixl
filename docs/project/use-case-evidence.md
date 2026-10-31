@@ -91,6 +91,8 @@ estimated throughout.
   lands in another tier.
 - **Never renumber.** IDs stay attached to the use case so links and issues keep working.
 - **Move blocked rows** into a tier when a release fixes them, and say so in the notes ("since 0.22").
+- **Name releases, not issues.** Catalog notes say "since 0.25", never "(#512)"; record the issue under
+  [issue provenance](#issue-provenance). A test fails on issue references in user pages.
 - **Re-check after releases** that change the agent surface, schemas or defaults; the cost notes
   in the catalog came from the 0.20.0 tool comparison and the 0.21.0 exploration rebuild.
 
@@ -99,6 +101,100 @@ estimated throughout.
 ```markdown
 | PRE-NN | What someone wants to make or do | main operations or tools | calls · min | requirements, gaps, links |
 ```
+
+## Issue provenance
+
+The catalog names releases, not issues. These are the `jxburros/vixl` issues each row's notes cited before the
+references were moved here in 0.33.3; look them up for the history of a row. Rows are in catalog order.
+
+| Row | Issues |
+| --- | --- |
+| DOC-13 | #512 |
+| DOC-35 | #284, #300 |
+| DOC-36 | #511 |
+| DOC-38 | #334 |
+| DOC-40 | #712 |
+| DOC-37 | #259 |
+| TXT-10 | #335 |
+| TXT-13 | #603 |
+| TXT-14 | #419 |
+| TXT-23 | #684, #419 |
+| BLK-07 | #213 |
+| TXT-17 | #650 |
+| TXT-24 | #652 |
+| TXT-25 | #652 |
+| CLR-13 | #404 |
+| CLR-14 | #654 |
+| SHP-23 | #382 |
+| SHP-17 | #266 |
+| SHP-18 | #653 |
+| SHP-31 | #653 |
+| SHP-32 | #519 |
+| SHP-25 | #650 |
+| ILL-05 | #258 |
+| ILL-60 | #380 |
+| ILL-66 | #427 |
+| ILL-61 | #379 |
+| ILL-62 | #521 |
+| DAT-51 | #169 |
+| DAT-52 | #169 |
+| PRD-53 | #172 |
+| PRD-54 | #172 |
+| PRD-55 | #444 |
+| PRD-56 | #444 |
+| DEK-51 | #170 |
+| PRN-51 | #444 |
+| DRW-31 | #443 |
+| DOC-22 | #231 |
+| QA-01 | #464, #524, #525 |
+| QA-09 | #532 |
+| QA-25 | #571 |
+| QA-26 | #518 |
+| QA-27 | #520 |
+| QA-28 | #526 |
+| QA-32 | #531, #562 |
+| QA-33 | #563 |
+| BRD-05 | #527, #528 |
+| BRD-56 | #436 |
+| BRD-57 | #436 |
+| BRD-58 | #436 |
+| BRD-59 | #529, #530 |
+| AGT-34 | #536 |
+| SOC-83 | #368 |
+| BRD-54 | #443 |
+| DAT-43 | #169 |
+| ILL-52 | #380 |
+| MOT-09 | #179 |
+| MOT-13 | #472 |
+| BLK-24 | #381 |
+| PRD-60 | #568 |
+| PRD-61 | #572 |
+| PRD-62 | #578 |
+| PRD-64 | #569 |
+| AGT-45 | #579 |
+| AGT-30 | #537, #543 |
+| AGT-46 | #544 |
+| AGT-48 | #546 |
+| AGT-49 | #547 |
+| AGT-47 | #545 |
+| QA-47 | #559 |
+| QA-48 | #560 |
+| PRN-12 | #169 |
+| MOT-27 | #510 |
+| PRD-22 | #381 |
+| QA-37 | #564 |
+| QA-45 | #558 |
+| QA-46 | #557 |
+| PRN-30 | #169 |
+| SOC-60 | #210 |
+| SOC-62 | #210 |
+| BLK-15 | #210, #653, #519 |
+| PRD-51 | #565, #576 |
+| PRD-63 | #568 |
+| BLK-25 | #542 |
+| Place native-coordinate path art in a display box | #610 |
+| Choose an integration interface | #640 |
+| Render final campaign outputs under a severity profile | #563, #701 |
 
 ## Ideas not yet placed
 

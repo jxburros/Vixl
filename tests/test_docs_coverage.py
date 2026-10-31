@@ -103,3 +103,26 @@ def test_commit_msg_hook_strips_authorship_trailers(tmp_path):
                        encoding="utf-8")
     subprocess.run([sh, str(ROOT / "scripts/hooks/commit-msg"), str(message)], check=True)
     assert message.read_text(encoding="utf-8") == "Fix thing\n\nBody line.\n"
+
+
+ISSUE_REFERENCE = re.compile(r"(?<![\w&/])#\d{3,4}\b(?![0-9a-fA-F-])")
+# Forward references a reader needs: the signed-manifest work is tracked in this issue.
+ISSUE_ALLOWED = {("docs/reference/releases.md", "#756")}
+
+
+def test_user_pages_name_releases_not_issue_numbers():
+    """User pages say "since 0.25", not "(#512)": issue numbers belong in CHANGELOG.md and docs/project/
+    (docs/project/use-case-evidence.md keeps the catalog's provenance). Code and hex colours are skipped."""
+    files = [ROOT / "README.md", ROOT / "CONTRIBUTING.md", ROOT / "SECURITY.md", *ROOT.glob("docs/**/*.md"),
+             *ROOT.glob("skills/**/*.md")]
+    hits = []
+    for path in files:
+        relative = path.relative_to(ROOT).as_posix()
+        if relative.startswith("docs/project/"):
+            continue
+        text = re.sub(r"```.*?```", "", path.read_text(encoding="utf-8"), flags=re.S)
+        text = re.sub(r"`[^`\n]*`", "", text)
+        for match in ISSUE_REFERENCE.finditer(text):
+            if (relative, match.group(0)) not in ISSUE_ALLOWED:
+                hits.append(f"{relative}: {match.group(0)}")
+    assert not hits, "Name the release instead of the issue (record it in docs/project/): " + ", ".join(hits)

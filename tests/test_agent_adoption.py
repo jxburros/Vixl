@@ -430,3 +430,22 @@ def test_brand_checks_canvas_gradients_and_hidden_required_elements(tmp_path):
     assert sum(i["severity"] == "warning" for i in issues) == 2
     assert any("missing: logo" in i["message"] for i in issues)
     assert len(roll_document(p, seed=1)["operation"]["palette"]) == 2
+
+
+def test_review_page_history_nodes_carry_a_readable_summary(tmp_path):
+    from vixl.review import node_summary
+
+    path = tmp_path / "design.vixl"
+    p = Project(100, 100)
+    p.apply([{"type": "text", "name": "t", "text": "Hi", "size": 20},
+             {"type": "move", "target": "t", "x": 5, "y": 5}, {"type": "move", "target": "t", "x": 9, "y": 9}])
+    p.save(path)
+    with TestClient(create_app(path, token="secret-token-of-24-chars")) as client:
+        client.headers["Authorization"] = "Bearer secret-token-of-24-chars"
+        history = client.get("/review").json()["history"]
+    assert history and all(node["summary"] and not node["summary"].startswith("rev_") for node in history)
+    assert "3 operations: text, move ×2" in [node["summary"] for node in history]
+    assert node_summary({"parent": "rev_a", "operations": [{"type": "solid"}], "squashed": True}) == \
+        "1 operation: solid (squashed)"
+    viewer = (Path(__file__).parents[1] / "src/vixl/data/view.html").read_text(encoding="utf-8")
+    assert "h.label || h.summary" in viewer

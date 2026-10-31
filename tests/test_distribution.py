@@ -107,7 +107,7 @@ def test_shipped_launch_args_parse(tmp_path):
             raise AssertionError(f"{where}: {args} does not start the server: {error}") from error
         if not parsed.http and where in {"vixl.mcpb manifest.json", ".mcp.json"}:
             mcp_server(workspace=str(workspace), tools=parsed.tools)
-    assert checked_in["mcpServers"]["vixl"]["args"] == module.launch_args(".")
+    assert checked_in["mcpServers"]["vixl"]["args"] == module.launch_args(".", module.published_version())
 
 
 def test_launch_args_reject_removed_flags():
@@ -167,16 +167,21 @@ def test_manifest_launch_is_immutable(tmp_path):  # #673
     from vixl import __version__
 
     root = Path(__file__).resolve().parent.parent
-    pinned = f"vixl-engine=={__version__}"
+    # What a user copies, and the repository's own .mcp.json, pin the newest published release (#762); the
+    # bundles built for a release pin that release.
+    published = f"vixl-engine=={_package_extensions().published_version()}"
     checked_in = json.loads((root / ".mcp.json").read_text(encoding="utf-8"))
-    assert checked_in["mcpServers"]["vixl"]["args"][:2] == ["--from", pinned]
-    mcpb = next(path for path in _package_extensions().build(tmp_path) if path.suffix == ".mcpb")
-    with zipfile.ZipFile(mcpb) as archive:
+    assert checked_in["mcpServers"]["vixl"]["args"][:2] == ["--from", published]
+    built = _package_extensions().build(tmp_path)
+    with zipfile.ZipFile(next(path for path in built if path.suffix == ".mcpb")) as archive:
         manifest = json.loads(archive.read("manifest.json"))
-    assert manifest["server"]["mcp_config"]["args"][:2] == ["--from", pinned]
+    assert manifest["server"]["mcp_config"]["args"][:2] == ["--from", f"vixl-engine=={__version__}"]
+    with zipfile.ZipFile(next(path for path in built if path.suffix == ".zip")) as archive:
+        bundled = json.loads(archive.read(".mcp.json"))
+    assert bundled["mcpServers"]["vixl"]["args"][:2] == ["--from", f"vixl-engine=={__version__}"]
     for page in ("README.md", "docs/getting-started.md"):
         text = (root / page).read_text(encoding="utf-8")
-        assert pinned in text and "archive/refs/tags" not in text, page
+        assert published in text and "archive/refs/tags" not in text, page
 
 
 def test_release_publish_waits_for_the_protected_environment():  # #673

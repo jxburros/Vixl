@@ -327,3 +327,72 @@ def test_pillow_global_unchanged_during_decode(monkeypatch):  # #677
     worker.join()
     assert seen[-1] == (64, 48) and seen[:-1] and set(seen[:-1]) == {before}
     assert Image.MAX_IMAGE_PIXELS == before
+
+
+def test_read_bounded_refuses_an_oversized_file_without_a_limit_sized_buffer(tmp_path):  # #667
+    from vixl.assets import read_bounded
+
+    sparse = tmp_path / "huge.bin"
+    with sparse.open("wb") as stream:
+        stream.truncate(64 * 1024 * 1024 + 1)
+    tracemalloc.start()
+    try:
+        with pytest.raises(VixlError) as raised:
+            read_bounded(sparse, 64 * 1024 * 1024)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert raised.value.code == "resource_limit" and peak < 2 * 1024 * 1024
+    small = tmp_path / "small.bin"
+    small.write_bytes(b"x" * (3 * 1024 * 1024 + 5))
+    assert read_bounded(small, 3 * 1024 * 1024 + 5) == small.read_bytes()
+
+
+def test_read_bounded_stops_a_stream_one_chunk_past_the_limit(tmp_path, monkeypatch):  # #667
+    import io as _io
+
+    from vixl import assets
+
+    class Endless(_io.RawIOBase):
+        read_calls = 0
+
+        def readable(self):
+            return True
+
+        def fileno(self):
+            return -1
+
+        def read(self, size=-1):
+            Endless.read_calls += 1
+            return b"y" * size
+
+    class Opener:
+        def __init__(self, path):
+            self.path = path
+
+        def open(self, mode):
+            return Endless()
+
+    monkeypatch.setattr(assets, "Path", Opener)
+    # A pipe or a growing file reports a size of 0 before it is read.
+    monkeypatch.setattr(assets.os, "fstat", lambda fd: type("Stat", (), {"st_size": 0})())
+    with pytest.raises(VixlError):
+        assets.read_bounded("fifo", 5 * assets.READ_CHUNK)
+    assert Endless.read_calls <= 6
+
+
+def test_mcp_workflow_start_hides_the_absolute_workspace(tmp_path, monkeypatch):  # #676
+    import subprocess
+
+    class Child:
+        pid = 4242
+
+    Project(40, 40).save(tmp_path / "source.vixl")
+    server = build_server(Session(workspace=tmp_path))
+    monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: Child())
+    job = {"kind": "production", "source": "source.vixl", "output": "campaign", "spec": {}}
+    for request in ({"workflow": "start", "request": {}},
+                    {"workflow": "submit", "request": {"job": job, "start": True}}):
+        content = asyncio.run(server.call_tool("vixl_apply", request))
+        text = content[0].text if isinstance(content, list) else content[0][0].text
+        assert str(tmp_path) not in text and "4242" in text

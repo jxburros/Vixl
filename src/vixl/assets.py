@@ -3,6 +3,7 @@
 import hashlib
 import io
 import math
+import os
 import warnings
 from pathlib import Path
 
@@ -160,11 +161,22 @@ def png_bytes(image):
     return stream.getvalue()
 
 
+READ_CHUNK = 1 << 20
+
+
 def read_bounded(path, limit):
+    """The bytes of ``path``, refused once they pass ``limit``. A regular file larger than the limit is refused
+    from its size before anything is read; pipes and files that grow while read are read in chunks and stopped
+    one chunk past the limit, so a refusal never costs a limit-sized buffer."""
     with Path(path).open("rb") as stream:
-        data = stream.read(limit + 1)
-    require(len(data) <= limit, "File exceeds byte limit", "resource_limit")
-    return data
+        size = os.fstat(stream.fileno()).st_size
+        require(size <= limit, "File exceeds byte limit", "resource_limit")
+        chunks, total = [], 0
+        while chunk := stream.read(min(READ_CHUNK, limit + 1 - total)):
+            chunks.append(chunk)
+            total += len(chunk)
+            require(total <= limit, "File exceeds byte limit", "resource_limit")
+    return b"".join(chunks)
 
 
 SOURCE_FORMATS = {"PNG": "png", "JPEG": "jpg", "WEBP": "webp"}

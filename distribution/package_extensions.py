@@ -14,6 +14,11 @@ def package_spec(version=None):
     return f"vixl-engine=={version}"
 
 
+def published_version():
+    """The newest release on PyPI, which the checked-in .mcp.json and the documented install commands pin."""
+    return json.loads((ROOT / "distribution/published.json").read_text(encoding="utf-8"))["version"]
+
+
 def launch_args(workspace, version=None):
     """uvx arguments that start the MCP server; the bundle and .mcp.json both use them."""
     return ["--from", package_spec(version), "vixl", "mcp", "--workspace", workspace]
@@ -65,8 +70,12 @@ def build(output=None):
             "The bundled skill is reference material; Desktop uses the MCP server instructions.\n",
         )
     with zipfile.ZipFile(output / "vixl-claude-code.zip", "w", zipfile.ZIP_DEFLATED) as archive:
-        for relative in (".claude-plugin/plugin.json", ".mcp.json"):
-            archive.write(ROOT / relative, relative)
+        archive.write(ROOT / ".claude-plugin/plugin.json", ".claude-plugin/plugin.json")
+        # The checked-in .mcp.json follows the newest published release (scripts/published_pins.py); a bundle
+        # ships with its own release, so it pins that.
+        server = json.loads((ROOT / ".mcp.json").read_text(encoding="utf-8"))
+        server["mcpServers"]["vixl"]["args"] = launch_args(".")
+        archive.writestr(".mcp.json", json.dumps(server, indent=2) + "\n")
         for path in sorted((ROOT / "skills/vixl").rglob("*")):
             if path.is_file():
                 archive.write(path, path.relative_to(ROOT))

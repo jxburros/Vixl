@@ -568,7 +568,8 @@ class Queue:
             creationflags=flags,
             start_new_session=os.name != "nt",
         )
-        return {"worker_pid": process.pid, "workspace": str(self.workspace)}
+        # "." as vixl_document list reports it: MCP and REST results never reveal where the workspace is.
+        return {"worker_pid": process.pid, "workspace": "."}
 
 
 def worker(workspace, workers=1):
@@ -596,7 +597,8 @@ def plugin_kinds():
 
 def completion_event(job, workspace):
     """The one completion event shape shared by durable jobs, check-all and pipeline runs: what finished and how,
-    never document content."""
+    never document content. ``workspace`` is the absolute path, for in-process ``job-complete`` hooks that read
+    the workspace's own settings; what a hook sends elsewhere leaves it out (the notify plugin's webhook body)."""
     outcome = job.get("outcome") or {}
     result = job.get("result") if isinstance(job.get("result"), dict) else {}
     counts = (outcome.get("outputs") or {}).get("counts") or result.get("counts") or {}

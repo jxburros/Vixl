@@ -1044,10 +1044,13 @@ def glyph_coverage(project, layer):
     """``text.glyph_coverage`` for rich text: each span is checked against its own font, then the
     document and bundled fallbacks, the way it is drawn."""
     from .text import glyph_coverage as span_coverage
+    from .variables import RESOLVED
 
     missing, fallback, local, local_fonts = set(), set(), set(), set()
     for span in styled_spans(project, layer):
-        report = span_coverage(project, {"font": span["font"], "text": span["text"]})
+        # styled_spans has already substituted variables; a second pass would turn an escaped
+        # $${name}, now the literal ${name}, back into a lookup.
+        report = span_coverage(project, {"font": span["font"], "text": span["text"], RESOLVED: True})
         missing.update(report["missing"])
         fallback.update(report["fallback"])
         local.update(report.get("local", ()))

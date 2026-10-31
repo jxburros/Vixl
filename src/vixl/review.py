@@ -11,6 +11,22 @@ from .errors import require
 from .fileio import file_lock, temporary
 
 
+def node_summary(node):
+    """A one-line description of a history node for people reviewing it, since most nodes carry no label:
+    "3 operations: text, move ×2", with "(squashed)" when older revisions were folded into it."""
+    operations = [item for item in node.get("operations") or () if isinstance(item, dict)]
+    counts = {}
+    for operation in operations:
+        kind = str(operation.get("type") or "operation")
+        counts[kind] = counts.get(kind, 0) + 1
+    if operations:
+        kinds = ", ".join(kind if count == 1 else f"{kind} ×{count}" for kind, count in counts.items())
+        summary = f"{len(operations)} operation{'s' if len(operations) != 1 else ''}: {kinds}"
+    else:
+        summary = "Document created" if node.get("parent") is None else "No operations"
+    return summary + (" (squashed)" if node.get("squashed") else "")
+
+
 def notes(path, action="list", *, text=None, note_id=None):
     require(action in ("list", "add", "resolve"), "Use list, add or resolve", field="action")
     path = Path(str(path) + ".notes.json")
