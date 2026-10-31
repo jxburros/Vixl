@@ -77,7 +77,7 @@ answer keys, fixtures and an output inspector.
 
 ## Craft re-run
 
-The [craft plan](../docs/project/craft-plan.md) measures craft by re-running the Vixl lane of the tool comparison and
+Stage 10 of the [roadmap](../ROADMAP.md) measures craft by re-running the Vixl lane of the tool comparison and
 judging it blind against the same web-code and Python runs. `evals/craft_rerun.py` makes that a routine:
 
 ```text

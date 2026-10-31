@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.33.2
+
+One development plan: the open issues and every earlier plan are folded into `ROADMAP.md`.
+
+### Documentation
+
+- **One roadmap.** `ROADMAP.md` at the repository root is now the single development plan. It carries every issue
+  still open after a triage against 0.33.1, the remainders of issues closed as done, and deferred work that had no
+  issue, in stages, with the issues each stage closes and the decisions that need the owner.
+- **Older plans archived.** The development, implementation and craft plans and the render-performance decisions
+  moved unchanged to `docs/project/archive/`; links from the README, the docs index, the evals README, this changelog
+  and the release notes point there.
+
 ## 0.33.1
 
 Lottie export keeps source easing and linked-instance timing.
@@ -99,7 +112,7 @@ Lottie export keeps source easing and linked-instance timing.
 ## 0.32.0
 
 A multi-document automation and hosting release: step 7 of the
-[implementation plan](docs/project/implementation-plan.md). Suite rules read values from other documents and hold
+[implementation plan](docs/project/archive/implementation-plan.md). Suite rules read values from other documents and hold
 budgets; exported files are read back against delivery specs; approved baselines, link impact, a locale check and a
 spelling check cover documents that change together. The new `pipelines` plugin runs resumable pipelines, signed
 completion webhooks, `vixl watch`, data sync and bulk upgrades, and the `localization` plugin makes localized
@@ -354,7 +367,7 @@ the machine work by name. Breaking changes are listed under Upgrading from 0.31.
 ## 0.31.0
 
 A craft, objects and brand packages release: steps 5 and 6 of the
-[implementation plan](docs/project/implementation-plan.md). Type gets small caps, hanging punctuation, accent words
+[implementation plan](docs/project/archive/implementation-plan.md). Type gets small caps, hanging punctuation, accent words
 and three finishing containers; the composition check finds flat hierarchy, a single weight, no focal point and an
 unused accent, and `variations` shows seeded directions side by side. Rolls draw zero to three accents and weight
 their palette by the brief's words, stacks lay out like flexbox and grid, and `adapt-layout` recomposes, crops around
@@ -838,9 +851,9 @@ Plans the animation export speed work.
 
 ### Changed
 
-- **Animation export speed is planned.** [Render performance](docs/project/render-performance.md#animation-export-2026-10-22)
+- **Animation export speed is planned.** [Render performance](docs/project/archive/render-performance.md#animation-export-2026-10-22)
   records a profile of MP4, WebM and frame-zip exports, and step 8 of the
-  [implementation plan](docs/project/implementation-plan.md#step-8-motion-and-media) lists the follow-ups: an export perf
+  [implementation plan](docs/project/archive/implementation-plan.md#step-8-motion-and-media) lists the follow-ups: an export perf
   budget, faster VP9 settings, a measured worker count, cheaper frame setup and fades, encoder presets and opt-in
   hardware encoding. No code changes.
 
@@ -1013,7 +1026,7 @@ broad `except`. Breaking changes are listed under Upgrading from 0.28.
   order and byte-identical to a one-process export. Threads could not do this: text and vector shapes rasterise
   through resvg, which holds Python's interpreter lock. A 144-frame lyric film took 4.6 s instead of 10 s on four
   cores. Exports under 16 frames a process, previews and documents with linked layers render in one process.
-- **Speed decisions recorded.** [Render performance](docs/project/render-performance.md) has the re-profile after
+- **Speed decisions recorded.** [Render performance](docs/project/archive/render-performance.md) has the re-profile after
   this work and the calls on tiled compositing (#588, deferred until layers can be drawn by region), the glyph cache
   (#584, needs a parity decision), a Skia backend (#591, not adopted: the cost is the resvg binding's PNG round trip) and native
   kernels (#593, no measured gain).
@@ -1624,7 +1637,7 @@ A security and cost release. URL fetches, AI providers, bearer tokens, image dec
 
 A breaking release: a seven-tool MCP server, the compatibility machinery for older releases removed (use the [conversion kit](docs/reference/converting.md) for documents and saved batches from 0.26 and earlier), a published `.vixl` format with SVG round trip and editable SVG, PDF and Figma import, flush-inside strokes on closed shapes, render-parity fixes and terminal summaries in the CLI.
 
-The craft work follows the [craft plan](docs/project/craft-plan.md). Craft claims here wait for a blind re-judging; nothing below claims a craft gain on its own.
+The craft work follows the [craft plan](docs/project/archive/craft-plan.md). Craft claims here wait for a blind re-judging; nothing below claims a craft gain on its own.
 
 ### Upgrading from 0.26
 

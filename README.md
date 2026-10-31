@@ -16,7 +16,7 @@ It runs through MCP, CLI, Python or REST, so there is no canvas to open. People 
 interfaces; the product is built for the agent at the keyboard.
 
 Pre-1.0 and in Beta: breaking changes are allowed and noted in the [changelog](CHANGELOG.md#0270).
-Source version: **0.33.1** (release pending). Run `vixl --version` to check your runtime; record the Git commit when using a
+Source version: **0.33.2** (release pending). Run `vixl --version` to check your runtime; record the Git commit when using a
 source checkout.
 
 **[Documentation home](docs/README.md)** · [Getting started](docs/getting-started.md) ·
@@ -50,7 +50,7 @@ Change the headline next week and nothing is redrawn.
 For a pinned release with uv (an exact PyPI version, which cannot be replaced once published):
 
 ```bash
-uvx --from vixl-engine==0.33.1 vixl mcp --workspace .
+uvx --from vixl-engine==0.33.2 vixl mcp --workspace .
 ```
 
 The workspace must exist. The server offers seven tools (`vixl_document`, `vixl_apply`, `vixl_check`,
@@ -177,8 +177,8 @@ operation recipe; see [documentation maintenance](docs/project/documentation-mai
 Showcases, explorations, the marketing pack, promo films and evaluation results live in
 [VixlExamples](https://github.com/jxburros/VixlExamples), and
 [agent evaluations](evals/README.md) measure design tasks. Contributors: [CONTRIBUTING](CONTRIBUTING.md) has the rules,
-and the [project documentation](docs/project/README.md) holds the development and craft plans, decision records,
-render parity and brand voice.
+the [roadmap](ROADMAP.md) is the development plan, and the [project documentation](docs/project/README.md) holds
+decision records, render parity and brand voice.
 
 Vixl edits in RGBA8 sRGB and exports supported vectors or documented raster fallbacks.
 CMYK is an export setting. RAW development, spot-color editing, PSD/XCF import

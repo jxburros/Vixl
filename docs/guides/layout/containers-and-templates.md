@@ -62,7 +62,7 @@ size it needs; the strips accept heights down to 64 and 40 px.
   "variables": {"label": "Chapter two"}}]
 ```
 
-The section header's rule keeps at least one spacing unit (half the document's body size) between itself and the container's bottom edge at any height, so the row that follows never sits on it (the [craft plan](../../project/craft-plan.md) counts a gap under half a unit as crowding; one unit keeps clear of that threshold).
+The section header's rule keeps at least one spacing unit (half the document's body size) between itself and the container's bottom edge at any height, so the row that follows never sits on it (the [craft plan](../../project/archive/craft-plan.md) counts a gap under half a unit as crowding; one unit keeps clear of that threshold).
 
 Custom resources can declare `min_width`, `max_width`, `min_height`, `max_height` and named `variants`, each containing `operations` and optional `rules`. Local content supports `frame: [x, y, width, height]` in fractions of the container, plus `fit_text: true` and `min_size` on text operations, and `clear_below` (spacing units kept between an item and the container's bottom edge). A text frame wraps and shrinks only as far as its minimum; overly long copy is rejected rather than clipped. Vertical, horizontal and grid rules continue to support padding, gaps, columns and hidden-member collapse.
 

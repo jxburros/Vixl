@@ -1,6 +1,9 @@
 # Development plan
 
-[Documentation home](../README.md) · [House style decisions](house-style.md) · [Releases](../reference/releases.md) · [Changelog](../../CHANGELOG.md)
+> **Archived 2026-10-31.** This plan is kept as history and is no longer maintained. The current plan is [ROADMAP.md](../../../ROADMAP.md) at the repository root.
+
+
+[Documentation home](../../README.md) · [House style decisions](../house-style.md) · [Releases](../../reference/releases.md) · [Changelog](../../../CHANGELOG.md)
 
 This plan ordered the open issues after 0.24.0. Releases 0.25.0 to 0.32.0 have shipped since: the "What … settled"
 sections record what each one settled, and the open work is under Craft and Later. Each issue was rated for **complexity** (C1 a few hours, C2 about a
@@ -17,7 +20,7 @@ Its steps 0 to 6 are done (housekeeping, release blockers, security and project 
 agent cost in 0.28.0; concurrency, structure and rendering speed in 0.29.0, with the speed
 decisions in [render performance](render-performance.md); craft, objects and brand packages in 0.31.0, apart from
 the blind craft re-judge; step 7, multi-document automation and hosting, in 0.32.0). Step 8 motion and media work is recorded in the
-Unreleased [changelog](../../CHANGELOG.md) and the implementation plan; remaining validation and deferred work are explicit there.
+Unreleased [changelog](../../../CHANGELOG.md) and the implementation plan; remaining validation and deferred work are explicit there.
 
 ## What 0.22.1 settled
 
@@ -61,7 +64,7 @@ onto main, and closed the feature requests that 0.22.0 had already shipped.
   `outline` (#266, the frame part), browser blend modes in SVG (#231) and editable re-import of simple gradient
   rectangles and stroked paths from Vixl's own SVG (#334, partly).
 - **Review semantics:** `check.passed` is false for any finding that needs a fix, grouped under `by_action` (#464).
-- **Emoji:** the offline VIXL Line library, custom packs and `emoji-*` workflows; see [Emojis](../guides/text/emojis.md).
+- **Emoji:** the offline VIXL Line library, custom packs and `emoji-*` workflows; see [Emojis](../../guides/text/emojis.md).
 
 ## What 0.25.0 settled
 
@@ -88,12 +91,12 @@ capability matrix (#640) and native opaque blending (#585). Showcases and media 
 
 0.27.0 was a breaking release:
 
-- **One agent surface:** the MCP server went from 51 tools to seven, with a size ratchet ([MCP tool surface](../reference/mcp-toolsets.md)).
+- **One agent surface:** the MCP server went from 51 tools to seven, with a size ratchet ([MCP tool surface](../../reference/mcp-toolsets.md)).
 - **An open format:** the published `.vixl` format and JSON Schema, SVG that re-imports as the same document (#334),
-  editable SVG, PDF and Figma import (Figma export is #662), and a conversion kit ([Converting](../reference/converting.md))
+  editable SVG, PDF and Figma import (Figma export is #662), and a conversion kit ([Converting](../../reference/converting.md))
   in place of the compatibility code for older releases.
 - **Rendering parity:** strokes inside and flush with closed shapes, in-place drawing of text and vector shapes, dithered
-  gradients ([Render parity](render-parity.md)); terminal summaries in the CLI.
+  gradients ([Render parity](../render-parity.md)); terminal summaries in the CLI.
 - **The craft plan, built:** see Craft below.
 
 ## What 0.28.0 settled
@@ -248,7 +251,7 @@ guides, C2 P2), #404 (accent count, C3 P2), #427 (illustration defaults, after #
 Noto Sans, Noto Sans Symbols, Symbols 2 and Math are bundled behind DejaVu Sans, so Latin, Greek, Cyrillic and symbol
 text renders without tofu offline. Noto Sans became the proofing face in 0.31.0, and CJK, Devanagari and Thai text
 draws from a matching face already on the machine; a pinned CJK content pack in VixlPacks is still open (C2, P3).
-Emoji artwork, editable masters, custom packs and destination exports are now implemented; see [Emojis](../guides/text/emojis.md).
+Emoji artwork, editable masters, custom packs and destination exports are now implemented; see [Emojis](../../guides/text/emojis.md).
 Color emoji font support remains subject to the text engine's font format limits.
 
 ## Craft
@@ -257,7 +260,7 @@ The [craft plan](craft-plan.md) orders the work on the quality of finished piece
 blind re-judging: composition checks and repair, a finishing pass in the agent loop, typography, components,
 scene effects and tool finish, measured by re-judging the Vixl lane. Every item was built in 0.27.0, and the remainders of the craft issues
 (#649 to #656, #404, #419, #427) in 0.31.0; none is judged yet, which is the open step
-(`python -m evals.craft_rerun`, [evals/README.md](../../evals/README.md#craft-re-run)). #648 and #388 close when a
+(`python -m evals.craft_rerun`, [evals/README.md](../../../evals/README.md#craft-re-run)). #648 and #388 close when a
 re-judge is published.
 
 ## Later
