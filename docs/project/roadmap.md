@@ -183,7 +183,7 @@ The export-speed track has budgets, measured worker selection, VP9 settings, fas
 scalar frame copies and draft/final presets (items 1–6 and 8). Fade-cache changes (7) and hardware encoding (9)
 remain deferred; software encoding stays the default. See the [step 8 implementation record](implementation-plan.md#step-8-motion-and-media)
 for feature-specific limits. Lottie JSON/dotLottie/TGS is reference-tested and keeps Bezier easing as curves and
-linked instances as time-remapped precompositions (#177). Figma interchange and its offline import plugin are implemented;
+linked instances as time-remapped precompositions (#177, 0.33.1). Figma interchange and its offline import plugin are implemented;
 live Figma visual review remains pending.
 
 ## Rules for every release below
