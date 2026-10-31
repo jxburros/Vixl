@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.33.2
+
+One development plan: the open issues and every earlier plan are folded into `ROADMAP.md`.
+
+### Documentation
+
+- **One roadmap.** `ROADMAP.md` at the repository root is now the single development plan. It carries every issue
+  still open after a triage against 0.33.1, the remainders of issues closed as done, and deferred work that had no
+  issue, in stages, with the issues each stage closes and the decisions that need the owner.
+- **Older plans archived.** The development, implementation and craft plans and the render-performance decisions
+  moved unchanged to `docs/project/archive/`; links from the README, the docs index, the evals README, this changelog
+  and the release notes point there.
+
 ## 0.33.1
 
 Lottie export keeps source easing and linked-instance timing.
