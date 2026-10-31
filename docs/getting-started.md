@@ -32,10 +32,10 @@ run `git pull --ff-only`, and repeat the install. Pip installs use pip-managed u
 the bundled Windows updater is a separate installation mechanism.
 
 For reproducible work, install an exact release rather than tracking `main` (a published PyPI version cannot be
-replaced):
+replaced). The pin below is the newest release on PyPI; `main` may already carry a higher source version:
 
 ```bash
-python -m pip install 'vixl-engine==0.33.2'
+python -m pip install 'vixl-engine==0.32.0'
 ```
 
 Latest `main` may include changes beyond the tagged release while reporting the same

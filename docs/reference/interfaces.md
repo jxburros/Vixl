@@ -577,11 +577,13 @@ without it is refused with `ambiguous_document`). Access covers the entire
 configured workspace and any locally configured provider accounts.
 
 The viewer polls once per second, showing the current PNG, layers, history, and review notes.
+Each history entry shows its label, or a summary of what it did ("3 operations: text, move ×2", marked
+"(squashed)" when older revisions were folded into it); the revision id is in its tooltip.
 Only its empty HTML shell is public; document APIs require the token when configured. Enter
 that token in the viewer; it is kept in memory, never placed in a URL or browser storage.
 Notes persist in `DOCUMENT.vixl.notes.json`, separately from undo history. Agents read/add/resolve
-them with `vixl_document(action='notes')`; CLI users use `notes list|add|resolve`. REST provides `GET /review`,
-`GET /notes`, `POST /notes` (`{"text":"..."}`), and `POST /notes/{id}/resolve`.
+them with `vixl_document(action='notes')`; CLI users use `notes list|add|resolve`. REST provides `GET /review`
+(head, layers, history nodes each with a `summary`, and notes), `GET /notes`, `POST /notes` (`{"text":"..."}`), and `POST /notes/{id}/resolve`.
 
 ### Import existing artwork
 

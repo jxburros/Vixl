@@ -137,7 +137,8 @@
       $(id).replaceChildren(
         ...values.map((value) => {
           const li = document.createElement("li");
-          li.textContent = value;
+          li.textContent = typeof value === "string" ? value : value.text;
+          if (value.title) li.title = value.title;
           return li;
         }),
       );
@@ -161,7 +162,7 @@
         );
         list(
           "history",
-          doc.history.slice(-12).map((h) => h.label || h.id),
+          doc.history.slice(-12).map((h) => ({ text: h.label || h.summary || h.id, title: h.id })),
         );
         list(
           "notes",

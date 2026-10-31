@@ -16,7 +16,7 @@ It runs through MCP, CLI, Python or REST, so there is no canvas to open. People 
 interfaces; the product is built for the agent at the keyboard.
 
 Pre-1.0 and in Beta: breaking changes are allowed and noted in the [changelog](CHANGELOG.md#0270).
-Source version: **0.33.2** (release pending). Run `vixl --version` to check your runtime; record the Git commit when using a
+Source version: **0.33.3** (release pending). Run `vixl --version` to check your runtime; record the Git commit when using a
 source checkout.
 
 **[Documentation home](docs/README.md)** · [Getting started](docs/getting-started.md) ·
@@ -47,10 +47,10 @@ colours, headline *Fresh Saturday*, and a version for stories." The agent create
 operations, checks contrast and spacing, looks at the render, and hands you the `.vixl` master plus exports.
 Change the headline next week and nothing is redrawn.
 
-For a pinned release with uv (an exact PyPI version, which cannot be replaced once published):
+For a pinned release with uv (the newest version on PyPI, which cannot be replaced once published; the source above may be ahead of it):
 
 ```bash
-uvx --from vixl-engine==0.33.2 vixl mcp --workspace .
+uvx --from vixl-engine==0.32.0 vixl mcp --workspace .
 ```
 
 The workspace must exist. The server offers seven tools (`vixl_document`, `vixl_apply`, `vixl_check`,

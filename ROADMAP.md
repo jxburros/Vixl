@@ -90,8 +90,9 @@ These come from `CLAUDE.md`, `CONTRIBUTING.md` and the policies of earlier relea
   status changes.
 - **Changelog.** Add every user-visible change to the current top section of `CHANGELOG.md`, with `(#NNN)` where an
   issue exists.
-- **Versions** stay synchronized (`src/vixl/__init__.py`, plugin manifest, `.mcp.json`, README and install URLs, the
-  action pin in `docs/guides/automation/ci.md`). The self-updater and release manifest path (`src/vixl/updater*`,
+- **Versions** stay synchronized (`src/vixl/__init__.py`, plugin manifest, README release line, Dockerfile). The
+  install pins (`.mcp.json`, the README and getting-started commands, the action pin in `docs/guides/automation/ci.md`)
+  follow the newest published release: run `python scripts/published_pins.py --latest` with each bump. The self-updater and release manifest path (`src/vixl/updater*`,
   `distribution/`) stay stable.
 - **No model names, signatures or authorship trailers** in code, docs, artwork or commit and PR text (but see the
   trailer-policy decision in section 4).
@@ -128,10 +129,11 @@ Releases 0.22 to 0.33.1 shipped the earlier plans in full:
   timing and verified delivery, shared datasets, the drawing finish, Figma interchange, Lottie export with source easing
   and linked-instance timing, and export-speed items 1-6 and 8.
 
-What is left falls into five kinds of work: the install and release path is broken between a version bump and its
-PyPI publish; checks are honest but hard to read and some built-in layouts fail them; agent payloads are still large;
-the cut-paper, motion and chart workflows reported in late October need new features; and several shipped features
-were never exercised for real (container image, Windows host task, live Figma, the craft re-judge).
+What is left falls into five kinds of work: release wiring (0.33.3 fixed the install pins, but the container image,
+signing and directory listings are undone); checks are honest but hard to read and some built-in layouts fail them;
+agent payloads are still large; the cut-paper, motion and chart workflows reported in late October need new features;
+and several shipped features were never
+exercised for real (container image, Windows host task, live Figma, the craft re-judge).
 
 ## 4. Owner actions and decisions
 
@@ -142,7 +144,7 @@ item names the decision it waits on. They can be taken at any time and need no c
 
 | Action | Unblocks | Notes |
 | --- | --- | --- |
-| Publish 0.33.x to PyPI (approve the `release` environment) | Stage 1 install pins (#762), #753, #771 | PyPI's latest is 0.32.0 while the README, getting-started and `.mcp.json` pin 0.33.1, so the documented install fails today |
+| Publish 0.33.x to PyPI (approve the `release` environment) | #543 release check, #753, #771 | PyPI's latest is 0.32.0; since 0.33.3 the install pins follow it, so they resolve, but new users get 0.32.0 until a release |
 | Enable GitHub private vulnerability reporting (Settings, Security, Advisories) | Governance remainder in stage 5 | `SECURITY.md` sends reporters there, but the API reports it disabled |
 | Confirm the `release` environment has required reviewers | #678 | The release workflow uses the environment; `docs/reference/releases.md` "Release rhythm and soak" still calls approval an open decision, which contradicts CONTRIBUTING.md |
 | Create a primary and a backup Ed25519 update-signing key; store the primary as `VIXL_UPDATE_SIGNING_KEY` in the `release` environment and keep the backup offline | #756 | Signing code exists in history (backed out in 0.30.1 because no key existed) |
@@ -160,7 +162,6 @@ item names the decision it waits on. They can be taken at any time and need no c
 
 | Decision | Item | Recommendation |
 | --- | --- | --- |
-| Install pins: follow the latest published version, run `.mcp.json` from the checkout, or publish immediately on bump | #762 (stage 1) | Pins follow the published version, bumped by the release workflow after a successful PyPI publish |
 | Authorship-trailer policy: make the advisory CI check blocking and configure agent tooling to omit trailers, or allow standard `Co-Authored-By` trailers in commit metadata only | #692 part A | Either is fine; the docs and the CI check must agree. 50 of 189 commits since 2026-10-20 carry trailers |
 | Rewrite history to purge dead media (about 600 MB pack for a 31 MB tree) | #692 part B | Do it once, after every open PR is merged or closed, with a mirror backup and an announcement |
 | Release cadence (12 releases in 11 days against a documented weekly rhythm with a soak) | #678 | Follow the documented rhythm, or rewrite it to match what is wanted |
@@ -196,115 +197,23 @@ item names the decision it waits on. They can be taken at any time and need no c
 
 ## 5. Stage 1: install path and quick correctness
 
-A patch release. Small, independent fixes for things that are broken today, starting with the first command a new
-user copies.
+Shipped in 0.33.3: install pins that follow the newest published release with a CI check that they resolve (#762),
+the host API schema in the release inventory (#543), the escaped-variable check crash (#776), the untrusted-input
+leftovers of #667 and #676, readable history on the review page (#714 F09), the QA-20 correction and the move of
+issue numbers out of the use-case catalog (#686 remainder). The release workflow does not advance the pins itself:
+every change to `main` must advance the version, so a commit made by the workflow would need its own bump; the
+version-bump step runs `scripts/published_pins.py --latest` instead.
 
-### 1.1 Install pins that always resolve (#762)
+Two follow-ups remain, both after the next release:
 
-- **Problem:** between a version bump on `main` and its PyPI publish (days at the current cadence), the README's pinned
-  install command and the repository's `.mcp.json` point at a version that does not exist on PyPI. Today they pin
-  0.33.1 while PyPI has 0.32.0, so a new user's first command fails and an MCP client opening the repository reports
-  the `vixl` server as "connection closed".
-- **Remaining work:**
-  1. Separate the source version from the latest published version. `src/vixl/__init__.py`, the plugin manifest and
-     `release.json` carry the source version. The README install commands, `docs/getting-started.md` and `.mcp.json`
-     pin the newest published version, bumped by the release workflow after a successful PyPI publish (a post-publish
-     commit or pull request from `.github/workflows/release.yml` or `pypi.yml`). Alternative (owner decision): make
-     `.mcp.json` run from the checkout (`uv run --directory . vixl mcp`) so the repository's own configuration never
-     depends on PyPI.
-  2. Update the version-synchronization tests (in `tests/test_agent_adoption.py` and `tests/test_distribution.py`)
-     to allow "pinned version = latest published", and the version-bump step in `docs/reference/releases.md`.
-  3. Add a network-allowed job to `.github/workflows/release-validation.yml` that fails when the README or
-     `.mcp.json` pin returns 404 from `https://pypi.org/pypi/vixl-engine/<version>/json`. Keep it out of the offline
-     unit suite.
-  4. Keep the self-updater and release manifest paths unchanged.
-- **Done when:** on every `main` commit the README and `.mcp.json` pins resolve on PyPI (the CI check), and the
-  version-sync tests pass.
-- **Docs:** README install section, `docs/getting-started.md`, `docs/reference/releases.md`; the version-bump rule in
-  `CLAUDE.md` checklist item 6 (owner edit).
-- **Rating:** C2, P5. **Depends on:** the owner publishing 0.33.x now; the pin model decision.
-
-### 1.2 Host API schema missing from releases (#543)
-
-- **Problem:** AI Server Studio's drift check compares its copy of the host contract against a
-  `vixl-host-api.schema.json` release asset, but no release has one. `release.yml` builds the file and uploads it as a
-  build artifact, but `.release/config.json` (the release toolkit's asset inventory) does not list it, so the 0.32.0
-  release has only `vixl-catalog.json` and `vixl-catalog.schema.json`. The 0.32.0 changelog says releases attach it.
-- **Remaining work:**
-  1. Add `"vixl-host-api.schema.json"` to the `vixl` `assets` list in `.release/config.json`, next to
-     `vixl-catalog.schema.json`.
-  2. Add a test (for example `tests/test_release_assets.py`) that every file `release.yml` uploads under
-     `python-distributions` is in the `.release/config.json` inventory, so no asset is dropped silently again.
-  3. Add a correcting line to the current changelog section (the 0.32.0 lines for #543 and #546 describe intent, not
-     what happened).
-  4. On the next release, confirm the asset is attached and equals `vixl host --schema`.
-- **Done when:** the inventory test fails without step 1, and the next GitHub release lists the schema.
-- **Rating:** C1, P2. **Depends on:** none.
-
-### 1.3 Design check crashes on an escaped variable (#776)
-
-- **Problem:** rich text that uses the documented `$${name}` escape renders and exports, but `check()` raises, and
-  `check(pages="all")` fails for the whole document. The span-coverage step substitutes variables a second time on an
-  already-resolved synthetic span layer.
-- **Remaining work:**
-  1. In `src/vixl/richtext.py` `glyph_coverage`, mark the synthetic span layer as resolved
-     (`{..., variables.RESOLVED: True}`).
-  2. Grep for other synthetic layers built from resolved text (`richtext.py`, `checks.py`, `text.py`, `lettering.py`,
-     the accessibility and export paths) and mark them resolved too.
-- **Done when:** a test where a plain rich-text paragraph and a styled span each contain `$${headline}` passes
-  `Project.check()`, renders the literal `${headline}`, and a multi-page `check(pages="all")` passes.
-- **Rating:** C1, P3. **Depends on:** none.
-
-### 1.4 Untrusted-input leftovers (remainders of #667 and #676)
-
-- **Problem:** (a) `assets.read_bounded(path, limit)` reads `limit + 1` bytes in one call before comparing sizes, so an
-  oversized file costs a full limit-sized buffer before it is refused (64 MiB at the default `max_asset_bytes`, more
-  where callers pass larger limits). (b) `jobs.Queue.start()` returns the absolute workspace path
-  (`{"worker_pid": ..., "workspace": str(self.workspace)}`), reachable through MCP `vixl_apply` workflow `start` and
-  `submit` with `start: true`, which breaks the 0.28.0 rule that MCP results never reveal the workspace location.
-  `jobs.completion_event` also puts the absolute path into hook events.
-- **Remaining work:**
-  1. In `read_bounded`, `stat()` the open file and refuse when `st_size > limit` before reading, then read in chunks
-     (about 1 MiB) and stop past `limit`, which also covers FIFOs and growing files.
-  2. In `jobs.Queue.start`, return `"workspace": "."` (or leave the key out) as `vixl_document list` does; keep the
-     absolute path only in CLI output.
-  3. Decide and document whether `completion_event` keeps the absolute path for local hooks; remote webhooks get a
-     relative path or none.
-- **Done when:** `tests/test_untrusted_input.py` gains a test that a sparse file above the limit is refused with a
-  `tracemalloc` peak under 2 MiB, and one that monkeypatches `subprocess.Popen` and checks that the MCP workflow
-  `start` result has no absolute prefix.
-- **Rating:** C1, P2. **Depends on:** none.
-
-### 1.5 Review page shows raw revision ids (from the 0.27.0 app audit, #714 finding F09)
-
-- **Problem:** the human review page lists history as `rev_…` ids, because most history nodes carry no `label`
-  (`Project._record`), so a reviewer cannot tell what changed.
-- **Remaining work:** add `review.node_summary(node)` (for example "3 operations: text, move ×2", plus a squashed
-  marker); have `/review` in `interfaces.py` add `summary` to each history node; have `view.html` show
-  `h.label || h.summary` with the id in a `title` attribute. The review page is core.
-- **Done when:** a test GETs `/review` and every node has a non-empty `summary` that does not start with `rev_`.
-- **Docs:** `docs/reference/interfaces.md` (review page).
-- **Rating:** C1, P2. **Depends on:** none.
-
-### 1.6 Stale and overstated docs
-
-- **Problem:** `docs/use-cases.md` QA-20 still says "Approved logo variants on approved backgrounds are not checked",
-  although `logo.variants` shipped in 0.32.0 (under #555; issue #718). User pages cite issue numbers ("Since 0.25
-  (#512)"): 87 in `docs/use-cases.md` and 73 across `docs/guides/`, which makes a 101 KB catalog heavier for readers
-  and agents (remainder of #686).
-- **Remaining work:**
-  1. Fix QA-20.
-  2. Remove `(#NNN)` references from `docs/use-cases.md` and `docs/guides/**` (keep version numbers); move provenance
-     that matters to `docs/project/use-case-evidence.md`.
-  3. Optional: a docs test that pages outside `docs/project/` and `CHANGELOG.md` contain no `#\d{3}` issue pattern,
-     with an allow-list.
-  4. Optional: split the 577-word per-layer edit list in `docs/reference/architecture.md`.
-- **Done when:** the grep test passes and `tests/test_docs_coverage.py` and `tests/test_docs_executable.py` still
-  pass.
-- **Rating:** C1, P1. **Depends on:** owner confirmation that issue references are banned from user pages.
+- Confirm that the GitHub release lists `vixl-host-api.schema.json` and that it equals `vixl host --schema`, then
+  close #543.
+- Run `python scripts/published_pins.py --latest` once 0.33.x is on PyPI, so new users get it.
+- Optional, from the old docs item: split the 577-word per-layer edit list in `docs/reference/architecture.md`.
 
 **Close at the end of this stage:** [#762](https://github.com/jxburros/vixl/issues/762),
-[#543](https://github.com/jxburros/vixl/issues/543), [#776](https://github.com/jxburros/vixl/issues/776).
+[#776](https://github.com/jxburros/vixl/issues/776), [#543](https://github.com/jxburros/vixl/issues/543) (after the
+release check above).
 
 ## 6. Stage 2: checks that lead with a verdict
 
@@ -783,7 +692,7 @@ governance rules and practice disagree. Most items need an owner action from sec
 - **Done when:** a docs test asserts the README's first install block contains `vixl-engine`; if the name is claimed,
   `pip install vixl` installs `vixl-engine`.
 - **Docs:** README, getting-started, SKILL.md, the CLI reference, the meta-package in `docs/reference/releases.md`.
-- **Rating:** C1, P4. **Depends on:** 1.1.
+- **Rating:** C1, P4. **Depends on:** none (the install pins shipped in 0.33.3).
 
 ### 5.2 One-click agent install, directories and macOS (#771)
 
@@ -800,7 +709,7 @@ governance rules and practice disagree. Most items need an owner action from sec
 - **Done when:** the README table exists and is tested, the registry entry resolves to the current version, and
   `brew install jxburros/vixl/vixl && vixl --version` works on a CI macOS runner.
 - **Docs:** README, getting-started, `docs/reference/releases.md`, the CLI reference (finding vixl on macOS).
-- **Rating:** C3, P5. **Depends on:** 1.1, 5.1; owner decisions on directories, the Homebrew tap repository and signing.
+- **Rating:** C3, P5. **Depends on:** 5.1; owner decisions on directories, the Homebrew tap repository and signing.
 
 ### 5.3 Container image built and published by releases (#546)
 
@@ -1761,7 +1670,7 @@ Every issue open after the 2026-10-31 triage, with where it is finished.
 | #514 | Editable PSD handoff and PSD import | 9.4 |
 | #522 | Screenshot to editable reconstruction | Later |
 | #535 | Hosting epic (closes after #543, #546, #547) | 5 |
-| #543 | Host API schema missing from releases | 1.2 |
+| #543 | Host API schema missing from releases (fixed in 0.33.3; close when a release lists it) | 1 |
 | #546 | Container image built by releases | 5.3 |
 | #547 | Windows host task exercised on Windows | 5.4 |
 | #584 | Glyph-run cache | 8.2 |
@@ -1790,7 +1699,6 @@ Every issue open after the 2026-10-31 triage, with where it is finished.
 | #753 | A package name agents can guess | 5.1 |
 | #754 | Cut-paper frames re-rasterise every hold | 6.4 |
 | #756 | Signed Windows updates | 5.6 |
-| #762 | Install pins that always resolve | 1.1 |
 | #763 | Event-poster dead band and stray motif | 3.2 |
 | #764 | Every layout passes its checks | 3.3 |
 | #765 | Dry-run repair outcome | 2.4 |
@@ -1804,10 +1712,9 @@ Every issue open after the 2026-10-31 triage, with where it is finished.
 | #773 | Public comparison against design tools | 10.2 |
 | #774 | Licence clarity | 5.7 |
 | #775 | Previewer for people watching an agent | Later |
-| #776 | Escaped variable crashes the design check | 1.3 |
 | #778 | Address chart marks by data | 7.2 |
 | #779 | Chart emphasis | 7.3 |
 | #780 | Audit chart edits | 7.1 |
 
-Items without an open issue (remainders of closed issues and deferred work): 1.4, 1.5, 1.6, 3.1, 3.6, 4.3-4.9 (under
+Items without an open issue (remainders of closed issues and deferred work): 3.1, 3.6, 4.3-4.9 (under
 #615), 5.5, 8.1, 8.4, 8.5, 8.6, 8.7, 9.6, 9.7, 9.8, 11.1-11.4.

@@ -149,3 +149,24 @@ def test_double_dollar_writes_a_literal_placeholder_in_text_rich_text_and_flows(
     assert "${title}" in text and "$$" not in text
     with pytest.raises(VixlError, match=r"write \$\$\{nope\}"):
         p.apply({"type": "text", "name": "bad", "text": "${nope}"})
+
+
+def test_design_check_passes_escaped_variables_in_rich_text_spans_on_every_page(tmp_path):
+    # Span coverage used to substitute variables a second time on already-resolved span text, so an
+    # escaped $${headline} (drawn as the literal ${headline}) became an undefined-variable error.
+    p = Project(700, 400, "white")
+    p.apply([
+        {"type": "page", "action": "add", "name": "One"},
+        {"type": "rich-text", "name": "rich", "markdown": "Write $${headline} or **bold $${headline}**",
+         "size": 20, "color": "black", "x": 10, "y": 60},
+        {"type": "page", "action": "add", "name": "Two"},
+        {"type": "text-flow", "name": "flow", "markdown": "Use *$${headline}* in templates", "color": "black",
+         "frames": [{"x": 10, "y": 120, "width": 500, "height": 200}]},
+    ])
+    report = p.check()
+    assert not any(item.get("code") == "missing_variable" for item in report["issues"])
+    every = p.check(pages="all")
+    assert every["coverage"]["pages"] == ["One", "Two"]
+    assert not any("Undefined variable" in item["message"] for item in every["issues"])
+    p.apply({"type": "page", "action": "select", "page": "One"})
+    assert texts(p)["rich"] == "Write ${headline} or bold ${headline}"

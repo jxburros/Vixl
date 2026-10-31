@@ -103,13 +103,13 @@ Python installations intentionally do not self-update or invoke pip. They return
 
 To publish a stable release:
 
-1. Update the single-sourced version in `src/vixl/__init__.py` (package, API and bundle versions derive from it), then the places that repeat it: `.claude-plugin/plugin.json`, the PyPI pin `vixl-engine==X.Y.Z` in `.mcp.json` (the `.mcpb` derives it), the install pins in `README.md` and `getting-started.md`, the release line in `README.md` and the documentation home, the action pin in [CI](../guides/automation/ci.md), both `ARG VERSION=` lines in `distribution/container/Dockerfile` (the `ghcr.io/jxburros/vixl:X.Y.Z` image tag, checked by `tests/test_container.py`), the tag in step 3 and the sample manifest in [file format](file-format.md); update release notes (see [release notes](#release-notes)) and documentation as needed.
+1. Update the single-sourced version in `src/vixl/__init__.py` (package, API and bundle versions derive from it, including the pins inside the `.mcpb` and the Claude Code bundle), then the places that repeat it: `.claude-plugin/plugin.json`, the release line in `README.md` and the documentation home, both `ARG VERSION=` lines in `distribution/container/Dockerfile` (the `ghcr.io/jxburros/vixl:X.Y.Z` image tag, checked by `tests/test_container.py`), the tag in step 3 and the sample manifest in [file format](file-format.md). Then run `python scripts/published_pins.py --latest`: the commands people copy (the `uvx` and `pip` pins in `README.md` and `getting-started.md`, the action pin in [CI](../guides/automation/ci.md)) and the repository's `.mcp.json` follow `distribution/published.json`, the newest version on PyPI, never the source version, so they work in the days before a version is published. The `install-pins` job of `release-validation.yml` fails when that version is not on PyPI or has no tag. Update release notes (see [release notes](#release-notes)) and documentation as needed.
 2. Run tests and review the PR's **Windows installer and releases** workflow. It runs a real silent installer, verifies PATH lookup, creates/exports a project using the frozen runtime, activates an explicit update before any normal launch with mocked network transport, checks corrupted-candidate recovery, and uninstalls while preserving a user project and existing PATH entries.
 3. Tag the reviewed commit with its exact version and push the tag:
 
    ```bash
-   git tag v0.33.2 <reviewed-commit>
-   git push origin v0.33.2
+   git tag v0.33.3 <reviewed-commit>
+   git push origin v0.33.3
    ```
 
 4. The tag workflow re-runs tests, checks tag/package-version consistency and builds the distributions. The publish job then waits in the protected `release` environment until a required reviewer approves the deployment (Actions run, **Review deployments**). Approve only a run whose commit and version you reviewed. After approval it creates a **draft** GitHub release. It uploads every artifact before publishing it as the latest stable release. No release becomes visible to the updater while files are still being uploaded.
@@ -162,7 +162,7 @@ against its pinned SHA-256.
 
 ```bash
 docker run -d --read-only --tmpfs /tmp -v vixl-data:/data -p 127.0.0.1:8767:8767 \
-  -e VIXL_HOST_TOKEN="$VIXL_HOST_TOKEN" ghcr.io/jxburros/vixl:0.33.2
+  -e VIXL_HOST_TOKEN="$VIXL_HOST_TOKEN" ghcr.io/jxburros/vixl:0.33.3
 ```
 
 `.github/workflows/container.yml` builds both tags on a `v*` tag push (also `workflow_dispatch` with a version, and
@@ -221,7 +221,7 @@ Each release gets a `CHANGELOG.md` section, written as an edit pass over the ent
 - `uv.lock` pins the development environment (`uv sync --extra dev`). The `locked` CI job runs the tests from it,
   the lint job fails when it no longer matches `pyproject.toml` (`uv lock --check`; run `uv lock` after changing a
   dependency), and Dependabot proposes updates. The test matrix still installs fresh resolutions, so the published
-  ranges stay tested. Render reproducibility for documents (#512) is a separate question.
+  ranges stay tested. Render reproducibility for documents is a separate question.
 
 ### Release rhythm and soak
 

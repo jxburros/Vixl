@@ -19,6 +19,7 @@
         "vixl-{version}-windows-x64.zip",
         "vixl-catalog.json",
         "vixl-catalog.schema.json",
+        "vixl-host-api.schema.json",
         "vixl-claude-code.zip",
         "Vixl-Setup-{version}-windows-x64.exe",
         "vixl-update.json",
