@@ -1,6 +1,9 @@
 # Implementation plan for the open issues
 
-[Documentation home](../README.md) · [Development plan](roadmap.md) · [Craft plan](craft-plan.md) · [Changelog](../../CHANGELOG.md)
+> **Archived 2026-10-31.** This plan is kept as history and is no longer maintained. The current plan is [ROADMAP.md](../../../ROADMAP.md) at the repository root.
+
+
+[Documentation home](../../README.md) · [Development plan](roadmap.md) · [Craft plan](craft-plan.md) · [Changelog](../../../CHANGELOG.md)
 
 This plan covers every issue that was open on 2026-10-16 (142 issues, #166 to #714), checked against `main` at
 f26ba45 (0.27.0 plus the Unreleased section). Each issue was read with its comments, and its claims were checked in
@@ -10,7 +13,7 @@ Each issue section gives:
 
 - **Status:** open, partly fixed, or already fixed, with the evidence.
 - **Cause:** the root cause, with file:line references.
-- **Plan:** the steps, including the plugin-or-core call from [Plugins](../reference/plugins.md).
+- **Plan:** the steps, including the plugin-or-core call from [Plugins](../../reference/plugins.md).
 - **Tests:** the regression test that fails without the fix.
 - **Docs/changelog:** the docs, skill and changelog entries to update.
 - **Rating:** complexity (C1 a few hours .. C5 several weeks) and payoff (P1 cosmetic .. P5 correctness or first
@@ -107,10 +110,10 @@ changelog entries. Where the work departed from the plan:
   key), the signature is a hex Ed25519 file verified by the dependency-free `updater_sign.py`, and new launchers
   enforce it at once while older ones keep updating on the SHA-256. `TRUSTED_KEYS` is empty until the owner creates
   the keys, and the release workflow refuses to publish a new version until then (steps in
-  [Releases](../reference/releases.md#update-signing)). The optional Authenticode check is not done.
+  [Releases](../../reference/releases.md#update-signing)). The optional Authenticode check is not done.
 - #677: MPO is left out of the decoder allow-list (Pillow opens camera MPO files through JPEG). `vixl_ai_analyze`
   results were marked untrusted in a follow-up.
-- #682: shapely stays required (recorded in [Releases](../reference/releases.md)). `uv.lock` pins the development
+- #682: shapely stays required (recorded in [Releases](../../reference/releases.md)). `uv.lock` pins the development
   environment; a `locked` CI job tests from it, the lint job runs `uv lock --check`, and Dependabot updates it.
 - #683, #692 part A and #678: the rule against authorship trailers is kept, with a `commit-msg` hook sample and an
   advisory CI check; DCO or CLA, private vulnerability reporting, branch protection and the #692 part B history purge

@@ -177,8 +177,8 @@ operation recipe; see [documentation maintenance](docs/project/documentation-mai
 Showcases, explorations, the marketing pack, promo films and evaluation results live in
 [VixlExamples](https://github.com/jxburros/VixlExamples), and
 [agent evaluations](evals/README.md) measure design tasks. Contributors: [CONTRIBUTING](CONTRIBUTING.md) has the rules,
-and the [project documentation](docs/project/README.md) holds the development and craft plans, decision records,
-render parity and brand voice.
+the [roadmap](ROADMAP.md) is the development plan, and the [project documentation](docs/project/README.md) holds
+decision records, render parity and brand voice.
 
 Vixl edits in RGBA8 sRGB and exports supported vectors or documented raster fallbacks.
 CMYK is an export setting. RAW development, spot-color editing, PSD/XCF import

@@ -1,6 +1,9 @@
 # Craft plan
 
-[Documentation home](../README.md) · [Development plan](roadmap.md) · [House style decisions](house-style.md)
+> **Archived 2026-10-31.** This plan is kept as history and is no longer maintained. The current plan is [ROADMAP.md](../../../ROADMAP.md) at the repository root.
+
+
+[Documentation home](../../README.md) · [Development plan](roadmap.md) · [House style decisions](../house-style.md)
 
 This plan is about the quality of what agents make with Vixl: whether a finished piece reads as designed, not just
 correct. It comes from the [blind re-judging of the tool comparison](https://github.com/jxburros/VixlExamples/blob/main/eval-results/2026-10-13-blind-rejudging.md)
@@ -145,29 +148,29 @@ paid agent run (`python -m evals.craft_rerun`, 1c) and judges, so no craft gain 
 | --- | --- | --- |
 | 1a | Built: the re-run copies every `.vixl` document, its operation batches and the tool-call trace into `src/` beside each run's outputs, and the lane rule asks the agent to save its documents | `evals/craft_rerun.py` |
 | 1b | Built, as reconstructions: the round-1 sources were never committed, so the 16 documents (20 files) are rebuilt from each run's ops, its SVG or measurements of its published outputs, with the judges' 21 composition defects and 48 others as expected findings | `evals/craft_backtest/`, `python -m evals.craft_backtest` |
-| 1c | Built, not yet run: re-runs the Vixl lane on the 16 briefs, packages it with `rejudge.py` beside the fixed lanes and prints the judge prompt | `python -m evals.craft_rerun` ([evals/README.md](../../evals/README.md#craft-re-run)) |
-| 1d | Built: `no_composition_findings` is part of the house-style quality score; it caught the first false finding of 2a during this work. The task harness also has a `craft` check (the composition checks on the finished document, scored 0-1), four sparse craft briefs whose reference solutions score 1.0 with floors in `evals/baseline.json`, and an optional `--judge` rubric score by a model (off by default, never in CI, not yet run) | `evals/house_style.py`, `evals/harness.py`, `evals/judge.py` ([evals README](../../evals/README.md#craft-grader-and-judge)) |
-| 2a | Built: the `composition` family, a default family of review findings. Backtest: 12 of 21 judged defects caught, 0 false findings (dead band 5/10, margin drift 4/5, uneven rhythm 2/4, crowding 1/1, clumped scatter 0/1) | `src/vixl/composition.py`, [guides](../guides/layout/guides.md) |
-| 2a (#649) | Built: four more `composition` codes, review findings with suggestions and no automatic repair: `flat_hierarchy`, `single_weight`, `no_focal`, `accent_unused`. Backtest: 0 caught of 0 expected and 0 false findings for each, because no judged defect of the reconstructions is a hierarchy one; the reconstructions are also set in the proofing font and carry no rolled direction, so `single_weight` and `accent_unused` cannot fire on them. The closest `flat_hierarchy` call is 2.13 times the body (limit 1.6). House-style eval before and after: `no composition` 1.0 at low, medium and high, no regressions | `src/vixl/composition.py`, [guides](../guides/layout/guides.md#composition), [backtest](../../evals/craft_backtest/README.md) |
-| 2b | Built: `repair-layout` repairs composition findings; on the backtest it resolves 18 of 23 findings with no new finding | `src/vixl/plugins/layout_repair/composition_repair.py`, [agent trust](../reference/agent-trust.md) |
+| 1c | Built, not yet run: re-runs the Vixl lane on the 16 briefs, packages it with `rejudge.py` beside the fixed lanes and prints the judge prompt | `python -m evals.craft_rerun` ([evals/README.md](../../../evals/README.md#craft-re-run)) |
+| 1d | Built: `no_composition_findings` is part of the house-style quality score; it caught the first false finding of 2a during this work. The task harness also has a `craft` check (the composition checks on the finished document, scored 0-1), four sparse craft briefs whose reference solutions score 1.0 with floors in `evals/baseline.json`, and an optional `--judge` rubric score by a model (off by default, never in CI, not yet run) | `evals/house_style.py`, `evals/harness.py`, `evals/judge.py` ([evals README](../../../evals/README.md#craft-grader-and-judge)) |
+| 2a | Built: the `composition` family, a default family of review findings. Backtest: 12 of 21 judged defects caught, 0 false findings (dead band 5/10, margin drift 4/5, uneven rhythm 2/4, crowding 1/1, clumped scatter 0/1) | `src/vixl/composition.py`, [guides](../../guides/layout/guides.md) |
+| 2a (#649) | Built: four more `composition` codes, review findings with suggestions and no automatic repair: `flat_hierarchy`, `single_weight`, `no_focal`, `accent_unused`. Backtest: 0 caught of 0 expected and 0 false findings for each, because no judged defect of the reconstructions is a hierarchy one; the reconstructions are also set in the proofing font and carry no rolled direction, so `single_weight` and `accent_unused` cannot fire on them. The closest `flat_hierarchy` call is 2.13 times the body (limit 1.6). House-style eval before and after: `no composition` 1.0 at low, medium and high, no regressions | `src/vixl/composition.py`, [guides](../../guides/layout/guides.md#composition), [backtest](../../../evals/craft_backtest/README.md) |
+| 2b | Built: `repair-layout` repairs composition findings; on the backtest it resolves 18 of 23 findings with no new finding | `src/vixl/plugins/layout_repair/composition_repair.py`, [agent trust](../../reference/agent-trust.md) |
 | 2c | Built: the `final` profile runs `composition` | `src/vixl/policy.py` |
 | 3a | Built: the finishing pass ends the loop in SKILL.md, `START_HERE` and the MCP instructions; the checklist lives once, as guidance `finishing` | `src/vixl/guidance.py` |
-| 3a (#649) | Built: a `variations` workflow (2-4 seeded rolls rendered on copies, a labelled contact sheet, the `roll` step per seed; the document is unchanged) and a skill reference of six generic-versus-finished pairs with the operations that close each gap | `src/vixl/variations.py`, [safe variety](../guides/layout/safe-variety.md#comparing-variations), `skills/vixl/references/finishing-pairs.md` |
+| 3a (#649) | Built: a `variations` workflow (2-4 seeded rolls rendered on copies, a labelled contact sheet, the `roll` step per seed; the document is unchanged) and a skill reference of six generic-versus-finished pairs with the operations that close each gap | `src/vixl/variations.py`, [safe variety](../../guides/layout/safe-variety.md#comparing-variations), `skills/vixl/references/finishing-pairs.md` |
 | 3b | Built: `check=true` returns every composition finding and the two weakest regions, with real-size crops when `preview` is also asked for | `src/vixl/critique.py` |
-| 4a | Built: `wrap: "balance"` and `"pretty"`; headings balance by default | [typography](../guides/text/typography.md#line-breaking) |
-| 4b | Built: tab stops with leaders on text, `leader` on table columns | [typography](../guides/text/typography.md) |
-| 4c | Built: `accent_words` on `layout-apply` | [sizes and layouts](../guides/layout/sizes-and-layouts.md) |
-| 5a | Built: `key-value-list`, which chart `legend_values` also draws | [charts](../guides/output/charts.md), [containers](../guides/layout/containers-and-templates.md) |
-| 5b | Built: one spacing unit of rule clearance (footer rules, `section-header`). T16's own crowding came from a table's header rule, which this does not change | [house style](house-style.md#current-defaults) |
-| 5c | Built: rolled `cta` pills and `date` highlights | [safe variety](../guides/layout/safe-variety.md) |
-| 6a | Built: `reflection`, `haze`, `star-field`, `string-lights`, `bokeh` | [atmosphere](../guides/finishing/atmosphere.md) |
+| 4a | Built: `wrap: "balance"` and `"pretty"`; headings balance by default | [typography](../../guides/text/typography.md#line-breaking) |
+| 4b | Built: tab stops with leaders on text, `leader` on table columns | [typography](../../guides/text/typography.md) |
+| 4c | Built: `accent_words` on `layout-apply` | [sizes and layouts](../../guides/layout/sizes-and-layouts.md) |
+| 5a | Built: `key-value-list`, which chart `legend_values` also draws | [charts](../../guides/output/charts.md), [containers](../../guides/layout/containers-and-templates.md) |
+| 5b | Built: one spacing unit of rule clearance (footer rules, `section-header`). T16's own crowding came from a table's header rule, which this does not change | [house style](../house-style.md#current-defaults) |
+| 5c | Built: rolled `cta` pills and `date` highlights | [safe variety](../../guides/layout/safe-variety.md) |
+| 6a | Built: `reflection`, `haze`, `star-field`, `string-lights`, `bokeh` | [atmosphere](../../guides/finishing/atmosphere.md) |
 | 6b | Built: `vixl_reference` returns `motifs` from one registry, with new catalog shapes (cup, steam, lighthouse, lantern) | `src/vixl/data/motifs.json` |
-| 6c | Built: organic preset `water` | [organic](../guides/shapes/organic.md) |
+| 6c | Built: organic preset `water` | [organic](../../guides/shapes/organic.md) |
 | 7a | Built: progressive `pattern-scatter` (40 → 32 copies keeps all 32 in place) and `thin` | `src/vixl/scatter.py` |
-| 7b | Built: fills register to rendered strokes; `edge_closes` carries short lines to the edge (`edge_reach`) | [drawing](../guides/images/drawing.md) |
+| 7b | Built: fills register to rendered strokes; `edge_closes` carries short lines to the edge (`edge_reach`) | [drawing](../../guides/images/drawing.md) |
 | 7c | Built: an enlarged photo runs its leading `denoise` at its own pixels, so linked crops show the cleaned master | `src/vixl/render.py` |
-| 7d | Built: a new chart fills the safe area, inset by two spacing units | [charts](../guides/output/charts.md) |
-| 7e | Built: shading ramp and outline on new `pixel-art` | [pixel art](../guides/motion/pixel-animation-spacing.md) |
+| 7d | Built: a new chart fills the safe area, inset by two spacing units | [charts](../../guides/output/charts.md) |
+| 7e | Built: shading ramp and outline on new `pixel-art` | [pixel art](../../guides/motion/pixel-animation-spacing.md) |
 
 Known gaps from the backtest: dead bands crossed by thin lines (T12 waves, T03 ripples), space beside a lone footnote
 (T08) and clumping that is about similar motifs lining up rather than density (T15) are not caught yet.

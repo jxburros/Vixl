@@ -1,6 +1,9 @@
 # Render performance
 
-[Documentation home](../README.md) · [Development plan](roadmap.md) · [Render parity](render-parity.md)
+> **Archived 2026-10-31.** This plan is kept as history and is no longer maintained. The current plan is [ROADMAP.md](../../../ROADMAP.md) at the repository root.
+
+
+[Documentation home](../../README.md) · [Development plan](roadmap.md) · [Render parity](../render-parity.md)
 
 Where rendering time goes after the step 4 speed work (#590, #595, parallel frame ranges), measured on a 4-core
 Linux container with `cProfile` and wall-clock best-of-three runs, and what that means for the open speed issues

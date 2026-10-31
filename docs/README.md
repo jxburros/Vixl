@@ -53,7 +53,7 @@ offline with `python examples/build_documentation.py`.
 | [`tutorials/`](tutorials/) | Four end-to-end walkthroughs that build a complete artifact | You learn by doing |
 | [`guides/`](guides/README.md) | Task-oriented guides for one feature area each, grouped by layout, shapes, finishing, text, images, motion, output and automation | You know what you want to make |
 | [`reference/`](reference/README.md) | Commands, operations, file format, interfaces, providers, plugins, architecture, coverage, releases | You need exact syntax, fields or limits |
-| [`project/`](project/README.md) | House-style decisions, plans, the original specification, render parity, brand voice and how to maintain these docs | You work on Vixl itself |
+| [`project/`](project/README.md) | House-style decisions, the original specification, archived plans, render parity, brand voice and how to maintain these docs | You work on Vixl itself |
 | [`assets/`](assets/) | Generated visuals, editable masters, JSON recipes and gallery images used by the pages | You rebuild or reuse a picture |
 
 ## Find a feature
@@ -75,7 +75,7 @@ The full index, by area. If you have a goal rather than a feature, start from th
 | AI | [Provider setup and capability matrix](reference/providers.md) |
 | Integration | [Capability discovery](reference/agent-discovery.md), [MCP tool surface](reference/mcp-toolsets.md), [Python, REST and MCP](reference/interfaces.md), [agent skill](../skills/vixl/SKILL.md), [plugins and content packs](reference/plugins.md) |
 | Installation | [Releases, updates and rollback](reference/releases.md) |
-| Contributors and project records | [Project documentation](project/README.md): [house style decisions](project/house-style.md), [development plan](project/roadmap.md), [craft plan](project/craft-plan.md), [implementation plan](project/implementation-plan.md), [use-case evidence](project/use-case-evidence.md), [render parity](project/render-parity.md), [documentation maintenance](project/documentation-maintenance.md), [brand voice](project/brand-voice.md), [original specification](project/product-spec.md) |
+| Contributors and project records | [Project documentation](project/README.md): [house style decisions](project/house-style.md), [roadmap](../ROADMAP.md), [archived plans](project/archive/README.md), [use-case evidence](project/use-case-evidence.md), [render parity](project/render-parity.md), [documentation maintenance](project/documentation-maintenance.md), [brand voice](project/brand-voice.md), [original specification](project/product-spec.md) |
 
 ## Deeper examples
 
