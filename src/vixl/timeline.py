@@ -140,6 +140,23 @@ def _bounce_out(t):
     return n * t * t + 0.984375
 
 
+CUBIC_BEZIER = r"cubic-bezier\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)"
+
+
+def bezier_curve(name):
+    """``(x1, y1, x2, y2)`` when an easing is a single cubic Bezier (linear, the named curves and
+    ``cubic-bezier()``), else None: hold, steps, bounce, elastic and spring have no such form."""
+    if not isinstance(name, str):
+        return None
+    key = name.strip().lower()
+    if key == "linear":
+        return (0.0, 0.0, 1.0, 1.0)
+    if key in NAMED_BEZIER:
+        return tuple(float(v) for v in NAMED_BEZIER[key])
+    match = re.fullmatch(CUBIC_BEZIER, key)
+    return tuple(map(float, match.groups())) if match else None
+
+
 def easing_function(name):
     """Map an easing name to f(progress 0–1) → eased progress (may overshoot for back/elastic)."""
     require(isinstance(name, str), "Easing must be a string")
@@ -158,7 +175,7 @@ def easing_function(name):
         return lambda t: 0 if t <= 0 else 1 if t >= 1 else 2 ** (-10 * t) * math.sin((t * 10 - 0.75) * (2 * math.pi / 3)) + 1
     if key == "spring":
         return lambda t: 1 - math.exp(-6 * t) * math.cos(12 * t) if t < 1 else 1.0
-    match = re.fullmatch(r"cubic-bezier\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)", key)
+    match = re.fullmatch(CUBIC_BEZIER, key)
     if match:
         x1, y1, x2, y2 = map(float, match.groups())
         require(0 <= x1 <= 1 and 0 <= x2 <= 1, "cubic-bezier x values must be 0–1")

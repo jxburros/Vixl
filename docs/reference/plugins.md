@@ -169,7 +169,7 @@ A plugin that declares `requires: ["workspace_qa"]` can call these (see their mo
 | `pdf_import` (PDF import) | importer | Import a PDF page as editable layers (needs the optional pypdfium2 package). | hooks: import-format |
 | `ai` (AI providers) | provider | Generate, edit, detect and describe images through configured providers; model discovery and routing. | hooks: host-flags, host-route |
 | `spelling` (Spelling) | checks | An optional spelling check of drawn text with suggestions; English is bundled, other languages are content packs. | hooks: check, spell |
-| `lottie` (Lottie animation) | workflows | Export sampled vector animations as Lottie JSON, dotLottie and strict Telegram TGS. | hooks: timeline-export-format |
+| `lottie` (Lottie animation) | workflows | Export vector animations with native easing and time-remapped linked instances as Lottie JSON, dotLottie and strict Telegram TGS. | hooks: timeline-export-format |
 
 ## Not separable yet
 

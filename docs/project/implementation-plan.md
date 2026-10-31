@@ -392,7 +392,7 @@ Implementation record (unreleased, 2026-10-29):
 | #523 aligned lyric timing | Implemented; configured adapters, independent repairable timing records and word-timed builds; no bundled model. |
 | #214 shared data | Implemented; charts, tables and filtered text update atomically across pages. |
 | #662 Figma interchange | Implemented and offline-tested; live Figma visual verification remains pending. |
-| #177 Lottie | Supported subset implemented and reference-tested; native source easing and linked precomposition time maps remain open. |
+| #177 Lottie | Implemented and reference-tested: verified Bezier keys for source easing, split position, time-remapped linked precompositions. |
 | #218 drawing finish | Implemented; curved bridges, smooth traces and tilt regression coverage. |
 | Export speed 1–6, 8 | Implemented with MP4/frame-ZIP budgets and pixel-parity tests; ZIP files are larger, VP9 encoding changes. |
 | Export speed 7, 9 | Deferred: no measured case yet justifies another fade-cache path or machine-specific hardware encoding. |
@@ -3452,11 +3452,22 @@ exports; timing-only source edits preserve approved styles. Provider alignment r
 
 ### #177 Lottie export for vector animations
 
-**Status**: Partly implemented (unreleased). JSON, dotLottie and TGS export, native vectors/outlined text,
-group precompositions, sampled motion, animated raster fallbacks, strict refusals and resource budgets are covered
-by `tests/test_lottie.py`, including optional reference-player comparisons at five frames for seven scenes.
-CLI, MCP, REST and Python routes are covered. Motion is baked at export fps: preserving original easing handles
-and linked-precomposition time maps remains open. The `lottie-test` extra makes parity validation reproducible.
+**Status**: Implemented (unreleased). JSON, dotLottie and TGS export, native vectors/outlined text, group
+precompositions, animated raster fallbacks, strict refusals and resource budgets are covered by `tests/test_lottie.py`,
+including optional reference-player comparisons. CLI, MCP, REST and Python routes are covered.
+
+Easing: every property is still sampled at every frame, then each span between source keyframes becomes one Bezier
+key when the source curve, cut to that span by de Casteljau subdivision, reproduces every sample within 0.001 units.
+Keyframe times between export frames are sampled too and keyed at fractional frames (raster fallbacks draw only
+whole frames). Spans that fail keep per-frame held keys and are counted in `motion.baked`, so the output never claims a curve the
+frames do not confirm. Layers carry their box centre as the anchor, and position splits into x and y when the axes
+need different curves: rlottie applies only the first component of per-dimension handles.
+
+Linked instances: a `link` becomes a precomposition of its source's own vectors (`links.Source`, shared with
+rendering), sampled at the distinct source times it shows and keyed at whole frames, because rlottie rounds a
+remapped frame to a whole frame. A time remap points at those frames in straight runs; hidden edges are in and out
+points, crops are masks, identical instances share one composition, and nested links recurse through the link
+chain's cycle and depth checks. Animated placement and corner pins stay raster fallbacks.
 
 **Original diagnosis and plan:**
 

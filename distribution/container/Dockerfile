@@ -11,7 +11,7 @@
 ARG PYTHON=3.12-slim-bookworm
 
 FROM python:${PYTHON} AS build
-ARG VERSION=0.33.0
+ARG VERSION=0.33.1
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 VIXL_PACK_DIR=/opt/vixl/packs
 RUN python -m venv /opt/vixl/venv \
  && /opt/vixl/venv/bin/pip install "vixl-engine[server,pdf]==${VERSION}" \
@@ -19,7 +19,7 @@ RUN python -m venv /opt/vixl/venv \
  && /opt/vixl/venv/bin/python -c "from vixl import packs; [print(packs.install(name)['path']) for name in packs.PACKS]"
 
 FROM python:${PYTHON} AS base
-ARG VERSION=0.33.0
+ARG VERSION=0.33.1
 LABEL org.opencontainers.image.title="Vixl host" \
       org.opencontainers.image.description="vixl host: layered-image documents served to a host application" \
       org.opencontainers.image.source="https://github.com/jxburros/Vixl" \
