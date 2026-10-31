@@ -55,7 +55,7 @@ jobs:
         python -c "import json, jsonschema; jsonschema.validate(json.load(open('dist/vixl-catalog.json')), json.load(open('dist/vixl-catalog.schema.json')))"
     - name: Export the vixl host API contract for host applications
       run: python -m vixl --json host --schema > dist/vixl-host-api.schema.json
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       with:
         name: python-distributions
         path: |
@@ -92,7 +92,7 @@ jobs:
     - name: Verify installation, PATH, native updates, and uninstall
       shell: pwsh
       run: ./distribution/test_windows_install.ps1
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       with:
         name: windows-release
         path: dist/release/*
@@ -152,7 +152,7 @@ jobs:
         RELEASE_APP: vixl
       run: node .toolkit/src/release.mjs stage --app "$RELEASE_APP" --from release --bundle unified-bundle --sha
         "$RELEASE_SOURCE_SHA"
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       with:
         name: bundle-vixl
         path: unified-bundle
