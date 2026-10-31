@@ -27,7 +27,7 @@ is being drawn is an error that names the chain.
 from collections import OrderedDict
 from contextlib import contextmanager
 from contextvars import ContextVar
-from copy import deepcopy
+from copy import copy, deepcopy
 import json
 import math
 from pathlib import Path
@@ -743,47 +743,69 @@ def _image_variables(project, view, values, source):
     return stamps
 
 
+class Source:
+    """A link's source opened once and sampled at any source time, with its page, artboard and variables
+    applied exactly as a render draws them. Rendering and interchange exports share it."""
+
+    def __init__(self, project, layer):
+        from .render import view_page
+
+        self.layer, self.name = layer, layer["source"]
+        self.path = locate(project, self.name)
+        self.child, self.revision = open_source(project, self.path, self.name)
+        self.size = _canvas_size(self.child, layer.get("source_page"), layer.get("artboard"), self.name)
+        self.values = overrides(project, layer)
+        view = self.child.clone()
+        view.limits = project.limits
+        view._workspace = getattr(project, "_workspace", None)
+        view.allow_linked = getattr(project, "allow_linked", False)
+        self.stamps = _image_variables(project, view, self.values, self.name)
+        self.selected = view_page(view, layer.get("source_page"))
+        self.interval = timing(self.selected, layer)
+        self.timeline = self.selected.state.get("timeline")
+
+    def child_time(self, parent_time):
+        """The source time drawn at ``parent_time``: quantized to the source's frames, or None when hidden."""
+        if not self.timeline:
+            return parent_time
+        return mapped_time(self.interval, parent_time, self.timeline.get("fps", 30))
+
+    def frame(self, project, child_time):
+        """The source drawn at ``child_time`` (from :meth:`child_time`) as a private render-only document."""
+        from .design_render import artboard_project
+
+        if child_time is None:
+            selected = copy(self.selected)
+            selected.state = {**self.selected.state, "layers": [],
+                              "canvas": {**self.selected.state["canvas"], "background": "transparent"}}
+        elif self.timeline:
+            from .timeline import project_at
+
+            count_frame(project, self.name)
+            selected = project_at(self.selected, child_time)
+        else:
+            selected = copy(self.selected)
+            selected._link_time = child_time
+        candidate = artboard_project(selected, self.layer.get("artboard"), None, self.values or None)
+        if child_time is None:
+            # An artboard can choose its own background after the source frame has been sampled.
+            candidate.state["canvas"] = {**candidate.state["canvas"], "background": "transparent"}
+        return candidate
+
+
 def prepare(project, layer):
     """Open a link's source and return it as a :class:`Prepared` view (a private copy, so rendering never
     touches the cached document)."""
-    from .design_render import artboard_project
-    from .render import view_page
-
-    source = layer["source"]
-    path = locate(project, source)
-    child, revision = open_source(project, path, source)
-    size = _canvas_size(child, layer.get("source_page"), layer.get("artboard"), source)
-    values = overrides(project, layer)
-    view = child.clone()
-    view.limits = project.limits
-    view._workspace = getattr(project, "_workspace", None)
-    view.allow_linked = getattr(project, "allow_linked", False)
-    stamps = _image_variables(project, view, values, source)
-    selected = view_page(view, layer.get("source_page"))
-    interval = timing(selected, layer)
+    source = Source(project, layer)
     parent_time = layer.get("_time", getattr(project, "_link_time", 0))
-    timeline = selected.state.get("timeline")
-    child_time = mapped_time(interval, parent_time, timeline.get("fps", 30)) if timeline else parent_time
-    if child_time is None:
-        selected.state["layers"] = []
-        selected.state["canvas"]["background"] = "transparent"
-    elif timeline:
-        from .timeline import project_at
-
-        count_frame(project, source)
-        selected = project_at(selected, child_time)
-    else:
-        selected._link_time = child_time
-    candidate = artboard_project(selected, layer.get("artboard"), None, values or None)
-    if child_time is None:
-        # An artboard can choose its own background after the source frame has been sampled.
-        candidate.state["canvas"]["background"] = "transparent"
-    project.limits.size(*size)
+    child_time = source.child_time(parent_time)
+    candidate = source.frame(project, child_time)
+    project.limits.size(*source.size)
     # Nested links change what a source draws without changing its own file: they are part of the key.
-    key = (revision, tuple(fingerprint(child)), layer.get("source_page"), layer.get("artboard"),
-           json.dumps(values, sort_keys=True), tuple(stamps),
-           child_time if timeline or link_layers(selected.state) else None)
-    return Prepared(path, revision, candidate, size, key)
+    key = (source.revision, tuple(fingerprint(source.child)), layer.get("source_page"), layer.get("artboard"),
+           json.dumps(source.values, sort_keys=True), tuple(source.stamps),
+           child_time if source.timeline or link_layers(source.selected.state) else None)
+    return Prepared(source.path, source.revision, candidate, source.size, key)
 
 
 def placement(layer, size):

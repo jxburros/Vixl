@@ -673,6 +673,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | MOT-36 | Align lyrics, repair word timestamps and build an editable lyric video | `lyrics-align`, `lyrics-timing-edit`, `lyrics-timing-export`, `lyric-video-build` with `timing` | 1 per action · provider-dependent | A configured alignment provider is required. Repeated occurrences stay separate; invalid records need repair and musical timing needs review. |
 | MOT-37 | Verify an encoded lyric delivery and record approval | `lyric-video-export` with `verify: full`, `lyric-video-review` | 1 per action · render-dependent | Full decode, per-cue checks, bounded visual/brand sampling and source hashes; basic exports remain unvalidated and source edits invalidate approval. |
 | MOT-38 | Reuse an animated scene with independent timing and variables | `animation-instance` with `time` | 1 batch · render-dependent | Ordinary links with offsets, speed, trims, loop/ping-pong and hold/hidden edges; no source mutation. |
+| MOT-39 | Hand a vector animation with reused animated scenes to app developers as Lottie | `vixl_export(kind='timeline')` to `.json` or `.lottie` with `strict: true` | 1 · <1 | Bezier easings stay curves and `animation-instance` links become time-remapped precompositions; bounce, elastic, spring and steps are keyed per frame (`motion.baked`). |
 
 
 ### Production

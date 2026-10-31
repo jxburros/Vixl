@@ -121,13 +121,27 @@ and `.tgs` writes a Telegram sticker. MCP uses `vixl_export` with `kind: "timeli
 `.json` filename); REST's timeline export route and Python's `export_timeline` accept the same extensions.
 
 Shapes, paths, outlined text, ordinary transforms, fills, strokes, linear gradients and circular radial gradients
-stay vector. Groups become precompositions so overlapping children retain their group's opacity. Motion is sampled
-at the selected `fps`: held keys preserve each exported frame, including custom easing and constraints. Original
-easing curves and linked-instance time maps are baked; the result is not a round-trip of the Vixl timeline.
+stay vector. Groups become precompositions so overlapping children retain their group's opacity.
+
+Motion keeps its easing. Every property is sampled at the selected `fps`, and each span between keyframes becomes
+one Bezier key when the source curve reproduces every sampled frame: `linear`, the named `ease-*` curves and
+`cubic-bezier()`, also where another track's keyframe cuts a segment in two. Keyframes that fall between frames
+are sampled as well and keyed at their fractional frame, so each curve starts where its segment starts. A layer rotates and scales about the
+centre of its box, and its position splits into separate x and y curves when the axes ease differently. Spans that
+are not one Bezier curve (`bounce-*`, `elastic-out`, `spring`, `steps()`, colour mixing, or several tracks moving
+one property) keep a held key per changed frame. The result's `motion` counts `eased` and `baked` spans, and a
+warning names the baked ones.
+
+Linked documents (`link` and `animation-instance`) become precompositions of their own vectors. The source is
+sampled at the source times the instance shows, and a time remap plays them: `offset`, `speed`, trim, `loop` and
+`pingpong` become straight runs of the remap, `before`/`after: "hidden"` set the layer's in and out points, and a
+`crop` or `fit` box becomes a mask. Instances with the same source and times share one composition; `motion.instances`
+counts them. A link whose box, source or timing settings animate, or that has a corner pin, is a raster fallback.
 
 Unsupported layers and appearances become embedded PNG sequences that remain animated. The result's `fallbacks`
-lists each affected layer and why: images and linked documents, effects, styles, kinetic text, changing path topology,
-affine shear, elliptical radial gradients and clipped vector geometry. Backdrop-dependent blends, adjustments or
+lists each affected layer and why: images, effects, styles, kinetic text, changing path topology, affine shear,
+elliptical radial gradients and clipped vector geometry; a fallback inside a linked document is named
+`link / layer`. Backdrop-dependent blends, adjustments or
 clipping rasterize the whole composition. `--strict` (`strict: true`) refuses every raster fallback before writing.
 Audio and raster-encoder options such as `quality`, `preset`, `poster` and `target_bytes` are refused.
 

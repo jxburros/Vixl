@@ -182,8 +182,8 @@ alignment (#523), per-cue compositions and preserved edits (#612), shared datase
 The export-speed track has budgets, measured worker selection, VP9 settings, fast frame ZIPs, opaque-frame handling,
 scalar frame copies and draft/final presets (items 1–6 and 8). Fade-cache changes (7) and hardware encoding (9)
 remain deferred; software encoding stays the default. See the [step 8 implementation record](implementation-plan.md#step-8-motion-and-media)
-for feature-specific limits. Lottie JSON/dotLottie/TGS has a reference-tested sampled-motion implementation
-(native easing and linked time maps remain open). Figma interchange and its offline import plugin are implemented;
+for feature-specific limits. Lottie JSON/dotLottie/TGS is reference-tested and keeps Bezier easing as curves and
+linked instances as time-remapped precompositions (#177). Figma interchange and its offline import plugin are implemented;
 live Figma visual review remains pending.
 
 ## Rules for every release below
@@ -265,7 +265,6 @@ re-judge is published.
 | Issue | What | C | P | Note |
 | --- | --- | --- | --- | --- |
 | #266 | Non-rectangular canvas | 3 | 3 | Irregular image frames shipped in 0.24.0; a page clip shape in every exporter remains |
-| #177 | Lottie export remainder | 3 | 3 | JSON/dotLottie/TGS and reference-tested sampled motion are implemented; preserve original easing and linked precomposition time maps next |
 | #166 | PPTX font embedding | 4 | 3 | Re-scope: warnings and licences shipped; PDF is the fidelity route |
 | — | Animation export speed: an export perf budget, faster VP9 settings, measured worker count, cheaper frame setup and fades, encoder presets, opt-in hardware encoding | 1–3 | 2–3 | Step 8 of the [implementation plan](implementation-plan.md#step-8-motion-and-media); numbers in [render performance](render-performance.md#animation-export-2026-10-22) |
 
