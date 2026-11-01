@@ -35,7 +35,7 @@ For reproducible work, install an exact release rather than tracking `main` (a p
 replaced). The pin below is the newest release on PyPI; `main` may already carry a higher source version:
 
 ```bash
-python -m pip install 'vixl-engine==0.32.0'
+python -m pip install 'vixl-engine==0.33.3'
 ```
 
 Latest `main` may include changes beyond the tagged release while reporting the same

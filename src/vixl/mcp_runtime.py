@@ -285,6 +285,11 @@ class Runtime:
                 raise self.tool_error(self.compact_json(for_surface(error.as_dict(), "mcp"))) from exc
             warning = self.ignored(fn.__name__, state)
             profiled = profiling.attach(result, run)
+            if isinstance(result, list) and len(result) == 2 and type(result[0]).__name__ == "Image" and isinstance(result[1], dict):
+                self.label(result[1], state, fn.__name__)
+                if warning:
+                    result[1]["warnings"] = [*result[1].get("warnings", []), warning]
+                return [result[0], self.compact_json(result[1])]
             if isinstance(result, list) and result and isinstance(result[0], dict):
                 # A JSON result with images after it (vixl_apply preview=…): shape the JSON part.
                 self.label(result[0], state, fn.__name__)

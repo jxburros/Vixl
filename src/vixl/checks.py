@@ -86,6 +86,8 @@ def tally(issues):
     for item in issues:
         item["action"] = classify(item)
         item.setdefault("rule", rule_id(item))
+    from .check_results import summarize
+
     errors = sum(1 for x in issues if x["severity"] == "error")
     return {
         "passed": errors == 0 and not any(x["action"] == "fix" for x in issues),
@@ -94,6 +96,7 @@ def tally(issues):
         "info": sum(1 for x in issues if x["severity"] == "info"),
         "by_action": {action: [i for i, x in enumerate(issues) if x["action"] == action] for action in ACTIONS},
         "outcome": from_findings(issues),
+        **summarize(issues),
     }
 
 
@@ -927,6 +930,16 @@ def check_design(
 
     # Empty text (a lyric between lines, a cleared label) draws nothing to measure.
     texts = [item for item in content if is_text(item) and resolved[item["id"]].get("text", "").strip()]
+    if "legibility" in checks:
+        from .richtext import active, fitted
+        from .text import plan
+
+        for item in texts:
+            layer = resolved[item["id"]]
+            layout = fitted(candidate, layer) if active(layer) else plan(candidate, layer)
+            if layout.word_breaks:
+                issue("legibility", "warning", f"{item['name']!r} wraps inside a word; use fit-text or a wider box",
+                      [item], code="word-break", lines=list(layout.word_breaks))
     contrasts = {}  # Text contrast (p10) by layer ID, measured once and shared with the use-size legibility test.
     if "contrast" in checks:
         from .measure import measure, top_level_contrast
@@ -947,6 +960,8 @@ def check_design(
                     # The single-pass measurement failed for this layer: measure it on its own.
                     result = measure(candidate, target=item["id"])["contrast"]
             except Exception as exc:  # noqa: BLE001 - never a silent pass: an unmeasurable layer is an error.
+                if any(x.get("code") == "cut-off" and item["name"] in x.get("layers", []) for x in issues):
+                    continue
                 issue("contrast", "error", f"Could not measure the contrast of {item['name']!r}: {exc}", [item],
                       code="unmeasurable")
                 continue
@@ -1299,6 +1314,9 @@ def check_design(
     # Stable rules, measurements, page and (for fix findings left after waivers) a suggested repair; nothing
     # is applied.
     annotate(candidate, issues, page=page_ref, min_thumbnail_text=min_thumbnail_text, repairs=repairs)
+    from .check_results import summarize
+
+    report.update(summarize(issues))
     return report
 
 
@@ -1756,6 +1774,9 @@ def batch_findings(project, names, touched):
     ``regions`` (critique.weakest_regions). The counts, ``passed`` and ``outcome`` still describe the whole
     document."""
     report = check_design(project, checks=names)
+    from .check_results import remember
+
+    remember(project, report)
     if "issues" not in report:
         return report
 
@@ -1787,14 +1808,22 @@ def suite_names(project, suites):
     from .assurance import effective
 
     attached = effective(project)
-    if suites is True:
+    if suites is True or suites == "all":
         return list(attached)
+    if suites is False or suites == "none":
+        return []
     names = [suites] if isinstance(suites, str) else suites
     require(isinstance(names, list) and all(isinstance(name, str) for name in names),
             "suites is true, a suite name or a list of names", field="suites")
-    missing = [name for name in names if name not in attached]
-    require(not missing, f"No attached suite named {missing}; attached: {', '.join(attached) or 'none'}",
-            field="suites")
+    from .assurance import resolve
+
+    for name in names:
+        try:
+            resolve(project, name)
+        except VixlError as exc:
+            if exc.code == "not_found":
+                raise VixlError(exc.code, f"No attached suite or library suite named {name!r}", **exc.details) from exc
+            raise
     return names
 
 
@@ -1901,4 +1930,14 @@ def apply_reviewed(project, operations, *, dry_run=False, detail="brief", check=
         result["review_skipped"] = (f"The edit took {time.monotonic() - started:.0f} s, so {' and '.join(skipped)} did not run; "
                                     "call vixl_check, vixl_apply(workflow='check') or vixl_render.")
     result["outcome"] = apply_outcome(result)
+    if dry_run and operations:
+        from .outcomes import proposed
+
+        result["outcome"] = proposed(result["outcome"])
     return result, image
+
+
+def remember_check(project, report):
+    from .check_results import remember
+
+    remember(project, report)

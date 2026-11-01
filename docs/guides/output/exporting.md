@@ -425,3 +425,13 @@ vixl import report.pdf --font-map "Literata=literata-400" --font-map "Literata B
 Mapping changes the face, not the layout: line breaks and widths follow the mapped font. When the exact appearance
 matters, import with `svg_mode: "appearance"` (one image), or keep the `.vixl` or SVG master, which carry the
 document itself.
+
+## Check state and a quote before export
+
+Run `vixl check` before delivery. File exports and previews report the last check's revision and scope, or say it
+is stale/not run. CLI file output shows a short check line. Use `export FILE --strict` to run a fresh check and
+refuse a failing design before writing. Use `--no-check-status` only to hide the status line.
+
+`export FILE --dry-run` returns page and megapixel units without writing; a timeline export also reports frames
+and duration. A quote over the service limits returns `within_limits: false`. Reduce scale, pages or frame range
+before running it. Byte size is unknown until encoding; vector fallback counts are estimates.

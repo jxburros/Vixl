@@ -394,6 +394,8 @@ def _operation_schema():
         "seed": {"type": "integer", "minimum": 0},
         "radius": N,
         "strength": N,
+        "paper": field(S, "Halftone and crosshatch paper color; default white."),
+        "color": field(S, "Halftone and crosshatch ink color; default black."),
         "shadow_color": S,
         "highlight_color": S,
         "edges": {"type": "string", "enum": ["auto", "shape", "box"],
@@ -582,15 +584,25 @@ def schema_error(error, operation, allowed):
             suggestions[k] = [aliases.get(close[0], close[0])] if close else []
         if kind in ("text", "text-set") and "width" in extras:
             suggestions["width"] = []
+        if kind == "layout-apply":
+            from .schema_docs import layout_slots
+
+            slots = layout_slots(operation.get("name"))
+            for key in extras:
+                for name, slot in slots.items():
+                    if key.lower() == str(slot.get("label", "")).lower():
+                        suggestions[key] = [name]
         hints = [f"{v[0]!r} instead of {k!r}" for k, v in suggestions.items() if v]
         where = f" in {field}" if field else f" for {kind!r}"
-        message = f"Unknown field(s) {', '.join(map(repr, extras))}{where}. Allowed: {', '.join(sorted(known))}"
+        message = f"Unknown field(s) {', '.join(map(repr, extras))}{where}"
         if hints:
             message += f". Did you mean {', '.join(hints)}?"
         from .richtext import field_hint
 
         message += field_hint(kind, extras)
-        details.update(field=field or extras[0], allowed=sorted(known), suggestions={k: v[0] for k, v in suggestions.items() if v})
+        recommended = {v[0] for v in suggestions.values() if v}
+        choices = sorted(known, key=lambda name: (name not in recommended, name))[:10]
+        details.update(field=field or extras[0], allowed=choices, count=len(known), suggestions={k: v[0] for k, v in suggestions.items() if v})
     elif validator == "enum":
         options = error.validator_value
         close = difflib.get_close_matches(str(error.instance), [str(o) for o in options], 1, 0.4)
@@ -630,8 +642,10 @@ def schema_error(error, operation, allowed):
         message = f"{field + ': ' if field else ''}{error.message}"
     # Point at the exact contract so one lookup, not a guess, fixes the next attempt.
     hint = f"vixl_reference('operations', name=[{kind!r}])"
-    details.setdefault("fields", allowed)
+    if validator not in ("additionalProperties", "enum"):
+        details.setdefault("fields", allowed)
     if validator == "type" and isinstance(error.schema, dict):
         details["expected"] = {k: v for k, v in error.schema.items() if k != "description"}
-    details["schema"] = hint
-    return VixlError("invalid_operation", f"{message} (see {hint})", **details)
+    if validator not in ("additionalProperties", "enum"):
+        details["schema"] = hint
+    return VixlError("invalid_operation", message + (f" (see {hint})" if "schema" in details else ""), **details)

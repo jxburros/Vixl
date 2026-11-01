@@ -46,6 +46,7 @@ class Plan:
     size: float = 0.0  # the size drawn (after fitting)
     offset: float = 0.0  # horizontal alignment offset inside a text box
     shaped: bool = True  # False for warped or path text (outlines only)
+    word_breaks: tuple = ()
 
 
 _local = threading.local()
@@ -775,6 +776,22 @@ def narrowest_width(count_at, lowest, width):
     return high
 
 
+def mid_word(left, right):
+    """Alphabetic word splits, excluding scripts with ordinary inter-character line breaks."""
+    import unicodedata
+
+    a, b = left[-1:], right[:1]
+    if not a.isalpha() or not b.isalpha():
+        return False
+    return not any(any(script in unicodedata.name(char, "") for script in
+                       ("CJK", "IDEOGRAPH", "HIRAGANA", "KATAKANA", "HANGUL", "THAI", "LAO", "KHMER"))
+                   for char in (a, b))
+
+
+class BrokenLine(str):
+    """A shaped line ending inside a word, retained through wrapping for diagnostics."""
+
+
 def break_word(data, pieces, size, width, result):
     """Break a word wider than ``width`` between its clusters: each line takes clusters while the line still fits,
     and always at least one. Full lines go to ``result``; the unfinished last line is returned.
@@ -808,12 +825,12 @@ def break_word(data, pieces, size, width, result):
             or advance(data, spill, size) != widths[overflow - 1]
         ):
             break
-        result.append(fitted)
+        result.append(BrokenLine(fitted) if mid_word(fitted, pieces[start + overflow - 1]) else fitted)
         start += overflow - 1
         window = max(64, 2 * (overflow - 1))
     for char in pieces[start:]:
         if line and advance(data, line + char, size) > width:
-            result.append(line)
+            result.append(BrokenLine(line) if mid_word(line, char) else line)
             line = ""
         line += char
     return line
@@ -1123,6 +1140,8 @@ def plan(project, layer):
         size,
         offset if settings else 0.0,
         not settings.get("path") and settings.get("warp", "none") == "none",
+        tuple(i for i, line in enumerate(lines(data, layer["text"], size, width, wrap, tabs))
+              if isinstance(line, BrokenLine)) if width else (),
     )
 
 

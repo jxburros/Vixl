@@ -225,7 +225,10 @@ def catalog(kind, *, workspace=None):
 
 def get(kind, name, *, workspace=None):
     items = catalog(kind, workspace=workspace)
-    require(name in items, f"Unknown {kind} resource: {name}")
+    if name not in items:
+        from .errors import unknown_choice
+
+        raise unknown_choice(kind.rstrip("s"), name, items)
     value = items[name]
     validate(kind, value)
     return value

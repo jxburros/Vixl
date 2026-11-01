@@ -324,6 +324,9 @@ def output_options(args, command):
     p.add_argument("path", nargs="?")
     p.add_argument("--out", "--preview", dest="out")
     p.add_argument("--overwrite", action="store_true", help="Replace existing export files")
+    p.add_argument("--strict", action="store_true", help="Refuse output when design checks fail")
+    p.add_argument("--no-check-status", dest="check_status", action="store_false", default=None)
+    p.add_argument("--dry-run", action="store_true", help="Quote export units without writing")
     p.add_argument("--quality", type=int, default=None)
     p.add_argument("--title", help="PDF document title (default: the page's title layer, then the file name)")
     p.add_argument("--max-bytes", type=int, help="Size budget: warn when a raster export is larger")
@@ -1213,6 +1216,15 @@ def project_command(project, cmd, args, *, detail="compact"):
         return project_command(project, target, ["--out", out, *rest], detail=detail)
     if cmd in ("render", "export"):
         a = output_options(args, cmd)
+        if a.dry_run:
+            return project.export(a.out or a.path, dry_run=True, format=a.format,
+                                  scale=float(a.scale.rstrip("x")), pages=a.pages, page=a.page,
+                                  pdf_content=a.pdf_content), False
+        if a.strict:
+            from .check_results import delivery
+
+            delivery(project, {}, strict=True, check_status=a.check_status)
+            a.strict = False
         if project.path is not None and getattr(project, "_disk_cache", None) is None:
             # A saved document's next export, in a new process, reads unchanged layers and frames back.
             from .render_cache import enable, user_cache_dir
@@ -1346,7 +1358,7 @@ def project_command(project, cmd, args, *, detail="compact"):
             presenter=presenter_options(a),
             title=a.title,
             max_bytes=a.max_bytes,
-            report=report,
+            report=report, strict=a.strict, check_status=a.check_status,
             isolate=a.isolate,
             padding=a.padding,
             **print_options(a, project.limits),
@@ -1416,6 +1428,7 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("--limit", type=int, help="Findings to list (passed and the counts still cover all)")
         p.add_argument("--profile", help="check profile (draft, review, final or one from .vixl-checks.json): its "
                        "checks, suites and fail_on decide passed")
+        p.add_argument("--suite", dest="suites", action="append", help="Run a named library suite (repeatable), all or none")
         p.add_argument("--no-waivers", dest="waivers", action="store_false",
                        help="report every finding as if the document had no waivers")
         p.add_argument("--locales", help="check each locale (all, or codes such as de,ja) on a candidate copy and "
@@ -1456,6 +1469,8 @@ def project_command(project, cmd, args, *, detail="compact"):
         if options["safe_area"] is not None:
             options["safe_area"] = number(options["safe_area"])
         options["avoid"] = [[number(v) for v in zone] for zone in options["avoid"] or []]
+        if options.get("suites") in (["all"], ["none"]):
+            options["suites"] = options["suites"][0]
         result = project.check(**options)
         if strict and not result["passed"]:
             profile = result.get("profile")
@@ -1471,6 +1486,7 @@ def project_command(project, cmd, args, *, detail="compact"):
         return project.inspect_animation(), False
     if cmd == "export-animation":
         p = Parser(prog="vixl export-animation")
+        p.add_argument("--dry-run", action="store_true")
         p.add_argument("--out", required=True)
         p.add_argument("--overwrite", action="store_true")
         p.add_argument("--format", choices=["gif", "apng", "webp", "mp4", "webm", "sheet"])
@@ -1484,7 +1500,7 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("--columns", type=int)
         a = p.parse_args(args)
         scale = int(a.scale) if a.scale.is_integer() else a.scale
-        return project.export_animation(a.out, format=a.format, scale=scale, columns=a.columns, sampling=a.sampling, colors=a.colors, animation=a.animation, quality=a.quality, overwrite=a.overwrite, dither=a.dither, max_bytes=a.max_bytes), False
+        return project.export_animation(a.out, dry_run=a.dry_run, format=a.format, scale=scale, columns=a.columns, sampling=a.sampling, colors=a.colors, animation=a.animation, quality=a.quality, overwrite=a.overwrite, dither=a.dither, max_bytes=a.max_bytes), False
     if cmd == "export-screens":
         from .exports import export_screens
 

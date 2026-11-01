@@ -129,3 +129,14 @@ structured error, expected result and a small non-sensitive document/input that 
 the problem. For visual differences include preview and export settings. Do not include
 provider credentials or private form data. Source tests run with `python -m pytest -q`
 after installing `.[dev]`; [architecture](reference/architecture.md) explains module boundaries.
+
+## Recovering from an invalid choice
+
+Catalog errors return the failing `field`, `got`, up to ten `allowed` values, total `count`, and up to three
+`suggestions`. Enum errors list the enum values, not option names. Unknown layout fields also match the layout's
+slot labels: `date` on event-poster suggests `label`. These errors omit the full schema; missing required fields
+and wrong types still include it.
+
+`legibility.word-break` means a wrapped line ends inside an alphabetic word. Widen the box or run fit-text;
+fit-text refuses when whole words cannot fit at the requested minimum. Hyphenated breaks and ordinary CJK
+inter-character wrapping do not trigger this finding.

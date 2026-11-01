@@ -184,6 +184,10 @@ def check(result, command):
     issues = sorted(result.get("issues") or [], key=lambda issue: rank.get(issue.get("severity"), 2))
     rows = [f"  {issue.get('severity', '?'):<7} {', '.join(issue.get('layers') or ['-']):<16} {issue.get('message', '')}"
             for issue in issues]
+    if "verdict" in result:
+        top = [f"  {item['rule']} ({item['count']}): {item['fix']}" for item in result.get("top", [])]
+        grouped = [f"  {item['action']}: {item['rule']} × {item['count']}" for item in result.get("summary", [])]
+        return named(result, ["check " + result["verdict"].lower(), *top, head, *grouped])
     return named(result, [head, *tail(rows, [])])
 
 
@@ -192,7 +196,16 @@ def written(result, command):
     line = f"{verb} {result['output']}"
     if isinstance(result.get("bytes"), int):
         line += f" ({size(result['bytes'])})"
-    return named(result, [line, *notes_of(result)])
+    status = result.get("last_check")
+    check_line = []
+    if isinstance(status, dict):
+        failed_suites = sum(value.get("status") == "failed" for value in status.get("suites", {}).values()
+                            if isinstance(value, dict))
+        suites = f", {failed_suites} failed suites" if failed_suites else ""
+        check_line = [f"check: {status['fix']} fix, {status['review']} review{suites} (vixl check for detail)"]
+    elif status:
+        check_line = ["check: not run since last change"]
+    return named(result, [line, *check_line, *notes_of(result)])
 
 
 def schema_groups(result, command):

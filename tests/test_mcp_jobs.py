@@ -272,7 +272,7 @@ def test_active_document_is_per_client_and_results_name_the_document(tmp_path):
                     assert named["document"] == "b.vixl"
                 preview = await one.call_tool("vixl_render", {"max_width": 64, "max_height": 64, "document": "b.vixl"})
                 assert preview.content[0].type == "image"
-                assert json.loads(preview.content[-1].text) == {"document": "b.vixl"}
+                assert json.loads(preview.content[-1].text) == {"document": "b.vixl", "last_check": "not_run"}
 
     asyncio.run(main())
 

@@ -858,8 +858,8 @@ SUMMARIES = {
                    "the source is not changed.",
     "repair-layout": "Bounded layout repair: try several candidates per overflow, overlap, spacing, contrast or "
                      "safe-area failure, then per composition finding (drift, rhythm, crowding, dead band, clumped "
-                     "tile), keep the least disruptive that adds no finding; infeasible leaves the document "
-                     "unchanged and lists unsatisfied constraints (dry run by default).",
+                     "tile), prefer the smallest residual dead band then least disruption without new findings; infeasible leaves "
+                     "the document unchanged. Dry runs report outcome proposed/would_pass with review required.",
     "protected-edit": "Apply operations only if protected layers keep their structure and pixels and protected "
                       "regions keep their pixels; otherwise roll back and report located differences.",
     "reproduce": "Render and report renderable, environment-matched (lockfile) or reference-verified (reference "

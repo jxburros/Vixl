@@ -71,3 +71,6 @@ An SVG Vixl exports also carries the document it shows in `<metadata id="vixl-do
 The default `appearance` policy preserves unsupported appearances with raster fallbacks and records layer/effect details in SVG metadata. Fallbacks affect individual layers when compositing permits it. `strict` rejects **any embedded raster content** with `svg_raster_required` and `fallbacks` details, before writing the output file. SVG filters are allowed in strict mode; it does not mean paths-only output.
 
 Photographs, bitmap/color fonts, unsupported Unicode isolate controls, artistic spatial/texture filters, pixel masks/selections, LUTs, repeats and HSV hue may need fallbacks. Partial/translucent gradient overlays also retain a fallback. Unsupported backdrop-dependent blends and adjustment stacks can require document rasterization; their metadata identifies the responsible layers. Strict export exposes these limitations rather than silently dropping an effect.
+
+Halftone and crosshatch accept `paper` (white by default) and `color` (black ink by default). Crosshatch honors
+the ink color for every stroke.

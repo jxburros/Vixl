@@ -833,3 +833,12 @@ and #370 (layouts fail their own safe-area check).
 - **Fitted dashes (`craft.finish.dash_fit`).** Dash patterns stretch or squeeze slightly so each stretch between
   corners divides evenly, with a dash on every corner and at open ends. `dash_fit: false` keeps the exact
   lengths. See [strokes](../guides/shapes/vector-paths.md#strokes).
+
+### Stage 2 check regression gate (0.34.0)
+
+The 144-design house-style evaluation has identical quality and diversity scores before and after stage 2;
+all three variety levels retain 1.0 for no fix findings, fonts and contrast. The craft backtest's 20 documents
+still catch 12 of 21 judged composition defects, with 9 missed, 23 findings and zero false findings (3 findings
+concern other judged defects). Running the new word-break check over those documents adds zero findings, so
+it adds zero false findings there; the corpus has no labelled mid-word defect to score its recall. Dedicated
+plain/rich text regressions cover the reported defect, fitting, hyphens and ordinary CJK wrapping.

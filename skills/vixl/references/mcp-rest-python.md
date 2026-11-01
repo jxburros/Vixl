@@ -298,3 +298,14 @@ See `docs/reference/interfaces.md#capability-matrix` for the generated interface
 fixed-document workflow allow-list; CLI, MCP and Python Session workflows expose the workspace registry.
 MCP screen capture is opt-in. Service timeouts detach work, not kill it. Archive opening defaults to at most
 160 million cumulative image pixels and 64 font assets, configurable through Python `Limits`.
+
+## Delivery metadata and compact errors
+
+MCP file export accepts options `strict`, `check_status`, and `dry_run`. Strict runs a fresh design check before
+writing. Dry run quotes pages, megapixels and (for timelines) frames/duration, with within_limits and limits;
+no render or file write occurs. Bytes are unknown until encoding and raster fallback counts are estimates.
+Python Project.export has the same options; REST accepts POST /export?dry_run=1.
+
+MCP previews and file export reports include last_check for the recorded revision/scope, or stale/not_run.
+check_status false hides it. Catalog/enum errors include bounded allowed choices and suggestions without a schema;
+structural errors retain the schema. Halftone/crosshatch effects accept paper and color for paper and ink.

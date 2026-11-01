@@ -247,3 +247,7 @@ Without `targets` the verb is proportional; with `targets` it keeps its earlier 
 
 `warnings` lists problems with the layers this call added or changed: text or artwork cut off by the canvas edge (a bleed of up to a quarter of a non-text layer is ignored), text that does not fit its `text-layout` box or spills out of its group, and valid fields that change nothing for that operation (`radius` on a plain rectangle, `sides` or `inner_radius` on other shapes, `stroke_width` without `stroke`, `angle` on a non-angled gradient, `start`/`end` next to `stops`, `margin` on a centring `align`). They never fail an edit; `vixl_check` audits the whole document. Unknown fields and invalid values are errors, not warnings: unknown keys in an `adjustment`'s `effects` fail validation, and `preset-apply` overrides naming no effect of the preset fail the batch.
 
+## Print-screen colors
+
+The `halftone` and `crosshatch` effects accept `paper` (default white) and `color` (ink, default black).
+Crosshatch uses the ink color for every stroke. These fields work on the named effect operation and `effect`.

@@ -99,8 +99,9 @@ def test_validation_errors_point_at_the_schema_and_name_the_fields():
     with pytest.raises(VixlError) as error:
         p.apply({"type": "shape", "shape": "rectangle", "gradient": ["red", "blue"]})
     err = error.value
-    assert "vixl_reference('operations', name=['shape'])" in str(err) and "Allowed:" in str(err)
-    assert err.details["schema"] == "vixl_reference('operations', name=['shape'])" and "fill" in err.details["fields"]
+    assert err.details["suggestions"] == {"gradient": "fill_gradient"}
+    assert "schema" not in err.details and "fields" not in err.details
+    assert err.details["allowed"] and len(str(err)) < 600
     with pytest.raises(VixlError) as error:
         p.apply({"type": "opacity", "target": "t", "value": "0.5"})
     assert "(see vixl_reference('operations', name=['opacity']))" in str(error.value)

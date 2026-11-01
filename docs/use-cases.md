@@ -227,7 +227,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 
 | ID | Use case | Main route | Calls · min | Notes |
 | --- | --- | --- | --- | --- |
-| QA-01 | Run design checks (bounds, overlap, contrast, safe area, legibility) | `vixl_check` | 1 · <1 | Fix-level vs review-level findings. Since 0.24 `passed` is false while any finding needs a fix, warnings included; `by_action` separates them. Since 0.25 each finding has a stable `rule`, `layer_ids`, measured actual versus expected and a suggested `repair`, and `outcome` separates validation from review. |
+| QA-01 | Run design checks (bounds, overlap, contrast, safe area, legibility) | `vixl_check` | 1 · <1 | Fix-level vs review-level findings. Since 0.24 `passed` is false while any finding needs a fix, warnings included; `verdict`, grouped `summary`, `top` and `by_action` explain them; inherited suites run by default. Since 0.25 each finding has a stable `rule`, `layer_ids`, measured actual versus expected and a suggested `repair`, and `outcome` separates validation from review. |
+| QA-49 | Quote an export before rendering | `export --dry-run`, MCP export `dry_run` | 1 · <1 | Pages, megapixels and timeline frames/duration use enforcement units; no output is written. |
 | QA-02 | Check spacing is equal or matches an expected gap | `vixl_check(action='spacing')` | 1 · <1 |  |
 | QA-03 | Sample a pixel or read a histogram | `vixl_check(action='pixels')`, `sample`, `histogram` | 1 · <1 |  |
 | QA-04 | Validate against a named profile or inline assertions | `vixl_check(action='validate')` | 1 · <1 |  |
@@ -237,7 +238,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | QA-08 | Check a design against a named style (Swiss, Bauhaus …) | `check --checks style` | 1 · <1 | 28 styles. |
 | QA-09 | Catch a wrapped headline that leaves one short word alone on its last line | `vixl_check` (legibility, `code: runt`) | 1 · <1 | Review finding for text 24 px and up; before, only a look at the render caught it. The fix is `text-layout` `wrap: pretty` or `balance` (TXT-16). |
 | QA-25 | Fix overflowing text, low contrast and safe-area findings automatically | `vixl_check(repair=true)`, `vixl_apply(repair=true)`, act / group-apply `repair` | 1 · <1 | Since 0.25; a repair is kept only when its finding is resolved and nothing new fails; one undoable step. Blanks are held. |
-| QA-26 | Repair a layout (longer headline, overlap, uneven gaps) without touching the logo or going below a type size | `vixl_apply(workflow='repair-layout')` | 1–2 · <1 | Since 0.25; bounded candidates ranked by least disruption; infeasible leaves the document unchanged and lists what remains. |
+| QA-26 | Repair a layout (longer headline, overlap, uneven gaps) without touching the logo or going below a type size | `vixl_apply(workflow='repair-layout')` | 1–2 · <1 | Since 0.25; bounded candidates ranked by residual dead-band share then disruption; dry runs report proposed/would_pass; infeasible leaves the document unchanged and lists what remains. |
 | QA-27 | Replace the background but keep the subject's pixels and the headline wording | `vixl_apply(workflow='protected-edit')` | 1 · <1 | Since 0.25; structural and pixel guarantees, rolls back on any violation. |
 | QA-28 | See check findings marked on the preview, or zoom to one | `vixl_apply(check, preview={overlay, focus})`, `vixl_render(overlay=true)` | 1 · <1 | Since 0.25; overlays never change the document or exports. |
 | QA-32 | Accept a deliberate finding (faint watermark text, a bar in the margin) with a reason and expiry | `layer-intent waive`, `waiver` | 1 · <1 | Waived findings stay listed as informational; an expired waiver fails `--strict`. |

@@ -953,3 +953,14 @@ def enrich(variants):
                     schema = {**schema, "description": text}
             variant["properties"][field] = schema
     return variants
+
+
+def layout_slots(name):
+    """Slot labels used by schema error hints, from the same catalog as layout discovery."""
+    from .errors import VixlError
+    from .layouts import describe
+
+    try:
+        return describe(name)["slots"]
+    except VixlError:
+        return {}

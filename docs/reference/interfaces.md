@@ -651,3 +651,24 @@ font assets parsed when opening a `.vixl`. Image headers and counts are checked 
 or FreeType call; individual asset, dimension, archive-byte and checksum checks still apply. Trusted Python
 callers can raise these limits explicitly. Documents exceeding a budget fail with `resource_limit` and the
 limit field. Undo/redo deltas preserve object key order, avoiding serialization-only diffs.
+
+## Check verdicts and export preflight
+
+Check results include `verdict`, `summary` (one entry per rule/action with count, up to three layers and a fix hint),
+and `top` (three groups ordered by action, severity and available repair). `issues` and `by_action` remain for
+compatibility. Counts cover all findings even with offset/limit. Profiles explain their `fail_on` rule in the verdict.
+
+`Project.check(suites=["delivery"])`, MCP check options `suites`, REST `/check` and CLI `check --suite delivery`
+run a library suite without attaching it. Omit suites to run attached and inherited suites; use `none` to skip.
+`all` includes attached and inherited suites. A failed suite fails the overall check.
+
+File export accepts `dry_run=true` (CLI `--dry-run`, REST query `?dry_run=1`). It returns format, pages,
+megapixels, vector_pages, raster_fallback_layers, frames, duration_s, provider_calls, estimated_bytes,
+within_limits and limits, and writes nothing. Page/megapixel units are the same as enforcement. Fallback layers
+are a static estimate; encoded bytes are `null` because encoding has not run. Export invokes no AI providers.
+
+Export reports and MCP previews include `last_check`: a revision, fix/review counts, top findings, profile and
+suite state, or `stale` / `not_run`. This reports the last check's scope, not an approval for every possible export
+variant. REST file responses carry it in `X-Vixl-Last-Check`. File `strict=true` runs fresh design checks and refuses
+before writing when they fail. `check_status=false` hides status; `.vixl-checks.json` can set
+`export_check_status: false`. Disabling reporting does not disable strict validation.

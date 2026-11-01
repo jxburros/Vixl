@@ -929,13 +929,21 @@ class Project:
         return buffer.getvalue()
 
     @memory_guard
-    def export(self, path=None, *, check=False, spec=None, **options):
+    def export(self, path=None, *, check=False, spec=None, strict=False, check_status=None, dry_run=False, **options):
         """Render and encode (export_dispatch.export lists the options). ``check=True`` or a delivery ``spec`` (a
         preset name such as ``print-letter-bleed`` or inline fields, see export_checks) reads the written file back
         and checks it: the result goes to ``report['export_check']``; without a ``report`` a failing check raises
         ``export_check_failed`` (the file is still written)."""
-        from .export_dispatch import export, export_checked
+        from .export_dispatch import export, export_checked, export_quote, prepare_delivery
 
+        if dry_run:
+            fmt = options.get("format") or (Path(path).suffix.lstrip(".") if path else "PNG")
+            return export_quote(self, fmt, options)
+
+        report = options.get("report")
+        if report is None:
+            report = {}
+        prepare_delivery(self, report, strict=strict, check_status=check_status)
         if not check and spec is None:
             return export(self, path, **options)
         return export_checked(self, path, spec, **options)
@@ -976,7 +984,7 @@ class Project:
         return export_animation(self, path, **options)
 
     @memory_guard
-    def check(self, *, profile=None, group=None, repair=None, offset=0, limit=None, artboards=None, pages=None,
+    def check(self, *, profile=None, group=None, repair=None, suites=None, offset=0, limit=None, artboards=None, pages=None,
               comps=None, include_hidden=False, **options):
         """Design checks (checks.check_design). With ``profile`` (draft, review, final or a workspace profile, see
         policy.py) the profile chooses the checks and suites and its ``fail_on`` decides ``passed``. ``repair``
@@ -995,7 +1003,7 @@ class Project:
         if profile is not None:
             from .policy import run
 
-            report = run(self, profile, group=group, **(coverage if requested(artboards, pages, comps) else {}),
+            report = run(self, profile, group=group, suites=suites, **(coverage if requested(artboards, pages, comps) else {}),
                          **options)
         elif requested(artboards, pages, comps):
             report = check_all(self, **coverage, **options)
@@ -1005,8 +1013,24 @@ class Project:
             from .compaction import check_note
 
             check_note(self, report)
+        if profile is None:
+            from .checks import suite_summary
+            from .outcomes import merge
+
+            suite_report = suite_summary(self, True if suites is None else suites)
+            if "note" not in suite_report:
+                report["suites"] = suite_report
+                report["outcome"] = merge(report["outcome"], *(s["outcome"] for s in suite_report.values()))
+                failed = [name for name, value in suite_report.items() if value["status"] == "failed"]
+                if failed:
+                    prefix = report["verdict"] if not report["passed"] else "Failed"
+                    report["passed"] = False
+                    report["verdict"] = prefix + "; blocking suites: " + ", ".join(failed)
         if repairs is not None:
             report["repairs"] = repairs
+        from .checks import remember_check
+
+        remember_check(self, report)
         return page_findings(report, offset, limit)
 
     @memory_guard
@@ -1061,6 +1085,10 @@ class Project:
             else:
                 repairs["kept"] = False
         outcome = merge(*(from_suite(report, name) for name, report in reports.items()))
+        if dry_run and operations:
+            from .outcomes import proposed
+
+            outcome = proposed(outcome)
         if accepted and not dry_run:
             self.__dict__.update(candidate.__dict__)
         return {**result, "success": accepted, "dry_run": dry_run, "committed": accepted and not dry_run,
