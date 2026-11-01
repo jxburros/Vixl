@@ -668,8 +668,13 @@ def export_video(project, path, *, format, scale, sampling, quality, animation=N
 
 def export_animation(
     project, path, *, format=None, scale=1, columns=None, sampling="nearest", colors=256, animation=None, quality=90,
-    overwrite=False, dither="auto", max_bytes=None,
+    overwrite=False, dither="auto", max_bytes=None, dry_run=False,
 ):
+    if dry_run:
+        from .call_limits import quote
+
+        return quote(project, format or Path(path).suffix[1:], {"scale": scale, "animation": animation,
+                                                               "saved_frames": True, "timeline": True})
     path = Path(path)
     suffix = path.suffix.lower()
     format = format or {".gif": "gif", ".webp": "webp", ".mp4": "mp4", ".webm": "webm"}.get(suffix, "apng")

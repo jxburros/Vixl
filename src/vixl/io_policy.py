@@ -79,7 +79,11 @@ def export_file(session, path, overwrite=False, document=None, **options):
     require(destination.suffix.lower() != ".vixl" or not (options.get("check") or options.get("spec") is not None),
             "check and spec verify delivered files (image, PDF, PowerPoint, HTML, SVG), not .vixl objects",
             field="check")
-    session.make_parent(destination)
+    if options.get("dry_run"):
+        from .call_limits import of, quote
+
+        with session.project(document=document) as project:
+            return quote(project, destination.suffix[1:], options, of(session))
     with file_lock(str(destination)):
         require(
             overwrite or not destination.exists(),
@@ -96,11 +100,17 @@ def export_file(session, path, overwrite=False, document=None, **options):
             if destination.suffix.lower() == ".vixl":
                 from .objects import portable_bytes
 
+                from .check_results import delivery
+
+                options.pop("dry_run", None)
+                delivery(project, report, strict=options.pop("strict", False),
+                         check_status=options.pop("check_status", None))
                 data = portable_bytes(project, options, report)
                 fmt = "VIXL"
             else:
                 check_export(of(session), project, fmt, options)
                 data = project.export(format=fmt, report=report, **options)
+        session.make_parent(destination)
         fd, temporary_path = temporary(
             destination.parent, like=destination if destination.exists() else None
         )
@@ -135,7 +145,10 @@ def export_outcome(report):
         return make("completed", outcome["validation"],
                     [*outcome["review_reasons"], "the export check read the file back; design checks and suites "
                      "are separate (vixl_check)", *warnings], validated_by=outcome.get("validated_by", ()))
-    return make("completed", "not_run", ["export runs no checks: run vixl_check and the suites first", *warnings])
+    status = report.get("last_check")
+    reason = (f"last design check: {status['fix']} fix, {status['review']} review; export file not verified"
+              if isinstance(status, dict) else "no current design check: run vixl_check and the suites first")
+    return make("completed", "not_run", [reason, *warnings])
 
 
 def decode_upload(data_base64, limit):

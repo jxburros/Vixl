@@ -1,4 +1,4 @@
-"""Bounded layout repair (#518): several candidate edits per failure, ranked by least disruption.
+"""Bounded layout repair (#518): several candidate edits per failure, ranked by residual dead-band share, then disruption.
 
 For text overflow, overlap, spacing and safe-area failures it tries the built-in repair (repair.suggest)
 first, then other geometric candidates (a taller or wider text box, moves clear of the other layer, equal
@@ -242,8 +242,10 @@ def repair_layout(project, *, checks=None, suites=(), protected=(), minimum_size
             elif new or after_failing - failing:
                 record.update(result="rejected", reason="it introduces " + ", ".join(new + sorted(after_failing - failing)))
             else:
-                score = _disruption(work, trial, layout_boxes, canvas_boxes(trial))
-                record.update(result="valid", disruption=score)
+                residual = sum(x.get("values", {}).get("frame_share", 0)
+                               for x in after_reviews if x.get("rule") == "composition.dead_band")
+                score = (residual, _disruption(work, trial, layout_boxes, canvas_boxes(trial)))
+                record.update(result="valid", disruption=score[1], residual_band_share=score[0])
                 if best is None or score < best[0]:
                     best = (score, name, operations, trial, after, after_failing, after_reviews)
         if best is not None:
@@ -252,7 +254,7 @@ def repair_layout(project, *, checks=None, suites=(), protected=(), minimum_size
                 if record.get("candidate") == name and record.get("operations") is operations:
                     record["result"] = "selected"
             selected.append({"rule": finding["rule"], "layers": finding.get("layers", []), "candidate": name,
-                             "operations": operations, "disruption": score})
+                             "operations": operations, "disruption": score[1], "residual_band_share": score[0]})
         else:
             given_up.add(_key(finding))
             reasons.setdefault(_key(finding), "no candidate resolved it without a new finding (see attempts)")
@@ -277,7 +279,7 @@ def repair_layout(project, *, checks=None, suites=(), protected=(), minimum_size
     from ...outcomes import make
 
     return {
-        "feasible": feasible, "committed": committed, "dry_run": dry_run,
+        "committed": committed, "dry_run": dry_run, "feasible": feasible,
         "selected": selected, "operations": operations if feasible else [],
         "attempts": attempts, "initial": initial, "unsatisfied": unsatisfied,
         "failing_suites": sorted(failing), **({"out_of_scope": other[:20]} if other else {}),
@@ -285,7 +287,8 @@ def repair_layout(project, *, checks=None, suites=(), protected=(), minimum_size
         "bounds": {"candidates": evaluated, "max_candidates": max_candidates, "max_iterations": max_iterations,
                    "time_budget": time_budget, "elapsed_s": round(time.monotonic() - started, 2),
                    **({"stopped": stopped} if stopped else {})},
-        "outcome": make("completed", "passed" if feasible else "failed",
+        "outcome": make("completed", "would_pass" if feasible and operations and not committed else "passed" if feasible else "failed",
+                        (["dry run: operations not applied"] if operations and not committed else []) +
                         [f"{item['rule']}: {', '.join(item['layers'])}" for item in unsatisfied],
                         validated_by=["layout repair"]),
         **({"note": "Not applied: the original is unchanged because constraints remain unsatisfied."}

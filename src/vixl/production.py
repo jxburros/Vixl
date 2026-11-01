@@ -469,7 +469,7 @@ def placeholder_report(candidate, variant):
     """The placeholders check for one production variant, each finding naming the variant and its input row."""
     label = f"variant {variant['id']} (row {variant.get('row', '?')}" + (
         f", artboard {variant['artboard']})" if variant.get("artboard") else ")")
-    report = candidate.check(checks=["placeholders"])
+    report = candidate.check(checks=["placeholders"], suites="none")
     for item in report["issues"]:
         item.update(variant=variant["id"], row=variant.get("row"))
         item["message"] = f"{label}: {item['message']}"

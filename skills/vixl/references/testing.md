@@ -84,7 +84,18 @@ edge-to-edge gradient fills, layers under 30% opacity and bleeding art are not j
 `composition` (the default set does): it snaps a drifting edge to the margin, re-spaces a stack, opens a crowded gap
 to a spacing unit, spreads a dead band over the other gaps (or moves the blocks beside it) and thins or re-seeds a
 clumped `pattern-scatter` tile. Each candidate is kept only if its finding is gone and no finding of any check is new,
-and the least disruptive wins; drawings move whole, chips and glows move with their layer. What it cannot repair is
+and the smallest residual dead band wins, then least disruption; drawings move whole, chips and glows move with their layer. What it cannot repair is
 listed under `reviews_remaining` with the reason, and never blocks the repair of failures; the four hierarchy findings are
 judgement calls, so it lists `suggestions` for them (raise the headline, set it in the heading role, let one rival lead,
 put `@accent` on the call to action) and changes nothing. Worked fixes: [finishing pairs](finishing-pairs.md).
+
+## Verdict-first checks and proposals
+
+Read `verdict` first, then `top` and the grouped `summary`. Each group has rule, action, count, three sample layers
+and a fix hint. `issues` and `by_action` remain available. Profiles name their fail_on threshold and blocking rules.
+Plain check runs attached and inherited suites; `suites: ["delivery"]` runs a library suite without attaching it,
+`all` runs inherited/attached suites, and `none` skips them.
+
+Repair-layout previews with operations report `proposed`, `would_pass`, review required and committed false.
+They have not changed the document. Re-run with dry_run false to commit. Legibility word-break findings mean
+an alphabetic word was split across lines: widen its box or fit-text; keep the minimum readable size.

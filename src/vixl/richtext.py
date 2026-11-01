@@ -327,6 +327,7 @@ class Layout:
     box: tuple = (0, 0, 0, 0)
     lines: list = field(default_factory=list)  # [(top, baseline, height, paragraph, descent)] for PPTX
     size_scale: float = 1.0
+    word_breaks: list = field(default_factory=list)
     # {paragraph: [character offsets where a wrapped line starts]} for balance and pretty wrapping, whose
     # breaks PowerPoint cannot work out itself, so PPTX writes them as line breaks.
     breaks: dict = field(default_factory=dict)
@@ -451,7 +452,7 @@ def tracked(glyphs, advance, tracking):
 
 def _split_word(project, token, width):
     """Break a word wider than the line at safe shaping boundaries."""
-    from .text import clusters, shape
+    from .text import clusters, mid_word, shape
 
     tracking = token.get("tracking", 0.0)
     small_caps = token["style"]["small_caps"]
@@ -466,9 +467,10 @@ def _split_word(project, token, width):
     if current:
         pieces.append(current)
     result = []
-    for piece in pieces:
+    for index, piece in enumerate(pieces):
         glyphs, advance, trail = tracked(*shape(token["data"], piece, token["size"], small_caps), tracking)
-        result.append({**token, "glyphs": glyphs, "width": advance, "text": piece, "trail": trail})
+        result.append({**token, "glyphs": glyphs, "width": advance, "text": piece, "trail": trail,
+                       "word_break": index < len(pieces) - 1 and mid_word(piece, pieces[index + 1])})
     return result
 
 
@@ -647,6 +649,7 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
 
     # Pass 1: break every paragraph into lines.
     rows, counters, breaks = [], {}, {}
+    word_breaks = []
     for index, paragraph in enumerate(_paragraphs(spans)):
         para = settings[index] if index < len(settings) else {}
         kind = para.get("list", "none")
@@ -678,6 +681,8 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
                 count += len(token["text"])
             breaks[index] = [offsets[id(line[0])] for line in lines[1:] if line and id(line[0]) in offsets]
         for number, line in enumerate(lines):
+            if line and line[-1].get("word_break"):
+                word_breaks.append((index, number))
             if line:
                 ascent = max(t["ascent"] for t in line)
                 descent = min(t["descent"] for t in line)
@@ -706,7 +711,7 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
         [row["text_left"] + width for row, width in zip(rows, visible)] + [0.0])
 
     # Pass 3: place glyphs and decorations.
-    result = Layout(0, 0, size_scale=scale, breaks=breaks)
+    result = Layout(0, 0, size_scale=scale, breaks=breaks, word_breaks=word_breaks)
     def overhang(row):
         # Tight leading (a line height below the font's own pitch) lets the first line's ascenders and
         # the last line's descenders reach past the line box; the layer box still holds them.

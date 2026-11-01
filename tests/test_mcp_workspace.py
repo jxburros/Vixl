@@ -37,8 +37,9 @@ def test_tools_list_is_lean_and_operations_are_checked_when_applied(tmp_path):
             with pytest.raises(Exception) as caught:
                 await server.call_tool("vixl_apply", {"operations": [invalid]})
             error = json.loads(str(caught.value)[str(caught.value).index("{"):])
-            if kind:  # The error carries the exact schema of the failing operation.
-                assert error["schema"][kind]["properties"]["type"]["const"] == kind
+            if kind:  # Range and service-policy refusals do not need the full operation schema.
+                assert "schema" not in error
+
 
     asyncio.run(run())
 

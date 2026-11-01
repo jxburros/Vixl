@@ -294,7 +294,7 @@ def canonical(name):
         raise VixlError(
             "unknown_size",
             f"Unknown size {name!r}" + (f"; did you mean {', '.join(close)}?" if close else "; run vixl sizes"),
-            field="size",
+            field="size", got=name, allowed=sorted(SIZES)[:10], count=len(SIZES),
             suggestions=close,
         )
     return key

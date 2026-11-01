@@ -168,31 +168,62 @@ def export_pages(project, fmt, options):
     return len(pages) if fmt in ("PDF", "PPTX", "HTML", "HTM") else 1
 
 
-def check_export(limits, project, fmt, options):
-    """Refuse an export over the page or megapixel cap before anything renders."""
-    if limits.max_pages is None and limits.max_megapixels is None:
-        return
+def quote(project, fmt, options, limits=None):
+    """Preflight units shared with enforcement. Bytes are unknown until encoding; no render or provider call."""
+    from .model import finite
+
+    limits = limits or CallLimits()
     fmt = (fmt or "PNG").upper()
-    if fmt in FONT_FORMATS:
-        return  # a font file renders no pages
-    count = export_pages(project, fmt, options)
+    scale = finite(options.get("scale") or 1, "scale", 0.01, 32)
+    count = 0 if fmt in FONT_FORMATS else export_pages(project, fmt, options)
+    canvas = project.state["canvas"]
+    per_page = canvas["width"] * canvas["height"] * scale * scale
+    vector = fmt in VECTOR_FORMATS or (fmt == "PDF" and options.get("pdf_content") != "raster" and scale == 1)
+    motion = fmt in ("GIF", "APNG", "MP4", "WEBM", "SHEET", "FRAMES", "LOTTIE", "TGS") or options.get("timeline")
+    frames, duration = 0, 0
+    saved = project.state.get("animation") or {}
+    if motion and saved.get("frames") and (options.get("saved_frames") or not project.state.get("timeline")):
+        from .animation_sets import resolve_sequence
+
+        entries, _ = resolve_sequence(saved, options.get("animation"))
+        frames, duration = len(entries), sum(ms for _, ms in entries) / 1000
+        canvas = entries[0][0]["state"]["canvas"]
+        per_page = canvas["width"] * canvas["height"] * scale * scale
+    elif motion:
+        from .timeline import default_timeline, frame_times, parse_time
+
+        timeline = project.state.get("timeline") or default_timeline()
+        start = parse_time(options.get("start") or 0, timeline["duration"], timeline.get("markers"))
+        end = parse_time(options.get("end") if options.get("end") is not None else timeline["duration"],
+                         timeline["duration"], timeline.get("markers"))
+        times, _ = frame_times(project, options.get("fps"), start, end, streamed=fmt in ("MP4", "WEBM"))
+        frames, duration = len(times), (end - start) / 1000
+    total = per_page * (frames or (1 if vector and count else count))
+    megapixels = total / 1_000_000
+    within = ((limits.max_pages is None or count <= limits.max_pages) and
+              (limits.max_megapixels is None or megapixels <= limits.max_megapixels))
+    from .export_appearance import fallback_count
+
+    return {"dry_run": True, "format": fmt, "pages": count, "megapixels": megapixels,
+            "vector_pages": count if vector else 0, "raster_fallback_layers": fallback_count(project) if vector else 0,
+            "frames": frames, "duration_s": duration, "provider_calls": 0, "estimated_bytes": None,
+            "within_limits": within, "limits": {"max_pages": limits.max_pages,
+                                                  "max_megapixels": limits.max_megapixels}}
+
+
+def check_export(limits, project, fmt, options):
+    """Refuse an export over the same page or megapixel units returned by quote, before rendering."""
+    units = quote(project, fmt, options, limits)
+    count = units["pages"]
     if limits.max_pages is not None and count > limits.max_pages:
         raise exceeded("max_pages", count, limits.max_pages,
                        f"This export writes {count} pages; the server allows {limits.max_pages} per call",
                        "Export fewer pages at once (pages='1-10', then the next range).")
-    cap = limits.pixel_cap()
-    if cap is None:
-        return
-    canvas = project.state["canvas"]
-    scale = float(options.get("scale") or 1)
-    per_page = canvas["width"] * canvas["height"] * scale * scale
-    vector = fmt in VECTOR_FORMATS or (fmt == "PDF" and options.get("pdf_content") != "raster" and scale == 1)
-    total = per_page if vector else per_page * count
-    if total > cap:
-        megapixels = round(total / 1_000_000, 2)
+    megapixels = units["megapixels"]
+    if limits.max_megapixels is not None and megapixels > limits.max_megapixels:
         raise exceeded("max_megapixels", megapixels, limits.max_megapixels,
                        f"This export renders {megapixels:g} megapixels; the server allows {limits.max_megapixels:g} "
-                       "per call", "Lower scale, export fewer pages at once, or export a vector format (PDF, SVG).")
+                       "per call", "Lower scale, export fewer pages or frames, or export a vector format (PDF, SVG).")
 
 
 class Gate:

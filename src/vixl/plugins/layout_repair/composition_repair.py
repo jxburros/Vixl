@@ -14,7 +14,7 @@ Each finding kind gets a few candidates in a fixed order, all relative moves exc
   judgement call); ``suggestions`` says what to do.
 
 Layout repair applies every candidate to a copy, keeps it only when the finding is gone and nothing new appears
-(no fix finding, no review finding of any check) and picks the least disruptive. Moving a line of text moves the
+(no fix finding, no review finding of any check) and ranks residual dead-band share before disruption. Moving a line of text moves the
 chip that hugs it (a highlight or pill) with it; a move never touches backgrounds or art that bleeds off the canvas.
 """
 

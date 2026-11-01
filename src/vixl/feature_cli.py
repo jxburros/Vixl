@@ -365,6 +365,7 @@ def project_feature(project, cmd, args):
         from .timeline import export_timeline
 
         p = Parser(prog="vixl export-timeline")
+        p.add_argument("--dry-run", action="store_true", help="Quote frames and pixels without rendering")
         p.add_argument("--out", required=True)
         p.add_argument("--format", choices=["gif", "apng", "webp", "sheet", "frames", "mp4", "webm", "json", "lottie", "tgs"])
         p.add_argument("--fps", type=float)
@@ -405,7 +406,7 @@ def project_feature(project, cmd, args):
             sample_rate=a.sample_rate,
             target_bytes=a.target_bytes,
             preset=a.preset,
-            strict=a.strict,
+            strict=a.strict, dry_run=a.dry_run,
             overwrite=a.overwrite,
             progress=(lambda event: print(json.dumps({"progress": event}), file=__import__("sys").stderr, flush=True)) if a.progress else None,
         ), False

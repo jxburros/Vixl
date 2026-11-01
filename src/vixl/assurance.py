@@ -459,7 +459,7 @@ def rule_result(project, rule):
 
         return assert_rule(project, rule["expression"]), {"expected": rule["expression"]}
     if kind == "design":
-        report = project.check(**rule.get("options", {}))
+        report = project.check(**{**rule.get("options", {}), "suites": "none"})
         return (False if report["errors"] else None if report["warnings"] else True), report
     if kind == "unchanged":
         layer = project.layer(rule["target"])
@@ -962,9 +962,8 @@ def resolve(project, suite):
             info["source"] = "document"
         else:
             sources = inherited(project)
-            require(name in sources, f"Unknown suite: {name}", field="suite",
-                    suggestions=sorted({*attached, *sources}))
-            suite, info["source"] = {"extends": name, "rules": []}, sources[name]
+            # Explicit names may select a library suite without attaching it to the document.
+            suite, info["source"] = {"extends": name, "rules": []}, sources.get(name, "library")
     validate_suite(suite)
     base = suite.get("extends")
     if not base:

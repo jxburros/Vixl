@@ -139,7 +139,7 @@ def attach(result, run):
     """Add ``run``'s report to a dict result (or the dict that leads a list result); returns whether it did."""
     if run is None:
         return False
-    target = result[0] if isinstance(result, list) and result and isinstance(result[0], dict) else result
+    target = next((item for item in result if isinstance(item, dict)), result) if isinstance(result, list) else result
     if isinstance(target, dict):
         target["render_profile"] = run.report()
         return True

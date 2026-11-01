@@ -123,3 +123,7 @@ The payload is always the operation list: when unsure of a field, `vixl_referenc
 | Brands, workspace fonts, SVG/PDF import, Figma interchange | [workspace](references/workspace.md) |
 | Provider-backed generation, vision and lyric alignment | [ai](references/ai.md) |
 | Additions by release | [whats-new](references/whats-new.md) |
+
+Check replies lead with `verdict`, `top` and grouped `summary`; named `suites` need no attachment. Export
+`dry_run` quotes units; `strict` refuses failing designs. See [testing](references/testing.md) and
+[interfaces](references/mcp-rest-python.md) for cached check status and proposal outcomes.

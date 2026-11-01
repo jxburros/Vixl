@@ -110,7 +110,7 @@ def show_font(family):
             f"{family!r} is not in the curated catalog"
             + (f"; did you mean {', '.join(close)}?" if close else "")
             + " Any Google Fonts family can still be installed with font install.",
-            suggestions=close,
+            suggestions=close, field="font", got=family, allowed=[e["family"] for e in fonts()][:10], count=len(fonts()),
         )
     used = [p["name"] for p in pairings() if entry["family"] in (p["heading"]["family"], p["body"]["family"])]
     return {**entry, "pairings": used}
@@ -157,7 +157,7 @@ def get_pairing(name):
     raise VixlError(
         "unknown_pairing",
         f"Unknown pairing {name!r}" + (f"; did you mean {', '.join(close)}?" if close else "; see vixl font pairings"),
-        suggestions=close,
+        suggestions=close, field="pairing", got=name, allowed=[p["name"] for p in pairings()][:10], count=len(pairings()),
     )
 
 

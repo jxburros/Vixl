@@ -21,3 +21,15 @@ def prepare(project):
     candidate.state['selection'] = None
     candidate.state['canvas']['background'] = 'transparent'
     return candidate
+
+
+def fallback_count(project):
+    """Static appearance fallback estimate without building images or resolving text outlines."""
+    from .svg import supported, vector_overlay
+
+    if project.state.get("lighting"):
+        return 1
+    return sum(1 for layer in project.state["layers"] if layer.get("visible", True) and layer.get("opacity", 1)
+               and (layer["type"] in ("raster", "pixel", "link") or layer.get("cut_paper")
+                    or layer.get("export_fallback") or (layer.get("mask") or {}).get("enabled", False)
+                    or not supported(layer) or not vector_overlay(layer, project.state)))

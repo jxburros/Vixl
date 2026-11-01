@@ -389,3 +389,15 @@ def export_checked(project, path, spec, **options):
                         + "; ".join(item["message"] for item in result["issues"] if item["action"] == "fix")[:600],
                         report=result)
     return data
+
+
+def export_quote(project, fmt, options):
+    from .call_limits import quote
+
+    return quote(project, fmt, options)
+
+
+def prepare_delivery(project, report, **options):
+    from .check_results import delivery
+
+    delivery(project, report, **options)

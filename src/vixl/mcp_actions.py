@@ -139,6 +139,16 @@ def invoke(ctx, tool, name, values):
     try:
         parsed = fields.model_validate(values)
     except ValidationError as exc:
+        errors = exc.errors()
+        if errors and all(e["type"] in ("literal_error", "enum") for e in errors):
+            first_error = errors[0]
+            key = str(first_error["loc"][0])
+            prop = fields.model_json_schema().get("properties", {}).get(key, {})
+            choices = prop.get("enum", [prop["const"]] if "const" in prop else [])
+            if not choices:
+                choices = next((v["enum"] for v in prop.get("anyOf", []) if "enum" in v), [])
+            raise VixlError("invalid_arguments", f"{key}: choose a value from allowed", field=key,
+                            got=first_error.get("input"), allowed=choices) from exc
         allowed = sorted(fields.model_fields)
         problems, suggestions = [], []
         for item in exc.errors():
@@ -441,6 +451,10 @@ def teach(exc, operations):
     from .steps import step_schema, step_type
 
     details = exc.details
+    nested = details.get("errors", [])
+    structural = "schema" in details or any("schema" in item for item in nested if isinstance(item, dict))
+    if not structural and exc.code != "unknown_operation":
+        return exc
     indexes = [details.get("operation_index")] + [item.get("operation_index") for item in details.get("errors", [])
                                                   if isinstance(item, dict)]
     schemas = {}
@@ -607,6 +621,7 @@ def check_design(
     targets: Targets = None,
     profile: Annotated[str | None, Field(description="draft, review, final or a workspace .vixl-checks.json profile: "
                                                      "picks the checks and suites; its fail_on decides passed")] = None,
+    suites: Annotated[list[str] | Literal["all", "none"] | None, Field(description="Named library suites or all inherited suites")] = None,
     safe_area: Annotated[float | str | dict | None, Field(
         description="Inset from every edge: pixels, '5%', or {left, top, right, bottom}")] = None,
     avoid: Annotated[list[list[float | str]] | None, Field(
@@ -648,7 +663,7 @@ def check_design(
         thumbnail_width=thumbnail_width, min_thumbnail_text=min_thumbnail_text, min_contrast=min_contrast,
         ink_limit=ink_limit, min_ppi=min_ppi, artboard=artboard, comp=comp, page=page, deck=deck,
         sample=sample, style=style,
-        connect_tolerance=connect_tolerance, repair=repair, offset=offset, limit=limit, profile=profile,
+        connect_tolerance=connect_tolerance, repair=repair, offset=offset, limit=limit, profile=profile, suites=suites,
         waivers=waivers,
         **{key: value for key, value in (("artboards", artboards), ("pages", pages), ("comps", comps))
            if value is not None},
@@ -736,6 +751,7 @@ Time = Annotated[float | str | None, Field(description="Timeline frame: ms, '1.5
 @action("vixl_render", "preview")
 def render_preview(
     ctx,
+    check_status: bool | None = None,
     max_width: Annotated[int, Field(ge=1, le=4096)] = 1024,
     max_height: Annotated[int, Field(ge=1, le=4096)] = 1024,
     max_bytes: Annotated[int, Field(ge=65536, le=4194304)] = 1_048_576,
@@ -772,9 +788,15 @@ def render_preview(
                                               max_height=max_height, max_bytes=max_bytes, region=region, page=page)
         feedback.update(outcome=report["outcome"], findings=len(report["issues"]))
         return [feedback, image(data)]
-    return image(preview(session, variables, max_width, max_height, max_bytes, artboard, comp, region, document,
+    data = image(preview(session, variables, max_width, max_height, max_bytes, artboard, comp, region, document,
                          time=time, proof=proof, simulate=simulate, guides=guides, page=page, values=values,
                          show_fields=show_fields, isolate=isolate, views=views, exploded=exploded))
+    from .check_results import delivery
+
+    with session.project(document=document) as project:
+        report = {}
+        delivery(project, report, check_status=check_status)
+    return [data, report] if report else data
 
 
 @action("vixl_render", "compare")
@@ -876,6 +898,9 @@ def export_one(
                                            ".avif .svg .pdf .ico .html .pptx .psd, .vixl with isolate; .ttf .otf .woff .woff2 "
                                            "write the font design)")],
     overwrite: Overwrite = False,
+    strict: bool = False,
+    check_status: bool | None = None,
+    dry_run: bool = False,
     quality: Annotated[int | None, Field(ge=1, le=100)] = None,
     scale: Annotated[float, Field(ge=0.01, le=16)] = 1,
     profile: Annotated[str | None, Field(description="Export profile: its size and quality")] = None,
@@ -927,7 +952,7 @@ def export_one(
 
     session = ctx.session
     profile_bytes = read_bounded(session.resolve(icc_profile), 16 * 1024 * 1024) if icc_profile else None
-    options = dict(quality=quality, scale=scale, profile=profile, variables=variables, background=background,
+    options = dict(strict=strict, check_status=check_status, dry_run=dry_run, quality=quality, scale=scale, profile=profile, variables=variables, background=background,
                    sampling=sampling, svg_policy=svg_policy, artboard=artboard, comp=comp, color_space=color_space,
                    icc_profile=profile_bytes, intent=intent, black_generation=black_generation, ink_limit=ink_limit,
                    proof=proof, simulate=simulate, dpi=dpi, icon_sizes=icon_sizes, time=time, page=page, pages=pages,
@@ -958,7 +983,7 @@ def export_many(
 
 @action("vixl_export", "animation")
 def export_animation(
-    ctx, path: str, overwrite: Overwrite = False,
+    ctx, path: str, overwrite: Overwrite = False, dry_run: bool = False,
     format: Literal["gif", "apng", "webp", "mp4", "webm", "sheet"] | None = None,
     animation: Annotated[str | None, Field(description="One named animation (animation-set); default every saved frame")] = None,
     scale: Annotated[float, Field(ge=0.05, le=32)] = 1, sampling: Literal["nearest", "smooth"] = "nearest",
@@ -973,6 +998,12 @@ def export_animation(
     session = ctx.session
     with session.project(document=document) as project:
         destination = session.resolve(path)
+        from .call_limits import check_export, of, quote
+
+        options = {"scale": scale, "animation": animation, "saved_frames": True, "timeline": True}
+        if dry_run:
+            return quote(project, format or destination.suffix[1:], options, of(session))
+        check_export(of(session), project, format or destination.suffix[1:], options)
         result = project.export_animation(destination, format=format, animation=animation,
                                           scale=int(scale) if float(scale).is_integer() else scale, sampling=sampling,
                                           colors=colors, quality=quality, columns=columns, overwrite=overwrite,
@@ -985,7 +1016,7 @@ def export_animation(
 
 @action("vixl_export", "timeline")
 def export_timeline(
-    ctx, path: str, overwrite: Overwrite = False,
+    ctx, path: str, overwrite: Overwrite = False, dry_run: bool = False,
     format: Literal["gif", "apng", "webp", "sheet", "frames", "mp4", "webm", "json", "lottie", "tgs"] | None = None,
     fps: Annotated[float | None, Field(ge=1, le=60)] = None, scale: Annotated[float, Field(ge=0.05, le=16)] = 1.0,
     start: float | str | None = None, end: float | str | None = None, background: str | None = None,
@@ -1010,6 +1041,12 @@ def export_timeline(
     session = ctx.session
     with session.project(document=document) as project:
         destination = session.resolve(path)
+        from .call_limits import check_export, of, quote
+
+        quote_options = {"fps": fps, "scale": scale, "start": start, "end": end, "timeline": True}
+        if dry_run:
+            return quote(project, format or destination.suffix[1:], quote_options, of(session))
+        check_export(of(session), project, format or destination.suffix[1:], quote_options)
         result = write(project, destination, format=format,
                        fps=int(fps) if fps and float(fps).is_integer() else fps, scale=scale, start=start, end=end,
                        background=background, columns=columns, quality=quality, colors=colors, overwrite=overwrite,

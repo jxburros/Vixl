@@ -863,8 +863,8 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
 
     @app.post("/export")
     @limited
-    def export_document(body: dict):
-        known_fields(body, EXPORT_FIELDS, "export")
+    def export_document(body: dict, dry_run: bool = False):
+        known_fields(body, EXPORT_FIELDS | {"dry_run"}, "export")
         fmt = body.get("format", "PNG").upper()
         media = EXPORT_MEDIA
         require(fmt in media, "Unsupported export format")
@@ -874,8 +874,15 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
 
             body["icc_profile"] = decode_upload(body.pop("icc_profile_base64"), 16 * 1024 * 1024)
         with session.project() as project:
+            if dry_run or body.get("dry_run"):
+                from .call_limits import quote
+
+                return quote(project, fmt, body, call_limits)
             check_export(call_limits, project, fmt, body)
-            return Response(project.export(**body), media_type=media[fmt])
+            report = {}
+            data = project.export(report=report, **body)
+            return Response(data, media_type=media[fmt],
+                            headers={"X-Vixl-Last-Check": json.dumps(report["last_check"])} if "last_check" in report else {})
 
     @app.get("/sizes")
     def size_catalog(category: str | None = None, search: str | None = None):
@@ -1055,14 +1062,26 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
     @app.get("/render")
     @limited
     def render():
-        return Response(session.render(), media_type="image/png")
+        from .check_results import delivery
+
+        with session.project() as project:
+            report = {}
+            delivery(project, report)
+        return Response(session.render(), media_type="image/png",
+                        headers={"X-Vixl-Last-Check": json.dumps(report["last_check"])} if "last_check" in report else {})
 
     @app.post("/render")
     @limited
     def render_variables(body: dict):
+        from .check_results import delivery
+
+        with session.project() as project:
+            report = {}
+            delivery(project, report, check_status=body.get("check_status"))
         return Response(
             session.render(body.get("variables"), body.get("artboard"), body.get("comp")),
             media_type="image/png",
+            headers={"X-Vixl-Last-Check": json.dumps(report["last_check"])} if "last_check" in report else {},
         )
 
     def fixed(body):
@@ -1243,7 +1262,7 @@ EXPORT_FIELDS = frozenset({
     "format", "quality", "scale", "variables", "background", "artboard", "comp", "sampling", "profile", "svg_policy",
     "svg_document", "color_space", "icc_profile_base64", "intent", "black_generation", "ink_limit", "proof",
     "simulate", "dpi", "icon_sizes", "time", "page", "pages", "pdf_content", "fillable", "values", "fill_mode",
-    "alpha", "presenter",
+    "alpha", "presenter", "strict", "check_status",
 })
 EXPORT_MEDIA = {
     "PNG": "image/png", "JPEG": "image/jpeg", "JPG": "image/jpeg", "SVG": "image/svg+xml", "HTML": "text/html",

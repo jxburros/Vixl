@@ -176,3 +176,13 @@ def friendly(exc: BaseException, relative_to: str | PathLike[str] | None = None,
         return VixlError("resource_limit", OUT_OF_MEMORY)
     return VixlError("invalid_input", str(exc))
 
+
+
+def unknown_choice(field: str, got: Any, choices: Any) -> VixlError:
+    """A bounded catalog miss, with enough alternatives to recover in one call."""
+    import difflib
+
+    names = sorted(choices)
+    return VixlError("not_found", f"Unknown {field}: {got}", field=field, got=got,
+                     allowed=names[:10], count=len(names),
+                     suggestions=difflib.get_close_matches(str(got), names, 3, 0.4))

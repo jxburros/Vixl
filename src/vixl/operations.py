@@ -152,7 +152,7 @@ def embed_font_file(project, layer):
 
 # Settings an effect operation copies onto the stack entry (amount and value are handled apart).
 EFFECT_KEYS = ("seed", "radius", "strength", "black", "white", "points", "shadow_color", "highlight_color", "edges",
-               "gains", "neutral", "lut", *DENOISE_KEYS)
+               "gains", "neutral", "lut", "paper", "color", *DENOISE_KEYS)
 
 
 def effect_ref(layer, ref, field):

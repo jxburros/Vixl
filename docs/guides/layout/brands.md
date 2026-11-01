@@ -403,3 +403,9 @@ suite rule needs review: it never passes unchecked.
 Create all documents from the same workspace containing `brand.json`. Pin the pairing (or embed heading/body fonts) and all seven palette roles there. Keep those brand settings unchanged while rolling different layouts: the brand wins over the rolled pairing and palette, while explicit operation fields win over the brand. Use the same `mode`, font and palette overrides on `layout-apply` when an exact campaign direction matters; a shared seed alone is insufficient across different purposes and aspect ratios. `roll` previews report the selected direction before applying it. Check each result with the default checks and `check --checks brand`.
 
 Fresh documents install their selected colour roles as swatches. `palette-apply` updates a canvas that still uses its previous background role, while preserving a deliberately different canvas colour. Primitive and diagram operations can therefore resolve the same palette roles without applying a full layout first.
+
+## Checking inherited suites
+
+A brand's `suites` library references run during plain `vixl check` and the review/final profiles. A failed suite
+makes the check fail. `check --suite delivery` runs a named library suite without attaching it to the document;
+`--suite none` explicitly skips suites. The Python and MCP check options use `suites` for the same selection.

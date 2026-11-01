@@ -70,6 +70,8 @@ def test_dead_band_is_spread_over_the_other_gaps():
     p = doc(*card("a", 50), *card("b", 230), *card("c", 410), *card("d", 800))
     _, chosen = repaired(p, "dead_band")
     assert chosen["candidate"] == "spread-into-gaps"
+    assert chosen["residual_band_share"] == 0
+    assert isinstance(chosen["disruption"], (float, int))
     assert p.layer("a")["y"] == 50 and p.layer("d")["y"] == 800  # the first and last rows stay
     gaps = [p.layer(b)["y"] - p.layer(a)["y"] - 150 for a, b in (("a", "b"), ("b", "c"), ("c", "d"))]
     assert max(gaps) - min(gaps) <= 2

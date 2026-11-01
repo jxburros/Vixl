@@ -1071,3 +1071,13 @@ Without named suites, production runs the attached and inherited suites, or boun
 The `app-animation-package` workflow packages named source documents, theme variables, explicit transitions, one-shot/looping behavior, reduced-motion PNGs and editable masters. Its generated manifest and standalone consumer are documented in [animation authoring](../motion/animation-authoring.md#app-animation-packages). Package outputs are new directories and external links must be frozen first.
 
 Contrast checks reuse exact byte-channel transfer values rather than recalculating the sRGB power function for every pixel. The poster performance regression exercises the complete design check; expensive effects and complex documents can still cost more.
+
+## Direct suites and repair previews
+
+`vixl check --suite delivery` runs a library suite without a request file or attachment. Repeat `--suite` for
+several names. Plain check includes suites inherited from brand.json and project groups; `--suite none` skips
+suites. Review/final profiles resolve inherited suites too.
+
+A repair-layout dry run with proposed operations reports `committed: false`, `dry_run: true`, and an outcome of
+`proposed` with `validation: would_pass` and `review: required`. The document is unchanged. Run with dry_run false
+to commit and then inspect the outcome. Candidates prefer a smaller remaining dead band before smaller movement.

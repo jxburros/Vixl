@@ -227,7 +227,7 @@ def artistic_filter(image, effect):
 
         ink = color(effect.get("color", "black"))[:3]
         cell = int(amount)
-        result = Image.new("RGB", image.size, "white")
+        result = Image.new("RGB", image.size, color(effect.get("paper", "white"))[:3])
         draw = ImageDraw.Draw(result)
         values = np.asarray(gray)
         for y in range(0, h, cell):
@@ -240,11 +240,11 @@ def artistic_filter(image, effect):
                         draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill=ink)
                 else:
                     if darkness > 0.2:
-                        draw.line((x, y + cell - 1, x + cell - 1, y), fill="black")
+                        draw.line((x, y + cell - 1, x + cell - 1, y), fill=ink)
                     if darkness > 0.45:
-                        draw.line((x, y, x + cell - 1, y + cell - 1), fill="black")
+                        draw.line((x, y, x + cell - 1, y + cell - 1), fill=ink)
                     if darkness > 0.7:
-                        draw.line((x, y + cell // 2, x + cell - 1, y + cell // 2), fill="black", width=2)
+                        draw.line((x, y + cell // 2, x + cell - 1, y + cell // 2), fill=ink, width=2)
     elif name in ("ink-blot", "stamp", "photocopy"):
         if name == "ink-blot":
             size = round(radius if radius is not None else 2)

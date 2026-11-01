@@ -102,8 +102,9 @@ def validate(config):
     from .waivers import records
 
     require(isinstance(config, dict), f"{FILE} must be an object")
-    unknown = sorted(set(config) - {"profiles", "waivers", "budget"})
+    unknown = sorted(set(config) - {"profiles", "waivers", "budget", "export_check_status"})
     require(not unknown, f"Unknown {FILE} field(s) {unknown}; use profiles, waivers and budget")
+    require(isinstance(config.get("export_check_status", True), bool), "export_check_status must be boolean")
     validate_profiles(config.get("profiles", {}))
     if "budget" in config:
         from .assurance import BUDGET_LIMITS, validate_budget
@@ -153,7 +154,7 @@ def suite_fails(status, fail_on):
     return status == "failed" or fail_on in ("warning", "review")
 
 
-def run(project, profile, *, group=None, **options):
+def run(project, profile, *, group=None, suites=None, **options):
     """``check_design`` under a profile: the profile's checks and suites run, and ``passed`` follows its
     ``fail_on``. The report gains ``profile`` (name, fail_on, the failing finding indexes and suites)."""
     from .checks import CHECKS, check_design
@@ -176,15 +177,20 @@ def run(project, profile, *, group=None, **options):
         report = check_design(project, **options)
     fail_on = chosen.get("fail_on", "fix")
     blocking = failing(report, fail_on)
-    attached = project.state.get("suites", {})
-    wanted = chosen.get("suites", "none")
+    from .assurance import effective
+
+    attached = effective(project)
+    wanted = chosen.get("suites", "none") if suites is None else suites
     names = list(attached) if wanted == "all" else [] if wanted == "none" else wanted
     suites = {}
     for name in names:
-        if name not in attached:
-            suites[name] = {"status": "missing", "note": f"The profile names suite {name!r}, which is not attached"}
+        try:
+            result = project.check_suite(name)
+        except VixlError as exc:
+            if exc.code != "not_found":
+                raise
+            suites[name] = {"status": "missing", "note": str(exc)}
             continue
-        result = project.check_suite(name)
         not_passed = [r for r in result["results"] if r["status"] not in ("passed", "waived", "not_applicable")]
         suites[name] = {"status": result["status"], "errors": result["errors"], "needs_review": result["needs_review"],
                         "not_passed": not_passed[:20]}
@@ -210,4 +216,7 @@ def run(project, profile, *, group=None, **options):
     report["outcome"] = make("completed", "failed" if blocking or failed_suites else "passed", reasons,
                              (report.get("outcome") or {}).get("accepted", ()),
                              [f"profile {chosen['name']}", *(f"suite {name}" for name in suites)])
+    rules = list(dict.fromkeys(report["issues"][i]["rule"] for i in blocking)) + failed_suites
+    report["verdict"] = (f"{'Passed' if report['passed'] else 'Failed'}: profile {profile} fails on {fail_on}"
+                         + (f"; blocking: {', '.join(rules)}" if rules else "; no blocking findings or suites"))
     return report

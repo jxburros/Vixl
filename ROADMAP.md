@@ -167,10 +167,6 @@ item names the decision it waits on. They can be taken at any time and need no c
 | Release cadence (12 releases in 11 days against a documented weekly rhythm with a soak) | #678 | Follow the documented rhythm, or rewrite it to match what is wanted |
 | DCO or CLA for contributions; licence notice wording; the commercial-licence contact and process | Governance remainder, #774 | Counsel approves any change to the LICENSE notice line; never edit the PolyForm body |
 | Whether docs name competitors (template APIs, design tools) | #772 | Qualitative comparison, no prices |
-| Whether plain `vixl check` runs brand- and group-inherited suites by default | #726 | Yes; it changes `passed` for existing workspaces, so note it as breaking |
-| Whether export computes a check summary when none has run, or only reports a cached one | #724 | Report the cached one; optionally run a cheap non-rendering subset |
-| Whether the flat `issues` list stays in the default MCP check reply | #725 | Move it behind `detail: "full"` after the summary |
-| New outcome state names for dry runs (`proposed`, `would_pass`) | #765 | As proposed |
 | Font role tokens on layers (`font: "@heading"`) as a document-model concept | #766 | Ship `apply_to` first; decide tokens later |
 | Recommended sizes per layout: curated or derived from `best_for` | #764 | Derived, with curated overrides |
 | Pattern texture as an effect on its base layer (document-model change) or a linked sibling | #747 | Effect on the base layer |
@@ -187,7 +183,6 @@ item names the decision it waits on. They can be taken at any time and need no c
 | Optical sizes (`opsz`) supported or recorded as not planned | Stage 3 typography item | Not planned unless a catalog face is variable |
 | Curated offline font set: which serif, sans and display faces; bundled or a pack | Stage 9 fonts item | A pinned pack if over a few MB |
 | Whether tagged PDF becomes the default once stable | #719 | Opt-in first |
-| Whether paper colour for halftone and crosshatch is configurable (`looks.py` calls halftone "black and white dots") | #720 (c) | Add `paper`, default white |
 | Fund the blind craft re-judge, the tool-call comparison and the competitor lanes (paid agent runs and judges) | #648, #628, #615, #773 | Run once before and once after stage 4, in one budget |
 | Run a public hosted MCP service at all, who operates it, and the allowance model | #770 | Decide before any hosted-only engine work |
 | Build the optional previewer, and how far (view only, review aids, notes, light edits) | #775 | Steps 1-3 only if pursued |
@@ -217,165 +212,13 @@ release check above).
 
 ## 6. Stage 2: checks that lead with a verdict
 
-A minor release. The checks are honest, but users and agents cannot tell why `passed` is false, exports say nothing
-about check state, suites need extra steps, and errors cost thousands of characters. #724, #725 and #726 came from one
-print-cover session and share one surface (`checks.tally`, `policy.py`, `io_policy.export_outcome`, `cli_summary`):
-ship #725 first, then #724 reusing its summary, then #726. All of this is core (the check loop).
+Implemented for 0.34.0 (release pending): verdicts and grouped findings (#725), revision-bound export check status
+and strict delivery (#724), inherited and named library suites (#726), honest repair proposals (#765), compact
+choice errors (#767), word-break/contrast/print-screen fixes (#720), and export quotes (#769).
+The full issue list stays available for compatibility. Export status uses cached checks; strict export runs fresh
+checks. Quotes leave encoded byte size unknown and report static raster fallback estimates.
 
-### 2.1 Check results lead with a verdict and grouped counts (#725)
-
-- **Problem:** three runs on one design gave `passed: false` with 6 warnings, `passed: false` with 73 warnings, and
-  `passed: true` with 2 warnings. Errors were 0 every time, so it was unclear why the first two failed, and 73 per-layer
-  warnings were dismissed unread.
-- **Remaining work:**
-  1. In `checks.tally`, add a `verdict` sentence that defines `passed` ("passed = no errors and no fix findings") and
-     names the rule or rules that made it false. When a profile decides, `policy.py` builds the sentence from
-     `fail_on`.
-  2. Add a `summary` block of distinct rules with counts and their first three layers
-     (`{"rule", "action", "count", "layers", "fix"}`), so "73 warnings" reads as "4 distinct issues".
-  3. Add `top`: the three highest-ranked distinct findings, ordered by action (fix before review), then severity, then
-     whether `repair.suggest` has a cheap repair, each with a one-line suggested fix.
-  4. The CLI and MCP default views lead with the verdict, `top` and the grouped summary (`cli_summary.check`). The full
-     `issues` list moves behind `--full` / `detail: "full"` (owner decision) or stays after the summary. Keep
-     `by_action` for compatibility.
-- **Done when:** a document with 20 identical findings on 20 layers reports one `summary` entry with `count: 20`;
-  `verdict` names the fix rule whenever `passed` is false; the first lines of the CLI text output are the verdict and
-  the top three.
-- **Docs:** the check text in `guidance.py` (the `by_action` paragraph), the check reference pages,
-  `skills/vixl/references/*` (check result), changelog.
-- **Rating:** C2, P4. **Depends on:** none.
-
-### 2.2 Render and export report the check state (#724)
-
-- **Problem:** `render`, `export` and `apply` say nothing about the document's check state, so work is delivered
-  unchecked without anyone noticing. In the reported case a poster was exported while its last check had a fix
-  finding (every text layer on the fallback font) and a dead band; the export result carried only the generic "export
-  runs no checks" reason.
-- **Remaining work:**
-  1. Cache the last design-check summary per document revision (keyed by `project.head`: counts by action, the top
-     finding, the profile). Write it from `checks.check_design` / `policy.py` whenever a check runs.
-  2. Add `last_check` to the results of `vixl_export`, `vixl_render` and CLI `render`/`export`:
-     `{revision, fix, review, top}` when a check ran on this revision, otherwise `"stale"` or `"not_run"`. Build it in
-     `io_policy.export_outcome` and the render result. Optionally run a cheap non-rendering subset (fonts, blanks,
-     placeholders, bounds) when nothing is cached (owner decision).
-  3. Print one terminal line from `cli_summary.written`: `check: 0 fix, 2 review (vixl check for detail)` or
-     `check: not run since last change`.
-  4. Add an opt-out (flag and `.vixl-checks.json` setting) and an optional `strict` export flag that refuses on fix
-     findings, mirroring `vixl_apply(strict=true)`.
-- **Done when:** a test exports after a failing check and finds `last_check.fix >= 1` and the CLI line; an edit after a
-  check gives `"stale"`; `strict=true` refuses on a fix finding and writes nothing.
-- **Docs:** `docs/reference/interfaces.md` (export result), `docs/guides/output/exporting.md`, SKILL.md and its
-  references, changelog.
-- **Rating:** C2, P4. **Depends on:** 2.1 (`top`).
-
-### 2.3 Run a named suite in one command (#726)
-
-- **Problem:** running a brand suite still needs `workflow suite-use` plus `workflow check --request FILE`, or a write
-  call (`vixl_apply(suites=true)`). Plain `vixl check`, the one people run, skips the brand rules. Code reading also
-  shows a bug: `policy.py` profiles read only attached suites (`project.state["suites"]`), not suites inherited from
-  brand.json or a group (`assurance.effective`), unlike workflow `check` and `vixl_apply(suites=true)`.
-- **Remaining work:**
-  1. In `policy.py`, resolve profile `suites: "all"` and named suites through `assurance.effective(project)` /
-     `resolve`, so inherited library suites run and are never reported `missing`. Regression test with a brand.json
-     `suites` entry.
-  2. Add `--suite NAME` (repeatable, or `all`) to `vixl check`, and `suites` to `vixl_check` (`mcp_actions.check_design`),
-     REST and the Python API; run attached, inherited or library suites by name without attaching them, reusing
-     `checks.suite_summary`.
-  3. Plain `vixl check` runs the inherited suites by default (owner decision; breaking), or `.vixl-checks.json` gains a
-     `default_profile`. Report suite results in the same result.
-- **Done when:** in a workspace whose brand.json names a library suite, `vixl check` (and `--profile review`) reports
-  that suite with no request file; `vixl check --suite delivery` runs a library suite on an unattached document;
-  `vixl_check(suites=["delivery"])` matches.
-- **Docs:** `docs/guides/automation/production.md` (library suites), `docs/guides/layout/brands.md`, the check
-  reference, skills testing reference, changelog.
-- **Rating:** C2, P3. **Depends on:** 2.2 (the export summary includes suite state).
-
-### 2.4 Dry-run repair reports a dry-run outcome (#765)
-
-- **Problem:** `repair-layout` with `dry_run` returns `validation: passed, review: not_required` although nothing was
-  applied, so an agent reading `outcome` believes the document is fixed and the next check still fails. Candidate
-  ranking by least disruption also prefers moving a dead band over closing it.
-- **Remaining work:**
-  1. In the `layout_repair` plugin, when `dry_run` (or not committed) and there are operations, return
-     `state: "proposed"`, `validation: "would_pass"` (or `not_run`), `review: "required"` with
-     `review_reasons: ["dry run: operations not applied"]`. Add the values to `src/vixl/outcomes.py` and the outcome
-     schema in `workflow_schema.py`.
-  2. Put `committed` and `dry_run` first in the result, next to `outcome`.
-  3. Rank candidates by `(residual_band_share, disruption)`: re-measure the dead band after each trial with
-     `composition.dead_bands`, so a candidate that closes the band beats one that shifts it.
-  4. Check the other dry-run workflows (`repair`, `fix`, campaign repair in `repair.py`) for the same outcome bug.
-- **Done when:** a dry run with operations returns `outcome.state == "proposed"` and `review == "required"`, a
-  committed run still returns validated and passed, and on a dead-band fixture the chosen candidate leaves no (or a
-  smaller) dead band than the shift candidate.
-- **Docs:** the repair-layout section of the automation guides, `skills/vixl/references/testing.md` (outcome states),
-  changelog (outcome values change for dry runs).
-- **Rating:** C2, P4. **Depends on:** the outcome-name decision.
-
-### 2.5 Errors name the valid choices without the whole schema (#767)
-
-- **Problem:** a wrong value costs 2.7-6k characters and still does not name the valid choices. `layout-apply` with
-  `palette: "meadow"` returns 4,920 characters (`Unknown palettes resource: meadow` plus the full schema, no names, no
-  nearest match). `layout-apply` with `date` returns 6,138 characters, suggests `palette`, and lists the fields twice,
-  but not the `label` slot ("Date"). `vixl_apply(options={detail: "summary"})` returns 2,713 characters with `allowed`
-  listing option names instead of enum values. The target is under 600 characters.
-- **Remaining work:**
-  1. `resources.py`: an unknown resource raises `not_found` with `field`, `got`, `allowed` (first 10 plus `count`) and
-     three `suggestions` (difflib). Apply the same to the other `Unknown …:` lookups in `layouts.py`, `typefaces.py`,
-     `styles.py`, `looks.py` and `sizes.py`.
-  2. `schema.py` unknown-field hint: for `layout-apply`, match the unknown key against slot labels and hints from
-     `layouts.describe(name)["slots"]` before spelling distance (`date` gives `label`), and drop the duplicate
-     `fields` list.
-  3. `mcp_actions.invoke`: for literal and enum errors return `{field, got, allowed: <enum values>}` and no schema.
-  4. The operation-error helper in `mcp_actions.py` attaches `schema` only for structural errors (missing required
-     field, wrong type, unknown operation type) or when `verbose`.
-- **Done when:** `tests/test_mcp_tool_errors.py` has the three cases above, each under 600 characters, with the right
-  `allowed`/`suggestions` and no `schema` key; existing tests that expect a schema for structural errors still pass.
-- **Docs:** the error-shape section of `docs/reference/agent-discovery.md` or `docs/troubleshooting.md`,
-  `skills/vixl/references/mcp-rest-python.md`, changelog.
-- **Rating:** C2, P4. **Depends on:** none. Shares the error helper with stage 4.
-
-### 2.6 Field-report residuals: mid-word breaks, off-canvas contrast, halftone paper (#720)
-
-- **Problem:** (a) A headline that wraps inside a word ("demystifie / d") passes `check()` with at most an overflow
-  note: rich-text "demystified" at 90 px in a 200 px box gives `bounds text-overflow` and no word-break finding (the
-  code does not exist). (b) Text at x=700 on an 800 px canvas gives a `contrast unmeasurable` fix whose message leaks
-  an internal error ("Region must be within canvas", raised in `measure.py`, caught in `checks.py`), duplicating
-  `bounds.cut-off`. (c) Halftone and crosshatch in `artistic.py` always use white paper (`Image.new("RGB", …,
-  "white")`), and crosshatch draws in black whatever `color` says.
-- **Remaining work:**
-  1. (b) first, as a quick fix: clip the contrast measuring region to the canvas before calling `measure`, and drop
-     the unmeasurable finding when `bounds.cut-off` already covers the layer.
-  2. (a) In `text.py`, record in the line metadata when `break_word` fired; add a `legibility` finding
-     `code: word-break`, `action: fix`, in `checks.py` when a wrapped line ends inside a word without a hyphen, with a
-     repair hint (`fit-text` or a wider box) in `repair.py`. Run the house-style eval and the craft backtest (a new fix
-     finding).
-  3. (c) Add a `paper` colour (default white) to halftone and crosshatch, honour `color` in crosshatch, and describe
-     both with `schema.field` (owner decision on intent).
-- **Done when:** the "demystified" case gives exactly one `legibility.word-break` and hyphenated or shrunk headlines
-  give none; off-canvas text has no `contrast.unmeasurable`; the halftone paper colour is sampled from the render.
-- **Docs:** the check catalog entry, the effect fields, changelog, goldens if halftone output changes.
-- **Rating:** C2, P4. **Depends on:** the paper decision for (c).
-
-### 2.7 Export quote before rendering (#769)
-
-- **Problem:** there is no way to know an export's cost (megapixels, pages, frames, provider calls) before running it.
-  Over a limit an agent gets `limit_exceeded` with nothing smaller, and a hosted meter could not quote.
-- **Remaining work (core: export dispatch and call limits):**
-  1. Factor `call_limits.check_export` into `quote(project, fmt, options) -> units` plus the limit comparison, so the
-     quote and the enforcement share one code path.
-  2. `vixl_export(dry_run=true)`, REST `?dry_run=1` and CLI `export --dry-run` return `{dry_run, format, pages,
-     megapixels, vector_pages, raster_fallback_layers, frames, duration_s, provider_calls, estimated_bytes,
-     within_limits, limits}` and write nothing. Raster-fallback counts come from `export_appearance`, frames and
-     duration from the timeline, provider calls from AI operations. No prices in the engine.
-- **Done when:** dry-run units equal what `check_export` enforces (an oversized case with `within_limits: false` gives
-  the same numbers as the real call's `limit_exceeded`), no file is written, and a timeline export reports frames.
-- **Docs:** per-call limits in `docs/reference/interfaces.md`, the export guide, skills references, changelog.
-- **Rating:** C2, P2 (P3 if a hosted service happens). **Depends on:** none.
-
-**Close at the end of this stage:** [#725](https://github.com/jxburros/vixl/issues/725),
-[#724](https://github.com/jxburros/vixl/issues/724), [#726](https://github.com/jxburros/vixl/issues/726),
-[#765](https://github.com/jxburros/vixl/issues/765), [#767](https://github.com/jxburros/vixl/issues/767),
-[#720](https://github.com/jxburros/vixl/issues/720), [#769](https://github.com/jxburros/vixl/issues/769).
+Close #725, #724, #726, #765, #767, #720 and #769 when this stage merges. The next development stage is stage 3.
 
 ## 7. Stage 3: layouts that pass their own checks
 

@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.34.0
+
+Checks that lead with a verdict (roadmap stage 2).
+
+### Changed
+
+- Check replies include a verdict naming blocking rules, grouped counts with three sample layers, and the three
+  highest-priority findings with repair hints. CLI text leads with these; the flat issues list remains available
+  for compatibility (#725).
+- Checks run attached and inherited suites by default. `check --suite NAME` (repeatable), Python `suites`, REST
+  `/check` and MCP check options can run a library suite without attaching it. Profiles resolve inherited suites
+  too. **Breaking:** an inherited failed suite now makes plain check fail (#726).
+- Render and export metadata report the last check for the current revision, `stale`, or `not_run`. The cache
+  survives CLI invocations without editing the document. `--no-check-status` / `check_status=false` or workspace
+  `export_check_status: false` hides it. Strict file export runs a fresh check and refuses before writing (#724).
+- Repair previews return `proposed`, `would_pass` and review required when their operations have not been applied.
+  Layout candidates rank residual dead-band share before disruption (#765).
+- Invalid catalog names and enum values name bounded alternatives; unknown layout fields match slot labels
+  (`date` suggests `label`). Structural errors still carry schemas (#767).
+- Legibility checks identify alphabetic words split across lines, with a fit-text/wider-box repair hint;
+  fit-text keeps words whole within its minimum-size limit. Off-canvas contrast clips to the visible canvas and
+  avoids duplicating cut-off errors. Halftone and crosshatch accept `paper` (white by default) and `color` (black
+  by default); crosshatch now honors its ink color (#720).
+- `export --dry-run`, MCP export `dry_run` and REST `/export?dry_run=1` quote page and megapixel units without
+  rendering or writing. Timeline quotes include frames and duration. Limit enforcement uses the same units.
+  Encoded bytes remain unknown (`null`) until encoding; raster fallback counts are static estimates (#769).
+
 ## 0.33.3
 
 Install commands that always resolve, and the first stage of the roadmap.

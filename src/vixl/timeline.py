@@ -1566,7 +1566,7 @@ def _frames(project, times, scale, preview=False, cancelled=None, progress=None)
             disk.flush()
 
 
-def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=None, end=None, background=None, columns=None, quality=90, colors=256, overwrite=False, preview=False, cancelled=None, progress=None, dither="auto", max_bytes=None, poster=None, sample_rate=None, target_bytes=None, preset=None, strict=False):
+def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=None, end=None, background=None, columns=None, quality=90, colors=256, overwrite=False, preview=False, cancelled=None, progress=None, dither="auto", max_bytes=None, poster=None, sample_rate=None, target_bytes=None, preset=None, strict=False, dry_run=False):
     """Write the timeline as an animation, sheet or frame sequence. Never clobbers by default.
     Frames render at the target resolution (``scale`` 0.05–16, bounded by the pixel budget);
     ``colors`` (2–256) caps the GIF palette and ``dither`` ("auto", "none", "ordered", "floyd") sets how
@@ -1582,6 +1582,11 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
                             has_gradients, save_webp, size_warnings, webp_trial)
     from .plugins import first as plugin_export
 
+    if dry_run:
+        from .call_limits import quote
+
+        return quote(project, format or Path(path).suffix[1:], {"fps": fps, "scale": scale, "start": start,
+                                                               "end": end, "timeline": True})
     result = plugin_export("timeline-export-format", project, path, format, fps=fps, scale=scale, start=start,
                            end=end, background=background, columns=columns, quality=quality, colors=colors,
                            overwrite=overwrite, preview=preview, cancelled=cancelled, progress=progress,

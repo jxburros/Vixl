@@ -1,6 +1,6 @@
 """Public Python API. All interfaces share Project.apply and Project.render."""
 
-__version__ = "0.33.3"
+__version__ = "0.34.0"
 
 from .errors import VixlError  # noqa: E402
 

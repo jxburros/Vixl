@@ -28,7 +28,7 @@ LAYOUT_RULES = ("overlap.text-text", "overlap.text-object", "suite.spacing")
 
 
 def kind_for(rule):
-    if rule in ("bounds.text-overflow", "suite.text-fit"):
+    if rule in ("bounds.text-overflow", "legibility.word-break", "suite.text-fit"):
         return "fit-text"
     if rule in ("contrast.text-contrast", "suite.contrast"):
         return "contrast-ink"
@@ -378,7 +378,15 @@ def auto_repair(project, *, checks=None, suites=(), kinds=True, max_repairs=MAX_
     if operations and not dry_run:
         project.apply(operations, detail="compact")
     remaining = [{"rule": item["rule"], "layers": item.get("layers", [])} for item in fixes]
-    return {"applied": applied, "held": held, "unrepaired": unrepaired, "operations": operations,
+    from .outcomes import make
+
+    outcome = make(validation="would_pass" if dry_run and operations and not fixes and not failing else
+                   "failed" if fixes or failing else "passed",
+                   reasons=["dry run: operations not applied"] if dry_run and operations else [])
+    if dry_run and operations:
+        outcome["state"] = "proposed"
+    return {"committed": bool(operations) and not dry_run, "outcome": outcome,
+            "applied": applied, "held": held, "unrepaired": unrepaired, "operations": operations,
             "dry_run": dry_run, "passed": not fixes and not failing, "remaining": remaining[:20],
             **({"undo": "one history entry: vixl_document(action='history') undo (or vixl undo) reverts every repair"}
                if operations and not dry_run else {})}

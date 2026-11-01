@@ -170,7 +170,7 @@ def resolve(name, brand_styles=None):
     raise VixlError("unknown_style", f"Unknown style {name!r}"
                     + (f"; did you mean {' or '.join(map(repr, close))}?" if close else "; see vixl_reference('styles')")
                     + (f" Styles tagged {key!r}: {', '.join(matches)}." if matches else ""),
-                    field="style", suggestions=close or matches[:3], allowed=names())
+                    field="style", suggestions=close or matches[:3], allowed=names()[:10], count=len(names()), got=name)
 
 
 def listing(query=None, brand_styles=None):

@@ -15,15 +15,17 @@ acceptance covers only those findings.
 """
 
 EXECUTION = ("completed", "failed", "cancelled", "pending")
-VALIDATION = ("passed", "failed", "incomplete", "not_run")
+VALIDATION = ("passed", "failed", "incomplete", "not_run", "would_pass")
 # Worst first: a batch's overall state is the worst of its items.
-STATES = ("execution_failed", "cancelled", "pending", "validation_failed", "unvalidated", "needs_review", "validated")
+STATES = ("execution_failed", "cancelled", "pending", "validation_failed", "unvalidated", "proposed", "needs_review", "validated")
 MAX_REASONS = 20
 
 
 def state_of(execution, validation, review):
     if execution != "completed":
         return {"failed": "execution_failed", "cancelled": "cancelled"}.get(execution, "pending")
+    if validation == "would_pass":
+        return "proposed"
     if validation == "failed":
         return "validation_failed"
     if validation == "not_run":
@@ -42,7 +44,7 @@ def make(execution="completed", validation="not_run", reasons=(), accepted=(), v
         reasons = ["no required checks ran"]
     if validation == "incomplete" and not reasons:
         reasons = ["a required check could not be measured"]
-    review = "required" if reasons or validation in ("failed", "incomplete", "not_run") else "not_required"
+    review = "required" if reasons or validation in ("failed", "incomplete", "not_run", "would_pass") else "not_required"
     result = {
         "state": state_of(execution, validation, review),
         "execution": execution,
@@ -106,7 +108,7 @@ def merge(*outcomes, execution=None):
     outcomes = [item for item in outcomes if item]
     if not outcomes:
         return make(execution or "completed")
-    order = {"failed": 0, "incomplete": 1, "passed": 2, "not_run": 3}
+    order = {"failed": 0, "incomplete": 1, "would_pass": 2, "passed": 3, "not_run": 4}
     ran = [item["validation"] for item in outcomes if item["validation"] != "not_run"]
     validation = min(ran, key=order.get) if ran else "not_run"
     executions = [item["execution"] for item in outcomes]
@@ -135,3 +137,11 @@ def summarize(outcomes):
     worst = min((item["state"] for item in outcomes), key=STATES.index, default="unvalidated")
     return {"state": worst, "total": len(outcomes), "counts": counts,
             "validated": counts.get("validated", 0) == len(outcomes) and bool(outcomes)}
+
+
+def proposed(outcome):
+    """A candidate's validation describes a proposal, never the unchanged document."""
+    result = dict(outcome)
+    result.update(state="proposed", validation="would_pass" if outcome["validation"] == "passed" else "not_run",
+                  review="required", review_reasons=["dry run: operations not applied", *outcome["review_reasons"]][:MAX_REASONS])
+    return result

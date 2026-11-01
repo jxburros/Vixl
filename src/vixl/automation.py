@@ -191,10 +191,19 @@ def text_need(project, layer, size, width=None):
     return need
 
 
-def text_fits(project, layer, size, width, height, wrap=True):
+def text_fits(project, layer, size, width, height, wrap=True, *, whole_words=False):
     """Whether the text set at ``size`` fits ``width`` × ``height``; ``wrap=False`` measures it as
     unwrapped lines, the way text without a text-layout box is drawn."""
     need = text_need(project, layer, size, width if wrap else None)
+    if whole_words and wrap:
+        from .richtext import active, layout
+        from .text import plan
+
+        candidate = sized_text(project, layer, size)
+        candidate.update(width=width, height=height, text_layout={"width": width, "fit": False})
+        measured = layout(project, candidate) if active(candidate) else plan(project, candidate)
+        if measured.word_breaks:
+            return False
     return need[0] <= width and need[1] <= height
 
 
@@ -210,7 +219,7 @@ def expand(project, op):
             type(low) is int and type(high) is int and 1 <= low <= high <= 4096, "Invalid font size range"
         )
         require(
-            text_fits(project, layer, low, width, height),
+            text_fits(project, layer, low, width, height, whole_words=True),
             "Text cannot fit at the minimum size",
             "text_overflow",
             target=layer["id"],
@@ -218,7 +227,7 @@ def expand(project, op):
         )
         while low < high:
             mid = (low + high + 1) // 2
-            if text_fits(project, layer, mid, width, height):
+            if text_fits(project, layer, mid, width, height, whole_words=True):
                 low = mid
             else:
                 high = mid - 1

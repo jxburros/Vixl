@@ -142,8 +142,7 @@ def top_level_contrast(project, targets):
             try:
                 x, y, w, h = bounds[ident]
                 left, top, right, bottom = pixel_box(bounds[ident], (canvas["width"], canvas["height"]))
-                require(right > left and bottom > top and x >= 0 and y >= 0 and math.ceil(x + w - 1e-8) <= canvas["width"]
-                        and math.ceil(y + h - 1e-8) <= canvas["height"], "Region must be within canvas")
+                require(right > left and bottom > top, "Region must overlap the canvas")
                 # Place the layer's ink exactly where the compositor does, so the coverage lines up with
                 # the pixels it drew even when the box sits on a half pixel.
                 parts = highlight_parts(layers[ident])
@@ -266,6 +265,11 @@ def measure(
             "Region requires integer X Y WIDTH HEIGHT",
         )
         x, y, w, h = region
+        if target:
+            right, bottom = min(image.width, x + w), min(image.height, y + h)
+            x, y = max(0, x), max(0, y)
+            w, h = right - x, bottom - y
+            region = [x, y, w, h]
         require(
             w > 0 and h > 0 and x >= 0 and y >= 0 and x + w <= image.width and y + h <= image.height,
             "Region must be within canvas",
