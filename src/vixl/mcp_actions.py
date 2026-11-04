@@ -11,6 +11,7 @@ from functools import lru_cache
 import inspect
 from io import BytesIO
 import os
+import re
 from typing import Annotated, Any, Literal
 
 from pydantic import ConfigDict, Field, ValidationError, create_model
@@ -206,15 +207,67 @@ def terse_document(summary):
     return result
 
 
+ReportPath = Annotated[str | None, Field(
+    description="Write the full JSON result to this workspace .json file (replaced if present) and return a "
+                "bounded summary with report_path instead")]
+
+
+def write_report(session, report_path, result):
+    """Write ``result`` as JSON at ``report_path`` (inside the workspace, ``.json``); returns the relative path."""
+    import json
+
+    try:
+        destination = session.resolve(report_path)
+    except VixlError as exc:
+        raise VixlError(exc.code, f"report_path: {exc}", field="report_path") from exc
+    require(destination.suffix.lower() == ".json", "report_path must end in .json", field="report_path")
+    require(not destination.is_dir(), "report_path names a directory", field="report_path")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    data = json.dumps(result, ensure_ascii=False, indent=1, default=str).encode()
+    from .fileio import temporary
+
+    fd, temp = temporary(destination.parent, like=destination)
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(data)
+        os.replace(temp, destination)
+    except BaseException:
+        try:
+            os.unlink(temp)
+        except OSError:
+            pass
+        raise
+    return session.relative(destination)
+
+
+def reported(session, kind, report_path, result):
+    """The bounded summary of ``result`` once the whole of it is written at ``report_path`` (changes.report_summary)."""
+    from .changes import report_summary
+
+    relative = write_report(session, report_path, result)
+    return {**report_summary(kind, result), "report_path": relative}
+
+
 @action("vixl_document", "inspect")
 def document_inspect(
     ctx, target: str | None = None, document: Document = None, verbose: Verbose = False,
     object: Annotated[str | None, Field(description="An object name or path (dog, person/guitar): its kind chain, "
                                                     "bounds, parts, missing required parts and sub-objects; '*' "
                                                     "lists every object")] = None,
+    offset: Annotated[int, Field(ge=0, description="First layer to list")] = 0,
+    limit: Annotated[int, Field(ge=1, le=2000, description="Layers to list; next_offset is null at the end")] = 200,
+    fields: Annotated[list[str] | None, Field(description="Keep only these layer fields (id, name and type stay), "
+                                                          "e.g. ['bounds', 'text']")] = None,
+    collapse: Annotated[bool, Field(description="Show the children of charts, tables, diagrams, containers and "
+                                                "object groups as children: N at the parent")] = False,
+    filter: Annotated[dict | None, Field(description="{type, name (a glob), parent (a layer, or 'none' for "
+                                                     "top-level layers)}: list only the matching layers")] = None,
+    since: Annotated[str | None, Field(description="A head from an earlier result: list only the layers added or "
+                                                   "changed since that revision, plus removed")] = None,
 ):
-    """Describe the document or one layer: canvas plus key fields per layer with resolved [x, y, w, h] bounds;
-    verbose gives every stored field; object= returns one object's tree."""
+    """Describe the document or one layer: canvas plus key fields per layer with resolved [x, y, w, h] bounds
+    (200 per page; offset, limit, fields, collapse, filter and since narrow the list); verbose gives every stored
+    field; object= returns one object's tree."""
     from .changes import summarize
 
     with ctx.session.project(document=document) as project:
@@ -224,7 +277,8 @@ def document_inspect(
             return tree(project, object)
         if verbose:
             return project.inspect(target)
-        return summarize(project, target)
+        return summarize(project, target, offset=offset, limit=limit, fields=fields, collapse=collapse, filter=filter,
+                         since=since)
 
 
 @action("vixl_document", "create")
@@ -506,35 +560,76 @@ def apply_batch(
     repair: Annotated[bool | list[REPAIRS] | None, Field(
         description="After the batch apply the built-in repair for each fix finding (fit-text, contrast-ink, "
                     "safe-area-nudge); each kept only if its finding is resolved and nothing new fails")] = None,
-    detail: Annotated[Literal["brief", "compact", "full"] | None, Field(
-        description="brief (default): ID, name and bounds of each changed layer; compact (verbose) adds changed "
-                    "values; full adds before/after snapshots")] = None,
+    detail: Annotated[Literal["ack", "brief", "compact", "full"] | None, Field(
+        description="ack: {ok, head, changed: N, warnings}; brief (default): ID, name and bounds of each changed "
+                    "layer; compact (verbose) adds changed values; full adds before/after snapshots")] = None,
     verbose: Verbose = False,
+    proposal: Annotated[str | None, Field(
+        description="Commit an earlier dry run by its proposal_id (its operations and options) if the document's "
+                    "head is unchanged, else fail with stale_proposal")] = None,
+    report_path: ReportPath = None,
+    defaults: Annotated[dict | None, Field(
+        description="{font, fill, stroke, size} filled into the batch's creation operations (text, rich-text, "
+                    "shape, pen, solid, gradient) that leave the field open; an operation's own value wins; "
+                    "each fill is reported under normalized")] = None,
     document: Document = None,
 ):
     """Apply operations atomically (all or none) and autosave. Items may also be session steps (import-image,
     import-document, import-font, font-pair, font-install, style-use, roll) that run in order inside the same
     all-or-nothing batch. check, suites and preview return the findings, failing rules and a preview in the same
-    call."""
+    call. dry_run returns a proposal_id; vixl_apply(proposal=ID) commits it later."""
     from .critique import take_previews
 
     session, runtime = ctx.session, ctx.runtime
+    expect_head = None
+    if proposal is not None:
+        require(operations is None and operations_path is None and not dry_run,
+                "proposal commits an earlier dry run: drop operations, operations_path and dry_run", field="proposal")
+        record = session.proposal(proposal)
+        operations, expect_head = record["operations"], record["head"]
+        document = document or record["document"] or None
+        stored = record["options"]
+        check, preview, suites, repair = (stored.get(k) if v is None else v
+                                          for k, v in (("check", check), ("preview", preview), ("suites", suites),
+                                                       ("repair", repair)))
+        detail = detail or stored.get("detail")
+        defaults = stored.get("defaults") if defaults is None else defaults
     require(operations is not None or operations_path is not None, "Pass operations or operations_path",
             field="operations")
     detail = detail or ("compact" if verbose else "brief")
     budget = runtime.inline_seconds / 2 if runtime is not None and runtime.inline_seconds else None
+    level = "brief" if detail == "ack" else detail
     try:
         if not (check or preview or suites or repair):
-            result, png = session.apply(operations, dry_run, detail, document, operations_path=operations_path), None
+            result, png = session.apply(operations, dry_run, level, document, operations_path=operations_path,
+                                        expect_head=expect_head, defaults=defaults), None
         else:
-            result, png = session.apply_reviewed(operations, dry_run, detail, document,
+            result, png = session.apply_reviewed(operations, dry_run, level, document,
                                                  operations_path=operations_path, check=check, preview=preview,
-                                                 budget=budget, suites=suites, repair=repair)
+                                                 budget=budget, suites=suites, repair=repair, expect_head=expect_head,
+                                                 defaults=defaults)
     except VixlError as exc:
         raise teach(exc, operations) from exc
+    if proposal is not None:
+        session.forget_proposal(proposal)
+        result["proposal"] = proposal
+    elif dry_run:
+        from .calls import CALL
+
+        state = CALL.get()
+        where = session.relative(state.document) if state is not None and state.document else document
+        options = {"detail": detail, "check": check, "preview": preview, "suites": suites, "repair": repair,
+                   "defaults": defaults}
+        result["proposal_id"] = session.propose(where, result.get("head"), operations, options)
     crops = take_previews(result)
     for number, entry in enumerate((result.get("check") or {}).get("regions", [])[:len(crops)], start=2):
         entry["preview"] = f"image {number} of {len(crops) + 1}"
+    if report_path is not None:
+        result = reported(session, "apply", report_path, result)
+    elif detail == "ack":
+        from .changes import ack
+
+        result = ack(result)
     if png is None:
         return result
     return [result, image(png), *(image(data) for data in crops)]
@@ -544,34 +639,44 @@ def apply_batch(
 def apply_create(
     ctx,
     create: Annotated[dict, Field(description="The new document: {path, size | width+height, purpose, background, "
-                                              "font_pairing, layout {name, slots…}, style, look, dpi, orientation, "
-                                              "bleed, seed, variety, house_style ('on' or 'off': "
+                                              "font_pairing, layout {name, slots…}, style, look, suites, dpi, "
+                                              "orientation, bleed, seed, variety, house_style ('on' or 'off': "
                                               "'off' rolls no direction)}")],
     operations: Annotated[list[dict] | None, Field(max_length=Limits().max_operations)] = None,
     operations_path: OperationsPath = None,
     check: Annotated[bool | list[str], Field(description="vixl_check the result (true, or check names)")] = True,
-    strict: Annotated[bool, Field(description="Fail, saving nothing, when check has 'fix' findings")] = False,
+    suites: Annotated[bool | str | list[str] | None, Field(
+        description="Also run check suites: a starter suite name such as 'composition', a list of names, or true "
+                    "for every suite the operations attached")] = None,
+    strict: Annotated[bool, Field(description="Fail, saving nothing, when check has 'fix' findings or a suite fails")] = False,
     preview: Annotated[bool | dict | None, Field(description="true or {page, region, max_width, max_height, time}")] = None,
     exports: Annotated[list[str | dict] | None, Field(description="Paths or batch export targets", max_length=64)] = None,
     overwrite: Annotated[bool, Field(description="Exports may replace files")] = False,
     dry_run: bool = False,
+    report_path: ReportPath = None,
 ):
     """Build a whole new piece in one call: create → font pairing → layout → style → look → operations → check →
-    preview → save → exports. Atomic: nothing is saved or exported unless every step succeeds; an error names its
-    step. The new document becomes active."""
+    suites → preview → save → exports. Atomic: nothing is saved or exported unless every step succeeds; an error
+    names its step. The new document becomes active."""
     from .compose import compose
 
     require(isinstance(create, dict), "create is an object: {path, size, purpose, layout …}", field="create")
     fields = dict(create)
     path = fields.pop("path", None)
-    known_keys = {"font_pairing", "layout", "style", "look"}
+    known_keys = {"font_pairing", "layout", "style", "look", "suites"}
     picked = {key: fields.pop(key) for key in list(fields) if key in known_keys}
+    if suites is not None:
+        picked["suites"] = suites
     try:
         result, png = compose(ctx.session, path=path, operations=operations, operations_path=operations_path,
                               check=check, strict=strict, preview=preview, exports=exports, overwrite=overwrite,
                               dry_run=dry_run, **picked, **fields)
     except VixlError as exc:
         raise teach(exc, operations) from exc
+    if report_path is not None:
+        result = {**reported(ctx.session, "apply", report_path, result),
+                  **{key: result[key] for key in ("path", "document", "active_document", "canvas", "creation", "exports")
+                     if key in result}}
     return result if png is None else [result, image(png)]
 
 
@@ -650,6 +755,7 @@ def check_design(
     pages: Annotated[Literal["all"] | list[int | str] | None, Field(description="Check every page or these")] = None,
     comps: Annotated[Literal["all"] | list[str] | None, Field(description="Check with every layer comp or these")] = None,
     include_hidden: Annotated[bool, Field(description="pages='all' also checks hidden pages")] = False,
+    report_path: ReportPath = None,
     document: Document = None,
 ):
     """Find design problems without looking (bounds, overlap, contrast, safe area, legibility, blanks, placeholders,
@@ -658,7 +764,7 @@ def check_design(
     session = ctx.session
     if style is not None and checks is None:
         checks = ["style"]
-    return session.check(
+    report = session.check(
         document=document, checks=checks, targets=targets, safe_area=safe_area, avoid=avoid,
         thumbnail_width=thumbnail_width, min_thumbnail_text=min_thumbnail_text, min_contrast=min_contrast,
         ink_limit=ink_limit, min_ppi=min_ppi, artboard=artboard, comp=comp, page=page, deck=deck,
@@ -669,6 +775,9 @@ def check_design(
            if value is not None},
         **({"include_hidden": True} if include_hidden else {}),
     )
+    if report_path is not None:
+        return reported(session, "check", report_path, report)
+    return report
 
 
 @action("vixl_check", "validate")
@@ -1139,6 +1248,27 @@ def export_kind(ctx, path, values, document):
 # ---------------------------------------------------------------------------------------------- vixl_reference
 
 
+@lru_cache(maxsize=1)
+def schema_version():
+    """The reference version every vixl_reference result carries: the release plus the first 12 characters of the
+    operation schema's content hash, so a cached reference can be checked with if_version (#615)."""
+    from . import __version__
+    from .hashing import content_hash
+    from .schema import operation_schema
+
+    return f"{__version__}+{content_hash(operation_schema())[:12]}"
+
+
+def versioned(result, if_version=None):
+    """``result`` with ``schema_version`` added, or ``{unchanged: true}`` when ``if_version`` matches it."""
+    version = schema_version()
+    if if_version is not None and if_version == version:
+        return {"unchanged": True, "schema_version": version}
+    if isinstance(result, dict):
+        return {**result, "schema_version": version}
+    return result
+
+
 @action("vixl_reference", "start")
 def reference_start(ctx):
     """The working loop, every kind of work and every guidance name."""
@@ -1161,14 +1291,20 @@ def reference_guide(
 
 @action("vixl_reference", "operations")
 def reference_operations(
-    ctx, name: Annotated[str | list[str] | None, Field(description="1–20 operation types; none lists every operation "
-                                                                  "by purpose")] = None,
+    ctx, name: Annotated[str | list[str] | None, Field(description="1–20 operation types, or dot paths such as "
+                                                                  "text-layout.wrap for one property; none lists "
+                                                                  "every operation by purpose")] = None,
+    detail: Annotated[Literal["brief", "full"], Field(description="brief: required fields, types, enums and one "
+                                                                  "example (under 1.5 KB each); full: the exact "
+                                                                  "JSON Schema with descriptions")] = "full",
 ):
     """The exact JSON Schema (fields, enums, requirements, summary, examples) of the named operation types,
-    including the session steps; without a name every operation by purpose."""
+    including the session steps, or the brief form; a dot path (text-layout.wrap) returns one property's schema;
+    without a name every operation by purpose."""
     import difflib
 
     from .schema import _properties
+    from .schema_docs import property_names, property_schema, schema_brief
     from .steps import STEPS, step_schema, step_type
 
     if name is None:
@@ -1181,16 +1317,28 @@ def reference_operations(
     require(isinstance(types, list) and 0 < len(types) <= 20, "Request 1–20 operation types", field="name")
     result = {}
     for kind in types:
+        kind, _, path = str(kind).partition(".")
         step = step_type(kind)
-        if step:
-            result[step] = step_schema(step)
+        if step and not path:
+            result[step] = schema_brief(step_schema(step)) if detail == "brief" else step_schema(step)
             continue
-        variant = operation_variant(kind)
+        variant = step_schema(step) if step else operation_variant(kind)
         if variant is None:
             close = difflib.get_close_matches(str(kind), [*_properties(), *STEPS], 3, 0.5)
             result[kind] = {"error": "unknown operation type", "suggestions": close}
             continue
-        result[variant["properties"]["type"]["const"]] = variant
+        found = variant["properties"]["type"]["const"]
+        if path:
+            schema = property_schema(variant, path)
+            if schema is None:
+                close = difflib.get_close_matches(path.split(".")[-1], property_names(variant), 3, 0.5)
+                result[f"{found}.{path}"] = {"error": f"unknown property of {found}", "suggestions": close,
+                                             "properties": property_names(variant)}
+                continue
+            result[f"{found}.{path}"] = {"operation": found, "property": path, "schema": schema,
+                                         **({"required": True} if path in variant.get("required", []) else {})}
+            continue
+        result[found] = schema_brief(variant) if detail == "brief" else variant
     return result
 
 
@@ -1198,25 +1346,58 @@ def reference_operations(
 def reference_capabilities(
     ctx, name: Annotated[str | None, Field(description="A topic (text, drawing, animation, film, layout, color, export) "
                                                        "or any words such as 'loop'")] = None,
-    fields: Annotated[bool, Field(description="Add each matching operation's fields")] = False,
+    fields: Annotated[bool, Field(description="Add each matching operation's fields and the top operation's brief "
+                                              "schema with one example")] = False,
+    limit: Annotated[int | None, Field(ge=1, le=200, description="Operations to list, best keyword score first "
+                                                                 "(default 5; more counts the rest; null: all)")] = 5,
 ):
-    """Field-level reference for a topic: matching operations, workflows, gotchas, limits and guidance names."""
+    """Field-level reference for a topic: the best-matching operations, workflows, the topic's gotchas, limits and
+    guidance names."""
     from .capabilities import lookup
 
-    return lookup(name, fields=fields)
+    return lookup(name, fields=fields, limit=limit)
+
+
+WORKFLOW_INDEX_LINE = 64  # characters of each action's one-line summary in the index
+
+
+def one_line(text, limit=WORKFLOW_INDEX_LINE):
+    """The first clause of ``text`` (up to the first period, semicolon, colon or parenthesis), cut at a word
+    boundary to ``limit`` characters."""
+    first = re.split(r"[.;:(]", text.replace("\n", " "), maxsplit=1)[0].strip()
+    if len(first) <= limit:
+        return first
+    cut = first[:limit].rsplit(" ", 1)[0].rstrip(",")
+    return cut + "…"
 
 
 @action("vixl_reference", "workflows")
-def reference_workflows(ctx, name: Annotated[str | None, Field(description="One workflow action")] = None):
-    """Workflow actions (vixl_apply workflow=…) and their request fields."""
+def reference_workflows(
+    ctx, name: Annotated[str | list[str] | None, Field(description="1–10 workflow actions; none lists every action "
+                                                                  "with a one-line summary")] = None,
+):
+    """Workflow actions (vixl_apply workflow=…): an index of one-line summaries, or the request fields of the named
+    actions with only the definitions they reach."""
+    from .workflow_schema import scoped
     from .workflows import describe as workflows
 
     found = workflows()
-    if name is None:
-        return found
     actions = found.get("actions", {})
-    require(name in actions, f"Unknown workflow action {name!r}", "not_found", field="name", allowed=sorted(actions))
-    return {"action": name, **actions[name]}
+    if name is None:
+        return {"version": found.get("version", 1),
+                "actions": {key: one_line(entry["summary"]) for key, entry in actions.items()},
+                "next": "vixl_reference('workflows', name=ACTION or [ACTIONS]) gives the request fields, required "
+                        "fields and the definitions (suite, job, spec …) they use; "
+                        "vixl_apply(workflow=ACTION, request={…}) runs one."}
+    names = [part.strip() for part in name.split(",")] if isinstance(name, str) else list(name)
+    require(0 < len(names) <= 10, "Request 1–10 workflow actions", field="name")
+    for key in names:
+        require(key in actions, f"Unknown workflow action {key!r}", "not_found", field="name", allowed=sorted(actions))
+    selected = scoped({key: actions[key] for key in names})
+    if isinstance(name, str) and len(names) == 1:
+        return {"action": names[0], **selected["actions"][names[0]], "definitions": selected["definitions"],
+                "help": found.get("help", "")}
+    return {**selected, "help": found.get("help", "")}
 
 
 @action("vixl_reference", "sizes")
@@ -1367,13 +1548,24 @@ def _resource(kind):
             from .house_style import show
 
             return {"name": name or "all", "value": show(None if name in (None, "", "all", "default") else name)}
+        if name and kind in ("templates", "containers"):
+            # The slots and image specs an agent needs before filling it, as for layouts (#615 item 60).
+            from .containers import describe as container
+            from .resources import describe_template
+
+            item = get(kind, name, workspace=workspace)
+            detail = describe_template(name, item, workspace) if kind == "templates" else container(name, item)
+            return {"name": name, **detail, "value": item}
         if name:
             return {"name": name, "value": get(kind, name, workspace=workspace)}
         return {"kind": kind, "names": sorted(catalog(kind, workspace=workspace))}
 
     read.__doc__ = {
         "palettes": "Built-in and saved palettes; name reads one.",
-        "templates": "Document templates (vixl_document create template=NAME); name reads one.",
+        "templates": "Document templates (vixl_document create template=NAME); name reads one with its required "
+                     "variables, container slots and image specs.",
+        "containers": "Container compositions (container-place); name reads one with its slots, which must be "
+                      "filled, and the image specs.",
         "guidance": "Craft guidance names; name reads one text (user additions included).",
         "objects": "Object kinds (dog, guitar, person …); name reads its parts, connections, proportions, layering "
                    "and build block (approach, placements, a working example).",
@@ -1382,5 +1574,5 @@ def _resource(kind):
     return read
 
 
-for _kind in ("palettes", "templates", "guidance", "objects", "house-style"):
+for _kind in ("palettes", "templates", "containers", "guidance", "objects", "house-style"):
     action("vixl_reference", _kind)(_resource(_kind))

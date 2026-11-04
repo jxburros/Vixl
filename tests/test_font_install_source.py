@@ -174,3 +174,43 @@ def test_a_body_italic_that_cannot_be_fetched_is_skipped(tmp_path, monkeypatch):
     result = typefaces.pair_fonts(project, "source-serif-sans", body_italic=True)
     assert "network" in result["body"]["body_italic"]["skipped"] and result["origin"] == "cache"
     assert "source-sans-3-400-italic" not in project.state["fonts"]
+
+
+def test_font_pair_restyles_the_text_a_layout_set_on_the_fallback(tmp_path, monkeypatch):  # #766
+    from vixl.checks import check_design
+    from vixl.constants import BUNDLED_FONTS
+
+    monkeypatch.setenv("VIXL_FONT_CACHE", str(tmp_path))
+    project = Project(1080, 1080)
+    project.apply({"type": "layout-apply", "name": "hero-statement", "title": "Night Market", "subtitle": "Food and music",
+                   "cta": "RSVP", "seed": 3})
+    warning = next(issue for issue in check_design(project)["issues"] if issue["check"] == "fonts")
+    assert warning["fix"] == {"type": "font-pair", "pairing": warning["fix"]["pairing"], "apply_to": "fallback"}
+    assert "apply_to: 'fallback'" in warning["message"]
+    # One layer was set by hand on an embedded face: it keeps that face.
+    project.assets["fonts/hand.ttf"] = FONT
+    project.apply({"type": "font-register", "name": "hand", "asset": "fonts/hand.ttf"})
+    project.apply({"type": "text-set", "target": "subtitle", "font": "hand"})
+    result = typefaces.pair_fonts(project, "source-serif-sans", client=fake_google_faces())
+    fonts = project.state["fonts"]
+    assert result["apply_to"] == "fallback" and set(result["restyled"]) == {"headline", "cta", "label"}
+    assert project.layer("headline")["font"] == fonts[result["heading"]["name"]]
+    assert project.layer("headline")["font_role"] == "heading" and project.layer("cta")["font_role"] == "body"
+    assert project.layer("subtitle")["font"] == fonts["hand"] and result["still_fallback"] == 0
+    assert not [issue for issue in check_design(project)["issues"] if issue["check"] == "fonts" and "bundled fallback font" in issue["message"]]
+    # roles: every layout layer follows its role, whatever face it had.
+    result = typefaces.pair_fonts(project, "space-mono-space-grotesk", client=fake_google_faces(), apply_to="roles")
+    assert "subtitle" in result["restyled"] and project.layer("subtitle")["font"] == project.state["fonts"][result["body"]["name"]]
+    # new: nothing existing changes, even text that follows a role.
+    before = {layer["name"]: layer["font"] for layer in project.state["layers"] if layer["type"] == "text"}
+    result = typefaces.pair_fonts(project, "source-serif-sans", client=fake_google_faces(), apply_to="new")
+    assert result["restyled"] == [] and {layer["name"]: layer["font"] for layer in project.state["layers"]
+                                        if layer["type"] == "text"} == before
+    with pytest.raises(VixlError):
+        typefaces.pair_fonts(project, "source-serif-sans", client=fake_google_faces(), apply_to="all")
+    # A layout applied with typography in place follows the roles from the start (no fallback warning).
+    fresh = Project(1080, 1080)
+    typefaces.pair_fonts(fresh, "source-serif-sans", client=fake_google_faces())
+    fresh.apply({"type": "layout-apply", "name": "hero-statement", "title": "Night Market", "seed": 3})
+    assert fresh.layer("headline")["font_role"] in ("heading", "display")
+    assert fresh.layer("headline")["font"] not in BUNDLED_FONTS

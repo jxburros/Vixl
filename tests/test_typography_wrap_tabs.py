@@ -92,11 +92,16 @@ def test_headings_balance_by_default():
 
     assert heading()["wrap"] == "balance"
     assert heading(wrap="greedy")["wrap"] == "greedy"
+    # Body text gets no one-word last line by default (craft.wrap.body); the house style off keeps greedy breaks.
     p = Project(900, 400)
     document_defaults(p, seed=3)
     p.apply([{"type": "text", "name": "body", "text": RUNT, "stage": "body", "x": 20, "y": 20},
              {"type": "text-layout", "target": "body", "width": 700}])
-    assert "wrap" not in p.layer("body")["text_layout"]
+    assert p.layer("body")["text_layout"]["wrap"] == "pretty"
+    off = Project(900, 400, seed=3, house_style="off")
+    off.apply([{"type": "text", "name": "body", "text": RUNT, "stage": "body", "x": 20, "y": 20},
+               {"type": "text-layout", "target": "body", "width": 700}])
+    assert "wrap" not in off.layer("body")["text_layout"]
 
 
 def test_a_wrap_survives_a_new_box():

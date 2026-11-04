@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from vixl import Project
-from vixl.briefs import guide
+from vixl.briefs import START_HERE_POINTER, guide
 from vixl.layouts import LAYOUTS, SAFE_COMPOSITIONS
 from vixl.resources import create_template
 from vixl.safe_catalog import SAFE_PALETTES, catalog
@@ -58,7 +58,8 @@ def test_sparse_layout_template_and_guide_return_fresh_reproducible_choices(tmp_
     first = guide("a poster for a bake sale", workspace=tmp_path)
     second = guide("a poster for a bake sale", workspace=tmp_path)
     assert first["direction"]["seed"] != second["direction"]["seed"]
-    assert any("Sparse briefs" in step for step in first["start_here"])
+    assert first["start_here"] == START_HERE_POINTER  # the recipe itself comes from guide()
+    assert any("Sparse briefs" in step for step in guide()["start_here"])
 
 
 def test_fixed_workspace_controls_layouts_templates_and_placement(tmp_path):

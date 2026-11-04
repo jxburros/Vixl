@@ -144,7 +144,7 @@ vixl guidance import campaign campaign-guide.txt --style campaign
 vixl guidance remove campaign --style campaign
 ```
 
-`add` stores plain text in the reusable library; `import` attaches file text directly to the document. Guidance is retained in `design_guidance`, survives save/open and participates in undo, and is included in `ask` planning requests alongside the operation schema and current preview. It guides the external planner; deterministic drawing commands do not infer or enforce aesthetic rules. Imported guidance and image text are treated as data, and returned plans still pass Vixl's safety and operation validation.
+`add` stores plain text in the reusable library; `import` attaches file text directly to the document. Guidance is retained in `design_guidance`, survives save/open and participates in undo, and is included in `ask` planning requests alongside the operation schema and current preview (the `overall` text always, the other styles when their names match the shortlisted operations or the prompt). It guides the external planner; deterministic drawing commands do not infer or enforce aesthetic rules. Imported guidance and image text are treated as data, and returned plans still pass Vixl's safety and operation validation.
 
 ## Fonts
 

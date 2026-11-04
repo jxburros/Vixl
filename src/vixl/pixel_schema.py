@@ -2,7 +2,7 @@
 
 import json
 
-from .pixel import PIXEL_TYPES
+from .pixel import MIRRORS, PIXEL_TYPES
 from .animation import ANIMATION_TYPES
 
 
@@ -42,6 +42,14 @@ def schemas(add):
                 "items": {"type": "string", "minLength": 1, "maxLength": 256},
                 "minItems": 1,
                 "maxItems": 256,
+                "description": "Strings, one per pixel row; each character is a palette key. A count before a key "
+                "repeats it: \"3.2#\" is \"...##\" (run-length rows; literal when the palette uses digits "
+                "as keys). With mirror, the left or top half.",
+            },
+            "mirror": {
+                **enum(*MIRRORS),
+                "description": "Complete the rows by reflection: x (rows give the left half), y (the top half) or "
+                "xy. Give width or height one less than twice the half to make the last column or row the centre.",
             },
             "shading": shading,
             "outline": outline,
@@ -58,8 +66,19 @@ def schemas(add):
             "width": grid,
             "height": grid,
             "color": S,
+            "rows": {
+                "type": "object", "additionalProperties": {"type": "string", "minLength": 1, "maxLength": 256},
+                "maxProperties": 256,
+                "description": "Frame delta: only the rows that changed, {row index: row string} (run-length "
+                "counts allowed). Replaces tool, x, y and color.",
+            },
+            "cells": {
+                "type": "array", "items": {"type": "array", "minItems": 3, "maxItems": 3}, "maxItems": 65536,
+                "description": "Frame delta: only the cells that changed, [[x, y, symbol], ...]. Replaces tool, "
+                "x, y and color.",
+            },
         },
-        ["x", "y", "color"],
+        anyOf=[{"required": ["x", "y", "color"]}, {"required": ["rows"]}, {"required": ["cells"]}],
     )
     add("pixel-palette", {"colors": palette, "shading": shading, "outline": outline},
         anyOf=[{"required": ["colors"]}, {"required": ["shading"]}, {"required": ["outline"]}])
@@ -139,6 +158,7 @@ def compile_pixel(cmd, args):
         p.add_argument("--palette", type=json.loads)
         p.add_argument("--rows", type=json.loads)
         p.add_argument("--background")
+        p.add_argument("--mirror", choices=list(MIRRORS), help="rows give the left (x) or top (y) half")
         p.add_argument("--shading", type=json.loads, help="true, false or JSON {light, colors, highlight}")
         p.add_argument("--outline", type=_flag_or_color, help="true, false or a colour")
     elif cmd == "pixel-draw":

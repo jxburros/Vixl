@@ -7,7 +7,7 @@ first of several candidates (#518). Campaign ``repair_actions`` run through ``ca
 
 | Rule | Repair |
 | --- | --- |
-| ``bounds.text-overflow``, suite ``text-fit`` | ``fit-text`` in the text's box, never below the minimum size |
+| ``bounds.text-overflow``, suite ``text-fit`` | first ``grow-box``: the box grows in its flow direction into free space and the rows below move down with it (#768); then ``widen-box`` into free width; then ``fit-text`` in the text's box, never below the minimum size or, for a heading, the next smaller line's size |
 | ``contrast.text-contrast``, suite ``contrast`` | text colour moved toward the role ink (``@ink``, else black or white) |
 | ``safe_area.outside``, ``bounds.cut-off`` (text) | a relative ``move`` back inside the safe area or canvas |
 | ``blanks.unfilled`` | held for review: the copy is never guessed |
@@ -18,7 +18,8 @@ import math
 
 from .errors import VixlError, require
 
-REPAIR_KINDS = ("fit-text", "contrast-ink", "safe-area-nudge", "hold")
+REPAIR_KINDS = ("grow-box", "widen-box", "fit-text", "contrast-ink", "safe-area-nudge", "hold")
+GROW_RULES = ("bounds.text-overflow",)  # a suite's text-fit rule asks for a fit in the box
 SUGGEST_LIMIT = 10  # Fix findings a check annotates with a repair; the rest say how to ask for more.
 MAX_REPAIRS = 10
 INK_STEPS = (0.25, 0.5, 0.75, 1.0)
@@ -86,7 +87,126 @@ def minimum_size(project, layer, minimum=None):
     return floor
 
 
+def role_floor(project, layer, low):
+    """The size a heading never shrinks under when it is fitted: the next smaller text line's size plus one,
+    so a longer headline stays above its subtitle (#768); other text keeps ``low``."""
+    from .text import is_heading
+
+    if not is_heading(project, layer):
+        return low
+    size = float(layer.get("size", 0))
+    smaller = [float(other.get("size", 0)) for other in project.state["layers"]
+               if other["type"] == "text" and other["id"] != layer["id"] and 0 < float(other.get("size", 0)) < size]
+    return max(low, math.ceil(max(smaller)) + 1) if smaller else low
+
+
+def _below(project, layer, box):
+    """The layers whose boxes start under ``box`` in its column (the rows a growing box pushes down), and the
+    lowest edge they reach; backgrounds and layers marked decoration stay put and are not listed."""
+    from .render import resolve_layout
+
+    bounds = resolve_layout(project)
+    x, y, w, h = box
+    found = []
+    for other in project.state["layers"]:
+        if other["id"] == layer["id"] or other.get("parent") or other["type"] in ("solid", "gradient"):
+            continue
+        if other.get("role") in ("background", "decoration") or not other.get("visible", True):
+            continue
+        ox, oy, ow, oh = bounds[other["id"]]
+        if oy >= y + h - 1 and min(ox + ow, x + w) - max(ox, x) > 0:
+            found.append((other, (ox, oy, ow, oh)))
+    return found
+
+
+def _in_a_stack(project, layer, resolved, width, height):
+    """Whether the text is part of a composition that can give it room: a layout made it, or rows sit under
+    it. A lone text box (a suite's fit rule on one layer) is fitted in its own box, as before."""
+    created = set((project.state.get("layout") or {}).get("layers") or [])
+    if layer["id"] in created:
+        return True
+    box = (float(resolved.get("x", 0)), float(resolved.get("y", 0)), float(width), float(height))
+    return bool(_below(project, layer, box))
+
+
+def _grow_box(project, finding, layer, resolved, width, height, floor=None):
+    """Grow the text box toward the height the copy needs and move the rows below down with it: into the room
+    before the bottom margin first, then by closing the rows' own gaps down to two spacing units, so the
+    layout keeps its order and nothing shrinks (#768). With ``floor`` (a second pass) the box takes whatever
+    room there is and the type is fitted inside it, never under the floor, so a long headline gives up as
+    little size as the page allows."""
+    from .automation import text_fits
+    from .composition import unit_of
+    from .sizes import live_insets
+
+    need = finding.get("needs")
+    if not need or len(need) < 2:
+        return None
+    extra = int(math.ceil(need[1])) - height
+    if extra <= 0:
+        return None
+    canvas = project.state["canvas"]
+    _, _, _, bottom_inset = live_insets(canvas)
+    box = (float(resolved.get("x", 0)), float(resolved.get("y", 0)), float(width), float(height))
+    below = sorted(_below(project, layer, box), key=lambda item: item[1][1])
+    min_gap = 2 * float(unit_of(project))
+    # Each row's slack: what its gap to the row above can give up; rows on one line share the gap above them.
+    slack, reach, cumulative = [], box[1] + box[3], 0.0
+    for _, (_, oy, _, oh) in below:
+        cumulative += max(0.0, oy - reach - min_gap)
+        slack.append(cumulative)
+        reach = max(reach, oy + oh)
+    room = int(canvas["height"] - bottom_inset - reach) + int(slack[-1] if slack else 0)
+    fitted = None
+    if extra > room:
+        if floor is None or room <= 0:
+            return None
+        extra = room
+        try:
+            if not text_fits(project, layer, floor, width, height + extra):
+                return None
+        except Exception:  # noqa: BLE001 - text that cannot be measured has no mechanical repair
+            return None
+        fitted = {"type": "fit-text", "target": layer["id"], "width": width, "height": height + extra,
+                  "minimum": floor, "maximum": int(layer.get("size", 0))}
+    operations = [{"type": "text-layout", "target": layer["id"], "width": width, "height": height + extra}]
+    for (other, _), given in zip(below, slack):
+        shift = round(max(0.0, extra - given))
+        if shift:
+            operations.append({"type": "move", "target": other["id"], "x": 0, "y": shift, "relative": True})
+    if fitted:
+        operations.append(fitted)
+    moved = [other["name"] for (other, _), given in zip(below, slack) if round(max(0.0, extra - given))]
+    names = ", ".join(map(repr, moved[:4])) + (" …" if len(moved) > 4 else "")
+    return {"kind": "grow-box", "available": True, "operations": operations,
+            "reason": f"grow the box by {extra} px into the free space below" + (
+                f" and move {names} down with it" if moved else "") + (
+                f", then fit the type in it, not below {floor} px" if fitted else "; the type keeps its size")}
+
+
+def _widen_box(project, finding, layer, resolved, width, height):
+    """Let the lines rebreak in a wider box when free width to the right makes the copy fit."""
+    from .automation import text_fits
+    from .sizes import live_insets
+
+    canvas = project.state["canvas"]
+    _, _, right_inset, _ = live_insets(canvas)
+    room = int(canvas["width"] - right_inset - float(resolved.get("x", 0)))
+    if room <= width:
+        return None
+    try:
+        if not text_fits(project, layer, layer.get("size", 0), room, height):
+            return None
+    except Exception:  # noqa: BLE001 - text that cannot be measured has no mechanical repair
+        return None
+    return {"kind": "widen-box", "available": True,
+            "operations": [{"type": "text-layout", "target": layer["id"], "width": room, "height": height}],
+            "reason": f"widen the box to {room} px so the lines rebreak and the copy fits at its size"}
+
+
 def _fit_text(project, finding, layer):
+    """The overflow repairs in order (#768): grow the box into free space, rebreak the lines in a wider box,
+    then shrink the type, never under the minimum size or a heading's role floor."""
     from .automation import text_fits
 
     if layer["type"] != "text":
@@ -95,7 +215,13 @@ def _fit_text(project, finding, layer):
     width, height = int(resolved.get("width", 0)), int(resolved.get("height", 0))
     if width < 1 or height < 1:
         return unavailable("the text has no box to fit", "fit-text")
-    low = minimum_size(project, layer, finding.get("minimum"))
+    rule = finding.get("rule") or finding.get("check", "")
+    low = role_floor(project, layer, minimum_size(project, layer, finding.get("minimum")))
+    if rule in GROW_RULES and _in_a_stack(project, layer, resolved, width, height):
+        for attempt in (_grow_box, _widen_box, lambda *a: _grow_box(*a, floor=low)):
+            found = attempt(project, finding, layer, resolved, width, height)
+            if found:
+                return found
     size = layer.get("size", 0)
     if size <= low:
         return unavailable(f"the text is already at its minimum size ({low} px); enlarge its box instead "
@@ -245,6 +371,10 @@ def suggest(project, finding):
         return unavailable("the finding names no layer", kind)
     suggestion = {"fit-text": _fit_text, "contrast-ink": _contrast_ink, "safe-area-nudge": _nudge}[kind](
         project, finding, layer)
+    if suggestion["available"] and suggestion["kind"] != kind and not finding.get("_shrink_only"):
+        pass  # grow-box and widen-box are the overflow repairs tried before fit-text
+    elif finding.get("_shrink_only") and suggestion["kind"] != "fit-text":
+        suggestion = _fit_text(project, {**finding, "rule": "legibility.word-break"}, layer)
     if suggestion["available"] and project.state.get("pages") and finding.get("page") is not None:
         for operation in suggestion["operations"]:
             operation["page"] = finding["page"]

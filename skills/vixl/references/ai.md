@@ -74,7 +74,7 @@ workspace (see mcp-rest-python.md). Selections and other edits that need `vixl_a
 | Remove selected object | `vixl_ai_remove()` | `vixl ai remove --as removed-object` |
 | Content-aware fill selection | `vixl_ai_content_aware_fill(prompt?)` | `vixl ai content-aware-fill --prompt '…'` |
 | Describe / detect / OCR | `vixl_ai_analyze("describe"\|"detect"\|"ocr", query)` | `vixl ai describe` · `vixl detect objects\|faces` · `vixl ocr` |
-| Plan edits from English | `vixl_ai_plan(prompt)` then `apply=True` (only on `vixl mcp --tools ai --planner`) | `vixl ask '…'` then `vixl ask '…' --apply` |
+| Plan edits from English | `vixl_ai_plan(prompt, operations?, image?, target?, region?)` then `apply=True` (only on `vixl mcp --tools ai --planner`) | `vixl ask '…' [--ops a,b] [--image auto\|none\|region\|full] [--target LAYER] [--region x,y,w,h]` then `vixl ask '…' --apply` |
 
 Behavior worth knowing:
 
@@ -87,6 +87,13 @@ Behavior worth knowing:
   constraints; re-add constraints afterward if needed.
 - `plan`/`ask` validate and preview the proposed batch; nothing changes without `apply`. As an
   agent you can usually write the operations yourself — prefer that over `plan` unless asked.
+- A plan request is small: brief schemas for at most eight operations (`operations`/`--ops` names
+  them; otherwise the layers the prompt names, the prompt's matches and the common edits), the
+  summary of the layers around `target`/`region` (the rest listed by name), the matching
+  `design_guidance` styles plus `overall`, and with `image=auto` no image for a text or variable
+  edit, the target's region otherwise (`none`, `region`, `full` force one). A batch that fails
+  validation is requested once more with full schemas. The result's `request` gives the characters
+  sent, `usage` the provider's tokens and `cache` its cache reads.
 - Providers receive the rendered canvas, selection and document metadata. Don't call AI tools on
   sensitive images without the user's consent; calls may incur provider charges.
 

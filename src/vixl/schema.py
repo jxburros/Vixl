@@ -430,6 +430,13 @@ def _operation_schema():
         )
     add("effect-move", {"effect": ref, "to": ref, "before": ref, "after": ref}, ["effect"])
     add("variable", {"name": S, "value": {"type": ["string", "number", "boolean"]}, "delete": B}, ["name"])
+    add("create-many", {
+        "prototype": {"type": "object", "description": "One ordinary creation operation (text, shape, solid …) "
+                      "whose fields every row starts from; its type is the type of every copy."},
+        "rows": {"type": "array", "minItems": 1, "maxItems": Limits().max_operations, "items": {"type": "object"},
+                 "description": "The fields of each copy, laid over the prototype (name, text, x, y, fill …); "
+                                "a row cannot change the type."},
+    }, ["prototype", "rows"])
     add("variable-map", {"name": S, "values": {"type": "object", "additionalProperties": {"type": ["string", "number", "boolean"]}},
                          "merge": B, "delete": B}, ["name"])
     add("preset-save", {"name": S}, ["name"])

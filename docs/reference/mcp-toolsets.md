@@ -7,11 +7,11 @@ handful of typed common fields and an `options` object, with the detail served o
 | Tool | Actions (`action`, or `kind` for exports) | What it covers |
 | --- | --- | --- |
 | `vixl_document` | `inspect` (default), `create`, `open`, `close`, `list`, `history`, `undo`, `redo`, `checkpoint`, `checkout`, `branch`, `begin`, `commit`, `rollback`, `compact`, `notes` | Documents, the workspace listing, history and human review notes. `create` takes a named `size`, `width`/`height`, a `purpose` or a `template`. |
-| `vixl_apply` | a batch (default), `create={…}`, `workflow=ACTION` | Atomic operation batches with `check`, `suites`, `preview`, `repair` and `dry_run`; a whole new piece in one call (`create`, formerly compose); every production workflow (`request`). |
+| `vixl_apply` | a batch (default), `create={…}`, `workflow=ACTION` | Atomic operation batches with `check`, `suites`, `preview`, `repair` and `dry_run`; a whole new piece in one call (`create`, formerly compose, with the same `check`, `suites` and `preview`); every production workflow (`request`). |
 | `vixl_check` | `design` (default), `validate`, `measure`, `spacing`, `spatial`, `pixels` | Tests without looking: design checks with rule IDs and repairs, rule and suite validation, rendered colour samples, equal-gap pass/fail, spatial relations, pixel rows. |
 | `vixl_render` | `preview` (default), `compare`, `timeline`, `timeline-inspect`, `animation`, `animation-inspect` | Bounded PNG previews (`region`, `page`, `time`, `isolate`, `overlay`), revision comparison, motion contact sheets and summaries. |
 | `vixl_export` | `file` (default), `batch`, `animation`, `timeline`, `audio`, `icons`, `character` | Files: the format follows the extension, and the kind follows the extension and the document (`.wav` is audio, `.gif`/`.mp4` motion, `targets` a batch). |
-| `vixl_reference` | topics: `start` (default), `guide`, `operations`, `workflows`, `capabilities`, `sizes`, `layouts`, `fonts`, `brushes`, `styles`, `looks`, `color`, `roll`, `palettes`, `templates`, `guidance`, `objects`, `house-style`; or a tool name with actions (all but `vixl_job`), a kind of work, a guidance name (`checks`, `exports`, `batches` …) or a free-text brief | Catalogs, exact schemas and craft guidance, all from the one guidance registry (`guidance.py`). |
+| `vixl_reference` | topics: `start` (default), `guide`, `operations`, `workflows`, `capabilities`, `sizes`, `layouts`, `fonts`, `brushes`, `styles`, `looks`, `color`, `roll`, `palettes`, `templates`, `containers`, `guidance`, `objects`, `house-style`; or a tool name with actions (all but `vixl_job`), a kind of work, a guidance name (`checks`, `exports`, `batches` …) or a free-text brief | Catalogs, exact schemas and craft guidance, all from the one guidance registry (`guidance.py`). |
 | `vixl_job` | `status`, `result`, `cancel`, `list` | Calls that outlived the inline wait (about 40 s) or were sent with `as_job`. |
 
 Saved calls, batches and client configurations for the earlier tools (51 in the default server, 64 names in all) convert
@@ -24,7 +24,21 @@ shares `vixl_document`, `vixl_render` and `vixl_job`; see [interfaces](interface
 
 - **Operations.** `vixl_apply` advertises each item as `{type: string}` plus open fields. The exact JSON Schema of any
   operation (fields, enums, requirements, a summary and examples) is `vixl_reference('operations', name=[types])`;
-  without a name it lists every operation by purpose.
+  without a name it lists every operation by purpose. `detail="brief"` returns the short form instead (the type, a
+  one-line summary, the required fields with their types and enums, the other fields' types, and one example; under
+  1.5 KB per operation, the same form `schema_docs.schema_brief` gives the planner); `detail="full"` (the default) the
+  whole schema. A dot path (`name="text-layout.wrap"`, `"shape.radius"`) returns that one property's schema.
+- **Workflows.** `vixl_reference('workflows')` is an index, one line per action, under 8 KB. `name=ACTION` or
+  `name=[ACTIONS]` (1-10) returns the request fields, with only the `definitions` (suite, job, production and film
+  specs, recipe, manifest) those actions reach, folded into `$ref`s where they are embedded.
+- **Capabilities.** `vixl_reference('capabilities', name=TOPIC)` lists the five best-matching operations by keyword
+  score (`more: N` counts the rest; `limit=N` or `limit=null` widens it), the matching workflows, the guidance
+  names and only the gotchas tagged with the topic; `fields=true` adds each operation's fields and the top
+  operation's brief schema with one example (`top_operation`).
+- **Versions.** Every `vixl_reference` result carries `schema_version`: the release plus the first 12 characters of
+  the operation schema's content hash (`0.34.0+f7685bcc0e48`). Send it back as `if_version` (in `options`, or as a
+  bare argument, which folds into `options`) and a reference that has not changed returns `{unchanged: true}`
+  instead of the payload, so a cached reference costs one small call to confirm.
 - **Session steps.** Work that needs the workspace rather than the document is a batch item too, so it joins the
   same all-or-nothing batch: `import-image`, `import-document`, `import-font`, `font-pair`, `font-install`,
   `font-cover`, `style-use` and `roll`. Their schemas come from the same lookup.
@@ -39,10 +53,22 @@ shares `vixl_document`, `vixl_render` and `vixl_job`; see [interfaces](interface
 - **Prose.** Long explanations live in the guidance registry: `vixl_reference('batches')` (batches, values, steps,
   create, workflows), `vixl_reference('checks')` (every check), `vixl_reference('exports')` (formats, CMYK, PDF,
   slides, motion), `vixl_reference('finishing')`, `vixl_reference('testing')`, and `vixl_reference()` for the
-  start-here loop.
+  start-here recipe, which opens with the one-call route (`vixl_apply(create=…, preview=true)`, `suites` included)
+  and sizes the finishing pass to the purpose; a kind's guide points to it instead of repeating it.
 - **Terse results.** Results drop large echoes by default (a new document reports its path, canvas, seed and the
   fonts chosen, not the whole rolled direction); `verbose: true` on `vixl_document` and on a `vixl_apply` batch
   returns the full payload. Previews still return images.
+- **Results and inspection.** `vixl_apply(detail='ack')` returns only `{ok, head, changed: N, warnings}`; the brief
+  default summarises the children a chart, table, diagram or container generates at the parent (`generated`,
+  `children_added`, `children_sample`) instead of listing each one. `vixl_document(action='inspect')` lists 200 layers
+  a page (`offset`, `limit`, `next_offset`), projects with `fields=[…]`, folds generated children and object groups
+  into `children: N` with `collapse=true`, narrows with `filter={type, name, parent}` and, with `since=HEAD`, returns
+  only the layers added or changed since that revision plus `removed` (a history diff, no rendering); a text layer
+  carries `ink_bounds` and `baseline`, the full metrics only under `verbose`. `report_path='x.json'` on `vixl_check`
+  and `vixl_apply` writes the whole report into the workspace (never outside it) and returns a bounded summary with
+  the path. A dry run returns a `proposal_id` (a hash of the operations, the head and the options; the last 16 per
+  session are kept): `vixl_apply(proposal=ID)` commits it without resending the operations when the head is
+  unchanged, else fails with `stale_proposal`.
 - **Document text is data.** The instructions and the `vixl_document`, `vixl_check` and `vixl_render` descriptions
   end with one sentence saying so, and results that carry layer names, text, notes, guidance or provider metadata
   name those JSON paths under `untrusted` ([agent trust](agent-trust.md#untrusted-document-text)). That sentence is

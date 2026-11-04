@@ -1,7 +1,11 @@
 """One call, several files: sizes, formats or artboards of a document, or several documents.
 
 The same options as ``vixl_export`` apply per target. Every target is validated before the
-first file is written, so a typo in the seventh entry does not leave six files behind.
+first file is written, so a typo in the seventh entry does not leave six files behind. The
+preflight also opens each target's document and refuses the batch when a layer references an
+embedded asset that is gone, a text layer names a font no renderer can load, or the export would
+not fit the server's page and megapixel limits: those would fail one target after the others
+were written, and the error names the target instead.
 """
 
 import difflib
@@ -85,6 +89,85 @@ def shown_document(session, document):
     return session.relative(session.resolve(document) if document else session.active())
 
 
+def readiness(project, variables=None):
+    """Why a render of ``project`` would fail before it starts: ``(code, message)`` for the first embedded asset
+    a layer or mask references that the document no longer holds (``missing_asset``), image variable without an
+    asset, or text font (layer or rich-text span) no renderer can load (``missing_font``); None when it is ready."""
+    from .render import font_for
+
+    assets = project.assets
+    variables = variables or {}
+    fonts = {}
+    for layer in project.state.get("layers", []):
+        name = layer.get("name", layer.get("id"))
+        asset = layer.get("asset")
+        if isinstance(asset, str) and asset not in assets and not layer.get("asset_variable"):
+            return "missing_asset", f"layer {name!r} references embedded asset {asset!r}, which the document no longer holds"
+        variable = layer.get("asset_variable")
+        if variable:
+            value = variables.get(variable, (project.state.get("variables") or {}).get(variable))
+            if value is None:
+                return "missing_variable", f"layer {name!r} takes its image from variable {variable!r}, which has no value"
+            if str(value) not in assets:
+                return "missing_asset", f"layer {name!r}: image variable {variable!r} names {value!r}, not an embedded asset"
+        mask = layer.get("mask")
+        if isinstance(mask, dict) and isinstance(mask.get("asset"), str) and mask["asset"] not in assets:
+            return "missing_asset", f"the mask of layer {name!r} references embedded asset {mask['asset']!r}, which is gone"
+        if layer.get("type") != "text":
+            continue
+        used = [layer.get("font")]
+        rich = layer.get("rich")
+        if isinstance(rich, dict):
+            used += [span.get("font") for span in rich.get("spans", []) if isinstance(span, dict)]
+        for font in used:
+            if font is None or font in fonts:
+                continue
+            try:
+                font_for(project, {"font": font, "size": 12})
+            except VixlError as exc:
+                return exc.code, f"layer {name!r}: {exc}"
+            fonts[font] = True
+    return None
+
+
+def preflight(session, plan):
+    """Refuse the batch, naming the target, when a target's document is not ready to render (``readiness``) or the
+    export would exceed the call limits. A document that does not exist is left to the per-target loop, which
+    reports it as that target's own error."""
+    from .call_limits import check_export, of
+
+    checked = {}
+    for index, (target, doc, _) in enumerate(plan):
+        where = f"targets[{index}]"
+        suffix = session.resolve(target.path).suffix.lower()
+        fmt = {".jpg": "JPEG", ".jpeg": "JPEG", ".tif": "TIFF", ".tiff": "TIFF"}.get(suffix, suffix[1:].upper())
+        try:
+            with session.project(document=doc) as project:
+                key = (doc, json_key(target.variables))
+                if key not in checked:
+                    checked[key] = readiness(project, target.variables)
+                problem = checked[key]
+                if problem is not None:
+                    raise VixlError(problem[0], f"{where} ({target.path}): {problem[1]}", field=where, target=index,
+                                    document=shown_document(session, doc))
+                if suffix != ".vixl":
+                    options = {key: getattr(target, key) for key in target.model_fields_set - SPECIAL}
+                    check_export(of(session), project, fmt, options)
+        except VixlError as exc:
+            if exc.code == "not_found" and "target" not in exc.details:
+                continue
+            if "target" in exc.details:
+                raise
+            raise VixlError(exc.code, f"{where} ({target.path}): {exc}", field=where, target=index,
+                            **{k: v for k, v in exc.details.items() if k != "field"}) from exc
+
+
+def json_key(value):
+    import json
+
+    return json.dumps(value, sort_keys=True, default=str) if value else ""
+
+
 def export_batch(session, export_file, targets, defaults=None, overwrite=False, stop_on_error=False, document=None):
     from .io_policy import EXPORT_SUFFIXES
 
@@ -110,6 +193,7 @@ def export_batch(session, export_file, targets, defaults=None, overwrite=False, 
         plan.append((target, target.document or document, replace))
     if any(doc is None for _, doc, _ in plan):
         session.active()  # No document named anywhere: fail now unless there is an active one.
+    preflight(session, plan)
     results, written, documents = [], 0, []
     for index, (target, doc, replace) in enumerate(plan):
         calls.check_cancelled()

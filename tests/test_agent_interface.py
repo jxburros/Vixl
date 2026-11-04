@@ -155,7 +155,9 @@ def test_lean_schema_and_schema_lookup(tmp_path):
     full = asyncio.run(sizes(mcp_server(workspace=tmp_path)))
     assert len(json.dumps(full["vixl_apply"].inputSchema)) < 2000
     assert "vixl_ai_plan" not in full
-    assert "vixl_ai_plan" in asyncio.run(sizes(mcp_server(workspace=tmp_path, tools="ai", planner=True)))
+    planner = asyncio.run(sizes(mcp_server(workspace=tmp_path, tools="ai", planner=True)))["vixl_ai_plan"]
+    assert {"operations", "image", "target", "region"} <= set(planner.inputSchema["properties"])
+    assert len(json.dumps(planner.inputSchema)) < 2000
     for tool in full.values():
         # No pydantic-generated titles (string annotations); a content field named "title" is fine.
         assert not re.search(r'"title": "', json.dumps(tool.inputSchema))

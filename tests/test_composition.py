@@ -395,3 +395,64 @@ def test_a_large_custom_poster_canvas_is_judged_across_a_room():  # #680
     [finding] = [x for x in p.check()["issues"] if x.get("code") == "use-size"]
     assert finding["use"]["seen"] == "distance" and finding["use"]["source"] == "purpose poster"
     assert finding["needed_size"] >= 81
+
+
+def _layout_doc(name, size, seed, **extra):
+    from vixl.layouts import describe
+
+    project = Project.sized(size, seed=seed)
+    copy = {key: slot["example"] for key, slot in describe(name)["slots"].items() if "example" in slot}
+    project.apply({"type": "layout-apply", "name": name, "seed": seed, **copy, **extra})
+    return project
+
+
+def _interior_bands(project):
+    """Empty heights between consecutive text rows, as shares of the canvas height."""
+    from vixl.render import resolve_layout
+
+    bounds = resolve_layout(project)
+    rows = sorted((bounds[layer["id"]][1], bounds[layer["id"]][1] + bounds[layer["id"]][3])
+                  for layer in project.state["layers"] if layer["type"] == "text")
+    height = project.state["canvas"]["height"]
+    return [(rows[i + 1][0] - rows[i][1]) / height for i in range(len(rows) - 1)]
+
+
+@pytest.mark.parametrize("seed", [1, 2, 3, 4, 5, 6, 7, 8])
+def test_airy_spacing_does_not_license_a_quarter_page_band(seed):  # #680
+    """A document whose own gaps are large (airy density) raises the median gap, which used to raise the
+    dead-band bar with it: an interior band of a quarter of the page between type is always flagged."""
+    project = _layout_doc("event-poster", "instagram-portrait", seed, density="airy")
+    bands = [x for x in project.check()["issues"] if x["check"] == "composition" and x["code"] == "dead_band"]
+    if any(share >= 0.25 for share in _interior_bands(project)):
+        assert bands, _interior_bands(project)
+    # The bar itself never exceeds the capped share of the frame however airy the document is.
+    for band in bands:
+        assert band["threshold"]["min_height"] <= THRESHOLDS["dead_band_typical_cap"] * project.state["canvas"]["height"]
+
+
+def test_dead_band_bar_caps_the_median_gap_term():
+    from vixl.composition import _typical_term
+
+    assert _typical_term(THRESHOLDS, 10, 1000) == THRESHOLDS["dead_band_gap_ratio"] * 10
+    assert _typical_term(THRESHOLDS, 400, 1000) == THRESHOLDS["dead_band_typical_cap"] * 1000
+
+
+def test_a_panel_holding_text_closes_a_band_as_its_text_does():
+    """A date block (a filled rectangle with the date inside it) below a headline closes the hole between them;
+    two cards far apart on an open page are still the design (the copy is measured over the type itself)."""
+    headline = {**text("headline", 100, 100, size=120), "text": "Night Market Night Market"}
+    date = [panel("date-block", 660, 150, 100, 500), {**text("date", 150, 710, size=40), "color": "#ffffff"}]
+    lines = [text(f"line-{i}", 100, 880 + i * 40) for i in range(3)]
+    p = doc(headline, {"type": "text-layout", "target": "headline", "width": 800}, *date, *lines, size=(1000, 1250))
+    (band,) = [x for x in found(p) if x["code"] == "dead_band"]
+    assert set(band["layers"]) == {"headline", "date-block"}
+    assert codes(doc(*card("a", 50, 100), *card("b", 800, 100))) == []
+
+
+@pytest.mark.parametrize("name,size", [("f-pattern", "slide"), ("f-pattern", "og-image"), ("f-pattern", "letter"),
+                                       ("story-vertical", "instagram-story")])
+@pytest.mark.parametrize("seed", [1, 2, 3, 4, 5])
+def test_stacked_layouts_keep_their_rhythm_with_example_copy(name, size, seed):  # #680
+    project = _layout_doc(name, size, seed)
+    findings = [x["code"] for x in project.check()["issues"] if x["check"] == "composition"]
+    assert "uneven_rhythm" not in findings and "dead_band" not in findings, findings

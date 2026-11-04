@@ -101,6 +101,10 @@ def typed_ai(session, command, words=(), document=None, **options):
         seed=None,
         strength=0.75,
         apply=False,
+        operations=None,
+        image="auto",
+        target=None,
+        region=None,
         detail="compact",
         double=False,
         scale=2,
@@ -192,7 +196,7 @@ def build_server(session, *, planner=False, tools="default", allow_screen_captur
     from mcp.server.fastmcp import FastMCP
     from mcp.server.fastmcp.exceptions import ToolError
 
-    from .mcp_actions import ACTIONS, Context, describe, export_kind, invoke, merged
+    from .mcp_actions import ACTIONS, Context, describe, export_kind, invoke, merged, schema_version, versioned
 
     require(tools in ("default", "ai"), "tools must be default or ai", field="tools")
     server = FastMCP("Vixl AI" if tools == "ai" else "Vixl", instructions=AI_INSTRUCTIONS if tools == "ai" else INSTRUCTIONS)
@@ -339,7 +343,7 @@ def build_server(session, *, planner=False, tools="default", allow_screen_captur
     @tool
     def vixl_reference(
         topic: Annotated[str, Field(description="operations, workflows, capabilities, sizes, layouts, fonts, "
-                                                "brushes, styles, looks, color, roll, palettes, templates, objects, "
+                                                "brushes, styles, looks, color, roll, palettes, templates, containers, objects, "
                                                 "guidance, house-style, a tool name, a guidance name or a "
                                                 "brief")] = "start",
         name: Annotated[str | list[str] | None, Field(description="The entry to read (operation types, a layout, a "
@@ -349,14 +353,22 @@ def build_server(session, *, planner=False, tools="default", allow_screen_captur
         """Catalogs, exact schemas and craft guidance: what to make for a brief, operation and tool fields, sizes,
         layouts, fonts, styles, colours and resources."""
         topics = ACTIONS["vixl_reference"]
+        require(options is None or isinstance(options, dict), "options is an object of action parameters",
+                field="options")
+        options = dict(options or {})
+        # if_version: the schema_version of a cached result; a match returns {unchanged: true} instead.
+        if_version = options.pop("if_version", None)
+        options = options or None
+        if if_version is not None and if_version == schema_version():
+            return versioned({}, if_version)
         if topic in topics:
-            return invoke(context, "vixl_reference", topic, merged(options, name=name))
+            return versioned(invoke(context, "vixl_reference", topic, merged(options, name=name)))
         if topic in ACTIONS:
             require(not options, "a tool's reference takes name (one action) only", field="options")
-            return describe(topic, name)
+            return versioned(describe(topic, name))
         require(name is None, "name goes with a catalog topic; a brief or guidance name is the topic itself",
                 field="name")
-        return invoke(context, "vixl_reference", "guide", merged(options, name=topic))
+        return versioned(invoke(context, "vixl_reference", "guide", merged(options, name=topic)))
 
     @tool
     def vixl_job(
@@ -467,10 +479,20 @@ def build_server(session, *, planner=False, tools="default", allow_screen_captur
 
         @tool
         def vixl_ai_plan(
-            prompt: str, apply: bool = False, provider: str | None = None, document: Document = None
+            prompt: str,
+            apply: bool = False,
+            operations: Annotated[list[str] | None, Field(description="Operation types to offer instead of the "
+                                                                      "shortlist matched from the prompt")] = None,
+            image: Annotated[Literal["auto", "none", "region", "full"], Field(description="auto sends no image for "
+                                  "a text or variable edit and the target's region otherwise")] = "auto",
+            target: Annotated[str | None, Field(description="The layer the request is about")] = None,
+            region: Annotated[list[float] | None, Field(description="[x, y, width, height] the request is about")] = None,
+            provider: str | None = None,
+            document: Document = None,
         ) -> dict:
             """Ask a configured provider to propose edits; inspect the proposal before apply=true."""
-            return typed_ai(session, "ask", document=document, prompt=prompt, apply=apply, provider=provider)
+            return typed_ai(session, "ask", document=document, prompt=prompt, apply=apply, operations=operations,
+                            image=image, target=target, region=region, provider=provider)
 
     @tool
     def vixl_ai_analyze(

@@ -72,7 +72,59 @@ def validate_inputs(schema, values, *, partial=False):
     return result
 
 
+ENTRANCES = ("fade-in", "slide-in-left", "slide-in-right", "slide-in-up", "slide-in-down", "pop-in", "zoom-in",
+             "draw-on", "typewriter")
+EXITS = ("fade-out", "slide-out-left", "slide-out-right", "slide-out-up", "slide-out-down", "pop-out", "zoom-out",
+         "draw-off")
+HOLDS = ("pulse", "float", "spin", "shake", "bounce", "blink", "color-shift")
+SHORTHAND = ("role", "entrance", "hold", "exit", "duration", "stagger", "easing")
+STEP_FIELDS = {"role", "preset", "property", "from", "to", "start", "duration", "stagger", "easing", "amount",
+               "distance", "after", "id"}
+
+
+def expand_motion(value):
+    """The ``steps`` a motion shorthand stands for: ``entrance``, ``hold`` and ``exit`` (a preset name or a step
+    object) on one ``role``, sharing ``duration``, ``stagger`` and ``easing``. ``hold`` is the time the layers
+    stay between the entrance and the exit, or a looping preset (``pulse``, ``float`` ...) played meanwhile.
+    The steps are ordinary (ids ``entrance``, ``hold``, ``exit``) and come before any explicit ``steps``, so the
+    saved recipe is the long form; a recipe without the shorthand is returned as it is."""
+    if not isinstance(value, dict) or not any(key in value for key in ("entrance", "hold", "exit")):
+        return value
+    from .timeline import PRESETS
+
+    shared = {key: value[key] for key in ("duration", "stagger", "easing") if key in value}
+
+    def step(part, allowed, extra):
+        given = value[part]
+        if isinstance(given, str):
+            require(given in allowed, f"{part} is one of {', '.join(allowed)}, or a step object", field=part)
+            given = {"preset": given}
+        require(isinstance(given, dict) and set(given) <= STEP_FIELDS, f"Invalid motion {part} step", field=part)
+        require("preset" not in given or given["preset"] in PRESETS, f"Unknown {part} preset", field=part)
+        role = given.get("role", value.get("role"))
+        require(isinstance(role, str), f"Motion {part} needs a role (on the step or the recipe)", field="role")
+        return {**shared, **extra, **given, "id": given.get("id", part), "role": role}
+
+    steps, previous = [], None
+    if "entrance" in value:
+        steps.append(step("entrance", ENTRANCES, {}))
+        previous = "entrance"
+    hold, wait = value.get("hold"), 0
+    if isinstance(hold, (dict, str)) and not (isinstance(hold, str) and hold[:1].isdigit()):
+        steps.append(step("hold", HOLDS, {"after": previous} if previous else {}))
+        previous = "hold"
+    elif hold is not None:
+        wait = hold
+    if "exit" in value:
+        steps.append(step("exit", EXITS, {**({"after": previous} if previous else {}), **({"start": wait} if wait else {})}))
+    rest = {key: item for key, item in value.items() if key not in SHORTHAND}
+    return {**rest, "steps": steps + list(value.get("steps", []))}
+
+
 def validate_motion(value):
+    if isinstance(value, dict) and any(key in value for key in ("entrance", "hold", "exit")):
+        bounded_object(value, {"steps", "description", *SHORTHAND}, "Invalid motion recipe")
+        value = expand_motion(value)
     bounded_object(value, {"steps", "description"}, "Invalid motion recipe")
     steps = value.get("steps")
     require(isinstance(steps, list) and 0 < len(steps) <= 100, "Motion needs 1–100 steps")
@@ -392,8 +444,9 @@ def execute(project, op):
             from .assurance import validate_suite
 
             validator = validate_suite
-        validator(op[field])
-        project.state.setdefault(key, {})[name] = deepcopy(op[field])
+        value = expand_motion(op[field]) if kind == "motion-define" else op[field]
+        validator(value)
+        project.state.setdefault(key, {})[name] = deepcopy(value)
 
 
 def schemas(add):
@@ -409,7 +462,12 @@ def schemas(add):
         ["name"],
     )
     add("role-set", {"name": S, "targets": targets}, ["name", "targets"])
-    add("motion-define", {"name": S, "motion": obj}, ["name", "motion"])
+    add("motion-define", {"name": S, "motion": {**obj, "description": "Motion recipe {steps: [{role, preset|property, "
+        "from, to, start, duration, stagger, easing, after, id}]}, or the shorthand {role, entrance, hold, exit, "
+        "duration, stagger, easing}: entrance and exit are preset names (fade-in, slide-in-up, pop-in ... / fade-out, "
+        "slide-out-down, pop-out ...) or step objects, hold is the time the layers stay in between or a looping preset "
+        "(pulse, float, spin ...) played meanwhile. The shorthand is saved as ordinary steps (ids entrance, hold, "
+        "exit) ahead of any explicit steps."}}, ["name", "motion"])
     add(
         "motion-apply",
         {"name": S, "roles": obj, "speed": N, "start": {"type": ["number", "string"]}},

@@ -844,6 +844,7 @@
     "strict": {},
     "preview": {},
     "dry_run": {},
+    "suites": {},
     "if_revision": {
      "type": "integer",
      "description": "Apply only when the document is still at this revision; otherwise 409 revision_conflict.",

@@ -1,5 +1,105 @@
 # Changelog
 
+## 0.35.0
+
+Layouts that pass their own checks (roadmap stage 3) and the cheapest path for agents (roadmap stage 4).
+
+### Changed
+
+- **Every built-in layout recommends sizes and is tested at them.** Each layout lists `sizes` (derived from its
+  `best_for` purposes, with curated choices for stationery, logos, icons and multi-panel memes) in `describe()`,
+  `vixl layout show` and `vixl_reference('layouts')`. `tests/test_layout_quality.py` builds all 53 layouts at those
+  204 layout × size pairs with their example copy over three seeds and requires no fix or composition finding; 31
+  pairs remain as listed exceptions, each with an issue (#803-#814), down from 71 of 204 (#764).
+- **Layouts fill their pages.** `event-poster` grows its type in fine steps until the headline, date block and
+  details fill the page, gives the two breaks of its stack what the dead-band check allows and centres the rest, so
+  a short event never leaves an empty middle (#763). `f-pattern` and `story-vertical` use the shared stack helper
+  with a stated rhythm; a short point list grows and sits at the optical centre (#680). The safe compositions settle
+  a short stack between the margins so neither edge dwarfs the other; `golden-section` splits top and bottom on a
+  square, `rule-of-thirds` sets the copy below the focal point when the column beside it is narrow,
+  `asymmetric-balance` takes a smaller counterweight before a narrow column, `typographic-poster`, `thumbnail-bold`,
+  `bento-grid` and `business-card` group their copy, `slide-content` grows a short list, and `product-card`,
+  `split-screen` and `rule-of-thirds` use the lockup rhythm (#764).
+- **Story canvases keep their column.** The layout margin is read per axis from the safe insets, so a story's
+  250 px top and bottom insets no longer narrow its column to half the canvas and shrink the headline under the
+  hierarchy step (#764).
+- **Type never sets under the house minimums.** Print roles are floored at 6 pt; the call to action sits four
+  units under its lockup (under the dead-band bar on a square); the direction motif is at least 3% of the short
+  side (a rule three times that long) at a corner of the margin box inside the safe area, or left out (#763).
+- **Dead bands under airy spacing.** The dead-band bar's median-gap term is capped at 20% of the frame, a hole
+  between type is reported from 22% of the frame (from 30% when only one side carries copy, so a credit line far
+  below a headline stays a minimal composition), a panel that holds text closes a band as text does, an edge band's
+  opposite margin is read in the band's own column, and type over a canvas-covering picture leaves the picture, not
+  a hole; equal label sets (meme captions) are not a single-weight finding (#680, #764). The craft backtest is
+  unchanged (12 caught, 0 false).
+- **`font-pair` restyles existing text.** Layouts set their text on the `heading` and `body` roles when the
+  document has typography, so later typography changes reach it. `font-pair` takes `apply_to`: `fallback` (the
+  default) gives text a layout set on the proofing font the role its layout meant and keeps a face set by hand,
+  `roles` puts every layout layer on its role, `new` changes nothing existing; the result lists `restyled` and
+  `still_fallback`, and the fallback-font warning names the exact step under `fix` (CLI `vixl font pair NAME
+  --apply-to`) (#766).
+- **Edited copy reflows instead of shrinking.** The overflow repair for a layout's text first grows the box toward
+  the height the copy needs and moves the rows below down with it (into the room before the margin, then by
+  closing their gaps to two units), then rebreaks the lines in free width, and only then shrinks the type, never
+  under a heading's next smaller line; `repair-layout` ranks the growing candidate first. `layout-apply` with
+  `update: true` re-runs the document's stored recipe with the slots given (same seed, palette and fonts) and
+  carries manual style edits on the layout's layers (`layout.update.carried`) (#768).
+- **Body text wraps `pretty` by default** (no one-word last line; `craft.wrap.body`), kept because the house-style
+  quality and diversity eval shows no loss at any level; a document made with `house_style: "off"` keeps greedy
+  breaks. Hanging punctuation stays opt-in for headings and optical sizes are not planned (#652).
+- The start-here recipe (`vixl_reference()`, SKILL.md) opens with one `vixl_apply(create={size or purpose, layout:
+  {name, slots}, look, suites}, preview=true)` call for a new piece; step by step is for edits and art without a
+  text frame. The finishing pass is sized to the purpose's tier (`finishing_pass`: `check` for social, slides,
+  diagram and motion; `full` for poster, document, form and logo) and `vixl_reference(kind)` reports it (#628).
+- `vixl_apply(create=…)`, `compose.compose`, `vixl compose` and `POST /compose` take `suites` (true, names, or a
+  starter such as `"composition"`) and run them in the same call under a `suites` step; `strict` also fails on a
+  failed suite (#628).
+- `vixl_reference(kind)` and free-text briefs point to `vixl_reference()` instead of repeating the start-here recipe
+  (`guide('poster')` shrinks from 7,973 to under 7,000 characters) and name the containers that suit the brief and a
+  `create` object for `vixl_apply(create=…)`. A `layout-apply` result at the default `detail` leaves out the rolled
+  `direction`, `notes` and adapt `fingerprint` (back with `detail: compact` or `full`) (#615).
+- `vixl_reference('workflows')` without a name is a one-line index of every action (under 8 KB) with a `next` hint;
+  `name` takes one action or a list of up to 10, and the response includes only the `definitions` those actions
+  reach, folded into `$ref`s. `vixl_reference('operations', detail="brief")` returns each operation's short form
+  (under 1.5 KB) through `schema_docs.schema_brief`, and a dot path such as `name="text-layout.wrap"` returns one
+  property's schema. `vixl_reference('capabilities')` ranks operations by keyword score and lists the first five
+  (`limit`, `more: N`), returns only the gotchas tagged with the topic, and with `fields=true` adds the top
+  operation's brief schema (`top_operation`). Every `vixl_reference` result carries `schema_version`; `if_version=`
+  returns `{unchanged: true}` when it matches. `vixl_reference('templates', name=…)` and the new
+  `vixl_reference('containers', name=…)` return the required slots and image specs (#615).
+- `vixl_apply(detail="ack")` returns only `{ok, head, changed: N, warnings}`; every apply result carries `head`.
+  Brief results summarise the children a chart, table, diagram or container generates at the parent.
+  `vixl_document(action="inspect")` pages its layers (`offset`, `limit`, `next_offset`), projects them with
+  `fields`, folds generated children with `collapse=true`, narrows with `filter={type, name glob, parent}` and, with
+  `since=HEAD`, lists only the layers changed since that revision. Inspect summaries keep a text layer to `bounds`,
+  `ink_bounds` and `baseline` (full metrics under `verbose`; a 40-layer inspect shrank from 17,857 to 9,685
+  characters). `report_path="x.json"` on `vixl_check` and `vixl_apply` writes the full report into the workspace
+  and returns a bounded summary. `vixl_apply(dry_run=true)` returns a `proposal_id`; `vixl_apply(proposal=ID)`
+  commits it when the head is unchanged, else fails with `stale_proposal` (#615).
+- `vixl_export(kind='batch')` opens every target's document before writing: a missing embedded asset, an image
+  variable naming no asset, a font no renderer can load, or an export over the call limits fails the whole batch
+  naming the target, so no file is left behind (#615).
+- Authoring shortcuts: `vixl_apply(defaults={font, fill, stroke, size})` fills open fields of the batch's creation
+  operations (reported under `normalized`); `create-many` (`{prototype, rows}`) stands for one creation operation
+  per row and expands before the batch runs; `deck-from-markdown` accepts structured `slides=[{layout, title,
+  bullets, image, chart, …}]`; `motion-define` takes `{role, entrance, hold, exit, duration, stagger, easing}`;
+  `container-rows` places one container per data row; `pixel-art` rows take run-length counts (`"3.2#"`),
+  `mirror: "x"|"y"|"xy"` completes a symmetrical sprite, and `pixel-draw` takes `rows` and `cells` for a frame that
+  gives only what changed (#615).
+- The built-in planner (`vixl ask`, `vixl_ai_plan`) sends brief schemas for a shortlist of at most eight operations
+  matched from the prompt (or `--ops` / `operations=`), the document summary around the target or region, only the
+  matching `design_guidance` styles, and by `--image auto|none|region|full` no image for a text or variable edit;
+  a plan that fails validation is requested once more with full schemas. Requests have a stable order with the
+  reference block marked for prompt caching, and the result reports `request`, `usage` and `cache`. A "make the
+  heading red" request shrinks from about 242,000 to about 6,000 characters (#615).
+- The agent eval reports per task `tokens_total`, `cache_read_tokens` (null in a replay), `images` and the
+  character sizes of what was sent and received; `python -m evals.token_baseline` records a baseline of ten
+  representative briefs in `evals/token-baseline.json` (#615, #628).
+
+### Fixed
+
+- `editorial-grid` and `diagonal-band` no longer offer example copy for a slot they never place (`cta`, `label`),
+  which failed with `unused_slot` (#764).
 ## 0.34.1
 
 Twenty original typefaces drawn with Vixl, and two outline fixes they needed.
@@ -23,7 +123,6 @@ Twenty original typefaces drawn with Vixl, and two outline fixes they needed.
   outline, keeping where it draws, rotation and flips included.
 - **A path a rounding error outside its box still combines.** Path text is written to three decimals, so a point on
   the box edge could land 0.0004 px outside it; clipping that hair cut along the outline and pathfinder failed with
-  "the combined outline does not close up". Overflow smaller than the boolean point tolerance is no longer clipped.
 
 ## 0.34.0
 

@@ -1177,13 +1177,17 @@ def check_design(
                     if any(font in BUNDLED_FONTS for font in fonts_used(resolved[item["id"]], FALLBACK_FONT))]
         if fallback:
             names = ", ".join(repr(x["name"]) for x in fallback[:5]) + (" …" if len(fallback) > 5 else "")
+            # The exact step: the pairing the layout chose for this document, else a random one.
+            pairing = ((candidate.state.get("layout") or {}).get("font_choice") or {}).get("pairing") or "random"
             issue(
                 "fonts",
                 "warning",
                 f"{len(fallback)} text layer(s) use the bundled fallback font, which is for proofing only ({names}). "
-                "Choose typefaces: a font pairing (vixl_reference('fonts') and font-pair over MCP; vixl font pairings and "
-                "vixl font pair on the CLI), or install a font.",
+                f"Choose typefaces: {{type: font-pair, pairing: {pairing!r}, apply_to: 'fallback'}} in vixl_apply "
+                f"(vixl font pair {pairing} on the CLI) restyles them; vixl_reference('fonts') lists the pairings, "
+                "or install a font.",
                 fallback,
+                fix={"type": "font-pair", "pairing": pairing, "apply_to": "fallback"},
             )
 
     if "print" in checks:
@@ -1245,7 +1249,11 @@ def check_design(
     if "composition" in checks:
         from .composition import check as check_composition
 
-        check_composition(candidate, resolved, geometry, content, role, ancestors, issue, local_bounds=local_bounds)
+        # A picture that covers the canvas is the page's subject: type set over it leaves the picture, not a
+        # hole, between its lines.
+        pictured = any(item["type"] in ("image", "frame") and item not in content for item in layers)
+        check_composition(candidate, resolved, geometry, content, role, ancestors, issue, local_bounds=local_bounds,
+                          pictured=pictured)
 
     if "cost" in checks:
         from .profiling import cost_findings

@@ -107,6 +107,7 @@ SUMMARIES = {
     "effect-move": "Reorder a layer's effect stack: move one effect to a position, to the top or bottom, or before/after another.",
     "preset-save": "Save a layer's effect stack as a named preset.",
     "preset-apply": "Add a saved effect preset to a layer, optionally overriding amounts.",
+    "create-many": "Several copies of one operation in one item: a prototype plus a row of fields per copy, expanded into ordinary operations before the batch runs.",
     "variable": "Set or delete a document variable used as ${name} (or ${name|upper|default:TEXT|map:NAME ...}) in text, colors and images.",
     "variable-map": "Define, extend or delete a named value map that ${name|map:NAME} placeholders look values up in.",
     "swatch": "Define, change or delete a named color (used as @name) that can build on other swatches.",
@@ -657,7 +658,7 @@ OVERRIDES = {
     "suite-set": {"name": "Suite name.", "suite": "The suite object."},
     "suite-capture": {"name": "Suite name.", "targets": "Layers to protect.", "regions": "Pixel regions [[x, y, w, h]]."},
     "role-set": {"name": "Role name.", "targets": "Layers in the role."},
-    "motion-define": {"name": "Motion name.", "motion": "Motion recipe {steps: [...]}."},
+    "motion-define": {"name": "Motion name."},
     "motion-apply": {"name": "Saved motion.", "roles": "Role-to-layer overrides.", "speed": "Speed multiplier.",
                      "start": "When the motion begins."},
     "action-define": {"name": "Action name.", "action": "Action {operations: [...]}."},
@@ -761,6 +762,12 @@ OVERRIDES = {
 }
 
 EXAMPLES = {
+    "create-many": [
+        {"type": "create-many",
+         "prototype": {"type": "text", "size": 20, "color": "#111111", "x": 40},
+         "rows": [{"name": "row-1", "text": "Monday", "y": 40}, {"name": "row-2", "text": "Tuesday", "y": 72},
+                  {"name": "row-3", "text": "Wednesday", "y": 104}]},
+    ],
     "key-value-list": [
         {"type": "key-value-list", "name": "shares", "x": 40, "y": 40, "width": 360,
          "rows": [{"label": "Drip", "value": "15,900"}, {"label": "Espresso", "value": "11,960"},
@@ -964,3 +971,108 @@ def layout_slots(name):
         return describe(name)["slots"]
     except VixlError:
         return {}
+
+
+# --------------------------------------------------------------------------------------- brief schemas (#615)
+
+BRIEF_ENUM_VALUES = 8  # enum values a brief lists before "+N more"
+BRIEF_FIELD_LIMIT = 40  # optional fields a brief types; past it only their names are listed
+
+
+def _type_name(schema):
+    """A compact type string for a field schema: "number", "string|number", "enum: a|b|c", "array<number>"."""
+    if "const" in schema:
+        return f"const {schema['const']}"
+    if "enum" in schema:
+        values = [str(value) for value in schema["enum"]]
+        shown = "|".join(values[:BRIEF_ENUM_VALUES])
+        return f"enum: {shown}" + (f" +{len(values) - BRIEF_ENUM_VALUES} more" if len(values) > BRIEF_ENUM_VALUES else "")
+    options = schema.get("anyOf") or schema.get("oneOf")
+    if options:
+        return "|".join(dict.fromkeys(_type_name(option) for option in options))
+    kind = schema.get("type")
+    if isinstance(kind, list):
+        return "|".join(kind)
+    if kind == "array" and isinstance(schema.get("items"), dict):
+        return f"array<{_type_name(schema['items'])}>"
+    if kind:
+        return kind
+    if "$ref" in schema:
+        return schema["$ref"].rsplit("/", 1)[-1]
+    return "any"
+
+
+def _placeholder(name, schema):
+    """A plausible value for a required field in a synthesized example."""
+    if "const" in schema:
+        return schema["const"]
+    if "enum" in schema:
+        return schema["enum"][0]
+    options = schema.get("anyOf") or schema.get("oneOf")
+    if options:
+        return _placeholder(name, options[0])
+    kind = schema.get("type")
+    kind = kind[0] if isinstance(kind, list) and kind else kind
+    if kind == "number" or kind == "integer":
+        return schema.get("minimum", 1) if schema.get("minimum", 0) > 0 else 1
+    if kind == "boolean":
+        return True
+    if kind == "array":
+        items = schema.get("items")
+        return [_placeholder(name, items)] if isinstance(items, dict) else []
+    if kind == "object":
+        return {key: _placeholder(key, value) for key, value in schema.get("properties", {}).items()
+                if key in schema.get("required", [])}
+    return "LAYER" if name in ("target", "targets") else name.upper()
+
+
+def schema_brief(variant):
+    """The short form of one operation variant (what the planner and ``vixl_reference('operations',
+    detail='brief')`` send): the type and summary, each required field with its type and enum, the other fields
+    with their types (names only past ``BRIEF_FIELD_LIMIT``), and one example. Descriptions are left to the full
+    schema; everything here is under about 1.5 KB."""
+    properties = variant.get("properties", {})
+    kind = properties.get("type", {}).get("const")
+    required = [name for name in variant.get("required", []) if name != "type"]
+    optional = [name for name in properties if name != "type" and name not in required]
+    brief = {"type": kind, "summary": (variant.get("description") or "").split(". ")[0].rstrip(".")}
+    if required:
+        brief["required"] = {name: _type_name(properties.get(name, {})) for name in required}
+    if len(optional) > BRIEF_FIELD_LIMIT:
+        brief["fields"] = optional
+    elif optional:
+        brief["fields"] = {name: _type_name(properties[name]) for name in optional}
+    brief["example"] = variant["examples"][0] if variant.get("examples") else {
+        "type": kind, **{name: _placeholder(name, properties.get(name, {})) for name in required}}
+    brief["full"] = f"vixl_reference('operations', name=['{kind}'], detail='full') for descriptions and constraints"
+    return brief
+
+
+def property_schema(variant, path):
+    """The schema of one property of ``variant`` named by a dot path below the operation type
+    (``"wrap"``, ``"slots.title"``, ``"points.x"`` walks array items); None when no such property exists."""
+    node = variant
+    for part in path.split("."):
+        found = None
+        while found is None and isinstance(node, dict):
+            properties = node.get("properties")
+            if isinstance(properties, dict) and part in properties:
+                found = properties[part]
+                break
+            if isinstance(node.get("items"), dict):
+                node = node["items"]
+                continue
+            for option in node.get("anyOf") or node.get("oneOf") or []:
+                if isinstance(option.get("properties"), dict) and part in option["properties"]:
+                    found = option["properties"][part]
+                    break
+            break
+        if found is None:
+            return None
+        node = found
+    return node
+
+
+def property_names(variant):
+    """The dot paths one level down from an operation: its property names."""
+    return [name for name in variant.get("properties", {}) if name != "type"]

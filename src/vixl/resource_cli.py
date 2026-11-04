@@ -157,6 +157,9 @@ def project_command(project, cmd, args):
         p.add_argument("--weight", type=int, default=400)
         p.add_argument("--italic", action="store_true")
         p.add_argument("--role", help="heading, body, a text stage (h1, label …) or another role name (accent, hand)")
+        p.add_argument("--apply-to", choices=["new", "fallback", "roles"], default="fallback",
+                       help="pair: existing text that takes the faces (fallback: text on the proofing font and role "
+                            "text; roles: every layout layer; new: nothing existing)")
         p.add_argument("--seed", type=_seed)
         p.add_argument("--mood")
         p.add_argument("--for", dest="purpose")
@@ -192,7 +195,7 @@ def project_command(project, cmd, args):
             return typefaces.cover_fonts(project, a.text, a.scripts, a.weight), True
         if a.action == "pair":
             return typefaces.pair_fonts(project, a.source, seed=a.seed, mood=a.mood, best_for=a.purpose,
-                                        body_italic=True), True
+                                        body_italic=True, apply_to=a.apply_to), True
         if a.action == "use":
             require(a.source and a.role, "Use font use NAME --role heading|body")
             return project.apply({"type": "font-register", "name": a.source, "role": a.role}, detail="compact"), True

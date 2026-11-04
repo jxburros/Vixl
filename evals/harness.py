@@ -2,7 +2,8 @@
 
 Each task gives an agent a natural-language design brief and a fresh workspace, lets it work
 through the real MCP server (in-process), then grades the resulting files with programmatic
-checks. Results record success, model round trips, tool calls, tool errors and token usage, so
+checks. Results record success, model round trips, tool calls, tool errors, token usage (total and cache
+reads, null in a replay), images returned and the character sizes of what was sent and received, so
 changes to tool descriptions, schemas, errors or responses can be measured instead of guessed.
 
 Agents:
@@ -294,6 +295,8 @@ class Tools:
         self.calls = 0
         self.errors = 0
         self.result_chars = 0
+        self.input_chars = 0  # the JSON size of every call's arguments: what the agent had to write
+        self.images = 0  # image blocks the tools sent back (each is about 300 tokens at 512 px)
 
     def definitions(self):
         tools = self.loop.run_until_complete(self.server.list_tools())
@@ -302,6 +305,7 @@ class Tools:
     def call(self, name, arguments):
         """Return (is_error, blocks) where blocks are Anthropic-style text/image content blocks."""
         self.calls += 1
+        self.input_chars += len(json.dumps(arguments, default=str))
         try:
             environment = {"VIXL_FONT_CACHE": str(self.font_cache)} if self.font_cache.is_dir() else {}
             with patch.dict(os.environ, environment):
@@ -315,6 +319,7 @@ class Tools:
         blocks = []
         for item in content:
             if getattr(item, "type", None) == "image":
+                self.images += 1
                 blocks.append(
                     {"type": "image", "source": {"type": "base64", "media_type": item.mimeType, "data": item.data}}
                 )
@@ -464,13 +469,27 @@ def run_task(task, agent, keep=None, judge=None):
             "tool_errors": tools.errors,
             "retries": retries(outcome.get("trace", [])),
             "tool_result_tokens_estimate": tools.result_chars // 4,
+            "tool_input_chars": tools.input_chars,
+            "tool_result_chars": tools.result_chars,
+            "images": tools.images,
             "usage": outcome.get("usage", {}),
+            **token_fields(outcome.get("usage", {})),
             "seconds": round(time.monotonic() - started, 2),
             "error": error,
             "stop_reason": outcome.get("stop_reason"),
             "final": outcome.get("final"),
             "trace": outcome.get("trace", []),
         }
+
+
+def token_fields(usage):
+    """``tokens_total`` (input, output, cache creation and cache reads) and ``cache_read_tokens`` from a
+    provider's usage. A replay has no provider usage, so both are null, not missing."""
+    if not usage or "input_tokens" not in usage:
+        return {"tokens_total": None, "cache_read_tokens": None}
+    keys = ("input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
+    return {"tokens_total": sum(usage.get(key) or 0 for key in keys),
+            "cache_read_tokens": usage.get("cache_read_input_tokens") or 0}
 
 
 def retries(trace):
@@ -488,6 +507,7 @@ def over_budget(results, budgets):
 def summarize(results):
     count = len(results) or 1
     total = {key: sum(r["usage"].get(key, 0) for r in results) for key in ("input_tokens", "output_tokens")}
+    measured = [r for r in results if r.get("tokens_total") is not None]
     crafted = [r["craft_score"] for r in results if r.get("craft_score") is not None]
     judged = [r["judge"]["mean"] for r in results if isinstance(r.get("judge"), dict) and "mean" in r["judge"]]
     return {
@@ -501,6 +521,11 @@ def summarize(results):
         "mean_retries": round(sum(r.get("retries", 0) for r in results) / count, 2),
         "mean_tool_result_tokens": round(sum(r["tool_result_tokens_estimate"] for r in results) / count),
         **{f"total_{key}": value for key, value in total.items()},
+        "total_tokens": sum(r["tokens_total"] for r in measured) if measured else None,
+        "total_cache_read_tokens": sum(r["cache_read_tokens"] for r in measured) if measured else None,
+        "total_images": sum(r.get("images", 0) for r in results),
+        "mean_tool_input_chars": round(sum(r.get("tool_input_chars", 0) for r in results) / count),
+        "mean_tool_result_chars": round(sum(r.get("tool_result_chars", 0) for r in results) / count),
         **({"mean_craft_score": round(sum(crafted) / len(crafted), 3)} if crafted else {}),
         **({"mean_judge_score": round(sum(judged) / len(judged), 2)} if judged else {}),
     }
@@ -516,14 +541,16 @@ def markdown(results, summary, meta):
         + (f" · craft {summary['mean_craft_score']}" if "mean_craft_score" in summary else "")
         + (f" · judge {summary['mean_judge_score']}/5" if "mean_judge_score" in summary else ""),
         "",
-        "| Task | Result | Round trips | Tool calls | Tool errors | Input tok | Output tok | Craft | Failed checks |",
-        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
+        "| Task | Result | Round trips | Tool calls | Tool errors | Input tok | Output tok | Total tok | Cache read | Images | Craft | Failed checks |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
     ]
     for r in results:
         failed = ", ".join(c["check"] for c in r["checks"] if not c["passed"]) or ("error: " + r["error"] if r["error"] else "")
         lines.append(
             f"| {r['task']} | {'pass' if r['passed'] else 'FAIL'} | {r['round_trips']} | {r['tool_calls']} | "
             f"{r['tool_errors']} | {r['usage'].get('input_tokens', '–')} | {r['usage'].get('output_tokens', '–')} | "
+            f"{'–' if r.get('tokens_total') is None else r['tokens_total']} | "
+            f"{'–' if r.get('cache_read_tokens') is None else r['cache_read_tokens']} | {r.get('images', 0)} | "
             f"{craft_cell(r)} | {failed} |"
         )
     return "\n".join(lines) + "\n"

@@ -128,3 +128,54 @@ def test_refuses_to_replace_other_documents_and_bad_input(workspace):
         dispatch(session, "deck-from-markdown", {"markdown": "empty.md", "output": "e.vixl"})
     with pytest.raises(VixlError, match="not found"):
         dispatch(session, "deck-from-markdown", {"markdown": "missing.md", "output": "e.vixl"})
+
+
+def test_structured_slides_build_the_same_deck_as_the_markdown(workspace):  # #615 item 41
+    slides = [
+        {"layout": "title", "title": "Tide Pool Nights", "subtitle": "A summer music series", "caption": "Harbour Arts · 2026"},
+        {"title": "Why the harbour", "bullets": ["Free concerts **every Friday**", "Food trucks and *local* makers"],
+         "notes": "Mention the ferry schedule."},
+        {"title": "Line-up", "table": [["Date", "Act", "Genre"], ["June 6", "The Low Tides", "Folk"],
+                                       ["June 13", "Saltwater Brass", "Jazz"]]},
+        {"title": "Attendance", "text": "Attendance has grown every year.",
+         "chart": {"kind": "line", "rows": [["Year", "Visitors"], [2023, 1200], [2024, 1850]]},
+         "notes": "Growth is mostly from families."},
+        {"title": "Setting", "image": {"path": "photo.png", "alt": "The stage at dusk"}},
+        {"layout": "quote", "title": "In their words", "quote": "It felt like the whole town came out to listen.",
+         "attribution": "Maya, volunteer"},
+        {"layout": "section", "title": "Thank you"},
+    ]
+    session = Session(workspace=workspace)
+    from_markdown = dispatch(session, "deck-from-markdown", {"markdown": "talk.md", "output": "md.vixl", "check": False})
+    from_slides = dispatch(session, "deck-from-markdown", {"slides": slides, "output": "data.vixl", "check": False})
+    assert from_slides["slides"] == from_markdown["slides"] == 7
+    assert from_slides["pages"] == from_markdown["pages"]
+
+    def signature(path):
+        project = Project.load(workspace / path)
+        pages = []
+        for page in project.state["pages"]:
+            project.apply({"type": "page", "action": "select", "page": page["name"]})
+            layers = [(layer["name"], layer["type"], layer.get("text"), layer.get("markdown"), round(layer["x"]),
+                       round(layer["y"]), round(layer.get("width", 0)), round(layer.get("height", 0)), layer.get("size"),
+                       layer.get("color"), layer.get("fill"), bool(layer.get("asset")), layer.get("table"))
+                      for layer in project.state["layers"]]
+            pages.append((page["name"], page.get("notes", ""), page.get("master"), layers))
+        return pages
+
+    assert signature("data.vixl") == signature("md.vixl")
+    assert Project.load(workspace / "data.vixl").state["deck_markdown"]["source"] == "slides"
+    # Re-running with the same slides rebuilds nothing; a changed slide is rebuilt.
+    again = dispatch(session, "deck-from-markdown", {"slides": slides, "output": "data.vixl", "check": False})
+    assert again["rebuilt"] == [] and len(again["kept"]) == 7
+    slides[1]["bullets"].append("Sunset views")
+    changed = dispatch(session, "deck-from-markdown", {"slides": slides, "output": "data.vixl", "check": False})
+    assert changed["rebuilt"] == ["why-the-harbour"]
+    # Bad input names the slide and the field; markdown and slides together are refused.
+    with pytest.raises(VixlError, match=r"slides\[0\].*unknown field"):
+        dispatch(session, "deck-from-markdown", {"slides": [{"heading": "x"}], "output": "bad.vixl"})
+    with pytest.raises(VixlError, match=r"slides\[0\].*rows"):
+        dispatch(session, "deck-from-markdown", {"slides": [{"title": "x", "chart": {"kind": "bar"}}], "output": "bad.vixl"})
+    with pytest.raises(VixlError, match="not both"):
+        dispatch(session, "deck-from-markdown", {"slides": slides, "markdown": "talk.md", "output": "bad.vixl"})
+    assert not (workspace / "bad.vixl").exists()

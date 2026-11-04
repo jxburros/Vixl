@@ -672,12 +672,16 @@ def is_heading(project, layer):
 
 
 def document_wrap(project, heading):
-    """The wrap a new boxed text layer takes when none is given: the house style's heading wrap for headings,
-    else greedy."""
+    """The wrap a new boxed text layer takes when none is given: the house style's heading wrap for headings
+    (balance), else its body wrap (pretty: no one-word last line). A document made with the house style off
+    keeps greedy body breaks."""
     from . import house_style
 
     rule = house_style.rule("wrap")
-    return rule["heading"] if heading else "greedy"
+    if heading:
+        return rule["heading"]
+    off = (project.state.get("design_defaults") or {}).get("house_style") == house_style.OFF
+    return "greedy" if off else rule.get("body", "greedy")
 
 
 def validate_tabs(tabs, field="tabs"):

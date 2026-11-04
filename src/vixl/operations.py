@@ -400,6 +400,13 @@ def execute(project, op):
         for single in fan_out({**op, "type": kind}):
             execute(project, single)
         return None
+    if kind == "create-many":  # Inside a nested batch (frames-edit …): expand here, validating each copy.
+        from .normalize import expand_batch
+        from .schema import validate_operation
+
+        for single in expand_batch([{**op, "type": kind}], []):
+            execute(project, validate_operation(single))
+        return None
     target = op.get("target", op.get("layer"))
     from .schema import LAYER_FINISH
 

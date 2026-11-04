@@ -56,38 +56,40 @@ To carry a generated layout to another size, `adapt-layout` rebuilds it from the
 
 Explicit seeds are deterministic. Without one, sparse designs get a fresh seed unless the document or workspace sets `variety: "fixed"`. The applied choices are recorded in `state.layout` (and reported in the change summary), so you can reproduce a result with its returned seed or pin any choice explicitly. See [safe variety](safe-variety.md) for safe pools, expanded roll dimensions and workspace history.
 
-| Layout | Principles | Best for |
-| --- | --- | --- |
-| `hero-statement` | single focal point, scale contrast, negative space | social, posters, web, slides |
-| `editorial-grid` | modular column grid, typographic hierarchy, rules | print, posters, web |
-| `split-screen` | figure–ground zones, proportional division | web, social, slides, ads |
-| `centered-axis` | symmetrical balance, optical centering | invitations, announcements |
-| `asymmetric-balance` | asymmetric visual weight, tension | posters, social |
-| `z-pattern` | Z reading path ending at the call to action | ads, web, banners |
-| `f-pattern` | scannable left edge, parallel subheads | print, slides, infographics |
-| `rule-of-thirds` | focal point on a thirds intersection | social, posters, photo |
-| `golden-section` | golden-ratio division | print, web, social |
-| `big-number` | data as focal point | infographics, slides |
-| `quote-card` | typographic focal point, hanging punctuation | social, slides |
-| `framed` | enclosure, symmetry, formality | certificates, invitations, menus |
-| `diagonal-band` | diagonal energy | sales, sports, posters |
-| `typographic-poster` | type as image, extreme scale contrast | posters, covers |
-| `product-card` | proximity grouping, price emphasis | ecommerce, ads |
-| `event-poster` | information hierarchy, chunked details; the call to action and caption share a footer row when the caption fits beside the button, otherwise the caption takes its own row under it | posters, flyers |
-| `banner` | horizontal flow, CTA in terminal area | ads, headers, email |
-| `letterhead` | identity consistency, quiet hierarchy | stationery |
-| `business-card` | proximity, one alignment edge | stationery |
-| `slide-title`, `slide-content` | one idea per slide, parallel bullets | slides |
-| `logo-horizontal`, `logo-stacked`, `emblem`, `monogram` | clear space, reduction, small-size legibility | logos, badges |
-| `app-icon` | keyline grid, single glyph | icons, favicons |
-| `thumbnail-bold` | legibility at thumbnail size | YouTube, covers |
-| `story-vertical` | UI safe zones, thumb-reach CTA | stories, reels, TikTok |
-| `price-list` | tabular alignment, row rhythm | menus, price lists |
-| `photo-caption` | scrim for contrast | social, covers |
-| `minimal-mark` | negative space, restraint | posters, covers |
-| `bento-grid` | modular tiles of varied span | web, slides, infographics |
-| `meme-top-bottom`, `meme-caption-above`, `meme-reaction` | text over or beside one picture, caption contrast | memes, social, GIFs |
-| `meme-comparison`, `meme-four-panel`, `meme-labelled` | panels in reading order, short labels | memes, social |
+Each layout recommends named sizes (`sizes` in `vixl layout show NAME` and `vixl_reference('layouts')`), derived from its `best_for` purposes with a few curated choices; `tests/test_layout_quality.py` builds every layout at those sizes with its example copy and requires no fix or composition finding, so a first result at a recommended size should need no repair round.
+
+| Layout | Principles | Best for | Sizes |
+| --- | --- | --- | --- |
+| `hero-statement` | single focal point, scale contrast, negative space | social, posters, web, slides | `instagram-post`, `instagram-story`, `poster-18x24`, `og-image`, `slide` |
+| `editorial-grid` | modular column grid, typographic hierarchy, rules | print, posters, web | `letter`, `poster-18x24`, `og-image`, `slide` |
+| `split-screen` | figure–ground zones, proportional division | web, social, slides, ads | `og-image`, `instagram-post`, `instagram-story`, `slide` |
+| `centered-axis` | symmetrical balance, optical centering | invitations, announcements | `invitation`, `instagram-post`, `instagram-story`, `certificate` |
+| `asymmetric-balance` | asymmetric visual weight, tension | posters, social | `poster-18x24`, `instagram-post`, `instagram-story`, `og-image` |
+| `z-pattern` | Z reading path ending at the call to action | ads, web, banners | `instagram-post`, `og-image`, `web-banner`, `instagram-story` |
+| `f-pattern` | scannable left edge, parallel subheads | print, slides, infographics | `letter`, `slide`, `pinterest-long`, `og-image` |
+| `rule-of-thirds` | focal point on a thirds intersection | social, posters, photo | `instagram-post`, `instagram-story`, `poster-18x24`, `photo-5x7` |
+| `golden-section` | golden-ratio division | print, web, social | `letter`, `og-image`, `instagram-post`, `instagram-story` |
+| `big-number` | data as focal point | infographics, slides | `pinterest-long`, `instagram-post`, `instagram-story`, `slide` |
+| `quote-card` | typographic focal point, hanging punctuation | social, slides | `instagram-post`, `instagram-story`, `slide`, `letter` |
+| `framed` | enclosure, symmetry, formality | certificates, invitations, menus | `certificate`, `invitation`, `menu`, `letter` |
+| `diagonal-band` | diagonal energy | sales, sports, posters | `instagram-post`, `instagram-story`, `poster-18x24` |
+| `typographic-poster` | type as image, extreme scale contrast | posters, covers | `poster-18x24`, `instagram-post`, `instagram-story`, `ebook-cover` |
+| `product-card` | proximity grouping, price emphasis | ecommerce, ads | `instagram-post`, `instagram-story` |
+| `event-poster` | information hierarchy, chunked details; the type grows until the headline, date block and details fill the page, the two breaks of the stack take what the dead-band check allows and the rest centres the group, so a short event never leaves an empty middle; the call to action and caption share a footer row when the caption fits beside the button, otherwise the caption takes its own row under it | posters, flyers | `poster-18x24`, `instagram-post`, `instagram-story`, `letter` |
+| `banner` | horizontal flow, CTA in terminal area | ads, headers, email | `instagram-post`, `og-image`, `email-banner`, `x-header` |
+| `letterhead` | identity consistency, quiet hierarchy | stationery | `letterhead`, `letterhead-a4` |
+| `business-card` | proximity, one alignment edge | stationery | `business-card` |
+| `slide-title`, `slide-content` | one idea per slide, parallel bullets | slides | `slide` |
+| `logo-horizontal`, `logo-stacked`, `emblem`, `monogram` | clear space, reduction, small-size legibility | logos, badges | `logo` |
+| `app-icon` | keyline grid, single glyph | icons, favicons | `app-icon`, `favicon` |
+| `thumbnail-bold` | legibility at thumbnail size | YouTube, covers | `youtube-thumbnail`, `instagram-post`, `instagram-story`, `ebook-cover` |
+| `story-vertical` | UI safe zones, thumb-reach CTA | stories, reels, TikTok | `instagram-story`, `tiktok` |
+| `price-list` | tabular alignment, row rhythm | menus, price lists | `menu`, `letter` |
+| `photo-caption` | scrim for contrast | social, covers | `instagram-post`, `instagram-story`, `og-image`, `ebook-cover` |
+| `minimal-mark` | negative space, restraint | posters, covers | `poster-18x24`, `instagram-post`, `instagram-story`, `ebook-cover` |
+| `bento-grid` | modular tiles of varied span | web, slides, infographics | `og-image`, `instagram-post`, `instagram-story`, `slide`, `pinterest-long` |
+| `meme-top-bottom`, `meme-caption-above`, `meme-reaction` | text over or beside one picture, caption contrast | memes, social, GIFs | `instagram-post`, `instagram-story` |
+| `meme-comparison`, `meme-four-panel`, `meme-labelled` | panels in reading order, short labels | memes, social | `instagram-post` |
 
 ```bash
 vixl layout list
@@ -140,7 +142,7 @@ alone names the accent device (`rule`, `bar` …).
 Layout headlines also wrap balanced (`wrap: "balance"`, see
 [line breaking](../text/typography.md#line-breaking)).
 
-`prefix` namespaces layer names, `replace: true` removes the previous layout's layers, `transparent: true` skips the background, and `font`/`display_font` use registered fonts. Without them, layouts use the document typography set by `font pair`, or the proofing fallback font, which `check` flags.
+`prefix` namespaces layer names, `replace: true` removes the previous layout's layers, `update: true` re-runs the document's stored recipe with the slots given (same seed, palette and fonts) and carries the style edits made by hand on the layout's layers (colour, font, opacity, stroke …), so new copy reflows the composition instead of shrinking into the old boxes (`layout.update.carried` lists them; since 0.35), `transparent: true` skips the background, and `font`/`display_font` use registered fonts. Without them, layouts use the document typography set by `font pair`, or the proofing fallback font, which `check` flags.
 
 ### Palette roles and keeping your order
 

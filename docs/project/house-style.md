@@ -816,8 +816,10 @@ and #370 (layouts fail their own safe-area check).
   `date=plain` for the plain details.
 - **Balanced headings (4a).** A new `text-layout` box on a heading (a heading font role or stage, or text whose size reads as
   the h2 step or larger) and every layout headline take `wrap: "balance"`, lines of even width in the same line count
-  (`craft.wrap`). Body text keeps greedy wrapping; `wrap: "pretty"` asks for no one-word last line. Pass
-  `wrap: "greedy"` for greedy breaks. See [line breaking](../guides/text/typography.md#line-breaking).
+  (`craft.wrap`). Body text takes `wrap: "pretty"` (no one-word last line; `craft.wrap.body`, kept because the
+  quality and diversity eval showed no loss at any level); a document made with the house style off keeps greedy
+  body breaks. Pass `wrap: "greedy"` for greedy breaks. Hanging punctuation stays opt-in for headings: on by
+  default it set off `margin_drift` and lowered the eval's no-composition-finding share. Optical sizes are not planned. See [line breaking](../guides/text/typography.md#line-breaking).
 - **Scatter that thins in place (7a).** `pattern-scatter` lays tiles out progressively (`distribution:
   "progressive"`), so the same seed with a lower `count` keeps the first copies in place and `count` places exactly
   that many. `distribution: "poisson"` re-rolls the layout on every count change.

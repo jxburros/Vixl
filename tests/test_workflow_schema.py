@@ -116,3 +116,22 @@ def test_suite_errors_name_the_offending_field(bad, field_hint):
     with pytest.raises(Exception) as caught:
         validate_operation({"type": "suite-set", "name": "s", "suite": bad})
     assert field_hint in str(caught.value) or field_hint in str(getattr(caught.value, "field", ""))
+
+
+def test_scoped_folds_embedded_definitions_into_refs_and_keeps_only_reachable_ones():
+    from vixl.workflow_schema import DEFINITIONS, reachable_definitions, scoped
+
+    actions = describe()["actions"]
+    check = scoped({"check": actions["check"]})
+    assert set(check["definitions"]) == {"suite"}
+    assert check["actions"]["check"]["properties"]["suite"]["anyOf"][1] == {"$ref": "#/definitions/suite"}
+    assert check["definitions"]["suite"] == SUITE  # nothing inside the suite is itself a definition
+    assert reachable_definitions([actions["submit"]["properties"]["job"]]) == {"job"}
+    assert reachable_definitions([actions["act"]["properties"]["operations"]]) == set()
+    nested = {"outer": {"type": "object", "properties": {"inner": {"$ref": "#/definitions/inner"}}},
+              "inner": {"type": "string"}}
+    found = scoped({"a": {"properties": {"x": {"$ref": "#/definitions/outer", "description": "kept"}}}}, nested)
+    assert set(found["definitions"]) == {"outer", "inner"}
+    assert found["actions"]["a"]["properties"]["x"] == {"$ref": "#/definitions/outer", "description": "kept"}
+    assert found["definitions"]["outer"]["properties"]["inner"] == {"$ref": "#/definitions/inner"}
+    assert set(DEFINITIONS) >= {"suite", "job", "production_spec", "film_spec", "recipe", "manifest"}

@@ -45,6 +45,13 @@ A pixel layer stores a small grid of single-character palette indices instead of
 
 Grids are 1–256 pixels per axis with 1–94 printable non-space ASCII palette symbols; every cell must have a palette entry. Palette colors can use `@swatch` or `${variable}`. Without a palette, `.` is transparent and `#` is black. Blank grids use `.` by default; pass `--background SYMBOL` with a custom palette. Explicit rows supply their own dimensions/background and cannot be combined with width/height/background.
 
+**Shorter rows.** A count before a symbol repeats it, so `"3.2#"` is `"...##"` and a 16-wide row of one colour is `"16g"` (rows are read literally when the palette uses a digit as a symbol). `mirror` completes a symmetrical sprite from half of it: `"x"` takes the rows as the left half, `"y"` as the top half, `"xy"` as the top-left quarter. For an odd size give `width` (or `height`) one less than twice the half and the last given column (or row) becomes the centre line. The stored rows are always the full literal grid, so `pixels` and later edits see the same sprite either way:
+
+```json
+{"type":"pixel-art","name":"coin","palette":{".":"transparent","g":"#ffc44d","s":"#9c5f22"},
+ "rows":["2.2s",".s2g","s3g","s3g"],"mirror":"xy"}
+```
+
 **Shading and outline.** A new sprite draws with a shading ramp and an outline, so a figure reads as a form rather than a flat silhouette. Both apply as the layer draws: the stored rows and palette stay exactly as given, `pixels` returns them (and the drawn result under `drawn`), and a palette swap carries into the ramp.
 
 - `outline` rings the silhouette with a 1 px line on the transparent cells around it, in the darkest palette colour (or a colour you give). A sprite whose edge is already mostly dark gets no second outline.
@@ -82,6 +89,16 @@ vixl animation-set --order idle glint glint-low --loop 0
 vixl export-animation --out coin.gif --format gif --scale 8
 vixl export-animation --out coin.apng --format apng
 vixl export-animation --out coin-sheet.png --format sheet --columns 3
+```
+
+A frame that differs from the last one in a few cells needs no redraw: `pixel-draw` with `rows` (only the changed rows, by index, run-length counts allowed) or `cells` (`[x, y, symbol]` triples) replaces just those, then `frame-save` snapshots the result. It is the same document as drawing each cell with the `pixel` tool:
+
+```json
+[{"type":"pixel-art","name":"coin","palette":{".":"transparent","g":"#ffc44d","s":"#9c5f22","w":"#fff3bd"},
+  "rows":["2.4s2.",".s4gs.","s6gs","s6gs","s6gs","s6gs",".s4gs.","2.4s2."]},
+ {"type":"frame-save","name":"idle","duration":150},
+ {"type":"pixel-draw","target":"coin","rows":{"2":"sgwwwwgs"},"cells":[[3,4,"w"],[4,4,"w"]]},
+ {"type":"frame-save","name":"glint","duration":100}]
 ```
 
 Frames are named snapshots of the current editable scene, including palette, variables, styles, masks and geometry, while reusing embedded image assets. Later edits to the scene do not change saved frames (`frames-edit`, below, is the one operation that edits them). `frame-save` creates a frame or replaces the frame with that name in place; omitted duration defaults to 100 ms for a new frame and preserves an existing duration. `frame-apply` restores a frame for editing while keeping the full animation library. `frame-delete NAME` removes a frame. These operations autosave, participate in transactions and support undo/redo.

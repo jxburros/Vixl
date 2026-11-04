@@ -162,6 +162,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SHP-21 | QR code or barcode (Code 128, EAN-13) as a vector layer | `qr`, `barcode` | 1 · <1 | Since 0.22; `${variables}` re-encode per merge row; `codes` check. |
 | SHP-22 | Center text in a shape's body (bubble, badge, frame) | `text` `within`, `place` `within`, `align` `box: "content"` | 1 · <1 | Since 0.22; shapes report `content_bounds`. |
 | SHP-25 | A callout note, a header or footer band, or a divider rule with a label | `container-place` `callout`, `band`, `labelled-rule` | 1 · <1 | Since 0.31: palette-role colors, optional icon and detail hide when empty; never rolled. Before, three or four shapes and texts placed by hand. |
+| SHP-26 | One container per data row (a list of cards, labels or callouts from rows of values) | `container-rows` | 1 · <1 | Since 0.35: expands to ordinary `container-place` operations named `NAME-1…N`, stepped by the container size and a gap, wrapped every `columns`. |
 
 ### Effects and finishing
 
@@ -397,6 +398,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PIX-02 | Palette-swap an existing sprite | `pixel-palette` | 2 · <1 |  |
 | PIX-03 | Export saved frames as GIF/APNG/sprite sheet at whole-number scale | `vixl_export(kind='animation')` | 1–2 · <1 |  |
 | PIX-04 | Pixel sprite with a shading ramp and a 1 px outline from flat palette rows | `pixel-art` (`shading` and `outline`, on by default), `pixel-palette` | 2–4 · <1 | Since 0.27 (craft plan 7e, T13): within 16 opaque colours and binary alpha; a palette swap carries into the ramp; `shading: false` and `outline: false` keep the flat sprite. |
+| PIX-05 | Symmetrical sprite from half its rows, rows written as run lengths | `pixel-art` (`mirror: "x"`, `"3.2#"` rows) | 1–2 · <1 | Since 0.35: the saved rows are the full literal grid. |
+| PIX-06 | Animation frame that gives only the cells that changed | `pixel-draw` (`rows: {index: row}`, `cells`) | 1–2 · <1 | Since 0.35. |
 | BLK-12 | Per-character, per-word or per-line text animation | `text-animate` | 2–4 · 1 | Since 0.22; text stays one editable layer. |
 | MOT-09 | Six-second square loop for a tip, launch or event | `vixl_document(action='create', template=NAME)` video-tip/video-launch/video-event, `vixl_export(kind='timeline')` | 3–5 · 1 | Since 0.24; fill title, subtitle and cta, then check a contact sheet and pick the poster time. |
 | MOT-14 | Promo variations in square, portrait and widescreen | `vixl_document(action='create', template=NAME)` video-promo-{kinetic,editorial,neon,spotlight,split,stat}, `vixl_export(kind='timeline')` | 3–5 · 1 | Six distinct compositions, 18 templates; editable copy and palette roles, six-second loops. [Preview pack](https://github.com/jxburros/VixlExamples/blob/main/promo/variety/README.md). |
@@ -472,6 +475,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | --- | --- | --- | --- |
 | ILL-21 | Revise an illustrated scene | 25 · 3.3 |  |
 | SOC-32 | Revise copy on a social post | 26 · 2.4 | Only edited rows change. |
+| SOC-33 | Change a layout's headline or details and keep the composition | 1 · <1 | `layout-apply` with `update: true` re-runs the stored recipe with the new copy; a longer line grows its box and moves the rows below before the type shrinks since 0.35. |
 | PRN-11 | Revise copy on a print poster | 25 · 2.6 |  |
 | BRD-10 | Revise a logo and icon kit | 30 · 2.2 | Live links keep marks byte-identical. |
 | DEK-10 | Revise a slide deck | 29 · 2.1 |  |

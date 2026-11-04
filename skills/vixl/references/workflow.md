@@ -5,8 +5,10 @@ in [testing](testing.md); exact operation fields in [operations](operations.md).
 
 ## Start here (the default path)
 
-For any new piece, and above all an open-ended brief ("make a few cool things"), follow this order
-instead of improvising freehand shapes:
+A new piece with a text frame is one call: `vixl_apply(create={path, purpose or size, layout: {name, …slots}, look,
+suites: "composition"}, preview=true)` runs steps 1–5 below atomically ([one call for a new piece](#one-call-for-a-new-piece)).
+The steps are for edits, for art without a text frame, and for reading what the one call did. For any new piece,
+and above all an open-ended brief ("make a few cool things"), keep this order instead of improvising freehand shapes:
 
 1. **What am I making?** `vixl_reference(brief)` (CLI `vixl guide a mascot for a coffee brand`) maps a brief
    to its kind (poster, social card, logo, icon, character, scene, pattern, mandala, diagram, slides …)
@@ -38,7 +40,10 @@ instead of improvising freehand shapes:
    layers plus every `fix` and every composition finding), the suite rules that did not pass and a small
    preview with the edit itself, so the loop is one call.
 6. **Finishing pass, then export** — passing checks prove the piece is correct, not that it reads as
-   designed. Once `vixl_check` and your suite pass:
+   designed. The pass is sized to the purpose's tier (`finishing_pass` in `vixl_reference(kind)`, from the
+   house-style purpose data): social and quick web (social, slides, diagram, motion) stop once `vixl_check` and the
+   suite pass and the preview reads well, then export (step 5); print and brand work (poster, document, form, logo)
+   takes the whole pass. Once `vixl_check` and your suite pass:
    1. **Check composition**: `vixl_check(checks=["composition"])` reports dead bands, margin drift,
       uneven rhythm, crowding and clumped scatter as `review` findings, and flat type hierarchy, one weight, no focal
       point and an unused accent. `vixl_apply(workflow='repair-layout')` repairs most spacing findings without adding a
@@ -63,8 +68,10 @@ instead of improvising freehand shapes:
 When you already know the size, layout slots, look and operations,
 `vixl_apply(create={…})` (CLI `vixl compose --request req.json --preview p.png`) runs steps 1–5
 atomically: nothing is saved or exported unless every step succeeds, and an error carries `step`
-(request, create, fonts, layout, style, look, operations, check, preview, save, export). `strict=true` refuses to
-save while `check` has `fix` findings; `dry_run=true` builds, checks and previews without writing. Layout `image`/`images`
+(request, create, fonts, layout, style, look, operations, check, suites, preview, save, export). `suites` (a starter
+such as `"composition"`, a list of names, or `true` for the suites the operations attached) runs them in the same call
+and reports them under `suites`; `strict=true` refuses to save while `check` has `fix` findings or a suite fails;
+`dry_run=true` builds, checks and previews without writing. Layout `image`/`images`
 take workspace paths or https URLs (one-call memes); `background` survives the layout; `style` sets the layout's
 alignment and palette and installs its font pairing where you left them open. Keep editing the result with
 `vixl_apply`.
@@ -77,7 +84,8 @@ alignment and palette and installs its font pairing where you left them open. Ke
    composition from scratch. Choose a font pairing first (`font pair`), fill every slot the layout
    lists with real copy, and when the brief leaves the look open, roll (`roll`, `seed: "random"`) a few
    times and compare previews. To fill blanks after a first pass, re-apply with the copy,
-   `replace: true` and the reported `seed` so the composition stays the same.
+   `replace: true` and the reported `seed` so the composition stays the same; to change copy later,
+   `update: true` with the new slots re-runs the recipe and keeps manual style edits.
 1. **Orient** — inspect before editing. MCP: `vixl_document(action='inspect')` returns a compact summary
    (one line per layer with `bounds`; `verbose=true` for every field, `target=` for one layer).
    CLI: `vixl -p F.vixl inspect --json` / `vixl layers`. Note canvas size, layer names/IDs and

@@ -103,3 +103,60 @@ def test_roll_apply_passes_check_with_unfilled_omit(server, monkeypatch):
         "type": "roll", "seed": 12, "unfilled": "blank", "locks": {"layout": "hero-statement", "palette": "ocean"},
         "slots": {"title": "Launch"}}]})["steps"][0]["result"]
     assert "label" in blank["applied"]["unfilled_slots"]
+
+
+def _bar():
+    return {"type": "chart", "name": "c", "kind": "bar", "x": 10, "y": 10, "width": 300, "height": 200,
+            "data": {"categories": ["a", "b"], "series": [{"name": "s", "values": [1, 2]}]}}
+
+
+def test_dry_run_proposal_commits_once_and_fails_when_stale(server, tmp_path):  # #615 item 40
+    operations = [{"type": "text", "text": "Hello", "size": 20}]
+    proposed = ok(server, "vixl_apply", {"operations": operations, "dry_run": True})
+    assert proposed["dry_run"] and proposed["proposal_id"].startswith("prop_") and proposed["head"]
+    again = ok(server, "vixl_apply", {"operations": operations, "dry_run": True})
+    assert again["proposal_id"] == proposed["proposal_id"]  # a hash of the operations, head and options
+    assert not layers(tmp_path)
+    ok(server, "vixl_apply", {"operations": [{"type": "shape", "shape": "rectangle", "width": 40, "height": 30}]})
+    failed, text = call(server, "vixl_apply", {"options": {"proposal": proposed["proposal_id"]}})
+    assert failed and "stale_proposal" in text and "text" not in layers(tmp_path)
+    fresh = ok(server, "vixl_apply", {"operations": operations, "dry_run": True})
+    assert fresh["proposal_id"] != proposed["proposal_id"]
+    committed = ok(server, "vixl_apply", {"options": {"proposal": fresh["proposal_id"]}})
+    assert committed["proposal"] == fresh["proposal_id"] and not committed["dry_run"]
+    assert "text" in layers(tmp_path) and committed["head"] != fresh["head"]
+    failed, text = call(server, "vixl_apply", {"options": {"proposal": fresh["proposal_id"]}})
+    assert failed and "unknown_proposal" in text  # committed once
+    failed, text = call(server, "vixl_apply", {"operations": operations, "options": {"proposal": fresh["proposal_id"]}})
+    assert failed and "drop operations" in text
+
+
+def test_ack_detail_and_inspect_options_reach_the_tools(server, tmp_path):  # #615 items 31, 33-36
+    ack = ok(server, "vixl_apply", {"operations": [_bar()], "options": {"detail": "ack"}})
+    assert {"ok", "head", "changed", "warnings"} <= set(ack) and ack["ok"] and ack["changed"] == 17
+    assert "changes" not in ack
+    collapsed = ok(server, "vixl_document", {"options": {"collapse": True}})
+    assert collapsed["layer_count"] == 1 and collapsed["layers"][0]["children"] == 16
+    page = ok(server, "vixl_document", {"options": {"offset": 2, "limit": 3, "fields": ["bounds"],
+                                                    "filter": {"parent": "c", "type": "shape"}}})
+    assert len(page["layers"]) == 3 and page["next_offset"] == 5 and set(page["layers"][0]) == {"id", "name", "type", "bounds"}
+    ok(server, "vixl_apply", {"operations": [{"type": "text", "text": "Hi", "name": "note"}]})
+    since = ok(server, "vixl_document", {"options": {"since": ack["head"]}})
+    assert [(x["name"], x["change"]) for x in since["layers"]] == [("note", "added")]
+
+
+def test_report_path_writes_the_full_report_inside_the_workspace(server, tmp_path):  # #615 item 39
+    ok(server, "vixl_apply", {"operations": [_bar()]})
+    summary = ok(server, "vixl_check", {"options": {"report_path": "reports/check.json"}})
+    report = json.loads((tmp_path / "reports" / "check.json").read_text())
+    assert summary["report_path"] == "reports/check.json" and summary["findings"] == len(report["issues"])
+    assert len(summary["issues"]) <= 10 and len(json.dumps(summary)) < len(json.dumps(report))
+    applied = ok(server, "vixl_apply", {"operations": [{"type": "text", "text": "Hi"}], "check": True,
+                                        "options": {"report_path": "apply.json"}})
+    full = json.loads((tmp_path / "apply.json").read_text())
+    assert applied["report_path"] == "apply.json" and applied["changed"] == 1 and "changes" in full
+    assert applied["check"]["findings"] == len(full["check"]["issues"])
+    for bad in ("../outside.json", "report.txt"):
+        failed, text = call(server, "vixl_check", {"options": {"report_path": bad}})
+        assert failed and "report_path" in text
+    assert not (tmp_path.parent / "outside.json").exists()

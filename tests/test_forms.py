@@ -459,9 +459,9 @@ def test_form_fill_combine_true_over_mcp(tmp_path):
                          request={"data": "rows.csv", "combine": 3}))
     error = json.loads(str(caught.value).split("Error executing tool vixl_apply: ")[-1])
     assert error["error"] == "invalid_request" and error["field"] == "combine" and error["suggestions"]
-    schema = asyncio.run(call("vixl_reference", topic="workflows"))["actions"]["form-fill"]["properties"]
+    schema = asyncio.run(call("vixl_reference", topic="workflows", name="form-fill"))["properties"]
     assert schema["combine"]["type"] == ["string", "boolean"] and schema["data"]["type"] == "string"
-    assert set(schema) == set(asyncio.run(call("vixl_reference", topic="workflows"))["actions"]["form-fill"]["fields"])
+    assert set(schema) == set(asyncio.run(call("vixl_reference", topic="workflows", name="form-fill"))["fields"])
     field = asyncio.run(call("vixl_reference", topic="operations", name=["field"]))["field"]["properties"]
     for name in ("kind", "key", "label", "required", "max_length", "options", "format", "default", "size"):
         assert field[name].get("type") or field[name].get("anyOf"), name

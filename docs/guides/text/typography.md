@@ -35,6 +35,8 @@ The guide, `vixl font principles` (MCP: `vixl_reference('fonts', options={view: 
 - **Where faces stop working:** display and script faces only at size, thumbnail legibility, and multilingual coverage.
 - **Choosing at random:** pick the pairing first, then a palette whose mood fits it.
 
+Layouts set their text on the `heading` and `body` roles when the document has typography, so a later `font-pair`, `font-install --role` or `style-use` reaches it; a layout applied before any typography sets its text on the proofing fallback, and `font-pair` then restyles it (since 0.35). `apply_to: "fallback"` (the default) gives such text the role its layout meant (heading for headlines, body for the rest) and keeps a face set by hand; `apply_to: "roles"` puts every layout layer on its role whatever face it had; `apply_to: "new"` changes nothing existing. The result lists the layers under `restyled`, counts `still_fallback` and says so in `note`; the `fonts` check's fallback warning names the exact step under `fix` with the pairing the layout chose (CLI `vixl font pair NAME --apply-to fallback`).
+
 ## Default size and leading
 
 Text without a `size` uses the body size of the document's type scale (the `body` character style that `type-scale`
@@ -106,7 +108,7 @@ catalog text face with an italic (one more file, registered as `family-weight-it
 `source-sans-3-400-italic`), so italic rich text in body copy draws the real italic instead of a slanted roman. The
 result names it under `body.body_italic` (`font install`: `body_italic`) with its `origin`; when it cannot be fetched
 (offline, not in the cache) the pair still succeeds and `body_italic.skipped` says why. Rolls and new documents
-install the two styles only. Installs are static files: optical sizes (`opsz`) are not used.
+install the two styles only. Installs are static files: optical sizes (`opsz`) are not used and are not planned: no catalog face is variable, so a text size never selects an optical instance.
 
 Each install reports where the font came from, so agents and CI can verify offline behaviour: `source.origin` is `cache` (served from `source.cache_file` with no network), `pack` (a Vixl Original read from the `fonts` content pack; `source.member` names the file) or `download` (with the Google Fonts stylesheet in `source.stylesheet` and the font file in `source.url`; `cache_file` is the copy it was stored as, or null when the cache is not writable). `source.cache_dir` is the cache directory and `source.cache_dir_from` says whether `VIXL_FONT_CACHE` or the default chose it. `family`, `weight`, `italic` and `name` give the resolved style, and `file` names the embedded asset (`fonts/<sha256>.ttf`), its byte size and hash. `font pair` returns this for both the heading and body fonts plus `origin` (`cache`, `download` or `mixed`); an applied roll (the `roll` step of `vixl_apply`, `vixl roll --apply`) returns the same under `fonts`. `source.bundled_fallback` is always false: a font that cannot be downloaded or found in the cache fails with `font_download_failed` (or `unknown_font`), and the bundled proofing face is never substituted silently. To run offline, pre-fill the cache (or set `VIXL_FONT_CACHE` to a directory holding `family-weight[-italic].ttf` files such as `inter-400.ttf`) and check for `origin: "cache"`. Set `VIXL_OFFLINE=1` (or start the server with `--offline`) to make sure nothing is downloaded: a style that is not in the cache then fails with `network_disabled` instead of reaching Google Fonts, and font imports from a URL are refused the same way.
 
@@ -307,8 +309,10 @@ PDF draw the same lines, and PPTX writes balanced or runt-free lines with explic
 for PowerPoint to wrap, as before). `wrap` is kept when the box is resized with another `text-layout`; pass
 `"wrap": "greedy"` to go back (CLI: `vixl text-layout NAME --width 1080 --wrap balance`). `balanced`, `even` and `no-runts` are accepted and reported under `normalized`.
 
-**Headings balance by default.** A new `text-layout` box on a heading (a heading font role or stage, or text whose size
-reads as the h2 step or larger) and every layout headline take `wrap: "balance"`. Rich text keeps `greedy` unless you ask. Pass `wrap: "greedy"` on the
+**Headings balance, body text is pretty, by default.** A new `text-layout` box on a heading (a heading font role or stage, or text whose size
+reads as the h2 step or larger) and every layout headline take `wrap: "balance"`; any other new box takes `wrap: "pretty"`, so body copy
+never ends on a one-word line (`craft.wrap` in the house style; the quality and diversity eval shows no loss). A document made with
+`house_style: "off"` keeps greedy body breaks. Rich text keeps `greedy` unless you ask. Pass `wrap: "greedy"` on the
 `text-layout` for greedy breaks.
 
 ## Hanging punctuation

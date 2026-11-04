@@ -102,7 +102,7 @@ vixl shape rectangle|rounded-rectangle|ellipse|polygon|star|arc|line --name s --
      # a closed shape's stroke sits inside its outline, flush with the box; paths, arcs and lines stroke on their centre line (stroke_align in apply JSON overrides)
 vixl frame --path portrait.jpg --name photo --width 400 --height 500 --fit fill|fit [--asset ID] [--frame-shape heart | --outline SVG]
 vixl pixel-art --name sprite --width 16 --height 16 [--palette '{".":"transparent","g":"#ffc44d"}'] [--background .]
-vixl pixel-art --name spark --rows '[".w.","www",".w."]' --palette '{".":"transparent","w":"#fff"}'
+vixl pixel-art --name spark --rows '[".w.","www",".w."]' --palette '{".":"transparent","w":"#fff"}'   # rows take run-length counts ("3.2#"); --mirror x|y|xy completes a half
 vixl adjustment warmth --effects '[{"name":"temperature","amount":40},{"name":"contrast","amount":10}]'
 vixl symbol-instance Brandmark --name footer-logo --x 100 --y 800 --width 100 --height 100
 vixl irregular hero eyes --seed 7 [--strength subtle|natural|rough] [--only wobble color] [--remove]  # opt-in imperfection
@@ -336,7 +336,7 @@ vixl export-animation --out walk.gif --animation walk --scale 8
 ## AI (needs a configured provider — see ai.md)
 
 ```bash
-vixl ask 'Make the logo 20% smaller and align it top-right' [--apply] [--provider NAME]
+vixl ask 'Make the logo 20% smaller and align it top-right' [--apply] [--provider NAME] [--ops move,resize] [--image auto|none|region|full] [--target LAYER] [--region x,y,w,h]   # brief schemas for a shortlist, the summary around the target; auto sends no image for a text edit
 vixl generate --prompt 'foggy forest' --provider comfy --size 1024x1024 --as forest [--seed 42] [--mode inpaint|img2img] [--negative-prompt …] [--strength 0.75] [--model …]
 vixl select object 'the person' --provider vision
 vixl detect objects|faces --provider NAME ; vixl ocr --provider NAME ; vixl ai describe --provider NAME

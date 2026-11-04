@@ -15,7 +15,7 @@ from .errors import VixlError, require
 CREATE = ("width", "height", "background", "size", "purpose", "dpi", "orientation", "bleed", "seed", "variety",
           "house_style")
 FIELDS = {"path", *CREATE, "font_pairing", "layout", "style", "look", "operations", "operations_path", "check",
-          "strict", "preview", "exports", "overwrite", "dry_run"}
+          "suites", "strict", "preview", "exports", "overwrite", "dry_run"}
 
 
 class _Step:
@@ -192,11 +192,13 @@ def _look_operations(project, looks):
 
 
 def compose(session, *, path=None, operations=None, operations_path=None, layout=None, style=None, look=None,
-            font_pairing=None, check=True, strict=False, preview=None, exports=None, overwrite=False,
+            font_pairing=None, check=True, suites=None, strict=False, preview=None, exports=None, overwrite=False,
             dry_run=False, **create):
     """Run the chain; returns ``(result, PNG bytes or None)``. ``dry_run`` runs every step up to preview and
-    writes nothing (``path`` may be omitted)."""
-    from .checks import batch_findings, _apply_options
+    writes nothing (``path`` may be omitted). ``suites`` (true for every suite the operations attached, a starter
+    suite name such as ``composition``, or a list of names) runs the suites in the same call, like ``suites`` on a
+    batch; ``strict`` fails on their errors too."""
+    from .checks import batch_findings, suite_summary, _apply_options
     from .io_policy import service_check
     from .service_fonts import checker
 
@@ -230,6 +232,9 @@ def compose(session, *, path=None, operations=None, operations_path=None, layout
         require(isinstance(looks, list) and all(isinstance(item, dict) and item.get("look") for item in looks),
                 "look is {look, target?, color?, amount?} or a list of them", field="look")
         require(style is None or isinstance(style, str), "style is a style name (vixl_reference('styles'))", field="style")
+        require(suites is None or suites is True or suites is False or isinstance(suites, (str, list)),
+                "suites is true, a suite name (a starter such as 'composition' or one the operations attach) or a "
+                "list of names", field="suites")
         names, preview_options = _apply_options(check if check is not False else None, preview)
     targets = []
     if exports:
@@ -300,6 +305,15 @@ def compose(session, *, path=None, operations=None, operations_path=None, layout
             if strict and fixes:
                 raise VixlError("design_check_failed", f"{len(fixes)} finding(s) need a fix; nothing was saved",
                                 report=report)
+    suite_report = None
+    if suites:
+        with _Step("suites", done):
+            suite_report = suite_summary(project, suites)
+            failed = [name for name, value in suite_report.items()
+                      if isinstance(value, dict) and value.get("status") in ("failed", "error")]
+            if strict and failed:
+                raise VixlError("suite_failed", f"suite(s) {', '.join(failed)} failed; nothing was saved",
+                                suites=suite_report)
     image = None
     if preview:
         with _Step("preview", done):
@@ -310,6 +324,8 @@ def compose(session, *, path=None, operations=None, operations_path=None, layout
     result = {"steps": done, **steps}
     if report is not None:
         result["check"] = report
+    if suite_report is not None:
+        result["suites"] = suite_report
     if dry_run:
         result.update(dry_run=True, canvas=project.state["canvas"], layer_count=len(project.state["layers"]))
         return result, image

@@ -77,9 +77,10 @@ Attach a suite with an explicit `suite-set` operation:
 ```
 
 The tool surface describes this object, so no repository docs are needed to write one:
-`vixl_reference('operations', name=["suite-set"])` and `vixl_reference('workflows').definitions.suite` give every
-rule field a type, enum and one-line description (with an example), and `vixl_reference('workflows')` does the
-same for every action's request fields and for the `job`, `spec`, `recipe` and plugin `manifest` objects.
+`vixl_reference('operations', name=["suite-set"])` and `vixl_reference('workflows', name='check').definitions.suite`
+give every rule field a type, enum and one-line description (with an example), and `vixl_reference('workflows',
+name=ACTION)` does the same for every action's request fields and for the `job`, `spec`, `recipe` and plugin
+`manifest` objects it uses (`vixl_reference('workflows')` alone is the one-line index of every action).
 The `check` action also accepts an inline suite object instead of a name.
 
 Run `project.check_suite("delivery")` or workflow `check` with
@@ -383,6 +384,21 @@ Motion recipes bind reusable sequences to semantic roles. Roles retain stable la
     {"role":"cards","property":"translate-y","from":0,"to":-10,"after":"enter","duration":"200ms"}
   ]}},
   {"type":"motion-apply","name":"reveal","speed":1.5,"start":"500ms"}
+]}
+```
+
+The common shape, enter, stay, leave, is a shorthand: `entrance` and `exit` take a preset name (fade-in,
+slide-in-up, pop-in, zoom-in, draw-on, typewriter / fade-out, slide-out-down, pop-out, zoom-out, draw-off) or a
+step object, `hold` is the time the layers stay in between or a looping preset played meanwhile (`"float"`, or
+`{"preset": "pulse", "duration": "1s"}`), and `role`, `duration`, `stagger` and `easing` are shared. It is saved
+as ordinary steps with the ids `entrance`, `hold` and `exit`, ahead of any explicit `steps`, so the document is
+the same as writing them out:
+
+```json
+{"operations":[
+  {"type":"role-set","name":"cards","targets":["card-1","card-2","card-3"]},
+  {"type":"motion-define","name":"reveal","motion":{"role":"cards","entrance":"fade-in","hold":"2s","exit":"fade-out","duration":"400ms","stagger":"100ms"}},
+  {"type":"motion-apply","name":"reveal"}
 ]}
 ```
 

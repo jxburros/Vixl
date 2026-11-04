@@ -61,7 +61,13 @@ def test_start_here_ends_with_the_finishing_pass_and_keeps_finish_as_a_look():
     order = ["vixl_check and the suites", 'checks=["composition"]', "critique", "one fix batch", "real-size look",
              "vixl_render(region=", "vixl_export"]
     assert [last.index(step) for step in order] == sorted(last.index(step) for step in order)
-    assert briefs.guide("poster")["start_here"][-1] == last
+    # A kind points to the recipe instead of repeating it (#615), and says which tier of the pass it earns.
+    assert briefs.guide("poster")["start_here"] == briefs.START_HERE_POINTER
+    assert "vixl_reference()" in briefs.START_HERE_POINTER and "create=" in briefs.START_HERE_POINTER
+    assert briefs.guide("poster")["finishing_pass"] == "full" and briefs.guide("social-card")["finishing_pass"] == "check"
+    # The pass is sized by purpose: print and brand get the full pass, social and quick web only the checks.
+    assert last.index("print and brand") < last.index("social and quick web")
+    assert "finishing_pass 'check'" in last and "poster" in last and "social" in last
 
 
 def test_mcp_instructions_and_skill_describe_the_finishing_pass(tmp_path):
@@ -70,11 +76,16 @@ def test_mcp_instructions_and_skill_describe_the_finishing_pass(tmp_path):
     loop = call(mcp_server(workspace=tmp_path), "vixl_reference", {})["start_here"]
     assert loop[-1].startswith("Finishing pass after tests pass")
     skill = (ROOT / "skills/vixl/SKILL.md").read_text(encoding="utf-8")
-    start = skill.index("6. **Finishing pass, then export.**")
+    start = skill.index("4. **Finishing pass, then export**")
     section = skill[start:skill.index("## The core loop")]
     # SKILL.md links the checklist instead of repeating it: the registry is its only copy.
     assert "vixl_reference('finishing')" in section and "vixl guide finishing" in section
     assert "max_width=w, max_height=h" in section and 'vixl_check(profile="final")' in section
+    # The pass is sized by the purpose's tier: social and quick web stop at the checks, print and brand take it all.
+    flat = " ".join(section.split())
+    assert flat.index("Social and quick web") < flat.index("Print and brand") < flat.index("vixl_reference('finishing')")
+    assert "finishing_pass" in section
+    assert skill.index("vixl_apply(create=") < skill.index("Step by step only for edits")
     for item in CHECKLIST:
         assert item not in skill, item
     # The full loop text (references/workflow.md) keeps the steps in order and also links the checklist.

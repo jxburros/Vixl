@@ -247,3 +247,49 @@ def test_type_scale_operation_defines_modular_styles():
     assert styles["t-body"]["size"] == 16 and styles["t-lead"]["size"] == 21 and styles["t-caption"]["size"] == 12
     with pytest.raises(VixlError):
         p.apply({"type": "type-scale", "ratio": 5})
+
+
+ISSUE_763_COPY = {"title": "Night Market", "label": "Saturday 7 pm", "body": "Riverside Park\nFood, music and makers\nFree entry",
+                  "cta": "RSVP", "caption": "example.com/market"}
+
+
+def _example_copy(name):
+    from vixl.layouts import describe
+
+    return {key: slot["example"] for key, slot in describe(name)["slots"].items() if "example" in slot}
+
+
+@pytest.mark.parametrize("density", ["balanced", "airy"])
+@pytest.mark.parametrize("copy", ["issue", "example"])
+@pytest.mark.parametrize("seed", [1, 2, 3, 4, 5])
+@pytest.mark.parametrize("size", ["instagram-portrait", "instagram-post", "instagram-story"])
+def test_event_poster_fills_its_page_without_dead_bands_or_stray_motifs(size, seed, copy, density):  # #763
+    p = Project.sized(size, seed=seed)
+    p.apply({"type": "layout-apply", "name": "event-poster", "seed": seed, "density": density,
+             **(ISSUE_763_COPY if copy == "issue" else _example_copy("event-poster"))})
+    issues = p.check()["issues"]
+    assert not [i for i in issues if i["check"] == "composition" and i["code"] == "dead_band"], [
+        i["message"] for i in issues if i["check"] == "composition"]
+    assert not [i for i in issues if i["check"] == "safe_area" and "direction-motif" in i.get("layers", [])]
+
+
+def test_placed_motifs_are_marks_inside_the_safe_area():  # #763
+    from vixl.sizes import safe_sides
+    from vixl.variety import MOTIF_SHARE
+
+    found = 0
+    for seed, motif in [(seed, motif) for seed in range(1, 7) for motif in ("rule", "ellipse", "rectangle")]:
+        p = Project.sized("instagram-portrait", seed=seed)
+        p.apply({"type": "layout-apply", "name": "hero-statement", "seed": seed, "title": "Night Market",
+                 "direction": {"motif": motif}})
+        motif = next((layer for layer in p.state["layers"] if layer["name"] == "direction-motif"), None)
+        if motif is None:
+            continue
+        found += 1
+        canvas = p.state["canvas"]
+        short = min(canvas["width"], canvas["height"])
+        assert max(motif["width"], motif["height"]) >= MOTIF_SHARE * short
+        x, y, w, h = p.inspect("direction-motif")["resolved_bounds"]
+        left, top, right, bottom = safe_sides(canvas)
+        assert x >= left and y >= top and x + w <= canvas["width"] - right and y + h <= canvas["height"] - bottom
+    assert found

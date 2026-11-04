@@ -11,6 +11,11 @@
   fenced ``chart`` block (CSV; ``chart line`` picks the kind) as a ``chart`` and ``![alt](image.png)`` as a frame.
   Text and a visual share the slide side by side.
 
+``slides`` gives the same deck as structured data instead of a Markdown file: one object per slide with ``layout``
+(title, section, quote or content; omitted, it is chosen as above), ``title``, ``subtitle``/``caption`` (title
+slides), ``bullets`` or ``text``, ``quote``/``attribution``, ``image``, ``chart``, ``table`` and ``notes``. Each
+becomes the slide the equivalent Markdown would, so the two forms build the same document.
+
 Text in HTML comments, or after a ``Notes:`` line, becomes the page's speaker notes. Every page uses one master
 (the deck background and a page number) and the same layout palette and seed, so the deck is consistent. The deck
 checks run at the end and are reported. Re-running on an existing output rebuilds only the slides whose Markdown
@@ -23,10 +28,44 @@ import re
 
 from ...errors import require
 
-ACTIONS = {"deck-from-markdown": ({"markdown", "output", "size", "palette", "seed", "fonts", "export", "overwrite",
-                                  "check"}, {"markdown", "output"})}
+ACTIONS = {"deck-from-markdown": ({"markdown", "slides", "output", "size", "palette", "seed", "fonts", "export",
+                                  "overwrite", "check"}, {"output"})}
+LAYOUTS = {"title": "title", "section": "section", "quote": "quote", "content": "content",
+           "slide-title": "title", "quote-card": "quote", "slide-content": "content"}
+ROWS = {"type": "array", "items": {"type": "array", "items": {"type": ["string", "number"]}},
+        "description": "Rows as lists, the first the header."}
+SLIDE_FIELDS = {
+    "layout": {"type": "string", "enum": sorted(LAYOUTS), "description": "title, section, quote or content (or the "
+               "layout names slide-title, quote-card, slide-content); omitted, chosen from the slide's content as "
+               "for Markdown."},
+    "title": {"type": "string", "description": "The slide's heading (the page is named after it)."},
+    "subtitle": {"type": "string", "description": "Title slide: the line under the title."},
+    "caption": {"type": "string", "description": "Title slide: a second line (date, author)."},
+    "bullets": {"type": "array", "items": {"type": "string"}, "description": "Bullet points (Markdown inline "
+                "styles such as **bold** work); a content slide."},
+    "text": {"type": "string", "description": "Body text as Markdown paragraphs (lists, ### sub-headings …)."},
+    "quote": {"type": "string", "description": "Quote slide: the quotation."},
+    "attribution": {"type": "string", "description": "Quote slide: who said it."},
+    "image": {"anyOf": [{"type": "string", "description": "Workspace image path."},
+                        {"type": "object", "properties": {"path": {"type": "string", "description": "Workspace image path."},
+                                                          "alt": {"type": "string", "description": "Alt text."}},
+                         "required": ["path"], "description": "An image with alt text."}],
+              "description": "A framed image beside the text (a workspace path, or {path, alt})."},
+    "chart": {"type": "object", "properties": {"kind": {"type": "string", "description": "bar (default), line, pie …"},
+                                               "rows": ROWS, "csv": {"type": "string", "description": "CSV text "
+                                                                     "instead of rows."}},
+              "description": "A chart beside the text: {kind, rows} or {kind, csv}; the first column holds the "
+                             "categories."},
+    "table": {"anyOf": [ROWS, {"type": "string", "description": "CSV text."}],
+              "description": "A table beside the text: rows as lists (the first the header) or CSV text."},
+    "notes": {"type": "string", "description": "Speaker notes."},
+}
 FIELD_TYPES = {
-    "markdown": {"type": "string", "description": "Workspace-relative Markdown file (.md)."},
+    "markdown": {"type": "string", "description": "Workspace-relative Markdown file (.md); or give slides."},
+    "slides": {"type": "array", "items": {"type": "object", "properties": SLIDE_FIELDS, "description": "One slide."},
+               "minItems": 1, "maxItems": 200,
+               "description": "The deck as structured slides instead of a Markdown file: [{layout, title, bullets, "
+                              "image, chart, …}], each built as the equivalent Markdown slide would be."},
     "output": {"type": "string", "description": "The deck document (.vixl). When it exists and was made by this "
                "workflow, only changed slides are rebuilt."},
     "size": {"type": "string", "default": "slide", "description": "Named slide size (slide, slide-4x3, slide-16x10, "
@@ -124,6 +163,78 @@ def split(markdown):
             slide["body"].pop(0)
         slide["notes"] = "\n".join(line for line in slide["notes"]).strip()
     return [s for s in slides if s["title"] or s["body"] or s["blocks"]]
+
+
+def _csv(rows, where):
+    import csv
+    import io
+
+    require(isinstance(rows, list) and rows and all(isinstance(row, list) for row in rows),
+            f"{where}: rows is a list of lists, the first the header", field="slides")
+    out = io.StringIO()
+    csv.writer(out, lineterminator="\n").writerows(rows)
+    return out.getvalue().rstrip("\n")
+
+
+def structured(slides):
+    """Slide records (as ``split`` returns them, plus ``layout`` when given) from ``slides`` objects, each the
+    slide the equivalent Markdown would make: bullets become ``- `` lines, a quote a ``> `` line with its
+    ``— attribution``, an image, chart or table a block."""
+    require(isinstance(slides, list) and slides, "slides is a list of slide objects", field="slides")
+    require(len(slides) <= MAX_SLIDES, f"A deck holds at most {MAX_SLIDES} slides", "resource_limit", field="slides")
+    records = []
+    for number, entry in enumerate(slides, 1):
+        where = f"slides[{number - 1}]"
+        require(isinstance(entry, dict), f"{where} is an object: {{layout, title, bullets, image, chart …}}", field="slides")
+        unknown = sorted(set(entry) - set(SLIDE_FIELDS))
+        require(not unknown, f"{where}: unknown field(s) {', '.join(map(repr, unknown))}; fields: "
+                f"{', '.join(SLIDE_FIELDS)}", field="slides", allowed=sorted(SLIDE_FIELDS))
+        for key in ("layout", "title", "subtitle", "caption", "text", "quote", "attribution", "notes"):
+            require(isinstance(entry.get(key, ""), str), f"{where}.{key} is text", field="slides")
+        layout = entry.get("layout")
+        require(layout is None or layout in LAYOUTS, f"{where}.layout is one of {', '.join(sorted(LAYOUTS))}",
+                field="slides", allowed=sorted(LAYOUTS))
+        layout = LAYOUTS.get(layout)
+        body = []
+        if entry.get("quote"):
+            body.append("> " + entry["quote"].strip())
+            if entry.get("attribution"):
+                body.append("— " + entry["attribution"].strip())
+        for key in ("subtitle", "caption"):
+            if entry.get(key):
+                body.append(entry[key].strip())
+        if entry.get("text"):
+            body.extend(entry["text"].replace("\r\n", "\n").split("\n"))
+        bullets = entry.get("bullets", [])
+        require(isinstance(bullets, list) and all(isinstance(b, str) for b in bullets), f"{where}.bullets is a list of text",
+                field="slides")
+        body.extend("- " + bullet.strip() for bullet in bullets)
+        blocks = []
+        table = entry.get("table")
+        if table is not None:
+            blocks.append({"kind": "csv", "info": "", "text": table if isinstance(table, str) else _csv(table, f"{where}.table")})
+        chart = entry.get("chart")
+        if chart is not None:
+            require(isinstance(chart, dict) and ("rows" in chart or "csv" in chart), f"{where}.chart is {{kind, rows}} or {{kind, csv}}",
+                    field="slides")
+            text = chart["csv"] if "csv" in chart else _csv(chart["rows"], f"{where}.chart")
+            blocks.append({"kind": "chart", "info": str(chart.get("kind", "")).lower(), "text": text})
+        image = entry.get("image")
+        if image is not None:
+            if isinstance(image, str):
+                image = {"path": image}
+            require(isinstance(image, dict) and isinstance(image.get("path"), str) and image["path"],
+                    f"{where}.image is a workspace path or {{path, alt}}", field="slides")
+            blocks.append({"kind": "image", "alt": str(image.get("alt", "")), "path": image["path"]})
+        record = {"level": 1 if layout == "title" or (number == 1 and layout is None and not blocks and len(body) <= 2) else 2,
+                  "title": entry.get("title", "").strip(), "body": body, "notes": entry.get("notes", "").strip(),
+                  "blocks": blocks}
+        if layout:
+            record["layout"] = layout
+        require(record["title"] or body or blocks, f"{where} is empty: give a title, text, bullets, a quote or a visual",
+                field="slides")
+        records.append(record)
+    return records
 
 
 def classify(slide, first):
@@ -318,15 +429,20 @@ def run(session, request):
 
     for key in ("overwrite", "check"):
         require(type(request.get(key, True)) is bool, f"{key} must be true or false", field=key)
-    source = session.resolve(request["markdown"])
-    require(source.is_file(), f"Markdown file not found in the workspace: {request['markdown']}", "not_found",
-            field="markdown")
-    from ...assets import read_bounded
+    require(("markdown" in request) != ("slides" in request), "Give markdown (a file) or slides (structured), not both",
+            field="slides" if "slides" in request else "markdown")
+    if "slides" in request:
+        source, slides = None, structured(request["slides"])
+    else:
+        source = session.resolve(request["markdown"])
+        require(source.is_file(), f"Markdown file not found in the workspace: {request['markdown']}", "not_found",
+                field="markdown")
+        from ...assets import read_bounded
 
-    markdown = read_bounded(source, 4 * 1024 * 1024).decode("utf-8-sig")
-    slides = split(markdown)
-    require(slides, "The Markdown has no slides: start each with a # or ## heading", field="markdown")
-    require(len(slides) <= MAX_SLIDES, f"A deck holds at most {MAX_SLIDES} slides", "resource_limit", field="markdown")
+        markdown = read_bounded(source, 4 * 1024 * 1024).decode("utf-8-sig")
+        slides = split(markdown)
+        require(slides, "The Markdown has no slides: start each with a # or ## heading", field="markdown")
+        require(len(slides) <= MAX_SLIDES, f"A deck holds at most {MAX_SLIDES} slides", "resource_limit", field="markdown")
     output = session.resolve(request["output"])
     require(output.suffix.lower() == ".vixl", "output is a .vixl document", field="output")
     overwrite = request.get("overwrite", False)
@@ -370,7 +486,7 @@ def run(session, request):
     taken = set()
     plan = []
     for number, slide in enumerate(slides, 1):
-        kind = classify(slide, number == 1)
+        kind = slide.pop("layout", None) or classify(slide, number == 1)
         name = slug(slide["title"] or f"slide-{number}", taken)
         plan.append((name, kind, slide, fingerprint({**slide, "kind": kind, "notes": ""},
                                                     {k: settings[k] for k in ("seed", "body_size")})))
@@ -435,7 +551,7 @@ def run(session, request):
             master_number = {"type": "master", "action": "select", "name": "deck"}
             project.apply([master_number, {"type": "text-set", "target": "page-number", "color": roles["muted"]}])
     project.apply({"type": "page", "action": "select", "page": order[0]})
-    project.state["deck_markdown"] = {"source": session.relative(source), "seed": settings["seed"],
+    project.state["deck_markdown"] = {"source": session.relative(source) if source else "slides", "seed": settings["seed"],
                                       "palette": settings.get("palette"),
                                       "pages": {name: digest for name, _, _, digest in plan}}
     project.path, project._revision = output, None

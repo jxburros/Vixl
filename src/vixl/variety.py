@@ -1,5 +1,6 @@
 """Seeded sparse-brief choices and bounded workspace history, without network side effects."""
 
+import math
 from collections import Counter
 from copy import deepcopy
 import json
@@ -348,23 +349,28 @@ def apply_direction(project, builder, direction):
             execute(project, operation)
 
 
+MOTIF_SHARE = 0.03  # the direction's motif is at least this share of the canvas's short side
+
+
 def place_motif(project, builder, own, motif):
     """The direction's motif, a small ``rule``, ``ellipse`` or ``rectangle`` in ``@accent``, at the top-right corner
     of the margin, else the other margin corners: the decoration layer, or None when no corner is clear of the
     scaffold's text (a motif is left out rather than drawn through it)."""
     from .operations import execute
 
-    size = max(3, round(builder.unit))
-    height = max(2, size // 4) if motif == "rule" else size
+    # A motif reads as a mark, not a stray speck: at least 3% of the short side (a rule three times that
+    # long), inside the live area at a corner of the margin box, or left out when no corner is clear (#763).
+    size = max(3, round(builder.unit), math.ceil(MOTIF_SHARE * min(builder.W, builder.H)))
+    width, height = (size * 3, max(2, round(size / 4))) if motif == "rule" else (size, size)
     boxes = _text_boxes(project, own, builder.unit)
-    spots = [(builder.R - size, builder.T / 2), (builder.L, builder.T / 2),
-             (builder.R - size, (builder.B + builder.H) / 2 - height), (builder.L, (builder.B + builder.H) / 2 - height)]
-    spot = next((s for s in spots if not _hits(boxes, (s[0], s[1], size, height))), None)
+    spots = [(builder.R - width, builder.T), (builder.L, builder.T),
+             (builder.R - width, builder.B - height), (builder.L, builder.B - height)]
+    spot = next((s for s in spots if not _hits(boxes, (s[0], s[1], width, height))), None)
     if not spot:
         return None
     name = builder.name("direction-motif")
     execute(project, {"type": "shape", "shape": "ellipse" if motif == "ellipse" else "rectangle", "name": name,
-                      "x": spot[0], "y": spot[1], "width": size, "height": height, "fill": "@accent"})
+                      "x": spot[0], "y": spot[1], "width": width, "height": height, "fill": "@accent"})
     layer = project.layer()
     layer.update(role="decoration")
     builder.created.append(name)

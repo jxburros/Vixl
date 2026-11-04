@@ -2,7 +2,7 @@
 
 [Documentation home](../../README.md) · [Getting started](../../getting-started.md) · [Visual gallery](../../gallery.md)
 
-Containers are editable groups with semantic text and image slots. Their local layout can reflow at a new size, and named variants preserve the filled content. `vixl_apply(workflow='resource-get', request={"kind":"containers","name":"profile"})` returns the resource's slots, defaults, bounds and variants. Use `kind: "templates"` to inspect a template's category, supported named sizes, slots and recommended looks.
+Containers are editable groups with semantic text and image slots. Their local layout can reflow at a new size, and named variants preserve the filled content. `vixl_reference('containers', name='profile')` and `vixl_reference('templates', name='slide-team')` return what to prepare before placing one: `required` (the slots that must be filled), each slot's kind and default, and `images` with the pixel size, aspect ratio and mask shape of every picture (`slot-1.photo` for a template's container cell), as `vixl_reference('layouts', name=…)` does for layouts. `vixl_apply(workflow='resource-get', request={"kind":"containers","name":"profile"})` returns the resource's slots, defaults, bounds and variants. Use `kind: "templates"` to inspect a template's category, supported named sizes, slots and recommended looks.
 
 ## Place, fill and rearrange
 
@@ -60,6 +60,17 @@ size it needs; the strips accept heights down to 64 and 40 px.
   "variables": {"title": "Summer Night Market", "detail": "June 21"}},
  {"type": "container-place", "name": "divider", "resource": "labelled-rule", "x": 240, "y": 460,
   "variables": {"label": "Chapter two"}}]
+```
+
+One container per data row is `container-rows`: the rows' variables, over any shared `variables`, become containers `NAME-1`, `NAME-2`, … of the same resource, laid out from `x, y` down the page (`direction: "vertical"`, the default) or across (`"horizontal"`) with `gap` pixels between them and wrapped every `columns` for a grid. One seed is drawn for all of them, so they take the same variant. It expands into ordinary `container-place` operations, so the document is the same as writing one per row:
+
+```json
+[{"type": "palette-apply", "name": "slate"},
+ {"type": "container-rows", "name": "note", "resource": "callout", "x": 60, "y": 60, "gap": 24, "seed": 5,
+  "variables": {"icon": "!"},
+  "rows": [{"title": "Doors open", "body": "Seven o'clock sharp."},
+           {"title": "Music", "body": "Two bands, one stage."},
+           {"title": "Food", "body": "Six trucks on the pier."}]}]
 ```
 
 The section header's rule keeps at least one spacing unit (half the document's body size) between itself and the container's bottom edge at any height, so the row that follows never sits on it (the [craft plan](../../project/archive/craft-plan.md) counts a gap under half a unit as crowding; one unit keeps clear of that threshold).

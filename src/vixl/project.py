@@ -545,22 +545,26 @@ class Project:
         )
 
     @memory_guard
-    def apply(self, operations, *, dry_run=False, detail="full", check=None, validator=None):
+    def apply(self, operations, *, dry_run=False, detail="full", check=None, validator=None, defaults=None):
         """Apply a batch atomically. ``check`` (true, a check name or a list, as in MCP ``vixl_apply``) runs the
         design check on the result and attaches it as ``result["check"]``. ``validator`` is called with each
         validated operation before anything executes and raises VixlError to refuse it (the service's font and
-        path policy)."""
+        path policy). ``defaults`` ({font, fill, stroke, size}) fills those fields into the batch's creation
+        operations that leave them open (normalize.apply_defaults), reported under ``normalized``."""
         require(not callable(check), "check runs the design check after the batch (true, a check name or a "
                 "list); pass a per-operation validator function as validator=", "invalid_input", field="check")
-        if check:
-            from .checks import apply_reviewed
+        from .normalize import with_defaults
 
-            return apply_reviewed(self, operations, dry_run=dry_run, detail=detail, check=check,
-                                  validate=validator)[0]
-        from .model import seeded_ids
+        with with_defaults(defaults):
+            if check:
+                from .checks import apply_reviewed
 
-        with seeded_ids(self._id_seed(operations)):
-            return self._apply(operations, dry_run=dry_run, detail=detail, validator=validator)
+                return apply_reviewed(self, operations, dry_run=dry_run, detail=detail, check=check,
+                                      validate=validator)[0]
+            from .model import seeded_ids
+
+            with seeded_ids(self._id_seed(operations)):
+                return self._apply(operations, dry_run=dry_run, detail=detail, validator=validator)
 
     def _id_seed(self, operations):
         """The same for a dry run and the apply that follows it: the revision, the layers that exist, the open
@@ -585,17 +589,18 @@ class Project:
             single = "type" in operations or "operation" in operations
             operations = [operations] if single else operations.get("operations", [operations])
         require(isinstance(operations, list) and operations, "Expected a nonempty list of operations")
+        from .schema import validate_operation
+        from .normalize import apply_centering, expand_batch, resolve_geometry
+        from .targets import fan_out
+
+        notes = []
+        operations = expand_batch(operations, notes)  # create-many → one operation per row
         require(
             len(operations) <= self.limits.max_operations,
             f"A batch holds at most {self.limits.max_operations} operations, got {len(operations)}; split it "
             "into several apply calls",
             "resource_limit",
         )
-        from .schema import validate_operation
-        from .normalize import apply_centering, resolve_geometry
-        from .targets import fan_out
-
-        notes = []
         validated = []
         invalid = []  # Every schema error of the batch, so one round trip fixes them all.
         for index, operation in enumerate(operations):
@@ -722,7 +727,9 @@ class Project:
         if any(op["type"] == "layout-apply" for op in operations):
             result["layout"] = deepcopy(candidate.state.get("layout", {}))
             if detail == "brief":
-                for key in ("layers", "principles"):
+                # The recipe, seed and choices are what an agent reuses; the layer list, principles, rolled
+                # direction, notes and adapt fingerprint come back with detail compact or full (or from inspect).
+                for key in ("layers", "principles", "direction", "notes", "fingerprint"):
                     result["layout"].pop(key, None)
             result["unfilled_slots"] = list(dict.fromkeys(b["slot"] for b in result["layout"].get("blanks", [])))
             from .layouts import next_steps
