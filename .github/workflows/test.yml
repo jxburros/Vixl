@@ -59,6 +59,9 @@ jobs:
         with:
           path: ~/.cache/vixl/packs
           key: vixl-packs-${{ hashFiles('src/vixl/packs.py') }}
+          # A pin change keeps the other packs: each lives in its own <name>-<sha> folder, so the previous cache is
+          # always safe to restore and only the changed pack downloads (the 20 MB emoji pack timed out otherwise).
+          restore-keys: vixl-packs-
       - run: pytest -q -n auto
       - run: python -m pip wheel . --no-deps --wheel-dir dist
       # Size guard: the wheel was 20 MB larger when the emoji artwork shipped in it (now a content pack).
@@ -83,6 +86,9 @@ jobs:
         with:
           path: ~/.cache/vixl/packs
           key: vixl-packs-${{ hashFiles('src/vixl/packs.py') }}
+          # A pin change keeps the other packs: each lives in its own <name>-<sha> folder, so the previous cache is
+          # always safe to restore and only the changed pack downloads (the 20 MB emoji pack timed out otherwise).
+          restore-keys: vixl-packs-
       - run: uv run --frozen pytest -q -n auto
   sdist:
     # The source distribution carries the tests and what they read; it must stay small and its tests must run.
@@ -122,6 +128,9 @@ jobs:
         with:
           path: ~/.cache/vixl/packs
           key: vixl-packs-${{ hashFiles('src/vixl/packs.py') }}
+          # A pin change keeps the other packs: each lives in its own <name>-<sha> folder, so the previous cache is
+          # always safe to restore and only the changed pack downloads (the 20 MB emoji pack timed out otherwise).
+          restore-keys: vixl-packs-
       - run: pytest -q -n auto
   visual:
     runs-on: ubuntu-latest
@@ -136,6 +145,9 @@ jobs:
         with:
           path: ~/.cache/vixl/packs
           key: vixl-packs-${{ hashFiles('src/vixl/packs.py') }}
+          # A pin change keeps the other packs: each lives in its own <name>-<sha> folder, so the previous cache is
+          # always safe to restore and only the changed pack downloads (the 20 MB emoji pack timed out otherwise).
+          restore-keys: vixl-packs-
       - run: pytest -q -n auto -m visual tests/visual
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: failure()
