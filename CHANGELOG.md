@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.34.0
+## 0.34.1
 
-Checks that lead with a verdict (roadmap stage 2).
+Twenty original typefaces drawn with Vixl, and two outline fixes they needed.
 
 ### Added
 
@@ -14,6 +14,20 @@ Checks that lead with a verdict (roadmap stage 2).
   `fonts` content pack instead of Google Fonts: the pack downloads once (through the caller's client when one is
   given), is checked against its pinned SHA-256, and each face is kept in the font cache (`source.origin: "pack"`).
   `VIXL_FONTS_PACK` points at a local copy for offline machines. `scripts/verify_fonts.py` skips them.
+
+### Fixed
+
+- **Outlined strokes keep their whole outline in pathfinder and fonts.** `outline-stroke` (and `offset-path`) left
+  the layer's box on the old centreline, so pathfinder and the font maker, which cut a path to its box, kept a
+  one-pixel sliver of an outlined horizontal line and lost half of every other stroke. The box now grows to the
+  outline, keeping where it draws, rotation and flips included.
+- **A path a rounding error outside its box still combines.** Path text is written to three decimals, so a point on
+  the box edge could land 0.0004 px outside it; clipping that hair cut along the outline and pathfinder failed with
+  "the combined outline does not close up". Overflow smaller than the boolean point tolerance is no longer clipped.
+
+## 0.34.0
+
+Checks that lead with a verdict (roadmap stage 2).
 
 ### Changed
 
@@ -59,13 +73,6 @@ Install commands that always resolve, and the first stage of the roadmap.
 
 ### Fixed
 
-- **Outlined strokes keep their whole outline in pathfinder and fonts.** `outline-stroke` (and `offset-path`) left
-  the layer's box on the old centreline, so pathfinder and the font maker, which cut a path to its box, kept a
-  one-pixel sliver of an outlined horizontal line and lost half of every other stroke. The box now grows to the
-  outline, keeping where it draws, rotation and flips included.
-- **A path a rounding error outside its box still combines.** Path text is written to three decimals, so a point on
-  the box edge could land 0.0004 px outside it; clipping that hair cut along the outline and pathfinder failed with
-  "the combined outline does not close up". Overflow smaller than the boolean point tolerance is no longer clipped.
 - **Escaped variables in rich text pass the design check.** A `$${name}` in a rich-text span or a text flow drew the
   literal `${name}` but made `check()` and `check(pages="all")` fail with an undefined variable, because span coverage
   substituted variables a second time (#776).
