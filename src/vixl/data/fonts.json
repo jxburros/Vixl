@@ -3764,5 +3764,650 @@
   ],
   "avoid": "Large file sizes; no 100 weight.",
   "notes": "Japanese mincho from the Source Han Serif / Noto Serif CJK project."
+ },
+ {
+  "family": "Vixl Orbit",
+  "category": "sans-serif",
+  "classification": "geometric",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "low",
+  "era": "Vixl Original (2026)",
+  "mood": [
+   "clean",
+   "modern",
+   "friendly",
+   "minimal"
+  ],
+  "best_for": [
+   "branding",
+   "headlines",
+   "posters",
+   "short text"
+  ],
+  "avoid": "One weight and ASCII only; pair a full-coverage face for long multilingual text.",
+  "notes": "Circles and straight lines with round terminals and a single-storey a; drawn with Vixl.",
+  "source": "vixl"
+ },
+ {
+  "family": "Vixl Bolt",
+  "category": "display",
+  "classification": "geometric (black)",
+  "weights": [
+   800
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "Vixl Original (2026)",
+  "mood": [
+   "bold",
+   "confident",
+   "loud",
+   "modern"
+  ],
+  "best_for": [
+   "headlines",
+   "posters",
+   "sport",
+   "thumbnails"
+  ],
+  "avoid": "Too heavy for text; keep it to a few words at large sizes.",
+  "notes": "A black geometric sans with flat cuts and slightly thinned horizontals; drawn with Vixl.",
+  "source": "vixl"
+ },
+ {
+  "family": "Vixl Hairline",
+  "category": "display",
+  "classification": "geometric (hairline, extended)",
+  "weights": [
+   100
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "medium",
+  "width": "wide",
+  "contrast": "low",
+  "era": "Vixl Original (2026)",
+  "mood": [
+   "airy",
+   "elegant",
+   "luxury",
+   "minimal"
+  ],
+  "best_for": [
+   "luxury",
+   "fashion",
+   "large titles",
+   "covers"
+  ],
+  "avoid": "Disappears below about 36 px and on busy backgrounds.",
+  "notes": "A wide hairline geometric sans for large, airy display type; drawn with Vixl.",
+  "source": "vixl"
+ },
+ {
+  "family": "Vixl Tessera",
+  "category": "sans-serif",
+  "classification": "squarish (techno)",
+  "weights": [
+   500
+  ],
+  "italic": false,
+  "roles": [
+   "heading",
+   "display",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "Vixl Original (2026)",
+  "mood": [
+   "technical",
+   "futuristic",
+   "engineered",
+   "cool"
+  ],
+  "best_for": [
+   "tech",
+   "games",
+   "dashboards",
+   "automotive"
+  ],
+  "avoid": "Wide letters eat line length; avoid long paragraphs.",
+  "notes": "Rounded-square bowls and a double-storey a in a wide techno sans; drawn with Vixl.",
+  "source": "vixl"
+ },
+ {
+  "family": "Vixl Facet",
+  "category": "display",
+  "classification": "condensed octagonal",
+  "weights": [
+   700
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "large",
+  "width": "condensed",
+  "contrast": "low",
+  "era": "Vixl Original (2026)",
+  "mood": [
+   "athletic",
+   "industrial",
+   "rugged",
+   "bold"
+  ],
+  "best_for": [
+   "sport",
+   "packaging",
+   "labels",
+   "signage"
+  ],
+  "avoid": "Chamfers get busy in long text; use for headings.",
+  "notes": "A condensed sans whose every curve is a chamfer, like a varsity or stencilled label; drawn with Vixl.",
+  "source": "vixl"
+ },
+ {
+  "family": "Vixl Block",
+  "category": "display",
+  "classification": "condensed square (heavy)",
+  "weights": [
+   800
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "accent"
+  ],
+  "x_height": "large",
+  "width": "condensed",
+  "contrast": "low",
+  "era": "Vixl Original (2026)",
+  "mood": [
+   "blocky",
+   "industrial",
+   "loud",
+   "retro"
+  ],
+  "best_for": [
+   "posters",
+   "games",
+   "packaging",
+   "stickers"
+  ],
+  "avoid": "Square counters close up when small; display sizes only.",
+  "notes": "A heavy condensed face built from right angles; drawn with Vixl.",
+  "source": "vixl"
+ },
+ {
+  "family": "Vixl Mono",
+  "category": "monospace",
+  "classification": "monospace (rounded)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "code",
+   "ui",
+   "caption"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "Vixl Original (2026)",
+  "mood": [
+   "technical",
+   "friendly",
+   "precise",
+   "calm"
+  ],
+  "best_for": [
+   "code",
+   "terminals",
+   "data",
+   "developer docs"
+  ],
+  "avoid": "ASCII only, one weight; no italic for emphasis in code comments.",
+  "notes": "A rounded monospaced face with slab-footed i, l and r and a slashed zero; drawn with Vixl.",
+  "source": "vixl"
+ },
+ {
+  "family": "Vixl Slab",
+  "category": "serif",
+  "classification": "slab (geometric)",
+  "weights": [
+   500
+  ],
+  "italic": false,
+  "roles": [
+   "heading",
+   "text"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "low",
+  "era": "Vixl Original (2026)",
+  "mood": [
+   "sturdy",
+   "editorial",
+   "warm",
+   "confident"
+  ],
+  "best_for": [
+   "headlines",
+   "editorial",
+   "menus",
+   "posters"
+  ],
+  "avoid": "Serifs are blunt and wide; give it generous tracking at small sizes.",
+  "notes": "Geometric bowls with square slab serifs and beaks placed automatically by the builder; drawn with Vixl.",
+  "source": "vixl"
+ },
+ {
+  "family": "Vixl Bubble",
+  "category": "display",
+  "classification": "rounded (fat display)",
+  "weights": [
+   900
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "accent"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "Vixl Original (2026)",
+  "mood": [
+   "playful",
+   "friendly",
+   "soft",
+   "fun"
+  ],
+  "best_for": [
+   "kids",
+   "food",
+   "stickers",
+   "social posts"
+  ],
+  "avoid": "Counters fill in below about 24 px; display only.",
+  "notes": "A fat, soft face of squircle bowls and round terminals; drawn with Vixl.",
+  "source": "vixl"
+ },
+ {
+  "family": "Vixl Quill",
+  "category": "serif",
+  "classification": "didone (display)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "small",
+  "width": "normal",
+  "contrast": "high",
+  "era": "Vixl Original (2026)",
+  "mood": [
+   "elegant",
+   "editorial",
+   "luxury",
+   "classic"
+  ],
+  "best_for": [
+   "fashion",
+   "magazines",
+   "invitations",
+   "titles"
+  ],
+  "avoid": "Hairlines vanish at small sizes; 28 px and up.",
+  "notes": "Broad-nib contrast with vertical stress and hairline serifs, a modern-style display serif; drawn with Vixl.",
+  "source": "vixl"
+ },
+ {
+  "family": "Vixl Nib",
+  "category": "handwriting",
+  "classification": "script (broad-nib italic)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "accent"
+  ],
+  "x_height": "small",
+  "width": "condensed",
+  "contrast": "medium",
+  "era": "Vixl Original (2026)",
+  "mood": [
+   "calligraphic",
+   "personal",
+   "elegant",
+   "warm"
+  ],
+  "best_for": [
+   "invitations",
+   "quotes",
+   "labels",
+   "signatures"
+  ],
+  "avoid": "A slanted script; do not set whole paragraphs.",
+  "notes": "A 12-degree italic with 35-degree broad-nib thick and thin strokes; drawn with Vixl.",
+  "source": "vixl"
+ },
+ {
+  "family": "Vixl Marker",
+  "category": "handwriting",
+  "classification": "handwriting (marker)",
+  "weights": [
+   600
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "accent",
+   "heading"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "Vixl Original (2026)",
+  "mood": [
+   "casual",
+   "handmade",
+   "energetic",
+   "friendly"
+  ],
+  "best_for": [
+   "notes",
+   "callouts",
+   "social posts",
+   "kids"
+  ],
+  "avoid": "The wobble repeats per character; avoid long text where the pattern shows.",
+  "notes": "A hand-drawn marker with seeded jitter and tapered stroke ends; drawn with Vixl.",
+  "source": "vixl"
+ },
+ {
+  "family": "Vixl Sketch",
+  "category": "handwriting",
+  "classification": "handwriting (pencil sketch)",
+  "weights": [
+   300
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "accent"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "low",
+  "era": "Vixl Original (2026)",
+  "mood": [
+   "sketchy",
+   "informal",
+   "creative",
+   "light"
+  ],
+  "best_for": [
+   "mockups",
+   "wireframes",
+   "notes",
+   "doodles"
+  ],
+  "avoid": "Light and busy; needs size and a calm background.",
+  "notes": "Every line drawn twice with a loose hand, like a pencil rough; drawn with Vixl.",
+  "source": "vixl"
+ },
+ {
+  "family": "Vixl Inline",
+  "category": "display",
+  "classification": "decorative (inline)",
+  "weights": [
+   800
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "accent"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "Vixl Original (2026)",
+  "mood": [
+   "art deco",
+   "festive",
+   "vintage",
+   "glamorous"
+  ],
+  "best_for": [
+   "posters",
+   "events",
+   "packaging",
+   "titles"
+  ],
+  "avoid": "The inline closes up below about 40 px.",
+  "notes": "A bold geometric face cut by a single inline channel; drawn with Vixl.",
+  "source": "vixl"
+ },
+ {
+  "family": "Vixl Neon",
+  "category": "display",
+  "classification": "decorative (outline, rounded)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "accent"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "Vixl Original (2026)",
+  "mood": [
+   "nightlife",
+   "retro",
+   "electric",
+   "playful"
+  ],
+  "best_for": [
+   "signage",
+   "events",
+   "music",
+   "dark backgrounds"
+  ],
+  "avoid": "Hollow letters need size and contrast; pair with a solid face.",
+  "notes": "Hollow rounded tubes like bent neon signage; drawn with Vixl.",
+  "source": "vixl"
+ },
+ {
+  "family": "Vixl Marquee",
+  "category": "display",
+  "classification": "decorative (dotted)",
+  "weights": [
+   500
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "accent"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "Vixl Original (2026)",
+  "mood": [
+   "showbiz",
+   "festive",
+   "retro",
+   "playful"
+  ],
+  "best_for": [
+   "cinema",
+   "events",
+   "carnival",
+   "signage"
+  ],
+  "avoid": "Dots break apart at small sizes; 40 px and up.",
+  "notes": "Letters drawn in evenly spaced round dots, like marquee bulbs; drawn with Vixl.",
+  "source": "vixl"
+ },
+ {
+  "family": "Vixl Pixel",
+  "category": "display",
+  "classification": "pixel (bitmap)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "accent",
+   "code"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "Vixl Original (2026)",
+  "mood": [
+   "retro",
+   "gamer",
+   "8-bit",
+   "crisp"
+  ],
+  "best_for": [
+   "games",
+   "retro tech",
+   "pixel art",
+   "UI badges"
+  ],
+  "avoid": "Sharpest at multiples of 10 px (one pixel per 0.1 em).",
+  "notes": "A 5 x 7 pixel face on a monospaced grid; drawn with Vixl.",
+  "source": "vixl"
+ },
+ {
+  "family": "Vixl Matrix",
+  "category": "display",
+  "classification": "pixel (dot matrix)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "accent"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "Vixl Original (2026)",
+  "mood": [
+   "retro",
+   "electronic",
+   "transit",
+   "technical"
+  ],
+  "best_for": [
+   "transit signs",
+   "scoreboards",
+   "receipts",
+   "tech"
+  ],
+  "avoid": "Dots read poorly below about 20 px.",
+  "notes": "A 5 x 7 dot-matrix face of round LED dots; drawn with Vixl.",
+  "source": "vixl"
+ },
+ {
+  "family": "Vixl Scanline",
+  "category": "display",
+  "classification": "pixel (scanline)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "accent"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "Vixl Original (2026)",
+  "mood": [
+   "retro",
+   "glitch",
+   "electronic",
+   "nostalgic"
+  ],
+  "best_for": [
+   "games",
+   "synthwave",
+   "titles",
+   "music"
+  ],
+  "avoid": "Gapped rows look grey at small sizes.",
+  "notes": "A 5 x 7 pixel face drawn in horizontal scanlines, like an old CRT; drawn with Vixl.",
+  "source": "vixl"
+ },
+ {
+  "family": "Vixl Slice",
+  "category": "display",
+  "classification": "sliced (rounded square)",
+  "weights": [
+   800
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "Vixl Original (2026)",
+  "mood": [
+   "futuristic",
+   "dynamic",
+   "sporty",
+   "bold"
+  ],
+  "best_for": [
+   "sport",
+   "tech",
+   "music",
+   "logos"
+  ],
+  "avoid": "The cut needs size to read; display only.",
+  "notes": "A bold rounded-square face sliced by one horizontal cut; drawn with Vixl.",
+  "source": "vixl"
  }
 ]

@@ -56,9 +56,11 @@ def probe(family: str) -> dict:
 
 
 def check(fonts_path: str, pairings_path: str | None) -> int:
-    fonts = json.load(open(fonts_path))
+    catalog = json.load(open(fonts_path))
+    # Vixl Originals ("source": "vixl") come from the pinned fonts content pack, not Google Fonts.
+    fonts = [f for f in catalog if f.get("source", "google") == "google"]
     errors = 0
-    by_name = {}
+    by_name = {f["family"]: f for f in catalog}
     with ThreadPoolExecutor(4) as ex:
         results = list(ex.map(lambda f: probe(f["family"]), fonts))
     for f, r in zip(fonts, results):
@@ -83,7 +85,7 @@ def check(fonts_path: str, pairings_path: str | None) -> int:
                 elif w not in by_name[fam]["weights"]:
                     print(f"FAIL pairing {p['name']}: {fam} has no weight {w}")
                     errors += 1
-    print(f"{len(fonts)} families checked, {errors} errors")
+    print(f"{len(fonts)} Google Fonts families checked ({len(catalog) - len(fonts)} from the fonts pack), {errors} errors")
     return 1 if errors else 0
 
 

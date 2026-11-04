@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.34.1
+
+Twenty original typefaces drawn with Vixl, and two outline fixes they needed.
+
+### Added
+
+- **Twenty Vixl Originals: typefaces drawn with Vixl.** Orbit, Bolt, Hairline, Tessera, Facet, Block, Mono, Slab,
+  Bubble, Quill, Nib, Marker, Sketch, Inline, Neon, Marquee, Pixel, Matrix, Scanline and Slice (OFL 1.1, printable
+  ASCII, one weight each) join the font catalog with `"source": "vixl"`, plus 20 pairings that use them (6 bold,
+  14 avant-garde, so a high-variety roll can pick them). They were built with the font maker from shared glyph
+  skeletons in the VixlPacks repository. `font install`, `font pair` and an applied roll read them from the
+  `fonts` content pack instead of Google Fonts: the pack downloads once (through the caller's client when one is
+  given), is checked against its pinned SHA-256, and each face is kept in the font cache (`source.origin: "pack"`).
+  `VIXL_FONTS_PACK` points at a local copy for offline machines. `scripts/verify_fonts.py` skips them.
+
+### Fixed
+
+- **Outlined strokes keep their whole outline in pathfinder and fonts.** `outline-stroke` (and `offset-path`) left
+  the layer's box on the old centreline, so pathfinder and the font maker, which cut a path to its box, kept a
+  one-pixel sliver of an outlined horizontal line and lost half of every other stroke. The box now grows to the
+  outline, keeping where it draws, rotation and flips included.
+- **A path a rounding error outside its box still combines.** Path text is written to three decimals, so a point on
+  the box edge could land 0.0004 px outside it; clipping that hair cut along the outline and pathfinder failed with
+  "the combined outline does not close up". Overflow smaller than the boolean point tolerance is no longer clipped.
+
 ## 0.34.0
 
 Checks that lead with a verdict (roadmap stage 2).
