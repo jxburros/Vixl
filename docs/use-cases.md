@@ -97,6 +97,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | TXT-03 | Browse fonts by category or mood | `vixl_reference('fonts')` | 1 · <1 |  |
 | TXT-04 | Install a curated heading/body font pairing | `font-pair` | 1–2 · <1 | Bundled Noto Sans is a proofing fallback only. Since 0.23 a new document installs its rolled pairing (0 extra calls) when the font cache or network is available: at its first text, not at creation. |
 | TXT-05 | Install one Google font or import a local font file | `font-install`, `import-font` | 1 · <1 |  |
+| TXT-27 | Set headings in an original face only Vixl ships (20 Vixl Originals: geometric, slab, high-contrast, hand-drawn, inline, neon, dotted, pixel …) | `font-install` `Vixl Orbit`, or a `vixl-…` pairing with `font-pair` | 1 · <1 | New: one weight each, printable ASCII. The `fonts` content pack downloads once (about 320 KB, pinned SHA-256); `VIXL_FONTS_PACK` for offline machines. |
 | TXT-26 | Use a font installed on this machine by family, style or PostScript name, and list them | `text` `font: "Georgia Bold"`, `vixl font system`, `vixl_reference('fonts', view='installed')` | 1 · <1 | The face is embedded (collections extracted, variable instances made static); fontconfig, the Windows registry or the font folders; restricted licences warn, and are refused through services. |
 | TXT-06 | Generate a modular type scale | `type-scale --base 16 --ratio golden` | 1 · <1 |  |
 | TXT-07 | Read text metrics (ink box, baseline, cap height, x-height) | `vixl_check(action='measure')`, `info --target TEXT` | 1 · <1 |  |
