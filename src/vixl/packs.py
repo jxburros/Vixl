@@ -41,10 +41,11 @@ PACKS = {
     "fonts": {
         "file": "fonts.zip",
         "path": "fonts/fonts.zip",
-        "commit": "ad7b72479569c906110bf8f89181548a58c4cc64",
-        "sha256": "eefb01e73539f97bc6b7054b1890d7b2abb5ca6a2d4b5c4f3bfa0e8066c0954d",
-        "bytes": 81431,
-        "description": "Third-party fonts the Vixl examples use (Press Start 2P, Space Mono), named like the font cache.",
+        "commit": "72c2b9270c05d9be8254761c92aaf77cb1820f6f",
+        "sha256": "e5670c70755827e4a2faa0328555dae0bce8d0bc2585155efd8e4e1badec2787",
+        "bytes": 320241,
+        "description": "The twenty Vixl Originals (typefaces drawn with Vixl; font install and font pair read them from "
+                       "here) and the third-party fonts the examples use, named like the font cache.",
         "install": "Download {url} and install it with `vixl.packs.install('fonts', FILE)`.",
     },
 }

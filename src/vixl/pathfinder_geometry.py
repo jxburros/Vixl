@@ -8,7 +8,7 @@ then draws the layer as an image and lists the reason.
 """
 
 
-from .booleans import KAPPA, Unsupported, combine_outlines
+from .booleans import KAPPA, TOLERANCE, Unsupported, combine_outlines
 
 __all__ = ["Unsupported", "pathfinder_commands", "path_data"]
 
@@ -106,7 +106,10 @@ def shape_contours(item):
         return _ellipse(w, h)
     path, view = shape_path(item)
     contours = _from_commands(parse_path(path), w / view[0], h / view[1])
-    if any(not (-1e-9 <= x <= w + 1e-9 and -1e-9 <= y <= h + 1e-9) for contour in contours for seg in contour
+    # Path text is written to a few decimals, so a point on the box edge can land a hair outside it; clipping
+    # that hair would cut along the outline itself and leave pieces the booleans cannot join.
+    slack = TOLERANCE
+    if any(not (-slack <= x <= w + slack and -slack <= y <= h + slack) for contour in contours for seg in contour
            for x, y in seg):
         # A path is drawn inside its box: whatever its coordinates reach beyond the box is cut off.
         box = [_close([(0, 0), (w, 0), (w, h), (0, h)])]

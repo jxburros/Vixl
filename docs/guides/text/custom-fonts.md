@@ -2,7 +2,8 @@
 
 [Documentation home](../../README.md) · [Typography](typography.md) · [Exporting](../output/exporting.md) · [Vector paths](../shapes/vector-paths.md)
 
-Vixl can draw a font as well as use one. Each glyph is ordinary layers (rectangles, pen paths, stroked lines,
+Vixl can draw a font as well as use one. The twenty [Vixl Originals](typography.md#the-catalog) in the font catalog were made this way, from shared glyph
+skeletons; their builder and editable masters are in the [VixlPacks repository](https://github.com/jxburros/VixlPacks/tree/main/fonts/originals). Each glyph is ordinary layers (rectangles, pen paths, stroked lines,
 pathfinder results, even a text layer set in another face), so every shape and path tool works on letters. The
 document's **font design** says which character each glyph is and how it sits on the line. `export` writes a
 TrueType, OpenType or WOFF file that other apps can install, and `font-build` embeds the font in the same document,

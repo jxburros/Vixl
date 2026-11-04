@@ -1967,5 +1967,505 @@
   "source": "https://fonts.google.com/",
   "safe": false,
   "tier": "avant-garde"
+ },
+ {
+  "name": "vixl-orbit-source-serif",
+  "heading": {
+   "family": "Vixl Orbit",
+   "weight": 400
+  },
+  "body": {
+   "family": "Source Serif 4",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "modern",
+   "editorial",
+   "clean"
+  ],
+  "best_for": [
+   "magazines",
+   "brand sites",
+   "reports"
+  ],
+  "why": "Orbit's pure circles and monoline strokes set off a transitional text serif: geometry in the headline, warmth and reading comfort in the body.",
+  "caution": "Orbit has one weight; get hierarchy from size and space, not bold.",
+  "source": "https://github.com/jxburros/VixlPacks/tree/main/fonts/originals"
+ },
+ {
+  "name": "vixl-slab-inter",
+  "heading": {
+   "family": "Vixl Slab",
+   "weight": 500
+  },
+  "body": {
+   "family": "Inter",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "sturdy",
+   "confident",
+   "editorial"
+  ],
+  "best_for": [
+   "product pages",
+   "menus",
+   "posters"
+  ],
+  "why": "Blunt square serifs on geometric bowls give headings presence, and Inter's neutral grotesque keeps the body out of their way.",
+  "caution": "Track the slab out a little at small heading sizes.",
+  "source": "https://github.com/jxburros/VixlPacks/tree/main/fonts/originals"
+ },
+ {
+  "name": "vixl-bolt-work-sans",
+  "heading": {
+   "family": "Vixl Bolt",
+   "weight": 800
+  },
+  "body": {
+   "family": "Work Sans",
+   "weight": 400
+  },
+  "relationship": "concord",
+  "mood": [
+   "bold",
+   "energetic",
+   "modern"
+  ],
+  "best_for": [
+   "sport",
+   "campaigns",
+   "landing pages"
+  ],
+  "why": "Both are geometric-leaning sans faces with open shapes; Bolt's black weight carries the shout while Work Sans reads easily below it.",
+  "caution": "Keep Bolt headlines short; it gets dense across long lines.",
+  "source": "https://github.com/jxburros/VixlPacks/tree/main/fonts/originals"
+ },
+ {
+  "name": "vixl-hairline-inter",
+  "heading": {
+   "family": "Vixl Hairline",
+   "weight": 100
+  },
+  "body": {
+   "family": "Inter",
+   "weight": 300
+  },
+  "relationship": "contrast",
+  "mood": [
+   "airy",
+   "elegant",
+   "minimal"
+  ],
+  "best_for": [
+   "luxury",
+   "fashion",
+   "portfolios"
+  ],
+  "why": "A wide hairline headline against a light, tall-x-height grotesque: contrast of width and texture with matching quiet weight.",
+  "caution": "Hairline needs large sizes and plain backgrounds; do not reverse it out of photos.",
+  "source": "https://github.com/jxburros/VixlPacks/tree/main/fonts/originals"
+ },
+ {
+  "name": "vixl-tessera-ibm-plex-sans",
+  "heading": {
+   "family": "Vixl Tessera",
+   "weight": 500
+  },
+  "body": {
+   "family": "IBM Plex Sans",
+   "weight": 400
+  },
+  "relationship": "concord",
+  "mood": [
+   "technical",
+   "engineered",
+   "futuristic"
+  ],
+  "best_for": [
+   "tech products",
+   "dashboards",
+   "automotive"
+  ],
+  "why": "Tessera's squared bowls and Plex's engineered grotesque share a mechanical temperament; Plex supplies weights, italics and coverage.",
+  "caution": "Tessera is wide; keep headings to one line where possible.",
+  "source": "https://github.com/jxburros/VixlPacks/tree/main/fonts/originals"
+ },
+ {
+  "name": "vixl-facet-barlow",
+  "heading": {
+   "family": "Vixl Facet",
+   "weight": 700
+  },
+  "body": {
+   "family": "Barlow",
+   "weight": 400
+  },
+  "relationship": "concord",
+  "mood": [
+   "athletic",
+   "industrial",
+   "rugged"
+  ],
+  "best_for": [
+   "sport",
+   "packaging",
+   "signage"
+  ],
+  "why": "Facet's chamfered condensed caps and Barlow's slightly rounded, signage-born grotesque both come from the road and the stadium.",
+  "caution": "Facet is display-only; use Barlow for anything over a line.",
+  "source": "https://github.com/jxburros/VixlPacks/tree/main/fonts/originals"
+ },
+ {
+  "name": "vixl-block-archivo",
+  "heading": {
+   "family": "Vixl Block",
+   "weight": 800
+  },
+  "body": {
+   "family": "Archivo",
+   "weight": 400
+  },
+  "relationship": "concord",
+  "mood": [
+   "blocky",
+   "loud",
+   "retro"
+  ],
+  "best_for": [
+   "posters",
+   "games",
+   "stickers"
+  ],
+  "why": "Block's right-angled heavy forms sit well over Archivo's sturdy grotesque, which was drawn for both print and screen headlines.",
+  "caution": "Block's counters close at small sizes; 48 px and up.",
+  "source": "https://github.com/jxburros/VixlPacks/tree/main/fonts/originals"
+ },
+ {
+  "name": "vixl-mono-orbit",
+  "heading": {
+   "family": "Vixl Mono",
+   "weight": 400
+  },
+  "body": {
+   "family": "Vixl Orbit",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "technical",
+   "friendly",
+   "minimal"
+  ],
+  "best_for": [
+   "developer tools",
+   "docs",
+   "product UI"
+  ],
+  "why": "Both are drawn from the same Vixl skeletons, so proportions and terminals agree; the monospaced heading signals code while Orbit reads as prose.",
+  "caution": "Both cover ASCII only; switch the body to Inter for other languages.",
+  "source": "https://github.com/jxburros/VixlPacks/tree/main/fonts/originals"
+ },
+ {
+  "name": "vixl-bubble-rubik",
+  "heading": {
+   "family": "Vixl Bubble",
+   "weight": 900
+  },
+  "body": {
+   "family": "Rubik",
+   "weight": 400
+  },
+  "relationship": "concord",
+  "mood": [
+   "playful",
+   "friendly",
+   "soft"
+  ],
+  "best_for": [
+   "kids",
+   "food",
+   "social posts"
+  ],
+  "why": "Bubble's fat squircle bowls and Rubik's softly rounded corners share one friendly temperature at two weights.",
+  "caution": "Do not set Bubble small; its counters fill in.",
+  "source": "https://github.com/jxburros/VixlPacks/tree/main/fonts/originals"
+ },
+ {
+  "name": "vixl-quill-source-sans",
+  "heading": {
+   "family": "Vixl Quill",
+   "weight": 400
+  },
+  "body": {
+   "family": "Source Sans 3",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "elegant",
+   "editorial",
+   "classic"
+  ],
+  "best_for": [
+   "fashion",
+   "magazines",
+   "invitations"
+  ],
+  "why": "A high-contrast display serif over a clear humanist sans: the classic modern-headline, sans-body magazine contrast.",
+  "caution": "Quill's hairlines need 28 px and up and good print or screen resolution.",
+  "source": "https://github.com/jxburros/VixlPacks/tree/main/fonts/originals"
+ },
+ {
+  "name": "vixl-nib-eb-garamond",
+  "heading": {
+   "family": "Vixl Nib",
+   "weight": 400
+  },
+  "body": {
+   "family": "EB Garamond",
+   "weight": 400
+  },
+  "relationship": "concord",
+  "mood": [
+   "calligraphic",
+   "elegant",
+   "warm"
+  ],
+  "best_for": [
+   "invitations",
+   "quotes",
+   "book covers"
+  ],
+  "why": "Both descend from the broad-nib pen; Nib's slanted strokes read as hand-lettering above Garamond's old-style text.",
+  "caution": "Nib is a script; one short line, never all caps.",
+  "source": "https://github.com/jxburros/VixlPacks/tree/main/fonts/originals"
+ },
+ {
+  "name": "vixl-marker-nunito",
+  "heading": {
+   "family": "Vixl Marker",
+   "weight": 600
+  },
+  "body": {
+   "family": "Nunito",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "casual",
+   "handmade",
+   "friendly"
+  ],
+  "best_for": [
+   "notes",
+   "callouts",
+   "education"
+  ],
+  "why": "Marker's hand-drawn energy needs a calm partner; Nunito's rounded terminals echo the marker's round ends without competing.",
+  "caution": "Use Marker for a few words; the repeated wobble shows in long text.",
+  "source": "https://github.com/jxburros/VixlPacks/tree/main/fonts/originals"
+ },
+ {
+  "name": "vixl-sketch-karla",
+  "heading": {
+   "family": "Vixl Sketch",
+   "weight": 300
+  },
+  "body": {
+   "family": "Karla",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "sketchy",
+   "informal",
+   "creative"
+  ],
+  "best_for": [
+   "wireframes",
+   "mockups",
+   "workshops"
+  ],
+  "why": "Sketch's loose doubled lines say 'draft' while Karla's quirky grotesque keeps the explanation legible.",
+  "caution": "Sketch is light; give it size and a plain background.",
+  "source": "https://github.com/jxburros/VixlPacks/tree/main/fonts/originals"
+ },
+ {
+  "name": "vixl-inline-dm-sans",
+  "heading": {
+   "family": "Vixl Inline",
+   "weight": 800
+  },
+  "body": {
+   "family": "DM Sans",
+   "weight": 400
+  },
+  "relationship": "concord",
+  "mood": [
+   "art deco",
+   "festive",
+   "glamorous"
+  ],
+  "best_for": [
+   "events",
+   "posters",
+   "packaging"
+  ],
+  "why": "Inline is a geometric sans cut with a channel; DM Sans is a low-contrast geometric, so the pair shares one skeleton style at two volumes.",
+  "caution": "The inline closes below about 40 px.",
+  "source": "https://github.com/jxburros/VixlPacks/tree/main/fonts/originals"
+ },
+ {
+  "name": "vixl-neon-space-grotesk",
+  "heading": {
+   "family": "Vixl Neon",
+   "weight": 400
+  },
+  "body": {
+   "family": "Space Grotesk",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "nightlife",
+   "electric",
+   "retro"
+  ],
+  "best_for": [
+   "music",
+   "events",
+   "dark themes"
+  ],
+  "why": "Hollow tube letters need a solid partner; Space Grotesk's idiosyncratic grotesque keeps the retro-tech mood without more ornament.",
+  "caution": "Neon is hollow: set it large, ideally light on dark.",
+  "source": "https://github.com/jxburros/VixlPacks/tree/main/fonts/originals"
+ },
+ {
+  "name": "vixl-marquee-libre-franklin",
+  "heading": {
+   "family": "Vixl Marquee",
+   "weight": 500
+  },
+  "body": {
+   "family": "Libre Franklin",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "showbiz",
+   "festive",
+   "retro"
+  ],
+  "best_for": [
+   "cinema",
+   "carnival",
+   "event listings"
+  ],
+  "why": "Bulb-dotted titles over a classic American gothic body: the theatre marquee above the printed playbill.",
+  "caution": "Marquee dots break up below 40 px.",
+  "source": "https://github.com/jxburros/VixlPacks/tree/main/fonts/originals"
+ },
+ {
+  "name": "vixl-pixel-space-mono",
+  "heading": {
+   "family": "Vixl Pixel",
+   "weight": 400
+  },
+  "body": {
+   "family": "Space Mono",
+   "weight": 400
+  },
+  "relationship": "concord",
+  "mood": [
+   "retro",
+   "gamer",
+   "8-bit"
+  ],
+  "best_for": [
+   "games",
+   "retro tech",
+   "pixel art"
+  ],
+  "why": "Both are monospaced and rooted in early computing; Space Mono gives the pixel title readable body copy with the same rhythm.",
+  "caution": "Pixel is sharpest at multiples of 10 px.",
+  "source": "https://github.com/jxburros/VixlPacks/tree/main/fonts/originals"
+ },
+ {
+  "name": "vixl-matrix-ibm-plex-mono",
+  "heading": {
+   "family": "Vixl Matrix",
+   "weight": 400
+  },
+  "body": {
+   "family": "IBM Plex Mono",
+   "weight": 400
+  },
+  "relationship": "concord",
+  "mood": [
+   "electronic",
+   "transit",
+   "technical"
+  ],
+  "best_for": [
+   "scoreboards",
+   "transit",
+   "receipts"
+  ],
+  "why": "LED dot-matrix headings with a monospaced body read as one piece of equipment: display and printout.",
+  "caution": "Matrix dots read poorly below about 20 px.",
+  "source": "https://github.com/jxburros/VixlPacks/tree/main/fonts/originals"
+ },
+ {
+  "name": "vixl-scanline-figtree",
+  "heading": {
+   "family": "Vixl Scanline",
+   "weight": 400
+  },
+  "body": {
+   "family": "Figtree",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "glitch",
+   "nostalgic",
+   "electronic"
+  ],
+  "best_for": [
+   "synthwave",
+   "game titles",
+   "music"
+  ],
+  "why": "CRT scanline titles against a clean friendly geometric sans keep the nostalgia in the headline only.",
+  "caution": "Gapped rows go grey at small sizes.",
+  "source": "https://github.com/jxburros/VixlPacks/tree/main/fonts/originals"
+ },
+ {
+  "name": "vixl-slice-manrope",
+  "heading": {
+   "family": "Vixl Slice",
+   "weight": 800
+  },
+  "body": {
+   "family": "Manrope",
+   "weight": 400
+  },
+  "relationship": "concord",
+  "mood": [
+   "futuristic",
+   "dynamic",
+   "sporty"
+  ],
+  "best_for": [
+   "sport",
+   "tech launches",
+   "logos"
+  ],
+  "why": "Slice's sliced rounded squares and Manrope's semi-condensed modern grotesque share squarish curves and a forward lean.",
+  "caution": "The cut needs size; display only.",
+  "source": "https://github.com/jxburros/VixlPacks/tree/main/fonts/originals"
  }
 ]

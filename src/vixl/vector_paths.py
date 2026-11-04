@@ -337,6 +337,40 @@ def _store(layer, contours=None, path=None):
     layer.pop("pen_origin", None)
 
 
+def _fit_box(layer):
+    """Refit a path layer's box to its geometry, keeping where it draws.
+
+    ``outline-stroke`` and ``offset-path`` move the outline past the old box (half a stroke and its caps, or the
+    offset). The renderers draw past the box, but pathfinder and the font maker cut a path to its box, so an
+    outlined horizontal line would turn into a one-pixel sliver there. A layer with a pivot or a repeat is left
+    alone: its box places it differently."""
+    import numpy as np
+
+    from .affine import linear
+    from .geometry import path_extents, placed_path
+    from .render import transformed_size
+
+    if layer.get("pivot") is not None or layer.get("repeat"):
+        return
+    w, h = float(layer["width"]), float(layer["height"])
+    if [float(v) for v in layer.get("path_view", (w, h))] != [w, h]:
+        return
+    x0, y0, x1, y1 = path_extents(layer["path"])
+    if x0 >= 0 and y0 >= 0 and x1 <= w and y1 <= h:
+        return
+    nw, nh = max(1.0, x1 - x0), max(1.0, y1 - y0)
+    # x and y place the transformed box, whose centre is the box centre. That centre moves by
+    # L·(offset + new half size - old half size), L being the layer's rotation, skew and flips, so every point
+    # of the path lands where it did before.
+    tw, th = transformed_size(layer)
+    cx, cy = layer["x"] + tw / 2, layer["y"] + th / 2
+    shift = (linear(layer) @ np.array([x0 + nw / 2 - w / 2, y0 + nh / 2 - h / 2, 0]))[:2]
+    layer.update(path=placed_path(layer["path"], (w, h), (-x0, -y0, w, h)), path_view=[nw, nh], width=nw,
+                 height=nh)
+    tw, th = transformed_size(layer)
+    layer.update(x=cx + float(shift[0]) - tw / 2, y=cy + float(shift[1]) - th / 2)
+
+
 def _round_nodes(contour, index, radius):
     nodes = contour["nodes"]
     n = len(nodes)
@@ -435,12 +469,15 @@ def execute(project, op):
                 if key in layer:
                     child[key] = deepcopy(layer[key])
             child["vector_geometry"] = True
+            _fit_box(child)
             append_layer(project, child)
+        _fit_box(layer)
         return
     if kind == "offset-path":
         from .vector_boolean import offset
 
         _store(layer, path=offset(path, op["distance"], op.get("join", "miter"), op.get("miter_limit", 4)))
+        _fit_box(layer)
         return
     contours = path_nodes(path)
     if kind == "path-simplify":

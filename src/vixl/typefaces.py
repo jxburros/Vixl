@@ -555,10 +555,64 @@ def _usable_face(data):
         return False
 
 
+def _store_cached(path, data):
+    """Keep a font in the font cache; a read-only cache only costs fetching it again."""
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+        return True
+    except OSError:
+        return False
+
+
+def pack_font(member, *, client=None):
+    """The bytes of ``member`` (``vixl-orbit-400.ttf``) from the ``fonts`` content pack, where the Vixl Originals
+    live. The pack is used where it already is (``VIXL_FONTS_PACK`` or the pack directory); otherwise it is
+    downloaded once and checked against its pinned SHA-256: through ``client`` when the caller gives one (its
+    network gate), else under the pack download rules (``VIXL_PACK_DOWNLOAD``, ``VIXL_OFFLINE``)."""
+    import tempfile
+
+    from . import packs
+    from .fonts import validate_font
+
+    archive = packs.local("fonts")
+    if archive is None and client is not None:
+        try:
+            data = _get(client, packs.url("fonts"))
+        except httpx.HTTPError as exc:
+            raise VixlError("font_download_failed", f"Fonts pack download failed ({type(exc).__name__}); check "
+                            "network access, or point VIXL_FONTS_PACK at a local fonts.zip") from exc
+        with tempfile.NamedTemporaryFile(delete=False) as staged:
+            staged.write(data)
+        try:
+            archive = Path(packs.install("fonts", staged.name)["path"])
+        finally:
+            Path(staged.name).unlink(missing_ok=True)
+    elif archive is None:
+        try:
+            archive = packs.path("fonts")
+        except VixlError as exc:  # offline, or downloads off: the same failure as a font that cannot download
+            if exc.code != "pack_unavailable":
+                raise
+            raise VixlError("font_download_failed", str(exc)) from exc
+    try:
+        with zipfile.ZipFile(archive) as bundle:
+            info = bundle.getinfo(member)
+            require(info.file_size <= LIMIT, "Font exceeds byte limit", "resource_limit")
+            data = bundle.read(info)
+    except KeyError as exc:
+        raise VixlError("unknown_font", f"The fonts content pack has no {member}; update Vixl, or point "
+                        "VIXL_FONTS_PACK at a current fonts.zip", field="family") from exc
+    except zipfile.BadZipFile as exc:
+        raise VixlError("pack_mismatch", f"The fonts content pack at {archive} is not a zip archive") from exc
+    validate_font(data)
+    return data
+
+
 def fetch_font(family, weight=400, italic=False, *, client=None, source=None):
-    """Return TTF bytes for one static style of a Google Fonts family, using the user cache.
-    A ``source`` dict is filled with where the bytes came from: ``origin`` (``cache`` or
-    ``download``), the cache file, and for a download the stylesheet and font URLs."""
+    """Return TTF bytes for one static style of a Google Fonts family or a Vixl Original, using the user cache.
+    A ``source`` dict is filled with where the bytes came from: ``origin`` (``cache``, ``download`` or ``pack``),
+    the cache file, for a download the stylesheet and font URLs, and for a Vixl Original the pack and member."""
     from .fonts import validate_font
 
     require(isinstance(weight, int) and 100 <= weight <= 900 and weight % 100 == 0, "weight must be 100–900 in steps of 100", field="weight")
@@ -577,6 +631,15 @@ def fetch_font(family, weight=400, italic=False, *, client=None, source=None):
             return data, family
         except VixlError:
             cached.unlink(missing_ok=True)
+    if entry and entry.get("source") == "vixl":
+        require(not italic or entry.get("italic"), f"{family} has no italic", "unavailable_weight", field="italic")
+        member = cached.name
+        data = pack_font(member, client=client)
+        _store_cached(cached, data)
+        if source is not None:
+            source.update(origin="pack", pack="fonts", member=member,
+                          cache_file=str(cached) if cached.is_file() else None)
+        return data, family
     axis = f"ital,wght@1,{weight}" if italic else f"wght@{weight}"
     url = f"{CSS_API}?family={quote_plus(family)}:{axis}"
     own = client is None
@@ -608,12 +671,7 @@ def fetch_font(family, weight=400, italic=False, *, client=None, source=None):
         if own:
             client.close()
     validate_font(data)
-    stored = True
-    try:
-        cached.parent.mkdir(parents=True, exist_ok=True)
-        cached.write_bytes(data)
-    except OSError:
-        stored = False  # A read-only cache only costs a re-download.
+    stored = _store_cached(cached, data)
     if source is not None:
         source.update(origin="download", url=sources[0], stylesheet=url, cache_file=str(cached) if stored else None)
     return data, family
