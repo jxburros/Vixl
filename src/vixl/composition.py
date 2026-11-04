@@ -58,8 +58,12 @@ THRESHOLDS = {
     # frame is a deliberate field of space.
     "dead_band_fill": 0.5,
     "dead_band_max_share": 0.42,
-    "dead_band_hole": 0.3,  # an interior band between type this tall is dead even in a sparse frame
+    "dead_band_hole": 0.22,  # an interior band between type this tall is dead even in a sparse frame …
+    "dead_band_hole_both": 0.3,  # … when both sides carry copy; from here one side is enough (a credit line)
     "dead_band_hole_max": 0.7,
+    # The median-gap term never raises the bar above this share of the frame: a document whose own gaps are
+    # large (airy spacing) does not earn a licence for a band a quarter of the page tall (#680).
+    "dead_band_typical_cap": 0.2,
     # An edge band also has to be this many times the frame's margin on the opposite side.
     "edge_band_ratio": 1.75,
     # Edges further apart than this many pixels and closer than this many spacing units drift.
@@ -409,10 +413,14 @@ def free_rectangles(frame, boxes, limit=64):
     return [tuple(r["bounds"]) for r in _free(list(frame), inside, limit)]
 
 
-def dead_bands(blocks, grounds, unit, width, height, emit):
+def dead_bands(blocks, grounds, unit, width, height, emit, pictured=False):
     t = THRESHOLDS
     frames = [None, *grounds]
     for ground in frames:
+        # Type set over a picture (a meme's captions, a photo's caption) leaves the picture between the lines;
+        # that space is the picture, not a hole.
+        if (ground is None and pictured) or (ground is not None and ground.kind in ("image", "frame")):
+            continue
         frame = ground.box if ground else (0.0, 0.0, float(width), float(height))
         members = [b for b in blocks if b is not ground and frame_of(b, grounds) is ground]
         solid = [b for b in members if not b.decoration]
@@ -433,7 +441,7 @@ def dead_bands(blocks, grounds, unit, width, height, emit):
         # The frame's rhythm is the gaps between its own blocks, not the padding inside its cards.
         gaps = [gap for _, _, gap in stacked_gaps([b for b in members if b.container is ground]) if gap > 0.5]
         typical = median(gaps) if gaps else 0
-        need = max(t["dead_band_share"] * frame[3], t["dead_band_units"] * unit, t["dead_band_gap_ratio"] * typical)
+        need = dead_band_bar(frame[3], unit, gaps)
         span = max(1.0, right - left)
         # Margins are read from blocks that carry weight: a tiny ornament in a corner does not set one.
         weighty = [b for b in solid if b not in grounds and (
@@ -449,14 +457,12 @@ def dead_bands(blocks, grounds, unit, width, height, emit):
             # A hole between a headline and the rest of the type (a poster whose middle was left empty) is dead
             # however sparse the frame or wide the hole; other very tall or sparse bands are open space.
             hole = interior and h >= t["dead_band_hole"] * frame[3] and h <= t["dead_band_hole_max"] * frame[3] and _between_type(
-                members, x, y, w, h, frame[3])
+                members, x, y, w, h, frame[3], both=h < t["dead_band_hole_both"] * frame[3])
             if (sparse or h > t["dead_band_max_share"] * frame[3]) and not hole:
                 continue
             if hole:
                 # With few blocks the hole is itself the median gap: judge it against the other gaps.
-                others = [gap for gap in gaps if gap < h - 1]
-                bar = max(t["dead_band_share"] * frame[3], t["dead_band_units"] * unit,
-                          t["dead_band_gap_ratio"] * (median(others) if others else 0))
+                bar = dead_band_bar(frame[3], unit, [gap for gap in gaps if gap < h - 1])
             else:
                 bar = need
             if h < bar or across < t["dead_band_width"] * span:
@@ -468,9 +474,15 @@ def dead_bands(blocks, grounds, unit, width, height, emit):
                     and min(b.bottom, y + h) - max(b.top, y) >= 0.5 * b.box[3] for b in members):
                 continue
             if y <= frame[1] + 0.5 or y + h >= frame[1] + frame[3] - 0.5:
-                # Open to the frame's edge: an edge band, dead only when it dwarfs the opposite margin.
+                # Open to the frame's edge: an edge band, dead only when it dwarfs the opposite margin, read in
+                # the band's own column (a picture bleeding on the other half of a split does not set it).
                 side = "top" if y <= frame[1] + 0.5 else "bottom"
-                opposite = margins["bottom" if side == "top" else "top"]
+                column = [b for b in weighty if min(b.right, x + w) - max(b.left, x) > 0]
+                if column:
+                    opposite = (frame[1] + frame[3] - max(b.bottom for b in column)) if side == "top" else (
+                        min(b.top for b in column) - frame[1])
+                else:
+                    opposite = margins["bottom" if side == "top" else "top"]
                 if h < t["edge_band_ratio"] * max(opposite, unit):
                     continue
                 where = f"between the content and the {side} edge"
@@ -503,17 +515,40 @@ def dead_bands(blocks, grounds, unit, width, height, emit):
                             **({"edge_ratio": t["edge_band_ratio"]} if side else {})})
 
 
-def _between_type(members, x, y, w, h, frame_height):
+def _typical_term(t, typical, frame_height):
+    """The dead-band bar's median-gap term, capped at a share of the frame (``dead_band_typical_cap``)."""
+    return min(t["dead_band_gap_ratio"] * typical, t["dead_band_typical_cap"] * frame_height)
+
+
+def dead_band_bar(frame_height, unit, gaps=()):
+    """The height from which an interior band between blocks whose stack has these ``gaps`` is dead: the share
+    of the frame, the spacing units and the capped median-gap term of ``dead_bands``. Layouts ask for it while
+    they distribute free height, so a layout and the check share one threshold (#763)."""
+    t = THRESHOLDS
+    gaps = [gap for gap in gaps if gap > 0.5]
+    return max(t["dead_band_share"] * frame_height, t["dead_band_units"] * unit,
+               _typical_term(t, median(gaps) if gaps else 0, frame_height))
+
+
+def _between_type(members, x, y, w, h, frame_height, both=False):
     """Whether text closes a band from above and from below (not artwork, which sets a scene in it), and one side
-    carries the copy (three blocks or a tenth of the frame): a headline over a credit line far below is a
-    minimal composition, not a hole."""
+    carries the copy (three blocks or a tenth of the frame), or with ``both`` each side does: a headline over a
+    credit line far below is a minimal composition, not a hole, while a headline over a date block and its
+    details is. A panel that holds text (a date block) closes a band as its text does."""
     above = [b for b in members if b.bottom <= y + 1 and min(b.right, x + w) > max(b.left, x)]
     below = [b for b in members if b.top >= y + h - 1 and min(b.right, x + w) > max(b.left, x)]
-    if not (above and below) or max(above, key=lambda b: b.bottom).kind != "text" or min(
-            below, key=lambda b: b.top).kind != "text":
+
+    def is_type(block):
+        return block.kind == "text" or any(o.kind == "text" and o.container is block for o in members)
+
+    if not (above and below) or not is_type(max(above, key=lambda b: b.bottom)) or not is_type(
+            min(below, key=lambda b: b.top)):
         return False
-    return any(len(side) >= 3 or max(b.bottom for b in side) - min(b.top for b in side) >= 0.1 * frame_height
-               for side in (above, below))
+    # The copy is measured over the type itself: a panel around one line does not make that line a column.
+    carries = [any(b.kind == "text" for b in side) and (
+        len(side) >= 3 or max(b.bottom for b in side if b.kind == "text")
+        - min(b.top for b in side if b.kind == "text") >= 0.1 * frame_height) for side in (above, below)]
+    return all(carries) if both else any(carries)
 
 
 def _overlap_share(a, b):
@@ -873,6 +908,11 @@ def single_weight(candidate, blocks, resolved, emit):
     texts = _type_blocks(blocks, resolved)
     if len(texts) < t["weight_min_blocks"]:
         return
+    # Equal lines of one size (a meme's panel captions, a diagram's labels) are siblings, not a hierarchy
+    # that one weight flattens: there is no headline for a heavier weight to set apart.
+    sizes = [b.size for b in texts if b.size]
+    if (sizes and max(sizes) <= 1.15 * min(sizes)) or all(b.label for b in texts):
+        return
     found = _faces(candidate, resolved, texts)
     if found is None or found[1] or len(found[0]) != 1:
         return
@@ -1062,9 +1102,10 @@ def accent_unused(candidate, blocks, resolved, ancestors, width, height, emit):
              threshold={"min_layers": 1, "min_blocks": t["accent_min_blocks"]})
 
 
-def check(candidate, resolved, geometry, content, role, ancestors, issue, local_bounds=None):
+def check(candidate, resolved, geometry, content, role, ancestors, issue, local_bounds=None, pictured=False):
     """Run the composition family on a check_design candidate, reporting through ``issue``. With the candidate's
-    ``local_bounds`` (layout boxes), text is measured from the top to the bottom of its glyphs."""
+    ``local_bounds`` (layout boxes), text is measured from the top to the bottom of its glyphs. ``pictured``
+    says a picture covers the canvas, so the canvas itself is not judged for dead bands."""
     from .craft import body_size
 
     canvas = candidate.state["canvas"]
@@ -1087,7 +1128,7 @@ def check(candidate, resolved, geometry, content, role, ancestors, issue, local_
                          "unit": "ratio" if code in RATIO_CODES else "count" if code in COUNT_CODES else "px"},
             "values": values, "threshold": threshold, "spacing_unit": unit}))
 
-    dead_bands(blocks, grounds, unit, width, height, emit)
+    dead_bands(blocks, grounds, unit, width, height, emit, pictured=pictured)
     margin_drift(blocks, unit, emit, width * height)
     uneven_rhythm(blocks, unit, emit, body_size(candidate))
     floating(blocks, unit, emit, [entry[3]["region"] for entry in pending if entry[0] == "dead_band"])

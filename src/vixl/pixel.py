@@ -11,6 +11,7 @@ from .model import new_layer
 
 PIXEL_TYPES = ("pixel-art", "pixel-draw", "pixel-palette")
 MAX_GRID = 256
+MIRRORS = ("x", "y", "xy")
 LIGHTS = ("auto", "top-left", "top", "top-right")
 SHADING = {"light": "auto", "colors": 16, "highlight": True}
 RAMPED = 0.35  # a colour whose hand-drawn tones already cover this share of its area is left as drawn
@@ -43,6 +44,68 @@ def validate_pixel(layer, state):
         )
         color(resolve_color(value, state))
     require(set("".join(rows)) <= palette.keys(), "Every pixel must have a palette entry")
+
+
+def expand_row(row, palette, where="rows"):
+    """A row string with run-length counts expanded: ``"3.2#"`` is ``"...##"``. A count is the digits before a
+    symbol. Rows are read literally when the palette itself uses a digit as a symbol, so no sprite changes
+    meaning; a row without digits is already literal."""
+    require(isinstance(row, str), f"{where} must be strings", field=where)
+    if not any(ch.isdigit() for ch in row) or any(key.isdigit() for key in palette):
+        return row
+    out, count = [], ""
+    for ch in row:
+        if ch.isdigit():
+            count += ch
+            continue
+        out.append(ch * (int(count) if count else 1))
+        count = ""
+    require(not count, f"{where}: a run count needs a palette symbol after it ({row!r})", field=where)
+    expanded = "".join(out)
+    require(len(expanded) <= MAX_GRID, f"{where}: a row is at most {MAX_GRID} pixels wide", field=where)
+    return expanded
+
+
+def mirrored(rows, axis, width=None, height=None):
+    """``rows`` completed by reflection: the given rows are the left half (``x``), the top half (``y``) or the
+    top-left quarter (``xy``). The full ``width`` or ``height``, when given, may be one less than twice the half,
+    which makes the last given column or row the axis (an odd-sized sprite with a centre line)."""
+    require(axis in MIRRORS, f"mirror is one of {', '.join(MIRRORS)}", field="mirror")
+    if "x" in axis:
+        half = len(rows[0])
+        full = width if width is not None else 2 * half
+        require(full in (2 * half, 2 * half - 1), f"mirror x: rows give the left half ({half} columns), so width "
+                f"is {2 * half} or {2 * half - 1} (a centre column)", field="width")
+        rows = [row + row[:full - half][::-1] for row in rows]
+    if "y" in axis:
+        half = len(rows)
+        full = height if height is not None else 2 * half
+        require(full in (2 * half, 2 * half - 1), f"mirror y: rows give the top half ({half} rows), so height is "
+                f"{2 * half} or {2 * half - 1} (a centre row)", field="height")
+        rows = rows + rows[:full - half][::-1]
+    return rows
+
+
+def delta(rows, palette, changed_rows=None, cells=None):
+    """``rows`` with only the given rows (``{index: row}``, run-length allowed) and cells (``[x, y, symbol]``)
+    replaced: a frame that says what changed since the last one."""
+    width, height = len(rows[0]), len(rows)
+    out = list(rows)
+    require(isinstance(changed_rows or {}, dict), "rows maps row indexes to row strings", field="rows")
+    for key, row in (changed_rows or {}).items():
+        require(isinstance(key, (int, str)) and str(key).isdigit() and 0 <= int(key) < height,
+                f"rows: row index {key!r} is outside the grid (0-{height - 1})", field="rows")
+        row = expand_row(row, palette)
+        require(len(row) == width, f"rows: row {key} has {len(row)} pixels; the sprite is {width} wide", field="rows")
+        out[int(key)] = row
+    require(isinstance(cells or [], list), "cells is a list of [x, y, symbol]", field="cells")
+    for cell in cells or []:
+        require(isinstance(cell, list) and len(cell) == 3 and type(cell[0]) is int and type(cell[1]) is int
+                and isinstance(cell[2], str) and len(cell[2]) == 1, "cells is a list of [x, y, symbol]", field="cells")
+        x, y, symbol = cell
+        require(0 <= x < width and 0 <= y < height, f"cells: [{x}, {y}] is outside the grid", field="cells")
+        out[y] = out[y][:x] + symbol + out[y][x + 1:]
+    return out
 
 
 def validate_finish(layer):
@@ -251,6 +314,9 @@ def execute_pixel(project, op):
         else:
             require("background" not in op, "Rows specify their own background; omit background")
             if isinstance(rows, list) and rows and isinstance(rows[0], str):
+                rows = [expand_row(row, palette) for row in rows]
+                if op.get("mirror"):
+                    rows = mirrored(rows, op["mirror"], op.get("width"), op.get("height"))
                 for key, expected in (("width", len(rows[0])), ("height", len(rows))):
                     require(key not in op or op[key] == expected,
                             f"Rows are {len(rows[0])}x{len(rows)}, so {key} must be {expected} (or omit it); "
@@ -291,6 +357,13 @@ def execute_pixel(project, op):
         validate_pixel(layer, project.state)
         return
     rows = layer["pixels"]
+    if "rows" in op or "cells" in op:
+        # A frame delta: only the rows and cells that changed since the last frame.
+        require(not any(key in op for key in ("tool", "x", "y", "x2", "y2", "width", "height", "color")),
+                "rows and cells replace tool, x, y and color", field="rows" if "rows" in op else "cells")
+        layer["pixels"] = delta(rows, layer["palette"], op.get("rows"), op.get("cells"))
+        validate_pixel(layer, project.state)
+        return
     w, h = len(rows[0]), len(rows)
     symbol = op["color"]
     require(symbol in layer["palette"], "Color must be a palette symbol")

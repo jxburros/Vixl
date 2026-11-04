@@ -414,3 +414,63 @@ def test_optional_parts_of_finishing_containers_hide_when_empty():
     hidden = collapsed(p)
     assert {p.layer("note/icon")["id"], p.layer("strip/detail")["id"]} <= hidden
     assert not {p.layer(name)["id"] for name in ("note/title", "note/body", "strip/title")} & hidden
+
+
+def test_reference_describes_container_slots_and_image_specs():  # #615 item 60
+    from vixl.containers import describe
+
+    item = describe("testimonial", CONTAINERS["testimonial"])
+    assert item["size"] == [480, 320] and item["bounds"]["min_width"] == 240
+    assert item["slots"]["quote"] == {"kind": "text", "required": True, "default": "[Quote]", "placeholder": True}
+    assert item["slots"]["photo"] == {"kind": "image", "required": True, "default": ""}
+    assert item["required"] == ["quote", "name", "role", "photo"]
+    photo = item["images"][0]
+    assert photo["slot"] == "photo" and photo["size"] == [86, 86] and photo["mask_shape"] == "circle"
+    assert photo["aspect_ratio"] == 1.0 and "import-image" in item["image_fill"]
+    assert item["variants"] == ["centered", "left", "split"]
+    assert item["example"]["type"] == "container-place" and set(item["example"]["variables"]) == set(item["required"])
+    # Colour variables with a swatch default are optional; a stat's empty delta hides itself, so it is optional too.
+    assert describe("headline-left", CONTAINERS["headline-left"])["slots"]["ink"] == {
+        "kind": "color", "required": False, "default": "@ink"}
+    assert describe("stat", CONTAINERS["stat"])["slots"]["delta"]["required"] is False
+
+
+def test_reference_describes_template_variables_slots_and_images():  # #615 item 60
+    from vixl.resources import describe_template
+
+    square = describe_template("social-square", TEMPLATES["social-square"])
+    assert square["required"] == ["title", "subtitle"] and square["variables"]["title"]["placeholder"] == "[Headline]"
+    assert square["variables"]["background"]["kind"] == "color" and square["variables"]["background"]["role"] == "background"
+    assert square["images"] == [] and square["proportional"] is True
+    assert square["example"]["variables"] == {"title": "[Headline]", "subtitle": "[Subheading]"}
+    team = describe_template("slide-team", TEMPLATES["slide-team"])
+    assert list(team["slots"]) == ["slot-1", "slot-2", "slot-3"] and team["slots"]["slot-1"]["container"] == "profile"
+    assert team["slots"]["slot-1"]["slots"]["photo"]["kind"] == "image"
+    assert [image["slot"] for image in team["images"]] == ["slot-1.photo", "slot-2.photo", "slot-3.photo"]
+    # The picture's size on the template's native 1920x1080 canvas: the profile frame inside a three-column cell.
+    assert team["images"][0]["size"] == [209, 843] and team["images"][0]["mask_shape"] == "rounded"
+    assert team["example"]["variables"]["slot-2"]["name"] == "[Name]"
+
+
+def test_mcp_reference_reads_containers_and_templates_with_their_slots(tmp_path):
+    import asyncio
+    import json
+
+    from vixl.interfaces import mcp_server
+
+    server = mcp_server(workspace=tmp_path)
+
+    def call(**arguments):
+        async def run():
+            result = await server.call_tool("vixl_reference", arguments)
+            content = result[0] if isinstance(result, tuple) else result
+            return json.loads("".join(getattr(item, "text", "") for item in content))
+
+        return asyncio.run(run())
+
+    assert "profile" in call(topic="containers")["names"]
+    profile = call(topic="containers", name="profile")
+    assert profile["required"] == ["photo", "name", "title", "bio"] and profile["images"][0]["slot"] == "photo"
+    assert profile["value"]["width"] == 480
+    team = call(topic="templates", name="slide-team")
+    assert team["images"][0]["slot"] == "slot-1.photo" and team["value"]["width"] == 1920

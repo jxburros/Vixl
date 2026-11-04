@@ -266,3 +266,97 @@ def test_group_above_or_below_sets_the_new_groups_slot():
     assert compile_command("group h a --below g")["below"] == "g"
     assert compile_command("shape ellipse --opacity 70% --rotation 20")["opacity"] == "70%"
     assert compile_command("shape --target a --x 5 --space canvas")["space"] == "canvas"
+
+
+# Authoring shortcuts (#615 items 51 and 52) ---------------------------------------------------------------
+
+
+def test_batch_defaults_fill_open_fields_of_creation_operations_and_match_the_long_form():
+    from vixl.interfaces import Session
+
+    short = Project(400, 300, "white")
+    result = short.apply([
+        {"type": "text", "name": "title", "text": "Hello", "x": 20, "y": 20},
+        {"type": "text", "name": "small", "text": "fine print", "x": 20, "y": 80, "size": 12, "color": "#333333"},
+        {"type": "shape", "shape": "rectangle", "name": "card", "x": 20, "y": 120, "width": 120, "height": 60},
+        {"type": "shape", "shape": "ellipse", "name": "dot", "x": 200, "y": 120, "width": 30, "height": 30, "fill": "blue"},
+        {"type": "solid", "name": "band", "width": 400, "height": 20, "y": 280},
+        {"type": "opacity", "target": "card", "value": 0.5},
+    ], defaults={"font": "NotoSans-Regular.ttf", "size": 32, "fill": "#ff0000", "stroke": "#000000"}, detail="compact")
+    long = Project(400, 300, "white")
+    long.apply([
+        {"type": "text", "name": "title", "text": "Hello", "x": 20, "y": 20, "font": "NotoSans-Regular.ttf", "size": 32,
+         "color": "#ff0000"},
+        {"type": "text", "name": "small", "text": "fine print", "x": 20, "y": 80, "size": 12, "color": "#333333",
+         "font": "NotoSans-Regular.ttf"},
+        {"type": "shape", "shape": "rectangle", "name": "card", "x": 20, "y": 120, "width": 120, "height": 60,
+         "fill": "#ff0000", "stroke": "#000000"},
+        {"type": "shape", "shape": "ellipse", "name": "dot", "x": 200, "y": 120, "width": 30, "height": 30, "fill": "blue",
+         "stroke": "#000000"},
+        {"type": "solid", "name": "band", "width": 400, "height": 20, "y": 280, "color": "#ff0000"},
+        {"type": "opacity", "target": "card", "value": 0.5},
+    ])
+    strip = lambda project: [{k: v for k, v in layer.items() if k != "id"} for layer in project.state["layers"]]  # noqa: E731
+    assert strip(short) == strip(long)
+    notes = result["normalized"]
+    assert "operations[0]: defaults.font → font 'NotoSans-Regular.ttf'" in notes
+    assert "operations[0]: defaults.fill → color '#ff0000'" in notes and "operations[0]: defaults.size → size 32" in notes
+    assert not any(note.startswith("operations[1]: defaults.size") or note.startswith("operations[3]: defaults.fill")
+                   or note.startswith("operations[5]") for note in notes)
+    # A default that is not one of font, fill, stroke, size is refused before anything runs.
+    with pytest.raises(VixlError, match="defaults takes font, fill, stroke, size"):
+        Project(100, 100).apply({"type": "text", "text": "x"}, defaults={"colour": "red"})
+    # The session and MCP surfaces take the same field, and the long form of the document is what gets saved.
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as folder:
+        session = Session(workspace=folder)
+        session.create("d.vixl", 100, 100, "white")
+        out = session.apply([{"type": "text", "name": "t", "text": "Hi"}], defaults={"size": 40})
+        assert "operation: defaults.size → size 40" in out["normalized"]
+        assert Project.load(Path(folder) / "d.vixl").layer("t")["size"] == 40
+
+
+def test_create_many_expands_to_the_same_document_as_the_long_form_and_is_never_recorded(tmp_path):
+    rows = [{"name": "mon", "text": "Monday", "y": 40}, {"name": "tue", "text": "Tuesday", "y": 72},
+            {"name": "wed", "text": "Wednesday", "y": 104, "color": "#ff0000"}]
+    prototype = {"type": "text", "size": 20, "color": "#111111", "x": 40}
+    short = Project(400, 300, "white")
+    result = short.apply([{"type": "create-many", "prototype": prototype, "rows": rows},
+                          {"type": "shape", "shape": "rectangle", "name": "box", "width": 10, "height": 10}], detail="compact")
+    long = Project(400, 300, "white")
+    long.apply([*({**prototype, **row} for row in rows),
+                {"type": "shape", "shape": "rectangle", "name": "box", "width": 10, "height": 10}])
+    assert [layer["name"] for layer in short.state["layers"]] == ["mon", "tue", "wed", "box"]
+    assert short.layer("wed")["color"] == "#ff0000" and short.layer("mon")["color"] == "#111111"
+    strip = lambda project: [{k: v for k, v in layer.items() if k != "id"} for layer in project.state["layers"]]  # noqa: E731
+    assert strip(short) == strip(long)
+    assert result["normalized"][0] == "operations[0]: create-many → 3 text operations (operations[0–2] of the expanded batch)"
+    # The saved document and its history hold the ordinary operations only.
+    import zipfile
+
+    short.save(tmp_path / "rows.vixl")
+    with zipfile.ZipFile(tmp_path / "rows.vixl") as archive:
+        stored = b"".join(archive.read(name) for name in archive.namelist())
+    assert b"create-many" not in stored and b'"Wednesday"' in stored
+    assert "create-many" not in json.dumps(Project.load(tmp_path / "rows.vixl").state)
+    # The item is schema-documented (it is an operation type with a summary and fields) but takes no layer list.
+    from vixl.schema import operation_schema
+    from vixl.targets import EXPANDED, mode
+
+    variant = next(v for v in operation_schema()["properties"]["operations"]["items"]["oneOf"]
+                   if v["properties"]["type"]["const"] == "create-many")
+    assert variant["x-targets"] == "one" and set(variant["required"]) == {"type", "prototype", "rows"}
+    assert "create-many" in EXPANDED and mode("create-many") == "one"
+    # Errors name the item: a row that changes the type, a missing prototype, and fields outside the prototype.
+    with pytest.raises(VixlError, match=r"operations\[0\].*cannot change the prototype's type"):
+        Project(100, 100).apply([{"type": "create-many", "prototype": prototype, "rows": [{"type": "shape"}]}])
+    with pytest.raises(VixlError, match=r"operations\[1\].*prototype"):
+        Project(100, 100).apply([{"type": "text", "text": "x"}, {"type": "create-many", "rows": [{}]}])
+    with pytest.raises(VixlError, match="put 'x' in the prototype"):
+        Project(100, 100).apply([{"type": "create-many", "prototype": prototype, "rows": [{}], "x": 1}])
+    # A schema error inside a copy points at the expanded operation.
+    with pytest.raises(VixlError) as error:
+        Project(100, 100).apply([{"type": "create-many", "prototype": prototype,
+                                  "rows": [{"text": "ok"}, {"text": "bad", "sizee": 3}]}])
+    assert error.value.details.get("operation_index") == 1

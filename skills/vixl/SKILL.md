@@ -19,28 +19,34 @@ planner all compile to the **same canonical JSON operations**, so what you learn
 
 ## Start here (the default path)
 
-For any new piece, and above all an open-ended brief, follow this order instead of improvising freehand shapes:
+A new piece with a text frame is one call:
 
-1. **What am I making?** `vixl_reference(brief)` (CLI `vixl guide a mascot for a coffee brand`) returns the kind,
-   suitable operations, layouts, looks, styles, `motifs` to draw, a `tests` plan and a working example. Layouts
-   are text compositions; icons, characters, scenes and patterns are built from `shape`, `pen`, `pathfinder`,
-   `organic` and `radial-repeat`.
-2. **Layout**: `vixl_reference('sizes')` → `vixl_document(action='create', size=…)` (or `purpose=`). With text,
-   `vixl_reference('layouts')` → `layout-apply`, filling every slot it lists.
-3. **Fonts**: the first batch with text installs the pairing rolled at creation; to choose,
-   `vixl_reference('fonts')` → `font-pair`, or name a font installed on this machine
-   (`vixl_reference('fonts', view='installed')`).
-4. **Finish**: a `look` (glow, soft-shadow, grain, paper …); for a named style, `vixl_reference('styles')` and
-   `style-set`.
-5. **Test**: write the brief's requirements as a suite before building (`suite-set`, or a starter with
-   `vixl_apply(workflow='suite-use', request={name})`) and build with
-   `vixl_apply(..., check=true, suites=true, preview=true)`: findings, failed rules and a preview in one call.
-6. **Finishing pass, then export.** Once `vixl_check` and your suite pass, follow the finishing checklist:
-   `vixl_reference('finishing')` / `vixl guide finishing` (a composition check, a short critique, one fix batch, a
-   real-size look with `vixl_render(region=[x, y, w, h], max_width=w, max_height=h)`). Then
-   `vixl_check(profile="final")` and `vixl_export`.
+```
+vixl_apply(create={path: "card.vixl", purpose: "social", layout: {name: "hero-statement", title: "Ship it",
+  subtitle: "Release notes inside", cta: "Read more"}, look: {look: "grain"}, suites: "composition"}, preview=true)
+```
 
-When the size, slots, look and operations are known, `vixl_apply(create={…})` runs steps 1–5 in one atomic call.
+It creates the document at the purpose's size, installs the rolled font pairing, runs `layout-apply` with every slot
+filled, applies the look, runs `check` and the starter suite and returns a preview, all or nothing.
+`vixl_reference(brief)` (CLI `vixl guide BRIEF`) names the kind, its layouts, looks, styles, `motifs`, a `tests`
+plan and its `finishing_pass` tier; `vixl_reference('layouts')` lists layouts and slots; `vixl_reference('fonts')`
+→ `font_pairing` (or `font-pair`) picks type.
+
+Step by step only for edits and for art without a text frame:
+
+1. **Edits**: `vixl_document(action='inspect')`, then `vixl_apply(operations=[…], check=true, suites=true,
+   preview=true)` batches (the core loop).
+2. **Art without a text frame** (icons, characters, scenes, patterns): `vixl_document(action='create', size=…)`,
+   then `shape`, `pen`, `pathfinder`, `organic` and `radial-repeat`; a `look` (glow, soft-shadow, grain …) so flat
+   shapes read as finished; a named style via `style-set`.
+3. **Test**: the brief's requirements as a suite first (`suite-set`, or a starter with
+   `vixl_apply(workflow='suite-use', request={name})`), run with `check=true, suites=true, preview=true`.
+4. **Finishing pass, then export**, sized to the purpose (`finishing_pass` in `vixl_reference(kind)`). Social and
+   quick web (social, slides, diagram, motion): once `vixl_check` and the suite pass and the preview reads,
+   `vixl_export`. Print and brand (poster, document, form, logo): the checklist `vixl_reference('finishing')` /
+   `vixl guide finishing` (a composition check, a short critique, one fix batch, a real-size look with
+   `vixl_render(region=[x, y, w, h], max_width=w, max_height=h)`), then `vixl_check(profile="final")` and `vixl_export`.
+
 Details: [workflow](references/workflow.md), [testing](references/testing.md).
 
 ## The core loop (every time)

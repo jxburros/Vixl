@@ -47,7 +47,7 @@ Each result carries the measurement (gaps, margins, ratio, centre, colour), so a
 change. A rule that cannot be measured (a missing layer) is `needs_review`, never a pass; a rule about a layer
 on another page is `not_applicable` on the pages that lack it (neutral, not counted), and so is a rule whose
 `pages` field (names or 1-based numbers) leaves the page out; an unknown page name is `needs_review`. A
-passing suite proves only its own rules. Rule fields: `vixl_reference('workflows').definitions.suite`.
+passing suite proves only its own rules. Rule fields: `vixl_reference('workflows', name='check').definitions.suite`.
 From an approved design, `vixl_apply(workflow='suite-infer', request={name})` proposes an explained, tolerant suite to
 review; library suites a group or brand.json lists under `suites` are inherited by every member, and
 `vixl_apply(workflow='check', request={})` runs every attached and inherited suite.
@@ -60,7 +60,7 @@ passed with nothing left to review. An apply without checks, an export or a prod
 is `unvalidated`, not approved. Fix findings carry a stable `rule` (`bounds.text-overflow`,
 `contrast.text-contrast`, `safe_area.outside` …), `layer_ids`, `measured` actual versus expected and a suggested
 `repair` (operations to dry-run; nothing is applied). `repair=true` on `vixl_apply`, `vixl_check` and
-workflow `act` / `group-apply` applies the built-in repair (fit-text within the minimum, ink toward `@ink`,
+workflow `act` / `group-apply` applies the built-in repair (overflow in a layout: grow the box into free space and move the rows below, then widen, then fit-text within the minimum and above the next smaller line; ink toward `@ink`,
 nudge inside the safe area; blanks are held) and keeps only repairs that leave nothing new failing.
 `preview={overlay: true}` (with `check`) marks the findings on the preview; `focus: N` zooms to one. For
 overflow or overlap with no single fix use workflow `repair-layout` (`protected`, `minimum_size`; dry run by

@@ -37,6 +37,10 @@ EACH = frozenset({
 # Operations that already take targets themselves and apply to each listed layer.
 OWN_EACH = frozenset({"keyframe", "animate", "animate-preset", "look", "irregular", "cut-paper", "motion", "snap",
                       "match-size"})
+# Batch items that stand for several operations and take no layer list themselves: ``create-many`` is expanded
+# by normalize.expand_batch into one ordinary operation per row (each semantics, one atomic batch) before the
+# batch is validated, so a document never records it. Its mode is ``one``.
+EXPANDED = frozenset({"create-many"})
 # Operations that act on the listed layers together.
 JOINT = frozenset({"align", "group", "reparent", "distribute", "artboard", "pathfinder", "suite-capture", "role-set",
                    "arrange-grid", "adapt-layout", "stack", "place", "merge-layers", "die-cut", "reflection",

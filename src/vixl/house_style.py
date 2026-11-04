@@ -11,7 +11,8 @@
   variety levels that gate the tiers.
 * **purposes**: one profile per purpose (poster, social, slides, document, form, diagram, logo,
   motion) that weights the taste: dark-mode share, type-scale ratios, preferred pairings, layouts
-  and styles, the finishing look and background treatments.
+  and styles, the finishing look and background treatments, and the finishing pass the purpose
+  earns (``finishing_pass``: ``check`` for social and quick web, ``full`` for print and brand).
 
 Precedence, highest first: an explicit field, the workspace ``brand.json``, the purpose profile,
 the document's stored ``design_defaults``, then a fresh seeded roll. The file is read-only at run
@@ -33,6 +34,8 @@ This module only reads the data. The rolls that use it live in ``typefaces.roll`
 ``mood_keywords()``           the brief words that imply each palette mood (``briefs.brief_moods``)
 ``neutral()``                 what a document gets with ``house_style: "off"``: no roll, a neutral direction
 ``finish()``                  the finishing rules: glow, shadow and halo colours, dash fitting
+``finishing_pass(purpose)``   ``check`` or ``full``: how much of the finishing pass a purpose earns
+``finishing_passes()``        ``{tier: [purposes]}`` for the start-here recipe
 ``illustration()``            the illustration finish: part-line width, offset shadow, irregularity, extra lines
 """
 
@@ -291,6 +294,24 @@ def profile(purpose=None):
         merged.setdefault(key, {"prefer": [], "weight": 1})
     merged.setdefault("treatments", {})
     return merged
+
+
+FINISHING_PASSES = ("check", "full")
+
+
+def finishing_pass(purpose=None):
+    """How much of the finishing pass a purpose earns (``purposes.*.finishing_pass``): ``check`` (vixl_check
+    and the suites clean, a glance at the preview, export) for social, quick web, slides, diagrams and
+    motion; ``full`` (the composition check, a critique, one fix batch, a real-size look) for print and
+    brand work: posters, documents, forms and logos. Anything ``purpose_for`` resolves is accepted; an
+    unknown or missing purpose gets ``full``, since the long pass never hurts."""
+    resolved = purpose_for(purpose) if purpose else None
+    return _data()["purposes"].get(resolved, {}).get("finishing_pass", "full")
+
+
+def finishing_passes():
+    """``{tier: [purposes]}``, each tier's purposes in ``PURPOSES`` order."""
+    return {tier: [purpose for purpose in PURPOSES if finishing_pass(purpose) == tier] for tier in FINISHING_PASSES}
 
 
 def safe_palettes():

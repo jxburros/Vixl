@@ -16,7 +16,7 @@ It runs through MCP, CLI, Python or REST, so there is no canvas to open. People 
 interfaces; the product is built for the agent at the keyboard.
 
 Pre-1.0 and in Beta: breaking changes are allowed and noted in the [changelog](CHANGELOG.md#0270).
-Source version: **0.34.0** (release pending). Run `vixl --version` to check your runtime; record the Git commit when using a
+Source version: **0.35.0** (release pending). Run `vixl --version` to check your runtime; record the Git commit when using a
 source checkout.
 
 **[Documentation home](docs/README.md)** · [Getting started](docs/getting-started.md) ·

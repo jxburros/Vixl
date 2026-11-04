@@ -174,6 +174,18 @@ CLI `vixl workflow deck-from-markdown --request req.json`, Python `vixl.workflow
 ```
 
 - `#` and `##` headings (and `---` lines) start slides; each becomes a page named after its heading.
+- Structured input: `slides` instead of `markdown`, one object per slide, builds the same deck the equivalent Markdown
+  would: `{layout, title, subtitle, caption, bullets, text, quote, attribution, image, chart, table, notes}`. `layout`
+  is `title`, `section`, `quote` or `content` (omitted, it is chosen from the content as below); `bullets` is a list
+  of Markdown lines; `image` a workspace path or `{path, alt}`; `chart` `{kind, rows}` (or `{kind, csv}`) with the
+  first column the categories; `table` rows as lists (the first the header) or CSV text.
+
+  ```json
+  {"slides": [{"layout": "title", "title": "Tide Pool Nights", "subtitle": "A summer music series"},
+              {"title": "Why the harbour", "bullets": ["Free concerts **every Friday**", "Food trucks"], "notes": "Mention the ferry."},
+              {"title": "Attendance", "chart": {"kind": "line", "rows": [["Year", "Visitors"], [2023, 1200], [2024, 1850]]}}],
+   "output": "deck.vixl", "export": ["pptx"]}
+  ```
 - The layout follows what a slide holds: the first `#` heading with a line or two under it is a title slide
   (`slide-title`: subtitle, caption); a heading alone is a section slide; one `>` quotation (an `— Name` line
   attributes it) is a `quote-card`; anything else is a content slide (`slide-content` for the heading).

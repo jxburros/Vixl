@@ -87,6 +87,12 @@ def _candidates(project, finding, boxes, minimum):
     first = suggest(project, {**finding, "minimum": max(minimum or 0, finding.get("minimum") or 0) or None})
     if first.get("available"):
         out.append((f"map:{first['kind']}", first["operations"]))
+    if rule in ("bounds.text-overflow", "suite.text-fit") and first.get("kind") != "fit-text":
+        # The growing repairs come first (#768); the shrink stays a later candidate.
+        shrink = suggest(project, {**finding, "minimum": max(minimum or 0, finding.get("minimum") or 0) or None,
+                                   "_shrink_only": True})
+        if shrink.get("available"):
+            out.append(("map:fit-text", shrink["operations"]))
     canvas = project.state["canvas"]
     if rule in ("bounds.text-overflow", "suite.text-fit") and ids:
         layer = next((x for x in resolved_layers(project) if x["id"] == ids[0]), None)

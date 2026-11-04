@@ -128,6 +128,144 @@ def test_reasoning_dryrun_and_restricted_plan(project_path):
         plan(p, "unsafe", backend, apply=True)
 
 
+class RecordingPlanner:
+    """A planner that answers each request from ``answers`` in turn and keeps every request it saw."""
+
+    name = "recorder"
+
+    def __init__(self, *answers):
+        self.answers, self.requests = list(answers), []
+
+    def invoke(self, capability, request):
+        assert capability == "plan"
+        self.requests.append(deepcopy(request))
+        return deepcopy(self.answers.pop(0)) if len(self.answers) > 1 else deepcopy(self.answers[0])
+
+
+def poster():
+    p = Project(400, 300)
+    p.apply([
+        {"type": "text", "name": "heading", "text": "Hello", "x": 20, "y": 20, "size": 40},
+        {"type": "rect", "name": "box", "x": 20, "y": 70, "width": 100, "height": 50, "fill": "#333"},
+        {"type": "rect", "name": "far", "x": 300, "y": 250, "width": 40, "height": 40, "fill": "#333"},
+    ])
+    p.apply({"type": "guidance", "name": "house", "text": "Keep it calm."})
+    p.apply({"type": "guidance", "name": "house", "style": "text", "text": "Headings stay short."})
+    p.apply({"type": "guidance", "name": "house", "style": "photo", "text": "Photos keep their grain."})
+    return p
+
+
+def test_planner_request_is_small_and_ordered():
+    # Before shortlisting, the same request was 242,325 characters: 108 full schemas, a full inspect and the image.
+    p = poster()
+    backend = RecordingPlanner({"operations": [{"type": "text-set", "target": "heading", "color": "red"}]})
+    result = plan(p, "make the heading red", backend, image="none")
+    request = backend.requests[-1]
+    assert "source_image" not in request and result["request"]["image"] == "none"
+    assert len(json.dumps(request)) < 10000 and result["request"]["characters"] == len(json.dumps(request))
+    assert result["request"]["schemas"] == "brief" and not result["request"]["retried"]
+    assert list(request) == ["operations_reference", "allowed_types", "design_guidance", "document", "prompt", "model"]
+    # Brief schemas for a shortlist of at most eight operations, the layer's own edits first.
+    assert len(request["operations_reference"]) <= 8
+    assert result["request"]["operations"][:2] == ["text-set", "text-layout"]
+    assert "example" in request["operations_reference"][0] and "properties" not in request["operations_reference"][0]
+    # The summary around the heading and its neighbours, not a full inspect: the far box is only named.
+    document = request["document"]
+    assert [layer["name"] for layer in document["layers"]] == ["heading", "box"] and document["other_layers"] == ["far"]
+    assert "layer_count" in document and "history" not in document
+    # The overall guidance plus the styles matching the shortlist or the prompt.
+    assert list(request["design_guidance"]) == ["overall", "text"]
+    assert result["proposal"][0]["color"] == "red" and not result["applied"]
+
+
+def test_planner_image_modes():
+    p = poster()
+    backend = RecordingPlanner({"operations": [{"type": "text-set", "target": "heading", "color": "red"}]})
+    plan(p, "make the heading red", backend)  # auto: a text edit sends no image
+    assert "source_image" not in backend.requests[-1]
+    plan(p, "set the variable title to hi", backend)
+    assert "source_image" not in backend.requests[-1]
+    result = plan(p, "move the box to the right", backend)  # auto: the box's region, with its neighbours
+    assert result["request"]["image"] == "region"
+    sent = Image.open(__import__("io").BytesIO(__import__("base64").b64decode(backend.requests[-1]["source_image"])))
+    assert sent.size[0] < 400 and sent.size[1] < 300
+    assert [layer["name"] for layer in backend.requests[-1]["document"]["layers"]] == ["box", "heading"]
+    assert list(backend.requests[-1]["design_guidance"]) == ["overall", "text"]  # text-set is on the shortlist
+    result = plan(p, "make everything bluer", backend)  # nothing named: the whole canvas and every layer
+    assert result["request"]["image"] == "full" and len(backend.requests[-1]["document"]["layers"]) == 3
+    result = plan(p, "make the heading red", backend, image="full")
+    assert result["request"]["image"] == "full"
+    result = plan(p, "tidy this corner", backend, region=[290, 240, 60, 60], operations=["move"])
+    assert list(backend.requests[-1]["design_guidance"]) == ["overall"]
+    assert result["request"]["image"] == "region"
+    assert [layer["name"] for layer in backend.requests[-1]["document"]["layers"]] == ["far"]
+    result = plan(p, "tidy", backend, target="far", image="none")
+    assert [layer["name"] for layer in backend.requests[-1]["document"]["layers"]] == ["far"]
+    with pytest.raises(VixlError, match="image is auto"):
+        plan(p, "x", backend, image="jpeg")
+    with pytest.raises(VixlError, match="region is"):
+        plan(p, "x", backend, region=[1, 2, 3])
+
+
+def test_planner_operations_argument():
+    p = poster()
+    backend = RecordingPlanner({"operations": [{"type": "move", "target": "box", "x": 50, "y": 120}]})
+    result = plan(p, "nudge the box", backend, operations=["move", "blur"])
+    assert result["request"]["operations"] == ["move", "effect"]
+    assert [v["type"] for v in backend.requests[-1]["operations_reference"]] == ["move", "effect"]
+    with pytest.raises(VixlError) as error:
+        plan(p, "nudge the box", backend, operations=["add"])
+    assert error.value.details["field"] == "operations" and "move" in error.value.details["allowed"]
+    with pytest.raises(VixlError, match="not a list|list of operation types"):
+        plan(p, "nudge the box", backend, operations="move")
+    # vixl ask --ops, --image, --target and --region reach the same arguments.
+    import vixl.plugins.ai.models as models
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(models, "route", lambda *_: backend)
+        result, changed = ai_command(p, "ask", ["nudge the box", "--ops", "move,resize", "--image", "none",
+                                                "--target", "box", "--region", "0,100,150,80"])
+    assert not changed and result["request"]["operations"] == ["move", "resize"] and result["request"]["image"] == "none"
+    assert backend.requests[-1]["document"]["region"] == [0, 100, 150, 80]
+
+
+def test_planner_retries_once_with_full_schemas():
+    p = poster()
+    backend = RecordingPlanner(
+        {"operations": [{"type": "text-set", "target": "heading", "size": "huge"}]},
+        {"operations": [{"type": "text-set", "target": "heading", "size": 48}]},
+    )
+    result = plan(p, "make the heading bigger", backend)
+    assert len(backend.requests) == 2 and result["request"]["retried"] and result["request"]["schemas"] == "full"
+    first, second = backend.requests
+    assert "properties" not in first["operations_reference"][0] and "properties" in second["operations_reference"][0]
+    assert "size must be integer" in second["previous_error"] and "previous_error" not in first
+    assert [v["properties"]["type"]["const"] for v in second["operations_reference"]][:2] == ["text-set", "text-layout"]
+    assert result["proposal"][0]["size"] == 48
+    # A second failure is reported, not retried again; an unsafe plan is never retried.
+    backend = RecordingPlanner({"operations": [{"type": "text-set", "target": "heading", "size": "huge"}]})
+    with pytest.raises(VixlError, match="size must be integer"):
+        plan(p, "make the heading bigger", backend)
+    assert len(backend.requests) == 2
+    backend = RecordingPlanner({"operations": [{"type": "add", "path": "/etc/passwd"}]})
+    with pytest.raises(VixlError) as error:
+        plan(p, "add it", backend)
+    assert error.value.code == "unsafe_plan" and len(backend.requests) == 1
+
+
+def test_planner_reports_provider_usage_and_cache_reads():
+    p = poster()
+    backend = RecordingPlanner({
+        "operations": [{"type": "text-set", "target": "heading", "color": "red"}],
+        "usage": {"input_tokens": 120, "output_tokens": 30, "cache_read_input_tokens": 1500,
+                  "cache_creation_input_tokens": 0},
+    })
+    result = plan(p, "make the heading red", backend)
+    assert result["usage"] == {"input_tokens": 120, "output_tokens": 30}
+    assert result["cache"] == {"cache_read_tokens": 1500, "cache_creation_tokens": 0}
+    assert "usage" not in result["proposal"]
+
+
 def test_ai_inpaint_outpaint_mask_and_regenerate(project_path, monkeypatch):
     import vixl.plugins.ai.ai
 

@@ -167,3 +167,56 @@ def test_compose_through_mcp_cli_rest_and_python(tmp_path):
         response = client.post("/compose", json={"width": 64, "height": 64, "preview": True})
         assert response.status_code == 200 and response.json()["dry_run"] and response.json()["preview_base64"]
         assert client.post("/compose", json={"path": "x.vixl", "width": 64, "height": 64}).status_code == 403
+
+
+# #628: a suite runs inside the one call, not as a separate vixl_apply(workflow='check')
+
+
+def test_compose_runs_suites_in_the_same_call(tmp_path):
+    session = Session(workspace=tmp_path)
+    result, _ = compose(session, path="s.vixl", size="instagram-post", layout=LAYOUT, suites="composition")
+    assert result["steps"] == ["request", "create", "layout", "check", "suites", "save"]
+    suite = result["suites"]["composition"]
+    assert suite["status"] in ("passed", "failed", "needs_review") and suite["library"] == "composition"
+    assert "rules" in suite and "not_passed" in suite
+    # A list of starters, and true for the suites the batch's own operations attached.
+    result, _ = compose(session, path="list.vixl", size="instagram-post", layout=LAYOUT,
+                        suites=["composition", "delivery"])
+    assert set(result["suites"]) == {"composition", "delivery"}
+    result, _ = compose(session, path="own.vixl", width=400, height=300, suites=True,
+                        operations=[{"type": "solid", "color": "navy", "name": "bg"},
+                                    {"type": "suite-set", "name": "brief",
+                                     "suite": {"rules": [{"id": "has-layers", "kind": "count", "target": "*", "minimum": 1}]}}])
+    assert result["suites"]["brief"]["status"] == "passed"
+    result, _ = compose(session, path="none.vixl", width=400, height=300, suites=True)
+    assert "No suites are attached" in result["suites"]["note"]
+    # strict covers suite failures, so a failing requirement saves nothing.
+    with pytest.raises(VixlError) as caught:
+        compose(session, path="bad.vixl", width=400, height=300, suites=True, strict=True,
+                operations=[{"type": "suite-set", "name": "brief",
+                             "suite": {"rules": [{"id": "ten-layers", "kind": "count", "target": "*", "minimum": 10}]}}])
+    assert caught.value.code == "suite_failed" and caught.value.details["step"] == "suites"
+    assert not (tmp_path / "bad.vixl").exists()
+    with pytest.raises(VixlError) as caught:
+        compose(session, path="bad.vixl", width=400, height=300, suites="no-such-suite")
+    assert caught.value.code == "not_found" and not (tmp_path / "bad.vixl").exists()
+    with pytest.raises(VixlError) as caught:
+        compose(session, path="bad.vixl", width=400, height=300, suites=3)
+    assert caught.value.details["field"] == "suites"
+
+
+def test_mcp_create_takes_suites_beside_and_inside_create(tmp_path):
+    from vixl.mcp_tools import build_server
+
+    server = build_server(Session(workspace=tmp_path))
+
+    def call(arguments):
+        answer = asyncio.run(server.call_tool("vixl_apply", arguments))
+        blocks = answer[0] if isinstance(answer, tuple) else answer
+        return json.loads(blocks[0].text)
+
+    result = call({"create": {"path": "a.vixl", "size": "instagram-post", "layout": LAYOUT}, "suites": "composition"})
+    assert "composition" in result["suites"] and "suites" in result["steps"]
+    # The field may also travel inside create, next to layout and look, as the start-here example writes it.
+    result = call({"create": {"path": "b.vixl", "size": "instagram-post", "layout": LAYOUT, "suites": ["composition"]}})
+    assert "composition" in result["suites"]

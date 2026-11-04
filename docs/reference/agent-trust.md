@@ -54,7 +54,7 @@ Each design-check finding carries:
 
 | Rule | Measured | Suggested repair |
 | --- | --- | --- |
-| `bounds.text-overflow` | needed size vs text box | `fit-text` in the box, never below the minimum size |
+| `bounds.text-overflow` | needed size vs text box | in a composition (a layout's layer, or rows under it): `grow-box` grows the box toward the height the copy needs and moves the rows below down with it, into the room before the bottom margin first and then by closing their gaps to two spacing units, so the type keeps its size; else `widen-box` rebreaks the lines in the free width to the right; else the box takes the room there is and `fit-text` shrinks the type inside it, never below the minimum size or, for a heading, the next smaller line's size plus one. A lone text box is fitted in its own box |
 | `bounds.cut-off` | layer box vs canvas | text: `move` back inside the canvas (relative, anchor kept) |
 | `bounds.off-canvas`, `bounds.bleed`, `bounds.tile-wrap`, `bounds.gradient-edge` | layer box vs canvas | none (bleeds and wraps are informational) |
 | `contrast.text-contrast` | contrast vs required | `text-set` colour moved toward the role ink (`@ink`, else black or white) |
@@ -66,7 +66,8 @@ Each design-check finding carries:
 | `blanks.unfilled` | | held for review: copy is never guessed |
 
 The minimum size of a `fit-text` repair is the document's `text-fit` suite rule for that layer, else 12 px,
-and for social and poster pieces the house style's minimum share of the short side. At most ten fix
+and for social and poster pieces the house style's minimum share of the short side; a heading also stays above
+the next smaller text line (a longer headline never drops under its subtitle; since 0.35). At most ten fix
 findings get a suggestion per check. `offset` and `limit` page the findings; `passed`, the counts and
 `outcome` still cover them all. Invalid operations keep their structured errors (`operation_index`, `field`,
 `suggestions`).

@@ -95,7 +95,8 @@ def test_timeline_detail_and_key_pagination():
 def test_discovery_parity_and_aliases(tmp_path):
     result = lookup("text", fields=True)
     assert "font" in result["operations"]["text"]["fields"]
-    assert "literal local pixels" in " ".join(result["gotchas"])
+    assert "font accepts" in " ".join(result["gotchas"])  # the text topic's gotchas, not the path one
+    assert "literal local pixels" in " ".join(lookup("path")["gotchas"])
     assert validate_operation({"type": "move_layer", "x": 2})["type"] == "move"
     assert validate_operation({"type": "set_opacity", "opacity": "50%"})["value"] == 0.5
 

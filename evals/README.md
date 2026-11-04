@@ -35,6 +35,9 @@ per task, runs an agent, grades the workspace, and records:
 | tool result tokens | approximate size of what the tools sent back (chars ÷ 4) |
 | craft score | for a task with a `craft` check: 1 minus the share of `max_findings` the composition checks find in the delivered document (0-1; see [the craft grader](#craft-grader-and-judge)) |
 | input / output tokens | from the API's usage, including cache reads |
+| tokens_total / cache_read_tokens | the API's usage summed (input, output, cache creation and cache reads) and its cache reads alone; `null` in a replay, where no model is called |
+| images | image blocks the tools returned (a 512 px preview is about 300 tokens) |
+| tool_input_chars / tool_result_chars | the JSON an agent wrote and the text the tools sent back, in characters: the offline proxy for tokens |
 
 ## Running
 
@@ -60,6 +63,15 @@ results.
 The Claude agent uses a manual tool-use loop: assistant turns are appended unchanged (so thinking
 blocks stay valid), parallel tool results return in a single user message, prompt caching is on,
 and server-side refusal fallbacks (`fallbacks: "default"`) are enabled unless `--no-fallbacks`.
+
+## Token baseline
+
+`python -m evals.token_baseline` records the cost of one representative brief per kind of work (a graphic, a chart,
+a deck, a form, an illustration, a pattern, variants, a sprite, an animation and a follow-up edit) in
+`evals/token-baseline.json`: eight are eval tasks, the pattern and sprite briefs are scripted in the module. Offline
+it replays the reference solutions, so `tokens_total` and `cache_read_tokens` are null and the payload character
+counts and images stand in; `--agent claude` fills the token fields from the API. The file says how it was produced.
+Re-run it before and after a change meant to cut what agents send or read (roadmap stage 4).
 
 ## Using it
 
@@ -212,7 +224,10 @@ their fonts installed and passing the contrast check, and of the designs rolled 
 whose layout draws them all (`accents drawn`; a layout with too few places for an accent leaves the rest out).
 `--compare` fails when a
 quality share falls or a level's diversity falls by more than the baseline's tolerance; a deliberate
-change updates `house-style-baseline.json` in the same commit. `tests/test_house_style.py` runs four
+change updates `house-style-baseline.json` in the same commit. Craft guidance counts as a default: a change to
+the start-here recipe (`vixl_reference()`), to the finishing checklist or to a purpose's `finishing_pass` tier in
+`house-style.json` (`check` for social and quick web, `full` for print and brand) runs `--compare` too, since
+those texts decide which checks and passes an agent runs on every rolled design. `tests/test_house_style.py` runs four
 briefs at two levels as part of the test suite.
 
 Since the composition checks, every rolled design at every level is free of

@@ -87,6 +87,10 @@ class Session:
         self._path = None  # The server-wide default: the document it started with, or set outside MCP.
         self._client_paths = WeakKeyDictionary()
         self._client_seen = WeakKeyDictionary()  # Client -> documents it created, opened or named, by recency.
+        # Dry-run proposals a client may commit by ID (``apply_reviewed(proposal=...)``): the newest PROPOSALS per
+        # client, and one shared list outside MCP.
+        self._client_proposals = WeakKeyDictionary()
+        self._proposals = OrderedDict()
         self.documents = {}
         # Each document's render caches, kept when the document is reloaded (it changed on disk, a call
         # failed, or it was closed and opened again): keys are content-addressed, so a reload re-renders
@@ -415,14 +419,64 @@ class Session:
             raise VixlError("invalid_json", f"{path}: {exc}", field="operations_path") from exc
         return loaded
 
-    def apply(self, operations, dry_run=False, detail="compact", document=None, operations_path=None):
-        return self.apply_reviewed(operations, dry_run, detail, document, operations_path)[0]
+    def apply(self, operations, dry_run=False, detail="compact", document=None, operations_path=None, expect_head=None,
+              defaults=None):
+        return self.apply_reviewed(operations, dry_run, detail, document, operations_path, expect_head=expect_head,
+                                   defaults=defaults)[0]
+
+    PROPOSALS = 16  # dry-run proposals remembered per client, newest first
+
+    def _proposal_store(self):
+        client = current_client()
+        if client is None:
+            return self._proposals
+        return self._client_proposals.setdefault(client, OrderedDict())
+
+    def propose(self, document, head, operations, options):
+        """Remember a dry run so ``apply_reviewed(proposal=ID)`` can commit it later; returns its ID (a hash of
+        the operations, the head and the review options, so the same dry run twice gives the same ID)."""
+        from .hashing import content_hash
+
+        record = {"document": None if document is None else str(document), "head": head, "operations": operations,
+                  "options": options}
+        ident = "prop_" + content_hash(record, default=str)[:16]
+        with self._registry:
+            store = self._proposal_store()
+            store.pop(ident, None)
+            store[ident] = record
+            while len(store) > self.PROPOSALS:
+                store.popitem(last=False)
+        return ident
+
+    def proposal(self, ident):
+        """The remembered dry run ``ident`` (raises ``unknown_proposal``); it stays remembered until committed."""
+        with self._registry:
+            record = self._proposal_store().get(ident)
+        require(record is not None, f"Unknown proposal {ident!r}: dry runs are remembered for the last "
+                f"{self.PROPOSALS} per session; run the dry run again", "unknown_proposal", field="proposal")
+        return record
+
+    def forget_proposal(self, ident):
+        with self._registry:
+            self._proposal_store().pop(ident, None)
 
     def apply_reviewed(self, operations, dry_run=False, detail="compact", document=None, operations_path=None,
-                       check=None, preview=None, budget=None, suites=None, repair=None):
+                       check=None, preview=None, budget=None, suites=None, repair=None, expect_head=None,
+                       defaults=None):
         """apply, plus the optional ``check`` findings, attached ``suites`` and ``preview`` PNG of the result
-        (checks.apply_reviewed):
-        returns ``(result, PNG bytes or None)``."""
+        (checks.apply_reviewed): returns ``(result, PNG bytes or None)``. The result carries the document's
+        ``head`` afterwards (unchanged by a dry run). ``expect_head`` refuses the batch (``stale_proposal``) when
+        the document's head is another revision, checked under the document's lock. ``defaults`` ({font, fill,
+        stroke, size}) fills the batch's creation operations that leave those fields open (Project.apply)."""
+        from .normalize import with_defaults
+
+        with with_defaults(defaults):
+            return self._apply_reviewed(operations, dry_run, detail, document, operations_path, check=check,
+                                        preview=preview, budget=budget, suites=suites, repair=repair,
+                                        expect_head=expect_head)
+
+    def _apply_reviewed(self, operations, dry_run=False, detail="compact", document=None, operations_path=None,
+                        check=None, preview=None, budget=None, suites=None, repair=None, expect_head=None):
         from .checks import apply_reviewed
 
         if operations_path is not None:
@@ -436,13 +490,24 @@ class Session:
 
         if any(is_step(op) for op in operations):
             return self.apply_steps(operations, dry_run, detail, document, check=check, preview=preview,
-                                    budget=budget, suites=suites, repair=repair)
+                                    budget=budget, suites=suites, repair=repair, expect_head=expect_head)
         with self.project(write=not dry_run, document=document) as p:
             from .service_fonts import checker
 
-            return apply_reviewed(p, operations, dry_run=dry_run, detail=detail, check=check, preview=preview,
-                                  validate=checker(p, service_check), budget=budget, suites=suites,
-                                  repair=repair)
+            self._expect_head(p, expect_head)
+            result, image = apply_reviewed(p, operations, dry_run=dry_run, detail=detail, check=check,
+                                           preview=preview, validate=checker(p, service_check), budget=budget,
+                                           suites=suites, repair=repair)
+            result.setdefault("head", p.head)
+            return result, image
+
+    @staticmethod
+    def _expect_head(project, expect_head):
+        if expect_head is not None and project is not None:
+            require(project.head == expect_head,
+                    f"The document changed since the dry run (head {project.head}, proposal expected "
+                    f"{expect_head}); run the dry run again on the current document", "stale_proposal",
+                    field="proposal", head=project.head, expected=expect_head)
 
     def apply_steps(self, operations, dry_run, detail, document, **review):
         """A batch that mixes operations with session steps (steps.py): every item applies, in order, to one
@@ -452,15 +517,17 @@ class Session:
         if any(not (is_step(op) and workspace_scoped(op)) for op in operations):
             with self.project(write=not dry_run, document=document) as p:
                 return self.apply_steps_to(p, operations, dry_run, detail, **review)
+        review.pop("expect_head", None)
         return self.apply_steps_to(None, operations, dry_run, detail, **review)
 
-    def apply_steps_to(self, p, operations, dry_run, detail, **review):
+    def apply_steps_to(self, p, operations, dry_run, detail, expect_head=None, **review):
         """apply_steps on a document the caller has loaded (``p``; None when every item is a workspace step):
         the CLI runs ``vixl apply`` batches with steps through it and saves ``p`` itself."""
         from .checks import apply_reviewed
         from .service_fonts import checker
         from .steps import is_step, run, workspace_scoped
 
+        self._expect_head(p, expect_head)
         later = [(index, op) for index, op in enumerate(operations) if is_step(op) and workspace_scoped(op)]
         items = [(index, op) for index, op in enumerate(operations) if not (is_step(op) and workspace_scoped(op))]
         steps, result, image = [], {"success": True}, None
@@ -498,6 +565,7 @@ class Session:
             result["dry_run"] = dry_run
             if not dry_run:
                 p.__dict__.update(candidate.__dict__)
+            result.setdefault("head", p.head)
         elif any(review.get(key) for key in ("check", "preview", "suites", "repair")):
             raise VixlError("invalid_operation", "check, preview, suites and repair need document operations; this "
                             "batch only changes workspace defaults", field="check")

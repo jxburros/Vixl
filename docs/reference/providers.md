@@ -103,7 +103,7 @@ Vision requests carry `source_image`, width/height, and a `label` for segmentati
 
 `/upscale` receives `source_image`, target width/height, and `scale`; it returns the generation response shape. The result becomes a new layer while the original stays editable.
 
-`/plan` receives `prompt`, the inspected document, an operation reference, allowed type names, and `source_image`. Return `{"operations":[...]}`. Vixl rejects filesystem and plugin requests, validates the entire batch, then previews it. Only `--apply` changes the project; there is no automatic execution based on model prose.
+`/plan` receives, in this order, `operations_reference` (brief schemas for a shortlist of at most eight operations: the ones given with `--ops`, else the edits of the layers the prompt names, the capability lookup's matches for the prompt and the common edits), `allowed_types`, `design_guidance` (the `overall` text plus the styles matching the shortlist or the prompt), `document` (the summary of the layers around `--target` or `--region`, with the others under `other_layers`; every layer when neither is known), `source_image` when sent, `prompt` and `model`. `--image` chooses the image: `auto` (the default) sends none for a text or variable edit and the target's region otherwise, `none`, `region` and `full` force one. Return `{"operations":[...]}`. Vixl rejects filesystem and plugin requests and validates the entire batch; a batch that fails validation is requested once more with the full schemas and the error under `previous_error`. The result's `request` reports the characters sent, the shortlist, the schema form and the image mode, `usage` the provider's token counts and `cache` its cache reads and writes when the adapter reports them (the Anthropic adapter sends the reference block first with `cache_control` so repeated requests read it from the cache). Only `--apply` changes the project; there is no automatic execution based on model prose.
 
 ## Studio gateway (`vixl host --provider studio`)
 
@@ -139,7 +139,7 @@ provider made), and `--offline` lets exactly URLs under `URL/v1/` through. `GET 
 The body names the capability and its constraints, never a model: the gateway chooses one. `constraints` holds
 `width`, `height`, `seed`, `strength`, `mode` and `scale` when set; `inputs` holds the rest of the
 [HTTP gateway](#http-gateway-contract) request for that capability (`prompt`, `negative_prompt`, `source_image`,
-`mask`, `query`, `label`; for `plan` the document, operation reference and allowed types). A `--model` given to
+`mask`, `query`, `label`; for `plan` the document summary, operation reference and allowed types). A `--model` given to
 the command is not sent.
 
 ```json

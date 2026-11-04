@@ -81,7 +81,7 @@ A document becomes multi-page with the first `page add`; each page has its own l
   `cache`, `installed`, `default`) and only `default` entries warn. For the exact look import with
   `svg_mode: "appearance"`, or keep the `.vixl` or SVG master.
 
-- Notes to a deck in one call: `vixl_apply(workflow='deck-from-markdown', request={"markdown": "notes.md", "output": "deck.vixl", "export": ["pptx"]})`. `#`/`##` headings start slides; title, section, quote and content layouts are chosen per slide; fenced `csv` → table, fenced `chart` → chart, `![](img.png)` → frame; `<!-- -->` or `Notes:` → speaker notes; deck checks are reported. Re-run after edits: only changed slides are rebuilt.
+- Notes to a deck in one call: `vixl_apply(workflow='deck-from-markdown', request={"markdown": "notes.md", "output": "deck.vixl", "export": ["pptx"]})`. `#`/`##` headings start slides; title, section, quote and content layouts are chosen per slide; fenced `csv` → table, fenced `chart` → chart, `![](img.png)` → frame; `<!-- -->` or `Notes:` → speaker notes; deck checks are reported. Re-run after edits: only changed slides are rebuilt. Without a file, pass `slides=[{layout, title, subtitle, bullets, text, quote, attribution, image, chart: {kind, rows}, table, notes}]` instead of `markdown`: each entry builds the slide its Markdown would (`layout` is title, section, quote or content; omitted, it is chosen from the content).
 
 Full reference: `docs/guides/output/slides.md` (HTML presentations: `docs/guides/output/presenter.md`).
 

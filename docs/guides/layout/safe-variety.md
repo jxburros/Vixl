@@ -187,7 +187,7 @@ The rolled density changes the result: airy widens and dense tightens the rolled
 and the spacing unit behind gaps (half the body size, craft `spacing.unit`). The roll weights density by
 purpose (above); the builder, given no density, chooses balanced twice as often as airy or dense. The rolled accent (rule, bar, dot, block or outline) is drawn in the safe compositions next to
 their own device. An outline frame insets the content two spacing units inside it. The pattern background's column of dots
-and the direction motif are placed clear of the text (another margin, a shorter column, or left out), and
+and the direction motif are placed clear of the text (another margin, a shorter column, or left out); the motif is a mark, not a speck: at least 3% of the canvas's short side (a rule three times that long), at a corner of the margin box inside the safe area, and
 the overlap check reports decoration that runs through text as `overlap.decoration-text`.
 
 `vixl_reference('roll')` and a plain `vixl roll` only preview a direction and change nothing. Applying one (the `roll`

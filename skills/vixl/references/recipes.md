@@ -177,17 +177,16 @@ Verify: `vixl_check(action='spacing', targets=["card","card2","card3"], axis="ho
 ```json
 [
   {"type":"canvas","width":16,"height":16,"background":"transparent"},
-  {"type":"pixel-art","name":"coin","width":16,"height":16,
-   "palette":{".":"transparent","g":"#ffc44d","s":"#9c5f22","w":"#fff3bd"}},
-  {"type":"pixel-draw","target":"coin","tool":"rect","x":4,"y":3,"width":8,"height":10,"color":"s"},
-  {"type":"pixel-draw","target":"coin","tool":"rect","x":5,"y":4,"width":6,"height":8,"color":"g"},
+  {"type":"pixel-art","name":"coin","palette":{".":"transparent","g":"#ffc44d","s":"#9c5f22","w":"#fff3bd"},
+   "rows":["8.","4.4s","3.s4g","2.s5g","2.s5g","2.s5g","2.s5g","2.s5g"],"mirror":"xy"},
   {"type":"frame-save","name":"idle","duration":150},
-  {"type":"pixel-draw","target":"coin","tool":"line","x":6,"y":5,"x2":9,"y2":5,"color":"w"},
+  {"type":"pixel-draw","target":"coin","rows":{"5":"..s..wwwwww..s.."}},
   {"type":"frame-save","name":"glint","duration":100},
   {"type":"animation-set","order":["idle","glint"],"loop":0}
 ]
 ```
 
+Rows take run-length counts (`"4.4s"` = `"....ssss"`; literal when a palette symbol is a digit); `mirror` `"x"`/`"y"`/`"xy"` completes the sprite from its left half, top half or quarter (give `width`/`height` one less than double for a centre line). A later frame gives only what changed: `pixel-draw` with `rows` `{index: row}` and/or `cells` `[[x,y,symbol],…]`.
 Inspect as text with `vixl_check(action='pixels', target="coin")`; preview `vixl_render(action='animation', name="glint", scale=8)`;
 export `vixl_export(kind='animation', path="coin.gif", format="gif", scale=8)` or, for a game engine,
 `path="coin.png", format="sheet"` (writes `coin.png` + `coin.json`). Static enlargements: `sampling="nearest"`.

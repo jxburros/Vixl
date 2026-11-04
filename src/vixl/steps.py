@@ -109,14 +109,18 @@ def import_font(session, project, *, name: Annotated[str, Field(description="The
 
 def font_pair(session, project, *, pairing: Annotated[str, Field(
                   description="A curated pairing name (vixl_reference('fonts')) or 'random'")] = "random",
-              seed: int | None = None, mood: str | None = None, best_for: str | None = None, scope: Scope = "document"):
+              seed: int | None = None, mood: str | None = None, best_for: str | None = None, scope: Scope = "document",
+              apply_to: Annotated[Literal["new", "fallback", "roles"], Field(
+                  description="Existing text that takes the faces: fallback (default) restyles text on the proofing "
+                              "font and text following a role, roles restyles every layout layer, new changes nothing "
+                              "existing")] = "fallback"):
     """Download (or reuse from cache), embed and register a pairing's heading and body fonts and make them the
-    document typography that layouts use by default."""
+    document typography that layouts use by default; the result lists the existing text it restyled."""
     from .typefaces import pair_fonts, pair_workspace
 
     if scope == "workspace":
         return pair_workspace(session.workspace, pairing, seed=seed, mood=mood, best_for=best_for)
-    return pair_fonts(project, pairing, seed=seed, mood=mood, best_for=best_for, body_italic=True)
+    return pair_fonts(project, pairing, seed=seed, mood=mood, best_for=best_for, body_italic=True, apply_to=apply_to)
 
 
 def font_install(session, project, *, family: Annotated[str, Field(description="Any Google Fonts family")],

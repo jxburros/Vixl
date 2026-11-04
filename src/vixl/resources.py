@@ -15,7 +15,7 @@ from .fileio import file_lock
 from .assets import read_bounded
 from .constants import BUNDLED_FONTS
 from .design import named
-from .errors import require
+from .errors import VixlError, require
 from .guidance import GUIDANCE
 from .objects import builtin_kinds
 from . import house_style
@@ -162,6 +162,105 @@ BUILTINS = {"palettes": PALETTES, "templates": TEMPLATES, "guidance": GUIDANCE,
             "mockups": {},  # built-in mockups are drawn by mockups.BUILTINS; the library holds the user's own
             "objects": builtin_kinds(),
             "assets": {}}  # images that packs carry; the bytes live beside the library (pack_assets)
+
+
+def template_images(item, workspace=None):
+    """The pictures a template takes, with the pixel size each is drawn at on the template's native canvas: its
+    own image slots and ``${variable}`` image layers, then the image slots of every container it places (slot
+    names are ``slot-1.photo``: the container's cell, then the slot)."""
+    from .containers import image_specs
+    from .variables import PLACEHOLDER
+
+    width, height = item["width"], item["height"]
+    images = image_specs(item)
+    operations = item.get("operations", [])
+    for op in operations:
+        if op.get("type") in ("frame", "add", "asset-place") and isinstance(op.get("asset", op.get("name")), str):
+            names = PLACEHOLDER.findall(str(op.get("asset", "")))
+            w, h = op.get("width", width), op.get("height", height)
+            images.append({"slot": names[0][0] if names else op.get("name"), "layer": op.get("name"), "size": [w, h],
+                           "aspect_ratio": round(w / max(h, 1), 3), "fit": op.get("fit", "cover")})
+    cells = {}
+    grid = item.get("grid")
+    if grid:
+        import math
+
+        cols = grid["columns"]
+        choices = grid["resources"]
+        rows = 1 if grid.get("pages") else math.ceil(len(choices) / cols)
+        if grid.get("pages"):
+            cols = 1
+        pad, gap = round(min(width, height) * grid["padding"]), round(min(width, height) * grid["gap"])
+        cw, ch = int((width - 2 * pad - (cols - 1) * gap) / cols), int((height - 2 * pad - (rows - 1) * gap) / rows)
+        cells = {f"slot-{i + 1}": (resource, cw, ch) for i, resource in enumerate(choices)}
+    for op in operations:
+        if op.get("type") != "container-place":
+            continue
+        name = op.get("name", op["resource"])
+        resource, w, h = cells.get(name, (op["resource"], None, None))
+        try:
+            container = get("containers", resource, workspace=workspace)
+        except VixlError:
+            continue
+        images.extend(image_specs(container, op.get("width", w), op.get("height", h), prefix=name + "."))
+    return images
+
+
+def describe_template(name, item, workspace=None):
+    """Full form of one template for the reference: its size, every variable it takes (blanks that must be
+    filled, rolled colour roles, typed inputs and defaults), the container slots of a modular template, the image
+    specs (``template_images``) and a creation example with the required slots filled."""
+    from .containers import slot_specs
+    from .variables import PLACEHOLDER
+
+    blanks, roll, defaults, inputs = (item.get(key, {}) for key in ("blanks", "roll", "defaults", "inputs"))
+    names = [*blanks, *roll, *defaults, *inputs]
+    for op in item.get("operations", []):
+        for value in op.values():
+            if isinstance(value, str):
+                names.extend(found for found, _ in PLACEHOLDER.findall(value) if found not in names)
+    variables = {}
+    for variable in dict.fromkeys(names):
+        spec = inputs.get(variable, {})
+        if variable in blanks:
+            entry = {"kind": "text", "required": True, "placeholder": blanks[variable]}
+        elif variable in roll:
+            entry = {"kind": "color", "required": False, "role": roll[variable],
+                     "default": f"@{roll[variable]} (rolled from the palette unless given)"}
+        elif spec:
+            entry = {"kind": spec.get("type", "string"), "required": bool(spec.get("required", True)) and "default" not in spec,
+                     **({"default": spec["default"]} if "default" in spec else {}),
+                     **({"enum": spec["enum"]} if "enum" in spec else {})}
+        elif variable in defaults:
+            entry = {"kind": "text", "required": False, "default": defaults[variable]}
+        else:
+            entry = {"kind": "text", "required": True}
+        variables[variable] = entry
+    slots = {}
+    for op in item.get("operations", []):
+        if op.get("type") == "container-place":
+            try:
+                container = get("containers", op["resource"], workspace=workspace)
+            except VixlError:
+                continue
+            slots[op.get("name", op["resource"])] = {"container": op["resource"], "slots": slot_specs(container)}
+    required = [k for k, v in variables.items() if v["required"]]
+    example_values = {k: variables[k].get("placeholder", "…") for k in required}
+    for slot, entry in slots.items():
+        example_values[slot] = {k: v["default"] or "…" for k, v in entry["slots"].items() if v["required"]}
+    return {
+        "description": item.get("description", name),
+        "size": [item["width"], item["height"]],
+        **({"category": item["category"]} if item.get("category") else {}),
+        "safe": item.get("safe", False),
+        "proportional": bool(item.get("proportional")),
+        "variables": variables,
+        "required": required,
+        **({"slots": slots} if slots else {}),
+        "images": template_images(item, workspace),
+        "example": {"tool": "vixl_document", "action": "create", "path": f"{name}.vixl", "template": name,
+                    "variables": example_values},
+    }
 
 
 def proportional(project, item, operations):

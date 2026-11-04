@@ -265,8 +265,8 @@ def test_capabilities_list_the_asked_for_operation_first_and_pen_help_names_the_
     pen --nodes help did not say that in/out handles are positions, not offsets from the anchor."""
     from vixl.cli import main
 
-    names = list(lookup("pen")["operations"])
-    assert names[0] == "pen"
+    names = list(lookup("pen", limit=None)["operations"])
+    assert names[0] == "pen" and list(lookup("pen")["operations"]) == names[:5]
     assert names.index("shape") < names.index("path-edit") < names.index("oil-paint")
     assert list(lookup("scatter")["operations"])[0] == "scatter"
     with pytest.raises(SystemExit):

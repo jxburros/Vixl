@@ -170,7 +170,7 @@ vixl container-reflow slot-1
 vixl container-swap organic-mark --target slot-2
 ```
 
-`container-place` creates a named group at x/y. `container-swap` keeps that group's ID,
+`container-place` creates a named group at x/y; `container-rows` (`rows: [{variables}, …]`, `gap`, `direction`, `columns`) places one container per data row as `NAME-1`, `NAME-2`, … in one operation. `container-swap` keeps that group's ID,
 position, transforms and styles, replacing its children with a resource of the **same native
 size**. Children get new IDs; external references to deleted children can prevent a swap.
 Refer to the container group when coordinating agents. Reflow preserves child IDs.

@@ -126,7 +126,7 @@ A roll draws from Vixl's house style: it first draws a tier (`safe`, `bold` or `
 - `text-layout` `wrap` (also `rich-text` with a width): `greedy` (fill each line), `balance` (same line count, even
   widths: headings, titles, short text) or `pretty` (no one-word last line: body text, lyrics). Kept when the box is
   resized. Breaks are shared by PNG, SVG, PDF and PPTX (explicit line breaks there). Headings and layout headlines
-  default to `balance`; `wrap: "greedy"` restores greedy breaks.
+  default to `balance`, other new boxes to `pretty` (greedy with `house_style: "off"`); `wrap: "greedy"` restores greedy breaks.
 - `tabs` on `text`/`text-set` (plain text): `[{at, align, leader}]`, `at` in px or `"100%"` of the box, `align`
   `left`/`right`/`center`/`decimal`, `leader` such as `"."`. Each `\t` moves to the next stop; a line with a tab is
   not wrapped. PPTX gets native tab stops with the leader written as characters. Tables take a column `leader`.

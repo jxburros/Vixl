@@ -387,8 +387,11 @@ def test_native_adapter_planning_and_gemini_image(monkeypatch):
     p.apply({"type": "guidance", "name": "logo", "style": "logo"})
     assert not plan(p, "make a mark", a)["applied"]
     body = calls[-1][1]["json"]
-    assert body["messages"][0]["content"][0]["type"] == "image"
-    assert "design_guidance" in body["messages"][0]["content"][1]["text"]
+    # Reference (cached), then the document with its image, then the prompt.
+    content = body["messages"][0]["content"]
+    assert [block["type"] for block in content] == ["text", "image", "text", "text"]
+    assert content[0]["cache_control"] == {"type": "ephemeral"} and "design_guidance" in content[0]["text"]
+    assert "make a mark" in content[3]["text"]
     g = make_provider(
         "g",
         {

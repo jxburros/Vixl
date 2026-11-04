@@ -4,7 +4,7 @@ This is the single development plan for Vixl. It replaces the development plan, 
 plan and the render-performance decisions that used to live in `docs/project/`; those files are kept, unchanged, in
 `docs/project/archive/` as history and are no longer maintained. Everything needed to pick up an item is in this file.
 
-The roadmap was rebuilt on 2026-10-31 against `main` at 0.33.1. Every open GitHub issue was read, with its comments,
+The roadmap was rebuilt on 2026-10-31 against `main` at 0.33.1 and updated for 0.35.0 (stages 1-4 shipped). Every open GitHub issue was read, with its comments,
 and checked against the code, the tests and the changelog; several bugs were reproduced. 112 issues that had already
 shipped were closed with their evidence. The 51 issues still open, the remainders of closed issues, and the deferred
 work that never had an issue are all below.
@@ -129,11 +129,15 @@ Releases 0.22 to 0.33.1 shipped the earlier plans in full:
   timing and verified delivery, shared datasets, the drawing finish, Figma interchange, Lottie export with source easing
   and linked-instance timing, and export-speed items 1-6 and 8.
 
-What is left falls into five kinds of work: release wiring (0.33.3 fixed the install pins, but the container image,
-signing and directory listings are undone); checks are honest but hard to read and some built-in layouts fail them;
-agent payloads are still large; the cut-paper, motion and chart workflows reported in late October need new features;
-and several shipped features were never
-exercised for real (container image, Windows host task, live Figma, the craft re-judge).
+- **0.33.3-0.35.0:** install pins that follow the published release (stage 1); checks that lead with a verdict
+  (stage 2); layouts that pass their own checks, `font-pair apply_to`, reflowing repairs and `layout-apply update`
+  (stage 3); the one-call route, scoped references, paged inspection, proposals, authoring shortcuts and a planner
+  that sends brief schemas (stage 4).
+
+What is left falls into four kinds of work: release wiring (the container image, signing and directory listings are
+undone); the layout exceptions and the paid measurement runs left from stages 3 and 4; the cut-paper, motion and chart
+workflows reported in late October need new features; and several shipped features were never exercised for real
+(container image, Windows host task, live Figma, the craft re-judge).
 
 ## 4. Owner actions and decisions
 
@@ -218,298 +222,70 @@ choice errors (#767), word-break/contrast/print-screen fixes (#720), and export 
 The full issue list stays available for compatibility. Export status uses cached checks; strict export runs fresh
 checks. Quotes leave encoded byte size unknown and report static raster fallback estimates.
 
-Close #725, #724, #726, #765, #767, #720 and #769 when this stage merges. The next development stage is stage 3.
+Close #725, #724, #726, #765, #767, #720 and #769 when this stage merges.
 
 ## 7. Stage 3: layouts that pass their own checks
 
-A minor release. A built-in layout filled with its own example copy often fails Vixl's checks, the README's own event
-poster example shows a 39% empty band, typography changes do not reach existing text, and edited copy shrinks instead
-of reflowing. Suggested order: 3.1 and 3.2 together, then 3.3 as the gate for the whole class, then 3.4 and 3.5.
-Every threshold or default change here runs the house-style eval and the craft backtest.
+Shipped in 0.35.0: dead bands under airy spacing and the stack helper for `f-pattern` and `story-vertical` (3.1,
+#680 remainder), the event-poster height distribution and motif rule (3.2, #763), recommended sizes per layout with
+`tests/test_layout_quality.py` as the gate (3.3, #764), `font-pair apply_to` with layout text on the heading and body
+roles (3.4, #766), the grow-then-fit overflow repair and `layout-apply update: true` (3.5, #768), and body text
+wrapping `pretty` by default with the eval unchanged (3.6, #652 remainder; hanging punctuation stays opt-in and optical
+sizes are not planned).
 
-### 3.1 Dead bands under airy spacing and floating entries (remainder of #680)
+What remains is the gate's exception list: 31 of 204 layout × size pairs, each with an issue, to be fixed in the
+layouts named there and removed from `EXCEPTIONS` as they pass:
 
-- **Problem:** `composition.dead_bands` sets its minimum band as `max(share × frame, units × unit, gap_ratio ×
-  typical)`. A document whose own gaps are large (density `airy`) raises `typical`, so a 25-29% empty band between type
-  can pass (one report: 370 px, 27%, on 1080×1350). Separately, the `f-pattern` and `story-vertical` layouts do not use
-  the stack helper and can float one entry between two others at some seeds.
-- **Remaining work:**
-  1. In `src/vixl/composition.py` `dead_bands`, cap the `typical` term so it never raises the bar above a fixed share of
-     the frame (for example `min(gap_ratio × typical, 0.2 × frame)`), or ignore it for interior bands between type.
-  2. Move `f-pattern` and `story-vertical` in `src/vixl/layouts.py` onto the shared proximity/stack helper the
-     headline lockups use (`hero-statement`, `asymmetric-balance`, `centered-axis`).
-- **Done when:** a test in `tests/test_composition.py` builds event-poster with `density: "airy"` at
-  instagram-portrait over a seed matrix and asserts any interior band of 25% or more is flagged; a parametrized test
-  over seeds finds no `composition.uneven_rhythm` for f-pattern and story-vertical with example copy.
-- **Docs:** thresholds in `docs/project/house-style.md`, changelog.
-- **Rating:** C2, P3. **Depends on:** none.
+- [#803](https://github.com/jxburros/vixl/issues/803) `rule-of-thirds` (bands around the focal point, subtitle contrast)
+- [#804](https://github.com/jxburros/vixl/issues/804) `golden-section` (minor-section bands on letter and story)
+- [#805](https://github.com/jxburros/vixl/issues/805) `z-pattern` (headline-to-body band, web-banner overflow)
+- [#806](https://github.com/jxburros/vixl/issues/806) `split-screen` (story bands, square hierarchy, thumbnail minimum)
+- [#807](https://github.com/jxburros/vixl/issues/807) `banner` and `photo-caption` on a cover (no focal point)
+- [#808](https://github.com/jxburros/vixl/issues/808) `editorial-grid` (short example body on a page)
+- [#809](https://github.com/jxburros/vixl/issues/809) `emblem`, `price-list`, `big-number` (centred-line drift)
+- [#810](https://github.com/jxburros/vixl/issues/810) `minimal-mark` (hierarchy step at seed 2)
+- [#811](https://github.com/jxburros/vixl/issues/811) `slide-content` (band before the footer)
+- [#812](https://github.com/jxburros/vixl/issues/812) `asymmetric-balance`, `hero-statement` (top edge band)
+- [#813](https://github.com/jxburros/vixl/issues/813) `photo-caption` on a story (scrim taller than its copy)
+- [#814](https://github.com/jxburros/vixl/issues/814) `business-card` seed 1, `typographic-poster` cover caption
 
-### 3.2 Event-poster dead band and stray motif (#763)
-
-- **Problem:** on a 4:5 social canvas `_event_poster` pins the headline to the top and the details and footer to the
-  bottom. With typical copy that leaves `composition.dead_band` findings of 532-533 px (39%) for the unseeded run and
-  seed 1, and 15-16% at seeds 2 and 3; with `airy`, 31-33%. The headline sits at y=76 and the date block at y=723.
-  `passed` is still true because composition is review-level. The rolled motif (`variety.place_motif`) is one spacing
-  unit (a 14×14 `@accent` ellipse at (990, 38), or an 18×4 bar with `airy`) placed at `T/2`, inside the top margin and
-  outside the safe area, so it reads as a stray mark and is flagged `safe_area.outside`.
-- **Remaining work:**
-  1. In `_event_poster`, after placing the footer, distribute the free height: grow the headline and date block (the
-     existing grow loop) until the interior gap is under the dead-band bar, or centre the headline, date and details
-     group between the top margin and the footer. Reuse `Builder.footer` and the helper from 3.1.
-  2. Optionally let `layouts` ask `composition.dead_bands` for the bar on the built boxes, so layout and check share one
-     threshold.
-  3. In `variety.place_motif`, set a minimum motif size relative to the canvas (for example `max(unit, 0.03 ×
-     min(W, H))`, rules at least three units long) and place it inside the live area (`builder.T`, not `T/2`); omit it
-     when no clear corner is big enough.
-  4. Regenerate goldens if a fixture uses event-poster or motifs.
-- **Done when:** a test in `tests/test_sizes_layouts.py` applies event-poster with the issue's copy and the example copy
-  on instagram-portrait, instagram-post and instagram-story, seeds 1-5, `balanced` and `airy`, and finds no
-  `composition.dead_band` and no `safe_area` finding on `direction-motif`; a motif test asserts any placed motif is at
-  least 3% of the short side and inside the safe area.
-- **Docs:** changelog; `docs/guides/layout/sizes-and-layouts.md` if event-poster behaviour is described; motif size in
-  `docs/project/house-style.md`.
-- **Rating:** C2, P5 (it is the README's own example). **Depends on:** 3.1.
-
-### 3.3 Every built-in layout passes the checks at its recommended sizes (#764)
-
-- **Problem:** a sweep on 0.33.1 found 71 of 204 layout × size combinations with a fix finding or a composition review
-  finding: 17 layouts show `composition.dead_band` somewhere, `flat_hierarchy` appears on stories for about 20 layouts,
-  meme layouts give `contrast.text-contrast` errors, and two layouts reject their own example copy with `unused_slot`
-  on all four sizes (`editorial-grid` `cta`, `diagonal-band` `label`). Layouts list no recommended sizes
-  (`layouts.describe` has `best_for` purposes only), so an agent's first result often needs a repair round.
-- **Remaining work:**
-  1. Add recommended `sizes` to each `LAYOUTS` entry in `src/vixl/layouts.py`, derived from `best_for` through the
-     purpose's named sizes in `sizes.py` with curated overrides (owner decision). Expose them in `layouts.describe()`
-     and `vixl_reference('layouts')`.
-  2. Fix example copy a layout rejects on its own canvases (`editorial-grid` `cta`, `diagonal-band` `label`): drop
-     those examples, or have `describe()` give examples only for slots `layouts.placeable` places.
-  3. Add `tests/test_layout_quality.py`, parametrized over layout × recommended size × three fixed seeds: create the
-     document, run `layout-apply` with the example copy (stub images for image slots), and assert no fix findings and no
-     composition review findings. Known exceptions go in a dict `{(layout, size): "reason, #issue"}`. Run it with a
-     stable registered test font, not the proofing fallback, so measurements match real use; mark it slow if a case
-     takes more than a few seconds.
-  4. Fix the current failures (dead bands, `flat_hierarchy` on stories, meme contrast) or list them as exceptions with
-     an issue each.
-- **Done when:** the test exists and passes with an exception list much shorter than 71 of 204, each entry with an
-  issue.
-- **Docs:** recommended sizes per layout in `docs/guides/layout/sizes-and-layouts.md`, the skills layouts reference,
-  changelog.
-- **Rating:** C3, P4. **Depends on:** 3.1, 3.2.
-
-### 3.4 `font-pair` restyles existing text (#766)
-
-- **Problem:** after a layout, `font-pair` installs fonts but leaves existing text on the fallback face, although the
-  fallback-font warning suggests `font-pair`. The only way out is `layout-apply … replace: true`, which discards manual
-  edits. Layouts write concrete font paths, so no later typography change (font-pair, style-use, roll) reaches existing
-  text.
-- **Remaining work (core):**
-  1. In `typefaces.pair_fonts` and the `font-pair` step in `steps.py`, add `apply_to: "new" | "fallback" | "roles"`
-     (default `"fallback"`, owner decision). `fallback` restyles text layers on the bundled fallback or on the previous
-     typography's heading/body font; `roles` restyles every text layer with a layout role. Map heading and display roles
-     to the heading face and the rest to the body face, using the role layouts record on layers (add `font_role` when
-     `layout-apply` builds text if no such field exists). Refit through the normal text path in the same atomic batch.
-  2. Report `restyled: [layer names]` and `still_fallback: N`, and replace the static note.
-  3. Make the fallback-font warning in `checks.py` suggest the exact step
-     (`{type: font-pair, pairing: …, apply_to: "fallback"}`) and the CLI form.
-  4. Later (owner decision): role tokens on layers (`font: "@heading"`, like `@ink` for colour), a document-model change.
-- **Done when:** with a monkeypatched font source, layout-apply then font-pair leaves no fallback warning, the layers
-  use the pairing's faces and the result lists them; a manually set font on one layer survives `apply_to: "fallback"`.
-- **Docs:** `docs/guides/text/typography.md`, `skills/vixl/references/typography.md`, changelog.
-- **Rating:** C2, P4 (C4 with role tokens). **Depends on:** none.
-
-### 3.5 Edited copy reflows instead of shrinking (#768)
-
-- **Problem:** after a longer headline (an 896×112 box needing 844×488), the only repair offered shrinks a poster
-  headline to 24 px while about 500 px of free space sits below it, and nothing moves the details down. "Change the
-  headline next week and the layout keeps up" does not hold.
-- **Remaining work (core repairs and layout engine; `repair-layout` is a plugin reached through hooks):**
-  1. Overflow repair order in `repair.suggest` and the `layout_repair` candidates: (a) grow the box in its flow
-     direction into free space, shifting the layers below it (from the stored `stack`, the layout's recorded stack
-     order, or else the layers whose boxes start below) when there is room before the next fixed element or margin;
-     (b) rebalance line breaks; (c) only then fit-text, with a floor from the text's role (a headline stays above the
-     subtitle's size).
-  2. `layout-apply` with `update: true` (or a `layout-update` operation): take new slot values, re-run the stored
-     `layout.recipe` sizing and stacking with the same seed, palette and fonts, and keep manual style edits on layers the
-     layout created (diff the stored recipe output against the current layers and carry the overrides). Add it to
-     `targets.py` and regenerate the operations table.
-- **Done when:** in the issue's event-poster case the suggested repair grows the headline and moves the date and
-  details down, the headline stays at or above its role floor and the check passes; a test edits a slot with
-  `update: true` and a manual colour change on a layout layer survives.
-- **Docs:** the repair guidance in `guidance.py`, `docs/guides/layout/sizes-and-layouts.md`,
-  `docs/guides/layout/containers-and-templates.md`, skills references, the copy-change row in `docs/use-cases.md`,
-  changelog.
-- **Rating:** C4, P4. **Depends on:** 3.2.
-
-### 3.6 Typography defaults left from the craft work (remainder of #652)
-
-- **Problem:** body text still wraps `greedy` by default (only headings balance, by a recorded house-style choice), so a
-  one-word last line in body copy stays unless the agent sets `wrap: "pretty"`. Hanging punctuation is opt-in because,
-  on for headings, a comma hung at the end of a wrapped headline set off `margin_drift` and lowered the eval's
-  no-composition-finding share from 1.0 to 0.979. Installed fonts are static files, so optical sizes are never used.
-- **Remaining work:**
-  1. Try `craft.wrap.body: "pretty"` in `src/vixl/data/house-style.json`; keep it only if the house-style eval shows no
-     loss at any level, with a restore note in the changelog.
-  2. Optional: make `margin_drift` measure hung marks optically (ignore them), then retry hanging punctuation as a
-     heading default.
-  3. Optical sizes: support `opsz` instances when a catalog face is variable (fontTools instancer in the font install
-     path), or record "not planned" in the typography guide (owner decision).
-- **Done when:** body text in a house-style document gets no runt by default and `house_style: off` is unchanged; the
-  eval compare shows no regression; with hanging on for headings the eval share stays 1.0.
-- **Docs:** `docs/guides/text/typography.md`, defaults in `docs/project/house-style.md`, skills typography reference,
-  changelog.
-- **Rating:** C2, P2. **Depends on:** none.
+Later (owner decision): font role tokens on layers (`font: "@heading"`), a document-model change; `apply_to` shipped
+first. Rating for the remainder: C2, P3 each.
 
 **Close at the end of this stage:** [#763](https://github.com/jxburros/vixl/issues/763),
-[#764](https://github.com/jxburros/vixl/issues/764), [#766](https://github.com/jxburros/vixl/issues/766),
-[#768](https://github.com/jxburros/vixl/issues/768).
+[#764](https://github.com/jxburros/vixl/issues/764) (the gate exists; the exception issues track the rest),
+[#766](https://github.com/jxburros/vixl/issues/766), [#768](https://github.com/jxburros/vixl/issues/768).
 
 ## 8. Stage 4: token cost and the cheapest path
 
-A minor release, measured before and after. Agents spend most of their tokens on JSON, not images: a 512 px preview
-is about 300 tokens, while reference, inspect and apply payloads are 3-8 KB each and the workflow index with no name is
-159 KB (up from 70.7 KB at the Token Project's baseline). The orientation text still teaches the long route, and the
-built-in planner sends a 227 KB operation reference with every request. #615 (The Token Project, 64 items) is the
-umbrella; #628 is the tool-call count. They share one measurement, run once before and once after.
+Shipped in 0.35.0: the harness token fields and the offline baseline (4.1 steps 1-2), the one-call route first with a
+tiered finishing pass and `suites` on create (4.2), the cheap payload wins (4.3), scoped references with brief schemas,
+dot paths, reachable definitions, ranked capabilities and `schema_version` / `if_version` (4.4), results and inspection
+(ack detail, generated children at the parent, inspect paging and projection, `since`, `report_path`, proposals; 4.5),
+batch export preflight and container/template reference specs (4.6), the authoring shortcuts (`defaults`,
+`create-many`, structured `slides`, entrance/hold/exit presets, `container-rows`, pixel run lengths, mirror and frame
+deltas; 4.7) and the planner shortlist, scoped document, image modes, guidance filter, stable order and cache reporting
+(4.8). See the 0.35.0 changelog for the measured shrinks.
 
-### 4.1 Baseline measurement (#615 step 1, #628 step 4)
+What remains needs the owner's paid runs:
 
-- **Problem:** agents needed about three times the tool calls of plain web or Python tools in the last comparison
-  (Vixl's median round-1 run was 31.5 calls against web code's 15), but the gap has not been re-measured on the
-  seven-tool surface, and the eval harness does not record tokens.
-- **Remaining work:**
-  1. Add per-task `tokens_total`, `images` and cache-read tokens to the `evals/harness.py` report.
-  2. Capture numbers on current `main` for representative briefs: a graphic, a chart, a deck, a form, an illustration,
-     a pattern, variants, a sprite, an animation and a follow-up edit.
-  3. Owner: re-run the tool comparison (the VixlExamples kit: 16 briefs, three lanes, same model and settings), recording
-     round-1 tool calls, minutes, tokens (input, output, cache read) and hard checks. Publish in VixlExamples, then
-     tighten `tool_call_budgets` in `evals/baseline.json`.
-- **Done when:** the harness reports tokens per task and the baseline is recorded.
-- **Rating:** C2, P4. **Depends on:** the paid-run decision.
+### 4.1 Live baseline (#615 step 1, #628 step 4)
 
-### 4.2 Teach the one-call route first (#628 steps 1-3)
-
-- **Problem:** the orientation text teaches about 6-8 extra calls per piece (suite-set, repeated checks, a composition
-  check, repair-layout, critique, crops) even for a quick social graphic. The one-call `vixl_apply(create=…)` route
-  exists but is not taught first.
-- **Remaining work:**
-  1. `briefs.guide(None)` `start_here` opens with one `vixl_apply(create={size, layout: {name, slots}, look, …},
-     preview=true)` example for a new piece, and step-by-step only for edits and art without a text frame.
-  2. Scale the finishing pass by the purpose's tier from the house-style purpose data: just `check` for social and
-     quick web, the full pass for print and brand. Say so in `start_here` and SKILL.md "Start here". This changes craft
-     guidance and must pass the house-style eval.
-  3. Add `suites` (true, names, or a starter suite such as `"composition"`) to `vixl_apply(create=…)` /
-     `compose.compose`, so a suite is not a separate call.
-- **Done when:** a test asserts `guide(None)["start_here"][0]` names `create=`; a compose test passes `suites=` and gets
-  suite results in one call.
-- **Docs:** SKILL.md, `docs/reference/agent-discovery.md`, `docs/reference/mcp-toolsets.md`, `evals/README.md`.
-- **Rating:** C2, P4. **Depends on:** none.
-
-### 4.3 Cheap payload wins (#615)
-
-- **Problem:** three findings from the 0.30.5 measurement are still open: `guide('poster')` (7,521 characters) repeats
-  `start_here`; inspect `summarize()` text layers carry unrounded `line_bounds`, `baselines`, `ascent`, `descent`,
-  `cap_height` and `x_height`; a `layout-apply` result's `layout` block is 2,618 of 4,239 characters and includes
-  `direction`.
-- **Remaining work:** `briefs.guide(kind)` points to `vixl_reference()` instead of repeating `start_here`;
-  `changes.summarize` keeps text layers to `bounds`, `ink_bounds` and `baseline`, rounded to two decimals (full metrics
-  under `verbose`); the `layout-apply` result returns the recipe once and leaves out `direction`, `notes` and
-  `fingerprint` unless `detail` is compact or full.
-- **Done when:** size tests hold each of the three payloads under a budget set from the measured shrink.
-- **Rating:** C1, P4. **Depends on:** none.
-
-### 4.4 Scoped references (#615 items 07, 13-20, 22)
-
-- **Problem:** `vixl_reference('workflows')` with no name returns 159,058 characters; `capabilities.lookup('color')`
-  returns all ten `GOTCHAS`; `reference_operations` returns full variants (`shape` 18.8 KB, `text` 6.9 KB); nothing
-  tells an agent that a cached reference is still current.
-- **Remaining work** (in `mcp_actions.reference_*`, `capabilities.py`, `schema_docs.py`, `workflow_schema.py`):
-  1. Items 13/14: `vixl_reference('workflows')` with no name returns `{action: one-line summary}` (from `SUMMARIES` or the
-     first docstring line) plus a `next` hint, under 8 KB; `name` accepts a list of 1-10 actions.
-  2. Item 15: `reference_operations(detail="brief"|"full")`; brief gives required fields, types, enums and one example,
-     under 1.5 KB per operation, through a `schema_brief(variant)` helper.
-  3. Item 16: dot paths (`name="text-layout.wrap"`) return one property's schema.
-  4. Item 17: workflow responses include only the `$defs` reachable from the selected actions (a walker in
-     `workflow_schema.py`).
-  5. Item 18: `capabilities.lookup` ranks by keyword score with `limit=5` by default and `more: N`.
-  6. Item 19: tag each `GOTCHAS` entry with topics and return only those matching the topic.
-  7. Item 20: `vixl_reference('capabilities', name=…, fields=true)` also returns the top operation's brief schema and
-     one example.
-  8. Item 22: every `vixl_reference` result carries `schema_version` = `__version__` plus the first 12 characters of
-     `hashing.content_hash(operation_schema())`; `if_version=` returns `{"unchanged": true}` when it matches.
-  9. Item 07: `guide()` results for a brief name the matching containers, layouts and `create=`.
-- **Done when:** the workflow index is under 8 KB, a brief operation schema is under 1.5 KB, and the `if_version` test
-  passes.
-- **Docs:** detail on demand in `docs/reference/mcp-toolsets.md` (brief/full, versions), `docs/reference/agent-discovery.md`,
-  skills MCP reference.
-- **Rating:** C2, P4. **Depends on:** none.
-
-### 4.5 Results and inspection (#615 items 31-36, 39, 40)
-
-- **Problem:** apply results and `vixl_document(action="inspect")` return whole documents' worth of detail, including
-  every generated child of charts, diagrams and containers; large reports have nowhere to go but the reply; a dry run
-  cannot be committed without re-sending the operations.
-- **Remaining work:**
-  1. Item 31: `detail="ack"` gives `{ok, head, changed: N, warnings}`.
-  2. Item 32: generated children (chart, diagram, container) are summarised at the parent with a count (extends the
-     0.28 brief cap).
-  3. Items 33-35: inspect takes `offset`, `limit` (default 200), `fields=[…]`, `collapse=true` (children of charts,
-     diagrams, containers and object groups shown as `{children: N}`) and `filter={type, name glob, parent}`,
-     implemented in `changes.summarize`.
-  4. Item 36: `since=<head>` returns only the layers changed since that revision (a history diff).
-  5. Item 39: `report_path=` on check and apply writes the full JSON into the workspace and returns the path and a
-     bounded summary.
-  6. Item 40: `dry_run=true` returns a `proposal_id` (a hash of operations, head and options, in a session LRU of 16);
-     `vixl_apply(proposal=ID)` commits if the head is unchanged, otherwise fails with `stale_proposal`.
-- **Done when:** the inspect pagination and projection test and the proposal-staleness test pass.
-- **Rating:** C3, P4. **Depends on:** none.
-
-### 4.6 Fewer retries (#615 items 60, 62)
-
-- **Remaining work:** `vixl_reference` returns the required slots and image specs for containers and templates, as it
-  does for layouts (item 60); `vixl_export(kind="batch")` pre-validates missing assets, fonts and fit for every target
-  before rendering any, where today `export_batch.py` checks only paths, suffixes and overwrite (item 62).
-- **Done when:** a batch with one target missing an asset fails before any file is written, naming the target.
-- **Rating:** C1, P4. **Depends on:** none.
-
-### 4.7 Authoring shortcuts (#615 items 41, 48, 51, 52, 57, 58)
-
-- **Remaining work:**
-  1. Item 51: `vixl_apply(defaults={font, fill, stroke, size})`, merged into matching operations in `normalize.py` and
-     reported under `normalized` (proposed core, since every document gets it through validation; owner decision).
-  2. Item 52: `{"type": "create-many", "prototype": {…}, "rows": […]}` expands in `normalize.py` (EACH semantics) into
-     ordinary operations, leaving no `create-many` record in the saved document; add it to `targets.py` and regenerate
-     the operations table.
-  3. Item 57: choreography mostly exists (`animate`/`animate-preset` take `stagger`; `motion-define`/`motion-apply`
-     steps take `role`, `after` and `stagger`); add entrance, hold and exit presets to `motion-define` and a skill
-     example.
-  4. Item 48: one container per data row (`container-rows`, or `repeat` with `data=`).
-  5. Item 58: `pixel-art` run-length rows, `mirror: "x"` and frame deltas.
-  6. Item 41: `deck-from-markdown` accepts structured `slides=[{layout, title, bullets, image, chart}]`.
-- **Done when:** each shortcut has a test producing the same document as the long form.
-- **Rating:** C3, P3. **Depends on:** none.
-
-### 4.8 Built-in planner sends less (#615 items 23-30)
-
-- **Problem:** the opt-in planner (`plugins/ai/ai.py` `plan`, served with `--tools ai --planner`) sends 108 full
-  operation variants (226,694 characters), a full inspect and an image on every request.
-- **Remaining work:** shortlist operations with `capabilities.lookup(prompt, limit=8)` and send brief schemas for them,
-  retrying once with full schemas on a validation error (23); an `operations=[…]` argument on `plan()`, `vixl ask --ops`
-  and `vixl_ai_plan` (24); send `changes.summarize` filtered to the target or region and its neighbours instead of
-  `inspect()` (25/26); `image="auto"|"none"|"region"`, where auto skips the image for text and variable edits and
-  region uses `render(region=…)` (27/28); only the `design_guidance` keys matching the shortlist (29); a stable request
-  order (reference, then document, then prompt) with Anthropic `cache_control` on the reference block and cache reads
-  reported separately (30).
-- **Done when:** a mock-provider request for "make the heading red" is under a set size with no image when
-  `image="none"`.
-- **Rating:** C2, P2. **Depends on:** 4.4 (brief schemas).
+- **Remaining work:** re-run the tool comparison (the VixlExamples kit: 16 briefs, three lanes, same model and settings),
+  recording round-1 tool calls, minutes, tokens (input, output, cache read) and hard checks, and
+  `python -m evals.token_baseline --agent claude` for live token counts (the committed baseline holds character
+  counts from an offline replay with `tokens_total` null). Publish in VixlExamples, then tighten `tool_call_budgets`
+  in `evals/baseline.json`.
+- **Done when:** the baseline file carries live token counts and the budgets are tightened.
+- **Rating:** C1, P4. **Depends on:** the paid-run decision.
 
 ### 4.9 After-measurement
 
 - Re-run 4.1 with live agents (not replay) and report characters against tokens, cache against context, and schema
   against end-to-end savings. Publish in VixlExamples and link it from `docs/reference/agent-discovery.md`.
 
-Items of #615 already done: 01-06, 08-10, 12, 21, 43, 53-55. Items covered by shipped work elsewhere: 11 and 45
-(responsive adaptation, localization, data sync), 37, 38 and 61 (located findings and repairs), 42 (tab stops), 44
+Items of #615 done: 01-10, 12-36, 39-41, 43, 48, 51-55, 57, 58, 60, 62. Items covered by shipped work elsewhere: 11 and
+45 (responsive adaptation, localization, data sync), 37, 38 and 61 (located findings and repairs), 42 (tab stops), 44
 (finishing components), 46, 47 and 50 (object build knowledge and `object-plan`), 49 (shared datasets), 56 (nested
 animation instances), 59 (the 10 KB skill), 63 (compact visual feedback), 64 (the craft grader plus 4.1).
 

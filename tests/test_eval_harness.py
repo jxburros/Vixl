@@ -95,6 +95,9 @@ def test_claude_agent_loop_runs_tools_and_keeps_history_append_only():
     assert result["passed"] and result["round_trips"] == 3
     assert result["tool_calls"] == 4 and result["tool_errors"] == 1
     assert result["usage"]["input_tokens"] == 300 and result["usage"]["cache_read_input_tokens"] == 150
+    # Per-task cost fields (roadmap 4.1): tokens in total, cache reads, images the tools returned and payload sizes.
+    assert result["tokens_total"] == 300 + 60 + 150 and result["cache_read_tokens"] == 150
+    assert result["images"] == 1 and result["tool_input_chars"] > 0 and result["tool_result_chars"] > 0
     first, second, third = messages.requests
     assert first["model"] == "claude-opus-5-5" and first["fallbacks"] == "default"
     assert first["betas"] == ["server-side-fallback-2026-07-01"] and first["output_config"] == {"effort": "low"}
@@ -108,6 +111,21 @@ def test_claude_agent_loop_runs_tools_and_keeps_history_append_only():
     assert results[1]["content"][0]["type"] == "image"
     assert results[2]["is_error"] and "unknown_operation" in results[2]["content"][0]["text"]
     assert result["final"] == "Done."
+
+
+def test_replay_reports_null_tokens_and_counts_images_and_payloads():
+    task = next(t for t in TASKS if t["id"] == "equal-spacing")
+    results, summary = run([task], ReferenceAgent())
+    result = results[0]
+    assert result["tokens_total"] is None and result["cache_read_tokens"] is None
+    assert "tokens_total" in result and "cache_read_tokens" in result
+    assert result["images"] == sum(step["tool"] == "vixl_render" for step in task["reference"])
+    assert result["tool_input_chars"] >= len(json.dumps(task["reference"][0]["arguments"]))
+    assert result["tool_result_chars"] // 4 == result["tool_result_tokens_estimate"]
+    assert summary["total_tokens"] is None and summary["total_cache_read_tokens"] is None
+    assert summary["total_images"] == result["images"] and summary["mean_tool_input_chars"] == result["tool_input_chars"]
+    report = markdown(results, summary, {"agent": "reference"})
+    assert "| Total tok | Cache read | Images |" in report and f"| – | – | {result['images']} |" in report
 
 
 def test_claude_agent_stops_on_refusal():
@@ -167,3 +185,20 @@ def test_retries_count_a_repeated_tool_after_an_error():
              {"tool": "vixl_check", "error": True}, {"tool": "vixl_render", "error": False},
              {"tool": "vixl_render", "error": False}]
     assert retries(trace) == 1 and retries([]) == 0
+
+
+def test_token_baseline_briefs_replay_and_file_is_current():
+    from evals import token_baseline
+
+    briefs = token_baseline.briefs()
+    assert set(briefs) == set(token_baseline.BRIEFS)
+    stored = json.loads(token_baseline.OUT.read_text(encoding="utf-8"))
+    assert set(stored["briefs"]) == set(briefs) and stored["description"]
+    for brief, task in briefs.items():
+        assert stored["briefs"][brief]["task"] == task["id"]
+        assert set(token_baseline.FIELDS) <= set(stored["briefs"][brief])
+    # The scripted briefs (no eval task of their own) are solvable and record every cost field.
+    for task in token_baseline.SCRIPTED:
+        results, _ = run([task], ReferenceAgent())
+        assert results[0]["passed"] and results[0]["tool_errors"] == 0, results[0]["checks"]
+        assert results[0]["tokens_total"] is None and results[0]["tool_input_chars"] > 0

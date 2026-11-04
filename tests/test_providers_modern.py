@@ -176,6 +176,8 @@ class FakeMessages:
             stop_reason=self.stop_reason,
             stop_details=SimpleNamespace(category="cyber"),
             content=[SimpleNamespace(type="thinking"), SimpleNamespace(type="text", text=self.text)],
+            usage=SimpleNamespace(input_tokens=90, output_tokens=12, cache_read_input_tokens=800,
+                                  cache_creation_input_tokens=None),
         )
 
 
@@ -214,6 +216,9 @@ def test_anthropic_refusals_plans_and_configuration():
     call = messages.calls[-1]
     assert "fallbacks" not in call and call["model"] == "claude-sonnet-5-5"
     assert call["output_config"] == {"effort": "low"}
+    # The reference block comes first and is marked for caching; cache reads are reported apart from the usage.
+    assert call["messages"][0]["content"][0]["cache_control"] == {"type": "ephemeral"}
+    assert result["usage"] == {"input_tokens": 90, "output_tokens": 12} and result["cache"] == {"cache_read_tokens": 800}
     with pytest.raises(VixlError, match="does not generate"):
         backend.invoke("generate", {})
 

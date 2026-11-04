@@ -23,7 +23,8 @@ ar/he/fa, and on re-run rebuilds only locales whose fingerprint changed; `spec` 
 strings CSV has a `key` column and one column per locale; an empty cell is a missing key and holds the locale. See
 `docs/guides/automation/localization.md`.
 
-Discover actions with `vixl_reference('workflows')` or `vixl workflow schema`.
+Discover actions with `vixl_reference('workflows')` (a one-line index; `name=ACTION` or a list of up to 10 gives the
+request fields and the definitions they use) or `vixl workflow schema`.
 Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/main/docs/guides/automation/production.md).
 
 1. Inspect the base document and create explicit `suite-set` rules for its requirements.
@@ -33,7 +34,7 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    `count`, `text` (the drawn copy: `contains`, `forbid`/`pattern` regexes, `min_/max_characters`,
    `min_/max_words`, `case`, `brand`, `spelling: true` for unknown words with suggestions), `budget` (`max_layers`, `max_fonts`, `max_bytes`, `min_ppi`, `max_ppi`; `max_render_ms` + `proxy` in a rule of its own, always an advisory review), `alpha`,
    `design`, `container`, `unchanged`, `pixels`. `expected`, `to` and `ratio` may be `{ref: "master.vixl#layer.field"}` or `{ref: "master.vixl#suite:rule-id"}` to read a master document each run (at most 8; a missing one needs review) (fields:
-   `vixl_reference('workflows').definitions.suite`; method: `vixl_reference("testing")`). Run suites with each
+   `vixl_reference('workflows', name='check').definitions.suite`; method: `vixl_reference("testing")`). Run suites with each
    batch (`vixl_apply(suites=true)`) and before every preview. `sampling` (or `check`'s request)
    takes `artboards`/`pages`/`comps` (`"all"` or names) to cover every variant in one run; each result names
    its `variant`. `suite-infer` proposes an explained starter suite from an approved document (`apply: true`
@@ -45,7 +46,7 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    at the new size by default; `recompose: true` forces it after edits and replaces them; `arrangements` keeps the
    best-scoring re-arrangement) for predictable layout tasks;
    save a bounded sequence with `action-define`. `role-set`, `motion-define`, and
-   `motion-apply` produce editable staggered/relative animation tracks.
+   `motion-apply` produce editable staggered/relative animation tracks; `motion: {role, entrance, hold, exit, duration, stagger}` is the short form of enter-stay-leave steps.
 3. Workflow `act` accepts operations, suites, dry_run and repair. It returns measurements and
    commits only if checks pass (`repair: true` first tries the built-in repair map on the candidate).
    `check` reports failed or needs_review; neither is a pass. Over pages, a rule about a layer on another page

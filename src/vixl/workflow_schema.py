@@ -880,3 +880,101 @@ def summary(action):
     if action == "variations":
         return VARIATIONS_SUMMARY
     return EMOJI_SUMMARIES.get(action, SUMMARIES.get(action, ""))
+
+
+# ----------------------------------------------------------------------------------- scoped responses (#615)
+
+# The shared objects a workflow response publishes under ``definitions``; a response includes only the ones its
+# selected actions reach (``scoped``).
+DEFINITIONS = {"suite": SUITE, "job": JOB, "recipe": RECIPE, "production_spec": PRODUCTION_SPEC,
+               "film_spec": FILM_SPEC, "manifest": MANIFEST}
+
+
+def _children(node):
+    """The schema nodes directly inside ``node``."""
+    if not isinstance(node, dict):
+        return []
+    found = []
+    for key in ("properties", "$defs", "definitions"):
+        if isinstance(node.get(key), dict):
+            found += list(node[key].values())
+    for key in ("items", "additionalProperties", "not"):
+        if isinstance(node.get(key), dict):
+            found.append(node[key])
+    for key in ("anyOf", "oneOf", "allOf", "prefixItems"):
+        if isinstance(node.get(key), list):
+            found += [item for item in node[key] if isinstance(item, dict)]
+    return found
+
+
+def _fold(node, definitions):
+    """``node`` with every embedded definition (a node equal to one, or a ``$ref`` to one) folded into a
+    ``$ref``; returns the folded node and the names it reaches directly."""
+    if not isinstance(node, dict):
+        return node, set()
+    ref = node.get("$ref", "")
+    for name, schema in definitions.items():
+        if ref.rsplit("/", 1)[-1] == name or node == schema:
+            folded = {"$ref": f"#/definitions/{name}"}
+            if "description" in node and node != schema:  # a ref node's own description is kept
+                folded["description"] = node["description"]
+            return folded, {name}
+    reached = set()
+    folded = {}
+    for key, value in node.items():
+        if key in ("properties", "$defs", "definitions") and isinstance(value, dict):
+            folded[key] = {}
+            for child_name, child in value.items():
+                folded[key][child_name], names = _fold(child, definitions)
+                reached |= names
+        elif key in ("items", "additionalProperties", "not") and isinstance(value, dict):
+            folded[key], names = _fold(value, definitions)
+            reached |= names
+        elif key in ("anyOf", "oneOf", "allOf", "prefixItems") and isinstance(value, list):
+            folded[key] = []
+            for item in value:
+                item, names = _fold(item, definitions)
+                folded[key].append(item)
+                reached |= names
+        else:
+            folded[key] = value
+    return folded, reached
+
+
+def reachable_definitions(schemas, definitions=None):
+    """The names of the ``definitions`` reachable from ``schemas`` (a list of schema nodes), transitively through
+    the definitions themselves."""
+    definitions = DEFINITIONS if definitions is None else definitions
+    pending, reached = list(schemas), set()
+    while pending:
+        _, names = _fold(pending.pop(), definitions)
+        for name in names - reached:
+            reached.add(name)
+            pending.append(definitions[name])
+    return reached
+
+
+def scoped(actions, definitions=None):
+    """``actions`` (``{name: entry}`` as ``workflows.describe`` builds them) with each embedded shared object
+    folded into a ``$ref``, plus only the ``definitions`` those actions reach (each folded the same way, so a
+    definition inside another is a ``$ref`` too)."""
+    definitions = DEFINITIONS if definitions is None else definitions
+    folded_actions, reached = {}, set()
+    for name, entry in actions.items():
+        folded = dict(entry)
+        if isinstance(entry.get("properties"), dict):
+            folded["properties"], names = _fold({"properties": entry["properties"]}, definitions)
+            folded["properties"] = folded["properties"]["properties"]
+            reached |= names
+        folded_actions[name] = folded
+    pending = list(reached)
+    while pending:
+        name = pending.pop()
+        _, names = _fold(definitions[name], {k: v for k, v in definitions.items() if k != name})
+        for extra in names - reached:
+            reached.add(extra)
+            pending.append(extra)
+    folded_definitions = {}
+    for name in sorted(reached):
+        folded_definitions[name], _ = _fold(definitions[name], {k: v for k, v in definitions.items() if k != name})
+    return {"actions": folded_actions, "definitions": folded_definitions}

@@ -5,6 +5,8 @@ import json
 
 from mcp.shared.memory import create_connected_server_and_client_session
 from PIL import Image
+import io
+
 import pytest
 
 from vixl import Project, VixlError
@@ -183,6 +185,45 @@ def test_batch_validates_everything_before_writing_anything(tmp_path):
     assert not (tmp_path / "a.png").exists()
     assert batch(session, [{"path": "taken.png"}], document="poster.vixl", overwrite=True)["written"] == 1
     assert (tmp_path / "taken.png").stat().st_size > 1
+
+
+def test_batch_preflight_refuses_a_target_that_cannot_render_before_writing_anything(tmp_path):  # #615 item 62
+    session = batch_session(tmp_path)
+    session.create("pic.vixl", 40, 40, "white")
+    buffer = io.BytesIO()
+    Image.new("RGB", (8, 8), "red").save(buffer, "PNG")
+    with session.project(write=True, document="pic.vixl") as project:
+        project.import_image(data=buffer.getvalue(), name="photo")
+        project.apply([{"type": "variable", "name": "picture", "value": project.layer("photo")["asset"]},
+                       {"type": "replace-contents", "target": "photo", "variable": "picture"}])
+    # The image variable of one target names an asset the document does not embed.
+    targets = [{"path": "a.png"}, {"path": "b.png", "document": "pic.vixl", "variables": {"picture": "images/gone.png"}},
+               {"path": "c.png"}]
+    with pytest.raises(VixlError) as error:
+        batch(session, targets, document="poster.vixl")
+    assert error.value.code == "missing_asset"
+    assert "targets[1]" in str(error.value) and "b.png" in str(error.value) and "images/gone.png" in str(error.value)
+    assert error.value.details["target"] == 1 and error.value.details["document"] == "pic.vixl"
+    assert not (tmp_path / "a.png").exists() and not (tmp_path / "c.png").exists()
+    assert batch(session, [{"path": "ok.png", "document": "pic.vixl"}])["written"] == 1
+    # A font no renderer can load fails the same way; a target over the call limits names its limit.
+    with session.project(write=True, document="pic.vixl") as project:
+        project.apply([{"type": "remove", "target": "photo"},
+                       {"type": "text", "name": "t", "text": "Hi", "size": 12, "color": "black"}])
+        project.layer("t")["font"] = "NoSuchFace-Bold.ttf"
+    with pytest.raises(VixlError, match=r"targets\[0\].*NoSuchFace") as error:
+        batch(session, [{"path": "a.png", "document": "pic.vixl"}])
+    assert error.value.code == "missing_font" and not (tmp_path / "a.png").exists()
+    from vixl.call_limits import CallLimits
+
+    session.call_limits = CallLimits(max_megapixels=0.001)
+    with pytest.raises(VixlError, match=r"targets\[1\].*megapixels"):
+        batch(session, [{"path": "a.png", "scale": 0.1}, {"path": "b.png", "scale": 4}], document="poster.vixl")
+    assert not (tmp_path / "a.png").exists()
+    session.call_limits = None
+    # A document that does not exist is still that target's own error, not the batch's.
+    result = batch(session, [{"path": "a.png"}, {"path": "b.png", "document": "missing.vixl"}], document="poster.vixl")
+    assert result["written"] == 1 and result["results"][1]["error"]["error"] == "not_found"
 
 
 def test_batch_reports_a_failing_target_and_can_stop(tmp_path):

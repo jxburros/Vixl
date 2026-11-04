@@ -11,28 +11,50 @@ returns the start-here recipe, every kind and every guidance name.
 import re
 
 from .errors import VixlError
+from .house_style import finishing_pass
+
+def _finishing_step():
+    """The finishing pass, sized to the purpose's tier (house-style ``finishing_pass``): the full pass for print
+    and brand work, just the checks for social and quick web."""
+    from .house_style import finishing_passes
+
+    tiers = finishing_passes()
+    return (
+        "Finishing pass after tests pass (vixl_reference('finishing')), sized to the purpose: for print and brand work "
+        f"({', '.join(tiers['full'])}; finishing_pass 'full' in vixl_reference(kind)) vixl_check and the suites clean (fix "
+        "the 'fix' findings, glance at 'review'), then vixl_check(checks=[\"composition\"]) for dead bands, margin drift, "
+        "uneven rhythm and crowding (vixl_apply(workflow='repair-layout') repairs most), a short critique against the "
+        "craft checklist, one fix batch with check=true and preview=true (it returns real-size crops of the two weakest "
+        "regions), a real-size look at two regions (those crops, or vixl_render(region=[x, y, w, h], max_width=w, "
+        f"max_height=h)), then vixl_export. For social and quick web ({', '.join(tiers['check'])}; finishing_pass "
+        "'check') the pass is only the first step: vixl_check and the suites clean, a glance at the preview, then "
+        "vixl_export."
+    )
+
 
 START_HERE = [
+    "New piece with a text frame: one call. vixl_apply(create={path: 'piece.vixl', purpose: 'social' (or size: a name "
+    "from vixl_reference('sizes')), layout: {name: 'hero-statement', title: …, subtitle: …, cta: …}, look: {look: "
+    "'grain'}, suites: 'composition'}, preview=true) creates the document, installs the rolled font pairing, lays out "
+    "the copy (layout-apply, every slot filled), applies the look, runs check and the suite and returns a preview, all "
+    "or nothing. vixl_reference('layouts') lists the layouts and their slots; vixl_reference(brief) names the kind's "
+    "layouts, looks and starter suite.",
     "Sparse briefs use fresh seeds and curated safe choices. Keep the returned seed to reproduce a direction, "
     "pass explicit palette/font/style choices to lock them, or set .vixl/variety.json to {variety: fixed, seed: 0}.",
-    "Size: pick a named size (vixl_reference('sizes')) and vixl_document(action='create', size=…).",
-    "Structure: for anything with text, vixl_reference('layouts') then layout-apply, filling every slot it lists (seed makes it repeatable). "
-    "For art without a text frame (icons, characters, scenes, patterns), build from shape, pen, pathfinder, organic and radial-repeat.",
+    "Step by step only for edits (vixl_document(action='inspect'), then vixl_apply batches) and for art without a text "
+    "frame (icons, characters, scenes, patterns): vixl_reference(brief) for the kind, vixl_document(action='create', "
+    "size=… or purpose=…), then build from shape, pen, pathfinder, organic and radial-repeat.",
     "Type: vixl_reference('fonts') then font-pair, or name a font installed on this machine "
     "(vixl_reference('fonts', view='installed')); the bundled font is a proofing fallback.",
     "Finish: apply a look (glow, soft-shadow, hard-shadow, gradient, grain, paper …) so flat shapes read as finished; "
     "tag a style (vixl_reference('styles')) when the brief names a look. A look is part of building, not the finishing pass below.",
-    "Tests: before building, write the brief's requirements as a check suite (suite-set; the kind's 'tests' lists a "
-    "starter suite and rules to adapt; vixl_reference('testing') explains why and how) and keep it attached.",
-    "Check while building: vixl_apply(check=true, suites=true) reports findings and failing rules with each "
-    "batch; fix them as you go.",
-    "Finishing pass after tests pass (vixl_reference('finishing')): vixl_check and the suites clean (fix the 'fix' "
-    "findings, glance at 'review'), then vixl_check(checks=[\"composition\"]) for dead bands, margin drift, uneven "
-    "rhythm and crowding (vixl_apply(workflow='repair-layout') repairs most), a short critique against the craft checklist, "
-    "one fix batch with check=true and preview=true (it returns real-size crops of the two weakest regions), a "
-    "real-size look at two regions (those crops, or vixl_render(region=[x, y, w, h], max_width=w, "
-    "max_height=h)), then vixl_export.",
+    "Tests: write the brief's requirements as a check suite (suites in create, or suite-set; the kind's 'tests' lists a "
+    "starter suite and rules to adapt; vixl_reference('testing') explains why and how) and run it with every batch: "
+    "vixl_apply(check=true, suites=true) reports findings and failing rules; fix them as you go.",
+    _finishing_step(),
 ]
+# guide(kind) points here instead of repeating the recipe (about 1.9 KB) with every kind.
+START_HERE_POINTER = "vixl_reference() (no topic) gives the start-here steps: one vixl_apply(create=…) call for a new piece"
 # Other names an agent may ask vixl_reference for the finishing pass by.
 GUIDANCE_ALIASES = {"craft": "finishing", "craft-checklist": "finishing", "critique": "finishing",
                     "finishing-pass": "finishing", "polish": "finishing"}
@@ -542,6 +564,49 @@ def brief_moods(brief, implied=None):
     return {"moods": sorted(set(moods)), "words": list(dict.fromkeys(words)), "motif": motif}
 
 
+# Container resources (vixl_reference('templates') lists them; container-place places one) that suit each kind of
+# work; guide() names them with the kind's layouts and a create= starting point (#615 item 07).
+CONTAINERS_FOR = {
+    "document": ["section-header", "key-value-list", "callout", "stat", "list-block", "labelled-rule"],
+    "poster": ["cta", "band", "section-header", "badge", "ribbon"],
+    "social-card": ["stat", "testimonial", "product-card", "quote-left", "badge", "photo-caption"],
+    "banner-ad": ["cta", "headline-left", "feature-left", "product-card", "band"],
+    "slides": ["stat", "key-value-list", "section-header", "list-block", "timeline-step", "callout", "feature-icon",
+               "pricing-tier", "profile"],
+    "stationery": ["labelled-rule", "section-header", "band"],
+    "form": ["section-header", "key-value-list", "labelled-rule", "callout"],
+    "diagram": ["callout", "labelled-rule", "list-block"],
+    "logo": ["badge-mark", "geometric-mark", "organic-mark"],
+    "app-icon": ["badge-mark", "geometric-mark", "organic-mark"],
+    "photo-composition": ["photo-caption", "band", "ribbon"],
+    "meme": ["band", "ribbon"],
+}
+
+
+def starting_points(kind):
+    """What a guide names so the first call needs no further lookup: the containers that suit ``kind``, its layouts
+    and a ``create=`` object for vixl_apply (path, the first recommended size, the purpose and the first layout)."""
+    from .house_style import purpose_for
+
+    item = KINDS[kind]
+    create = {"path": f"{kind}.vixl"}
+    if item.get("sizes"):
+        create["size"] = item["sizes"][0]
+    purpose = purpose_for(kind)
+    if purpose:
+        create["purpose"] = purpose
+    if item.get("layouts"):
+        create["layout"] = {"name": item["layouts"][0]}
+    return {
+        "containers": list(CONTAINERS_FOR.get(kind, [])),
+        "create": create,
+        "create_with": "vixl_apply(create=<create>, operations=[…], check=true): one atomic call creates the document, "
+                       "applies the layout (fill its slots: vixl_reference('layouts', name=NAME)), style and look, "
+                       "then the operations; containers go in as {type: container-place, name, resource: NAME, "
+                       "variables: {slot: value}}.",
+    }
+
+
 def _directed(result, kind, seed, variety, workspace, moods=None):
     """Attach a rolled direction drawn with the kind's recommendations, and say which choices are in them.
 
@@ -576,6 +641,7 @@ def _directed(result, kind, seed, variety, workspace, moods=None):
                     "the variety level to roll bolder tiers.",
             **notes,
         }
+    result.update(starting_points(kind))
     return result
 
 
@@ -632,7 +698,8 @@ def guide(brief=None, *, seed=None, variety=None, workspace=None):
 
         return listing()
     if key in KINDS:
-        return _directed({**entry(key), "start_here": START_HERE}, key, seed, variety, workspace)
+        return _directed({**entry(key), "finishing_pass": finishing_pass(key), "start_here": START_HERE_POINTER},
+                         key, seed, variety, workspace)
     found = guidance(key, workspace=workspace) or (key in GUIDANCE_ALIASES
                                                    and guidance(GUIDANCE_ALIASES[key], workspace=workspace))
     if found:
@@ -654,7 +721,8 @@ def guide(brief=None, *, seed=None, variety=None, workspace=None):
         raise VixlError("no_match", f"No kind of work matches {brief!r}; kinds: {', '.join(KINDS)}. Call vixl_reference() for the start-here "
                                     "recipe and the guidance names.", field="brief", suggestions=list(KINDS)[:6], allowed=list(KINDS))
     best = ranked[0]
-    result = _directed({"matched": best, **entry(best), "alternatives": ranked[1:4], "start_here": START_HERE},
+    result = _directed({"matched": best, **entry(best), "alternatives": ranked[1:4],
+                        "finishing_pass": finishing_pass(best), "start_here": START_HERE_POINTER},
                        best, seed, variety, workspace, brief_moods(brief, implied))
     if subject:
         result["object"] = object_summary(subject, workspace)
@@ -718,5 +786,5 @@ def object_guide(kind, workspace=None):
                                                   "reparent", "object-save", "object-place"],
         "guidance": build.get("guidance") or ["multi-part-objects", "anatomy-proportions", "imperfection"],
         "read_guidance": "vixl_reference(NAME) returns each guidance text",
-        "start_here": START_HERE,
+        "start_here": START_HERE_POINTER,
     }

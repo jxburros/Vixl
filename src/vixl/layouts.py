@@ -87,19 +87,25 @@ class Builder:
         density = op.get("density") or self.rng.choice(DENSITY_CHOICES)
         require(density in DENSITY_MARGIN, "density must be airy, balanced or dense")
         self.density = density
-        inset = c.get("bleed", 0) + max(safe_sides(c))
         # The canvas safe area as (left, top, right, bottom) insets from the canvas edge.
         self.safe = tuple(c.get("bleed", 0) + side for side in safe_sides(c))
-        margin = max(short * DENSITY_MARGIN[density], inset + short * 0.02 if inset else 0)
-        if "margin" in op.get("direction", {}):
-            fraction = op["direction"]["margin"]
-            require(isinstance(fraction, (int, float)) and 0.02 <= fraction <= 0.2, "direction.margin must be 0.02–0.2")
-            # A rolled margin is the balanced value; density still widens or tightens it.
-            margin = max(inset, short * fraction * DENSITY_SPACING[density])
-        if self.orientation == "wide":
-            margin = max(short * 0.12, inset)
-        self.m = round(margin)
-        self.L, self.T, self.R, self.B = self.m, self.m, self.W - self.m, self.H - self.m
+        # A story keeps its type out of the top and bottom 250 px but not out of the sides: the margin is
+        # read per axis, so a deep vertical inset never narrows the column to half the canvas (#764).
+        inset_x, inset_y = max(self.safe[0], self.safe[2]), max(self.safe[1], self.safe[3])
+
+        def margin_for(inset):
+            margin = max(short * DENSITY_MARGIN[density], inset + short * 0.02 if inset else 0)
+            if "margin" in op.get("direction", {}):
+                fraction = op["direction"]["margin"]
+                require(isinstance(fraction, (int, float)) and 0.02 <= fraction <= 0.2, "direction.margin must be 0.02–0.2")
+                # A rolled margin is the balanced value; density still widens or tightens it.
+                margin = max(inset, short * fraction * DENSITY_SPACING[density])
+            if self.orientation == "wide":
+                margin = max(short * 0.12, inset)
+            return round(margin)
+
+        self.m, my = margin_for(inset_x), margin_for(inset_y)
+        self.L, self.T, self.R, self.B = self.m, my, self.W - self.m, self.H - my
         self.cw, self.ch = self.R - self.L, self.B - self.T
         # Type: a modular scale from a body size suited to the medium.
         ratio = op.get("type_scale")
@@ -131,6 +137,12 @@ class Builder:
             self.sizes = {role: max(minimum, value) for role, value in self.sizes.items()}
         # Roles a poster's minimums raised, which the document records as its type scale (#680).
         self.raised = {}
+        if "base_size" not in op and c.get("dpi"):
+            # Print is read at full size: no role is set under the house minimum point size (#764).
+            from .house_style import rule
+
+            floor = math.ceil(rule("minimum_text")["print_points"] * c["dpi"] / 72)
+            self.sizes = {role: max(floor, value) for role, value in self.sizes.items()}
         if "base_size" not in op:
             # Minor text is set at least as large as the legibility check's use size asks of a regular face
             # (a cover at 120 px, a projected slide, a poster across a room); an explicit base_size wins.
@@ -191,7 +203,8 @@ class Builder:
             # flush against its inner edge.
             inner = round(self.m * 0.45 + self.outline_width() + self.unit * 2)
             if inner > self.m:
-                self.L, self.T, self.R, self.B = inner, inner, self.W - inner, self.H - inner
+                self.L, self.R = inner, self.W - inner
+                self.T, self.B = max(self.T, inner), min(self.B, self.H - inner)
                 self.cw, self.ch = self.R - self.L, self.B - self.T
         # Content is fill-in-the-blank: only what the caller supplied is real copy. A slot the
         # design needs but nobody filled renders as a visible "[Label]" placeholder and is
@@ -257,12 +270,15 @@ class Builder:
             w, h, _ = text_metrics(self.project, layer, {})
             return w, h
 
-    def text(self, role, content, x, y, width, *, align=None, name=None, color="@ink", max_height=None, display=False, line=None, stroke=None):
-        """Place wrapped text in a box at (x, y); shrinks to fit width and ``max_height``."""
+    def text(self, role, content, x, y, width, *, align=None, name=None, color="@ink", max_height=None, display=False, line=None, stroke=None, scale=1.0):
+        """Place wrapped text in a box at (x, y); shrinks to fit width and ``max_height``. ``scale`` grows a
+        role's size while keeping the role's font, stage and measure (a short stack on a large page)."""
         if not content:
             return (x, y, 0, 0)
         align = align or self.align
         size = self.sizes[role] if isinstance(role, str) else int(role)
+        if scale != 1:
+            size = max(6, round(size * scale))
         width = max(1, int(width))
         heavy = (role in ("display", "headline", "title")) if isinstance(role, str) else display
         font = self.display_font if heavy else self.font
@@ -328,8 +344,12 @@ class Builder:
         op = {"type": "text", "name": layer, "text": content, "size": size, "color": color, "align": align, "line_height": multiple, "x": round(x), "y": round(y)}
         if stage_font:
             op["font"] = stage
-        elif font:
+        elif font and font == (self.op.get("display_font") if heavy else self.op.get("font")):
             op["font"] = font
+        elif font:
+            # Type from the document typography follows its role, so a later font-pair, font-install --role or
+            # style-use restyles it (#766); an explicit font/display_font stays the concrete face.
+            op["font"] = "heading" if heavy else "body"
         self.add(op)
         if stroke:
             # text-set re-measures the text, so the stroke comes before the text box.
@@ -617,16 +637,36 @@ class Builder:
             return resolve_space(self.op["gap"], self.base), {}
         return gap, gaps or {}
 
+    def settle(self, vertical, height, clearance=0):
+        """The top of a stack ``height`` tall placed at share ``vertical`` of the free height, pulled toward the
+        centre just enough that neither edge band dwarfs the other (the dead-band check's edge ratio), so a
+        short stack on a tall page keeps the composition's character without opening a dead edge (#764)."""
+        from .composition import THRESHOLDS
+
+        free = max(0.0, self.ch - height - clearance)
+        if free > 0:
+            # top band = T + free × v and bottom band = T + free × (1 − v), each under ratio × the other.
+            ratio = THRESHOLDS["edge_band_ratio"] * 0.95
+            limit = ((ratio - 1) * self.T + ratio * free) / ((ratio + 1) * free)
+            vertical = min(max(vertical, 1 - limit), limit) if limit > 0.5 else 0.5
+        return self.T + free * vertical
+
     def lockup_gaps(self, *grouped):
         """A headline lockup's rhythm for ``stack``: the label and the ``grouped`` lines (a subtitle) sit two
-        units from the headline, and the call to action five units below, so proximity says what belongs
-        together instead of every entry floating at one equal gap."""
-        return {"headline": self.unit * 2, **{name: self.unit * 2 for name in grouped}, "cta": self.unit * 5}
+        units from the headline, and the call to action four units below (twice the lockup's step, and under
+        the dead-band bar on a square social canvas), so proximity says what belongs together instead of
+        every entry floating at one equal gap."""
+        return {"headline": self.unit * 2, **{name: self.unit * 2 for name in grouped}, "cta": self.unit * 4}
 
-    def stack(self, entries, x, y, width, gap=None, align=None, gaps=None):
+    def stack(self, entries, x, y, width, gap=None, align=None, gaps=None, widths=None, colors=None, scale=1.0):
         """Lay out (role, key|text, name) entries top-down with rhythm gaps; returns bottom y. ``gaps`` maps an
-        entry name to the gap above it (a subtitle tight under its headline, a call to action set apart)."""
+        entry name to the gap above it (a subtitle tight under its headline, a call to action set apart);
+        ``widths`` and ``colors`` map a name to its own measure or colour (a point's explanation set narrower
+        and muted under its subhead); ``scale`` grows every role's size (a short list on a large page)."""
         gap, gaps = self._stack_gaps(gap, gaps)
+        widths, colors = widths or {}, colors or {}
+        if scale != 1:
+            gap, gaps = gap * scale, {name: value * scale for name, value in gaps.items()}
         placed = False
         for role, text, name in entries:
             if not text:
@@ -638,14 +678,18 @@ class Builder:
                 anchor = x if (align or self.align) == "left" else x + width if (align or self.align) == "right" else x + width / 2
                 _, _, _, h = self.button(text, anchor, y, align=align)
             else:
-                color = "@accent-text" if name == "label" else "@muted" if role == "caption" else "@ink"
+                color = colors.get(name) or ("@accent-text" if name == "label" else "@muted" if role == "caption" else "@ink")
                 limit = max(self.unit * 4, (self.B - y) * 0.75) if role in ("display", "headline", "title") else None
-                _, _, _, h = self.text(role, text, x, y, width, align=align, name=name, color=color, max_height=limit)
+                _, _, _, h = self.text(role, text, x, y, widths.get(name, width), align=align, name=name, color=color,
+                                       max_height=limit, scale=scale)
             y += h
         return y
 
-    def stack_height(self, entries, width, gap=None, gaps=None):
+    def stack_height(self, entries, width, gap=None, gaps=None, widths=None, scale=1.0):
         gap, gaps = self._stack_gaps(gap, gaps)
+        widths = widths or {}
+        if scale != 1:
+            gap, gaps = gap * scale, {name: value * scale for name, value in gaps.items()}
         total = 0
         placed = False
         for role, text, name in entries:
@@ -658,12 +702,13 @@ class Builder:
                 _, th = self.measure(text, self.sizes["body"], None, 0, "left", self.font)
                 total += th + 2 * round(self.sizes["body"] * 0.6)
             else:
-                size = self.sizes[role]
+                size = self.sizes[role] * scale
+                measure = widths.get(name, width)
                 heavy = role in ("display", "headline", "title")
                 if heavy:
-                    size = self.measure_cap(role, text, size, width)
-                _, h = self.measure(text, size, width, self.leading(size, LINE_HEIGHT[ROLE_STAGES[role]],
-                                                                    self.display_font if heavy else self.font),
+                    size = self.measure_cap(role, text, size, measure)
+                _, h = self.measure(text, size, measure, self.leading(size, LINE_HEIGHT[ROLE_STAGES[role]],
+                                                                      self.display_font if heavy else self.font),
                                     self.align, self.display_font if heavy else self.font)
                 if heavy:
                     h = min(h, self.ch * 0.55)
@@ -952,10 +997,11 @@ def _split_screen(b):
     pad = b.m
     tx, ty, tw, th = text_box[0] + pad, text_box[1] + pad, text_box[2] - 2 * pad, text_box[3] - 2 * pad
     entries = [("caption", b.label_text(), "label"), ("headline", b.get("title"), "headline"), ("body", b.get("subtitle") or b.get("body"), "body"), ("button", b.get("cta"), "cta")]
-    height = b.stack_height(entries, tw)
+    gaps = b.lockup_gaps("body")
+    height = b.stack_height(entries, tw, gaps=gaps)
     y = ty + max(0, (th - height) / 2)
     b.accent_device(tx, y, tw, height)
-    b.stack(entries, tx, y, tw)
+    b.stack(entries, tx, y, tw, gaps=gaps)
 
 
 def _centered_axis(b):
@@ -993,13 +1039,17 @@ def _asymmetric_balance(b):
     cx = b.W * (0.78 if left else 0.22)
     cy = b.H * b.rng.choice([0.22, 0.3])
     shape = b.rng.choice(["ellipse", "rectangle", "ellipse"])
-    b.rect("counterweight", cx - d / 2, cy - d / 2, d, d, "@accent", shape=shape, opacity=0.92, decoration=True)
     gap = b.unit * 4
-    beside = (b.R - (cx + d / 2 + gap)) if not left else ((cx - d / 2 - gap) - b.L)
-    below = b.B - (cy + d / 2 + gap)
     width = b.cw * (0.62 if b.orientation != "tall" else 0.9)
     entries_probe = [("caption", b.label_text(), "label"), ("headline", b.get("title"), "headline"), ("body", b.get("subtitle"), "subtitle"), ("button", b.get("cta"), "cta")]
     gaps = b.lockup_gaps("subtitle")
+    # Copy that will not fit under the shape takes a smaller shape before it takes a narrow column beside
+    # it, where the headline would shrink to its measure and lose its step over the body.
+    if b.stack_height(entries_probe, width, gaps=gaps) > b.B - (cy + d / 2 + gap):
+        d = min(d, min(b.W, b.H) * 0.55)
+    b.rect("counterweight", cx - d / 2, cy - d / 2, d, d, "@accent", shape=shape, opacity=0.92, decoration=True)
+    beside = (b.R - (cx + d / 2 + gap)) if not left else ((cx - d / 2 - gap) - b.L)
+    below = b.B - (cy + d / 2 + gap)
     if b.stack_height(entries_probe, width, gaps=gaps) > below:
         width = max(b.cw * 0.4, beside)
     x = b.L if left else b.R - width
@@ -1031,25 +1081,36 @@ def _z_pattern(b):
 def _f_pattern(b):
     b.background()
     bar = max(3, round(b.unit * 0.8))
-    b.rect("spine", b.L, b.T, bar, b.ch, "@accent")
+    b.rect("spine", b.L, b.T, bar, b.ch, "@accent", decoration=True)
     x = b.L + bar * 5
     width = b.cw - bar * 5
-    y = b.T
-    _, _, _, h = b.text("headline", b.get("title"), x, y, width, name="headline", align="left", max_height=b.ch * 0.3)
-    y += h + b.unit * 4
     sections = [s for s in str(b.get("items") or b.get("body")).split("\n") if s.strip()][:6]
-    if not sections:
-        return
+    # One stack with a stated rhythm: the headline, then each point's subhead with its explanation tight
+    # under it and three units before the next point, so no entry floats between its neighbours (#680).
+    entries = [("headline", b.get("title"), "headline")]
+    gaps, widths, colors = {}, {}, {}
     for index, section in enumerate(sections):
         head, _, rest = section.partition(":")
-        _, _, _, h = b.text("subhead", head.strip(), x, y, width, name=f"point-{index + 1}", align="left", max_height=b.B - y)
-        y += h + b.unit
+        name = f"point-{index + 1}"
+        entries.append(("subhead", head.strip(), name))
+        gaps[name] = b.unit * 4 if index == 0 else b.unit * 3
         if rest.strip():
-            _, _, _, h = b.text("body", rest.strip(), x, y, width * 0.8, name=f"point-{index + 1}-text", align="left", color="@muted", max_height=b.B - y)
-            y += h
-        y += b.unit * 3
-        if y > b.B - b.sizes["subhead"]:
+            entries.append(("body", rest.strip(), f"{name}-text"))
+            gaps[f"{name}-text"], widths[f"{name}-text"], colors[f"{name}-text"] = b.unit, width * 0.8, "@muted"
+    # A short list grows until it holds about 60% of the page, and on a wide canvas sits at the optical
+    # centre of the spine rather than leaving the lower third empty; a full column starts at the top margin.
+    scale, height = 1.0, b.stack_height(entries, width, widths=widths, gaps=gaps)
+    title, headline = b.get("title"), b.sizes["headline"]
+    for grow in (1.25, 1.5, 1.8, 2.2):
+        if height >= b.ch * 0.6:
             break
+        grown = b.stack_height(entries, width, widths=widths, gaps=gaps, scale=grow)
+        # The points stop growing where the headline's measure caps it, so the hierarchy keeps its steps.
+        if grown > b.ch * 0.8 or b.measure_cap("headline", title, headline * grow, width) < headline * grow * 0.9:
+            break
+        scale, height = grow, grown
+    y = b.T + max(0, b.ch - height) * 0.42
+    b.stack(entries, x, y, width, align="left", gaps=gaps, widths=widths, colors=colors, scale=scale)
 
 
 def _rule_of_thirds(b):
@@ -1070,15 +1131,26 @@ def _rule_of_thirds(b):
     else:
         text_x, width, align = fx + d / 2 + gap, b.R - (fx + d / 2 + gap), "right"
     entries = [("caption", b.label_text(), "label"), ("headline", b.get("title"), "headline"), ("body", b.get("subtitle"), "subtitle"), ("button", b.get("cta"), "cta")]
-    height = b.stack_height(entries, width)
+    gaps = b.lockup_gaps("subtitle")
+    if width < b.cw * 0.45:
+        # A narrow column beside the focal point (a square canvas) would shrink the headline to its measure:
+        # the copy takes the full width in the opposite field above or below the focal point instead.
+        text_x, width = b.L, b.cw
+        align = "left" if ix == 2 else "right"
+        height = b.stack_height(entries, width, gaps=gaps)
+        y = b.T if iy == 2 else max(fy + d / 2 + gap, b.B - height)
+        b.stack(entries, text_x, y, width, align=align, gaps=gaps)
+        return
+    height = b.stack_height(entries, width, gaps=gaps)
     y = b.T if iy == 2 else max(b.T, b.B - height)
-    b.stack(entries, text_x, y, width, align=align)
+    b.stack(entries, text_x, y, width, align=align, gaps=gaps)
 
 
 def _golden_section(b):
     b.background()
     phi = 0.618
-    if b.W >= b.H:
+    # Side by side only where the minor section still holds a readable column: a square splits top and bottom.
+    if b.W >= b.H * 1.15:
         big = round(b.W * phi)
         image_box = (0, 0, big, b.H) if b.rng.random() < 0.5 else (b.W - big, 0, big, b.H)
         text_box = (big, 0, b.W - big, b.H) if image_box[0] == 0 else (0, 0, b.W - big, b.H)
@@ -1101,7 +1173,11 @@ def _golden_section(b):
     pad = b.m
     tx, ty, tw = text_box[0] + pad, text_box[1] + pad, text_box[2] - 2 * pad
     entries = [("caption", b.label_text(), "label"), ("title", b.get("title"), "headline"), ("body", b.get("subtitle") or b.get("body"), "body"), ("button", b.get("cta"), "cta")]
-    b.stack(entries, tx, ty, tw, align="left")
+    gaps = b.lockup_gaps()
+    # The copy sits at the optical centre of its section rather than at its top edge.
+    room = text_box[3] - 2 * pad - max(0, b.safe[3] - pad if text_box[1] else 0)
+    ty += max(0, room - b.stack_height(entries, tw, gaps=gaps)) * 0.42
+    b.stack(entries, tx, ty, tw, align="left", gaps=gaps)
 
 
 def _big_number(b):
@@ -1192,11 +1268,15 @@ def _typographic_poster(b):
     while size > 6 and (w > b.cw or h > zone):
         size = int(size * 0.94)
         w, h = b.measure(hero, size, None, 0, "left", b.display_font)
-    y = b.T if top_word else b.B - h
+    # The word and the copy read as one group: a gap of six units between them, the pair centred on the
+    # page, so a short word on a tall sheet leaves open space at the edges and no hole in the middle.
+    total = h + b.unit * 6 + height
+    start = b.T + max(0, b.ch - total) * 0.5
+    y = start if top_word else start + total - h
     b.glyphs(size, hero, b.L + w / 2, y + h / 2, "hero-word", color="@accent")
     align = b.rng.choice(["left", "right"])
     tx = b.L if align == "left" else b.R - width
-    ty = b.B - height if top_word else b.T
+    ty = start + h + b.unit * 6 if top_word else start
     b.stack(entries, tx, ty, width, align=align)
 
 
@@ -1213,7 +1293,7 @@ def _product_card(b):
         b.image("image", b.L + b.unit * 2, b.T + b.unit * 2, b.cw - b.unit * 4, image_h - b.unit * 4)
         x, width, y = b.L, b.cw, b.T + image_h + b.unit * 4
     entries = [("caption", b.label_text(), "label"), ("title", b.get("title"), "headline"), ("body", b.get("body") or b.get("subtitle"), "body")]
-    y = b.stack(entries, x, y, width, align="left") + b.unit * 4
+    y = b.stack(entries, x, y, width, align="left", gaps=b.lockup_gaps("body")) + b.unit * 4
     price = b.get("caption")
     if price:
         _, _, _, h = b.text("subhead", price, x, y, width / 2, name="price", color="@accent-text", align="left")
@@ -1222,37 +1302,57 @@ def _product_card(b):
 
 
 def _event_poster(b):
+    from .composition import dead_band_bar
+
     b.background()
     cta, caption = b.get("cta"), b.get("caption")
     footer = b.footer_height(cta, caption)
     bottom = b.B - (footer + b.unit * 4 if footer else 0)
     ops, created = len(b.ops), len(b.created)
-    # Grow the type on large formats until the content fills the page, keeping the last fit.
-    previous = 1.0
-    for grow in (1.0, 1.25, 1.5, 1.8, 2.2):
+
+    def build(grow):
         del b.ops[ops:], b.created[created:]
-        y = _event_details(b, grow)
-        if y > bottom:
-            if grow > 1:
-                del b.ops[ops:], b.created[created:]
-                y = _event_details(b, previous)
+        return _event_details(b, grow)
+
+    def room(grow):
+        # What the two breaks of the stack (headline to date, details to footer) can absorb before either
+        # reads as a dead band: the check's own bar for this stack's gaps, less the gap already there.
+        bar = dead_band_bar(b.H, b.unit, [b.unit * 4 * grow, b.unit * 4 * grow, b.unit * 2, b.unit * 2])
+        return max(0.0, bar * 0.85 - b.unit * 4 * grow)
+
+    # Grow the type until the content and its breaks fill the page, keeping the last fit (#763).
+    previous = 1.0
+    y = build(1.0)
+    for step in range(1, 41):
+        grow = 1 + step * 0.05
+        spare = bottom - y - (0 if footer else b.unit * 4)
+        if spare <= 2 * room(previous):
             break
-        # Past 60% of the page the type stops growing, unless what is left would move the facts to the foot
-        # (below) and open an empty band: a pixel either side of 60% must not decide between the two.
-        if y > b.T + b.ch * 0.6 and bottom - y - (0 if footer else b.unit * 4) <= b.ch * 0.15:
+        y = build(grow)
+        if y > bottom:
+            y = build(previous)
             break
         previous = grow
-    spare = bottom - y - (0 if footer else b.unit * 4)  # the footer reserve already keeps its gap
-    if spare > b.ch * 0.15:
-        # Headline at the top, the facts at the foot: move the date and details down together.
+    spare = max(0.0, bottom - y - (0 if footer else b.unit * 4))
+    if spare > 0:
+        # Distribute the free height: the headline-to-date break and the details-to-footer break each take
+        # up to their room, and what is left centres the group between the top margin and the footer.
         heading = next(i for i in range(ops, len(b.ops)) if b.ops[i].get("name") == b.name("headline"))
-        for op in b.ops[heading + 1:]:
+        upper = min(spare, room(previous))
+        rest = spare - upper
+        lower = min(rest, room(previous))
+        # What the type and its breaks cannot take is split between the top and the bottom edge: the whole
+        # group, footer included, sits centred in the margins, so neither edge reads as a dead band.
+        shift = (rest - lower) / 2
+        for op in b.ops[ops:]:
             if "y" in op:
-                op["y"] = round(op["y"] + spare)
-        y += spare
+                op["y"] = round(op["y"] + shift + (upper if b.ops.index(op) > heading else 0))
+        y += shift + upper
+    else:
+        shift = 0
     if footer:
         # Copy too long for the page pushes the footer down rather than under the details.
-        b.footer(cta, caption, push=max(0, y + b.unit * 4 - (b.B - footer)))
+        b.footer(cta, caption, push=max(-shift, y + b.unit * 4 - (b.B - footer)))
 
 
 def _event_details(b, grow):
@@ -1338,12 +1438,16 @@ def _business_card(b):
     mark = b.sizes["title"] * 1.3
     b.rect("logo-mark", b.R - mark, b.T, mark, mark, "@accent", shape=b.rng.choice(["ellipse", "rounded-rectangle", "diamond"]), radius=round(mark * 0.22))
     entries = [("title", b.get("title"), "name"), ("body", b.get("subtitle"), "role")]
-    y = b.T
-    y = b.stack(entries, b.L, y, b.cw - mark - b.unit * 2, gap=b.unit, align="left")
     contact = str(b.get("body")).replace(" | ", "\n")
     _, ch = b.measure(contact, b.sizes["caption"], b.cw, b.leading(b.sizes["caption"], LINE_HEIGHT["caption"], b.font),
                       "left", b.font)
-    b.text("caption", contact, b.L, b.B - ch, b.cw, name="contact", align="left", color="@muted")
+    # Name and role at the top; the contact lines close the card at the foot unless the card is deep enough
+    # for that to open a hole, when they follow the role at four units.
+    y = b.stack(entries, b.L, b.T, b.cw - mark - b.unit * 2, gap=b.unit, align="left")
+    contact_y = b.B - ch
+    if contact_y - y > b.ch * 0.2:
+        contact_y = y + b.unit * 4
+    b.text("caption", contact, b.L, contact_y, b.cw, name="contact", align="left", color="@muted")
 
 
 def _slide_title(b):
@@ -1384,11 +1488,32 @@ def _slide_content(b):
     has_image = b.rng.random() < 0.6 or b.get("image")
     text_w = b.cw * (0.55 if has_image else 0.85)
     items = [line.strip().lstrip("-•* ").strip() for line in str(b.get("items") or b.get("body")).split("\n") if line.strip()][:7]
-    dot = max(4, round(b.sizes["lead"] * 0.28))
-    for index, item in enumerate(items):
-        b.ellipse(f"bullet-{index + 1}", b.L, y + b.sizes["lead"] * 0.42, dot, dot, "@accent")
-        _, _, _, h = b.text("lead", item, b.L + dot * 3, y, text_w - dot * 3, name=f"point-{index + 1}", align="left", max_height=b.B - y)
-        y += h + b.unit * 3
+    footer = b.sizes["caption"] * 1.3 + b.unit * 4 if b.get("caption") else 0
+    ops, created, start = len(b.ops), len(b.created), y
+
+    def points(scale):
+        del b.ops[ops:], b.created[created:]
+        y = start
+        size = round(b.sizes["lead"] * scale)
+        dot = max(4, round(size * 0.28))
+        for index, item in enumerate(items):
+            b.ellipse(f"bullet-{index + 1}", b.L, y + size * 0.42, dot, dot, "@accent")
+            _, _, _, h = b.text("lead", item, b.L + dot * 3, y, text_w - dot * 3, name=f"point-{index + 1}", align="left",
+                                max_height=b.B - y, scale=scale)
+            y += h + b.unit * 3 * scale
+        return y
+
+    # A short list grows (to twice the lead size) until it holds most of the slide, so the points and the
+    # footer do not leave the middle of the slide empty.
+    y, scale = points(1.0), 1.0
+    for grow in (1.2, 1.4, 1.6, 1.8, 2.0):
+        if y >= b.T + b.ch * 0.6:
+            break
+        grown = points(grow)
+        if grown > b.B - footer:
+            y = points(scale)
+            break
+        y, scale = grown, grow
     if has_image:
         top = b.T + b.sizes["title"] * 1.6 + b.unit * 5
         b.image("image", b.L + b.cw * 0.6, top, b.cw * 0.4, b.B - top - b.sizes["caption"] * 2)
@@ -1524,11 +1649,20 @@ def _thumbnail_bold(b):
     size = round(b.H * 0.2)
     words = b.get("title")
     reserve = b.sizes["subhead"] * 2.4 if b.get("label") else 0
+    ops = len(b.ops)
     _, _, w, h = b.text(size, words, x, b.T, width, name="headline", align="left", max_height=max(b.unit * 4, b.ch * 0.78 - reserve), display=True, line=LINE_HEIGHT["display"])
+    # The headline and its label are one group at the optical centre of the column, not a line at the top
+    # and a button at the foot with a hole between them.
+    total = h + (b.unit * 4 + b.sizes["subhead"] * 1.8 if b.get("label") else 0)
+    shift = max(0, b.ch - total) * 0.42
+    for op in b.ops[ops:]:
+        if "y" in op:
+            op["y"] = round(op["y"] + shift)
+    top = b.T + shift
     if b.accent in ("block", "bar", "rule"):
-        b.rect("highlight", x - b.unit, b.T + h + b.unit * 2, width * 0.6, max(4, round(size * 0.18)), "@accent", decoration=True)
+        b.rect("highlight", x - b.unit, top + h + b.unit * 2, width * 0.6, max(4, round(size * 0.18)), "@accent", decoration=True)
     if b.get("label"):
-        b.button(b.get("label"), x, b.B - b.sizes["subhead"] * 1.8, align="left")
+        b.button(b.get("label"), x, top + h + b.unit * 4, align="left")
 
 
 def _story_vertical(b):
@@ -1536,16 +1670,24 @@ def _story_vertical(b):
     c = b.project.state["canvas"]
     safe = max(safe_sides(c)[1], safe_sides(c)[3], round(b.H * 0.12))
     top, bottom = safe, b.H - safe
-    _, _, _, h = b.text("caption", b.label_text(), b.L, top, b.cw, name="label", color="@accent-text", align=b.align)
-    y = top + h + b.unit * 3
-    _, _, _, h = b.text("headline", b.get("title"), b.L, y, b.cw, name="headline", align=b.align, max_height=(bottom - top) * 0.3)
-    y += h + b.unit * 4
+    # The label and headline are one lockup (the shared stack rhythm), the picture fills the middle and the
+    # lead and call to action close the story at the bottom safe edge, so no line floats between its
+    # neighbours (#680).
+    lockup = [("caption", b.label_text(), "label"), ("headline", b.get("title"), "headline")]
+    y = b.stack(lockup, b.L, top, b.cw, gaps=b.lockup_gaps(), align=b.align)
+    y += b.unit * 4
     cta_h = b.sizes["body"] * 2.6 if b.get("cta") else 0
-    image_h = max(0, bottom - y - cta_h - b.unit * 8 - (b.sizes["lead"] * 3 if b.get("subtitle") else 0))
+    subtitle = b.get("subtitle")
+    lead_h = b.measure(subtitle, b.sizes["lead"], b.cw, b.leading(b.sizes["lead"], LINE_HEIGHT["body"], b.font),
+                       b.align, b.font)[1] if subtitle else 0
+    # The lead sits two units above the button it introduces, and the picture takes what is left above them.
+    lead_y = bottom - cta_h - (b.unit * 2 if cta_h and subtitle else 0) - lead_h
+    image_h = max(0, lead_y - y - (b.unit * 4 if subtitle or cta_h else 0))
     if image_h > b.unit * 10:
         b.image("image", b.L, y, b.cw, image_h)
-        y += image_h + b.unit * 4
-    b.text("lead", b.get("subtitle"), b.L, y, b.cw, name="subtitle", align=b.align)
+    else:
+        lead_y = y
+    b.text("lead", subtitle, b.L, lead_y, b.cw, name="subtitle", align=b.align)
     if b.get("cta"):
         anchor = b.L if b.align == "left" else b.R if b.align == "right" else b.W / 2
         b.button(b.get("cta"), anchor, bottom - cta_h, align=b.align)
@@ -1634,9 +1776,12 @@ def _bento_grid(b):
     b.text("caption", b.get("caption"), stat[0] + pad, label_y, stat[2] - 2 * pad, name="stat-label", color="@muted", align="left", max_height=stat[1] + stat[3] - label_y)
     b.image("image", *image)
     b.rect("tile-info", *info, "@surface", radius=radius)
-    b.stack([("body", b.get("subtitle") or b.get("body"), "body")], info[0] + pad, info[1] + pad, info[2] - 2 * pad, align="left")
-    if b.get("cta"):
-        b.button(b.get("cta"), info[0] + info[2] - pad, info[1] + info[3] - pad - b.sizes["body"] * 2.3, align="right")
+    # The copy and its button are one group at the optical centre of the tile, not a line at its top and a
+    # button at its foot with the tile's middle empty.
+    entries = [("body", b.get("subtitle") or b.get("body"), "body"), ("button", b.get("cta"), "cta")]
+    height = b.stack_height(entries, info[2] - 2 * pad, gaps={"cta": b.unit * 3})
+    b.stack(entries, info[0] + pad, info[1] + pad + max(0, info[3] - 2 * pad - height) * 0.42, info[2] - 2 * pad,
+            align="left", gaps={"cta": b.unit * 3})
 
 # Memes: image slots and caption rules only (no stock images). Captions are white with a black stroke and set
 # uppercase (uppercase=false keeps the case); they shrink to fit their box. Fonts follow the document typography
@@ -1886,10 +2031,47 @@ def slot_spec(layout):
     return spec
 
 
+def _without(copy, *keys):
+    """Example copy less the slots a layout never places (an example a layout rejects teaches the wrong thing)."""
+    return {key: value for key, value in copy.items() if key not in keys}
+
+
+# Recommended sizes: derived from each layout's ``best_for`` purposes through these named sizes (#764), with
+# ``SIZE_OVERRIDES`` for the layouts whose own form picks the size (stationery, logos, icons, stories).
+BEST_FOR_SIZES = {
+    "social": ["instagram-post", "instagram-story"], "poster": ["poster-18x24"], "web": ["og-image"], "slides": ["slide"],
+    "print": ["letter"], "flyers": ["letter"], "ads": ["instagram-post"], "banners": ["web-banner"],
+    "social headers": ["x-header"], "email": ["email-banner"], "stories": ["instagram-story"], "reels": ["instagram-story"],
+    "tiktok": ["tiktok"], "youtube": ["youtube-thumbnail"], "covers": ["ebook-cover"], "photo": ["photo-5x7"],
+    "invitations": ["invitation"], "announcements": ["instagram-post"], "certificates": ["certificate"],
+    "infographics": ["pinterest-long"], "menus": ["menu"], "price lists": ["menu"], "stationery": ["letterhead"],
+    "logos": ["logo"], "icons": ["app-icon"], "favicons": ["favicon"], "badges": ["logo-badge"], "stickers": ["sticker"],
+    "ecommerce": ["instagram-post"], "sports": ["instagram-post"], "sales": ["instagram-post"], "memes": ["instagram-post"],
+    "gifs": ["instagram-post"], "comics": ["instagram-post"],
+}
+SIZE_OVERRIDES = {"business-card": ["business-card"], "letterhead": ["letterhead", "letterhead-a4"],
+                  "monogram": ["logo-mark", "app-icon"], "app-icon": ["app-icon", "favicon"],
+                  # Panels side by side need a square or wider canvas; a story would shrink their captions.
+                  "meme-comparison": ["instagram-post"], "meme-four-panel": ["instagram-post"]}
+
+
+def recommended_sizes(name):
+    """Named sizes a layout is built for: its override, else the sizes of its ``best_for`` purposes in order,
+    without repeats."""
+    if name in SIZE_OVERRIDES:
+        return list(SIZE_OVERRIDES[name])
+    sizes = []
+    for purpose in LAYOUTS[name]["best_for"]:
+        for size in BEST_FOR_SIZES.get(purpose, ()):
+            if size not in sizes:
+                sizes.append(size)
+    return sizes
+
+
 COPY = {"label": "New season", "title": "Make the main point in a few strong words", "subtitle": "One supporting sentence that explains why it matters.", "cta": "Learn more"}
 LAYOUTS = {
     "hero-statement": _layout(_hero_statement, "One dominant headline with a quiet supporting line.", ["single focal point", "scale contrast between headline and support", "generous negative space"], ["social", "poster", "web", "slides"], COPY, aligns=["left", "left", "center", "right"], dramatic=True),
-    "editorial-grid": _layout(_editorial_grid, "Magazine-style modular grid with kicker, headline, deck, body and captioned image.", ["modular column grid", "clear typographic hierarchy", "consistent gutters and rules"], ["print", "poster", "web", "slides"], {**COPY, "body": "Body copy sits on the column grid. Keep lines between 45 and 75 characters, align every element to a column edge, and let white space separate groups instead of extra lines.", "caption": "Image caption, set small and muted."}, accents=["rule"]),
+    "editorial-grid": _layout(_editorial_grid, "Magazine-style modular grid with kicker, headline, deck, body and captioned image.", ["modular column grid", "clear typographic hierarchy", "consistent gutters and rules"], ["print", "poster", "web", "slides"], {**_without(COPY, "cta"), "body": "Body copy sits on the column grid. Keep lines between 45 and 75 characters, align every element to a column edge, and let white space separate groups instead of extra lines.", "caption": "Image caption, set small and muted."}, accents=["rule"]),
     "split-screen": _layout(_split_screen, "Image and message in two clear zones, split evenly or at the golden ratio.", ["figure–ground separation", "two-zone hierarchy", "proportional division"], ["web", "social", "slides", "ads"], COPY, aligns=["left"]),
     "centered-axis": _layout(_centered_axis, "Formal, symmetric stack on a central axis with an ornament divider.", ["symmetrical balance", "optical centering", "consistent vertical rhythm"], ["invitations", "announcements", "social", "certificates"], COPY, aligns=["center"], accents=["none"]),
     "asymmetric-balance": _layout(_asymmetric_balance, "Heavy color shape on one side balanced by the text block opposite.", ["asymmetric visual weight", "tension and balance", "directional flow"], ["poster", "social", "web"], COPY),
@@ -1900,7 +2082,7 @@ LAYOUTS = {
     "big-number": _layout(_big_number, "A giant statistic with label and context; numbers as the hero.", ["data as focal point", "extreme scale contrast", "label–value–context hierarchy"], ["infographics", "social", "slides"], {"label": "Customer satisfaction", "title": "94%", "subtitle": "of customers would recommend us to a friend.", "body": "Survey of 2,000 customers, 2025."}, aligns=["left", "center"], accents=["rule", "none"]),
     "quote-card": _layout(_quote_card, "Large quotation with a decorative mark and attribution.", ["typographic focal point", "hanging punctuation", "restrained palette"], ["social", "slides", "print"], {"title": "Design is not just what it looks like. Design is how it works.", "subtitle": "Attribution, Role"}, aligns=["left", "center"], accents=["none"]),
     "framed": _layout(_framed, "Double-ruled border framing a centered, formal composition.", ["enclosure and containment", "symmetry", "formality through restraint"], ["certificates", "invitations", "menus", "print"], {"label": "Certificate of achievement", "title": "Recipient Name", "subtitle": "In recognition of outstanding work", "body": "Presented on the first of June", "caption": "Signature · Date"}, accents=["none"]),
-    "diagonal-band": _layout(_diagonal_band, "A rotated color band adds motion; text aligns around it.", ["diagonal energy", "dynamic tension", "color band as anchor"], ["sports", "sales", "social", "poster"], {**COPY, "subtitle": "Up to 40% off this week"}),
+    "diagonal-band": _layout(_diagonal_band, "A rotated color band adds motion; text aligns around it.", ["diagonal energy", "dynamic tension", "color band as anchor"], ["sports", "sales", "social", "poster"], {**_without(COPY, "label"), "subtitle": "Up to 40% off this week"}),
     "typographic-poster": _layout(_typographic_poster, "One oversized word bleeds off the edge behind the message.", ["type as image", "intentional cropping", "extreme scale contrast"], ["poster", "social", "covers"], {"title": "Bold ideas for the next decade", "subtitle": "A one-day festival of design and technology.", "label": "Vol. 3", "caption": "June 14 · City Hall"}, dramatic=True),
     "product-card": _layout(_product_card, "Image, name, description, price and button with consistent padding.", ["proximity grouping", "price emphasis", "clear call to action"], ["ecommerce", "social", "ads"], {"label": "New", "title": "Product name", "body": "One or two lines describing the benefit, not the specification.", "caption": "$49", "cta": "Shop now"}, button="rounded"),
     "event-poster": _layout(_event_poster, "Headline, prominent date block and stacked details for events.", ["information hierarchy", "chunking details", "color-coded key fact"], ["poster", "social", "flyers"], {"title": "Summer Night Market", "label": "Sat · June 21", "body": "6 pm – 11 pm\nRiverside Park, Pier 4\nFree entry · Food · Live music", "cta": "RSVP", "caption": "example.com/market"}),
@@ -1943,7 +2125,7 @@ def _safe_composition(b):
     if b.orientation == "wide" and height > b.ch:
         # A banner too shallow for one column: the label and headline on the left, the rest beside them.
         return _two_columns(b, entries, vertical, device)
-    y = b.T + max(0, b.ch - height - b.clearance(device)) * vertical
+    y = b.settle(vertical, height, b.clearance(device))
     if device == "rule":
         b.rect("quiet-rule", b.L, max(0, b.T - b.unit - max(2, b.unit / 4)), b.cw, max(2, b.unit / 4), "@accent", decoration=True)
     elif device == "rail":
@@ -1951,7 +2133,7 @@ def _safe_composition(b):
     elif device == "panel":
         b.rect("quiet-panel", b.L / 2, b.T / 2, b.W - b.L, b.H - b.T, "@surface", radius=b.unit, decoration=True)
     elif device == "footer":
-        b.rect("quiet-footer", b.L, b.B - b.unit / 4, b.cw, max(2, b.unit / 4), "@accent")
+        b.rect("quiet-footer", b.L, b.B - b.unit / 4, b.cw, max(2, b.unit / 4), "@accent", decoration=True)
     if not (b.accent == "rule" and device == "rule"):
         # A chosen (or rolled) accent joins the composition's own device; "none", the default, adds nothing.
         b.accent_device(x, y, width, height)
@@ -1981,11 +2163,11 @@ def _two_columns(b, entries, vertical, device):
     elif device == "panel":
         b.rect("quiet-panel", b.L / 2, b.T / 2, b.W - b.L, b.H - b.T, "@surface", radius=b.unit, decoration=True)
     elif device == "footer":
-        b.rect("quiet-footer", b.L, b.B - b.unit / 4, b.cw, max(2, b.unit / 4), "@accent")
+        b.rect("quiet-footer", b.L, b.B - b.unit / 4, b.cw, max(2, b.unit / 4), "@accent", decoration=True)
     align = "left" if b.align == "right" else b.align
     for index, (column, x, width) in enumerate(columns):
         height = b.stack_height(column, width, gap=b.unit * 2)
-        y = b.T + max(0, b.ch - height - b.clearance(device)) * vertical
+        y = b.settle(vertical, height, b.clearance(device))
         if index == 0 and not (b.accent == "rule" and device == "rule"):
             b.accent_device(x, y, width, height)
         b.stack(column, x, y, width, gap=b.unit * 2, align=align)
@@ -2070,6 +2252,7 @@ def describe(name):
         "safe": item.get("safe", False),
         "principles": item["principles"],
         "best_for": item["best_for"],
+        "sizes": recommended_sizes(name),
         "slots": {
             k: {"label": v["label"], "hint": v["hint"], "blank_if_unfilled": v["blank"], **({"example": v["example"]} if "example" in v else {}),
                 **({"fill_with": IMAGE_OPTIONS} if k in IMAGE_KEYS else {})}
@@ -2087,6 +2270,7 @@ def catalog():
                 "tier": item["tier"],
                 "safe": item.get("safe", False),
                 "best_for": item["best_for"],
+                "sizes": recommended_sizes(name),
                 "slots": {k: v["label"] for k, v in slot_spec(item).items()},
             }
             for name, item in LAYOUTS.items()
@@ -2148,6 +2332,17 @@ def execute_layout(project, op):
             execute(project, {"type": "style-define", "name": f"{prefix}{role}", "kind": "character", "settings": settings})
         return
     op = deepcopy(op)
+    carried = None
+    if op.pop("update", False):
+        # New copy on the same composition: the stored recipe runs again with the same seed, the slots given
+        # here replacing its own, and the style edits made by hand on its layers carry over (#768).
+        record = state.get("layout") or {}
+        require(record.get("recipe"), "update needs a layout to update: apply a layout first", field="update")
+        require(op.get("name") in (None, record.get("name")),
+                f"update re-runs the document's layout {record.get('name')!r}; pass that name or none", field="name")
+        carried = _overrides(project, record)
+        op = {**record["recipe"], **{key: value for key, value in op.items() if key != "type"},
+              "type": "layout-apply", "name": record["name"], "seed": record["seed"], "replace": True}
     explicit_palette = "palette" in op or "colors" in op
     from .variety import seed_for
     from .brand import for_project, role_colors
@@ -2315,12 +2510,62 @@ def execute_layout(project, op):
         if builder.accent_skipped:
             warn(project, f"accent_words {', '.join(map(repr, sorted(builder.accent_skipped)))} were not accented: "
                           f"layout {name!r} sets its headline on the accent color, where accent text would not read")
+    if carried is not None:
+        kept = _carry(project, carried)
+        state["layout"]["update"] = {"carried": kept}
+        notes.append("The layout was re-run with the new copy on the same seed" + (
+            f"; manual edits carried over on {', '.join(map(repr, kept))}" if kept else "; no manual edits to carry"))
     if notes:
         state["layout"]["notes"] = notes
     from .adapt import fingerprint
 
     # adapt-layout rebuilds this layout at a new size by default only while the layers still match it.
     state["layout"]["fingerprint"] = fingerprint(state)
+
+
+# Style a hand edit may have set on a layout's layer, carried across an update; geometry and copy are the layout's.
+CARRIED = ("color", "fill", "stroke", "stroke_width", "opacity", "font", "font_role", "letter_spacing",
+           "text_transform", "line_height", "visible", "radius", "blend", "effects", "styles")
+
+
+def _overrides(project, record):
+    """``{layer name: {field: value}}`` of the hand edits on the layers the stored layout created: what differs
+    from the recipe's own output, rebuilt on a copy with the same seed."""
+    pristine = project.clone()
+    pristine._resource_budget = getattr(project, "_resource_budget", project.limits.max_operations)
+    try:
+        execute_layout(pristine, {**record["recipe"], "type": "layout-apply", "seed": record["seed"], "replace": True})
+    except VixlError:
+        return {}
+    created = set(record.get("layers") or [])
+    current = {layer["name"]: layer for layer in project.state["layers"] if layer["id"] in created}
+    overrides = {}
+    for layer in pristine.state["layers"]:
+        mine = current.get(layer["name"])
+        if mine is None or mine["type"] != layer["type"]:
+            continue
+        changed = {field: deepcopy(mine[field]) for field in CARRIED
+                   if field in mine and mine.get(field) != layer.get(field)}
+        if changed:
+            overrides[layer["name"]] = changed
+    return overrides
+
+
+def _carry(project, overrides):
+    """Put the carried edits back on the rebuilt layers (by name); text re-measures when its face changed."""
+    from .render import text_metrics
+
+    kept = []
+    created = set(project.state["layout"].get("layers") or [])
+    for layer in project.state["layers"]:
+        changed = overrides.get(layer["name"]) if layer["id"] in created else None
+        if not changed:
+            continue
+        layer.update(deepcopy(changed))
+        if layer["type"] == "text" and ("font" in changed or "letter_spacing" in changed) and layer.get("auto_size", True):
+            layer["width"], layer["height"], _ = text_metrics(project, layer)
+        kept.append(layer["name"])
+    return kept
 
 
 def _record_blanks(state, builder, layout_name, created):
@@ -2585,6 +2830,10 @@ def schemas(add):
             "uppercase_labels": B,
             "prefix": S,
             "replace": B,
+            "update": {"type": "boolean", "description": "Re-run the document's stored layout recipe (same seed, palette "
+                       "and fonts) with the slots given here changed, replacing its layers and carrying manual style edits "
+                       "(colour, font, opacity, stroke …) on layers the layout created; the layout keeps up with new copy "
+                       "instead of shrinking it."},
             "predictable": B,
             "keep_order": B,
             **{key: S for key in CONTENT_KEYS if key != "images"},

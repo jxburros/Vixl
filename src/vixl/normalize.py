@@ -7,14 +7,92 @@ reports what changed so the caller can learn the canonical form.
 """
 
 import re
+from contextlib import contextmanager
 from contextvars import ContextVar
 
 from .errors import VixlError, require
 
 PERCENT = re.compile(r"^(-?\d+(?:\.\d+)?)%$")
 CLI_NOTES = ContextVar("vixl_cli_normalized", default=None)
+# vixl_apply(defaults={font, fill, stroke, size}): merged into the creation operations of the batch (``apply_defaults``).
+BATCH_DEFAULTS = ContextVar("apply_defaults", default=None)
+DEFAULT_KEYS = ("font", "fill", "stroke", "size", "color")
+# The operations a batch default reaches: creation operations that draw text or paint, never edits.
+DEFAULTED_TYPES = frozenset({"text", "rich-text", "shape", "pen", "solid", "gradient"})
 # Spellings of an export format that a render lockfile accepts (`reproduce --export jpeg`); the value is the canonical name.
 EXPORT_FORMAT_ALIASES = {"jpeg": "jpg", "tif": "tiff", "htm": "html"}
+
+
+@contextmanager
+def with_defaults(defaults):
+    """Run a batch with ``vixl_apply(defaults=…)`` in force: validated once here, then merged into each creation
+    operation by ``apply_defaults`` as the batch is normalized."""
+    if defaults is None:
+        yield
+        return
+    require(isinstance(defaults, dict), "defaults is an object: {font, fill, stroke, size}", field="defaults")
+    unknown = sorted(set(defaults) - set(DEFAULT_KEYS))
+    require(not unknown, f"Unknown default(s) {', '.join(map(repr, unknown))}; defaults takes "
+            f"{', '.join(DEFAULT_KEYS)}", field="defaults", allowed=list(DEFAULT_KEYS))
+    token = BATCH_DEFAULTS.set(dict(defaults))
+    try:
+        yield
+    finally:
+        BATCH_DEFAULTS.reset(token)
+
+
+def apply_defaults(op, kind, allowed, note):
+    """Fill the batch defaults (``with_defaults``) into a creation operation that leaves the field open: ``font``
+    and ``size`` on text, ``fill`` on shapes and paths (``color`` on text and solids), ``stroke`` on shapes and
+    paths. An operation's own value, or an edit of an existing layer, is never touched; every fill is noted."""
+    defaults = BATCH_DEFAULTS.get()
+    if not defaults or kind not in DEFAULTED_TYPES or op.get("target") or op.get("targets"):
+        return op
+    aliases = FIELD_ALIASES.get(kind, {})
+    for key, value in defaults.items():
+        canonical = aliases.get(key, key)
+        if canonical not in allowed or canonical in op or (key == "color" and kind != "text" and "fill" in defaults):
+            continue
+        if key == "size" and kind not in ("text", "rich-text"):
+            continue
+        op[canonical] = value
+        note(f"defaults.{key} → {canonical} {value!r}")
+    return op
+
+
+def expand_batch(operations, notes):
+    """Rewrite each ``create-many`` item (``{type, prototype, rows}``) into one ordinary operation per row, the
+    prototype's fields under the row's, in place in the batch, so the saved document records only the operations
+    it holds. Every other item passes through unchanged; the notes record what was expanded."""
+    if not any(isinstance(op, dict) and _canonical_type(op.get("type", op.get("operation")), ("create-many",))
+               == "create-many" for op in operations):
+        return operations
+    result = []
+    for index, op in enumerate(operations):
+        kind = _canonical_type(op.get("type", op.get("operation")), ("create-many",)) if isinstance(op, dict) else None
+        if kind != "create-many":
+            result.append(op)
+            continue
+        prototype, rows = op.get("prototype"), op.get("rows")
+        require(isinstance(prototype, dict) and isinstance(prototype.get("type", prototype.get("operation")), str),
+                f"operations[{index}]: create-many takes a prototype operation (an object with a type) and rows",
+                field=f"operations[{index}].prototype")
+        require(isinstance(rows, list) and rows and all(isinstance(row, dict) for row in rows),
+                f"operations[{index}]: create-many rows is a list of objects, each the fields of one copy",
+                field=f"operations[{index}].rows")
+        extra = sorted(set(op) - {"type", "operation", "prototype", "rows"})
+        if extra:
+            raise VixlError("invalid_operation", f"operations[{index}]: create-many takes prototype and rows only; "
+                            f"put {', '.join(map(repr, extra))} in the prototype or the rows",
+                            field=f"operations[{index}].{extra[0]}")
+        start = len(result)
+        for row in rows:
+            require("type" not in row and "operation" not in row,
+                    f"operations[{index}]: a row cannot change the prototype's type", field=f"operations[{index}].rows")
+            result.append({**prototype, **row})
+        notes.append(f"operations[{index}]: create-many → {len(rows)} {prototype.get('type', prototype.get('operation'))} "
+                     f"operations (operations[{start}–{start + len(rows) - 1}] of the expanded batch)")
+    return result
 
 
 def note_cli_output(args):
@@ -394,6 +472,7 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
     from .targets import normalize as normalize_targets
 
     op = normalize_targets(op, kind, allowed, required(kind) if required else frozenset(), note)
+    op = apply_defaults(op, kind, allowed, note)
 
     from .design_schema import SHAPES
     from .geometry import ANCHORS, canonical_anchor

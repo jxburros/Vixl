@@ -6,7 +6,9 @@ from .errors import require
 from .model import finite, new_layer, Limits
 from .stacks import collapsed
 
-TYPES = ("container-place", "container-swap", "container-variant", "container-fill", "container-reflow", "shape-place", "image-slot")
+TYPES = ("container-place", "container-rows", "container-swap", "container-variant", "container-fill", "container-reflow", "shape-place", "image-slot")
+DIRECTIONS = ("vertical", "horizontal")
+MAX_ROWS = 100
 # Layout settings a container item carries besides its operation: its frame, text fitting, and
 # the spacing units it keeps clear of the container's bottom edge.
 SPEC = ("frame", "fit_text", "min_size", "clear_below")
@@ -84,13 +86,21 @@ def schemas(add):
         "container-variant": "Switch a container arrangement while preserving its filled slots.",
         "container-fill": "Fill container text and image slots and reflow their layout.",
         "image-slot": "Create an editable image placeholder or fit an embedded image into a shaped slot.",
+        "container-rows": "Place one container per data row (NAME-1, NAME-2 ...), stacked with a gap: the short form "
+                          "of a container-place per row.",
     }
     fields = {"variant": "Named arrangement from the container resource; omitted choices are seeded.",
               "slot": "Semantic image slot name used by variables and checks.",
               "fit": "cover crops, contain letterboxes, and fill stretches to the slot.",
               "focal": "Subject position as [x, y] fractions in the source image.",
               "mask_shape": "Shape silhouette for the crop, including circle and rounded aliases.",
-              "seed": "32-bit integer for reproducible choice, or random; omitted values use a fresh seed."}
+              "seed": "32-bit integer for reproducible choice, or random; omitted values use a fresh seed (container-rows: "
+                      "one seed shared by every row, so the rows take the same variant).",
+              "rows": "One object of container variables per row; row N becomes container NAME-N with these variables "
+                      "over the shared ones.",
+              "direction": "Which way the rows run from x, y: vertical (default) or horizontal.",
+              "gap": "Pixels between rows (default 0).",
+              "columns": "Wrap after this many rows (a grid); default all in one line."}
     def add(kind, properties=None, required=(), **extra):
         properties = {k: {**v, "description": v.get("description", fields.get(k, k.replace("_", " ").capitalize() + " for this container or slot."))} for k,v in (properties or {}).items()}
         register(kind, properties, required, **({"description": descriptions[kind]} if kind in descriptions else {}), **extra)
@@ -103,6 +113,14 @@ def schemas(add):
         "container-place",
         {"name": S, "resource": S, "x": COORD, "y": COORD, **common},
         ["name", "resource"],
+    )
+    add(
+        "container-rows",
+        {"name": S, "resource": S, "x": COORD, "y": COORD,
+         "rows": {"type": "array", "items": obj, "minItems": 1, "maxItems": MAX_ROWS},
+         "direction": enum(*DIRECTIONS), "gap": {"type": "number", "minimum": 0},
+         "columns": {"type": "integer", "minimum": 1, "maximum": MAX_ROWS}, **common},
+        ["name", "resource", "rows"],
     )
     add("container-reflow", {}, ["target"])
     add("container-swap", {"resource": S, **common}, ["target", "resource"])
@@ -136,6 +154,10 @@ def execute(project, op):
     if op["type"] == "container-reflow":
         return reflow(project, op["target"])
     workspace = getattr(project, "_workspace", None)
+    if op["type"] == "container-rows":
+        for placement in expand_rows(project, op, workspace):
+            execute(project, placement)
+        return
     if op["type"] == "shape-place":
         item = get("shapes", op["resource"], workspace=workspace)
         operation = {**item, **{k: v for k, v in op.items() if k in ("name", "x", "y", "fill", "stroke")}}
@@ -244,6 +266,35 @@ def execute(project, op):
     reflow(project, group["id"])
     project.state["active_layer"] = group["id"]
     project.state.setdefault("containers", {})[group["id"]] = {"resource": resource, "children": children}
+
+
+def expand_rows(project, op, workspace=None):
+    """The ``container-place`` operations a ``container-rows`` stands for: row N is container ``NAME-N`` with the
+    row's variables over the shared ones, laid out from ``x, y`` along ``direction`` with ``gap`` between
+    containers and wrapped every ``columns`` (a grid). One seed is drawn for every row so they share a variant."""
+    from .resources import get
+    from .variety import seed_for
+
+    rows = op["rows"]
+    require(isinstance(rows, list) and 1 <= len(rows) <= MAX_ROWS and all(isinstance(r, dict) for r in rows),
+            f"rows is a list of 1-{MAX_ROWS} variable objects", field="rows")
+    direction = op.get("direction", "vertical")
+    require(direction in DIRECTIONS, f"direction is {' or '.join(DIRECTIONS)}", field="direction")
+    gap = finite(op.get("gap", 0), "gap", 0, 16384)
+    columns = op.get("columns", len(rows))
+    require(type(columns) is int and columns >= 1, "columns must be a positive integer", field="columns")
+    item = get("containers", op["resource"], workspace=workspace)
+    width, height = op.get("width", item["width"]), op.get("height", item["height"])
+    seed, _ = seed_for(project, op.get("seed"))
+    shared = {key: op[key] for key in ("resource", "variant", "width", "height") if key in op}
+    placements = []
+    for index, variables in enumerate(rows):
+        along, across = index % columns, index // columns
+        dx, dy = (along, across) if direction == "horizontal" else (across, along)
+        placements.append({"type": "container-place", "name": f"{op['name']}-{index + 1}", **shared, "seed": seed,
+                           "x": op.get("x", 0) + dx * (width + gap), "y": op.get("y", 0) + dy * (height + gap),
+                           "variables": {**op.get("variables", {}), **variables}})
+    return placements
 
 
 def size_bounds(item, width, height):
@@ -408,6 +459,82 @@ def builtins():
         }
     from .container_library import expand
     return expand(containers, templates)
+
+
+IMAGE_FILL = ("Fill the slot through variables ({slot: <asset id>} on container-place or container-fill): an "
+              "import-image step returns the id. The source is cover-fitted (fit: cover, focal) at the slot's size "
+              "and shaped by mask_shape; left empty, it renders as a placeholder that check reports as a blank.")
+
+
+def image_specs(item, width=None, height=None, prefix=""):
+    """The image slots of a container at ``width`` x ``height`` (default its native size): the layer, slot
+    name, pixel size, aspect ratio and mask, so an agent can prepare the right picture before placing it."""
+    width, height = width or item["width"], height or item["height"]
+    specs = []
+    for op in item.get("operations", []):
+        if op.get("type") != "image-slot":
+            continue
+        frame = op.get("frame")
+        if isinstance(frame, list) and len(frame) == 4:
+            w, h = round(frame[2] * width), round(frame[3] * height)
+        else:
+            w, h = op.get("width", width), op.get("height", height)
+        slot = op.get("slot", op.get("name"))
+        specs.append({"slot": prefix + slot, "layer": op.get("name", slot), "size": [w, h],
+                      "aspect_ratio": round(w / max(h, 1), 3), "fit": op.get("fit", "cover"),
+                      "mask_shape": op.get("mask_shape", "rectangle"), **({"radius": op["radius"]} if "radius" in op else {})})
+    return specs
+
+
+def slot_specs(item):
+    """Each ``${variable}`` a container takes: its default, its kind (text or image) and whether it must be
+    given, which a declared ``slots`` entry states and a placeholder default (``[Value]``, or an empty image)
+    implies."""
+    from .variables import PLACEHOLDER
+
+    defaults = item.get("defaults", {})
+    declared = item.get("slots", {})
+    images = {op.get("slot", op.get("name")) for op in item.get("operations", []) if op.get("type") == "image-slot"}
+    names = list(defaults)
+    for op in item.get("operations", []):
+        for value in op.values():
+            if isinstance(value, str):
+                names.extend(name for name, _ in PLACEHOLDER.findall(value) if name not in names)
+    for name in images:
+        if name not in names:
+            names.append(name)
+    specs = {}
+    for name in names:
+        default = defaults.get(name, "")
+        kind = declared.get(name, {}).get("kind") or ("image" if name in images else
+                                                      "color" if name in ("ink", "accent", "muted", "background") else "text")
+        placeholder = isinstance(default, str) and default.startswith("[") and default.endswith("]")
+        required = declared.get(name, {}).get("required")
+        if required is None:
+            required = placeholder or (kind == "image") or name not in defaults
+        specs[name] = {"kind": kind, "required": bool(required), "default": default,
+                       **({"placeholder": True} if placeholder else {})}
+    return specs
+
+
+def describe(name, item):
+    """Full form of one container for the reference: its size bounds and rules, every slot with its default and
+    whether it must be filled, the image slots' pixel specs at the native size, and the variants."""
+    specs = slot_specs(item)
+    return {
+        "description": item.get("description", name),
+        "size": [item["width"], item["height"]],
+        "bounds": {k: item[k] for k in ("min_width", "max_width", "min_height", "max_height") if k in item},
+        "safe": item.get("safe", False),
+        "rules": item.get("rules", {}),
+        "slots": specs,
+        "required": [k for k, v in specs.items() if v["required"]],
+        "images": image_specs(item),
+        **({"image_fill": IMAGE_FILL} if any(v["kind"] == "image" for v in specs.values()) else {}),
+        "variants": sorted(item.get("variants", {})),
+        "example": {"type": "container-place", "name": name, "resource": name, "x": 0, "y": 0,
+                    "variables": {k: v["default"] or "…" for k, v in specs.items() if v["required"]}},
+    }
 
 
 def measure(project, target=None):

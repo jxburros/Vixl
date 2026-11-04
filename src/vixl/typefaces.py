@@ -20,6 +20,7 @@ import zipfile
 import httpx
 
 from . import house_style
+from .constants import BUNDLED_FONTS, PROOFING_FONT
 from .errors import VixlError, require
 
 DATA = Path(__file__).parent / "data"
@@ -757,17 +758,66 @@ def origin_of(*installed):
     return origins.pop() if len(origins) == 1 else "mixed"
 
 
-def pair_fonts(project, pairing=None, *, seed=None, mood=None, best_for=None, client=None, body_italic=False):
+APPLY_TO = ("new", "fallback", "roles")
+
+
+def _on_fallback(layer):
+    return layer["type"] == "text" and (layer.get("font") or PROOFING_FONT) in BUNDLED_FONTS
+
+
+def restyle_existing(project, apply_to, before=None):
+    """Give existing text the new typography (#766). ``fallback`` (the default): text on the bundled proofing
+    font takes the role its layout gave it (heading for headlines, body for the rest), and text that already
+    follows a role keeps following it. ``roles``: every text layer a layout created follows its role, whatever
+    face it had. ``new``: nothing existing changes. Returns ``(restyled names, still on the fallback)``."""
+    from .text import is_heading
+    from .type_roles import refont, stage_size
+
+    require(apply_to in APPLY_TO, f"apply_to is one of {', '.join(APPLY_TO)}", field="apply_to")
+    layers = [layer for layer in project.state["layers"] if layer["type"] == "text"]
+    before = before or text_faces(project)
+    if apply_to == "new":
+        # Registering a role's font already re-fonted the layers that follow it: put them back.
+        for layer in layers:
+            if layer["id"] in before:
+                layer["font"], layer["width"], layer["height"] = before[layer["id"]]
+        return [], sum(1 for layer in layers if _on_fallback(layer))
+    created = set((project.state.get("layout") or {}).get("layers") or [])
+    for layer in layers:
+        if layer.get("font_role") or (layer["id"] not in created and layer["name"] not in created):
+            continue
+        if apply_to == "roles" or _on_fallback(layer):
+            # A headline a layout capped to its measure can sit a pixel under the h2 step: within 5% of it
+            # reads as a heading too.
+            heading = is_heading(project, layer) or float(layer.get("size", 0)) >= 0.95 * stage_size(project, "h2")
+            layer["font_role"] = "heading" if heading else "body"
+    refont(project)
+    restyled = [layer["name"] for layer in layers if layer.get("font") != before.get(layer["id"], (None,))[0]]
+    return restyled, sum(1 for layer in layers if _on_fallback(layer))
+
+
+def text_faces(project):
+    """Each text layer's ``(font, width, height)`` before a typography change, for ``restyle_existing``."""
+    return {layer["id"]: (layer.get("font"), layer.get("width"), layer.get("height"))
+            for layer in project.state["layers"] if layer["type"] == "text"}
+
+
+def pair_fonts(project, pairing=None, *, seed=None, mood=None, best_for=None, client=None, body_italic=False,
+               apply_to="fallback"):
     """Install a pairing's heading and body styles and make them the document typography. With ``body_italic``
-    (the font pair command), a body text face also brings its italic."""
+    (the font pair command), a body text face also brings its italic. ``apply_to`` says which existing text takes
+    the new faces (``restyle_existing``)."""
     rolled = None
     if pairing in (None, "random"):
         item, rolled = roll_pairing(seed, mood, best_for)
     else:
         item = get_pairing(pairing)
+    require(apply_to in APPLY_TO, f"apply_to is one of {', '.join(APPLY_TO)}", field="apply_to")
+    before = text_faces(project)
     heading = install_font(project, item["heading"]["family"], item["heading"]["weight"], role="heading", client=client)
     body = install_font(project, item["body"]["family"], item["body"]["weight"], role="body", client=client,
                         body_italic=body_italic)
+    restyled, still_fallback = restyle_existing(project, apply_to, before)
     result = {
         "pairing": item["name"],
         "heading": heading,
@@ -776,7 +826,14 @@ def pair_fonts(project, pairing=None, *, seed=None, mood=None, best_for=None, cl
         "caution": item.get("caution"),
         "typography": project.state.get("typography"),
         "origin": origin_of(heading, body),
-        "note": "Layouts now use these fonts by default; pass font/display_font to override.",
+        "apply_to": apply_to,
+        "restyled": restyled,
+        "still_fallback": still_fallback,
+        "note": (f"{len(restyled)} existing text layer(s) now use these faces" if restyled else
+                 "No existing text changed") + (
+            f"; {still_fallback} still use the proofing fallback (apply_to: 'roles' restyles every layout layer, "
+            "or set font: 'heading' or 'body' on a layer)" if still_fallback else
+            "; new layouts and role text use them by default, and font/display_font override them"),
     }
     if rolled is not None:
         result["seed"] = rolled
