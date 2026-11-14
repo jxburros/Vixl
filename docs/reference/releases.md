@@ -284,6 +284,71 @@ the pinned PyPI version; when testing unpublished code, replace `vixl-engine==VE
 `--from /absolute/path/to/Vixl` in a local copy of the config.
 
 
+### The `vixl` alias on PyPI
+
+The package is `vixl-engine`, while the command and the import are `vixl`, so `pip install vixl` is the first thing
+people and agents try, and it finds nothing. `python distribution/alias_package.py --out build/alias` writes a
+meta-package named `vixl` that contains no code and depends on `vixl-engine` at exactly its own version (the `pdf`,
+`server` and `anthropic` extras pass through). The release workflow builds it beside the main package and uploads
+it as the `alias-package` artifact; the `alias` job of `pypi.yml` publishes it after `vixl-engine`.
+
+That job is off until the owner has done two things, once:
+
+1. On PyPI, add a pending trusted publisher for the project name `vixl` with the same owner, repository, workflow
+   and environment as `vixl-engine` (above). This claims the name. If PyPI refuses the name, stop here: the docs
+   keep saying `pip install vixl-engine`.
+2. In the repository, set the Actions variable `PYPI_ALIAS_PUBLISH` to `true`.
+
+Both the build step and the publish job continue on error and nothing waits for them, so a problem with the alias
+cannot hold up a release. The job has not run yet; check its first run in a `dry_run` release.
+
+### MCP registry
+
+`python distribution/mcp_registry.py` prints the `server.json` that lists Vixl in the
+[official MCP registry](https://registry.modelcontextprotocol.io) as `io.github.jxburros/vixl`: the PyPI package
+`vixl-engine` at the release version, started with `uvx` and the arguments `mcp --workspace DIR`. It is generated
+from the single-sourced version, like the `.mcpb` manifest, so there is no checked-in copy to bump.
+`tests/test_install_docs.py` validates it against the registry's JSON schema.
+
+The registry accepts the entry only when two things are true of the published package:
+
+- its README carries the line `mcp-name: io.github.jxburros/vixl` (a comment at the end of `README.md`), which proves
+  the package belongs to the server name;
+- `uvx vixl-engine==VERSION mcp --workspace DIR` starts the server, which needs the `vixl-engine` console script.
+
+Both arrive with the first release after 0.35.0, so that is the first version that can be listed.
+
+The `mcp-registry` job of `release.yml` publishes the entry after the PyPI job, signing in with GitHub OIDC (which
+may publish under `io.github.jxburros/`). It is off until the owner sets three Actions variables:
+
+- `MCP_REGISTRY_PUBLISH`: `true`.
+- `MCP_PUBLISHER_URL`: the Linux x86-64 archive of one tagged `mcp-publisher` release, a URL under
+  `https://github.com/modelcontextprotocol/registry/releases/download/v`.
+- `MCP_PUBLISHER_SHA256`: that archive's SHA-256. The job refuses any other URL and a checksum mismatch, so the
+  release workflow never runs an unpinned binary.
+
+Nothing depends on the job and it continues on error. It has not run yet. To publish by hand instead, write the
+file with `python distribution/mcp_registry.py --out server.json`, then run `mcp-publisher login github` and
+`mcp-publisher publish` in that folder.
+
+Directory listings are separate, manual steps for the owner: submitting `vixl.mcpb` to the Claude extension
+directory and adding Vixl to other MCP directories. The per-client commands they need are the table under
+[Install for your agent](../../README.md#install-for-your-agent), which `tests/test_install_docs.py` checks.
+
+### macOS and Linux
+
+There is no macOS installer and no Homebrew formula yet. The supported route is the Python package as a
+command-line tool, in its own environment:
+
+```text
+uv tool install vixl-engine        # or: pipx install vixl-engine
+uv tool upgrade vixl-engine        # or: pipx upgrade vixl-engine
+```
+
+Updates are the installing tool's: `vixl update` and automatic updates belong to the Windows installer only.
+A Homebrew tap (`brew install jxburros/vixl/vixl`) needs a tap repository and a macOS runner to prove the formula,
+and a signed, notarised `.pkg` needs an Apple Developer ID; both wait on the owner.
+
 
 ## Verified version changes on main
 

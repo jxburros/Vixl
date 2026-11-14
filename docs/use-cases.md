@@ -423,6 +423,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | ID | Use case | Main route | Calls · min | Notes |
 | --- | --- | --- | --- | --- |
 | PRD-02 | Render one image per CSV row from a template | `render --data rows.csv` | 2–4 · 1 |  |
+| PRD-65 | Replace a hosted template API with a local batch: one template with text and image slots, a CSV, several sizes, checked per row | recipe with `${variables}` and `replace-contents` `variable`, `render --data rows.csv --strict` per size | 3–6 · 1–2 | [Migration guide](guides/automation/template-api-migration.md). `--strict` stops the batch on a failing row; an image slot bound to a new variable keeps its picture as the default. |
 | PRD-03 | Place a saved library component into a document | `vixl_apply(workflow='library-place')` | 2–3 · <1 |  |
 | BLK-24 | Placing a library component as an editable group | `library-place` (editable group; `as: image` for a snapshot) | 2–3 · <1 | Unblocked in 0.25: was a raster snapshot. |
 | PRD-04 | Link another `.vixl` as a live layer and refresh it after edits | `link`, `link-refresh` | 2–3 · <1 |  |
@@ -765,6 +766,7 @@ note the version.
 | BLK-02 | Open Photoshop PSD or GIMP XCF projects, or save editable PSD type/vector layers | Not implemented (layered PSD export of pixel layers since 0.22) | Import flattened PNG/TIFF, or SVG/PDF; export `.psd` for pixel handoff. |
 | BLK-03 | Develop camera RAW files or keep camera metadata | Not implemented | Develop elsewhere, import TIFF/JPEG. |
 | BLK-04 | High-bit-depth (16/32-bit) editing | Not implemented (RGBA8) | – |
+| BLK-26 | Print or photo professional pipeline end to end: RAW development, 16-bit retouching, spot plates and trapping, then press files | Partial: layout, print checks, ICC-managed CMYK export and soft proofs work on 8-bit sRGB documents; the rest is BLK-01, BLK-03 and BLK-04 | Develop and retouch elsewhere, bring in TIFF or JPEG, and use Vixl for layout, checks and export. See [Is Vixl a fit?](getting-started.md#is-vixl-a-fit). |
 | BLK-05 | Draw live with a pressure tablet | No live input; pressure is explicit or simulated | Send stroke points with pressure values. |
 | BLK-06 | Use a desktop GUI, TUI or web editor | Headless only | `vixl view` for live review. [server] |
 | BLK-13 | Motion-path editor, nested compositions with their own timelines | Not implemented (group and child tracks compose; `attach` follows a moving layer since 0.22) | Keyframes per property; markers. |

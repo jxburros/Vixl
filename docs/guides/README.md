@@ -87,6 +87,7 @@ end-to-end walkthroughs live in the [tutorials](../README.md#learn-by-making).
 | Guide | Covers |
 | --- | --- |
 | [Checked production workflows](automation/production.md) | Proof pages, logo packages and batch work |
+| [Moving from a template-rendering API](automation/template-api-migration.md) | One template, a CSV, several sizes, checked and exported on your own machine |
 | [Check designs in CI](automation/ci.md) | The GitHub Action and local checks |
 | [Script Vixl from Python](automation/python-scripting.md) | Batch generation from a script: reruns, return values, in-memory images, saving masters |
 | [Localization](automation/localization.md) | Locale tables and strings CSVs, the locale check matrix and localized variants |

@@ -327,6 +327,8 @@ def execute_design(project, op):
                 layer["asset"] = op["asset"]
             if "variable" in op:
                 layer["asset_variable"] = named(op["variable"])
+                # An image slot keeps showing its picture until a row or --set supplies another one.
+                project.state["variables"].setdefault(op["variable"], layer["asset"])
             elif "asset" in op or "path" in op:
                 layer.pop("asset_variable", None)
             if "fit" in op:

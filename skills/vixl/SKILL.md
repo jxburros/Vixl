@@ -88,9 +88,8 @@ Details: [workflow](references/workflow.md), [testing](references/testing.md).
 - **Many layers or sizes are one call**: `edit-layers` with a `where` selector, `adapt-layout`, workflow
   `adapt-sizes`.
 - **Motion:** set a `pivot` at each joint, animate `translate-x/y` and `scale`, use `text-animate` for kinetic
-  type; pixel art exports with `sampling: "nearest"`. Sprites: `pixel-draw` (`ellipse`, `only`), `pixel-transform`
-  (mirror/shift), a `sprite-sheet` grid with `cell: [row, column]`; an imported sprite stays crisp with
-  `scale: 3, sampling: "nearest"` on `import-image`, `scale` or `resize`.
+  type; pixel art exports with `sampling: "nearest"`. Sprites: `pixel-transform`, `sprite-sheet` grids,
+  crisp `sampling: "nearest"` enlargements.
 - **AI needs a configured provider**, and `network_disabled` means offline on purpose: say so, do not retry.
 - **Limits and unsupported features** (CMYK editing, PSD import, RAW, a GUI): see the full list.
 
@@ -98,14 +97,14 @@ All of them, with the exact rules: [gotchas](references/gotchas.md).
 
 ## Pick the interface
 
-| You have | Use | Reference |
+| You have | Use | See |
 | --- | --- | --- |
 | `vixl_*` tools | **MCP**: seven tools; fields from `vixl_reference('operations', name=[…])` | [mcp-rest-python](references/mcp-rest-python.md), [workspace](references/workspace.md) |
-| `vixl` on PATH | **CLI** or `vixl apply ops.json` (not found? [finding vixl](references/cli.md#finding-vixl)) | [cli](references/cli.md) |
+| `vixl` on PATH | **CLI** or `vixl apply ops.json` (not found? `pip install vixl-engine` or [find it](references/cli.md#finding-vixl)) | [cli](references/cli.md) |
 | Python | `from vixl import Project` | [python-scripting](references/python-scripting.md) |
 | `vixl serve` | REST (`POST /operations`, `GET /render`) | [mcp-rest-python](references/mcp-rest-python.md) |
 
-The payload is always the operation list: when unsure of a field, `vixl_reference('operations', name=[…])` or
+The payload is always the operation list; fields: `vixl_reference('operations', name=[…])` or
 `vixl schema OPERATION`.
 
 ## Feature map
@@ -120,7 +119,7 @@ The payload is always the operation list: when unsure of a field, `vixl_referenc
 | Fonts, pairings, rolls, making a font | [typography](references/typography.md) |
 | Palettes, templates, guidance, SVG output | [resources](references/resources.md) |
 | Rich text, pages and decks, forms | [documents](references/documents.md) |
-| Charts (emphasis, marks named by series and category), shared datasets, bound text, tables, key-value lists | [charts](references/charts.md) |
+| Charts (emphasis, marks by data), shared datasets, bound text, tables, key-value lists | [charts](references/charts.md) |
 | Hand drawings, diagrams, organic shapes, scatter, guides | [drawing-shapes-guides](references/drawing-shapes-guides.md) |
 | Objects with parts (object-plan, outline), accessibility | [objects](references/objects.md) |
 | Brushes, timelines, nested animation instances, video templates | [brushes-timeline](references/brushes-timeline.md) |

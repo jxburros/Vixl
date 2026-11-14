@@ -571,7 +571,8 @@ OVERRIDES = {
               "downsample": "placed@2x stores enough resolution to draw this frame at twice its placed size.",
               "path": "Image file in the workspace (CLI and Python).", "asset": "Embedded asset ID from import-image."},
     "replace-contents": {"path": "Image file in the workspace (CLI and Python).",
-                         "asset": "Embedded asset ID from import-image.", "variable": "Bind the image to this variable (replace it later by changing the variable).",
+                         "asset": "Embedded asset ID from import-image.", "variable": "Bind the image to this variable (replace it later by changing the variable). A variable "
+                                     "that does not exist yet starts as the layer's current image.",
                          "fit": "fill crops to cover; fit shows all of the image."},
     "repeat": {"count": "Number of copies including the original.",
                "dx": "Horizontal offset between copies, in pixels.", "dy": "Vertical offset between copies, in pixels.",
