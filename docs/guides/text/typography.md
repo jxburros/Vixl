@@ -205,6 +205,32 @@ A font you draw in Vixl (glyphs made of shapes and paths) is embedded the same w
 under a name for text layers, and `export NAME.otf` (or `.ttf`, `.woff`) writes it for other apps. See
 [making a font](custom-fonts.md).
 
+### Colour fonts
+
+A colour font file works like any other font: import it (`import-font`, `text --font FILE`) or name an installed
+one, and text set in it draws its colour glyphs. All five formats are read: layered flat colours (COLR version 0),
+gradient paint graphs (COLR version 1), OpenType-SVG glyphs, and the bitmap strikes of CBDT/CBLC (Noto Color
+Emoji) and sbix (Apple Color Emoji). Glyphs sit on the baseline at the font size, wrap and fit like outline text,
+count in `ink_bounds` and the overflow checks, and work in rich text, text flows, text on a path and
+`text-animate`. A glyph without colour data keeps its outline in the text colour, and a palette's foreground
+entry is drawn in the text colour.
+
+| Export | COLR v0 | COLR v1, OpenType-SVG | CBDT, sbix |
+| --- | --- | --- | --- |
+| PNG and other raster formats | drawn | drawn | drawn from the smallest strike at least as large as the text, scaled |
+| SVG, HTML | vector paths | vector paths and gradients | the strike as an embedded image, listed under `raster_fallbacks` (`svg_policy: strict` refuses it) |
+| PDF | vector paths | an image of the text layer, listed under `raster_fallbacks` | an image of the text layer, listed under `raster_fallbacks` |
+| PowerPoint | a picture of the text layer, listed under `raster_fallbacks` | the same | the same |
+
+Limits: the first palette is used; a sweep gradient is drawn as 120 flat wedges; of the composite modes, `src-out`,
+`dest-out`, `xor` and `plus` are drawn as plain source-over; scripts, styles, links and animation inside SVG glyphs
+are removed; a colour glyph takes no outline stroke, bold or slant and cannot be bent by a text warp (use unwarped
+text); the font maker cannot turn one into an outline. A bitmap font with neither outlines nor colour glyphs is
+still drawn by the fallback renderer.
+
+For emoji the [VIXL Line library](emojis.md) stays the default even when the layer's font has a colour glyph for
+the character: set `emoji-mode` to `font` to draw emoji from the font (Noto Color Emoji, for example) instead.
+
 ### Workspace default fonts
 
 A workspace can give every new document the same typography. A `{type: font-pair, pairing: …, scope: workspace}` step in `vixl_apply` (CLI `vixl font pair NAME --scope workspace`, REST `POST /typefaces/pair` with `"scope": "workspace"`) writes `pairing` into the workspace `brand.json`; `a font-install step` (CLI `vixl font install FAMILY --role heading --scope workspace`) embeds that one style in `brand.json` under `fonts.<role>`, overriding the pairing for that role; without a role it becomes the heading font and the result says so under `normalized`. On the CLI, `--workspace DIR` writes the `brand.json` in DIR instead of the current directory (and implies `--scope workspace`). A workspace pairing replaces embedded `fonts.heading`/`fonts.body` entries (other roles stay), and the result lists them under `workspace.replaced`. Both fetch the fonts immediately, so an unknown family fails at once, and neither changes existing documents.

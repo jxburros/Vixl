@@ -93,7 +93,8 @@ vixl -p motion.vixl export-timeline --out motion.webp --fps 12
 PowerPoint references font families, so install those fonts on the receiving system.
 Multi-page vector PDF embeds supported TrueType subsets with Unicode mappings.
 Export reports can list `raster_fallbacks` and `fonts`; inspect those before promising
-fully editable content. [Slides](slides.md) documents these details.
+fully editable content. Text in a [colour font](../text/typography.md#colour-fonts) is one such fallback in PowerPoint and,
+except for flat COLR version 0 layers, in PDF. [Slides](slides.md) documents these details.
 
 For fillable forms, test interactive entry and tab order. Filled copies can be flattened
 or remain editable; values are validated and do not mutate the blank master.

@@ -546,13 +546,13 @@ def _pack_member(path, mtime, size, member):
 
 @lru_cache(maxsize=16)
 def _usable_face(data):
-    """Whether the outline renderer can draw from ``data`` (a damaged or colour font is skipped, not fatal)."""
+    """Whether the outline renderer can draw from ``data`` (a damaged font is skipped, not fatal)."""
     from .text import coverage, face
 
     try:
         face(data)
         return bool(coverage(data))
-    except Exception:  # noqa: BLE001 - an unreadable or colour font file is just not a usable face
+    except Exception:  # noqa: BLE001 - an unreadable font file is just not a usable face
         return False
 
 

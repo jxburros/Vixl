@@ -56,8 +56,8 @@ List several faces of a fallback family (for example `noto-sans-jp-400` and `not
 uses the face that matches its own font best: the same slope (italic or upright) first, then the nearest
 OS/2 weight, so a bold heading falls back to the bold face in PNG, SVG and PDF alike; a PPTX gives those
 characters their own runs naming the fallback family. Families keep their list order. QA identifies fallback characters
-and errors on characters unsupported by the entire stack. This is outline-font fallback;
-font-native color emoji retain the existing font-engine limitations. The [bundled emoji library](../guides/text/emojis.md) supplies complete Unicode 17 artwork by default, including joined sequences.
+and errors on characters unsupported by the entire stack. A colour font in the list draws its colour glyphs
+([colour fonts](../guides/text/typography.md#colour-fonts)); emoji use it only with `emoji-mode` `font`. The [bundled emoji library](../guides/text/emojis.md) supplies complete Unicode 17 artwork by default, including joined sequences.
 
 ```sh
 vixl layout preview event-poster --set title=FLOWERS --predictable --font /path/to/font.ttf

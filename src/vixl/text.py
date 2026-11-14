@@ -402,6 +402,14 @@ def bidi_runs(text):
         raise UnsupportedText("Unicode isolate controls require raster text layout") from exc
     logical = list(storage["chars"])
     tags = script_tags([char["ch"] for char in logical])
+    if "\u200d" in text:
+        # Rule X9 dropped the zero-width joiners, and an emoji sequence drawn by a font (emoji mode font) is one
+        # glyph only with them: each goes back after the character it followed.
+        for char in logical:
+            index = char["index"] + 1
+            while index < len(text) and text[index] == "\u200d":
+                char["ch"] += "\u200d"
+                index += 1
     result = []
     for char, tag in zip(logical, tags):
         key = (char["level"], tag)

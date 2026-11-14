@@ -282,3 +282,20 @@ def test_animated_text_moves_colour_glyphs(rich):
     for time in (500, 2000):
         colors = {pixel[:3] for _, pixel in render_at(project, time).getcolors(maxcolors=1 << 20)}
         assert any(r - b > 80 and r - g > 80 for r, g, b in colors) and any(b - r > 80 and b - g > 80 for r, g, b in colors)
+
+
+def test_emoji_sequences_keep_their_joiners_for_the_font():
+    # The bidi pass removes zero-width joiners; a font draws a joined sequence as one glyph only with them.
+    assert text.runs("🧑‍🚀") == [((0, "Latn"), "🧑‍🚀")]
+    assert "".join(content for _, content in text.runs("a 👩‍👩‍👧 b")) == "a 👩‍👩‍👧 b"
+
+
+def test_installed_colour_bitmap_faces_are_listed():
+    from fontTools.ttLib import TTFont
+
+    from vixl import system_fonts
+
+    font = TTFont(io.BytesIO(fonts.cbdt()))
+    assert [face["family"] for face in system_fonts._describe(font, 0)] == ["Vixl Test CBDT"]
+    del font["CBDT"], font["CBLC"]
+    assert system_fonts._describe(font, 0) == []
