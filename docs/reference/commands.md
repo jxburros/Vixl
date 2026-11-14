@@ -191,7 +191,7 @@ can change the look. A layer clipped to a merged layer is clipped to the merged 
 top-level layer of the page into one canvas-size raster layer named `flattened` (master-page layers are not part of
 it, and pixels outside the canvas are dropped); hidden layers are discarded unless `--keep-hidden` keeps them in
 place. The originals are kept in the new layer's `provenance` (`merged` / `flattened`), and each operation is one
-history entry, so `undo` restores them. Custom `--font /path/to/font.ttf` imports and embeds a font. Other font names use Pillow's system-font lookup. Font substitution is never silent. HarfBuzz shaping and shared PNG/SVG outlines support ligatures, combining marks and scripts covered by the selected font, with multiline text, wrapping/fitting and path/warp layouts. Bitmap/color fonts and unsupported Unicode isolate controls retain appearance fallbacks. See [local artistic filters and SVG policies](../guides/images/artistic-filters.md).
+history entry, so `undo` restores them. Custom `--font /path/to/font.ttf` imports and embeds a font. Other font names use Pillow's system-font lookup. Font substitution is never silent. HarfBuzz shaping and shared PNG/SVG outlines support ligatures, combining marks and scripts covered by the selected font, with multiline text, wrapping/fitting and path/warp layouts. Colour fonts draw their colour glyphs ([colour fonts](../guides/text/typography.md#colour-fonts)); bitmap fonts without outlines or colour glyphs and unsupported Unicode isolate controls retain appearance fallbacks. See [local artistic filters and SVG policies](../guides/images/artistic-filters.md).
 
 ## Selections, masks, effects
 

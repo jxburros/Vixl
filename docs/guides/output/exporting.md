@@ -98,7 +98,8 @@ checkers: a structure tree with headings, paragraphs, described figures and form
 order, `/MarkInfo` and the language. It is off by default and leaves an untagged export byte-identical; see
 [tagged PDF](accessibility.md#tagged-pdf).
 Export reports can list `raster_fallbacks` and `fonts`; inspect those before promising
-fully editable content. [Slides](slides.md) documents these details.
+fully editable content. Text in a [colour font](../text/typography.md#colour-fonts) is one such fallback in PowerPoint and,
+except for flat COLR version 0 layers, in PDF. [Slides](slides.md) documents these details.
 
 For fillable forms, test interactive entry and tab order. Filled copies can be flattened
 or remain editable; values are validated and do not mutate the blank master.

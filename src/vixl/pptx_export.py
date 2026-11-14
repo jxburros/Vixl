@@ -420,7 +420,13 @@ class Slide:
         data = font_data(self.view, layer)
         if isinstance(data, tuple) and is_context(data[-1]):
             raise Unsupported("VIXL emoji artwork uses appearance-preserving raster export")
+        from .color_fonts import layer_kinds
         from .richtext import active
+
+        kinds = layer_kinds(self.view, layer)
+        if kinds:
+            # PowerPoint would draw the text in whatever the viewer's machine makes of the font (often no colour).
+            raise Unsupported(f"colour font glyphs ({', '.join(kinds)}) use appearance-preserving raster export")
 
         if (layer.get("text_layout") or {}).get("warp", "none") != "none" or (layer.get("text_layout") or {}).get("path"):
             raise Unsupported("warped text")

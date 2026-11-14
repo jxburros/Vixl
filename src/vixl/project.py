@@ -1337,7 +1337,13 @@ class Project:
                     elif name.startswith("fonts/"):
                         from PIL import ImageFont
 
-                        ImageFont.truetype(io.BytesIO(data), 12)
+                        try:
+                            ImageFont.truetype(io.BytesIO(data), 12)
+                        except OSError:
+                            from .fonts import bitmap_color_font
+
+                            if not bitmap_color_font(data):
+                                raise
                     elif name.startswith("assets/") and name.endswith(".wav"):
                         from .audio import read_audio
 

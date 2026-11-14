@@ -43,7 +43,9 @@ Check bounds before preview/export. Sheet guides must be removed before individu
 emoji delivery. Retain the VIXL source; PNG replacements remain raster artwork.
 
 PNG and SVG share layout; SVG retains vector art. PDF/PPTX report a raster fallback
-for emoji text layers. Emoji artwork does not support text warp bending. Art derived
+for emoji text layers. Emoji artwork does not support text warp bending. emoji-mode font
+draws emoji from the layer's font when it has the sequence, colour fonts (Noto Color Emoji:
+COLR, SVG, CBDT, sbix) included; the default stays VIXL Line even when the font has a colour glyph. Art derived
 from bundled Unicode masters retains OpenMoji CC BY-SA 4.0; bundled originals
 use CC BY-SA 4.0 too. Original user art keeps its own
 license. Every export includes attribution, manifest, upload help and offline preview.

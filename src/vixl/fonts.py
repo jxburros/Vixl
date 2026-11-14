@@ -15,9 +15,23 @@ def validate_font(data):
     try:
         ImageFont.truetype(BytesIO(data), 16)
     except (OSError, ValueError) as exc:
+        if bitmap_color_font(data):
+            return
         raise VixlError(
             "invalid_font", "Use a valid TrueType/OpenType font file; CSS and WOFF are not supported"
         ) from exc
+
+
+def bitmap_color_font(data):
+    """Whether ``data`` is a colour font of fixed-size bitmaps (CBDT or sbix without outlines, such as Noto Color
+    Emoji), which FreeType does not open at an arbitrary size and the text renderer draws from its strikes."""
+    from .color_fonts import BITMAPS, formats
+    from .text import UnsupportedText, face
+
+    try:
+        return any(table in BITMAPS for table in formats(face(data)[0]))
+    except (UnsupportedText, Exception):  # noqa: BLE001 - not a font at all
+        return False
 
 
 def import_font(project, source, name):

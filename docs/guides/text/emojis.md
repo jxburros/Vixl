@@ -121,8 +121,10 @@ import restrictions (simplify unsupported SVG features before importing).
 Text layout, fitting, wrapping and bidi preserve emoji sequences as one glyph. SVG
 keeps vector emoji geometry; PNG renders the same shared layout. PDF and PowerPoint
 preserve the appearance of emoji text using a reported raster fallback for the affected
-text layer. The font preference uses supported outline fonts; color/bitmap faces that
-the text engine cannot render fall back to artwork. Glyphs on a text path can be
+text layer. The font preference (`emoji-mode` `font`) draws an emoji from the layer's font or its fallbacks when
+one of them has the whole sequence, including [colour fonts](typography.md#colour-fonts) such as Noto Color Emoji
+(COLR, OpenType-SVG, CBDT and sbix); sequences no font has still use the artwork. VIXL Line stays the default:
+without the font preference an emoji draws from the library even when the font has a colour glyph for it. Glyphs on a text path can be
 positioned as artwork; bending emoji artwork with text warp presets is not supported.
 
 ## Create custom emojis from scratch

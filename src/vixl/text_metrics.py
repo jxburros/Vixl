@@ -66,7 +66,7 @@ def inspect_text(project, layer, bounds):
         if rich:
             result = fitted(project, layer)
             for glyph in result.glyphs:
-                box = glyph_outline(glyph.data, glyph.name)[1]
+                box = glyph_outline(glyph.data, glyph.name, glyph.size)[1]
                 if box:
                     from .richtext import glyph_ink
 
@@ -84,7 +84,8 @@ def inspect_text(project, layer, bounds):
             for path, matrix in result.paths:
                 from .emojis import EmojiArt
                 if isinstance(path, EmojiArt):
-                    placed = [Transform(*matrix).transformPoint(p) for p in ((0,-14),(72,-14),(0,58),(72,58))]
+                    x0, y0, x1, y1 = getattr(path, "bounds", (0, -14, 72, 58))  # a colour-font glyph has its own
+                    placed = [Transform(*matrix).transformPoint(p) for p in ((x0, y0), (x1, y0), (x0, y1), (x1, y1))]
                     boxes.append((min(p[0] for p in placed), min(p[1] for p in placed),
                                   max(p[0] for p in placed), max(p[1] for p in placed)))
                     continue
@@ -205,7 +206,7 @@ def drawn_lines(project, layer):
             glyphs = rows.get(index, [])
             edges = []
             for glyph in glyphs:
-                box = glyph_outline(glyph.data, glyph.name)[1]
+                box = glyph_outline(glyph.data, glyph.name, glyph.size)[1]
                 if box:
                     scale = glyph.size / face(glyph.data)[0]["head"].unitsPerEm
                     edges += [glyph.x + box[0] * scale, glyph.x + box[2] * scale]

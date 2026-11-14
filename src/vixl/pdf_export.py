@@ -482,7 +482,10 @@ class PageBuilder:
         self.ops.append(matrix_ops(affine(layer["width"] / max(1, layout.width), 0, 0, layer["height"] / max(1, layout.height))))
         glyphs = plan_glyphs(self.view, layer, layout)
         if glyphs is None:
+            from .color_fonts import ColorGlyph
             from .emojis import EmojiArt
+            if any(isinstance(path, ColorGlyph) for path, _ in layout.paths):
+                raise Unsupported("colour font glyphs on a path use appearance-preserving raster export")
             if any(isinstance(path, EmojiArt) for path, _ in layout.paths):
                 raise Unsupported("VIXL emoji artwork uses appearance-preserving raster export")
             # Warped or path text: its outlines, as filled paths.
@@ -506,9 +509,19 @@ class PageBuilder:
         from .emojis import is_glyph
         if any(is_glyph(g[0]) for g in glyphs):
             raise Unsupported("VIXL emoji artwork uses appearance-preserving raster export")
+        from .color_fonts import ColorGlyph
         from .text import face, glyph_outline
         from .geometry import parse_path
 
+        # Colour-font glyphs: flat COLRv0 layers are vector paths; gradients, SVG glyphs and bitmap strikes are not
+        # written as PDF content, so the layer becomes an image of what the renderer draws.
+        colored = {}
+        for index, glyph in enumerate(glyphs):
+            art = glyph_outline(glyph[0], glyph[1], glyph[4])[0]
+            if isinstance(art, ColorGlyph):
+                if art.layers is None:
+                    raise Unsupported(f"{art.kind} colour font glyphs use appearance-preserving raster export")
+                colored[index] = art
         passes = [("stroke", stroke_color)] if stroke_width else []
         passes.append(("fill", None))
         for mode, override in passes:
@@ -544,9 +557,19 @@ class PageBuilder:
                 matrix = _turned((size, 0, skew, -size, x0, y0), turn)
                 block.extend([" ".join(_fmt(v) for v in matrix) + " Tm", f"[{' '.join(parts)}] TJ"])
 
-            for number, (data, name, x, y, size, text, rgba, bold, italic) in enumerate(glyphs):
-                turn = turns[number] if turns else None
+            for index, (data, name, x, y, size, text, rgba, bold, italic) in enumerate(glyphs):
+                turn = turns[index] if turns else None
                 paint = override or rgba
+                if index in colored:
+                    # Each layer in its palette colour (the text colour for the foreground entry). Like the other
+                    # renderers, a colour glyph takes no outline stroke and no synthetic bold or slant.
+                    if mode == "fill":
+                        f = size / face(data)[0]["head"].unitsPerEm
+                        self.ops += ["q", matrix_ops(affine(*_turned((f, 0, 0, -f, x, y), turn)))]
+                        for path, layer_color in colored[index].layers:
+                            self.fill_ops(path_ops(parse_path(path)), layer_color or rgba, opacity)
+                        self.ops.append("Q")
+                    continue
                 if not self.fonts.embeddable_cached(data):
                     path, _ = glyph_outline(data, name)
                     if not path:
