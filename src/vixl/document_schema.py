@@ -88,6 +88,8 @@ LAYER_FIELDS = {
     "radial": (OBJECT, "group made by radial-repeat: {count, center [x, y], sweep, start_angle, mirror}."),
     "symbol": (STRING, "symbol: name of the symbol master in state.symbols it instances."),
     "linked": (BOOLEAN, "raster: the asset is a link to a file outside the archive (allow_linked)."),
+    "sampling": (STRING, "raster: nearest enlarges the image pixel by pixel (crisp pixel art) in the renderer and "
+                 "every export; absent is smooth."),
     "asset_variable": (STRING, "Variable naming the image asset to draw (variable data merge)."),
     "container": (OBJECT, "Container record of a template slot group."),
     "container_layout": (OBJECT, "Layout a container computed for its contents."),
@@ -357,6 +359,8 @@ STATE_FIELDS = {
     # Motion and media
     "timeline": (OBJECT, "Keyframe timeline: duration, fps, tracks, markers."),
     "animation": (OBJECT, "Frame animation settings and frames."),
+    "sprite_sheet": (OBJECT, "Sprite-sheet grid (sprite-sheet): {cell: [w, h], rows: [names], columns, duration, "
+                     "clips: {name: {row, frames, duration, durations, loop}}}."),
     "motions": (OBJECT, "Motion recipes applied."),
     "stop_motion": (OBJECT, "Stop-motion settings."),
     "audio_tracks": (ARRAY, "Audio tracks (assets/<sha256>.wav)."),

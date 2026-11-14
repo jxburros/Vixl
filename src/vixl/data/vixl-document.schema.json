@@ -452,6 +452,10 @@
      "type": "object",
      "description": "Frame animation settings and frames."
     },
+    "sprite_sheet": {
+     "type": "object",
+     "description": "Sprite-sheet grid (sprite-sheet): {cell: [w, h], rows: [names], columns, duration, clips: {name: {row, frames, duration, durations, loop}}}."
+    },
     "motions": {
      "type": "object",
      "description": "Motion recipes applied."
@@ -720,6 +724,10 @@
     "linked": {
      "type": "boolean",
      "description": "raster: the asset is a link to a file outside the archive (allow_linked)."
+    },
+    "sampling": {
+     "type": "string",
+     "description": "raster: nearest enlarges the image pixel by pixel (crisp pixel art) in the renderer and every export; absent is smooth."
     },
     "asset_variable": {
      "type": "string",

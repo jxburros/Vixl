@@ -466,6 +466,10 @@ def execute(project, op):
         # Raster boxes are whole pixels; fractional sizes from layout arithmetic round to the nearest one.
         width, height = (max(1, round(finite(v, k))) for v, k in ((op.get("width", original_size[0]), "width"),
                                                                   (op.get("height", original_size[1]), "height")))
+        if "scale" in op:
+            factor = finite(op["scale"], "scale", 0.001, 100)
+            width, height = max(1, round(width * factor)), max(1, round(height * factor))
+            project.limits.size(width, height)
         if op.get("max_pixels") is not None or op.get("downsample"):
             require(not op.get("linked"), "Downsampling requires an embedded image, not linked=True", field="downsample")
             require(op.get("downsample") in (None, "placed@2x"), "downsample must be placed@2x", field="downsample")
@@ -489,6 +493,10 @@ def execute(project, op):
             asset=asset,
             provenance=provenance,
         )
+        if "sampling" in op:
+            from .transforms import set_sampling
+
+            set_sampling(layer, op["sampling"])
         if op.get("linked"):
             require("path" in op, "Linked layers require a path")
             layer["linked"] = str(source)

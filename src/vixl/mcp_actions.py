@@ -1100,23 +1100,29 @@ def export_animation(
     columns: Positive | None = None,
     dither: Annotated[Literal["auto", "none", "ordered", "floyd"], Field(description="GIF dithering")] = "auto",
     max_bytes: Annotated[int | None, Field(ge=1, description="Soft size target: a warning when larger")] = None,
+    metadata: Annotated[Literal["neutral", "aseprite"] | None, Field(
+        description="sheet of a sprite-sheet grid: JSON as named clips (default) or Aseprite frames and frameTags")] = None,
     document: Document = None,
 ):
     """Saved frames (frame-save) as GIF, APNG, animated WebP, MP4/WebM (needs ffmpeg) or a PNG sprite sheet plus
-    JSON timing; nearest keeps pixel art crisp at integer scales."""
+    JSON timing; nearest keeps pixel art crisp at integer scales. A document with a sprite-sheet grid writes its
+    canvas and clips (name, row, frame rectangles, durations) for format sheet."""
     session = ctx.session
     with session.project(document=document) as project:
         destination = session.resolve(path)
         from .call_limits import check_export, of, quote
 
         options = {"scale": scale, "animation": animation, "saved_frames": True, "timeline": True}
+        if format == "sheet" and "sprite_sheet" in project.state:
+            options = {"scale": scale}  # a sprite-sheet grid is one render of the canvas, not a frame sequence
         if dry_run:
-            return quote(project, format or destination.suffix[1:], options, of(session))
-        check_export(of(session), project, format or destination.suffix[1:], options)
+            return quote(project, "png" if len(options) == 1 else format or destination.suffix[1:], options, of(session))
+        check_export(of(session), project, "png" if len(options) == 1 else format or destination.suffix[1:], options)
         result = project.export_animation(destination, format=format, animation=animation,
                                           scale=int(scale) if float(scale).is_integer() else scale, sampling=sampling,
                                           colors=colors, quality=quality, columns=columns, overwrite=overwrite,
-                                          dither=dither, max_bytes=max_bytes)
+                                          dither=dither, max_bytes=max_bytes,
+                                          **({"metadata": metadata} if metadata else {}))
         result["output"] = session.relative(destination)
         if "metadata" in result:
             result["metadata"] = session.relative(destination.with_suffix(".json"))

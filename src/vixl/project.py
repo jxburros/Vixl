@@ -960,12 +960,15 @@ class Project:
 
         return measure_spacing(self, **options)
 
-    def import_image(self, path=None, *, url=None, data=None, name="image", credit=None, license=None):
+    def import_image(self, path=None, *, url=None, data=None, name="image", credit=None, license=None,
+                     scale=None, sampling=None):
         """Embed an image from a file, bytes or an https URL as a new layer, recording its source
-        (url, fetched_at, sha256) and optional credit and license in the layer's provenance."""
+        (url, fetched_at, sha256) and optional credit and license in the layer's provenance. ``scale`` places it
+        at that multiple of its size; ``sampling="nearest"`` keeps its pixels crisp (pixel art)."""
         from .image_import import import_image_from
 
-        return import_image_from(self, path=path, url=url, data=data, name=name, credit=credit, license=license)
+        return import_image_from(self, path=path, url=url, data=data, name=name, credit=credit, license=license,
+                                 scale=scale, sampling=sampling)
 
     @memory_guard
     def inspect_pixels(self, target=None):

@@ -256,6 +256,8 @@ def compile_command(tokens):
         p.add_argument("--license", help="license or usage terms of the image")
         p.add_argument("--x", type=float)
         p.add_argument("--y", type=float)
+        p.add_argument("--scale", type=float, help="place the image at this multiple of its size")
+        p.add_argument("--sampling", choices=["smooth", "nearest"], help="nearest keeps pixel art crisp when enlarged")
     elif cmd in ("solid", "gradient", "text"):
         p.add_argument("--target", help=f"edit this existing {cmd} layer in place instead of adding one")
         if cmd == "text":
@@ -347,6 +349,8 @@ def compile_command(tokens):
                        "default: proportional for images, leave it for everything else")
         p.add_argument("--x", type=float, help="scale: horizontal factor; negative mirrors (scale beam --x -1)")
         p.add_argument("--y", type=float, help="scale: vertical factor; negative mirrors")
+        p.add_argument("--sampling", choices=["smooth", "nearest"],
+                       help="image layers: nearest keeps pixel art crisp when enlarged (stored on the layer)")
         data = vars(p.parse_args(args))
         values = data.pop("values")
         if values and not re.fullmatch(r"-?\d+(?:\.\d+)?%|\d+[x×]\d+|-?\d+(?:\.\d+)?", values[0]):

@@ -127,6 +127,13 @@ def _operation_schema():
             "height": SIZE,
             "max_pixels": {"type": "integer", "minimum": 1},
             "downsample": enum("placed@2x"),
+            "scale": {"type": "number", "exclusiveMinimum": 0, "maximum": 100,
+                      "description": "Size factor for the placed box, applied to width and height (or the image's own "
+                      "size): 3 places a 32x48 sprite at 96x144. With sampling: nearest the pixels stay crisp."},
+            "sampling": {"enum": ["smooth", "nearest"],
+                         "description": "How the image is enlarged: nearest keeps every source pixel a crisp block "
+                         "(pixel art); smooth (default) resamples. Stored on the layer for later edits and every "
+                         "export."},
         },
         anyOf=[{"required": ["path"]}, {"required": ["asset"]}],
     )

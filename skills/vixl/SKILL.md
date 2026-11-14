@@ -88,7 +88,9 @@ Details: [workflow](references/workflow.md), [testing](references/testing.md).
 - **Many layers or sizes are one call**: `edit-layers` with a `where` selector, `adapt-layout`, workflow
   `adapt-sizes`.
 - **Motion:** set a `pivot` at each joint, animate `translate-x/y` and `scale`, use `text-animate` for kinetic
-  type; pixel art exports with `sampling: "nearest"`.
+  type; pixel art exports with `sampling: "nearest"`. Sprites: `pixel-draw` (`ellipse`, `only`), `pixel-transform`
+  (mirror/shift), a `sprite-sheet` grid with `cell: [row, column]`; an imported sprite stays crisp with
+  `scale: 3, sampling: "nearest"` on `import-image`, `scale` or `resize`.
 - **AI needs a configured provider**, and `network_disabled` means offline on purpose: say so, do not retry.
 - **Limits and unsupported features** (CMYK editing, PSD import, RAW, a GUI): see the full list.
 
