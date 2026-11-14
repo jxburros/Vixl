@@ -224,7 +224,7 @@ LAYER_FIELDS = {
     "fit": (STRING, "How an image or linked document fills the box (fill, fit, stretch …)."),
     "position": (POINT, "Focus [x, y] fractions used when fit crops."),
     # Layer styles, looks and appearance
-    "styles": (OBJECT, "Layer styles by name (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay), "
+    "styles": (OBJECT, "Layer styles by name (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay, inner-shadow, inner-glow, bevel), "
                "each with its settings and enabled."),
     "looks": (OBJECT, "Applied looks (finishes) by name, listing the styles and effects each added."),
     "appearance": (OBJECT, "field: widget appearance (style, fill, stroke, radius …)."),

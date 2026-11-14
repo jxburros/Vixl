@@ -208,7 +208,7 @@ vixl effect move LAYER EFFECT --to top|bottom|N       # or --before EFFECT / --a
 vixl effect set LAYER EFFECT --amount 20
 vixl preset save gritty portrait ; vixl preset show gritty ; vixl preset apply gritty other --set noise=0.03
 vixl lookup photo look --amount 0.8                  # LUT (from a `lut` operation) added to the effect stack
-vixl layer-style title drop-shadow|stroke|outer-glow|color-overlay|gradient-overlay --settings '{...}'
+vixl layer-style title drop-shadow|stroke|outer-glow|color-overlay|gradient-overlay|inner-shadow|inner-glow|bevel --settings '{...}'
 vixl layer-style title drop-shadow --remove
 ```
 

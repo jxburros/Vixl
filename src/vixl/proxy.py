@@ -91,7 +91,7 @@ def _scale_layer(layer, s):
             if key in repeat.get("end", {}):
                 repeat["end"][key] = _size(repeat["end"][key], s)
     for name, settings in layer.get("styles", {}).items():
-        for key in ("dx", "dy", "blur", "width"):
+        for key in ("dx", "dy", "blur", "width", "size"):
             if key in settings:
                 settings[key] = settings[key] * s
     for effect in layer.get("effects", []):

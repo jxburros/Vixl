@@ -11,7 +11,7 @@ from vixl.assets import add_image
 
 FIXTURES = {}
 SVG_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "gradients", "text_plain", "groups", "dashes_fitted",
-                "text_small_caps", "text_hanging_quote", "object_outline_policies")
+                "text_small_caps", "text_hanging_quote", "object_outline_policies", "style_bevel")
 PDF_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "text_plain", "dashes_fitted", "text_small_caps",
                 "text_hanging_quote", "object_outline_policies")
 PPTX_FIXTURES = ("shapes_and_strokes", "text_plain", "groups", "dashes_fitted", "text_small_caps", "text_hanging_quote",
@@ -163,6 +163,34 @@ def effect_blur_shadow_glow():
         {"type": "shape", "shape": "ellipse", "name": "ringed", "x": 125, "y": 90, "width": 55, "height": 50, "fill": "#8ecae6"},
         {"type": "layer-style", "target": "ringed", "name": "stroke", "settings": {"color": "#023047", "width": 4}},
     ])
+
+
+def _inner_style(name, settings):
+    """One inner layer style on a rounded card, a turned star (the light keeps its direction) and a ring."""
+    shapes = [
+        rect("card", 12, 14, 64, 56, "#e76f51", radius=10),
+        {"type": "shape", "shape": "star", "name": "star", "x": 112, "y": 10, "width": 70, "height": 70,
+         "fill": "#2a9d8f", "rotation": 20},
+        {"type": "shape", "shape": "arc", "name": "ring", "x": 60, "y": 82, "width": 70, "height": 70, "fill": "#e9c46a",
+         "inner_radius": 0.5, "start_angle": 0, "end_angle": 360},
+    ]
+    return doc(ops=[*shapes, *({"type": "layer-style", "target": shape["name"], "name": name, "settings": settings}
+                               for shape in shapes)])
+
+
+@fixture
+def style_inner_shadow():
+    return _inner_style("inner-shadow", {"color": "#1d1a16", "dx": 4, "dy": 5, "blur": 4, "opacity": 0.6})
+
+
+@fixture
+def style_inner_glow():
+    return _inner_style("inner-glow", {"color": "#fff6d5", "blur": 6, "opacity": 0.85})
+
+
+@fixture
+def style_bevel():
+    return _inner_style("bevel", {"angle": 135, "size": 5, "opacity": 0.6})
 
 
 @fixture

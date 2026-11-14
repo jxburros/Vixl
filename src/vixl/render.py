@@ -1628,7 +1628,9 @@ def layer_patch(project, layer, bounds, size, index, visiting=None, limit=None):
                 started = time.perf_counter()
                 patch = Image.new("RGBA", (box[2] - box[0], box[3] - box[1]))
                 patch.alpha_composite(source, (x - box[0], y - box[1]))
-                patch = styled_image(project, patch, layer["styles"])
+                # Where the canvas edge cuts the layer off, inner styles treat it as continuing.
+                cut = (x < box[0], y < box[1], x + source.width > box[2], y + source.height > box[3])
+                patch = styled_image(project, patch, layer["styles"], cut)
                 if key:
                     cache.put(key, patch)
                 if profile is not None:

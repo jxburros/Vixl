@@ -46,7 +46,7 @@ The authoritative schema is always `vixl schema OPERATION` (bare `vixl schema` l
 | Color & filters | 27 built-in effects (brightness … white-balance … auto-contrast), `effect-set/enable/disable/remove/move`, `lut` + `lookup` (a stack effect), `preset-save/apply` |
 | Selections & masks | `select` (rect/ellipse/color/alpha/all/none/invert, add/subtract/intersect, feather), `mask` (create/from-selection/import/gradient/invert/enable/disable/delete; `gradient` fades a layer out, which a `gradient-overlay` style cannot: its transparent stops show the layer's own fill) |
 | Typography | `text`, `text-set` (`tabs`), `text-layout` (box, fit, wrap, warp, path), `style-define`/`style-apply`, `swatch` |
-| Decoration | `layer-style` (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay), `look` (named finishes: clean-flat, subtle-grain, light-paper, glow, neon, soft-shadow, hard-shadow, outline, gradient, soft-halo, grain, paper, film, duotone, risograph, sketch, watercolor, halftone, hand-made, plush), `repeat`, `repeat-blend`, `radial-repeat` (copies around a center, optional mirror, per-step/jitter, `merge`), `scatter`, `pattern-scatter`, `pathfinder` |
+| Decoration | `layer-style` (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay, inner-shadow, inner-glow, bevel), `look` (named finishes: clean-flat, subtle-grain, light-paper, glow, neon, soft-shadow, hard-shadow, outline, gradient, soft-halo, grain, paper, film, duotone, risograph, sketch, watercolor, halftone, hand-made, plush), `repeat`, `repeat-blend`, `radial-repeat` (copies around a center, optional mirror, per-step/jitter, `merge`), `scatter`, `pattern-scatter`, `pathfinder` |
 | Templates | `variable`, `replace-contents`, `comp-save`/`comp-apply`, CSV `render --data`, `export-screens` |
 | Painting | `paint` (17 brushes, points or SVG path, pressure, erase), `paint-clear`, `brush-define` |
 | Motion | `timeline-set` (`loop_mode`), `keyframe`, `keyframes` (or `sample` a wave), `keyframe-remove`, `animate`, `animate-preset`, `text-animate` (per char/word/line), `motion` (wiggle, line-boil …), `character-pose` (`time` keys), `audio-track`, `marker`; `vixl_render(action='timeline')`, `vixl_export(kind='timeline')` |
@@ -200,6 +200,14 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 | `stroke` | `color`, `width` (0–100) — outer stroke |
 | `color-overlay` | `color` |
 | `gradient-overlay` | `start`, `end`, `stops`, `direction`, `angle`, `falloff` (same as `gradient`) |
+| `inner-shadow` | `color`, `dx`, `dy`, `blur` — inside the silhouette; positive offsets shade the left/top edges |
+| `inner-glow` | `color`, `blur` — an even band inside every edge |
+| `bevel` | `angle` (degrees towards the light: 0 right, 90 up; default 135), `size` (0–100), `highlight`, `shadow` — lit edge facing the light, shaded far edge |
+
+The three inner styles follow the layer's alpha (holes and letters included) and never draw outside it. Their
+directions are the canvas's, so the light stays put when a layer turns. SVG keeps them as filters; PDF embeds the
+styled layer as an image; PPTX writes a lone `inner-shadow` on an unturned shape as PowerPoint's own (report:
+`native_effects`) and pictures the rest. `cut-paper` takes `edge_light: {angle}` to bevel every piece.
 
 ## Text styles, swatches, variables, comps, symbols
 

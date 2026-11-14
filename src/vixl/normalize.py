@@ -215,6 +215,12 @@ STYLE_ALIASES = {
     "stroke": "stroke",
     "color-overlay": "color-overlay",
     "gradient-overlay": "gradient-overlay",
+    "inner-shadow": "inner-shadow",
+    "innershadow": "inner-shadow",
+    "inset-shadow": "inner-shadow",
+    "inner-glow": "inner-glow",
+    "innerglow": "inner-glow",
+    "bevel": "bevel",
 }
 TARGET_ALIASES = ("layer", "layer_id", "layerId", "target_id", "targetId", "layer_name")
 FIELD_ALIASES = {
@@ -615,8 +621,12 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
                     "offset_y": "dy",
                     "offsetY": "dy",
                     "y": "dy",
-                    "radius": "blur",
-                    "size": "width" if op["name"] == "stroke" else "blur",
+                    "radius": "size" if op["name"] == "bevel" else "blur",
+                    "size": "width" if op["name"] == "stroke" else "size" if op["name"] == "bevel" else "blur",
+                    "depth": "size" if op["name"] == "bevel" else "depth",
+                    "blur": "size" if op["name"] == "bevel" else "blur",
+                    "highlight_color": "highlight",
+                    "shadow_color": "shadow",
                     "colour": "color",
                 }.get(key, key)
                 if canonical != key and canonical not in settings:
