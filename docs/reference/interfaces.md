@@ -609,8 +609,8 @@ REST `POST /import?format=figma` with the URL or file key as the body, `page` (a
 
 Any other file, or an `https://` URL, is imported as an image layer, the same as
 an `import-image` step with `url`, `POST /assets?url=…` and `Project.import_image(url=…)` in Python. A URL
-download is HTTPS only, follows at most 5 redirects, refuses private, loopback and link-local hosts
-and is size-capped; the bytes must decode as an image whatever the server's `Content-Type` says (see
+download is HTTPS only, follows at most 5 redirects inside one 120 s deadline, refuses private, loopback and
+link-local hosts and is size-capped (compressed answers are checked against the cap as they are decoded); the bytes must decode as an image whatever the server's `Content-Type` says (see
 [architecture](architecture.md#trust-and-security)). The layer's `provenance` records
 `source: {url, fetched_at, sha256, bytes}`, plus `credit` and `license` when you pass them (also for
 file and base64 imports, and the `add` operation's `credit`/`license` fields). Compact inspect shows

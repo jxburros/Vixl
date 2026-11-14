@@ -816,7 +816,9 @@ When the work ends, Vixl POSTs one JSON event: `event`, `kind`, `id`, `status`, 
 signed with the secret in the `secret_env` variable (`X-Vixl-Signature: sha256=` the HMAC-SHA256 of the body), and
 `X-Vixl-Delivery` names the delivery (the same across retries). A host not in `allow` is refused. The POST follows the
 download rules: HTTPS, public addresses only unless `VIXL_ALLOW_PRIVATE_FETCH=1`, plain HTTP only to a loopback
-address, no redirects. A 5xx, 408, 429 or a network failure is retried three times with backoff. With
+address, no redirects. Only the status of the answer matters: Vixl reads at most 64 KiB of its body, undecoded, and
+stops 30 s after the delivery began, so a receiver that answers slowly keeps its status but not the connection. A
+5xx, 408, 429 or a network failure is retried three times with backoff. With
 `VIXL_OFFLINE=1` nothing is sent. The delivery record goes into the job record (`deliveries`) or the result
 (`notify`).
 
