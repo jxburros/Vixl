@@ -369,8 +369,8 @@ def track_period(track):
 def key_times(track):
     """Every key time of a track, its additive layers included."""
     times = {key["time"] for key in track["keys"]}
-    for layer in track.get("add", ()):
-        times.update(key["time"] for key in layer["keys"])
+    for extra in track.get("add", ()):
+        times.update(key["time"] for key in extra["keys"])
     return times
 
 
@@ -537,12 +537,12 @@ def execute_timeline(project, op):
                 layers = track.get("add", [])
                 if "time" in op:
                     time = parse_time(op["time"], duration, markers)
-                    for layer in layers:
-                        if layer["layer"] == op["additive"]:
-                            layer["keys"] = [k for k in layer["keys"] if k["time"] != time]
-                    layers = [layer for layer in layers if layer["keys"]]
+                    for extra in layers:
+                        if extra["layer"] == op["additive"]:
+                            extra["keys"] = [k for k in extra["keys"] if k["time"] != time]
+                    layers = [extra for extra in layers if extra["keys"]]
                 else:
-                    layers = [layer for layer in layers if layer["layer"] != op["additive"]]
+                    layers = [extra for extra in layers if extra["layer"] != op["additive"]]
                 if layers:
                     track["add"] = layers
                 else:
@@ -760,9 +760,9 @@ def sample_track(project, track, time):
     """The track's value at ``time``. Additive layers (``track["add"]``, written by keyframes mode add)
     are summed onto the track's own keys, so the renderer, every exporter and the checks see one value."""
     value = _sample_keys(project, track["property"], track["keys"], time)
-    for layer in track.get("add", ()):
-        if layer["keys"]:
-            value += _sample_keys(project, track["property"], layer["keys"], time)
+    for extra in track.get("add", ()):
+        if extra["keys"]:
+            value += _sample_keys(project, track["property"], extra["keys"], time)
     return value
 
 
@@ -1470,13 +1470,13 @@ def validate_timeline(project, state):
 
             layers = track["add"]
             require(isinstance(layers, list) and 1 <= len(layers) <= MAX_ADDITIVE and _property_kind(track["property"]) == "number"
-                    and all(isinstance(layer, dict) and set(layer) == {"layer", "keys"} for layer in layers)
-                    and len({layer["layer"] for layer in layers}) == len(layers), "Invalid additive track layers", "invalid_project")
-            for layer in layers:
-                layer_name(layer["layer"])
-                require(isinstance(layer["keys"], list) and 1 <= len(layer["keys"]) <= MAX_KEYS, "Invalid additive keyframes", "invalid_project")
+                    and all(isinstance(extra, dict) and set(extra) == {"layer", "keys"} for extra in layers)
+                    and len({extra["layer"] for extra in layers}) == len(layers), "Invalid additive track layers", "invalid_project")
+            for extra in layers:
+                layer_name(extra["layer"])
+                require(isinstance(extra["keys"], list) and 1 <= len(extra["keys"]) <= MAX_KEYS, "Invalid additive keyframes", "invalid_project")
                 moments = []
-                for key in layer["keys"]:
+                for key in extra["keys"]:
                     require(isinstance(key, dict) and set(key) <= {"time", "value", "easing"} and {"time", "value"} <= set(key)
                             and isinstance(key["time"], int) and 0 <= key["time"] <= MAX_DURATION, "Invalid additive keyframe", "invalid_project")
                     finite(key["value"], "additive value", -1e6, 1e6)
@@ -1568,7 +1568,7 @@ def inspect_timeline(project):
                 ],
                 **({"truncated_keys": len(track["keys"])} if len(track["keys"]) > 64 else {}),
                 **({k: track[k] for k in ("wrap", "symmetry") if k in track}),
-                **({"add": [{"layer": layer["layer"], "keys": layer["keys"][:64]} for layer in track["add"]]} if track.get("add") else {}),
+                **({"add": [{"layer": extra["layer"], "keys": extra["keys"][:64]} for extra in track["add"]]} if track.get("add") else {}),
                 **({"attached_to": names.get(track["attach"]["to"], track["attach"]["to"])} if "attach" in track else {}),
             }
             for track in timeline.get("tracks", [])

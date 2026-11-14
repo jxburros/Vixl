@@ -549,9 +549,9 @@ def jump(project, group, op, start):
         poses = [{"at": at + lag, "value": min(hi, max(lo, sign * value))} for at, value in zip(JUMP_AT, row)]
         blend_track(project, group["id"], "joint:" + bone, {"start": start, "duration": duration, "poses": poses}, extend)
     track = _track(timeline, group["id"], "translate-y", create=False)
-    for layer in (track or {}).get("add", []):
-        if layer["layer"] == "jump":
-            layer["keys"] = [key for key in layer["keys"] if not start <= key["time"] <= start + duration] or \
+    for extra in (track or {}).get("add", []):
+        if extra["layer"] == "jump":
+            extra["keys"] = [key for key in extra["keys"] if not start <= key["time"] <= start + duration] or \
                 [{"time": start, "value": 0}]
     dip = 0.04 * height
     for at, value, easing in ((0, 0, "ease-in-out"), (JUMP_AT[0], dip, "ease-in"), (JUMP_AT[1], -0.12 * leap, "ease-out"),

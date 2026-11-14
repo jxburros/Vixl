@@ -182,6 +182,7 @@
 "validation -> resources",
 "validation -> richtext",
 "validation -> sizes",
+"validation -> sprite_sheet",
 "validation -> styles",
 "validation -> textflow",
 "validation -> timeline",
