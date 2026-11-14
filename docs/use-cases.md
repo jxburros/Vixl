@@ -197,6 +197,9 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DAT-01 | Bar, stacked, 100 %, horizontal, line, area, pie or donut chart from inline data | `chart` | 1 · <1 | One editable vector group with axes and legend. A chart given no geometry fills the safe area with spacing-scale padding, so it passes `safe_area` as created (craft plan 7d). |
 | DAT-02 | Chart straight from a CSV in the workspace | `chart --csv` | 1 · <1 |  |
 | DAT-03 | Change one value, add a row or reload the CSV | `chart-data` | 1 · <1 | Same layer IDs survive. |
+| DAT-54 | Make one category of a chart stand out: keep its colour, tone down the rest, label it | `chart-emphasis` (`focus`, `mute`, `annotate`) | 1 · <1 | Stored with the chart, so data edits keep it; `focus: []` restores the chart. Native point colours in PPTX. |
+| DAT-55 | Change one bar, slice, point or label of a chart (opacity, an effect, visibility) | any operation with `target: {chart, series, category, part}` | 1 · <1 | The address follows the data through reorders and removed rows; unknown names list the valid ones. |
+| DAT-56 | Repeat a chart's numbers in text, or feed one chart from another | `dataset`, `data: NAME`, `${data.NAME.total}` | 1–2 · <1 | One data edit updates the charts, tables and text bound to it. |
 | DAT-51 | Table from rows or a workspace CSV: menu, price list, pricing table, schedule, spec sheet | `table` | 1 · <1 | Since 0.25: aligned columns (decimal for prices), header, zebra, rules; native PPTX table. |
 | DAT-53 | Names, numbers and percentages paired in one aligned, ruled list: a share list, stats, a summary beside a chart | `key-value-list` (or the `key-value-list` container, or a chart's `legend_values`) | 1 · <1 | Craft plan 5a (T08): labels left, figures right-aligned on shared edges, rules between rows, spacing from the spacing scale; `shares: "auto"` computes the percentages. |
 | DAT-52 | Change a price, add or remove a row or column, or reload the CSV of a table | `table-data` | 1 · <1 | Since 0.25; cells keep their positions and layer IDs. |
@@ -462,7 +465,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | --- | --- | --- | --- | --- |
 | ILL-20 | A picture: an illustrated scene from a short brief | gradients, shapes, organic, looks | 20 · 3.2 | Round 2 sometimes moved elements it was told to keep. |
 | SOC-30 | Social post with exact copy and layout | layout, fonts, check, preview | 29 · 2.4 |  |
-| DAT-20 | Infographic from a small data table | `chart`, text, check | 18 · 1.4 | Totals and callouts are still typed by hand. |
+| DAT-20 | Infographic from a small data table | `chart`, text, check | 18 · 1.4 | Measured with totals and callouts typed by hand; totals now come from `${data.NAME.…}` fields (DAT-56) and the standout bar and its callout from `chart-emphasis` (DAT-54). |
 | FRM-10 | Fillable PDF form with validation (email, range, date) | `field`, `form settings`, `export --fillable` | 25 · 3.4 |  |
 | PIX-10 | Pixel-art sprite with named animations | `pixel-art`, `frame-save`, `animation-set` | 23 · 3.7 | One `frames-edit` recolors every frame. New sprites are shaded and outlined. |
 | MOT-10 | Animated intro (logo/title reveal) | timeline, presets, stroke draw-on | 38 · 4.0 |  |
@@ -752,7 +755,6 @@ note the version.
 | BLK-04 | High-bit-depth (16/32-bit) editing | Not implemented (RGBA8) | – |
 | BLK-05 | Draw live with a pressure tablet | No live input; pressure is explicit or simulated | Send stroke points with pressure values. |
 | BLK-06 | Use a desktop GUI, TUI or web editor | Headless only | `vixl view` for live review. [server] |
-| BLK-09 | Bind chart values into text, or one chart into another | Missing (T08) | Type callouts by hand; a chart's `legend_values` lists its totals and shares beside it (DAT-53). |
 | BLK-13 | Motion-path editor, nested compositions with their own timelines | Not implemented (group and child tracks compose; `attach` follows a moving layer since 0.22) | Keyframes per property; markers. |
 | BLK-14 | Automatic discovery of fallback fonts for mixed scripts | Not implemented (fallbacks are listed by hand; weight- and slope-matched since 0.22) | Document-wide `font-fallbacks`. |
 | BLK-17 | Video generation | Needs an explicitly configured gateway; no bundled model | [AI] |
