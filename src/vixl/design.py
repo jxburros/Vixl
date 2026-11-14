@@ -786,6 +786,9 @@ def validate_style(name, settings, state):
         "stroke": {"color", "width"},
         "color-overlay": {"color"},
         "gradient-overlay": {"start", "end", "stops", "direction", "angle", "falloff", "center"},
+        "inner-shadow": {"color", "dx", "dy", "blur"},
+        "inner-glow": {"color", "blur"},
+        "bevel": {"angle", "size", "highlight", "shadow"},
     }[name] | common
     unknown = sorted(set(settings) - allowed)
     require(
@@ -802,11 +805,14 @@ def validate_style(name, settings, state):
         ("width", 0, 100),
         ("dx", -4096, 4096),
         ("dy", -4096, 4096),
+        ("size", 0, 100),
+        ("angle", -3600, 3600),
     ):
         if key in settings:
             finite(settings[key], key, low, high)
-    if "color" in settings:
-        color(resolve_color(settings["color"], state))
+    for key in ("color", "highlight", "shadow"):
+        if key in settings:
+            color(resolve_color(settings[key], state))
     if name == "gradient-overlay":
         validate_gradient(settings, state)
 
@@ -962,7 +968,7 @@ def validate_design(project, state):
             if key in layer:
                 color(resolve_color(layer[key], state))
         styles = layer.get("styles", {})
-        require(isinstance(styles, dict) and len(styles) <= 5, "Invalid styles")
+        require(isinstance(styles, dict) and len(styles) <= len(STYLES), "Invalid styles")
         for name, value in styles.items():
             validate_style(name, value, state)
         for effect in layer.get("effects") or []:

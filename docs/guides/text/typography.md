@@ -340,6 +340,53 @@ that could hang draws exactly as before. PNG, SVG and PDF draw the marks where t
 (PowerPoint does not hang wrapped lines or line ends). `hanging`, `hang_quotes` and `optical_margin` are accepted and
 reported under `normalized`; `false` removes it. It is opt-in: no default sets it.
 
+## Hand-set lettering
+
+A hand-lettered look gives every word its own size, baseline and tilt. Do not convert the words to outlines for it:
+outlined words are shapes, so the contrast, size, clipping and font checks have nothing to read and the words cannot
+be edited. `hand_set` on `text`, `text-set` or `rich-text` draws the variation when the layer is drawn, and the layer
+stays text.
+
+```json
+[{"type": "text", "name": "sign", "text": "Fresh bread daily", "size": 64, "x": 80, "y": 60,
+  "hand_set": {"seed": 4, "rise": 6, "rotate": 5, "scale": 0.12}},
+ {"type": "text", "name": "note", "text": "baked this morning", "size": 40, "x": 80, "y": 170,
+  "hand_set": {"seed": 2, "unit": "glyph", "rotate": 8, "tracking": 2}}]
+```
+
+| field | meaning | when left out |
+| --- | --- | --- |
+| `seed` | which set of variations to draw; the same seed always gives the same lettering | 0 |
+| `unit` | `word` varies whole words, `glyph` every letter | `word` |
+| `rise` | largest baseline lift or drop, in pixels | 4% of the size |
+| `rotate` | largest turn either way, in degrees (up to 45) | 3 |
+| `scale` | largest size change, as a fraction (0.12 = up to 12% larger or smaller) | 0.06 |
+| `tracking` | largest change in letter spacing, in pixels | 0 |
+
+`"hand_set": true` uses the amounts in the last column; `false` (or `null`) removes it. On the CLI:
+`vixl text-set sign --hand-set '{"seed": 4}'`.
+
+- **The text is unchanged.** The layer keeps its `text`, font, size and colour, `text-set` edits it, `${variables}`
+  and text keyframes fill it, and every check that reads text layers (contrast, text size, bounds, fonts, brand fonts,
+  spelling) reads it as before.
+- **Seeded and stable.** Each word (or letter) draws its numbers from the seed and its position in the text, so
+  changing the letters of one word leaves every other word as it was. Adding or removing a word renumbers the ones
+  after it. Try a few seeds and keep the one that reads best.
+- **The box does not move.** Line breaks follow the varied word widths, but line heights and the layer's box are
+  those of the unvaried text, so editing a word does not shift the layer. Lifted or turned letters may reach a few
+  pixels past the box; they are drawn, not cut off.
+- **Words turn about the middle of their baseline**, letters about the middle of their own advance. By letter, `scale`
+  resizes a letter where it stands.
+- **For a single word**, style it instead: rich-text spans take `rise`, `rotate` and `scale`
+  ([rich text](rich-text.md#character-styles)); the two add up.
+- **Exports.** PNG, SVG and PDF draw the same glyphs in the same places; in PDF the words are still real, selectable
+  text (a turned word is a text run with the turn in its text matrix). PowerPoint has no per-word lift or turn, so
+  PPTX draws the layer as a picture of the render, described by its text and listed under `raster_fallbacks`.
+- **Not with tab stops, a warp or a path.** Text set by `tabs`, `text-layout` `warp` or `path` is drawn as before;
+  `hand_set` stays on the layer and applies again when those are removed.
+- `handset` and `hand_lettered` are accepted and reported under `normalized`. `irregular` still refuses text layers
+  and points here.
+
 ## Tab stops and leaders
 
 A plain text layer takes `tabs`, a list of tab stops: each tab character (`\t`) in its text moves what follows to the

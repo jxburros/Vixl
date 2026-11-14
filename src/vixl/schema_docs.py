@@ -543,10 +543,14 @@ OVERRIDES = {
     "group": {"name": "Group name.", "targets": "Layers to group (must share a parent)."},
     "reparent": {"targets": "Layers (or groups) to move; they may come from different parents."},
     "clip": {"base": "Layer that supplies the clipping shape.", "release": "true removes the clip."},
-    "layer-style": {"name": "drop-shadow, stroke, outer-glow, color-overlay or gradient-overlay.",
+    "layer-style": {"name": "drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay, inner-shadow, "
+                            "inner-glow or bevel.",
                     "settings": "drop-shadow {color, dx, dy, blur, opacity}; outer-glow {color, blur, opacity}; "
                                 "stroke {color, width}; color-overlay {color, opacity}; gradient-overlay {start, end "
-                                "or stops, direction, angle, opacity}; enabled false switches one off.",
+                                "or stops, direction, angle, opacity}; inside the silhouette: inner-shadow {color, "
+                                "dx, dy, blur, opacity}, inner-glow {color, blur, opacity}, bevel {angle (degrees "
+                                "towards the light: 0 right, 90 up; default 135), size, highlight, shadow, opacity}; "
+                                "enabled false switches one off.",
                     "remove": "true removes the style."},
     "distribute": {"targets": "Three or more layers to space evenly.", "axis": "horizontal or vertical.",
                    "gap": "Fixed gap in pixels (default: even spacing between the ends)."},

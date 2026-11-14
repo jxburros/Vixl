@@ -36,6 +36,9 @@ The complete list; the [skill entry point](../SKILL.md) keeps the most common on
   (small and light; never grey dirt), a glow a lighter tint of the layer's colour that only adds light, capped at
   opacity 0.6. Give `color` for an exact colour. A `layer-style` is drawn exactly as given (unset: black shadow,
   white glow), so prefer the looks for a clean default.
+- **Hand-lettered words stay text.** Do not convert words to outlines to vary their size, baseline and tilt: the
+  document then has no text layers, so the text checks pass with nothing to read and nobody can edit the words. Use
+  `hand_set` on the text layer (or span `rise`/`rotate`/`scale`); `irregular` refuses text.
 - **Absolute `move` and `align`/`distribute` clear constraints** on that layer. Use `constrain`
   when layout should survive canvas resizes, artboards or text changes; use `align` for a one-off.
 - **One constraint per axis** (e.g. `left` *or* `center-x` *or* `right`). Anchors: `canvas`, a layer

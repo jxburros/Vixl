@@ -116,6 +116,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | TXT-17 | Two-tone headline: one or two words of a headline in the accent color | `layout-apply` `accent_words`; `text`/`text-set` `accent_words`; rich-text `[word]{accent}` or `{accent-bg}` | 1 · <1 | Craft plan 4c (T03, T09); before, a `text-style` match per word after the layout, with the box height fixed by hand. Since 0.31: any text layer takes `accent_words`, and the Markdown flags accent one word. |
 | TXT-24 | Small caps for an eyebrow, byline or acronym in running text | `text`/`text-set` `text_transform: "small-caps"`; span `small_caps` | 1 · <1 | Since 0.31: the font's own small capitals (OpenType `smcp`) or synthesized ones, the same in PNG, SVG, PDF and PPTX (`cap="small"`). Before, uppercase at a smaller size in a second span, drawn lighter than the capitals. |
 | TXT-25 | Hang a pull quote's opening quote (or a bullet) outside the text edge so the letters line up | `hanging_punctuation: true` on `text`, `text-set` or `rich-text` | 1 · <1 | Since 0.31, opt-in: wrapping, `fit-text` and the bounds checks use the shifted marks. Before, a separate quote layer placed by hand. |
+| TXT-28 | Hand-lettered headline: every word (or letter) at its own size, baseline and tilt, still live text | `hand_set: {seed, rise, rotate, scale}` on `text`/`text-set`/`rich-text`; one word: span `rise`, `rotate`, `scale` | 1 · <1 | Before, each word was outlined to a path, which left no text layers for the checks and no editable words. Seeded and stable under edits; PNG, SVG and PDF agree, PPTX is a described picture. |
 | TXT-21 | Export the font drawn in a document as TTF, OTF or WOFF, or embed it for its own text | `vixl_export` `.ttf`/`.otf`/`.woff`, `font-build` | 1 · <1 | Unreleased; see [making a font](guides/text/custom-fonts.md). WOFF2 needs `brotli`. |
 
 ### Color
@@ -173,6 +174,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PHO-03 | Blur, sharpen or denoise a layer | `blur`, `sharpen`, `denoise` | 1 · <1 |  |
 | PHO-04 | Auto tone, auto color, auto contrast | `auto-tone` … | 1 · <1 |  |
 | PHO-05 | Apply a LUT | `lookup` | 1 · <1 | An ordinary stack effect since 0.21. |
+| ILL-70 | Raised or cut-out piece: a lit edge facing the light and a shaded far edge that follow the silhouette | `layer-style` `bevel` (or `inner-shadow`, `inner-glow`); `cut-paper` `edge_light` | 1 · <1 | Before, a `vignette` on every piece darkened its box evenly. The light keeps its direction when a piece turns; SVG keeps the filter, PDF and PPTX embed the styled layer (a lone inner shadow is PowerPoint's own). |
 | PHO-06 | Reorder, disable or remove an effect | `effect-move`, `effect disable` | 1 · <1 |  |
 | ILL-01 | Add a finishing look: glow, neon, soft/hard shadow, outline, grain, paper, film, duotone, risograph, halftone, watercolor, sketch | `look` | 1 · <1 | 20 looks; some export to SVG as raster. |
 | ILL-02 | Apply one of 19 artistic filters (oil paint, mosaic …) | `filter` | 1 · <1 | Seeded and deterministic. |

@@ -11,9 +11,9 @@ from vixl.assets import add_image
 
 FIXTURES = {}
 SVG_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "gradients", "text_plain", "groups", "dashes_fitted",
-                "text_small_caps", "text_hanging_quote", "object_outline_policies")
+                "text_small_caps", "text_hanging_quote", "object_outline_policies", "style_bevel", "text_hand_set")
 PDF_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "text_plain", "dashes_fitted", "text_small_caps",
-                "text_hanging_quote", "object_outline_policies")
+                "text_hanging_quote", "object_outline_policies", "text_hand_set")
 PPTX_FIXTURES = ("shapes_and_strokes", "text_plain", "groups", "dashes_fitted", "text_small_caps", "text_hanging_quote",
                  "object_outline_policies")
 
@@ -118,6 +118,19 @@ def text_stroked():
 
 
 @fixture
+def text_hand_set():
+    # Live text with hand-made variation: by word, by letter, and one span lifted, turned and enlarged.
+    return doc(width=240, ops=[
+        {"type": "text", "text": "Fresh bread", "name": "words", "size": 34, "x": 14, "y": 10, "color": "#264653",
+         "hand_set": {"seed": 4, "rise": 4, "rotate": 6, "scale": 0.12}},
+        {"type": "text", "text": "baked daily", "name": "letters", "size": 28, "x": 14, "y": 62, "color": "#bc4749",
+         "hand_set": {"seed": 2, "unit": "glyph", "rise": 3, "rotate": 8, "scale": 0.08, "tracking": 2}},
+        {"type": "rich-text", "name": "span", "markdown": "open [late]{rise=6 rotate=-7 scale=1.4 color=#2a9d8f} today",
+         "size": 22, "x": 14, "y": 112, "color": "#333333"},
+    ])
+
+
+@fixture
 def rich_text():
     return doc(width=220, height=200, ops=[
         {"type": "rich-text", "name": "body", "markdown": "# Heading\nSome **bold** and *italic* text,\n- first item\n- second item\n\n[Colour]{color=#bc4749 size=22} run",
@@ -163,6 +176,34 @@ def effect_blur_shadow_glow():
         {"type": "shape", "shape": "ellipse", "name": "ringed", "x": 125, "y": 90, "width": 55, "height": 50, "fill": "#8ecae6"},
         {"type": "layer-style", "target": "ringed", "name": "stroke", "settings": {"color": "#023047", "width": 4}},
     ])
+
+
+def _inner_style(name, settings):
+    """One inner layer style on a rounded card, a turned star (the light keeps its direction) and a ring."""
+    shapes = [
+        rect("card", 12, 14, 64, 56, "#e76f51", radius=10),
+        {"type": "shape", "shape": "star", "name": "star", "x": 112, "y": 10, "width": 70, "height": 70,
+         "fill": "#2a9d8f", "rotation": 20},
+        {"type": "shape", "shape": "arc", "name": "ring", "x": 60, "y": 82, "width": 70, "height": 70, "fill": "#e9c46a",
+         "inner_radius": 0.5, "start_angle": 0, "end_angle": 360},
+    ]
+    return doc(ops=[*shapes, *({"type": "layer-style", "target": shape["name"], "name": name, "settings": settings}
+                               for shape in shapes)])
+
+
+@fixture
+def style_inner_shadow():
+    return _inner_style("inner-shadow", {"color": "#1d1a16", "dx": 4, "dy": 5, "blur": 4, "opacity": 0.6})
+
+
+@fixture
+def style_inner_glow():
+    return _inner_style("inner-glow", {"color": "#fff6d5", "blur": 6, "opacity": 0.85})
+
+
+@fixture
+def style_bevel():
+    return _inner_style("bevel", {"angle": 135, "size": 5, "opacity": 0.6})
 
 
 @fixture

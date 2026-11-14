@@ -218,13 +218,15 @@ vixl layer-style title drop-shadow --settings '{"color":"#000000","dx":4,"dy":6,
 vixl layer-style title stroke --settings '{"color":"#ffffff","width":2}'
 vixl layer-style logo outer-glow --settings '{"color":"#80cfff","blur":12}'
 vixl layer-style logo color-overlay --settings '{"color":"@brand"}'
+vixl layer-style logo inner-shadow --settings '{"dx":3,"dy":4,"blur":4,"opacity":0.5}'
+vixl layer-style logo bevel --settings '{"angle":135,"size":4}'
 vixl layer-style title drop-shadow --remove
 ```
 
 Looks (`look`) are named recipes over these styles and the effect stack; a layer remembers which looks it carries so that
 `remove` takes one off without touching hand-made styles.
 
-Styles are editable settings, one per kind, applied after effects and masks. `enabled` and `opacity` are shared settings. Shadow, glow, and outer stroke sit behind the content; color and gradient overlays recolor it while preserving alpha. Overlays use the visible silhouette's bounding box. Group/layer opacity is applied to the styled result, then it is composited with the selected blend mode. Shadows and glows extend past the layer's geometric bounds and past a parent group's box. Inspection/alignment report geometry bounds; `inspect` adds `drawn_bounds` when styles, blur or group members reach further. Rasterizing a styled or externally clipped layer requires removing those attachments first.
+Styles are editable settings, one per kind, applied after effects and masks. `enabled` and `opacity` are shared settings. Shadow, glow, and outer stroke sit behind the content; color and gradient overlays recolor it while preserving alpha; `inner-shadow`, `inner-glow` and `bevel` draw on top of it, inside the silhouette only ([details and exports](../finishing/looks.md#layer-styles-inside-the-silhouette)). Overlays use the visible silhouette's bounding box. Group/layer opacity is applied to the styled result, then it is composited with the selected blend mode. Shadows and glows extend past the layer's geometric bounds and past a parent group's box. Inspection/alignment report geometry bounds; `inspect` adds `drawn_bounds` when styles, blur or group members reach further. Rasterizing a styled or externally clipped layer requires removing those attachments first.
 
 ## Alignment and distribution
 

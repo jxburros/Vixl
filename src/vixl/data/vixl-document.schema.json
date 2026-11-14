@@ -1221,6 +1221,10 @@
      "type": "boolean",
      "description": "text: punctuation at the line edges hangs outside the text box."
     },
+    "hand_set": {
+     "type": "object",
+     "description": "text: seeded hand-set variation applied when drawing {seed, unit, rise, rotate, scale, tracking}."
+    },
     "tabs": {
      "type": "array",
      "description": "text: tab stops [{at, align, leader}]."
@@ -1274,7 +1278,7 @@
     },
     "styles": {
      "type": "object",
-     "description": "Layer styles by name (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay), each with its settings and enabled."
+     "description": "Layer styles by name (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay, inner-shadow, inner-glow, bevel), each with its settings and enabled."
     },
     "looks": {
      "type": "object",

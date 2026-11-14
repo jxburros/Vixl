@@ -214,6 +214,7 @@ LAYER_FIELDS = {
     "tracking": (NUMBER, "text: letter spacing in pixels."),
     "text_transform": (STRING, "text: none, uppercase, lowercase, capitalize or small-caps, applied when drawing."),
     "hanging_punctuation": (BOOLEAN, "text: punctuation at the line edges hangs outside the text box."),
+    "hand_set": (OBJECT, "text: seeded hand-set variation applied when drawing {seed, unit, rise, rotate, scale, tracking}."),
     "tabs": (ARRAY, "text: tab stops [{at, align, leader}]."),
     "stage": (STRING, "text: type stage (display, h1 … caption) it was set with."),
     "rich": (OBJECT, "Rich text: spans, paragraphs and their styles (see docs/guides/text/rich-text.md)."),
@@ -226,7 +227,7 @@ LAYER_FIELDS = {
     "fit": (STRING, "How an image or linked document fills the box (fill, fit, stretch …)."),
     "position": (POINT, "Focus [x, y] fractions used when fit crops."),
     # Layer styles, looks and appearance
-    "styles": (OBJECT, "Layer styles by name (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay), "
+    "styles": (OBJECT, "Layer styles by name (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay, inner-shadow, inner-glow, bevel), "
                "each with its settings and enabled."),
     "looks": (OBJECT, "Applied looks (finishes) by name, listing the styles and effects each added."),
     "appearance": (OBJECT, "field: widget appearance (style, fill, stroke, radius …)."),
