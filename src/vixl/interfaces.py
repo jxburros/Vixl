@@ -913,21 +913,22 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
 
     @app.get("/resources/{kind}")
     def resources_list(kind: str):
-        from .resources import catalog
+        from .resources import catalog, service_workspace
 
-        return {"names": sorted(catalog(kind))}
+        # The workspace's library (.vixl-resources.json), never the user-global one: see service_workspace.
+        return {"names": sorted(catalog(kind, workspace=service_workspace(session)))}
 
     @app.get("/resources/{kind}/{name}")
     def resource_get(kind: str, name: str):
-        from .resources import get
+        from .resources import get, service_workspace
 
-        return {"name": name, "value": get(kind, name)}
+        return {"name": name, "value": get(kind, name, workspace=service_workspace(session))}
 
     @app.post("/resources/{kind}/{name}")
     def resource_add(kind: str, name: str, body: dict):
-        from .resources import register
+        from .resources import register, service_workspace
 
-        return register(kind, name, body.get("value"))
+        return register(kind, name, body.get("value"), workspace=service_workspace(session))
 
     @app.post("/export")
     @limited

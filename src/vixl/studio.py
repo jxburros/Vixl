@@ -31,8 +31,9 @@ REST_ACTIONS = {
 
 
 def dispatch(session, action, request, document=None):
-    from .resources import catalog, get, register
+    from .resources import catalog, get, register, service_workspace
 
+    workspace = service_workspace(session)
     if action == "group-check":
         from .group_consistency import run as group_check
 
@@ -44,14 +45,14 @@ def dispatch(session, action, request, document=None):
     if action.startswith("resource-"):
         kind = request["kind"]
         if action == "resource-list":
-            return {"kind": kind, "names": sorted(catalog(kind, workspace=session.workspace))}
+            return {"kind": kind, "names": sorted(catalog(kind, workspace=workspace))}
         if action == "resource-get":
             return {
                 "kind": kind,
                 "name": request["name"],
-                "value": get(kind, request["name"], workspace=session.workspace),
+                "value": get(kind, request["name"], workspace=workspace),
             }
-        return register(kind, request["name"], request["value"], workspace=session.workspace)
+        return register(kind, request["name"], request["value"], workspace=workspace)
     if action == "shape-save":
         from .design_schema import SHAPES
         from .design import resolve_color
@@ -88,12 +89,12 @@ def dispatch(session, action, request, document=None):
             for key in ("fill", "stroke"):
                 if key in value:
                     value[key] = resolve_color(value[key], project.state)
-        return register("shapes", request["name"], value, workspace=session.workspace)
+        return register("shapes", request["name"], value, workspace=workspace)
     with session.project(
         write=action in ("suite-use", "effect-run") and not request.get("dry_run", False), document=document
     ) as project:
         if action == "suite-use":
-            suite = get("suites", request["name"], workspace=session.workspace)
+            suite = get("suites", request["name"], workspace=workspace)
             require(type(request.get("reference", False)) is bool, "reference must be true or false", field="reference")
             if request.get("reference"):
                 # Attach by reference: every check runs the library's current rules (local rules can be added later).
@@ -107,7 +108,7 @@ def dispatch(session, action, request, document=None):
 
             return apply(
                 project,
-                get("workflows", request["name"], workspace=session.workspace),
+                get("workflows", request["name"], workspace=workspace),
                 request.get("variables"),
                 request.get("dry_run", False),
             )

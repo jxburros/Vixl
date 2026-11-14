@@ -153,7 +153,10 @@ An existing check is a starting point, not a substitute for the brief or visual 
 Save a custom suite for future projects with `resource-save`:
 `{"kind":"suites","name":"my-contract","value":{"rules":[...]}}`.
 Resources live in workspace `.vixl-resources.json`; workspace entries override the user
-library, then built-ins. User CLI `palette add` / `template add` remains supported.
+library, then built-ins. Every service (MCP, the workflows, and the REST `/resources` routes) saves into the
+workspace file and only reads the user library (`VIXL_RESOURCES` or `~/.config/vixl/resources.json`) as
+inherited entries, never writes it; a served deployment that should not inherit anything points
+`VIXL_RESOURCES` at an empty file. User CLI `palette add` / `template add` remains supported.
 The example [brand contract](../../../examples/studio/brand-suite.json) is ready to customize.
 
 Developers: `pytest tests/test_studio.py -q` covers pixel masks, geometry, palettes, templates,

@@ -270,6 +270,8 @@ A server shared by several people or agents can bound what one call may cost, so
 
 A call over a limit is refused before it renders with `limit_exceeded` and its `limit` (`max_megapixels`, `max_pages` or `max_concurrent`), `value`, `maximum` and a `hint` (REST: status `413`, or `429` with `Retry-After` for concurrency). REST runs heavy calls on 16 worker threads with at most 16 more waiting; the next one gets `503` with `Retry-After` and `limit: max_queue`. `GET /limits` (REST) and `vixl_job(action="list")` (MCP, under `limits`) report the values a server runs with and, under `source`, where each came from (a flag, an environment variable, `default` or `unset`); `GET /limits` also reports the network policy under `network` (`offline`, `fetch_hosts`, `private_addresses`, `proxy_resolves`).
 
+The durable workflow queue (`submit`, `work`, `start`; MCP, CLI and Python) has its own quotas, on by default (`0` turns one off): 64 unfinished jobs (`VIXL_QUEUE_MAX_JOBS`), 4096 MB of queue storage (`VIXL_QUEUE_MAX_MB`), one worker process per queue, and finished jobs deleted after 7 days (`VIXL_QUEUE_RETENTION_DAYS`). A submission over a quota is refused with `limit_exceeded` and `limit: max_pending_jobs` or `max_queue_mb` ([queue quotas](../guides/automation/production.md#queue-quotas)).
+
 ```bash
 vixl serve --call-timeout 30 --call-hard-timeout 300 --max-megapixels 50 --max-pages 40 --max-concurrent 2
 ```
@@ -506,7 +508,7 @@ Enable plugins explicitly with `vixl --plugins ...` or `vixl.plugins.enable_plug
 
 MCP reads resources with `vixl_reference` (`palettes`, `templates`, `containers`, `guidance`, `objects`; a template's or container's `name` reads it with its required slots and image specs), saves them with `vixl_apply(workflow='resource-save')`, creates from a template with `vixl_document(action='create', template=NAME)`, imports fonts with an `import-font` step (a workspace `path` or an `https://` `url`), and lists provider models with `vixl_models_list` (in `--tools ai`). Resource discovery needs no open document. Font paths and document destinations remain workspace scoped. `vixl_export` accepts `.svg`; operations accept registered font names while service operations continue to reject filesystem font paths.
 
-REST adds GET `/resources/{kind}`, GET/POST `/resources/{kind}/{name}` (POST body `{"value":...}`), POST `/fonts?name=brand` with raw TTF/OTF bytes (16 MiB maximum), and POST `/export` with options such as `{"format":"SVG"}`. Export returns bytes and accepts no destination path. Python exposes the matching `vixl.resources` and `vixl.fonts` helpers. [Detailed examples and boundaries](../guides/layout/agent-resources.md).
+REST adds GET `/resources/{kind}`, GET/POST `/resources/{kind}/{name}` (POST body `{"value":...}`; saved to `.vixl-resources.json` in the document's workspace, never to the user library), POST `/fonts?name=brand` with raw TTF/OTF bytes (16 MiB maximum), and POST `/export` with options such as `{"format":"SVG"}`. Export returns bytes and accepts no destination path. Python exposes the matching `vixl.resources` and `vixl.fonts` helpers. [Detailed examples and boundaries](../guides/layout/agent-resources.md).
 
 A brand can arrive as brand.json or as a Design Profile (`schemaVersion: 2`): `vixl.brand.load_brand_or_profile(data)`
 returns `(kit, unmapped)` for either shape without writing anything (a profile is read by the brand kit plugin through
