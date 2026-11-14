@@ -605,7 +605,7 @@ vixl -p poster.vixl import https://images.example.com/cat.jpg --name cat --credi
 ```
 
 MCP: an `import-document` step in `vixl_apply` (`format="svg"`, `path="logo.svg"`), with `data_base64` instead of `path` when there is no file.
-REST: `POST /import?format=svg` with raw bytes (`name` and `svg_mode` are query parameters too, and so are `font_map`, repeated as `font_map=SRC=NAME` (or one JSON object), and `install_fonts` for SVG and PDF; an unregistered target fails with `missing_font` on `font_map`). PDF additionally accepts a one-based `page` (a non-numeric `page` is a 400); it imports the page
+REST: `POST /import?format=svg` with raw bytes (`name` and `svg_mode` are query parameters too, and so are `font_map`, repeated as `font_map=SRC=NAME` (or one JSON object), and `install_fonts` for SVG and PDF; an unregistered target fails with `missing_font` on `font_map`). `install_fonts` is false unless given on every interface except the `vixl import` command, which turns it on for SVG (`--no-install-fonts` to stay offline): a served import does not reach Google Fonts on its own. PDF additionally accepts a one-based `page` (a non-numeric `page` is a 400); it imports the page
 as editable layers (text, paths, images), or with `svg_mode=appearance` as one image at `dpi` (36–600).
 Figma files import with `format=figma` (an `import-document` step with `source` set to the URL or file key, CLI `import URL --format figma`, Python `import_document(project, b"URL", "figma")`,
 REST `POST /import?format=figma` with the URL or file key as the body, `page` (a name or number), `node_id` and `rasterize_unsupported` as query parameters) using `FIGMA_TOKEN` from the environment; see
@@ -659,6 +659,21 @@ font assets parsed when opening a `.vixl`. Image headers and counts are checked 
 or FreeType call; individual asset, dimension, archive-byte and checksum checks still apply. Trusted Python
 callers can raise these limits explicitly. Documents exceeding a budget fail with `resource_limit` and the
 limit field. Undo/redo deltas preserve object key order, avoiding serialization-only diffs.
+
+### Import budgets
+
+The editable SVG and PDF imports charge their work while they read, so a small file cannot multiply into minutes of
+parsing or gigabytes of pixels; over a budget the import fails with `resource_limit` before the work is done, and
+`svg_mode: "appearance"` (one image) remains available.
+
+| Import | Budget per import |
+| --- | --- |
+| SVG | 20,000 elements; 40,000 elements walked with `<use>` expanded (four times `max_operations`); 4,096 stylesheet rules and 2 million rule comparisons; 64 elements drawn as images |
+| PDF | 20,000 objects, forms counted wherever they are drawn and nested at most 16 deep; 2 million path and clip segments (100,000 in one path); 8 MiB of text (1 MiB in one string); 64 runs drawn as images |
+| Both | `max_load_pixels` for the embedded images decoded plus the raster fallbacks rendered (each fallback renders the whole canvas or page); an image embedded once in an SVG is decoded once |
+| Vixl's own SVG | `max_load_fonts` named fonts, checked before any font is looked up; one Google Fonts lookup per style, and none unless the import has `install_fonts` |
+
+Details: [importing SVG and PDF](../guides/output/exporting.md#importing-svg-and-pdf).
 
 ## Check verdicts and export preflight
 
