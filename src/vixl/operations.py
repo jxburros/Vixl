@@ -394,8 +394,9 @@ def execute(project, op):
 
     kind = _canonical_type(kind, set(OPERATION_TYPES))
     require(isinstance(kind, str), "Operation requires a type")
-    from .targets import EACH, fan_out
+    from .targets import EACH, fan_out, resolve_addresses
 
+    op = resolve_addresses(project, op, kind)
     if kind in EACH and "targets" in op:  # Nested batches (actions, edit-layers ...) fan out here.
         for single in fan_out({**op, "type": kind}):
             execute(project, single)

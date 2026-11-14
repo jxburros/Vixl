@@ -6,7 +6,9 @@ The `chart` operation turns a table into a bar, stacked, line, area, pie or donu
 a **group of ordinary vector layers** (rectangles, paths, text and thin rules), so every renderer,
 export and check treats it like any other group. The data stays attached to the group, and
 `chart-data` changes it: one operation fixes one number, and the scale, tick labels, bars, value
-labels, totals, gridlines and legend all follow, on the same layers with the same IDs. When the
+labels, totals, gridlines and legend all follow, on the same layers with the same IDs.
+`chart-emphasis` makes chosen categories stand out, and operations can name a bar, slice or label by its
+series and category. When the
 document is exported to PowerPoint the group becomes a **native chart with an embedded data table**.
 
 ## Shared datasets
@@ -121,6 +123,95 @@ Several edits can be combined; they apply in this order:
 An unknown category or series name fails with the available names and the closest match, and the
 operation changes nothing (batches are atomic, like every operation).
 
+## Addressing marks by data
+
+A chart's parts can be named by what they stand for instead of by layer name. Wherever an operation takes
+`target` or `targets`, a chart mark is an object:
+
+```json
+[
+  {"type": "chart", "name": "sales", "width": 800, "height": 450,
+   "table": [["Month", "Tea", "Coffee"], ["Nov", 10, 30], ["Dec", 20, 40]]},
+  {"type": "opacity", "target": {"chart": "sales", "series": "Tea", "category": "Dec"}, "value": 0.5},
+  {"type": "blur", "target": {"chart": "sales", "category": "Nov"}, "radius": 2},
+  {"type": "hide", "target": {"chart": "sales", "series": "Coffee", "part": "legend"}}
+]
+```
+
+| Field | Meaning |
+| --- | --- |
+| `chart` | The chart group, by name or ID (required). |
+| `series`, `category` | Names as the data has them. Leave one out to mean all of them: `{chart, category}` is every bar of that category, `{chart, series}` a whole series, `{chart}` every data mark. |
+| `part` | `bar`, `slice`, `point` (a line's marker), `line`, `area`, `value` (a value or slice label), `total`, `legend` (the entry's swatch and label), `category-label` (the axis label) or `callout`. Without it, the data marks: bars, slices, points, lines and areas. |
+
+An address stands for the layers it names when the operation runs, so it can name a chart drawn earlier in
+the same batch. A per-layer operation (`opacity`, `hide`, the effects ...) is applied to each of them and a
+joint one (`group`, `align` ...) takes them together; an operation that takes one layer (`rename`) needs an
+address that names exactly one and says how many it found otherwise. A line or an area belongs to a series,
+not to a category, so `{series, category}` on a line chart is the point. An unknown series or category fails
+with the valid names and the closest match, like `chart-data`; an address that names nothing the chart draws
+(a value label on a chart without labels) lists the parts the chart has.
+
+Addresses follow the data. Each generated layer records what it stands for (`chart_mark`: `part`, `series`,
+`category`), and a redraw matches layers by that, not by position: after `chart-data` adds, removes or
+reorders rows, the layer of Tea in December is still the layer of Tea in December, with its ID and whatever
+was added to it. What the chart owns is still set again on every redraw (fill, geometry, text), so use an
+address for what survives (opacity, effects, blend mode, visibility), and `chart-emphasis` or the series
+colours for colour.
+
+In Python, `vixl.plugins.charts.charts.resolve_mark(project, address)` returns the layer IDs.
+
+## Emphasis: `chart-emphasis`
+
+"Make this one stand out" is one operation: the categories in `focus` keep their colours, every other mark
+is muted, and `annotate` sets a callout beside each focus mark.
+
+```json
+[
+  {"type": "chart", "name": "sales", "width": 800, "height": 450,
+   "categories": ["Sep", "Oct", "Nov", "Dec"], "series": [{"name": "Cups", "values": [2100, 2400, 2900, 3330]}]},
+  {"type": "chart-emphasis", "target": "sales", "focus": ["Dec"], "annotate": "Best month: ${value}"},
+  {"type": "chart-data", "target": "sales", "set": [{"category": "Dec", "value": 3410}]}
+]
+```
+
+```bash
+vixl chart-emphasis Dec --target sales --annotate 'Best month: ${value}'
+vixl chart-emphasis --target sales --clear
+```
+
+| Field | Meaning |
+| --- | --- |
+| `target` | The chart group (default: the active layer). |
+| `focus` | Categories to keep in colour (the slices of a pie or donut). `[]` removes the emphasis and restores the chart exactly. |
+| `series` | Limits the focus to one series: with `focus`, that series' marks in those categories; alone, the whole series (one line among several). `null` removes the limit. |
+| `mute` | How the rest is drawn: `fade` (default: the colour mixed toward the chart's background) or `desaturate` (a grey of the same lightness). |
+| `opacity` | For `fade`: how much of a muted mark's own colour stays, 0-1 (default 0.35; `"35%"` is read as 0.35). It is a colour mix, not layer opacity, so muted marks stay opaque and every export draws the same colour. |
+| `annotate` | Callout text for each focus mark. `${value}`, `${percent}` (the share of the chart's total), `${category}` and `${series}` are filled in from the data, with the chart's `number_format`. `null` removes it. |
+
+- **What counts as in focus.** A mark is in focus when it matches the focus on every name it has. A bar,
+  point or slice has a series and a category; a line or area has only a series, so a category focus leaves
+  the lines in colour and marks the point (a larger dot ringed in the background colour, also on area charts,
+  which have no markers); a stack's total has only a category. Legend swatches follow their series (or, on a
+  pie, their slice). Value labels beside muted marks take the chart's secondary text colour.
+- **Callouts.** With one series in focus (or a one-series chart) the callout speaks for that mark and takes
+  the place of its value label; otherwise it speaks for the category and `${value}` is the category's total.
+  It sits above a bar, stack or point (below a negative one), past the end of a horizontal bar and where the
+  slice label would be on a pie or donut; the chart reserves the room, and automatic value labels keep clear
+  of it. Other fields such as `${data.NAME.total}` stay ordinary merge fields of the callout's text layer.
+- **It is part of the chart.** The emphasis is stored with the chart's data and options, so `chart-data`,
+  a `dataset` edit and a restyle keep it, on the same layers. Sending the operation again changes only the
+  fields it names. When the data loses a focus category or the focus series, the emphasis drops it and says
+  so under `warnings`; with nothing left in focus it is removed.
+- **Checks.** `check --checks color_vision` reports an emphasised chart whose focus and muted marks look
+  alike, to typical vision or with a colour-vision deficiency (`emphasis-indistinct`: lower `opacity` or
+  use `desaturate`), and one whose muted marks nearly vanish into the background (`emphasis-faint`: raise
+  `opacity`). `layer-intent` with `color_vision_safe` on the chart accepts it.
+- **Summary.** `chart.summary.emphasis` records the focus, the mute mode and the colours drawn
+  (`focus_colors`, `muted_colors`, and the `surface` they are judged against).
+- **Kinds.** Every chart kind takes it. A table, a key-value list or any other group is refused: it is not
+  a chart.
+
 ## Placement
 
 A chart's group is placed where `x`, `y`, `width` and `height` say. Fields left out start inside the
@@ -134,10 +225,12 @@ Everything is recomputed from the data on every `chart` and `chart-data`: a roun
 scale (`min`, `max` and `ticks` steer it; bars and areas always include zero), tick labels and
 gridlines, bar and segment geometry (stacked segments tile exactly), value labels, totals, the legend
 and its swatches, label wrapping and thinning, and slice angles. Layers are **updated in place**: a
-bar keeps its ID when its value changes; new categories add layers, removed ones delete theirs.
+bar keeps its ID when its value changes; new categories add layers, removed ones delete theirs, and a
+reorder keeps each series and category on its own layer (see [addressing marks by data](#addressing-marks-by-data)).
 Fields the chart does not own survive a redraw: layer styles, effects, opacity, blend mode, masks and
 visibility. (A bar whose value is zero or empty has no layer; it is created when the value is not.)
-Generated layers are named `NAME/part` and carry a `chart_part` key; do not edit their geometry by
+Generated layers are named `NAME/part` and carry a `chart_part` key (and `chart_mark` when they stand for a
+series or category); do not edit their geometry by
 hand, because the next redraw sets it again. Resize a chart with `chart --target NAME --width … --height …`
 (not `resize`, which would stretch its text).
 
@@ -188,7 +281,10 @@ the chart; role swatches (`@accent`, `@ink`) recolor it without one.
   table, so *Edit Data* works in PowerPoint, Keynote and Google Slides. No extra Python package is
   needed (the chart XML and the workbook are written directly). The export report lists
   `charts: {"slide": [{"layer", "native": true}]}`. What cannot be native stays honest:
-  total labels are not exported; a donut's center text is a text box over the chart; text boxes or
+  total labels are not exported; a donut's center text is a text box over the chart; an
+  [emphasis](#emphasis-chart-emphasis) is native point colours (muted bars, slices and markers, a larger
+  marker on a line's focus point) and its callouts are text boxes over the chart, which the report notes;
+  text boxes or
   shapes added to the group stay shapes on top; a chart that is rotated or flipped is exported as the
   shapes it is made of (`native: false` with the reason), and one with effects, a layer style,
   blending or opacity below 1 is a picture, listed under `raster_fallbacks`, like any other group.

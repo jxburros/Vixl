@@ -591,7 +591,7 @@ class Project:
         require(isinstance(operations, list) and operations, "Expected a nonempty list of operations")
         from .schema import validate_operation
         from .normalize import apply_centering, expand_batch, resolve_geometry
-        from .targets import fan_out
+        from .targets import fan_out, resolve_addresses
 
         notes = []
         operations = expand_batch(operations, notes)  # create-many → one operation per row
@@ -642,6 +642,7 @@ class Project:
                 if operation["type"] in ("layout-apply", "template-apply"):
                     from .brand import prepare
                     operation = prepare(candidate, operation)
+                operation = resolve_addresses(candidate, operation)  # {chart, series, category} → layer IDs
                 for single in fan_out(operation):  # targets on a per-layer operation: once per layer
                     resolved, centered = resolve_geometry(candidate, single)
                     execute(candidate, deepcopy(resolved))

@@ -181,6 +181,7 @@ SUMMARIES = {
     "link-embed": "Freeze a linked document into an ordinary raster layer that no longer follows its source.",
     "chart": "Draw a data-bound chart (bars, lines, areas, pie, donut) as vector layers, or restyle one with target.",
     "chart-data": "Edit a chart's data in place (cells, categories, series, CSV reload) and redraw it, keeping layer IDs.",
+    "chart-emphasis": "Make chosen categories of a chart stand out: keep their colours, mute the rest, add a callout; data edits keep it.",
     "table": "Draw a table from rows or a CSV as vector layers (aligned columns, header, rules), or restyle one with target.",
     "die-cut": "Add a sticker cut line: the union of the targets' ink outline, grown by a distance, as a stroked path.",
     "path-split": "Cut a filled path into two named parts along a polygon or line, optionally overlapping the cut.",

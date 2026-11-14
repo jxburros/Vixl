@@ -256,6 +256,7 @@ LAYER_FIELDS = {
     # Structured content
     "chart": (OBJECT, "group: the chart record (kind, data, options) its parts are drawn from."),
     "chart_part": (STRING, "Which part of a chart this layer is."),
+    "chart_mark": (OBJECT, "What a chart part stands for in the data: {part, series?, category?} by name."),
     "table": (OBJECT, "group: the table record (rows, columns, styles)."),
     "table_part": (STRING, "Which part of a table this layer is."),
     "key_values": (OBJECT, "group: a key-value list record."),
