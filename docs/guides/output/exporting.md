@@ -231,7 +231,7 @@ native charts when it has charts) know what to expect. Verification only reads t
 
 Inline fields, alone or on top of a `preset`: `formats`, `max_bytes`, `pages` (a count or `[min, max]`), `trim` (a
 size name or `[width, height]` in points or with units such as `"8.5in"`), `bleed` (`"0.125in"`, `"3mm"`, points;
-`0` for none), `fonts_embedded`, `color` (`rgb`, `cmyk`, `gray`), `ink_limit` (percent), `fillable`, `width`, `height`,
+`0` for none), `fonts_embedded`, `color` (`rgb`, `cmyk`, `gray`), `ink_limit` (percent), `fillable`, `tagged` (a tagged PDF), `width`, `height`,
 `min_width`, `min_height`, `sizes`, `aspect` (`[min, max]` width/height), `dpi` (minimum), `alpha`, `icc`,
 `editable_text`, `native_charts` (`true` or a minimum), `self_contained`, `notes` (HTML speaker notes) and
 `text_as_text` (SVG `<text>` kept).

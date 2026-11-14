@@ -48,6 +48,7 @@ SPEC_FIELDS = {
     "color": "rgb, cmyk or gray: the colour model of the file",
     "ink_limit": "Most total ink in percent (CMYK print)",
     "fillable": "true: the PDF has form fields; false: it has none",
+    "tagged": "true: the PDF is tagged (a structure tree and /MarkInfo, export tagged); false: it is not",
     "width": "Exact raster width in px",
     "height": "Exact raster height in px",
     "min_width": "Smallest raster width in px",
@@ -127,7 +128,7 @@ def _validate(fields):
             or (isinstance(pages, list) and len(pages) == 2 and all(isinstance(v, int) for v in pages)),
             "spec.pages is a count or [min, max]", field="spec.pages")
     require(fields.get("color") in (None, "rgb", "cmyk", "gray"), "spec.color is rgb, cmyk or gray", field="spec.color")
-    for key in ("fonts_embedded", "fillable", "alpha", "icc", "editable_text", "self_contained", "notes",
+    for key in ("fonts_embedded", "fillable", "tagged", "alpha", "icc", "editable_text", "self_contained", "notes",
                 "text_as_text"):
         require(fields.get(key) is None or isinstance(fields[key], bool), f"spec.{key} is true or false",
                 field=f"spec.{key}")
@@ -721,6 +722,9 @@ def _pdf_facts(data, limits, ink):
              "RGB" if set(spaces) & {"DeviceRGB", "ICCBased"} else "Gray" if "DeviceGray" in spaces else "unknown")
     facts["color"] = {"space": model, "color_spaces": spaces}
     facts["forms"] = _scan_forms(scan)
+    catalog = next((body for body in scan.objects.values() if re.search(rb"/Type\s*/Catalog\b", body)), b"")
+    facts["tagged"] = bool(re.search(rb"/StructTreeRoot\b", catalog)
+                           and re.search(rb"/MarkInfo\s*<<[^>]*/Marked\s+true", catalog))
     scanned = scan.pages()
     pages = [{"number": i + 1, "media_box": box, **({"trim_box": _box(body, "TrimBox")} if _box(body, "TrimBox") else {}),
               **({"bleed_box": _box(body, "BleedBox")} if _box(body, "BleedBox") else {})}
@@ -1078,6 +1082,10 @@ def _verify_pdf(facts, fields, expect, issue, cannot):
         elif not fields["fillable"] and count:
             issue("fillable", f"The PDF has {count} form field(s); the spec wants a flat PDF", expected=False,
                   actual=count)
+    if fields.get("tagged") is not None and bool(facts.get("tagged")) != fields["tagged"]:
+        issue("tagged", "The PDF has no structure tree; the spec wants a tagged PDF (export with tagged)"
+              if fields["tagged"] else "The PDF is tagged; the spec wants an untagged PDF", expected=fields["tagged"],
+              actual=bool(facts.get("tagged")))
 
 
 def _verify_raster(facts, fields, issue, cannot):
@@ -1168,7 +1176,8 @@ def _verify_web(fmt, facts, fields, expect, issue):
 
 def after_export(project, data, path, format, report, check, spec, options):
     """The export check for an export that wrote ``data``: the spec (``check=True`` alone: the default preset),
-    with the export's own ``max_bytes`` and ``fillable`` as requirements when the spec leaves them out."""
+    with the export's own ``max_bytes``, ``fillable`` and ``tagged`` as requirements when the spec leaves them
+    out."""
     if not check and spec is None:
         return None
     name, fields = resolve_spec(spec)
@@ -1177,6 +1186,8 @@ def after_export(project, data, path, format, report, check, spec, options):
         inline["max_bytes"] = options["max_bytes"]
     if options.get("fillable") and "fillable" not in inline:
         inline["fillable"] = True
+    if options.get("tagged") and "tagged" not in inline:
+        inline["tagged"] = True
     suffix = Path(path).suffix if path else "." + {"jpeg": "jpg", "htm": "html"}.get(
         (format or "png").lower(), (format or "png").lower())
     result = verify(Path(path) if path else Path("export" + suffix), inline, data=data, limits=project.limits,

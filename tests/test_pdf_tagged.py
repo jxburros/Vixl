@@ -207,6 +207,20 @@ def test_a_linked_document_is_one_figure_and_a_blended_page_one_described_image(
     assert marked(reader) == [("Figure", 0)]
 
 
+def test_export_check_confirms_the_tags(tmp_path):
+    from vixl.export_checks import inspect, verify
+
+    p = poster()
+    tagged, plain = tmp_path / "tagged.pdf", tmp_path / "plain.pdf"
+    report = {}
+    p.export(tagged, tagged=True, check=True, report=report)
+    assert report["export_check"]["passed"] and inspect(tagged)["tagged"] is True
+    p.export(plain)
+    assert inspect(plain)["tagged"] is False
+    assert [i["code"] for i in verify(plain, {"tagged": True})["issues"]] == ["tagged"]
+    assert [i["code"] for i in verify(tagged, {"tagged": False})["issues"]] == ["tagged"]
+
+
 def test_cli_mcp_and_rest_take_tagged(tmp_path):
     from vixl.cli import main
     from vixl.interfaces import EXPORT_FIELDS

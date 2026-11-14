@@ -64,7 +64,9 @@ vixl -p report.vixl export report.pdf --tagged
 
 Python `project.export("report.pdf", tagged=True)`, MCP `vixl_export(path="report.pdf", tagged=true)`, REST
 `POST /export` with `"tagged": true`. It is off by default, and an export without it is byte for byte what it was
-before; the export result says `tagged: true` when the tree was written.
+before; the export result says `tagged: true` when the tree was written. A delivery spec can require it:
+`vixl_export(path="report.pdf", tagged=true, check=true)` reads the file back and confirms the structure tree, and
+`spec: {"tagged": true}` (also in `vixl check-file`) fails an untagged PDF.
 
 The tree is `Document` > one `Sect` per page > the page's elements:
 
