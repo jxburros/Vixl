@@ -274,6 +274,9 @@ def compile_command(tokens):
                            help="do not draw the text while it is empty after ${variable} substitution")
             p.add_argument("--tabs", type=json.loads,
                            help='JSON tab stops, e.g. [{"at": "100%%", "align": "right", "leader": "."}]')
+            p.add_argument("--hand-set", type=json.loads,
+                           help='JSON hand-set lettering that stays live text, e.g. {"seed": 3, "rotate": 5}; true for '
+                                'the defaults')
         elif cmd == "gradient":
             p.add_argument("--start", default="black")
             p.add_argument("--end", default="white")
@@ -302,6 +305,9 @@ def compile_command(tokens):
                        help="do not draw the text while it is empty after ${variable} substitution")
         p.add_argument("--tabs", type=json.loads,
                        help='JSON tab stops ([] removes them), e.g. [{"at": "100%%", "align": "right", "leader": "."}]')
+        p.add_argument("--hand-set", type=json.loads,
+                       help='JSON hand-set lettering that stays live text, e.g. {"seed": 3, "rotate": 5}; true for the '
+                            'defaults, false removes it')
     elif cmd in (
         "remove",
         "hide",

@@ -256,8 +256,10 @@ FIELD_ALIASES = {
                                                   "optical_margin", "optical_margins")},
         **{key: "accent_words" for key in ("accent", "accent_word", "accents", "highlight_words", "emphasis",
                                            "accent_text")},
+        **{key: "hand_set" for key in ("handset", "hand_lettered", "hand_lettering", "handlettered", "hand_made")},
     },
-    "text-style": {"smallcaps": "small_caps", "small_capitals": "small_caps"},
+    "text-style": {"smallcaps": "small_caps", "small_capitals": "small_caps", "baseline_shift": "rise",
+                   "rotation": "rotate"},
     "shape": {
         "color": "fill",
         "colour": "fill",

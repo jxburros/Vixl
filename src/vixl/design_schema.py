@@ -33,8 +33,6 @@ TYPES = (
 SHAPES = ("rectangle", "rounded-rectangle", "ellipse", "polygon", "star", "line", *EXTRA_SHAPES)
 STYLES = ("drop-shadow", "stroke", "outer-glow", "color-overlay", "gradient-overlay", "inner-shadow", "inner-glow",
           "bevel")
-# Drawn inside the layer's silhouette, above its content and overlays, in this order.
-INNER_STYLES = ("inner-glow", "inner-shadow", "bevel")
 
 
 def schemas(add):

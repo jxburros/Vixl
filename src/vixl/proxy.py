@@ -40,6 +40,10 @@ def _scale_layer(layer, s):
         layer["size"] = max(1.0, layer["size"] * s)
     if isinstance(layer.get("tracking"), (int, float)):
         layer["tracking"] = layer["tracking"] * s
+    if isinstance(layer.get("hand_set"), dict):
+        # Pixel amounts; the ones left out follow the (scaled) size.
+        layer["hand_set"] = {key: value * s if key in ("rise", "tracking") else value
+                             for key, value in layer["hand_set"].items()}
     if layer.get("type") == "field":
         from .forms import scale_field
 
@@ -65,7 +69,7 @@ def _scale_layer(layer, s):
     rich = layer.get("rich")
     if rich:
         for span in rich["spans"]:
-            for key in ("size", "tracking"):
+            for key in ("size", "tracking", "rise"):
                 if key in span:
                     span[key] = span[key] * s
         for key in ("paragraph_spacing", "list_indent"):

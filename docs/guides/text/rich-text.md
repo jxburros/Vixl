@@ -31,6 +31,7 @@ Each line is one paragraph.
 | `__underline__`, `~~strike~~`, `==highlight==` | underline, strikethrough, yellow highlight |
 | `x^2^`, `H~2~O` | superscript, subscript |
 | `[text]{color=#e33 size=40 font=heading bold italic underline highlight=#ff0 tracking=2}` | any combination of styles |
+| `[late]{rise=8 rotate=-6 scale=1.3}` | lifted 8 px, turned 6° anticlockwise, 1.3 times the size |
 | `[Winter]{accent}`, `[Sale]{accent-bg}` | the palette's accent text color; accent ink on an accent highlight |
 | `[note]{small-caps}` | small capitals |
 | `- item`, `* item`, `+ item` | bullet; indent two spaces (or a tab) per level |
@@ -54,7 +55,15 @@ bundled fallback, and fallback glyphs are checked against each span's own font.
 | `font` | a registered font name, `heading`, `body` or a font file |
 | `baseline` | `super`, `sub` or `normal` |
 | `tracking` | extra pixels between letters (negative tightens) |
+| `rise` | pixels to lift the characters off the baseline (negative lowers them); highlight, underline and strike move with them; 0 removes it |
+| `rotate` | degrees (clockwise, -180 to 180) to turn each word of the span about the middle of its baseline; the line keeps its spacing; 0 removes it |
+| `scale` | a multiple of the characters' current size (0.1-10), stored as their `size` |
 | `small_caps` | true or false: lowercase letters as small capitals ([typography](typography.md#small-caps)) |
+
+`rise` and `rotate` are drawn the same in PNG, SVG and PDF (where the text stays selectable); PPTX draws a layer that
+uses them as a picture of the render, listed under `raster_fallbacks`, because PowerPoint has no per-word lift or
+turn. A span with `scale` alone is an ordinary size and stays editable text in PPTX. For seeded variation over a whole
+layer use `hand_set` ([typography](typography.md#hand-set-lettering)).
 
 **Accent words.** The `accent` flag sets a word in `@accent-text`, the palette color made for accent type that reads
 on the background, and `accent-bg` sets it in `@on-accent` on an `@accent` highlight. Both name palette roles, so the

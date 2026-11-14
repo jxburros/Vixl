@@ -201,7 +201,9 @@ class Slide:
             x, y = ink_origin(image, bounds[layer["id"]])
         rid = self.exporter.media(self, image)
         ident = self.ident()
-        return (f'<p:pic><p:nvPicPr>{c_nv_pr(ident, layer, layer["name"])}'
+        # A text layer drawn as a picture (warped or hand-set) is described by what it says.
+        descr = layer.get("text") if layer["type"] == "text" and layer.get("text", "").strip() else layer["name"]
+        return (f'<p:pic><p:nvPicPr>{c_nv_pr(ident, layer, descr)}'
                 f'<p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>'
                 f'<p:blipFill><a:blip r:embed="{rid}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>'
                 f'<p:spPr><a:xfrm><a:off x="{round(x * emu)}" y="{round(y * emu)}"/>'
@@ -422,6 +424,12 @@ class Slide:
 
         if (layer.get("text_layout") or {}).get("warp", "none") != "none" or (layer.get("text_layout") or {}).get("path"):
             raise Unsupported("warped text")
+        from .lettering import hand_set
+
+        if hand_set(layer) or (active(layer) and any(s.get("rise") or s.get("rotate") for s in layer["rich"]["spans"])):
+            # DrawingML has no per-word baseline lift or turn: the layer is a picture of the render, with its text
+            # as the picture's description.
+            raise Unsupported("hand-set text (per-word rise, turn or size)")
         pt = emu / 12700
         boxed = "width" in (layer.get("text_layout") or {})
         paragraphs, first_top, pen_left, hang = (self.rich_paragraphs(layer, pt) if active(layer)

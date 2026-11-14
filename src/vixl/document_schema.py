@@ -212,6 +212,7 @@ LAYER_FIELDS = {
     "tracking": (NUMBER, "text: letter spacing in pixels."),
     "text_transform": (STRING, "text: none, uppercase, lowercase, capitalize or small-caps, applied when drawing."),
     "hanging_punctuation": (BOOLEAN, "text: punctuation at the line edges hangs outside the text box."),
+    "hand_set": (OBJECT, "text: seeded hand-set variation applied when drawing {seed, unit, rise, rotate, scale, tracking}."),
     "tabs": (ARRAY, "text: tab stops [{at, align, leader}]."),
     "stage": (STRING, "text: type stage (display, h1 … caption) it was set with."),
     "rich": (OBJECT, "Rich text: spans, paragraphs and their styles (see docs/guides/text/rich-text.md)."),

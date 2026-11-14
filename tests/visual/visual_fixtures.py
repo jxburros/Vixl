@@ -11,9 +11,9 @@ from vixl.assets import add_image
 
 FIXTURES = {}
 SVG_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "gradients", "text_plain", "groups", "dashes_fitted",
-                "text_small_caps", "text_hanging_quote", "object_outline_policies", "style_bevel")
+                "text_small_caps", "text_hanging_quote", "object_outline_policies", "style_bevel", "text_hand_set")
 PDF_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "text_plain", "dashes_fitted", "text_small_caps",
-                "text_hanging_quote", "object_outline_policies")
+                "text_hanging_quote", "object_outline_policies", "text_hand_set")
 PPTX_FIXTURES = ("shapes_and_strokes", "text_plain", "groups", "dashes_fitted", "text_small_caps", "text_hanging_quote",
                  "object_outline_policies")
 
@@ -114,6 +114,19 @@ def text_stroked():
         {"type": "text-set", "target": "outline", "stroke_color": "#ffffff", "stroke_width": 3},
         {"type": "text", "text": "Edge", "name": "edge", "size": 40, "x": 12, "y": 80, "color": "#00000000"},
         {"type": "text-set", "target": "edge", "stroke_color": "#f4a261", "stroke_width": 2},
+    ])
+
+
+@fixture
+def text_hand_set():
+    # Live text with hand-made variation: by word, by letter, and one span lifted, turned and enlarged.
+    return doc(width=240, ops=[
+        {"type": "text", "text": "Fresh bread", "name": "words", "size": 34, "x": 14, "y": 10, "color": "#264653",
+         "hand_set": {"seed": 4, "rise": 4, "rotate": 6, "scale": 0.12}},
+        {"type": "text", "text": "baked daily", "name": "letters", "size": 28, "x": 14, "y": 62, "color": "#bc4749",
+         "hand_set": {"seed": 2, "unit": "glyph", "rise": 3, "rotate": 8, "scale": 0.08, "tracking": 2}},
+        {"type": "rich-text", "name": "span", "markdown": "open [late]{rise=6 rotate=-7 scale=1.4 color=#2a9d8f} today",
+         "size": 22, "x": 14, "y": 112, "color": "#333333"},
     ])
 
 

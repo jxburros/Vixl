@@ -61,6 +61,26 @@ HANGING_FIELD = field(B, "Hang punctuation outside the text edge so the letters 
                          "box, and the bounds checks count them. false removes it.")
 
 
+HAND_SET_FIELD = {
+    "type": ["object", "boolean", "null"],
+    "description": "Hand-set lettering that stays live text: every word (or letter) gets its own seeded baseline "
+                   "lift, turn, size and spacing when the layer is drawn, so the text stays editable and the text "
+                   "checks still read it. {seed, unit: word|glyph, rise (px, up to), rotate (degrees, up to), scale "
+                   "(fraction, 0.06 = 6% larger or smaller), tracking (px, up to)}; amounts left out follow the size "
+                   "(4% rise, 3 degrees, 6% scale, no tracking). true uses those with seed 0; false or null removes it. "
+                   "A unit keeps its numbers when other words change.",
+    "properties": {
+        "seed": {"type": "integer", "description": "Which set of variations to draw; the same seed gives the same lettering."},
+        "unit": {"enum": ["word", "glyph"], "description": "Vary whole words (default) or every letter."},
+        "rise": {"type": "number", "minimum": 0, "maximum": 500, "description": "Largest baseline lift or drop in pixels."},
+        "rotate": {"type": "number", "minimum": 0, "maximum": 45, "description": "Largest turn in degrees, either way."},
+        "scale": {"type": "number", "minimum": 0, "maximum": 0.5, "description": "Largest size change as a fraction of the size."},
+        "tracking": {"type": "number", "minimum": 0, "maximum": 200, "description": "Largest change in letter spacing in pixels."},
+    },
+    "additionalProperties": False,
+}
+
+
 def gradient_fields():
     """The colour fields of a gradient layer, shared by a shape's ``fill_gradient`` (one definition, so both
     accept the same gradients)."""
@@ -186,6 +206,7 @@ def _operation_schema():
                            "as small capitals, the font's own (OpenType smcp) or synthesized at 0.7 of the size); "
                            "applies to text changed by keyframes and ${variable} values too. none removes it."},
         "hanging_punctuation": HANGING_FIELD,
+        "hand_set": HAND_SET_FIELD,
         "accent_words": {"type": "array", "items": S, "maxItems": 32,
                          "description": "Words to set in the accent text color (@accent-text): whole words, matched "
                          "without regard to case. The layer becomes rich text with those spans; words not found are "
