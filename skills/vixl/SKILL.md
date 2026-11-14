@@ -118,7 +118,7 @@ The payload is always the operation list: when unsure of a field, `vixl_referenc
 | Fonts, pairings, rolls, making a font | [typography](references/typography.md) |
 | Palettes, templates, guidance, SVG output | [resources](references/resources.md) |
 | Rich text, pages and decks, forms | [documents](references/documents.md) |
-| Charts, shared datasets, bound text, tables, key-value lists | [charts](references/charts.md) |
+| Charts (emphasis, marks named by series and category), shared datasets, bound text, tables, key-value lists | [charts](references/charts.md) |
 | Hand drawings, diagrams, organic shapes, scatter, guides | [drawing-shapes-guides](references/drawing-shapes-guides.md) |
 | Objects with parts (object-plan, outline), accessibility | [objects](references/objects.md) |
 | Brushes, timelines, nested animation instances, video templates | [brushes-timeline](references/brushes-timeline.md) |

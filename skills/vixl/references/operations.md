@@ -23,7 +23,10 @@ values of `opacity`): `"70%"` is read as 0.7; a bare `70` is an error suggesting
 Per-layer operations (`opacity`, `move`, `rotate`, `hide`, `layer-intent`, `layer-style`, effects, `shape`/`text`
 edits …) apply to each listed layer within the batch; joint ones (`group`, `align`, `distribute`, `pathfinder`
 …) treat the list together; single-layer ones (`rename` …) accept a one-item list only. The full table is in
-docs/reference/operations.md (`x-targets` in the schema).
+docs/reference/operations.md (`x-targets` in the schema). A target can also name a chart's parts by data:
+`{"chart": "sales", "series": "Tea", "category": "Dec", "part": "value"}` stands for the layers it names when
+the operation runs (all of them for per-layer and joint operations, exactly one for single-layer ones); see
+[charts](charts.md).
 
 Conventions used below: **bold** = required. `target` is a layer name or `lyr_…` ID and, when
 omitted, defaults to the active layer. Colors accept CSS names, `#rgb`, `#rrggbb`, `#rrggbbaa`,
@@ -308,6 +311,7 @@ lists every operation by purpose.
 | type | key fields | reference |
 | --- | --- | --- |
 | `chart` / `chart-data` | `kind`, `categories`+`series` / `table` / `csv`, `title`, `colors`, `legend`, `legend_values` (the legend as a key-value list), `value_labels`, `number_format`, `padding`, `target` (restyle); without `x`/`y`/`width`/`height` a new chart fills the safe area inset by two spacing units; `chart-data`: `set`, `append`, `remove_categories`, `add_series`, `remove_series`, `reload` | [charts](charts.md) |
+| `chart-emphasis` | `target`, `focus` (categories kept in colour; `[]` restores the chart), `series`, `mute` (`fade`/`desaturate`), `opacity` (fade strength, default 0.35), `annotate` (callout: `${value}`, `${percent}`, `${category}`, `${series}`); survives `chart-data` | [charts](charts.md) |
 | `table` / `table-data` | `table` (rows, header first) / `csv`, `columns` (`width`, `align` incl. `decimal`, `format`, `leader` such as `"."`), `header_fill`, `zebra`, `borders`, `font_size`, `width`, `target` (restyle); `table-data`: `set` (`row`, `column`, `value`), `append`, `remove_rows`, `add_columns`, `remove_columns`, `reload` | [charts](charts.md#tables) |
 | `key-value-list` | `rows` (`{label, value, share}`) *or* `items` text (`label \| value \| share` per line), `shares: "auto"` (each value's share of the total), `number_format`, `colors` (a swatch per row), `rules`, `font_size`, `font`, `value_font`, `text_color`, `share_color`, `rule_color`, `name`, `x`, `y`, `width`; `target` restyles or gives new rows | [charts](charts.md#key-value-lists) |
 | `organic` | `preset` or `parts`, `params`, `colors`, `fill`, `stroke`, `stroke_width`, `illustration` (`plain` skips the house finish), `seed`, `name`, `target` (regrow) | [organic shapes](drawing-shapes-guides.md#organic-shapes) |

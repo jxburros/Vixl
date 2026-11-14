@@ -48,7 +48,8 @@ Imperfect: irregular TARGET --seed N [--strength subtle|natural|rough] (wobble, 
            tear TARGET --seed N [--edges bottom] (torn edge as a mask; --as path for layers), --remove undoes either
 Charts:    chart bar|stacked-bar|percent-bar|horizontal-bar|line|area|pie|donut --name N (--csv FILE | --categories JSON --series JSON)
            [--title T] [--legend bottom] [--value-labels true] [--number-format '#,##0'], chart line --target N (restyle, resize, change kind),
-           chart-data --target N --set DEC=3330 | --append 'JAN=1,2' | --remove-category C | --reload; exports to .pptx as a native chart
+           chart-data --target N --set DEC=3330 | --append 'JAN=1,2' | --remove-category C | --reload; exports to .pptx as a native chart,
+           chart-emphasis DEC --target N [--series S] [--mute fade|desaturate] [--annotate 'Best: ${value}'] | --clear (highlight, mute the rest)
 Tables:    table --name N (--table JSON | --csv FILE) [--align left,decimal] [--width W] [--zebra] [--borders all],
            table-data --target N --set ROW:COLUMN=VALUE | --append JSON | --remove-row R | --reload; exports to .pptx as a native table
 Design:    pen, shape, shape-place, container-place, container-swap, container-reflow, group, ungroup, reparent LAYER… --into GROUP|page, clip, layer-style, distribute, style-define,

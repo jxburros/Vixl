@@ -533,6 +533,9 @@ def validate_operation(operation, notes=None, index=None):
         require(isinstance(page, (str, int)) and not isinstance(page, bool), "page must be a page name or number",
                 field="page")
     properties = _properties()
+    from .targets import lift_addresses
+
+    restore_addresses = lift_addresses(result)  # {chart, series, category} targets are resolved when the operation runs
     result = normalize_operation(
         result, lambda k: properties.get(k, frozenset()), properties, EFFECTS, [] if notes is None else notes, index,
         required=lambda k: _required().get(k, frozenset()),
@@ -561,6 +564,7 @@ def validate_operation(operation, notes=None, index=None):
         json.dumps(result, allow_nan=False)
     except (ValueError, TypeError, RecursionError) as exc:
         raise VixlError("invalid_operation", "Operations must contain finite JSON values") from exc
+    restore_addresses(result)
     if page is not None:
         result["page"] = page
     return result

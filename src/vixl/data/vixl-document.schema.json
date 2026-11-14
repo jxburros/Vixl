@@ -1378,6 +1378,10 @@
      "type": "string",
      "description": "Which part of a chart this layer is."
     },
+    "chart_mark": {
+     "type": "object",
+     "description": "What a chart part stands for in the data: {part, series?, category?} by name."
+    },
     "table": {
      "type": "object",
      "description": "group: the table record (rows, columns, styles)."

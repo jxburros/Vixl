@@ -68,6 +68,8 @@ HOOKS = {
     "after-apply": "fn(project): refresh derived plugin state once a batch has applied",
     "variables": "fn(project) -> {name: value}: derived variables merged under the data. prefix once per resolve pass",
     "apply-report": "fn(project, operations, result): add plugin keys to the apply result",
+    "target-resolver": "fn(project, address) -> [layer ids], or None when the address object given as an "
+                       "operation's target is not the plugin's (a chart mark is {chart, series?, category?, part?})",
     "export-format": "fn(project, path, format, report, **options) -> data, or None when the format is not the plugin's",
     "timeline-export-format": "fn(project, path, format, **options) -> report or None: export a timeline interchange format",
     "import-format": "fn(project, data, format, **options) -> result, or None when the format is not the plugin's",

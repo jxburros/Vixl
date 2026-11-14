@@ -10,6 +10,7 @@ PLUGIN = {
     "commands": ["tables", "datasets", "key_values", "charts"],
     "hooks": {"normalize": ["hooks:normalize"], "validate-layer": ["hooks:validate_layer"],
               "validate-state": ["datasets:validate_state"], "after-apply": ["datasets:refresh"],
-              "variables": ["datasets:variables"]},
+              "variables": ["datasets:variables"], "target-resolver": ["charts:resolve_target"],
+              "check": ["hooks:check"]},
     "capabilities": {"charts": ("chart table data graph plot bar pie line series key value list", ["charts"])},
 }

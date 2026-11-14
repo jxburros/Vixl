@@ -23,7 +23,7 @@ from ...constants import BUNDLED_FONTS
 from ...errors import VixlError, require
 from ...model import finite, new_layer
 
-TYPES = ("chart", "chart-data")
+TYPES = ("chart", "chart-data", "chart-emphasis")
 KINDS = (
     "bar", "stacked-bar", "percent-bar", "horizontal-bar", "stacked-horizontal-bar", "percent-horizontal-bar",
     "line", "area", "stacked-area", "pie", "donut",
@@ -58,6 +58,12 @@ OPTIONS = (
     "hole", "start_angle", "center_text", "padding",
 )
 DATA_KEYS = ("categories", "series", "table", "csv", "data")
+MUTES = ("fade", "desaturate")
+MUTE_OPACITY = 0.35  # fade: how much of a muted mark's own colour stays over the chart background
+EMPHASIS_KEYS = ("focus", "series", "mute", "opacity", "annotate")
+# The parts of a chart an address can name (resolve_mark); "mark" stands for the data marks themselves.
+MARK_PARTS = ("bar", "slice", "point", "line", "area", "value", "total", "legend", "category-label", "callout")
+DATA_MARKS = ("bar", "slice", "point", "line", "area")
 # Stacking order of generated layers, bottom to top.
 Z_BACKGROUND, Z_GRID, Z_AXIS, Z_MARKS, Z_LINES, Z_MARKERS, Z_VALUES, Z_AXIS_TEXT, Z_LEGEND, Z_TITLE = range(10)
 KIND_ALIASES = {
@@ -313,6 +319,31 @@ def normalize(op, note):
     return op
 
 
+def normalize_emphasis(op, note):
+    """Forgiving spellings of ``chart-emphasis``: highlight/categories for focus, callout/label for annotate, one
+    category given as text, grey for desaturate."""
+    for old, new in (("highlight", "focus"), ("categories", "focus"), ("category", "focus"), ("callout", "annotate"),
+                     ("annotation", "annotate"), ("label", "annotate"), ("mode", "mute")):
+        if old in op and new not in op:
+            op[new] = op.pop(old)
+            note(f"{old!r} → {new!r}")
+    focus = op.get("focus")
+    if isinstance(focus, (str, int, float)) and not isinstance(focus, bool):
+        op["focus"] = [focus]
+        note("focus as one category → a one-item list")
+    elif "focus" in op and focus is None:
+        op["focus"] = []
+        note("focus null → [] (removes the emphasis)")
+    mute = op.get("mute")
+    if isinstance(mute, str) and mute not in MUTES:
+        guess = {"grey": "desaturate", "gray": "desaturate", "greyscale": "desaturate", "grayscale": "desaturate",
+                 "desaturated": "desaturate", "dim": "fade", "faded": "fade", "lighten": "fade"}.get(mute.lower())
+        if guess:
+            op["mute"] = guess
+            note(f"mute {mute!r} → {guess!r}")
+    return op
+
+
 def read_data(project, op, recipe):
     """Replace ``recipe``'s table when the operation brings one (inline, rows or a CSV)."""
     from .datasets import binding, detach
@@ -351,7 +382,8 @@ def find(names, wanted, what, field):
     if text in names:
         return names.index(text)
     close = difflib.get_close_matches(str(text), names, 3, 0.5)
-    raise VixlError("invalid_operation", f"Unknown {what} {text!r}; {what}s: {', '.join(names[:40])}"
+    plural = "categories" if what == "category" else what
+    raise VixlError("invalid_operation", f"Unknown {what} {text!r}; {plural}: {', '.join(names[:40])}"
                     + (f". Did you mean {' or '.join(map(repr, close))}?" if close else ""),
                     field=field, allowed=names[:100], suggestions=close)
 
@@ -458,6 +490,75 @@ def mix(front, back, amount):
 
 def hex_color(rgb):
     return "#%02x%02x%02x" % tuple(rgb)
+
+
+class Emphasis:
+    """A chart's emphasis (``recipe["emphasis"]``): which marks stay in their colour, how the rest is drawn and
+    what the callouts say. A mark is in focus when it matches the focus on every dimension it has: a bar, point
+    or slice has a series and a category, a line or area only a series, a total only a category."""
+
+    def __init__(self, project, recipe, style):
+        spec = recipe.get("emphasis") or {}
+        categories, names = recipe["categories"], [s["name"] for s in recipe["series"]]
+        self.active = bool(spec)
+        self.categories = [categories.index(c) for c in spec.get("focus", []) if c in categories]
+        self.series = names.index(spec["series"]) if spec.get("series") in names else None
+        self.mode, self.amount = spec.get("mute", "fade"), spec.get("opacity", MUTE_OPACITY)
+        self.text = spec.get("annotate") if self.categories else None
+        self.state, self.bg = project.state, style.bg
+        self.used, self._muted = {"focus": [], "muted": []}, {}
+
+    def focused(self, series=None, category=None):
+        """Whether the mark of this series and category index is in focus (None: the mark has no such dimension)."""
+        if not self.active:
+            return True
+        if series is not None and self.series is not None and series != self.series:
+            return False
+        return not (category is not None and self.categories and category not in self.categories)
+
+    def muted(self, value):
+        if value not in self._muted:
+            r, g, b, a = rgba(self.state, value)
+            if self.mode == "desaturate":
+                from ...colors import oklab_to_srgb, srgb_to_oklab
+
+                lightness = srgb_to_oklab(unit((r, g, b)))[0]
+                rgb = tuple(round(min(max(c, 0.0), 1.0) * 255) for c in oklab_to_srgb((lightness, 0.0, 0.0)))
+            else:
+                rgb = mix((r, g, b), self.bg, self.amount)
+            self._muted[value] = hex_color(rgb) + (f"{a:02x}" if a < 255 else "")
+        return self._muted[value]
+
+    def color(self, value, series=None, category=None):
+        """``value`` for a mark in focus, its muted form otherwise; records both for the summary and the checks."""
+        if not self.active:
+            return value
+        strong = self.focused(series, category)
+        drawn = value if strong else self.muted(value)
+        seen = self.used["focus" if strong else "muted"]
+        shown = hex_color(rgba(self.state, drawn)[:3])
+        if shown not in seen:
+            seen.append(shown)
+        return drawn
+
+    def ink(self, style, series=None, category=None):
+        """Text colour of a label beside a mark: the chart's ink in focus, its secondary text colour otherwise."""
+        return style.ink if self.focused(series, category) else style.muted
+
+    def callout(self, value, category, series, total, number_format):
+        """The callout text for one focus mark: ``${value}``, ``${percent}`` (share of the chart's total),
+        ``${category}`` and ``${series}`` filled in."""
+        share = value / total if total else 0
+        percent = format_number(share, "0%" if abs(share * 100 - round(share * 100)) < 0.05 else "0.0%")
+        fields = {"value": format_number(value, number_format), "percent": percent, "category": category,
+                  "series": series or ""}
+        return re.sub(r"\$\{(value|percent|category|series)\}", lambda m: fields[m[1]], self.text)
+
+    def summary(self, recipe):
+        spec = recipe["emphasis"]
+        return {"focus": list(spec.get("focus", [])), **({"series": spec["series"]} if spec.get("series") else {}),
+                "mute": self.mode, "focus_colors": self.used["focus"][:64], "muted_colors": self.used["muted"][:64],
+                "surface": hex_color(self.bg)}
 
 
 class Style:
@@ -801,6 +902,10 @@ class Cartesian:
         self.n, self.m = len(self.categories), len(self.series)
         self.gap = max(3, round(style.fs * 0.45))
         self.colors = [s.get("color") or c for s, c in zip(self.series, style.colors(self.m))]
+        self.em = Emphasis(project, recipe, style)
+        # Where the marks landed (bar boxes, line points) and the callouts set beside them; ``quiet`` marks give
+        # their value label up to a callout.
+        self.extent, self.points, self.callouts, self.quiet = {}, {}, {}, set()
         self.shown, forced, _ = labels_mode(recipe, False)
         self.auto = self.shown and not forced
         if self.auto and self.n * self.m > AUTO_LABELS:
@@ -822,8 +927,11 @@ class Cartesian:
         self.frame()
         self.axes()
         (self.draw_bars if self.bars else self.draw_lines)()
+        self.draw_callouts()
         self.place_labels()
         self.draw_legend()
+        if self.em.active:
+            self.stats["emphasis"] = self.em.summary(self.recipe)
         self.stats.update(scale={"min": self.lo, "max": self.hi, "step": self.step, "ticks": self.ticks, "format": self.tick_format},
                           label_format=self.label_format, colors=self.colors, legend=self.position)
 
@@ -850,11 +958,11 @@ class Cartesian:
         if self.position:
             if recipe.get("legend_values"):
                 entries = [(s["name"], format_number(totals["by_series"][s["name"]], self.label_format), None,
-                            self.colors[i]) for i, s in enumerate(self.series)]
+                            self.em.color(self.colors[i], i)) for i, s in enumerate(self.series)]
                 self.legend = ValueLegend(self.project, kit, style, entries, self.position, W - 2 * pad)
             else:
-                self.legend = Legend(kit, style, [(s["name"], self.colors[i]) for i, s in enumerate(self.series)],
-                                     self.position, W - 2 * pad)
+                self.legend = Legend(kit, style, [(s["name"], self.em.color(self.colors[i], i))
+                                                  for i, s in enumerate(self.series)], self.position, W - 2 * pad)
         top = header(kit, style, recipe, self.parts, (W, H))
         left, right, bottom = pad, W - pad, H - pad
         if self.legend and self.position == "top":
@@ -876,6 +984,9 @@ class Cartesian:
             self.title_y, bottom = bottom, bottom - gap
         above = not self.horizontal and (self.totals_shown or (self.point_labels and not (self.bars and self.stacked)))
         top += round(self.value_cap + gap * 1.5) if above else round(self.cap / 2) + 2
+        self.prepare_callouts()
+        if self.callouts and not self.horizontal:
+            top += max(lab["height"] for lab in self.callouts.values()) + gap
         if self.horizontal:
             self.cat_labels = [kit.make(kit.wrap(c, fs, W * 0.35), fs, style.muted, align="right") for c in self.categories]
             left += max(lab["width"] for lab in self.cat_labels) + gap * 2
@@ -891,9 +1002,13 @@ class Cartesian:
         widest = max(lab["width"] for lab in self.tick_labels)
         if self.horizontal:
             right -= widest / 2 + 2
+            self.longest = 0
             if self.point_labels or self.totals_shown:
                 longest = max([kit.width(format_number(v, self.label_format), fs) for row in self.zero for v in row] + [0])
-                right -= 0 if self.stacked and not self.totals_shown else longest + gap
+                self.longest = 0 if self.stacked and not self.totals_shown else longest + gap
+                right -= self.longest
+            if self.callouts:
+                right -= max(lab["width"] for lab in self.callouts.values()) + gap
             bottom -= self.cap + max(lab["height"] - lab["base"] for lab in self.tick_labels) + gap * 2
             top += gap
             self.px0, self.px1, self.py0, self.py1 = left, right, top, bottom
@@ -916,6 +1031,87 @@ class Cartesian:
         require(self.px1 - self.px0 > 20 and self.py1 - self.py0 > 20,
                 "The chart is too small for its labels; enlarge it, shorten the text or lower font_size")
         self.base = 0 if self.lo <= 0 <= self.hi else self.lo
+
+    def prepare_callouts(self):
+        """The callout of each focus category, made before the plot is sized so it gets its room. With one
+        series in focus it speaks for that mark and takes the place of its value label; otherwise it speaks for
+        the whole category and ``${value}`` is the category's total."""
+        em, totals = self.em, self.stats["totals"]
+        if not em.text:
+            return
+        single = em.series if em.series is not None else (0 if self.m == 1 else None)
+        for i in em.categories:
+            category = self.categories[i]
+            value = self.series[single]["values"][i] if single is not None else totals["by_category"][category]
+            if value is None:
+                continue
+            text = em.callout(value, category, self.series[single]["name"] if single is not None else None,
+                              totals["grand"], self.label_format)
+            self.callouts[i] = self.kit.make(self.kit.wrap(text, self.style.fs, self.W * 0.4), self.style.fs,
+                                             self.style.ink, align="left" if self.horizontal else "center")
+            if single is not None and not (self.bars and self.stacked):
+                self.quiet.add((single, i))
+
+    def draw_callouts(self):
+        """Callouts beside their focus marks: above a bar, stack or point (below a negative one), past the end of
+        a horizontal bar, clear of the value labels drawn there. Automatic value labels keep clear of them."""
+        style, gap, em = self.style, self.gap, self.em
+        lift = round(self.value_cap + gap * 1.5)
+        for i, lab in self.callouts.items():
+            series = [em.series] if em.series is not None else list(range(self.m))
+            whole = self.bars and self.stacked
+            if self.bars:
+                boxes = [self.extent[(s, i)] for s in (range(self.m) if whole else series) if (s, i) in self.extent]
+                if not boxes:
+                    continue
+                x0, y0 = min(b[0] for b in boxes), min(b[1] for b in boxes)
+                x1, y1 = max(b[0] + b[2] for b in boxes), max(b[1] + b[3] for b in boxes)
+                reach = gap
+            else:
+                points = [self.points[(s, i)] for s in series if (s, i) in self.points]
+                if not points:
+                    continue
+                x0 = x1 = points[0][0]
+                y0, y1 = min(p[1] for p in points), max(p[1] for p in points)
+                reach = max(p[2] for p in points)
+            up = sum(self.zero[s][i] for s in (range(self.m) if whole else series)) >= 0
+            if whole:
+                labelled = self.totals_shown
+            else:
+                labelled = (self.shown if self.bars else self.point_labels) and not any((s, i) in self.quiet for s in series)
+            if self.horizontal:
+                offset = self.longest if labelled else 0
+                left, top = spot(lab, x1 + reach + offset if up else x0 - reach - offset, (y0 + y1) / 2,
+                                 "left" if up else "right", "mid")
+            else:
+                offset = lift if labelled else 0
+                left, top = spot(lab, (x0 + x1) / 2, y0 - reach - offset - lab["height"] if up else y1 + reach + offset,
+                                 "center", "top")
+            if self.bars and not whole and up:
+                # A callout wider than its bar clears the neighbouring bars of the category and their labels.
+                for s in range(self.m):
+                    if s in series or (s, i) not in self.extent:
+                        continue
+                    bx, by, bw, bh = self.extent[(s, i)]
+                    if self.horizontal:
+                        reach_x = bx + bw + (self.longest if self.shown else 0)
+                        if Collider.overlaps((left, top, lab["width"], lab["height"]), (bx, by, reach_x - bx, bh), gap):
+                            left = max(left, reach_x + gap)
+                    else:
+                        roof = by - (lift if self.shown else 0)
+                        if Collider.overlaps((left, top, lab["width"], lab["height"]), (bx, roof, bw, bh + by - roof), gap):
+                            top = min(top, roof - gap - lab["height"])
+            elif not self.bars and em.series is not None:
+                # Beside other lines, the callout goes below its point when that is the side clear of them.
+                key = f"value-{em.series}-{i}"
+                other = y1 + reach + offset if up else y0 - reach - offset - lab["height"]
+                if not self.clear_of_marks((round(left), round(top), lab["width"], lab["height"]), key) and \
+                        self.clear_of_marks((round(left), round(other), lab["width"], lab["height"]), key):
+                    top = other
+            left = min(max(left, style.pad), max(style.pad, self.W - style.pad - lab["width"]))
+            top = min(max(top, style.pad), max(style.pad, self.H - style.pad - lab["height"]))
+            box = self.parts.text(f"callout-{i}", f"callout {self.categories[i]}", lab, left, top, Z_VALUES)
+            self.marks.append((-1, box))
 
     def vp(self, value):
         """Pixel position of a value along the value axis."""
@@ -1095,22 +1291,24 @@ class Cartesian:
                 else:
                     v0, v1 = self.vp(self.base), self.vp(v)
                 x, y, w, h = self.box(start, start + slot, v0, v1)
-                parts.rect(f"bar-{s_index}-{i}", f"bar {s['name']} {self.categories[i]}", (x, y, w, h),
-                           self.colors[s_index], Z_MARKS)
-                if not self.shown:
+                fill = self.em.color(self.colors[s_index], s_index, i)
+                parts.rect(f"bar-{s_index}-{i}", f"bar {s['name']} {self.categories[i]}", (x, y, w, h), fill, Z_MARKS)
+                self.extent[(s_index, i)] = (x, y, w, h)
+                if not self.shown or (s_index, i) in self.quiet:
                     continue
                 key, name = f"value-{s_index}-{i}", f"value {s['name']} {self.categories[i]}"
+                ink = self.em.ink(style, s_index, i)
                 if self.stacked:
-                    self.label(key, name, v, x + w / 2, y + h / 2, "center", style.on(self.colors[s_index]),
+                    self.label(key, name, v, x + w / 2, y + h / 2, "center", style.on(fill),
                                fit=(w - 4, h - 2), drop=0.5)
                 elif self.horizontal:
                     forward = v > 0
                     self.label(key, name, v, x + w + gap if forward else x - gap, y + h / 2,
-                               "left" if forward else "right", style.ink, fit=(None, h * 1.3), drop=0.5)
+                               "left" if forward else "right", ink, fit=(None, h * 1.3), drop=0.5)
                 elif v > 0:
-                    self.label(key, name, v, x + w / 2, y - gap, "center", style.ink, fit=(max(w * 1.3, self.band / m), None))
+                    self.label(key, name, v, x + w / 2, y - gap, "center", ink, fit=(max(w * 1.3, self.band / m), None))
                 else:
-                    self.label(key, name, v, x + w / 2, y + h + gap, "center", style.ink, fit=(max(w * 1.3, self.band / m), None), drop=1)
+                    self.label(key, name, v, x + w / 2, y + h + gap, "center", ink, fit=(max(w * 1.3, self.band / m), None), drop=1)
         if not self.totals_shown:
             return
         for i, category in enumerate(self.categories):
@@ -1118,23 +1316,24 @@ class Cartesian:
                 continue
             total, up = self.stats["totals"]["by_category"][category], positive[i] > 0
             end = self.vp(positive[i] if up else negative[i])
-            key, name = f"total-{i}", f"total {category}"
+            key, name, ink = f"total-{i}", f"total {category}", self.em.ink(style, None, i)
             if self.horizontal:
                 self.label(key, name, total, end + gap if up else end - gap, self.center(i),
-                           "left" if up else "right", style.ink, drop=0.5)
+                           "left" if up else "right", ink, drop=0.5)
             elif up:
-                self.label(key, name, total, self.center(i), end - gap, "center", style.ink)
+                self.label(key, name, total, self.center(i), end - gap, "center", ink)
             else:
-                self.label(key, name, total, self.center(i), end + gap, "center", style.ink, drop=1)
+                self.label(key, name, total, self.center(i), end + gap, "center", ink, drop=1)
 
     def draw_lines(self):
-        parts, style, gap, n = self.parts, self.style, self.gap, self.n
+        parts, style, gap, n, em = self.parts, self.style, self.gap, self.n, self.em
         width = self.recipe.get("line_width") or (max(2, round(style.fs * 0.18)) if n <= 60 else 1.5)
         dots = self.recipe.get("markers", n * self.m <= 60) and not self.area
         dot = max(6, round(width * 2.4))
         below = [0] * n
         for s_index, s in enumerate(self.series):
-            color, name = self.colors[s_index], s["name"]
+            own, name = self.colors[s_index], s["name"]
+            color = em.color(own, s_index)
             if self.area:
                 tops = [below[i] + (v or 0) if self.stacked else (v or 0) for i, v in enumerate(s["values"])]
                 lower = [below[i] if self.stacked else self.base for i in range(n)]
@@ -1163,17 +1362,29 @@ class Cartesian:
                 if point is None:
                     continue
                 x, y = point
+                size = dot if dots else width
                 if dots:
                     parts.add(f"marker-{s_index}-{i}", f"marker {name} {self.categories[i]}", "ellipse", Z_MARKERS,
-                              x=round(x - dot / 2), y=round(y - dot / 2), width=dot, height=dot, fill=color)
+                              x=round(x - dot / 2), y=round(y - dot / 2), width=dot, height=dot,
+                              fill=em.color(own, s_index, i))
                     if not self.area:
                         self.marks.append((s_index, (round(x - dot / 2), round(y - dot / 2), dot, dot)))
-                if self.point_labels and s["values"][i] is not None:
-                    value, reach = s["values"][i], (dot if dots else width) / 2 + gap
+                if i in em.categories and em.focused(s_index, i) and s["values"][i] is not None:
+                    # The point in focus: a larger dot in the series colour, ringed in the background colour.
+                    size = round(dot * 1.7)
+                    box = (round(x - size / 2), round(y - size / 2), size, size)
+                    parts.add(f"focus-{s_index}-{i}", f"focus {name} {self.categories[i]}", "ellipse", Z_MARKERS,
+                              x=box[0], y=box[1], width=size, height=size, fill=em.color(own, s_index, i),
+                              stroke=style.separator, stroke_width=max(1, round(dot * 0.2)))
+                    self.marks.append((s_index, box))
+                if s["values"][i] is not None:
+                    self.points[(s_index, i)] = (x, y, size / 2 + gap)
+                if self.point_labels and s["values"][i] is not None and (s_index, i) not in self.quiet:
+                    value, reach = s["values"][i], size / 2 + gap
                     key, label = f"value-{s_index}-{i}", f"value {name} {self.categories[i]}"
                     above, below = (y - reach, 0), (y + reach, 1)
                     first, second = (above, below) if value >= 0 else (below, above)
-                    self.label(key, label, value, x, first[0], "center", style.ink, drop=first[1],
+                    self.label(key, label, value, x, first[0], "center", em.ink(style, s_index, i), drop=first[1],
                                alternative=second if self.m > 1 and not self.area else None)
 
     def draw_legend(self):
@@ -1236,6 +1447,8 @@ def radial(project, recipe, size, style, kit, parts, stats):
     fs, pad = style.fs, style.pad
     gap = max(3, round(fs * 0.45))
     colors = style.colors(len(categories))
+    em = Emphasis(project, recipe, style)
+    drawn = [em.color(color, 0, i) for i, color in enumerate(colors)]
     shown, force, content = labels_mode(recipe, True)
     label_format = recipe.get("number_format") or auto_format([v for v in values if v is not None])
     shares = [(v or 0) / total for v in values]
@@ -1251,13 +1464,13 @@ def radial(project, recipe, size, style, kit, parts, stats):
     legend = None
     if position:
         if recipe.get("legend_values"):
-            entries = [(c, format_number(values[i] or 0, label_format), format_number(shares[i], percent_format), colors[i])
+            entries = [(c, format_number(values[i] or 0, label_format), format_number(shares[i], percent_format), drawn[i])
                        for i, c in enumerate(categories)]
             legend = ValueLegend(project, kit, style, entries, position, W - 2 * pad)
             # The list pairs each name with its value and share, so automatic labels around the ring would repeat it.
             shown = shown and force
         else:
-            legend = Legend(kit, style, [(c, colors[i]) for i, c in enumerate(categories)], position, W - 2 * pad)
+            legend = Legend(kit, style, [(c, drawn[i]) for i, c in enumerate(categories)], position, W - 2 * pad)
         if position == "top":
             legend_y, top = top, top + legend.height + gap
         elif position == "bottom":
@@ -1266,7 +1479,13 @@ def radial(project, recipe, size, style, kit, parts, stats):
             left += legend.width + gap * 2
         else:
             right -= legend.width + gap * 2
-    labels = {i: kit.make(slice_text(i), fs, style.ink) for i in range(len(categories)) if shown and shares[i] > 0}
+    labels = {i: kit.make(slice_text(i), fs, em.ink(style, 0, i)) for i in range(len(categories))
+              if shown and shares[i] > 0}
+    # A callout takes the place of its slice's label, so the labels still clear each other around the ring.
+    callouts = {i: kit.make(kit.wrap(em.callout(values[i], categories[i], recipe["series"][0]["name"], total,
+                                                label_format), fs, W * 0.3), fs, style.ink)
+                for i in em.categories if em.text and shares[i] > 0}
+    labels.update(callouts)
     room_x = max((lab["width"] for lab in labels.values()), default=0) + gap if labels else 0
     room_y = max((lab["height"] for lab in labels.values()), default=0) + gap if labels else 0
     cx, cy = (left + right) / 2, (top + bottom) / 2
@@ -1289,7 +1508,7 @@ def radial(project, recipe, size, style, kit, parts, stats):
         w = math.ceil(max(p[0] for p in samples) + pad_) - x0
         h = math.ceil(max(p[1] for p in samples) + pad_) - y0
         parts.add(f"slice-{i}", f"slice {categories[i]}", "path", Z_MARKS, x=x0, y=y0, width=w, height=h, path=build(x0, y0),
-                  path_view=[w, h], fill=colors[i], stroke=style.separator, stroke_width=outline, line_cap="round")
+                  path_view=[w, h], fill=drawn[i], stroke=style.separator, stroke_width=outline, line_cap="round")
         if i in labels:
             # Just outside the slice's middle; labels at the top or bottom sit above or below the ring.
             middle, lab = (a0 + a1) / 2, labels[i]
@@ -1310,7 +1529,8 @@ def radial(project, recipe, size, style, kit, parts, stats):
             near = max(0.0, abs(y - cy) - lab["height"] / 2)
             if near < ring:
                 x = cx + (1 if right_side else -1) * (math.sqrt(ring * ring - near * near) + lab["width"] / 2)
-            place(parts, f"slice-label-{i}", f"slice label {categories[i]}", lab, x, y, Z_VALUES, "center", "mid")
+            key = "callout" if i in callouts else "slice-label"
+            place(parts, f"{key}-{i}", f"{key.replace('-', ' ')} {categories[i]}", lab, x, y, Z_VALUES, "center", "mid")
     if donut and recipe.get("center_text"):
         text = recipe["center_text"].replace("{total}", format_number(total, label_format))
         points = style.snap(fs * 1.8)
@@ -1324,6 +1544,8 @@ def radial(project, recipe, size, style, kit, parts, stats):
         ox = {"left": pad, "right": W - pad - legend.width}.get(position, (left + right) / 2 - legend.width / 2)
         legend.emit(parts, ox, cy - legend.height / 2 if oy is None else oy)
     stats["slices"] = {c: {"value": values[i], "share": round(shares[i] * 100, 6)} for i, c in enumerate(categories)}
+    if em.active:
+        stats["emphasis"] = em.summary(recipe)
     stats.update(label_format=label_format, percent_format=percent_format, colors=colors, legend=position)
 
 
@@ -1358,16 +1580,138 @@ def child_name(project, group, label, layer=None):
     return name
 
 
-def sync(project, group, parts, field="chart_part"):
+_PART_KEY = re.compile(r"([a-z]+(?:-[a-z]+)*)((?:-\d+)+)")
+_SERIES_CATEGORY = {"bar": "bar", "marker": "point", "focus": "point", "value": "value"}
+_CATEGORY = {"slice": "slice", "slice-label": "value", "total": "total", "category-label": "category-label",
+             "callout": "callout"}
+_LEGEND = ("legend-swatch", "legend-label", "legend-value", "legend-share")
+
+
+def mark_of(key, recipe):
+    """``(mark, slot)`` for a generated part key: ``mark`` is what the part stands for in the data,
+    ``{part, series?, category?}`` by name, and ``slot`` tells apart the parts that share a mark (a legend entry's
+    swatch and label, the runs of a broken line). ``(None, None)`` for parts that belong to no series or category
+    (gridlines, ticks, titles)."""
+    match = _PART_KEY.fullmatch(key or "")
+    if not match:
+        return None, None
+    head, numbers = match[1], [int(n) for n in match[2].split("-")[1:]]
+    categories, names = recipe.get("categories", []), [s.get("name") for s in recipe.get("series", [])]
+    radial = recipe.get("kind") in ("pie", "donut")
+    try:
+        if head in _SERIES_CATEGORY and len(numbers) == 2:
+            return {"part": _SERIES_CATEGORY[head], "series": names[numbers[0]], "category": categories[numbers[1]]}, head
+        if head == "line" and len(numbers) == 2:
+            return {"part": "line", "series": names[numbers[0]]}, f"line-{numbers[1]}"
+        if head == "area" and len(numbers) == 1:
+            return {"part": "area", "series": names[numbers[0]]}, head
+        if head in _CATEGORY and len(numbers) == 1:
+            return {"part": _CATEGORY[head], **({"series": names[0]} if radial else {}),
+                    "category": categories[numbers[0]]}, head
+        if head in _LEGEND and len(numbers) == 1:
+            if radial:
+                return {"part": "legend", "series": names[0], "category": categories[numbers[0]]}, head
+            return {"part": "legend", "series": names[numbers[0]]}, head
+    except IndexError:
+        pass
+    return None, None
+
+
+def identity(key, mark):
+    """What a part is, whatever its position in the table: its slot plus the series and category it stands for."""
+    match = _PART_KEY.fullmatch(key or "")
+    if not match or not isinstance(mark, dict):
+        return None
+    slot = f"line-{match[2].rsplit('-', 1)[1]}" if match[1] == "line" else match[1]
+    return slot, mark.get("series"), mark.get("category")
+
+
+def resolve_mark(project, address):
+    """Layer IDs of the chart parts an address names, in stacking order.
+
+    ``address`` is ``{chart, series?, category?, part?}``: the chart group, the series and category by name as the
+    data has them, and the part (``MARK_PARTS``; without one, the data marks: bars, slices, points, lines and
+    areas). A part matches when it agrees with every name given, so ``{chart, category}`` is every bar of that
+    category and ``{chart, series}`` a whole series. The lookup reads the chart's data, so it holds after
+    ``chart-data`` edits that add, remove or reorder rows. Unknown names are an error listing the valid ones."""
+    require(isinstance(address, dict), "A chart mark address is {chart, series?, category?, part?}", field="target")
+    extra = sorted(set(address) - {"chart", "series", "category", "part"})
+    require(not extra, f"A chart mark address takes chart, series, category and part; got {', '.join(map(repr, extra))}",
+            field="target", allowed=["chart", "series", "category", "part"])
+    group = project.layer(address.get("chart"))
+    require(group["type"] == "group" and "chart" in group, f"{group['name']!r} is not a chart; chart names a chart group",
+            field="target.chart")
+    recipe = group["chart"]
+    names = [s["name"] for s in recipe["series"]]
+    wanted = {}
+    if address.get("series") is not None:
+        wanted["series"] = names[find(names, address["series"], "series", "target.series")]
+    if address.get("category") is not None:
+        wanted["category"] = recipe["categories"][find(recipe["categories"], address["category"], "category",
+                                                       "target.category")]
+    part = address.get("part")
+    require(part is None or part in MARK_PARTS or part == "mark",
+            f"part must be one of {', '.join(MARK_PARTS)} (or mark, the default: the data marks); got {part!r}",
+            field="target.part", allowed=["mark", *MARK_PARTS])
+    kinds = DATA_MARKS if part in (None, "mark") else (part,)
+    found, present = [], set()
+    for layer in project.state["layers"]:
+        if layer.get("parent") != group["id"]:
+            continue
+        mark, _ = mark_of(layer.get("chart_part"), recipe)
+        if mark is None:
+            continue
+        present.add(mark["part"])
+        if mark["part"] in kinds and all(mark.get(key) == value for key, value in wanted.items()):
+            found.append(layer["id"])
+    if not found:
+        what = " or ".join(kinds) if len(kinds) < 4 else "data mark"
+        where = ", ".join(f"{key} {value!r}" for key, value in wanted.items()) or "any series or category"
+        raise VixlError("invalid_operation", f"{group['name']!r} draws no {what} for {where}. Its parts: "
+                        f"{', '.join(sorted(present)) or 'none'}" + ("; a line or area belongs to a series, not a "
+                        "category: name the point, or leave category out" if "category" in wanted and
+                        set(kinds) <= {"line", "area"} else ""), field="target", allowed=sorted(present))
+    return found
+
+
+def resolve_target(project, address):
+    """The ``target-resolver`` hook: a ``{chart, ...}`` address is a chart mark; anything else is not ours."""
+    if not isinstance(address, dict) or "chart" not in address:
+        return None
+    return resolve_mark(project, address)
+
+
+def sync(project, group, parts, field="chart_part", marks=None):
     """Make the group's generated children match ``parts``: update layers in place (same IDs), add the
     missing ones, drop the ones the chart no longer draws, and order them as the layout stacks them. ``field`` is
-    the layer key holding each part's key (tables use ``table_part``)."""
+    the layer key holding each part's key (tables use ``table_part``).
+
+    ``marks(key)`` gives ``(mark, slot)`` for the parts that stand for data (``mark_of``). Those layers carry the
+    mark as ``chart_mark`` and are matched by it rather than by their key, which is a position in the table: when
+    rows are reordered or removed, the layer of a series and category stays that series and category, with its ID
+    and whatever was added to it."""
     layers = project.state["layers"]
     wanted = parts.ordered()
-    by_key = {p["key"]: p for p in wanted}
     mine = {x[field]: x for x in layers if x.get("parent") == group["id"] and field in x}
-    stale = [x for key, x in mine.items() if key not in by_key or part_kind(x) != by_key[key]["kind"]]
-    reuse = {key: x for key, x in mine.items() if x not in stale}
+    known = {}
+    for key, layer in mine.items():
+        ident = identity(key, layer.get("chart_mark")) if marks else None
+        if ident is not None:
+            known.setdefault(ident, layer)
+    reuse, used = {}, set()
+    for part in wanted:
+        mark = marks(part["key"])[0] if marks else None
+        part["mark"] = mark
+        layer = known.get(identity(part["key"], mark)) if mark else None
+        if layer is None:
+            # Not a data part, or a document from before marks were stored: the key is the identity.
+            layer = mine.get(part["key"])
+            if layer is not None and mark and isinstance(layer.get("chart_mark"), dict):
+                layer = None
+        if layer is not None and layer["id"] not in used and part_kind(layer) == part["kind"]:
+            reuse[part["key"]] = layer
+            used.add(layer["id"])
+    stale = [x for x in mine.values() if x["id"] not in used]
     fresh = sum(1 for p in wanted if p["key"] not in reuse)
     require(len(layers) - len(stale) + fresh <= project.limits.max_layers,
             f"This chart needs {len(layers) - len(stale) + fresh} layers; a document holds at most "
@@ -1400,6 +1744,11 @@ def sync(project, group, parts, field="chart_part"):
             if layer["name"] != name:
                 layer["name"] = child_name(project, group, part["label"], layer)
         layer.update(deepcopy(fields))
+        layer[field] = part["key"]
+        if part["mark"]:
+            layer["chart_mark"] = part["mark"]
+        else:
+            layer.pop("chart_mark", None)
         if part["kind"] == "text" and "font_role" not in fields:
             layer.pop("font_role", None)
         kept.append(layer)
@@ -1424,15 +1773,142 @@ def sync(project, group, parts, field="chart_part"):
 def redraw(project, group, recipe, size=None):
     """Lay the recipe out again into ``group`` (resized to ``size`` when given) and record the statistics."""
     width, height = size or (group["content_width"], group["content_height"])
+    settle_emphasis(project, group, recipe)
     check_options(project.state, recipe)
     parts, stats = layout(project, recipe, (width, height))
-    stats["layers"] = sync(project, group, parts)
+    stats["layers"] = sync(project, group, parts, marks=lambda key: mark_of(key, recipe))
     recipe["summary"] = stats
     group["chart"] = recipe
     group["content_width"], group["content_height"] = width, height
     if size:
         group["width"], group["height"] = width, height
     project.state["active_layer"] = group["id"]
+
+
+def settle_emphasis(project, group, recipe):
+    """Keep a chart's emphasis in step with its data: focus categories or a series the data no longer has are
+    dropped (with a warning), and with nothing left in focus the emphasis goes."""
+    from ...notices import warn
+
+    spec = recipe.get("emphasis")
+    if not isinstance(spec, dict):
+        return
+    categories, names = recipe.get("categories") or [], [s.get("name") for s in recipe.get("series") or []]
+    lost = [c for c in spec.get("focus", []) if c not in categories]
+    if lost:
+        spec["focus"] = [c for c in spec["focus"] if c in categories]
+        warn(project, f"{group['name']!r} no longer has {', '.join(map(repr, lost[:6]))}; its emphasis dropped "
+                      f"{'it' if len(lost) == 1 else 'them'}")
+    if "series" in spec and spec["series"] not in names:
+        warn(project, f"{group['name']!r} no longer has the series {spec['series']!r}; its emphasis dropped it")
+        del spec["series"]
+    if not spec.get("focus"):
+        spec.pop("focus", None)
+        spec.pop("annotate", None)
+    if not spec.get("focus") and ("series" not in spec or recipe.get("kind") in ("pie", "donut")):
+        if lost or "series" in spec:
+            warn(project, f"{group['name']!r} has nothing left in focus; its emphasis was removed")
+        del recipe["emphasis"]
+
+
+def set_emphasis(recipe, op):
+    """Apply a ``chart-emphasis`` operation to the recipe: ``focus: []`` (without a series) removes the emphasis,
+    anything else updates it, keeping the settings the operation does not name."""
+    names = [s["name"] for s in recipe["series"]]
+    if op.get("focus") == [] and op.get("series") is None:
+        recipe.pop("emphasis", None)
+        return
+    spec = deepcopy(recipe.get("emphasis") or {})
+    if "focus" in op:
+        focus = []
+        for index, name in enumerate(op["focus"]):
+            name = recipe["categories"][find(recipe["categories"], name, "category", f"focus[{index}]")]
+            if name not in focus:
+                focus.append(name)
+        spec["focus"] = focus
+    if "series" in op:
+        if op["series"] is None:
+            spec.pop("series", None)
+        else:
+            spec["series"] = names[find(names, op["series"], "series", "series")]
+    for key in ("mute", "opacity", "annotate"):
+        if key in op:
+            if op[key] in (None, ""):
+                spec.pop(key, None)
+            else:
+                spec[key] = op[key]
+    radial = recipe["kind"] in ("pie", "donut")
+    require(spec.get("focus") or ("series" in spec and not radial),
+            "chart-emphasis needs focus: the categories to keep in colour" + (
+                " (the slices of a pie or donut)" if radial else ", or series for a whole series")
+            + f". Categories: {', '.join(recipe['categories'][:40])}", field="focus", allowed=recipe["categories"][:100])
+    require("annotate" not in spec or spec.get("focus"), "annotate labels the focus categories; name them in focus",
+            field="annotate")
+    recipe["emphasis"] = spec
+
+
+def check_emphasis(recipe):
+    """Validate a stored emphasis (also when a document is loaded)."""
+    spec = recipe["emphasis"]
+    require(isinstance(spec, dict) and set(spec) <= set(EMPHASIS_KEYS), "Invalid chart emphasis", field="emphasis")
+    focus = spec.get("focus", [])
+    require(isinstance(focus, list) and all(c in recipe["categories"] for c in focus),
+            "emphasis focus must list categories of the chart", field="focus", allowed=recipe["categories"][:100])
+    names = [s["name"] for s in recipe["series"]]
+    require("series" not in spec or spec["series"] in names, "emphasis series must be a series of the chart",
+            field="series", allowed=names)
+    require(focus or "series" in spec, "A chart emphasis needs focus categories or a series", field="focus")
+    require(spec.get("mute", "fade") in MUTES, f"mute must be one of {', '.join(MUTES)}", field="mute", allowed=list(MUTES))
+    if "opacity" in spec:
+        finite(spec["opacity"], "opacity", 0, 1)
+    require("annotate" not in spec or (isinstance(spec["annotate"], str) and 0 < len(spec["annotate"]) <= 500 and focus),
+            "annotate must be text of at most 500 characters for the focus categories", field="annotate")
+
+
+def emphasis_findings(checks, resolved, issue):
+    """The ``color_vision`` findings of emphasised charts: a focus colour that the muted marks cannot be told from
+    (to typical vision, or with a colour-vision deficiency), and muted marks that vanish into the chart's
+    background. ``layer-intent color_vision_safe`` on the chart accepts it."""
+    if "color_vision" not in checks:
+        return
+    from PIL import Image
+
+    from ... import colors
+    from ...render import color
+
+    def lab(rgb):
+        return colors.srgb_to_oklab(unit(rgb))
+
+    def seen(rgb, kind):
+        return colors.simulate_vision(Image.new("RGB", (1, 1), tuple(rgb)), kind).convert("RGB").getpixel((0, 0))
+
+    for group in resolved.values():
+        recipe = group.get("chart") if group["type"] == "group" else None
+        found = (recipe or {}).get("summary", {}).get("emphasis")
+        if not found or group.get("color_vision_safe"):
+            continue
+        focus = [color(c)[:3] for c in found.get("focus_colors", [])]
+        muted = [color(c)[:3] for c in found.get("muted_colors", [])]
+        surface = color(found.get("surface", "#ffffff"))[:3]
+        worst = None
+        for kind in (None, "protanopia", "deuteranopia", "tritanopia"):
+            for a in focus:
+                for b in muted:
+                    gap = math.dist(lab(seen(a, kind) if kind else a), lab(seen(b, kind) if kind else b))
+                    if gap < 0.07 and (worst is None or gap < worst[0]):
+                        worst = (gap, kind)
+        if worst:
+            issue("color_vision", "warning",
+                  f"{group['name']!r} emphasis: the marks in focus and the muted ones look alike"
+                  + (f" with {worst[1]}" if worst[1] else "") + "; lower chart-emphasis opacity, use mute "
+                  "desaturate, or give the focus series a stronger color", [group], code="emphasis-indistinct",
+                  **({"vision": worst[1]} if worst[1] else {}), distance=round(worst[0], 3))
+        faint = [b for b in muted if contrast(None, b, surface) < 1.15]
+        if faint:
+            issue("color_vision", "warning",
+                  f"{group['name']!r} emphasis: the muted marks nearly vanish into the background; raise "
+                  "chart-emphasis opacity or use mute desaturate", [group], code="emphasis-faint",
+                  contrast=round(min(contrast(None, b, surface) for b in faint), 2))
 
 
 def plain(layer):
@@ -1522,6 +1998,10 @@ def series_colors(project, resolved):
             if rgba[3] < 128:
                 continue
             index = int(match[2])
+            own = (recipe.get("summary") or {}).get("colors") or []
+            if recipe.get("emphasis") and index < len(own):
+                # Muted marks are drawn in a muted form of the series colour; the series is still its own colour.
+                rgba = color(resolve_color(own[index], project.state))
             entry = series.setdefault(index, [names[index] if index < len(names) else f"series {index + 1}", rgba[:3], []])
             entry[2].append(layer)
         found.append((group, [tuple(series[i]) for i in sorted(series)]))
@@ -1568,6 +2048,13 @@ def default_box(project, op):
 def execute(project, op):
     from ...operations import append_layer, default_name
 
+    if op["type"] == "chart-emphasis":
+        group = project.layer(op.get("target"))
+        require(group["type"] == "group" and "chart" in group, f"{group['name']!r} is not a chart; chart-emphasis "
+                "works on bar, line, area, pie and donut charts made by chart", field="target")
+        recipe = deepcopy(group["chart"])
+        set_emphasis(recipe, op)
+        return redraw(project, group, recipe)
     if op["type"] == "chart-data":
         group = project.layer(op.get("target"))
         require(group["type"] == "group" and "chart" in group, f"{group['name']!r} is not a chart; target a chart group",
@@ -1661,6 +2148,8 @@ def check_options(state, recipe):
         require(len(recipe["series"]) == 1, "Pie and donut charts take one series; the categories are the slices",
                 field="series")
     require("center_text" not in recipe or recipe["kind"] == "donut", "center_text is for donut charts", field="center_text")
+    if "emphasis" in recipe:
+        check_emphasis(recipe)
 
 
 def validate_chart(layer, state):
@@ -1676,6 +2165,13 @@ def validate_chart(layer, state):
             and all(isinstance(c, str) for c in colors) and summary.get("legend") in (None, "top", "bottom", "left", "right")
             and isinstance(scale, dict) and all(isinstance(scale.get(k, 0), (int, float)) for k in ("min", "max", "step")),
             "Invalid chart summary", "invalid_project")
+    marked = summary.get("emphasis", {})
+    require(isinstance(marked, dict) and all(
+        isinstance(marked.get(key, []), list) and len(marked[key]) <= 64 and all(isinstance(c, str) for c in marked[key])
+        for key in ("focus_colors", "muted_colors") if key in marked) and isinstance(marked.get("surface", ""), str),
+        "Invalid chart summary", "invalid_project")
+    for value in [*marked.get("focus_colors", []), *marked.get("muted_colors", []), *([marked["surface"]] if "surface" in marked else [])]:
+        check_color(state, value, "summary.emphasis")
     for key in ("label_format", "percent_format"):
         if key in summary:
             parse_format(summary[key])
@@ -1788,10 +2284,48 @@ def schemas(add):
                                "reload, or a new table. The chart redraws with the same layer IDs and reports its totals under chart.summary.")
 
 
+    add("chart-emphasis", {
+        "target": d(S, "Chart group ID or name (default: the active layer)."),
+        "focus": d({"type": "array", "items": {"type": ["string", "number"]}, "maxItems": MAX_CATEGORIES, "uniqueItems": True},
+                   "Categories to keep in colour (the slices of a pie or donut); every other mark is muted. [] "
+                   "removes the emphasis and restores the chart."),
+        "series": d({"type": ["string", "null"]}, "Limit the focus to one series: with focus, that series' marks in "
+                    "those categories; alone, the whole series (a line among lines). null removes the limit."),
+        "mute": d({"enum": [*MUTES, None]}, "How the rest is drawn: fade (default: toward the chart "
+                  "background) or desaturate (a grey of the same lightness)."),
+        "opacity": d({"type": ["number", "null"], "minimum": 0, "maximum": 1},
+                     f"fade: how much of a muted mark's colour stays, 0-1 (default {MUTE_OPACITY}); '35%' is read as 0.35."),
+        "annotate": d({"type": ["string", "null"], "maxLength": 500},
+                      "Callout set beside each focus mark, in place of its value label. ${value}, ${percent} (share "
+                      "of the chart's total), ${category} and ${series} are filled in from the data; with several "
+                      "series and no series named, ${value} is the category's total. null removes it."),
+    }, description="Make chosen categories of a chart stand out: they keep their colours, the rest is muted, and an "
+                   "optional callout labels them. Stored with the chart, so chart-data edits keep it; focus: [] "
+                   "restores the chart.")
+
+
 def compile_command(cmd, args):
     if cmd not in TYPES:
         return None
     from ...commands import Parser, number_or_center
+
+    if cmd == "chart-emphasis":
+        p = Parser(prog="vixl chart-emphasis", description="Highlight chosen categories of a chart, mute the rest, "
+                                                           "add a callout; vixl schema lists every field.")
+        p.add_argument("focus", nargs="*", help="categories to keep in colour")
+        p.add_argument("--target")
+        p.add_argument("--series", help="limit the focus to one series")
+        p.add_argument("--mute", choices=list(MUTES))
+        p.add_argument("--opacity", type=float, help="fade: how much of a muted mark's colour stays, 0-1")
+        p.add_argument("--annotate", help="callout text; ${value}, ${percent}, ${category}, ${series}")
+        p.add_argument("--clear", action="store_true", help="remove the emphasis")
+        a = vars(p.parse_args(args))
+        clear = a.pop("clear")
+        require(not (clear and a["focus"]), "Give categories or --clear, not both", "usage_error")
+        op = {"type": cmd, **{key: value for key, value in a.items() if value not in (None, [])}}
+        if clear:
+            op["focus"] = []
+        return op
 
     p = Parser(prog=f"vixl {cmd}", description="Data-bound charts; vixl schema lists every field.")
     op = {"type": cmd}
