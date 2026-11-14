@@ -236,7 +236,8 @@ COMMON = {
     "kind": {"type": "string", "enum": ["palettes", "templates", "guidance", "containers", "shapes", "suites",
                                         "workflows", "mockups", "objects", "assets", "pipelines"],
              "description": "Resource category (assets: images {data_base64, media_type, credit, license})."},
-    "start": {"type": "boolean", "default": False, "description": "Start a background worker after submitting."},
+    "start": {"type": "boolean", "default": False, "description": "Start the queue's background worker after submitting (nothing new starts while one is "
+              "running)."},
 }
 
 # Lyric-video request fields (docs/guides/motion/lyric-video.md); identical for plan, build and export.
@@ -760,7 +761,7 @@ ACTION_FIELDS = {
                                                           "description": "Upgrade an installed pack."}},
     "plugin-remove": {"name": {"type": "string", "description": "Plugin pack to remove."}},
     "work": {"workers": {**COMMON["workers"], "description": "Workers to run in the foreground."}},
-    "start": {"workers": {**COMMON["workers"], "description": "Workers to start in the background."}},
+    "start": {"workers": {**COMMON["workers"], "description": "Worker threads of the one background worker process."}},
 }
 
 
@@ -797,12 +798,13 @@ SUMMARIES = {
     "library-search": "List library components matching a query.",
     "library-open": "Write a library component out as a new editable .vixl document.",
     "library-place": "Place a library component into the open document as a group layer.",
-    "submit": "Queue a durable background job (production, film, video, generate, lyric-video, form-fill).",
+    "submit": "Queue a durable background job (production, film, video, generate, lyric-video, form-fill). A queue "
+              "takes 64 unfinished jobs and 4096 MB (limit_exceeded past that); finished jobs are deleted after 7 days.",
     "status": "Report a background job's state and progress.",
     "cancel": "Cooperatively cancel a background job.",
     "resume": "Resume an interrupted or failed background job.",
     "work": "Run queued jobs in the foreground until the queue is empty.",
-    "start": "Start background workers for queued jobs.",
+    "start": "Start the queue's background worker (one process per queue; already_running when one is alive).",
     "film-preview": "Preview a film frame, shot or interval with camera and transitions applied.",
     "video-sample": "Sample labelled video frames as a contact sheet or individual images.",
     "audio-analyze": "Measure loudness, peaks, clipping, silence and onset timing; optionally write a spectrogram.",
