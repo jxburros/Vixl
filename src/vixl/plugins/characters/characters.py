@@ -70,7 +70,7 @@ def schemas(add):
                            "easing": easing_schema("Interpolation from this pose key to the next; default ease-in-out.")}, ["angles"])
     add("character-ik", {"chain": {"type": "array", "items": S, "minItems": 2, "maxItems": 2}, "point": {"type": "array", "items": N, "minItems": 2, "maxItems": 2}, "bend": {"enum": [-1, 1]}}, ["chain", "point"])
     add("character-cycle", {"cycle": {"enum": list(CYCLES)}, "start": time, "duration": time, "period": N,
-        "amount": field(N, "Swing of the limbs in degrees (humanoid default 30; quadruped walk 15, trot 22, gallop 32). "
+        "amount": field(N, "Swing of the limbs in degrees (humanoid default 30; quadruped walk 14, trot 20, gallop 28). "
                         "Quadruped jump: the height of the leap in pixels (default 45% of the animal's height)."),
         "samples": {"type": "integer", "minimum": 4, "maximum": 120},
         "extend": {"type": "boolean", "description": "Quadruped cycles: extend the timeline when keys lie past its end (default true)."},
