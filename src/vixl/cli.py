@@ -89,7 +89,7 @@ Measure:   info, sample X Y, histogram [--region X Y W H], info --target TEXT,
            check --all [GLOB …] | --group NAME [--profile final] [--fail-on error|warning|fix|review|never] [--no-waivers]
            [--changed-since REF] [--base REF] [--since-last] [--format markdown|json|junit|sarif|github] [--write sarif=vixl.sarif] (many documents, one report)
            approve [--group NAME] [--clear] [--author WHO] (record the approved look; later checks flag changes)
-Pixels:   pixel-art, pixel-draw, pixel-palette, pixels [LAYER],
+Pixels:   pixel-art, pixel-draw, pixel-palette, pixel-transform, sprite-sheet, pixels [LAYER],
            frame-save NAME [--duration MS], frame-apply NAME, frame-delete NAME,
            animation, animation-set --loop N --order FRAME FRAME,
            animation-set --name walk --order FRAME FRAME [--duration MS | --durations MS MS] [--loop N] | --name walk --delete,
@@ -1048,6 +1048,9 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("--dpi", type=int, default=144)
         p.add_argument("--credit", help="attribution kept with an image, e.g. 'Photo: Ana Ruiz / Unsplash'")
         p.add_argument("--license", help="license or usage terms of an image, e.g. 'CC BY 4.0'")
+        p.add_argument("--scale", type=float, help="image: place it at this multiple of its size")
+        p.add_argument("--sampling", choices=["smooth", "nearest"], help="image: nearest keeps pixel art crisp "
+                       "when enlarged (stored on the layer)")
         p.add_argument("--format", choices=["figma"], help="figma: PATH is a Figma file URL or key (or exported file "
                        "JSON); reads FIGMA_TOKEN, see docs/guides/images/figma.md")
         p.add_argument("--node", help="figma: import this node id (1:2) instead of the first page")
@@ -1067,7 +1070,8 @@ def project_command(project, cmd, args, *, detail="compact"):
             from .image_import import import_image_from
 
             return import_image_from(project, url=a.path if is_url else None, path=None if is_url else a.path,
-                                     name=a.name or "image", credit=a.credit, license=a.license), True
+                                     name=a.name or "image", credit=a.credit, license=a.license, scale=a.scale,
+                                     sampling=a.sampling), True
         require(a.credit is None and a.license is None, "--credit and --license apply to image imports",
                 field="credit")
         options = {}
@@ -1498,9 +1502,11 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("--max-bytes", type=int, help="Soft size target: warn when the file is larger")
         p.add_argument("--quality", type=int, default=90, help="WebP (smooth) and MP4/WebM quality 1–100")
         p.add_argument("--columns", type=int)
+        p.add_argument("--metadata", choices=["neutral", "aseprite"], help="sheet of a document with a sprite-sheet "
+                       "grid: the JSON beside the PNG as named clips (default) or Aseprite's frames and frameTags")
         a = p.parse_args(args)
         scale = int(a.scale) if a.scale.is_integer() else a.scale
-        return project.export_animation(a.out, dry_run=a.dry_run, format=a.format, scale=scale, columns=a.columns, sampling=a.sampling, colors=a.colors, animation=a.animation, quality=a.quality, overwrite=a.overwrite, dither=a.dither, max_bytes=a.max_bytes), False
+        return project.export_animation(a.out, dry_run=a.dry_run, format=a.format, scale=scale, columns=a.columns, sampling=a.sampling, colors=a.colors, animation=a.animation, quality=a.quality, overwrite=a.overwrite, dither=a.dither, max_bytes=a.max_bytes, **({"metadata": a.metadata} if a.metadata else {})), False
     if cmd == "export-screens":
         from .exports import export_screens
 

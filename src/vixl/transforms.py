@@ -61,6 +61,28 @@ def rotate(project, layer, angle, about=None):
         layer["constraints"] = {}
 
 
+SAMPLINGS = ("smooth", "nearest")
+SAMPLING_FIELD = {
+    "enum": list(SAMPLINGS),
+    "description": "Image (raster) layers: how the image is enlarged. nearest keeps every source pixel a crisp "
+    "block (pixel art, sprites at 3x); smooth (default) resamples. Stored on the layer, so later edits and every "
+    "export (PNG, SVG, PDF, PPTX) keep it.",
+}
+
+
+def set_sampling(layer, value):
+    """Store how an image layer is resampled: ``nearest`` on the layer, nothing for ``smooth``."""
+    require(value in SAMPLINGS, "sampling is smooth or nearest", field="sampling")
+    if layer["type"] == "pixel" and value == "nearest":
+        return  # pixel-art layers are always nearest
+    require(layer["type"] == "raster", "sampling applies to image (raster) layers; a pixel-art layer is always "
+            "nearest and vector layers are redrawn at any size", field="sampling")
+    if value == "nearest":
+        layer["sampling"] = "nearest"
+    else:
+        layer.pop("sampling", None)
+
+
 def snapped(project, layer):
     return (
         layer.get("snap_to_pixel", project.state.get("snap_to_pixel", False))
@@ -148,6 +170,7 @@ def enrich_transform_schemas(variants):
         if kind in ("resize", "scale"):
             props["anchor"] = {"anyOf": [{"enum": ["pivot", *ANCHORS]}, anchors["anyOf"][1]],
                                "description": fields["anchor"]}
+            props["sampling"] = SAMPLING_FIELD
         if kind == "resize":
             for key in ("width", "height"):
                 props[key] = {
@@ -155,6 +178,12 @@ def enrich_transform_schemas(variants):
                     "description": "Pixels, unsigned canvas/parent percentage, or a signed delta relative to current size (+8, -5%).",
                 }
         if kind == "move":
+            props["cell"] = {
+                "type": "array", "minItems": 2, "maxItems": 2,
+                "description": "Sprite-sheet cell [row, column] to move the layer into (row by name or index, "
+                "column from 0; declare the grid with sprite-sheet). x and y are then offsets inside the cell.",
+            }
+            variant["anyOf"].append({"required": ["cell"]})
             props.update(
                 space={
                     "enum": ["parent", "canvas"],
@@ -200,6 +229,16 @@ def execute(project, op):
             for key in ("x", "y", "width", "height"):
                 layer[key] = max(1, round(layer[key])) if key in ("width", "height") else round(layer[key])
         return
+    if kind == "move" and "cell" in op:
+        from .sprite_sheet import place_in_cell
+
+        require(not any(key in op for key in ("relative", "baseline_y", "step")), "cell places the layer in a sheet "
+                "cell; x and y are offsets inside it", field="cell")
+        placed = {**layer, "x": finite(op.get("x", 0), "x"), "y": finite(op.get("y", 0), "y")}
+        place_in_cell(project, placed, op["cell"])
+        op = {"type": "move", "target": op.get("target"), "x": placed["x"], "y": placed["y"], "space": "canvas"}
+    if kind in ("resize", "scale") and "sampling" in op:
+        set_sampling(layer, op["sampling"])
     box = layer_box(project, layer)
     if kind == "move":
         space = op.get("space", "canvas" if op.get("absolute") else "parent")

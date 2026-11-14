@@ -28,7 +28,13 @@ SUMMARIES = {
     "paint-clear": "Remove the last N strokes (or all) from a paint layer.",
     "brush-define": "Save a custom brush as overrides on a built-in brush.",
     "pixel-art": "Add a pixel-art layer from character rows and a palette.",
-    "pixel-draw": "Draw a pixel, line, rectangle or flood fill on a pixel layer.",
+    "pixel-draw": "Draw a pixel, line, rectangle, filled ellipse or flood fill on a pixel layer; only limits it to "
+                  "cells that hold given symbols.",
+    "pixel-transform": "Mirror a pixel layer's stored rows or shift them by whole cells: mirrored frames (duplicate, "
+                       "then pixel-transform) and walk-cycle bobs.",
+    "sprite-sheet": "Declare the document as a sprite-sheet grid (rows of facings, columns of frames, a fixed cell): "
+                    "pixel-art and move take cell: [row, column], and export-animation format sheet writes the "
+                    "clips as JSON.",
     "pixel-palette": "Replace colours of a pixel layer's palette, or turn its shading ramp and outline on or off.",
     "rich-text": "Create or replace a text layer from Markdown or spans, with paragraphs, lists and mixed styles.",
     "text-style": "Style part of a text layer: a matched phrase, a character range or paragraphs. To change the layer's content or overall color, size or font use text-set.",
@@ -599,9 +605,10 @@ OVERRIDES = {
                   "rows": "Strings, one per pixel row; each character is a palette key.",
                   "width": "Grid width in pixels (default the longest row).", "height": "Grid height in pixels.",
                   "x": "Layer x on the canvas.", "y": "Layer y on the canvas."},
-    "pixel-draw": {"tool": "pixel, line, rect or fill.", "x": "Start column.", "y": "Start row.",
-                   "x2": "Line end column.", "y2": "Line end row.", "width": "Rectangle width in pixels.",
-                   "height": "Rectangle height in pixels.", "color": "Color or palette key."},
+    "pixel-draw": {"tool": "pixel, line, rect, ellipse (filled, inscribed in the x, y, width, height box) or fill.",
+                   "x": "Start column (rect, ellipse: left edge).", "y": "Start row (rect, ellipse: top edge).",
+                   "x2": "Line end column.", "y2": "Line end row.", "width": "Rectangle or ellipse width in pixels.",
+                   "height": "Rectangle or ellipse height in pixels.", "color": "Color or palette key."},
     "pixel-palette": {"colors": "Palette {character: color}."},
     "frame-save": {"name": "Frame name.", "duration": "Frame time in ms (a multiple of 10)."},
     "frame-apply": {"name": "Saved frame name."}, "frame-delete": {"name": "Saved frame name."},

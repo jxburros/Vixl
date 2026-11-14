@@ -322,6 +322,8 @@ vixl pixel-draw sprite pixel 5 5 --color g
 vixl pixel-draw sprite line 6 5 --x2 9 --y2 5 --color w
 vixl pixel-draw sprite rect 4 4 --width 8 --height 8 --color s
 vixl pixel-draw sprite fill 0 0 --color .
+vixl pixel-draw sprite ellipse 4 4 --width 8 --height 6 --color g --only s   # filled ellipse; --only: overwrite just these symbols
+vixl pixel-transform sprite --flip horizontal               # mirror the stored rows; --shift DX DY [--wrap | --fill SYMBOL]
 vixl pixel-palette sprite --colors '{"g":"#ffdd66"}'
 vixl pixel-palette sprite --shading false --outline false   # flat sprite (new documents shade and outline)
 vixl frame-save idle [--duration 150] ; vixl frame-apply idle ; vixl frame-delete idle

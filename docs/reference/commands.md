@@ -130,6 +130,7 @@ vixl layer add image.png --name hero
 vixl add logo.png --name logo --linked
 vixl add photo.jpg --name hero --credit "Photo: Ana Ruiz" --license "CC0"
 vixl import https://images.example.com/cat.jpg --name cat --license "CC BY 4.0"
+vixl import sprite.png --name hero --scale 3 --sampling nearest   # pixel art at 3x, crisp in every export
 vixl import artwork.svg --svg-mode auto    # SVG as editable layers; a Vixl SVG restores its document
 vixl import flyer.pdf --page 1             # a PDF page as editable text, paths and images
 vixl import KEY --format figma --node 1:2  # a Figma file URL or key (one frame, or --rasterize-unsupported for unmappable nodes); needs FIGMA_TOKEN, see figma.md
@@ -149,6 +150,7 @@ vixl move portrait --x 100 --y 200
 vixl move x +20
 vixl scale portrait 80%
 vixl scale portrait --x -1              # negative factors mirror: --x/--y per axis, -1 both
+vixl scale hero 300% --sampling nearest  # image layers: enlarge pixel by pixel (stored on the layer); smooth resets
 vixl resize portrait 800x600
 vixl resize portrait --width 800
 vixl resize portrait --width 800 --keep-aspect       # explicit; --no-keep-aspect stretches one side of an image

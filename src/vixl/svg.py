@@ -34,7 +34,15 @@ def paint(value, state):
     return f"rgb({r},{g},{b})", a / 255
 
 
-def bitmap(root, image, x=0, y=0):
+# An image layer set to nearest sampling stays blocky when a viewer shows the SVG larger than its pixels.
+CRISP = {"image_rendering": "pixelated", "style": "image-rendering:pixelated"}
+
+
+def crisp(layer):
+    return CRISP if layer.get("sampling") == "nearest" else {}
+
+
+def bitmap(root, image, x=0, y=0, **attrs):
     node(
         root,
         "image",
@@ -43,6 +51,7 @@ def bitmap(root, image, x=0, y=0):
         width=image.width,
         height=image.height,
         href="data:image/png;base64," + base64.b64encode(png_bytes(image)).decode(),
+        **attrs,
     )
 
 
@@ -142,7 +151,7 @@ class Exporter:
             self.shared[asset] = self.ident("asset")
             x, y = ink_origin(image, bounds)
             node(parent, "image", id=self.shared[asset], x=x, y=y, width=image.width, height=image.height,
-                 href=f"data:{mime};base64," + base64.b64encode(self.project.assets[asset]).decode())
+                 href=f"data:{mime};base64," + base64.b64encode(self.project.assets[asset]).decode(), **crisp(layer))
             return True
         return False
 
@@ -582,11 +591,11 @@ class Exporter:
                     if parent_layer
                     else (self.project.state["canvas"]["width"], self.project.state["canvas"]["height"])
                 )
-                bitmap(parent, layer_surface(self.project, layer, self.bounds, size, self.index))
+                bitmap(parent, layer_surface(self.project, layer, self.bounds, size, self.index), **crisp(layer))
             else:
                 image = layer_ink(self.project, layer, b)
                 if not self.share(parent, layer, image, b):
-                    bitmap(parent, image, *ink_origin(image, b))
+                    bitmap(parent, image, *ink_origin(image, b), **crisp(layer))
             self.fallbacks.append(
                 {
                     "layer": layer["name"],

@@ -525,6 +525,12 @@ def animation_bytes(
         format in ("gif", "apng", "webp", "sheet"),
         "Animation format must be gif, apng, webp or sheet (mp4 and webm are written to files)",
     )
+    if format == "sheet" and "sprite_sheet" in project.state:
+        from .sprite_sheet import sheet_bytes
+
+        require(animation is None and columns is None, "A sprite-sheet grid has its own rows, columns and clips; "
+                "animation and columns apply to saved frames", field="animation" if animation is not None else "columns")
+        return sheet_bytes(project, scale=scale, sampling=sampling)
     validate_animation(project, project.state)
     state = project.state.get("animation", {})
     require(state.get("frames"), "Save at least one animation frame")
@@ -668,8 +674,11 @@ def export_video(project, path, *, format, scale, sampling, quality, animation=N
 
 def export_animation(
     project, path, *, format=None, scale=1, columns=None, sampling="nearest", colors=256, animation=None, quality=90,
-    overwrite=False, dither="auto", max_bytes=None, dry_run=False,
+    overwrite=False, dither="auto", max_bytes=None, dry_run=False, metadata=None,
 ):
+    grid = format == "sheet" and "sprite_sheet" in project.state
+    require(metadata is None or grid, "metadata chooses the JSON of a sprite-sheet grid: use it with format='sheet' "
+            "on a document that declares one (sprite-sheet)", field="metadata")
     if dry_run:
         from .call_limits import quote
 
@@ -693,6 +702,28 @@ def export_animation(
     )
     destinations = [path] + ([path.with_suffix(".json")] if format == "sheet" else [])
     require(overwrite or not any(p.exists() for p in destinations), "Animation output already exists; pass overwrite=True")
+    if grid:
+        # The document is the sheet (sprite-sheet grid): write its canvas and the clips an engine reads.
+        from .sprite_sheet import sheet_bytes
+
+        require(animation is None and columns is None, "A sprite-sheet grid has its own rows, columns and clips; "
+                "animation and columns apply to saved frames", field="animation" if animation is not None else "columns")
+        data, described = sheet_bytes(project, scale=scale, sampling=sampling, format=metadata or "neutral",
+                                      image=path.name)
+        with path.open("wb" if overwrite else "xb") as stream:
+            stream.write(data)
+        with destinations[1].open("w" if overwrite else "x", encoding="utf-8") as stream:
+            json.dump(described, stream, indent=2)
+        sheet = project.state["sprite_sheet"]
+        canvas = project.state["canvas"]
+        return {
+            "output": str(path), "format": "sheet", "layout": "grid",
+            "size": [canvas["width"] * scale, canvas["height"] * scale],
+            "frame_size": [sheet["cell"][0] * scale, sheet["cell"][1] * scale],
+            "rows": list(sheet["rows"]), "columns": sheet["columns"],
+            "clips": [clip["name"] for clip in (described.get("clips") or described["meta"]["frameTags"])],
+            "bytes": len(data), "metadata": str(destinations[1]), "metadata_format": metadata or "neutral",
+        }
     if format in VIDEO:
         require(colors == 256, "colors applies to GIF export", field="colors")
         require(columns is None, "Columns apply only to sprite sheets")
