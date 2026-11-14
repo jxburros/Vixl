@@ -14,7 +14,7 @@ See [design tools and template production](../guides/shapes/design-tools.md) for
 | Capability | REST | MCP | CLI | Python | Host |
 | --- | --- | --- | --- | --- | --- |
 | Documents per session | One fixed document | Multiple, inside the workspace | One active document; workspace workflows | Multiple Project instances; Session for workflows | Many workspaces under --root; documents by opaque id with a revision |
-| Workflows | `act`, `check`, `drawing-report`, `effect-run`, `film-plan`, `form-fill`, `links`, `lyric-video-plan`, `organic-catalog`, `palette-check`, `plan`, `protected-edit`, `repair-layout`, `resource-get`, `resource-list`, `resource-save`, `shape-save`, `suite-use` | All 107 registered actions | All 107 registered actions | All 107 registered actions via workflows.dispatch(Session, ...) | None; documents, operations, compose, preview, check, exports and catalogs |
+| Workflows | `act`, `check`, `drawing-report`, `effect-run`, `film-plan`, `form-fill`, `links`, `lyric-video-plan`, `organic-catalog`, `palette-check`, `plan`, `protected-edit`, `repair-layout`, `resource-get`, `resource-list`, `resource-save`, `shape-save`, `suite-use` | All 109 registered actions | All 109 registered actions | All 109 registered actions via workflows.dispatch(Session, ...) | None; documents, operations, compose, preview, check, exports and catalogs |
 | AI tools | Configured local providers via /ai | Configured local providers; a second server, vixl mcp --tools ai | Configured local providers | Configured local providers | Only the studio gateway, with --provider studio: /w/{ws}/documents/{id}/ai |
 | Linked files outside workspace | Forbidden | Forbidden | Explicit --allow-linked | Explicit allow_linked=True | Forbidden |
 | Screen capture | Unavailable | Disabled by default; --allow-screen-capture or VIXL_ALLOW_SCREEN_CAPTURE=1 | Explicit screen-capture workflow | Explicit screen-capture workflow | Unavailable |
@@ -572,7 +572,7 @@ Python: `Project.sized("letter", bleed=True)`, `project.export("flyer.pdf", colo
 
 All editing is ordinary operations. MCP: `vixl_render` gains `page` (`"all"` for a contact
 sheet), `values` and `show_fields`; `vixl_export` gains `page`, `pages`, `pdf_content`,
-`fillable`, `values`, `fill_mode` and `presenter` and writes `.pptx` and `.html` presentations
+`fillable`, `values`, `fill_mode`, `tagged` (a [tagged PDF](../guides/output/accessibility.md#tagged-pdf)) and `presenter` and writes `.pptx` and `.html` presentations
 (see [presenter](../guides/output/presenter.md)); `vixl_check` gains `page`, `deck`
 settings, `sample`, and the `deck`, `form` and `drawing` families; `vixl_document(action='inspect')` lists
 pages and fields. `vixl_apply(workflow=…)` adds `lyric-video-plan/build/export`, `organic-catalog`,
@@ -583,19 +583,19 @@ PDF export is vector by default (also with `color_space="cmyk"`); the export res
 `color_space` and `page_size`, and `dpi` sizes PDF pages and PowerPoint slides alike. A PPTX result's `warnings`
 name the fonts that are not embedded and must be installed where the deck is opened (`fonts_not_embedded`, with each one's fsType permission and license under `font_embedding`).
 
-REST: `POST /export` accepts `page`, `pages`, `pdf_content`, `fillable`, `values`, `fill_mode` and
+REST: `POST /export` accepts `page`, `pages`, `pdf_content`, `fillable`, `values`, `fill_mode`, `tagged` (boolean: a PDF structure tree for screen readers) and
 `presenter` (HTML slide presentation options) and formats `PPTX`, `PSD` (layered, see [exporting](../guides/output/exporting.md#layered-psd-for-designer-handoff)) and `TTF`, `OTF`, `WOFF`, `WOFF2` (the document's [font design](../guides/text/custom-fonts.md)); `POST /preview` accepts `guides`, `page`, `values` and `show_fields`; the fixed
 project's workflow routes include `lyric-video-plan`, `organic-catalog`, `form-fill` and
 `drawing-report`.
 
-Python: `project.export("deck.pptx")`, `project.export("form.pdf", fillable=True)`,
+Python: `project.export("deck.pptx")`, `project.export("form.pdf", fillable=True)`, `project.export("report.pdf", tagged=True)`,
 `project.render(page=2)`, `vixl.forms.fill` / `fill_data`, `vixl.deck.check_deck` /
 `contact_sheet`, `vixl.plugins.drawing.drawing` (`clean`, `report`, `compare`, `ai_color`), `vixl.plugins.lyrics.lyrics`
 (`parse_lrc`, `plan`, `build`, `export`).
 
 Linked documents and print merge are ordinary operations and one workflow action each: `link` (create, or change with a `target`),
 `link-refresh` and `link-embed` go through `vixl_apply` / `POST /operations`; `vixl_apply(workflow='links', request={})` (also `POST /workflow/links`) lists
-each link's state; `vixl_apply(workflow='merge-impose', request=request, document=template)` merges a CSV into print sheets (MCP and CLI only:
+each link's state; `vixl_apply(workflow='guides-import', request={source, colors})` reads a printer's template into role guides ([guides](../guides/layout/guides.md#a-printers-template-guide-roles)); `vixl_apply(workflow='merge-impose', request=request, document=template)` merges a CSV into print sheets (MCP and CLI only:
 it writes files). Link sources and merge paths stay inside the workspace. See [linked documents](../guides/output/linked-documents.md) and
 [imposition](../guides/output/imposition.md).
 

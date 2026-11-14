@@ -55,5 +55,7 @@ metadata.
 - **Accessibility** — `layer-intent` `alt` on meaningful images, frames, charts and object groups (or
   `decorative: true`); `{type: accessibility, lang, title, page_alt, page_lang, reading_order}`;
   `vixl_check(checks=["accessibility"])` bundles contrast and colour vision with missing alt, language, small
-  text, colour-only charts and reading order. HTML, SVG, PPTX and PDF carry alt and language (no tagged PDF
-  structure tree). See [objects](../../../docs/guides/shapes/objects.md) and [accessibility](../../../docs/guides/output/accessibility.md).
+  text, colour-only charts and reading order. HTML, SVG, PPTX and PDF carry alt and language;
+  `vixl_export(tagged=true)` (CLI `--tagged`) writes a tagged PDF: a structure tree of H1–H3 (from text stages), P,
+  Figure (alt) and Form elements in `reading_order`, with decorative layers and undescribed shapes as artifacts. It
+  is off by default. See [objects](../../../docs/guides/shapes/objects.md) and [accessibility](../../../docs/guides/output/accessibility.md).

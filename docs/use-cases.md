@@ -311,7 +311,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PRD-01 | Banner with a variable-driven headline, rendered for several cities | `variable set`, `render --set` | 6 · 2 |  |
 | QA-11 | Save a check suite and make an edit that only commits if it passes | `vixl_apply(workflow='act')` | 8 · 2 |  |
 | QA-39 | Find and review the objects in an existing design | `vixl_apply(workflow='object-detect')` (then `apply: true`), `vixl_document(action='inspect', object="*")`, `inspect object=NAME`, `isolate` `views: [parts]` | 2–4 · <1 | `object-detect` proposes groupings and kinds for undeclared objects from recipes, names and touching ink (a dry run by default); inspect lists kinds, parts and missing required parts. Unnamed piles get no proposal. |
-| QA-40 | Accessibility pass before handing off a deck, PDF or web graphic | `layer-intent alt`/`decorative`, `accessibility lang`, `check accessibility` | 4–10 · 1–2 | Alt and language reach HTML, SVG, PPTX and PDF; no tagged PDF structure tree. |
+| QA-40 | Accessibility pass before handing off a deck, PDF or web graphic | `layer-intent alt`/`decorative`, `accessibility lang`, `check accessibility` | 4–10 · 1–2 | Alt and language reach HTML, SVG, PPTX and PDF; `export --tagged` writes a tagged PDF (structure tree in reading order), off by default. |
 | QA-24 | Turn a brief into tests (hierarchy, spacing, margins, contrast, balance) and run them with every batch before previewing | `suite-set`, `vixl_apply(suites=true)`, `vixl_reference("testing")` | 3–5 · 1 | Starter suites per kind of work; `vixl_reference(kind)` lists one under `tests`. |
 
 ### Social, web and simple graphics
@@ -658,6 +658,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PRN-42 | Résumé or CV (two columns, rich text) | rich text, text flow, `offset-column` | 40–55 · 5–7 |  |
 | PRN-43 | Stationery set: card, letterhead, envelope, compliments slip | linked swatches/styles, artboards | 50–70 · 6–8 |  |
 | PRN-44 | Full book cover wrap (back, spine, front) with bleed | custom size, guides, CMYK PDF | 40–60 · 5–7 | Spine width computed by hand. |
+| PRN-52 | Print-on-demand wrap or package against the printer's own template (PNG/PSD with safe areas, barcode keep-out, folds) | `guides-import` (colour to role), `check` `safe_area`, `guide-set` for the next document | 3–5 · 1 | Horizontal and vertical lines only; diagonal dielines are drawn as `path` guides. PSD: 8-bit RGB. |
 | PRN-45 | Event poster series in three colorways | comps or variables, export per comp | 40–55 · 5–6 |  |
 | PRN-46 | Personalised invitations or place cards from a guest CSV | merge-impose | 30–50 · 3–5 | Like PRD-30. |
 | PRN-47 | Product label or packaging face with print checks | `label`, print checks, CMYK | 40–60 · 5–7 | No dielines or spot colors. |

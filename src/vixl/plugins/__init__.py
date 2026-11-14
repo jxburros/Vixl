@@ -39,6 +39,7 @@ BUILTIN = (
     "film",
     "lyrics",
     "imposition",
+    "print_templates",
     "brand_kit",
     "deck_markdown",
     "teamwork",

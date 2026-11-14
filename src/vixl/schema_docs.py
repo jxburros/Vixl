@@ -138,7 +138,8 @@ SUMMARIES = {
     "style-set": "Tag the document with a design style (swiss, brutalist, art-deco …) for style guidance and checks.",
     "type-scale": "Define character styles caption to display on a modular scale.",
     "layout-apply": "Build a principled layout (hero-statement, app-icon, logo-horizontal …) from copy slots, palette and seed.",
-    "guide": "Create or delete a guide: an axis, line, ray, segment, point, circle or path.",
+    "guide": "Create or delete a guide: an axis, line, ray, segment, point, circle or path, optionally with a "
+             "print role (safe, keep-out, fold, trim, bleed) that the safe_area check enforces.",
     "grid": "Create a grid system (columns, baseline, thirds, golden, polar, isometric, perspective …) of guides.",
     "place": "Place layers on a guide (at a fraction, spread evenly, at intersections, turned to the tangent), or "
              "within a shape's content box (a bubble's body, a badge) with an anchor and margin.",
@@ -595,7 +596,12 @@ OVERRIDES = {
               "kind": "axis, line, ray, segment, point, circle or path.",
               "x": "Point or circle center x.", "y": "Point or circle center y.", "angle": "Line or ray angle in degrees.",
               "radius": "Circle radius.", "d": "SVG path data for a path guide.",
-              "points": "Two [x, y] points for a segment or line."},
+              "points": "Two [x, y] points for a segment or line.",
+              "rect": "[x, y, width, height]: a closed rectangular path guide (a safe area, a keep-out, a trim box).",
+              "role": "What the guide means in a printer's template; the safe_area check reads it. safe: a closed "
+                      "outline content must stay inside (one per panel); keep-out: a closed outline content must "
+                      "stay out of (a barcode notch); fold: a spine or hinge line text should not cross; trim and "
+                      "bleed label the cut edge and the bleed edge."},
     "grid": {"name": "Grid name (its guides are prefixed with it).", "kind": "Grid system to generate.",
              "columns": "Column count.", "rows": "Row count or row heights.", "margin": "Outer margin in pixels.",
              "gutter": "Gap between columns in pixels.", "spacing": "Line spacing in pixels.",

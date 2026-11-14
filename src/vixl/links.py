@@ -936,7 +936,7 @@ def _pdf_link(builder, layer, bounds, matrix):
     sub = PageBuilder(builder.document, view, builder.writer, builder.fonts, builder.images)
     sub.ops, sub.xobjects, sub.states, sub.shadings = builder.ops, builder.xobjects, builder.states, builder.shadings
     sub.fallbacks = builder.fallbacks
-    for name in ("k", "ky", "fillable"):
+    for name in ("k", "ky", "fillable", "tags"):  # tags: the link is one tagged unit, so nothing inside is marked
         if hasattr(builder, name):
             setattr(sub, name, getattr(builder, name))
     first = len(builder.fallbacks)

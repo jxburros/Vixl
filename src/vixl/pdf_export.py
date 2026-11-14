@@ -119,6 +119,7 @@ class PageBuilder:
         self.xobjects, self.states, self.shadings = {}, {}, {}
         self.fallbacks = []
         self.jpeg_quality = None  # set: raster images are written as JPEG at this quality
+        self.tags = None  # pdf_structure.PageTags of a tagged export
 
     def alpha(self, fill=1.0, stroke=1.0):
         fill, stroke = round(fill, 4), round(stroke, 4)
@@ -190,7 +191,8 @@ class PageBuilder:
     @staticmethod
     def marked_content(layer):
         """The operator opening a layer's marked content: ``/Figure <</Alt …>> BDC`` for a layer with alt text,
-        ``/Artifact BMC`` for a decorative one, else None. (Untagged: no structure tree refers to them.)"""
+        ``/Artifact BMC`` for a decorative one, else None. (Untagged: no structure tree refers to them; a tagged
+        export marks content through ``pdf_structure.PageTags`` instead.)"""
         from .accessibility import decorative
 
         if layer.get("alt"):
@@ -204,6 +206,20 @@ class PageBuilder:
         index = {item["id"]: item for item in layers}
         for layer in layers:
             if layer.get("parent") != parent or not layer["visible"] or layer["opacity"] <= 0:
+                continue
+            tags = self.tags
+            if tags is not None:
+                # Tagged: one marked sequence per meaningful layer; nothing inside it is marked again.
+                opened = None if tags.inside else tags.open(self, layer, bounds[layer["id"]], matrix, index, layers)
+                if opened:
+                    self.ops.append(opened)
+                    tags.inside = True
+                try:
+                    self.draw_layer(layer, layers, bounds, parent, matrix, index)
+                finally:
+                    if opened:
+                        tags.inside = False
+                        self.ops.append("EMC")
                 continue
             opened = self.marked_content(layer)
             if opened:
@@ -670,13 +686,17 @@ def page_geometry(canvas, dpi):
 
 def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, background="white", color_space="rgb",
                jpeg_quality=None, title=None, lang=None, annotations=None, acroform=None, fillable=False, separation=None,
-               report=None, views=None):
+               report=None, views=None, tagged=False):
     """Write a PDF with one page per document page. Returns the bytes (and writes ``path``).
 
     ``views`` [(label, page view)] replaces the document's pages (combined form fills).
     ``annotations(view, page_index, builder) -> [annotation refs]`` and ``acroform(writer) ->
     dict`` let form export add fields; with ``fillable`` the page artwork leaves field values to
-    the widgets. ``report`` (a dict) receives raster fallbacks per page."""
+    the widgets. ``report`` (a dict) receives raster fallbacks per page.
+
+    ``tagged`` writes a structure tree (``pdf_structure``): MCIDs on the marked content, ``StructTreeRoot`` with
+    Document > Sect per page > H1–H3, P, Figure and Form in reading order, a ``ParentTree`` and ``/MarkInfo``.
+    Without it the file is exactly what it was before tagging existed."""
     require(content in ("vector", "raster"), "pdf content must be vector or raster", field="content")
     require(color_space in ("rgb", "cmyk"), "Color space must be rgb or cmyk")
     canvas = project.state["canvas"]
@@ -691,6 +711,11 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
     writer = Writer(stream)
     fonts = Fonts()
     images = {}
+    structure = None
+    if tagged:
+        from .pdf_structure import ARTIFACT, Structure
+
+        structure = Structure(writer)
     pages_ref = writer.reserve()
     kids = []
     fallbacks = {}
@@ -712,6 +737,8 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
         builder = PageBuilder(project, view, writer, fonts, images, paint)
         builder.k, builder.ky, builder.fillable = kx, ky, fillable
         builder.jpeg_quality = jpeg_quality
+        page_ref = writer.reserve() if structure else None
+        tags = builder.tags = structure.page(view, page_ref) if structure else None
         builder.ops.append(f"{_fmt(kx)} 0 0 {_fmt(-ky)} 0 {_fmt(height)} cm")
         if content == "raster":
             image = render(view)
@@ -732,13 +759,24 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
             else:
                 ref = image_xobject(writer, flat)
             builder.xobjects["Im1"] = ref
+            if tags:
+                from .render import resolve_layout, resolved_layers
+
+                layers = resolved_layers(view)
+                builder.ops.append(tags.page_figure(layers, resolve_layout(view, layers=layers)))
             builder.ops += ["q", f"{_fmt(c['width'])} 0 0 {_fmt(-c['height'])} 0 {_fmt(c['height'])} cm", "/Im1 Do", "Q"]
+            if tags:
+                builder.ops.append("EMC")
         else:
             rgba = color(resolve_color(c["background"], view.state))
             back = color(background)
+            if tags:
+                builder.ops.append(ARTIFACT)
             if rgba[3] < 255:
                 builder.fill_ops([f"0 0 {_fmt(c['width'])} {_fmt(c['height'])} re"], back, 1)
             builder.fill_ops([f"0 0 {_fmt(c['width'])} {_fmt(c['height'])} re"], rgba, 1)
+            if tags:
+                builder.ops.append("EMC")
             from .render import resolve_layout, resolved_layers
 
             layers = resolved_layers(view)
@@ -748,7 +786,11 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
                 # Backdrop-dependent layers: the whole page as one image.
                 builder.fallback({"type": "page", "name": "page"}, "blend modes or adjustment layers depend on the backdrop")
                 image = render(view)
+                if tags:
+                    builder.ops.append(tags.page_figure(layers, bounds))
                 builder.place_image(image, np.eye(3), (0, 0, image.width, image.height))
+                if tags:
+                    builder.ops.append("EMC")
             else:
                 builder.draw(layers, bounds)
         annots = annotations(view, number, builder) if annotations else []
@@ -763,7 +805,10 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
         extra = getattr(builder, "page_extra", None)
         if extra:
             page.update(extra)
-        kids.append(writer.add(page))
+        if tags:
+            page["StructParents"] = tags.finish()
+            page.setdefault("Tabs", Name("S"))
+        kids.append(writer.add(page, page_ref))
         if builder.fallbacks:
             fallbacks[label] = builder.fallbacks
     fonts.write(writer)
@@ -796,12 +841,17 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
         catalog["Lang"] = Text(lang)
     if acroform is not None:
         catalog["AcroForm"] = acroform(writer)
+    if structure:
+        catalog["StructTreeRoot"] = structure.finish()
+        catalog["MarkInfo"] = {"Marked": True}
     root = writer.add(catalog)
     writer.finish(root, info)
     data = stream.getvalue()
     if report is not None:
         report.update(pages=len(kids), content=content, color_space=color_space, raster_fallbacks=fallbacks,
                       fonts=len(fonts.fonts), page_size=page_size)
+        if structure:
+            report["tagged"] = True
     if path:
         Path(path).write_bytes(data)
     return data

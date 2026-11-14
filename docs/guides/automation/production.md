@@ -519,6 +519,8 @@ rerendering that one variant. Old output versions are retained.
 
 ## Print merge
 
+`guides-import` reads a printer's template (PNG or PSD) into role guides that the `safe_area` check enforces, and `guide-set-save` keeps them as a reusable guide set; see [a printer's template](../layout/guides.md#a-printers-template-guide-roles).
+
 `merge-impose` merges a template and a CSV into print sheets (n-up, crop marks, bleed) with vector text, validating every row
 first; see [imposition](../output/imposition.md). Variant production fingerprints include the revisions of any documents a design
 [links](../output/linked-documents.md), so a changed source re-renders the variants that use it.

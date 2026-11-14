@@ -8,7 +8,8 @@ the active page, a description of the whole page (``page_alt``), its language wh
 
 Exports carry them: HTML ``lang``, ``alt`` and ``aria-label``; SVG ``<title>``/``<desc>``, ``role="img"``
 and ``aria-hidden`` for decorative layers; PowerPoint ``descr`` and the decorative flag; PDF ``/Lang`` and
-``/Alt`` (or ``/Artifact``) marked content. A tagged PDF structure tree is not written.
+``/Alt`` (or ``/Artifact``) marked content, and with ``export(tagged=True)`` a tagged PDF structure tree in
+reading order (``pdf_structure``).
 """
 
 import re
@@ -38,8 +39,8 @@ def schemas(add):
                      "whole artwork of a one-page document) as one picture: HTML alt, SVG <desc>."},
         "page_lang": field(S, "Language of the active page when it differs from the document's."),
         "reading_order": {"type": "array", "items": S, "maxItems": 512, "description": "Layers of the active page in "
-                          "the order a reader should meet them (HTML text layer and the reading-order check); an empty "
-                          "list returns to top-to-bottom order."},
+                          "the order a reader should meet them (HTML text layer, the structure tree of a tagged PDF "
+                          "and the reading-order check); an empty list returns to top-to-bottom order."},
     })
 
 
@@ -275,7 +276,7 @@ def check(candidate, resolved, layers, texts, bounds, text_scales, issue):
                 issue("accessibility", "warning",
                       f"Exports read {before['name']!r} before {after['name']!r} (stacking order), but {after['name']!r} "
                       "comes first on the page. Reorder the layers, or set {type: accessibility, reading_order: [...]} "
-                      "for HTML (PowerPoint and PDF read in stacking order)", [before, after], action="review",
+                      "for HTML and a tagged PDF (PowerPoint and an untagged PDF read in stacking order)", [before, after], action="review",
                       code="reading-order")
                 break
 

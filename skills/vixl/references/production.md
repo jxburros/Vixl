@@ -106,6 +106,13 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    imposes a template and a CSV on print sheets: a vector-text PDF (selectable text) and/or an editable sheet `.vixl` of live
    `link` layers. Run it with `dry_run` first: the report names missing/unknown columns, overflowing text, tofu glyphs and the
    grid. `{"rerun": "sheet.vixl"}` repeats it after the data changes. See `docs/guides/output/imposition.md`.
+    A printer's own template: `vixl_apply(workflow='guides-import', request={source: 'template.png'})` lists the line
+   colours (and a PSD's layers and ruler guides); with `colors: {'#00a651': 'safe', '#ed1c24': 'keep-out', '#00aeef': 'fold',
+   '#ff00ff': 'trim'}` (PSD also `layers: {NAME: role}`, `ruler_guides: 'fold'`) it writes role guides `safe-1`, `safe-2`,
+   `keep-out-1`, `fold-1` … (closed outlines where lines meet, notches kept; whole pixels; scaled to the canvas). `vixl_check`
+   then reports `safe_area.outside-safe-guide`, `.keep-out` and `.crosses-fold` per guide and layer. `save: NAME` keeps a
+   guide set; `{type: guide-set, name: NAME}` applies it to the next document; `guide-set-save` saves a document's role
+   guides. See `docs/guides/layout/guides.md#a-printers-template-guide-roles`.
 12. Linked documents: a `link` layer shows another `.vixl` live (`fit`, `position`, `crop`, `artboard`, `source_page`,
    `variables`); `vixl_apply(workflow='links', request={})` reports ok/stale/missing with each resolved `path`, `link-refresh`
    records the seen revision, `links-relink {from, to}` follows moved sources, `link-embed` freezes it. Keep sources

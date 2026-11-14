@@ -331,7 +331,8 @@ STATE_FIELDS = {
     "brand_preset": (STRING, "Brand preset applied."),
     "style": ((OBJECT, STRING), "Design style tag and its check options."),
     # Layout aids
-    "guides": (OBJECT, "Ruler guides by name: {axis, position, grid or generated}."),
+    "guides": (OBJECT, "Guides by name: {axis, position} or {kind, …}, with grid or generated for a grid's "
+                        "guides and role (trim, safe, fold, keep-out, bleed) for a printer's template."),
     "grids": (OBJECT, "Layout grids by name."),
     "active_grid": (STRING, "Name of the active grid."),
     "layout": (OBJECT, "The layout template applied and its slots."),

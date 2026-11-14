@@ -138,6 +138,10 @@ def compile_design(cmd, args):
             p.add_argument("--" + key, type=float)
         p.add_argument("--points", type=json.loads, help="JSON [[x1, y1], [x2, y2]] for a segment, or a line through two points")
         p.add_argument("--d", help="SVG path for a path guide")
+        p.add_argument("--rect", type=float, nargs=4, metavar=("X", "Y", "W", "H"),
+                       help="A closed rectangular path guide (a safe area, a keep-out)")
+        p.add_argument("--role", choices=["trim", "safe", "fold", "keep-out", "bleed"],
+                       help="Print role the safe_area check enforces")
         p.add_argument("--delete", action="store_true", default=None)
     elif cmd == "grid":
         from .guides import GRID_KINDS

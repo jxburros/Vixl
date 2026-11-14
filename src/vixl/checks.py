@@ -991,6 +991,8 @@ def check_design(
     from .sizes import LIVE_TOLERANCE, live_insets, safe_sides
 
     canvas_safe = live_insets(c) if any(safe_sides(c)) else None
+    if safe_area is None and any(g.get("role") == "safe" for g in candidate.state.get("guides", {}).values()):
+        canvas_safe = None  # a printer's template gives the safe areas: its safe guides replace the size preset's
     if "safe_area" in checks and (safe_area is not None or canvas_safe or avoid):
         if safe_area is not None or canvas_safe:
             left, top, right, bottom = _insets(safe_area, width, height) if safe_area is not None else canvas_safe
@@ -1030,6 +1032,24 @@ def check_design(
                         zone=[round(v, 2) for v in box],
                         code="reserved-zone",
                     )
+
+    if "safe_area" in checks and any(g.get("role") for g in candidate.state.get("guides", {}).values()):
+        # Role guides from a printer's template: per-panel safe outlines, keep-outs and folds.
+        from .guides import check_roles
+        from .render import effect_margin, style_margin
+
+        drawn = member_geometry(resolved, geometry)
+
+        def ink(item):
+            """The drawn box grown by what effects and layer styles paint around it."""
+            layer = resolved[item["id"]]
+            (ex, ey), (sx, sy) = effect_margin(layer), style_margin(layer)
+            x, y, w, h = drawn[item["id"]]
+            k = text_scales[item["id"]]
+            return outward((x - (ex + sx) * k, y - (ey + sy) * k, w + 2 * (ex + sx) * k, h + 2 * (ey + sy) * k))
+
+        check_roles(candidate, content, {item["id"]: ink(item) for item in content}, is_text, intentional_crop,
+                    issue)
 
     if "legibility" in checks:
         from .craft import body_size, stage_for

@@ -37,8 +37,9 @@ field. A group's alt text covers the layers inside it.
 - `title`, `page_alt`, layer `alt` and the HTML caption may contain `${variables}`; exports fill them with the same
   values as the image, including a `variables=` override (`$${name}` stays literal).
 - `reading_order: [layers…]` sets the order a reader meets the active page's text and described images; an
-  empty list returns to top-to-bottom order. The HTML presenter's reading text follows it. PowerPoint and PDF
-  readers follow the stacking order, so reorder the layers when those exports matter.
+  empty list returns to top-to-bottom order. The HTML presenter's reading text and the structure tree of a
+  [tagged PDF](#tagged-pdf) follow it. PowerPoint and untagged PDF readers follow the stacking order, so reorder
+  the layers when those exports matter.
 
 ## What each export carries
 
@@ -49,10 +50,50 @@ field. A group's alt text covers the layers inside it.
 | SVG | `<title>` and `role="img"` on described layers, `aria-hidden="true"` on decorative ones; the document `<title>` and `page_alt` as `<desc>` | `xml:lang` |
 | PowerPoint | `descr` on pictures, shapes, groups and native charts; decorative shapes carry PowerPoint's decorative flag | text runs, notes and charts in the document language (a slide's `page_lang` for its text); `dc:language` |
 | PDF | `/Figure` marked content with `/Alt`, decorative layers as `/Artifact` | `/Lang`, document title |
+| PDF with `tagged` | A structure tree: `Figure` elements with `/Alt`, headings and paragraphs, form fields, in reading order | `/Lang`, document title, `/MarkInfo` |
 
-A full tagged PDF (a structure tree with headings, paragraphs and figures in reading order) is not written
-yet, so PDF reading order follows the stacking order and assistive technology that needs tags ignores the
-marked content.
+## Tagged PDF
+
+A plain PDF export is untagged: its marked content has no structure tree, so its reading order is the stacking
+order and assistive technology that needs tags ignores the alt text. Ask for tags when the PDF goes to a screen
+reader or through an accessibility checker:
+
+```bash
+vixl -p report.vixl export report.pdf --tagged
+```
+
+Python `project.export("report.pdf", tagged=True)`, MCP `vixl_export(path="report.pdf", tagged=true)`, REST
+`POST /export` with `"tagged": true`. It is off by default, and an export without it is byte for byte what it was
+before; the export result says `tagged: true` when the tree was written. A delivery spec can require it:
+`vixl_export(path="report.pdf", tagged=true, check=true)` reads the file back and confirms the structure tree, and
+`spec: {"tagged": true}` (also in `vixl check-file`) fails an untagged PDF.
+
+The tree is `Document` > one `Sect` per page > the page's elements:
+
+| Layer | Element |
+| --- | --- |
+| Text | `P`, or `H1`–`H3` from its text stage: `display` and `h1` are `H1`, `h2` is `H2`, `h3` is `H3`. The stage is the one the layer's font follows, else the one its size reads as (the title step and up are headings). Text that had to be drawn as an image (effects, a mask) keeps its words in `/ActualText` |
+| A layer or group with `alt` | `Figure` with `/Alt`; a described group is one figure, its parts are not tagged again |
+| Image, frame, linked document, paint or pixel layer without `alt` | `Figure` without `/Alt` (the `missing-alt` finding asks for one) |
+| A group drawn as one image (effects, opacity, a mask) without `alt` | `Figure` whose `/Alt` is the text inside it |
+| A form field in a fillable PDF | `Form`, pointing at its widget, named by the field's label |
+| Decorative layers, undescribed shapes, solids and gradients, the page background | `/Artifact`: skipped by readers |
+
+A plain group is transparent: its children are tagged one by one. Elements are listed in the page's reading
+order (`reading_order` first, where naming a group places everything in it, then top to bottom and left to
+right), whatever the stacking order is. Each element owns exactly one marked-content sequence (one MCID), and the
+`ParentTree` maps every MCID and every form widget back to its element.
+
+A page written as one image (`pdf_content: "raster"`, or a page with blend modes or adjustment layers) is one
+`Figure` described by `page_alt`, else by the page's text in reading order; prefer vector pages so the text stays
+real text. `tagged` needs Vixl's own PDF writer, so it cannot be combined with `scale`, `profile`, `artboard`,
+`comp`, `proof` or `simulate` (pass `pdf_content` with a scale).
+
+The file is tagged, with a language and a title, which is what most checkers and procurement lists ask first. It
+does not claim PDF/UA conformance (no PDF/UA identifier is written): tables and lists have no dedicated elements
+(a chart is a figure, a list is paragraphs), and the alt text itself is yours to write. Run
+`vixl check --checks accessibility` first, then a checker such as PAC or veraPDF on the result if the delivery
+requires a report.
 
 ## The accessibility check
 

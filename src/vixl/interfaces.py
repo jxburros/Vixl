@@ -1339,7 +1339,7 @@ EXPORT_FIELDS = frozenset({
     "format", "quality", "scale", "variables", "background", "artboard", "comp", "sampling", "profile", "svg_policy",
     "svg_document", "color_space", "icc_profile_base64", "intent", "black_generation", "ink_limit", "proof",
     "simulate", "dpi", "icon_sizes", "time", "page", "pages", "pdf_content", "fillable", "values", "fill_mode",
-    "alpha", "presenter", "strict", "check_status",
+    "tagged", "alpha", "presenter", "strict", "check_status",
 })
 EXPORT_MEDIA = {
     "PNG": "image/png", "JPEG": "image/jpeg", "JPG": "image/jpeg", "SVG": "image/svg+xml", "HTML": "text/html",

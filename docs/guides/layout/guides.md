@@ -38,6 +38,9 @@ vixl guides                                                   # list guides and 
 | `circle` | `x`, `y`, `radius` | Rings for radial layouts, dials, wreaths. |
 | `path` | `d` (SVG path) | Curves: S-curves, spirals, waves, any line of action. |
 
+`rect: [x, y, width, height]` (CLI `--rect X Y W H`) is shorthand for a closed rectangular `path` guide. Any guide
+may carry a `role` from a printer's template; see [a printer's template](#a-printers-template-guide-roles).
+
 `guide NAME --delete` removes one guide; `grid NAME --delete` removes a grid and its guides.
 Redefining a grid replaces its guides. A document holds at most 1,024 guides.
 
@@ -104,6 +107,9 @@ intersection or guide within `tolerance` px (default 8), and straightens a rotat
 Two opt-in check families report what an agent cannot see. Both are warnings: deliberate
 offsets are allowed, but they should be clear, not a few pixels.
 
+Guides with a print role (`safe`, `keep-out`, `fold`) are enforced by the default `safe_area` check, not by these
+two: see [a printer's template](#a-printers-template-guide-roles).
+
 - `guides`: a layer anchor that is close to (default within 6 px) but not on a guide or guide
   point, with the move that fixes it; a rotation within 4° of a straight guide's angle but not on it.
 - `alignment`: sibling layers whose edges or centres are 1–3 px apart, or whose rotations are
@@ -116,6 +122,105 @@ vixl check --checks guides alignment
 MCP: `vixl_check(checks=["guides", "alignment"])`; previews draw the guides with
 `vixl_render(guides=true)` (or a list of guide or grid names). Python:
 `vixl.proxy.render_preview(project, w, h, guides=True)` and `vixl.guides.draw_overlay(image, project)`.
+
+## A printer's template: guide roles
+
+A print-on-demand template (a book wrap with back, spine and front; a mug; a box) marks its rules as coloured
+dashed lines: the board or trim edge, a safe area per panel, a barcode keep-out, the fold lines. A guide can say
+which of those it is, and the default `safe_area` check then enforces it.
+
+| Role | Guide | What `check` reports (`safe_area`) |
+| --- | --- | --- |
+| `safe` | A closed outline (`rect`, a closed `path`, a circle): one per panel. It need not be a rectangle: a safe area with a barcode notch cut out is an eight-corner path | `outside-safe-guide`: a layer's ink leaves the safe outline it belongs to (the one it overlaps most). `outside-safe-guides`: it lies in no safe outline at all (on the spine, in the bleed) |
+| `keep-out` | A closed outline: the barcode box, a hinge zone | `keep-out`: a layer's ink reaches into it |
+| `fold` | A line: an axis guide, a segment | `crosses-fold` (review): a text layer or a `role: title` layer runs across it. Artwork may wrap around a spine |
+| `trim`, `bleed` | Any guide | Nothing: they label the cut edge and the bleed edge on the overlay and in a saved guide set |
+
+```bash
+vixl guide front-safe --rect 1890 150 1500 2100 --role safe
+vixl guide barcode --rect 300 1900 600 380 --role keep-out
+vixl guide spine-left x 1740 --role fold
+vixl check --checks safe_area
+vixl render --out guides.png --show-guides     # safe green, keep-out red, folds orange, trim and bleed magenta
+```
+
+```json
+[{"type": "guide", "name": "front-safe", "rect": [1890, 150, 1500, 2100], "role": "safe"},
+ {"type": "guide", "name": "back-safe", "role": "safe", "kind": "path",
+  "d": "M 150 150 L 1650 150 L 1650 2250 L 1000 2250 L 1000 1850 L 250 1850 L 250 2250 L 150 2250 Z"},
+ {"type": "guide", "name": "barcode", "rect": [300, 1900, 600, 380], "role": "keep-out"},
+ {"type": "guide", "name": "spine-left", "axis": "x", "position": 1740, "role": "fold"}]
+```
+
+- Ink is what the layer draws: its geometry with strokes, grown by what its effects and layer styles paint around
+  it (a blur, a drop shadow, an outer glow). Text is an error, other layers a warning; a layer marked
+  `layer-intent allow_crop`, or non-text decoration, reports as information.
+- A non-text layer that covers a whole safe or keep-out outline is a backdrop running under it and is not reported:
+  a cover image fills its panel and bleeds off it, and the printer's barcode box sits on top of it.
+- Once a document has a `safe` guide, the safe guides are the safe area: the size preset's own inset is no longer
+  checked, unless you pass `safe_area` yourself.
+- `safe` and `keep-out` name an area, so they need a closed guide; an axis line with one of them is refused with
+  the way to draw it. Spellings such as `keep_out`, `barcode`, `spine` and `cut` are accepted and reported under
+  `normalized`.
+
+### Importing the template
+
+The `guides-import` workflow reads the lines out of the template file. Call it once without a mapping to see what
+the template draws with, then map each colour to a role:
+
+```bash
+vixl guides-import wrap-template.png            # lists the line colours (and a PSD's layers and ruler guides)
+vixl guides-import wrap-template.png --color '#00a651=safe' --color '#ed1c24=keep-out' \
+     --color '#00aeef=fold' --color '#ff00ff=trim' --save acme-journal-wrap
+vixl check --checks safe_area
+```
+
+```json
+{"workflow": "guides-import",
+ "request": {"source": "wrap-template.png",
+             "colors": {"#00a651": "safe", "#ed1c24": "keep-out", "#00aeef": "fold", "#ff00ff": "trim"},
+             "save": "acme-journal-wrap", "description": "Acme hardcover journal, 6 x 9 in wrap"}}
+```
+
+MCP: `vixl_apply(workflow="guides-import", request={…})`. The result lists the guides it wrote (`guides`, `counts`
+per role), the `scale` from template pixels to the canvas and `warnings`.
+
+- **What is read.** Dashed or solid horizontal and vertical lines of the mapped colour (`tolerance`, default 40
+  of 255 per channel, takes in the anti-aliased edge). Lines whose ends meet become one closed outline, each the
+  smallest outline around an area, so a safe area with a notch stays one eight-corner guide and two boxes sharing
+  an edge are two guides. A line that closes nothing becomes an axis guide when it spans the template, else a
+  segment. Diagonal and curved lines are not read: draw those with `guide kind: path`.
+- **What is not a line.** Lettering and patches in a line colour: anything thicker than `max_thickness`, anything
+  with more of the colour right beside it, and short strays that close no outline (the result counts them).
+  `gap` is the widest dash gap bridged and `min_length` the shortest line kept.
+- **Whole pixels.** Positions are the centre of each line, on whole canvas pixels. A template at another
+  resolution is scaled onto the canvas when the proportions agree (`fit: "scale"`, the default); `fit: "stretch"`
+  scales each axis on its own and `fit: "none"` keeps template pixels. Make the document at the template's
+  proportions first (`vixl new 5400x2475 -o wrap.vixl`).
+- **Names.** `safe-1`, `safe-2`, `fold-1` …: numbered per role from left to right, then top to bottom, so the
+  back cover of a wrap is `safe-1` and the front `safe-2`. `name` puts a prefix before them; `replace: true`
+  removes the document's earlier role guides first; `dry_run: true` only reports.
+- **PSD templates.** `layers: {"Safe Area": "safe"}` reads whatever a named layer draws (in any colour) as lines,
+  `ruler_guides: "fold"` takes the file's ruler guides as axis guides with that role (`plain`: no role), and
+  `colors` works on the flattened picture as for a PNG. Only that much of the PSD is read (8-bit RGB or greyscale,
+  raw or RLE): a PSB, a 16-bit or CMYK file is refused with the way out, which is a flattened PNG of the template.
+
+### Guide sets: the same product again
+
+`save` stores the imported guides as a **guide set**, a `guide-sets` resource holding the guides and the canvas
+size they were made for. `guide-set-save` saves the role guides of any document the same way (`guides: [names]`
+picks others), and `resource-list`, `resource-get` and `resource-save` with `kind: "guide-sets"` list, read and
+write them like other [resources](agent-resources.md). The `guide-set` operation puts one on a document:
+
+```bash
+vixl guide-set acme-journal-wrap                # same proportions at any resolution: scaled to whole pixels
+vixl guide-set acme-journal-wrap --replace      # drop the document's other role guides first
+vixl guide-set-save my-box-dieline --guides lid-safe base-safe glue-flap
+```
+
+As an operation: `{"type": "guide-set", "name": "acme-journal-wrap"}`, with `fit` (`scale`, `stretch`, `none`),
+`prefix` (to hold two sets side by side) and `replace`. It is one undo step, and a canvas with other proportions
+is refused rather than guessed at.
 
 ## Composition
 
