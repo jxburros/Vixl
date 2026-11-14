@@ -886,6 +886,9 @@ class LayerCache(OrderedDict):
         super().__init__()
         self.entries, self.budget, self.bytes = entries, budget, 0
         self.lock = threading.RLock()  # Layers are drawn in parallel (render_pool).
+        # A tiled render (tiles.py) keeps the layers too large to cache here while it runs: ``held`` maps an ink
+        # key to its image, shared by the tiles; ``regions`` maps an ink key to how a crop of it is drawn alone.
+        self.held, self.regions = {}, {}
 
     def image(self, key):
         with self.lock:
@@ -1035,6 +1038,8 @@ def layer_ink(project, layer, bounds):
     key, content, extent_key, cacheable = ink_identity(project, layer, bounds)
     cache = layer_cache(project)
     profile = PROFILE.get()
+    if cache.held and key in cache.held:
+        return cache.held[key]  # Not a copy: callers crop it (see ``vixl_held`` in ``_render_layers``).
     if cacheable:
         cached = cache.image(key)
         if profile is not None:
@@ -1578,7 +1583,15 @@ def composite(bottom, top, blend):
         raise VixlError("invalid_blend", f"Unknown blend mode: {blend}")
     alpha = ass + ab * (1 - ass)
     rgb = ((1 - ass) * ab * cb + (1 - ab) * ass * cs + ab * ass * mixed) / np.maximum(alpha, 1e-8)
-    return Image.fromarray(np.uint8(np.clip(np.concatenate((rgb, alpha), axis=2), 0, 1) * 255 + 0.5))
+    result = np.uint8(np.clip(np.concatenate((rgb, alpha), axis=2), 0, 1) * 255 + 0.5)
+    if blend in ("multiply", "screen"):
+        # Pillow's integer multiply and screen round down where this equation rounds to nearest. A pixel must not
+        # depend on what else is in the box (a tile or a dirty box cuts it differently than the whole canvas), so
+        # opaque pixels over opaque pixels take the integer result here as they do in an all-opaque box.
+        both = (np.asarray(bottom.getchannel("A")) == 255) & (np.asarray(top.getchannel("A")) == 255)
+        if both.any():
+            result[both, :3] = np.asarray(opaque_modes[blend](bottom.convert("RGB"), top.convert("RGB")))[both]
+    return Image.fromarray(result)
 
 
 def layer_surface(project, layer, bounds, size, index, visiting=None):
@@ -2009,17 +2022,26 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
         if not reaches(layer):
             return image
         source = prefetch.take(layer)
-        if source is None:
-            source = layer_ink(project, {**layer, "opacity": 1}, b)
-        x, y = ink_origin(source, b)
+        whole = None
+        if source is None and regions:
+            kind = regions.get(ink_key(project, {**layer, "opacity": 1}, b))
+            if kind:
+                from .tiles import region_ink
+
+                source, whole = region_ink(project, layer, b, size, kind)  # Only the part on this tile is drawn.
+        if whole is None:
+            if source is None:
+                source = layer_ink(project, {**layer, "opacity": 1}, b)
+            x, y = ink_origin(source, b)
+            whole = (x, y, x + source.width, y + source.height)
         if drawn is not None:
-            drawn[layer["id"]] = (x, y, x + source.width, y + source.height)
-        left, top = max(0, x), max(0, y)
-        right, bottom = min(size[0], x + source.width), min(size[1], y + source.height)
+            drawn[layer["id"]] = whole
+        left, top = max(0, whole[0]), max(0, whole[1])
+        right, bottom = min(size[0], whole[2]), min(size[1], whole[3])
         if left >= right or top >= bottom:
             return image
-        if (left, top, right, bottom) != (x, y, x + source.width, y + source.height):
-            source = source.crop((left - x, top - y, right - x, bottom - y))
+        if source.size != (right - left, bottom - top) or source.info.get("vixl_held"):
+            source = source.crop((left - whole[0], top - whole[1], right - whole[0], bottom - whole[1]))
         if layer["opacity"] != 1:
             source = with_opacity(source, layer["opacity"])
         if layer["blend"] == "normal":
@@ -2071,6 +2093,7 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
 
     shown = [layer for layer in layers if layer.get("parent") == parent and layer["visible"]
              and (members is None or layer["id"] in members)]
+    regions = layer_cache(project).regions if limit and parent is None else None
     candidates = []
     if not getattr(_IN_POOL, "active", False) and PROFILE.get() is None and render_threads() > 1:
         candidates = [layer for layer in shown if worth_prefetching(layer) and reaches(layer)]
@@ -2132,6 +2155,8 @@ UNDRAWN_STATE = {"layers", "timeline", "animation", "suites", "roles", "motions"
                  "design_guidance", "presets"}
 # Canvases up to this many pixels keep their last render for the next one.
 INCREMENTAL_PIXELS = 40_000_000
+# Canvases above this many pixels are composited as tiles (``render_tiled``).
+TILED_PIXELS = 8_000_000
 
 
 class Snapshot:
@@ -2225,7 +2250,7 @@ def render_incremental(project, background):
     cache = layer_cache(project)
     lit = bool(project.state.get("lighting"))
     if c["width"] * c["height"] > INCREMENTAL_PIXELS:
-        return light(render_layers(project, background=background), project)
+        return light(render_tiled(project, background), project)
 
     def on_canvas(box, left=0, top=0):
         if box is None:
@@ -2291,7 +2316,12 @@ def render_incremental(project, background):
                                canvas_pixels=c["width"] * c["height"], changed_layers=len(changed))
             if image is None:
                 drawn = {}
-                image = _render_layers(project, layers, bounds, None, None, background, None, drawn=drawn)
+                if c["width"] * c["height"] > TILED_PIXELS:
+                    from . import tiles
+
+                    image = tiles.render(project, layers, bounds, background, drawn=drawn)
+                if image is None:
+                    image = _render_layers(project, layers, bounds, None, None, background, None, drawn=drawn)
                 drawn = {ident: on_canvas(drawn.get(ident)) for ident in current}
                 lit_image = light(image, project) if lit else None
             layers_now = {ident: (fingerprint, drawn[ident] if ident in drawn else previous.layers[ident][1])
@@ -2302,6 +2332,25 @@ def render_incremental(project, background):
             return lit_image if lit else image
         finally:
             project._resolution = None
+
+
+def render_tiled(project, background="transparent", tile=None, workers=None):
+    """``render_layers`` of the canvas, composited as tiles of ``tile`` pixels (1024) on ``workers`` threads of
+    the render pool (``tiles.py``): each tile is a region render, so the pixels are those of the single-canvas
+    path. For a document whose regions render alone; one that ``tiles.plan`` refuses is drawn on one canvas."""
+    from . import tiles
+
+    with resolving(project):
+        layers, bounds = resolved(project)
+        shared = getattr(project, "_resolution", None)
+        project._resolution = (project.state, layers, bounds)
+        try:
+            image = tiles.render(project, layers, bounds, background, tile=tile or tiles.TILE, workers=workers)
+            if image is None:
+                image = _render_layers(project, layers, bounds, None, None, background, None)
+            return image
+        finally:
+            project._resolution = shared
 
 
 def region_renders_alone(project):
@@ -2357,14 +2406,18 @@ def render(project, variables=None, artboard=None, comp=None, page=None, region=
             profile.phase("render", time.perf_counter() - started)
 
 
-def _render(project, variables=None, artboard=None, comp=None, page=None, region=None):
+def view(project, variables=None, artboard=None, comp=None):
+    """The document a render draws: one artboard or comp of it with ``variables`` applied, its speech bubbles
+    laid out."""
+    from .captions import prepare_bubbles
     from .design_render import artboard_project
 
-    project = view_page(project, page)
-    candidate = artboard_project(project, artboard, comp, variables)
-    from .captions import prepare_bubbles
+    return prepare_bubbles(artboard_project(project, artboard, comp, variables))
 
-    candidate = prepare_bubbles(candidate)
+
+def _render(project, variables=None, artboard=None, comp=None, page=None, region=None):
+    project = view_page(project, page)
+    candidate = view(project, variables, artboard, comp)
     from .design import resolve_color
 
     if region is not None:

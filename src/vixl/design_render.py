@@ -11,18 +11,21 @@ from .errors import require
 from .design import resolve_color
 
 
-def gradient_image(project, layer, size):
+def gradient_image(project, layer, size, box=None):
+    """The gradient layer at ``size``. ``box`` (left, top, right, bottom) gives only that part of it, with the
+    pixels a crop of the whole has, so a tile of a large canvas never draws the whole gradient."""
     from .render import color
 
     from .design import gradient_stops
 
     w, h = size
+    left, upper, right, lower = box or (0, 0, w, h)
     stops = gradient_stops(layer, project.state)
     offsets = [s["offset"] for s in stops]
     colors = np.array([color(resolve_color(s["color"], project.state)) for s in stops], dtype=float)
     direction = layer.get("direction", "vertical")
-    x = np.linspace(0, 1, w)[None, :]
-    y = np.linspace(0, 1, h)[:, None]
+    x = np.linspace(0, 1, w)[None, left:right]
+    y = np.linspace(0, 1, h)[upper:lower, None]
     # Interpolate premultiplied alpha to avoid halos around transparent stops.
     colors[:, :3] *= colors[:, 3:] / 255
 
@@ -32,13 +35,15 @@ def gradient_image(project, layer, size):
         return np.clip(arr, 0, 255)
 
     if direction in ("horizontal", "vertical"):
-        return Image.fromarray(linear_ramp(values(x[0] if direction == "horizontal" else y[:, 0]), w, h, direction))
+        return Image.fromarray(linear_ramp(values(x[0] if direction == "horizontal" else y[:, 0]), right - left,
+                                           lower - upper, direction, left, upper))
     # Float work in bands of rows, so a large canvas never holds several float64 copies of itself.
-    result = np.empty((h, w, 4), dtype=np.uint8)
+    h = lower - upper
+    result = np.empty((h, right - left, 4), dtype=np.uint8)
     band = max(1, (1 << 18) // max(1, w))
     # Opaque stops leave alpha alone and a channel the stops share is a whole number: only the others vary.
     opaque = bool(np.all(colors[:, 3] == 255))
-    wide = np.tile(dither_tile(), (1, w // DITHER + 1))[:, :w]
+    wide = np.tile(dither_tile(), (1, w // DITHER + 1))[:, left:right]
     constant = [bool(np.all(colors[:, i] == colors[0, i]) and colors[0, i] == int(colors[0, i])) for i in range(4)]
     for top in range(0, h, band):
         rows = y[top:top + band]
@@ -49,7 +54,7 @@ def gradient_image(project, layer, size):
             a = math.radians(layer.get("angle", 0))
             dx, dy = math.cos(a), math.sin(a)
             ramp = ((x - 0.5) * dx + (rows - 0.5) * dy) / (abs(dx) + abs(dy)) + 0.5
-        thresholds = wide[np.arange(top, top + len(rows)) % DITHER]
+        thresholds = wide[np.arange(upper + top, upper + top + len(rows)) % DITHER]
         if opaque:
             for i in range(4):
                 if constant[i]:
@@ -64,10 +69,13 @@ def gradient_image(project, layer, size):
     return Image.fromarray(result)
 
 
-def linear_ramp(line, w, h, direction):
+def linear_ramp(line, w, h, direction, left=0, top=0):
     """A horizontal or vertical gradient from its ``line`` of colours (one per column or row). The dither
-    repeats every DITHER pixels across the ramp, so one strip of that width is computed and copied."""
+    repeats every DITHER pixels across the ramp, so one strip of that width is computed and copied.
+    ``left`` and ``top`` are where the block sits in the whole gradient (the dither's phase)."""
     tile = dither_tile()
+    if left or top:
+        tile = tile[(np.arange(DITHER) + top) % DITHER][:, (np.arange(DITHER) + left) % DITHER]
     result = np.empty((h, w, 4), dtype=np.uint8)
     if direction == "vertical":
         strip = np.floor(line[:, None, :] + tile[np.arange(h) % DITHER][:, :, None]).astype(np.uint8, order="C")
