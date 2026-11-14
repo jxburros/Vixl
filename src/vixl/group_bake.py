@@ -80,6 +80,7 @@ def write_keys(project, target, prop, keys, easing=None):
 
     require(len(keys) <= MAX_KEYS, "Too many keys to bake; shorten the timeline or lower its fps", "resource_limit")
     track = _track(project.state["timeline"], target, prop)
+    track.pop("add", None)  # Baked values are sampled from the summed motion: additive layers are in them.
     track["keys"] = [{"time": t, "value": v, **({"easing": easing} if easing else {})} for t, v in keys]
     return track
 

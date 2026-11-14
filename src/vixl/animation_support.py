@@ -52,7 +52,9 @@ def validate_state(project, state):
                 finite(particle[key], key, lo, hi)
         if "character" in layer:
             character = layer["character"]
-            require(layer["type"] == "group" and isinstance(character, dict) and set(character) == {"version", "parts", "bones"} and character["version"] == 1, "Invalid character metadata")
+            require(layer["type"] == "group" and isinstance(character, dict) and {"version", "parts", "bones"} <= set(character) <= {"version", "parts", "bones", "plan", "species", "facing"} and character["version"] == 1, "Invalid character metadata")
+            require(character.get("plan", "quadruped") == "quadruped" and character.get("facing", "right") in ("right", "left")
+                    and isinstance(character.get("species", ""), str), "Invalid character body plan")
             parts, bones = character["parts"], character["bones"]
             require(isinstance(parts, dict) and len(parts) <= 64 and all(isinstance(v, str) for v in parts.values()), "Invalid character parts")
             require(isinstance(bones, dict) and len(bones) <= 64, "Invalid character rig")
@@ -74,6 +76,11 @@ def validate_state(project, state):
                     require(isinstance(bone["origin"], list) and len(bone["origin"]) == 2, "Invalid bone origin")
                     for value in bone["origin"]:
                         finite(value, "bone origin", -1e6, 1e6)
+                if "at" in bone:
+                    require(isinstance(bone["at"], list) and len(bone["at"]) == 2 and bone.get("parent"), "Invalid bone attachment")
+                    for value in bone["at"]:
+                        finite(value, "bone attachment", -1e6, 1e6)
+                finite(bone.get("rest", 0), "bone rest rotation", -3600, 3600)
         if "bubble" in layer:
             bubble = layer["bubble"]
             require(isinstance(bubble, dict) and set(bubble) == {"anchor", "text", "body", "tail", "style", "padding", "tail_width"}, "Invalid speech bubble")
