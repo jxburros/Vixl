@@ -62,6 +62,9 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    `production.json`, and an output that fails it is held for review and not published.
 6. For long production, call `submit` with `start:true`, then `status` with its returned
    ID. The source is snapshotted. `cancel` is cooperative; `resume` preserves remote IDs.
+   A queue has one worker (`start` answers `already_running` while it is alive), takes 64 unfinished jobs and
+   4096 MB (`limit_exceeded` with `limit: max_pending_jobs` or `max_queue_mb`: wait, or cancel jobs) and deletes
+   completed, failed and cancelled job records 7 days after they ended; published outputs stay.
    Never blindly repeat an uncertain provider request.
 7. Reuse components with library-save/search/open/place. Open preserves the editable
    document; place inserts its rendered snapshot. Preview draft/final without regenerating

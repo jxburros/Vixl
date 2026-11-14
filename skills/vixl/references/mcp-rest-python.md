@@ -226,7 +226,7 @@ see `docs/reference/interfaces.md#hosting-vixl`.
 | `POST /assets?name=photo` | raw image bytes, or empty with `url=https://…`; optional `credit`, `license` | New layer |
 | `POST /import?format=svg\|pdf\|figma` | raw bytes (Figma: the URL or file key); `name`, `page`, `dpi`, `svg_mode`, `node_id`, `rasterize_unsupported`, `font_map` (repeat `SRC=NAME`), `install_fonts` | Editable layers (`svg_mode=appearance`: one image) |
 | `POST /fonts?name=brand` | raw TTF/OTF bytes (≤16 MiB) | Registered font |
-| `GET /resources/{kind}` · `GET\|POST /resources/{kind}/{name}` | POST `{"value":…}` | Names · one entry · save |
+| `GET /resources/{kind}` · `GET\|POST /resources/{kind}/{name}` | POST `{"value":…}` | Names · one entry · save (into the workspace's `.vixl-resources.json`, never the user library) |
 | `POST /workflow/{action}` · `GET /workflow/schema` | the action's request | Workflows allowed on a fixed document (`docs/reference/interfaces.md#capability-matrix` lists them) |
 | `GET /limits` · `GET /jobs` · `GET /jobs/{id}?wait=20` · `GET /jobs/{id}/result` | | Per-call limits · detached calls (a call over `--call-timeout` answers `202` with a job) |
 | `POST /ai/{command}` | `{"args":["--prompt","forest","--provider","local"]}` | CLI-style AI call |

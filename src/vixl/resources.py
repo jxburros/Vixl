@@ -312,6 +312,16 @@ def resource_path(workspace=None):
     return Path(os.environ.get("VIXL_RESOURCES", "~/.config/vixl/resources.json")).expanduser()
 
 
+def service_workspace(session):
+    """The workspace every resource call of a service (REST, MCP, workflows) must name. Without one,
+    ``catalog``/``get``/``register`` use the user's own library (``VIXL_RESOURCES`` or
+    ``~/.config/vixl/resources.json``), which a caller scoped to a workspace may never write."""
+    workspace = getattr(session, "workspace", None)
+    require(workspace is not None, "This call needs a workspace: a service never reads or writes the user "
+            "resource library directly", "forbidden", field="workspace")
+    return workspace
+
+
 def catalog(kind, *, workspace=None):
     extra = plugin_kind(kind)
     require(kind in BUILTINS or extra, "Unknown resource category", allowed=kinds())

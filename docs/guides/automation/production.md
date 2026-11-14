@@ -981,8 +981,10 @@ inputs live in `.vixl-jobs`; submitted resource limits survive background execut
 `status`, `cancel`, `resume` take `{"id":"..."}`. `work` processes ready jobs once;
 `start` launches a hidden worker until the queue is idle. Both accept workers 1–4.
 For an external service supervisor: `vixl workflow worker --workspace . --workers 2`.
-Per-job locks prevent two workers executing the same job. After a process crash, start
-a worker again. Local production resumes. Cancellation is cooperative between outputs/
+A queue has one worker process: while it runs, another `start` (or `submit` with `start`) launches nothing
+and answers `{"already_running": true, "worker_pid": …}`, and a second `workflow worker` exits at once; the
+running worker picks up newly queued jobs. Per-job locks prevent two workers executing the same job. After a
+process crash, start a worker again. Local production resumes. Cancellation is cooperative between outputs/
 frames and does not claim to cancel external inference. Encoding/audio mixing may finish
 their current bounded operation before cancellation is observed.
 
@@ -990,6 +992,21 @@ Over MCP, `vixl_job(action='status' | 'result' | 'cancel', id=JOB, wait=SECONDS)
 32-character id from `submit`, as `status` and `cancel` do; `resume` stays a workflow action. The same tool follows the
 in-memory job id (`{status: running, job}`) that any call returns when it runs past the inline limit (about 40 seconds)
 or is sent with `as_job: true` ([long calls](../../reference/interfaces.md#long-calls-retries-and-progress)).
+
+### Queue quotas
+
+A workspace's queue is bounded, so a caller cannot fill the disk or the process table through `submit` and `start`:
+
+| Quota | Default | Environment | What happens |
+| --- | --- | --- | --- |
+| Unfinished jobs (`queued`, `running`, `waiting`) | 64 | `VIXL_QUEUE_MAX_JOBS` | `submit` is refused with `limit_exceeded`, `limit: max_pending_jobs`, before anything is written. |
+| Disk used by `.vixl-jobs` (records, input snapshots, checkpoints, staged results) | 4096 MB | `VIXL_QUEUE_MAX_MB` | `submit` is refused with `limit: max_queue_mb` when the queue is full, and a job whose input snapshot takes it over the quota is removed again. |
+| Retention of finished jobs | 7 days | `VIXL_QUEUE_RETENTION_DAYS` | `completed`, `failed` and `cancelled` jobs are deleted (record, snapshot and checkpoint) that long after they ended, on the next `submit`, `work` or worker pass. Outputs published to the workspace stay. A `needs_review` job is kept until a person deletes it. |
+| Worker processes | 1 per queue, 1–4 threads | | `start` does nothing while a worker is alive. |
+
+`0` turns a quota off. The error carries `value`, `maximum` and a `hint`; wait for jobs to finish, cancel the ones
+no longer needed, or delete finished job folders from `.vixl-jobs`. `status` of a pruned job answers
+`invalid_manifest`: keep what you need from a result before the retention period ends.
 
 Job kinds:
 
