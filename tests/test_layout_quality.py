@@ -34,20 +34,6 @@ EXCEPTIONS = {
     ("photo-caption", "ebook-cover"): "headline and subtitle weigh the same at seed 2, #807",
     ("editorial-grid", "letter"): "short example body leaves the lower third empty, #808",
     ("editorial-grid", "poster-18x24"): "short example body leaves a band at the foot, #808",
-    ("emblem", "sticker"): "tagline and initials drift from the badge axis, #809",
-    ("price-list", "menu"): "centred title drifts from the subtitle at seed 2, #809",
-    ("price-list", "letter"): "centred title drifts from the subtitle at seed 2, #809",
-    ("big-number", "slide"): "centred body drifts from the label and subtitle, #809",
-    ("minimal-mark", "poster-18x24"): "headline under 1.6 times the body at seed 2, #810",
-    ("minimal-mark", "instagram-post"): "headline under 1.6 times the body at seed 2, #810",
-    ("minimal-mark", "instagram-story"): "headline under 1.6 times the body at seed 2, #810",
-    ("slide-content", "slide"): "band between the last point and the footer, #811",
-    ("asymmetric-balance", "og-image"): "top edge band over the copy, #812",
-    ("asymmetric-balance", "instagram-post"): "top edge band over the copy at seed 2, #812",
-    ("hero-statement", "instagram-post"): "band inside the block accent at seed 3, #812",
-    ("photo-caption", "instagram-story"): "the scrim is taller than its copy, #813",
-    ("business-card", "business-card"): "bottom band at seed 1, #814",
-    ("typographic-poster", "ebook-cover"): "caption overflows its box at seed 2, #814",
 }
 
 CASES = [(name, size) for name in LAYOUTS for size in recommended_sizes(name)]
