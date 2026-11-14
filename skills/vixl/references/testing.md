@@ -56,8 +56,13 @@ review; library suites a group or brand.json lists under `suites` are inherited 
 
 Results carry `outcome`: `execution`, `validation` (passed, failed,
 incomplete, not_run) and `review` with reasons; `state` is `validated` only when required checks ran and
-passed with nothing left to review. An apply without checks, an export or a production output without suites
-is `unvalidated`, not approved. Fix findings carry a stable `rule` (`bounds.text-overflow`,
+passed with nothing left to review. An apply without checks or a production output without suites
+is `unvalidated`, not approved. An export takes the verdict of the last `vixl_check` when that check is of the same
+revision and ran the default checks on the whole document (no `checks`, no `targets`), so check, then export, reads
+`validated`; after any edit, a partial check, or with `artboard`/`comp`/`variables`/`page`/`time`/`isolate` it is
+`unvalidated` again. Backgrounds and decoration that leave the safe area on purpose: create them with
+`role: "decoration"` or `"background"` (shape, pen, solid, gradient, add) or mark them with `layer-intent`; the
+finding turns informational and is listed under `outcome.accepted`. Fix findings carry a stable `rule` (`bounds.text-overflow`,
 `contrast.text-contrast`, `safe_area.outside` …), `layer_ids`, `measured` actual versus expected and a suggested
 `repair` (operations to dry-run; nothing is applied). `repair=true` on `vixl_apply`, `vixl_check` and
 workflow `act` / `group-apply` applies the built-in repair (overflow in a layout: grow the box into free space and move the rows below, then widen, then fit-text within the minimum and above the next smaller line; ink toward `@ink`,

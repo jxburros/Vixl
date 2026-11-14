@@ -32,9 +32,10 @@ def fetch_image(url, limits):
     return fetch_bounded(url, limits.max_asset_bytes, accept=ACCEPT, label="Image URL")
 
 
-def import_image(project, data, name="image", *, source=None, credit=None, license=None):
+def import_image(project, data, name="image", *, source=None, credit=None, license=None, scale=None, sampling=None):
     """Embed encoded image bytes as a new raster layer. ``source`` is a provenance record such as the
-    ``info`` from :func:`fetch_image` or ``{"path": ...}``; its ``sha256`` is filled in from the bytes."""
+    ``info`` from :func:`fetch_image` or ``{"path": ...}``; its ``sha256`` is filled in from the bytes. ``scale``
+    places the layer at that multiple of the image's size and ``sampling="nearest"`` keeps its pixels crisp."""
     extra = attribution(credit, license)
     source = {**(source or {}), "sha256": hashlib.sha256(data).hexdigest()}
     candidate = project.clone()
@@ -45,7 +46,9 @@ def import_image(project, data, name="image", *, source=None, credit=None, licen
     target = max(1, math.floor(width * fit) * math.floor(height * fit)) if fit < 1 else None
     asset, image = add_encoded(candidate, data, max_pixels=target)
     candidate.apply({"type": "add", "asset": asset, "name": name,
-                     "provenance": {"type": "imported", "source": source}, **extra}, detail="compact")
+                     "provenance": {"type": "imported", "source": source}, **extra,
+                     **({"scale": scale} if scale is not None else {}),
+                     **({"sampling": sampling} if sampling is not None else {})}, detail="compact")
     project.__dict__.update(candidate.__dict__)
     layer = project.inspect(project.state["active_layer"])
     return {
@@ -57,6 +60,7 @@ def import_image(project, data, name="image", *, source=None, credit=None, licen
         "asset": asset,
         "source": source,
         **extra,
+        **({"sampling": "nearest"} if sampling == "nearest" else {}),
         **({"downsampled": {"from": [width, height], "to": list(image.size)},
             "warnings": [f"The image was {width}×{height}, above the {limits.max_pixels:,}-pixel limit, and was "
                          f"downsampled to {image.width}×{image.height}; raise --max-pixels to keep it larger"]}
@@ -65,7 +69,7 @@ def import_image(project, data, name="image", *, source=None, credit=None, licen
 
 
 def import_image_from(project, *, path=None, data=None, url=None, name="image", credit=None, license=None,
-                      read=None):
+                      read=None, scale=None, sampling=None):
     """Import from exactly one of ``path``, ``data`` or ``url``. ``read(path, limit)`` reads a path
     (services confine it to the workspace); ``path`` is recorded as given."""
     require(sum(value is not None for value in (path, data, url)) == 1,
@@ -81,4 +85,5 @@ def import_image_from(project, *, path=None, data=None, url=None, name="image", 
         require(isinstance(data, (bytes, bytearray)), "data must be bytes", field="data")
         require(len(data) <= limit, "Image exceeds byte limit", "resource_limit", field="data")
         data, source = bytes(data), {}
-    return import_image(project, data, name, source=source, credit=credit, license=license)
+    return import_image(project, data, name, source=source, credit=credit, license=license, scale=scale,
+                        sampling=sampling)

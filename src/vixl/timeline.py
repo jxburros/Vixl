@@ -42,6 +42,7 @@ MAX_STREAMED_FRAMES = MAX_DURATION * 60 // 1000
 STREAMED = ("mp4", "webm")
 MAX_TRACKS = 1024
 MAX_KEYS = 8192
+MAX_ADDITIVE = 8  # additive layers on one track
 
 NAMED_BEZIER = {
     "ease": (0.25, 0.1, 0.25, 1.0),
@@ -306,6 +307,81 @@ def _set_key(track, time, value, easing, written=None):
         written.append(time)
 
 
+def _additive_key(project, timeline, target, prop, op, time, written):
+    """One key of an additive layer (``mode: add``): a named list of keys stored on the property's track
+    whose value is added to the track's own at every time (``sample_track``). A property that has no
+    track yet first gets its current value keyed at 0, so the sum has a base."""
+    from .design import named
+
+    require(_property_kind(prop) == "number", f"mode add sums numbers; {prop!r} is not numeric", field="mode")
+    finite(op["value"], "value", -1e6, 1e6)
+    name = named(op.get("additive", "add"))
+    base = static_value(project, target, prop)
+    track = _track(timeline, target, prop)
+    if not track["keys"]:
+        _set_key(track, 0, base, None)
+    layers = track.setdefault("add", [])
+    layer = next((item for item in layers if item["layer"] == name), None)
+    if layer is None:
+        require(len(layers) < MAX_ADDITIVE, f"A track holds at most {MAX_ADDITIVE} additive layers", "resource_limit", field="additive")
+        layer = {"layer": name, "keys": []}
+        layers.append(layer)
+    _set_key(layer, time, op["value"], op.get("easing"), written)
+
+
+def _mark_period(track, op):
+    """Record on the track that its values repeat: ``wrap`` (a period in the property's units: a strip
+    whose artwork repeats every 1200 px) or ``symmetry`` (a rotation that repeats every 360/n degrees).
+    The loop-seam checks then compare the track modulo that period."""
+    prop = track["property"]
+    if "wrap" in op:
+        require("symmetry" not in op, "Pass wrap or symmetry, not both", field="wrap")
+        require(_property_kind(prop) == "number", f"wrap needs a numeric property; {prop!r} is not", field="wrap")
+        finite(op["wrap"], "wrap", 0, 1e6)
+        track.pop("symmetry", None)
+        if op["wrap"] > 0:
+            track["wrap"] = op["wrap"]
+        else:
+            track.pop("wrap", None)  # wrap: 0 clears the mark
+    if "symmetry" in op:
+        symmetry = op["symmetry"]
+        require(prop == "rotation", "symmetry marks a rotation track; for other properties pass wrap (the repeat "
+                "distance in the property's units)", field="symmetry")
+        require(isinstance(symmetry, int) and not isinstance(symmetry, bool) and 1 <= symmetry <= 1000,
+                "symmetry must be a whole number 1-1000", field="symmetry")
+        track.pop("wrap", None)
+        if symmetry > 1:
+            track["symmetry"] = symmetry
+        else:
+            track.pop("symmetry", None)
+
+
+def track_period(track):
+    """The distance after which a track's values look the same again: its ``wrap``, one symmetry step of
+    a rotation (360 degrees without ``symmetry``), or None."""
+    if track.get("wrap"):
+        return track["wrap"]
+    if track["property"] == "rotation":
+        return 360 / max(1, track.get("symmetry", 1))
+    return None
+
+
+def key_times(track):
+    """Every key time of a track, its additive layers included."""
+    times = {key["time"] for key in track["keys"]}
+    for layer in track.get("add", ()):
+        times.update(key["time"] for key in layer["keys"])
+    return times
+
+
+def summed_keys(project, track):
+    """The track's keys as the renderer sees them: its own keys, or, with additive layers, the summed
+    value at every key time of the track and its layers."""
+    if not track.get("add"):
+        return track["keys"]
+    return [{"time": time, "value": sample_track(project, track, time)} for time in sorted(key_times(track))]
+
+
 def _note(project, message):
     """Tell the caller about something an operation did that was not asked for. ``Project.apply``
     returns these as ``warnings``; direct callers without a collector skip them."""
@@ -456,6 +532,23 @@ def execute_timeline(project, op):
             if track["target"] != target or ("property" in op and track["property"] != op["property"]):
                 kept.append(track)
                 continue
+            if "additive" in op:
+                # One additive layer (or its key at time); the track's own keys stay.
+                layers = track.get("add", [])
+                if "time" in op:
+                    time = parse_time(op["time"], duration, markers)
+                    for layer in layers:
+                        if layer["layer"] == op["additive"]:
+                            layer["keys"] = [k for k in layer["keys"] if k["time"] != time]
+                    layers = [layer for layer in layers if layer["keys"]]
+                else:
+                    layers = [layer for layer in layers if layer["layer"] != op["additive"]]
+                if layers:
+                    track["add"] = layers
+                else:
+                    track.pop("add", None)
+                kept.append(track)
+                continue
             if "time" in op:
                 time = parse_time(op["time"], duration, markers)
                 track["keys"] = [k for k in track["keys"] if k["time"] != time]
@@ -492,11 +585,18 @@ def execute_timeline(project, op):
     mirror = None
     if kind == "keyframe":
         prop = op["property"]
-        _check_value(project, prop, op["value"])
-        static_value(project, target, prop)
-        if target != "canvas":
-            _check_mirror(project.layer(target), prop, op["value"])
-        _set_key(_track(timeline, target, prop), parse_time(op["time"], duration, markers), op["value"], op.get("easing"), written)
+        mode = op.get("mode", "set")
+        require(mode in ("set", "add"), "mode must be 'set' or 'add'", field="mode")
+        require(mode == "add" or "additive" not in op, "additive names an additive layer: pass mode: add with it", field="additive")
+        if mode == "add":
+            _additive_key(project, timeline, target, prop, op, parse_time(op["time"], duration, markers), written)
+        else:
+            _check_value(project, prop, op["value"])
+            static_value(project, target, prop)
+            if target != "canvas":
+                _check_mirror(project.layer(target), prop, op["value"])
+            _set_key(_track(timeline, target, prop), parse_time(op["time"], duration, markers), op["value"], op.get("easing"), written)
+        _mark_period(_track(timeline, target, prop), op)
     elif kind == "animate":
         prop = op["property"]
         start = parse_time(op.get("start", 0), duration, markers)
@@ -517,6 +617,7 @@ def execute_timeline(project, op):
         default_easing = rule("easing")[op["intent"]] if op.get("intent") else "ease-in-out"
         _set_key(track, start, begin, op.get("easing", default_easing), written)
         _set_key(track, end, op["to"], None, written)
+        _mark_period(track, op)
     else:
         mirror = _apply_preset(project, timeline, target, op, written)
     _close_touched(project, timeline, target, before, op, mirror, kind == "animate-preset")
@@ -656,11 +757,20 @@ def _segment(keys, time):
 
 
 def sample_track(project, track, time):
-    keys = track["keys"]
+    """The track's value at ``time``. Additive layers (``track["add"]``, written by keyframes mode add)
+    are summed onto the track's own keys, so the renderer, every exporter and the checks see one value."""
+    value = _sample_keys(project, track["property"], track["keys"], time)
+    for layer in track.get("add", ()):
+        if layer["keys"]:
+            value += _sample_keys(project, track["property"], layer["keys"], time)
+    return value
+
+
+def _sample_keys(project, prop, keys, time):
     left, right, progress = _segment(keys, time)
     if left is right:
         return deepcopy(left["value"])
-    kind = _property_kind(track["property"])
+    kind = _property_kind(prop)
     eased = easing_function(left.get("easing", "linear"))(progress)
     if kind == "step":
         return deepcopy(right["value"] if eased >= 1 else left["value"])
@@ -1053,14 +1163,15 @@ def _track_name(project, track):
 
 def seam_matches(project, track, timeline):
     """True when the track's value at the loop end equals its value at t=0. Rotation compares modulo
-    360 degrees (or one symmetry step: a track with ``symmetry`` n repeats every 360/n degrees)."""
-    a = track["keys"][0]["value"]
+    360 degrees (or one symmetry step: a track with ``symmetry`` n repeats every 360/n degrees), and a
+    track with ``wrap`` modulo that distance: a strip that scrolls one whole repeat is seamless."""
+    a = sample_track(project, track, 0)
     b = sample_track(project, track, timeline["duration"])
     kind = _property_kind(track["property"])
     if kind == "number":
         diff = abs(a - b)
-        if track["property"] == "rotation":
-            period = 360 / max(1, track.get("symmetry", 1))
+        period = track_period(track)
+        if period:
             diff = diff % period
             diff = min(diff, period - diff)
         return diff <= 1e-4 * max(1, abs(a), abs(b))
@@ -1168,7 +1279,7 @@ def _turned(project, track, delay, end, step):
     if keys[index]["time"] != cut:
         left, right = keys[index - 1], keys[index]
         easing = left.get("easing", "linear")
-        probe = {**track, "keys": [left, right]}
+        probe = {"property": track["property"], "keys": [left, right]}
         if _property_kind(track["property"]) == "step" or easing in ("hold", "step", "step-end"):
             split = [{"time": cut, "value": deepcopy(left["value"]), **({"easing": easing} if easing != "linear" else {})}]
         elif easing == "linear":
@@ -1229,12 +1340,12 @@ def seam_findings(project, timeline=None):
             continue
         last = sample_track(project, track, end)
         if not seam_matches(project, track, timeline):
-            result.append({"track": track, "kind": "value", "first": keys[0]["value"], "last": last})
+            result.append({"track": track, "kind": "value", "first": sample_track(project, track, 0), "last": last})
             continue
-        if _property_kind(track["property"]) != "number" or len(keys) < 2 or track["property"] == "rotation":
+        if _property_kind(track["property"]) != "number" or len(key_times(track)) < 2 or track["property"] == "rotation":
             continue  # A spin's constant speed matches by construction.
         eps = min(40, max(1, end / 4))
-        start_speed = (sample_track(project, track, eps) - keys[0]["value"]) / eps
+        start_speed = (sample_track(project, track, eps) - sample_track(project, track, 0)) / eps
         end_speed = (last - sample_track(project, track, end - eps)) / eps
         top = max(abs(start_speed), abs(end_speed))
         # A track that turns around smoothly at the seam (a pendulum, a float, a baked attach track sampled
@@ -1244,6 +1355,14 @@ def seam_findings(project, timeline=None):
         values = [sample_track(project, track, min(end, i * step)) for i in range(math.ceil(end / step) + 1)]
         peak = max((abs(b - a) / step for a, b in zip(values, values[1:])), default=0)
         if top > 1e-3 and top > 0.25 * peak and abs(start_speed - end_speed) > 0.5 * top:
+            # A sampled motion (a gait keyed a few times per stride) turns a little at every key; its seam
+            # is a kink only when it is sharper than the track's own keys.
+            inner = sorted(time for time in key_times(track) if eps < time < end - eps)
+            if len(inner) >= 4:
+                turns = [abs(sample_track(project, track, time + eps) + sample_track(project, track, time - eps)
+                             - 2 * sample_track(project, track, time)) / eps for time in inner[:256]]
+                if abs(start_speed - end_speed) <= 1.25 * max(turns):
+                    continue
             result.append({"track": track, "kind": "speed", "first": round(start_speed * 1000, 3), "last": round(end_speed * 1000, 3)})
     return result
 
@@ -1349,8 +1468,30 @@ def validate_timeline(project, state):
     candidate = copy(project)
     candidate.state = state
     for track in tracks:
-        require(isinstance(track, dict) and {"target", "property", "keys"} <= set(track) <= {"target", "property", "keys", "symmetry", "attach"}, "Invalid timeline track")
+        require(isinstance(track, dict) and {"target", "property", "keys"} <= set(track) <= {"target", "property", "keys", "symmetry", "attach", "wrap", "add"}, "Invalid timeline track")
         require(isinstance(track.get("symmetry", 1), int) and 1 <= track.get("symmetry", 1) <= 1000, "Invalid track symmetry")
+        if "wrap" in track:
+            require(isinstance(track["wrap"], (int, float)) and not isinstance(track["wrap"], bool) and 0 < track["wrap"] <= 1e6
+                    and _property_kind(track["property"]) == "number", "Invalid track wrap", "invalid_project")
+        if "add" in track:
+            from .design import named as layer_name
+
+            layers = track["add"]
+            require(isinstance(layers, list) and 1 <= len(layers) <= MAX_ADDITIVE and _property_kind(track["property"]) == "number"
+                    and all(isinstance(layer, dict) and set(layer) == {"layer", "keys"} for layer in layers)
+                    and len({layer["layer"] for layer in layers}) == len(layers), "Invalid additive track layers", "invalid_project")
+            for layer in layers:
+                layer_name(layer["layer"])
+                require(isinstance(layer["keys"], list) and 1 <= len(layer["keys"]) <= MAX_KEYS, "Invalid additive keyframes", "invalid_project")
+                moments = []
+                for key in layer["keys"]:
+                    require(isinstance(key, dict) and set(key) <= {"time", "value", "easing"} and {"time", "value"} <= set(key)
+                            and isinstance(key["time"], int) and 0 <= key["time"] <= MAX_DURATION, "Invalid additive keyframe", "invalid_project")
+                    finite(key["value"], "additive value", -1e6, 1e6)
+                    if "easing" in key:
+                        easing_function(key["easing"])
+                    moments.append(key["time"])
+                require(moments == sorted(set(moments)), "Additive keyframes must have increasing, unique times", "invalid_project")
         if "attach" in track:
             # What the attach recipe baked these keys from; the keys themselves are ordinary.
             record = track["attach"]
@@ -1434,6 +1575,8 @@ def inspect_timeline(project):
                     for k in track["keys"][:64]
                 ],
                 **({"truncated_keys": len(track["keys"])} if len(track["keys"]) > 64 else {}),
+                **({k: track[k] for k in ("wrap", "symmetry") if k in track}),
+                **({"add": [{"layer": layer["layer"], "keys": layer["keys"][:64]} for layer in track["add"]]} if track.get("add") else {}),
                 **({"attached_to": names.get(track["attach"]["to"], track["attach"]["to"])} if "attach" in track else {}),
             }
             for track in timeline.get("tracks", [])
@@ -1876,6 +2019,18 @@ def _video_rgb(image):
     return base.convert("RGB")
 
 
+WRAP = {"type": "number", "minimum": 0, "description": "Mark the track as repeating every this many units of the property (px for "
+        "x, y and translate, degrees for rotation): a strip whose artwork repeats every 1200 px and scrolls 1200 px (or a whole "
+        "multiple) per loop is seamless, so the loop checks compare the track modulo wrap and close leaves it alone. 0 clears the mark."}
+SYMMETRY = {"type": "integer", "minimum": 1, "maximum": 1000, "description": "Rotation tracks: the shape repeats every 360/symmetry "
+            "degrees (12 for a 12-ray sun), so a turn of whole symmetry steps is a seamless loop. 1 clears the mark."}
+MODE = {"enum": ["set", "add"], "description": "set (default) writes the property's own keys. add writes an additive layer: its "
+        "values are deltas, stored on the track under the name in additive and summed onto the track's own value at render and in every export "
+        "(a leap added on top of a bob). Numeric properties only; a property without keys first gets its current value keyed at 0."}
+ADD_LAYER = {"type": "string", "description": "With mode add: the name of the additive layer (default add). Writing the same name "
+             "again edits that layer; another name adds a second contribution. keyframe-remove with additive deletes one."}
+
+
 def schemas(add):
     from .schema import S, N, B
 
@@ -1914,9 +2069,11 @@ def schemas(add):
                          "loop_mode": {"enum": ["seamless", "off"], "description": "seamless: the timeline is meant to loop without a jump. Plays forever unless loop is given, warns for every track whose end value differs from its start, and makes animate-preset entrances close themselves."},
                          "close": {"type": "boolean", "description": "With loop_mode seamless: append the start value at the end of every track that does not already end where it began."}})
     targets = {"type": "array", "items": S, "minItems": 1, "uniqueItems": True}
-    add("keyframe", {"property": prop, "time": time, "value": value, "easing": key_easing, "targets": targets, "extend": extend, "close": close}, ["property", "time", "value"])
-    add("keyframe-remove", {"property": S, "time": time})
-    add("animate", {"intent": {"enum": ["entrance", "exit", "loop", "emphasis"], "description": "Motion intent selects the house easing when easing is omitted."}, "property": prop, "from": value, "to": value, "start": time, "end": time, "duration": time, "easing": segment_easing, "targets": targets, "extend": extend, "close": close, "repeat": repeat, "until": until, "period": period, "stagger": stagger}, ["property", "to"])
+    add("keyframe", {"property": prop, "time": time, "value": value, "easing": key_easing, "targets": targets, "extend": extend, "close": close,
+                     "wrap": WRAP, "symmetry": SYMMETRY, "mode": MODE, "additive": ADD_LAYER}, ["property", "time", "value"])
+    add("keyframe-remove", {"property": S, "time": time, "additive": {"type": "string", "description": "Remove only this additive layer "
+                            "(written with mode: add) from the property's track, or with time its key at that time; the track's own keys stay."}})
+    add("animate", {"intent": {"enum": ["entrance", "exit", "loop", "emphasis"], "description": "Motion intent selects the house easing when easing is omitted."}, "property": prop, "from": value, "to": value, "start": time, "end": time, "duration": time, "easing": segment_easing, "targets": targets, "extend": extend, "close": close, "repeat": repeat, "until": until, "period": period, "stagger": stagger, "wrap": WRAP, "symmetry": SYMMETRY}, ["property", "to"])
     add("animate-preset", {"preset": {"enum": list(PRESETS), "description": "Ready-made motion: " + ", ".join(PRESETS) + ". draw-on/draw-off need a shape or path layer; color-shift also works on the canvas."}, "start": time, "duration": time, "easing": easing_schema("Override the preset's own easing (names as for keyframe easing, or cubic-bezier(...) / steps(n))."), "distance": N, "amount": N, "fade": B, "to": S, "targets": targets, "extend": extend, "close": close, "loop_safe": {"type": "boolean", "description": "Alias of close."}, "repeat": repeat, "until": until, "period": period, "stagger": stagger}, ["preset"])
     add("marker", {"name": S, "time": time, "delete": B}, ["name"], anyOf=[{"required": ["time"]}, {"required": ["delete"]}])
     from .kinetic import schemas as kinetic_schemas

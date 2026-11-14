@@ -55,7 +55,24 @@ def test_pptx_structure(name):
 
 
 def test_fixtures_are_small_and_cover_each_area():
-    assert 15 <= len(FIXTURES) <= 32
+    assert 15 <= len(FIXTURES) <= 40
     for name, build in FIXTURES.items():
         with Image.open(io.BytesIO(build().export(format="PNG"))) as image:
             assert max(image.size) <= 256, name
+
+
+def test_quadruped_gallop_sheet():
+    """One stride of the standard horse's gallop, then a jump out of it: six frames each, side by side."""
+    from vixl.project import Project
+    from vixl.timeline import render_at
+
+    p = Project(112, 96, "#f4efe6")
+    p.apply([{"type": "timeline-set", "duration": 1440, "loop_mode": "seamless"},
+             {"type": "character", "name": "steed", "species": "horse", "height": 60, "x": 26, "y": 30},
+             {"type": "character-cycle", "target": "steed", "cycle": "gallop"},
+             {"type": "character-cycle", "target": "steed", "cycle": "jump", "start": 480, "duration": 960, "amount": 24}])
+    times = [*range(0, 480, 80), *range(560, 1440, 160)]
+    sheet = Image.new("RGBA", (112 * 6, 96 * 2))
+    for index, time in enumerate(times[:12]):
+        sheet.paste(render_at(p, time).convert("RGBA"), (112 * (index % 6), 96 * (index // 6)))
+    check_png("quadruped_gallop_sheet", sheet)

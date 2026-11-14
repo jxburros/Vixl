@@ -16,8 +16,15 @@ It runs through MCP, CLI, Python or REST, so there is no canvas to open. People 
 interfaces; the product is built for the agent at the keyboard.
 
 Pre-1.0 and in Beta: breaking changes are allowed and noted in the [changelog](CHANGELOG.md#0270).
-Source version: **0.35.0** (release pending). Run `vixl --version` to check your runtime; record the Git commit when using a
+Source version: **0.35.1** (release pending). Run `vixl --version` to check your runtime; record the Git commit when using a
 source checkout.
+
+**Who can use Vixl for free.** Individuals, and companies that have fewer than 100 people working for them
+(employees and independent contractors together) **and** had less than US$1,000,000 in revenue in the prior tax year.
+Both conditions must hold, and the revenue figure is in 2019 dollars, adjusted for inflation. Larger companies need a
+commercial licence. Is Vixl open source? No: it is source-available under the
+[PolyForm Small Business License 1.0.0](LICENSE). [Licensing](docs/reference/licensing.md) explains the terms, and
+[Is Vixl a fit?](docs/getting-started.md#is-vixl-a-fit) lists the other limits to know before you adopt it.
 
 **[Documentation home](docs/README.md)** · [Getting started](docs/getting-started.md) ·
 [Visual gallery](docs/gallery.md) · [Use cases](docs/use-cases.md) · [Command reference](docs/reference/commands.md) ·
@@ -36,11 +43,16 @@ source checkout.
 
 ## Start with an agent
 
-After you [install](#install), point your agent at a workspace folder and give it a brief:
+Install the package, point your agent at a workspace folder and give it a brief. The package is `vixl-engine`;
+the command and the Python import are `vixl`:
 
 ```bash
+python -m pip install vixl-engine
 vixl mcp --workspace .
 ```
+
+[Install for your agent](#install-for-your-agent) has the setup for each client; [Install](#install) covers the
+Windows installer, macOS and Linux, and a source checkout.
 
 Then ask for something with a deadline in it: "A 1080x1350 launch poster for the Saturday market, our brand
 colours, headline *Fresh Saturday*, and a version for stories." The agent creates the document, applies
@@ -65,6 +77,67 @@ The [Vixl agent skill](skills/vixl/SKILL.md) teaches the inspect → apply → c
 (critique, one fix batch, a real-size look) → export loop, recipes and operation details. Copy its folder to your agent's skills
 directory. AI functions use explicitly configured providers; Vixl contains no model weights.
 
+## Install for your agent
+
+Each row starts the same local MCP server on a folder of your choice. The rows that run `uvx` need
+[uv](https://docs.astral.sh/uv/getting-started/installation/), which fetches the pinned release from PyPI on first
+use; nothing else is installed by hand.
+
+| Client | What to do |
+| --- | --- |
+| Claude Desktop | Download `vixl.mcpb` from the [latest release](https://github.com/jxburros/Vixl/releases/latest), open it and choose a workspace folder. |
+| Claude Code | Add this repository as a plugin marketplace and install the plugin: the MCP server plus the design skill. |
+| Cursor | Save the Cursor configuration below as `.cursor/mcp.json` in your project. |
+| VS Code | Save the VS Code configuration below as `.vscode/mcp.json` in your workspace. |
+| Codex | Add the Codex table below to `~/.codex/config.toml`. |
+| Any other MCP client | Command `uvx` with the same arguments, or `vixl mcp --workspace DIR` after `python -m pip install vixl-engine`. |
+
+Claude Code:
+
+```text
+/plugin marketplace add jxburros/Vixl
+/plugin install vixl@vixl
+```
+
+Cursor (`.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "vixl": {
+      "command": "uvx",
+      "args": ["--from", "vixl-engine==0.33.3", "vixl", "mcp", "--workspace", "${workspaceFolder}"]
+    }
+  }
+}
+```
+
+VS Code (`.vscode/mcp.json`):
+
+```json
+{
+  "servers": {
+    "vixl": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["--from", "vixl-engine==0.33.3", "vixl", "mcp", "--workspace", "${workspaceFolder}"]
+    }
+  }
+}
+```
+
+Codex (`~/.codex/config.toml`; the server works in the folder Codex is started in):
+
+```toml
+[mcp_servers.vixl]
+command = "uvx"
+args = ["--from", "vixl-engine==0.33.3", "vixl", "mcp", "--workspace", "."]
+```
+
+The workspace folder must exist. Restart the client after changing its configuration, then ask the agent to call
+`vixl_reference()`. [Interface setup](docs/reference/interfaces.md#mcp) has the options (a second server for the
+AI tools, HTTP, several agents on one server).
+
 ## What you can make
 
 Each row is a place to start; the [use-case catalog](docs/use-cases.md) and the
@@ -76,6 +149,7 @@ Each row is a place to start; the [use-case catalog](docs/use-cases.md) and the
 | Charts, diagrams and infographics | [Editable chart tutorial](docs/tutorials/charts.md), [flowcharts and diagrams](docs/guides/shapes/diagrams.md) |
 | Decks and booklets that open in PowerPoint | [Forms and decks tutorial](docs/tutorials/forms-and-decks.md), [slides](docs/guides/output/slides.md) |
 | Fillable PDF forms, filled from a CSV | [Forms](docs/guides/output/forms.md) |
+| Cards, certificates and tickets from a template and a CSV, rendered on your own machine | [Moving from a template-rendering API](docs/guides/automation/template-api-migration.md), [checked production](docs/guides/automation/production.md) |
 | Print-ready files, checked before the print shop | [Color and print](docs/guides/finishing/color-and-print.md), [checking designs in CI](docs/guides/automation/ci.md), [outcomes and repair](docs/reference/agent-trust.md) |
 | Designs from Figma, SVG and PDF, and back again | [Figma import](docs/guides/images/figma.md), [SVG and PDF import](docs/guides/output/exporting.md#importing-svg-and-pdf), [the `.vixl` file format](docs/reference/file-format.md) |
 | Motion, sprites and lyric videos | [Motion tutorial](docs/tutorials/motion.md), [lyric videos](docs/guides/motion/lyric-video.md) |
@@ -93,6 +167,14 @@ If `vixl` is not found, reopen the terminal or see [PATH repair](docs/reference/
 vixl --version
 vixl update --check
 vixl update
+```
+
+On macOS and Linux, install the published package as a command-line tool with Python 3.11+:
+
+```text
+uv tool install vixl-engine        # or: pipx install vixl-engine
+vixl --version
+uv tool upgrade vixl-engine        # or: pipx upgrade vixl-engine
 ```
 
 For source development, use Python 3.11+:
@@ -191,10 +273,12 @@ icons, an animated wordmark, usage guidance and editable masters.
 
 ## Licence
 
-Vixl is source-available under the [PolyForm Small Business License 1.0.0](LICENSE): free for
-individuals and for companies with fewer than 100 people and under US$1M (2019) revenue; larger
-companies need a commercial licence from the licensor (to ask about one, open an issue or contact
-[@jxburros](https://github.com/jxburros) on GitHub). Copies of Vixl must carry the licence and
+Vixl is source-available, not open source, under the [PolyForm Small Business License 1.0.0](LICENSE): free for
+individuals and for companies that have fewer than 100 people (employees and independent contractors together) and
+had less than US$1,000,000 in revenue in the prior tax year, in 2019 dollars adjusted for inflation. A company must
+meet both conditions; larger companies need a commercial licence from the licensor (to ask about one, open an issue
+or contact [@jxburros](https://github.com/jxburros) on GitHub). [Licensing](docs/reference/licensing.md) explains
+the terms in plain words; the licence text is what counts. Copies of Vixl must carry the licence and
 its `Required Notice:` lines. If Vixl helped make your work, please credit it ("Made with Vixl").
 
 Bundled assets keep their own terms: the Noto Sans proofing font and the Noto Sans Symbols, Noto Sans Symbols 2 and
@@ -210,3 +294,5 @@ the xkcd colour names (CC0), and VIXL Line emoji artwork adapted from OpenMoji
 Use **Actions → Release → Run workflow** from **main**, choose stable or preview, and leave **dry_run** enabled first. Only apps ahead of their published version in their own namespace are selected. Build/test/sign all required packages before publishing. Tag pushes and merges no longer publish migrated apps automatically. After inspecting the dry run, dispatch with dry_run disabled and satisfy configured approvals. Published versions are never overwritten; use a new version for a correction.
 
 See [.release/README.md](.release/README.md) for this repository's inventory, credentials, compatibility, and validation limits. Shared implementation: [JX Holdings release infrastructure](https://github.com/JX-Holdings-LLC/release-infrastructure).
+
+<!-- mcp-name: io.github.jxburros/vixl -->

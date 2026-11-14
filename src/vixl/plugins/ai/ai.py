@@ -139,24 +139,19 @@ class HTTPProvider:
         return self.request_url(method, self.url.rstrip("/") + route, headers=self.headers, **kwargs)
 
     def request_url(self, method, url, *, headers=None, **kwargs):
-        from ...fetch import network_allowed
+        from ...fetch import ACCEPT_ENCODING, network_allowed, read_bounded
 
         network_allowed(f"Provider {self.name}")
+        headers = {**(headers or {}), "Accept-Encoding": ACCEPT_ENCODING}
         try:
             with httpx.Client(timeout=self.config.get("timeout", 120), follow_redirects=False) as client:
-                with client.stream(method, url, headers=headers or {}, **kwargs) as response:
+                with client.stream(method, url, headers=headers, **kwargs) as response:
                     require(
                         200 <= response.status_code < 300,
                         f"Provider {self.name} returned HTTP {response.status_code}",
                         "provider_error",
                     )
-                    body = bytearray()
-                    for chunk in response.iter_bytes():
-                        body.extend(chunk)
-                        require(
-                            len(body) <= MAX_RESPONSE, "Provider response exceeds limit", "resource_limit"
-                        )
-                    return bytes(body)
+                    return read_bounded(response, MAX_RESPONSE, "Provider response exceeds limit")
         except httpx.HTTPError as exc:
             raise VixlError(
                 "provider_error", f"Provider {self.name} request failed ({type(exc).__name__})"

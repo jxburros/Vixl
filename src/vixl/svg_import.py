@@ -43,9 +43,21 @@ XML_NS = "{http://www.w3.org/XML/1998/namespace}"
 MAX_ELEMENTS = 20000
 # Untrusted SVG work caps. ``<use>`` re-walks its target for every reference, so a small file can fan out
 # exponentially; the walk is charged as it goes (up to ``EXPANSION`` times the operation budget). Each raster fallback
-# renders the whole canvas, so ``auto`` mode draws at most ``MAX_RASTERIZED`` elements as images.
+# renders the whole canvas, so ``auto`` mode draws at most ``MAX_RASTERIZED`` elements as images, and the canvas pixels
+# of those renders plus the pixels of the embedded images the import decodes stay within ``Limits.max_load_pixels``
+# (``raster_budget``); the SVG text the fallbacks re-parse stays within ``MAX_RASTER_BYTES``.
 EXPANSION = 4
 MAX_RASTERIZED = 64
+MAX_RASTER_BYTES = 64 * 1024 * 1024
+# Stylesheets: at most ``MAX_STYLE_RULES`` selectors, indexed by ID, class or type so an element is only compared with
+# the rules that can match it; those comparisons (and the declarations applied) are charged against ``MAX_STYLE_WORK``.
+MAX_STYLE_RULES = 4096
+MAX_STYLE_WORK = 2_000_000
+
+
+def raster_budget(limits):
+    """Pixels one editable import may decode and render in total (embedded images and raster fallbacks)."""
+    return limits.max_load_pixels
 
 # ---------------------------------------------------------------------------------------------------------------
 # Vixl's own SVG: the embedded document
@@ -76,7 +88,7 @@ def embedded_payload(data):
     return payload, None
 
 
-def embedded_project(payload, project, data=b"", *, install_fonts=True):
+def embedded_project(payload, project, data=b"", *, install_fonts=False):
     """``(document, report)``: the embedded document as a Project, through the same checks as opening a .vixl file.
     Images the payload points at in the SVG body are read from there (``data``); fonts are found again by
     identity (``resolve_fonts``), and ``report`` says how (``fonts``) and what fell back (``warnings``)."""
@@ -91,6 +103,11 @@ def embedded_project(payload, project, data=b"", *, install_fonts=True):
             and len(encoded) + len(images) + len(fonts) <= 10000, "Invalid embedded assets", "invalid_svg")
     require(all(isinstance(name, str) and ASSET_REFERENCE.fullmatch(name.encode())
                 for name in (*encoded, *images, *fonts)), "Invalid embedded asset", "invalid_svg")
+    # The archive's font limit, applied to the records before any of them is looked up (cache, network, disk).
+    count = len(fonts) + sum(name.startswith("fonts/") for name in encoded)
+    require(count <= project.limits.max_load_fonts,
+            f"The SVG's Vixl document names {count} fonts; at most {project.limits.max_load_fonts} are read",
+            "resource_limit", field="max_load_fonts")
 
     def checked(name, text):
         require(isinstance(text, str), "Invalid embedded asset", "invalid_svg")
@@ -136,20 +153,24 @@ def embedded_project(payload, project, data=b"", *, install_fonts=True):
     return document, report
 
 
-def resolve_fonts(fonts, project, assets, report, *, install=True):
+def resolve_fonts(fonts, project, assets, report, *, install=False):
     """Find each font the payload names by identity (``svg.font_identity``) and add its bytes to ``assets``. In
     order: the same file already in ``project`` (by hash), the bundled file, a font ``project`` registers under
     the same name or with the same family and style, the Google Fonts style from the font cache, then (with
     ``install``) from Google Fonts, then a face of that family installed on this machine. A font none of these
     has falls back to the bundled proofing face with a warning;
-    the import never fails for a font. Returns ``{old: new}`` asset names for fonts found as other bytes;
+    the import never fails for a font. Records naming one Google Fonts style share one lookup, and more records than
+    ``Limits.max_load_fonts`` are refused before any lookup. Returns ``{old: new}`` asset names for fonts found as other bytes;
     ``report["fonts"]`` says how each registered font resolved."""
     from .text import BUNDLED_FONTS, font_style
 
     folder = Path(__file__).parent / "data"
     targets = {name: raw for name, raw in project.assets.items() if name.startswith("fonts/")}
     registry = project.state.get("fonts") or {}
+    require(len(fonts) <= project.limits.max_load_fonts, "Embedded fonts exceed the font limit", "resource_limit",
+            field="max_load_fonts")
     renamed, missing = {}, []
+    looked_up = {}  # one Google Fonts lookup per style, however many records name it
     for name, record in fonts.items():
         require(isinstance(record, dict), "Invalid embedded font", "invalid_svg")
         family, weight = str(record.get("family", "")), record.get("weight")
@@ -166,7 +187,10 @@ def resolve_fonts(fonts, project, assets, report, *, install=True):
             raw = next((targets[other] for other in same if font_style(targets[other])[0].casefold() == wanted[0]),
                        None)
         if raw is None and record.get("source") == "google":
-            raw, how = google_font(family, weight, italic, install)
+            style = (family.casefold(), min(900, max(100, round(weight / 100) * 100)), italic)
+            if style not in looked_up:
+                looked_up[style] = google_font(family, weight, italic, install)
+            raw, how = looked_up[style]
         if raw is None and family:
             from .system_fonts import face_bytes, lookup
 
@@ -187,7 +211,7 @@ def resolve_fonts(fonts, project, assets, report, *, install=True):
         report["warnings"].append(
             f"SVG does not store font files, and these were not found again: {'; '.join(missing)}. Their text uses the "
             "bundled proofing face (Noto Sans); import the font and register it under the same name to restore it."
-            + ("" if install else " Font installs were off, so Google Fonts were looked for in the font cache only."))
+            + ("" if install else " Font installs were off (install_fonts), so Google Fonts were looked for in the font cache only."))
     return renamed
 
 
@@ -328,9 +352,10 @@ def foreign(tag):
     return isinstance(tag, str) and tag.startswith("{") and not tag.startswith("{" + SVG_NS + "}")
 
 
-def parse_css(text):
+def parse_css(text, limit=MAX_STYLE_RULES):
     """Simple stylesheet rules: ``[(specificity, order, selector, declarations)]``. Selectors may be a type,
-    ``.class``, ``#id``, ``type.class`` or ``*``, comma-separated; anything else is unsupported."""
+    ``.class``, ``#id``, ``type.class`` or ``*``, comma-separated; anything else is unsupported. More than ``limit``
+    selectors fail with ``resource_limit`` while they are read."""
     text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
     if "@" in text:
         raise Unsupported("SVG stylesheets with @-rules are not editable")
@@ -338,9 +363,14 @@ def parse_css(text):
     remainder = re.sub(r"[^{}]+\{[^{}]*\}", "", text)
     if remainder.strip():
         raise Unsupported("Unsupported SVG stylesheet syntax")
-    for order, (selectors, body) in enumerate(re.findall(r"([^{}]+)\{([^{}]*)\}", text)):
+    for order, found in enumerate(re.finditer(r"([^{}]+)\{([^{}]*)\}", text)):
+        selectors, body = found.groups()
         declarations = declarations_of(body)
         for selector in selectors.split(","):
+            if len(rules) >= limit:
+                raise VixlError("resource_limit", f"SVG stylesheets have more than {MAX_STYLE_RULES} rules; import "
+                                "the SVG with svg_mode='appearance' (one image layer)", field="svg",
+                                limit=MAX_STYLE_RULES)
             selector = selector.strip()
             match = re.fullmatch(r"(\*|[A-Za-z][\w-]*)?((?:\.[\w-]+)*)(#[\w-]+)?", selector)
             if not selector or not match:
@@ -578,6 +608,11 @@ class Converter:
         self.font_map = font_map or {}
         self.operations, self.warnings, self.rasterized = [], [], []
         self.budget, self.expanded, self.rasters = project.limits.max_operations, 0, 0
+        self.raster_pixels, self.raster_bytes, self.style_work = 0, 0, 0
+        self._attributes = {}  # element -> its cascaded attributes (the same for every <use> of it)
+        self._images = {}  # embedded image href -> [decoded image, asset name], decoded once per import
+        self._symbols = {}  # (symbol, width, height) -> the <svg> a <use> of it walks
+        self._pixels = {}  # embedded image href -> its pixel count, for the fallback renders that decode it again
         self._definitions = None  # the SVG's defs and stylesheets, copied once for every raster fallback
         self._sizes = {}  # element -> elements it expands to, <use> references included
         self.used = {layer["name"] for layer in project.state["layers"]} | {layer["id"] for layer in
@@ -598,8 +633,21 @@ class Converter:
             if local(node.tag) == "style" and not foreign(node.tag):
                 require(node.get("type", "text/css") == "text/css", "Unsupported SVG stylesheet type",
                         "unsupported_svg")
-                self.rules += parse_css("".join(node.itertext()))
+                self.rules += parse_css("".join(node.itertext()), MAX_STYLE_RULES - len(self.rules))
         self.rules.sort(key=lambda rule: rule[:2])
+        # Cascade order is the position in ``rules``; each rule is filed under the most selective key it has.
+        self.rule_index = {"id": {}, "class": {}, "tag": {}, "any": []}
+        for position, (_, _, selector, declarations) in enumerate(self.rules):
+            rule_tag, rule_classes, rule_id = selector
+            if rule_id is not None:
+                bucket = self.rule_index["id"].setdefault(rule_id, [])
+            elif rule_classes:
+                bucket = self.rule_index["class"].setdefault(min(rule_classes), [])
+            elif rule_tag is not None:
+                bucket = self.rule_index["tag"].setdefault(rule_tag, [])
+            else:
+                bucket = self.rule_index["any"]
+            bucket.append((position, selector, declarations))
         self.base, self.size = self.viewport()
         box = numbers(self.root.get("viewBox", "")) if self.root.get("viewBox") else []
         self.user_size = (box[2], box[3]) if len(box) == 4 else self.size
@@ -650,7 +698,10 @@ class Converter:
         return f"{self.name} {label}" if label and self.namespace else label
 
     def attributes(self, node):
-        """Presentation attributes, then matching stylesheet rules, then the style attribute (CSS cascade)."""
+        """Presentation attributes, then matching stylesheet rules, then the style attribute (CSS cascade). Worked
+        out once per element (callers do not change the result)."""
+        if node in self._attributes:
+            return self._attributes[node]
         attrs = {}
         for key, value in node.attrib.items():
             if key.startswith("{"):
@@ -662,13 +713,36 @@ class Converter:
             attrs[key] = value
         if self.rules:
             tag, classes, ident = local(node.tag), set(node.get("class", "").split()), node.get("id")
-            for _, _, (rule_tag, rule_classes, rule_id), declarations in self.rules:
+            index = self.rule_index
+            candidates = [*index["any"], *index["tag"].get(tag, ()), *index["id"].get(ident, ())]
+            for name in classes:
+                candidates += index["class"].get(name, ())
+            self.style_charge(len(candidates))
+            for _, (rule_tag, rule_classes, rule_id), declarations in sorted(candidates, key=lambda rule: rule[0]):
                 if ((rule_tag is None or rule_tag == tag) and rule_classes <= classes
                         and (rule_id is None or rule_id == ident)):
+                    self.style_charge(len(declarations))
                     attrs.update(declarations)
         attrs.update(declarations_of(node.get("style", "")))
         attrs.pop("style", None)
+        self._attributes[node] = attrs
         return attrs
+
+    def style_charge(self, count):
+        self.style_work += count
+        if self.style_work > MAX_STYLE_WORK:
+            raise VixlError("resource_limit", "SVG stylesheet rules apply to too many elements; import the SVG with "
+                            "svg_mode='appearance' (one image layer)", field="svg", limit=MAX_STYLE_WORK)
+
+    def raster_charge(self, pixels):
+        """Charge ``pixels`` (an embedded image about to be decoded, or a canvas-sized fallback render) against the
+        import's raster budget; ``resource_limit`` is never caught by the raster fallback."""
+        limit = raster_budget(self.project.limits)
+        if self.raster_pixels + pixels > limit:
+            raise VixlError("resource_limit", f"SVG needs more than {limit} pixels of image decoding and raster "
+                            "fallbacks; import it with svg_mode='appearance' (one image layer)", field="svg",
+                            limit=limit)
+        self.raster_pixels += pixels
 
     def check_attributes(self, tag, attrs):
         allowed = INHERITED | OWN | IGNORED | GEOMETRY.get(tag, set())
@@ -852,14 +926,18 @@ class Converter:
             raise Unsupported("SVG use references nest too deeply")
         matrix = matrix.translate(length(attrs.get("x", "0")), length(attrs.get("y", "0")))
         if local(target.tag) == "symbol":
-            symbol = dict(target.attrib)
-            if "width" in attrs:
-                symbol["width"] = attrs["width"]
-            if "height" in attrs:
-                symbol["height"] = attrs["height"]
-            proxy = ET.Element(f"{{{SVG_NS}}}svg", {k: v for k, v in symbol.items() if k in ("viewBox", "width",
-                               "height", "preserveAspectRatio", "overflow", "class", "style", "id")})
-            proxy.extend(list(target))
+            key = (target, attrs.get("width"), attrs.get("height"))
+            proxy = self._symbols.get(key)
+            if proxy is None:
+                symbol = dict(target.attrib)
+                if "width" in attrs:
+                    symbol["width"] = attrs["width"]
+                if "height" in attrs:
+                    symbol["height"] = attrs["height"]
+                proxy = ET.Element(f"{{{SVG_NS}}}svg", {k: v for k, v in symbol.items() if k in ("viewBox", "width",
+                                   "height", "preserveAspectRatio", "overflow", "class", "style", "id")})
+                proxy.extend(list(target))
+                self._symbols[key] = proxy
             target = proxy
         self.charge(0, ahead=self.expansion(target))
         names = self.walk(target, matrix, props, depth + 1, clips, use_depth + 1)
@@ -1173,17 +1251,17 @@ class Converter:
     # --- images ----------------------------------------------------------------------------------------------------
 
     def image(self, node, attrs, matrix, clips, opacity):
-        from .assets import add_image, decode
+        from .assets import add_image
 
         href = attrs.get("href", "")
         match = re.match(r"data:image/(png|jpeg|jpg|webp);base64,", href)
         if not match:
             raise Unsupported("Only embedded PNG, JPEG or WebP SVG images import (data: URIs)")
-        try:
-            raw = base64.b64decode(href[match.end():], validate=True)
-        except ValueError as exc:
-            raise VixlError("invalid_svg", "Invalid embedded SVG image") from exc
-        image = decode(raw, self.project.limits)
+        entry = self._images.get(href)
+        if entry is None:
+            # Decoded (and later stored) once, however many <use> references or copies of the data draw it.
+            entry = self._images[href] = [self.decode_image(href[match.end():]), None]
+        image = entry[0]
         x, y = length(attrs.get("x", "0")), length(attrs.get("y", "0"))
         w = length(attrs["width"]) if "width" in attrs else image.width
         h = length(attrs["height"]) if "height" in attrs else image.height
@@ -1208,7 +1286,9 @@ class Converter:
         width, height = w * sx, h * sy
         if clips:
             raise Unsupported("Clipped nested SVG images require svg_mode='appearance' or 'auto'")
-        asset = add_image(self.project, image)
+        if entry[1] is None:
+            entry[1] = add_image(self.project, image)
+        asset = entry[1]
         name = self.new_name(node, "image")
         operation = {"type": "add", "asset": asset, "name": name, "x": centre[0] - width / 2,
                      "y": centre[1] - height / 2, "width": max(1, width), "height": max(1, height)}
@@ -1218,6 +1298,42 @@ class Converter:
             operation["opacity"] = opacity
         self.operations.append(operation)
         return [name]
+
+    def decode_image(self, encoded):
+        """An embedded image's pixels, its size charged against the raster budget before it is decoded."""
+        from .assets import decode, image_size
+
+        try:
+            raw = base64.b64decode(encoded, validate=True)
+        except ValueError as exc:
+            raise VixlError("invalid_svg", "Invalid embedded SVG image") from exc
+        require(len(raw) <= self.project.limits.max_asset_bytes, "Asset exceeds byte limit", "resource_limit")
+        try:
+            width, height = image_size(raw, self.project.limits)
+        except VixlError as exc:
+            if exc.code == "resource_limit":
+                raise
+            width = height = 0  # decode reports what is wrong with the bytes
+        self.raster_charge(width * height)
+        return decode(raw, self.project.limits)
+
+    def embedded_pixels(self, element):
+        """The pixels of the images embedded in ``element``'s tree, from their headers (a fallback render decodes
+        them again)."""
+        from .assets import image_size
+
+        total = 0
+        for node in element.iter():
+            href = (node.get("href") or node.get(XLINK) or "") if local(node.tag) == "image" else ""
+            if href.startswith("data:image/") and ";base64," in href:
+                if href not in self._pixels:
+                    try:
+                        size = image_size(base64.b64decode(href.split(",", 1)[1], validate=True), self.project.limits)
+                    except (ValueError, VixlError):
+                        size = (0, 0)  # the render refuses it
+                    self._pixels[href] = size[0] * size[1]
+                total += self._pixels[href]
+        return total
 
     # --- text ------------------------------------------------------------------------------------------------------
 
@@ -1376,6 +1492,7 @@ class Converter:
             raise VixlError("resource_limit", f"SVG has more than {MAX_RASTERIZED} elements Vixl cannot edit; import "
                             "it with svg_mode='appearance' (one image layer)", field="svg", limit=MAX_RASTERIZED)
         width, height = self.size
+        self.raster_charge(width * height)  # each fallback renders the whole canvas
         root = ET.Element(f"{{{SVG_NS}}}svg", {"width": str(width), "height": str(height),
                                                "viewBox": f"0 0 {width} {height}"})
         if self._definitions is None:
@@ -1384,6 +1501,8 @@ class Converter:
                 if local(element.tag) in ("style",) or (element.get("id") and local(element.tag) in DEFINITIONS
                                                         and local(element.tag) not in ("title", "desc", "metadata")):
                     self._definitions.append(deepcopy(element))
+            self._definition_pixels = self.embedded_pixels(self._definitions)
+        self.raster_charge(self._definition_pixels + self.embedded_pixels(node))
         root.append(self._definitions)
         a, b, c, d, e, f = matrix
         wrapper = ET.SubElement(root, f"{{{SVG_NS}}}g", {
@@ -1394,6 +1513,10 @@ class Converter:
             copy.tag = f"{{{SVG_NS}}}svg"
         wrapper.append(copy)
         data = ET.tostring(root, encoding="utf-8")
+        self.raster_bytes += len(data)
+        if self.raster_bytes > MAX_RASTER_BYTES:
+            raise VixlError("resource_limit", "SVG raster fallbacks repeat too much of the file; import it with "
+                            "svg_mode='appearance' (one image layer)", field="svg", limit=MAX_RASTER_BYTES)
         tree, w, h = sanitize_svg(data, self.project.limits, byte_limit=16 * 1024 * 1024)
         image = render_svg(tree, w, h)
         box = image.getchannel("A").getbbox()

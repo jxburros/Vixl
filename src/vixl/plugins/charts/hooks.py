@@ -2,6 +2,10 @@
 
 
 def normalize(kind, op, note):
+    if kind == "chart-emphasis":
+        from .charts import normalize_emphasis
+
+        return normalize_emphasis(op, note)
     if kind in ("chart", "chart-data"):
         from .charts import normalize as normalize_chart
 
@@ -30,3 +34,9 @@ def validate_layer(layer, state, project):
         from .charts import validate_chart
 
         validate_chart(layer, state)
+
+
+def check(checks, resolved, issue, **context):
+    from .charts import emphasis_findings
+
+    emphasis_findings(checks, resolved, issue)

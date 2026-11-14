@@ -103,6 +103,9 @@ def check_state(project, state):
         require(isinstance(layer["constraints"], dict), "Invalid constraints")
         if layer["type"] in ("raster", "frame"):
             require(layer["asset"] in project.assets, "Missing layer asset", "missing_asset")
+        if "sampling" in layer:
+            require(layer["type"] == "raster" and layer["sampling"] == "nearest",
+                    "sampling is 'nearest' on an image layer (absent for smooth)", "invalid_project")
         for key in ("color", "fill", "start", "end", "stroke_color"):
             if key in layer:
                 color(resolve_color(layer[key], state))
@@ -155,6 +158,10 @@ def check_state(project, state):
     from .animation import validate_animation
 
     validate_animation(project, state)
+    if "sprite_sheet" in state:
+        from .sprite_sheet import validate_sheet
+
+        validate_sheet(state["sprite_sheet"])
     from .timeline import validate_timeline
 
     validate_timeline(project, state)

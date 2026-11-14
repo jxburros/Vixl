@@ -37,15 +37,19 @@ def phrases(value, name, where):
 
 
 def compile_patterns(value, name, where, flags=0):
+    from . import patterns
+    from .errors import VixlError
+
     compiled = []
     for item in phrases(value, name, where):
         try:
-            compiled.append(re.compile(item, flags))
+            compiled.append(patterns.compile(item, flags))
         except re.error as exc:
-            from .errors import VixlError
-
             raise VixlError("invalid_suite", f"{where}: {name} {item!r} is not a valid regular expression ({exc})",
                             field=name) from None
+        except patterns.Refused as exc:
+            raise VixlError("invalid_suite", f"{where}: {name} {item!r} cannot run on a shared service: {exc.reason}",
+                            field=name, suggestions=exc.suggestions) from None
     return compiled
 
 
@@ -242,8 +246,9 @@ def placeholder_patterns(project):
     from .brand import for_project
 
     found = [(label, re.compile(pattern)) for label, pattern in BUILTIN_PLACEHOLDERS]
-    for pattern in for_project(project).get("placeholders", []):
-        found.append(("brand placeholder", re.compile(pattern)))
+    custom = for_project(project).get("placeholders")
+    if custom:
+        found += [("brand placeholder", pattern) for pattern in compile_patterns(custom, "placeholders", "brand.json")]
     return found
 
 

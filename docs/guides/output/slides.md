@@ -131,7 +131,9 @@ slides) that opens in PowerPoint, Keynote, Google Slides and LibreOffice:
   A rotated or flipped chart is exported as its shapes, and the report lists each chart under `charts`.
 - Image layers become pictures. Layers PowerPoint cannot draw the same way (effects, masks, blend modes, and
   `skew` or `affine` transforms, which DrawingML cannot hold) become pictures of exactly what Vixl renders and are
-  listed under `raster_fallbacks` with the reason (`skew`, `affine transform`, ...).
+  listed under `raster_fallbacks` with the reason (`skew`, `affine transform`, ...). Layer styles are pictures too,
+  with one exception: an `inner-shadow` alone on an unturned shape without a stroke is PowerPoint's own inner shadow
+  (the report lists it under `native_effects`, with a warning that LibreOffice Impress does not draw inner shadows).
 - Master layers are drawn on each slide (as ordinary shapes, so every slide matches the
   render). Speaker notes become the slide notes; transitions carry over.
 - Slide size: canvases with a `dpi` keep their physical size; screen canvases become 7.5 inches

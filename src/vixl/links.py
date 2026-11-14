@@ -501,6 +501,20 @@ def _stored(path, roots):
     return str(path)
 
 
+def shown(project, path):
+    """``path`` as a result or error may show it: relative to the workspace, or to the document's folder
+    when it lies outside the workspace, so a result never reveals where the workspace sits on disk. A file
+    outside both is shown by name only, or in full when the project allows linked files anywhere
+    (``allow_linked``: the CLI and Python opt-in, never true for services)."""
+    path = Path(path)
+    workspace = getattr(project, "_workspace", None)
+    folder = Path(project.path).resolve().parent if getattr(project, "path", None) else None
+    for root in ([Path(workspace).resolve()] if workspace else []) + ([folder] if folder else []):
+        if path.is_relative_to(root):
+            return path.relative_to(root).as_posix()
+    return str(path) if getattr(project, "allow_linked", False) else path.name
+
+
 def resolved_from(project, path):
     """``document``, ``workspace`` or ``absolute``: which base folder a resolved source lies in."""
     folder = Path(project.path).resolve().parent if getattr(project, "path", None) else None
@@ -519,9 +533,11 @@ def open_source(project, path, source):
         stat = path.stat()
     except OSError as exc:
         searched = [Path(source).resolve()] if Path(source).is_absolute() else [(root / source).resolve() for root in bases(project)]
-        raise VixlError("link_missing", f"Linked document not found: {source} (looked for {', '.join(map(str, searched))})", source=source,
-                        path=str(path)) from exc
-    require(path.is_file(), f"Linked document {source!r} is not a file: {path}", "link_missing", source=source)
+        looked = ", ".join(dict.fromkeys(shown(project, item) for item in searched))
+        raise VixlError("link_missing", f"Linked document not found: {source} (looked for {looked})", source=source,
+                        path=shown(project, path)) from exc
+    require(path.is_file(), f"Linked document {source!r} is not a file: {shown(project, path)}", "link_missing",
+            source=source)
     stamp = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)
     key = (str(path), bool(getattr(project, "allow_linked", False)))
     with _LOCK:
@@ -533,7 +549,7 @@ def open_source(project, path, source):
         child = Project.load(path, limits=project.limits, allow_linked=getattr(project, "allow_linked", False))
     except VixlError as exc:
         raise VixlError("link_invalid", f"Linked document {source!r} cannot be opened: {exc}", source=source,
-                        path=str(path)) from exc
+                        path=shown(project, path)) from exc
     child._workspace = getattr(project, "_workspace", None)
     revision = child._revision
     weight = sum(len(data) for data in child.assets.values())
@@ -599,7 +615,7 @@ def _check_chain(project, path, source, chain):
 
     def fail(code, message, stack):
         names = " → ".join(item.name for item in stack if item)
-        raise VixlError(code, message.format(names=names), source=source, chain=[str(item) for item in stack if item])
+        raise VixlError(code, message.format(names=names), source=source, chain=[shown(project, item) for item in stack if item])
 
     # path -> the longest chain of documents below it, for documents already walked. A walked document has no
     # cycle below it and cannot reach the current stack (that would have been a cycle when it was walked), so
@@ -736,7 +752,7 @@ def _image_variables(project, view, values, source):
         path = locate(project, value, suffix="")
         if not path.is_file():
             raise VixlError("not_found", f"Image for variable {name!r} not found: {value} (linked from {source})",
-                            field=name, path=str(path))
+                            field=name, path=shown(project, path))
         stat = path.stat()
         values[name], _ = add_encoded(view, read_bounded(path, view.limits.max_asset_bytes))
         stamps.append((name, value, stat.st_size, stat.st_mtime_ns))
@@ -947,7 +963,7 @@ def status(project):
                 **({"on_page": where} if where else {})}
         try:
             path = locate(project, layer["source"])
-            item.update(path=str(path), resolved_from=resolved_from(project, path))
+            item.update(path=shown(project, path), resolved_from=resolved_from(project, path))
             child, revision = open_source(project, path, layer["source"])
             size = _canvas_size(child, layer.get("source_page"), layer.get("artboard"), layer["source"])
             item.update(revision=revision[:12], size=list(size))

@@ -381,13 +381,29 @@ def summary(key):
 def catalog(category=None, search=None):
     require(category is None or category in CATEGORIES, f"Unknown size category; use {', '.join(CATEGORIES)}")
     items = []
+    words = search.lower().split() if search else []
     for key, entry in SIZES.items():
         if category and entry["category"] != category:
             continue
-        if search and search.lower() not in (key + " " + entry["description"]).lower():
+        item = summary(key)
+        # Every word must appear in the name, description, category or pixel size ("1080x1080").
+        text = " ".join((key, entry["description"], entry["category"], "x".join(map(str, item.get("pixels", ()))))).lower()
+        if any(word.replace("×", "x") not in text for word in words):
             continue
-        items.append(summary(key))
+        items.append(item)
     return {"categories": list(CATEGORIES), "sizes": items, "aliases": ALIASES}
+
+
+def index():
+    """Every size as ``{category: {name: [width, height]}}``: the whole catalogue in a few KB, without
+    descriptions, print metadata or aliases (``catalog`` with a category or search words has those)."""
+    grouped = {name: {} for name in CATEGORIES}
+    for key, entry in SIZES.items():
+        grouped[entry["category"]][key] = summary(key).get("pixels")
+    return {"sizes": {name: sizes for name, sizes in grouped.items() if sizes},
+            "next": "vixl_reference('sizes', name='square') (words, or pixels such as '1080x1080') or "
+                    "category='social' adds descriptions, print dpi, bleed and safe areas; any name works as "
+                    "vixl_document(action='create', size=NAME)"}
 
 
 def size_guides(info):

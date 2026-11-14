@@ -117,7 +117,10 @@ class Motion:
 
         self.times, self.positions = times, positions
         timeline = project.state.get('timeline') or {}
-        self.tracks = [track['keys'] for track in timeline.get('tracks', []) if len(track.get('keys', [])) > 1]
+        # Additive layers are summed into their track at render; their keys bound spans like any others.
+        self.tracks = [keys for track in timeline.get('tracks', [])
+                       for keys in (track.get('keys', []), *(layer['keys'] for layer in track.get('add', ())))
+                       if len(keys) > 1]
         count = len(times)
         breaks = {0, count - 1}
         for keys in self.tracks:
@@ -820,9 +823,11 @@ def key_samples(project, times, fps):
     indices of the real frames. Documents with more keys than frames keep only frames."""
     timeline = project.state.get('timeline') or {}
     step = 1000 / fps
-    extra = sorted({key['time'] for track in timeline.get('tracks', []) for key in track.get('keys', [])
-                    if times[0] < key['time'] < times[-1]
-                    and abs((key['time'] - times[0]) / step - round((key['time'] - times[0]) / step)) > 1e-6})
+    from ...timeline import key_times
+
+    extra = sorted({time for track in timeline.get('tracks', []) for time in key_times(track)
+                    if times[0] < time < times[-1]
+                    and abs((time - times[0]) / step - round((time - times[0]) / step)) > 1e-6})
     if len(extra) > len(times):
         extra = []
     samples = sorted([(time, n, True) for n, time in enumerate(times)] +

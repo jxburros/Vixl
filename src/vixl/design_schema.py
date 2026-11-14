@@ -31,7 +31,8 @@ TYPES = (
     "symbol-instance",
 )
 SHAPES = ("rectangle", "rounded-rectangle", "ellipse", "polygon", "star", "line", *EXTRA_SHAPES)
-STYLES = ("drop-shadow", "stroke", "outer-glow", "color-overlay", "gradient-overlay")
+STYLES = ("drop-shadow", "stroke", "outer-glow", "color-overlay", "gradient-overlay", "inner-shadow", "inner-glow",
+          "bevel")
 
 
 def schemas(add):

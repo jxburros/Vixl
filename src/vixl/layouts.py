@@ -304,7 +304,14 @@ class Builder:
 
             sample = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
             data = font_data(self.project, {"font": self.project.state.get("fonts", {}).get(font, font or PROOFING_FONT)})
-            width = min(width, max(1, int(advance(data, sample, size) / len(sample) * house_style.rule("line_length")["max"])))
+            measure = min(width, max(1, int(advance(data, sample, size) / len(sample) * house_style.rule("line_length")["max"])))
+            # The narrowed box stays on the column's alignment axis: a centred body keeps the centre of the
+            # lines above it and a right-set one their right edge (#809).
+            if align == "center":
+                x += (width - measure) / 2
+            elif align == "right":
+                x += width - measure
+            width = measure
         if heavy and isinstance(role, str):
             size = self.measure_cap(role, content, size, width)
         if heavy:
@@ -431,11 +438,14 @@ class Builder:
             w, h = self.measure(content, size, width, spacing, "left", self.display_font)
         return size, spacing, w, h
 
-    def glyphs(self, size, content, cx, cy, name, color="@on-accent"):
-        """Short centered text (initials, a glyph) as an unwrapped, auto-sized layer."""
+    def glyphs(self, size, content, cx, cy, name, color="@on-accent", align=None):
+        """Short centered text (initials, a glyph) as an unwrapped, auto-sized layer. ``align`` records the
+        axis the line is set on (``center`` for lines of different widths stacked on one centre, #809); the
+        ink is placed the same either way."""
         w, h = self.measure(content, size, None, 0, "left", self.display_font)
         layer = self.name(name)
-        self.add({"type": "text", "name": layer, "text": content, "size": int(size), "color": color, "spacing": 0, "x": round(cx - w / 2), "y": round(cy - h / 2), **({"font": self.display_font} if self.display_font else {})})
+        self.add({"type": "text", "name": layer, "text": content, "size": int(size), "color": color, "spacing": 0, "x": round(cx - w / 2), "y": round(cy - h / 2), **({"font": self.display_font} if self.display_font else {}),
+                  **({"align": align} if align else {})})
         self.created.append(layer)
         return (round(cx - w / 2), round(cy - h / 2), w, h)
 
@@ -637,17 +647,19 @@ class Builder:
             return resolve_space(self.op["gap"], self.base), {}
         return gap, gaps or {}
 
-    def settle(self, vertical, height, clearance=0):
+    def settle(self, vertical, height, clearance=0, inset=0):
         """The top of a stack ``height`` tall placed at share ``vertical`` of the free height, pulled toward the
         centre just enough that neither edge band dwarfs the other (the dead-band check's edge ratio), so a
-        short stack on a tall page keeps the composition's character without opening a dead edge (#764)."""
+        short stack on a tall page keeps the composition's character without opening a dead edge (#764).
+        ``inset`` is the distance from the canvas edge of a frame around the copy (the outline accent), inside
+        which the bands are then measured (#812)."""
         from .composition import THRESHOLDS
 
         free = max(0.0, self.ch - height - clearance)
         if free > 0:
             # top band = T + free × v and bottom band = T + free × (1 − v), each under ratio × the other.
             ratio = THRESHOLDS["edge_band_ratio"] * 0.95
-            limit = ((ratio - 1) * self.T + ratio * free) / ((ratio + 1) * free)
+            limit = ((ratio - 1) * max(0.0, self.T - inset) + ratio * free) / ((ratio + 1) * free)
             vertical = min(max(vertical, 1 - limit), limit) if limit > 0.5 else 0.5
         return self.T + free * vertical
 
@@ -658,13 +670,15 @@ class Builder:
         every entry floating at one equal gap."""
         return {"headline": self.unit * 2, **{name: self.unit * 2 for name in grouped}, "cta": self.unit * 4}
 
-    def stack(self, entries, x, y, width, gap=None, align=None, gaps=None, widths=None, colors=None, scale=1.0):
+    def stack(self, entries, x, y, width, gap=None, align=None, gaps=None, widths=None, colors=None, scale=1.0,
+              scales=None):
         """Lay out (role, key|text, name) entries top-down with rhythm gaps; returns bottom y. ``gaps`` maps an
         entry name to the gap above it (a subtitle tight under its headline, a call to action set apart);
         ``widths`` and ``colors`` map a name to its own measure or colour (a point's explanation set narrower
-        and muted under its subhead); ``scale`` grows every role's size (a short list on a large page)."""
+        and muted under its subhead); ``scale`` grows every role's size (a short list on a large page) and
+        ``scales`` one entry's by name (a headline that needs its step over the body)."""
         gap, gaps = self._stack_gaps(gap, gaps)
-        widths, colors = widths or {}, colors or {}
+        widths, colors, scales = widths or {}, colors or {}, scales or {}
         if scale != 1:
             gap, gaps = gap * scale, {name: value * scale for name, value in gaps.items()}
         placed = False
@@ -681,13 +695,13 @@ class Builder:
                 color = colors.get(name) or ("@accent-text" if name == "label" else "@muted" if role == "caption" else "@ink")
                 limit = max(self.unit * 4, (self.B - y) * 0.75) if role in ("display", "headline", "title") else None
                 _, _, _, h = self.text(role, text, x, y, widths.get(name, width), align=align, name=name, color=color,
-                                       max_height=limit, scale=scale)
+                                       max_height=limit, scale=scale * scales.get(name, 1))
             y += h
         return y
 
-    def stack_height(self, entries, width, gap=None, gaps=None, widths=None, scale=1.0):
+    def stack_height(self, entries, width, gap=None, gaps=None, widths=None, scale=1.0, scales=None):
         gap, gaps = self._stack_gaps(gap, gaps)
-        widths = widths or {}
+        widths, scales = widths or {}, scales or {}
         if scale != 1:
             gap, gaps = gap * scale, {name: value * scale for name, value in gaps.items()}
         total = 0
@@ -702,7 +716,7 @@ class Builder:
                 _, th = self.measure(text, self.sizes["body"], None, 0, "left", self.font)
                 total += th + 2 * round(self.sizes["body"] * 0.6)
             else:
-                size = self.sizes[role] * scale
+                size = self.sizes[role] * scale * scales.get(name, 1)
                 measure = widths.get(name, width)
                 heavy = role in ("display", "headline", "title")
                 if heavy:
@@ -928,7 +942,17 @@ def _hero_statement(b):
     y = b.T + b.ch * 0.08 if anchor == "upper" else b.B - height - b.ch * 0.06 if anchor == "lower" else b.T + (b.ch - height) * 0.42
     y = min(max(b.T, y), max(b.T, b.B - height))
     b.accent_device(x, y, width, height)
-    b.stack(entries, x, y, width, gaps=gaps)
+    placed = len(b.ops)
+    bottom = b.stack(entries, x, y, width, gaps=gaps)
+    free = b.ch - (bottom - y)
+    if b.accent == "outline" and free > 0:
+        # The outline frames the copy, so its bands are read inside the frame: the anchor keeps its side, and
+        # the stack as set (a headline can run deeper than the estimate) moves toward the middle just enough
+        # that neither band dwarfs the other (#812).
+        shift = round(b.settle(min(1.0, max(0.0, (y - b.T) / free)), bottom - y, inset=b.m * 0.45) - y)
+        for op in b.ops[placed:]:
+            if "y" in op:
+                op["y"] += shift
     if b.get("caption"):
         b.text("caption", b.get("caption"), b.L, b.B - b.sizes["caption"] * 1.4, b.cw, name="caption", color="@muted", align="left" if b.align != "left" else "right")
 
@@ -1056,7 +1080,9 @@ def _asymmetric_balance(b):
     align = "left" if left else "right"
     entries = [("caption", b.label_text(), "label"), ("headline", b.get("title"), "headline"), ("body", b.get("subtitle"), "subtitle"), ("button", b.get("cta"), "cta")]
     height = b.stack_height(entries, width, gaps=gaps)
-    y = max(b.T, b.B - height)
+    # The copy sits low, opposite the counterweight, but not so low that the band over it dwarfs the bottom
+    # margin: the counterweight is decoration and does not close that band (#812).
+    y = b.settle(1.0, height)
     b.stack(entries, x, y, width, align=align, gaps=gaps)
     if b.get("caption"):
         b.text("caption", b.get("caption"), b.L if not left else b.R - b.cw * 0.3, b.T, b.cw * 0.3, name="caption", color="@muted", align="right" if left else "left")
@@ -1435,6 +1461,7 @@ def _business_card(b):
         b.rect("stripe", 0, 0, t, b.H, "@accent")
     elif stripe in ("top", "bottom"):
         b.rect("stripe", 0, 0 if stripe == "top" else b.H - t, b.W, t, "@accent")
+    placed = len(b.ops)
     mark = b.sizes["title"] * 1.3
     b.rect("logo-mark", b.R - mark, b.T, mark, mark, "@accent", shape=b.rng.choice(["ellipse", "rounded-rectangle", "diamond"]), radius=round(mark * 0.22))
     entries = [("title", b.get("title"), "name"), ("body", b.get("subtitle"), "role")]
@@ -1448,6 +1475,12 @@ def _business_card(b):
     if contact_y - y > b.ch * 0.2:
         contact_y = y + b.unit * 4
     b.text("caption", contact, b.L, contact_y, b.cw, name="contact", align="left", color="@muted")
+    # A group that does not reach the foot settles between the margins (the mark with it), so the card is
+    # not left with a band under the contact lines that dwarfs the margin over the name (#814).
+    shift = round(b.settle(0.0, contact_y + ch - b.T) - b.T)
+    for op in b.ops[placed:]:
+        if shift and "y" in op:
+            op["y"] += shift
 
 
 def _slide_title(b):
@@ -1481,6 +1514,8 @@ def _slide_title(b):
 
 
 def _slide_content(b):
+    from .composition import THRESHOLDS
+
     b.background()
     y = b.T
     _, _, _, h = b.text("title", b.get("title"), b.L, y, b.cw, name="title", align="left", max_height=b.ch * 0.2)
@@ -1491,16 +1526,17 @@ def _slide_content(b):
     footer = b.sizes["caption"] * 1.3 + b.unit * 4 if b.get("caption") else 0
     ops, created, start = len(b.ops), len(b.created), y
 
-    def points(scale):
+    def points(scale, gap=None):
         del b.ops[ops:], b.created[created:]
         y = start
         size = round(b.sizes["lead"] * scale)
         dot = max(4, round(size * 0.28))
+        gap = b.unit * 3 * scale if gap is None else gap
         for index, item in enumerate(items):
             b.ellipse(f"bullet-{index + 1}", b.L, y + size * 0.42, dot, dot, "@accent")
             _, _, _, h = b.text("lead", item, b.L + dot * 3, y, text_w - dot * 3, name=f"point-{index + 1}", align="left",
                                 max_height=b.B - y, scale=scale)
-            y += h + b.unit * 3 * scale
+            y += h + gap
         return y
 
     # A short list grows (to twice the lead size) until it holds most of the slide, so the points and the
@@ -1514,6 +1550,17 @@ def _slide_content(b):
             y = points(scale)
             break
         y, scale = grown, grow
+    # What the grown list still leaves free is shared between the points (and the footer under them), so the
+    # list runs down the slide in even steps instead of leaving a hole above the footer (#811). A step stays
+    # under the share of the slide from which the composition check reads a band as dead.
+    step = b.unit * 3 * scale
+    text_height = y - start - len(items) * step
+    foot = b.B - b.sizes["caption"] * 1.3 if b.get("caption") else b.B
+    steps = len(items) if b.get("caption") else len(items) - 1
+    if steps > 0:
+        even = min((foot - start - text_height) / steps, b.H * THRESHOLDS["dead_band_typical_cap"] * 0.85)
+        if even > step:
+            points(scale, even)
     if has_image:
         top = b.T + b.sizes["title"] * 1.6 + b.unit * 5
         b.image("image", b.L + b.cw * 0.6, top, b.cw * 0.4, b.B - top - b.sizes["caption"] * 2)
@@ -1609,9 +1656,12 @@ def _emblem(b):
     b.add({"type": "text-layout", "target": layer, "width": round(d), "height": round(d), "path": points})
     b.created.append(layer)
     initials = b.get("label") or initials_of(b.get("title"))
-    b.glyphs(round(d * (0.26 if len(initials) == 1 else 0.19)), initials, b.W / 2, b.H / 2 - d * 0.02, "initials")
+    # The initials and the tagline are centred on the badge: they share its axis, not a left edge.
+    b.glyphs(round(d * (0.26 if len(initials) == 1 else 0.19)), initials, b.W / 2, b.H / 2 - d * 0.02, "initials",
+             align="center")
     if b.get("subtitle"):
-        b.glyphs(max(6, round(d * 0.04)), b.get("subtitle").upper(), b.W / 2, y + d * 0.66, "tagline")
+        b.glyphs(max(6, round(d * 0.04)), b.get("subtitle").upper(), b.W / 2, y + d * 0.66, "tagline",
+                 align="center")
 
 
 def _monogram(b):
@@ -1722,11 +1772,19 @@ def _price_list(b):
 
 
 def _photo_caption(b):
+    from .composition import THRESHOLDS
+
     b.image("image", 0, 0, b.W, b.H, bleed=True)
     entries = [("caption", b.label_text(), "label"), ("headline", b.get("title"), "headline"), ("body", b.get("subtitle"), "subtitle")]
     width = b.cw * 0.86
     height = b.stack_height(entries, width)
-    top = max(0, round(b.B - height - b.unit * 4))
+    # The scrim runs to the canvas edge under the copy. Where a deep bottom inset (a story's interface zone)
+    # keeps the copy well above that edge, the scrim opens as far above the copy as balances the band below
+    # it, so the copy sits in the scrim rather than at its top (#813).
+    pad, below = b.unit * 4, b.H - b.B
+    if below > b.m and below >= THRESHOLDS["edge_band_ratio"] * pad:
+        pad = below / (THRESHOLDS["edge_band_ratio"] * 0.95)
+    top = max(0, round(b.B - height - pad))
     fade = round(min(top, b.H * 0.22))
     # A gradient fades the photo into a near-solid scrim, so text never sits on busy image areas.
     if fade:
@@ -1737,15 +1795,21 @@ def _photo_caption(b):
 
 
 def _minimal_mark(b):
+    from .composition import THRESHOLDS
+
     b.background()
     corner = b.rng.choice(["tl", "tr", "bl", "br"])
     width = b.cw * 0.42
     x = b.L if corner in ("tl", "bl") else b.R - width
     align = "left" if corner in ("tl", "bl") else "right"
     entries = [("subhead", b.get("title"), "headline"), ("caption", b.get("subtitle"), "subtitle")]
-    height = b.stack_height(entries, width, b.unit * 2)
+    # The headline stays small, but never under the hierarchy step over the body: a scale with a small ratio
+    # puts its subhead closer to the body than a headline may sit (#810).
+    step = math.ceil(THRESHOLDS["hierarchy_ratio"] * b.sizes["body"])
+    scales = {"headline": max(1.0, step / b.sizes["subhead"])}
+    height = b.stack_height(entries, width, b.unit * 2, scales=scales)
     y = b.T if corner in ("tl", "tr") else b.B - height
-    b.stack(entries, x, y, width, gap=b.unit * 2, align=align)
+    b.stack(entries, x, y, width, gap=b.unit * 2, align=align, scales=scales)
     d = b.unit * 3
     ox = b.W * (0.62 if align == "left" else 0.38)
     oy = b.H * (0.62 if corner in ("tl", "tr") else 0.38)

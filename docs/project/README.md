@@ -12,6 +12,7 @@ maintain the documentation. Users usually want the [guides](../guides/README.md)
 | [Roadmap](../../ROADMAP.md) | The single development plan: every open issue and remainder, in stages |
 | [Use-case evidence](use-case-evidence.md) | Where each use case's call count and time come from, and how to maintain the catalog |
 | [Render parity](render-parity.md) | Raster quality against Chromium and exact references |
+| [Chart edit audit](chart-edit-audit.md) | Which chart edits are one operation, which still need layer edits, and their cost in calls |
 | [Brand voice](brand-voice.md) | How Vixl's own copy and marketing sound |
 | [Documentation maintenance](documentation-maintenance.md) | Folder layout, rebuilding visuals, executable examples |
 | [Original product specification](product-spec.md) | Historical design context; see [coverage](../reference/coverage.md) for what ships |

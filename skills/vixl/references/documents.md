@@ -72,6 +72,9 @@ A document becomes multi-page with the first `page add`; each page has its own l
   1920×1080 is 13.33 × 7.5 in); `dpi` sets both. The result's `page_size` shows it.
 - Name each slide's title layer `title` so it becomes the PowerPoint title placeholder.
 - `font_map` (`--font-map SRC=NAME`, REST `font_map=SRC=NAME`) also maps the font families of a plain SVG import.
+- `install_fonts` is off unless given (MCP, REST, Host, Python); only the `vixl import FILE.svg` command turns it on
+  by itself. Re-importing Vixl's own SVG through `import-document` therefore finds Google fonts in the font cache
+  only, and the rest fall back with a warning: pass `install_fonts: true` to let them download.
 - Re-importing a PDF (`import-document`, `vixl import FILE.pdf`) keeps text live. A PDF embeds only font subsets, so
   each PDF font is found again: `font_map` (`{"Literata": "literata-400", "Literata Bold": "literata-700"}`, CLI
   `--font-map SRC=NAME`; targets must be registered), a registered font of that family and style, then for a PDF

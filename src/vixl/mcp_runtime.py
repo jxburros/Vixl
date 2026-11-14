@@ -10,7 +10,12 @@ worker thread through ``Runtime.wrap``:
   ``as_job: true`` on the heavy tools returns that job at once. When more calls are in flight than
   there are workers, a new call waits proportionally less before it becomes a job, so clients do
   not time out while their call is still queued; job pointers report ``queued``, ``wait_ms`` and
-  ``queue_depth``.
+  ``queue_depth``. The server holds at most ``VIXL_MCP_WORKERS`` running and ``VIXL_MCP_QUEUE`` waiting
+  calls, and never more than the job store remembers (``MAX_JOBS``), so every held call can become a
+  job; the next one is refused with a retryable ``limit_exceeded`` (``limit: max_queue``).
+* Heavy tools (``takes_gate``: the job tools and ``vixl_render``) count against the per-workspace
+  ``max_concurrent`` cap. A job tool over the cap is refused at once; ``vixl_render`` cannot become a
+  job, so it waits for a free slot for up to the inline time and is refused after that.
 * ``vixl_job`` reports a job's progress, waits for it, returns its result or cancels it. Ids of
   durable workspace jobs (``vixl_apply(workflow='submit')``) are served from ``jobs.py``.
 * A client that sent a progress token receives ``notifications/progress`` while the call runs
@@ -48,6 +53,9 @@ from .idempotency import MAX_PER_DOCUMENT, MAX_REMEMBERED_BYTES, MAX_REQUESTS, R
 
 DEFAULT_INLINE_SECONDS = 40
 DEFAULT_WORKERS = 32
+DEFAULT_QUEUE = 64  # Calls that may wait for a worker (VIXL_MCP_QUEUE); one more is refused as busy.
+POLL_WORKERS, POLL_QUEUE = 8, 64  # vixl_job calls: they run beside the call pool and are bounded the same way.
+GATE_POLL_SECONDS = 0.05  # How often a waiting render looks for a free workspace slot.
 # Under load the inline wait shrinks, but never below this (or below inline_seconds when that is smaller).
 MIN_INLINE_SECONDS = 2.0
 MAX_JOBS = 100
@@ -72,7 +80,14 @@ def takes_request_id(name):
 
 
 def takes_job(name):
+    """Tools that may detach into a job (``as_job``, or after the inline wait)."""
     return name not in NO_EXTRAS and (name in JOB_TOOLS or name.startswith("vixl_ai_"))
+
+
+def takes_gate(name):
+    """Tools that count against the per-workspace ``max_concurrent`` cap: every tool that may become a job, and
+    the picture tools, which are as heavy but answer inline only."""
+    return takes_job(name) or name in PICTURES
 
 
 class Job:
@@ -126,19 +141,25 @@ class Job:
 
 
 class JobStore:
-    def __init__(self):
+    """The last ``maximum`` jobs. A finished job makes room for a new one; a queued or running job is never
+    dropped, so a store full of unfinished jobs refuses the next one instead of growing."""
+
+    def __init__(self, maximum=None):
         self.jobs = OrderedDict()
         self.lock = threading.Lock()
+        self.maximum = MAX_JOBS if maximum is None else maximum
 
     def add(self, job):
         with self.lock:
-            self.jobs[job.id] = job
-            while len(self.jobs) > MAX_JOBS:
-                # Forget the oldest finished job first; a running one is never dropped.
-                victim = next((k for k, j in self.jobs.items() if j.done.is_set()), None)
+            while len(self.jobs) >= self.maximum:
+                victim = next((k for k, j in self.jobs.items() if j.future.done()), None)
                 if victim is None:
-                    break
+                    from .call_limits import busy
+
+                    running = sum(1 for j in self.jobs.values() if j.box.started)
+                    raise busy(running, len(self.jobs) - running)
                 del self.jobs[victim]
+            self.jobs[job.id] = job
         return job
 
     def get(self, ident):
@@ -183,10 +204,16 @@ class Runtime:
         self.parameters = {}  # Tool name -> the parameter names it takes (see watch_arguments).
         self.workers = int(os.environ.get("VIXL_MCP_WORKERS", DEFAULT_WORKERS))
         self.executor = ThreadPoolExecutor(max_workers=self.workers, thread_name_prefix="vixl-call")
-        self.in_flight = 0  # Calls submitted to ``executor`` that have not finished (running or queued).
+        # Calls this server holds at once, running or waiting. Each may become a job, so never more than the store
+        # remembers: a full store then always has a finished job to forget.
+        self.queue = max(0, int(os.environ.get("VIXL_MCP_QUEUE", DEFAULT_QUEUE)))
+        self.capacity = min(self.workers + self.queue, self.jobs.maximum)
+        self.in_flight = 0  # Calls held: submitted to ``executor`` and not finished, or waiting for a workspace slot.
         self.flight_lock = threading.Lock()
         # Following a job must never queue behind the calls it is waiting for.
-        self.light = ThreadPoolExecutor(max_workers=8, thread_name_prefix="vixl-poll")
+        from .call_limits import BoundedExecutor
+
+        self.light = BoundedExecutor(POLL_WORKERS, POLL_QUEUE, name="vixl-poll")
 
     def wrap(self, fn):
         """An async tool that runs ``fn`` in a worker thread, with the extras this tool offers."""
@@ -369,22 +396,54 @@ class Runtime:
             return self.inline_seconds
         return max(min(MIN_INLINE_SECONDS, self.inline_seconds), self.inline_seconds * self.workers / in_flight)
 
-    def submit(self, *args):
-        """Run ``work`` on the call pool, counting it in flight until it ends (or is cancelled while queued)."""
+    def admit(self):
+        """Count one more held call and return how many are held; refuse it, retryably, when the server holds
+        ``capacity`` already. Pair with ``landed``."""
         with self.flight_lock:
+            if self.in_flight >= self.capacity:
+                from .call_limits import busy
+
+                running = min(self.in_flight, self.workers)
+                raise busy(running, self.in_flight - running)
             self.in_flight += 1
-            in_flight = self.in_flight
+            return self.in_flight
+
+    def submit(self, *args):
+        """Run ``work`` on the call pool for a call ``admit`` counted; it stays counted until it ends (or is
+        cancelled while queued)."""
         try:
             future = self.executor.submit(self.work, *args)
         except BaseException:
-            self.landed(None)
+            self.landed()
             raise
         future.add_done_callback(self.landed)
-        return future, in_flight
+        return future
 
-    def landed(self, _):
+    def landed(self, _=None):
         with self.flight_lock:
             self.in_flight -= 1
+
+    async def slot(self, name):
+        """Count a heavy call against the workspace's ``max_concurrent``; returns the key to release, or ``None``
+        when nothing is limited. Over the cap a job tool is refused at once. A picture tool cannot become a job,
+        so it waits for a slot for up to the inline time before it is refused."""
+        from .call_limits import GATE, of
+
+        maximum = of(self.session).max_concurrent
+        if maximum is None or not takes_gate(name):
+            return None
+        workspace = getattr(self.session, "workspace", None)
+        patience = (self.inline_seconds or DEFAULT_INLINE_SECONDS) if name in PICTURES else 0
+        deadline = time.monotonic() + patience
+        while True:
+            try:
+                return GATE.acquire(workspace, maximum)
+            except VixlError as exc:
+                if time.monotonic() >= deadline:
+                    if patience:
+                        exc.details.update(retryable=True, waited_s=round(patience, 1))
+                    raise
+            await asyncio.sleep(GATE_POLL_SECONDS)
 
     def pointer(self, job, why):
         text = job.summary()
@@ -395,7 +454,10 @@ class Runtime:
         return self.compact_json(text)
 
     def detach(self, name, kwargs, future, box, request_id, entry):
-        job = self.jobs.add(Job(name, kwargs.get("document"), request_id, future, box))
+        try:
+            job = self.jobs.add(Job(name, kwargs.get("document"), request_id, future, box))
+        except VixlError as exc:  # Not reached while ``capacity`` holds; the call itself goes on.
+            raise self.tool_error(self.compact_json(for_surface(exc.as_dict(), "mcp"))) from exc
         box.job, box.inline = job, False
         if entry is not None:
             entry["job"] = job
@@ -424,31 +486,33 @@ class Runtime:
             if outcome == "running":
                 return await self.join(entry, request_id)
         box.submitted = time.time()
-        gate = None
-        if takes_job(name):
-            # Heavy calls count against the server's per-workspace cap (call_limits.py), jobs included.
-            from .call_limits import GATE, of
+        from .call_limits import GATE, of as limits_of, watch
 
-            try:
-                maximum = of(self.session).max_concurrent
-                if maximum is not None:
-                    gate = GATE.acquire(getattr(self.session, "workspace", None), maximum)
-            except VixlError as exc:
-                if entry is not None:
-                    self.log.discard(request_id, entry)
-                raise self.tool_error(self.compact_json(for_surface(exc.as_dict(), "mcp"))) from exc
-        if name in NO_EXTRAS:
-            future, in_flight = self.light.submit(self.work, fn, returns, args, kwargs, state, box, request_id, entry), 0
-        else:
-            try:
-                future, in_flight = self.submit(fn, returns, args, kwargs, state, box, request_id, entry)
-            except BaseException:
-                if gate is not None:
+        gate, in_flight = None, 0
+        try:
+            if name in NO_EXTRAS:
+                future = self.light.submit(self.work, fn, returns, args, kwargs, state, box, request_id, entry)
+            else:
+                in_flight = self.admit()  # Held from here: a render waiting for a slot counts like a queued call.
+                try:
+                    # Heavy calls count against the server's per-workspace cap (call_limits.py), jobs included.
+                    gate = await self.slot(name)
+                except BaseException:
+                    self.landed()
+                    raise
+                try:
+                    future = self.submit(fn, returns, args, kwargs, state, box, request_id, entry)
+                except BaseException:
                     GATE.release(gate)
-                raise
+                    raise
+        except BaseException as exc:
+            if entry is not None:
+                self.log.discard(request_id, entry)
+            if isinstance(exc, VixlError):
+                raise self.tool_error(self.compact_json(for_surface(exc.as_dict(), "mcp"))) from exc
+            raise
         if gate is not None:
             future.add_done_callback(lambda _: GATE.release(gate))
-        from .call_limits import of as limits_of, watch
 
         watch(state, limits_of(self.session), future)
         if as_job:
@@ -468,7 +532,8 @@ class Runtime:
             return self.pointer(job, why)
         except asyncio.CancelledError:
             # The client gave up or disconnected. The edit still finishes; keep it findable.
-            self.detach(name, kwargs, future, box, request_id, entry)
+            with contextlib.suppress(Exception):
+                self.detach(name, kwargs, future, box, request_id, entry)
             raise
 
     def document_key(self, kwargs, state):

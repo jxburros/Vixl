@@ -150,6 +150,34 @@ Built-in textures: `pattern-fill` (inside a layer's silhouette) and `pattern-str
 
 Cut paper: `cut-paper {target|targets, grain 0.04-0.08, roughness, thickness, seed, fps, jitter}` gives pieces paper grain without a direction (mottling, short fibres, fine tooth), rough edges and a thickness shadow. `grain_scale` (px, default 28) sizes the mottling, `fibers: {count, length}` sets fibres per 100 x 100 px and their length (count 0 for none), `pattern: NAME` uses a built-in or `pattern-define` tile as the texture. Jitter is a compositing offset, so each new hold reuses the drawn pieces; a `vixl_render` preview with `draft: true` (or `render_at(project, time, draft=True)`) snaps layers to whole pixels for a quicker look at a pose. Reference: `docs/guides/motion/animation-authoring.md`.
 
+## Parts placed by coordinates
+
+Every shape is `{type: shape, shape: KIND}`: the kind is a field, never the operation type, and `fill`, `stroke`
+and `stroke_width` are fields of it (a full-canvas colour is `solid`). `shape: "path"` takes SVG path data in local
+pixels with `x`/`y` defaulting to 0, so canvas coordinates need no `x`, `y`, `width` or `height`; `pen` takes canvas
+points (`points` smoothed, or Bezier `nodes`) and fits the box: use it for outlines placed point by point.
+`vixl_render(rulers=true, bounds=true)` draws a labelled coordinate grid and each layer's `name x,y WxH` box on the
+preview (never in exports; absolute under `region`; also `preview={rulers: true}` on `vixl_apply`), so one look
+gives the numbers for the next `move`. Mark backgrounds and decoration with `role: "decoration"`/`"background"` on
+the creating operation so the safe-area check stops asking for review.
+
+```json
+{"width": 1080, "height": 1080, "operations": [
+  {"type": "solid", "name": "sky", "color": "#bde0fe"},
+  {"type": "shape", "shape": "rectangle", "name": "ground", "x": 0, "y": 800, "width": 1080, "height": 280,
+   "fill": "#7cb518", "role": "background"},
+  {"type": "shape", "shape": "ellipse", "name": "wheel-back", "x": 240, "y": 620, "width": 200, "height": 200,
+   "fill": "transparent", "stroke": "#1b1b1b", "stroke_width": 12},
+  {"type": "shape", "shape": "ellipse", "name": "wheel-front", "x": 600, "y": 620, "width": 200, "height": 200,
+   "fill": "transparent", "stroke": "#1b1b1b", "stroke_width": 12},
+  {"type": "shape", "shape": "path", "name": "frame", "path": "M 340 720 L 520 560 L 700 720 Z",
+   "fill": "transparent", "stroke": "#d62828", "stroke_width": 10},
+  {"type": "pen", "name": "body", "points": [[430, 520], [520, 400], [640, 430], [610, 560]], "closed": true,
+   "fill": "#f8f9fa"},
+  {"type": "group", "name": "bicycle", "targets": ["wheel-back", "wheel-front", "frame"]}
+]}
+```
+
 ## Guides, grids and placement
 
 Guides can be angled lines, rays, segments, points, circles and curves; `grid --kind` makes

@@ -452,6 +452,10 @@
      "type": "object",
      "description": "Frame animation settings and frames."
     },
+    "sprite_sheet": {
+     "type": "object",
+     "description": "Sprite-sheet grid (sprite-sheet): {cell: [w, h], rows: [names], columns, duration, clips: {name: {row, frames, duration, durations, loop}}}."
+    },
     "motions": {
      "type": "object",
      "description": "Motion recipes applied."
@@ -720,6 +724,10 @@
     "linked": {
      "type": "boolean",
      "description": "raster: the asset is a link to a file outside the archive (allow_linked)."
+    },
+    "sampling": {
+     "type": "string",
+     "description": "raster: nearest enlarges the image pixel by pixel (crisp pixel art) in the renderer and every export; absent is smooth."
     },
     "asset_variable": {
      "type": "string",
@@ -1213,6 +1221,10 @@
      "type": "boolean",
      "description": "text: punctuation at the line edges hangs outside the text box."
     },
+    "hand_set": {
+     "type": "object",
+     "description": "text: seeded hand-set variation applied when drawing {seed, unit, rise, rotate, scale, tracking}."
+    },
     "tabs": {
      "type": "array",
      "description": "text: tab stops [{at, align, leader}]."
@@ -1266,7 +1278,7 @@
     },
     "styles": {
      "type": "object",
-     "description": "Layer styles by name (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay), each with its settings and enabled."
+     "description": "Layer styles by name (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay, inner-shadow, inner-glow, bevel), each with its settings and enabled."
     },
     "looks": {
      "type": "object",
@@ -1377,6 +1389,10 @@
     "chart_part": {
      "type": "string",
      "description": "Which part of a chart this layer is."
+    },
+    "chart_mark": {
+     "type": "object",
+     "description": "What a chart part stands for in the data: {part, series?, category?} by name."
     },
     "table": {
      "type": "object",

@@ -41,7 +41,25 @@ FIELDS = {
     "destination": {
         "type": "string",
         "enum": list(emojis.DESTINATIONS),
-        "description": "Export destination: images, discord or slack.",
+        "description": "Template destination: " + ", ".join(emojis.DESTINATIONS) + "; default images.",
+    },
+    "destinations": {
+        "anyOf": [
+            {"type": "string", "enum": list(emojis.DESTINATIONS)},
+            {
+                "type": "array",
+                "items": {"type": "string", "enum": list(emojis.DESTINATIONS)},
+                "minItems": 1,
+                "uniqueItems": True,
+            },
+        ],
+        "description": "One destination, or a list to export or check several at once (export writes "
+        "NAME-DESTINATION.zip per destination): " + ", ".join(emojis.DESTINATIONS) + "; default images.",
+    },
+    "animated": {
+        "anyOf": [{"type": "boolean"}, {"type": "string", "enum": ["gif", "webp", "apng"]}],
+        "description": "Export emojis whose VIXL master has a timeline as animations within the destination's "
+        "duration, frame and byte budgets; images also takes gif, webp or apng. Default false.",
     },
     "emojis": {
         "type": "array",
@@ -56,7 +74,7 @@ FIELDS = {
         "type": "integer",
         "minimum": 16,
         "maximum": 1024,
-        "description": "Image-pack PNG size; platform profiles fix it at 128.",
+        "description": "Image size: any for images, 300/408/618 for imessage; other destinations fix it.",
     },
     "overwrite": B("Explicitly replace an existing output; default false."),
     "kind": {
@@ -73,8 +91,11 @@ ACTIONS = {
     "emoji-list": ({"query", "group", "offset", "limit"}, set()),
     "emoji-get": ({"emoji", "output", "format", "overwrite"}, {"emoji"}),
     "emoji-destinations": (set(), set()),
-    "emoji-requirements": ({"destination", "emojis"}, set()),
-    "emoji-export": ({"output", "destination", "emojis", "sources", "size", "overwrite"}, {"output"}),
+    "emoji-requirements": ({"destination", "emojis", "animated", "size"}, set()),
+    "emoji-export": (
+        {"output", "destination", "emojis", "sources", "size", "overwrite", "animated"},
+        {"output"},
+    ),
     "emoji-template": ({"output", "kind", "destination", "overwrite"}, {"output"}),
     "emoji-replace": ({"emoji", "source", "name", "license"}, {"emoji", "source"}),
     "emoji-pack-install": ({"source"}, {"source"}),
@@ -86,8 +107,9 @@ SUMMARIES = {
     "emoji-list": "Search Unicode 17 artwork, 100 VIXL originals and document custom emojis, with pagination.",
     "emoji-get": "Inspect an emoji or extract its editable VIXL source, SVG or PNG.",
     "emoji-destinations": "List destination constraints and upload instructions for emoji packs.",
-    "emoji-requirements": "Validate selected emojis against destination image sizes, names and byte limits.",
-    "emoji-export": "Write a ready-to-upload PNG/SVG pack with manifest, licenses, preview and editable sources.",
+    "emoji-requirements": "Validate selected emojis against destination sizes, formats, names, byte limits and pack rules.",
+    "emoji-export": "Write ready-to-upload emoji, sticker or emote packs (one or several destinations, still or "
+    "animated) with manifest, licenses, preview and editable sources.",
     "emoji-template": "Create a transparent editable emoji template: blank, face, symbol or a 4×4 sheet.",
     "emoji-replace": "Embed one custom replacement or new shortcode in the document, preserving its source.",
     "emoji-pack-install": "Install every entry in a VIXL emoji pack as one undoable atomic document edit.",
@@ -97,6 +119,14 @@ SUMMARIES = {
 }
 
 
+def fields(action):
+    """Request fields of an action. Export and requirements take one destination or several."""
+    several = action in ("emoji-export", "emoji-requirements")
+    return {
+        k: FIELDS["destinations" if several and k == "destination" else k] for k in sorted(ACTIONS[action][0])
+    }
+
+
 def dispatch(session, action, request, document=None):
     from jsonschema import Draft202012Validator
 
@@ -104,7 +134,7 @@ def dispatch(session, action, request, document=None):
         Draft202012Validator(
             {
                 "type": "object",
-                "properties": {k: FIELDS[k] for k in ACTIONS[action][0]},
+                "properties": fields(action),
                 "required": sorted(ACTIONS[action][1]),
                 "additionalProperties": False,
             }
@@ -114,8 +144,9 @@ def dispatch(session, action, request, document=None):
     if action == "emoji-destinations":
         return {
             "destinations": emojis.DESTINATIONS,
-            "checked": "2026-10-08",
-            "help": "Profiles describe static custom emoji uploads; slot counts and permissions depend on the destination.",
+            "checked": max(p.get("checked", "") for p in emojis.DESTINATIONS.values()),
+            "help": "Each profile carries its limits, the page they were read from (url) and the day (checked); "
+            "animated holds the animation budgets. Slot counts, review and permissions depend on the destination.",
         }
     if action == "emoji-artwork":
         from . import packs
@@ -217,7 +248,9 @@ def read(session, action, request, project):
             project=project,
             **{k: v for k, v in request.items() if k != "output"},
         )
-        result["output"] = session.relative(Path(result["output"]))
+        for item in [result, *result.get("outputs", [])]:
+            if "output" in item:
+                item["output"] = session.relative(Path(item["output"]))
         return result
     raise VixlError("invalid_request", "Unknown emoji action")
 
@@ -254,11 +287,24 @@ def cli(args, options, limits):
     sub.add_parser("destinations")
     for name in ("requirements", "export"):
         p = sub.add_parser(name)
-        p.add_argument("--destination", choices=list(emojis.DESTINATIONS), default="images")
+        p.add_argument(
+            "--destination",
+            choices=list(emojis.DESTINATIONS),
+            nargs="+",
+            default=["images"],
+            help="one or several destinations; several write OUT-DESTINATION.zip each",
+        )
         p.add_argument("--emojis", nargs="+")
+        p.add_argument(
+            "--animated",
+            nargs="?",
+            const=True,
+            choices=["gif", "webp", "apng"],
+            help="animate emojis whose VIXL master has a timeline; images takes gif, webp or apng",
+        )
+        p.add_argument("--size", type=int)
         if name == "export":
             p.add_argument("--out", dest="output", required=True)
-            p.add_argument("--size", type=int)
             p.add_argument("--no-sources", dest="sources", action="store_false")
             p.add_argument("--overwrite", action="store_true")
     p = sub.add_parser("template")
@@ -282,5 +328,7 @@ def cli(args, options, limits):
     p.add_argument("--from", dest="pack")
     a = parser.parse_args(args)
     request = {k: v for k, v in vars(a).items() if k not in ("command", "workspace") and v is not None}
+    if a.command in ("requirements", "export") and len(request["destination"]) == 1:
+        request["destination"] = request["destination"][0]
     action = "emoji-pack-install" if a.command == "install" else "emoji-" + a.command
     return dispatch(Session(options.project, limits, workspace=Path(a.workspace)), action, request)

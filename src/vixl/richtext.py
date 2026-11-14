@@ -33,7 +33,7 @@ from .model import finite
 from .notices import note
 
 STYLE_KEYS = ("bold", "italic", "underline", "strike", "color", "size", "font", "highlight", "baseline", "tracking",
-              "small_caps")
+              "small_caps", "rise", "rotate")
 FLAGS = ("bold", "italic", "underline", "strike", "super", "sub", "small-caps", "accent", "accent-bg")
 # The accent flags as styles: the palette's accent text color, or accent ink on an accent highlight.
 ACCENT = {"color": "@accent-text"}
@@ -104,10 +104,11 @@ def _attributes(text):
                 style[flag] = True
             continue
         value = value.strip('"')
-        require(key in ("color", "size", "font", "highlight", "tracking", "baseline"),
-                f"Unknown rich-text attribute {key!r}; use color, size, font, highlight, tracking or baseline",
-                field="markdown")
-        style[key] = float(value) if key in ("size", "tracking") and re.fullmatch(r"-?\d+(\.\d+)?", value) else value
+        require(key in ("color", "size", "font", "highlight", "tracking", "baseline", "rise", "rotate", "scale"),
+                f"Unknown rich-text attribute {key!r}; use color, size, font, highlight, tracking, baseline, rise, "
+                "rotate or scale", field="markdown")
+        numeric = key in ("size", "tracking", "rise", "rotate", "scale") and re.fullmatch(r"-?\d+(\.\d+)?", value)
+        style[key] = float(value) if numeric else value
     return style
 
 
@@ -235,6 +236,12 @@ def validate_style(style, state):
         finite(style["size"], "size", 1, 4096)
     if "tracking" in style:
         finite(style["tracking"], "tracking", -1000, 1000)
+    if "rise" in style:
+        finite(style["rise"], "rise", -1000, 1000)
+    if "rotate" in style:
+        finite(style["rotate"], "rotate", -180, 180)
+    if "scale" in style:
+        finite(style["scale"], "scale", 0.1, 10)
     if "baseline" in style:
         require(style["baseline"] in ("super", "sub", "normal"), "baseline must be super, sub or normal", field="baseline")
     if "font" in style:
@@ -316,6 +323,12 @@ class Placed:
     italic: bool = False
     line: int = 0  # index into Layout.lines
     hung: bool = False  # punctuation hanging_punctuation sets outside the line's edge
+    # (degrees clockwise, pivot x, pivot y) for a word or letter turned by a span's ``rotate`` or the layer's
+    # ``hand_set``. ``x`` and ``y`` stay the pen position before the turn, so runs and line metrics are unchanged.
+    turn: tuple = None
+    # (y, size) without the layer's ``hand_set`` variation: the layer's box follows these, so it does not move
+    # when a word is edited or the seed changes.
+    rest: tuple = None
 
 
 @dataclass
@@ -370,6 +383,8 @@ def styled_spans(project, layer, variables=None):
             "baseline": span.get("baseline", "normal"),
             # A span's own tracking replaces the layer's.
             "tracking": float(span.get("tracking", layer.get("tracking", 0))),
+            "rise": float(span.get("rise", 0)),
+            "rotate": float(span.get("rotate", 0)),
             "small_caps": bool(span.get("small_caps")),
             "fake_bold": fake_bold,
             "fake_italic": fake_italic,
@@ -417,21 +432,59 @@ def _marker(kind, level, number):
     return f"{out}."
 
 
-def _tokens(project, paragraph, scale):
-    """Shaped words and spaces: [(kind, glyphs, width, style, ascent, descent)]."""
+HAND_SET_KEYS = ("seed", "unit", "rise", "rotate", "scale", "tracking")
+HAND_SET_UNITS = ("word", "glyph")
+
+
+def hand_variation(hand, index, size):
+    """``(rise px, degrees, scale factor, tracking px)`` of the ``index``-th word or letter of a hand-set layer.
+    Each unit draws its own numbers from the seed and its index, so changing one word leaves the others as they
+    were. Amounts not given follow the size: 4% rise, 3 degrees, 6% scale, no tracking."""
+    import random
+
+    rng = random.Random(f"vixl-hand-set:{int(hand.get('seed', 0))}:{index}")
+    rise, turn, grow, track = (rng.uniform(-1, 1) for _ in range(4))
+    return (rise * float(hand.get("rise", 0.04 * size)), turn * float(hand.get("rotate", 3)),
+            1 + grow * float(hand.get("scale", 0.06)), track * float(hand.get("tracking", 0)))
+
+
+def _tokens(project, paragraph, scale, hand=None, counter=None):
+    """Shaped words and spaces: [(kind, glyphs, width, style, ascent, descent)]. ``hand`` (the layer's
+    ``hand_set``) varies each word or letter; ``counter`` is the one-item running count of units in the layer."""
     from .text import shape
 
     tokens = []
     for span in paragraph:
         for piece in re.findall(r" +|[^ ]+", span["text"]):
-            size = span["size"] * scale * (0.65 if span["baseline"] in ("super", "sub") else 1)
+            size = em = span["size"] * scale * (0.65 if span["baseline"] in ("super", "sub") else 1)
             data = style_font_data(project, span["font"], piece)
             tracking = span["tracking"] * scale
+            space = piece.isspace() and "\u00a0" not in piece
+            rise, turn, units, lift = span["rise"] * scale, span["rotate"], None, 0.0
+            if hand is not None and not space and hand.get("unit", "word") == "word":
+                lift, tilt, grow, track = hand_variation(hand, counter[0], span["size"])
+                counter[0] += 1
+                size, tracking, lift, turn = size * grow, tracking + track * scale, lift * scale, turn + tilt
             glyphs, advance, trail = tracked(*shape(data, piece, size, span["small_caps"]), tracking)
+            if hand is not None and not space and hand.get("unit", "word") == "glyph":
+                # Each letter (HarfBuzz cluster; marks stay with their base) gets its own numbers. Its scale
+                # changes the letter in place; its tracking moves the letters after it.
+                units, moved, current = [], 0.0, None
+                for index, glyph in enumerate(glyphs):
+                    if glyph.text or index == 0:
+                        if current is not None:
+                            moved += current[3] * scale
+                        current = hand_variation(hand, counter[0], span["size"])
+                        counter[0] += 1
+                    glyph.x += moved
+                    units.append((current[0] * scale, current[1], current[2]))
+                advance += moved
             ascent, descent = _metrics(data)
-            tokens.append({"space": piece.isspace() and "\u00a0" not in piece, "glyphs": glyphs, "width": advance, "style": span, "size": size,
+            tokens.append({"space": space, "glyphs": glyphs, "width": advance, "style": span, "size": size, "em": em,
                            "ascent": ascent * span["size"] * scale, "descent": descent * span["size"] * scale,
-                           "data": data, "text": piece, "tracking": tracking, "trail": trail})
+                           "data": data, "text": piece, "tracking": tracking, "trail": trail,
+                           "rise": rise + lift, "turn": turn, "units": units,
+                           "lift": lift if hand is not None and not space else None})
     return tokens
 
 
@@ -469,7 +522,7 @@ def _split_word(project, token, width):
     result = []
     for index, piece in enumerate(pieces):
         glyphs, advance, trail = tracked(*shape(token["data"], piece, token["size"], small_caps), tracking)
-        result.append({**token, "glyphs": glyphs, "width": advance, "text": piece, "trail": trail,
+        result.append({**token, "glyphs": glyphs, "width": advance, "text": piece, "trail": trail, "units": None,
                        "word_break": index < len(pieces) - 1 and mid_word(piece, pieces[index + 1])})
     return result
 
@@ -646,6 +699,9 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
     list_indent = float(rich["list_indent"]) * scale if rich.get("list_indent") else base_size * 1.4
     wrap = box.get("wrap", "greedy")
     hanging = bool(layer.get("hanging_punctuation"))
+    from .lettering import hand_set
+
+    hand, units = (layer["hand_set"] if hand_set(layer) else None), [0]
 
     # Pass 1: break every paragraph into lines.
     rows, counters, breaks = [], {}, {}
@@ -667,7 +723,7 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
         factor = float(para.get("line_height", line_factor))
         before = float(para.get("space_before", 0)) * scale
         after = float(para["space_after"]) * scale if "space_after" in para else after_default
-        tokens = _tokens(project, paragraph, scale)
+        tokens = _tokens(project, paragraph, scale, hand, units)
         limit = None if available is None else max(1.0, available - text_left)
         align = para.get("align", layer.get("align", "left"))
         hang = ((align in ("left", "justify", "center"), align in ("right", "center")) if hanging and kind == "none"
@@ -692,7 +748,7 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
                 ascent, descent = a * base_size, d * base_size
             rows.append({
                 "tokens": line, "ascent": ascent, "descent": descent, "factor": factor,
-                "em": max((t["size"] for t in line), default=base_size) if line else base_size,
+                "em": max((t["em"] for t in line), default=base_size) if line else base_size,
                 "marker": marker if number == 0 else None, "left": left, "text_left": text_left,
                 "align": para.get("align", layer.get("align", "left")), "limit": limit,
                 "last": number == len(lines) - 1, "before": before if number == 0 else 0.0,
@@ -740,29 +796,45 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
             first = row["tokens"][0]
             mstyle = first["style"]
             data = style_font_data(project, mstyle["font"], row["marker"])
-            glyphs, advance = shape(data, row["marker"], first["size"])
+            glyphs, advance = shape(data, row["marker"], first["em"])
             mx = stroke + row["left"] + max(0.0, list_indent * 0.75 - advance)
             for glyph in glyphs:
-                result.glyphs.append(Placed(glyph.data, glyph.name, mx + glyph.x, baseline + glyph.y, first["size"],
+                result.glyphs.append(Placed(glyph.data, glyph.name, mx + glyph.x, baseline + glyph.y, first["em"],
                                             mstyle["color"], glyph.text, line=len(result.lines)))
         last = row["tokens"][-1] if row["tokens"] else None
         for number, token in enumerate(row["tokens"]):
             style = token["style"]
-            shift = {"super": -0.35, "sub": 0.15}.get(style["baseline"], 0.0) * style["size"] * scale
+            # A span's rise and the hand-set lift move the word (and its highlight and lines) off the baseline.
+            shift = {"super": -0.35, "sub": 0.15}.get(style["baseline"], 0.0) * style["size"] * scale - token["rise"]
             advance = token["width"] + (extra if token["space"] else 0) - (token["trail"] if token is last else 0.0)
             if style["highlight"]:
-                result.rects.append((cursor, baseline - token["ascent"], advance, token["ascent"] - token["descent"],
-                                     style["highlight"], "highlight"))
+                result.rects.append((cursor, baseline - token["rise"] - token["ascent"], advance,
+                                     token["ascent"] - token["descent"], style["highlight"], "highlight"))
+            # A word turns about the middle of its baseline.
+            turn = ((token["turn"], cursor + (token["width"] - token["trail"]) / 2, baseline + shift)
+                    if token["turn"] and not token["space"] else None)
             # Space glyphs draw nothing, but PDF text extraction reads them as word breaks.
             for index, glyph in enumerate(token["glyphs"]):
-                result.glyphs.append(Placed(glyph.data, glyph.name, cursor + glyph.x, baseline + shift + glyph.y,
-                                            token["size"] * glyph.scale, style["color"], glyph.text, style["fake_bold"],
-                                            style["fake_italic"], len(result.lines), (number, index) in hung))
+                placed = Placed(glyph.data, glyph.name, cursor + glyph.x, baseline + shift + glyph.y,
+                                token["size"] * glyph.scale, style["color"], glyph.text, style["fake_bold"],
+                                style["fake_italic"], len(result.lines), (number, index) in hung, turn)
+                if token["lift"] is not None:
+                    placed.rest = (placed.y + token["lift"], token["em"] * glyph.scale)
+                if token["units"]:
+                    # A letter of its own: lifted, resized where it stands and turned about the middle of its advance.
+                    lift, tilt, grow = token["units"][index]
+                    placed.y -= lift
+                    placed.size *= grow
+                    if tilt or token["turn"]:
+                        placed.turn = (token["turn"] + tilt, placed.x + glyph.advance * grow / 2, placed.y)
+                result.glyphs.append(placed)
             thickness = max(1.0, token["size"] * 0.06)
             if style["underline"]:
-                result.rects.append((cursor, baseline + token["size"] * 0.12, advance, thickness, style["color"], "underline"))
+                result.rects.append((cursor, baseline - token["rise"] + token["size"] * 0.12, advance, thickness,
+                                     style["color"], "underline"))
             if style["strike"]:
-                result.rects.append((cursor, baseline - token["size"] * 0.3, advance, thickness, style["color"], "strike"))
+                result.rects.append((cursor, baseline - token["rise"] - token["size"] * 0.3, advance, thickness,
+                                     style["color"], "strike"))
             cursor += advance
         widest = max(widest, cursor - tail + stroke)
         result.lines.append((y, baseline, height, row["paragraph"], row["descent"]))
@@ -777,6 +849,26 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
     return result
 
 
+def turned(glyph, matrix):
+    """``matrix`` (font units to layout pixels, SVG order) with the glyph's turn about its pivot applied."""
+    if not glyph.turn:
+        return matrix
+    from .kinetic import multiply
+
+    degrees, px, py = glyph.turn
+    c, s = math.cos(math.radians(degrees)), math.sin(math.radians(degrees))
+    return multiply((c, s, -s, c, px - px * c + py * s, py - px * s - py * c), matrix)
+
+
+def glyph_ink(glyph, bounds, f, skew=0.0):
+    """``(left, top, right, bottom)`` of a glyph's outline box ``bounds`` (font units) in layout pixels, after
+    its slant and turn."""
+    a, b, c, d, e, g = turned(glyph, (f, 0, f * skew, -f, glyph.x, glyph.y))
+    xs = [a * x + c * y + e for x in (bounds[0], bounds[2]) for y in (bounds[1], bounds[3])]
+    ys = [b * x + d * y + g for x in (bounds[0], bounds[2]) for y in (bounds[1], bounds[3])]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
 def _ink_box(result, stroke, width):
     """Give the layout plain text's box (``text.measure``): its top at the ink, its left at the pen or the
     ink when a glyph reaches left of it, so a plain layer laid out here (for its tracking) stays where the
@@ -788,7 +880,11 @@ def _ink_box(result, stroke, width):
         path, bounds = glyph_outline(glyph.data, glyph.name)
         if path and bounds:
             f = glyph.size / face(glyph.data)[0]["head"].unitsPerEm
-            box = (glyph.x + bounds[0] * f, glyph.y - bounds[3] * f, glyph.x + bounds[2] * f, glyph.y - bounds[1] * f)
+            box = glyph_ink(glyph, bounds, f)
+            if glyph.rest:
+                # A hand-set glyph counts by where it sits and how tall it is without the variation.
+                rest = glyph.rest[1] / face(glyph.data)[0]["head"].unitsPerEm
+                box = (box[0], glyph.rest[0] - bounds[3] * rest, box[2], glyph.rest[0] - bounds[1] * rest)
             (hung if glyph.hung else boxes).append(box)
     if not boxes:
         return
@@ -799,6 +895,10 @@ def _ink_box(result, stroke, width):
     for glyph in result.glyphs:
         glyph.x += dx
         glyph.y += dy
+        if glyph.turn:
+            glyph.turn = (glyph.turn[0], glyph.turn[1] + dx, glyph.turn[2] + dy)
+        if glyph.rest:
+            glyph.rest = (glyph.rest[0] + dy, glyph.rest[1])
     result.rects = [(x + dx, y + dy, w, h, rgba, kind) for x, y, w, h, rgba, kind in result.rects]
     result.lines = [(top_ + dy, baseline + dy, *rest) for top_, baseline, *rest in result.lines]
     extent = max(result.box[2] - stroke, right) + dx + stroke
@@ -869,19 +969,22 @@ def append_svg(parent, result, layer, project, *, node=None, motion=None):
         skew = f * SYNTHETIC_SKEW if glyph.italic else 0
         fill, alpha = paint(glyph.color)
         transform = f"matrix({f:.6f} 0 {skew:.6f} {-f:.6f} {glyph.x:.3f} {glyph.y:.3f})"
+        if glyph.turn:
+            transform = "matrix(" + " ".join(f"{v:.6f}" for v in turned(glyph, (f, 0, skew, -f, glyph.x, glyph.y))) + ")"
         extra = {}
         if motion:
             from .kinetic import multiply
 
             prefix, opacity, override = motion[index]
-            transform = "matrix(" + " ".join(f"{v:.6f}" for v in multiply(prefix, (f, 0, skew, -f, glyph.x, glyph.y))) + ")"
+            transform = "matrix(" + " ".join(
+                f"{v:.6f}" for v in multiply(prefix, turned(glyph, (f, 0, skew, -f, glyph.x, glyph.y)))) + ")"
             if override:
                 fill, alpha = paint(override)
             if opacity < 1:
                 extra["opacity"] = f"{opacity:.4f}"
         from .emojis import EmojiArt, append_art
         if isinstance(path, EmojiArt):
-            matrix = (f, 0, 0, -f, glyph.x, glyph.y)
+            matrix = turned(glyph, (f, 0, 0, -f, glyph.x, glyph.y))
             if motion:
                 matrix = multiply(motion[index][0], matrix)
             append_art(parent, path, matrix, float(extra.get("opacity", 1)))
@@ -934,12 +1037,11 @@ def ink_overhang(project, layer, result, box=None):
         f = glyph.size / face(glyph.data)[0]["head"].unitsPerEm
         skew = SYNTHETIC_SKEW if glyph.italic else 0.0
         pad = max(outline, glyph.size * 0.0225 if glyph.bold else 0.0)
-        x0, y0, x1, y1 = bounds
-        xs = [glyph.x + f * (x + skew * y) for x in (x0, x1) for y in (y0, y1)]
-        left = max(left, pad - min(xs))
-        right = max(right, max(xs) + pad - width)
-        top = max(top, pad - (glyph.y - f * y1))
-        bottom = max(bottom, glyph.y - f * y0 + pad - height)
+        x0, y0, x1, y1 = glyph_ink(glyph, bounds, f, skew)
+        left = max(left, pad - x0)
+        right = max(right, x1 + pad - width)
+        top = max(top, pad - y0)
+        bottom = max(bottom, y1 + pad - height)
     return left, top, right, bottom
 
 
@@ -1080,10 +1182,16 @@ TYPES = ("rich-text", "text-style")
 
 
 def schemas(add):
-    from .schema import S, N, B, COORD, SIZE, FONT, HANGING_FIELD, field
+    from .schema import S, N, B, COORD, SIZE, FONT, HANGING_FIELD, HAND_SET_FIELD, field
 
     style = {"bold": B, "italic": B, "underline": B, "strike": B, "color": S, "size": N, "font": FONT, "highlight": S,
              "baseline": {"enum": ["super", "sub", "normal"]}, "tracking": N,
+             "rise": field(N, "Lift these characters off the baseline by this many pixels (negative lowers them); "
+                              "their highlight, underline and strike move with them. 0 removes it."),
+             "rotate": field(N, "Turn each word of these characters by this many degrees (clockwise) about the middle "
+                                "of its baseline, -180 to 180. The line keeps its spacing. 0 removes it."),
+             "scale": field(N, "Resize these characters to this multiple of their current size (0.1-10); stored as "
+                               "their size."),
              "small_caps": field(B, "Small capitals on or off: lowercase letters drawn as small capitals, from the "
                                     "font's own (OpenType smcp) or synthesized at 0.7 of the size; capitals keep "
                                     "their size.")}
@@ -1096,7 +1204,7 @@ def schemas(add):
                       "align": {"enum": ["left", "center", "right", "justify"]}, "line_height": N, "paragraph_spacing": N,
                       "list_indent": N, "font_variants": obj, "width": SIZE, "height": SIZE, "fit": B,
                       "wrap": {"enum": ["greedy", "balance", "pretty"]}, "x": COORD,
-                      "y": COORD, "hanging_punctuation": HANGING_FIELD},
+                      "y": COORD, "hanging_punctuation": HANGING_FIELD, "hand_set": HAND_SET_FIELD},
         anyOf=[{"required": ["markdown"]}, {"required": ["spans"]}])
     add("text-style", {"match": {**S, "description": "Style every occurrence of this text (see occurrence)."},
                        "occurrence": {"anyOf": [{"type": "integer", "minimum": 1}, {"enum": ["all"]}]},
@@ -1206,9 +1314,11 @@ def _make_rich(project, op, size):
         require(all(isinstance(s, dict) and isinstance(s.get("text"), str) for s in spans), "Each span needs text",
                 field="spans")
         for span in spans:
-            unknown = sorted(set(span) - {"text", *STYLE_KEYS})
-            require(not unknown, f"Unknown span field(s) {', '.join(unknown)}; allowed: text, {', '.join(STYLE_KEYS)}",
-                    field="spans")
+            # scale is a size relative to the layer's: it is stored as the span's size.
+            unknown = sorted(set(span) - {"text", "scale", *STYLE_KEYS})
+            require(not unknown, f"Unknown span field(s) {', '.join(unknown)}; allowed: text, {', '.join(STYLE_KEYS)}, "
+                    "scale", field="spans")
+            validate_style(span, project.state)
         paragraphs = None
     spans = normalize_spans(resolve_scale(spans, size))
     count = paragraph_count(plain({"spans": spans}))
@@ -1269,10 +1379,10 @@ def execute(project, op):
         layer["rich"] = rich
         layer["text"] = plain(rich)
         _require_roles(project.state, rich["spans"], "markdown" if "markdown" in op else "spans")
-        if "hanging_punctuation" in op:
+        if "hanging_punctuation" in op or "hand_set" in op:
             from .lettering import store
 
-            store(layer, {"hanging_punctuation": op["hanging_punctuation"]})
+            store(layer, {key: op[key] for key in ("hanging_punctuation", "hand_set") if key in op})
         from .system_fonts import add_variants
 
         add_variants(project, layer)
@@ -1326,7 +1436,7 @@ def execute(project, op):
             layer["rich"]["line_height"] = 1.0
     rich = layer["rich"]
     style = {k: op[k] for k in STYLE_KEYS if k in op}
-    validate_style(style, project.state)
+    validate_style({**style, **({"scale": op["scale"]} if "scale" in op else {})}, project.state)
     if style.get("font"):
         style["font"] = _resolve_span_fonts(project, [{"font": style["font"]}])[0]["font"]
     text = layer["text"]
@@ -1344,9 +1454,9 @@ def execute(project, op):
         start, end = op.get("start", 0), op.get("end", len(text))
         require(0 <= start < end <= len(text), f"start and end must lie in 0–{len(text)}", field="start")
         ranges = [(start, end)]
-    elif style or op.get("clear"):
+    elif style or op.get("clear") or "scale" in op:
         ranges = [(0, len(text))]
-    if ranges and (style or op.get("clear")):
+    if ranges and (style or op.get("clear") or "scale" in op):
         chars = []
         for span in rich["spans"]:
             own = {k: v for k, v in span.items() if k != "text"}
@@ -1356,10 +1466,13 @@ def execute(project, op):
                 ch, own = chars[i]
                 own = {} if op.get("clear") else dict(own)
                 for key, value in style.items():
-                    if value is False or value == "normal":
+                    if value is False or value == "normal" or (key in ("rise", "rotate") and not value):
                         own.pop(key, None)
                     else:
                         own[key] = value
+                if "scale" in op:
+                    # A size relative to the one the characters have now.
+                    own["size"] = round(float(own.get("size", layer.get("size", 48))) * op["scale"], 2)
                 chars[i] = (ch, own)
         rich["spans"] = normalize_spans([{"text": ch, **own} for ch, own in chars])
     para = {k: op[k] for k in ("list", "level", "space_before", "space_after", "indent") if k in op}
@@ -1394,7 +1507,7 @@ def execute(project, op):
 
 
 TEXT_STYLE_FIELDS = ("match", "occurrence", "start", "end", "paragraphs", "clear", "bold", "italic", "underline", "strike",
-                     "highlight", "baseline", "tracking", "small_caps", "list", "level", "paragraph_align", "space_before",
+                     "highlight", "baseline", "tracking", "small_caps", "rise", "rotate", "scale", "list", "level", "paragraph_align", "space_before",
                      "space_after", "indent")
 TEXT_SET_FIELDS = ("text", "spacing", "stroke_width", "stroke_color", "align", "content")
 
@@ -1404,9 +1517,9 @@ def field_hint(kind, extras):
     if kind == "text-set" and any(k in TEXT_STYLE_FIELDS for k in extras):
         return (". text-set changes a whole layer (text, color, size, font, align, spacing, stroke); to style part of the "
                 "text or set bold, italic, tracking, highlight or paragraph settings use text-style")
-    if kind in ("text", "text-set") and any(k in ("width", "height") for k in extras):
-        return (". A text box's size is set with text-layout (target, width, height: text then wraps inside it), or "
-                "use rich-text, which takes width and height")
+    if kind == "text-set" and any(k in ("width", "height") for k in extras):
+        return (". A text box's size is set with text-layout (target, width, height: text then wraps inside it); "
+                "text and rich-text take width and height when they create the layer")
     if kind == "text-style" and any(k in TEXT_SET_FIELDS for k in extras):
         return (". text-style styles ranges and paragraphs of rich text; use text-set to change the layer's text, spacing, "
                 "stroke or alignment, or rich-text to replace formatted content")

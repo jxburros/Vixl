@@ -23,6 +23,20 @@ LEGS = ("left-upper-leg", "right-upper-leg")
 # The bones each cycle drives; any rig drives idle and react.
 CYCLE_BONES = {"walk": LEGS, "run": LEGS, "ride": LEGS, "wave": ("right-upper-arm", "right-lower-arm"), "idle": (),
                "react": ()}
+QUADRUPED_LEGS = tuple(f"{leg}-{segment}" for leg in ("front-left", "front-right", "hind-left", "hind-right")
+                       for segment in ("upper-leg", "lower-leg"))
+# A four-legged rig (character plan quadruped) drives its own cycles; quadruped.py writes them.
+QUADRUPED_CYCLE_BONES = {name: ("body", *QUADRUPED_LEGS) for name in ("walk", "trot", "gallop", "jump", "idle")}
+CYCLES = (*CYCLE_BONES, *(name for name in QUADRUPED_CYCLE_BONES if name not in CYCLE_BONES))
+
+
+def is_quadruped(group):
+    return group.get("character", {}).get("plan") == "quadruped"
+
+
+def cycle_bones(group):
+    """The cycles a character's body plan has, each with the bones it drives."""
+    return QUADRUPED_CYCLE_BONES if is_quadruped(group) else CYCLE_BONES
 JOINT_WORDS = {"shoulder": "upper-arm", "elbow": "lower-arm", "forearm": "lower-arm", "wrist": "hand",
                "hip": "upper-leg", "thigh": "upper-leg", "knee": "lower-leg", "shin": "lower-leg", "ankle": "foot"}
 
@@ -33,7 +47,15 @@ def schemas(add):
     from ...schema import S, N, field
     obj = {"type": "object"}
     time = {"type": ["string", "number"]}
-    add("character", {"name": S, "x": N, "y": N, "height": {"type": "integer", "minimum": 40, "maximum": 8192}, "colors": obj, "parts": {"type": "object", "additionalProperties": S}}, ["name"])
+    from .quadruped import FACINGS, SPECIES
+    add("character", {"name": S, "x": N, "y": N, "height": {"type": "integer", "minimum": 40, "maximum": 8192}, "colors": obj, "parts": {"type": "object", "additionalProperties": S},
+                      "plan": {"enum": ["humanoid", "quadruped"], "description": "Body plan: humanoid (default) or quadruped, a "
+                               "side-view four-legged animal (body, neck, head, tail and four legs of upper leg, lower leg and foot) "
+                               "rigged at shoulder, hip, knee and hock. With parts, binds your artwork to that plan."},
+                      "species": {"enum": list(SPECIES), "description": "Quadruped proportions and parts: " + ", ".join(SPECIES)
+                                  + " (default horse). Implies plan: quadruped."},
+                      "facing": {"enum": list(FACINGS), "description": "Quadruped: which way the animal faces (default right); "
+                                 "cycles walk it that way."}}, ["name"])
     add("character-save", {"name": field(S, "Name of the entry in the document's object library (object-save for a character)."),
                            "description": {"type": "string", "maxLength": 2000, "description": "What the character is, for search."},
                            "tags": {"type": "array", "items": S, "maxItems": 32, "description": "Search tags."}}, ["name"])
@@ -47,7 +69,11 @@ def schemas(add):
                            "time": {**time, "description": "Optional pose key time; joint angles interpolate and the rig is solved on every frame."},
                            "easing": easing_schema("Interpolation from this pose key to the next; default ease-in-out.")}, ["angles"])
     add("character-ik", {"chain": {"type": "array", "items": S, "minItems": 2, "maxItems": 2}, "point": {"type": "array", "items": N, "minItems": 2, "maxItems": 2}, "bend": {"enum": [-1, 1]}}, ["chain", "point"])
-    add("character-cycle", {"cycle": {"enum": ["walk", "run", "idle", "ride", "react", "wave"]}, "start": time, "duration": time, "period": N, "amount": N, "samples": {"type": "integer", "minimum": 4, "maximum": 120},
+    add("character-cycle", {"cycle": {"enum": list(CYCLES)}, "start": time, "duration": time, "period": N,
+        "amount": field(N, "Swing of the limbs in degrees (humanoid default 30; quadruped walk 14, trot 20, gallop 28). "
+                        "Quadruped jump: the height of the leap in pixels (default 45% of the animal's height)."),
+        "samples": {"type": "integer", "minimum": 4, "maximum": 120},
+        "extend": {"type": "boolean", "description": "Quadruped cycles: extend the timeline when keys lie past its end (default true)."},
         "view": {"enum": list(VIEWS), "description": "Which way the character faces: front (the standard character; walk and run "
                  "lift the feet and bob the body, react keeps the legs planted) or side (limbs swing in the picture plane). "
                  "Default: front for the standard character, side for bound artwork."}}, ["cycle"])
@@ -128,8 +154,8 @@ def check_joints(group, angles, field="angles"):
                     suggestions=close)
 
 
-def compatible_cycles(bones):
-    return [name for name, needed in CYCLE_BONES.items() if bones and all(bone in bones for bone in needed)]
+def compatible_cycles(bones, table=CYCLE_BONES):
+    return [name for name, needed in table.items() if bones and all(bone in bones for bone in needed)]
 
 
 def check_motion(group, name, field="cycle"):
@@ -138,10 +164,15 @@ def check_motion(group, name, field="cycle"):
     bones = group["character"]["bones"]
     require(bones, f"{field}: {group['name']!r} needs a rig before a {name} cycle; add one with character-rig",
             field=field, character=group["name"])
-    missing = [bone for bone in CYCLE_BONES[name] if bone not in bones]
+    table = cycle_bones(group)
+    if name not in table:
+        plan = "quadruped" if is_quadruped(group) else "humanoid"
+        raise VixlError("invalid_operation", f"{field}: {group['name']!r} is a {plan} character, which has no {name} cycle; "
+                        f"its cycles are {', '.join(table)}", field=field, character=group["name"], suggestions=list(table))
+    missing = [bone for bone in table[name] if bone not in bones]
     if missing:
-        usable = compatible_cycles(bones)
-        raise VixlError("invalid_operation", f"{field}: a {name} cycle moves {', '.join(CYCLE_BONES[name])}, and the rig "
+        usable = compatible_cycles(bones, table)
+        raise VixlError("invalid_operation", f"{field}: a {name} cycle moves {', '.join(table[name])}, and the rig "
                         f"of {group['name']!r} has no {', '.join(missing)} (its bones: {', '.join(bones)}). Add the "
                         f"bones with character-rig, or use a cycle this rig can drive: {', '.join(usable) or 'none'}",
                         field=field, character=group["name"], missing=missing, available=list(bones), suggestions=usable)
@@ -166,14 +197,20 @@ def pose(project, group, angles):
             require(parent in bones, f"Unknown parent bone: {parent}")
             origin, parent_angle, length = visit(parent)
             rad = math.radians(parent_angle)
-            origin = [origin[0] + math.sin(rad) * length, origin[1] + math.cos(rad) * length]
+            if "at" in bone:
+                # Attached at an offset from the parent's joint (a shoulder on a body), carried by its turn.
+                dx, dy = bone["at"]
+                origin = [origin[0] + dx * math.cos(rad) + dy * math.sin(rad), origin[1] - dx * math.sin(rad) + dy * math.cos(rad)]
+            else:
+                origin = [origin[0] + math.sin(rad) * length, origin[1] + math.cos(rad) * length]
             angle += parent_angle
         else:
             origin = bone.get("origin", [0, 0])
         length = finite(bone["length"], "bone length", 0.01, 1e6)
         layer = project.layer(bone["layer"])
         px, py = layer.get("pivot", [0.5, 0])
-        layer.update(x=origin[0] - px * layer["width"], y=origin[1] - py * layer["height"], rotation=-angle, constraints={})
+        layer.update(x=origin[0] - px * layer["width"], y=origin[1] - py * layer["height"],
+                     rotation=bone.get("rest", 0) - angle, constraints={})
         solved[name] = (origin, angle, length)
         pending.remove(name)
         return solved[name]
@@ -186,6 +223,12 @@ def execute(project, op):
     from ...operations import execute as apply
     kind = op["type"]
     if kind == "character":
+        plan = op.get("plan", "quadruped" if "species" in op else "humanoid")
+        require(plan in ("humanoid", "quadruped"), "plan must be humanoid or quadruped", field="plan")
+        if plan == "quadruped":
+            from . import quadruped
+            return quadruped.bind(project, op) if "parts" in op else quadruped.standard(project, op)
+        require("species" not in op and "facing" not in op, "species and facing belong to plan: quadruped", field="plan")
         if "parts" not in op:
             return standard(project, op)
         require(set(op["parts"]) <= set(PARTS) | {f"viseme-{v}" for v in VISEMES}, "Unknown standard character part")
@@ -226,7 +269,12 @@ def execute(project, op):
         require(1 <= len(op["bones"]) <= 64, "Rig needs 1–64 bones")
         bones = deepcopy(op["bones"])
         for name, bone in bones.items():
-            require(isinstance(bone, dict) and set(bone) <= {"part", "layer", "parent", "origin", "length", "limits", "angle"}, "Invalid bone fields")
+            require(isinstance(bone, dict) and set(bone) <= {"part", "layer", "parent", "origin", "length", "limits", "angle", "at", "rest"}, "Invalid bone fields")
+            if "at" in bone:
+                require(isinstance(bone["at"], list) and len(bone["at"]) == 2 and "parent" in bone, "Bone at is [x,y] from its parent's joint")
+                for value in bone["at"]:
+                    finite(value, "bone at", -1e6, 1e6)
+            finite(bone.get("rest", 0), "bone rest rotation", -3600, 3600)
             part = bone.pop("part", name)
             bone["layer"] = project.layer(bone.get("layer", character["parts"].get(part)))["id"]
             require(bone["layer"] in character["parts"].values(), "Bone must belong to the character")
@@ -353,7 +401,10 @@ def recolor(project, root, colors=None, outfit=None, strict=False):
 
 
 def facing(project, group):
-    """``front`` for the standard character (its parts carry colour roles), ``side`` for bound artwork."""
+    """``front`` for the standard character (its parts carry colour roles), ``side`` for bound artwork
+    and for four-legged characters."""
+    if is_quadruped(group):
+        return "side"
     ids = set(group["character"].get("parts", {}).values())
     standard_parts = any(layer.get("character_color") for layer in project.state["layers"] if layer["id"] in ids)
     return "front" if standard_parts else "side"
@@ -361,6 +412,10 @@ def facing(project, group):
 
 def cycle(project, group, op):
     from ...timeline import _timeline, parse_time, execute_timeline
+    if is_quadruped(group):
+        from . import quadruped
+        check_motion(group, op["cycle"])
+        return quadruped.cycle(project, group, op)
     timeline = _timeline(project)
     start = parse_time(op.get("start", 0), timeline["duration"], timeline.get("markers"))
     duration = parse_time(op.get("duration", 1000), timeline["duration"], timeline.get("markers"))
@@ -468,6 +523,14 @@ def findings(project):
     ids = {layer["id"] for layer in project.state["layers"]}
     for layer in project.state["layers"]:
         if "character" not in layer:
+            continue
+        if is_quadruped(layer):
+            from . import quadruped
+            result += quadruped.findings(project, layer)
+            for name, bone in layer["character"].get("bones", {}).items():
+                lo, hi = bone.get("limits", [-180, 180])
+                if not lo <= bone.get("angle", 0) <= hi:
+                    result.append({"check": "character", "severity": "error", "layer": layer["id"], "message": f"Bone {name} exceeds joint limits"})
             continue
         parts = layer["character"].get("parts", {})
         missing = [p for p in REQUIRED if p not in parts or parts[p] not in ids]

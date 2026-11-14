@@ -1,7 +1,8 @@
 """Bounded HTTPS downloads for explicit URL imports (images, fonts), and the network switch.
 
 Policy: HTTPS only, no credentials in the URL, at most ``MAX_REDIRECTS`` redirects (each hop is
-validated again), a streamed byte cap, a 30 s timeout per network step and 120 s in all. Internal
+validated again), a streamed byte cap, a 30 s timeout per network step and 120 s in all: one deadline
+covers every redirect hop and the body, and a hop gets only the time that is left. Internal
 names (``localhost``, ``*.local``, ``*.internal``, ``*.svc``, names without a dot) are refused
 before resolution. Every address a host resolves to must be public: private, loopback, link-local,
 shared (CGNAT), multicast, reserved, site-local, SRv6 and unspecified addresses are refused,
@@ -18,7 +19,13 @@ list of hosts and ``*.suffix`` patterns) limits explicit URL imports to those ho
 ``VIXL_OFFLINE=1`` turns off every network access Vixl makes on its own (``network_allowed``).
 
 ``post_bounded`` sends a small POST (completion webhooks) under the same name, address and offline rules, never
-follows a redirect, and accepts plain HTTP only to a loopback address when the caller allows it.
+follows a redirect, and accepts plain HTTP only to a loopback address when the caller allows it. It reads at most
+64 KiB of the answer and stops 30 s after the delivery began, however slowly the receiver sends.
+
+``read_bounded`` is the one body reader for every HTTP response Vixl takes in (URL imports, fonts, AI providers,
+the Figma API): it refuses a ``Content-Length`` over the cap, reads ``CHUNK`` bytes at a time, and decodes gzip
+and deflate itself with a bounded output, so neither one large chunk nor a compressed body can allocate past the
+cap before it is refused.
 """
 
 from datetime import datetime, timezone
@@ -29,6 +36,7 @@ import socket
 import time
 import urllib.request
 from urllib.parse import urljoin, urlsplit
+import zlib
 
 import httpx
 
@@ -37,6 +45,10 @@ from .errors import VixlError, require
 MAX_REDIRECTS = 5
 TIMEOUT = 30
 TOTAL_TIMEOUT = 120
+CHUNK = 64 * 1024  # Bytes read from the wire, and bytes decoded, per step.
+# What requests ask for: the encodings ``read_bounded`` decodes with a bounded output.
+ACCEPT_ENCODING = "gzip, deflate"
+_now = time.monotonic  # Tests replace this to run deadlines without waiting.
 ALLOW_PRIVATE_ENV = "VIXL_ALLOW_PRIVATE_FETCH"
 OFFLINE_ENV = "VIXL_OFFLINE"
 FETCH_HOSTS_ENV = "VIXL_FETCH_HOSTS"
@@ -238,6 +250,86 @@ def _pinned_request(client, parts, address, accept, method="GET", content=None, 
     return client.build_request(method, url, headers=headers, content=content, extensions={"sni_hostname": host})
 
 
+class _Inflate:
+    """gzip or deflate decoding that never returns more than it is asked for. ``deflate`` bodies come with a zlib
+    header or, from some servers, without one; the first bytes decide."""
+
+    def __init__(self, encoding):
+        self.raw_fallback = encoding == "deflate"
+        self.decoder = zlib.decompressobj(zlib.MAX_WBITS | 32)  # A gzip or a zlib header.
+
+    def decode(self, data, room):
+        """Yield decoded pieces of at most ``room()`` bytes each (``room`` is asked again before every piece)."""
+        while True:
+            size = max(1, min(CHUNK, room()))
+            try:
+                piece = self.decoder.decompress(data, size)
+            except zlib.error as exc:
+                if not self.raw_fallback:
+                    raise httpx.DecodingError(f"Invalid compressed body ({exc})") from exc
+                self.decoder = zlib.decompressobj(-zlib.MAX_WBITS)
+                self.raw_fallback = False
+                continue
+            self.raw_fallback = False
+            data = self.decoder.unconsumed_tail
+            if piece:
+                yield piece
+            # A full piece can leave decoded bytes waiting inside the decoder even when no input is left.
+            if self.decoder.eof or (len(piece) < size and not data):
+                return
+
+
+def _wire(response):
+    """The undecoded body as it arrives, in pieces of at most ``CHUNK`` bytes. Each network read is handed on at
+    once (not gathered into full chunks), so a deadline is checked however slowly the bytes come."""
+    for raw in [response.content] if response.is_stream_consumed else response.iter_raw():
+        view = memoryview(raw)
+        for start in range(0, len(view), CHUNK):
+            yield view[start:start + CHUNK]
+
+
+def read_bounded(response, limit, too_large, *, code="resource_limit", deadline=None, too_slow="", **details):
+    """The decoded body of a streamed ``httpx`` response, at most ``limit`` bytes.
+
+    A ``Content-Length`` over the limit is refused before reading. The body is taken ``CHUNK`` bytes at a time and
+    each piece is checked before it joins the buffer, so the buffer never holds more than ``limit`` bytes; gzip and
+    deflate are decoded here with a bounded output (a compressed body cannot expand past the limit first), and any
+    other ``Content-Encoding`` is refused as ``httpx.DecodingError`` (requests send ``ACCEPT_ENCODING``). Past
+    ``deadline`` (a ``time.monotonic`` value) the read stops with ``fetch_failed`` and ``too_slow``. ``too_large``
+    is raised as ``code``; ``details`` (``field=...``) go on either error."""
+    declared = response.headers.get("content-length", "").strip()
+    if declared.isdigit() and int(declared) > limit:
+        raise VixlError(code, too_large, **details)
+    encoding = response.headers.get("content-encoding", "").strip().lower()
+    encoding = {"": None, "identity": None, "x-gzip": "gzip"}.get(encoding, encoding)
+    if encoding not in (None, "gzip", "deflate"):
+        raise httpx.DecodingError(f"Unsupported Content-Encoding {encoding!r}")
+    # A response that was read before it got here (a mock transport's canned answer) holds decoded content already.
+    inflate = _Inflate(encoding) if encoding and not response.is_stream_consumed else None
+    data = bytearray()
+
+    def on_time():
+        if deadline is not None and _now() >= deadline:
+            raise VixlError("fetch_failed", too_slow or "The download took too long", **details)
+
+    def add(piece):
+        if len(data) + len(piece) > limit:
+            raise VixlError(code, too_large, **details)
+        data.extend(piece)
+
+    on_time()
+    for raw in _wire(response):
+        on_time()
+        if inflate is None:
+            add(raw)
+            continue
+        # One byte past the cap is enough to know the body is too large.
+        for piece in inflate.decode(raw, lambda: limit - len(data) + 1):
+            add(piece)
+    on_time()
+    return bytes(data)
+
+
 def fetch_bounded(url, limit, *, accept="*/*", label="URL", allow_list=True):
     """Download ``url`` under the network policy above. Returns ``(data, info)`` where info holds
     the final ``url``, ``bytes``, ``sha256``, ``fetched_at`` and, after redirects, ``requested_url``.
@@ -245,17 +337,22 @@ def fetch_bounded(url, limit, *, accept="*/*", label="URL", allow_list=True):
     ``VIXL_FETCH_HOSTS``."""
     network_allowed(f"{label} download")
     current = url.strip() if isinstance(url, str) else url
-    deadline = time.monotonic() + TOTAL_TIMEOUT
+    deadline = _now() + TOTAL_TIMEOUT
+    too_slow = f"{label} download took longer than {TOTAL_TIMEOUT} s"
+    encoding = {"Accept-Encoding": ACCEPT_ENCODING}
     for hop in range(MAX_REDIRECTS + 1):
         parts = check_url(current, label, allow_list=allow_list)
         proxied = _proxied(parts.hostname)
         address = _target(parts, proxied, label)
-        active = httpx.Client(timeout=TIMEOUT, follow_redirects=False, trust_env=proxied)
+        left = deadline - _now()  # Redirect hops share the one deadline; each gets only what is left of it.
+        require(left > 0, too_slow, "fetch_failed", field="url")
+        active = httpx.Client(timeout=min(TIMEOUT, left), follow_redirects=False, trust_env=proxied)
         try:
             if address is None:
-                request = active.build_request("GET", current, headers={"Accept": accept, "User-Agent": "vixl"})
+                request = active.build_request("GET", current,
+                                               headers={**encoding, "Accept": accept, "User-Agent": "vixl"})
             else:
-                request = _pinned_request(active, parts, address, accept)
+                request = _pinned_request(active, parts, address, accept, headers=encoding)
             response = active.send(request, stream=True)
             try:
                 if response.status_code in (301, 302, 303, 307, 308):
@@ -265,23 +362,14 @@ def fetch_bounded(url, limit, *, accept="*/*", label="URL", allow_list=True):
                     continue
                 require(response.status_code == 200, f"{label} download returned HTTP {response.status_code}",
                         "fetch_failed", field="url")
-                declared = response.headers.get("content-length", "")
-                require(not declared.isdigit() or int(declared) <= limit,
-                        f"{label} download exceeds the {limit}-byte limit", "resource_limit", field="url")
-                data = bytearray()
-                for chunk in response.iter_bytes():
-                    data.extend(chunk)
-                    require(time.monotonic() < deadline, f"{label} download took longer than {TOTAL_TIMEOUT} s",
-                            "fetch_failed", field="url")
-                    require(len(data) <= limit, f"{label} download exceeds the {limit}-byte limit",
-                            "resource_limit", field="url")
+                data = read_bounded(response, limit, f"{label} download exceeds the {limit}-byte limit",
+                                    deadline=deadline, too_slow=too_slow, field="url")
             finally:
                 response.close()
         except httpx.HTTPError as exc:
             raise VixlError("fetch_failed", f"{label} download failed ({type(exc).__name__})", field="url") from exc
         finally:
             active.close()
-        data = bytes(data)
         info = {"url": current, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(),
                 "fetched_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")}
         if hop:
@@ -292,11 +380,13 @@ def fetch_bounded(url, limit, *, accept="*/*", label="URL", allow_list=True):
 
 def post_bounded(url, content, headers, *, label="Webhook", allow_list=False, loopback_http=False, limit=65536):
     """POST ``content`` (bytes) to ``url`` under the network policy above and return ``{"status": HTTP status}``.
-    A redirect is not followed (it is returned as its status), and at most ``limit`` bytes of the answer are read and
-    dropped. Transport failures raise ``fetch_failed``."""
+    A redirect is not followed (it is returned as its status). At most ``limit`` bytes of the answer are read,
+    undecoded, and dropped, and reading stops ``TIMEOUT`` seconds after the delivery began: a receiver that
+    trickles its answer keeps its status but not the connection. Transport failures raise ``fetch_failed``."""
     network_allowed(f"{label} delivery")
     parts = check_url(url, label, allow_list=allow_list, loopback_http=loopback_http)
     proxied = parts.scheme.lower() == "https" and _proxied(parts.hostname)
+    deadline = _now() + TIMEOUT
     address = _target(parts, proxied, label)
     client = httpx.Client(timeout=TIMEOUT, follow_redirects=False, trust_env=proxied)
     try:
@@ -308,9 +398,9 @@ def post_bounded(url, content, headers, *, label="Webhook", allow_list=False, lo
         response = client.send(request, stream=True)
         try:
             read = 0
-            for chunk in response.iter_bytes():
+            for chunk in _wire(response):
                 read += len(chunk)
-                if read > limit:
+                if read > limit or _now() >= deadline:
                     break
             return {"status": response.status_code}
         finally:

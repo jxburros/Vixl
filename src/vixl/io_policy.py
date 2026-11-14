@@ -130,12 +130,18 @@ def export_file(session, path, overwrite=False, document=None, **options):
     if report.get("export_check"):
         report["export_check"] = {"path": session.relative(destination), **report["export_check"]}
     return {"path": session.relative(destination), "format": fmt, "bytes": len(data), **report,
-            "outcome": export_outcome(report)}
+            "outcome": export_outcome(report, options)}
 
 
-def export_outcome(report):
-    """A written export executed. Without ``check``/``spec`` it is not validated and its warnings need review; with
-    them the export check (export_checks.verify) validates the file, while the design still needs vixl_check."""
+# Export options that pick something other than the document as the design check saw it.
+VARIANT_OPTIONS = ("artboard", "comp", "variables", "values", "page", "pages", "time", "isolate")
+
+
+def export_outcome(report, options=None):
+    """A written export executed. Its validation is the design check of this exact revision when that check covered
+    the whole document with the default checks (``last_check.complete``) and the export is of the document as
+    checked; otherwise it is not validated. With ``check``/``spec`` the export check (export_checks.verify)
+    validates the file, while the design still needs vixl_check. Export warnings need review either way."""
     from .outcomes import make
 
     warnings = [str(item) for item in report.get("warnings", [])]
@@ -146,9 +152,27 @@ def export_outcome(report):
                     [*outcome["review_reasons"], "the export check read the file back; design checks and suites "
                      "are separate (vixl_check)", *warnings], validated_by=outcome.get("validated_by", ()))
     status = report.get("last_check")
-    reason = (f"last design check: {status['fix']} fix, {status['review']} review; export file not verified"
-              if isinstance(status, dict) else "no current design check: run vixl_check and the suites first")
-    return make("completed", "not_run", [reason, *warnings])
+    if not isinstance(status, dict):
+        return make("completed", "not_run", ["no current design check: run vixl_check and the suites first", *warnings])
+    if not status.get("complete"):
+        return make("completed", "not_run", [f"last design check: {status['fix']} fix, {status['review']} review, but "
+                                             "it covered only some checks or layers; run vixl_check without checks "
+                                             "or targets", *warnings])
+    variant = [key for key in VARIANT_OPTIONS if (options or {}).get(key) not in (None, False, [], {})]
+    if variant:
+        return make("completed", "not_run", [f"last design check: {status['fix']} fix, {status['review']} review, of "
+                                             f"the document without this export's {', '.join(variant)}", *warnings])
+    # The design check of this exact revision covered the whole document: the export takes its verdict (#799).
+    failed = [name for name, value in (status.get("suites") or {}).items()
+              if isinstance(value, dict) and value.get("status") == "failed"]
+    reasons = [f"design check: {status['fix']} fix finding(s)"] if status["fix"] or not status.get("passed") else []
+    reasons += [f"suite {name} failed" for name in failed]
+    if status["review"]:
+        rules = ", ".join(dict.fromkeys(item["rule"] for item in status.get("top", []) if item.get("action") == "review"))
+        reasons.append(f"design check: {status['review']} review finding(s)" + (f" ({rules})" if rules else ""))
+    validation = "passed" if status.get("passed") and not status["fix"] and not failed else "failed"
+    return make("completed", validation, [*reasons, *warnings],
+                validated_by=[f"design checks at {status['revision']}"])
 
 
 def decode_upload(data_base64, limit):

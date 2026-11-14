@@ -207,6 +207,33 @@ subset, order and timing, and export them separately. Recolour all poses at once
 `vixl_export(kind='animation', path="keeper-walk.gif", animation="walk", scale=8)` (likewise `.webp`/`.mp4`), and
 `format="sheet"` once for a sprite sheet whose JSON lists every frame rectangle plus the animations.
 
+A character sheet for a game engine (rows of facings × columns of frames): declare the grid, draw each frame in
+its cell with `pixel-draw` (`ellipse`, `rect`, `line`, `fill`; `only` to shade existing cells), and derive the
+rest with `duplicate` + `pixel-transform`:
+
+```json
+[
+  {"type":"sprite-sheet","cell":[16,16],"rows":["down","left","right","up"],"columns":2,
+   "clips":{"walk":{"duration":120},"idle":{"frames":[0]}}},
+  {"type":"pixel-art","name":"left-0","cell":["left",0],"width":16,"height":16,
+   "palette":{".":"transparent","s":"#ffcc99","h":"#7a4a21","d":"#4a2c12"}},
+  {"type":"pixel-draw","target":"left-0","tool":"ellipse","x":3,"y":1,"width":10,"height":9,"color":"s"},
+  {"type":"pixel-draw","target":"left-0","tool":"rect","x":0,"y":0,"width":16,"height":4,"color":"h","only":["s"]},
+  {"type":"duplicate","target":"left-0","name":"left-1"},
+  {"type":"pixel-transform","target":"left-1","shift":[0,1]},
+  {"type":"move","target":"left-1","cell":["left",1]},
+  {"type":"duplicate","target":"left-0","name":"right-0"},
+  {"type":"pixel-transform","target":"right-0","flip":"horizontal"},
+  {"type":"move","target":"right-0","cell":["right",0]}
+]
+```
+
+`vixl_export(kind="animation", path="hero.png", format="sheet", scale=2)` writes `hero.png` and `hero.json` with
+the clips (`walk-down`, `idle-left` …: row, loop, frame rectangles, durations); `metadata="aseprite"` writes
+Aseprite's frames and frameTags instead. To place finished sprites in a composition at 3×, import them with
+`{"type":"import-image","path":"hero.png","name":"hero","scale":3,"sampling":"nearest"}` (or `scale`/`resize` with
+`sampling: "nearest"` later); the layer keeps crisp pixels in every export.
+
 ## Explore alternatives safely
 
 ```text

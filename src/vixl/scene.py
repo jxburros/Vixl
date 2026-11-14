@@ -31,7 +31,8 @@ def schemas(add):
                       "fibers": {"type": "object", "additionalProperties": False, "properties": {
                           "count": {"type": "number", "minimum": 0, "maximum": 100, "description": "Fibres per 100 x 100 px of paper (default 8; 0 for none)."},
                           "length": {"type": "number", "minimum": 1, "maximum": 200, "description": "Fibre length in pixels (default 14)."}}},
-                      "pattern": S})
+                      "pattern": S,
+                      "edge_light": {"type": "object", "description": "Light the cut edge: a subtle bevel layer style on every piece, {angle (degrees towards the light, 0 right, 90 up; default 135), size (default the thickness), opacity (default 0.25), highlight, shadow}. Omit for no edge light."}})
 
 
 def execute(project, op):
@@ -133,14 +134,24 @@ def execute(project, op):
             if op.get("clear"):
                 if "cut_paper" not in layer:
                     continue
-                previous = layer.pop("cut_paper").get("previous_shadow")
+                paper = layer.pop("cut_paper")
+                if paper.get("edge_light"):
+                    layer.get("styles", {}).pop("bevel", None)
+                previous = paper.get("previous_shadow")
                 if previous is None:
                     layer.get("styles", {}).pop("drop-shadow", None)
                 else:
                     layer.setdefault("styles", {})["drop-shadow"] = previous
                 continue
             previous = deepcopy(layer.get("cut_paper", {}).get("previous_shadow", layer.get("styles", {}).get("drop-shadow")))
+            lit = layer.get("cut_paper", {}).get("edge_light")
             layer["cut_paper"] = {**settings, "seed": settings["seed"] + index, "previous_shadow": previous}
+            if "edge_light" in op:
+                require(isinstance(op["edge_light"], dict), "edge_light is an object such as {angle: 135}", field="edge_light")
+                layer["cut_paper"]["edge_light"] = True
+                apply(project, {"type": "layer-style", "target": layer["id"], "name": "bevel", "settings": {"size": max(1, settings["thickness"]), "opacity": 0.25, **op["edge_light"]}})
+            elif lit:
+                layer.get("styles", {}).pop("bevel", None)
             layer["depth"] = 1 + index * 0.015
             apply(project, {"type": "layer-style", "target": layer["id"], "name": "drop-shadow", "settings": {"color": "#251c16", "opacity": 0.28, "dx": settings["thickness"], "dy": settings["thickness"] * 1.5, "blur": max(1, settings["thickness"])}})
         if op.get("clear"):

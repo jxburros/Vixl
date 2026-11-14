@@ -1,9 +1,12 @@
-"""Layer-level tracking, text case and hanging punctuation.
+"""Layer-level tracking, text case, hanging punctuation and hand-set variation.
 
 ``tracking`` (pixels between characters), ``text_transform`` (``uppercase``, ``lowercase``,
 ``capitalize``, ``small-caps``) and ``hanging_punctuation`` belong to the text layer, not to a span of
 fixed text, so they apply to whatever the layer holds: text changed by keyframes, typewriter or
 captions, and ``${variable}`` values.
+
+``hand_set`` gives every word or letter its own seeded baseline lift, turn, size and spacing (a hand-lettered
+look) while the layer stays text: the stored text is unchanged, so it can be edited and the text checks read it.
 
 All are applied to the drawn view of a layer, never to its stored text: ``apply`` runs on every
 resolved copy (render, checks, inspect and every export), and ``view`` gives the same view of a stored
@@ -21,7 +24,8 @@ from .errors import require
 from .model import finite
 
 TRANSFORMS = ("none", "uppercase", "lowercase", "capitalize", "small-caps")
-FIELDS = ("tracking", "text_transform", "hanging_punctuation")
+FIELDS = ("tracking", "text_transform", "hanging_punctuation", "hand_set")
+HAND_SET_LIMITS = {"rise": 500, "rotate": 45, "scale": 0.5, "tracking": 200}
 MAX_TRACKING = 1000
 # A letter that starts a word: the previous character is not part of a word (apostrophes are, so
 # "don't" stays "Don't").
@@ -39,6 +43,21 @@ def validate(layer):
     if "hanging_punctuation" in layer:
         require(isinstance(layer["hanging_punctuation"], bool), "hanging_punctuation must be true or false",
                 field="hanging_punctuation")
+    if "hand_set" in layer:
+        from .richtext import HAND_SET_KEYS, HAND_SET_UNITS
+
+        hand = layer["hand_set"]
+        unknown = sorted(set(hand) - set(HAND_SET_KEYS)) if isinstance(hand, dict) else []
+        require(isinstance(hand, dict) and not unknown,
+                f"hand_set is an object with {', '.join(HAND_SET_KEYS)}" + (f"; unknown: {', '.join(unknown)}" if unknown else ""),
+                field="hand_set", allowed=list(HAND_SET_KEYS))
+        require(isinstance(hand.get("seed", 0), int) and not isinstance(hand.get("seed", 0), bool),
+                "hand_set seed must be a whole number", field="hand_set.seed")
+        require(hand.get("unit", "word") in HAND_SET_UNITS, "hand_set unit must be word or glyph", field="hand_set.unit",
+                allowed=list(HAND_SET_UNITS))
+        for key, high in HAND_SET_LIMITS.items():
+            if key in hand:
+                finite(hand[key], f"hand_set {key}", 0, high)
 
 
 def store(layer, op):
@@ -50,6 +69,11 @@ def store(layer, op):
                 layer.pop(key, None)
             else:
                 layer[key] = op[key]
+    if "hand_set" in op:
+        if op["hand_set"] in (None, False):
+            layer.pop("hand_set", None)
+        else:
+            layer["hand_set"] = {} if op["hand_set"] is True else dict(op["hand_set"])
     validate(layer)
 
 
@@ -64,9 +88,20 @@ def _hangs(layer):
     return "${" in text or hangable(text, layer.get("align", "left"))
 
 
+def hand_set(layer):
+    """Whether the layer's ``hand_set`` varies anything: every amount 0 leaves the text as it is, and text with
+    tab stops, a warp or a path is set by those (the plain engine draws it)."""
+    hand = layer.get("hand_set")
+    settings = layer.get("text_layout") or {}
+    if hand is None or layer.get("tabs") or settings.get("path") or settings.get("warp", "none") != "none":
+        return False
+    return any(hand.get(key, 1) for key in HAND_SET_LIMITS)
+
+
 def styled(layer):
-    """Whether the layer has tracking, a text case or hanging punctuation to apply."""
-    return bool(layer.get("tracking")) or layer.get("text_transform", "none") != "none" or _hangs(layer)
+    """Whether the layer has tracking, a text case, hanging punctuation or hand-set variation to apply."""
+    return (bool(layer.get("tracking")) or layer.get("text_transform", "none") != "none" or _hangs(layer)
+            or hand_set(layer))
 
 
 def cased_pieces(pieces, mode):
@@ -100,7 +135,7 @@ def apply(layer):
     from .richtext import active, paragraph_count, plain
 
     mode = layer.get("text_transform", "none")
-    if (layer.get("tracking") or mode == "small-caps" or _hangs(layer)) and not active(layer):
+    if (layer.get("tracking") or mode == "small-caps" or _hangs(layer) or hand_set(layer)) and not active(layer):
         previous = layer.get("rich") or {}
         rich = {"spans": [{"text": layer["text"]}], "paragraphs": [{} for _ in range(paragraph_count(layer["text"]))]}
         if previous.get("line_basis") == "size":

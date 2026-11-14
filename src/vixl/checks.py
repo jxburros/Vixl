@@ -632,7 +632,7 @@ def check_design(
         """A deliberate edge crop: the layer (or a group above it) is marked allow_crop, or it is non-text decoration."""
         chain = (item, *ancestors(item))
         return any(x.get("allow_crop") for x in chain) or (
-            not is_text(item) and role(item) == "decoration"
+            not is_text(item) and role(item) in ("decoration", "background")
         )
 
     # Particles groups (every child a particle), as the particles operation makes them.
@@ -1008,7 +1008,10 @@ def check_design(
                     issue(
                         "safe_area",
                         "info" if crop else "error" if is_text(item) else "warning",
-                        f"{item['name']!r} extends outside the safe area" + (" (intentional crop or bleed)" if crop else ""),
+                        f"{item['name']!r} extends outside the safe area" + (
+                            " (intentional crop or bleed)" if crop else "" if is_text(item) else
+                            "; if that is deliberate (a background or decoration), mark it with layer-intent role "
+                            "decoration, or create it with role: decoration"),
                         [item],
                         bounds=list(box),
                         safe_area=[round(v, 2) for v in safe],
@@ -1310,7 +1313,8 @@ def check_design(
     report = {
         **tally(issues),
         "issues": issues,
-        "checked": {"checks": checks, "layers_checked": len(content), "layers_total": len(layers), "text_layers": len(texts)},
+        "checked": {"checks": checks, "layers_checked": len(content), "layers_total": len(layers), "text_layers": len(texts),
+                    **({"targets": len(targets)} if targets else {})},
         **({"style": style_report} if style_report is not None else {}),
     }
     if waivers:
@@ -1725,7 +1729,8 @@ def side_by_side(left, right, gap=8):
 
 
 APPLY_ISSUES = 20  # Findings an apply call returns; vixl_check lists them all.
-APPLY_PREVIEW = ("page", "region", "max_width", "max_height", "time", "isolate", "overlay", "focus", "regions")
+APPLY_PREVIEW = ("page", "region", "max_width", "max_height", "time", "isolate", "overlay", "focus", "regions",
+                 "rulers", "bounds")
 APPLY_PREVIEW_BYTES = 524_288
 
 
@@ -1876,7 +1881,8 @@ def apply_reviewed(project, operations, *, dry_run=False, detail="brief", check=
                    budget=None, suites=None, repair=None):
     """Apply a batch and, on request, check and preview the result in the same call: one round trip instead of
     apply, vixl_check and vixl_render. ``check`` is true (the default checks), a check name or a list;
-    ``preview`` is true or {page, region, max_width (default 512), max_height, time, isolate, overlay, focus}:
+    ``preview`` is true or {page, region, max_width (default 512), max_height, time, isolate, overlay, focus, rulers,
+    bounds}:
     ``overlay`` draws the fix findings' boxes labelled with rule and layer ID, ``focus`` (an index into the
     listed findings) zooms to one. A dry run checks and previews the candidate without saving it. ``budget``
     (seconds) skips the review when the edit alone used it up, so a slow batch never also waits for a check.

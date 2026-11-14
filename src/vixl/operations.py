@@ -398,8 +398,9 @@ def execute(project, op):
 
     kind = _canonical_type(kind, set(OPERATION_TYPES))
     require(isinstance(kind, str), "Operation requires a type")
-    from .targets import EACH, fan_out
+    from .targets import EACH, fan_out, resolve_addresses
 
+    op = resolve_addresses(project, op, kind)
     if kind in EACH and "targets" in op:  # Nested batches (actions, edit-layers ...) fan out here.
         for single in fan_out({**op, "type": kind}):
             execute(project, single)
@@ -412,8 +413,30 @@ def execute(project, op):
             execute(project, validate_operation(single))
         return None
     target = op.get("target", op.get("layer"))
-    from .schema import LAYER_FINISH
+    from .schema import LAYER_FINISH, LAYER_ROLE
 
+    if kind in LAYER_ROLE and "role" in op:
+        # A creation field that stands for layer-intent role on the new (or edited) layer.
+        result = execute(project, {k: v for k, v in op.items() if k != "role"})
+        ident = project.layer(target)["id"] if target is not None else project.state["active_layer"]
+        execute(project, {"type": "layer-intent", "target": ident, "role": op["role"]})
+        return result
+    if kind == "text" and ("width" in op or "height" in op):
+        # width/height on text stand for the text-layout box of the new (or edited) layer.
+        box = {key: op[key] for key in ("width", "height") if key in op}
+        result = execute(project, {k: v for k, v in op.items() if k not in box})
+        layer = project.layer(target) if target is not None else project.layer(project.state["active_layer"])
+        execute(project, {"type": "text-layout", "target": layer["id"], **box})
+        if target is None:  # centring was measured on the unboxed text
+            canvas = project.state["canvas"]
+            for axis, side in (("x", "width"), ("y", "height")):
+                if op.get(axis) == "center":
+                    layer[axis] = (canvas[side] - layer[side]) / 2
+            if "within" in op:
+                from .guides import place_within
+
+                place_within(project, layer["id"], op["within"])
+        return result
     if kind in LAYER_FINISH and ("opacity" in op or "rotation" in op):
         # Creation fields that stand for the rotate and opacity operations on the new (or edited) layer.
         result = execute(project, {k: v for k, v in op.items() if k not in ("opacity", "rotation")})
@@ -470,6 +493,10 @@ def execute(project, op):
         # Raster boxes are whole pixels; fractional sizes from layout arithmetic round to the nearest one.
         width, height = (max(1, round(finite(v, k))) for v, k in ((op.get("width", original_size[0]), "width"),
                                                                   (op.get("height", original_size[1]), "height")))
+        if "scale" in op:
+            factor = finite(op["scale"], "scale", 0.001, 100)
+            width, height = max(1, round(width * factor)), max(1, round(height * factor))
+            project.limits.size(width, height)
         if op.get("max_pixels") is not None or op.get("downsample"):
             require(not op.get("linked"), "Downsampling requires an embedded image, not linked=True", field="downsample")
             require(op.get("downsample") in (None, "placed@2x"), "downsample must be placed@2x", field="downsample")
@@ -493,6 +520,10 @@ def execute(project, op):
             asset=asset,
             provenance=provenance,
         )
+        if "sampling" in op:
+            from .transforms import set_sampling
+
+            set_sampling(layer, op["sampling"])
         if op.get("linked"):
             require("path" in op, "Linked layers require a path")
             layer["linked"] = str(source)
