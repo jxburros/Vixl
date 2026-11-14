@@ -57,6 +57,29 @@ project.export("transparent.png", alpha="keep")
 project.export("flattened.png", alpha="flatten", background="#ffffff")
 ```
 
+### Large canvases
+
+A canvas over 8 million pixels (about 2900 × 2900) is composited in tiles of 1024 pixels on the render threads
+(`VIXL_RENDER_THREADS`). Each tile is drawn exactly as that part of the whole canvas, so the pixels do not depend
+on the tiling or on the number of threads. A PNG export of such a canvas is also encoded band by band, so the
+canvas is never held in memory whole: a 6000 × 6000 poster of 2,000 shapes peaked at 373 MiB instead of 722 MiB,
+and a 7000 × 10,000 one at 629 MiB instead of 1,108 MiB. Layers blended over most of the canvas no longer need
+working memory of the whole canvas either, in a render or in any export. The decoded pixels, the channels
+(`alpha`) and the resolution of a streamed PNG are those of the ordinary export; its bytes are not, because it is
+compressed in independent blocks.
+
+What stays on one canvas:
+
+- A document that reads the whole canvas: an adjustment layer with a blur, contrast, sharpen, noise or artistic
+  filter, canvas-edge blur on a top-level layer, or an effect masked by a canvas selection.
+- A document whose layers too large to cache (over 24 megapixels each) add up to more than two canvases, other
+  than plain fills, unstroked rectangles and gradients, which are drawn per tile.
+- JPEG, WebP, TIFF, AVIF and raster PDF exports, scaled exports (`scale` below 1, `nearest` sampling), export
+  profiles with a size, `proof` and `simulate`: these are composited in tiles and then encoded from the whole
+  canvas.
+
+The pixel limit (`--max-pixels`, 40 million by default) applies to tiled canvases as before.
+
 ## Print: physical size, bleed and color
 
 Start with a print size so Vixl can retain dpi, trim, bleed and safe-area metadata.

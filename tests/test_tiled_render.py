@@ -84,8 +84,8 @@ def test_a_large_render_is_tiled_and_matches_the_single_canvas(monkeypatch):
     p = random_document(4)
     expected = single(p, p.state["canvas"]["background"])
     calls = []
-    original = tiles.tiles
-    monkeypatch.setattr(tiles, "tiles", lambda *a, **k: calls.append(1) or original(*a, **k))
+    original = R.render_tiles
+    monkeypatch.setattr(R, "render_tiles", lambda *a, **k: calls.append(1) or original(*a, **k))
     monkeypatch.setattr(R, "TILED_PIXELS", 1_000_000)
     p._cache = None
     assert np.array_equal(pixels(p.render()), pixels(expected))
@@ -98,7 +98,7 @@ def test_a_large_render_is_tiled_and_matches_the_single_canvas(monkeypatch):
 
 def test_a_small_render_is_not_tiled(monkeypatch):
     p = random_document(5, (600, 400))
-    monkeypatch.setattr(tiles, "tiles", lambda *a, **k: pytest.fail("a small canvas was tiled"))
+    monkeypatch.setattr(R, "render_tiles", lambda *a, **k: pytest.fail("a small canvas was tiled"))
     p.render()
 
 
@@ -191,7 +191,7 @@ def test_layers_too_large_for_the_cache_are_drawn_by_region_or_held_once(monkeyp
     expected = single(p, "white")
     small_cache(p)
     layers, bounds = R.resolved(p)
-    regions, held = tiles.plan(p, layers, bounds)
+    regions, held = R.tile_plan(p, layers, bounds)
     names = {layer["name"] for _, layer, _ in held}
     # Fills and gradients are drawn tile by tile; what cannot be cropped exactly is drawn once and shared.
     assert len(regions) == (5 if clip else 6)  # ground, four gradients and the panel (held when something clips to it)
@@ -202,7 +202,7 @@ def test_layers_too_large_for_the_cache_are_drawn_by_region_or_held_once(monkeyp
         whole.append((layer["name"], layer["width"], layer["height"])) or original(project, layer, b, profile)))
     assert np.array_equal(pixels(R.render_tiled(p, "white", tile=256)), pixels(expected))
     for name in ("photo", "disc", "framed"):
-        assert sum(1 for drawn in whole if drawn[0] == name and drawn[1] > tiles.PROBE[0]) == 1, name
+        assert sum(1 for drawn in whole if drawn[0] == name and drawn[1] > R.REGION_PROBE[0]) == 1, name
     # No tile drew a whole gradient or fill.
     assert not [drawn for drawn in whole if drawn[0] in ("radial", "slant", "down", "across", "ground")
                 and drawn[1] * drawn[2] > 256 * 256]
@@ -217,7 +217,7 @@ def test_a_document_whose_large_layers_cost_more_than_the_canvas_is_not_tiled(mo
     expected = single(p, "white")
     small_cache(p)
     layers, bounds = R.resolved(p)
-    assert tiles.plan(p, layers, bounds) is None
+    assert R.tile_plan(p, layers, bounds) is None
     assert np.array_equal(pixels(R.render_tiled(p, "white", tile=256)), pixels(expected))
     monkeypatch.setattr(R, "TILED_PIXELS", 100_000)
     assert tiles.png(p) is None
@@ -250,8 +250,8 @@ def test_a_large_png_export_is_streamed_with_the_pixels_of_the_single_canvas_exp
             detail="brief")
     before = Image.open(io.BytesIO(p.export(alpha=alpha, background="#ffeecc", dpi=300)))
     streamed = []
-    original = tiles.bands
-    monkeypatch.setattr(tiles, "bands", lambda *a, **k: streamed.append(1) or original(*a, **k))
+    original = R.render_bands
+    monkeypatch.setattr(R, "render_bands", lambda *a, **k: streamed.append(1) or original(*a, **k))
     monkeypatch.setattr(R, "TILED_PIXELS", 1_000_000)
     q = p.clone()
     q._cache = None
@@ -283,7 +283,7 @@ def test_transparency_found_late_on_an_opaque_canvas_restarts_the_stream_with_al
     p.apply([{"type": "shape", "shape": "ellipse", "name": "e", "x": 100, "y": 100, "width": 800, "height": 600,
               "fill": "#e63"}], detail="brief")
     monkeypatch.setattr(R, "TILED_PIXELS", 500_000)
-    original = tiles.bands
+    original = R.render_bands
 
     def holed(*args, **kwargs):
         for top, band in original(*args, **kwargs):
@@ -291,7 +291,7 @@ def test_transparency_found_late_on_an_opaque_canvas_restarts_the_stream_with_al
                 band.putpixel((5, 0), (0, 0, 0, 0))
             yield top, band
 
-    monkeypatch.setattr(tiles, "bands", holed)
+    monkeypatch.setattr(R, "render_bands", holed)
     image = Image.open(io.BytesIO(p.export()))
     assert image.mode == "RGBA" and image.getpixel((5, 0)) == (255, 255, 255, 255)
     assert image.getchannel("A").getextrema()[0] == 0
@@ -302,7 +302,7 @@ def test_exports_the_stream_does_not_cover_keep_the_single_canvas_path(monkeypat
     p.apply({"type": "shape", "shape": "ellipse", "name": "e", "x": 100, "y": 100, "width": 800, "height": 600,
              "fill": "#e63"}, detail="brief")
     monkeypatch.setattr(R, "TILED_PIXELS", 500_000)
-    monkeypatch.setattr(tiles, "bands", lambda *a, **k: pytest.fail("streamed"))
+    monkeypatch.setattr(R, "render_bands", lambda *a, **k: pytest.fail("streamed"))
     assert Image.open(io.BytesIO(p.export(format="jpeg"))).size == (1200, 900)
     assert Image.open(io.BytesIO(p.export(scale=0.5))).size == (600, 450)
     assert Image.open(io.BytesIO(p.export(simulate="deuteranopia"))).size == (1200, 900)

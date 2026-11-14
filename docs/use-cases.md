@@ -645,6 +645,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PRN-45 | Event poster series in three colorways | comps or variables, export per comp | 40–55 · 5–6 |  |
 | PRN-46 | Personalised invitations or place cards from a guest CSV | merge-impose | 30–50 · 3–5 | Like PRD-30. |
 | PRN-47 | Product label or packaging face with print checks | `label`, print checks, CMYK | 40–60 · 5–7 | No dielines or spot colors. |
+| PRN-58 | Export a large print canvas (6000 × 6000, 24 × 36 in at 150 dpi) as PNG on a small machine | `export poster.png` | 1 · <1 | Canvases over 8 MP are composited in tiles and a PNG is encoded band by band: 373 MiB instead of 722 MiB at 6000 × 6000 with 2,000 shapes ([large canvases](guides/output/exporting.md#large-canvases)). The 40 MP pixel limit is unchanged. |
 
 ### Data and documents
 
