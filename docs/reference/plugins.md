@@ -171,6 +171,7 @@ A plugin that declares `requires: ["workspace_qa"]` can call these (see their mo
 | `ai` (AI providers) | provider | Generate, edit, detect and describe images through configured providers; model discovery and routing. | hooks: host-flags, host-route |
 | `spelling` (Spelling) | checks | An optional spelling check of drawn text with suggestions; English is bundled, other languages are content packs. | hooks: check, spell |
 | `lottie` (Lottie animation) | workflows | Export vector animations with native easing and time-remapped linked instances as Lottie JSON, dotLottie and strict Telegram TGS. | hooks: timeline-export-format |
+| `object_detect` (Object detection) | workflows | object-detect: propose groupings and kinds for undeclared objects from recipes, names and touching ink; a dry run unless apply is set, and offline unless a provider is named. | `object-detect` |
 
 ## Not separable yet
 

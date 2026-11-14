@@ -53,6 +53,7 @@ BUILTIN = (
     "ai",
     "spelling",
     "lottie",
+    "object_detect",
 )
 
 ROLES = ("operations", "commands", "workflows")

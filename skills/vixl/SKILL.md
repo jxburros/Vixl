@@ -120,7 +120,7 @@ The payload is always the operation list; fields: `vixl_reference('operations', 
 | Rich text, pages and decks, forms | [documents](references/documents.md) |
 | Charts, shared datasets, bound text, tables, key-value lists | [charts](references/charts.md) |
 | Hand drawings, diagrams, organic shapes, scatter, guides | [drawing-shapes-guides](references/drawing-shapes-guides.md) |
-| Objects with parts (object-plan, outline), accessibility | [objects](references/objects.md) |
+| Objects with parts (object-plan, object-detect, outline), accessibility | [objects](references/objects.md) |
 | Brushes, timelines, nested animation instances, video templates | [brushes-timeline](references/brushes-timeline.md) |
 | Artistic filters | [artistic-filters](references/artistic-filters.md) |
 | Emoji catalog, packs and exports | [emojis](references/emojis.md) |
