@@ -1220,6 +1220,7 @@ def project_command(project, cmd, args, *, detail="compact"):
             return project.export(a.out or a.path, dry_run=True, format=a.format,
                                   scale=float(a.scale.rstrip("x")), pages=a.pages, page=a.page,
                                   pdf_content=a.pdf_content), False
+        strict = a.strict
         if a.strict:
             from .check_results import delivery
 
@@ -1272,6 +1273,7 @@ def project_command(project, cmd, args, *, detail="compact"):
                 scale=float(a.scale.rstrip("x")),
                 profile=a.profile,
                 check=not a.no_check,
+                strict=strict and not a.no_check,
             ), False
         page = int(a.page) if a.page and a.page.isdigit() else a.page
         from .forms import split_values
