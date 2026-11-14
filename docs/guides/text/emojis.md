@@ -188,10 +188,11 @@ Every limit is data in `vixl.emojis.DESTINATIONS` (and `vixl emoji destinations`
 from (`url`) and the day (`checked`): [Discord's custom emoji help](https://support.discord.com/hc/en-us/articles/360036479811-Custom-Emojis)
 and [Slack's custom emoji help](https://slack.com/help/articles/206870177-Add-custom-emoji-and-aliases-to-your-workspace)
 on 2026-10-08; [WhatsApp's sticker app requirements](https://github.com/WhatsApp/stickers/blob/main/Android/README.md),
-[Telegram's sticker requirements](https://core.telegram.org/stickers),
-[Twitch's emote guidelines](https://help.twitch.tv/s/article/emote-guidelines) and
+[Telegram's sticker requirements](https://core.telegram.org/stickers) and
 [Apple's iMessage sticker sizes](https://developer.apple.com/design/human-interface-guidelines/imessage-apps-and-stickers)
-on 2026-11-14. The 128 px canvas and conservative name lengths are export choices;
+on 2026-11-14. [Twitch's emote guidelines](https://help.twitch.tv/s/article/emote-guidelines) could not be read
+that day, so the Twitch profile holds Twitch's long-standing values and says so; confirm them on that page, as
+with the animated GIF limits added to the Discord and Slack profiles. The 128 px canvas and conservative name lengths are export choices;
 Slack describes its size/byte guidance as recommendations, and Telegram states no byte limit for static images
 (Vixl holds them under 512 KiB); a profile's `export_choice` names such values. `requirements` renders and
 checks actual encoded bytes, canvas size, names and pack rules (a WhatsApp pack holds 3–30 stickers) and returns

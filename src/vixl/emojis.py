@@ -145,6 +145,8 @@ DESTINATIONS = {
         "at most 1 MB each, letters and digits only in the emote code.",
         "url": "https://help.twitch.tv/s/article/emote-guidelines",
         "checked": "2026-11-14",
+        "export_choice": "The guidelines page could not be read when this profile was written; the sizes, 1 MB "
+        "limit and 60-frame cap are Twitch's long-standing values and should be confirmed there before a release.",
         "instructions": "Unzip, open Creator Dashboard → Viewer Rewards → Emotes, add an emote, choose manual "
         "upload and select the same name from 28/, 56/ and 112/. The filename is the emote code suffix; "
         "Twitch adds your channel prefix. Emote slots and review depend on your channel.",
