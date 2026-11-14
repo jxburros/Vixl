@@ -130,6 +130,7 @@ vixl layer add image.png --name hero
 vixl add logo.png --name logo --linked
 vixl add photo.jpg --name hero --credit "Photo: Ana Ruiz" --license "CC0"
 vixl import https://images.example.com/cat.jpg --name cat --license "CC BY 4.0"
+vixl import sprite.png --name hero --scale 3 --sampling nearest   # pixel art at 3x, crisp in every export
 vixl import artwork.svg --svg-mode auto    # SVG as editable layers; a Vixl SVG restores its document
 vixl import flyer.pdf --page 1             # a PDF page as editable text, paths and images
 vixl import KEY --format figma --node 1:2  # a Figma file URL or key (one frame, or --rasterize-unsupported for unmappable nodes); needs FIGMA_TOKEN, see figma.md
@@ -149,6 +150,7 @@ vixl move portrait --x 100 --y 200
 vixl move x +20
 vixl scale portrait 80%
 vixl scale portrait --x -1              # negative factors mirror: --x/--y per axis, -1 both
+vixl scale hero 300% --sampling nearest  # image layers: enlarge pixel by pixel (stored on the layer); smooth resets
 vixl resize portrait 800x600
 vixl resize portrait --width 800
 vixl resize portrait --width 800 --keep-aspect       # explicit; --no-keep-aspect stretches one side of an image
@@ -372,7 +374,10 @@ Y W H] [--name N] [--with KIND] [--seed N] [--illustration house|plain] [--apply
 named placeholder parts (the `object-plan` workflow; without a document it prints the batch; in a document with a house
 style it ends with the flat vector illustration finish unless `--illustration plain`), and `vixl object outline GROUP
 [--outline silhouette|parts|none|inherit] [--interior hide|thin|show] [--outline-color C] [--outline-width W]
-[--outline-lines JSON]` and `vixl object outline-remove GROUP` apply and remove its outline policy.
+[--outline-lines JSON]` and `vixl object outline-remove GROUP` apply and remove its outline policy. `vixl object detect
+[NAME …] [--apply] [--min-confidence N] [--tolerance PX] [--provider [NAME]]` proposes groupings and kinds for
+[undeclared objects](../guides/shapes/objects.md#detect-objects-in-an-existing-document) (the `object-detect`
+workflow); it changes nothing without `--apply`.
 
 Saved SVG exports report `svg.vector_only` and `svg.raster_fallbacks` in the CLI result so embedded bitmaps are visible without opening the SVG metadata. Use `export logo.svg --svg-policy strict` to reject all embedded raster content. Exporting to `-` still writes only SVG bytes. Supported grouped shapes and outlined text remain vectors; unsupported appearances may rasterize in the default appearance policy. Every SVG export also carries its document in `<metadata id="vixl-document">` (fonts named, not stored), so `vixl import FILE.svg` restores the editable layers ([exporting](../guides/output/exporting.md#svg-round-trip)).
 
@@ -381,6 +386,7 @@ Saved SVG exports report `svg.vector_only` and `svg.raster_fallbacks` in the CLI
 ```bash
 vixl guide                               # start-here recipe and every kind of work
 vixl guide a mascot for a coffee brand   # approach, operations, layouts, looks, styles, example
+vixl guide --brief a mascot for a coffee brand   # only the first step, the operations and how to get the rest
 vixl guide operations                    # every operation by purpose, with summaries
 vixl looks                               # the finishing looks
 vixl house [show PURPOSE]                # the house style: craft, tiers, levels; or one purpose's profile
@@ -505,9 +511,10 @@ The source format stores only the current state, so undo history, branches and s
 ```bash
 vixl emoji list [--query TEXT] [--group G] [--offset N] [--limit N]
 vixl emoji get EMOJI [--out FILE] [--format vixl|svg|png] [--overwrite]   # inspect, or extract the editable source
-vixl emoji template [blank|face|symbol|sheet] --out FILE [--destination images|discord|slack] [--overwrite]
-vixl emoji destinations | emoji requirements [--destination D] [--emojis E…]
-vixl emoji export [--destination images|discord|slack] [--emojis E…] --out FILE [--size N] [--no-sources] [--overwrite]
+vixl emoji template [blank|face|symbol|sheet] --out FILE [--destination D] [--overwrite]
+vixl emoji destinations | emoji requirements [--destination D…] [--emojis E…] [--animated] [--size N]
+vixl emoji export [--destination D…] [--emojis E…] --out FILE [--animated [gif|webp|apng]] [--size N] [--no-sources] [--overwrite]
+# D: images|discord|slack|whatsapp|telegram|telegram-emoji|telegram-animated|twitch|imessage; several D write OUT-D.zip each
 vixl -p doc.vixl emoji settings [--mode vixl|font]          # bundled art (default) or the font first
 vixl -p doc.vixl emoji replace EMOJI|:custom_name: SOURCE [--name N] [--license L]
 vixl -p doc.vixl emoji install PACK | emoji reset [--emoji EMOJI]

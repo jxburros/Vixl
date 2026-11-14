@@ -26,6 +26,7 @@ API = "https://api.figma.com"
 TOKEN_ENVS = ("FIGMA_TOKEN", "VIXL_FIGMA_TOKEN")
 TIMEOUT = 60
 MAX_RESPONSE = 256 * 1024 * 1024
+MAX_ERROR_BODY = 64 * 1024  # What is read of an error answer, for its message.
 MAX_IMAGES = 200
 KEY = re.compile(r"[A-Za-z0-9]{8,64}")
 HOSTS = ("figma.com", "www.figma.com")
@@ -107,32 +108,38 @@ class FigmaClient:
         self._download = download
 
     def get(self, route, params=None):
-        from ...fetch import network_allowed
+        from ...fetch import ACCEPT_ENCODING, network_allowed, read_bounded
 
         network_allowed("Figma import")
+        headers = {"X-Figma-Token": self.token, "Accept-Encoding": ACCEPT_ENCODING}
         try:
             with httpx.Client(transport=self.transport, timeout=TIMEOUT, follow_redirects=False) as client:
-                response = client.get(self.base + route, params=params, headers={"X-Figma-Token": self.token})
+                with client.stream("GET", self.base + route, params=params, headers=headers) as response:
+                    if response.status_code >= 400:
+                        try:
+                            body = read_bounded(response, MAX_ERROR_BODY, "")
+                        except VixlError:
+                            body = b""  # An error page past the cap: report the status without its detail.
+                        self._raise_for_status(response, body)
+                    body = read_bounded(response, MAX_RESPONSE, "The Figma response is too large; import a single "
+                                        "frame with its node-id", field="node_id")
         except httpx.HTTPError as exc:
             raise VixlError("figma_unreachable", f"Cannot reach the Figma API ({type(exc).__name__})",
                             suggestions=["Check network access to api.figma.com and retry"]) from exc
-        self._raise_for_status(response)
-        require(len(response.content) <= MAX_RESPONSE, "The Figma response is too large; import a single frame with "
-                "its node-id", "resource_limit", field="node_id")
         try:
-            return response.json()
+            return json.loads(body)
         except ValueError as exc:
             raise VixlError("figma_error", "The Figma API returned something that is not JSON") from exc
 
     @staticmethod
-    def _raise_for_status(response):
+    def _raise_for_status(response, body=b""):
         status = response.status_code
         if status < 400:
             return
         try:
-            detail = response.json()
+            detail = json.loads(body)
             detail = detail.get("err") or detail.get("message") or detail.get("error") or ""
-        except ValueError:
+        except (ValueError, AttributeError):
             detail = ""
         if status in (401, 403):
             raise VixlError("figma_forbidden", "Figma refused the token (HTTP %d%s). It is invalid, expired, or lacks "

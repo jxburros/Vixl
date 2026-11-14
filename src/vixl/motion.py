@@ -9,11 +9,11 @@ from .model import MAX_LAYERS, finite
 
 TYPES = ("motion", "keyframes")
 RECIPES = ("follow-path", "orbit", "bounce", "shake", "wiggle", "spring", "look-at", "overlap", "breathing", "blink", "hover", "spin",
-           "attach", "line-boil")
+           "attach", "line-boil", "scroll")
 SAMPLE_FUNCTIONS = ("sin", "cos", "triangle", "saw", "square", "noise")
 BOIL_STRENGTHS = ("subtle", "natural", "rough")
 # Recipes whose duration defaults to the rest of the timeline rather than one second.
-FILL_RECIPES = ("spin", "attach", "wiggle", "line-boil")
+FILL_RECIPES = ("spin", "attach", "wiggle", "line-boil", "scroll")
 WRAPPED_RECIPES = ("spin", "wiggle", "orbit", "breathing", "blink", "hover")  # periodic: stagger becomes a phase
 
 
@@ -40,6 +40,8 @@ def schemas(add):
         "phase": N, "easing": easing_schema(), "extend": B,
         "turns": N,
         "symmetry": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "wrap": {"type": "number", "exclusiveMinimum": 0, "description": "scroll: the distance after which the artwork repeats, "
+                 "in px (default: the size of amount). amount must be a whole multiple of it."},
         "close": B,
         "fps": {"type": "number", "minimum": 1, "maximum": 30, "description": "line-boil: redraws per second, each "
                 "held until the next (default 10; 8-12 reads as hand-drawn boil)."},
@@ -49,24 +51,77 @@ def schemas(add):
                  "the next seeds."},
         "strength": {"enum": list(BOIL_STRENGTHS), "description": "line-boil: wobble strength (default subtle)."}},
         ["recipe"])
-    sample = {"type": "object", "description": "Generate the keys from a periodic function instead of listing them: "
+    window = {"type": "object", "description": "A blend window: {start (ms), duration (ms), poses: [{at, value, easing}], "
+              "easing}. Inside it the wave's keys are replaced: the track eases from the wave's value at start through "
+              "each pose (at is 0-1 across the window) and back to the wave's value at the window end, so the wave "
+              "continues exactly where it would have been.",
+              "properties": {"start": {"type": "number", "minimum": 0}, "duration": {"type": "number", "exclusiveMinimum": 0},
+                             "poses": {"type": "array", "minItems": 1, "maxItems": 64, "items": {
+                                 "type": "object", "properties": {"at": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1},
+                                                                  "value": N, "easing": easing_schema()},
+                                 "required": ["at", "value"], "additionalProperties": False}},
+                             "easing": easing_schema()},
+              "required": ["start", "duration", "poses"], "additionalProperties": False}
+    segment = {"type": "object",
+               "properties": {"fn": {"enum": list(SAMPLE_FUNCTIONS)}, "period": {"type": "number", "exclusiveMinimum": 0},
+                              "amplitude": N, "offset": N, "phase": N,
+                              "step_ms": {"type": "number", "minimum": 1}, "samples": {"type": "integer", "minimum": 1,
+                                                                                     "maximum": 8192},
+                              "duration": {"type": "number", "exclusiveMinimum": 0}, "start": N,
+                              "seed": {"type": "integer", "minimum": 0},
+                              "blend": {"anyOf": [window, {"type": "array", "items": window, "minItems": 1, "maxItems": 16}],
+                                        "description": "One blend window or a list of them (see docs/guides/motion/animation-authoring.md): "
+                                        "a one-off pose sequence the wave hands over to and returns from."}},
+               "required": ["fn"], "additionalProperties": False}
+    sample = {**segment, "type": ["object", "array"], "items": segment, "minItems": 1, "maxItems": 32,
+              "description": "Generate the keys from a periodic function instead of listing them: "
               "{fn: sin|cos|triangle|saw|square|noise, period (ms), amplitude, offset, phase (cycles), step_ms or "
-              "samples, duration (ms), start (ms), seed (noise)}. value = offset + amplitude * fn(phase + t/period).",
-              "properties": {"fn": {"enum": list(SAMPLE_FUNCTIONS)}, "period": {"type": "number", "exclusiveMinimum": 0},
-                             "amplitude": N, "offset": N, "phase": N,
-                             "step_ms": {"type": "number", "minimum": 1}, "samples": {"type": "integer", "minimum": 1,
-                                                                                    "maximum": 8192},
-                             "duration": {"type": "number", "exclusiveMinimum": 0}, "start": N,
-                             "seed": {"type": "integer", "minimum": 0}},
-              "required": ["fn"], "additionalProperties": False}
+              "samples, duration (ms), start (ms), seed (noise), blend}. value = offset + amplitude * fn(phase + t/period). "
+              "blend: {start, duration, poses: [{at, value}], easing} replaces a window of the wave with eased poses and "
+              "returns to the wave. A list of such objects is a piecewise sample: each segment starts where the one before "
+              "ended (start defaults to that time) and is shifted so its first value equals the previous segment's last."}
+    from .timeline import ADD_LAYER, MODE, SYMMETRY, WRAP
     add("keyframes", {"property": S, "keys": {"type": "array", "minItems": 1, "maxItems": 8192,
         "items": {"type": "object", "properties": {"time": time, "value": {}, "easing": easing_schema()}, "required": ["time", "value"], "additionalProperties": False}},
-        "sample": sample, "extend": B}, ["property"], anyOf=[{"required": ["keys"]}, {"required": ["sample"]}])
+        "sample": sample, "extend": B, "mode": MODE, "additive": ADD_LAYER, "wrap": WRAP, "symmetry": SYMMETRY,
+        "blend": {"anyOf": [window, {"type": "array", "items": window, "minItems": 1, "maxItems": 16}],
+                  "description": "Hand the property's existing motion over to one-off poses and back: {start (ms), duration (ms), "
+                  "poses: [{at, value, easing}], easing}, or a list of such windows. Inside the window the track's keys are replaced "
+                  "by an ease from its value at start through each pose (at is 0-1 across the window) back to its value at the "
+                  "window end, so a cycle written earlier (a gallop, a character-cycle joint) continues where it would have been. "
+                  "With sample, put blend inside sample instead."}},
+        ["property"], anyOf=[{"required": ["keys"]}, {"required": ["sample"]}, {"required": ["blend"]}])
 
 
 def sampled_keys(project, spec):
     """Keys from a ``sample`` spec: a periodic function sampled every ``step_ms`` (or ``samples``
-    times) over ``duration``. Square waves hold between keys; the rest are linear."""
+    times) over ``duration``. Square waves hold between keys; the rest are linear. A list of specs is a
+    piecewise sample: each segment begins where the one before ended, shifted to the value reached there."""
+    from .timeline import _timeline
+
+    if not isinstance(spec, list):
+        return _wave_keys(project, spec)
+    require(1 <= len(spec) <= 32, "sample takes 1-32 segments", field="sample")
+    keys, total = [], _timeline(project)["duration"]
+    for index, part in enumerate(spec):
+        last = index == len(spec) - 1
+        begin = keys[-1]["time"] if keys else 0
+        require(part.get("start", begin) >= begin, f"sample segment {index + 1} starts before the previous one ends "
+                f"({begin:g} ms)", field="sample")
+        require(last or "duration" in part, f"sample segment {index + 1} needs a duration (only the last runs to the "
+                "timeline end)", field="sample")
+        start = part.get("start", begin)
+        piece = _wave_keys(project, {**part, "start": start, "duration": part.get("duration", max(1, total - start))},
+                           keys[-1]["value"] if keys else None)
+        if keys and piece[0]["time"] == keys[-1]["time"]:
+            keys.pop()  # The joint is one key, with the easing of the segment leaving it.
+        keys += piece
+    return keys
+
+
+def _wave_keys(project, spec, join=None):
+    """One sample segment. ``join`` is the value the previous segment ended on: the whole segment is
+    shifted so it starts there."""
     from .timeline import _timeline
 
     settings = _timeline(project)
@@ -87,6 +142,7 @@ def sampled_keys(project, spec):
             field="sample.step_ms")
     times = [start + duration * i / count for i in range(count + 1)]
     cycles = [phase + (t - start) / period for t in times]
+    wave = None
     if fn == "noise":
         import numpy as np
         from .irregular import correlated_noise
@@ -101,8 +157,92 @@ def sampled_keys(project, spec):
                 "triangle": lambda c: 1 - 4 * abs((c + 0.25) % 1 - 0.5), "saw": lambda c: 2 * (c % 1) - 1,
                 "square": lambda c: 1.0 if c % 1 < 0.5 else -1.0}[fn]
         values = [wave(c) for c in cycles]
+    shift = 0 if join is None else join - (offset + amplitude * values[0])
     easing = "hold" if fn == "square" else "linear"
-    return [{"time": round(t, 3), "value": round(offset + amplitude * v, 6), "easing": easing} for t, v in zip(times, values)]
+
+    def at(time):
+        """The (shifted) wave's value at ``time``: exact for the functions, interpolated for noise."""
+        if wave:
+            return offset + shift + amplitude * wave(phase + (time - start) / period)
+        position = min(count, max(0, (time - start) / duration * count))
+        low = min(count - 1, int(position))
+        return offset + shift + amplitude * (values[low] + (values[low + 1] - values[low]) * (position - low))
+
+    keys = [{"time": round(t, 3), "value": round(offset + shift + amplitude * v, 6), "easing": easing} for t, v in zip(times, values)]
+    reach = start
+    for field, window in blend_windows(spec.get("blend", []), "sample.blend"):
+        begin, finish = window_span(window, field)
+        require(begin >= reach and finish <= start + duration + 1e-9, f"blend window {begin:g}-{finish:g} ms must lie inside "
+                f"the sampled span ({start:g}-{start + duration:g} ms) and not overlap another window", field=field)
+        reach = finish
+        inside = window_keys(window, field, at(begin), at(finish), easing)
+        keys = [key for key in keys if key["time"] < begin or key["time"] > finish] + inside
+    keys.sort(key=lambda key: key["time"])
+    return keys
+
+
+def blend_windows(value, field):
+    """``[(field, window)]`` for one blend window or a list of them, in time order."""
+    windows = value if isinstance(value, list) else [value]
+    for window in windows:
+        require(isinstance(window, dict) and {"start", "duration", "poses"} <= set(window), "blend needs start, duration "
+                "and poses", field=field)
+    windows = sorted(windows, key=lambda window: window["start"])
+    return [(f"{field}.{number}" if len(windows) > 1 else field, window) for number, window in enumerate(windows)]
+
+
+def window_span(window, field):
+    begin = finite(window["start"], "blend.start", 0, 600000)
+    return begin, begin + finite(window["duration"], "blend.duration", 1, 600000)
+
+
+def window_keys(window, field, before, after, resume=None):
+    """The keys of a blend window: ``before`` (the motion's value where the window starts), each pose at
+    its share of the window, and ``after`` (the motion's value where the window ends), eased from one to
+    the next. ``resume`` is the easing of the motion leaving the window."""
+    begin, finish = window_span(window, field)
+    poses = window["poses"]
+    require(isinstance(poses, list) and 1 <= len(poses) <= 64, "blend.poses lists 1-64 poses", field=field + ".poses")
+    fractions = [finite(pose.get("at"), "blend pose at", 0, 1) for pose in poses]
+    require(fractions == sorted(set(fractions)) and 0 < fractions[0] and fractions[-1] < 1,
+            "blend poses need increasing at values strictly between 0 and 1", field=field + ".poses")
+    ease = window.get("easing", "ease-in-out")
+    keys = [{"time": round(begin, 3), "value": round(before, 6), "easing": ease}]
+    for pose in poses:
+        keys.append({"time": round(begin + (finish - begin) * pose["at"], 3),
+                     "value": finite(pose["value"], "blend pose value", -1e6, 1e6), "easing": pose.get("easing", ease)})
+    keys.append({"time": round(finish, 3), "value": round(after, 6), **({"easing": resume} if resume else {})})
+    return keys
+
+
+def blend_track(project, target, prop, blend, extend=True):
+    """Hand a property's existing motion over to a one-off pose sequence and back (keyframes ``blend``).
+    Inside each window the track's keys are replaced: it eases from its own value at the window start
+    through the poses and back to its own value at the window end, so a cycle written earlier (a gallop)
+    carries on where it would have been. A property without keys leaves from and returns to its current
+    value. Additive layers on the track are not touched."""
+    from .timeline import _property_kind, _sample_keys, _segment, _target_id, _timeline, _track, execute_timeline, static_value
+
+    require(_property_kind(prop) == "number", f"blend eases numbers; {prop!r} is not numeric", field="blend")
+    timeline = _timeline(project)
+    ident = _target_id(project, target or project.state["active_layer"])
+    reach = 0
+    for field, window in blend_windows(blend, "blend"):
+        begin, finish = (round(v) for v in window_span(window, field))
+        require(begin >= reach, "blend windows must not overlap", field=field)
+        reach = finish
+        track = _track(timeline, ident, prop, create=False)
+        resume = None
+        if track and track["keys"]:
+            keys = track["keys"]
+            left, right, _ = _segment(keys, finish)
+            resume = left.get("easing") if left is not right else None
+            before, after = _sample_keys(project, prop, keys, begin), _sample_keys(project, prop, keys, finish)
+            track["keys"] = [key for key in keys if not begin <= key["time"] <= finish]
+        else:
+            before = after = static_value(project, ident, prop)
+        for key in window_keys(window, field, before, after, resume):
+            execute_timeline(project, {"type": "keyframe", "target": ident, "property": prop, "extend": extend, **key})
 
 
 def line_boil(project, op, targets, start, length):
@@ -183,10 +323,21 @@ def merge_growth(queue, seen):
 def _execute(project, op):
     from .timeline import execute_timeline, _timeline, parse_time, static_value, project_at, _snapshot
     if op["type"] == "keyframes":
+        if "blend" in op:
+            require("sample" not in op and "keys" not in op and op.get("mode", "set") == "set",
+                    "blend reshapes the property's existing keys: pass it alone (with sample, put blend inside sample)", field="blend")
+            blend_track(project, op.get("target"), op["property"], op["blend"], op.get("extend", True))
+            if "wrap" in op or "symmetry" in op:
+                from .timeline import _mark_period, _target_id, _track
+                _mark_period(_track(_timeline(project), _target_id(project, op.get("target") or project.state["active_layer"]),
+                                    op["property"]), op)
+            return
         keys = (sampled_keys(project, op["sample"]) if "sample" in op else []) + list(op.get("keys", []))
         require(len(keys) <= 8192, "keyframes writes at most 8192 keys", "resource_limit", field="sample")
+        shared = {k: op[k] for k in ("mode", "additive", "wrap", "symmetry") if k in op}
         for key in keys:
-            execute_timeline(project, {"type": "keyframe", "target": op.get("target"), "property": op["property"], "extend": op.get("extend", True), **key})
+            execute_timeline(project, {"type": "keyframe", "target": op.get("target"), "property": op["property"],
+                                       "extend": op.get("extend", True), **shared, **key})
         return
     settings = _timeline(project)
     start = parse_time(op.get("start", 0), settings["duration"], settings.get("markers"))
@@ -226,6 +377,24 @@ def _execute(project, op):
             if symmetry > 1:
                 next(t for t in settings["tracks"] if t["target"] == layer["id"] and t["property"] == "rotation")["symmetry"] = symmetry
         _close_motion(project, settings, op, targets, before)
+        return
+    if recipe == "scroll":
+        # A strip whose artwork repeats every ``wrap`` px moves a whole number of repeats at constant speed:
+        # the last frame flows into the first with nothing to close.
+        prop = op.get("property", "translate-x")
+        require("amount" in op, "scroll needs amount: the distance moved per loop in px (negative moves left or up)", field="amount")
+        distance = finite(op["amount"], "amount", -1e6, 1e6)
+        require(distance != 0, "scroll amount must not be 0", field="amount")
+        repeat = finite(op.get("wrap", abs(distance)), "wrap", 1e-6, 1e6)
+        whole = abs(distance) / repeat
+        require(whole >= 1 - 1e-6 and abs(whole - round(whole)) < 1e-6, f"scroll amount {distance:g} is not a whole multiple of "
+                f"wrap {repeat:g}, so the loop would jump at the seam", field="amount")
+        for index, layer in enumerate(targets):
+            offset = start + round(stagger * index)
+            base = static_value(project, layer["id"], prop)
+            for time, value in ((offset, base), (offset + length, base + distance)):
+                execute_timeline(project, {"type": "keyframe", "target": layer["id"], "property": prop, "time": time, "value": value,
+                                           "easing": "linear", "wrap": repeat, "extend": op.get("extend", True)})
         return
     if recipe == "attach":
         ref = op.get("follow", op.get("to"))
@@ -427,10 +596,13 @@ def seam_value_findings(project, timeline=None):
         name = f"{track['property']} on {layer_label(project, track['target'])}"
         if item["kind"] == "value":
             first, last = seam_value(track["property"], item["first"]), seam_value(track["property"], item["last"])
+            hint = repeat_hint(project, track, timeline)
             result.append({"check": "motion", "severity": "warning", "layer": track["target"], "code": "loop-seam",
                            "property": track["property"],
-                           "message": f"Loop seam: {name} ends at {last} but starts at {first}, so the loop jumps when it restarts. "
-                                      "Add a closing key (close: true) or end the track where it began."})
+                           "message": f"Loop seam: {name} ends at {last} but starts at {first}"
+                                      + (f". {hint} Otherwise the loop jumps when it restarts: add" if hint
+                                         else ", so the loop jumps when it restarts. Add")
+                                      + " a closing key (close: true) or end the track where it began."})
         else:
             result.append({"check": "motion", "severity": "info", "layer": track["target"], "code": "loop-seam-speed",
                            "property": track["property"],
@@ -607,31 +779,111 @@ def rendered_seam_findings(project, timeline):
     return []
 
 
-def _full_turns(track):
-    """A rotation track that turns whole symmetry steps between its two keys: a spin, whose constant
-    speed is the point."""
+def constant_speed(track):
+    """The change per loop of a track that moves at one constant speed from its first key to its last
+    (linear segments on one line), or None."""
     keys = track["keys"]
-    if track["property"] != "rotation" or len(keys) != 2:
+    if len(keys) < 2 or track.get("add") or any(key.get("easing", "linear") != "linear" for key in keys[:-1]):
+        return None
+    if not all(isinstance(key["value"], (int, float)) and not isinstance(key["value"], bool) for key in keys):
+        return None
+    span = keys[-1]["time"] - keys[0]["time"]
+    total = keys[-1]["value"] - keys[0]["value"]
+    if not span or not total:
+        return None
+    for key in keys[1:-1]:
+        expected = keys[0]["value"] + total * (key["time"] - keys[0]["time"]) / span
+        if abs(key["value"] - expected) > 1e-6 * max(1, abs(total)):
+            return None
+    return total
+
+
+def whole_repeats(track, timeline=None):
+    """A constant-speed track that moves a whole number of its repeats: a spin by whole turns (or whole
+    symmetry steps), or a scroll by whole ``wrap`` distances that runs the length of the loop. Its
+    constant speed is the point, and its end flows into its start."""
+    from .timeline import track_period
+
+    total, period = constant_speed(track), track_period(track)
+    if not total or not period:
         return False
-    step = 360 / max(1, track.get("symmetry", 1))
-    turns = abs(keys[1]["value"] - keys[0]["value"]) / step
-    return turns >= 1 - 1e-6 and abs(turns - round(turns)) < 1e-6
+    repeats = abs(total) / period
+    if repeats < 1 - 1e-6 or abs(repeats - round(repeats)) > 1e-6:
+        return False
+    if track["property"] == "rotation" and not track.get("wrap"):
+        return True
+    keys = track["keys"]
+    return timeline is None or (keys[0]["time"] <= 0 and keys[-1]["time"] >= timeline["duration"])
+
+
+def child_repeat(project, track, distance):
+    """The spacing at which a group's children repeat along the track's axis, when ``distance`` is a
+    whole multiple of it: the group is a strip of repeated tiles, so moving it that far lands on itself."""
+    axis = {"x": 0, "translate-x": 0, "y": 1, "translate-y": 1}.get(track["property"])
+    layers = project.state["layers"]
+    group = next((layer for layer in layers if layer["id"] == track["target"]), None)
+    if axis is None or not group or group["type"] != "group":
+        return None
+    kinds = {}
+    for child in layers:
+        if child.get("parent") == group["id"]:
+            box = (child["x"], child["y"], child["width"], child["height"])
+            kinds.setdefault((child["type"], round(box[2], 2), round(box[3], 2), round(box[1 - axis], 2)), []).append(box[axis])
+    found = None
+    for positions in kinds.values():
+        positions.sort()
+        gaps = [b - a for a, b in zip(positions, positions[1:])]
+        if not gaps or gaps[0] <= 0 or any(abs(gap - gaps[0]) > 0.01 for gap in gaps):
+            continue
+        whole = abs(distance) / gaps[0]
+        if whole >= 1 - 1e-6 and abs(whole - round(whole)) < 1e-6:
+            found = gaps[0] if found is None else min(found, gaps[0])
+    return found
+
+
+def repeat_hint(project, track, timeline):
+    """What to say about a constant-speed track that ends away from its start: closing it would snap it
+    back, while a strip of repeated artwork or a symmetric shape needs only its period marked."""
+    total = constant_speed(track)
+    keys = track["keys"]
+    if not total or keys[0]["time"] > 0 or keys[-1]["time"] < timeline["duration"]:
+        return ""
+    distance = compact_number(abs(total), 2)
+    if track["property"] == "rotation":
+        steps = 360 / abs(total)
+        if steps >= 2 and abs(steps - round(steps)) < 1e-6:
+            return (f"If the shape has {round(steps)}-fold symmetry (it looks the same every {distance} degrees), mark the track "
+                    f"with symmetry: {round(steps)} (keyframes, keyframe or animate) and the loop is seamless.")
+        return ""
+    if track["property"] not in ("x", "y", "translate-x", "translate-y"):
+        return ""
+    repeat = child_repeat(project, track, total)
+    if repeat:
+        return (f"Its children repeat every {compact_number(repeat, 2)} px, so the move is a whole repeat: mark the track "
+                f"with wrap: {compact_number(repeat, 2)} (keyframes, keyframe or animate) and the loop is seamless.")
+    return (f"If the artwork repeats every {distance} px (a seamless scroll), mark the track with wrap: {distance} "
+            "(keyframes, keyframe or animate) and the loop is seamless; closing it would snap it back.")
 
 
 def findings(project):
     """Heuristics only: constant speed can be intentional (camera travel/conveyors)."""
+    from .timeline import summed_keys
+
     result = []
-    for track in project.state.get("timeline", {}).get("tracks", []):
+    timeline = project.state.get("timeline", {})
+    for track in timeline.get("tracks", []):
         if track["property"] not in ("x", "y", "translate-x", "translate-y", "rotation"):
             continue
-        keys = track["keys"]
+        keys = summed_keys(project, track)
         name = layer_label(project, track["target"])
         changed = [(a, b) for a, b in zip(keys, keys[1:]) if a["value"] != b["value"]]
-        if len(keys) == 2 and changed and keys[0].get("easing", "linear") == "linear" and not _full_turns(track):
+        if (len(keys) == 2 and changed and not track.get("add") and keys[0].get("easing", "linear") == "linear"
+                and not whole_repeats(track, timeline)):
             result.append({"check": "motion", "severity": "warning", "layer": track["target"], "code": "linear-motion",
                            "property": track["property"],
                            "message": f"Two-key linear {track['property']} on {name} starts and stops instantly; consider easing, "
-                                      "anticipation and settling unless constant speed is intended."})
+                                      "anticipation and settling unless constant speed is intended (a seamless scroll or "
+                                      "spin: mark the track with wrap or symmetry)."})
         velocities = [(b["value"] - a["value"]) * 1000 / (b["time"] - a["time"]) for a, b in zip(keys, keys[1:])]
         for i, (a, b) in enumerate(zip(velocities, velocities[1:])):
             dt = (keys[i + 2]["time"] - keys[i]["time"]) / 2000

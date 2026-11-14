@@ -5,6 +5,7 @@ import numpy as np
 from .render import channel_gains, color
 from .design import resolve_color
 from .constants import ARTISTIC_DEFAULTS
+from .design_schema import STYLES
 
 NATIVE_EFFECTS = {
     "blur",
@@ -41,7 +42,7 @@ def supported(layer):
 
 def native_styles(layer, state):
     active = {k: v for k, v in layer.get("styles", {}).items() if v.get("enabled", True)}
-    if set(active) - {"drop-shadow", "outer-glow", "stroke", "color-overlay", "gradient-overlay"}:
+    if set(active) - set(STYLES):
         return False
     gradient = active.get("gradient-overlay")
     if gradient:
@@ -188,15 +189,21 @@ def style_filter(exporter, layer, bounds):
         if parent
         else (exporter.project.state["canvas"]["width"], exporter.project.state["canvas"]["height"])
     )
+    from .design_render import inner_passes, inner_reach
+
+    inner = inner_passes(active, exporter.project.state)
+    # Inner styles read the layer's alpha around each pixel: the region reaches past the canvas so a layer that
+    # ends at the canvas edge is transparent beyond it and one that runs off the canvas continues.
+    reach = inner_reach(inner)
     container = node(
         exporter.defs,
         "filter",
         id=ident,
         filterUnits="userSpaceOnUse",
-        x=0,
-        y=0,
-        width=w,
-        height=h,
+        x=-reach,
+        y=-reach,
+        width=w + 2 * reach,
+        height=h + 2 * reach,
         color_interpolation_filters="sRGB",
     )
     merges = []
@@ -259,6 +266,22 @@ def style_filter(exporter, layer, bounds):
             k3=1 - amount,
             result=source,
         )
+    for rgba, opacity, blur, dx, dy in inner:
+        # The inverted alpha, blurred and moved, painted in one colour on top of the layer where the layer is
+        # (atop keeps the layer's own alpha), as design_render.inner_styled does.
+        node(container, "feFlood", flood_color="white")
+        node(container, "feComposite", in2="SourceAlpha", operator="out")
+        if blur > 0:
+            node(container, "feGaussianBlur", stdDeviation=blur)
+        if dx or dy:
+            node(container, "feOffset", dx=dx, dy=dy)
+        spread = exporter.ident("inner")
+        node(container, "feColorMatrix", type="matrix", result=spread,
+             values=f"0 0 0 0 {rgba[0] / 255:.4g} 0 0 0 0 {rgba[1] / 255:.4g} 0 0 0 0 {rgba[2] / 255:.4g} "
+                    f"0 0 0 {opacity * rgba[3] / 255:.4g} 0")
+        result = exporter.ident("style")
+        node(container, "feComposite", **{"in": spread}, in2=source, operator="atop", result=result)
+        source = result
     merge = node(container, "feMerge")
     for result in [*merges, source]:
         node(merge, "feMergeNode", **{"in": result})

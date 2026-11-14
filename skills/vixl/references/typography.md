@@ -53,7 +53,7 @@ Text stages: display, h1, h2, h3, subtitle, lead, body, caption, citation and la
 
 ### Colour fonts
 
-A colour font file (COLR v0/v1, OpenType-SVG, CBDT/CBLC such as Noto Color Emoji, sbix) works like any font: import it or name an installed one and text draws its colour glyphs, on the baseline, counted in `ink_bounds` and the overflow checks, in plain and rich text, text flows, path text and `text-animate`. PNG draws every format (bitmap fonts from the smallest strike at least as large as the text). SVG writes COLR and SVG glyphs as vector and embeds bitmap strikes as images listed under `raster_fallbacks` (`svg_policy: strict` refuses them). PDF writes flat COLR v0 layers as vector paths and keeps the other formats as an image of the layer under `raster_fallbacks`; PowerPoint always gets a picture of the layer. A colour glyph takes no stroke, bold or slant and cannot be warped. Emoji still draw from the VIXL Line library by default; `emoji-mode` `font` draws them from the font.
+A colour font file (COLR v0/v1, OpenType-SVG, CBDT/CBLC such as Noto Color Emoji, sbix) works like any font: import it or name an installed one and text draws its colour glyphs, on the baseline, counted in `ink_bounds` and the overflow checks, in plain and rich text, text flows, path text and `text-animate`. PNG draws every format (bitmap fonts from the smallest strike at least as large as the text). SVG writes COLR and SVG glyphs as vector and embeds bitmap strikes as images listed under `raster_fallbacks` (`svg_policy: strict` refuses them). PDF writes flat COLR v0 layers as vector paths and keeps the other formats as an image of the layer under `raster_fallbacks`; PowerPoint always gets a picture of the layer. A colour glyph takes no stroke, bold or slant and cannot be warped; `hand_set` and span `rise`/`rotate` move it like any glyph. A translucent text colour does not fade a COLR glyph's foreground-colour layers (fade with layer `opacity`). Emoji still draw from the VIXL Line library by default; `emoji-mode` `font` draws them from the font.
 
 ### Workspace default fonts
 
@@ -150,6 +150,13 @@ A roll draws from Vixl's house style: it first draws a tier (`safe`, `bold` or `
   both in centred lines), so the letters line up with the margin. Opt-in, for pull quotes and quoted headlines. The
   hung marks reach past the layer box, need no room in it (`fit-text` sizes the letters) and count in the bounds and
   safe-area checks: leave them a margin. PPTX gets `hangingPunct` and a negative first-line indent.
+- Hand-set lettering: `hand_set: {seed, unit: word|glyph, rise, rotate, scale, tracking}` on `text`, `text-set` or
+  `rich-text` gives every word (or letter) its own seeded baseline lift (px), turn (degrees), size (fraction) and
+  spacing when the layer is drawn; `true` uses amounts that follow the size, `false` removes it. The layer stays
+  text: editable, filled by variables, read by the contrast, size, bounds and font checks. Never outline words for a
+  hand-lettered look. A unit keeps its numbers when other words change; the box does not move. One word only: span
+  `rise`, `rotate`, `scale` (`[late]{rise=8 rotate=-6 scale=1.3}` or `text-style`). PNG, SVG and PDF agree (PDF keeps
+  real text); PPTX draws the layer as a described picture (`raster_fallbacks`).
 - `font pair` and `font install --role body` also fetch the body text face's italic (`body_italic` in the result,
   `skipped` with the reason when offline), so italic rich text uses the real italic. No optical sizes (`opsz`).
 

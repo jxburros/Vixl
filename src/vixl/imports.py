@@ -132,11 +132,13 @@ def import_document(project, data, format, name="import", page=1, dpi=None, svg_
     stylesheet or structure cannot be read); ``'appearance'`` imports the whole SVG as one image with its source kept.
     PDF: see ``pdf_import``. Figma: ``data`` is a file URL or key, or exported file JSON; ``page`` is the Figma
     page (number or name) and ``options`` are ``node_id``, ``rasterize_unsupported`` and ``install_fonts``. For SVG,
-    ``install_fonts`` (default true) lets the fonts of Vixl's own SVG, which it names instead of storing, be
-    downloaded from Google Fonts when the font cache does not have them (never with ``VIXL_OFFLINE``). ``font_map``
+    ``install_fonts`` lets the fonts of Vixl's own SVG, which it names instead of storing, be downloaded from Google
+    Fonts when the font cache does not have them (never with ``VIXL_OFFLINE``). It is off by default for every
+    format, so an import reaches the network only when the caller asks (the ``vixl import`` command asks for SVG;
+    REST, MCP, Host and Python callers pass ``install_fonts=True``). ``font_map``
     maps the font families an SVG names to registered fonts (Vixl's own SVG names its fonts by identity and ignores
     it); for PDF, it maps the PDF's font
-    families to registered fonts (``{"Literata": "literata-400"}``) and ``install_fonts`` (default false) lets a face
+    families to registered fonts (``{"Literata": "literata-400"}``) and ``install_fonts`` lets a face
     that is neither in the document nor in the font cache be downloaded."""
     from .plugins import first as plugin_first
 
@@ -145,7 +147,7 @@ def import_document(project, data, format, name="import", page=1, dpi=None, svg_
         require(imported is not None, "Figma import is not available (plugin figma_import)", field="format")
         return imported
     pdf = format.lower() == "pdf"
-    install_fonts = options.pop("install_fonts", True if format.lower() == "svg" else False)
+    install_fonts = bool(options.pop("install_fonts", False))
     font_map = options.pop("font_map", None)
     require(not options, f"Unknown import option(s): {', '.join(sorted(options))}")
     require(pdf or format.lower() == "svg" or not font_map, "font_map applies to SVG and PDF import",
@@ -166,7 +168,7 @@ def import_document(project, data, format, name="import", page=1, dpi=None, svg_
     return imported
 
 
-def _import_svg(project, data, name, svg_mode, install_fonts=True, font_map=None):
+def _import_svg(project, data, name, svg_mode, install_fonts=False, font_map=None):
     if svg_mode == "appearance":
         return svg_appearance(project, data, name)
     from .svg_import import embedded_payload, embedded_project, import_embedded, svg_operations as convert

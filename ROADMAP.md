@@ -29,14 +29,15 @@ that finishes it; elsewhere it is named by number so its history can be found.
 13. Stage 9: interchange, fonts and accessibility
 14. Stage 10: craft measurement
 15. Stage 11: code structure
-16. Later and exploratory
-17. Issue index
+16. Stage 12: security hardening from the 2026-11-09 scan
+17. Later and exploratory
+18. Issue index
 
 ## 1. How to use this roadmap
 
 - **Order.** Stages are in the recommended order. Stages 1 to 3 change what most users see first and should go in
-  order. Stages 4 to 11 are largely independent and can be interleaved; each lists what it depends on. Stage 11 is
-  mechanical refactoring that can run alongside anything.
+  order. Stages 4 to 12 are largely independent and can be interleaved; each lists what it depends on. Stage 11 is
+  mechanical refactoring and stage 12 is security hardening; both can run alongside anything.
 - **Ratings.** Each item is rated for **complexity** (C1 a few hours, C2 about a day, C3 several days, C4 one to two
   weeks, C5 several weeks or open-ended) and **payoff** (P1 cosmetic or rare, P2 a narrow workflow, P3 a common
   workflow, P4 changes results for most agents, P5 first impression or correctness of output). Re-rate an item when it
@@ -192,6 +193,8 @@ item names the decision it waits on. They can be taken at any time and need no c
 | Build the optional previewer, and how far (view only, review aids, notes, light edits) | #775 | Steps 1-3 only if pursued |
 | Windows: accept the per-user scheduled task or also build a machine-wide service; agree Studio's detection path | #547 | Per-user task, with Studio detecting `%LOCALAPPDATA%` |
 | Whether the release workflow triggers the container build | #546 | Yes, after the PyPI job |
+| Linear-time regex engine (`google-re2`, optional dependency) or a restricted pattern syntax for service callers | 12.4, #825 | `google-re2` optional, restricted syntax as the fallback |
+| Whether service (REST/MCP/Host) SVG imports install fonts by default | 12.2, #819 | Off for service callers, on for the CLI |
 | Bump `CURRENT_SINCE` in the conversion kit (documents saved by 0.27-0.30 redraw in Noto on next edit; stored layouts use the old `optional` tag) | Release decision | At the next minor release |
 
 ## 5. Stage 1: install path and quick correctness
@@ -1203,7 +1206,116 @@ Pick these up when the code is open for something else; each is C1.
   check reports (documented and tested; fix if the standard character is ever revised).
 - Most 0.28.0 changelog entries do not cite issue numbers; cite `(#NNN)` from now on (section 2).
 
-## 16. Later and exploratory
+## 16. Stage 12: security hardening from the 2026-11-09 scan
+
+A full repository scan of `f66ed26` on 2026-11-09 reported eleven medium and two low findings, all filed as issues
+labelled `security`. None is remote code execution or a credential leak. Most let an authorized or semi-trusted caller
+use more CPU, memory, disk, processes or network than the limits that shipped in 0.28-0.29 intend; one lets a
+document-scoped REST caller reach the user-global resource library; one discloses absolute server paths. They matter
+most for `vixl mcp --http`, `vixl serve`, `vixl host` and any future hosted service (#770), and much less for local
+stdio use. This stage can run alongside any other. Do 12.1 first: several of the other items assume every heavy path
+goes through the limiter.
+
+Every item follows section 2: core, a regression test that fails without the fix, a `CHANGELOG.md` entry with the
+issue number, and an update to `docs/reference/interfaces.md` (where the call limits and body limits are documented)
+and `SECURITY.md` when a limit is added or changed.
+
+### 12.1 Every heavy service path goes through the call limiter (#821, #823, #826, #828)
+
+- **Problem:** the bounded executor, workspace gate and hard timeout from 0.29 are bypassed in four places. The
+  fixed-project REST `/import` and `/assets` routes have no `@limited`, and the Host asset endpoint calls `Host.call`
+  with `heavy=False` (#821). `vixl_render` is outside `JOB_TOOLS`, so it never takes the workspace gate and
+  `max_concurrent` does not apply to renders (#828). The MCP executor's work queue is unbounded, and `JobStore` can grow
+  past `MAX_JOBS` when no job has finished (#823). The MCP Streamable HTTP app has no `BodyLimit` middleware (#826).
+- **Remaining work:** (1) `@limited` on the REST import and asset routes, and `heavy=True` for Host assets
+  (`interfaces.py`, `host.py`). (2) Separate "takes the workspace gate" from "may detach into a job" in
+  `mcp_runtime.py`, and gate `vixl_render`. (3) Count queued and running calls; over the limit, refuse with a retryable
+  busy error, and make `JobStore` refuse rather than exceed `MAX_JOBS`. (4) Add `BodyLimit` to the MCP HTTP app,
+  configurable like REST's.
+- **Done when:** with `max_concurrent=1`, two concurrent imports or renders never overlap; a slow mocked decoder hits
+  the hard timeout through REST and Host; submitting past the queue limit returns the busy error and the store stays
+  at or under `MAX_JOBS`; an oversized MCP POST gets 413 before it reaches the SDK.
+- **Rating:** C2, P4 for served deployments.
+
+### 12.2 Cumulative budgets for editable SVG and PDF import (#818, #819, #822)
+
+- **Problem:** SVG import matches an unbounded number of CSS rules against every element, decodes an embedded raster
+  again for every `use`, and allows 64 full-canvas raster fallbacks with no total pixel budget (#818). Up to 10,000
+  embedded font records are resolved through Google Fonts before the 64-font archive limit applies, and service imports
+  install fonts by default (#819). The PDF parser allocates whatever sizes PDFium reports, materializes paths before
+  the path cap, recurses into nested forms with no depth or object budget, and can repeat full-page fallback renders
+  (#822).
+- **Remaining work:** `svg_import.py`: cap or index stylesheet rules, decode each embedded raster once, and replace the
+  fallback count with a cumulative pixel budget; apply the font limit and dedupe families at parse time, before any
+  network call (`typefaces.py`), and decide whether service imports install fonts by default (`imports.py`).
+  `plugins/pdf_import/pdf_import.py`: bound reported sizes before allocating, check the path cap while iterating, add a
+  form depth limit and one object budget per import, and bound total fallback pixels.
+- **Done when:** crafted SVG fixtures (many rules, one raster `use`d many times, many full-canvas fallbacks, more font
+  records than the limit) and mocked PDFium objects (huge reported length, deep form nesting, many fallbacks) each fail
+  cleanly within budget; the font case makes no network call (mocked fetcher, call count asserted).
+- **Rating:** C3, P3.
+
+### 12.3 Network reads stop at their caps and deadlines (#827, #830)
+
+- **Problem:** the shared fetch, provider and font readers append a decoded HTTPX chunk before checking the limit, and
+  `FigmaClient` reads its whole body with an eager `client.get` before checking its 256 MiB cap (#827). The fetcher's
+  120-second deadline is only checked on the final body, each redirect gets a fresh 30-second timeout, and webhook
+  response draining has no absolute deadline (#830).
+- **Remaining work:** `fetch.py`: check `len(buffer) + len(chunk)` before appending, use a bounded decoded chunk size,
+  reject an oversized `Content-Length` early, set one deadline per fetch and give each redirect hop only the time left.
+  `plugins/figma_import/figma_import.py` and `plugins/ai/ai.py`: use the shared streaming reader. `jobs.py`: an absolute
+  deadline (or a small byte cap) on webhook draining.
+- **Done when:** with mocked transports, a gzip bomb and an oversized Figma response fail with the buffer never past
+  the cap plus one chunk; a redirect chain past the total deadline fails; a trickling webhook receiver is cut off at
+  the deadline.
+- **Rating:** C2, P3.
+
+### 12.4 Caller regular expressions cannot outlive the hard timeout (#825)
+
+- **Problem:** selectors, text suites and the optional replacement workflow compile caller patterns with Python's
+  backtracking `re` after only syntax and length checks; a catastrophic pattern keeps its thread, CPU and workspace
+  slot after the cooperative hard timeout fires.
+- **Remaining work (`selectors.py`, `call_limits.py`):** use a linear-time engine for service-supplied patterns
+  (`google-re2` as an optional dependency), or reject nested quantifiers and backreferences in those patterns and cap the
+  subject length, or run them in a killable subprocess. The choice is the owner's (see the decision below).
+- **Done when:** a known catastrophic pattern returns an error within a short time budget, and ordinary selectors and
+  suites behave as before.
+- **Rating:** C2, P3. **Owner decision:** an optional `google-re2` dependency, or a restricted pattern syntax for
+  service callers.
+
+### 12.5 Quotas for durable workflow queues (#824)
+
+- **Problem:** MCP exposes `submit`, `work` and `start`; every `Queue.start` launches another detached Python process
+  with up to four threads, and every submission writes persistent files with no count, disk, process or retention
+  limit.
+- **Remaining work (`workflows.py`, `jobs.py`):** one worker per queue (a lock or pid file; `start` does nothing while
+  a worker is alive); a cap on pending jobs and queue disk use; finished jobs pruned after a retention period.
+- **Done when:** a second `start` spawns no second process; submissions past the cap are refused; finished jobs older
+  than the retention period are pruned.
+- **Rating:** C2, P2.
+
+### 12.6 Workspace isolation for resources and links (#820, #829)
+
+- **Problem:** the fixed-document REST resource routes call catalog/get/register without the session workspace, so
+  they fall back to `VIXL_RESOURCES` or `~/.config/vixl/resources.json` and can read and write the user-global library
+  (#820). `links.status` returns absolute resolved paths, and missing-link errors carry absolute searched paths that
+  skip the `OSError` redaction (#829).
+- **Remaining work:** pass the session workspace on every service resource call and remove the global fallback on
+  that path (`interfaces.py`, `resources.py`, `studio.py`); report link paths and missing-link searches relative to the
+  workspace root (`links.py`).
+- **Done when:** registering a resource through the one-document REST app leaves a temporary global library untouched;
+  link status and the missing-link error, called through REST, contain no absolute path.
+- **Rating:** C1, P3.
+
+**Close at the end of this stage:** [#818](https://github.com/jxburros/vixl/issues/818),
+[#819](https://github.com/jxburros/vixl/issues/819), [#820](https://github.com/jxburros/vixl/issues/820),
+[#821](https://github.com/jxburros/vixl/issues/821), [#822](https://github.com/jxburros/vixl/issues/822),
+[#823](https://github.com/jxburros/vixl/issues/823), [#824](https://github.com/jxburros/vixl/issues/824),
+[#825](https://github.com/jxburros/vixl/issues/825), [#826](https://github.com/jxburros/vixl/issues/826),
+[#827](https://github.com/jxburros/vixl/issues/827), [#828](https://github.com/jxburros/vixl/issues/828),
+[#829](https://github.com/jxburros/vixl/issues/829), [#830](https://github.com/jxburros/vixl/issues/830).
+
+## 17. Later and exploratory
 
 Not scheduled. Each needs either an earlier item or an owner decision before it is worth starting. Close each issue
 when its item ships, or as not planned if the owner decides against it:
@@ -1279,9 +1391,10 @@ when its item ships, or as not planned if the owner decides against it:
 - **Rating:** C3 for the first three steps (C4 with edits), P3. **Depends on:** the owner deciding whether to do it,
   how far, and whether the "headless only" stance (BLK-06) changes.
 
-## 17. Issue index
+## 18. Issue index
 
-Every issue open after the 2026-10-31 triage, with where it is finished.
+Every issue open after the 2026-10-31 triage, plus the security findings filed on 2026-11-10, with where each is
+finished.
 
 | Issue | Item | Stage |
 | --- | --- | --- |
@@ -1334,6 +1447,19 @@ Every issue open after the 2026-10-31 triage, with where it is finished.
 | #778 | Address chart marks by data | 7.2 |
 | #779 | Chart emphasis | 7.3 |
 | #780 | Audit chart edits | 7.1 |
+| #818 | SVG import CSS, raster reuse and fallback budget | 12.2 |
+| #819 | SVG font metadata resolved before the font limit | 12.2 |
+| #820 | REST resource routes reach the global library | 12.6 |
+| #821 | REST and Host imports bypass the call limiter | 12.1 |
+| #822 | PDF import allocation and recursion budgets | 12.2 |
+| #823 | MCP executor queue and job store bound | 12.1 |
+| #824 | Durable workflow queue quotas | 12.5 |
+| #825 | Caller regexes outlive the hard timeout | 12.4 |
+| #826 | MCP HTTP body limit | 12.1 |
+| #827 | Network reads overshoot their caps | 12.3 |
+| #828 | MCP renders bypass the workspace gate | 12.1 |
+| #829 | Link status discloses absolute paths | 12.6 |
+| #830 | Fetch redirect and webhook deadlines | 12.3 |
 
 Items without an open issue (remainders of closed issues and deferred work): 3.1, 3.6, 4.3-4.9 (under
 #615), 5.5, 8.1, 8.4, 8.5, 8.6, 8.7, 9.6, 9.7, 9.8, 11.1-11.4.

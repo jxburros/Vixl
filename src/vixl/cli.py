@@ -1,5 +1,6 @@
 """Headless CLI and interactive shell. Project changes autosave after every successful command."""
 
+import argparse
 from copy import deepcopy
 import glob
 import json
@@ -48,7 +49,8 @@ Imperfect: irregular TARGET --seed N [--strength subtle|natural|rough] (wobble, 
            tear TARGET --seed N [--edges bottom] (torn edge as a mask; --as path for layers), --remove undoes either
 Charts:    chart bar|stacked-bar|percent-bar|horizontal-bar|line|area|pie|donut --name N (--csv FILE | --categories JSON --series JSON)
            [--title T] [--legend bottom] [--value-labels true] [--number-format '#,##0'], chart line --target N (restyle, resize, change kind),
-           chart-data --target N --set DEC=3330 | --append 'JAN=1,2' | --remove-category C | --reload; exports to .pptx as a native chart
+           chart-data --target N --set DEC=3330 | --append 'JAN=1,2' | --remove-category C | --reload; exports to .pptx as a native chart,
+           chart-emphasis DEC --target N [--series S] [--mute fade|desaturate] [--annotate 'Best: ${value}'] | --clear (highlight, mute the rest)
 Tables:    table --name N (--table JSON | --csv FILE) [--align left,decimal] [--width W] [--zebra] [--borders all],
            table-data --target N --set ROW:COLUMN=VALUE | --append JSON | --remove-row R | --reload; exports to .pptx as a native table
 Design:    pen, shape, shape-place, container-place, container-swap, container-reflow, group, ungroup, reparent LAYER… --into GROUP|page, clip, layer-style, distribute, style-define,
@@ -58,7 +60,7 @@ Design:    pen, shape, shape-place, container-place, container-swap, container-r
 Guides:    guide NAME x|y POS | guide NAME --kind line|ray|segment|point|circle|path …, guides,
            grid NAME [--kind columns|baseline|thirds|golden|armature|golden-spiral|polar|isometric|triangular|hex|oblique|perspective],
            place LAYER… --guide NAME [--at F | --start F --end F | --spacing PX | --with GUIDE] [--orient tangent],
-           snap LAYER… [--tolerance 8], check --checks guides alignment, render --out F --show-guides
+           snap LAYER… [--tolerance 8], check --checks guides alignment, render --out F --show-guides | --show-rulers [STEP] | --show-bounds [LAYER…]
 Pages:     page add NAME [--master M] [--after P] [--duplicate P] [--notes TEXT], page select|remove P, page move P --index N,
            page set P [--rename N] [--notes TEXT] [--hidden] [--transition fade], master add NAME [--from P], pages,
            render --page 2 | --page all (contact sheet), export deck.pdf|deck.pptx [--pages 1-3,5] [--pdf-content raster],
@@ -89,7 +91,7 @@ Measure:   info, sample X Y, histogram [--region X Y W H], info --target TEXT,
            check --all [GLOB …] | --group NAME [--profile final] [--fail-on error|warning|fix|review|never] [--no-waivers]
            [--changed-since REF] [--base REF] [--since-last] [--format markdown|json|junit|sarif|github] [--write sarif=vixl.sarif] (many documents, one report)
            approve [--group NAME] [--clear] [--author WHO] (record the approved look; later checks flag changes)
-Pixels:   pixel-art, pixel-draw, pixel-palette, pixels [LAYER],
+Pixels:   pixel-art, pixel-draw, pixel-palette, pixel-transform, sprite-sheet, pixels [LAYER],
            frame-save NAME [--duration MS], frame-apply NAME, frame-delete NAME,
            animation, animation-set --loop N --order FRAME FRAME,
            animation-set --name walk --order FRAME FRAME [--duration MS | --durations MS MS] [--loop N] | --name walk --delete,
@@ -354,6 +356,10 @@ def output_options(args, command):
     p.add_argument("--icon-sizes", type=int, nargs="+")
     p.add_argument("--time", help="Render a timeline frame: ms, 1.5s, 50%% or a marker")
     p.add_argument("--show-guides", action="store_true", help="Draw the document's guides over a raster render")
+    p.add_argument("--show-rulers", nargs="?", const=True, type=float, metavar="STEP",
+                   help="Draw a coordinate grid labelled in document pixels over a raster render (STEP: grid step)")
+    p.add_argument("--show-bounds", nargs="*", metavar="LAYER",
+                   help="Outline layers with 'name x,y WxH' labels over a raster render (none named: every top-level layer)")
     p.add_argument("--page", help="Page name or number of a multi-page document; 'all' renders a contact sheet")
     p.add_argument("--pages", help="PDF/PowerPoint pages: numbers, ranges and names, e.g. 1-3,5,intro")
     p.add_argument("--pdf-content", choices=["vector", "raster"], help="PDF pages as vector text and shapes (default, also CMYK) or one image per page")
@@ -837,7 +843,7 @@ def _dispatch(argv):
         server = mcp_server(path, limits, workspace=a.workspace, planner=a.planner, tools=a.tools,
                             require_document=a.require_document,
                             call_limits=from_arguments(a, network="mcp" if a.http else None),
-                            allow_screen_capture=a.allow_screen_capture)
+                            allow_screen_capture=a.allow_screen_capture, local=not a.http)
         if a.http:
             from .interfaces import serve_mcp
             serve_mcp(server, a.host, a.port, os.environ.get(a.token_env), tls=tls)
@@ -979,7 +985,8 @@ def command_help(cmd, args):
         "timeline": "timeline (inspect) | timeline set [--duration 3s] [--fps 30] [--loop N] [--loop-mode seamless|off] [--close] [--clear]",
         "pages": "pages (list pages and masters of a multi-page document)",
         "styles": "styles [list [QUERY] | show NAME] | styles apply NAME [--palette] | styles check [NAME…]",
-        "guide": "guide [BRIEF|GUIDANCE]  (e.g. guide a mascot for a coffee brand; guide operations; guide natural-motion); "
+        "guide": "guide [--brief] [BRIEF|GUIDANCE]  (e.g. guide a mascot for a coffee brand; guide operations; guide "
+                 "natural-motion; --brief prints only the first step, the operations and how to get the rest); "
                  "guide NAME x|y POSITION or guide NAME --kind KIND … adds a guide line",
         "capabilities": "capabilities [TOPIC]  (e.g. capabilities animation: operations with fields, workflows, gotchas, guidance)",
         "looks": "looks  (the finishing looks; apply with look LAYER NAME)",
@@ -1048,6 +1055,9 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("--dpi", type=int, default=144)
         p.add_argument("--credit", help="attribution kept with an image, e.g. 'Photo: Ana Ruiz / Unsplash'")
         p.add_argument("--license", help="license or usage terms of an image, e.g. 'CC BY 4.0'")
+        p.add_argument("--scale", type=float, help="image: place it at this multiple of its size")
+        p.add_argument("--sampling", choices=["smooth", "nearest"], help="image: nearest keeps pixel art crisp "
+                       "when enlarged (stored on the layer)")
         p.add_argument("--format", choices=["figma"], help="figma: PATH is a Figma file URL or key (or exported file "
                        "JSON); reads FIGMA_TOKEN, see docs/guides/images/figma.md")
         p.add_argument("--node", help="figma: import this node id (1:2) instead of the first page")
@@ -1055,8 +1065,9 @@ def project_command(project, cmd, args, *, detail="compact"):
                        "that have no editable equivalent")
         p.add_argument("--font-map", action="append", metavar="SRC=NAME", help="pdf: use registered font NAME for the "
                        "PDF font family SRC ('Literata Bold=literata-700' for a style); repeatable")
-        p.add_argument("--install-fonts", action="store_true", help="pdf: allow downloading from Google Fonts a font "
-                       "that neither the document nor the font cache has")
+        p.add_argument("--install-fonts", action=argparse.BooleanOptionalAction, default=None,
+                       help="allow downloading from Google Fonts a font that neither the document nor the font cache "
+                       "has (default: on for Vixl's own SVG, off for PDF)")
         a = p.parse_args(args)
         if a.format == "figma" or re.match(r"(?i)https://(www\.)?figma\.com/", a.path):
             source = Path(a.path).read_bytes() if Path(a.path).is_file() else a.path.encode()
@@ -1067,18 +1078,19 @@ def project_command(project, cmd, args, *, detail="compact"):
             from .image_import import import_image_from
 
             return import_image_from(project, url=a.path if is_url else None, path=None if is_url else a.path,
-                                     name=a.name or "image", credit=a.credit, license=a.license), True
+                                     name=a.name or "image", credit=a.credit, license=a.license, scale=a.scale,
+                                     sampling=a.sampling), True
         require(a.credit is None and a.license is None, "--credit and --license apply to image imports",
                 field="credit")
-        options = {}
-        if a.font_map or a.install_fonts:
-            require(Path(a.path).suffix.lower() in (".pdf", ".svg"),
-                    "--font-map and --install-fonts apply to SVG and PDF imports",
-                    field="font_map")
-            mapped = [item.partition("=") for item in a.font_map or []]
+        # The command line is the user's own machine: Vixl's own SVG may fetch the fonts it names. Service callers
+        # (REST, MCP, Host) and Python get no font download unless they ask.
+        install = Path(a.path).suffix.lower() == ".svg" if a.install_fonts is None else a.install_fonts
+        options = {"install_fonts": install}
+        if a.font_map:
+            mapped = [item.partition("=") for item in a.font_map]
             require(all(sep and key.strip() and value.strip() for key, sep, value in mapped),
                     "Use --font-map SRC=NAME, e.g. --font-map Literata=literata-400", field="font_map")
-            options = {"font_map": {key.strip(): value.strip() for key, _, value in mapped}, "install_fonts": a.install_fonts}
+            options["font_map"] = {key.strip(): value.strip() for key, _, value in mapped}
         return import_document(project, read_bounded(a.path, project.limits.max_asset_bytes),
                                Path(a.path).suffix.lstrip("."), a.name or "import", a.page, a.dpi, a.svg_mode,
                                **options), True
@@ -1220,6 +1232,7 @@ def project_command(project, cmd, args, *, detail="compact"):
             return project.export(a.out or a.path, dry_run=True, format=a.format,
                                   scale=float(a.scale.rstrip("x")), pages=a.pages, page=a.page,
                                   pdf_content=a.pdf_content), False
+        strict = a.strict
         if a.strict:
             from .check_results import delivery
 
@@ -1272,6 +1285,7 @@ def project_command(project, cmd, args, *, detail="compact"):
                 scale=float(a.scale.rstrip("x")),
                 profile=a.profile,
                 check=not a.no_check,
+                strict=strict and not a.no_check,
             ), False
         page = int(a.page) if a.page and a.page.isdigit() else a.page
         from .forms import split_values
@@ -1282,8 +1296,9 @@ def project_command(project, cmd, args, *, detail="compact"):
 
             project = (with_values(project, values, complete=False) if values and not (a.fillable or a.fill_mode == "editable")
                        else project)
-        if a.show_fields or a.show_guides:
-            require(destination != "-", "--show-fields and --show-guides write a file")
+        placement = a.show_rulers is not None or a.show_bounds is not None
+        if a.show_fields or a.show_guides or placement:
+            require(destination != "-", "--show-fields, --show-guides, --show-rulers and --show-bounds write a file")
             image = project.render(variables, artboard=a.artboard, comp=a.comp, page=page).convert("RGBA")
             if a.show_guides:
                 from .guides import draw_overlay
@@ -1294,10 +1309,17 @@ def project_command(project, cmd, args, *, detail="compact"):
                 from .render import view_page
 
                 draw_fields(image, view_page(project, page))
+            found = {}
+            if placement:
+                from .feedback import draw_coordinates
+                from .render import view_page
+
+                image, found = draw_coordinates(image, view_page(project, page), 1.0, (0, 0), a.show_rulers,
+                                                None if a.show_bounds is None else (a.show_bounds or True))
             fmt = (a.format or Path(destination).suffix.lstrip(".") or "PNG").upper()
             require(fmt in ("PNG", "JPG", "JPEG", "WEBP"), "Overlays render PNG, JPEG or WebP")
             image.convert("RGB" if fmt in ("JPG", "JPEG") else "RGBA").save(destination, format="JPEG" if fmt == "JPG" else fmt)
-            result = {"output": destination}
+            result = {"output": destination, **found}
             if a.show_guides:
                 result["guides"] = len(project.state.get("guides", {}))
             if a.show_fields:
@@ -1498,9 +1520,11 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("--max-bytes", type=int, help="Soft size target: warn when the file is larger")
         p.add_argument("--quality", type=int, default=90, help="WebP (smooth) and MP4/WebM quality 1–100")
         p.add_argument("--columns", type=int)
+        p.add_argument("--metadata", choices=["neutral", "aseprite"], help="sheet of a document with a sprite-sheet "
+                       "grid: the JSON beside the PNG as named clips (default) or Aseprite's frames and frameTags")
         a = p.parse_args(args)
         scale = int(a.scale) if a.scale.is_integer() else a.scale
-        return project.export_animation(a.out, dry_run=a.dry_run, format=a.format, scale=scale, columns=a.columns, sampling=a.sampling, colors=a.colors, animation=a.animation, quality=a.quality, overwrite=a.overwrite, dither=a.dither, max_bytes=a.max_bytes), False
+        return project.export_animation(a.out, dry_run=a.dry_run, format=a.format, scale=scale, columns=a.columns, sampling=a.sampling, colors=a.colors, animation=a.animation, quality=a.quality, overwrite=a.overwrite, dither=a.dither, max_bytes=a.max_bytes, **({"metadata": a.metadata} if a.metadata else {})), False
     if cmd == "export-screens":
         from .exports import export_screens
 

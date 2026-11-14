@@ -332,8 +332,9 @@ vixl -p copy.vixl import poster.svg
   family, or a file you imported). A blank document is a few KB, and a published SVG does not redistribute font
   files. On import each font is found again: the same file already in the document, the bundled face, a font the
   document registers under the same name (or with the same family and style), then the Google Fonts style from the
-  font cache, downloading it when the cache does not have it (`install_fonts=False` in Python keeps the import
-  offline). The result's `fonts` says how each registered font was found. A font none of these supplies (an
+  font cache, and with `install_fonts` a download when the cache does not have it (see [SVG fonts](#svg-fonts):
+  on for `vixl import`, off elsewhere unless asked for). The result's `fonts` says how each registered font was
+  found. A font none of these supplies (an
   imported file you do not have registered) is drawn with the bundled Noto Sans and listed in `warnings`; the
   import does not fail, and importing and registering the font under the same name restores it. Everything except
   the font files round-trips exactly.
@@ -372,9 +373,17 @@ draws each such element as an image layer. External resources are never fetched.
 
 Untrusted SVG is charged while it is read, so a small file cannot run for minutes. An import that would walk more
 than four times the batch limit of elements (40,000 by default, `<use>` copies counted where they expand) or make
-more than one batch of layers fails at once with `resource_limit`, before the work is done. `auto` draws at most 64
-elements as image layers; an SVG with more fails with `resource_limit`: import it with `svg_mode: "appearance"`
-instead, which draws the whole file as one image.
+more than one batch of layers fails at once with `resource_limit`, before the work is done. The other budgets of
+one import, each failing the same way:
+
+| Budget | Limit |
+| --- | --- |
+| Stylesheet rules (selectors, all `<style>` elements together) | 4,096; rules are indexed by ID, class and type, and the comparisons with the elements they could match are capped at 2 million |
+| Embedded images | Each distinct image is decoded and stored once, however many `<use>` references or copies draw it |
+| Elements drawn as images (`auto`) | 64 |
+| Pixels decoded and rendered | `Limits.max_load_pixels` (160 million by default) for the embedded images plus the raster fallbacks together. A fallback renders the whole canvas, so a 1920×1080 canvas affords 64 of them and an 8000×5000 canvas four |
+
+An SVG over a budget imports with `svg_mode: "appearance"` instead, which draws the whole file as one image.
 
 **PDF.** A page's text objects become live text layers with their text, size, colour, position and rotation;
 consecutive lines of one style that share a left edge, centre or right edge become one multi-line layer, and a text
@@ -391,9 +400,23 @@ other PDFs map one point to one pixel, and `dpi` applies to `appearance` imports
 annotations, blend modes and transparency groups are not read as such: rotated pages import as one image, and
 the others as what pdfium reports for each object.
 
+Untrusted PDF is charged while it is read too. One import reads at most 20,000 objects (the contents of a form
+XObject count wherever the form is drawn, and forms nest at most 16 deep), 2 million path and clip segments (100,000
+in one path), 8 MiB of text (1 MiB in one string, checked against the size pdfium reports before a buffer is
+allocated) and 64 runs of objects drawn as images. The pixels of the images it decodes and of those runs (each
+renders the whole page) share `Limits.max_load_pixels`, as for SVG. A page over a budget fails with
+`resource_limit` before the work is done; import it with `svg_mode: "appearance"`.
+
 ### SVG fonts
 
-An SVG that is not Vixl's own names fonts by family. `font_map` (CLI `--font-map SRC=NAME`, REST `font_map=SRC=NAME`) maps those families to registered fonts or roles, first, exactly as for PDF, and fails with `missing_font` for an unregistered target. Vixl's own SVG names its fonts by identity and ignores `font_map`; `install_fonts` (default true) applies to it and never downloads with `VIXL_OFFLINE=1`.
+An SVG that is not Vixl's own names fonts by family. `font_map` (CLI `--font-map SRC=NAME`, REST `font_map=SRC=NAME`) maps those families to registered fonts or roles, first, exactly as for PDF, and fails with `missing_font` for an unregistered target. Vixl's own SVG names its fonts by identity and ignores `font_map`; `install_fonts` applies to it: a Google Fonts style the font cache lacks may be downloaded, never with `VIXL_OFFLINE=1`.
+
+`install_fonts` is on for the command line (`vixl import FILE.svg`; `--no-install-fonts` turns it off) and off for
+every other caller (MCP, REST, Host and Python) unless the call passes `install_fonts: true`: a served import makes
+no network request by default, and a font that is not in the font cache falls back to the bundled face with a
+warning that names it. The Vixl document in an SVG may name at most `Limits.max_load_fonts` fonts (64); with more,
+none is looked up and the SVG's visible elements are imported instead, with a warning. Records that name the same
+Google Fonts style share one lookup.
 
 ### PDF fonts
 

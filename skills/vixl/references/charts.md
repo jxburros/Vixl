@@ -29,6 +29,19 @@ fixing a number is one operation and nothing is recomputed by hand. Full referen
 - `chart-data` edits in place: `set` (`category`, `series`, `value`), `append`, `remove_categories`,
   `add_series`, `remove_series`, `reload`, or a whole new table. Layer IDs survive; unknown names
   fail with the available ones. `chart` with `target` restyles or resizes (`width`/`height`, never `resize`).
+- **Make one stand out** with `chart-emphasis`, not by recolouring layers:
+  `{"type": "chart-emphasis", "target": "sales", "focus": ["Feb"], "annotate": "Peak: ${value}"}` keeps the focus
+  categories in colour, mutes the rest (`mute`: `fade` with `opacity`, default 0.35, or `desaturate`) and sets a
+  callout beside each focus mark (`${value}`, `${percent}`, `${category}`, `${series}`). `series` limits the focus to
+  one series, or alone keeps a whole series (one line among several). It is stored with the chart, so `chart-data`
+  keeps it; `focus: []` restores the chart exactly. `check --checks color_vision` reports focus and muted marks that
+  look alike (`emphasis-indistinct`) or muted marks that vanish (`emphasis-faint`).
+- **Name a mark by data**, not by layer name: any `target` (or entry of `targets`) can be
+  `{"chart": "sales", "series": "Latte", "category": "Feb", "part": "value"}`. `part` is `bar`, `slice`, `point`,
+  `line`, `area`, `value`, `total`, `legend`, `category-label` or `callout`; without it, the data marks. Leave out
+  `series` or `category` to mean all of them. The address holds after `chart-data` adds, removes or reorders rows;
+  unknown names fail with the valid ones. Use it for what the chart does not own (opacity, effects, blend mode,
+  visibility): `{"type": "opacity", "target": {"chart": "sales", "category": "Jan"}, "value": 0.5}`.
 - The group keeps the numbers: `inspect` the chart layer and read `chart.summary` (`totals`,
   `shares`, `scale`). Generated layers are named `NAME/part` and are owned by the chart: edit the
   data or options, not their geometry; effects, styles and opacity you add to them survive.
@@ -44,7 +57,8 @@ fixing a number is one operation and nothing is recomputed by hand. Full referen
   on a large canvas and the legibility check complains.
 - Export: PNG/SVG/PDF are vector layers as usual; **`.pptx` writes a native chart with the table
   embedded** (editable in PowerPoint). Total labels, rotated charts and charts with effects are the
-  exceptions (see the export report's `charts` and `raster_fallbacks`).
+  exceptions (see the export report's `charts` and `raster_fallbacks`). An emphasis exports as native point
+  colours; its callouts are text boxes over the chart.
 - Through MCP/REST a `csv` path must lie inside the workspace; fonts are registered names or the
   `heading`/`body` roles (`title_font`, `label_font`).
 

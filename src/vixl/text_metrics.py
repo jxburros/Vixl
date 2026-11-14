@@ -68,9 +68,9 @@ def inspect_text(project, layer, bounds):
             for glyph in result.glyphs:
                 box = glyph_outline(glyph.data, glyph.name, glyph.size)[1]
                 if box:
-                    f = glyph.size / face(glyph.data)[0]["head"].unitsPerEm
-                    boxes.append((glyph.x + box[0] * f, glyph.y - box[3] * f,
-                                  glyph.x + box[2] * f, glyph.y - box[1] * f))
+                    from .richtext import glyph_ink
+
+                    boxes.append(glyph_ink(glyph, box, glyph.size / face(glyph.data)[0]["head"].unitsPerEm))
             baselines = [row[1] for row in result.lines]
             line_box = (0, 0, result.width, result.height)
             metrics = font_metrics(primary, layer["size"] * result.size_scale)

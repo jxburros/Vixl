@@ -55,11 +55,17 @@ def ignored_fields(candidate, op):
                 found.append("marker_size is in local pixels, not a multiplier; use at least twice stroke_width "
                              "so the shaft does not hide the arrowhead")
         shape, name = op.get("shape"), repr(op.get("name", "shape"))
-        if shape is None:  # editing an existing layer: its own shape decides what each field does
+        stroked = "stroke" in op
+        if op.get("target", op.get("layer")) is not None:
+            # Editing an existing layer: its own shape and stroke decide what each field does.
             try:
-                shape = candidate.layer(op.get("target", op.get("layer"))).get("shape")
+                edited = candidate.layer(op.get("target", op.get("layer")))
             except Exception:  # noqa: BLE001 - an unresolvable target is reported by the operation itself
                 return found
+            shape, name = shape or edited.get("shape"), repr(op.get("name") or edited.get("name", "shape"))
+            stroked = stroked or edited.get("stroke") not in (None, "transparent")
+        elif shape is None:
+            return found
         from .normalize import SHAPE_TYPES
 
         stored = shape
@@ -81,7 +87,7 @@ def ignored_fields(candidate, op):
             found.append(f"shape {name}: inner_radius only applies to {_names(INNER_RADIUS_SHAPES)}, not {shape!r}")
         if "path" in op and shape != "path":
             found.append(f"shape {name}: path is only drawn for shape 'path', not {shape!r}")
-        if "stroke_width" in op and "stroke" not in op and shape != "line":
+        if "stroke_width" in op and not stroked and shape != "line":
             found.append(f"shape {name}: stroke_width draws nothing without a stroke colour; add stroke")
     elif kind == "gradient":
         name = repr(op.get("name", "gradient"))

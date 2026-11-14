@@ -31,6 +31,7 @@ VERSION = r"\d+\.\d+\.\d+"
 PINS = (
     (".mcp.json", rf'"{PACKAGE}==({VERSION})"'),
     ("README.md", rf"uvx --from {PACKAGE}==({VERSION}) "),
+    ("README.md", rf'"{PACKAGE}==({VERSION})"'),  # the client configurations under "Install for your agent"
     ("docs/getting-started.md", rf"pip install '{PACKAGE}==({VERSION})'"),
     ("docs/guides/automation/ci.md", rf"jxburros/Vixl@v({VERSION})\b"),
     ("docs/guides/automation/ci.md", rf"A tag such as `v({VERSION})`"),

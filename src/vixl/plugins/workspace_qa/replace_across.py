@@ -47,10 +47,15 @@ def _rules(rules):
             if match == "regex":
                 require(len(rule["text"]) <= MAX_PATTERN, f"{where}.text is at most {MAX_PATTERN} characters",
                         field=where)
+                from ... import patterns
+
                 try:
-                    pattern = re.compile(rule["text"], flags)
+                    pattern = patterns.compile(rule["text"], flags)
                 except re.error as exc:
                     raise VixlError("invalid_request", f"{where}.text is not a valid regex: {exc}", field=where) from exc
+                except patterns.Refused as exc:
+                    raise VixlError("invalid_request", f"{where}.text cannot run on a shared service: {exc.reason}",
+                                    field=where, suggestions=exc.suggestions) from exc
                 replacement = rule["with"]
             else:
                 body = re.escape(rule["text"])

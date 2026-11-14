@@ -26,3 +26,9 @@ and anything that executes code or reads files the caller did not name.
 The threat model and the controls that exist are described under "Trust and security" in
 [the architecture reference](docs/reference/architecture.md#trust-and-security). Behaviour that page documents as the
 caller's responsibility can still be raised as a hardening suggestion in a normal issue.
+
+Editable SVG and PDF import work within cumulative budgets per import (stylesheet rules, `<use>` and form expansion,
+path segments, text, decoded and rendered pixels, named fonts), listed under
+[import budgets](docs/reference/interfaces.md#import-budgets). Imports through MCP, REST, Host and Python do not
+download fonts unless the call asks (`install_fonts`). A file that makes an import exceed those budgets without a
+`resource_limit` error, or that reaches the network without `install_fonts`, is in scope.

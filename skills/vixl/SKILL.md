@@ -45,7 +45,7 @@ Step by step only for edits and for art without a text frame:
    quick web (social, slides, diagram, motion): once `vixl_check` and the suite pass and the preview reads,
    `vixl_export`. Print and brand (poster, document, form, logo): the checklist `vixl_reference('finishing')` /
    `vixl guide finishing` (a composition check, a short critique, one fix batch, a real-size look with
-   `vixl_render(region=[x, y, w, h], max_width=w, max_height=h)`), then `vixl_check(profile="final")` and `vixl_export`.
+   `vixl_render(region=[x, y, w, h])`), then `vixl_check(profile="final")` and `vixl_export`.
 
 Details: [workflow](references/workflow.md), [testing](references/testing.md).
 
@@ -88,7 +88,7 @@ Details: [workflow](references/workflow.md), [testing](references/testing.md).
 - **Many layers or sizes are one call**: `edit-layers` with a `where` selector, `adapt-layout`, workflow
   `adapt-sizes`.
 - **Motion:** set a `pivot` at each joint, animate `translate-x/y` and `scale`, use `text-animate` for kinetic
-  type; pixel art exports with `sampling: "nearest"`.
+  type; pixel art exports with `sampling: "nearest"`; `sprite-sheet` grids.
 - **AI needs a configured provider**, and `network_disabled` means offline on purpose: say so, do not retry.
 - **Limits and unsupported features** (CMYK editing, PSD import, RAW, a GUI): see the full list.
 
@@ -96,14 +96,14 @@ All of them, with the exact rules: [gotchas](references/gotchas.md).
 
 ## Pick the interface
 
-| You have | Use | Reference |
+| You have | Use | See |
 | --- | --- | --- |
 | `vixl_*` tools | **MCP**: seven tools; fields from `vixl_reference('operations', name=[…])` | [mcp-rest-python](references/mcp-rest-python.md), [workspace](references/workspace.md) |
-| `vixl` on PATH | **CLI** or `vixl apply ops.json` (not found? [finding vixl](references/cli.md#finding-vixl)) | [cli](references/cli.md) |
-| Python | `from vixl import Project` | [mcp-rest-python](references/mcp-rest-python.md) |
+| `vixl` on PATH | **CLI** or `vixl apply ops.json` (missing? `pip install vixl-engine`, [more](references/cli.md#finding-vixl)) | [cli](references/cli.md) |
+| Python | `from vixl import Project` | [python-scripting](references/python-scripting.md) |
 | `vixl serve` | REST (`POST /operations`, `GET /render`) | [mcp-rest-python](references/mcp-rest-python.md) |
 
-The payload is always the operation list: when unsure of a field, `vixl_reference('operations', name=[…])` or
+The payload is always the operation list; fields: `vixl_reference('operations', name=[…])` or
 `vixl schema OPERATION`.
 
 ## Feature map
@@ -120,7 +120,7 @@ The payload is always the operation list: when unsure of a field, `vixl_referenc
 | Rich text, pages and decks, forms | [documents](references/documents.md) |
 | Charts, shared datasets, bound text, tables, key-value lists | [charts](references/charts.md) |
 | Hand drawings, diagrams, organic shapes, scatter, guides | [drawing-shapes-guides](references/drawing-shapes-guides.md) |
-| Objects with parts (object-plan, outline), accessibility | [objects](references/objects.md) |
+| Objects with parts (object-plan, object-detect, outline), accessibility | [objects](references/objects.md) |
 | Brushes, timelines, nested animation instances, video templates | [brushes-timeline](references/brushes-timeline.md) |
 | Artistic filters | [artistic-filters](references/artistic-filters.md) |
 | Emoji catalog, packs and exports | [emojis](references/emojis.md) |

@@ -299,3 +299,60 @@ def test_installed_colour_bitmap_faces_are_listed():
     assert [face["family"] for face in system_fonts._describe(font, 0)] == ["Vixl Test CBDT"]
     del font["CBDT"], font["CBLC"]
     assert system_fonts._describe(font, 0) == []
+
+
+@pytest.mark.parametrize("kind", ["COLRv0", "COLRv1", "sbix"])
+def test_hand_set_text_lifts_and_turns_colour_glyphs_in_every_exporter(kind):
+    import numpy as np
+
+    def reds(image):
+        pixels = np.asarray(image.convert("RGB"), dtype=int)
+        ys, xs = np.nonzero((pixels[..., 0] > 200) & (pixels[..., 1] < 60) & (pixels[..., 2] < 60))
+        return xs, ys
+
+    plain = document(fonts.FORMATS[kind](), "A A A")
+    hand = document(fonts.FORMATS[kind](), "A A A", hand_set={"seed": 4, "rise": 8, "rotate": 12, "scale": 0.15})
+    assert color_fonts.layer_kinds(hand, hand.layer("t")) == [kind]
+    still, moved = plain.render(), hand.render()
+    xs, ys = reds(moved)
+    assert len(xs) > 500 and still.tobytes() != moved.tobytes()  # the colour glyphs are drawn, lifted and turned
+    # A turned box no longer has a level top edge: its first red row is much narrower than the glyph.
+    top = xs[ys == ys.min()]
+    assert top.max() - top.min() < 30
+    import resvg_py
+
+    svg = hand.export(format="SVG")
+    assert (b"<image" in svg) == (kind == "sbix")
+    sx, sy = reds(Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=svg.decode()))))
+    assert abs(len(sx) - len(xs)) < 0.1 * len(xs) and abs(int(sy.min()) - int(ys.min())) <= 1
+    report = {}
+    pdf = hand.export(format="PDF", report=report)
+    if kind != "COLRv0":
+        assert kind in report["raster_fallbacks"]["1"][0]["reason"]
+        return
+    assert report["raster_fallbacks"] == {}
+    pypdfium2 = pytest.importorskip("pypdfium2")
+    opened = pypdfium2.PdfDocument(io.BytesIO(pdf))
+    try:
+        px, py = reds(opened[0].render(scale=1).to_pil())
+    finally:
+        opened.close()
+    assert abs(len(px) - len(xs)) < 0.1 * len(xs) and abs(int(py.min()) - int(ys.min())) <= 2
+
+
+def test_span_rise_and_rotate_move_colour_glyphs():
+    project = Project(300, 200, background="white")
+    register(project, fonts.colr_v0())
+    project.apply({"type": "rich-text", "name": "t", "font": "color", "size": 100, "color": "#00aa00", "x": 10, "y": 50,
+                   "spans": [{"text": "A"}, {"text": "A", "rise": 30, "rotate": 20}]})
+    report = {}
+    assert project.export(format="PDF", report=report).startswith(b"%PDF") and report["raster_fallbacks"] == {}
+    still = Project(300, 200, background="white")
+    register(still, fonts.colr_v0())
+    still.apply({"type": "rich-text", "name": "t", "font": "color", "size": 100, "color": "#00aa00", "x": 10, "y": 50,
+                 "spans": [{"text": "A"}, {"text": "A"}]})
+    a, b = still.render(), project.render()
+    assert a.crop((0, 0, 55, 200)).tobytes() == b.crop((0, 0, 55, 200)).tobytes()  # the first glyph stays put
+    assert a.crop((60, 0, 300, 200)).tobytes() != b.crop((60, 0, 300, 200)).tobytes()  # the second is lifted and turned
+    colors = {pixel[:3] for _, pixel in b.crop((60, 0, 300, 200)).getcolors(maxcolors=1 << 20)}
+    assert RED[:3] in colors and BLUE[:3] in colors

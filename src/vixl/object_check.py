@@ -290,7 +290,7 @@ def _side(layer):
 
 
 def connections(context, subject):
-    from .parts import _components, _gap, touches
+    from .parts import components as _components, _gap, touches
 
     if subject.group.get("detached_ok"):
         return

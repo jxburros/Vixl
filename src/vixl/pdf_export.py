@@ -451,7 +451,7 @@ class PageBuilder:
                 if kind == "highlight":
                     self.fill_ops([f"{_fmt(x)} {_fmt(y)} {_fmt(w)} {_fmt(h)} re"], rgba, opacity)
             glyphs = [(g.data, g.name, g.x, g.y, g.size, g.text, g.color, g.bold, g.italic) for g in result.glyphs]
-            self.glyph_runs(glyphs, opacity, stroke_width, stroke_color)
+            self.glyph_runs(glyphs, opacity, stroke_width, stroke_color, [g.turn for g in result.glyphs])
             for x, y, w, h, rgba, kind in result.rects:
                 if kind != "highlight":
                     self.fill_ops([f"{_fmt(x)} {_fmt(y)} {_fmt(w)} {_fmt(h)} re"], rgba, opacity)
@@ -487,7 +487,9 @@ class PageBuilder:
         self.glyph_runs([(d, n, x, y, s, t, fill, False, False) for d, n, x, y, s, t in glyphs], opacity, stroke_width,
                         stroke_color)
 
-    def glyph_runs(self, glyphs, opacity, stroke_width, stroke_color):
+    def glyph_runs(self, glyphs, opacity, stroke_width, stroke_color, turns=None):
+        """``turns`` gives each glyph its ``(degrees, pivot x, pivot y)`` or None (hand-set and rotated rich-text
+        words): a turned run is the same text object with the turn in its text matrix, so it stays real text."""
         from .emojis import is_glyph
         if any(is_glyph(g[0]) for g in glyphs):
             raise Unsupported("VIXL emoji artwork uses appearance-preserving raster export")
@@ -515,7 +517,7 @@ class PageBuilder:
                 # adjustments so viewers place every glyph exactly and read the run as a line.
                 if not run:
                     return
-                size, skew, x0, y0, width_op, items = run
+                size, skew, x0, y0, width_op, items, turn = run
                 if width_op:
                     block.append(width_op)
                 # Letter spacing (tracking) is the run's character spacing, Tc, so a text extractor does not read
@@ -536,17 +538,18 @@ class PageBuilder:
                             hexes = []
                 if hexes:
                     parts.append(f"<{''.join(hexes)}>")
-                block.extend([f"{_fmt(size)} 0 {_fmt(skew)} {_fmt(-size)} {_fmt(x0)} {_fmt(y0)} Tm",
-                              f"[{' '.join(parts)}] TJ"])
+                matrix = _turned((size, 0, skew, -size, x0, y0), turn)
+                block.extend([" ".join(_fmt(v) for v in matrix) + " Tm", f"[{' '.join(parts)}] TJ"])
 
             for index, (data, name, x, y, size, text, rgba, bold, italic) in enumerate(glyphs):
+                turn = turns[index] if turns else None
                 paint = override or rgba
                 if index in colored:
                     # Each layer in its palette colour (the text colour for the foreground entry). Like the other
                     # renderers, a colour glyph takes no outline stroke and no synthetic bold or slant.
                     if mode == "fill":
                         f = size / face(data)[0]["head"].unitsPerEm
-                        self.ops += ["q", matrix_ops(affine(f, 0, 0, -f, x, y))]
+                        self.ops += ["q", matrix_ops(affine(*_turned((f, 0, 0, -f, x, y), turn)))]
                         for path, layer_color in colored[index].layers:
                             self.fill_ops(path_ops(parse_path(path)), layer_color or rgba, opacity)
                         self.ops.append("Q")
@@ -559,7 +562,7 @@ class PageBuilder:
                     f = size / upem
                     skew = f * 0.2126 if italic else 0
                     geometry = path_ops(parse_path(path))
-                    self.ops += ["q", matrix_ops(affine(f, 0, skew, -f, x, y))]
+                    self.ops += ["q", matrix_ops(affine(*_turned((f, 0, skew, -f, x, y), turn)))]
                     if mode == "stroke":
                         self.stroke_ops(geometry, paint, 2 * stroke_width / f, opacity, 1, 1)
                     else:
@@ -589,11 +592,12 @@ class PageBuilder:
                 width = (2 * stroke_width / size) if mode == "stroke" else 0.045 if bold else None
                 width_op = f"{_fmt(width)} w" if width else None
                 advance = self.fonts.advance(data, name)
-                if run and run[0] == size and run[1] == skew and abs(run[3] - y) < 1e-3 and run[4] == width_op:
+                if run and run[0] == size and run[1] == skew and abs(run[3] - y) < 1e-3 and run[4] == width_op \
+                        and run[6] == turn:
                     run[5].append((gid, x, advance))
                 else:
                     flush()
-                    run = [size, skew, x, y, width_op, [(gid, x, advance)]]
+                    run = [size, skew, x, y, width_op, [(gid, x, advance)], turn]
             flush()
             if block:
                 self.ops += block + ["ET", "Q"]
@@ -610,6 +614,17 @@ class PageBuilder:
         if self.shadings:
             result["Shading"] = dict(self.shadings)
         return result
+
+
+def _turned(matrix, turn):
+    """``matrix`` (a, b, c, d, e, f) after a turn of ``(degrees, pivot x, pivot y)``, or itself without one."""
+    if not turn:
+        return matrix
+    from .kinetic import multiply
+
+    degrees, px, py = turn
+    c, s = math.cos(math.radians(degrees)), math.sin(math.radians(degrees))
+    return multiply((c, s, -s, c, px - px * c + py * s, py - px * s - py * c), matrix)
 
 
 class Unsupported(Exception):

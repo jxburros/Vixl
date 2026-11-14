@@ -36,6 +36,9 @@ The complete list; the [skill entry point](../SKILL.md) keeps the most common on
   (small and light; never grey dirt), a glow a lighter tint of the layer's colour that only adds light, capped at
   opacity 0.6. Give `color` for an exact colour. A `layer-style` is drawn exactly as given (unset: black shadow,
   white glow), so prefer the looks for a clean default.
+- **Hand-lettered words stay text.** Do not convert words to outlines to vary their size, baseline and tilt: the
+  document then has no text layers, so the text checks pass with nothing to read and nobody can edit the words. Use
+  `hand_set` on the text layer (or span `rise`/`rotate`/`scale`); `irregular` refuses text.
 - **Absolute `move` and `align`/`distribute` clear constraints** on that layer. Use `constrain`
   when layout should survive canvas resizes, artboards or text changes; use `align` for a one-off.
 - **One constraint per axis** (e.g. `left` *or* `center-x` *or* `right`). Anchors: `canvas`, a layer
@@ -50,7 +53,8 @@ The complete list; the [skill entry point](../SKILL.md) keeps the most common on
   and `font pair` updates text whose `font` is `heading`/`body` (templates use roles). Literal colors
   and named fonts stay as they are.
 - **Text auto-sizes** to its rendered bounds; an explicit `resize` turns that off, editing text turns it back on.
-  For wrapping use `text-layout` with `width` (the height grows to the wrapped lines) or `width`/`height` (optionally `fit: true`).
+  For wrapping use `text-layout` with `width` (the height grows to the wrapped lines) or `width`/`height` (optionally `fit: true`);
+  `width`/`height` on `text` itself set that box in the same operation (a centred label in a column is one operation).
   `wrap: "balance"` evens a heading's lines (the default for headings in new documents), `wrap: "pretty"` keeps one
   word off a paragraph's last line. Price lists: `tabs: [{at: "100%", align: "right", leader: "."}]` with `\t` in the
   text, or a `table` column `leader: "."`. Two-tone headlines: `layout-apply` `accent_words: ["Winter"]`.

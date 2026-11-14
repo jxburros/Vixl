@@ -10,6 +10,11 @@ depends on the operation, and the schema says which (``x-targets`` on each varia
 - ``one``: the operation takes a single layer (``rename``, ``select-layer`` ...); ``targets`` with
   one entry is read as ``target``, and a longer list is an error that says so.
 
+A target can also be an address object that a plugin resolves to layers through the ``target-resolver``
+hook, such as a chart mark ``{"chart": "sales", "series": "Tea", "category": "Dec"}``. An address stands
+for the layers it names when the operation runs: every one of them for an ``each`` or ``joint`` operation,
+and exactly one for an operation that takes a single layer.
+
 The docs table in docs/reference/operations.md is generated from the schema by ``markdown_table``.
 """
 
@@ -32,7 +37,7 @@ EACH = frozenset({
     "style-apply", "lut", "lookup", "layer-intent", "waiver", "fit-text", "path-fit", "shape-to-path", "path-simplify",
     "path-smooth", "offset-path", "outline-stroke", "round-corners", "distort", "skew", "transform", "fit",
     "snap-to-pixel", "keyframe-remove", "shape", "text", "solid", "gradient", "ungroup", "link-refresh",
-    "link-embed", "replace-contents", "pattern-fill", "text-animate", "qr", "barcode", "object",
+    "link-embed", "replace-contents", "pattern-fill", "text-animate", "qr", "barcode", "object", "pixel-transform",
 })
 # Operations that already take targets themselves and apply to each listed layer.
 OWN_EACH = frozenset({"keyframe", "animate", "animate-preset", "look", "irregular", "cut-paper", "motion", "snap",
@@ -110,6 +115,81 @@ def normalize(op: dict[str, Any], kind: str, allowed: Any, required: Any,
     count = len(targets) if isinstance(targets, list) else 0
     raise VixlError("invalid_operation", f"{kind} takes one target; got targets with {count} layers. Use one "
                     f"{kind} operation per layer", field="targets", suggestions=["target"])
+
+
+_ADDRESS = "\x00address:"
+
+
+def lift_addresses(op: dict[str, Any]) -> Callable[[dict[str, Any]], None]:
+    """Set address objects in ``target``/``targets`` aside while an operation is normalized and validated
+    against its schema (where a target is a layer ID or name), and return the function that puts them back."""
+    held: dict[str, dict[str, Any]] = {}
+
+    def hold(value: Any, field: str) -> Any:
+        if not isinstance(value, dict):
+            return value
+        require(0 < len(value) <= 8 and all(isinstance(k, str) and isinstance(v, (str, int, float))
+                                            and not isinstance(v, bool) for k, v in value.items()),
+                f"{field} as an address is a small object of names, such as a chart mark "
+                '{"chart": "sales", "series": "Tea", "category": "Dec"}', field=field)
+        token = f"{_ADDRESS}{len(held)}"
+        held[token] = value
+        return token
+
+    for key in ("target", "targets"):
+        if isinstance(op.get(key), dict):
+            op[key] = hold(op[key], key)
+        elif isinstance(op.get(key), list):
+            op[key] = [hold(value, f"{key}[{index}]") for index, value in enumerate(op[key])]
+
+    def restore(result: dict[str, Any]) -> None:
+        if not held:
+            return
+        if result.get("target") in held:
+            result["target"] = held[result["target"]]
+        if isinstance(result.get("targets"), list):
+            result["targets"] = [held.get(value, value) if isinstance(value, str) else value
+                                 for value in result["targets"]]
+
+    return restore
+
+
+def resolve_addresses(project: Any, op: dict[str, Any], kind: str | None = None) -> dict[str, Any]:
+    """``op`` with every address object in ``target``/``targets`` replaced by the layer IDs it names (the
+    ``target-resolver`` plugin hook). An address that names several layers becomes ``targets`` where the
+    operation takes a list, and is an error where it takes one layer."""
+    single, listed = op.get("target"), op.get("targets")
+    if not isinstance(single, dict) and not (isinstance(listed, list) and any(isinstance(t, dict) for t in listed)):
+        return op
+    from . import plugins
+
+    def layers(address: dict[str, Any], field: str) -> list[str]:
+        found = plugins.first("target-resolver", project, address)
+        if found is None:
+            raise VixlError("invalid_operation", f"{field} is an address no plugin resolves; a chart mark is "
+                            '{"chart": NAME, "series": NAME, "category": NAME, "part": ...}, any other target a '
+                            "layer ID or name", field=field)
+        return list(found)
+
+    op, kind = dict(op), kind or op.get("type")
+    if isinstance(listed, list):
+        flat: list[str] = []
+        for index, value in enumerate(listed):
+            for ident in layers(value, f"targets[{index}]") if isinstance(value, dict) else [value]:
+                if ident not in flat:
+                    flat.append(ident)
+        op["targets"] = flat
+    if isinstance(single, dict):
+        found = layers(single, "target")
+        if len(found) == 1:
+            op["target"] = found[0]
+        elif mode(str(kind)) != "one" and "targets" not in op:
+            del op["target"]
+            op["targets"] = found
+        else:
+            raise VixlError("invalid_operation", f"{kind} takes one layer; this address names {len(found)}. Narrow "
+                            "it with series, category or part", field="target")
+    return op
 
 
 def fan_out(op: dict[str, Any]) -> list[dict[str, Any]]:

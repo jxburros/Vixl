@@ -588,7 +588,72 @@ def apply_lookup(project, image, settings):
     return result
 
 
-def styled_image(project, image, styles):
+def inner_passes(styles, state):
+    """The inner layer styles (inner-glow, inner-shadow, bevel) as passes drawn in order inside the silhouette:
+    (rgba, opacity, blur, dx, dy). Each pass is the layer's inverted alpha, blurred, moved by whole pixels
+    (dx, dy) and painted in one colour, so every renderer builds it from the same three steps. A bevel is two
+    passes: a highlight on the side facing the light and a shadow on the far side."""
+    from .render import color
+
+    def rgba(settings, key, default):
+        return color(resolve_color(settings.get(key, default), state))
+
+    passes = []
+    glow = styles.get("inner-glow")
+    if glow and glow.get("enabled", True):
+        passes.append((rgba(glow, "color", "white"), glow.get("opacity", 0.6), glow.get("blur", 6), 0, 0))
+    shadow = styles.get("inner-shadow")
+    if shadow and shadow.get("enabled", True):
+        passes.append((rgba(shadow, "color", "black"), shadow.get("opacity", 0.5), shadow.get("blur", 4),
+                       round(shadow.get("dx", 2)), round(shadow.get("dy", 2))))
+    bevel = styles.get("bevel")
+    if bevel and bevel.get("enabled", True):
+        size = bevel.get("size", 4)
+        angle = math.radians(bevel.get("angle", 135))
+        # Towards the light on the canvas, where y grows downward.
+        lx, ly = math.cos(angle) * size, -math.sin(angle) * size
+        opacity = bevel.get("opacity", 0.5)
+        passes.append((rgba(bevel, "highlight", "white"), opacity, size / 2, round(-lx), round(-ly)))
+        passes.append((rgba(bevel, "shadow", "black"), opacity, size / 2, round(lx), round(ly)))
+    return [item for item in passes if item[1] * item[0][3] > 0 and (item[2] > 0 or item[3] or item[4])]
+
+
+def inner_reach(passes):
+    """Pixels around a pixel that the inner passes read."""
+    return max((math.ceil(3 * blur) + max(abs(dx), abs(dy)) + 1 for _, _, blur, dx, dy in passes), default=0)
+
+
+def inner_styled(image, alpha, passes, cut=(False, False, False, False)):
+    """``image`` with the inner passes painted inside ``alpha``. Outside the image the layer is taken to be
+    transparent, except on the sides in ``cut`` (left, top, right, bottom), where the canvas edge cut the layer
+    off and it is taken to continue."""
+    reach = inner_reach(passes)
+    source = np.asarray(alpha)
+    padded = np.pad(source, reach, mode="edge")
+    left, top, right, bottom = cut
+    if not left:
+        padded[:, :reach] = 0
+    if not right:
+        padded[:, padded.shape[1] - reach:] = 0
+    if not top:
+        padded[:reach] = 0
+    if not bottom:
+        padded[padded.shape[0] - reach:] = 0
+    outside = Image.fromarray(255 - padded)
+    rgb = image.convert("RGB")
+    for rgba, opacity, blur, dx, dy in passes:
+        spread = outside.filter(ImageFilter.GaussianBlur(blur)) if blur > 0 else outside
+        mask = spread.crop((reach - dx, reach - dy, reach - dx + image.width, reach - dy + image.height))
+        amount = opacity * rgba[3] / 255
+        if amount < 1:
+            mask = mask.point([round(v * amount) for v in range(256)])
+        rgb = Image.composite(Image.new("RGB", image.size, rgba[:3]), rgb, mask)
+    result = rgb.convert("RGBA")
+    result.putalpha(alpha)
+    return result
+
+
+def styled_image(project, image, styles, cut=(False, False, False, False)):
     from .render import color, opacity_table, with_opacity
 
     alpha = image.getchannel("A")
@@ -635,6 +700,9 @@ def styled_image(project, image, styles):
         overlay = rgb.convert("RGBA")
         overlay.putalpha(alpha)
         image = overlay
+    passes = inner_passes(styles, project.state)
+    if passes:
+        image = inner_styled(image, alpha, passes, cut)
     result.alpha_composite(image)
     return result
 

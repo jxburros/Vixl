@@ -31,7 +31,7 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    Use `suite-capture` for protected layer structures/pixel regions. Do not overwrite
    baselines during an ordinary repair. Rule kinds: `assert`, `property`, `gap`, `spacing`,
    `relation`, `text-fit`, `contrast`, `hierarchy`, `color`, `palette`, `ink`, `balance`, `focal`,
-   `count`, `text` (the drawn copy: `contains`, `forbid`/`pattern` regexes, `min_/max_characters`,
+   `count`, `text` (the drawn copy: `contains`, `forbid`/`pattern` regexes (keep them simple: a service refuses nested repeats such as `(a+)+`), `min_/max_characters`,
    `min_/max_words`, `case`, `brand`, `spelling: true` for unknown words with suggestions), `budget` (`max_layers`, `max_fonts`, `max_bytes`, `min_ppi`, `max_ppi`; `max_render_ms` + `proxy` in a rule of its own, always an advisory review), `alpha`,
    `design`, `container`, `unchanged`, `pixels`. `expected`, `to` and `ratio` may be `{ref: "master.vixl#layer.field"}` or `{ref: "master.vixl#suite:rule-id"}` to read a master document each run (at most 8; a missing one needs review) (fields:
    `vixl_reference('workflows', name='check').definitions.suite`; method: `vixl_reference("testing")`). Run suites with each
@@ -62,6 +62,9 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    `production.json`, and an output that fails it is held for review and not published.
 6. For long production, call `submit` with `start:true`, then `status` with its returned
    ID. The source is snapshotted. `cancel` is cooperative; `resume` preserves remote IDs.
+   A queue has one worker (`start` answers `already_running` while it is alive), takes 64 unfinished jobs and
+   4096 MB (`limit_exceeded` with `limit: max_pending_jobs` or `max_queue_mb`: wait, or cancel jobs) and deletes
+   completed, failed and cancelled job records 7 days after they ended; published outputs stay.
    Never blindly repeat an uncertain provider request.
 7. Reuse components with library-save/search/open/place. Open preserves the editable
    document; place inserts its rendered snapshot. Preview draft/final without regenerating

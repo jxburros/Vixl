@@ -153,7 +153,10 @@ An existing check is a starting point, not a substitute for the brief or visual 
 Save a custom suite for future projects with `resource-save`:
 `{"kind":"suites","name":"my-contract","value":{"rules":[...]}}`.
 Resources live in workspace `.vixl-resources.json`; workspace entries override the user
-library, then built-ins. User CLI `palette add` / `template add` remains supported.
+library, then built-ins. Every service (MCP, the workflows, and the REST `/resources` routes) saves into the
+workspace file and only reads the user library (`VIXL_RESOURCES` or `~/.config/vixl/resources.json`) as
+inherited entries, never writes it; a served deployment that should not inherit anything points
+`VIXL_RESOURCES` at an empty file. User CLI `palette add` / `template add` remains supported.
 The example [brand contract](../../../examples/studio/brand-suite.json) is ready to customize.
 
 Developers: `pytest tests/test_studio.py -q` covers pixel masks, geometry, palettes, templates,
@@ -303,7 +306,7 @@ Copy facts (prices, product names, dates, URLs, legal lines) are declared once, 
 ```
 
 A fact is read from the variable of that name, else from text layers named after it (or listed in `layers`), else
-by its pattern over all text. `pattern` is a regex, `format` a date format (`YYYY YY MMMM MMM MM M DD D`), `value`
+by its pattern over all text. `pattern` is a regex (on a service, patterns are [bounded](../../reference/interfaces.md#regular-expressions-from-callers)), `format` a date format (`YYYY YY MMMM MMM MM M DD D`), `value`
 the declared value and `values` the accepted spellings of a name: other members' values are compared with the
 declared value, the reference or the majority, and one finding lists every value with its documents; spellings a
 small edit distance from a declared name (`Vixel Pro`) are flagged with the suggestion. Findings carry `check`
@@ -323,7 +326,7 @@ or `review` when there is no majority). `vixl check --group NAME` includes them 
 ```
 
 - `text` replaces in text layers and string variables (`variables: false` skips them); `match` is `substring`
-  (default), `word` or `regex` (`with` may use `\1`), `ignore_case` too.
+  (default), `word` or `regex` (`with` may use `\1`; bounded on a service like a fact's `pattern`), `ignore_case` too.
 - `color` replaces literal colours (fill, stroke, text colour, gradient ends and stops) within `tolerance` per
   channel, and swatch values (`swatches: false` skips them); `@swatch` references are left alone.
 - `font` replaces a registered font name (or a file's family) on text layers; `with` must be a font the document
