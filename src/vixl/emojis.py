@@ -541,14 +541,22 @@ class EmojiFace(dict):
 EMOJI_FACE = EmojiFace(head=SimpleNamespace(unitsPerEm=72), hhea=SimpleNamespace(ascent=58, descent=-14))
 
 
-def append_art(parent, art, matrix, opacity=1):
+def append_art(parent, art, matrix, opacity=1, color=None):
+    """Place glyph artwork under ``matrix`` (font units, y up, to pixels). ``color`` (rgba) is the text colour,
+    which a colour-font glyph draws its foreground layers in."""
     group = ET.SubElement(
         parent,
         SVG + "g",
         {"transform": "matrix(" + " ".join(map(str, matrix)) + ")", "opacity": str(opacity)},
     )
-    # Font-space inversion is cancelled inside the SVG, so the rest of text layout is shared.
-    inner = ET.SubElement(group, SVG + "g", {"transform": "translate(0 58) scale(1 -1)"})
+    if getattr(art, "kind", None):
+        # A colour-font glyph (color_fonts.ColorGlyph) is already in font units, y up.
+        inner = group
+        if color is not None:
+            group.set("color", f"rgb({color[0]},{color[1]},{color[2]})")
+    else:
+        # Font-space inversion is cancelled inside the SVG, so the rest of text layout is shared.
+        inner = ET.SubElement(group, SVG + "g", {"transform": "translate(0 58) scale(1 -1)"})
     root = ET.fromstring(art)
     prefix = "emoji-" + hashlib.sha256((str(art) + repr(matrix)).encode()).hexdigest()[:12] + "-"
     ids = {node.get("id"): prefix + node.get("id") for node in root.iter() if node.get("id")}

@@ -311,6 +311,9 @@ class Exporter:
                           viewBox=f"{-left:.6g} {-top:.6g} {width + left + right:.6g} {height + top + bottom:.6g}",
                           preserveAspectRatio="none", overflow="hidden")
             append_svg(nested, result, layer, self.project, node=node)
+            from .text import glyph_outline
+
+            self.bitmap_glyphs(layer, (glyph_outline(g.data, g.name, g.size)[0] for g in result.glyphs))
             return True
 
         try:
@@ -325,10 +328,19 @@ class Exporter:
                 overflow="hidden",
             )
             append_paths(nested, layout, layer, self.project)
+            self.bitmap_glyphs(layer, (path for path, _ in layout.paths))
             return True
         except UnsupportedText as exc:
             self.text_reasons[layer["id"]] = str(exc)
             return False
+
+    def bitmap_glyphs(self, layer, outlines):
+        """Report the bitmap colour-font glyphs (CBDT, sbix) among a text layer's ``outlines``: they are written as
+        images inside otherwise vector text. COLR and SVG glyphs are vector."""
+        kinds = list(dict.fromkeys(art.kind for art in outlines if getattr(art, "bitmap", False)))
+        if kinds:
+            self.fallbacks.append({"layer": layer["name"], "effects": [], "styles": [],
+                                   "reason": f"bitmap colour font glyphs ({', '.join(kinds)}) are embedded as images"})
 
     def gradient(self, settings, box, scale=None):
         """A gradient spanning ``box`` in the current user space; ``scale`` (sx, sy) maps that box into a user

@@ -785,7 +785,7 @@ def _ink_box(result, stroke, width):
 
     boxes, hung = [], []
     for glyph in result.glyphs:
-        path, bounds = glyph_outline(glyph.data, glyph.name)
+        path, bounds = glyph_outline(glyph.data, glyph.name, glyph.size)
         if path and bounds:
             f = glyph.size / face(glyph.data)[0]["head"].unitsPerEm
             box = (glyph.x + bounds[0] * f, glyph.y - bounds[3] * f, glyph.x + bounds[2] * f, glyph.y - bounds[1] * f)
@@ -861,7 +861,7 @@ def append_svg(parent, result, layer, project, *, node=None, motion=None):
     outline_width = layer.get("stroke_width", 0)
     outline_color = color(resolve_color(layer.get("stroke_color", "black"), project.state))
     for index, glyph in enumerate(result.glyphs):
-        path, _ = glyph_outline(glyph.data, glyph.name)
+        path, _ = glyph_outline(glyph.data, glyph.name, glyph.size)
         if not path:
             continue
         upem = face(glyph.data)[0]["head"].unitsPerEm
@@ -884,7 +884,8 @@ def append_svg(parent, result, layer, project, *, node=None, motion=None):
             matrix = (f, 0, 0, -f, glyph.x, glyph.y)
             if motion:
                 matrix = multiply(motion[index][0], matrix)
-            append_art(parent, path, matrix, float(extra.get("opacity", 1)))
+            append_art(parent, path, matrix, float(extra.get("opacity", 1)),
+                       override if motion and override else glyph.color)
             continue
         attrs = {"d": path, "transform": transform, "fill": fill, "fill_opacity": alpha, **extra}
         width = 0.0
@@ -928,7 +929,7 @@ def ink_overhang(project, layer, result, box=None):
     for glyph in result.glyphs:
         if glyph.y > height + 0.5:
             continue
-        path, bounds = glyph_outline(glyph.data, glyph.name)
+        path, bounds = glyph_outline(glyph.data, glyph.name, glyph.size)
         if not path or not bounds:
             continue
         f = glyph.size / face(glyph.data)[0]["head"].unitsPerEm
@@ -954,7 +955,7 @@ def hung_reach(project, layer):
     result = fitted(project, layer)
     xs = []
     for glyph in result.glyphs:
-        path, bounds = glyph_outline(glyph.data, glyph.name)
+        path, bounds = glyph_outline(glyph.data, glyph.name, glyph.size)
         if glyph.hung and path and bounds:
             f = glyph.size / face(glyph.data)[0]["head"].unitsPerEm
             xs += [glyph.x + bounds[0] * f, glyph.x + bounds[2] * f]
