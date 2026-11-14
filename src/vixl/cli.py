@@ -1,5 +1,6 @@
 """Headless CLI and interactive shell. Project changes autosave after every successful command."""
 
+import argparse
 from copy import deepcopy
 import glob
 import json
@@ -1055,8 +1056,9 @@ def project_command(project, cmd, args, *, detail="compact"):
                        "that have no editable equivalent")
         p.add_argument("--font-map", action="append", metavar="SRC=NAME", help="pdf: use registered font NAME for the "
                        "PDF font family SRC ('Literata Bold=literata-700' for a style); repeatable")
-        p.add_argument("--install-fonts", action="store_true", help="pdf: allow downloading from Google Fonts a font "
-                       "that neither the document nor the font cache has")
+        p.add_argument("--install-fonts", action=argparse.BooleanOptionalAction, default=None,
+                       help="allow downloading from Google Fonts a font that neither the document nor the font cache "
+                       "has (default: on for Vixl's own SVG, off for PDF)")
         a = p.parse_args(args)
         if a.format == "figma" or re.match(r"(?i)https://(www\.)?figma\.com/", a.path):
             source = Path(a.path).read_bytes() if Path(a.path).is_file() else a.path.encode()
@@ -1070,15 +1072,15 @@ def project_command(project, cmd, args, *, detail="compact"):
                                      name=a.name or "image", credit=a.credit, license=a.license), True
         require(a.credit is None and a.license is None, "--credit and --license apply to image imports",
                 field="credit")
-        options = {}
-        if a.font_map or a.install_fonts:
-            require(Path(a.path).suffix.lower() in (".pdf", ".svg"),
-                    "--font-map and --install-fonts apply to SVG and PDF imports",
-                    field="font_map")
-            mapped = [item.partition("=") for item in a.font_map or []]
+        # The command line is the user's own machine: Vixl's own SVG may fetch the fonts it names. Service callers
+        # (REST, MCP, Host) and Python get no font download unless they ask.
+        install = Path(a.path).suffix.lower() == ".svg" if a.install_fonts is None else a.install_fonts
+        options = {"install_fonts": install}
+        if a.font_map:
+            mapped = [item.partition("=") for item in a.font_map]
             require(all(sep and key.strip() and value.strip() for key, sep, value in mapped),
                     "Use --font-map SRC=NAME, e.g. --font-map Literata=literata-400", field="font_map")
-            options = {"font_map": {key.strip(): value.strip() for key, _, value in mapped}, "install_fonts": a.install_fonts}
+            options["font_map"] = {key.strip(): value.strip() for key, _, value in mapped}
         return import_document(project, read_bounded(a.path, project.limits.max_asset_bytes),
                                Path(a.path).suffix.lstrip("."), a.name or "import", a.page, a.dpi, a.svg_mode,
                                **options), True

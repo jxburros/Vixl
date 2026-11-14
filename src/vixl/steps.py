@@ -70,7 +70,7 @@ def import_document(session, project, *, path: str | None = None, data_base64: s
                                     "'Literata Bold': literata-700}")] = None,
                     install_fonts: Annotated[bool | None, Field(
                         description="Allow downloading from Google Fonts a font the document and the font cache lack "
-                                    "(default: true for Vixl's own SVG, false for PDF)")] = None):
+                                    "(Vixl's own SVG, PDF; default false: the font cache only)")] = None):
     """Import an SVG (Vixl's own round-trips losslessly), one PDF page as editable text, paths and images, or a Figma
     file, frame or node as editable layers (from a URL or key with the server's Figma token, or an exported file
     JSON); svg_mode=appearance imports one image instead. External or active SVG is rejected."""
