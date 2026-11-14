@@ -96,14 +96,14 @@ All of them, with the exact rules: [gotchas](references/gotchas.md).
 
 ## Pick the interface
 
-| You have | Use | Reference |
+| You have | Use | See |
 | --- | --- | --- |
 | `vixl_*` tools | **MCP**: seven tools; fields from `vixl_reference('operations', name=[…])` | [mcp-rest-python](references/mcp-rest-python.md), [workspace](references/workspace.md) |
-| `vixl` on PATH | **CLI** or `vixl apply ops.json` (not found? [finding vixl](references/cli.md#finding-vixl)) | [cli](references/cli.md) |
+| `vixl` on PATH | **CLI** or `vixl apply ops.json` (not found? `pip install vixl-engine` or [find it](references/cli.md#finding-vixl)) | [cli](references/cli.md) |
 | Python | `from vixl import Project` | [mcp-rest-python](references/mcp-rest-python.md) |
 | `vixl serve` | REST (`POST /operations`, `GET /render`) | [mcp-rest-python](references/mcp-rest-python.md) |
 
-The payload is always the operation list: when unsure of a field, `vixl_reference('operations', name=[…])` or
+The payload is always the operation list; fields: `vixl_reference('operations', name=[…])` or
 `vixl schema OPERATION`.
 
 ## Feature map

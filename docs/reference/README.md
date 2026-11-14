@@ -33,3 +33,4 @@ a feature; come here to look something up.
 | [Architecture and operational boundaries](architecture.md) | Modules, resource limits and trust boundaries |
 | [Specification coverage](coverage.md) | What is implemented, by release |
 | [Installation, updates and releases](releases.md) | Windows, source, agent bundles and rollback |
+| [Licensing](licensing.md) | Who can use Vixl for free, and who needs a commercial licence |

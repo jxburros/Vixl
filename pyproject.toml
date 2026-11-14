@@ -44,6 +44,9 @@ Changelog = "https://github.com/jxburros/Vixl/blob/main/CHANGELOG.md"
 
 [project.scripts]
 vixl = "vixl.cli:main"
+# The same command under the package's name, so `uvx vixl-engine mcp --workspace .` works without `--from`
+# (MCP registry clients start a PyPI server that way; distribution/mcp_registry.py).
+vixl-engine = "vixl.cli:main"
 
 [tool.hatch.version]
 path = "src/vixl/__init__.py"

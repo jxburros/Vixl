@@ -277,7 +277,7 @@ vixl replace-contents photo --fit fit --asset assets/EMBEDDED_HASH.png
 
 Frames center and fill/crop or fit/letterbox their boxes; `--frame-shape ellipse|star|hexagon|heart` or `--outline` (a closed SVG path in frame-local pixels) gives an irregular frame. Replacement keeps the layer ID, box, position, transforms, styles, effects and mask. Explicit replacement clears an old source crop, linked-file path, and image-variable binding. Frame imports embed the image in the project. Remote clients use already-imported `asset` IDs instead of paths.
 
-Image variables reference embedded assets during ordinary rendering:
+Image variables reference embedded assets during ordinary rendering. Binding a layer to a variable that does not exist yet (`replace-contents photo --variable photo_asset`) creates the variable with the layer's current image, so a template renders on its own and a row or `--set` replaces the picture:
 
 ```bash
 vixl variable set photo_asset assets/EMBEDDED_HASH.png
@@ -286,7 +286,7 @@ vixl render --set photo_asset=assets/OTHER_HASH.png --out variant.png
 vixl render --data rows.csv --out campaign
 ```
 
-CSV requires unique headers and at least one complete row. Each row becomes render variables and produces `0001.png`, `0002.png`, etc., without mutating the project. Quoted commas, quoted newlines, and UTF-8 BOMs are supported. `--set` overrides row values. Bound image columns may contain an embedded asset ID or a file path relative to the CSV; only this explicit local CSV workflow imports paths. CSVs are limited to 8 MiB and 10,000 rows. All rows are rendered to temporary files before output publication; bad rows leave no partial campaign. Existing outputs are never overwritten. Data rendering also accepts `--artboard` and `--comp`.
+CSV requires unique headers and at least one complete row. Each row becomes render variables and produces `0001.png`, `0002.png`, etc., without mutating the project. Quoted commas, quoted newlines, and UTF-8 BOMs are supported. `--set` overrides row values. Bound image columns may contain an embedded asset ID or a file path relative to the CSV; only this explicit local CSV workflow imports paths. CSVs are limited to 8 MiB and 10,000 rows. All rows are rendered to temporary files before output publication; bad rows leave no partial campaign. Existing outputs are never overwritten. Each row is checked, and its findings are returned beside its output; with `--strict`, a row that fails a check stops the batch with `design_check_failed` (naming the rows) before any file is written. Data rendering also accepts `--artboard` and `--comp`. [Moving from a template-rendering API](../automation/template-api-migration.md) walks through a template, a CSV and three sizes.
 
 Python exposes `project.render(artboard=..., comp=..., variables=...)`, `project.render_data(csv_path, directory, ...)`, and `project.export_screens(directory, scales=(1, 2), ...)`. REST POST `/render` and MCP previews accept `artboard` and `comp`; local-directory batch exports remain CLI/Python operations.
 

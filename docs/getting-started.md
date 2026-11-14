@@ -4,9 +4,26 @@
 
 You need Python 3.11+ or the Windows installer. A graphical display, AI account and GPU
 are unnecessary for this tutorial. Commands below use a terminal; Python offers the same
-operation engine. For an agent client, use the [MCP configuration guide](reference/interfaces.md#mcp).
+operation engine. For an agent client, use the per-client table in the
+[README](../README.md#install-for-your-agent) or the [MCP configuration guide](reference/interfaces.md#mcp).
+
+**Who can use Vixl for free.** Individuals, and companies that have fewer than 100 people working for them (employees
+and independent contractors together) **and** had less than US$1,000,000 in revenue in the prior tax year, in 2019
+dollars adjusted for inflation. Both conditions must hold; larger companies need a commercial licence. Is Vixl open
+source? No: it is source-available under the PolyForm Small Business License 1.0.0. See
+[licensing](reference/licensing.md), and [Is Vixl a fit?](#is-vixl-a-fit) for the other limits.
 
 ## Install
+
+The package on PyPI is `vixl-engine`; the command and the Python import are `vixl`:
+
+```bash
+python -m pip install vixl-engine
+vixl --version
+```
+
+On macOS and Linux, `uv tool install vixl-engine` or `pipx install vixl-engine` puts the same `vixl` command on PATH
+in its own environment; update it with `uv tool upgrade vixl-engine` or `pipx upgrade vixl-engine`.
 
 On Windows, install the latest executable from [GitHub Releases](https://github.com/jxburros/Vixl/releases/latest),
 then open a terminal and run `vixl --version`. The installer includes Python and automatic
@@ -136,6 +153,21 @@ project.export("python-hello.png")
 Python edits remain in memory until you call `save` (which, like exports, refuses to replace another existing file
 unless you pass `overwrite=True`); `render()` returns a Pillow RGBA image.
 The [interface reference](reference/interfaces.md) documents loading, history, errors and services.
+
+## Is Vixl a fit?
+
+Check these before you build a workflow on Vixl. Each is a decision, not a bug, and each links to the page with the
+details.
+
+| Constraint | What it means | Details |
+| --- | --- | --- |
+| Licence | Free for individuals and for companies under both small-business limits; larger companies need a commercial licence. Source-available, not open source. | [Licensing](reference/licensing.md) |
+| No bundled models | Vixl ships no model weights: generation, OCR and the other AI steps call a provider you configure. Everything else runs offline. | [Providers](reference/providers.md) |
+| 8-bit sRGB documents | CMYK is an export setting. There is no RAW development, high-bit-depth editing, spot colour, overprint or trapping control. | [Coverage and limits](reference/coverage.md#explicit-boundaries), [color and print](guides/finishing/color-and-print.md) |
+| No desktop editor | Vixl is headless: agents and scripts drive it, and people review in the live viewer. | [Interfaces](reference/interfaces.md), [use cases that are blocked](use-cases.md#blocked-or-only-with-a-workaround) |
+| Updates | Only the Windows installer updates itself. A pip, uv or pipx install is updated with that tool. | [Installation and releases](reference/releases.md) |
+| Older documents | Vixl reads current documents only; files saved by earlier releases go through `vixl convert` once. | [Converting](reference/converting.md) |
+| Pre-1.0 | Breaking changes are allowed between releases and listed in the changelog. Pin a version for reproducible work. | [Changelog](../CHANGELOG.md) |
 
 ## Continue
 

@@ -101,6 +101,9 @@ The Windows installer includes MCP. The Python base package includes MCP. Give V
 vixl mcp --workspace "C:\Users\you\Pictures\Vixl"
 ```
 
+Ready-made configurations for Claude Desktop, Claude Code, Cursor, VS Code and Codex are in the README's
+[Install for your agent](../../README.md#install-for-your-agent) table.
+
 The workspace can start without any `.vixl` documents. MCP defaults to stdio using the official SDK; stdout contains protocol messages only. Configure your client to start it (escape Windows backslashes in JSON):
 
 ```json

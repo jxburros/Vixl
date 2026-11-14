@@ -34,6 +34,8 @@ the user where Vixl is:
 | Windows installer | `%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe` | Git Bash: `"$LOCALAPPDATA/Programs/Vixl/bin/vixl.exe" --version`; PowerShell: `& "$env:LOCALAPPDATA\Programs\Vixl\bin\vixl.exe" --version`; cmd: `"%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe" --version` |
 | Windows installer alias | `%LOCALAPPDATA%\Microsoft\WindowsApps\vixl.exe` | Same launcher; that folder is on PATH by default on Windows 10/11, so terminals opened before installation usually find `vixl` through it |
 | pip / source | the Python environment | `python -m vixl --version` (use `python -m vixl` wherever this page says `vixl`) |
+| uv tool / pipx (macOS, Linux) | `~/.local/bin/vixl` | `~/.local/bin/vixl --version`; add `~/.local/bin` to PATH (`uv tool update-shell` or `pipx ensurepath`) |
+| Not installed | – | `python -m pip install vixl-engine`: the package is `vixl-engine`, the import and the command are `vixl` (`pip install vixl` finds nothing). Without a writable environment: `uvx --from vixl-engine vixl --version` |
 
 The installer adds `%LOCALAPPDATA%\Programs\Vixl\bin` to the user PATH, but processes that were
 already running (a desktop app and the terminals or agents it spawns) keep their old PATH until
@@ -55,8 +57,9 @@ set "PATH=%LOCALAPPDATA%\Programs\Vixl\bin;%PATH%"
 
 ### Install check and slow renders
 
-Check availability first: `vixl --version` (CLI) or call `vixl_document(action='list')` (MCP). Install from
-source with `pip install -e ".[server]"` (Python ≥ 3.11; add the `pdf` extra for PDF import); Windows users use the installer.
+Check availability first: `vixl --version` (CLI) or call `vixl_document(action='list')` (MCP). Install with
+`python -m pip install vixl-engine` (Python ≥ 3.11; `'vixl-engine[server,pdf]'` adds REST, live review and PDF import), or
+from a source checkout with `pip install -e ".[server]"`; Windows users use the installer.
 Set `VIXL_NO_UPDATE=1` in automation so the Windows auto-updater never runs mid-task.
 A slow render? `check --checks cost` names the costly layer; `VIXL_PROFILE=1` adds a `render_profile`
 (per-layer times, cache hits) to every result. `vixl cache info|clear` manages the disk render cache
@@ -222,7 +225,7 @@ vixl repeat-blend stripe --count 16 --dy 37 --end '{"height":21,"fill":"#4853a4"
 vixl pathfinder badge outer inner --mode union|subtract|intersect
 vixl symbol logo Brandmark
 vixl comp-save with-logo ; vixl comp-apply with-logo
-vixl replace-contents photo --path new.jpg [--fit fit] | --asset assets/HASH.png | --variable photo_asset
+vixl replace-contents photo --path new.jpg [--fit fit] | --asset assets/HASH.png | --variable photo_asset   # a new variable starts as the layer's current image
 vixl variable set title 'Night Shift' ; vixl variable delete title
 ```
 
@@ -264,7 +267,7 @@ vixl export out.png|.jpg|.webp|.tiff|.avif [--quality 90] [--title T] [--max-byt
 #   --quality: JPEG/WEBP/AVIF (default 90) and PDF images (omitted: lossless PDF images). --title: PDF title (default: the
 #   title layer or role=title text, then the file name). --max-bytes: warns when a raster file is larger; a PNG over 1 MB warns and names texture looks.
 vixl render [F.vixl] --out preview.png [--set title=Hello]      # same options; never persists overrides
-vixl render --data rows.csv --out campaign_dir [--no-check]     # one PNG per CSV row: 0001.png …; rows with design problems carry a "check" report
+vixl render --data rows.csv --out campaign_dir [--no-check] [--strict]  # one PNG per CSV row: 0001.png …; rows with design problems carry a "check" report; --strict writes nothing when a row fails
 vixl export loop.gif|.apng|.mp4|.webm [--overwrite]           # the timeline (else the saved frames), as export-timeline
 vixl export-screens --out screens --scales 1 2 [--artboards square story]   # NAME@2x.png
 vixl export-animation --out sprite.gif --format gif|apng|webp|mp4|webm|sheet [--scale 8] [--columns 3] [--colors 64] \

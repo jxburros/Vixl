@@ -192,7 +192,9 @@ def test_release_publish_waits_for_the_protected_environment():  # #673
     workflow = yaml.safe_load((root / ".github/workflows/release.yml").read_text(encoding="utf-8"))
     jobs = workflow["jobs"]
     writers = {name for name, job in jobs.items() if "write" in (job.get("permissions") or {}).values()}
-    assert writers == {"publish-vixl", "pypi"}
+    # mcp-registry holds an OIDC token only (tests/test_install_docs.py checks that job).
+    assert writers == {"publish-vixl", "pypi", "mcp-registry"}
+    assert jobs["mcp-registry"]["permissions"] == {"contents": "read", "id-token": "write"}
     assert workflow["permissions"] == {"contents": "read"}
     assert jobs["publish"]["permissions"] == {"contents": "read"}
     assert jobs["publish"]["environment"]["name"] == "release"

@@ -8,6 +8,10 @@ name: Publish prebuilt Python distributions
       artifact:
         type: string
         required: true
+      alias-artifact:
+        description: Artifact holding the built `vixl` meta-package; empty skips it
+        type: string
+        default: ''
 permissions:
   contents: read
 jobs:
@@ -36,5 +40,35 @@ jobs:
         skip-existing: true
         # Called from release.yml, the attestation names release.yml while Trusted Publishing matched pypi.yml,
         # and PyPI rejects the upload. Signed provenance returns with #756.
+        attestations: false
+      if: ${{ !inputs.dry-run }}
+  alias:
+    # `pip install vixl` (#753): a meta-package that depends on vixl-engine at the same version. Off until the owner
+    # has claimed the name on PyPI and set the repository variable PYPI_ALIAS_PUBLISH to true
+    # (docs/reference/releases.md). A failure here never fails the release.
+    needs: publish
+    if: ${{ inputs.alias-artifact != '' && vars.PYPI_ALIAS_PUBLISH == 'true' }}
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/vixl
+    permissions:
+      id-token: write
+    steps:
+    - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      with:
+        name: ${{ inputs.alias-artifact }}
+        path: alias
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+      with:
+        python-version: '3.12'
+    - run: |-
+        python -m pip install twine
+        python -m twine check alias/*.whl alias/*.tar.gz
+    - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
+      with:
+        packages-dir: alias/
+        skip-existing: true
         attestations: false
       if: ${{ !inputs.dry-run }}
