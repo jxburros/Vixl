@@ -1064,6 +1064,12 @@ def _split_screen(b):
     height = b.stack_height(entries, tw, gaps=gaps)
     y = ty + max(0, (th - height) / 2) if lead is None else text_box[1] + lead
     b.accent_device(tx, y, tw, height)
+    if not horizontal and b.accent == "block":
+        # Stacked, the copy starts on its section's margins, where a corner block would cover the label: the
+        # block takes the picture's outer right corner instead.
+        block = next(op for op in reversed(b.ops) if op.get("name") == b.name("accent"))
+        block["x"] = round(b.W - block["width"] * 0.7)
+        block["y"] = round(-block["height"] * 0.3 if first else b.H - block["height"] * 0.7)
     b.stack(entries, tx, y, tw, gaps=gaps)
 
 
