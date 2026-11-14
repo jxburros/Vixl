@@ -1,6 +1,7 @@
 """Seeded seamless patterns, drawn fills, and undoable snapshot-based clone stamping.
 
-Generated fills are raster overlays, keeping the source vector editable underneath.
+Pattern fills and drawn textures are effects on the layer they texture (drawn in its own frame, so they
+follow it), keeping the source vector editable; ``layer: true`` adds a separate raster overlay instead.
 Clone coordinates are destination-layer pixels; sample_all uses canvas coordinates.
 """
 from copy import deepcopy
@@ -131,12 +132,12 @@ def schemas(add):
         "sample_all": "Sample the rendered canvas snapshot instead of the target raster (default false).",
     }
     summaries = {"pattern-define": "Save a selection or rendered layer as an embedded repeatable tile with a seam report.",
-                 "pattern-fill": "Overlay a transformed seamless pattern clipped to an existing layer silhouette.",
+                 "pattern-fill": "Texture a layer with a transformed seamless pattern inside its silhouette: an effect on the layer, so it moves, turns and scales with it and adds no layer.",
                  "pattern-stroke": "Paint a repeatable pattern along a brush path.",
-                 "drawn-texture": "Add a seeded hand-drawn texture overlay while keeping the source vector editable.",
+                 "drawn-texture": "Add a seeded hand-drawn texture to a layer as an effect that follows it, keeping the source vector editable.",
                  "clone-stamp": "Clone pixels from a frozen source snapshot with aligned or restarting brush strokes."}
     def add(kind, properties, required=(), **extra):
-        properties = {key: {**value, "description": value.get("description", descriptions[key])} for key, value in properties.items()}
+        properties = {key: {**value, "description": value["description"] if "description" in value else descriptions[key]} for key, value in properties.items()}
         original_add(kind, properties, required, description=summaries[kind], **extra)
     from .schema import S, N, B
     point = {"type": "array", "items": N, "minItems": 2, "maxItems": 2}
@@ -146,9 +147,20 @@ def schemas(add):
               "colors": {"type": "array", "items": S, "minItems": 2, "maxItems": 2}, "seed": {"type": "integer"},
               "tile_variation": {"type": "number", "minimum": 0, "maximum": 1}}
     add("pattern-define", {"name": S, "selection": B, "seamless": B}, ["name"])
-    add("pattern-fill", {**params, "name": S, "opacity": N}, ["pattern"])
+    from .constants import BLENDS
+    overlay = {
+        "name": {**S, "description": "A label for the texture effect, usable wherever an effect is named (effect-set, "
+                                     "effect-remove, effect-move); with layer: true, the name of the texture layer."},
+        "opacity": {**N, "description": "Texture opacity from 0 to 1 (default 1). It is the effect's amount: change it "
+                                        "with effect-set, or animate it as the property effect:<id>."},
+        "blend": {"enum": list(BLENDS), "description": "How the texture mixes with the layer under it (default normal)."},
+        "layer": {**B, "description": "Add the texture as a separate raster layer above the target instead of an effect "
+                                      "on it (default false). A separate layer does not follow the target's own "
+                                      "animation: group the two and animate the group."},
+    }
+    add("pattern-fill", {**params, **overlay}, ["pattern"])
     add("pattern-stroke", {**params, "name": S, "points": points, "size": N, "opacity": N}, ["pattern", "points"])
-    add("drawn-texture", {"name": S, "preset": {"enum": list(DRAWN)}, "color": S, "seed": {"type": "integer"},
+    add("drawn-texture", {**overlay, "preset": {"enum": list(DRAWN)}, "color": S, "seed": {"type": "integer"},
                           "strength": N, "scale": N, "jitter": N, "pressure": N, "grain": N}, ["preset"])
     add("clone-stamp", {"source": point, "points": points, "strokes": {"type": "array", "items": points, "maxItems": 256},
                         "size": N, "hardness": N, "opacity": N, "brush": {"enum": ["round", "square"]},
@@ -712,12 +724,104 @@ def execute(project, op):
             draw.ellipse((x-width/2,y-width/2,x+width/2,y+width/2),fill=255)
         image.putalpha(ImageChops.multiply(image.getchannel("A"),mask))
         return _overlay(project,image,None,[0,0,*size],op.get("name"),finite(op.get("opacity",1),"opacity",0,1))
+    opacity = finite(op.get("opacity", 1), "opacity", 0, 1)
+    separate = op.get("layer", False)
+    require(isinstance(separate, bool), "layer must be boolean", field="layer")
+    settings = {key: deepcopy(op[key]) for key in TEXTURE_KEYS[kind] if key in op}
+    if not separate:
+        from .model import uid
+        layer = project.layer(op.get("target"))
+        require(layer["type"] != "adjustment", "An adjustment layer has no pixels of its own to texture")
+        require(len(layer["effects"]) < 256, "Effect limit reached", "resource_limit")
+        effect = {"id": uid("fx"), "name": kind, "amount": opacity, "enabled": True, "selection": None,
+                  "texture": settings, **({"label": op["name"]} if op.get("name") else {})}
+        texture_valid(project, effect)
+        layer["effects"].append(effect)
+        return effect
+    texture_valid(project, {"name": kind, "texture": settings})
     layer, original, bounds = _target_image(project,op.get("target"))
-    if kind == "drawn-texture":
-        image = drawn_image(original,op["preset"],**{k:op[k] for k in ("seed","color","strength","scale","jitter","pressure","grain") if k in op})
-    else:
-        image = pattern_image(project,original.size,op)
-        image.putalpha(ImageChops.multiply(image.getchannel("A"),original.getchannel("A")))
-    result = _overlay(project,image,layer,bounds,op.get("name"),finite(op.get("opacity",1),"opacity",0,1))
+    image = texture_image(project, original, kind, settings)
+    result = _overlay(project,image,layer,bounds,op.get("name"),opacity)
+    if "blend" in op:
+        result["blend"] = op["blend"]
     result["provenance"] = {"type":kind,"source":layer["id"],"parameters":deepcopy(op)}
     return result
+
+
+# The effects that draw a texture inside their layer's silhouette, named after the operations that add them,
+# and the settings each keeps under ``texture``.
+TEXTURE_KEYS = {
+    "pattern-fill": ("pattern", "scale", "rotation", "offset", "spacing", "colors", "seed", "tile_variation", "blend"),
+    "drawn-texture": ("preset", "color", "seed", "strength", "scale", "jitter", "pressure", "grain", "blend"),
+}
+TEXTURE_EFFECTS = tuple(TEXTURE_KEYS)
+
+
+def texture_image(project, image, kind, settings, origin=(0, 0)):
+    """The texture ``kind`` over ``image``, transparent outside its silhouette. ``origin`` is where the layer's
+    box starts in ``image``: a pattern is laid out from the box, so room added around it does not move it."""
+    if kind == "drawn-texture":
+        return drawn_image(image, settings["preset"], **{k: settings[k] for k in TEXTURE_KEYS[kind][1:-1] if k in settings})
+    if any(origin):
+        offset = settings.get("offset", [0, 0])
+        settings = {**settings, "offset": [offset[0] + origin[0], offset[1] + origin[1]]}
+    texture = pattern_image(project, image.size, settings)
+    texture.putalpha(ImageChops.multiply(texture.getchannel("A"), image.getchannel("A")))
+    return texture
+
+
+def texture_valid(project, effect):
+    """Check a texture effect's settings by drawing it over one pixel."""
+    from .constants import BLENDS
+    settings = effect.get("texture")
+    require(isinstance(settings, dict) and not set(settings) - set(TEXTURE_KEYS[effect["name"]]),
+            f"A {effect['name']} effect keeps its settings in texture")
+    require(("pattern" if effect["name"] == "pattern-fill" else "preset") in settings, "The texture effect names no texture")
+    require(settings.get("blend", "normal") in BLENDS, "Unknown blend mode", field="blend", allowed=list(BLENDS))
+    require("label" not in effect or isinstance(effect["label"], str), "An effect label is text")
+    finite(effect.get("amount", 1), "opacity", 0, 1)
+    texture_image(project, Image.new("RGBA", (1, 1)), effect["name"], settings)
+
+
+def texture_stored(effect, state):
+    """Check a stored texture effect without drawing it (documents and their history are validated on load)."""
+    from .constants import BLENDS
+    settings = effect.get("texture")
+    require(isinstance(settings, dict) and not set(settings) - set(TEXTURE_KEYS[effect["name"]]), "Invalid texture effect")
+    if effect["name"] == "pattern-fill":
+        require(settings.get("pattern") in PATTERNS or settings.get("pattern") in state.get("patterns", {}), "Missing pattern")
+    else:
+        require(settings.get("preset") in DRAWN, "Unknown drawn texture")
+    require(settings.get("blend", "normal") in BLENDS, "Unknown blend mode")
+    finite(effect.get("amount", 1), "opacity", 0, 1)
+
+
+def texture_effect(project, image, effect):
+    """``image`` with a texture effect drawn over it, in the layer's own frame."""
+    from .render import composite, with_opacity
+    settings = effect["texture"]
+    opacity = min(1, max(0, effect.get("amount", 1)))
+    if not opacity:
+        return image
+    texture = texture_image(project, image, effect["name"], settings, effect.get("_origin", (0, 0)))
+    result = composite(image, with_opacity(texture, opacity), settings.get("blend", "normal"))
+    result.info.update(image.info)
+    return result
+
+
+def texture_inputs(project, layer):
+    """What the textures a layer carries read from the document besides their own settings: the tiles of
+    saved patterns and the colours their names resolve to."""
+    paper = (layer.get("cut_paper") or {}).get("pattern")
+    effects = [e for e in layer.get("effects") or [] if e.get("name") in TEXTURE_EFFECTS]
+    if not paper and not effects:
+        return []
+    from .design import resolve_color
+    patterns = project.state.get("patterns") or {}
+    inputs = [(patterns.get(paper) or {}).get("asset")] if paper else []
+    for effect in effects:
+        settings = effect.get("texture") or {}
+        colors = settings.get("colors") or [settings["color"]] if "color" in settings or "colors" in settings else []
+        inputs.append([(patterns.get(settings.get("pattern")) or {}).get("asset"),
+                       [resolve_color(c, project.state) for c in colors]])
+    return inputs

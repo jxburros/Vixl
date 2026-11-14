@@ -34,7 +34,10 @@ def validate_state(project, state):
             finite(layer["depth"], "layer depth", 0.05, 1000)
         if "cut_paper" in layer:
             paper = layer["cut_paper"]
-            require(isinstance(paper, dict) and set(paper) == {"grain", "roughness", "thickness", "seed", "previous_shadow"}, "Invalid cut-paper settings")
+            needed = {"grain", "roughness", "thickness", "seed", "previous_shadow"}
+            require(isinstance(paper, dict) and needed <= set(paper) <= needed | {"grain_scale", "fibers", "pattern"}, "Invalid cut-paper settings")
+            from .scene import paper_texture
+            paper_texture(candidate, paper)
             for key, hi in (("grain", .5), ("roughness", 1), ("thickness", 20)):
                 finite(paper[key], key, 0, hi)
             if paper["previous_shadow"] is not None:

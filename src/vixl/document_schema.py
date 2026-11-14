@@ -148,7 +148,7 @@ LAYER_FIELDS = {
     "generated": (OBJECT, "A layer an operation draws and redraws itself {by}: object-outline for an object's "
                   "outline (object action outline)."),
     "reflection": (OBJECT, "A reflection layer's settings (horizon, sources), kept so it can be re-rendered."),
-    "cut_paper": (OBJECT, "Cut-paper look settings (grain, edge texture)."),
+    "cut_paper": (OBJECT, "Cut-paper look settings (grain, its mottling scale, fibres or pattern, edge texture)."),
     "export_fallback": (STRING, "Reason vector exports draw this layer as an image."),
     # Catalog shape parameters (shape_catalog.py)
     "corner_style": (STRING, "Catalog shape: corner style."),
@@ -284,7 +284,7 @@ LAYER_FIELDS = {
 
 # Fields that appear only on ``inspect`` output or render copies, never in a saved document.
 # Fields render and timeline code put on throwaway copies of a layer while drawing; never saved.
-TRANSIENT = ("_kinetic", "_distort_groups", "_style", "_time")
+TRANSIENT = ("_kinetic", "_distort_groups", "_style", "_time", "_jitter")
 INSPECT_ONLY = ("resolved_bounds", "canvas_bounds", "content_bounds", "coordinate_space", "collapsed",
                 "drawn_bounds", "path_nodes", "source_bounds", "path_local_bounds")
 
@@ -526,7 +526,13 @@ def document_schema():
                                       "enabled": {"type": "boolean", "description": "Whether it applies."},
                                       "selection": {"type": ["string", "null"],
                                                     "description": "A selection mask member it is limited to."},
-                                      "amount": {"type": "number", "description": "Strength."}},
+                                      "amount": {"type": "number", "description": "Strength (the opacity of a "
+                                                 "pattern-fill or drawn-texture effect)."},
+                                      "texture": {"type": "object", "description": "Settings of a pattern-fill or "
+                                                  "drawn-texture effect: the pattern or preset and its scale, "
+                                                  "rotation, offset, spacing, colours, seed and blend."},
+                                      "label": {"type": "string", "description": "A name given to the effect "
+                                                "(pattern-fill name), accepted wherever an effect is named."}},
                        "required": ["name"]},
             "mask": {"type": "object", "properties": {
                 "asset": {"type": "string", "pattern": ASSET_PATTERN, "description": "masks/<sha256>.png member."},

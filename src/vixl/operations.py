@@ -165,11 +165,13 @@ def effect_ref(layer, ref, field):
         return effects[index]
     found = next((x for x in effects if x.get("id") == ref), None)
     if found is None:
-        named = [x for x in effects if x["name"] == ref]
+        # A texture effect's own label (pattern-fill name) comes before the effect names.
+        named = [x for x in effects if x.get("label") == ref] or [x for x in effects if x["name"] == ref]
         require(len(named) < 2, f"{len(named)} effects are named {ref}; use a position or ID", field=field)
         found = named[0] if named else None
     require(found, "Effect not found", field=field,
-            allowed=[f"{i}: {x['name']}" + (f" ({x['id']})" if x.get("id") else "") for i, x in enumerate(effects, 1)])
+            allowed=[f"{i}: {x.get('label') or x['name']}" + (f" ({x['id']})" if x.get("id") else "")
+                     for i, x in enumerate(effects, 1)])
     return found
 
 
@@ -215,6 +217,8 @@ def effect_valid(effect):
     elif name == "lookup":
         finite(value, "amount", 0, 1)
         require(isinstance(effect.get("lut"), str), "A lookup effect names its LUT in lut", field="lut")
+    elif name in ("pattern-fill", "drawn-texture"):
+        finite(value, "opacity", 0, 1)
     elif name == "gamma":
         finite(value, "gamma", 0.01, 100)
     elif name == "exposure":
@@ -942,6 +946,9 @@ def execute(project, op):
         from .constants import EFFECT_DEFAULTS, STACK_EFFECTS
 
         name = op["name"] if kind == "effect" else kind
+        require(name not in ("pattern-fill", "drawn-texture"),
+                f"Add a {name} texture with the {name} operation; effect-set, effect-move and effect-remove then edit it",
+                field="name")
         require(len(layer["effects"]) < 256, "Effect limit reached", "resource_limit")
         effect = {
             "id": uid("fx"),
@@ -996,6 +1003,10 @@ def execute(project, op):
         elif kind == "effect-set":
             if "value" in op and "amount" not in op:
                 op["amount"] = op["value"]
+            if effect["name"] in ("pattern-fill", "drawn-texture"):
+                given = [key for key in EFFECT_KEYS if key in op]
+                require(not given, f"effect-set changes a texture's opacity (amount); to change {', '.join(given)}, "
+                        f"remove the effect and add it again with {effect['name']}", field=given[0] if given else None)
             for key in ("amount", *EFFECT_KEYS):
                 if key in op:
                     effect[key] = op[key]

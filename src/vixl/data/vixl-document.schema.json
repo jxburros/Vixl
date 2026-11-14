@@ -948,7 +948,7 @@
     },
     "cut_paper": {
      "type": "object",
-     "description": "Cut-paper look settings (grain, edge texture)."
+     "description": "Cut-paper look settings (grain, its mottling scale, fibres or pattern, edge texture)."
     },
     "export_fallback": {
      "type": "string",
@@ -1818,7 +1818,15 @@
     },
     "amount": {
      "type": "number",
-     "description": "Strength."
+     "description": "Strength (the opacity of a pattern-fill or drawn-texture effect)."
+    },
+    "texture": {
+     "type": "object",
+     "description": "Settings of a pattern-fill or drawn-texture effect: the pattern or preset and its scale, rotation, offset, spacing, colours, seed and blend."
+    },
+    "label": {
+     "type": "string",
+     "description": "A name given to the effect (pattern-fill name), accepted wherever an effect is named."
     }
    },
    "required": [

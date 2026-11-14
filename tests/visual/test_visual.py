@@ -47,7 +47,7 @@ def test_pptx_structure(name):
 
 
 def test_fixtures_are_small_and_cover_each_area():
-    assert 15 <= len(FIXTURES) <= 30
+    assert 15 <= len(FIXTURES) <= 34
     for name, build in FIXTURES.items():
         with Image.open(io.BytesIO(build().export(format="PNG"))) as image:
             assert max(image.size) <= 256, name

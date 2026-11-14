@@ -7,6 +7,11 @@ from PIL import Image, ImageFilter
 from .errors import require
 from .model import MAX_LAYERS, finite
 
+# Paper texture defaults: mottling cells of about GRAIN_SCALE px, and FIBERS short strokes (count per
+# 100 x 100 px of paper, length in px).
+GRAIN_SCALE = 28
+FIBERS = {"count": 8, "length": 14}
+
 TYPES = ("layer-depth", "camera", "lighting", "particles", "cut-paper")
 
 
@@ -21,7 +26,12 @@ def schemas(add):
     add("camera", {"from": pose, "to": pose, "start": N, "duration": N, "easing": easing_schema(), "follow": S, "shake": N, "focus": N, "focus_to": N, "aperture": N, "seed": {"type": "integer"}, "clear": B})
     add("lighting", {"lights": {"type": "array", "maxItems": 16, "items": {"type": "object"}}, "ambient": N, "vignette": N, "exposure": N, "saturation": N, "tint": S, "shadow": {"type": "object"}, "clear": B})
     add("particles", {"name": S, "preset": {"enum": ["dust", "bubbles", "sparks", "spores"]}, "count": {"type": "integer", "minimum": 1, "maximum": 256}, "x": N, "y": N, "spread": point, "velocity": point, "gravity": N, "turbulence": N, "life": N, "size": N, "color": S, "start": N, "duration": N, "seed": {"type": "integer"}}, ["name"])
-    add("cut-paper", {"targets": {"type": "array", "items": S, "maxItems": MAX_LAYERS}, "grain": N, "roughness": N, "thickness": N, "fps": N, "jitter": N, "seed": {"type": "integer"}, "children": B, "clear": B})
+    add("cut-paper", {"targets": {"type": "array", "items": S, "maxItems": MAX_LAYERS}, "grain": N, "roughness": N, "thickness": N, "fps": N, "jitter": N, "seed": {"type": "integer"}, "children": B, "clear": B,
+                      "grain_scale": {"type": "number", "minimum": 2, "maximum": 512},
+                      "fibers": {"type": "object", "additionalProperties": False, "properties": {
+                          "count": {"type": "number", "minimum": 0, "maximum": 100, "description": "Fibres per 100 x 100 px of paper (default 8; 0 for none)."},
+                          "length": {"type": "number", "minimum": 1, "maximum": 200, "description": "Fibre length in pixels (default 14)."}}},
+                      "pattern": S})
 
 
 def execute(project, op):
@@ -115,7 +125,8 @@ def execute(project, op):
             for layer in targets:
                 ids |= descendants(project, layer["id"])
             targets = [layer for layer in project.state["layers"] if layer["id"] in ids and layer["type"] != "group"]
-        settings = {"grain": op.get("grain", 0.08), "roughness": op.get("roughness", 0.5), "thickness": op.get("thickness", 2), "seed": op.get("seed", 0)}
+        settings = {"grain": op.get("grain", 0.08), "roughness": op.get("roughness", 0.5), "thickness": op.get("thickness", 2), "seed": op.get("seed", 0),
+                    **paper_texture(project, op)}
         for key, hi in (("grain", 0.5), ("roughness", 1), ("thickness", 20)):
             finite(settings[key], key, 0, hi)
         for index, layer in enumerate(targets):
@@ -178,10 +189,15 @@ def apply_at(project, time):
         if "cut_paper" in layer and project.state.get("stop_motion", {}).get("jitter"):
             stop = project.state["stop_motion"]
             tick = math.floor(time * stop["fps"] / 1000)
-            seed = int.from_bytes(hashlib.sha256(f"{layer['id']}:{tick}:{stop['seed']}".encode()).digest()[:8], "big")
+            # Seeded by the piece's name and paper seed, not its ID (random for each new document): building
+            # the same scene again gives the same frames.
+            key = f"{layer['name']}:{layer['cut_paper']['seed']}:{tick}:{stop['seed']}"
+            seed = int.from_bytes(hashlib.sha256(key.encode()).digest()[:8], "big")
             jitter = np.random.default_rng(seed).uniform(-stop["jitter"], stop["jitter"], 2)
-            layer["x"] += float(jitter[0])
-            layer["y"] += float(jitter[1])
+            # An offset the compositor applies to the drawn piece (render.jittered), not a move of the layer:
+            # the piece keeps its place, so a new hold reuses its cached pixels. The third value is the
+            # farthest any hold moves it, in whole pixels.
+            layer["_jitter"] = [float(jitter[0]), float(jitter[1]), math.ceil(stop["jitter"])]
     if camera:
         progress = min(1, max(0, (time - camera.get("start", 0)) / camera.get("duration", 1000)))
         eased = easing_function(camera.get("easing", "ease-in-out"))(progress)
@@ -204,6 +220,9 @@ def apply_at(project, time):
             layer["y"] = (layer["y"] - canvas["height"] / 2 - cy / depth) * z + canvas["height"] / 2
             layer["width"] = max(1, round(layer["width"] * z))
             layer["height"] = max(1, round(layer["height"] * z))
+            if "_jitter" in layer:
+                dx, dy, reach = layer["_jitter"]
+                layer["_jitter"] = [dx * z, dy * z, math.ceil(reach * z)]
             layer["auto_size"] = False
             layer["constraints"] = {}
             blur = min(64, abs(depth - focus) * camera.get("aperture", 0))
@@ -212,16 +231,98 @@ def apply_at(project, time):
     return project
 
 
-def paper_image(image, layer):
+def paper_texture(project, settings):
+    """The validated texture controls of a cut-paper request or stored layer: ``grain_scale``, ``fibers``
+    and ``pattern``, each only when given."""
+    texture = {}
+    if "grain_scale" in settings:
+        texture["grain_scale"] = finite(settings["grain_scale"], "grain_scale", 2, 512)
+    if "fibers" in settings:
+        fibers = settings["fibers"]
+        require(isinstance(fibers, dict) and set(fibers) <= {"count", "length"}, "fibers is {count, length}", field="fibers")
+        texture["fibers"] = {key: finite(fibers[key], f"fibers {key}", low, high)
+                             for key, low, high in (("count", 0, 100), ("length", 1, 200)) if key in fibers}
+    if "pattern" in settings:
+        from .textures import PATTERNS
+        name = settings["pattern"]
+        require(isinstance(name, str) and (name in PATTERNS or name in project.state.get("patterns", {})),
+                "Unknown pattern; use pattern-list or save a tile with pattern-define", field="pattern")
+        texture["pattern"] = name
+    return texture
+
+
+def mottling(rng, size, scale):
+    """Seeded value noise of unit variance over ``size`` (w, h), with cells of ``scale`` px: a lattice of
+    random values that wraps at its edges (so the field tiles), smoothed and enlarged."""
+    w, h = size
+    cells = max(2, math.ceil(w / scale)), max(2, math.ceil(h / scale))
+    lattice = rng.normal(0, 1, (cells[1], cells[0])).astype(np.float32)
+    # Two wrapped cells on each side hold the reach of the bicubic filter.
+    wrapped = Image.fromarray(np.pad(lattice, 2, mode="wrap"), "F")
+    box = (2, 2, 2 + w / scale, 2 + h / scale)
+    values = np.asarray(wrapped.resize((w, h), Image.Resampling.BICUBIC, box=box), dtype=np.float32)
+    return values / max(1e-6, float(values.std()))
+
+
+def fiber_field(rng, size, count, length):
+    """Short soft strokes at random angles, light and dark, as offsets of about -1 to 1 over ``size`` (w, h).
+    ``count`` is per 100 x 100 px, so a large sheet and a small piece carry the same density."""
+    from PIL import ImageDraw
+    w, h = size
+    total = min(20000, int(round(count * w * h / 10000)))
+    if total <= 0:
+        return None
+    field = Image.new("L", (w, h), 128)
+    draw = ImageDraw.Draw(field)
+    x, y = rng.uniform(-length, w + length, total), rng.uniform(-length, h + length, total)
+    angle = rng.uniform(0, math.pi, total)
+    reach = length * rng.uniform(0.5, 1, total) / 2
+    tone = rng.uniform(0.45, 1, total) * np.where(rng.random(total) < 0.5, -1, 1)
+    # Paper fibres bend a little: each is two segments meeting at a midpoint off the line.
+    bend = rng.normal(0, 0.18, total) * reach
+    for i in range(total):
+        ux, uy = math.cos(angle[i]), math.sin(angle[i])
+        dx, dy = ux * reach[i], uy * reach[i]
+        middle = (x[i] - uy * bend[i], y[i] + ux * bend[i])
+        draw.line([(x[i] - dx, y[i] - dy), middle, (x[i] + dx, y[i] + dy)], fill=int(round(128 + 127 * tone[i])), width=1)
+    field = field.filter(ImageFilter.GaussianBlur(0.6))
+    return (np.asarray(field, dtype=np.float32) - 128) / 127
+
+
+def pattern_field(project, size, name, rng):
+    """The light and dark variation of a pattern tile over ``size`` (w, h), with zero mean and unit variance,
+    starting at a seeded place in the tile so neighbouring pieces do not show the same part of it."""
+    from .textures import pattern_image
+    offset = [int(v) for v in rng.integers(0, 4096, 2)]
+    tile = pattern_image(project, size, {"pattern": name, "offset": offset})
+    luma = np.asarray(tile.convert("RGB"), dtype=np.float32) @ np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
+    luma -= luma.mean()
+    return luma / max(1e-6, float(luma.std()))
+
+
+def paper_image(image, layer, project=None):
+    """``image`` as cut paper: grain over its colour and a rough silhouette edge, seeded by the layer's settings
+    (the same pixels on every frame). The grain is low-frequency mottling, short fibres at random angles and
+    fine per-pixel tooth, or the variation of a named pattern tile; none of them has a direction."""
     settings = layer.get("cut_paper")
     if not settings:
         return image
     rng = np.random.default_rng(settings["seed"])
     pixels = np.asarray(image.convert("RGBA"), dtype=np.float32).copy()
     h, w = pixels.shape[:2]
-    grain = rng.normal(0, 255 * settings["grain"], (h, w))
-    fibers = rng.normal(0, 255 * settings["grain"] * 0.4, (h, 1))
-    pixels[:, :, :3] = np.clip(pixels[:, :, :3] + grain[:, :, None] + fibers[:, :, None], 0, 255)
+    strength = 255 * settings["grain"]
+    texture = None
+    if strength and settings.get("pattern") and project is not None:
+        texture = pattern_field(project, (w, h), settings["pattern"], rng) * strength
+    elif strength:
+        fibers = {**FIBERS, **settings.get("fibers", {})}
+        texture = rng.normal(0, strength * 0.6, (h, w)).astype(np.float32)
+        texture += mottling(rng, (w, h), settings.get("grain_scale", GRAIN_SCALE)) * (strength * 0.3)
+        strokes = fiber_field(rng, (w, h), fibers["count"], fibers["length"])
+        if strokes is not None:
+            texture += strokes * (strength * 3)
+    if texture is not None:
+        pixels[:, :, :3] = np.clip(pixels[:, :, :3] + texture[:, :, None], 0, 255)
     # Only erode the silhouette edge. Opaque interiors remain paper, not perforated noise.
     alpha = image.getchannel("A")
     padded = Image.new("L", (w + 2, h + 2))

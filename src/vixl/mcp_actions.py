@@ -881,6 +881,8 @@ def render_preview(
     views: Annotated[list[Literal["parts"]] | None, Field(
         description="['parts']: a labelled contact sheet of each isolated object, assembled and part by part")] = None,
     exploded: Annotated[bool, Field(description="With isolate: add an exploded view of the parts")] = False,
+    draft: Annotated[bool, Field(description="Quicker frame for checking a pose: layers land on whole pixels, "
+                                             "so stop-motion jitter under half a pixel is left out")] = False,
     document: Document = None,
 ):
     """An aspect-preserving PNG capped in size and bytes. region zooms (up to 8x); time shows an animation frame;
@@ -899,7 +901,7 @@ def render_preview(
         return [feedback, image(data)]
     data = image(preview(session, variables, max_width, max_height, max_bytes, artboard, comp, region, document,
                          time=time, proof=proof, simulate=simulate, guides=guides, page=page, values=values,
-                         show_fields=show_fields, isolate=isolate, views=views, exploded=exploded))
+                         show_fields=show_fields, isolate=isolate, views=views, exploded=exploded, draft=draft))
     from .check_results import delivery
 
     with session.project(document=document) as project:

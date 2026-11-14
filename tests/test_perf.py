@@ -257,3 +257,33 @@ def test_adapting_a_poster_to_three_sizes_with_arrangements(tmp_path):  # #519
     elapsed, reports = timed(adapt)
     assert all(len(report["candidates"]) == 4 for report in reports)
     assert elapsed < 8
+
+
+def test_a_new_hold_of_a_300_layer_cut_paper_scene():  # #754
+    from vixl.timeline import render_at
+
+    p = Project(960, 540, "#dfeaf2")
+    names = [f"piece{i}" for i in range(299)]
+    p.apply([{"type": "shape", "name": "sky", "shape": "rectangle", "width": 980, "height": 560, "x": -10, "y": -10,
+              "fill": "#93cbe6", "stroke_width": 0}] +
+            [{"type": "shape", "name": name, "shape": ("ellipse", "triangle", "rounded-rectangle", "rectangle")[i % 4],
+              "width": 34 + i * 7 % 90, "height": 30 + i * 11 % 80, "x": i * 37 % 900, "y": i * 53 % 470,
+              "fill": ("#e76f51", "#2a9d8f", "#e9c46a", "#8d6cab", "#f4a261")[i % 5]}
+             for i, name in enumerate(names)], detail="brief")
+    p.apply([{"type": "pattern-fill", "targets": names, "pattern": "paper", "opacity": 0.5},
+             {"type": "cut-paper", "targets": ["sky", *names], "grain": 0.06, "roughness": 0.4, "thickness": 2,
+              "seed": 3, "jitter": 0.35},
+             {"type": "timeline-set", "duration": 2000, "fps": 12}] +
+            [{"type": "keyframes", "target": name, "property": "x",
+              "keys": [{"time": 0, "value": 10}, {"time": 2000, "value": 500}]} for name in names[:20]],
+            detail="brief")
+    assert len(p.state["layers"]) == 300  # texturing a piece adds no layer
+    render_at(p, 0)
+    render_at(p, 90)
+    # Each new stop-motion hold drew every piece again (its jitter moved it by a fraction of a pixel, missing
+    # the raster cache): about 1.5 s a frame here. Now the drawn pieces are reused and only composited at
+    # their new offsets: about 0.25 s. The budget is three times that.
+    elapsed = min(timed(lambda t=t: render_at(p, t))[0] for t in (170, 250, 340))
+    assert elapsed < 0.8
+    # Inside a hold nothing changes at all.
+    assert timed(lambda: render_at(p, 350))[0] < 0.5

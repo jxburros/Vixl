@@ -4,6 +4,7 @@ Stroke expansion yields filled SVG paths; raster/SVG/PDF consume the same geomet
 Widths and dash distances are measured in local pixels, independent of path viewBox.
 """
 
+import functools
 import math
 
 from . import house_style
@@ -774,17 +775,30 @@ def render(project, layer, size=None, matrix=None):
 
 
 def path_margin(primitives, w, h):
+    boxes = [box for box in (path_bounds(path) for path, paint in primitives if path and paint != "transparent") if box]
+    if not boxes:
+        return 0, 0
+    x0, y0 = min(box[0] for box in boxes), min(box[1] for box in boxes)
+    x1, y1 = max(box[2] for box in boxes), max(box[3] for box in boxes)
+    return math.ceil(max(0, -x0, x1 - w)), math.ceil(max(0, -y0, y1 - h))
+
+
+def path_bounds(path):
+    """(x0, y0, x1, y1) of a path's outline (curves by their extrema), or None when it draws nothing. Kept for
+    paths of ordinary length: every frame of an animation asks for the margins of the same outlines."""
+    from .geometry import PATH_CACHE_CHARS
+
+    return _path_bounds(path) if len(path) <= PATH_CACHE_CHARS else _path_bounds.__wrapped__(path)
+
+
+@functools.lru_cache(maxsize=2048)
+def _path_bounds(path):
     from fontTools.pens.boundsPen import BoundsPen
     from fontTools.svgLib.path import parse_path
 
     pen = BoundsPen(None)
-    for path, paint in primitives:
-        if path and paint != "transparent":
-            parse_path(path, pen)
-    if pen.bounds is None:
-        return 0, 0
-    x0, y0, x1, y1 = pen.bounds
-    return math.ceil(max(0, -x0, x1 - w)), math.ceil(max(0, -y0, y1 - h))
+    parse_path(path, pen)
+    return pen.bounds
 
 
 def geometry_reach(layer):
