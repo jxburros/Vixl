@@ -70,6 +70,11 @@ def test_a_series_and_category_address_names_the_same_layer_before_and_after_a_r
     assert layer["chart_part"] == (f"{mark}-1" if radial(kind) else f"{mark}-1-1"), "its key is its new position"
     assert layer["chart_mark"]["category"] == "Mar" and layer["opacity"] == 0.5
     assert (layer["x"], layer["y"]) != before, "and it is drawn where March now is"
+    names = [x["name"] for x in children(p)]
+    assert len(set(names)) == len(names) and not [name for name in names if name.endswith(" 2 2")], \
+        "layers that change places swap names cleanly"
+    if not radial(kind):
+        assert p.layer("Sales/category label 2")["text"] == "Mar"
     with pytest.raises(VixlError, match="Unknown category 'Dec'; categories: Apr, Mar, Feb, Jan") as caught:
         resolve_mark(p, {"chart": "Sales", "series": "Tea", "category": "Dec"})
     assert caught.value.details["allowed"] == ["Apr", "Mar", "Feb", "Jan"]

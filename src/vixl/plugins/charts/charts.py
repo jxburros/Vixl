@@ -1726,6 +1726,12 @@ def sync(project, group, parts, field="chart_part", marks=None):
         from ...timeline import prune_targets
 
         prune_targets(project.state, removed)
+    # Layers that change places take each other's names (category label 2 becomes category label 3): free the
+    # names first, so none of them is pushed to "… 2" by a name its old holder is about to give up.
+    for part in wanted:
+        layer = reuse.get(part["key"])
+        if layer is not None and layer["name"] != f"{group['name']}/{part['label']}"[:190]:
+            layer["name"] = f"\x00{layer['id']}"
     kept = []
     for part in wanted:
         fields, layer = part["fields"], reuse.get(part["key"])
@@ -1754,12 +1760,12 @@ def sync(project, group, parts, field="chart_part", marks=None):
         kept.append(layer)
     # A value label is set against the marks by design (a line runs through it, an area lies under it, it sits on
     # its bar): those pairs are not overlap findings. Labels against each other still are.
-    marks = [(x[field], x["id"]) for x in kept if x["type"] != "text"]
+    drawn = [(x[field], x["id"]) for x in kept if x["type"] != "text"]
     for layer in kept:
         key = layer[field]
         if key.startswith(("value-", "total-")):
             category = key.rsplit("-", 1)[1]
-            own = [ident for part, ident in marks if part.startswith(("line-", "area-"))
+            own = [ident for part, ident in drawn if part.startswith(("line-", "area-"))
                    or (part.startswith(("bar-", "marker-")) and part.rsplit("-", 1)[1] == category)]
             layer["allow_overlap"] = own[:512]
     ids = {x["id"] for x in kept}
