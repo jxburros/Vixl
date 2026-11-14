@@ -443,13 +443,11 @@ def _cache_dir():
 def _get(client, url):
     parsed = urlparse(url)
     require(parsed.scheme == "https", "Font downloads require HTTPS")
-    with client.stream("GET", url) as response:
+    from .fetch import ACCEPT_ENCODING, read_bounded
+
+    with client.stream("GET", url, headers={"Accept-Encoding": ACCEPT_ENCODING}) as response:
         require(response.status_code == 200, f"Font service returned HTTP {response.status_code}", "font_download_failed")
-        data = bytearray()
-        for chunk in response.iter_bytes():
-            data.extend(chunk)
-            require(len(data) <= LIMIT, "Font exceeds byte limit", "resource_limit")
-        return bytes(data)
+        return read_bounded(response, LIMIT, "Font exceeds byte limit")
 
 
 def cache_location():

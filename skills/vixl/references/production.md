@@ -31,7 +31,7 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    Use `suite-capture` for protected layer structures/pixel regions. Do not overwrite
    baselines during an ordinary repair. Rule kinds: `assert`, `property`, `gap`, `spacing`,
    `relation`, `text-fit`, `contrast`, `hierarchy`, `color`, `palette`, `ink`, `balance`, `focal`,
-   `count`, `text` (the drawn copy: `contains`, `forbid`/`pattern` regexes, `min_/max_characters`,
+   `count`, `text` (the drawn copy: `contains`, `forbid`/`pattern` regexes (keep them simple: a service refuses nested repeats such as `(a+)+`), `min_/max_characters`,
    `min_/max_words`, `case`, `brand`, `spelling: true` for unknown words with suggestions), `budget` (`max_layers`, `max_fonts`, `max_bytes`, `min_ppi`, `max_ppi`; `max_render_ms` + `proxy` in a rule of its own, always an advisory review), `alpha`,
    `design`, `container`, `unchanged`, `pixels`. `expected`, `to` and `ratio` may be `{ref: "master.vixl#layer.field"}` or `{ref: "master.vixl#suite:rule-id"}` to read a master document each run (at most 8; a missing one needs review) (fields:
    `vixl_reference('workflows', name='check').definitions.suite`; method: `vixl_reference("testing")`). Run suites with each

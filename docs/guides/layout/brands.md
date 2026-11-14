@@ -374,7 +374,8 @@ Three optional fields hold the brand's copy policy and its contract:
 `words.allow` lists names and terms the brand spells its own way (at most 5,000): a forbidden or preferred word
 inside an allowed phrase is skipped ("Cheap Eats Co" is not a use of "cheap"), and the spelling check accepts them.
 `placeholders` adds regular expressions to the
-`placeholders` check (leftover template copy). `suites` names library suites that every document in the
+`placeholders` check (leftover template copy); on a service they are
+[bounded](../../reference/interfaces.md#regular-expressions-from-callers) like any caller's pattern. `suites` names library suites that every document in the
 workspace inherits by reference (see [library suites](../automation/production.md#library-suites-shared-by-a-group-or-the-workspace)).
 
 ### Spelling

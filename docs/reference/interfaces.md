@@ -276,6 +276,42 @@ The durable workflow queue (`submit`, `work`, `start`; MCP, CLI and Python) has 
 vixl serve --call-timeout 30 --call-hard-timeout 300 --max-megapixels 50 --max-pages 40 --max-concurrent 2
 ```
 
+### Regular expressions from callers
+
+The hard timeout stops a call at its next checkpoint, and a thread inside one regular-expression match never
+reaches one: with Python's backtracking `re`, a pattern such as `(a+)+$` against a long run of `a` would keep its
+CPU and its workspace slot for hours. So a service bounds every pattern a caller sends: selector `name_regex` and
+`text_regex`, the `pattern` and `forbid` of a `text` suite rule, copy-fact `pattern`s, brand.json `placeholders`
+and `replace-across` with `match: "regex"`. "A service" is any MCP call, any call a REST or Host server runs under
+the limits above, and everything in a `vixl serve`, `vixl view`, `vixl mcp` or `vixl host` process; the CLI and
+the Python API keep plain `re`. `VIXL_SAFE_REGEX=1` bounds patterns in any process, and `VIXL_SAFE_REGEX=0` turns
+the bound off on a server whose callers are all trusted.
+
+- **Ordinary patterns run on `re`, as before.** Vixl reads the pattern and bounds the steps a backtracking match
+  can take on text of n characters. Literals, classes, groups, alternation, anchors, look-around, counted repeats
+  and open-ended repeats that something distinct delimits (`\d+%`, `\w+@\w+\.\w+`, `^Title.*\d+$`,
+  `(foo|bar)+baz`) all pass. Each pattern gets the longest text it may be matched against inside a budget of
+  under a second: effectively no limit for a pattern without open-ended repeats, a few thousand characters
+  for a typical one, a few hundred for a `.*` between two other parts.
+- **Patterns with no bound are refused** unless RE2 is installed: back-references, a repeat inside a repeat that
+  can split the same text in many ways (`(a+)+`, `(\w+\s*)*`), alternatives inside a repeat that start alike or
+  can match nothing (`(a|ab)+`), an optional part inside a repeat that what follows could also match
+  (`(ab?b)+`), and a repeat of something that can match nothing (`(a?)*`). The error (`invalid_operation`,
+  `invalid_suite` or `invalid_request`, as for an invalid pattern at that place) says which, with suggestions.
+- **Selectors** match against the first 2,000 characters of a name or text, so a selector pattern must be
+  bounded for that much; one that is not (`\d*\d*\d*x`) is refused when it is sent, whatever the document holds.
+  A leading `.*` is dropped first, since it cannot change whether a search matches.
+- **Suites, facts, placeholders and replace** read whole texts. Text longer than a pattern's limit fails the call
+  with `resource_limit` (`pattern`, `characters`, `maximum`) instead of running unbounded.
+- **With RE2**, both refusals go away. Install the optional extra on the server:
+  `pip install 'vixl-engine[re2]'` (the `google-re2` package). RE2 matches in time linear in the text, so Vixl
+  uses it for a pattern `re` cannot bound and for text past a pattern's limit; everything else still runs on
+  `re`, so results do not change with the install. RE2 has no look-around or back-references (a pattern that
+  needs both RE2 and those is refused), and its `\b` is ASCII; `\w`, `\d` and `\s` keep their Unicode meaning.
+- Each match is also a checkpoint: a call past its hard timeout stops between two matches.
+- `GET /limits` and `vixl_job(action="list")` report the mode under `caller_regex`: `bounded`, and `linear_engine`
+  (`"re2"` when the extra is installed, else `null`).
+
 ### Several agents on one server
 
 The server keeps documents loaded in one shared cache, but the **active document is per MCP client session**: with Streamable HTTP each connected client opens, creates and closes documents without moving anyone else's active document. A client session is a connection, not an agent: a stdio server has exactly one client connection, so subagents of one parent agent share one active document there, and MCP carries nothing that tells them apart. So a call without `document=` uses the active document only when it unambiguously belongs to the caller:
@@ -613,8 +649,8 @@ REST `POST /import?format=figma` with the URL or file key as the body, `page` (a
 
 Any other file, or an `https://` URL, is imported as an image layer, the same as
 an `import-image` step with `url`, `POST /assets?url=…` and `Project.import_image(url=…)` in Python. A URL
-download is HTTPS only, follows at most 5 redirects, refuses private, loopback and link-local hosts
-and is size-capped; the bytes must decode as an image whatever the server's `Content-Type` says (see
+download is HTTPS only, follows at most 5 redirects inside one 120 s deadline, refuses private, loopback and
+link-local hosts and is size-capped (compressed answers are checked against the cap as they are decoded); the bytes must decode as an image whatever the server's `Content-Type` says (see
 [architecture](architecture.md#trust-and-security)). The layer's `provenance` records
 `source: {url, fetched_at, sha256, bytes}`, plus `credit` and `license` when you pass them (also for
 file and base64 imports, and the `add` operation's `credit`/`license` fields). Compact inspect shows

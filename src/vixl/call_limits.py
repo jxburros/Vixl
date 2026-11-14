@@ -116,8 +116,10 @@ class CallLimits:
 
     def describe(self, mcp_inline_seconds=None):
         """The limits as a service reports them (``GET /limits``, ``vixl_job(action='list')``)."""
+        from .patterns import status
+
         timeout = self.timeout if self.timeout is not None else mcp_inline_seconds
-        return {"timeout_s": timeout, "hard_timeout_s": self.hard_timeout, "max_megapixels": self.max_megapixels,
+        return {"caller_regex": status(), "timeout_s": timeout, "hard_timeout_s": self.hard_timeout, "max_megapixels": self.max_megapixels,
                 "max_pages": self.max_pages, "max_concurrent_per_workspace": self.max_concurrent,
                 "source": {key: self.sources.get(key, "unset") for key in ENV},
                 "configure": {key: {"flag": FLAGS[key], "env": ENV[key]} for key in ENV}}
@@ -141,7 +143,12 @@ def add_arguments(parser):
 
 
 def from_arguments(args, network=None):
-    """Limits from the parsed flags; ``network`` (``"rest"``/``"mcp"``) when other machines can reach the server."""
+    """Limits from the parsed flags; ``network`` (``"rest"``/``"mcp"``) when other machines can reach the server.
+    Called once by each server command, so it also marks the process as a service for caller patterns
+    (``patterns.serving``): a regular expression a caller sends is then bounded on every route."""
+    from .patterns import serving
+
+    serving()
     return CallLimits.configure(timeout=args.call_timeout, max_megapixels=args.max_megapixels,
                                 max_pages=args.max_pages, max_concurrent=args.max_concurrent,
                                 hard_timeout=args.call_hard_timeout,

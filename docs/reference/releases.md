@@ -259,7 +259,7 @@ uvx --from vixl-engine vixl mcp --workspace .
 pip install 'vixl-engine[server,pdf]'
 ```
 
-MCP is included in the base package (there is no `mcp` extra). The optional extras are `server` (REST and live review), `pdf` (PDF page import), `anthropic` (the Anthropic provider) and `dev` (tests and tooling).
+MCP is included in the base package (there is no `mcp` extra). The optional extras are `server` (REST and live review), `pdf` (PDF page import), `re2` (linear-time matching of callers' regular expressions on a shared server, see [interfaces](interfaces.md#regular-expressions-from-callers)), `anthropic` (the Anthropic provider) and `dev` (tests and tooling).
 
 Build the Claude packages with `python distribution/package_extensions.py`. The release workflow
 attaches `vixl.mcpb` and `vixl-claude-code.zip` alongside Python and Windows artifacts. Both include

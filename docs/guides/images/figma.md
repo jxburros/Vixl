@@ -185,7 +185,7 @@ Errors are JSON with `error`, `message` and `suggestions`, like the rest of Vixl
 | `invalid_figma_source` | the argument is not a Figma URL or file key |
 | `invalid_figma_document` | the JSON is not a Figma file, or the page or node is empty |
 | `figma_empty` | the selected frame or page held nothing Vixl could import; the report names the skipped nodes |
-| `resource_limit` | the import needs more operations (default 10,000) or image fills (200) than allowed: import one frame |
+| `resource_limit` | the import needs more operations (default 10,000) or image fills (200) than allowed, or an API answer passes 256 MiB (it is refused while streaming, before it is held in memory): import one frame |
 
 A failed import changes nothing: the whole import is one atomic batch, so `vixl undo` removes it in a single step.
 
