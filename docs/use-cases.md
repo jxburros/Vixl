@@ -321,7 +321,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SOC-12 | Open Graph / link preview image | size `og-image`, layout | 4–6 · 1–2 |  |
 | SOC-13 | Profile picture or avatar with initials | `logo-avatar` size, `monogram` layout | 3–5 · 1 |  |
 | SOC-14 | Email header or email signature banner | `email-header` size, `banner` layout | 4–6 · 1–2 |  |
-| SOC-15 | Discord emoji or Twitch panel | named sizes, shape + text | 4–8 · 1–2 | Whole emoji packs with platform checks: BRD-11. |
+| SOC-15 | Discord emoji or Twitch panel | named sizes, shape + text | 4–8 · 1–2 | Whole emoji, sticker and emote packs with platform checks: BRD-11, BRD-60. |
 | SOC-16 | Big-number stat card | `big-number` layout | 3–5 · 1 |  |
 | SOC-17 | Phone or desktop wallpaper from gradients and organic forms | `gradient`, `organic`, look | 5–8 · 1–2 |  |
 | SOC-18 | Text-only typographic poster for screen | `typographic-poster` layout, font pair | 5–8 · 2 |  |
@@ -355,6 +355,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | BRD-51 | Logo package: colour/mono/reversed variants, lockups, SVG/PDF/PNG, icons, social images, usage sheet | `vixl_apply(workflow='logo-package')` | 1–3 · 1–3 | Since 0.22; recolouring is heuristic and reported; no EPS. |
 | BRD-52 | Brand guidelines document: palette with contrast pairs, the text-stage ladder, logos with clear space, do/don't rules | `vixl_apply(workflow='brand-board')` | 1–2 · <1 | Drawn from `brand.json` (or a preset); PDF, PPTX, HTML or editable `.vixl`. |
 | BRD-11 | Custom emoji pack: replace or add `:shortcodes:`, check platform requirements, export PNG/SVG with editable masters | `vixl emoji`, `emoji-replace`, `emoji-template`, `emoji-requirements`, `emoji-export` | 3–8 · 1–2 | Since 0.24; Discord/Slack upload instructions and an offline preview; CC BY-SA 4.0 licences travel with the pack. |
+| BRD-60 | Sticker and emote packs from the same emojis: WhatsApp (WebP, tray icon, `contents.json`), Telegram stickers, custom emoji and TGS, Twitch 28/56/112, iMessage folder; animated GIF/WebP/APNG packs; several destinations in one call | `vixl emoji export --destination slack discord whatsapp`, `emoji-export` with `destination` list and `animated`, `emoji-requirements` | 1–3 · <1 | Unreleased; sizes, formats, byte, frame and duration budgets are checked per platform. Animation comes from a VIXL master with a timeline. Upload, app packaging (WhatsApp, iMessage) and store accounts stay with the platform; no Telegram video stickers. |
 | BRD-55 | Icon font: drawn icons on Private Use Area code points (U+E001 …) | shapes or paths, `font-design`, `font-glyph` per icon, `vixl_export` `.ttf`/`.woff` | 4–8 · 1–2 | Unreleased; glyphs merge each icon's shapes into one monochrome outline. |
 
 ### Data and diagrams

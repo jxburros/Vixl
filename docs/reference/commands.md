@@ -507,9 +507,10 @@ The source format stores only the current state, so undo history, branches and s
 ```bash
 vixl emoji list [--query TEXT] [--group G] [--offset N] [--limit N]
 vixl emoji get EMOJI [--out FILE] [--format vixl|svg|png] [--overwrite]   # inspect, or extract the editable source
-vixl emoji template [blank|face|symbol|sheet] --out FILE [--destination images|discord|slack] [--overwrite]
-vixl emoji destinations | emoji requirements [--destination D] [--emojis E…]
-vixl emoji export [--destination images|discord|slack] [--emojis E…] --out FILE [--size N] [--no-sources] [--overwrite]
+vixl emoji template [blank|face|symbol|sheet] --out FILE [--destination D] [--overwrite]
+vixl emoji destinations | emoji requirements [--destination D…] [--emojis E…] [--animated] [--size N]
+vixl emoji export [--destination D…] [--emojis E…] --out FILE [--animated [gif|webp|apng]] [--size N] [--no-sources] [--overwrite]
+# D: images|discord|slack|whatsapp|telegram|telegram-emoji|telegram-animated|twitch|imessage; several D write OUT-D.zip each
 vixl -p doc.vixl emoji settings [--mode vixl|font]          # bundled art (default) or the font first
 vixl -p doc.vixl emoji replace EMOJI|:custom_name: SOURCE [--name N] [--license L]
 vixl -p doc.vixl emoji install PACK | emoji reset [--emoji EMOJI]

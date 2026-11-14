@@ -140,7 +140,7 @@ vixl -p happy.vixl render --out happy-preview.png
 of 72 px cells with editable safe-area guides. The canvas is the emoji's bounding box,
 so draw on one cell-sized document for an individual emoji. Sheet guides are ordinary
 layers: hide or remove them and split the concepts into individual masters before
-registration. Set `--destination discord` or `--destination slack` to record the intended
+registration. Set `--destination` (`discord`, `slack`, `whatsapp`, `twitch` …) to record the intended
 delivery profile. Template metadata contains the creation guide.
 
 - Keep the identifying silhouette and key details inside an 8 px margin.
@@ -152,13 +152,14 @@ delivery profile. Template metadata contains the creation guide.
   into one em while preserving the aspect ratio.
 - Retain a transparent background and save the `.vixl` master before delivery.
 
-## Export and use in Discord or Slack
+## Export emoji, sticker and emote packs
 
 ```bash
 vixl emoji destinations
 vixl emoji requirements --destination discord --emojis '😀' '👋🏽' '🧑‍🚀'
 vixl emoji export --destination discord --emojis '😀' '👋🏽' '🧑‍🚀' --out discord-emojis.zip
 vixl emoji export --destination images --emojis '😀' '👋🏽' --size 256 --out images.zip
+vixl emoji export --destination slack discord whatsapp --emojis '😀' '👋🏽' '🧑‍🚀' --out team.zip
 ```
 
 Without `--emojis`, export includes the full Unicode set, all original VIXL emojis and any new shortcodes in the
@@ -176,15 +177,78 @@ attribution through installation and re-export.
 | Images | Transparent PNG, SVG and optional VIXL, 16–1024 px (default 128) | Unzip and open `index.html`; use PNG in image uploads or SVG on the web. |
 | Discord | 128×128 PNG, under 256 KiB, normalized unique 2–32 character names | Unzip, then **Server Settings → Emoji → Upload Emoji** and select files in `png/`. |
 | Slack | 128×128 transparent PNG, under 128 KiB, normalized unique names | Unzip, then **emoji picker → Add Emoji → Upload Image**, and use the filename as the name. |
+| WhatsApp (`whatsapp`) | 3–30 stickers, 512×512 WebP under 100 KB each in `stickers/`, a 96×96 `tray.png` under 50 KB and `contents.json` | Copy the files into a pack folder of WhatsApp's sample sticker app and merge `contents.json`, or import the WebP files with a sticker-maker app. |
+| Telegram stickers (`telegram`) | 512×512 PNG in `stickers/` | **@Stickers → /newpack**, send each file as a file, then an emoji that matches it. |
+| Telegram custom emoji (`telegram-emoji`) | 100×100 PNG in `emoji/` | **@Stickers → /newemojipack**, static emoji; using custom emoji sets needs Telegram Premium. |
+| Telegram animated (`telegram-animated`) | One vector `.tgs` per emoji in `stickers/`: 512×512, at most 3 s, 60 fps, under 64 KiB, looped | **@Stickers → /newanimated**, send each `.tgs`, then an emoji. |
+| Twitch (`twitch`) | PNG at 28, 56 and 112 px in `28/`, `56/`, `112/`, under 1 MiB each, names of letters and digits | **Creator Dashboard → Viewer Rewards → Emotes**, manual upload, the same name from each folder. |
+| iMessage (`imessage`) | PNG in `stickers/` at 408 px (regular; `--size 300` small, `--size 618` large), under 500 KB each | In Xcode create a **Sticker Pack App** and drag the folder's files into its sticker pack; `README.txt` has the steps. |
 
-Profiles are checked against [Discord's custom emoji help](https://support.discord.com/hc/en-us/articles/360036479811-Custom-Emojis)
+Every limit is data in `vixl.emojis.DESTINATIONS` (and `vixl emoji destinations`), next to the page it was read
+from (`url`) and the day (`checked`): [Discord's custom emoji help](https://support.discord.com/hc/en-us/articles/360036479811-Custom-Emojis)
 and [Slack's custom emoji help](https://slack.com/help/articles/206870177-Add-custom-emoji-and-aliases-to-your-workspace)
-on 2026-10-08. The 128 px canvas and conservative name lengths are export choices;
-Slack describes its size/byte guidance as recommendations. `requirements` renders and
-checks actual encoded bytes, canvas size and names and returns individual findings.
-Export refuses assets over a profile's byte budget. Destination permissions, server
-slots, workspace restrictions and cross-server use are controlled by those services.
-The tool prepares a pack; upload happens through the destination's UI.
+on 2026-10-08; [WhatsApp's sticker app requirements](https://github.com/WhatsApp/stickers/blob/main/Android/README.md),
+[Telegram's sticker requirements](https://core.telegram.org/stickers),
+[Twitch's emote guidelines](https://help.twitch.tv/s/article/emote-guidelines) and
+[Apple's iMessage sticker sizes](https://developer.apple.com/design/human-interface-guidelines/imessage-apps-and-stickers)
+on 2026-11-14. The 128 px canvas and conservative name lengths are export choices;
+Slack describes its size/byte guidance as recommendations, and Telegram states no byte limit for static images
+(Vixl holds them under 512 KiB); a profile's `export_choice` names such values. `requirements` renders and
+checks actual encoded bytes, canvas size, names and pack rules (a WhatsApp pack holds 3–30 stickers) and returns
+individual findings. Export refuses assets over a profile's byte budget; a WebP sticker starts lossless and steps
+its quality down until it fits. Destination permissions, server slots, review, workspace restrictions and
+cross-server use are controlled by those services. The tool prepares a pack; upload happens through the
+destination's UI.
+
+**Several destinations in one call.** Give `--destination` (or the `destination` field) a list: each destination
+gets its own ZIP next to the output name (`team.zip` becomes `team-slack.zip`, `team-discord.zip`,
+`team-whatsapp.zip`), every emoji is drawn once per pixel size and shared, and nothing is written when any
+destination's rule fails. `requirements` takes the same list and returns one report per destination.
+
+**WhatsApp packs.** `contents.json` follows WhatsApp's sticker-app format: each Unicode emoji is tagged with itself,
+the first selected emoji becomes the tray icon, and `name`, `publisher` and `identifier` are yours to fill in.
+A custom `:shortcode:` has no Unicode emoji to tag it with; the result lists those under `untagged` and
+`README.txt` asks for one to three tags each.
+
+**iMessage.** The pack is a folder of stickers with instructions, not an Xcode project: the app, its icon and
+signing belong to your Apple Developer account.
+
+### Animated packs
+
+An emoji is animated when its registered VIXL master has a timeline (`vixl emoji replace :wave: wave.vixl` with
+keyframes in `wave.vixl`; the master's canvas must be square). `--animated` (`animated: true`) exports those
+emojis through the timeline exporter at the destination's pixel size:
+
+```bash
+vixl new 72x72 --background transparent --no-fonts -o wave.vixl
+vixl -p wave.vixl apply '[{"type":"shape","shape":"ellipse","name":"dot","width":36,"height":36,"x":8,"y":18,"fill":"#DC7366"},{"type":"timeline-set","duration":1000,"fps":20},{"type":"keyframe","target":"dot","property":"x","time":0,"value":8},{"type":"keyframe","target":"dot","property":"x","time":500,"value":28},{"type":"keyframe","target":"dot","property":"x","time":1000,"value":8}]'
+vixl new 600x160 --background white --no-fonts -o motion.vixl
+vixl -p motion.vixl emoji replace :wave: wave.vixl
+vixl -p motion.vixl emoji export --destination discord twitch --emojis :wave: --animated --out moving.zip
+vixl -p motion.vixl emoji export --destination telegram-animated --emojis :wave: --out telegram.zip
+```
+
+| Destination | Animated file | Budgets |
+| --- | --- | --- |
+| Images | `gif/` (or `--animated webp` / `--animated apng`) beside the still `png/` | none; the master's own loop count |
+| Discord | `gif/NAME.gif` beside `png/` | under 256 KiB, loops forever |
+| Slack | `gif/NAME.gif` beside `png/` | under 128 KiB, at most 50 frames, loops forever |
+| WhatsApp | `stickers/NAME.webp` | under 500 KB, at most 10 s, frames of 8 ms or longer; every sticker in the pack must be animated |
+| Twitch | `28/`, `56/`, `112/NAME.gif` | under 1 MiB, at most 60 frames, loops forever |
+| iMessage | `stickers/NAME.png` (APNG) | under 500 KB, loops forever |
+| Telegram animated | `stickers/NAME.tgs` | 512×512 vector, at most 3 s, 60 fps, under 64 KiB, looped; no raster fallbacks |
+
+A file over its byte budget is encoded again with fewer colours (GIF: 256, 128, 64, 32) or a lower quality
+(WebP: 90, 75, 60, 45), then at a lower frame rate (20, 15, 12, 10, 8, 5 fps); the pixel size never changes. A
+frame budget lowers the frame rate before the first encode. The manifest entry's `animation` records what was
+chosen (`fps`, `frames`, `colors` or `quality`, `bytes`, `tries`). An animation that still does not fit, or runs
+longer than the destination allows, is refused with the emoji's name. Emoji uploads (images, Discord, Slack,
+Twitch, iMessage) may mix: an emoji without an animated master stays a still and is listed under `still`. WhatsApp
+and Telegram animated packs must be animated throughout.
+
+`telegram-animated` writes TGS through the Lottie exporter, with the same rules as a `.tgs` timeline export: vector
+layers only (an effect, image or other raster fallback is refused), a 512×512 result, 60 fps, at most three
+seconds and 64 KiB. Telegram video stickers (`.webm`) are not written.
 
 Install a complete or partial VIXL pack into a document:
 
@@ -201,20 +265,20 @@ entries absent from the pack keep their previous replacement or the bundled fall
 It validates every source and then commits one atomic batch. Exported SVG appearances
 are preserved exactly alongside source masters. Nothing is extracted to arbitrary paths.
 
-## High-resolution images and future phone support
+## High-resolution images and phone support
 
 The example builder produces `vixl-originals-images.zip`: all 100 originals as transparent
-512×512 PNGs, SVGs and editable VIXL masters. These are portable images for messaging,
-design tools and later sticker integrations. The ZIP is an image pack, not a phone installer.
+512×512 PNGs, SVGs and editable VIXL masters. These are portable images for messaging and
+design tools. The ZIP is an image pack, not a phone installer.
 
 For another subset or resolution, use the `images` destination with `--size 512`.
-The manifest keeps Unicode mappings separate from custom shortcodes, so future phone
-integrations can retain standard emoji semantics and package original art as stickers.
+The manifest keeps Unicode mappings separate from custom shortcodes, so sticker packs
+retain standard emoji semantics and package original art as stickers.
 
-The first phone milestone is a sticker-pack integration; a custom keyboard can follow.
-Replacing system emoji fonts is a separate platform feature, with installation and
-color-font format support that varies by OS and device. Neither phone installation nor
-system font replacement is implemented by the current image-pack exporter.
+Phone delivery is the sticker packs above (WhatsApp, Telegram, iMessage): files and
+instructions for each platform's own tooling. Vixl does not build or sign a phone app, and a
+custom keyboard or a replacement system emoji font is a separate platform feature, with
+installation and color-font format support that varies by OS and device.
 
 ## Python, MCP and REST
 
@@ -233,7 +297,11 @@ project.apply([
     {"type": "text", "text": "Hello 👋🏽", "size": 48, "color": "#23364D"},
 ])
 export_pack("wave.zip", ["👋🏽"], destination="discord", project=project)
+export_pack("team.zip", ["😀", "👋🏽", "🧑‍🚀"], destination=["slack", "discord", "whatsapp"], project=project)
 ```
+
+`export_pack` and `requirements` take `destination` as one name or a list, and `animated` (`True`, or `"gif"`,
+`"webp"`, `"apng"` for the `images` destination). `emoji-export` and `emoji-requirements` take the same fields.
 
 All catalog, template, requirements and pack actions are also exposed through
 `vixl_apply(workflow=…)` (MCP) and `vixl workflow` (CLI); the REST service accepts only the emoji
