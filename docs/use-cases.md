@@ -404,6 +404,9 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | MOT-09 | Six-second square loop for a tip, launch or event | `vixl_document(action='create', template=NAME)` video-tip/video-launch/video-event, `vixl_export(kind='timeline')` | 3–5 · 1 | Since 0.24; fill title, subtitle and cta, then check a contact sheet and pick the poster time. |
 | MOT-14 | Promo variations in square, portrait and widescreen | `vixl_document(action='create', template=NAME)` video-promo-{kinetic,editorial,neon,spotlight,split,stat}, `vixl_export(kind='timeline')` | 3–5 · 1 | Six distinct compositions, 18 templates; editable copy and palette roles, six-second loops. [Preview pack](https://github.com/jxburros/VixlExamples/blob/main/promo/variety/README.md). |
 | MOT-13 | Pose a character over time with its joints kept attached | `character-pose` with `time` | 3–6 · 1 | Since 0.24; the rig is solved on every frame; do not also key position/rotation on the same limbs. |
+| MOT-43 | Four-legged animal that walks, trots or gallops in a loop and jumps | `character` with `species` (or `plan: quadruped` with `parts`), `character-cycle` gallop, then jump | 3–6 · 1 | Standard horse, unicorn, dog or cat, or your own side-view artwork with pivots at the joints; keys are joint angles; the jump blends into the gait. |
+| MOT-44 | Seamless parallax scroll: strips that move one whole repeat per loop | `motion` recipe `scroll` per strip (or `wrap` on a track), `symmetry` for a turning sun | 3–8 · 1 | The strip's artwork must repeat at the `wrap` distance; nothing to close and no loop-seam finding. |
+| MOT-45 | A repeating motion that hands over to a one-off move and back, or two motions added on one property | `keyframes` with `sample.blend`, `blend`, a `sample` list, or `mode: add` | 2–4 · 1 | No expression language; the result is ordinary keys plus named additive layers summed at render and in exports. |
 
 ### Production, forms and review
 
