@@ -739,6 +739,7 @@ def execute(project, op):
         layer["effects"].append(effect)
         return effect
     texture_valid(project, {"name": kind, "texture": settings})
+    from .design_render import texture_image
     layer, original, bounds = _target_image(project,op.get("target"))
     image = texture_image(project, original, kind, settings)
     result = _overlay(project,image,layer,bounds,op.get("name"),opacity)
@@ -749,25 +750,12 @@ def execute(project, op):
 
 
 # The effects that draw a texture inside their layer's silhouette, named after the operations that add them,
-# and the settings each keeps under ``texture``.
+# and the settings each keeps under ``texture``. They are drawn by ``design_render.apply_texture``.
 TEXTURE_KEYS = {
     "pattern-fill": ("pattern", "scale", "rotation", "offset", "spacing", "colors", "seed", "tile_variation", "blend"),
     "drawn-texture": ("preset", "color", "seed", "strength", "scale", "jitter", "pressure", "grain", "blend"),
 }
 TEXTURE_EFFECTS = tuple(TEXTURE_KEYS)
-
-
-def texture_image(project, image, kind, settings, origin=(0, 0)):
-    """The texture ``kind`` over ``image``, transparent outside its silhouette. ``origin`` is where the layer's
-    box starts in ``image``: a pattern is laid out from the box, so room added around it does not move it."""
-    if kind == "drawn-texture":
-        return drawn_image(image, settings["preset"], **{k: settings[k] for k in TEXTURE_KEYS[kind][1:-1] if k in settings})
-    if any(origin):
-        offset = settings.get("offset", [0, 0])
-        settings = {**settings, "offset": [offset[0] + origin[0], offset[1] + origin[1]]}
-    texture = pattern_image(project, image.size, settings)
-    texture.putalpha(ImageChops.multiply(texture.getchannel("A"), image.getchannel("A")))
-    return texture
 
 
 def texture_valid(project, effect):
@@ -780,6 +768,7 @@ def texture_valid(project, effect):
     require(settings.get("blend", "normal") in BLENDS, "Unknown blend mode", field="blend", allowed=list(BLENDS))
     require("label" not in effect or isinstance(effect["label"], str), "An effect label is text")
     finite(effect.get("amount", 1), "opacity", 0, 1)
+    from .design_render import texture_image
     texture_image(project, Image.new("RGBA", (1, 1)), effect["name"], settings)
 
 
@@ -794,34 +783,3 @@ def texture_stored(effect, state):
         require(settings.get("preset") in DRAWN, "Unknown drawn texture")
     require(settings.get("blend", "normal") in BLENDS, "Unknown blend mode")
     finite(effect.get("amount", 1), "opacity", 0, 1)
-
-
-def texture_effect(project, image, effect):
-    """``image`` with a texture effect drawn over it, in the layer's own frame."""
-    from .render import composite, with_opacity
-    settings = effect["texture"]
-    opacity = min(1, max(0, effect.get("amount", 1)))
-    if not opacity:
-        return image
-    texture = texture_image(project, image, effect["name"], settings, effect.get("_origin", (0, 0)))
-    result = composite(image, with_opacity(texture, opacity), settings.get("blend", "normal"))
-    result.info.update(image.info)
-    return result
-
-
-def texture_inputs(project, layer):
-    """What the textures a layer carries read from the document besides their own settings: the tiles of
-    saved patterns and the colours their names resolve to."""
-    paper = (layer.get("cut_paper") or {}).get("pattern")
-    effects = [e for e in layer.get("effects") or [] if e.get("name") in TEXTURE_EFFECTS]
-    if not paper and not effects:
-        return []
-    from .design import resolve_color
-    patterns = project.state.get("patterns") or {}
-    inputs = [(patterns.get(paper) or {}).get("asset")] if paper else []
-    for effect in effects:
-        settings = effect.get("texture") or {}
-        colors = settings.get("colors") or [settings["color"]] if "color" in settings or "colors" in settings else []
-        inputs.append([(patterns.get(settings.get("pattern")) or {}).get("asset"),
-                       [resolve_color(c, project.state) for c in colors]])
-    return inputs

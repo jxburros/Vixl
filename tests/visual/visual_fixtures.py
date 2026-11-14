@@ -544,13 +544,10 @@ def cut_paper_grain():
     ])
 
 
-@fixture
-def cut_paper_frame():
-    # One frame of a stop-motion scene: every piece composited at its jitter offset, and a striped piece and a
-    # hatched one turned and moved by their own tracks with the textures still inside them.
-    from vixl.timeline import project_at
-
-    p = doc(240, 180, "#fbf6ec", ops=[
+def cut_paper_scene():
+    """A stop-motion scene for a frame golden (not a document fixture: a frame is a render-only copy): pieces
+    with jitter, and a striped piece and a hatched one turned and moved by their own tracks."""
+    return doc(240, 180, "#fbf6ec", ops=[
         rect("ground", -6, 120, 252, 70, "#c9a66b", stroke_width=0),
         {"type": "shape", "shape": "rounded-rectangle", "name": "lock", "x": 58, "y": 26, "width": 30, "height": 96,
          "fill": "#f2789f", "radius": 10, "stroke_width": 0},
@@ -576,4 +573,3 @@ def cut_paper_frame():
         {"type": "keyframes", "target": "ball", "property": "rotation",
          "keys": [{"time": 0, "value": 0}, {"time": 1000, "value": 120}]},
     ])
-    return project_at(p, 1000)

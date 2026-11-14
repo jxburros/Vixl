@@ -554,7 +554,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | ILL-32 | Botanical illustration with several organic forms | `organic` ×n, repeat, irregular, `object` kind (flower, tree, cactus …) | 10–18 · 2–3 | Every organic preset maps to a kind ([objects](guides/shapes/objects.md)). |
 | ILL-53 | Reusable editable object (mascot placed recoloured in several documents) | `object-save`/`object-place` with `recolor`, or `vixl_export(isolate, path=….vixl)` + `object-place source` | 4–8 · 1–2 | Copies are independent, with new IDs. Saved characters live in the same object library (`character-save`); a rigged mascot travels as a `.vixlchar` package with its poses, expressions and motions (ILL-62). |
 | ILL-33 | Painted texture or brush illustration (dozens of strokes) | `paint` with brushes | 15–30 · 3–4 | Strokes stay editable. |
-| ILL-34 | Cut-paper style illustration | cut-paper guidance, `tear`, shadows | 20–35 · 3–5 |  |
+| ILL-34 | Cut-paper style illustration | cut-paper guidance, `tear`, shadows | 20–35 · 3–5 | Grain has no direction; `grain_scale`, `fibers` and `pattern` shape the paper. |
 | ILL-35 | Pencil, charcoal, ink-wash, stipple, hatch, cross-hatch, scribble, spatter, dry-brush, pastel, smudge or marker finish | `drawn-texture` | 5–10 · 1–2 |  |
 | DRW-20 | Draw a custom vector icon with the pen and node edits | `pen`, path node ops, simplify/smooth | 15–30 · 3–4 | Path coordinates are literal local pixels. |
 | DRW-21 | Envelope or corner-pin distortion of vector art | vector distortion | 5–10 · 1–2 | Animatable parameters. |
@@ -582,6 +582,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | MOT-24 | Synthesize a beep/whoosh, mix it with music and export WAV | audio tracks, `vixl_export (.wav)` | 5–10 · 1–2 |  |
 | MOT-25 | Character wave or nod using a reusable cycle | character cycles, pivots | 15–25 · 3 |  |
 | MOT-26 | Brush-stroke timelapse of a painting | paint layer reveal, timeline | 10–20 · 2–3 |  |
+| MOT-747 | Textured piece (stripes, paper tooth, hatching) that keeps its texture while it turns, moves or scales | `pattern-fill` or `drawn-texture` (an effect on the piece), keyframes | 4–8 · 1 | No group or extra layer for each textured piece. |
+| MOT-754 | Stop-motion cut-paper loop: a scene of a few hundred textured pieces on held frames with handmade jitter | `cut-paper` with `jitter`, `pattern-fill`, keyframes; draft frames to check poses | 20–40 · 3–6 | A new hold reuses the drawn pieces (about 0.25 s a frame for 300 layers at 960 x 540). |
 | MOT-27 | App animation package: named states (idle, loading, success …) with light/dark themes for an app | state masters, `vixl_apply(workflow='app-animation-package')` | 15–30 · 3–5 | Since 0.24; 1 call once the masters exist; WebP/GIF/APNG, reduced-motion PNGs, versioned manifest and HTML consumer; sources must be embedded. |
 
 ### Forms, production and review

@@ -450,3 +450,33 @@ def test_texture_module_names_the_effects_it_adds():
     from vixl.constants import STACK_EFFECTS
 
     assert set(textures.TEXTURE_EFFECTS) <= set(STACK_EFFECTS)
+
+
+def test_the_jitter_offset_moves_the_patch_by_exactly_that_much():
+    from PIL import Image
+
+    from vixl.render import jittered
+
+    patch = Image.new("RGBA", (24, 20))
+    patch.paste((200, 60, 30, 255), (6, 5, 16, 13))
+
+    def centroid(image, box):
+        alpha = np.asarray(image.getchannel("A"), dtype=float)
+        ys, xs = np.mgrid[:alpha.shape[0], :alpha.shape[1]]
+        return box[0] + (xs * alpha).sum() / alpha.sum(), box[1] + (ys * alpha).sum() / alpha.sum(), alpha.sum()
+
+    x0, y0, mass = centroid(patch, (40, 30))
+    edge = (0, 0, 200, 200)
+    for dx, dy in ((0.25, -0.4), (-1.5, 2.75), (3, -2), (0, 0.5)):
+        moved, box = jittered(patch, (40, 30, 64, 50), (dx, dy), edge)
+        x, y, kept = centroid(moved, box)
+        # Within a sixteenth of a pixel: at this patch's hard edge the bicubic overshoot is clipped.
+        assert (x - x0, y - y0) == pytest.approx((dx, dy), abs=0.0625)
+        assert kept == pytest.approx(mass, rel=0.01)  # nothing lost or gained
+        assert box[2] - box[0] == moved.width and box[3] - box[1] == moved.height
+    # Whole-pixel offsets move the same pixels; the tile's edge cuts what leaves it.
+    moved, box = jittered(patch, (40, 30, 64, 50), (3, -2), edge)
+    assert moved.tobytes() == patch.tobytes() and box == (43, 28, 67, 48)
+    cut, box = jittered(patch, (-10, 30, 14, 50), (0.5, 0), edge)
+    assert box[0] == 0 and cut.width == box[2]
+    assert jittered(patch, (-40, 30, -16, 50), (0.5, 0), edge) == (None, None)

@@ -668,10 +668,10 @@ def apply_effect(image, effect, project=None):
         require(project is not None, "A lookup effect needs its document's LUTs")
         return apply_lookup(project, image, {"name": effect["lut"], "amount": effect.get("amount", 1)})
     if effect["name"] in ("pattern-fill", "drawn-texture"):
-        from .textures import texture_effect
+        from .design_render import apply_texture
 
         require(project is not None, "A texture effect needs its document's patterns")
-        return texture_effect(project, image, effect)
+        return apply_texture(project, image, effect)
     if effect["name"] == "denoise":
         from .denoise import denoise_image
 
@@ -971,7 +971,7 @@ def ink_inputs(project, layer):
     elif layer["type"] == "paint":
         inputs = [project.state.get("brushes", {})]
     if layer.get("cut_paper") or layer.get("effects"):
-        from .textures import texture_inputs
+        from .design_render import texture_inputs
 
         inputs = inputs + texture_inputs(project, layer)
     return inputs

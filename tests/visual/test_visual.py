@@ -10,7 +10,7 @@ import pytest
 from PIL import Image
 
 from golden_compare import _canonical_svg_paths, check_png, check_text, pdf_to_image, pptx_snapshot
-from visual_fixtures import FIXTURES, PDF_FIXTURES, PPTX_FIXTURES, SVG_FIXTURES
+from visual_fixtures import FIXTURES, PDF_FIXTURES, PPTX_FIXTURES, SVG_FIXTURES, cut_paper_scene
 
 pytestmark = pytest.mark.visual
 
@@ -24,6 +24,14 @@ def test_svg_path_snapshot_ignores_final_digit_float_drift():
 @pytest.mark.parametrize("name", sorted(FIXTURES))
 def test_png(name):
     check_png(name, FIXTURES[name]().render())
+
+
+def test_cut_paper_frame():
+    # The last frame of the scene: each piece composited at its hold's jitter offset (one sub-pixel resampling of
+    # the drawn piece), with the stripes and hatching inside the pieces their own tracks turned and moved.
+    from vixl.timeline import render_at
+
+    check_png("cut_paper_frame", render_at(cut_paper_scene(), 1000))
 
 
 @pytest.mark.parametrize("name", SVG_FIXTURES)
@@ -47,7 +55,7 @@ def test_pptx_structure(name):
 
 
 def test_fixtures_are_small_and_cover_each_area():
-    assert 15 <= len(FIXTURES) <= 34
+    assert 15 <= len(FIXTURES) <= 32
     for name, build in FIXTURES.items():
         with Image.open(io.BytesIO(build().export(format="PNG"))) as image:
             assert max(image.size) <= 256, name
