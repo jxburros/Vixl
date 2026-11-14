@@ -208,7 +208,7 @@ Repetitive work (menus, badge sheets, price tags, a campaign in six sizes) shoul
 | `object` | an [object](../guides/shapes/objects.md) or object path (`person/guitar`) and its whole subtree |
 | `object_kind` | objects of a kind or a kind below it (`animal` matches dogs and cats) and their subtrees |
 | `part` | layers named as that part (`leg`) |
-| `text_contains`, `text_regex` | text layers whose text contains / matches (regexes read the first 2,000 characters) |
+| `text_contains`, `text_regex` | text layers whose text contains / matches (regexes read the first 2,000 characters of a name or text) |
 | `id` | exact layer IDs or names |
 | `visible` | `true` / `false` |
 | `page` | a page number or name, a list, or `"all"` (default: the active page; the active page is restored afterwards) |
@@ -219,7 +219,7 @@ Repetitive work (menus, badge sheets, price tags, a campaign in six sizes) shoul
 {"type":"edit-layers","where":{"tag":"badge"},"do":[{"type":"layer-style","name":"drop-shadow","settings":{"blur":6}},{"type":"opacity","value":0.9}]}
 ```
 
-Unknown `where` keys, unknown kinds and invalid regexes are errors with suggestions; `do` operations are validated (and normalized) once up front, so a typo fails before anything is applied. `do` cannot create layers or change the whole document (`text`, `shape`, `canvas`, `layout-apply`, …) and must not name a `target` or `page`. The result reports `edit_layers: [{matched, layers, pages?, dry_run?}]` (one entry per `edit-layers` operation, in order); a selector that matches nothing adds a warning. `expect: N` fails the batch unless exactly N layers match, which guards a selector against being too wide or too narrow; `dry_run` on the operation only counts and names the matches, and the batch-level `dry_run` (`vixl_apply(dry_run=true)`) previews the whole edit without saving. `layer-intent` also takes `tags` (replacing the layer's labels), so a pattern can tag layers once and later edits select them by tag.
+Unknown `where` keys, unknown kinds and invalid regexes are errors with suggestions. On a service (MCP, `vixl serve`, `vixl host`) a regex must also be one whose matching time is bounded: `(a+)+$` and the like are refused unless the server has RE2 ([regular expressions from callers](interfaces.md#regular-expressions-from-callers)); `do` operations are validated (and normalized) once up front, so a typo fails before anything is applied. `do` cannot create layers or change the whole document (`text`, `shape`, `canvas`, `layout-apply`, …) and must not name a `target` or `page`. The result reports `edit_layers: [{matched, layers, pages?, dry_run?}]` (one entry per `edit-layers` operation, in order); a selector that matches nothing adds a warning. `expect: N` fails the batch unless exactly N layers match, which guards a selector against being too wide or too narrow; `dry_run` on the operation only counts and names the matches, and the batch-level `dry_run` (`vixl_apply(dry_run=true)`) previews the whole edit without saving. `layer-intent` also takes `tags` (replacing the layer's labels), so a pattern can tag layers once and later edits select them by tag.
 
 **`adapt-layout`** (proportional mode) resizes the canvas, then re-composes the document there, so one design can be carried to another size and the result checked at once. It says how under `recomposed` and `reason`:
 

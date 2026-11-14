@@ -13,7 +13,9 @@ import difflib
 import fnmatch
 import re
 
+from . import patterns
 from .errors import VixlError, require
+from .patterns import Refused
 
 TYPES = ("edit-layers",)
 WHERE_KEYS = ("role", "name", "name_regex", "kind", "shape", "tag", "group", "object", "object_kind", "part",
@@ -30,7 +32,9 @@ NOT_PER_LAYER = {
 }
 MAX_STEPS = 20
 MAX_REGEX = 200
-TEXT_WINDOW = 2000  # Regexes read at most this much text, so a pathological pattern stays bounded.
+# Regexes read at most this much of a name or a text; ``patterns.compile`` bounds what a service caller's
+# pattern can cost on that much.
+TEXT_WINDOW = 2000
 REPORT_NAMES = 40
 
 DESCRIPTION = (
@@ -39,7 +43,8 @@ DESCRIPTION = (
     "rectangle|ellipse|…; tag: a tag set with layer-intent; group: layer or group whose descendants match; "
     "object: an object or object path (dog, person/guitar) whose whole subtree matches; object_kind: objects of a "
     "kind or any kind below it (animal matches dogs and cats) and their subtrees; part: a part name (leg); "
-    "text_contains / text_regex: text layers; id: exact IDs or names; visible: true|false; page: a page number or "
+    "text_contains / text_regex: text layers (a service refuses a regex with no time bound, like (a+)+$); id: exact "
+    "IDs or names; visible: true|false; page: a page number or "
     "name, a list, or 'all' (default: the active page); not: a where object to exclude. Values may be lists "
     "(any of)."
 )
@@ -121,12 +126,21 @@ def parse_where(where, path="where"):
                     require(len(pattern) <= MAX_REGEX, f"{path}.{key} patterns are at most {MAX_REGEX} characters",
                             field=f"{path}.{key}")
                     try:
-                        re.compile(pattern)
+                        compile_regex(pattern)
                     except re.error as exc:
                         raise VixlError("invalid_operation", f"{path}.{key} {pattern!r} is not a valid regex: {exc}",
                                         field=f"{path}.{key}") from exc
+                    except Refused as exc:
+                        raise VixlError("invalid_operation", f"{path}.{key} {pattern!r} cannot run on a shared "
+                                        f"service: {exc.reason}", field=f"{path}.{key}",
+                                        suggestions=exc.suggestions) from exc
             parsed[key] = items
     return parsed
+
+
+def compile_regex(pattern):
+    """A selector regex: case-insensitive, used for a yes or no on at most ``TEXT_WINDOW`` characters."""
+    return patterns.compile(pattern, re.IGNORECASE, window=TEXT_WINDOW, boolean=True)
 
 
 def matcher(project, where):
@@ -159,8 +173,8 @@ def matcher(project, where):
                 kind_members |= {layer["id"]} | descendants(project, layer["id"])
     ids = {project.layer(ref)["id"] for ref in where.get("id", [])}
     names = [pattern.casefold() for pattern in where.get("name", [])]
-    name_regexes = [re.compile(pattern, re.IGNORECASE) for pattern in where.get("name_regex", [])]
-    text_regexes = [re.compile(pattern, re.IGNORECASE) for pattern in where.get("text_regex", [])]
+    name_regexes = [compile_regex(pattern) for pattern in where.get("name_regex", [])]
+    text_regexes = [compile_regex(pattern) for pattern in where.get("text_regex", [])]
     contains = [text.casefold() for text in where.get("text_contains", [])]
     excluded = matcher(project, where["not"]) if "not" in where else None
 
@@ -171,7 +185,7 @@ def matcher(project, where):
             return False
         if names and not any(fnmatch.fnmatchcase(layer["name"].casefold(), pattern) for pattern in names):
             return False
-        if name_regexes and not any(rx.search(layer["name"]) for rx in name_regexes):
+        if name_regexes and not any(rx.search(layer["name"][:TEXT_WINDOW]) for rx in name_regexes):
             return False
         if "kind" in where and layer["type"] not in where["kind"]:
             return False

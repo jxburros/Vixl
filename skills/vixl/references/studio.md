@@ -289,7 +289,7 @@ Copy facts (prices, product names, dates, URLs, legal lines) are declared once, 
 ```
 
 A fact is read from the variable of that name, else from text layers named after it (or listed in `layers`), else
-by its pattern over all text. `pattern` is a regex, `format` a date format (`YYYY YY MMMM MMM MM M DD D`), `value`
+by its pattern over all text. `pattern` is a regex (on a service a pattern with no time bound, such as `(a+)+$`, is refused unless the server has RE2), `format` a date format (`YYYY YY MMMM MMM MM M DD D`), `value`
 the declared value and `values` the accepted spellings of a name: other members' values are compared with the
 declared value, the reference or the majority, and one finding lists every value with its documents; spellings a
 small edit distance from a declared name (`Vixel Pro`) are flagged with the suggestion. Findings carry `check`
@@ -309,7 +309,7 @@ or `review` when there is no majority). `vixl check --group NAME` includes them 
 ```
 
 - `text` replaces in text layers and string variables (`variables: false` skips them); `match` is `substring`
-  (default), `word` or `regex` (`with` may use `\1`), `ignore_case` too.
+  (default), `word` or `regex` (`with` may use `\1`; bounded on a service like a fact's `pattern`), `ignore_case` too.
 - `color` replaces literal colours (fill, stroke, text colour, gradient ends and stops) within `tolerance` per
   channel, and swatch values (`swatches: false` skips them); `@swatch` references are left alone.
 - `font` replaces a registered font name (or a file's family) on text layers; `with` must be a font the document
