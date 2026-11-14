@@ -13,8 +13,15 @@ or one oversized render starves everyone else. These are set per server by flag 
   (canvases, imports, frames) and caps the pixels one export renders: canvas × scale² × pages.
 * ``max_pages`` (``--max-pages``, ``VIXL_MAX_PAGES``): pages one export may write.
 * ``max_concurrent`` (``--max-concurrent``, ``VIXL_MAX_CONCURRENT``): heavy calls (exports, renders,
-  checks, operation batches, compose, workflows, provider calls) running at once in one workspace,
-  detached jobs included. A call over the cap is refused at once instead of queueing.
+  checks, operation batches, imports, image and font uploads, compose, workflows, provider calls) running
+  at once in one workspace, detached jobs included. A call over the cap is refused at once instead of
+  queueing; an MCP ``vixl_render``, which cannot become a job, waits for a free slot for up to the inline
+  time first.
+
+Every server also bounds the calls it holds at once, whatever the limits above: REST and ``vixl host`` run
+heavy calls on ``BoundedExecutor`` (16 running, 16 waiting), and MCP holds ``VIXL_MCP_WORKERS`` running plus
+``VIXL_MCP_QUEUE`` waiting calls, never more than its job store remembers. The next call is refused with
+``limit_exceeded`` (``limit: max_queue``, ``retryable: true``).
 
 Exceeding a limit raises ``limit_exceeded`` with ``limit``, ``value``, ``maximum`` and a ``hint``.
 A server that other machines can reach (``serve`` or ``view`` on a non-loopback host, ``mcp --http``) starts
@@ -273,6 +280,13 @@ MAX_REST_JOBS = 100
 REST_QUEUE = 16  # REST calls that may wait for a worker; one more is answered 503.
 
 
+def busy(running, waiting):
+    """The retryable refusal of a server that holds as many calls as it may (REST: 503 with Retry-After)."""
+    return VixlError("limit_exceeded", f"The server is busy: {running} calls are running and {waiting} are waiting",
+                     limit="max_queue", value=running + waiting + 1, maximum=running + waiting, retryable=True,
+                     retry_after_s=3, hint="Retry after a few seconds.")
+
+
 class BoundedExecutor:
     """A thread pool that holds at most ``workers`` running and ``queue`` waiting calls, and refuses the next
     one with ``limit_exceeded`` (``limit: max_queue``, answered 503) instead of queueing it without bound."""
@@ -284,9 +298,7 @@ class BoundedExecutor:
 
     def submit(self, fn, *args, **kwargs):
         if not self.slots.acquire(blocking=False):
-            raise VixlError("limit_exceeded", f"The server is busy: {self.workers} calls are running and {self.queue} "
-                            "are waiting", limit="max_queue", value=self.workers + self.queue + 1,
-                            maximum=self.workers + self.queue, hint="Retry after a few seconds.")
+            raise busy(self.workers, self.queue)
         try:
             future = self.pool.submit(fn, *args, **kwargs)
         except BaseException:
