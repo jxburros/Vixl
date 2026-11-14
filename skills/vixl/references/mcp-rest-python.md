@@ -48,7 +48,9 @@ Results are terse by default (a new document: path, canvas, seed, the fonts chos
 **Long calls:** a call still running after ~40 s (`VIXL_MCP_INLINE_SECONDS`, or `--call-timeout`/`VIXL_CALL_TIMEOUT`)
 returns `{"status":"running","job":"job_…"}` and carries on; `as_job: true` on `vixl_apply`, `vixl_check`,
 `vixl_export` and the `vixl_ai_*` tools does so at once. `vixl_render` always answers inline. Under load (more calls
-than `VIXL_MCP_WORKERS`) calls become jobs sooner; `queued: true` means it has not started yet.
+than `VIXL_MCP_WORKERS`) calls become jobs sooner; `queued: true` means it has not started yet. A server that already
+holds as many calls as it may refuses the next with `limit_exceeded`, `limit: max_queue`, `retryable: true`: wait a
+few seconds and send it again.
 Follow it with `vixl_job(action="status"|"result"|"cancel"|"list", id, wait=…)`; never resend a call
 that timed out. A server with a hard timeout (`--call-hard-timeout`, 600 s by default on `vixl mcp --http`) cancels a
 call that runs longer: split the work (fewer pages, frames or operations) rather than retrying it whole. A timeline export's `progress` has `timing` (`elapsed_s`, `eta_s`, `setup_ms`, `raster_ms`).
@@ -58,7 +60,8 @@ With `VIXL_PROFILE=1` in the server's environment, results carry a `render_profi
 applying twice, and the same id with different arguments is `request_id_conflict`.
 A shared server may set per-call limits (`vixl_job(action="list")` shows them under `limits`). A call over
 one fails with `limit_exceeded` and names the `limit`: `max_megapixels` (lower `scale` or export fewer
-pages), `max_pages` (export a page range, then the next) or `max_concurrent` (wait for a running job, then retry).
+pages), `max_pages` (export a page range, then the next) or `max_concurrent` (wait for a running job, then retry;
+`vixl_render` counts too, and waits for a free slot before it is refused).
 
 ### vixl_document
 
@@ -235,7 +238,8 @@ see `docs/reference/interfaces.md#hosting-vixl`.
 
 Errors: HTTP 400 with `{"error":CODE,"message":…}` (401 without the token, 403 for `forbidden`, 404 for a missing
 workspace file, 413 for oversized bodies and `limit_exceeded`, 429 with `Retry-After` for `max_concurrent` or
-repeated bad tokens).
+repeated bad tokens, 503 with `Retry-After` when the server's queue is full). `/import`, `/assets` and `/fonts` are
+heavy calls: they count against `max_concurrent` and may answer 202 with a job.
 `path`/`linked` operation fields are rejected and `font` takes only a registered name or role, as with MCP.
 
 ```bash

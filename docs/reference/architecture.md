@@ -76,6 +76,8 @@ Defaults (`vixl.model.Limits`):
 - 64 MiB per imported asset/provider response.
 - REST request bodies: 1 MiB, or the asset limit for `/assets` and `/import` (16 MiB for `/fonts`). A larger
   `Content-Length` gets `413 resource_limit` before the body is read; a body without one is cut off at the limit.
+- MCP Streamable HTTP request bodies (`vixl mcp --http`): the asset limit as base64 plus 1 MiB (about 86 MiB by
+  default), or `VIXL_MCP_MAX_BODY_BYTES`. A larger body gets `413 resource_limit` before the MCP SDK reads it.
 - 256 MiB per archive and its expanded contents.
 - 10,000 operations per submitted batch; 2,000 history revisions (older ones are squashed, not refused).
 - At most 10,000 archive entries.
