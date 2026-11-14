@@ -44,6 +44,13 @@ edges, so they show most on photographs and illustrations, but they also read on
 fill in its own hue when no `color` is given, `sketch` draws a pencil outline and hatches the fill by its tone, and `watercolor` pools pigment
 along the shape's edge. Pixels outside a layer's box count as paper, so a shape that fills its box still gets its edge.
 
+The `paper` look finishes a background. For pieces cut out of paper (a character's parts, hills, a sun), use `cut-paper`
+instead: it gives each piece its own seeded grain (soft mottling, short fibres at random angles, fine tooth; `grain_scale`,
+`fibers` and `pattern` shape it), a rough edge and a thickness shadow, and holds frames for stop-motion. A material or
+drawn texture on one piece is `pattern-fill` or `drawn-texture`, an effect that moves and turns with the piece. See
+[atmosphere and cut paper](../motion/animation-authoring.md#atmosphere-and-cut-paper) and
+[media craft](../images/media-craft.md#patterns-handmade-texture-and-clone-stamping).
+
 ## Behaviour
 
 - **`amount`** (0-1, default 0.5) moves a look between subtle and strong. Sizes scale with the layer (blur and offsets follow its smaller side), so the

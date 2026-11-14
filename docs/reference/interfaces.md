@@ -584,7 +584,7 @@ PDF export is vector by default (also with `color_space="cmyk"`); the export res
 name the fonts that are not embedded and must be installed where the deck is opened (`fonts_not_embedded`, with each one's fsType permission and license under `font_embedding`).
 
 REST: `POST /export` accepts `page`, `pages`, `pdf_content`, `fillable`, `values`, `fill_mode`, `tagged` (boolean: a PDF structure tree for screen readers) and
-`presenter` (HTML slide presentation options) and formats `PPTX`, `PSD` (layered, see [exporting](../guides/output/exporting.md#layered-psd-for-designer-handoff)) and `TTF`, `OTF`, `WOFF`, `WOFF2` (the document's [font design](../guides/text/custom-fonts.md)); `POST /preview` accepts `guides`, `page`, `values` and `show_fields`; the fixed
+`presenter` (HTML slide presentation options) and formats `PPTX`, `PSD` (layered, see [exporting](../guides/output/exporting.md#layered-psd-for-designer-handoff)) and `TTF`, `OTF`, `WOFF`, `WOFF2` (the document's [font design](../guides/text/custom-fonts.md)); `POST /preview` accepts `guides`, `page`, `values`, `show_fields` and `draft` (whole-pixel placement for a quicker frame); the fixed
 project's workflow routes include `lyric-video-plan`, `organic-catalog`, `form-fill` and
 `drawing-report`.
 

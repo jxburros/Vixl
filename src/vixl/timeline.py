@@ -824,16 +824,19 @@ class FrameState:
         return layer
 
     def detach_scene(self, state):
-        """Copy the layers ``scene.apply_at`` changes: particles, typewriter captions and their text, and
-        every layer under a camera or stop-motion jitter."""
-        if state.get("camera") or (state.get("stop_motion") or {}).get("jitter"):
+        """Copy the layers ``scene.apply_at`` changes: particles, typewriter captions and their text, cut-paper
+        pieces under stop-motion jitter (which only gain an offset: a shallow copy), and every layer under a camera."""
+        if state.get("camera"):
             for layer in list(self.layers):
                 self.writable(layer["id"])
             return
+        jitter = (state.get("stop_motion") or {}).get("jitter")
         for layer in list(self.layers):
             caption = layer.get("caption")
             if "particle" in layer or caption:
                 self.writable(layer["id"])
+            elif jitter and "cut_paper" in layer:
+                self.writable(layer["id"], deep=False)
             if caption and caption.get("text_layer") is not None:
                 self.writable(caption["text_layer"])
 
@@ -1103,10 +1106,15 @@ def project_at(project, time, prune=False):
     return apply_at(candidate, time)
 
 
-def render_at(project, time, **options):
+def render_at(project, time, draft=False, **options):
+    """The frame at ``time``. ``draft`` places every layer on whole pixels instead of resampling it to its
+    fractional place (stop-motion jitter under half a pixel is left out): quicker to draw, for looking at a pose."""
     from .render import render
 
-    return render(project_at(project, time, prune=True), **options)
+    frame = project_at(project, time, prune=True)
+    if draft:
+        frame.snap_placement = True
+    return render(frame, **options)
 
 
 def render_scaled(project, scale, sampling="smooth"):

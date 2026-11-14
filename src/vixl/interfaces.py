@@ -1188,7 +1188,7 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
 
         options = fixed(body)
         allowed = {"variables", "max_width", "max_height", "max_bytes", "artboard", "comp", "region", "time", "proof", "simulate",
-                   "guides", "page", "values", "show_fields", "isolate", "views", "exploded", "rulers", "bounds"}
+                   "guides", "page", "values", "show_fields", "isolate", "views", "exploded", "rulers", "bounds", "draft"}
         known_fields(options, allowed, "preview")
         return Response(preview(session, **options), media_type="image/png")
 

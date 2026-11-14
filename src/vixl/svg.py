@@ -76,6 +76,8 @@ def fallback_reason(layer):
         return "lookup tables are not exported as vectors"
     if layer.get("mask") and layer["mask"].get("enabled", True):
         return "raster masks are not exported as vectors"
+    if any(e["name"] in ("pattern-fill", "drawn-texture") and e.get("enabled", True) for e in layer.get("effects") or []):
+        return "pattern and drawn textures are exported as images"
     return "unsupported vector appearance"
 
 

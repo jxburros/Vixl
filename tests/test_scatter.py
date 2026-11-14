@@ -198,7 +198,7 @@ def test_tile_variation_varies_each_repeat_and_is_seeded():
     project.apply({"type": "solid", "name": "ground", "color": "#ffffff"})
     project.apply({"type": "pattern-fill", "target": "ground", "pattern": "checker", "spacing": 40, "name": "plain"})
     plain = np.asarray(project.render().convert("RGB"), dtype=int)
-    project.apply({"type": "remove", "target": "plain"})
+    project.apply({"type": "effect-remove", "target": "ground", "effect": "plain"})
     project.apply({"type": "pattern-fill", "target": "ground", "pattern": "checker", "spacing": 40,
                    "tile_variation": 1, "seed": 3, "name": "varied"})
     varied = np.asarray(project.render().convert("RGB"), dtype=int)

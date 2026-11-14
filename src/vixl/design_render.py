@@ -588,6 +588,57 @@ def apply_lookup(project, image, settings):
     return result
 
 
+def texture_image(project, image, kind, settings, origin=(0, 0)):
+    """The texture ``kind`` (pattern-fill or drawn-texture) over ``image``, transparent outside its silhouette.
+    ``origin`` is where the layer's box starts in ``image``: a pattern is laid out from the box, so room added
+    around it does not move it."""
+    from PIL import ImageChops
+
+    from .textures import TEXTURE_KEYS, drawn_image, pattern_image
+
+    if kind == "drawn-texture":
+        return drawn_image(image, settings["preset"], **{k: settings[k] for k in TEXTURE_KEYS[kind][1:-1] if k in settings})
+    if any(origin):
+        offset = settings.get("offset", [0, 0])
+        settings = {**settings, "offset": [offset[0] + origin[0], offset[1] + origin[1]]}
+    texture = pattern_image(project, image.size, settings)
+    texture.putalpha(ImageChops.multiply(texture.getchannel("A"), image.getchannel("A")))
+    return texture
+
+
+def apply_texture(project, image, effect):
+    """``image`` with a pattern-fill or drawn-texture effect drawn over it, in the layer's own frame."""
+    from .render import composite, with_opacity
+
+    settings = effect["texture"]
+    opacity = min(1, max(0, effect.get("amount", 1)))
+    if not opacity:
+        return image
+    texture = texture_image(project, image, effect["name"], settings, effect.get("_origin", (0, 0)))
+    result = composite(image, with_opacity(texture, opacity), settings.get("blend", "normal"))
+    result.info.update(image.info)
+    return result
+
+
+def texture_inputs(project, layer):
+    """What the textures a layer carries read from the document besides their own settings: the tiles of
+    saved patterns (a texture effect's, or a cut-paper piece's) and the colours their names resolve to."""
+    paper = (layer.get("cut_paper") or {}).get("pattern")
+    effects = [e for e in layer.get("effects") or [] if e.get("name") in ("pattern-fill", "drawn-texture")]
+    if not paper and not effects:
+        return []
+    from .design import resolve_color
+
+    patterns = project.state.get("patterns") or {}
+    inputs = [(patterns.get(paper) or {}).get("asset")] if paper else []
+    for effect in effects:
+        settings = effect.get("texture") or {}
+        colors = settings.get("colors") or ([settings["color"]] if "color" in settings else [])
+        inputs.append([(patterns.get(settings.get("pattern")) or {}).get("asset"),
+                       [resolve_color(c, project.state) for c in colors]])
+    return inputs
+
+
 def inner_passes(styles, state):
     """The inner layer styles (inner-glow, inner-shadow, bevel) as passes drawn in order inside the silhouette:
     (rgba, opacity, blur, dx, dy). Each pass is the layer's inverted alpha, blurred, moved by whole pixels

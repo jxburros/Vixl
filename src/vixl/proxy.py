@@ -7,6 +7,7 @@ inputs are fixed-size canvas rasters (effect selections) fall back to a full ren
 """
 
 from copy import copy, deepcopy
+import math
 
 from .constants import ARTISTIC_DEFAULTS
 from .design_render import repeat_items
@@ -107,6 +108,22 @@ def _scale_layer(layer, s):
         elif name in ("ripple", "wave", "glass"):
             effect["amount"] = effect.get("amount", ARTISTIC_DEFAULTS[name]) * s
             effect["radius"] = effect.get("radius", 12 if name == "glass" else 32) * s
+        elif name in ("pattern-fill", "drawn-texture"):
+            texture = effect["texture"]
+            low, high = (0.05, 100) if name == "pattern-fill" else (0.1, 20)
+            texture["scale"] = min(high, max(low, texture.get("scale", 1) * s))
+            if "offset" in texture:
+                texture["offset"] = [v * s for v in texture["offset"]]
+    if "_jitter" in layer:
+        dx, dy, reach = layer["_jitter"]
+        layer["_jitter"] = [dx * s, dy * s, math.ceil(reach * s)]
+    paper = layer.get("cut_paper")
+    if paper:
+        from .scene import FIBERS, GRAIN_SCALE
+
+        paper["grain_scale"] = min(512, max(2, paper.get("grain_scale", GRAIN_SCALE) * s))
+        fibers = {**FIBERS, **paper.get("fibers", {})}
+        paper["fibers"] = {"count": min(100, fibers["count"] / (s * s)), "length": min(200, max(1, fibers["length"] * s))}
     from .render import parse_constraint
 
     constraints = layer.get("constraints", {})
@@ -302,12 +319,14 @@ def clamp_region(region, canvas):
 def render_preview(
     project, max_width, max_height, *, variables=None, artboard=None, comp=None, region=None, time=None, proof=False, simulate=None,
     guides=None, page=None, values=None, show_fields=False, isolate=None, views=None, exploded=False,
-    rulers=None, bounds=None, info=None,
+    rulers=None, bounds=None, info=None, draft=False,
 ):
     """Render at roughly the preview size. ``region`` [x, y, w, h] (document pixels) zooms in;
     zoomed regions may be enlarged up to 8x so small details stay legible. ``time`` previews a
     timeline frame; ``proof`` soft-proofs CMYK; ``simulate`` previews color-vision deficiency.
-    ``rulers`` and ``bounds`` draw the placement aid (feedback.draw_coordinates) and fill the ``info`` dict."""
+    ``rulers`` and ``bounds`` draw the placement aid (feedback.draw_coordinates) and fill the ``info`` dict.
+    ``draft`` places layers on whole pixels instead of resampling them to fractional places (as reduced
+    previews always do): quicker, and stop-motion jitter under half a pixel is left out."""
     from PIL import Image
 
     from .design_render import artboard_project
@@ -380,6 +399,9 @@ def render_preview(
             else:
                 image = proxy.render().crop(box)
     if image is None:
+        if draft and not getattr(candidate, "snap_placement", False):
+            candidate = copy(candidate)
+            candidate.snap_placement = True
         # Only the region is drawn (layers outside it are skipped) when nothing reads the whole canvas.
         image = candidate.render(region=(x, y, w, h))
     target = (max(1, min(max_width, round(w * fit))), max(1, min(max_height, round(h * fit))))

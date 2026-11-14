@@ -163,7 +163,29 @@ against the character before anything is placed, and nothing in it is executed.
 
 `particles` creates deterministic dust, bubbles, sparks or spores with `count`, emission `spread`, `velocity`, `gravity`, `turbulence`, `life`, `start`, `duration` and `seed`. The count is bounded by the layer budget. Particles repeat over the emitter duration and fade over their life. The emitter is a group named `name` holding the particles `NAME/0` … `NAME/N`: target, move, hide or group it as one layer (the particles move in its coordinates). Particles that start or end off the canvas are expected, so the bounds check gives one `info` note per emitter instead of a warning per particle.
 
-`cut-paper` adds seeded grain/fibers, rough alpha edges, thickness/drop shadows and shallow depth offsets to individual character parts. It also sets a document-wide held-frame cadence (`fps`, default 12) and bounded handmade `jitter`. Limbs remain editable and can use the existing rig. `edge_light: {"angle": 135}` also lights the cut edge: a subtle `bevel` layer style on every piece (size from the thickness, opacity 0.25; `size`, `opacity`, `highlight` and `shadow` override), whose light keeps its direction while pieces turn. Clear restores the previous shadow and removes the edge light; cadence remains while another paper layer uses it. Run the cut-paper example in VixlExamples, inspect the PNG, and play the WebP. Grain should remain visible without erasing faces; inspect shadows at final size. Same-hold frames should match, while adjacent poses move deliberately. Lighting is rasterized with an explicit report when a vector export cannot preserve the composite.
+`cut-paper` adds seeded paper grain, rough alpha edges, thickness/drop shadows and shallow depth offsets to individual character parts. It also sets a document-wide held-frame cadence (`fps`, default 12) and bounded handmade `jitter`.
+
+The grain is soft light and dark mottling, short fibres at random angles and fine per-pixel tooth. None of it has a direction, so a large sky or hill reads as paper at the recommended `grain` of 0.04-0.08 (earlier releases added one value per pixel row, which showed as scanlines). It is seeded: the same `seed` gives the same pixels, on every frame. Three optional fields shape it:
+
+| Field | Meaning |
+| --- | --- |
+| `grain_scale` | Size of the mottling in pixels (2-512, default 28). Raise it on large pieces. |
+| `fibers` | `{count, length}`: fibres per 100 x 100 px of paper (default 8; 0 for none) and their length in pixels (default 14). |
+| `pattern` | A pattern name (a built-in such as `linen` or `paper`, or a tile saved with `pattern-define`). Its light and dark variation becomes the paper texture in place of the generated grain; `grain` sets its strength. |
+
+```json
+[
+  {"type": "shape", "name": "hill", "shape": "ellipse", "width": 420, "height": 240, "x": 40, "y": 300, "fill": "#7fb069"},
+  {"type": "shape", "name": "sun", "shape": "ellipse", "width": 120, "height": 120, "x": 500, "y": 60, "fill": "#f4c95d"},
+  {"type": "cut-paper", "target": "hill", "grain": 0.06, "roughness": 0.4, "thickness": 2, "seed": 3, "grain_scale": 60, "fibers": {"count": 14, "length": 22}},
+  {"type": "cut-paper", "target": "sun", "grain": 0.05, "seed": 5, "pattern": "linen"},
+  {"type": "pattern-fill", "target": "hill", "pattern": "paper", "opacity": 0.4, "name": "hill-tooth"}
+]
+```
+
+Texture a piece with `pattern-fill` or `drawn-texture`: each is an effect on the piece (see [media craft](../images/media-craft.md)), so it adds no layer and follows the piece's own keyframes. A piece no longer needs a group around it and its texture to animate them together; a texture added with `layer: true` is a separate layer and still does.
+
+Stop-motion `jitter` is an offset applied when a piece is composited, not a move of the layer: the piece is drawn once, on whole pixels, and each hold pastes it at its place plus that hold's offset with one sub-pixel resampling. A new hold therefore reuses every drawn piece, its grain, effects and shadow included, and draws again only what turns, scales or changes (a 300-layer scene at 960 x 540 took about 1.5 s for each frame that starts a hold and now takes about 0.25 s). The offsets are seeded by each piece's name and paper seed, so building the same scene again gives the same frames. For a quicker look at a pose, ask for a draft frame: `draft: true` on a `vixl_render` preview (the REST `/preview` route takes `draft` too) or `render_at(project, time, draft=True)` in Python places every layer on whole pixels, so jitter under half a pixel is left out. Exports never use draft placement. Limbs remain editable and can use the existing rig. `edge_light: {"angle": 135}` also lights the cut edge: a subtle `bevel` layer style on every piece (size from the thickness, opacity 0.25; `size`, `opacity`, `highlight` and `shadow` override), whose light keeps its direction while pieces turn. Clear restores the previous shadow and removes the edge light; cadence remains while another paper layer uses it. Run the cut-paper example in VixlExamples, inspect the PNG, and play the WebP. Grain should remain visible without erasing faces; inspect shadows at final size. Same-hold frames should match, while adjacent poses move deliberately. Lighting is rasterized with an explicit report when a vector export cannot preserve the composite.
 
 ## Captions and dialogue
 

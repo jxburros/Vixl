@@ -976,6 +976,10 @@ def validate_design(project, state):
         for effect in layer.get("effects") or []:
             if effect.get("name") == "lookup":
                 require(effect.get("lut") in state.get("luts", {}), "Missing LUT")
+            elif effect.get("name") in ("pattern-fill", "drawn-texture"):
+                from .textures import texture_stored
+
+                texture_stored(effect, state)
         if layer.get("repeat"):
             r = layer["repeat"]
             require(isinstance(r["count"], int) and 1 <= r["count"] <= 512, "Repeat count must be 1–512")

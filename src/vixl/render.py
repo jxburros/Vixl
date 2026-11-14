@@ -667,6 +667,11 @@ def apply_effect(image, effect, project=None):
 
         require(project is not None, "A lookup effect needs its document's LUTs")
         return apply_lookup(project, image, {"name": effect["lut"], "amount": effect.get("amount", 1)})
+    if effect["name"] in ("pattern-fill", "drawn-texture"):
+        from .design_render import apply_texture
+
+        require(project is not None, "A texture effect needs its document's patterns")
+        return apply_texture(project, image, effect)
     if effect["name"] == "denoise":
         from .denoise import denoise_image
 
@@ -819,6 +824,9 @@ def extent(layer, bounds, children, memo):
     ex, ey = effect_margin(layer)
     from .vector_strokes import margin as vector_margin
     vx, vy = vector_margin(layer)
+    if "_jitter" in layer:
+        # A stop-motion piece is composited up to this far from its box (``jittered``).
+        vx, vy = vx + layer["_jitter"][2], vy + layer["_jitter"][2]
     left, top, right, bottom = left-vx, top-vy, right+vx, bottom+vy
     sx, sy = style_margin(layer)
     memo[layer["id"]] = (left - ex - sx, top - ey - sy, right + ex + sx, bottom + ey + sy)
@@ -935,7 +943,9 @@ def ink_identity(project, layer, bounds):
     placed = any(effect.get("selection") for effect in layer.get("effects") or []) or (
         not layer.get("parent") and any(effect_margin(layer))
     )
-    content = layer if placed else {k: v for k, v in layer.items() if k not in ("x", "y", "constraints")}
+    # Stop-motion jitter moves the drawn piece when it is composited (``jittered``), not its pixels.
+    skipped = ("_jitter",) if placed else ("x", "y", "constraints", "_jitter")
+    content = {k: v for k, v in layer.items() if k not in skipped}
     canvas = project.state["canvas"]
     extent_key = [*bounds, canvas["width"], canvas["height"]] if placed else list(bounds[2:])
     extent_key = [*extent_key, bounds[0] % 1, bounds[1] % 1, *(["snapped"] if snap_placement(project) else [])]
@@ -951,14 +961,20 @@ def ink_identity(project, layer, bounds):
 
 
 def ink_inputs(project, layer):
-    """What a layer's pixels read from the document besides its own fields: its fonts or brushes."""
+    """What a layer's pixels read from the document besides its own fields: its fonts or brushes, and the
+    pattern tiles and colours of its textures."""
+    inputs = []
     if layer["type"] == "text":
         from .text import font_data, font_sha256
         data = font_data(project, layer)
-        return [[font_sha256(f) for f in (data if isinstance(data, tuple) else (data,))]]
-    if layer["type"] == "paint":
-        return [project.state.get("brushes", {})]
-    return []
+        inputs = [[font_sha256(f) for f in (data if isinstance(data, tuple) else (data,))]]
+    elif layer["type"] == "paint":
+        inputs = [project.state.get("brushes", {})]
+    if layer.get("cut_paper") or layer.get("effects"):
+        from .design_render import texture_inputs
+
+        inputs = inputs + texture_inputs(project, layer)
+    return inputs
 
 
 def self_contained(layer):
@@ -1128,7 +1144,7 @@ def draw_ink(project, layer, bounds, profile=None):
         raise VixlError("invalid_layer", f"Unsupported layer type: {kind}")
     from .scene import paper_image
 
-    image = paper_image(image, layer)
+    image = paper_image(image, layer, project)
     if profile is None:
         return transform_layer_image(project, layer, bounds, image)
     drawn = time.perf_counter()
@@ -1349,6 +1365,10 @@ def layer_effects(project, layer, bounds, image):
             effect = {**effect, "_open": (bounds[0] <= 0, bounds[1] <= 0,
                                           bounds[0] + bounds[2] >= canvas["width"],
                                           bounds[1] + bounds[3] >= canvas["height"])}
+        if effect["name"] == "pattern-fill":
+            # Lay the pattern out from the layer's box, wherever blur room or a stroke puts it in the image.
+            effect = {**effect, "_origin": ((image.width - math.ceil(layer["width"])) // 2,
+                                            (image.height - math.ceil(layer["height"])) // 2)}
         changed = apply_effect(image, effect, project)
         if effect.get("selection"):
             mask = project.image(effect["selection"], "L")
@@ -1609,10 +1629,22 @@ def layer_patch(project, layer, bounds, size, index, visiting=None, limit=None):
     visiting.add(ident)
     try:
         b = bounds[ident]
+        limit = edge = limit or (0, 0, *size)
+        jitter = layer.get("_jitter")
+        if jitter:
+            # Draw the piece on whole pixels where it rests, past the tile's edge by as far as any hold moves
+            # it, so every hold (and every place a track moves it to) finds the same patch in the cache. The
+            # fraction of its place and the hold's offset are applied to the finished patch below.
+            whole = (math.floor(b[0] + 1e-9), math.floor(b[1] + 1e-9))
+            # A reduced or draft preview rounds each to whole pixels, as it rounds every layer's place.
+            near = round if snap_placement(project) else float
+            jitter = (near(jitter[0]) + near(b[0] - whole[0]), near(jitter[1]) + near(b[1] - whole[1]))
+            b = (*whole, *b[2:])
+            reach = layer["_jitter"][2] + 2
+            limit = (edge[0] - reach, edge[1] - reach, edge[2] + reach, edge[3] + reach)
         source = layer_ink(project, {**layer, "opacity": 1}, b)
         x, y = ink_origin(source, b)
         mx, my = (2 * margin + 4 for margin in style_margin(layer)) if layer.get("styles") else (0, 0)
-        limit = limit or (0, 0, *size)
         box = (max(limit[0], x - mx), max(limit[1], y - my),
                min(limit[2], x + source.width + mx), min(limit[3], y + source.height + my))
         if box[0] >= box[2] or box[1] >= box[3]:
@@ -1640,6 +1672,10 @@ def layer_patch(project, layer, bounds, size, index, visiting=None, limit=None):
         else:
             patch = Image.new("RGBA", (box[2] - box[0], box[3] - box[1]))
             patch.alpha_composite(source, (x - box[0], y - box[1]))
+        if jitter:
+            patch, box = jittered(patch, box, jitter, edge)
+            if patch is None:
+                return None, None
         if layer.get("clip"):
             clip, at = layer_patch(project, index[layer["clip"]], bounds, size, index, visiting, limit)
             mask = Image.new("L", patch.size)
@@ -1650,6 +1686,30 @@ def layer_patch(project, layer, bounds, size, index, visiting=None, limit=None):
     finally:
         visiting.remove(ident)
     return patch, box[:2]
+
+
+def jittered(patch, box, jitter, edge):
+    """A drawn piece moved by its stop-motion offset: ``patch`` at ``box`` (left, top, right, bottom) translated by
+    ``jitter`` (dx, dy) and cut to ``edge``. The whole pixels move the box; the fraction is one bicubic
+    resampling of the finished patch (its styles included). Returns the patch and its box, or (None, None) when
+    it leaves the tile."""
+    dx, dy = jitter
+    left, top = box[0] + math.floor(dx), box[1] + math.floor(dy)
+    fx, fy = dx - math.floor(dx), dy - math.floor(dy)
+    if fx > 1e-8 or fy > 1e-8:
+        # One transparent pixel on each side holds the filter's reach; the output gains the pixel the
+        # fraction moves into. A same-scale resize of a shifted box is a pure translation.
+        w, h = patch.size
+        padded = Image.new("RGBA", (w + 2, h + 2))
+        padded.paste(patch, (1, 1))
+        patch = padded.resize((w + 1, h + 1), Image.Resampling.BICUBIC, box=(1 - fx, 1 - fy, w + 2 - fx, h + 2 - fy))
+    moved = (left, top, left + patch.width, top + patch.height)
+    cut = (max(edge[0], moved[0]), max(edge[1], moved[1]), min(edge[2], moved[2]), min(edge[3], moved[3]))
+    if cut[0] >= cut[2] or cut[1] >= cut[3]:
+        return None, None
+    if cut != moved:
+        patch = patch.crop((cut[0] - left, cut[1] - top, cut[2] - left, cut[3] - top))
+    return patch, cut
 
 
 def styled_key(project, layer, bounds, box, origin):
@@ -1690,7 +1750,7 @@ def layer_canvas_alpha(project, layer, box, bounds, index):
     """``layer_canvas_surface(...).getchannel("A").crop(box)`` for ``box`` inside the canvas, without drawing a
     canvas-sized surface when the layer is drawn straight onto the canvas (no group, styles or clipping): the
     overlap check asks this of every text layer, and a full-canvas surface each made it slow on large canvases."""
-    if layer.get("parent") or layer.get("styles") or layer.get("clip"):
+    if layer.get("parent") or layer.get("styles") or layer.get("clip") or layer.get("_jitter"):
         return layer_canvas_surface(project, layer, bounds, index).getchannel("A").crop(box)
     left, top, right, bottom = box
     alpha = Image.new("L", (right - left, bottom - top))
@@ -1999,7 +2059,8 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
         return not (b[0] - mx >= size[0] or b[1] - my >= size[1] or b[0] + b[2] + mx <= 0 or b[1] + b[3] + my <= 0)
 
     def plain(layer):
-        return not layer.get("styles") and not layer.get("clip") and layer["type"] != "adjustment"
+        return (not layer.get("styles") and not layer.get("clip") and layer["type"] != "adjustment"
+                and not layer.get("_jitter"))
 
     def ahead(layer):
         """What compositing ``layer`` needs that does not read the tile: its ink, or its styled patch."""

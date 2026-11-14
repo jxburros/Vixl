@@ -565,3 +565,52 @@ def merch_tee_hoodie_sticker():
         p.apply({"type": "add", "asset": add_image(p, view), "name": f"view-{i}", "x": 2 + i * 85,
                  "y": (96 - view.height) // 2})
     return p
+
+
+@fixture
+def cut_paper_grain():
+    # Paper grain without a direction: mottling, short fibres and fine tooth on a large flat sheet; a coarser,
+    # more fibrous piece; and one whose texture is a pattern.
+    return doc(240, 200, "#fbf6ec", ops=[
+        rect("sky", 10, 10, 220, 180, "#93cbe6", stroke_width=0),
+        {"type": "shape", "shape": "ellipse", "name": "hill", "x": 20, "y": 110, "width": 150, "height": 110,
+         "fill": "#7fb069", "stroke_width": 0},
+        {"type": "shape", "shape": "ellipse", "name": "sun", "x": 150, "y": 26, "width": 62, "height": 62,
+         "fill": "#f4c95d", "stroke_width": 0},
+        {"type": "cut-paper", "target": "sky", "grain": 0.065, "roughness": 0.4, "thickness": 2, "seed": 3, "jitter": 0},
+        {"type": "cut-paper", "target": "hill", "grain": 0.07, "roughness": 0.5, "thickness": 3, "seed": 8,
+         "grain_scale": 60, "fibers": {"count": 30, "length": 22}, "jitter": 0},
+        {"type": "cut-paper", "target": "sun", "grain": 0.05, "roughness": 0.3, "thickness": 2, "seed": 5,
+         "pattern": "linen", "jitter": 0},
+    ])
+
+
+def cut_paper_scene():
+    """A stop-motion scene for a frame golden (not a document fixture: a frame is a render-only copy): pieces
+    with jitter, and a striped piece and a hatched one turned and moved by their own tracks."""
+    return doc(240, 180, "#fbf6ec", ops=[
+        rect("ground", -6, 120, 252, 70, "#c9a66b", stroke_width=0),
+        {"type": "shape", "shape": "rounded-rectangle", "name": "lock", "x": 58, "y": 26, "width": 30, "height": 96,
+         "fill": "#f2789f", "radius": 10, "stroke_width": 0},
+        {"type": "pivot", "target": "lock", "value": "top"},
+        {"type": "shape", "shape": "ellipse", "name": "ball", "x": 20, "y": 96, "width": 56, "height": 56,
+         "fill": "#f1e3c8", "stroke_width": 0},
+        {"type": "shape", "shape": "triangle", "name": "tent", "x": 150, "y": 70, "width": 70, "height": 64,
+         "fill": "#3d7ea6", "stroke_width": 0},
+        {"type": "shape", "shape": "rectangle", "name": "door", "x": 178, "y": 104, "width": 14, "height": 30,
+         "fill": "#22313f", "stroke_width": 0},
+        {"type": "group", "name": "camp", "targets": ["tent", "door"]},
+        {"type": "pattern-fill", "target": "lock", "pattern": "stripes", "colors": ["#000000", "#ffffff"],
+         "opacity": 0.6, "spacing": 12},
+        {"type": "drawn-texture", "target": "ball", "preset": "hatch", "color": "#5b3a1e", "strength": 0.9, "seed": 2},
+        {"type": "pattern-fill", "target": "ground", "pattern": "paper", "opacity": 0.5},
+        {"type": "cut-paper", "targets": ["ground", "lock", "ball", "camp"], "grain": 0.06, "roughness": 0.4,
+         "thickness": 2, "seed": 3, "jitter": 0.4},
+        {"type": "timeline-set", "duration": 1000, "fps": 12},
+        {"type": "keyframes", "target": "lock", "property": "rotation",
+         "keys": [{"time": 0, "value": 0}, {"time": 1000, "value": -60}]},
+        {"type": "keyframes", "target": "ball", "property": "x",
+         "keys": [{"time": 0, "value": 20}, {"time": 1000, "value": 92.3}]},
+        {"type": "keyframes", "target": "ball", "property": "rotation",
+         "keys": [{"time": 0, "value": 0}, {"time": 1000, "value": 120}]},
+    ])

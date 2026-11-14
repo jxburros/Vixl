@@ -80,12 +80,13 @@ def preview(
     rulers=None,
     bounds=None,
     info=None,
+    draft=False,
 ):
     with session.project(document=document) as project:
         return preview_png(project, max_width, max_height, max_bytes, region=region, variables=variables,
                            artboard=artboard, comp=comp, time=time, proof=proof, simulate=simulate, guides=guides,
                            page=page, values=values, show_fields=show_fields, isolate=isolate, views=views,
-                           exploded=exploded, rulers=rulers, bounds=bounds, info=info)
+                           exploded=exploded, rulers=rulers, bounds=bounds, info=info, draft=draft)
 
 
 def typed_ai(session, command, words=(), document=None, **options):

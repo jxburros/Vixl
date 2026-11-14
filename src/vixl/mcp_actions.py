@@ -931,6 +931,8 @@ def render_preview(
     views: Annotated[list[Literal["parts"]] | None, Field(
         description="['parts']: a labelled contact sheet of each isolated object, assembled and part by part")] = None,
     exploded: Annotated[bool, Field(description="With isolate: add an exploded view of the parts")] = False,
+    draft: Annotated[bool, Field(description="Quicker frame for checking a pose: layers land on whole pixels, "
+                                             "so stop-motion jitter under half a pixel is left out")] = False,
     rulers: Annotated[bool | float | None, Field(
         description="Placement aid: a grid over the preview with each line labelled by its document coordinate "
                     "(true picks the step; a number is the step in document pixels). Preview only, never exported")] = None,
@@ -960,7 +962,7 @@ def render_preview(
     data = image(preview(session, variables, max_width, max_height, max_bytes, artboard, comp, region, document,
                          time=time, proof=proof, simulate=simulate, guides=guides, page=page, values=values,
                          show_fields=show_fields, isolate=isolate, views=views, exploded=exploded,
-                         rulers=rulers, bounds=bounds, info=placement))
+                         rulers=rulers, bounds=bounds, info=placement, draft=draft))
     from .check_results import delivery
 
     with session.project(document=document) as project:
