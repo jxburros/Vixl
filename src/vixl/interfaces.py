@@ -84,6 +84,9 @@ class Session:
         if workspace is None and path is None:
             refuse_broad_workspace(self.workspace)
         self.require_document = require_document
+        # A local server (vixl mcp over stdio) runs on the caller's own machine: its results may name the
+        # workspace folder. Network and embedded servers keep the absolute location private (#676, #801).
+        self.local = False
         self._path = None  # The server-wide default: the document it started with, or set outside MCP.
         self._client_paths = WeakKeyDictionary()
         self._client_seen = WeakKeyDictionary()  # Client -> documents it created, opened or named, by recency.
@@ -759,16 +762,21 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
 
     limiter = Limiter(call_limits, jobs, workers)
 
+    async def run_limited(route, fn, *args, **kwargs):
+        """Run a heavy call: counted against max_concurrent, detached into a job after the timeout and cancelled
+        at its next checkpoint after the hard timeout (call_limits.Limiter)."""
+        outcome, value = await limiter.run(session.workspace, route, fn, *args, **kwargs)
+        if outcome == "job":
+            return JSONResponse(detached(value, route, call_limits.timeout), status_code=202,
+                                headers={"Location": f"/jobs/{value}", "Retry-After": "3"})
+        return value
+
     def limited(fn):
-        """A heavy route: counted against max_concurrent, detached into a job after the timeout and cancelled at
-        its next checkpoint after the hard timeout (call_limits.Limiter)."""
+        """A heavy route whose handler is the work. A handler that reads the request body first is ``async`` and
+        passes its work to ``run_limited`` itself."""
         @functools.wraps(fn)
         async def wrapper(*args, **kwargs):
-            outcome, value = await limiter.run(session.workspace, fn.__name__, fn, *args, **kwargs)
-            if outcome == "job":
-                return JSONResponse(detached(value, fn.__name__, call_limits.timeout), status_code=202,
-                                    headers={"Location": f"/jobs/{value}", "Retry-After": "3"})
-            return value
+            return await run_limited(fn.__name__, fn, *args, **kwargs)
 
         return wrapper
     app = FastAPI(title="Vixl Engine", version=__version__)
@@ -913,21 +921,22 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
 
     @app.get("/resources/{kind}")
     def resources_list(kind: str):
-        from .resources import catalog
+        from .resources import catalog, service_workspace
 
-        return {"names": sorted(catalog(kind))}
+        # The workspace's library (.vixl-resources.json), never the user-global one: see service_workspace.
+        return {"names": sorted(catalog(kind, workspace=service_workspace(session)))}
 
     @app.get("/resources/{kind}/{name}")
     def resource_get(kind: str, name: str):
-        from .resources import get
+        from .resources import get, service_workspace
 
-        return {"name": name, "value": get(kind, name)}
+        return {"name": name, "value": get(kind, name, workspace=service_workspace(session))}
 
     @app.post("/resources/{kind}/{name}")
     def resource_add(kind: str, name: str, body: dict):
-        from .resources import register
+        from .resources import register, service_workspace
 
-        return register(kind, name, body.get("value"))
+        return register(kind, name, body.get("value"), workspace=service_workspace(session))
 
     @app.post("/export")
     @limited
@@ -1094,11 +1103,15 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
         from .fonts import validate_font
 
         data = await request.body()
-        validate_font(data)
-        with session.project(write=True) as project:
-            asset = f"fonts/{hashlib.sha256(data).hexdigest()}.ttf"
-            project.assets[asset] = data
-            return project.apply({"type": "font-register", "name": name, "asset": asset}, detail="compact")
+
+        def register():
+            validate_font(data)
+            with session.project(write=True) as project:
+                asset = f"fonts/{hashlib.sha256(data).hexdigest()}.ttf"
+                project.assets[asset] = data
+                return project.apply({"type": "font-register", "name": name, "asset": asset}, detail="compact")
+
+        return await run_limited("fonts", register)
 
     @app.get("/document")
     def document():
@@ -1175,7 +1188,7 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
 
         options = fixed(body)
         allowed = {"variables", "max_width", "max_height", "max_bytes", "artboard", "comp", "region", "time", "proof", "simulate",
-                   "guides", "page", "values", "show_fields", "isolate", "views", "exploded"}
+                   "guides", "page", "values", "show_fields", "isolate", "views", "exploded", "rulers", "bounds"}
         known_fields(options, allowed, "preview")
         return Response(preview(session, **options), media_type="image/png")
 
@@ -1286,7 +1299,7 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
                               font_map: list[str] | None = Query(None),
                               install_fonts: bool | None = None):
         from .imports import import_document as execute_import
-        from starlette.concurrency import run_in_threadpool
+
         data = await request.body()
         # A figma import's body is a file URL or key; the server's FIGMA_TOKEN reads the file.
         figma = format.lower() == "figma"
@@ -1302,19 +1315,15 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
             with session.project(write=True) as project:
                 return execute_import(project, data, format, name, int(page) if page.isdigit() else page, dpi,
                                       svg_mode, **options)
-        return await run_in_threadpool(apply_import)
+        return await run_limited("import_document", apply_import)
 
     @app.post("/assets")
     async def assets(request: Request, name: str = "image", url: str | None = None, credit: str | None = None,
                      license: str | None = None):
-        from functools import partial
-
-        from starlette.concurrency import run_in_threadpool
-
         body = await request.body()
         require(not (url and body), "Send image bytes or a url query parameter, not both", field="url")
-        return await run_in_threadpool(partial(session.import_image, None if url else body, name, url=url,
-                                               credit=credit, license=license))
+        return await run_limited("assets", session.import_image, None if url else body, name, url=url,
+                                 credit=credit, license=license)
 
     @app.post("/ai/{command}")
     @limited
@@ -1392,7 +1401,7 @@ def require_document_default():
 
 
 def mcp_server(path=None, limits=None, *, workspace=None, planner=False, tools="default",
-               require_document=None, call_limits=None, allow_screen_capture=None):
+               require_document=None, call_limits=None, allow_screen_capture=None, local=False):
     try:
         from .mcp_tools import build_server, check_sdk
         check_sdk()
@@ -1408,12 +1417,30 @@ def mcp_server(path=None, limits=None, *, workspace=None, planner=False, tools="
     session = Session(path, call_limits.apply_to(limits or Limits()), workspace=workspace,
                       require_document=require_document)
     session.call_limits = call_limits
+    session.local = bool(local)
     return build_server(session, planner=planner, tools=tools,
                         allow_screen_capture=allow_screen_capture)
 
 
-def mcp_http_app(server, *, token=None):
-    """SDK Streamable HTTP with the REST bearer-token and same-origin policy."""
+MCP_BODY_ENV = "VIXL_MCP_MAX_BODY_BYTES"
+
+
+def mcp_body_limit(limits, environ=None):
+    """Bytes one MCP Streamable HTTP request body may hold: ``VIXL_MCP_MAX_BODY_BYTES``, else room for the largest
+    asset a tool takes inline (``data_base64`` of ``limits.max_asset_bytes``) plus 1 MiB of JSON around it."""
+    import os
+
+    given = str((os.environ if environ is None else environ).get(MCP_BODY_ENV, "")).strip()
+    if given:
+        require(given.isdigit() and int(given) > 0, f"{MCP_BODY_ENV} must be a positive whole number of bytes",
+                "invalid_input", field="max_body_bytes")
+        return int(given)
+    return -(-limits.max_asset_bytes * 4 // 3) + 1024 * 1024
+
+
+def mcp_http_app(server, *, token=None, max_body_bytes=None):
+    """SDK Streamable HTTP with the REST bearer-token and same-origin policy, and a request body limit
+    (``max_body_bytes``, default ``mcp_body_limit`` of the server's limits) answered 413 before the SDK reads it."""
     from starlette.middleware.base import BaseHTTPMiddleware
     from starlette.middleware.trustedhost import TrustedHostMiddleware
     from starlette.responses import JSONResponse
@@ -1424,6 +1451,9 @@ def mcp_http_app(server, *, token=None):
     # Our guard handles both public, token-protected hosts and loopback DNS rebinding.
     server.settings.transport_security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
     app = server.streamable_http_app()
+    if max_body_bytes is None:
+        runtime = getattr(server, "vixl_runtime", None)
+        max_body_bytes = mcp_body_limit(runtime.session.limits if runtime is not None else Limits())
 
     async def guard(request, call_next):
         if token:
@@ -1435,6 +1465,8 @@ def mcp_http_app(server, *, token=None):
             return JSONResponse({"error": "cross_origin_forbidden"}, status_code=403)
         return await call_next(request)
 
+    # Added first, so it runs inside the guard below: an unauthorized request is refused before its body is read.
+    app.add_middleware(BodyLimit, maximum=lambda path: max_body_bytes)
     app.add_middleware(BaseHTTPMiddleware, dispatch=guard)
     if not token:
         app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "[::1]", "testserver"])

@@ -9,7 +9,10 @@ document before changing anything.
 
 | Symptom | Cause to check | Next step |
 | --- | --- | --- |
-| `vixl` is not found | Terminal/client PATH or inactive virtual environment | Activate the environment or reopen the terminal; Windows users see [PATH repair](reference/releases.md#using-the-current-terminal) |
+| `vixl` is not found | Terminal/client PATH or inactive virtual environment; a client that starts the server with `uvx` never puts `vixl` on PATH | Activate the environment or reopen the terminal; Windows users see [PATH repair](reference/releases.md#using-the-current-terminal). `python -m vixl …` is the same CLI; in a source checkout `PYTHONPATH=$PWD/src python -m vixl …`; with uv, `uvx --from vixl-engine vixl …` ([agent setup](reference/interfaces.md#agent-setup-finding-the-cli-and-waiting-for-the-server)) |
+| The `vixl_*` tools are missing at the start of an agent session | The MCP server is still starting (a first `uvx` run downloads the package) | Wait for the client to list the tools, or use the CLI meanwhile; install the package in the environment's setup step to start at once ([agent setup](reference/interfaces.md#agent-setup-finding-the-cli-and-waiting-for-the-server)) |
+| Every check asks for review of a background or decoration (`safe_area.outside`) | The layer is checked as content | Create it with `role: "decoration"` (or `"background"`), or mark it: `{"type": "layer-intent", "target": NAME, "role": "decoration"}`; the finding becomes informational and is listed under `outcome.accepted` |
+| A `.vixl` made in a repository is not in `git status` | The repository ignores it (a local `vixl mcp` says so: `git: "ignored…"` on `create`) | Create it in a tracked folder or add an exception to `.gitignore` ([where files go](reference/interfaces.md#where-files-go)) |
 | Old version after updating | Another executable on PATH or a running old session | Check executable location, run its `--version`, restart the client/session |
 | Server/view or PDF import is unavailable | Missing optional dependency | Install `.[server]` or `.[pdf]` in the same environment as Vixl |
 | Command edits the wrong file | Directory-default project selection | Pass `-p file.vixl` explicitly (the terminal summary starts with the file it edited); MCP tools accept `document=` |

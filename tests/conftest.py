@@ -42,3 +42,13 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "emoji_pack" in item.keywords:
             item.add_marker(skip)
+
+
+@pytest.fixture(autouse=True)
+def _local_caller_patterns():
+    """A test that starts a server command marks the process as a service (``patterns.serving``); undo it so the
+    tests after it compile caller patterns as a local caller again."""
+    from vixl import patterns
+
+    yield
+    patterns.SERVING = False

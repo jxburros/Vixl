@@ -33,7 +33,7 @@ FIELD_TYPES = {
         "poses": {"type": "object", "additionalProperties": {"type": "object", "additionalProperties": {
             "type": "number"}}, "description": "Named poses {name: {joint: degrees}} on the character's rig. " + NAMED},
         "motions": {"type": "object", "additionalProperties": {"type": "object"}, "description": "Named motions: "
-                    "{name: {cycle: walk|run|idle|ride|react|wave, duration?, period?, amount?, samples?, view?}} or "
+                    "{name: {cycle: walk|run|idle|ride|react|wave (a quadruped: walk|trot|gallop|jump|idle), duration?, period?, amount?, samples?, view?}} or "
                     "{name: {keys: [{time, angles, easing?}]}}; a cycle needs the bones it drives. " + NAMED},
         "checks": {"type": "array", "maxItems": 16, "items": {"type": "string"}, "description": "Checks to run on "
                    "each placed copy (default character, plus object when the group is a declared object)."},

@@ -3,10 +3,10 @@
 PLUGIN = {
     "name": "characters",
     "title": "Characters",
-    "summary": "Standard-part characters with planar rigs, poses and retargetable walk, idle and other cycles, shared "
+    "summary": "Standard-part characters (humanoid and four-legged) with planar rigs, poses and retargetable walk, gallop, idle and other cycles, shared "
                "as .vixlchar packages with named expressions, poses and motions.",
     "kind": "operations",
-    "modules": ["characters", "hooks", "package", "workflow"],
+    "modules": ["characters", "hooks", "package", "quadruped", "workflow"],
     "operations": ["characters"],
     "workflows": ["workflow"],
     "hooks": {"check": ["hooks:check"]},

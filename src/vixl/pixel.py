@@ -9,7 +9,9 @@ from PIL import Image, ImageDraw
 from .errors import require
 from .model import new_layer
 
-PIXEL_TYPES = ("pixel-art", "pixel-draw", "pixel-palette")
+PIXEL_TYPES = ("pixel-art", "pixel-draw", "pixel-palette", "pixel-transform", "sprite-sheet")
+TOOLS = ("pixel", "line", "rect", "fill", "ellipse")
+FLIPS = ("horizontal", "vertical", "both")
 MAX_GRID = 256
 MIRRORS = ("x", "y", "xy")
 LIGHTS = ("auto", "top-left", "top", "top-right")
@@ -106,6 +108,46 @@ def delta(rows, palette, changed_rows=None, cells=None):
         require(0 <= x < width and 0 <= y < height, f"cells: [{x}, {y}] is outside the grid", field="cells")
         out[y] = out[y][:x] + symbol + out[y][x + 1:]
     return out
+
+
+def ellipse_cells(x, y, width, height):
+    """The cells of a filled ellipse inscribed in the box: every cell whose centre is inside it. Symmetric on both
+    axes for any size, so a mirrored sprite keeps its heads and wheels."""
+    cx, cy, rx, ry = x + width / 2, y + height / 2, width / 2, height / 2
+    return [(px, py) for py in range(y, y + height) for px in range(x, x + width)
+            if ((px + 0.5 - cx) / rx) ** 2 + ((py + 0.5 - cy) / ry) ** 2 <= 1]
+
+
+def transparent_symbol(project, palette):
+    """The first palette symbol that draws nothing, or None."""
+    from .design import resolve_color
+    from .render import color
+
+    return next((key for key, value in palette.items() if color(resolve_color(value, project.state))[3] == 0), None)
+
+
+def transformed(rows, flip=None, shift=None, wrap=False, fill=None):
+    """``rows`` mirrored (``horizontal``, ``vertical`` or ``both``) and then moved by ``shift`` ``[dx, dy]`` cells.
+    Cells pushed off the grid are dropped and the cells they leave take ``fill``, or with ``wrap`` they come back
+    in on the opposite side."""
+    width, height = len(rows[0]), len(rows)
+    if flip in ("horizontal", "both"):
+        rows = [row[::-1] for row in rows]
+    if flip in ("vertical", "both"):
+        rows = rows[::-1]
+    dx, dy = shift or (0, 0)
+    if wrap:
+        dx, dy = dx % width, dy % height
+        rows = [row[-dx:] + row[:-dx] if dx else row for row in rows]
+        return rows[-dy:] + rows[:-dy] if dy else list(rows)
+    if abs(dx) >= width or abs(dy) >= height:
+        return [fill * width] * height
+    if dx:
+        rows = [fill * dx + row[:-dx] if dx > 0 else row[-dx:] + fill * -dx for row in rows]
+    if dy:
+        blank = [fill * width] * abs(dy)
+        rows = blank + rows[:-dy] if dy > 0 else rows[-dy:] + blank
+    return list(rows)
 
 
 def validate_finish(layer):
@@ -332,6 +374,10 @@ def execute_pixel(project, op):
             x=op.get("x", 0),
             y=op.get("y", 0),
         )
+        if "cell" in op:
+            from .sprite_sheet import place_in_cell
+
+            place_in_cell(project, layer, op["cell"])
         for key in ("shading", "outline"):
             # Sprites get a shading ramp and an outline unless told not to.
             value = op.get(key, True)
@@ -341,8 +387,29 @@ def execute_pixel(project, op):
         validate_pixel(layer, project.state)
         append_layer(project, layer)
         return
+    if op["type"] == "sprite-sheet":
+        from .sprite_sheet import execute_sheet
+
+        execute_sheet(project, op)
+        return
     layer = project.layer(op.get("target"))
     require(layer["type"] == "pixel", "Target must be a pixel-art layer")
+    if op["type"] == "pixel-transform":
+        require("flip" in op or "shift" in op, "pixel-transform needs flip or shift", field="flip")
+        require(op.get("flip") in (None, *FLIPS), f"flip is one of {', '.join(FLIPS)}", field="flip")
+        shift = op.get("shift", [0, 0])
+        require(isinstance(shift, list) and len(shift) == 2 and all(type(v) is int and abs(v) <= MAX_GRID for v in shift),
+                "shift is [dx, dy] in whole cells", field="shift")
+        wrap, fill = op.get("wrap", False), op.get("fill")
+        require(not (wrap and fill is not None), "wrap brings the cells back in, so fill has nothing to paint",
+                field="fill")
+        if any(shift) and not wrap:
+            fill = fill if fill is not None else transparent_symbol(project, layer["palette"])
+            require(fill is not None, "The palette has no transparent symbol for the cells a shift leaves empty: "
+                    "pass fill (a palette symbol) or wrap: true", field="fill")
+            require(fill in layer["palette"], "fill must be a palette symbol", field="fill")
+        layer["pixels"] = transformed(layer["pixels"], op.get("flip"), shift, wrap, fill)
+        return
     if op["type"] == "pixel-palette":
         require(any(key in op for key in ("colors", "shading", "outline")), "pixel-palette needs colors, shading or "
                 "outline", field="colors")
@@ -359,7 +426,7 @@ def execute_pixel(project, op):
     rows = layer["pixels"]
     if "rows" in op or "cells" in op:
         # A frame delta: only the rows and cells that changed since the last frame.
-        require(not any(key in op for key in ("tool", "x", "y", "x2", "y2", "width", "height", "color")),
+        require(not any(key in op for key in ("tool", "x", "y", "x2", "y2", "width", "height", "color", "only")),
                 "rows and cells replace tool, x, y and color", field="rows" if "rows" in op else "cells")
         layer["pixels"] = delta(rows, layer["palette"], op.get("rows"), op.get("cells"))
         validate_pixel(layer, project.state)
@@ -395,12 +462,24 @@ def execute_pixel(project, op):
         )
         require(x + op["width"] <= w and y + op["height"] <= h, "Rectangle outside grid")
         draw.rectangle((x, y, x + op["width"] - 1, y + op["height"] - 1), fill=1)
+    elif tool == "ellipse":
+        require("width" in op and "height" in op and "x2" not in op and "y2" not in op,
+                "Ellipse requires width/height (its box; x, y is the top-left cell)", field="width")
+        require(x + op["width"] <= w and y + op["height"] <= h, "Ellipse outside grid", field="width")
+        for cell in ellipse_cells(x, y, op["width"], op["height"]):
+            mask.putpixel(cell, 1)
     else:
         require(
             tool == "pixel" and not any(key in op for key in ("x2", "y2", "width", "height")),
             "Pixel needs only X/Y",
         )
         draw.point((x, y), fill=1)
+    only = op.get("only")
+    if only is not None:
+        # Masked painting: the tool may overwrite only cells that hold one of these symbols.
+        require(isinstance(only, list) and only and all(isinstance(key, str) and key in layer["palette"] for key in only),
+                "only is a list of palette symbols the tool may overwrite", field="only")
     layer["pixels"] = [
-        "".join(symbol if mask.getpixel((px, py)) else rows[py][px] for px in range(w)) for py in range(h)
+        "".join(symbol if mask.getpixel((px, py)) and (only is None or rows[py][px] in only) else rows[py][px]
+                for px in range(w)) for py in range(h)
     ]

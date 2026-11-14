@@ -1158,7 +1158,7 @@ def denoised_first(project, layer, bounds, image):
 def transform_layer_image(project, layer, bounds, image):
     """Apply the same geometry and appearance to a layer or an isolated group child."""
     kind = layer["type"]
-    crisp = kind == "pixel" or (kind == "group" and pixel_group(project, layer))
+    crisp = kind == "pixel" or layer.get("sampling") == "nearest" or (kind == "group" and pixel_group(project, layer))
     sampling = Image.Resampling.NEAREST if crisp else Image.Resampling.LANCZOS
     stretched = False
     if kind == "group" and not layer.get("repeat") and image.size != (layer["content_width"], layer["content_height"]):
@@ -1534,11 +1534,13 @@ def group_overflow_resize(layer, image, sampling):
 
 
 def pixel_group(project, group):
-    """Whether a group holds only pixel layers, so scaling and rotating it stays nearest-neighbor."""
+    """Whether a group holds only pixel layers and images set to nearest sampling, so scaling and rotating it
+    stays nearest-neighbor."""
     from .design import descendants
 
     members = descendants(project, group["id"])
-    kinds = {item["type"] for item in project.state["layers"] if item["id"] in members} - {"group"}
+    kinds = {"pixel" if item.get("sampling") == "nearest" else item["type"]
+             for item in project.state["layers"] if item["id"] in members} - {"group"}
     return kinds == {"pixel"}
 
 
@@ -1628,7 +1630,9 @@ def layer_patch(project, layer, bounds, size, index, visiting=None, limit=None):
                 started = time.perf_counter()
                 patch = Image.new("RGBA", (box[2] - box[0], box[3] - box[1]))
                 patch.alpha_composite(source, (x - box[0], y - box[1]))
-                patch = styled_image(project, patch, layer["styles"])
+                # Where the canvas edge cuts the layer off, inner styles treat it as continuing.
+                cut = (x < box[0], y < box[1], x + source.width > box[2], y + source.height > box[3])
+                patch = styled_image(project, patch, layer["styles"], cut)
                 if key:
                     cache.put(key, patch)
                 if profile is not None:

@@ -521,7 +521,7 @@ def record(layer):
     """The object a group declares: its explicit record, or ``{kind: person, implicit: true}`` for a character."""
     if layer.get("object"):
         return layer["object"]
-    if layer.get("type") == "group" and layer.get("character"):
+    if layer.get("type") == "group" and layer.get("character") and layer["character"].get("plan") != "quadruped":
         return {"version": RECORD_VERSION, "kind": "person", "implicit": True}
     return None
 

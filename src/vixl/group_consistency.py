@@ -377,10 +377,15 @@ def validate_facts(facts, field="facts"):
             if pattern is not None:
                 require(isinstance(pattern, str) and 0 < len(pattern) <= MAX_PATTERN,
                         f"{where}.pattern must be a regex of at most {MAX_PATTERN} characters", field=where)
+                from . import patterns
+
                 try:
-                    entry["regex"] = re.compile(pattern, flags)
+                    entry["regex"] = patterns.compile(pattern, flags)
                 except re.error as exc:
                     raise VixlError("invalid_request", f"{where}.pattern is not a valid regex: {exc}", field=where) from exc
+                except patterns.Refused as exc:
+                    raise VixlError("invalid_request", f"{where}.pattern cannot run on a shared service: {exc.reason}",
+                                    field=where, suggestions=exc.suggestions) from exc
         require("regex" in entry or entry["value"] is not None,
                 f"{where} needs pattern, values, format or value", field=where)
         compiled[name] = entry

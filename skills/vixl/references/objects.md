@@ -29,6 +29,14 @@ metadata.
 - **Declare objects** — build a dog, a guitar or a person as one group, then `{type: object, target: GROUP,
   kind: dog}` and `{type: object, action: part, target: LAYER, part: leg, side: left}` (`depth: far|near` for limbs
   behind or in front of the body in a side view). A person holding a guitar is an object with a sub-object.
+- **Detect objects in existing work** — `vixl_apply(workflow='object-detect', request={})` (CLI `vixl object
+  detect`) proposes objects that were never declared and changes nothing: organic groups by preset, characters,
+  groups and loose layers by name (`guitar-body`, `My Guitar`) and by part names whose ink touches (`head`, `body`,
+  `ear-l`, `whiskers` → cat; generic parts give the class, `mammal`). Each proposal is `{layers, proposed_kind,
+  confidence, reasons, parts, batch}`; apply a `batch` yourself, or rerun with `apply: true` (`min_confidence`
+  0.7) to apply them as one undo step with the object check on the result. Charts, text, frames and unnamed piles
+  get none; a grouping that would change the picture is marked `changes_render` and never applied. `provider:
+  NAME` adds a provider's labels for raster images as low-confidence candidates; without it nothing is sent.
 - **Address by path** — `dog/head`, `dog/leg[left]`, `person/guitar/neck` work wherever a layer name does;
   `isolate` also takes `object:KIND`; `edit-layers` selects `where.object`, `where.object_kind`, `where.part`.
 - **Review loop** — `vixl_check` runs the `object` check whenever the page declares objects: missing or miscounted

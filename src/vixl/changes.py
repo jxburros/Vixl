@@ -24,10 +24,14 @@ def generator_kind(layer, state=None, *, objects=False):
     return None
 
 
-def ack(result, head=None):
-    """detail=ack: ``{ok, head, changed: N, warnings}`` from a brief apply result; ``changed`` counts every added,
-    changed and removed layer, including the ones a brief result left out, and the children summarised at a
-    parent."""
+ACK_LAYERS = 25  # an ack names at most this many changed layers; ``changed`` still counts them all
+
+
+def ack(result, head=None, names=None):
+    """detail=ack: ``{ok, head, changed: N, changed_layers, warnings}`` from a brief apply result; ``changed`` counts every
+    added, changed and removed layer, including the ones a brief result left out, and the children summarised at a
+    parent; ``changed_layers`` names the first ACK_LAYERS of them (``names``: layer id → name for the changed ones). A
+    ``check`` is reduced to its verdict and the findings that ask for a fix or a review."""
     changes = result.get("changes") or {}
     layers = changes.get("layers") or {}
     changed = len(layers)
@@ -37,6 +41,11 @@ def ack(result, head=None):
         changed += (changes.get(key) or {}).get("count", 0)
     summary = {"ok": bool(result.get("success", True)), "head": head if head is not None else result.get("head"),
                "changed": changed, "warnings": list(result.get("warnings") or [])}
+    known = names or {}
+    named = [entry["name"] if isinstance(entry.get("name"), str) else known.get(ident) for ident, entry in layers.items()]
+    named = list(dict.fromkeys(name for name in named if name))
+    if named:
+        summary["changed_layers"] = named[:ACK_LAYERS]
     for key in ("dry_run", "proposal_id", "outcome", "report_path", "steps_omitted"):
         if result.get(key) not in (None, False):
             summary[key] = result[key]
@@ -49,8 +58,13 @@ def ack(result, head=None):
 def _review_summary(kind, value):
     if kind == "check":
         issues = value.get("issues") or []
+        # The findings that still ask for something, one short entry each; vixl_check has the measurements.
+        open_issues = [{"rule": i.get("rule", i.get("check")), "action": i.get("action"), "layers": i.get("layers", []),
+                        "message": i.get("message", "")} for i in issues if i.get("action") in ("fix", "review")]
         return {"passed": value.get("passed"), "findings": len(issues),
-                **({"fix": sum(1 for i in issues if i.get("action") == "fix")} if issues else {})}
+                **({"fix": sum(1 for i in issues if i.get("action") == "fix")} if issues else {}),
+                **({"issues": open_issues[:REPORT_FINDINGS]} if open_issues else {}),
+                **({"issues_omitted": len(open_issues) - REPORT_FINDINGS} if len(open_issues) > REPORT_FINDINGS else {})}
     return {name: (item.get("status") if isinstance(item, dict) else item) for name, item in value.items()}
 
 

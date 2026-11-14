@@ -1029,7 +1029,7 @@ def contract_memory(project, name, info, passed):
 
 
 def _times(project, sampling, mode):
-    from .timeline import frame_times, parse_time
+    from .timeline import frame_times, key_times, parse_time
 
     timeline = project.state.get("timeline", {"duration": 1000, "fps": 30})
     if mode == "still":
@@ -1040,7 +1040,7 @@ def _times(project, sampling, mode):
         return [parse_time(t, timeline["duration"], timeline.get("markers")) for t in sampling["times"]]
     count = sampling.get("count", 8)
     return sorted(set([i * timeline["duration"] / (count - 1) for i in range(count)]
-                      + [k["time"] for t in timeline.get("tracks", []) for k in t["keys"]]))
+                      + [time for t in timeline.get("tracks", []) for time in key_times(t)]))
 
 
 def run_suite(project, suite, *, variables=None, artboard=None, mode=None, page=None, comp=None, artboards=None,

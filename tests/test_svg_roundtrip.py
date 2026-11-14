@@ -268,7 +268,7 @@ def test_a_google_font_missing_from_the_cache_is_downloaded_only_when_installs_a
     svg = p.export(format="SVG")
     (font_cache / "inter-400.ttf").unlink()
     off = Project(10, 10)
-    result = import_document(off, svg, "svg", install_fonts=False)
+    result = import_document(off, svg, "svg")  # installs are off unless asked for (#819)
     assert result["fonts"] == {"inter-400": "fallback"}
     assert any("Inter 400 (inter-400)" in w and "cache only" in w for w in result["warnings"])
     requests = []
@@ -284,7 +284,7 @@ def test_a_google_font_missing_from_the_cache_is_downloaded_only_when_installs_a
     monkeypatch.setattr(typefaces.httpx, "Client",
                         lambda *args, **kwargs: real(transport=kwargs.get("transport") or httpx.MockTransport(handler)))
     on = Project(10, 10)
-    result = import_document(on, svg, "svg")
+    result = import_document(on, svg, "svg", install_fonts=True)
     assert result["fonts"] == {"inter-400": "downloaded"} and requests
     assert on.state == p.state
 

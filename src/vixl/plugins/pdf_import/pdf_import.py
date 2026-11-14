@@ -33,8 +33,19 @@ from ...errors import VixlError, require
 TEXT, PATH, IMAGE, SHADING, FORM = 1, 2, 3, 4, 5
 LINETO, BEZIERTO, MOVETO = 0, 1, 2
 FILL_NONE, FILL_EVENODD, FILL_NONZERO = 0, 1, 2
+# Untrusted PDF work caps, all per import. pdfium reports sizes and counts taken from the file, and a form XObject is
+# read again wherever it is drawn, so a small file can ask for much more work than its size suggests. Every object
+# read (form contents included) is charged against ``MAX_OBJECTS``, every path or clip segment against
+# ``MAX_SEGMENTS``, text against ``MAX_TEXT_BYTES``; forms nest at most ``MAX_FORM_DEPTH`` deep. Decoded image pixels
+# and the full-page renders of the fallback runs share ``Limits.max_load_pixels`` (``svg_import.raster_budget``).
 MAX_OBJECTS = 20000
 MAX_RUNS = 64
+MAX_FORM_DEPTH = 16
+MAX_PATH_SEGMENTS = 100000
+MAX_SEGMENTS = 2_000_000
+MAX_STRING_BYTES = 1024 * 1024
+MAX_TEXT_BYTES = 8 * 1024 * 1024
+MAX_DASHES = 64
 
 
 def _pdfium():
@@ -116,10 +127,15 @@ def _hex(rgba):
     return f"#{r:02x}{g:02x}{b:02x}" + (f"{a:02x}" if a != 255 else "")
 
 
-def _string(raw, function, *args, utf16=False):
+def _string(raw, function, *args, utf16=False, limit=MAX_STRING_BYTES):
+    """A string pdfium writes into a buffer of the size it reports; a reported size over ``limit`` bytes is refused
+    before the buffer is allocated."""
     size = function(*args, None, 0)
     if size <= (2 if utf16 else 1):
         return ""
+    if size > limit:
+        raise VixlError("resource_limit", "PDF text or metadata exceeds limits; import the page with "
+                        "svg_mode='appearance' (one image layer)", field="pdf", limit=limit)
     buffer = ctypes.create_string_buffer(size)
     pointer = ctypes.cast(buffer, ctypes.POINTER(ctypes.c_ushort) if utf16 else ctypes.c_char_p)
     function(*args, pointer, size)
@@ -128,10 +144,16 @@ def _string(raw, function, *args, utf16=False):
                                                                                                          "replace")
 
 
-def _segments(raw, obj, count_function, segment_function, *path_index):
-    count = count_function(obj, *path_index)
+def _segments(raw, obj, count_function, segment_function, *path_index, charge=None):
+    """The segments of a path or clip path. The reported count is checked (and charged to the import through
+    ``charge``) before any segment is read."""
+    count = max(0, count_function(obj, *path_index))
+    if count > MAX_PATH_SEGMENTS:
+        raise VixlError("resource_limit", "PDF path exceeds limits", field="pdf", limit=MAX_PATH_SEGMENTS)
+    if charge is not None:
+        charge(count)
     points = []
-    for index in range(max(0, count)):
+    for index in range(count):
         segment = segment_function(obj, *path_index, index)
         x, y = ctypes.c_float(), ctypes.c_float()
         raw.FPDFPathSegment_GetPoint(segment, x, y)
@@ -186,6 +208,34 @@ class PageReader:
         self.counts = {"text": 0, "path": 0, "image": 0}
         self.sequence = 0
         self.previous_path = None
+        self.objects_read, self.segments_read, self.text_bytes, self.raster_pixels = 0, 0, 0, 0
+
+    # --- budgets ---------------------------------------------------------------------------------------------------
+
+    def charge_objects(self, count):
+        """Charge ``count`` objects about to be read (a page's or a form's) before their handles are collected."""
+        self.objects_read += max(0, count)
+        if self.objects_read > MAX_OBJECTS:
+            raise VixlError("resource_limit", f"PDF page has more than {MAX_OBJECTS} objects (forms counted wherever "
+                            "they are drawn); import it with svg_mode='appearance' (one image layer)", field="pdf",
+                            limit=MAX_OBJECTS)
+
+    def charge_segments(self, count):
+        self.segments_read += count
+        if self.segments_read > MAX_SEGMENTS:
+            raise VixlError("resource_limit", f"PDF page has more than {MAX_SEGMENTS} path and clip segments; import "
+                            "it with svg_mode='appearance' (one image layer)", field="pdf", limit=MAX_SEGMENTS)
+
+    def charge_pixels(self, pixels):
+        """Charge an image about to be decoded, or a full-page render of a fallback run."""
+        from ...svg_import import raster_budget
+
+        limit = raster_budget(self.project.limits)
+        if self.raster_pixels + pixels > limit:
+            raise VixlError("resource_limit", f"PDF page needs more than {limit} pixels of image decoding and raster "
+                            "fallbacks; import it with svg_mode='appearance' (one image layer)", field="pdf",
+                            limit=limit)
+        self.raster_pixels += pixels
 
     def unique(self, base):
         candidate, index = base, 2
@@ -258,7 +308,7 @@ class PageReader:
         self.textpage = page.get_textpage()
         try:
             count = raw.FPDFPage_CountObjects(page.raw)
-            require(count <= MAX_OBJECTS, "PDF page has too many objects", "resource_limit")
+            self.charge_objects(count)
             objects = [raw.FPDFPage_GetObject(page.raw, i) for i in range(count)]
             start = 0
             if self.adopt:
@@ -326,8 +376,11 @@ class PageReader:
         if not clip:
             return False
         box = self.pixel_box(obj, matrix)
-        for index in range(raw.FPDFClipPath_CountPaths(clip)):
-            points = _segments(raw, clip, raw.FPDFClipPath_CountPathSegments, raw.FPDFClipPath_GetPathSegment, index)
+        paths = raw.FPDFClipPath_CountPaths(clip)
+        self.charge_segments(max(0, paths))
+        for index in range(paths):
+            points = _segments(raw, clip, raw.FPDFClipPath_CountPathSegments, raw.FPDFClipPath_GetPathSegment, index,
+                               charge=self.charge_segments)
             if not points:
                 continue
             bounds = BoundsPen(None)
@@ -339,18 +392,21 @@ class PageReader:
                 return True
         return False
 
-    def read_object(self, obj, matrix, index):
+    def read_object(self, obj, matrix, index, depth=0):
         raw = self.raw
         kind = raw.FPDFPageObj_GetType(obj)
         if kind == FORM:
+            if depth >= MAX_FORM_DEPTH:
+                raise VixlError("resource_limit", f"PDF forms nest more than {MAX_FORM_DEPTH} deep; import the page "
+                                "with svg_mode='appearance' (one image layer)", field="pdf", limit=MAX_FORM_DEPTH)
             inner = matrix.transform(_matrix(raw, obj))
             count = raw.FPDFFormObj_CountObjects(obj)
-            require(count <= MAX_OBJECTS, "PDF form has too many objects", "resource_limit")
+            self.charge_objects(count)
             children = [raw.FPDFFormObj_GetObject(obj, i) for i in range(count)]
             if any(raw.FPDFPageObj_GetType(child) in (SHADING,) for child in children) or self.clipped(obj, matrix):
                 raise Fallback("form content")
             for child in children:
-                self.read_object(child, inner, index)
+                self.read_object(child, inner, index, depth + 1)
             return
         if kind not in (TEXT, PATH, IMAGE):
             raise Fallback("shading" if kind == SHADING else "unsupported object")
@@ -374,8 +430,10 @@ class PageReader:
         mode, stroke_flag = ctypes.c_int(), ctypes.c_int()
         raw.FPDFPath_GetDrawMode(obj, mode, stroke_flag)
         total = matrix.transform(_matrix(raw, obj))
-        points = _segments(raw, obj, raw.FPDFPath_CountSegments, raw.FPDFPath_GetPathSegment)
-        require(len(points) <= 100000, "PDF path exceeds limits", "resource_limit")
+        if stroke_flag.value and raw.FPDFPageObj_GetDashCount(obj) > MAX_DASHES:
+            raise Fallback("long dash pattern")
+        points = _segments(raw, obj, raw.FPDFPath_CountSegments, raw.FPDFPath_GetPathSegment,
+                           charge=self.charge_segments)
         if not points:
             return
         fill = _color(raw, raw.FPDFPageObj_GetFillColor, obj) if mode.value != FILL_NONE else None
@@ -485,7 +543,7 @@ class PageReader:
         if join:
             operation["line_join"] = join
         count = raw.FPDFPageObj_GetDashCount(obj)
-        if count > 0:
+        if 0 < count <= MAX_DASHES:
             values = (ctypes.c_float * count)()
             if raw.FPDFPageObj_GetDashArray(obj, values, count):
                 dash = [v * scale for v in values]
@@ -543,8 +601,11 @@ class PageReader:
         """The image's own pixels with its mask and colour space applied (RGBA)."""
         raw = self.raw
         size_w, size_h = ctypes.c_uint(), ctypes.c_uint()
-        if hasattr(raw, "FPDFImageObj_GetImagePixelSize") and raw.FPDFImageObj_GetImagePixelSize(obj, size_w, size_h):
+        known = bool(hasattr(raw, "FPDFImageObj_GetImagePixelSize")
+                     and raw.FPDFImageObj_GetImagePixelSize(obj, size_w, size_h))
+        if known:
             self.candidate.limits.size(max(1, size_w.value), max(1, size_h.value))
+            self.charge_pixels(size_w.value * size_h.value)  # before the bitmap exists
         handle = raw.FPDFImageObj_GetRenderedBitmap(self.document_raw, self.page_raw, obj)
         if not handle:
             handle = raw.FPDFImageObj_GetBitmap(obj)
@@ -554,6 +615,8 @@ class PageReader:
 
         bitmap = pdfium.PdfBitmap.from_raw(handle)
         try:
+            if not known:
+                self.charge_pixels(bitmap.width * bitmap.height)
             return bitmap.to_pil().convert("RGBA")
         finally:
             bitmap.close()
@@ -565,7 +628,9 @@ class PageReader:
         mode = raw.FPDFTextObj_GetTextRenderMode(obj)
         if mode in (3, 7):  # invisible (OCR layers) or clip only
             return
-        text = _string(raw, raw.FPDFTextObj_GetText, obj, self.textpage.raw, utf16=True)
+        text = _string(raw, raw.FPDFTextObj_GetText, obj, self.textpage.raw, utf16=True,
+                       limit=min(MAX_STRING_BYTES, MAX_TEXT_BYTES - self.text_bytes))
+        self.text_bytes += 2 * len(text) + 2
         # pdfium ends a text object's text with a generated space; leading spaces keep their place in a run.
         text = text.replace("\r\n", " ").replace("\r", " ").replace("\n", " ").replace("\x02", "").rstrip()
         total = matrix.transform(_matrix(raw, obj))
@@ -817,6 +882,9 @@ class PageReader:
                             "svg_mode='appearance'")
         from ...assets import add_image
 
+        width, height = self.size
+        self.candidate.limits.size(max(1, width), max(1, height))
+        self.charge_pixels(width * height)  # each run renders the whole page, before the PDF is opened again
         pdfium, raw = _pdfium()
         indices = {index for index, _ in run}
         with pdfium.PdfDocument(self.data) as document:
@@ -828,8 +896,6 @@ class PageReader:
                         raw.FPDFPage_RemoveObject(page.raw, obj)
                         raw.FPDFPageObj_Destroy(obj)
                 raw.FPDFPage_GenerateContent(page.raw)
-                width, height = self.size
-                self.candidate.limits.size(max(1, width), max(1, height))
                 bitmap = page.render(scale=self.k, fill_color=(0, 0, 0, 0), may_draw_forms=False)
                 try:
                     image = bitmap.to_pil().convert("RGBA")

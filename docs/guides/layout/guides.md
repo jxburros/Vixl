@@ -22,6 +22,7 @@ vixl place line --within bubble --anchor top-left --margin 8   # inside a shape'
 vixl snap logo title --tolerance 8                            # fix near misses
 vixl check --checks guides alignment                          # report near misses
 vixl render --out guides.png --show-guides                    # see the guides over the design
+vixl render --out placed.png --show-rulers --show-bounds      # a coordinate grid and each layer's box, labelled
 vixl guides                                                   # list guides and grids
 ```
 

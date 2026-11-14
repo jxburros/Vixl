@@ -257,6 +257,8 @@ def compile_command(tokens):
         p.add_argument("--license", help="license or usage terms of the image")
         p.add_argument("--x", type=float)
         p.add_argument("--y", type=float)
+        p.add_argument("--scale", type=float, help="place the image at this multiple of its size")
+        p.add_argument("--sampling", choices=["smooth", "nearest"], help="nearest keeps pixel art crisp when enlarged")
     elif cmd in ("solid", "gradient", "text"):
         p.add_argument("--target", help=f"edit this existing {cmd} layer in place instead of adding one")
         if cmd == "text":
@@ -275,6 +277,9 @@ def compile_command(tokens):
                            help="do not draw the text while it is empty after ${variable} substitution")
             p.add_argument("--tabs", type=json.loads,
                            help='JSON tab stops, e.g. [{"at": "100%%", "align": "right", "leader": "."}]')
+            p.add_argument("--hand-set", type=json.loads,
+                           help='JSON hand-set lettering that stays live text, e.g. {"seed": 3, "rotate": 5}; true for '
+                                'the defaults')
         elif cmd == "gradient":
             p.add_argument("--start", default="black")
             p.add_argument("--end", default="white")
@@ -282,9 +287,9 @@ def compile_command(tokens):
             p.add_argument("--angle", type=float)
             p.add_argument("--stops", type=json.loads)
         p.add_argument("--name")
-        if cmd != "text":
-            p.add_argument("--width", type=int)
-            p.add_argument("--height", type=int)
+        box = " of the text box: the text wraps and aligns inside it (as text-layout)" if cmd == "text" else ""
+        p.add_argument("--width", type=int, help=f"width{box}" if box else None)
+        p.add_argument("--height", type=int, help=f"height{box}" if box else None)
         p.add_argument("--color")
         p.add_argument("--x", type=number_or_center)
         p.add_argument("--y", type=number_or_center)
@@ -303,6 +308,9 @@ def compile_command(tokens):
                        help="do not draw the text while it is empty after ${variable} substitution")
         p.add_argument("--tabs", type=json.loads,
                        help='JSON tab stops ([] removes them), e.g. [{"at": "100%%", "align": "right", "leader": "."}]')
+        p.add_argument("--hand-set", type=json.loads,
+                       help='JSON hand-set lettering that stays live text, e.g. {"seed": 3, "rotate": 5}; true for the '
+                            'defaults, false removes it')
     elif cmd in (
         "remove",
         "hide",
@@ -348,6 +356,8 @@ def compile_command(tokens):
                        "default: proportional for images, leave it for everything else")
         p.add_argument("--x", type=float, help="scale: horizontal factor; negative mirrors (scale beam --x -1)")
         p.add_argument("--y", type=float, help="scale: vertical factor; negative mirrors")
+        p.add_argument("--sampling", choices=["smooth", "nearest"],
+                       help="image layers: nearest keeps pixel art crisp when enlarged (stored on the layer)")
         data = vars(p.parse_args(args))
         values = data.pop("values")
         if values and not re.fullmatch(r"-?\d+(?:\.\d+)?%|\d+[x×]\d+|-?\d+(?:\.\d+)?", values[0]):

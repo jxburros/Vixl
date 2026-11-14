@@ -14,10 +14,21 @@ catalog with query, group, offset and limit. `emoji-get` accepts emoji and optio
 output/format (vixl, svg, png). `emoji-template` creates blank, face, symbol or sheet
 masters at output. `emoji-replace` embeds source in the open document for emoji
 (Unicode, hex or :custom_name:); `emoji-pack-install` merges a pack atomically.
-`emoji-export` takes output (.zip), emojis (optional subset), destination
-(images, discord, slack), sources (default true), size (image packs only), overwrite.
-`emoji-requirements` checks destination names, dimensions and actual encoded bytes.
-`emoji-destinations` includes upload instructions and linked policy sources.
+`emoji-export` takes output (.zip), emojis (optional subset), destination, sources (default true),
+size (images: any; imessage: 300, 408 or 618), animated, overwrite. Destinations: images, discord, slack
+(128 px PNG), whatsapp (3–30 stickers, 512 px WebP, tray.png, contents.json), telegram (512 px PNG),
+telegram-emoji (100 px PNG), telegram-animated (.tgs), twitch (28/56/112 px PNG), imessage (a sticker folder
+with Xcode steps, no project). `destination` may be a list: one call writes OUTPUT-DESTINATION.zip per
+destination (e.g. `["slack", "discord", "whatsapp"]`), drawing each emoji once, and writes nothing if any
+destination's rule fails. `animated: true` exports emojis whose registered VIXL master has a timeline (square
+canvas) as GIF (discord, slack, twitch, images), WebP (whatsapp; images with `animated: "webp"`) or APNG
+(imessage) inside the destination's byte, frame and duration budgets, stepping colours or quality and then
+the frame rate down; `telegram-animated` always writes vector TGS (at most 3 s, no effects or images).
+WhatsApp and Telegram animated packs must be animated throughout; elsewhere stills are listed under `still`.
+Custom shortcodes in a WhatsApp pack come back under `untagged`: add emoji tags in contents.json.
+`emoji-requirements` takes the same destination (or list), emojis, animated and size and checks names,
+dimensions, actual encoded bytes and pack rules.
+`emoji-destinations` lists every limit with upload instructions, the source page (`url`) and the day checked.
 
 Canonical operations: emoji-mode {mode: vixl|font} (default vixl: bundled art; CLI
 `vixl -p F.vixl emoji settings --mode font`, workflow `emoji-settings`); emoji-set {emoji, format, data}

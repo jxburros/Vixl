@@ -79,7 +79,7 @@ so you can tell what changed behind your back:
 - **`links`** (CLI), the `links` workflow action (MCP `vixl_apply(workflow='links', request={})`, REST
   `POST /workflow/links`) and `inspect` (`links` list) report every link with a `state`:
   `ok`, `stale` (the source changed since it was last recorded; the layer already draws the new version),
-  `missing` (the error names the path it looked for), `cycle`, `forbidden` or `error` (an unreadable
+  `missing` (the error names the paths it looked for, relative to the workspace), `cycle`, `forbidden` or `error` (an unreadable
   source, or an artboard, page or crop the source no longer has). `size_changed` flags a source whose
   canvas size differs from the recorded one.
 - **`link-refresh [TARGET]`** records the current revision and size of one link (or every link of the
@@ -87,8 +87,12 @@ so you can tell what changed behind your back:
 - **`check`** gains a `links` check: broken links are errors (and are left out of the other checks so one
   missing file does not hide the rest), stale or resized sources are warnings, and a source outside the
   document's folder is an `info` finding (copying the folder elsewhere would break it).
-- Each listed link carries `path` (the resolved absolute file) and `resolved_from` (`document`,
-  `workspace` or `absolute`: which folder it was found in).
+- Each listed link carries `path` (the resolved file, relative to the workspace) and `resolved_from` (`document`,
+  `workspace` or `absolute`: which folder it was found in). Link results and errors (`path`, the searched
+  paths of a missing link, the `chain` of a cycle) never show where the workspace sits on disk: a file outside
+  the workspace is shown relative to the document's folder, or by name only when it is outside that too. Only
+  a project that allows linked files anywhere (`--allow-linked`, `allow_linked=True`) reports the absolute path
+  of a file outside both.
 - Production runs (`vixl_apply(workflow='run', request=…)`) include the revisions of linked sources in their
   fingerprints, so a changed source re-renders the variants that use it.
 - Check-suite rules can read their expected value from a master document without linking it:

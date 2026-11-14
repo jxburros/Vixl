@@ -31,7 +31,9 @@ the viewer expects a person, a material or an accident, and hurts where they exp
 * **Not on anything that must align, measure or register**: grids, tables, form fields, barcodes,
   print marks, safe-area and bleed boxes, text baselines. Overlap, spacing and alignment checks see
   the perturbed geometry.
-* **Not on text** (text layers are refused). Distress lettering with `text-layout` or hand-draw it.
+* **Not on text** (text layers are refused). For hand-made lettering set `hand_set` on the text layer: every word
+  or letter gets its own seeded baseline, tilt and size, and the layer stays editable, checkable text
+  ([typography](../text/typography.md#hand-set-lettering)). Do not outline the words to make them irregular.
 * **Not on small things.** Under about 20 px nothing visible happens, and `rough` on a thin line can
   break it. Pick a strength by looking at the preview, starting at `subtle`.
 * **Not on every layer.** If everything is wobbly, nothing is: keep the structure (backgrounds,

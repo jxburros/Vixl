@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.35.1
+
+Roadmap stage 12: security hardening from the 2026-11-09 repository scan.
+
+### Documentation
+
+- **Roadmap stage 12: security hardening.** The thirteen findings of the 2026-11-09 scan are filed as issues (#818-#830)
+  and planned in `ROADMAP.md` as six items: every heavy service path goes through the call limiter, cumulative budgets
+  for editable SVG and PDF import, network reads that stop at their caps and deadlines, caller regular expressions that
+  cannot outlive the hard timeout, quotas for durable workflow queues, and workspace isolation for resources and
+  links. Two owner decisions (the regex engine and service font installation) join the decision table.
+
 ## 0.35.0
 
 Layouts that pass their own checks (roadmap stage 3) and the cheapest path for agents (roadmap stage 4).
