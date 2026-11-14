@@ -372,7 +372,10 @@ Y W H] [--name N] [--with KIND] [--seed N] [--illustration house|plain] [--apply
 named placeholder parts (the `object-plan` workflow; without a document it prints the batch; in a document with a house
 style it ends with the flat vector illustration finish unless `--illustration plain`), and `vixl object outline GROUP
 [--outline silhouette|parts|none|inherit] [--interior hide|thin|show] [--outline-color C] [--outline-width W]
-[--outline-lines JSON]` and `vixl object outline-remove GROUP` apply and remove its outline policy.
+[--outline-lines JSON]` and `vixl object outline-remove GROUP` apply and remove its outline policy. `vixl object detect
+[NAME …] [--apply] [--min-confidence N] [--tolerance PX] [--provider [NAME]]` proposes groupings and kinds for
+[undeclared objects](../guides/shapes/objects.md#detect-objects-in-an-existing-document) (the `object-detect`
+workflow); it changes nothing without `--apply`.
 
 Saved SVG exports report `svg.vector_only` and `svg.raster_fallbacks` in the CLI result so embedded bitmaps are visible without opening the SVG metadata. Use `export logo.svg --svg-policy strict` to reject all embedded raster content. Exporting to `-` still writes only SVG bytes. Supported grouped shapes and outlined text remain vectors; unsupported appearances may rasterize in the default appearance policy. Every SVG export also carries its document in `<metadata id="vixl-document">` (fonts named, not stored), so `vixl import FILE.svg` restores the editable layers ([exporting](../guides/output/exporting.md#svg-round-trip)).
 

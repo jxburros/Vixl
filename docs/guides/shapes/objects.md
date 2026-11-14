@@ -276,6 +276,50 @@ or below it, with their subtrees) and `where.part`:
 - `vixl_check(action='spatial')` and `vixl_check(action='measure')` accept paths (`dog/head`), and `vixl_check`
   measures every declared object against its kind (below).
 
+## Detect objects in an existing document
+
+Most documents already hold object-like art that was never declared: a flat pile of shapes that draws a cat, an
+organic `rose` group, a character, an imported drawing. `object-detect` proposes which layers form which objects
+and what kind each one is, so inspect, isolate, the object check and the outline policy work on them too. It
+**suggests**: the default is a dry run that changes nothing.
+
+```bash
+vixl object detect                         # list the proposals
+vixl object detect --apply                 # apply those at or above --min-confidence (0.7) as one undo step
+vixl object detect --min-confidence 0.5 --apply
+```
+
+`vixl object detect NAME …` looks only inside the named groups or layers. Over MCP and Python it is the workflow
+`vixl_apply(workflow='object-detect', request={targets?, apply?, min_confidence?, tolerance?, provider?})`. It reads
+names, layer types and geometry; no model is called and nothing leaves the machine unless you pass `provider`. The
+passes run from certain to uncertain:
+
+| Pass | What it reads | Confidence |
+| --- | --- | --- |
+| Recipe groups | An `organic` group is the kind its preset maps to (texture presets such as `spots` are surfaces and get nothing); a `character` group is a `person`; a `drawing` group, or an organic group without a preset, is the kind its name says. | 1.0 (0.8 from a name) |
+| Named groups | A plain group whose name is a kind or alias (`My Guitar`, `puppy`), or whose children name the parts of one kind better than any other (`cap`, `stem`, `spots` is a mushroom). | 0.8–0.95 from the name; up to 0.9 from part names alone |
+| Loose siblings | Ungrouped layers that share a kind as name prefix (`guitar-body`, `guitar-neck`), and layers named after parts whose ink touches within `tolerance` pixels (default 2). Each becomes a proposed `group` plus `object`. | 0.6–0.95 |
+| Raster images | Only with `provider` (a configured AI provider name, or `true` for the default): its `detect` labels that are kinds of the taxonomy. One label covering most of the image proposes a one-layer object; several regions are listed without a batch. | 0.6 and 0.4: below the default threshold |
+
+Charts, tables, diagrams, containers and repeats (collections, not objects), text, frames and fills never get a
+proposal, and neither does anything already declared. Part names that fit several kinds equally give their shared
+class: `head`, `body`, `leg` and `tail` are a `mammal` until a `snout` or `whiskers` says which one. Names that fit
+unrelated kinds equally, and recipe groups whose name says no kind, are listed under `unclassified` instead.
+
+Each proposal is `{source, layers, proposed_kind, confidence, reasons, parts, batch}`: `parts` is the part name (and
+side, read from `-l`/`-r`/`left`/`right`) suggested for each layer, `reasons` says what was matched and which
+required parts no layer names, and `batch` is ordinary `group` and `object` operations you can apply yourself with
+`vixl_apply(operations=batch)`, edited or not.
+
+Grouping moves layers to one place in the stack, so every grouping batch is tried on a copy first. A proposal whose
+grouping would change the picture (another layer sits between its parts and overlaps them) is marked
+`changes_render`, drops to confidence 0.4 at most and is never applied: reorder the layer in between, or group by
+hand. `apply: true` then applies the remaining proposals at or above `min_confidence` as **one undo step**, lists
+the others under `skipped` with the reason, and returns the object check on the new objects under `check`
+(typically the required parts nobody has named yet) together with `render_difference`, the largest 8-bit channel
+difference between the picture before and after: 0, or 1 where antialiased edges of two parts overlap, because a
+group is composited on its own surface and can round such a pixel one level differently.
+
 ## The object check
 
 `vixl_check` runs `object` by default whenever the page declares an object (`vixl check --checks object` runs it
@@ -358,6 +402,9 @@ Alt text from [accessibility](../output/accessibility.md) is written alongside: 
   animated parts. The object check reads a part's size from its box, not its silhouette,
   and compares only what the kind declares; it cannot tell whether a shape looks like the part it is named for
   (`vixl_render(isolate=[NAME], views=["parts"])` shows that).
+- `object-detect` reads names, layer types and touching ink, not shapes: a pile of layers named `s1` … `s7` gets
+  no proposal however cat-like it looks, and a part is suggested only for a layer whose name says it. With a
+  provider, labels are offered for whole raster images; regions inside an image are listed, not cut out.
 - Build blocks are short curated notes and examples, read offline; nothing is fetched.
 - A portable object loses the rotation and skew of groups above it (its size keeps their scale).
 - SVG import restores objects from the document a Vixl SVG carries ([SVG round trip](../output/exporting.md#svg-round-trip));

@@ -305,7 +305,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | MOT-01 | Ball moving across the canvas over one second, exported as GIF | `timeline-set`, `animate`, `vixl_export(kind='timeline')` | 7 · 2 |  |
 | PRD-01 | Banner with a variable-driven headline, rendered for several cities | `variable set`, `render --set` | 6 · 2 |  |
 | QA-11 | Save a check suite and make an edit that only commits if it passes | `vixl_apply(workflow='act')` | 8 · 2 |  |
-| QA-39 | Find and review the objects in an existing design | `vixl_document(action='inspect', object="*")`, `inspect object=NAME`, `isolate` `views: [parts]` | 2–4 · <1 | Lists kinds, parts and missing required parts. |
+| QA-39 | Find and review the objects in an existing design | `vixl_apply(workflow='object-detect')` (then `apply: true`), `vixl_document(action='inspect', object="*")`, `inspect object=NAME`, `isolate` `views: [parts]` | 2–4 · <1 | `object-detect` proposes groupings and kinds for undeclared objects from recipes, names and touching ink (a dry run by default); inspect lists kinds, parts and missing required parts. Unnamed piles get no proposal. |
 | QA-40 | Accessibility pass before handing off a deck, PDF or web graphic | `layer-intent alt`/`decorative`, `accessibility lang`, `check accessibility` | 4–10 · 1–2 | Alt and language reach HTML, SVG, PPTX and PDF; no tagged PDF structure tree. |
 | QA-24 | Turn a brief into tests (hierarchy, spacing, margins, contrast, balance) and run them with every batch before previewing | `suite-set`, `vixl_apply(suites=true)`, `vixl_reference("testing")` | 3–5 · 1 | Starter suites per kind of work; `vixl_reference(kind)` lists one under `tests`. |
 
