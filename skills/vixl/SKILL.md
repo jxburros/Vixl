@@ -45,7 +45,7 @@ Step by step only for edits and for art without a text frame:
    quick web (social, slides, diagram, motion): once `vixl_check` and the suite pass and the preview reads,
    `vixl_export`. Print and brand (poster, document, form, logo): the checklist `vixl_reference('finishing')` /
    `vixl guide finishing` (a composition check, a short critique, one fix batch, a real-size look with
-   `vixl_render(region=[x, y, w, h], max_width=w, max_height=h)`), then `vixl_check(profile="final")` and `vixl_export`.
+   `vixl_render(region=[x, y, w, h])`), then `vixl_check(profile="final")` and `vixl_export`.
 
 Details: [workflow](references/workflow.md), [testing](references/testing.md).
 
@@ -99,7 +99,7 @@ All of them, with the exact rules: [gotchas](references/gotchas.md).
 | You have | Use | See |
 | --- | --- | --- |
 | `vixl_*` tools | **MCP**: seven tools; fields from `vixl_reference('operations', name=[…])` | [mcp-rest-python](references/mcp-rest-python.md), [workspace](references/workspace.md) |
-| `vixl` on PATH | **CLI** or `vixl apply ops.json` (not found? `pip install vixl-engine` or [find it](references/cli.md#finding-vixl)) | [cli](references/cli.md) |
+| `vixl` on PATH | **CLI** or `vixl apply ops.json` (missing? `pip install vixl-engine`, [more](references/cli.md#finding-vixl)) | [cli](references/cli.md) |
 | Python | `from vixl import Project` | [python-scripting](references/python-scripting.md) |
 | `vixl serve` | REST (`POST /operations`, `GET /render`) | [mcp-rest-python](references/mcp-rest-python.md) |
 
