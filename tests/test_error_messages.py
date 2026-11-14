@@ -120,9 +120,9 @@ def test_python_export_audio_raises_a_structured_error_on_overwrite(tmp_path):
 def test_unknown_fields_suggest_aliases_and_the_right_operation():
     with pytest.raises(VixlError, match="'fill' instead of 'colr'"):
         Project(100, 100).apply({"type": "shape", "name": "s", "colr": "red"})
-    with pytest.raises(VixlError, match="text-layout") as caught:
-        Project(100, 100).apply({"type": "text", "name": "t", "text": "hi", "width": 50})
-    assert "'within' instead of 'width'" not in str(caught.value)
+    # `width` on text is the text box now (#794), so it is taken rather than answered with a guess at `within`.
+    result = Project(100, 100).apply({"type": "text", "name": "t", "text": "hi", "width": 50})
+    assert result["normalized"]
 
 
 def test_too_long_lists_are_reported_by_size_not_echoed():

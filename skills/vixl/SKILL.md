@@ -45,7 +45,7 @@ Step by step only for edits and for art without a text frame:
    quick web (social, slides, diagram, motion): once `vixl_check` and the suite pass and the preview reads,
    `vixl_export`. Print and brand (poster, document, form, logo): the checklist `vixl_reference('finishing')` /
    `vixl guide finishing` (a composition check, a short critique, one fix batch, a real-size look with
-   `vixl_render(region=[x, y, w, h])`), then `vixl_check(profile="final")` and `vixl_export`.
+   `vixl_render(region=[x, y, w, h], max_width=w, max_height=h)`), then `vixl_check(profile="final")` and `vixl_export`.
 
 Details: [workflow](references/workflow.md), [testing](references/testing.md).
 
@@ -88,7 +88,7 @@ Details: [workflow](references/workflow.md), [testing](references/testing.md).
 - **Many layers or sizes are one call**: `edit-layers` with a `where` selector, `adapt-layout`, workflow
   `adapt-sizes`.
 - **Motion:** set a `pivot` at each joint, animate `translate-x/y` and `scale`, use `text-animate` for kinetic
-  type; pixel art exports with `sampling: "nearest"`; `sprite-sheet` grids.
+  type; pixel art exports with `sampling: "nearest"`.
 - **AI needs a configured provider**, and `network_disabled` means offline on purpose: say so, do not retry.
 - **Limits and unsupported features** (CMYK editing, RAW, a GUI): see the full list.
 

@@ -95,17 +95,11 @@ def font_for(project, layer):
         if font in project.assets:
             # A colour font of fixed-size bitmaps opens only at one of its strikes; the text renderer draws it
             # from the strike images (color_fonts), so this handle only says the font is there.
-            from .color_fonts import strike_for, strikes
-            from .fonts import bitmap_color_font
-            from .text import face
+            from .text import strike_font
 
-            if bitmap_color_font(project.assets[font]):
-                ppem = strike_for(strikes(face(project.assets[font])[0]), size)
-                if ppem:
-                    try:
-                        return ImageFont.truetype(io.BytesIO(project.assets[font]), ppem)
-                    except OSError:
-                        pass
+            handle = strike_font(project.assets[font], size)
+            if handle is not None:
+                return handle
         data = installed_font_data(font)
         if data is not None:
             return ImageFont.truetype(io.BytesIO(data), size)

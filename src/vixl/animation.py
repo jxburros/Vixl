@@ -30,6 +30,10 @@ def frame_project(project, frame):
 
 
 def validate_animation(project, state):
+    if "sprite_sheet" in state:  # the grid a sheet export reads; a document can declare one before it saves frames
+        from .sprite_sheet import validate_sheet
+
+        validate_sheet(state["sprite_sheet"])
     if "animation" not in state:
         return
     from .validation import check_state

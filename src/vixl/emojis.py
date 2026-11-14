@@ -13,6 +13,7 @@ from types import SimpleNamespace
 import zipfile
 import xml.etree.ElementTree as ET
 
+from .assets import open_image
 from .constants import BUNDLED_FONTS, PROOFING_FONT
 from .errors import require, VixlError
 
@@ -782,9 +783,8 @@ def _still(svg, size, format, max_bytes):
     raw = png(svg, size)
     if format == "png":
         return raw
-    from PIL import Image
 
-    image = Image.open(io.BytesIO(raw)).convert("RGBA")
+    image = open_image(raw, ("PNG",)).convert("RGBA")
     data = b""
     for options in ({"lossless": True}, *({"quality": q} for q in ANIMATION_TONES["webp"])):
         stream = io.BytesIO()
@@ -798,10 +798,9 @@ def _still(svg, size, format, max_bytes):
 def _tray(svg, spec):
     raw = png(svg, spec["size"])
     if not _fits(len(raw), spec["max_bytes"]):
-        from PIL import Image
 
         stream = io.BytesIO()
-        Image.open(io.BytesIO(raw)).convert("RGBA").quantize(256).save(stream, format="PNG", optimize=True)
+        open_image(raw, ("PNG",)).convert("RGBA").quantize(256).save(stream, format="PNG", optimize=True)
         raw = stream.getvalue()
     require(_fits(len(raw), spec["max_bytes"]), "Tray icon exceeds its byte limit", "resource_limit")
     return raw

@@ -1378,6 +1378,28 @@ def font_digest(data):
 FONT_FILE_EXTENSIONS = (".ttf", ".otf", ".ttc", ".otc")
 
 
+def strike_font(data, size):
+    """A Pillow handle for a colour font of fixed-size bitmaps, opened at the strike drawn for ``size``, or None
+    when ``data`` is not such a font. FreeType opens these only at one of their strikes; the glyphs themselves are
+    drawn from the strike images (``color_fonts``), so the handle only says the font is there."""
+    import io
+
+    from PIL import ImageFont
+
+    from .color_fonts import strike_for, strikes
+    from .fonts import bitmap_color_font
+
+    if not bitmap_color_font(data):
+        return None
+    ppem = strike_for(strikes(face(data)[0]), size)
+    if not ppem:
+        return None
+    try:
+        return ImageFont.truetype(io.BytesIO(data), ppem)
+    except OSError:
+        return None
+
+
 def installed_font_data(name):
     from .system_fonts import render_data
 

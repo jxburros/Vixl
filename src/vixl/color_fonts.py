@@ -17,7 +17,9 @@ from fontTools.misc.transform import Identity
 from fontTools.pens.boundsPen import BoundsPen
 from fontTools.pens.svgPathPen import SVGPathPen
 
+from .assets import open_image
 from .emojis import EmojiArt
+from .geometry import compact_number
 
 SVG = "{http://www.w3.org/2000/svg}"
 XLINK = "{http://www.w3.org/1999/xlink}"
@@ -43,6 +45,9 @@ REMOVED = frozenset(("script", "foreignObject", "a", "style", "text", "animate",
                      "set", "iframe", "audio", "video"))
 GLYPH_ID = re.compile(r"glyph(\d+)")
 REFERENCE = re.compile(r"url\(\s*#([^)\s]+)\s*\)")
+
+# Bitmap strikes (CBDT, sbix) hold PNG, JPEG or TIFF images; nothing else is decoded from a font.
+STRIKE_FORMATS = ("PNG", "JPEG", "TIFF")
 
 
 class ColorGlyph(EmojiArt):
@@ -107,17 +112,13 @@ def glyph(outline, name, strike=None):
         return None
 
 
-def _number(value):
-    return f"{value:.4f}".rstrip("0").rstrip(".") if isinstance(value, float) else str(value)
-
-
 def _enum(value):
     """The lower-case name of a fontTools enum value (``ExtendMode.PAD`` gives ``pad``)."""
     return str(getattr(value, "name", value)).rsplit(".", 1)[-1].lower()
 
 
 def _matrix(t):
-    return "matrix(" + " ".join(_number(float(v)) for v in t) + ")"
+    return "matrix(" + " ".join(compact_number(float(v), 4) for v in t) + ")"
 
 
 def _union(boxes):
@@ -221,7 +222,7 @@ class Source:
             rgba, css, opacity = self.color(index)
             attrs = {"d": path, "fill": css}
             if opacity < 1:
-                attrs["fill-opacity"] = _number(opacity)
+                attrs["fill-opacity"] = compact_number(opacity, 4)
             ET.SubElement(root, SVG + "path", attrs)
             layers.append((path, rgba))
             boxes.append(bounds)
@@ -338,8 +339,8 @@ class Source:
                 root = ET.Element(SVG + "g")
                 flipped = ET.SubElement(root, SVG + "g", {"transform": "scale(1 -1)"})
                 ET.SubElement(flipped, SVG + "image", {
-                    "x": _number(float(left)), "y": _number(float(-(bottom + height))), "width": _number(float(width)),
-                    "height": _number(float(height)), "preserveAspectRatio": "none", "href": uri})
+                    "x": compact_number(float(left), 4), "y": compact_number(float(-(bottom + height)), 4), "width": compact_number(float(width), 4),
+                    "height": compact_number(float(height), 4), "preserveAspectRatio": "none", "href": uri})
                 return self._art(root, table, (left, bottom, left + width, bottom + height))
         return None
 
@@ -378,10 +379,9 @@ class Source:
 
 
 def _image_size(data):
-    from PIL import Image
 
     try:
-        with Image.open(io.BytesIO(data)) as image:
+        with open_image(data, STRIKE_FORMATS) as image:
             return image.size if 0 < image.size[0] <= 4096 and 0 < image.size[1] <= 4096 else None
     except Exception:  # noqa: BLE001 - not an image this strike can be drawn from
         return None
@@ -394,10 +394,9 @@ def _data_uri(data):
     elif data.startswith(b"\xff\xd8"):
         kind = "jpeg"
     else:
-        from PIL import Image
 
         try:
-            with Image.open(io.BytesIO(data)) as image:
+            with open_image(data, STRIKE_FORMATS) as image:
                 buffer = io.BytesIO()
                 image.convert("RGBA").save(buffer, format="PNG")
         except Exception:  # noqa: BLE001
@@ -449,8 +448,8 @@ class Painter:
             return body
         ident = self.ident("b")
         holder = ET.SubElement(self.defs, SVG + "clipPath", {"id": ident})
-        ET.SubElement(holder, SVG + "rect", {"x": _number(clip[0]), "y": _number(clip[1]),
-                                             "width": _number(clip[2] - clip[0]), "height": _number(clip[3] - clip[1])})
+        ET.SubElement(holder, SVG + "rect", {"x": compact_number(clip[0], 4), "y": compact_number(clip[1], 4),
+                                             "width": compact_number(clip[2] - clip[0], 4), "height": compact_number(clip[3] - clip[1], 4)})
         group = ET.Element(SVG + "g", {"clip-path": f"url(#{ident})"})
         group.append(body)
         return group
@@ -554,7 +553,7 @@ class Painter:
             _, css, opacity = self.reader.color(paint.PaletteIndex, paint.Alpha)
             attrs["fill"] = css
             if opacity < 1:
-                attrs["fill-opacity"] = _number(opacity)
+                attrs["fill-opacity"] = compact_number(opacity, 4)
             return ET.Element(SVG + tag, attrs)
         if kind in SWEEP:
             return self.sweep(paint)
@@ -565,7 +564,7 @@ class Painter:
         low, high = stops[0][0], stops[-1][0]
         if high <= low:
             _, css, opacity = self.reader.color(stops[-1][1], stops[-1][2])
-            attrs.update({"fill": css, "fill-opacity": _number(opacity)})
+            attrs.update({"fill": css, "fill-opacity": compact_number(opacity, 4)})
             return ET.Element(SVG + tag, attrs)
         ident = self.ident("g")
         spread = {"repeat": "repeat", "reflect": "reflect"}.get(_enum(paint.ColorLine.Extend), "pad")
@@ -581,21 +580,21 @@ class Painter:
             # Stops outside 0-1 are legal in COLR and not in SVG: the end points move to the first and last stop.
             gradient = ET.SubElement(self.defs, SVG + "linearGradient", {
                 "id": ident, "gradientUnits": "userSpaceOnUse", "spreadMethod": spread,
-                "x1": _number(float(x0 + dx * low)), "y1": _number(float(y0 + dy * low)),
-                "x2": _number(float(x0 + dx * high)), "y2": _number(float(y0 + dy * high))})
+                "x1": compact_number(float(x0 + dx * low), 4), "y1": compact_number(float(y0 + dy * low), 4),
+                "x2": compact_number(float(x0 + dx * high), 4), "y2": compact_number(float(y0 + dy * high), 4)})
         else:
             x0, y0, r0, x1, y1, r1 = paint.x0, paint.y0, paint.r0, paint.x1, paint.y1, paint.r1
             at = lambda a, b, t: a + (b - a) * t  # noqa: E731
             gradient = ET.SubElement(self.defs, SVG + "radialGradient", {
                 "id": ident, "gradientUnits": "userSpaceOnUse", "spreadMethod": spread,
-                "fx": _number(float(at(x0, x1, low))), "fy": _number(float(at(y0, y1, low))),
-                "fr": _number(float(max(0.0, at(r0, r1, low)))),
-                "cx": _number(float(at(x0, x1, high))), "cy": _number(float(at(y0, y1, high))),
-                "r": _number(float(max(0.0, at(r0, r1, high))))})
+                "fx": compact_number(float(at(x0, x1, low)), 4), "fy": compact_number(float(at(y0, y1, low)), 4),
+                "fr": compact_number(float(max(0.0, at(r0, r1, low))), 4),
+                "cx": compact_number(float(at(x0, x1, high)), 4), "cy": compact_number(float(at(y0, y1, high)), 4),
+                "r": compact_number(float(max(0.0, at(r0, r1, high))), 4)})
         for offset, index, alpha in stops:
             _, css, opacity = self.reader.color(index, alpha)
-            ET.SubElement(gradient, SVG + "stop", {"offset": _number(float((offset - low) / (high - low))),
-                                                   "stop-color": css, "stop-opacity": _number(opacity)})
+            ET.SubElement(gradient, SVG + "stop", {"offset": compact_number(float((offset - low) / (high - low)), 4),
+                                                   "stop-color": css, "stop-opacity": compact_number(opacity, 4)})
         attrs["fill"] = f"url(#{ident})"
         return ET.Element(SVG + tag, attrs)
 
@@ -639,10 +638,10 @@ class Painter:
             if opacity >= 1 and i + 1 < SWEEP_STEPS:
                 a1 += step / 2  # Opaque wedges reach under the next one, which hides the seams between them.
             points = [(cx + reach * math.cos(math.radians(a)), cy + reach * math.sin(math.radians(a))) for a in (a0, a1)]
-            attrs = {"d": f"M{_number(float(cx))},{_number(float(cy))} L{points[0][0]:.1f},{points[0][1]:.1f} "
+            attrs = {"d": f"M{compact_number(float(cx), 4)},{compact_number(float(cy), 4)} L{points[0][0]:.1f},{points[0][1]:.1f} "
                           f"L{points[1][0]:.1f},{points[1][1]:.1f} Z", "fill": css}
             if opacity < 1:
-                attrs["fill-opacity"] = _number(opacity)
+                attrs["fill-opacity"] = compact_number(opacity, 4)
             ET.SubElement(group, SVG + "path", attrs)
         return group
 

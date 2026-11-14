@@ -7,6 +7,22 @@ import threading
 from .text import face, font_data, glyph_outline, lines, plan, set_line, tab_stops, wrap_mode
 
 
+def open_font(data):
+    """Raise ``OSError`` unless ``data`` is a font the text renderer can draw: one FreeType opens at any size, or
+    a colour font of fixed-size bitmaps, which is drawn from its strikes."""
+    import io
+
+    from PIL import ImageFont
+
+    try:
+        ImageFont.truetype(io.BytesIO(data), 12)
+    except OSError:
+        from .fonts import bitmap_color_font
+
+        if not bitmap_color_font(data):
+            raise
+
+
 @lru_cache(maxsize=256)
 def font_metrics(data, size):
     outline = face(data)[0]

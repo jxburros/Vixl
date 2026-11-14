@@ -1335,15 +1335,9 @@ class Project:
                                 "Invalid embedded SVG source", "invalid_project")
                         # Inert provenance only: never render or execute source while opening an archive.
                     elif name.startswith("fonts/"):
-                        from PIL import ImageFont
+                        from .text_metrics import open_font
 
-                        try:
-                            ImageFont.truetype(io.BytesIO(data), 12)
-                        except OSError:
-                            from .fonts import bitmap_color_font
-
-                            if not bitmap_color_font(data):
-                                raise
+                        open_font(data)
                     elif name.startswith("assets/") and name.endswith(".wav"):
                         from .audio import read_audio
 

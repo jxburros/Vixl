@@ -158,10 +158,6 @@ def check_state(project, state):
     from .animation import validate_animation
 
     validate_animation(project, state)
-    if "sprite_sheet" in state:
-        from .sprite_sheet import validate_sheet
-
-        validate_sheet(state["sprite_sheet"])
     from .timeline import validate_timeline
 
     validate_timeline(project, state)
