@@ -520,10 +520,13 @@ OVERRIDES = {
     "shape": {"shape": "rectangle, rounded-rectangle, ellipse, polygon, star, line, triangle, right-triangle, "
                        "diamond, arrow, chevron, cross, heart, speech-bubble, or path (with path).",
               "path": "path shape: SVG path data (M L H V C S Q T A Z, several M sub-paths allowed) in literal local "
-                      "pixels: a point (px, py) draws at (x + px, y + py). Without width/height the box reaches the "
+                      "pixels: a point (px, py) draws at (x + px, y + py). x and y default to 0, so a path "
+                      "written in canvas coordinates needs neither. Without width/height the box reaches the "
                       "path's farthest point (never the whole canvas); with them, that is the box it is drawn in. "
                       "Negative coordinates draw outside the box. Later resizes scale the path; path-fit scales "
-                      "geometry into a box. Set path_view to a source [width, height] to scale unchanged data on creation or update.",
+                      "geometry into a box. Set path_view to a source [width, height] to scale unchanged data on creation or update. "
+                      "For an outline drawn point by point (a body, a beak, a hill) use pen: it takes canvas points "
+                      "and fits the box itself.",
               "radius": "Corner radius in pixels (rounded-rectangle; default from the document corner style, soft "
                         "when that is sharp).", "sides": "Polygon side count.",
               "inner_radius": "Star inner radius as a fraction of the outer radius.",
@@ -678,9 +681,12 @@ OVERRIDES = {
                      "x": "Grid origin x.", "y": "Grid origin y."},
     "adapt-layout": {"targets": "Layers in priority order.", "width": "New width.", "height": "New height.",
                      "margin": "Outer margin.", "gap": "Gap between layers."},
-    "pen": {"nodes": "Anchors [{point: [x, y], in: [x, y], out: [x, y]}] for a Bezier path; in/out are handle "
-                     "positions in the same coordinates as point, not offsets from it.",
-            "points": "Freehand points [[x, y] …] smoothed into a path.", "closed": "Close the path.",
+    "pen": {"nodes": "Anchors [{point: [x, y], in: [x, y], out: [x, y]}] for a Bezier path, in canvas (parent) "
+                     "pixels; in/out are handle positions in the same coordinates as point, not offsets from it. "
+                     "The layer's box is fitted to the drawn path, so x, y, width and height are not needed.",
+            "points": "Freehand points [[x, y] …] in canvas (parent) pixels, smoothed into a path. Use pen when "
+                      "you place an outline point by point; use shape with shape: path when you already have SVG "
+                      "path data.", "closed": "Close the path.",
             "smooth": "Smooth freehand points (default true).", "tension": "Handle length for smoothed points (default 1; 0 gives straight segments).",
             "corners": "Indexes of points kept sharp."},
     "organic-shape": {"kind": "leaf, petal, blob or rose.", "lobes": "Lobe or petal count.",
@@ -801,6 +807,12 @@ EXAMPLES = {
         {"type": "gradient", "name": "sunset", "direction": "angled", "angle": 35,
          "stops": [{"offset": 0, "color": "#f97316"}, {"offset": 0.55, "color": "#db2777"},
                    {"offset": 1, "color": "#4c1d95"}]},
+    ],
+    "pen": [
+        {"type": "pen", "name": "hill", "points": [[0, 420], [180, 300], [420, 360], [640, 280], [640, 480], [0, 480]],
+         "closed": True, "fill": "#84a98c"},
+        {"type": "pen", "name": "beak", "nodes": [{"point": [320, 260]}, {"point": [420, 280], "in": [380, 250]},
+                                                  {"point": [320, 290]}], "closed": True, "fill": "#e76f51"},
     ],
     "shape": [
         {"type": "shape", "shape": "rounded-rectangle", "name": "card", "x": 80, "y": 80, "width": 320,

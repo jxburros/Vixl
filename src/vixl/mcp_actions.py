@@ -183,6 +183,45 @@ def merged(options, **given):
 # ---------------------------------------------------------------------------------------------- vixl_document
 
 
+def lean_check(report, explicit=False):
+    """A design check report without what repeats itself from call to call (#800): ``summary`` when ``top``
+    already holds every group, and the names of the checks when the default set ran."""
+    if not isinstance(report, dict):
+        return report
+    report = dict(report)
+    if report.get("summary") is not None and report.get("summary") == report.get("top"):
+        del report["summary"]
+    checked = report.get("checked")
+    if isinstance(checked, dict) and not explicit and isinstance(checked.get("checks"), list):
+        report["checked"] = {**checked, "checks": f"default ({len(checked['checks'])}; vixl_reference('checks') lists them)"}
+    return report
+
+
+def git_ignored(workspace, path):
+    """Whether git ignores ``path`` (a file in ``workspace``); False outside a repository or without git."""
+    import subprocess
+
+    try:
+        done = subprocess.run(["git", "-C", str(workspace), "check-ignore", "-q", "--", str(path)],
+                              capture_output=True, timeout=3, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return done.returncode == 0
+
+
+def located(session, result, path=None):
+    """On a local server (vixl mcp over stdio), say where the files are: ``workspace`` is the folder every relative
+    path resolves against, and ``git`` warns when the repository's ignore rules cover the new document, so its
+    source would never be committed (#801). Other servers keep the absolute location private."""
+    if not getattr(session, "local", False) or not isinstance(result, dict):
+        return result
+    result["workspace"] = str(session.workspace)
+    if path is not None and git_ignored(session.workspace, session.resolve(path)):
+        result["git"] = ("ignored: the repository's .gitignore covers this document, so it will not be committed. "
+                         "Create it in a folder the repository tracks, or add an exception (!PATH) to .gitignore")
+    return result
+
+
 def terse_document(summary):
     """A document summary without the rolled design direction (verbose keeps it)."""
     canvas = summary.get("canvas") or {}
@@ -330,7 +369,7 @@ def document_create(
                 created = session.summary(project, destination)
                 if project.state.get("template"):
                     created["template"] = project.state["template"]
-        return created if verbose else terse_document(created)
+        return located(session, created if verbose else terse_document(created), path)
     require(variables is None, "variables fill a template; pass template too", field="variables")
     created = session.create(path, width, height, background, size=size, purpose=purpose, dpi=dpi,
                              orientation=orientation, bleed=bleed, seed=seed, variety=variety,
@@ -343,7 +382,7 @@ def document_create(
                 created["typography"] = pair_fonts(project, font_pairing)
         except VixlError as exc:  # the document exists; say the pairing did not apply instead of hiding it
             created["font_pairing_error"] = str(exc)
-    return created if verbose else terse_document(created)
+    return located(session, created if verbose else terse_document(created), path)
 
 
 @action("vixl_document", "open")
@@ -353,7 +392,7 @@ def document_open(
 ):
     """Open and activate an existing .vixl file; other open documents stay available."""
     opened = ctx.session.open(path)
-    return opened if verbose else terse_document(opened)
+    return located(ctx.session, opened if verbose else terse_document(opened))
 
 
 @action("vixl_document", "close")
@@ -378,7 +417,8 @@ def document_list(
         key=lambda p: p.name,
     )
     return {
-        "workspace": ".",  # Paths are relative to it; the absolute location stays private to the server.
+        # Paths are relative to it; the absolute location stays private to a server that is not local.
+        "workspace": str(session.workspace) if session.local else ".",
         **session.open_documents(),
         "entries": [{"path": session.relative(p), **({"directory": True} if p.is_dir() else {})}
                     for p in entries[offset: offset + limit]],
@@ -494,7 +534,7 @@ Check = Annotated[bool | str | list[str] | None, Field(
                 "composition findings and those on the layers this batch touched, and the two weakest regions")]
 Preview = Annotated[bool | dict | None, Field(
     description="Also return a small preview PNG: true, or {page, region, max_width (512), max_height, time, isolate, "
-                "overlay, focus, regions}. overlay (with check) outlines each fix finding; focus (a finding's index) "
+                "overlay, focus, regions, rulers, bounds}. overlay (with check) outlines each fix finding; focus (a finding's index) "
                 "zooms to it; with check, real-size crops of the weakest regions follow (regions: 0-2, default 2)")]
 OperationsPath = Annotated[str | None, Field(
     description="Workspace .json (array) or .jsonl (one operation per line) file of operations instead of operations")]
@@ -561,7 +601,7 @@ def apply_batch(
         description="After the batch apply the built-in repair for each fix finding (fit-text, contrast-ink, "
                     "safe-area-nudge); each kept only if its finding is resolved and nothing new fails")] = None,
     detail: Annotated[Literal["ack", "brief", "compact", "full"] | None, Field(
-        description="ack: {ok, head, changed: N, warnings}; brief (default): ID, name and bounds of each changed "
+        description="ack: {ok, head, changed: N, changed_layers, warnings} and, with check, the verdict and open findings; brief (default): ID, name and bounds of each changed "
                     "layer; compact (verbose) adds changed values; full adds before/after snapshots")] = None,
     verbose: Verbose = False,
     proposal: Annotated[str | None, Field(
@@ -610,6 +650,8 @@ def apply_batch(
                                                  defaults=defaults)
     except VixlError as exc:
         raise teach(exc, operations) from exc
+    if isinstance(result.get("check"), dict):
+        result["check"] = lean_check(result["check"], explicit=isinstance(check, list))
     if proposal is not None:
         session.forget_proposal(proposal)
         result["proposal"] = proposal
@@ -629,7 +671,13 @@ def apply_batch(
     elif detail == "ack":
         from .changes import ack
 
-        result = ack(result)
+        names = {}
+        try:
+            with session.project(document=document) as project:
+                names = {layer["id"]: layer["name"] for layer in project.state["layers"]}
+        except VixlError:
+            pass  # the ack then names only the layers this batch added
+        result = ack(result, names=names)
     if png is None:
         return result
     return [result, image(png), *(image(data) for data in crops)]
@@ -677,6 +725,8 @@ def apply_create(
         result = {**reported(ctx.session, "apply", report_path, result),
                   **{key: result[key] for key in ("path", "document", "active_document", "canvas", "creation", "exports")
                      if key in result}}
+    if not dry_run and path is not None:
+        located(ctx.session, result, path)
     return result if png is None else [result, image(png)]
 
 
@@ -777,7 +827,7 @@ def check_design(
     )
     if report_path is not None:
         return reported(session, "check", report_path, report)
-    return report
+    return lean_check(report, explicit=checks is not None or profile is not None)
 
 
 @action("vixl_check", "validate")
@@ -881,13 +931,22 @@ def render_preview(
     views: Annotated[list[Literal["parts"]] | None, Field(
         description="['parts']: a labelled contact sheet of each isolated object, assembled and part by part")] = None,
     exploded: Annotated[bool, Field(description="With isolate: add an exploded view of the parts")] = False,
+    rulers: Annotated[bool | float | None, Field(
+        description="Placement aid: a grid over the preview with each line labelled by its document coordinate "
+                    "(true picks the step; a number is the step in document pixels). Preview only, never exported")] = None,
+    bounds: Annotated[bool | list[str] | None, Field(
+        description="Placement aid: outline layers with 'name x,y WxH' labels (true: every top-level layer; or "
+                    "layer names); also returns the boxes")] = None,
     document: Document = None,
 ):
     """An aspect-preserving PNG capped in size and bytes. region zooms (up to 8x); time shows an animation frame;
-    proof shows CMYK print colour; simulate checks colour-blind legibility; isolate shows one object alone."""
+    proof shows CMYK print colour; simulate checks colour-blind legibility; isolate shows one object alone;
+    rulers and bounds draw document coordinates and layer boxes to place parts by."""
     from .mcp_tools import preview
 
     session = ctx.session
+    require(not overlay or not (rulers or bounds), "overlay shows findings; ask for rulers and bounds in a "
+            "separate preview", field="overlay")
     if overlay:
         from .feedback import preview as feedback_preview
 
@@ -897,13 +956,15 @@ def render_preview(
                                               max_height=max_height, max_bytes=max_bytes, region=region, page=page)
         feedback.update(outcome=report["outcome"], findings=len(report["issues"]))
         return [feedback, image(data)]
+    placement = {}
     data = image(preview(session, variables, max_width, max_height, max_bytes, artboard, comp, region, document,
                          time=time, proof=proof, simulate=simulate, guides=guides, page=page, values=values,
-                         show_fields=show_fields, isolate=isolate, views=views, exploded=exploded))
+                         show_fields=show_fields, isolate=isolate, views=views, exploded=exploded,
+                         rulers=rulers, bounds=bounds, info=placement))
     from .check_results import delivery
 
     with session.project(document=document) as project:
-        report = {}
+        report = dict(placement)
         delivery(project, report, check_status=check_status)
     return [data, report] if report else data
 
@@ -1287,12 +1348,15 @@ def reference_start(ctx):
 def reference_guide(
     ctx, name: Annotated[str | None, Field(description="A kind of work, a free-text brief or a guidance name")] = None,
     seed: int | None = None, variety: Variety | None = None,
+    detail: Annotated[Literal["brief", "full"], Field(description="brief: only the first step, the operations to "
+                                                                  "reach for and the create object")] = "full",
 ):
     """What to make and how: the approach, operations, layouts, looks and styles for a kind of work or brief, a
     guidance text, motifs for a setting. Any unknown topic is read as a brief."""
-    from .briefs import guide
+    from .briefs import guide, quick_start
 
-    return guide(name, seed=seed, variety=variety, workspace=ctx.session.workspace)
+    result = guide(name, seed=seed, variety=variety, workspace=ctx.session.workspace)
+    return quick_start(result, name) if detail == "brief" else result
 
 
 @action("vixl_reference", "operations")
@@ -1407,13 +1471,17 @@ def reference_workflows(
 
 
 @action("vixl_reference", "sizes")
-def reference_sizes(ctx, name: Annotated[str | None, Field(description="Words to search for")] = None,
-                    category: str | None = None):
-    """Named document sizes: print (with dpi, bleed and safe area), social, web, ads, email, video, slides,
-    screens, app-store, icons, logos and game."""
-    from .sizes import catalog
+def reference_sizes(ctx, name: Annotated[str | None, Field(description="Words to search for (all must match the "
+                                                                       "name, description, category or pixels, "
+                                                                       "such as 'square' or '1080x1080')")] = None,
+                    category: Annotated[str | None, Field(description="print, stationery, photo, poster, packaging, "
+                                                                      "social, web, ads, email, video, slides, "
+                                                                      "screens, app-store, icons, logos or game")] = None):
+    """Named document sizes. Without name or category: a compact index {category: {name: [width, height]}}. With
+    either: the matching sizes with descriptions and, for print, dpi, bleed and safe area."""
+    from .sizes import catalog, index
 
-    return catalog(category, name)
+    return index() if name is None and category is None else catalog(category, name)
 
 
 @action("vixl_reference", "layouts")

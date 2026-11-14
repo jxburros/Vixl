@@ -84,6 +84,9 @@ class Session:
         if workspace is None and path is None:
             refuse_broad_workspace(self.workspace)
         self.require_document = require_document
+        # A local server (vixl mcp over stdio) runs on the caller's own machine: its results may name the
+        # workspace folder. Network and embedded servers keep the absolute location private (#676, #801).
+        self.local = False
         self._path = None  # The server-wide default: the document it started with, or set outside MCP.
         self._client_paths = WeakKeyDictionary()
         self._client_seen = WeakKeyDictionary()  # Client -> documents it created, opened or named, by recency.
@@ -1185,7 +1188,7 @@ def create_app(path, *, token=None, limits=None, call_limits=None):
 
         options = fixed(body)
         allowed = {"variables", "max_width", "max_height", "max_bytes", "artboard", "comp", "region", "time", "proof", "simulate",
-                   "guides", "page", "values", "show_fields", "isolate", "views", "exploded"}
+                   "guides", "page", "values", "show_fields", "isolate", "views", "exploded", "rulers", "bounds"}
         known_fields(options, allowed, "preview")
         return Response(preview(session, **options), media_type="image/png")
 
@@ -1398,7 +1401,7 @@ def require_document_default():
 
 
 def mcp_server(path=None, limits=None, *, workspace=None, planner=False, tools="default",
-               require_document=None, call_limits=None, allow_screen_capture=None):
+               require_document=None, call_limits=None, allow_screen_capture=None, local=False):
     try:
         from .mcp_tools import build_server, check_sdk
         check_sdk()
@@ -1414,6 +1417,7 @@ def mcp_server(path=None, limits=None, *, workspace=None, planner=False, tools="
     session = Session(path, call_limits.apply_to(limits or Limits()), workspace=workspace,
                       require_document=require_document)
     session.call_limits = call_limits
+    session.local = bool(local)
     return build_server(session, planner=planner, tools=tools,
                         allow_screen_capture=allow_screen_capture)
 

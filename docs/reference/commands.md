@@ -383,6 +383,7 @@ Saved SVG exports report `svg.vector_only` and `svg.raster_fallbacks` in the CLI
 ```bash
 vixl guide                               # start-here recipe and every kind of work
 vixl guide a mascot for a coffee brand   # approach, operations, layouts, looks, styles, example
+vixl guide --brief a mascot for a coffee brand   # only the first step, the operations and how to get the rest
 vixl guide operations                    # every operation by purpose, with summaries
 vixl looks                               # the finishing looks
 vixl house [show PURPOSE]                # the house style: craft, tiers, levels; or one purpose's profile

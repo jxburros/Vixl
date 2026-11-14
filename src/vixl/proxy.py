@@ -298,10 +298,12 @@ def clamp_region(region, canvas):
 def render_preview(
     project, max_width, max_height, *, variables=None, artboard=None, comp=None, region=None, time=None, proof=False, simulate=None,
     guides=None, page=None, values=None, show_fields=False, isolate=None, views=None, exploded=False,
+    rulers=None, bounds=None, info=None,
 ):
     """Render at roughly the preview size. ``region`` [x, y, w, h] (document pixels) zooms in;
     zoomed regions may be enlarged up to 8x so small details stay legible. ``time`` previews a
-    timeline frame; ``proof`` soft-proofs CMYK; ``simulate`` previews color-vision deficiency."""
+    timeline frame; ``proof`` soft-proofs CMYK; ``simulate`` previews color-vision deficiency.
+    ``rulers`` and ``bounds`` draw the placement aid (feedback.draw_coordinates) and fill the ``info`` dict."""
     from PIL import Image
 
     from .design_render import artboard_project
@@ -309,6 +311,10 @@ def render_preview(
 
     from .render import view_page
 
+    if rulers or bounds:
+        require(page != "all" and views is None and not exploded,
+                "rulers and bounds read one page at its own coordinates; drop page 'all', views and exploded",
+                field="rulers" if rulers else "bounds")
     if page == "all":
         from .deck import contact_sheet
 
@@ -395,6 +401,12 @@ def render_preview(
 
         image = image.convert("RGBA")
         draw_fields(image, candidate, image.width / w, (x, y))
+    if rulers or bounds:
+        from .feedback import draw_coordinates
+
+        image, found = draw_coordinates(image, candidate, image.width / w, (x, y), rulers, bounds)
+        if info is not None:
+            info.update(found)
     return image
 
 

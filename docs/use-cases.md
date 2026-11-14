@@ -612,6 +612,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | COL-10 | Three-way merge of a branch with explicit conflict resolution | branch-merge (dry run, then apply) | 5–12 · 2 |  |
 | AGT-20 | Run a 1,000-operation batch from a JSONL file | `operations_path`, `--check`, `--preview` | 1–3 · 1–2 | Batches go up to 10,000 operations. |
 | AGT-21 | Drive Vixl from Python: build, apply, save, export | `Project` API | 10–30 lines · 5–10 | Human-written script. |
+| AGT-22 | Generate a batch of assets from a Python script that can be run again: a master and an export per item | `Project` API with `save(path, overwrite=True)` and `export(path, overwrite=True)`; `import_image(data=…)` then `move` | 30–60 lines · 5–10 | [Scripting guide](guides/automation/python-scripting.md); the example script is run twice by the docs tests. |
+| AGT-23 | Place the parts of an illustration by coordinate and read positions off the preview | `vixl_render(rulers=true, bounds=true)`, `pen` points, `shape` with `path` | 3–6 · 1–2 | Preview only; [worked example](guides/shapes/vector-paths.md#build-an-object-from-coordinates). |
 
 ---
 

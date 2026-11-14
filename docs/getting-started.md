@@ -135,7 +135,7 @@ project.export("python-hello.png")
 
 Python edits remain in memory until you call `save` (which, like exports, refuses to replace another existing file
 unless you pass `overwrite=True`); `render()` returns a Pillow RGBA image.
-The [interface reference](reference/interfaces.md) documents loading, history, errors and services.
+[Script Vixl from Python](guides/automation/python-scripting.md) is a complete batch script (reruns, return values, images made in memory); the [interface reference](reference/interfaces.md) documents loading, history, errors and services.
 
 ## Continue
 

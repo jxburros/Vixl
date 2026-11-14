@@ -637,6 +637,9 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
             f"only {given} given, so {other} is unchanged, except on image (raster) layers, which keep their "
             "aspect ratio; set keep_aspect to true (scale proportionally) or false (change one side) to choose"
         )
+    if kind == "text" and ("width" in op or "height" in op):
+        box = ", ".join(f"{key} {op[key]}" for key in ("width", "height") if key in op)
+        note(f"text {box} → a text-layout box ({box}): the text wraps and aligns inside it")
     if kind == "move" and "x" not in op and "y" not in op and ("dx" in op or "dy" in op):
         op["x"], op["y"] = op.pop("dx", 0), op.pop("dy", 0)
         op["relative"] = True

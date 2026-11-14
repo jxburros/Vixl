@@ -5,6 +5,7 @@ user docs in `docs/`, the agent skill in `skills/vixl/`. `CONTRIBUTING.md` has t
 Showcases, explorations, films, marketing media and published eval results live in the separate VixlExamples
 repository (https://github.com/jxburros/VixlExamples); add new ones there and link to them. Vixl must run without
 that repository: never import from it, download from it or make a test depend on it.
+Trial documents and exports go under `scratch/` (git-ignored, like `*.vixl`), never the repository root.
 
 ## Running tests
 - `pytest -n auto` runs the whole suite (about 4,900 tests). Iterate on one file first: `pytest -q tests/test_x.py`.

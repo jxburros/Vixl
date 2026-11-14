@@ -37,6 +37,12 @@ FINISH_FIELDS = {
     "rotation": {"type": "number", "description": "Rotation in degrees, clockwise, around the layer's pivot "
                  "(its center unless pivot moved it), as the rotate operation sets it."},
 }
+# Creation fields of artwork layers that stand for layer-intent role (text has its own role: its type stage).
+LAYER_ROLE = ("add", "solid", "gradient", "shape", "pen")
+ROLE_FIELD = {"enum": ["content", "decoration", "background"],
+              "description": "What the layer is for, as layer-intent role sets it. decoration and background mark "
+              "artwork that may run into the margins or off the canvas on purpose: the safe-area and bounds checks "
+              "report it as informational instead of asking for review. content (the default) is checked."}
 FONT = {
     "type": "string",
     "description": "Registered font name, role (heading, body or a brand role) or text stage (display, h1, h2, h3, "
@@ -48,6 +54,14 @@ FONT = {
 
 def enum(*values):
     return {"enum": list(values)}
+
+
+# Guessed operation types that are fields of another operation (#798).
+_PAINT_FIELD = ("it is a field, not an operation. A new shape: {type: shape, shape: rectangle|ellipse|path…, fill, "
+                "stroke, stroke_width}; an existing one: {type: shape, target: LAYER, fill: COLOR}; a flat "
+                "background: {type: solid, color: COLOR}")
+FIELD_NOT_TYPE = {"fill": _PAINT_FIELD, "fill-color": _PAINT_FIELD, "stroke-width": _PAINT_FIELD,
+                  "stroke-color": _PAINT_FIELD, "color": _PAINT_FIELD, "colour": _PAINT_FIELD}
 
 
 def field(base, description):
@@ -230,6 +244,11 @@ def _operation_schema():
                             "speech bubble's body, a badge, a frame's opening; see content_bounds in inspect). "
                             "Use place with within for other anchors or a margin."),
             "baseline_y": baseline_y,
+            "width": field(SIZE, "Width of a text box (pixels or a percentage of the canvas): the text wraps inside "
+                           "it and align centres or right-aligns it there, as text-layout {width} on this layer. "
+                           "Without it the box is as wide as the longest line."),
+            "height": field(SIZE, "Height of the text box, as text-layout {height}. With a width and no height "
+                            "the box is as tall as the wrapped lines."),
         },
         anyOf=[{"required": ["text"]}, {"required": ["target"]}],
     )
@@ -460,6 +479,8 @@ def _operation_schema():
     for variant in variants:
         if variant["properties"]["type"]["const"] in LAYER_FINISH:
             variant["properties"].update(deepcopy(FINISH_FIELDS))
+        if variant["properties"]["type"]["const"] in LAYER_ROLE:
+            variant["properties"]["role"] = deepcopy(ROLE_FIELD)
         if variant["properties"]["type"]["const"] in EDITS:
             variant["properties"]["space"] = {
                 "enum": ["parent", "canvas"],
@@ -554,6 +575,10 @@ def validate_operation(operation, notes=None, index=None):
         import difflib
 
         close = difflib.get_close_matches(result["type"], list(properties), 3, 0.5)
+        field_hint = FIELD_NOT_TYPE.get(str(result["type"]).lower().replace("_", "-"))
+        if field_hint:
+            raise VixlError("unknown_operation", f"Unknown operation type {result['type']!r}: {field_hint}",
+                            field="type", suggestions=["shape", "solid"])
         raise VixlError(
             "unknown_operation",
             f"Unknown operation type {result['type']!r}"

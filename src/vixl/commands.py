@@ -283,9 +283,9 @@ def compile_command(tokens):
             p.add_argument("--angle", type=float)
             p.add_argument("--stops", type=json.loads)
         p.add_argument("--name")
-        if cmd != "text":
-            p.add_argument("--width", type=int)
-            p.add_argument("--height", type=int)
+        box = " of the text box: the text wraps and aligns inside it (as text-layout)" if cmd == "text" else ""
+        p.add_argument("--width", type=int, help=f"width{box}" if box else None)
+        p.add_argument("--height", type=int, help=f"height{box}" if box else None)
         p.add_argument("--color")
         p.add_argument("--x", type=number_or_center)
         p.add_argument("--y", type=number_or_center)
