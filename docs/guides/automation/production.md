@@ -114,7 +114,7 @@ Rules:
 | `hierarchy` | `targets` (text, most to least important), `ratio` (default 1.2); each rendered font size (after fitting) is at least `ratio` times the next |
 | `count` | `target` name, glob or `group:NAME` (default `*`), optional `layer_type`, `minimum`/`maximum`; counts visible layers |
 | `focal` | `target`, `grid` thirds/golden/center, `tolerance` px (default 5% of the shorter side); the layer's centre is near a power point |
-| `text` | `target` name, glob or `group:NAME` (default `*`), and any of `pattern` (regular expression each selected layer must match), `contains` (phrase or list that must appear somewhere in their copy), `forbid` (regular expression or list none may match), `min_characters`/`max_characters`, `min_words`/`max_words` (per layer; line breaks do not count as characters), `case` sensitive/insensitive (for pattern, contains and forbid), `brand: true` (also forbid brand.json `words.forbid`, skipping `words.allow` phrases), `spelling: true` (words the spelling dictionary does not know fail the rule and are listed under `unknown_words` with suggestions; a missing dictionary needs review); measures the drawn text after variables, so `variables`, artboards and campaign rows are checked with their own copy; results list each layer's text, characters and words |
+| `text` | `target` name, glob or `group:NAME` (default `*`), and any of `pattern` (regular expression each selected layer must match), `contains` (phrase or list that must appear somewhere in their copy), `forbid` (regular expression or list none may match; on a service these patterns are [bounded](../../reference/interfaces.md#regular-expressions-from-callers)), `min_characters`/`max_characters`, `min_words`/`max_words` (per layer; line breaks do not count as characters), `case` sensitive/insensitive (for pattern, contains and forbid), `brand: true` (also forbid brand.json `words.forbid`, skipping `words.allow` phrases), `spelling: true` (words the spelling dictionary does not know fail the rule and are listed under `unknown_words` with suggestions; a missing dictionary needs review); measures the drawn text after variables, so `variables`, artboards and campaign rows are checked with their own copy; results list each layer's text, characters and words |
 | `budget` | any of `max_layers` (drawn layers, as `count` counts them), `max_fonts` (distinct fonts drawn by text), `max_bytes` (the document's JSON with undo history plus embedded files, before compression), `min_ppi` (lowest effective resolution of a placed image at the canvas dpi, 300 when unset, as the `print` check measures it), `max_ppi` (over-resolution: a placed image above this effective resolution, or with over 4× the source pixels it needs at it, carries pixels no output shows), `max_render_ms` with optional `proxy` (the warm time of a proxy render, longest side `proxy` px, default 1024; cold and warm are both reported). Results list `worst` per limit: the five top-level layers with the most drawn layers, the fonts drawn by the fewest layers, the lowest or highest image ppi, each as `{layer, value}`. Render time depends on the machine, so a `max_render_ms` rule is always a `warning` with `action: review` and `advisory: true`, and goes in a budget rule of its own |
 
 Every rule has a unique `id` and optional `severity` (`error` or `warning`). Each result carries what
@@ -519,6 +519,8 @@ rerendering that one variant. Old output versions are retained.
 
 ## Print merge
 
+`guides-import` reads a printer's template (PNG or PSD) into role guides that the `safe_area` check enforces, and `guide-set-save` keeps them as a reusable guide set; see [a printer's template](../layout/guides.md#a-printers-template-guide-roles).
+
 `merge-impose` merges a template and a CSV into print sheets (n-up, crop marks, bleed) with vector text, validating every row
 first; see [imposition](../output/imposition.md). Variant production fingerprints include the revisions of any documents a design
 [links](../output/linked-documents.md), so a changed source re-renders the variants that use it.
@@ -816,7 +818,9 @@ When the work ends, Vixl POSTs one JSON event: `event`, `kind`, `id`, `status`, 
 signed with the secret in the `secret_env` variable (`X-Vixl-Signature: sha256=` the HMAC-SHA256 of the body), and
 `X-Vixl-Delivery` names the delivery (the same across retries). A host not in `allow` is refused. The POST follows the
 download rules: HTTPS, public addresses only unless `VIXL_ALLOW_PRIVATE_FETCH=1`, plain HTTP only to a loopback
-address, no redirects. A 5xx, 408, 429 or a network failure is retried three times with backoff. With
+address, no redirects. Only the status of the answer matters: Vixl reads at most 64 KiB of its body, undecoded, and
+stops 30 s after the delivery began, so a receiver that answers slowly keeps its status but not the connection. A
+5xx, 408, 429 or a network failure is retried three times with backoff. With
 `VIXL_OFFLINE=1` nothing is sent. The delivery record goes into the job record (`deliveries`) or the result
 (`notify`).
 
@@ -981,8 +985,10 @@ inputs live in `.vixl-jobs`; submitted resource limits survive background execut
 `status`, `cancel`, `resume` take `{"id":"..."}`. `work` processes ready jobs once;
 `start` launches a hidden worker until the queue is idle. Both accept workers 1–4.
 For an external service supervisor: `vixl workflow worker --workspace . --workers 2`.
-Per-job locks prevent two workers executing the same job. After a process crash, start
-a worker again. Local production resumes. Cancellation is cooperative between outputs/
+A queue has one worker process: while it runs, another `start` (or `submit` with `start`) launches nothing
+and answers `{"already_running": true, "worker_pid": …}`, and a second `workflow worker` exits at once; the
+running worker picks up newly queued jobs. Per-job locks prevent two workers executing the same job. After a
+process crash, start a worker again. Local production resumes. Cancellation is cooperative between outputs/
 frames and does not claim to cancel external inference. Encoding/audio mixing may finish
 their current bounded operation before cancellation is observed.
 
@@ -990,6 +996,21 @@ Over MCP, `vixl_job(action='status' | 'result' | 'cancel', id=JOB, wait=SECONDS)
 32-character id from `submit`, as `status` and `cancel` do; `resume` stays a workflow action. The same tool follows the
 in-memory job id (`{status: running, job}`) that any call returns when it runs past the inline limit (about 40 seconds)
 or is sent with `as_job: true` ([long calls](../../reference/interfaces.md#long-calls-retries-and-progress)).
+
+### Queue quotas
+
+A workspace's queue is bounded, so a caller cannot fill the disk or the process table through `submit` and `start`:
+
+| Quota | Default | Environment | What happens |
+| --- | --- | --- | --- |
+| Unfinished jobs (`queued`, `running`, `waiting`) | 64 | `VIXL_QUEUE_MAX_JOBS` | `submit` is refused with `limit_exceeded`, `limit: max_pending_jobs`, before anything is written. |
+| Disk used by `.vixl-jobs` (records, input snapshots, checkpoints, staged results) | 4096 MB | `VIXL_QUEUE_MAX_MB` | `submit` is refused with `limit: max_queue_mb` when the queue is full, and a job whose input snapshot takes it over the quota is removed again. |
+| Retention of finished jobs | 7 days | `VIXL_QUEUE_RETENTION_DAYS` | `completed`, `failed` and `cancelled` jobs are deleted (record, snapshot and checkpoint) that long after they ended, on the next `submit`, `work` or worker pass. Outputs published to the workspace stay. A `needs_review` job is kept until a person deletes it. |
+| Worker processes | 1 per queue, 1–4 threads | | `start` does nothing while a worker is alive. |
+
+`0` turns a quota off. The error carries `value`, `maximum` and a `hint`; wait for jobs to finish, cancel the ones
+no longer needed, or delete finished job folders from `.vixl-jobs`. `status` of a pruned job answers
+`invalid_manifest`: keep what you need from a result before the retention period ends.
 
 Job kinds:
 

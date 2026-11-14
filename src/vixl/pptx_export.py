@@ -80,6 +80,7 @@ class Slide:
         self.fallbacks = []
         self.chart_info = []
         self.table_info = []
+        self.native_effects = []
 
     def ident(self):
         self.next_id += 1
@@ -136,6 +137,9 @@ class Slide:
             from .pdf_export import PageBuilder
 
             reason = PageBuilder.raster_reason(layer)
+            if reason == "layer styles" and self.inner_shadow(layer, emu):
+                # An inner shadow alone is PowerPoint's own inner shadow (leaf adds it), so the shape stays editable.
+                reason = PageBuilder.raster_reason({**layer, "styles": {}})
             if reason is None and precise(layer):
                 # DrawingML transforms hold only rotation and flips; a skewed or affine layer is drawn as a picture.
                 reason = "skew" if layer.get("skew_x") or layer.get("skew_y") else "affine transform"
@@ -197,18 +201,40 @@ class Slide:
             x, y = ink_origin(image, bounds[layer["id"]])
         rid = self.exporter.media(self, image)
         ident = self.ident()
-        return (f'<p:pic><p:nvPicPr>{c_nv_pr(ident, layer, layer["name"])}'
+        # A text layer drawn as a picture (warped or hand-set) is described by what it says.
+        descr = layer.get("text") if layer["type"] == "text" and layer.get("text", "").strip() else layer["name"]
+        return (f'<p:pic><p:nvPicPr>{c_nv_pr(ident, layer, descr)}'
                 f'<p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>'
                 f'<p:blipFill><a:blip r:embed="{rid}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>'
                 f'<p:spPr><a:xfrm><a:off x="{round(x * emu)}" y="{round(y * emu)}"/>'
                 f'<a:ext cx="{max(1, round(image.width * emu))}" cy="{max(1, round(image.height * emu))}"/></a:xfrm>'
                 f'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>')
 
+    def inner_shadow(self, layer, emu):
+        """``<a:effectLst>`` with PowerPoint's inner shadow for a layer whose only style is ``inner-shadow``, or
+        None when the layer needs a picture: any other style, text, or a turned or flipped layer (the shadow's
+        direction is the canvas's, and PowerPoint turns it with the shape). PowerPoint's blur is not the same
+        curve as the renderer's, so the edge softness is close, not pixel-equal."""
+        from .design_render import inner_passes
+
+        active = {name: s for name, s in (layer.get("styles") or {}).items() if s.get("enabled", True)}
+        if set(active) != {"inner-shadow"} or layer["type"] not in ("solid", "gradient", "shape", "pathfinder") \
+                or layer.get("rotation", 0) % 360 or layer.get("flip_x") or layer.get("flip_y"):
+            return None
+        passes = inner_passes(active, self.view.state)
+        if not passes:
+            return "<a:effectLst/>"
+        rgba, opacity, blur, dx, dy = passes[0]
+        xml, _ = self.color(rgba, opacity * layer["opacity"])
+        return (f'<a:effectLst><a:innerShdw blurRad="{round(2 * blur * emu)}" dist="{round(math.hypot(dx, dy) * emu)}" '
+                f'dir="{round(math.degrees(math.atan2(dy, dx)) % 360 * 60000)}">{xml}</a:innerShdw></a:effectLst>')
+
     def leaf(self, layer, bounds, emu):
         frame = None
         kind = layer["type"]
         ident = self.ident()
         opacity = layer["opacity"]
+        effects = self.inner_shadow(layer, emu) or ""
         if kind == "text":
             return self.text(layer, bounds, emu, ident)
         if kind == "solid":
@@ -237,9 +263,14 @@ class Slide:
             # outlines the other renderers draw. Alignment, caps and joins stay a native line.
             if any(layer.get(key) and layer.get(key) != "none" for key in NOT_NATIVE) or layer.get("distort") \
                     or layer.get("_distort_groups"):
+                if effects:
+                    raise Unsupported("layer styles")
                 return self.primitives(layer, bounds, emu)
             stroke_xml, stroke_alpha = self.color(layer.get("stroke", "transparent"), opacity)
             width = layer.get("stroke_width", 1)
+            if effects and (layer["shape"] == "line" or (stroke_alpha > 0 and width > 0)):
+                # PowerPoint shades the fill only; the renderer shades the stroke with it.
+                raise Unsupported("layer styles")
             # PowerPoint centres strokes on the outline: move the outline to where the stroke's centre
             # line runs (geometry.stroke_inset; half a stroke in for a closed shape's inside stroke).
             from .geometry import stroke_inset
@@ -266,8 +297,10 @@ class Slide:
                     "<a:round/>" if cap == ' cap="rnd"' else "") + "</a:ln>"
             else:
                 line = "<a:ln><a:noFill/></a:ln>"
+        if "innerShdw" in effects:
+            self.native_effects.append({"layer": layer["name"], "effect": "inner-shadow"})
         return (f'<p:sp><p:nvSpPr>{c_nv_pr(ident, layer)}<p:cNvSpPr/><p:nvPr/></p:nvSpPr>'
-                f'<p:spPr>{self.xfrm(layer, bounds, emu, frame=frame)}{geometry}{fill}{line}</p:spPr></p:sp>')
+                f'<p:spPr>{self.xfrm(layer, bounds, emu, frame=frame)}{geometry}{fill}{line}{effects}</p:spPr></p:sp>')
 
     def primitives(self, layer, bounds, emu):
         """A shape whose stroke has dashes, a width profile, extra strokes, alignment, markers or a distortion:
@@ -387,10 +420,22 @@ class Slide:
         data = font_data(self.view, layer)
         if isinstance(data, tuple) and is_context(data[-1]):
             raise Unsupported("VIXL emoji artwork uses appearance-preserving raster export")
+        from .color_fonts import layer_kinds
         from .richtext import active
+
+        kinds = layer_kinds(self.view, layer)
+        if kinds:
+            # PowerPoint would draw the text in whatever the viewer's machine makes of the font (often no colour).
+            raise Unsupported(f"colour font glyphs ({', '.join(kinds)}) use appearance-preserving raster export")
 
         if (layer.get("text_layout") or {}).get("warp", "none") != "none" or (layer.get("text_layout") or {}).get("path"):
             raise Unsupported("warped text")
+        from .lettering import hand_set
+
+        if hand_set(layer) or (active(layer) and any(s.get("rise") or s.get("rotate") for s in layer["rich"]["spans"])):
+            # DrawingML has no per-word baseline lift or turn: the layer is a picture of the render, with its text
+            # as the picture's description.
+            raise Unsupported("hand-set text (per-word rise, turn or size)")
         pt = emu / 12700
         boxed = "width" in (layer.get("text_layout") or {})
         paragraphs, first_top, pen_left, hang = (self.rich_paragraphs(layer, pt) if active(layer)
@@ -805,6 +850,13 @@ def export_pptx(project, path=None, *, pages=None, dpi=None, report=None):
         tables = {str(i): s.table_info for i, (_, s) in enumerate(slides, 1) if s.table_info}
         if tables:
             report["tables"] = tables
+        native = {str(i): s.native_effects for i, (_, s) in enumerate(slides, 1) if s.native_effects}
+        if native:
+            # PowerPoint draws its own inner shadow; some other applications that open PPTX files leave it out.
+            report["native_effects"] = native
+            report.setdefault("warnings", []).append(
+                "Inner shadows are exported as PowerPoint's own inner shadow, so the shapes stay editable; PowerPoint "
+                "draws it with a slightly different softness, and LibreOffice Impress does not draw inner shadows.")
     if path:
         Path(path).write_bytes(data)
     return data

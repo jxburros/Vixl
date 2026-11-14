@@ -29,8 +29,14 @@ Where it appears:
   (only bounds and flow ran). The report's `outcome` is the worst state with a count per state.
 - **Jobs** (`status`): execution follows the job status; a production job's validation comes from its
   outputs. A job left `needs_review` by an uncertain remote request did not complete.
-- **Exports** (`vixl_export`, `vixl_export(kind='batch')`): `unvalidated` (exports run no design checks); export
-  warnings are review reasons; a batch reports each file and an overall summary. With `check` or a delivery `spec`
+- **Exports** (`vixl_export`, `vixl_export(kind='batch')`): an export runs no design checks of its own. It takes
+  the verdict of the last design check when that check is of this exact revision and covered the whole document
+  with at least the default checks (`last_check.complete`): `validated` after a clean check, `needs_review` with the
+  review findings counted, `validation_failed` when it had fix findings or a failed suite; `validated_by` names the
+  revision. It stays `unvalidated` when no check ran since the last change, when the check named `checks` or
+  `targets`, or when the export selects something the check did not see (`artboard`, `comp`, `variables`, `values`,
+  `page`, `pages`, `time`, `isolate`). Export warnings are review reasons; a batch reports each file and an overall
+  summary. With `check` or a delivery `spec`
   the written file is read back ([export checks](../guides/output/exporting.md#verify-the-delivered-file)): its
   `export_check` sets the validation (`failed` on a fix finding, `incomplete` when a field could not be measured),
   and review stays required because the design checks are separate.
@@ -61,6 +67,7 @@ Each design-check finding carries:
 | `contrast.unmeasurable` | | none: move the text onto the canvas, then recheck |
 | `safe_area.outside` | layer box vs safe area | `move` back inside the safe area |
 | `safe_area.reserved-zone` | | none |
+| `safe_area.outside-safe-guide`, `safe_area.outside-safe-guides`, `safe_area.keep-out`, `safe_area.crosses-fold` | | none: the finding names the role guide (`guide`) and the layer's ink box (`bounds`); move or resize the layer |
 | `overlap.text-text`, `overlap.text-object` | overlapping pixels | none mechanical; points at a dry-run `repair-layout`, which tries moves |
 | `overlap.decoration-text` (review) | decoration pixels inside the text's glyph area | none: move the decoration, or `layer-intent allow_overlap` |
 | `blanks.unfilled` | | held for review: copy is never guessed |

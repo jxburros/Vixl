@@ -9,6 +9,12 @@ and a tool's rarer options with `vixl_reference('vixl_export')` (any tool name b
 Read `vixl_document(action='notes')` before revising a document and resolve notes after addressing them.
 Humans can follow progress with `vixl -p DOCUMENT view`.
 
+Paths are relative to the workspace folder. A local server (stdio) names it: `vixl_document` `create`, `open` and
+`list` return `workspace` (absolute); network servers report `"."`. In a Git repository, a new document the
+repository ignores comes back with `git: "ignored…"`: its source would not be committed, so create it in a tracked
+folder or add a `.gitignore` exception. Keep sources and exports in folders (`design/poster.vixl`,
+`design/exports/poster.png`) rather than the repository root; missing folders are created.
+
 ## Brands, workspace typography and rolls
 
 Workspace `brand.json` provides default palette roles (plus `palette.extra` approved colours), pairing/embedded
@@ -38,8 +44,10 @@ Use a `roll` step in `vixl_apply` (CLI `roll --apply --set title=...`) to apply 
 
 An `import-document` step (`vixl_apply`) imports SVG and PDF as editable layers. Vixl's own SVG export carries its document, so
 re-importing it restores the same layers, live text, groups and effects (fonts are named, not stored: the import finds a
-bundled, cached, same-named registered or Google Fonts face again; any other font falls back to the bundled face with a
-warning). Other SVG becomes shapes, live text
+bundled, cached or same-named registered face again, and with `install_fonts: true` downloads a Google Fonts face the
+cache lacks; any other font falls back to the bundled face with a warning). An SVG or PDF over an import budget
+(stylesheet rules, nested forms, raster fallbacks, total pixels) fails with `resource_limit`: import it with
+`svg_mode: "appearance"`. Other SVG becomes shapes, live text
 (`<text>`), groups (`<g>`), gradients and images; a PDF page becomes live text, paths and images (shadings and
 clipped content as image layers; its fonts are found again from `font_map`, registered fonts or the font cache, and
 the result's `fonts` says how). With the default `svg_mode="editable"` an unsupported SVG feature returns an

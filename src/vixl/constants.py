@@ -53,8 +53,9 @@ EFFECTS = (
 ) + tuple(ARTISTIC_DEFAULTS)
 
 # Effect names a layer's stack can hold: the effect operations plus ``lookup`` (a LUT added by the
-# lookup operation, whose ``name`` field names the table rather than the effect).
-STACK_EFFECTS = EFFECTS + ("lookup",)
+# lookup operation, whose ``name`` field names the table rather than the effect) and the textures the
+# pattern-fill and drawn-texture operations add (their settings are under ``texture``).
+STACK_EFFECTS = EFFECTS + ("lookup", "pattern-fill", "drawn-texture")
 # Amount used when an effect is added without one.
 EFFECT_DEFAULTS = {**ARTISTIC_DEFAULTS, "white-balance": 100, "lookup": 1}
 

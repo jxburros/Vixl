@@ -62,8 +62,9 @@ def key_for(project, layer=None, bounds=None):
     from .constants import EFFECTS
 
     layers = [layer] if layer else project.state["layers"]
+    # A lookup or texture effect, or a pattern used as paper texture, reads the document's tables and tiles.
     if any(x.get("linked") or x["type"] == "link" or any(e["name"] not in EFFECTS for e in x.get("effects", []))
-           for x in layers):
+           or (layer and (x.get("cut_paper") or {}).get("pattern")) for x in layers):
         return None
     fonts = [font_digest(font_data(project, x)) for x in layers if x["type"] == "text"]
     if layer:

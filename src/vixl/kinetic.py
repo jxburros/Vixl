@@ -273,7 +273,7 @@ def glyph_boxes(items):
 
     boxes = []
     for data, name, x, y, size, skew in items:
-        _, box = glyph_outline(data, name)
+        _, box = glyph_outline(data, name, size)
         if not box:
             boxes.append(None)
             continue
@@ -363,7 +363,7 @@ def render_plain(project, layer, layout, placed):
     paths, kept = [], []
     for item, move in zip(placed, moves):
         data, name, x, y, size = item[:5]
-        path, _ = glyph_outline(data, name)
+        path, _ = glyph_outline(data, name, size)
         if not path:
             continue
         f = size / face(data)[0]["head"].unitsPerEm
@@ -414,7 +414,7 @@ def check_layer(project, layer):
             "Remove the warp/path, or use animate-preset on the whole layer", field="target")
     found = glyphs(project, layer)
     require(found is not None, f"text-animate needs outline text; {layer['name']!r} uses a font drawn by the fallback "
-            "renderer (bitmap or colour font)", field="target")
+            "renderer (a bitmap font without outlines)", field="target")
     return found
 
 

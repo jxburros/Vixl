@@ -237,8 +237,8 @@ def test_check_reports_a_path_drawn_cut_off_at_its_box(monkeypatch):
     # A renderer that does that again is caught, as a finding to fix.
     original = scene.paper_image
 
-    def unmarked(image, layer):
-        result = original(image, layer)
+    def unmarked(image, layer, project=None):
+        result = original(image, layer, project)
         if layer.get("cut_paper"):
             result.info.pop("vixl_vector_overflow", None)
         return result

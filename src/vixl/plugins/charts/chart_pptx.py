@@ -7,13 +7,16 @@ spreadsheet library is needed). Colors, fonts, scale, number formats, gridlines,
 labels follow the chart's own settings. A rotated or flipped chart, which PowerPoint cannot draw,
 stays the shapes it is in Vixl. Total labels and a donut's center text have no native counterpart:
 the center text is exported as a text box over the chart, total labels are listed in the report.
+An emphasis (``chart-emphasis``) becomes native point colours: muted bars, slices and markers are data
+points with their own fill, the focus point of a line a larger marker. Its callouts (and the focus dot
+of an area chart, which has no markers) are exported as shapes over the chart, like the center text.
 """
 
 import io
 from xml.sax.saxutils import escape, quoteattr
 import zipfile
 
-from .charts import Kit, Style, rgba
+from .charts import Emphasis, Kit, Style, rgba
 
 C_NS = ('xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" '
         'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
@@ -171,13 +174,20 @@ class Native:
         self.categories, self.series = self.recipe["categories"], self.recipe["series"]
         self.colors = self.summary["colors"]
         self.size = self.style.fs * pt
+        self.em = Emphasis(view, self.recipe, self.style)
+        # The series whose focus marks carry the callouts in place of their value labels (see charts.py).
+        self.single = self.em.series if self.em.series is not None else (0 if len(self.series) == 1 else None)
+
+    def quiet(self, j):
+        """Category indices of series ``j`` whose value label a callout replaces."""
+        return self.em.categories if self.em.text and j == self.single else []
 
     def refs(self, j):
         n = len(self.categories)
         col = column(j + 1)
         return f"Sheet1!$A$2:$A${n + 1}", f"Sheet1!${col}$1", f"Sheet1!${col}$2:${col}${n + 1}"
 
-    def labels(self, color, position, fmt, percent=False, both=False):
+    def labels(self, color, position, fmt, percent=False, both=False, drop=()):
         recipe = self.recipe
         if recipe.get("value_labels", "auto") in (False, "none"):
             return ""
@@ -188,7 +198,8 @@ class Native:
         face = self.face[False]
         value, share = (0 if percent else 1), (1 if percent or both else 0)
         separator = "<c:separator>, </c:separator>" if value and share else ""
-        return (f'<c:dLbls><c:numFmt formatCode={quoteattr(fmt)} sourceLinked="0"/><c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>'
+        dropped = "".join(f'<c:dLbl><c:idx val="{i}"/><c:delete val="1"/></c:dLbl>' for i in sorted(drop))
+        return (f'<c:dLbls>{dropped}<c:numFmt formatCode={quoteattr(fmt)} sourceLinked="0"/><c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>'
                 f'{text_properties(self.state, self.size * 0.85, color, face)}'
                 + (f'<c:dLblPos val="{position}"/>' if position else "")
                 + f'<c:showLegendKey val="0"/><c:showVal val="{value}"/><c:showCatName val="0"/><c:showSerName val="0"/>'
@@ -236,11 +247,12 @@ class Native:
             head, tail = self.series_core(0, s)
             points = "".join(f'<c:dPt><c:idx val="{i}"/><c:bubble3D val="0"/><c:spPr>{solid(state, color)}'
                              f'<a:ln w="19050">{solid(state, style.separator)}</a:ln></c:spPr></c:dPt>'
-                             for i, color in enumerate(self.colors))
+                             for i, color in enumerate(self.em.color(c, 0, i) for i, c in enumerate(self.colors)))
             content = recipe.get("value_labels", "auto")
             both, only_value = content == "both", content == "value"
             fmt = self.summary["percent_format"] if not only_value else self.summary["label_format"]
-            labels = self.labels(style.ink, "outEnd" if kind == "pie" else None, fmt, percent=not only_value and not both, both=both)
+            labels = self.labels(style.ink, "outEnd" if kind == "pie" else None, fmt, percent=not only_value and not both,
+                                 both=both, drop=self.quiet(0))
             angle = round(recipe.get("start_angle", 0)) % 360
             chart = (f'<c:varyColors val="1"/><c:ser>{head}{points}{labels}{tail}</c:ser>'
                      f'<c:firstSliceAng val="{angle}"/>')
@@ -255,8 +267,16 @@ class Native:
         if "bar" in kind:
             for j, s in enumerate(self.series):
                 head, tail = self.series_core(j, s)
-                labels = self.labels(style.on(self.colors[j]) if stacked else style.ink, "ctr" if stacked else "outEnd", fmt)
-                sers.append(f'<c:ser>{head}<c:spPr>{solid(state, self.colors[j])}</c:spPr><c:invertIfNegative val="0"/>{labels}{tail}</c:ser>')
+                own = self.em.color(self.colors[j], j)
+                labels = self.labels(style.on(own) if stacked else style.ink, "ctr" if stacked else "outEnd", fmt,
+                                     drop=() if stacked else self.quiet(j))
+                # Bars the emphasis draws in another colour than their series are data points with their own fill.
+                points = "".join(
+                    f'<c:dPt><c:idx val="{i}"/><c:invertIfNegative val="0"/><c:bubble3D val="0"/>'
+                    f'<c:spPr>{solid(state, fill)}</c:spPr></c:dPt>'
+                    for i, fill in enumerate(self.em.color(self.colors[j], j, i) for i in range(len(self.categories)))
+                    if fill != own and s["values"][i])
+                sers.append(f'<c:ser>{head}<c:spPr>{solid(state, own)}</c:spPr><c:invertIfNegative val="0"/>{points}{labels}{tail}</c:ser>')
             gap = recipe.get("bar_gap", 0.3)
             gap_width = max(0, min(500, round(gap * (1 if stacked else len(self.series)) / (1 - gap) * 100)))
             overlap = '<c:overlap val="100"/>' if stacked else ""
@@ -265,19 +285,37 @@ class Native:
         if "area" in kind:
             for j, s in enumerate(self.series):
                 head, tail = self.series_core(j, s)
-                fill = solid(state, self.colors[j], 1 if stacked else 0.75)
-                sers.append(f'<c:ser>{head}<c:spPr>{fill}</c:spPr>{self.labels(style.ink, None, fmt)}{tail}</c:ser>')
+                fill = solid(state, self.em.color(self.colors[j], j), 1 if stacked else 0.75)
+                sers.append(f'<c:ser>{head}<c:spPr>{fill}</c:spPr>{self.labels(style.ink, None, fmt, drop=self.quiet(j))}{tail}</c:ser>')
             return (f'<c:areaChart><c:grouping val="{"stacked" if stacked else "standard"}"/><c:varyColors val="0"/>{"".join(sers)}'
                     f'<c:axId val="{ids[0]}"/><c:axId val="{ids[1]}"/></c:areaChart>')
         width = recipe.get("line_width") or max(2, round(self.style.fs * 0.18))
         dots = recipe.get("markers", len(self.categories) * len(self.series) <= 60)
+        dot = max(6, round(width * 2.4))
         for j, s in enumerate(self.series):
             head, tail = self.series_core(j, s)
+            own = self.em.color(self.colors[j], j)
             marker = (f'<c:marker><c:symbol val="circle"/><c:size val="{max(2, min(72, round(width * 2.4 * self.pt)))}"/>'
-                      f'<c:spPr>{solid(state, self.colors[j])}<a:ln><a:noFill/></a:ln></c:spPr></c:marker>'
+                      f'<c:spPr>{solid(state, own)}<a:ln><a:noFill/></a:ln></c:spPr></c:marker>'
                       if dots else '<c:marker><c:symbol val="none"/></c:marker>')
-            stroke = (f'<c:spPr><a:ln w="{round(width * self.pt * 12700)}" cap="rnd">{solid(state, self.colors[j])}<a:round/></a:ln></c:spPr>')
-            sers.append(f'<c:ser>{head}{stroke}{marker}{self.labels(style.ink, "t", fmt)}{tail}<c:smooth val="0"/></c:ser>')
+            points = []
+            for i in range(len(self.categories)):
+                if s["values"][i] is None:
+                    continue
+                fill = self.em.color(self.colors[j], j, i)
+                if i in self.em.categories and self.em.focused(j, i):
+                    # The point in focus: a larger marker ringed in the background colour, as Vixl draws it.
+                    size = max(2, min(72, round(dot * 1.7 * self.pt)))
+                    ring = f'<a:ln w="{round(max(1, round(dot * 0.2)) * self.pt * 12700)}">{solid(state, style.separator)}</a:ln>'
+                elif dots and fill != own:
+                    size, ring = max(2, min(72, round(width * 2.4 * self.pt))), "<a:ln><a:noFill/></a:ln>"
+                else:
+                    continue
+                points.append(f'<c:dPt><c:idx val="{i}"/><c:marker><c:symbol val="circle"/><c:size val="{size}"/>'
+                              f'<c:spPr>{solid(state, fill)}{ring}</c:spPr></c:marker><c:bubble3D val="0"/></c:dPt>')
+            stroke = (f'<c:spPr><a:ln w="{round(width * self.pt * 12700)}" cap="rnd">{solid(state, own)}<a:round/></a:ln></c:spPr>')
+            sers.append(f'<c:ser>{head}{stroke}{marker}{"".join(points)}{self.labels(style.ink, "t", fmt, drop=self.quiet(j))}'
+                        f'{tail}<c:smooth val="0"/></c:ser>')
         return (f'<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>{"".join(sers)}<c:marker val="1"/>'
                 f'<c:axId val="{ids[0]}"/><c:axId val="{ids[1]}"/></c:lineChart>')
 
@@ -331,12 +369,16 @@ def shapes(slide, layer, bounds, emu, layers, index):
              '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart">'
              f'<c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" r:id="{rid}"/></a:graphicData></a:graphic></p:graphicFrame>')
     out = [frame]
-    # Text that sits over the chart (a donut's center text, anything the person added to the group).
+    # What sits over the chart: a donut's center text, an emphasis's callouts (and, on an area chart, which has
+    # no markers, its focus dots), anything the person added to the group.
+    over = ("callout-", "focus-") if "area" in recipe["kind"] else ("callout-",)
+    if any(str(child.get("chart_part", "")).startswith("callout-") for child in layers if child.get("parent") == layer["id"]):
+        notes.append("callouts are text boxes over the native chart")
     sx, sy = w / layer["content_width"], h / layer["content_height"]
     for child in layers:
         if child.get("parent") != layer["id"] or not child["visible"] or child["opacity"] <= 0:
             continue
-        if child.get("chart_part") not in (None, "center-text"):
+        if child.get("chart_part") not in (None, "center-text") and not child["chart_part"].startswith(over):
             continue
         cx, cy, cw, ch = bounds[child["id"]]
         shifted = {**bounds, child["id"]: (x + cx * sx, y + cy * sy, cw * sx, ch * sy)}

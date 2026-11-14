@@ -14,9 +14,11 @@ def standalone(cmd, args):
         require(len(rest) <= 1, "Use house [show [PURPOSE]]")
         return show(rest[0] if rest else None)
     if cmd == "guide":
-        from .briefs import guide
+        from .briefs import guide, quick_start
 
-        return guide(" ".join(args) if args else None)
+        words = [arg for arg in args if arg != "--brief"]
+        text = " ".join(words) if words else None
+        return quick_start(guide(text), text) if len(words) != len(args) else guide(text)
     if cmd == "capabilities":
         from .capabilities import lookup
 

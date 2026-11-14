@@ -161,9 +161,12 @@ def test_psd_layers_names_blends_groups_and_dimensions(tmp_path):
     assert by_name["card"]["box"][2] > 140  # the drop shadow is part of the layer's pixels
     assert tree(psd["layers"])[1] == {"name": "badges", "children": [{"name": "b"}, {"name": "a"}]}
     assert report["layers"] == 7 and report["groups"] == 1
-    assert report["editable_text"] == ["Title é"] and "text_as_pixels" not in report
-    assert report["flattened_groups"] == ["turned"]
-    assert "type" in by_name["Title é"] and "type" not in by_name["card"]
+    title = next(layer for layer in p.state["layers"] if layer["name"] == "Title é")
+    assert report["text_as_pixels"] == [{"layer": "Title é", "id": title["id"], "reason": "psd_text is pixels"}]
+    assert "editable_text" not in report and report["flattened_groups"] == ["turned"]
+    assert "not editable type" in " ".join(report["warnings"])
+    # A default export is pixel layers only: no type-tool block anywhere in the file.
+    assert b"TySh" not in data and all("type" not in record for record in psd["layers"])
 
 
 def test_pillow_opens_the_composite_and_reads_the_layers(tmp_path):
@@ -274,7 +277,7 @@ def test_plain_text_exports_as_type_layers_that_parse_back(tmp_path):
     from vixl.psd_text import parse_type_block
 
     report = {}
-    psd = parse(type_document().export(tmp_path / "type.psd", report=report))
+    psd = parse(type_document().export(tmp_path / "type.psd", report=report, psd_text="editable"))
     assert report["editable_text"] == ["point", "boxed", "turned", "inside"] and "text_as_pixels" not in report
     assert not report["warnings"]
     by_name = {r["name"]: r for r in psd["layers"]}
@@ -294,7 +297,7 @@ def test_plain_text_exports_as_type_layers_that_parse_back(tmp_path):
 def test_type_layer_origin_is_where_the_text_is_drawn(tmp_path):
     from vixl.psd_text import parse_type_block
 
-    psd = parse(type_document().export(tmp_path / "type.psd"))
+    psd = parse(type_document().export(tmp_path / "type.psd", psd_text="editable"))
     by_name = {r["name"]: r for r in psd["layers"]}
 
     def origin(name):
@@ -329,7 +332,7 @@ def test_text_a_type_layer_cannot_carry_stays_pixels_with_a_reason(tmp_path):
         {"type": "text", "name": "upper", "text": "shout", "x": 200, "y": 60, "size": 20, "text_transform": "uppercase"},
     ])
     report = {}
-    psd = parse(p.export(tmp_path / "mixed.psd", report=report))
+    psd = parse(p.export(tmp_path / "mixed.psd", report=report, psd_text="editable"))
     assert report["editable_text"] == ["plain", "upper"]
     reasons = {item["layer"]: item["reason"] for item in report["text_as_pixels"]}
     assert set(reasons) == {"shadow", "rich", "caps", "warp", "clear", "emoji"}
@@ -345,27 +348,72 @@ def test_text_a_type_layer_cannot_carry_stays_pixels_with_a_reason(tmp_path):
     assert parse_type_block(by_name["upper"]["type"])["text"] == "SHOUT"  # the text as it is drawn
 
 
-def test_psd_text_pixels_writes_no_type_layers(tmp_path):
+def test_type_layers_are_opt_in_and_the_default_export_has_no_type_tool_block(tmp_path):
     p = type_document()
     report = {}
-    psd = parse(p.export(tmp_path / "pixels.psd", report=report, psd_text="pixels"))
-    assert "editable_text" not in report and len(report["text_as_pixels"]) == 4
-    assert all("type" not in record for record in psd["layers"])
+    data = p.export(tmp_path / "default.psd", report=report)
+    assert b"TySh" not in data and all("type" not in record for record in parse(data)["layers"])
+    assert "editable_text" not in report
+    assert [item["reason"] for item in report["text_as_pixels"]] == ["psd_text is pixels"] * 4
+    assert p.export(tmp_path / "pixels.psd", psd_text="pixels") == data  # the default, spelled out
+    assert b"TySh" in p.export(tmp_path / "editable.psd", psd_text="editable")
     with pytest.raises(VixlError, match="psd_text"):
         p.export(tmp_path / "bad.psd", psd_text="vector")
     p.save(tmp_path / "doc.vixl")
     env = {**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)}
-    run = subprocess.run([sys.executable, "-m", "vixl", "-p", str(tmp_path / "doc.vixl"), "export",
-                          str(tmp_path / "cli.psd"), "--psd-text", "pixels"], capture_output=True, text=True, env=env)
-    assert run.returncode == 0, run.stderr
-    assert all("type" not in record for record in parse((tmp_path / "cli.psd").read_bytes())["layers"])
+    for flags, typed in (([], False), (["--psd-text", "editable"], True)):
+        target = tmp_path / f"cli{len(flags)}.psd"
+        run = subprocess.run([sys.executable, "-m", "vixl", "-p", str(tmp_path / "doc.vixl"), "export", str(target),
+                              *flags], capture_output=True, text=True, env=env)
+        assert run.returncode == 0, run.stderr
+        assert (b"TySh" in target.read_bytes()) is typed
     from vixl.interfaces import Session
     from vixl.mcp_tools import export_file
 
     session = Session(workspace=tmp_path)
-    result = export_file(session, "mcp.psd", document="doc.vixl", psd_text="pixels")
+    result = export_file(session, "mcp.psd", document="doc.vixl")
     assert len(result["text_as_pixels"]) == 4 and "editable_text" not in result
-    assert export_file(session, "mcp2.psd", document="doc.vixl")["editable_text"] == ["point", "boxed", "turned", "inside"]
+    assert b"TySh" not in (tmp_path / "mcp.psd").read_bytes()
+    result = export_file(session, "mcp2.psd", document="doc.vixl", psd_text="editable")
+    assert result["editable_text"] == ["point", "boxed", "turned", "inside"]
+
+
+def test_rest_export_writes_type_layers_only_on_request(tmp_path):
+    from fastapi.testclient import TestClient
+    from vixl.interfaces import create_app
+
+    type_document().save(tmp_path / "api.vixl")
+    client = TestClient(create_app(tmp_path / "api.vixl"))
+    assert b"TySh" not in client.post("/export", json={"format": "PSD"}).content
+    assert b"TySh" in client.post("/export", json={"format": "PSD", "psd_text": "editable"}).content
+
+
+def test_colour_fonts_hand_set_text_and_inner_styles_stay_pixels(tmp_path):
+    import hashlib
+
+    from tests import color_font_helper as fonts
+
+    p = Project(500, 400, "#ffffff")
+    data = fonts.colr_v0()
+    operations = [
+        {"type": "text", "name": "hand", "text": "Hand set", "x": 10, "y": 10, "size": 30, "hand_set": {"seed": 3}},
+        {"type": "text", "name": "inner", "text": "Inner", "x": 10, "y": 80, "size": 30},
+        {"type": "layer-style", "target": "inner", "name": "inner-shadow", "settings": {}},
+        {"type": "text", "name": "plain", "text": "Plain", "x": 10, "y": 150, "size": 30},
+    ]
+    asset = f"fonts/{hashlib.sha256(data).hexdigest()}.ttf"
+    p.assets[asset] = data
+    operations = [{"type": "font-register", "name": "color", "asset": asset},
+                  {"type": "text", "name": "colour", "text": "AB", "font": "color", "x": 10, "y": 220, "size": 60},
+                  *operations]
+    p.apply(operations)
+    report = {}
+    exported = p.export(tmp_path / "new.psd", report=report, psd_text="editable")
+    assert report["editable_text"] == ["plain"]
+    reasons = {item["layer"]: item["reason"] for item in report["text_as_pixels"]}
+    assert "hand set" in reasons["hand"] and "styles" in reasons["inner"]
+    assert reasons["colour"] == "a colour font"
+    assert exported.count(b"8BIMTySh") == 1
 
 
 def test_engine_data_and_descriptors_round_trip():
@@ -395,7 +443,7 @@ def test_type_layers_are_read_by_psd_tools(tmp_path):
     psd_tools = pytest.importorskip("psd_tools")
     import io
 
-    document = psd_tools.PSDImage.open(io.BytesIO(type_document().export(tmp_path / "type.psd")))
+    document = psd_tools.PSDImage.open(io.BytesIO(type_document().export(tmp_path / "type.psd", psd_text="editable")))
     kinds = {layer.name: layer.kind for layer in document.descendants()}
     assert kinds["point"] == kinds["boxed"] == kinds["turned"] == kinds["inside"] == "type" and kinds["r"] == "pixel"
     point = next(layer for layer in document.descendants() if layer.name == "point")

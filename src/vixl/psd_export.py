@@ -5,11 +5,14 @@ clipping in canvas space and cropped to what it draws. Names, opacity, visibilit
 carry over, groups become PSD layer groups (folder records with section dividers), and the file
 carries the flattened composite that ``render`` produces. A group that Vixl transforms or filters
 as a whole (rotation, flip, skew, resize, effects, styles, clip, mask, repeat, distortion) is
-written as one pixel layer, because PSD groups cannot transform their contents. A plain text layer
-(one font, size and colour; point or box text; rotation at most) is also a type layer: its pixels
-plus a type-tool block (``psd_text``) that keeps the copy editable. Other text, shapes and paths are
-pixels only; adjustment layers are baked into the composite only. Channel data is PackBits (RLE)
-compressed.
+written as one pixel layer, because PSD groups cannot transform their contents. Text, shapes and
+paths are pixels, not editable type or vectors; adjustment layers are baked into the composite
+only. Channel data is PackBits (RLE) compressed.
+
+On request (``text='editable'``) a plain text layer (one font, size and colour; point or box text;
+rotation at most) is also a type layer: its pixels plus a type-tool block (``psd_text``) that keeps
+the copy editable. It is not the default because the block has not been confirmed in Photoshop or
+Photopea: a default export holds no type-tool block.
 
 Format reference: Adobe Photoshop File Format Specification, version 1 (PSD) files.
 """
@@ -144,7 +147,7 @@ def _pixels(project, layer, index, bounds, ancestors):
     return np.asarray(surface.crop(box)), box
 
 
-def build(project, report, text="editable"):
+def build(project, report, text="pixels"):
     from .render import child_index, color, resolve_layout, resolved_layers
     from .design import resolve_color
     from .objects import export_identity
@@ -189,7 +192,7 @@ def build(project, report, text="editable"):
 
                     type_data, reason = layer_block(project, stored.get(layer["id"]), layer, bounds, ancestors)
                 else:
-                    reason = "exported with psd_text='pixels'"
+                    reason = "psd_text is pixels"
                 if type_data is not None and not pixels.size:
                     type_data, reason = None, "nothing drawn"
                 if type_data is None:
@@ -277,11 +280,11 @@ def write(records, composite, dpi=72):
     return out.getvalue()
 
 
-def export_psd(project, path=None, *, page=None, variables=None, report=None, text="editable"):
+def export_psd(project, path=None, *, page=None, variables=None, report=None, text="pixels"):
     """Layered PSD bytes of the document (one page of a paged document); written to ``path`` when given.
-    ``report`` receives the layer and group counts, ``editable_text`` (the names of the type layers),
-    ``text_as_pixels`` (``[{layer, id, reason}]`` for text kept as pixels only) and warnings about what became
-    pixels. ``text='pixels'`` writes no type layers."""
+    ``report`` receives the layer and group counts, ``text_as_pixels`` (``[{layer, id, reason}]`` for text kept
+    as pixels only) and warnings about what became pixels. ``text='editable'`` also writes plain text layers as
+    type layers (``editable_text`` lists them); the default, ``'pixels'``, writes none."""
     from .render import render, view_page
 
     report = {} if report is None else report

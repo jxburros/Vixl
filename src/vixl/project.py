@@ -591,7 +591,7 @@ class Project:
         require(isinstance(operations, list) and operations, "Expected a nonempty list of operations")
         from .schema import validate_operation
         from .normalize import apply_centering, expand_batch, resolve_geometry
-        from .targets import fan_out
+        from .targets import fan_out, resolve_addresses
 
         notes = []
         operations = expand_batch(operations, notes)  # create-many → one operation per row
@@ -642,6 +642,7 @@ class Project:
                 if operation["type"] in ("layout-apply", "template-apply"):
                     from .brand import prepare
                     operation = prepare(candidate, operation)
+                operation = resolve_addresses(candidate, operation)  # {chart, series, category} → layer IDs
                 for single in fan_out(operation):  # targets on a per-layer operation: once per layer
                     resolved, centered = resolve_geometry(candidate, single)
                     execute(candidate, deepcopy(resolved))
@@ -960,12 +961,15 @@ class Project:
 
         return measure_spacing(self, **options)
 
-    def import_image(self, path=None, *, url=None, data=None, name="image", credit=None, license=None):
+    def import_image(self, path=None, *, url=None, data=None, name="image", credit=None, license=None,
+                     scale=None, sampling=None):
         """Embed an image from a file, bytes or an https URL as a new layer, recording its source
-        (url, fetched_at, sha256) and optional credit and license in the layer's provenance."""
+        (url, fetched_at, sha256) and optional credit and license in the layer's provenance. ``scale`` places it
+        at that multiple of its size; ``sampling="nearest"`` keeps its pixels crisp (pixel art)."""
         from .image_import import import_image_from
 
-        return import_image_from(self, path=path, url=url, data=data, name=name, credit=credit, license=license)
+        return import_image_from(self, path=path, url=url, data=data, name=name, credit=credit, license=license,
+                                 scale=scale, sampling=sampling)
 
     @memory_guard
     def inspect_pixels(self, target=None):
@@ -1333,7 +1337,13 @@ class Project:
                     elif name.startswith("fonts/"):
                         from PIL import ImageFont
 
-                        ImageFont.truetype(io.BytesIO(data), 12)
+                        try:
+                            ImageFont.truetype(io.BytesIO(data), 12)
+                        except OSError:
+                            from .fonts import bitmap_color_font
+
+                            if not bitmap_color_font(data):
+                                raise
                     elif name.startswith("assets/") and name.endswith(".wav"):
                         from .audio import read_audio
 

@@ -10,7 +10,7 @@ import pytest
 from PIL import Image
 
 from golden_compare import _canonical_svg_paths, check_png, check_text, pdf_to_image, pptx_snapshot
-from visual_fixtures import FIXTURES, PDF_FIXTURES, PPTX_FIXTURES, SVG_FIXTURES
+from visual_fixtures import FIXTURES, PDF_FIXTURES, PPTX_FIXTURES, SVG_FIXTURES, cut_paper_scene
 
 pytestmark = pytest.mark.visual
 
@@ -24,6 +24,14 @@ def test_svg_path_snapshot_ignores_final_digit_float_drift():
 @pytest.mark.parametrize("name", sorted(FIXTURES))
 def test_png(name):
     check_png(name, FIXTURES[name]().render())
+
+
+def test_cut_paper_frame():
+    # The last frame of the scene: each piece composited at its hold's jitter offset (one sub-pixel resampling of
+    # the drawn piece), with the stripes and hatching inside the pieces their own tracks turned and moved.
+    from vixl.timeline import render_at
+
+    check_png("cut_paper_frame", render_at(cut_paper_scene(), 1000))
 
 
 @pytest.mark.parametrize("name", SVG_FIXTURES)
@@ -47,7 +55,24 @@ def test_pptx_structure(name):
 
 
 def test_fixtures_are_small_and_cover_each_area():
-    assert 15 <= len(FIXTURES) <= 30
+    assert 15 <= len(FIXTURES) <= 40
     for name, build in FIXTURES.items():
         with Image.open(io.BytesIO(build().export(format="PNG"))) as image:
             assert max(image.size) <= 256, name
+
+
+def test_quadruped_gallop_sheet():
+    """One stride of the standard horse's gallop, then a jump out of it: six frames each, side by side."""
+    from vixl.project import Project
+    from vixl.timeline import render_at
+
+    p = Project(112, 96, "#f4efe6")
+    p.apply([{"type": "timeline-set", "duration": 1440, "loop_mode": "seamless"},
+             {"type": "character", "name": "steed", "species": "horse", "height": 60, "x": 26, "y": 30},
+             {"type": "character-cycle", "target": "steed", "cycle": "gallop"},
+             {"type": "character-cycle", "target": "steed", "cycle": "jump", "start": 480, "duration": 960, "amount": 24}])
+    times = [*range(0, 480, 80), *range(560, 1440, 160)]
+    sheet = Image.new("RGBA", (112 * 6, 96 * 2))
+    for index, time in enumerate(times[:12]):
+        sheet.paste(render_at(p, time).convert("RGBA"), (112 * (index % 6), 96 * (index // 6)))
+    check_png("quadruped_gallop_sheet", sheet)

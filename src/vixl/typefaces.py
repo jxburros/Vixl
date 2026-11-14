@@ -443,13 +443,11 @@ def _cache_dir():
 def _get(client, url):
     parsed = urlparse(url)
     require(parsed.scheme == "https", "Font downloads require HTTPS")
-    with client.stream("GET", url) as response:
+    from .fetch import ACCEPT_ENCODING, read_bounded
+
+    with client.stream("GET", url, headers={"Accept-Encoding": ACCEPT_ENCODING}) as response:
         require(response.status_code == 200, f"Font service returned HTTP {response.status_code}", "font_download_failed")
-        data = bytearray()
-        for chunk in response.iter_bytes():
-            data.extend(chunk)
-            require(len(data) <= LIMIT, "Font exceeds byte limit", "resource_limit")
-        return bytes(data)
+        return read_bounded(response, LIMIT, "Font exceeds byte limit")
 
 
 def cache_location():
@@ -546,13 +544,13 @@ def _pack_member(path, mtime, size, member):
 
 @lru_cache(maxsize=16)
 def _usable_face(data):
-    """Whether the outline renderer can draw from ``data`` (a damaged or colour font is skipped, not fatal)."""
+    """Whether the outline renderer can draw from ``data`` (a damaged font is skipped, not fatal)."""
     from .text import coverage, face
 
     try:
         face(data)
         return bool(coverage(data))
-    except Exception:  # noqa: BLE001 - an unreadable or colour font file is just not a usable face
+    except Exception:  # noqa: BLE001 - an unreadable font file is just not a usable face
         return False
 
 

@@ -414,6 +414,33 @@ OPERATION_GROUPS = {
 }
 
 
+# What an agent guesses wrong first (#798): the kind of a shape is a field, not an operation type.
+SHAPES_FIRST = {
+    "rule": "Every shape is {type: shape, shape: KIND}: the kind is a field, not an operation type. fill, stroke and "
+            "stroke_width are fields of it too. With target the same operation edits an existing shape.",
+    "examples": [
+        {"type": "shape", "shape": "rectangle", "name": "ground", "x": 0, "y": 800, "width": 1080, "height": 280,
+         "fill": "#7cb518"},
+        {"type": "shape", "shape": "ellipse", "name": "wheel", "x": 240, "y": 620, "width": 200, "height": 200,
+         "fill": "transparent", "stroke": "#1b1b1b", "stroke_width": 12},
+        {"type": "shape", "shape": "line", "name": "spoke", "x": 340, "y": 620, "width": 1, "height": 200,
+         "stroke": "#1b1b1b", "stroke_width": 4},
+        {"type": "shape", "shape": "path", "name": "frame", "path": "M 340 720 L 520 560 L 700 720 Z",
+         "fill": "transparent", "stroke": "#d62828", "stroke_width": 10},
+        {"type": "pen", "name": "body", "points": [[430, 520], [520, 400], [640, 430], [610, 560]], "closed": True,
+         "fill": "#f8f9fa"},
+        {"type": "solid", "name": "sky", "color": "#bde0fe"},
+    ],
+    "path": "shape: path takes SVG path data in local pixels: point (px, py) draws at (x + px, y + py), and x and y "
+            "default to 0, so data written in canvas coordinates needs no x, y, width or height (the box then "
+            "reaches the path's farthest point).",
+    "pen_or_path": "pen takes canvas points ([[x, y] …] smoothed, or Bezier nodes) and fits the box to them: use it "
+                   "for outlines placed point by point (bodies, beaks, hills). Use shape: path when you already have "
+                   "SVG path data.",
+    "kinds": "vixl_reference('operations', name='shape.shape') lists every kind",
+}
+
+
 def operations_index():
     """Operations grouped by what they are for, each with its one-line summary; anything not grouped is listed under 'other'."""
     from .constants import EFFECTS
@@ -663,6 +690,38 @@ def guidance(name, *, workspace=None):
     return result
 
 
+QUICK_TEXT = 400  # characters of a guidance text a quick start keeps
+
+
+def quick_start(result, brief=None):
+    """The first-step summary of a ``guide`` result (``vixl guide --brief``, ``detail='brief'``): what the piece
+    is, the first thing to do, the operations to reach for and how to get the rest; a few hundred characters
+    instead of the whole guide (#797)."""
+    full = f"vixl guide {brief}" if brief else "vixl guide"
+    more = f"{full} (vixl_reference({brief!r})) has the whole guide" if brief else \
+        "vixl guide KIND or BRIEF (vixl_reference(KIND or BRIEF)) has one kind's approach"
+    if "text" in result and "guidance" in result:  # one guidance text
+        text = result["text"]
+        cut = text[:QUICK_TEXT].rsplit(". ", 1)[0] + "." if len(text) > QUICK_TEXT else text
+        return {"guidance": result["guidance"], "text": cut, **({"more": more} if len(text) > QUICK_TEXT else {})}
+    if "kinds" in result and isinstance(result.get("start_here"), list):  # no brief: the start-here recipe
+        return {"first_step": result["start_here"][0], "kinds": sorted(result["kinds"]), "more": more}
+    short = {key: result[key] for key in ("kind", "title", "summary") if key in result}
+    thing = result.get("object")
+    if isinstance(thing, dict):
+        short["object"] = {key: thing[key] for key in ("kind", "name", "parts") if key in thing} or thing
+    approach = result.get("approach") or []
+    if approach:
+        short["first_step"] = approach[0]
+        if len(approach) > 1:
+            short["steps"] = len(approach)
+    for key in ("create", "operations", "sizes", "finishing_pass"):
+        if result.get(key):
+            short[key] = result[key][:6] if isinstance(result[key], list) else result[key]
+    short["more"] = more
+    return short
+
+
 def guide(brief=None, *, seed=None, variety=None, workspace=None):
     """The start-here recipe and kinds (no ``brief``), one kind, one guidance text, or the best match for a free-text brief."""
     if not brief or not brief.strip():
@@ -683,7 +742,7 @@ def guide(brief=None, *, seed=None, variety=None, workspace=None):
 
         return catalog()
     if key in ("operations", "ops", "operation", "operations-index"):
-        return {"operations": operations_index(),
+        return {"shapes": SHAPES_FIRST, "operations": operations_index(),
                 "next": "vixl_reference('operations', name=[…]) gives each operation's fields, a summary and examples"}
     if key in ("start-here", "start", "recipe"):
         return {"start_here": START_HERE}

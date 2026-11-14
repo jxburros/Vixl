@@ -23,34 +23,156 @@ SVG = "{http://www.w3.org/2000/svg}"
 SHORTCODE = re.compile(r":[a-zA-Z0-9_+-]{2,64}:")
 TYPES = ("emoji-mode", "emoji-set", "emoji-reset")
 
+# Every platform limit is data here. `checked` is the day the limit was read from `url`; `export_choice`
+# names the values that are Vixl's own conservative choice where the platform states none.
 DESTINATIONS = {
     "images": {
         "size": 128,
+        "size_range": [16, 1024],
         "max_bytes": None,
         "name_pattern": r"[a-z0-9_]{2,64}",
         "description": "Portable PNG + SVG image pack, editable VIXL masters and an offline preview.",
         "instructions": "Open index.html to browse. Use PNG files in any image upload or SVG on the web.",
+        "animated": {"format": "gif", "formats": ["gif", "webp", "apng"], "max_bytes": None},
     },
     "discord": {
         "size": 128,
         "max_bytes": 256 * 1024,
         "name_pattern": r"[a-z0-9_]{2,32}",
-        "description": "Static Discord custom emoji: 128×128 PNG, at most 256 KiB, 2–32 character names.",
+        "description": "Discord custom emoji: 128×128 PNG (animated: GIF), at most 256 KiB, 2–32 character names.",
         "url": "https://support.discord.com/hc/en-us/articles/360036479811-Custom-Emojis",
-        "instructions": "Unzip, then open Server Settings → Emoji → Upload Emoji and select files from png/. "
+        "checked": "2026-10-08",
+        "instructions": "Unzip, then open Server Settings → Emoji → Upload Emoji and select files from png/ "
+        "(gif/ in an animated pack). "
         "You need Create Expressions or Manage Expressions permission. Server emoji slots "
         "and use outside the server depend on the server and your Discord plan.",
+        "animated": {"format": "gif", "max_bytes": 256 * 1024, "loop": 0},
     },
     "slack": {
         "size": 128,
         "max_bytes": 128 * 1024,
         "name_pattern": r"[a-z0-9_]{2,64}",
-        "description": "Static Slack custom emoji: 128×128 transparent PNG, at most 128 KiB.",
+        "description": "Slack custom emoji: 128×128 transparent PNG (animated: GIF), at most 128 KiB.",
         "url": "https://slack.com/help/articles/206870177-Add-custom-emoji-and-aliases-to-your-workspace",
+        "checked": "2026-10-08",
         "instructions": "Unzip, then open Slack’s emoji picker → Add Emoji → Upload Image. Select a PNG "
+        "(a GIF from gif/ in an animated pack) "
         "and use its filename as the name. Your workspace must allow custom emoji.",
+        "animated": {"format": "gif", "max_bytes": 128 * 1024, "max_frames": 50, "loop": 0},
+        "export_choice": "The 50-frame cap on animated GIFs is a conservative export budget.",
+    },
+    "whatsapp": {
+        "size": 512,
+        "format": "webp",
+        "dir": "stickers",
+        "max_bytes": 100_000,
+        "count": [3, 30],
+        "tray": {"file": "tray.png", "size": 96, "max_bytes": 50_000},
+        "name_pattern": r"[a-z0-9_]{2,64}",
+        "description": "WhatsApp sticker pack: 3–30 stickers, 512×512 WebP, at most 100 KB each (animated: "
+        "500 KB, at most 10 s, frames of 8 ms or longer), a 96×96 PNG tray icon under 50 KB and contents.json. "
+        "A pack is all static or all animated.",
+        "url": "https://github.com/WhatsApp/stickers/blob/main/Android/README.md",
+        "checked": "2026-11-14",
+        "instructions": "Unzip. stickers/, tray.png and contents.json follow WhatsApp’s sticker-app format: copy "
+        "the WebP files and tray.png into a pack folder of the WhatsApp sample sticker app (assets/1) and "
+        "merge contents.json, then set name, publisher and identifier there; or import the WebP files with "
+        "a sticker-maker app. Each sticker needs one to three emoji tags in contents.json. WhatsApp shows "
+        "the first frame of an animated sticker when it stops, so make it the complete picture.",
+        "animated": {
+            "format": "webp",
+            "max_bytes": 500_000,
+            "max_duration": 10_000,
+            "min_frame_ms": 8,
+            "mixed": False,
+        },
+    },
+    "telegram": {
+        "size": 512,
+        "dir": "stickers",
+        "max_bytes": 512 * 1024,
+        "name_pattern": r"[a-z0-9_]{2,64}",
+        "description": "Telegram static stickers: 512×512 PNG.",
+        "url": "https://core.telegram.org/stickers",
+        "checked": "2026-11-14",
+        "export_choice": "Telegram states no byte limit for static images; 512 KiB is a conservative export budget.",
+        "instructions": "Unzip, open the @Stickers bot in Telegram, send /newpack, then send each file in "
+        "stickers/ as a file (not as a photo) followed by an emoji that matches it. /publish finishes the set.",
+    },
+    "telegram-emoji": {
+        "size": 100,
+        "dir": "emoji",
+        "max_bytes": 512 * 1024,
+        "name_pattern": r"[a-z0-9_]{2,64}",
+        "description": "Telegram static custom emoji: 100×100 PNG.",
+        "url": "https://core.telegram.org/stickers",
+        "checked": "2026-11-14",
+        "export_choice": "Telegram states no byte limit for static images; 512 KiB is a conservative export budget.",
+        "instructions": "Unzip, open the @Stickers bot in Telegram, send /newemojipack, choose static emoji, "
+        "then send each file in emoji/ as a file followed by an emoji that matches it. Using custom emoji "
+        "sets needs Telegram Premium.",
+    },
+    "telegram-animated": {
+        "size": 512,
+        "format": "tgs",
+        "dir": "stickers",
+        "max_bytes": 64 * 1024,
+        "name_pattern": r"[a-z0-9_]{2,64}",
+        "description": "Telegram animated stickers: one vector .tgs per emoji, 512×512, at most 3 s, 60 fps, "
+        "64 KiB, looped. Every emoji needs an animated VIXL master made of vector layers.",
+        "url": "https://core.telegram.org/stickers",
+        "checked": "2026-11-14",
+        "instructions": "Unzip, open the @Stickers bot in Telegram, send /newanimated, then send each .tgs "
+        "file in stickers/ followed by an emoji that matches it. /publish finishes the set.",
+        "animated": {
+            "format": "tgs",
+            "max_bytes": 64 * 1024,
+            "max_duration": 3000,
+            "fps": 60,
+            "fixed_fps": True,
+            "loop": 0,
+            "mixed": False,
+            "required": True,
+        },
+    },
+    "twitch": {
+        "size": 112,
+        "sizes": [28, 56, 112],
+        "max_bytes": 1024 * 1024,
+        "name_pattern": r"[a-z0-9]{2,25}",
+        "name_style": "alphanumeric",
+        "description": "Twitch emotes: PNG at 28×28, 56×56 and 112×112 (animated: GIF, at most 60 frames), "
+        "at most 1 MB each, letters and digits only in the emote code.",
+        "url": "https://help.twitch.tv/s/article/emote-guidelines",
+        "checked": "2026-11-14",
+        "export_choice": "The guidelines page could not be read when this profile was written; the sizes, 1 MB "
+        "limit and 60-frame cap are Twitch's long-standing values and should be confirmed there before a release.",
+        "instructions": "Unzip, open Creator Dashboard → Viewer Rewards → Emotes, add an emote, choose manual "
+        "upload and select the same name from 28/, 56/ and 112/. The filename is the emote code suffix; "
+        "Twitch adds your channel prefix. Emote slots and review depend on your channel.",
+        "animated": {"format": "gif", "max_bytes": 1024 * 1024, "max_frames": 60, "loop": 0},
+    },
+    "imessage": {
+        "size": 408,
+        "size_choices": [300, 408, 618],
+        "dir": "stickers",
+        "max_bytes": 500_000,
+        "name_pattern": r"[a-z0-9_]{2,64}",
+        "description": "iMessage stickers as a folder: PNG (animated: APNG) at 300 (small), 408 (regular) or "
+        "618 (large) px, at most 500 KB each. No Xcode project is written.",
+        "url": "https://developer.apple.com/design/human-interface-guidelines/imessage-apps-and-stickers",
+        "checked": "2026-11-14",
+        "instructions": "Unzip. In Xcode choose File → New → Project → iOS → Sticker Pack App, open "
+        "Stickers.xcstickers → Sticker Pack and drag the files in stickers/ into it. In the Attributes "
+        "inspector set Sticker Size to match the export (300 small, 408 regular, 618 large), add an app "
+        "icon, then run on a device or submit through App Store Connect. An Apple Developer account is "
+        "needed to distribute.",
+        "animated": {"format": "apng", "max_bytes": 500_000, "loop": 0},
     },
 }
+# Step-downs an animated emoji takes, in order, until it fits the destination's byte budget.
+ANIMATION_TONES = {"gif": [256, 128, 64, 32], "webp": [90, 75, 60, 45]}
+ANIMATION_RATES = (20, 15, 12, 10, 8, 5)
 
 
 @lru_cache(maxsize=1)
@@ -541,14 +663,22 @@ class EmojiFace(dict):
 EMOJI_FACE = EmojiFace(head=SimpleNamespace(unitsPerEm=72), hhea=SimpleNamespace(ascent=58, descent=-14))
 
 
-def append_art(parent, art, matrix, opacity=1):
+def append_art(parent, art, matrix, opacity=1, color=None):
+    """Place glyph artwork under ``matrix`` (font units, y up, to pixels). ``color`` (rgba) is the text colour,
+    which a colour-font glyph draws its foreground layers in."""
     group = ET.SubElement(
         parent,
         SVG + "g",
         {"transform": "matrix(" + " ".join(map(str, matrix)) + ")", "opacity": str(opacity)},
     )
-    # Font-space inversion is cancelled inside the SVG, so the rest of text layout is shared.
-    inner = ET.SubElement(group, SVG + "g", {"transform": "translate(0 58) scale(1 -1)"})
+    if getattr(art, "kind", None):
+        # A colour-font glyph (color_fonts.ColorGlyph) is already in font units, y up.
+        inner = group
+        if color is not None:
+            group.set("color", f"rgb({color[0]},{color[1]},{color[2]})")
+    else:
+        # Font-space inversion is cancelled inside the SVG, so the rest of text layout is shared.
+        inner = ET.SubElement(group, SVG + "g", {"transform": "translate(0 58) scale(1 -1)"})
     root = ET.fromstring(art)
     prefix = "emoji-" + hashlib.sha256((str(art) + repr(matrix)).encode()).hexdigest()[:12] + "-"
     ids = {node.get("id"): prefix + node.get("id") for node in root.iter() if node.get("id")}
@@ -583,19 +713,23 @@ def split_context(data, text):
     return fonts[:-1], pattern.sub(lambda m: reverse[m[0]], text), placeholders
 
 
-def names_for(keys, project=None):
+def names_for(keys, project=None, style=None):
+    """Unique upload names. ``style`` "alphanumeric" (Twitch emote codes) drops the underscores."""
     overrides = project.state.get("emojis", {}).get("overrides", {}) if project else {}
+    plain = style == "alphanumeric"
     result, used = {}, set()
     for key in keys:
         name = overrides.get(key, {}).get("name") or _entries().get(key, {}).get("name", key.strip(":"))
         name = re.sub("[^a-z0-9_]+", "_", name.lower()).strip("_")[:24] or "emoji"
+        if plain:
+            name = name.replace("_", "")[:20] or "emoji"
         if len(name) < 2:
-            name = "emoji_" + name
+            name = ("emoji" if plain else "emoji_") + name
         base = name
         suffix = 1
         while name in used:
             suffix += 1
-            name = f"{base}_{suffix}"
+            name = f"{base}{suffix}" if plain else f"{base}_{suffix}"
         used.add(name)
         result[key] = name
     return result
@@ -630,154 +764,540 @@ def png(svg, size):
     return resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode"))
 
 
-def requirements(destination="images", emojis=None, project=None):
-    require(destination in DESTINATIONS, "Unknown emoji destination", allowed=list(DESTINATIONS))
+def _fits(count, limit):
+    return limit is None or count < limit
+
+
+def _memo(cache, key, make):
+    """Renders shared by the destinations of one call; a single destination streams and keeps nothing."""
+    if cache is None:
+        return make()
+    if key not in cache:
+        cache[key] = make()
+    return cache[key]
+
+
+def _still(svg, size, format, max_bytes):
+    """One static image. WebP starts lossless and steps the quality down until it fits the byte limit."""
+    raw = png(svg, size)
+    if format == "png":
+        return raw
+    from PIL import Image
+
+    image = Image.open(io.BytesIO(raw)).convert("RGBA")
+    data = b""
+    for options in ({"lossless": True}, *({"quality": q} for q in ANIMATION_TONES["webp"])):
+        stream = io.BytesIO()
+        image.save(stream, format="WEBP", method=4, **options)
+        data = stream.getvalue()
+        if _fits(len(data), max_bytes):
+            break
+    return data
+
+
+def _tray(svg, spec):
+    raw = png(svg, spec["size"])
+    if not _fits(len(raw), spec["max_bytes"]):
+        from PIL import Image
+
+        stream = io.BytesIO()
+        Image.open(io.BytesIO(raw)).convert("RGBA").quantize(256).save(stream, format="PNG", optimize=True)
+        raw = stream.getvalue()
+    require(_fits(len(raw), spec["max_bytes"]), "Tray icon exceeds its byte limit", "resource_limit")
+    return raw
+
+
+def _master(project, key, cache):
+    """The emoji's VIXL master and its own loop count when its timeline moves something, else None.
+    Only document overrides can be animated: the bundled masters are still images."""
+    override = project.state.get("emojis", {}).get("overrides", {}).get(key) if project else None
+    if not override or override.get("format") != "vixl":
+        return None
+
+    def load():
+        from .timeline import animated
+
+        master = load_master(project.assets[override["source"]], project.limits)
+        timeline = master.state.get("timeline")
+        return (master, timeline.get("loop", 0)) if animated(timeline) else None
+
+    return _memo(cache, ("master", key), load)
+
+
+def _animation(found, name, size, spec, format, destination):
+    """Export one animated emoji through the timeline exporter inside the destination's budgets.
+    Returns (data, report). Colours (GIF) or quality (WebP) step down first, then the frame rate;
+    the pixel size is the destination's and never changes."""
+    import math
+
+    from .timeline import export_timeline
+
+    master, own_loop = found
+    canvas, timeline = master.state["canvas"], master.state["timeline"]
+    require(
+        canvas["width"] == canvas["height"],
+        f"{name}: an animated emoji master needs a square canvas",
+        "unsupported_export",
+    )
+    duration = timeline["duration"]
+    limit = spec.get("max_duration")
+    require(
+        limit is None or duration <= limit,
+        f"{name} runs {duration} ms; {destination} allows at most {limit} ms",
+        "unsupported_export",
+    )
+    timeline["loop"] = own_loop if spec.get("loop") is None else spec["loop"]
+    fps = spec["fps"] if spec.get("fixed_fps") else min(timeline["fps"], spec.get("fps", 60))
+    if spec.get("min_frame_ms"):
+        fps = min(fps, 1000 // spec["min_frame_ms"])
+    if spec.get("max_frames"):
+        fps = min(fps, math.floor(spec["max_frames"] * 1000 / duration))
+        require(
+            fps >= 1,
+            f"{name} is too long for {destination}’s {spec['max_frames']}-frame limit",
+            "unsupported_export",
+        )
+    scale = size / canvas["width"]
+    tone_name = {"gif": "colors", "webp": "quality"}.get(format)
+    tones = ANIMATION_TONES.get(format, [None])
+    steps = [(fps, tone) for tone in tones] + [(rate, tones[-1]) for rate in ANIMATION_RATES if rate < fps]
+    if format == "tgs":
+        # Vector output has no colours or frames to drop; the Lottie exporter enforces the TGS limits.
+        steps = steps[:1]
+    suffix = {"apng": ".png"}.get(format, "." + format)
+    data = report = None
+    with tempfile.TemporaryDirectory(prefix="vixl-emoji-") as tmp:
+        for tries, (rate, tone) in enumerate(steps, 1):
+            path = Path(tmp) / f"{tries}{suffix}"
+            report = export_timeline(
+                master, path, format=format, fps=rate, scale=scale, **({tone_name: tone} if tone_name else {})
+            )
+            data = path.read_bytes()
+            if _fits(len(data), spec.get("max_bytes")):
+                break
+        else:
+            raise VixlError(
+                "resource_limit",
+                f"{name} exceeds {destination} animated byte limit ({len(data):,} bytes after {len(steps)} "
+                "step-downs); shorten or simplify the animation",
+            )
+    require(
+        list(report["size"]) == [size, size],
+        f"{name}: animated export is not {size}×{size}",
+        "unsupported_export",
+    )
+    return data, {
+        "format": format,
+        "fps": report["fps"],
+        "frames": report["frames"],
+        "duration": report["duration"],
+        "loop": timeline["loop"],
+        "bytes": len(data),
+        "tries": tries,
+        **({tone_name: tone} if tone_name else {}),
+    }
+
+
+def _plan(destination, size=None, animated=False):
+    """Validated settings of one destination: pixel sizes, static format and the animation spec."""
     profile = DESTINATIONS[destination]
+    spec = profile.get("animated")
+    require(
+        animated is False or spec is not None,
+        f"{destination} has no animated profile",
+        "unsupported_export",
+        field="animated",
+    )
+    if spec and spec.get("required"):
+        animated = animated or True
+    motion = None
+    if animated is not False:
+        formats = spec.get("formats", [spec["format"]])
+        motion = spec["format"] if animated is True else animated
+        require(
+            motion in formats,
+            f"{destination} animated packs are {' or '.join(formats)}",
+            "unsupported_export",
+            field="animated",
+            allowed=formats,
+        )
+    if size is None:
+        size = profile["size"]
+    require(type(size) is int and 16 <= size <= 1024, "Emoji export size must be 16–1024", field="size")
+    low, high = profile.get("size_range", [0, 0])
+    require(
+        size == profile["size"] or size in profile.get("size_choices", ()) or low <= size <= high,
+        "Use the destination’s required export size",
+        field="size",
+        allowed=profile.get("size_choices", [profile["size"]]),
+    )
+    return {
+        "profile": profile,
+        "sizes": profile.get("sizes", [size]),
+        "size": size,
+        "format": profile.get("format", "png"),
+        "dir": profile.get("dir", "png"),
+        # Emoji uploads keep the still PNG beside the animation; sticker and emote sets hold one file each.
+        "beside": "dir" not in profile and "sizes" not in profile,
+        "spec": spec,
+        "motion": motion,
+    }
+
+
+def _folder(plan, size):
+    return str(size) if "sizes" in plan["profile"] else plan["dir"]
+
+
+def _entry_files(destination, plan, key, name, project, cache):
+    """What one emoji contributes to a pack: [(path, data, byte limit)] with the largest size first, and
+    its animation report (None for a still). The caller applies the byte limits."""
+    profile, spec = plan["profile"], plan["spec"]
+    found = _master(project, key, cache) if plan["motion"] else None
+    files, report = [], None
+    if found:
+        format = plan["motion"]
+        folder = format if plan["beside"] else None
+        suffix = "png" if format == "apng" and folder is None else format
+        for size in sorted(plan["sizes"], reverse=True):
+            data, made = _memo(
+                cache,
+                ("motion", key, size, format, json.dumps(spec, sort_keys=True)),
+                lambda size=size: _animation(found, name, size, spec, format, destination),
+            )
+            report = report or made
+            files.append((f"{folder or _folder(plan, size)}/{name}.{suffix}", data, spec.get("max_bytes")))
+        if folder is None:
+            return files, report
+    require(
+        plan["format"] != "tgs",
+        f"{name} has no animated VIXL master; {destination} exports animations only",
+        "unsupported_export",
+    )
+    svg = _memo(cache, ("svg", key), lambda: artwork(project, key))
+    for size in sorted(plan["sizes"], reverse=True):
+        data = _memo(
+            cache,
+            ("still", key, size, plan["format"], plan["format"] != "png" and profile["max_bytes"]),
+            lambda size=size: _still(svg, size, plan["format"], profile["max_bytes"]),
+        )
+        files.append((f"{_folder(plan, size)}/{name}.{plan['format']}", data, profile["max_bytes"]))
+    return files, report
+
+
+def _pack_findings(destination, plan, keys, moving):
+    """Rules about the pack as a whole: sticker counts and all-static or all-animated sets."""
+    profile, spec = plan["profile"], plan["spec"]
+    findings = []
+    low, high = profile.get("count", [1, 5000])
+    if not low <= len(keys) <= high:
+        findings.append(f"A {destination} pack holds {low}–{high} emojis; {len(keys)} selected")
+    if plan["motion"] and spec.get("mixed") is False and len(moving) < len(keys):
+        still = [k for k in keys if k not in moving]
+        findings.append(
+            f"A {destination} animated pack cannot mix still and animated emojis; no animated VIXL master: "
+            + ", ".join(still[:8])
+            + (" …" if len(still) > 8 else "")
+        )
+    return findings
+
+
+def _destinations(destination):
+    names = [destination] if isinstance(destination, str) else destination
+    require(
+        isinstance(names, (list, tuple))
+        and len(names) > 0
+        and all(isinstance(n, str) and n in DESTINATIONS for n in names)
+        and len(names) == len(set(names)),
+        "Unknown emoji destination",
+        field="destination",
+        allowed=list(DESTINATIONS),
+    )
+    return list(names)
+
+
+def _check_animated(animated):
+    require(
+        type(animated) is bool or (isinstance(animated, str) and animated in ("gif", "webp", "apng")),
+        "animated must be true, false, gif, webp or apng",
+        field="animated",
+    )
+
+
+def requirements(destination="images", emojis=None, project=None, animated=False, size=None):
+    """Render the selection as each destination would receive it and report every rule it breaks.
+    A list of destinations returns one report per destination under ``destinations``."""
+    names = _destinations(destination)
+    _check_animated(animated)
     keys = select(emojis, project)
-    names = names_for(keys, project)
-    entries = []
-    for key in keys:
-        raw = png(artwork(project, key), profile["size"])
-        entries.append(
+    cache = {} if len(names) > 1 else None
+    reports = []
+    for name in names:
+        plan = _plan(name, size, animated)
+        profile = plan["profile"]
+        labels = names_for(keys, project, profile.get("name_style"))
+        entries, moving = [], set()
+        for key in keys:
+            try:
+                files, motion = _entry_files(name, plan, key, labels[key], project, cache)
+                problem = None
+            except VixlError as exc:
+                files, motion, problem = [], None, str(exc)
+            if motion:
+                moving.add(key)
+            entries.append(
+                {
+                    "id": key,
+                    "name": labels[key],
+                    "size": [plan["size"]] * 2,
+                    "bytes": max((len(data) for _, data, _ in files), default=0),
+                    **({"files": {path: len(data) for path, data, _ in files}} if len(files) > 1 else {}),
+                    **({"animation": motion} if motion else {}),
+                    **({"problem": problem} if problem else {}),
+                    "passed": problem is None
+                    and all(_fits(len(data), limit) for _, data, limit in files)
+                    and re.fullmatch(profile["name_pattern"], labels[key]) is not None,
+                }
+            )
+        findings = _pack_findings(name, plan, keys, moving)
+        reports.append(
             {
-                "id": key,
-                "name": names[key],
-                "size": [profile["size"]] * 2,
-                "bytes": len(raw),
-                "passed": (profile["max_bytes"] is None or len(raw) < profile["max_bytes"])
-                and re.fullmatch(profile["name_pattern"], names[key]) is not None,
+                "destination": name,
+                "profile": deepcopy(profile),
+                "checked": profile.get("checked", "2026-10-08"),
+                "count": len(entries),
+                "animated": bool(plan["motion"]),
+                "passed": not findings and all(e["passed"] for e in entries),
+                **({"findings": findings} if findings else {}),
+                "entries": entries,
+                "note": "Checks image dimensions, encoded bytes, names and pack rules. Account permissions and "
+                "emoji slots are checked by the destination.",
             }
         )
-    return {
+    if isinstance(destination, str):
+        return reports[0]
+    return {"passed": all(r["passed"] for r in reports), "destinations": reports}
+
+
+def _write_pack(z, destination, plan, keys, project, sources, cache):
+    """Fill one destination's ZIP. Returns the summary export_pack reports for it."""
+    from html import escape
+
+    profile = plan["profile"]
+    names = names_for(keys, project, profile.get("name_style"))
+    overrides = project.state.get("emojis", {}).get("overrides", {}) if project else {}
+    moving = {key for key in keys if plan["motion"] and _master(project, key, cache)}
+    findings = _pack_findings(destination, plan, keys, moving)
+    require(not findings, "; ".join(findings), "unsupported_export")
+    entries, untagged = [], []
+    for key in keys:
+        name = names[key]
+        require(
+            re.fullmatch(profile["name_pattern"], name) is not None,
+            f"{name} is not a valid {destination} name",
+        )
+        files, motion = _entry_files(destination, plan, key, name, project, cache)
+        for path, data, limit in files:
+            require(_fits(len(data), limit), f"{name} exceeds {destination} upload byte limit")
+            z.writestr(path, data)
+        item = {
+            "id": key,
+            "name": name,
+            "image": files[-1][0] if motion and plan["beside"] else files[0][0],
+            "svg": f"svg/{name}.svg",
+            "license": overrides.get(key, {}).get("license", "CC-BY-SA-4.0"),
+            "original_name": _entries().get(key, {}).get("name", name),
+            "kind": _entries().get(key, {}).get("kind", "custom"),
+            "unicode_sequence": _entries()[key]["emoji"] if not key.startswith(":") else None,
+            "codepoints": key.split("-") if not key.startswith(":") else [],
+            "shortcodes": [key] if key.startswith(":") else [],
+            "group": _entries().get(key, {}).get("group", "Custom"),
+            "category": _entries().get(key, {}).get("subgroup", "custom"),
+            "source_origin": overrides[key].get("source_origin", "User supplied")
+            if key in overrides
+            else _entries().get(key, {}).get("source", "User supplied"),
+            "author": overrides[key].get("author", "User supplied")
+            if key in overrides
+            else _entries().get(key, {}).get("author", "User supplied"),
+        }
+        if len(files) > 1:
+            item["files"] = [path for path, _, _ in files]
+        if motion:
+            item["animation"] = {**motion, "file": files[0][0]}
+        z.writestr(item["svg"], _memo(cache, ("svg", key), lambda: artwork(project, key)))
+        if sources:
+            master = artwork(project, key, "vixl")
+            if master:
+                item["source"] = f"vixl/{name}.vixl"
+                z.writestr(item["source"], master)
+        entries.append(item)
+    notes = []
+    if "tray" in profile:
+        tray = profile["tray"]
+        z.writestr(
+            tray["file"], _tray(_memo(cache, ("svg", keys[0]), lambda: artwork(project, keys[0])), tray)
+        )
+    if destination == "whatsapp":
+        stickers = []
+        for e in entries:
+            tags = [e["unicode_sequence"]] if e["unicode_sequence"] else []
+            if not tags:
+                untagged.append(e["name"])
+            stickers.append(
+                {
+                    "image_file": Path(e["image"]).name,
+                    "emojis": tags,
+                    "accessibility_text": e["original_name"][:125],
+                }
+            )
+        version = hashlib.sha256("".join(s["image_file"] for s in stickers).encode()).hexdigest()[:8]
+        contents = {
+            "android_play_store_link": "",
+            "ios_app_store_link": "",
+            "sticker_packs": [
+                {
+                    "identifier": "pack",
+                    "name": "Vixl stickers",
+                    "publisher": "",
+                    "tray_image_file": profile["tray"]["file"],
+                    "image_data_version": version,
+                    "animated_sticker_pack": bool(plan["motion"]),
+                    "stickers": stickers,
+                }
+            ],
+        }
+        z.writestr("contents.json", json.dumps(contents, ensure_ascii=False, indent=2))
+        if untagged:
+            notes.append(
+                "Add one to three emoji tags in contents.json for the custom stickers that have no Unicode "
+                "emoji: " + ", ".join(untagged) + "."
+            )
+    still = [e["name"] for e in entries if plan["motion"] and "animation" not in e]
+    if still:
+        notes.append("No animated VIXL master, exported as still images: " + ", ".join(still) + ".")
+    manifest = {
+        "version": 1,
+        "unicode_version": _catalog()["unicode_version"],
+        "style": _catalog()["style"],
         "destination": destination,
-        "profile": deepcopy(profile),
-        "checked": "2026-10-08",
-        "count": len(entries),
-        "passed": all(e["passed"] for e in entries),
+        "size": plan["size"],
+        **({"sizes": plan["sizes"]} if len(plan["sizes"]) > 1 else {}),
+        "animated": bool(plan["motion"]),
         "entries": entries,
-        "note": "Checks image dimensions, encoded bytes and names. Account permissions and emoji slots are checked by the destination.",
+    }
+    z.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False, indent=2))
+    instructions = profile["instructions"] + "".join(" " + note for note in notes)
+    z.writestr(
+        "README.txt",
+        instructions + "\n\nSee manifest.json for Unicode mappings and licenses.\n"
+        "VIXL Line is adapted from OpenMoji 17.0.0 (https://openmoji.org), CC BY-SA 4.0.\n"
+        "Changes: softened geometric contours, navy outlines, reduced stroke width and a restrained palette; national flag colors preserved.\n"
+        "VIXL Originals (faces, reactions and everyday symbols) are original VIXL artwork under CC BY-SA 4.0; see per-entry source_origin.\n"
+        "Custom artwork retains the license stated in manifest.json.\nMade with Vixl.\n",
+    )
+    for name in ("LICENSE.txt", "UNICODE-LICENSE.txt"):
+        z.writestr(name, (DATA / name).read_bytes())
+    cards = "".join(
+        # A browser cannot draw .tgs; the SVG appearance stands in for it.
+        f'<figure><img src="{e["svg"] if e["image"].endswith(".tgs") else e["image"]}" '
+        f'alt="{escape(e["original_name"], quote=True)}">'
+        f"<figcaption>:{escape(e['name'])}:</figcaption></figure>"
+        for e in entries
+    )
+    z.writestr(
+        "index.html",
+        '<!doctype html><meta charset="utf-8"><title>VIXL Line emojis</title>'
+        "<style>body{font:16px system-ui;background:#f7f5f0;color:#23364d;margin:32px}"
+        "main{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px}"
+        "figure{margin:0;padding:16px;background:white;border-radius:12px;text-align:center}"
+        "img{width:72px;height:72px}figcaption{overflow-wrap:anywhere;font-size:12px}</style>"
+        "<h1>VIXL Line</h1><p>" + escape(instructions) + "</p><main>" + cards + "</main>",
+    )
+    return {
+        "count": len(keys),
+        "destination": destination,
+        "size": plan["size"],
+        **({"sizes": plan["sizes"]} if len(plan["sizes"]) > 1 else {}),
+        "sources": sources,
+        **({"animated": len(entries) - len(still), "format": plan["motion"]} if plan["motion"] else {}),
+        **({"still": still} if still else {}),
+        **({"untagged": untagged} if untagged else {}),
+        "instructions": instructions,
     }
 
 
 def export_pack(
-    output, emojis=None, destination="images", project=None, sources=True, size=None, overwrite=False
+    output,
+    emojis=None,
+    destination="images",
+    project=None,
+    sources=True,
+    size=None,
+    overwrite=False,
+    animated=False,
 ):
-    require(destination in DESTINATIONS, "Unknown emoji destination")
+    """Write a destination-ready pack. ``destination`` is one name or a list: a list writes one ZIP per
+    destination next to ``output`` (``pack.zip`` becomes ``pack-discord.zip``, ``pack-whatsapp.zip`` …),
+    renders each emoji once per size and writes nothing when any destination's rule fails.
+    ``animated`` (true, or "gif"/"webp"/"apng" where the destination offers a choice) exports the emojis
+    whose VIXL master has a timeline as animations inside the destination's duration, frame and byte
+    budgets."""
+    import os
+    import shutil
+    from contextlib import ExitStack
+
+    from .fileio import temporary
+
+    names = _destinations(destination)
     require(type(sources) is bool and type(overwrite) is bool, "sources and overwrite must be boolean")
-    profile = DESTINATIONS[destination]
+    _check_animated(animated)
+    require(
+        size is None or len(names) == 1,
+        "size applies to one destination; each has its own size",
+        field="size",
+    )
+    plans = {name: _plan(name, size, animated) for name in names}
     keys = select(emojis, project)
-    size = profile["size"] if size is None else size
-    require(type(size) is int and 16 <= size <= 1024, "Emoji export size must be 16–1024")
-    require(destination == "images" or size == profile["size"], "Use the destination’s required export size")
     output = Path(output)
     require(output.suffix.lower() == ".zip", "Emoji pack output must end in .zip")
-    require(overwrite or not output.exists(), "Emoji pack output already exists", "output_exists")
-    names = names_for(keys, project)
-    overrides = project.state.get("emojis", {}).get("overrides", {}) if project else {}
-    # Spool large packs to disk; only one artwork and its PNG need to be decoded at a time.
-    with tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024) as buffer:
-        entries = []
-        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as z:
-            for key in keys:
-                svg = artwork(project, key)
-                image = png(svg, size)
-                name = names[key]
-                require(
-                    profile["max_bytes"] is None or len(image) < profile["max_bytes"],
-                    f"{name} exceeds {destination} upload byte limit",
-                )
-                item = {
-                    "id": key,
-                    "name": name,
-                    "image": f"png/{name}.png",
-                    "svg": f"svg/{name}.svg",
-                    "license": overrides.get(key, {}).get("license", "CC-BY-SA-4.0"),
-                    "original_name": _entries().get(key, {}).get("name", name),
-                    "kind": _entries().get(key, {}).get("kind", "custom"),
-                    "unicode_sequence": _entries()[key]["emoji"] if not key.startswith(":") else None,
-                    "codepoints": key.split("-") if not key.startswith(":") else [],
-                    "shortcodes": [key] if key.startswith(":") else [],
-                    "group": _entries().get(key, {}).get("group", "Custom"),
-                    "category": _entries().get(key, {}).get("subgroup", "custom"),
-                    "source_origin": overrides[key].get("source_origin", "User supplied")
-                    if key in overrides
-                    else _entries().get(key, {}).get("source", "User supplied"),
-                    "author": overrides[key].get("author", "User supplied")
-                    if key in overrides
-                    else _entries().get(key, {}).get("author", "User supplied"),
-                }
-                z.writestr(item["image"], image)
-                z.writestr(item["svg"], svg)
-                if sources:
-                    master = artwork(project, key, "vixl")
-                    if master:
-                        item["source"] = f"vixl/{name}.vixl"
-                        z.writestr(item["source"], master)
-                entries.append(item)
-            manifest = {
-                "version": 1,
-                "unicode_version": _catalog()["unicode_version"],
-                "style": _catalog()["style"],
-                "destination": destination,
-                "size": size,
-                "entries": entries,
-            }
-            z.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False, indent=2))
-            z.writestr(
-                "README.txt",
-                profile["instructions"] + "\n\nSee manifest.json for Unicode mappings and licenses.\n"
-                "VIXL Line is adapted from OpenMoji 17.0.0 (https://openmoji.org), CC BY-SA 4.0.\n"
-                "Changes: softened geometric contours, navy outlines, reduced stroke width and a restrained palette; national flag colors preserved.\n"
-                "VIXL Originals (faces, reactions and everyday symbols) are original VIXL artwork under CC BY-SA 4.0; see per-entry source_origin.\n"
-                "Custom artwork retains the license stated in manifest.json.\nMade with Vixl.\n",
-            )
-            for name in ("LICENSE.txt", "UNICODE-LICENSE.txt"):
-                z.writestr(name, (DATA / name).read_bytes())
-            from html import escape
-
-            cards = "".join(
-                f'<figure><img src="{e["image"]}" alt="{escape(e["original_name"], quote=True)}">'
-                f"<figcaption>:{escape(e['name'])}:</figcaption></figure>"
-                for e in entries
-            )
-            z.writestr(
-                "index.html",
-                '<!doctype html><meta charset="utf-8"><title>VIXL Line emojis</title>'
-                "<style>body{font:16px system-ui;background:#f7f5f0;color:#23364d;margin:32px}"
-                "main{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px}"
-                "figure{margin:0;padding:16px;background:white;border-radius:12px;text-align:center}"
-                "img{width:72px;height:72px}figcaption{overflow-wrap:anywhere;font-size:12px}</style>"
-                "<h1>VIXL Line</h1><p>" + escape(profile["instructions"]) + "</p><main>" + cards + "</main>",
-            )
-        buffer.seek(0)
-        # Atomic publication, preserving the engine’s overwrite semantics.
-        from .fileio import temporary
-        import os
-
-        output.parent.mkdir(parents=True, exist_ok=True)
-        fd, staged = temporary(output.parent)
-        try:
-            with os.fdopen(fd, "wb") as stream:
-                import shutil
-
-                shutil.copyfileobj(buffer, stream)
-                stream.flush()
-                os.fsync(stream.fileno())
-            if overwrite:
-                os.replace(staged, output)
-            else:
-                os.link(staged, output)
-        finally:
-            if os.path.exists(staged):
-                os.unlink(staged)
-    return {
-        "output": str(output),
-        "count": len(keys),
-        "destination": destination,
-        "size": size,
-        "sources": sources,
-        "instructions": profile["instructions"],
+    outputs = {
+        name: output if isinstance(destination, str) else output.with_name(f"{output.stem}-{name}.zip")
+        for name in names
     }
+    for path in outputs.values():
+        require(overwrite or not path.exists(), "Emoji pack output already exists", "output_exists")
+    cache = {} if len(names) > 1 else None
+    results = []
+    with ExitStack() as stack:
+        buffers = {}
+        for name in names:
+            # Spool large packs to disk; a single destination decodes one artwork at a time.
+            buffer = stack.enter_context(tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024))
+            with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as z:
+                results.append(_write_pack(z, name, plans[name], keys, project, sources, cache))
+            buffers[name] = buffer
+        # Every pack passed its rules; publish them. Atomic per file, preserving the overwrite semantics.
+        for name, buffer in buffers.items():
+            path = outputs[name]
+            buffer.seek(0)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            fd, staged = temporary(path.parent)
+            try:
+                with os.fdopen(fd, "wb") as stream:
+                    shutil.copyfileobj(buffer, stream)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                if overwrite:
+                    os.replace(staged, path)
+                else:
+                    os.link(staged, path)
+            finally:
+                if os.path.exists(staged):
+                    os.unlink(staged)
+    for result in results:
+        result["output"] = str(outputs[result["destination"]])
+    if isinstance(destination, str):
+        return {"output": results[0].pop("output"), **results[0]}
+    return {"count": len(keys), "destinations": names, "outputs": results}
 
 
 def install_pack(project, raw):
@@ -810,22 +1330,38 @@ def install_pack(project, raw):
                 key = identifier(e.get("id"))
                 require(key not in keys, "Duplicate emoji in pack")
                 keys.add(key)
+                # Sticker destinations store WebP, GIF or TGS images. Without an editable source a WebP
+                # is decoded to PNG below; the SVG appearance stands in for the other formats.
                 name = e.get("source") or e.get("image")
+                if isinstance(name, str) and Path(name).suffix.lower() not in (
+                    ".vixl",
+                    ".png",
+                    ".svg",
+                    ".webp",
+                ):
+                    name = e.get("svg")
                 require(isinstance(name, str) and name in z.namelist(), "Missing emoji pack source")
                 suffix = Path(name).suffix.lower().lstrip(".")
-                require(suffix in ("vixl", "png", "svg"), "Unsupported emoji pack source format")
+                require(suffix in ("vixl", "png", "svg", "webp"), "Unsupported emoji pack source format")
                 info = z.getinfo(name)
                 require(
                     info.file_size <= project.limits.max_asset_bytes,
                     "Emoji source exceeds byte limit",
                     "resource_limit",
                 )
+                data = z.read(name)
+                if suffix == "webp":
+                    from .assets import decode
+
+                    stream = io.BytesIO()
+                    decode(data, project.limits).convert("RGBA").save(stream, format="PNG")
+                    data, suffix = stream.getvalue(), "png"
                 ops.append(
                     {
                         "type": "emoji-set",
                         "emoji": key,
                         "format": suffix,
-                        "data": base64.b64encode(z.read(name)).decode(),
+                        "data": base64.b64encode(data).decode(),
                         **(
                             {"appearance": base64.b64encode(z.read(e["svg"])).decode()}
                             if e.get("svg") in z.namelist()

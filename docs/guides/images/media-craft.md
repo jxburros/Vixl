@@ -38,9 +38,27 @@ Seeded patterns (stone, marble, camouflage, cells …) change with `seed`; add
 
 `drawn-texture` supports pencil, charcoal, crayon, ink-wash, stipple, hatch,
 cross-hatch, scribble, spatter, dry-brush, pastel, smudge and marker.
-Fill and texture operations add a raster overlay clipped to the rendered source
-silhouette, keeping the source vector editable. They do not change its outline
-geometry. For pressure-sensitive editable outlines, use the existing `paint`
+`pattern-fill` and `drawn-texture` add the texture as an effect on the layer, drawn
+inside its silhouette in the layer's own frame. The source vector stays editable and
+keeps its outline geometry, no layer is added, and the texture moves, turns and scales
+with the layer, including under the layer's own keyframes (a textured piece that
+rotates carries its stripes round with it). The effect sits in the layer's stack like
+any other:
+
+- `name` labels it, so `effect-set`, `effect-move`, `effect-enable`/`effect-disable`
+  and `effect-remove` can name it (`"effect": "weave"`); the effect names
+  `pattern-fill` and `drawn-texture` and stack positions work too.
+- `opacity` (0-1) is the effect's amount: change it with `effect-set`, or animate it
+  as the property `effect:<id>`. The other settings (pattern, scale, colors, seed …)
+  are fixed when the texture is added: remove the effect and add it again to change
+  them.
+- `blend` mixes the texture with the layer under it (`multiply` for ink on paper).
+- `layer: true` adds the texture as a separate raster layer above the target instead,
+  as earlier releases did. A separate layer does not follow the target's own
+  animation; group the two and animate the group.
+
+Vector exports (SVG, PDF, PPTX) draw a textured layer as an image, listed under
+`raster_fallbacks`. For pressure-sensitive editable outlines, use the existing `paint`
 brush presets and pressure points. Jitter shifts drawn line paths, pressure varies
 coverage, and grain introduces tooth and broken marks. All stochastic choices
 are reproducible with a seed.

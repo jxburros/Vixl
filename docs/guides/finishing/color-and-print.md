@@ -59,6 +59,14 @@ vixl new letter --bleed -o flyer.vixl          # 2625 × 3375 px: 8.5 × 11 in a
 vixl new business-card --bleed --landscape -o card.vixl
 ```
 
+**A printer's own template.** When the printer or a print-on-demand service supplies a template (a PNG or PSD with
+dashed lines for the trim, each panel's safe area, a barcode keep-out and the folds), import it instead of
+measuring it: `vixl guides-import template.png --color '#00a651=safe' --color '#ed1c24=keep-out' --color
+'#00aeef=fold'` writes those lines as guides with roles, `vixl check` (the `safe_area` check) then reports ink
+outside a panel's safe area, inside the keep-out and text crossing a fold, and `--save NAME` keeps them as a guide
+set for the next document of that product (`vixl guide-set NAME`). See
+[a printer's template](../layout/guides.md#a-printers-template-guide-roles).
+
 Export formats:
 
 | Output | Command |

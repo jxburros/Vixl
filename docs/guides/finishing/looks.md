@@ -44,6 +44,13 @@ edges, so they show most on photographs and illustrations, but they also read on
 fill in its own hue when no `color` is given, `sketch` draws a pencil outline and hatches the fill by its tone, and `watercolor` pools pigment
 along the shape's edge. Pixels outside a layer's box count as paper, so a shape that fills its box still gets its edge.
 
+The `paper` look finishes a background. For pieces cut out of paper (a character's parts, hills, a sun), use `cut-paper`
+instead: it gives each piece its own seeded grain (soft mottling, short fibres at random angles, fine tooth; `grain_scale`,
+`fibers` and `pattern` shape it), a rough edge and a thickness shadow, and holds frames for stop-motion. A material or
+drawn texture on one piece is `pattern-fill` or `drawn-texture`, an effect that moves and turns with the piece. See
+[atmosphere and cut paper](../motion/animation-authoring.md#atmosphere-and-cut-paper) and
+[media craft](../images/media-craft.md#patterns-handmade-texture-and-clone-stamping).
+
 ## Behaviour
 
 - **`amount`** (0-1, default 0.5) moves a look between subtle and strong. Sizes scale with the layer (blur and offsets follow its smaller side), so the
@@ -62,7 +69,7 @@ along the shape's edge. Pixels outside a layer's box count as paper, so a shape 
   `drop-shadow` over. Looks never remove styles or effects you added by hand; `remove: true` takes off exactly what that look added.
 - **Records.** The layer keeps `looks` (`{name: {styles, effects, amount, color}}`; `soft-halo` on a gradient also keeps the `fields` it changed, which `remove` puts back). The styles and effects themselves are the normal ones: `layer-style`
   and `effect-*` operations edit them, and `inspect` shows them.
-- **PNG and SVG.** Styles (`drop-shadow`, `outer-glow`, `stroke`, `gradient-overlay`) and blur-like effects are native SVG filters. Grain, sepia, vignette,
+- **PNG and SVG.** Styles (`drop-shadow`, `outer-glow`, `stroke`, `gradient-overlay`, `inner-shadow`, `inner-glow`, `bevel`) and blur-like effects are native SVG filters. Grain, sepia, vignette,
   duotone, halftone and the artistic filters are raster effects: SVG export embeds a raster fallback under `svg_policy: appearance` and
   rejects it under `strict`, exactly as for a hand-added effect. The table above says which looks are native.
 - **Not for form fields.** Fields are upright PDF rectangles; looks reject them.
@@ -77,3 +84,41 @@ along the shape's edge. Pixels outside a layer's box count as paper, so a shape 
 
 Radial symmetry has its own operation, `radial-repeat` (see [design tools](../shapes/design-tools.md#radial-repeat)); mandalas, rosettes and
 sunbursts are one petal, `radial-repeat`, then `look glow`.
+
+## Layer styles inside the silhouette
+
+Three `layer-style` names draw inside a layer's outline, on top of its content and overlays, and never outside it.
+They are not looks: add them with `layer-style` on any layer (shape, text, image, group).
+
+```json
+{"type":"shape","shape":"star","name":"piece","x":40,"y":40,"width":160,"height":160,"fill":"#c0392b"}
+{"type":"layer-style","target":"piece","name":"bevel","settings":{"angle":135,"size":4,"opacity":0.5}}
+{"type":"layer-style","target":"piece","name":"inner-shadow","settings":{"color":"#1d1a16","dx":3,"dy":4,"blur":4,"opacity":0.5}}
+{"type":"layer-style","target":"piece","name":"inner-glow","settings":{"color":"#fff6d5","blur":6,"opacity":0.6}}
+```
+
+| name | settings (defaults) | what it draws |
+| --- | --- | --- |
+| `inner-shadow` | `color` (black), `dx`, `dy` (2, 2), `blur` (4), `opacity` (0.5) | A soft shadow inside the edges the offset comes from: positive `dx`/`dy` shade the left and top edges, as a `drop-shadow` with the same offset would fall. |
+| `inner-glow` | `color` (white), `blur` (6), `opacity` (0.6) | An even band of colour inside every edge. |
+| `bevel` | `angle` (135), `size` (4), `highlight` (white), `shadow` (black), `opacity` (0.5) | A lit edge on the side facing the light and a shaded edge on the far side, in one call. `angle` is the direction towards the light in degrees: 0 right, 90 up, 135 up and left. |
+
+- **The silhouette is the layer's own alpha**, holes included: a ring gets an edge inside its hole, text gets one
+  inside every letter. Pixels outside the layer are never changed.
+- **The light stays put when the layer turns.** Like `drop-shadow`, the offsets and the bevel's angle are directions
+  on the canvas, so a rotating piece keeps its lit edge towards the light. (Effects such as `emboss` are different:
+  they run in the layer's own frame and turn with it.)
+- **A layer that runs off the canvas** is taken to continue past the canvas edge, so it gets no edge there.
+- **Order:** content, then colour and gradient overlays, then `inner-glow`, `inner-shadow`, `bevel`.
+- **Cut paper:** `cut-paper` with `edge_light: {"angle": 135}` adds a subtle bevel to every piece (see
+  [animation authoring](../motion/animation-authoring.md)).
+
+Exports:
+
+| format | how the three styles are written |
+| --- | --- |
+| PNG and other images | Drawn by the renderer. |
+| SVG | Native filters (`feGaussianBlur`, `feOffset`, `feComposite`) with the same steps as the renderer, so the layer stays vector and the pixels agree. |
+| PDF | The styled layer is embedded as an image of what the renderer draws, listed under `raster_fallbacks` (reason `layer styles`), like every other layer style. |
+| PPTX | `inner-shadow` alone on an unturned, unflipped shape without a stroke is PowerPoint's own inner shadow, so the shape stays editable; the report lists it under `native_effects` with a warning: PowerPoint's softness differs slightly and LibreOffice Impress does not draw inner shadows. Everything else (`inner-glow`, `bevel`, text, turned shapes, combinations with other styles) is a picture of the render, listed under `raster_fallbacks`. |
+| PSD | Baked into the layer's pixels. |

@@ -35,7 +35,12 @@ def import_image(session, project, *, path: str | None = None,
                                                               "redirects; private hosts refused)")] = None,
                  name: str = "image",
                  credit: Annotated[str | None, Field(description="Attribution, e.g. 'Photo: Ana Ruiz / Unsplash'")] = None,
-                 license: Annotated[str | None, Field(description="License or usage terms, e.g. 'CC BY 4.0'")] = None):
+                 license: Annotated[str | None, Field(description="License or usage terms, e.g. 'CC BY 4.0'")] = None,
+                 scale: Annotated[float | None, Field(gt=0, le=100, description="Place the layer at this multiple of "
+                                                      "the image's size (3 for a sprite at 3x)")] = None,
+                 sampling: Annotated[Literal["smooth", "nearest"] | None, Field(
+                     description="nearest keeps every source pixel a crisp block (pixel art); stored on the layer "
+                                 "for later edits and every export")] = None):
     """Embed an image as a new layer from a workspace file, base64 bytes or a URL (PNG/JPEG/WebP keep their bytes);
     use web images only with the rights to do so and record credit and license."""
     from .image_import import attribution, fetch_image, import_image as embed
@@ -47,7 +52,7 @@ def import_image(session, project, *, path: str | None = None,
         data, source = fetch_image(url, session.limits)
     else:
         data, source = _upload(session, path, data_base64), ({"path": path} if path else None)
-    return embed(project, data, name, source=source, credit=credit, license=license)
+    return embed(project, data, name, source=source, credit=credit, license=license, scale=scale, sampling=sampling)
 
 
 def import_document(session, project, *, path: str | None = None, data_base64: str | None = None,
@@ -70,7 +75,7 @@ def import_document(session, project, *, path: str | None = None, data_base64: s
                                     "'Literata Bold': literata-700}")] = None,
                     install_fonts: Annotated[bool | None, Field(
                         description="Allow downloading from Google Fonts a font the document and the font cache lack "
-                                    "(default: true for Vixl's own SVG, false for PDF)")] = None):
+                                    "(Vixl's own SVG, PDF; default false: the font cache only)")] = None):
     """Import an SVG (Vixl's own round-trips losslessly), one PDF page as editable text, paths and images, a layered
     PSD (8-bit RGB) as image layers, groups and masks, or a Figma
     file, frame or node as editable layers (from a URL or key with the server's Figma token, or an exported file

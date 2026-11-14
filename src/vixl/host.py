@@ -796,7 +796,7 @@ def document_routes(app, host):
             result, revision = host.mutate(ws, doc, if_revision, add)
             return {**result, "id": doc, "revision": revision}
 
-        return await host.call(ws, "assets", run, request_id=request_id, document=doc, heavy=False,
+        return await host.call(ws, "assets", run, request_id=request_id, document=doc,
                                body={"sha256": hashlib.sha256(data).hexdigest(), "name": name, "credit": credit,
                                      "license": license, "if_revision": if_revision})
 

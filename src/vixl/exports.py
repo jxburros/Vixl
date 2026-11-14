@@ -65,7 +65,7 @@ def read_csv(csv_path, limit=10000):
     return headers, rows
 
 
-def render_data(project, csv_path, directory, *, variables=None, check=True, **options):
+def render_data(project, csv_path, directory, *, variables=None, check=True, strict=False, **options):
     _, rows = read_csv(csv_path)
     root = Path(directory)
     destinations = [root / f"{i + 1:04d}.png" for i in range(len(rows))]
@@ -97,6 +97,10 @@ def render_data(project, csv_path, directory, *, variables=None, check=True, **o
                     candidate, variables=values, artboard=options.get("artboard"), comp=options.get("comp")
                 )
                 checks.append({k: report[k] for k in ("passed", "errors", "warnings", "issues")} if report["issues"] else None)
+        failed = [i + 1 for i, report in enumerate(checks) if report and not report["passed"]]
+        require(not (strict and failed), f"Design checks failed for data row(s) {', '.join(map(str, failed[:20]))}; "
+                "nothing was written. Fix those rows or the template, or render without --strict to look at them",
+                "design_check_failed", rows=failed)
         root.mkdir(parents=True, exist_ok=True)
         for i, path in enumerate(destinations):
             with path.open("xb") as stream:

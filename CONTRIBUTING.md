@@ -6,6 +6,8 @@ Run `pytest -n auto` (see Setup) and build the distributions before submitting a
 
 Opening the repository in an MCP client starts `vixl mcp --workspace .` from `.mcp.json`, which creates the workspace settings folder `.vixl/` (rolls and variety settings) at the root. It is git-ignored, and the tests and `vixl convert` skip it; delete it whenever you like.
 
+Documents and exports you make while working here are scratch, not sources: `.gitignore` covers `*.vixl` (the tests and docs examples write them) and the folder `scratch/`. Put trial documents and their exports under `scratch/` instead of the repository root, so nothing shows up as untracked; a local MCP server says `git: "ignored…"` when it creates one. Artwork that should be kept goes to the VixlExamples repository, and a document the repository itself needs (a fixture, a docs asset) gets an explicit `!path` exception in `.gitignore`.
+
 Commit messages, generated pull requests, issue text and generated artwork should describe the work without model signatures or authorship trailers. Keep comments that explain constraints, tradeoffs or non-obvious behavior; remove comments that only repeat the next statement. Provider configuration identifiers are functional data and should remain intact.
 
 `scripts/hooks/commit-msg` removes `Co-Authored-By:` and `Claude-Session:` lines from a commit message; install it

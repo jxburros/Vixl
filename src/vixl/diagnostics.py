@@ -96,6 +96,13 @@ def timeline_report(
         }
         if "attach" in track:
             item["attached_to"] = names.get(track["attach"]["to"], track["attach"]["to"])
+        for mark in ("wrap", "symmetry"):
+            if mark in track:
+                item[mark] = track[mark]
+        if track.get("add"):
+            # Additive layers are summed onto the track's own keys at render.
+            item["additive"] = [{"layer": extra["layer"], "key_count": len(extra["keys"]),
+                                 **({"keys": extra["keys"][:64]} if detail == "full" else {})} for extra in track["add"]]
         if detail == "full":
             item["keys"], item["key_pagination"] = page(keys, key_offset, key_limit)
         tracks.append(item)

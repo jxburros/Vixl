@@ -56,6 +56,7 @@ def export(
     isolate=None,
     padding=None,
     svg_document=True,
+    tagged=False,
     psd_text=None,
 ):
     """Render and encode. ``color_space='cmyk'`` separates JPEG/TIFF/PDF output (ICC profile
@@ -71,12 +72,13 @@ def export(
     is ``False`` for the plain single-image HTML, ``True`` for a presentation of any document, or
     a dict of options (theme, notes, slide_images, start, title). ``title`` is the PDF document title
     (default: the page's title layer, then the file name). ``max_bytes`` is a size budget: when the
-    encoded file is larger, ``report['warnings']`` says so (the export still succeeds). ``psd_text='pixels'`` writes
-    a PSD's text layers as pixels only (default ``'editable'``: plain text is also a type layer). ``isolate`` (layer
+    encoded file is larger, ``report['warnings']`` says so (the export still succeeds). ``psd_text='editable'`` also
+    writes a PSD's plain text layers as type layers (default ``'pixels'``: text is pixels only). ``isolate`` (layer
     names, object paths such as ``dog/head`` or ``object:KIND``) exports only those layers, cropped to their ink
     plus ``padding`` pixels on a transparent canvas, in any format. SVG output embeds the document it shows (its layers,
     and the images and fonts they use) so that importing the SVG gives back the same editable layers;
-    ``svg_document=False`` leaves it out."""
+    ``svg_document=False`` leaves it out. ``tagged=True`` writes a tagged PDF: a structure tree in reading order
+    (``pdf_structure``); the default leaves the PDF untagged, byte for byte as before."""
     require(isinstance(overwrite, bool), "overwrite must be true or false", field="overwrite")
     require(path is None or overwrite or not Path(path).exists(),
             "Export output already exists; pass overwrite=True to replace it", "output_exists", field="path")
@@ -118,6 +120,10 @@ def export(
     sheet = page == "all" and requested != "FIGMA" or (all_pages or bool(pages)) and requested not in (
         "PDF", "PPTX", "HTML", "HTM", "FIGMA")
     require(page is None or not pages, "Pass page or pages, not both")
+    require(isinstance(tagged, bool), "tagged must be true or false", field="tagged")
+    require(not tagged or requested == "PDF" or ((fillable or fill_mode == "editable") and not format and not suffix),
+            "tagged writes a PDF structure tree; export a .pdf (HTML, SVG and PowerPoint carry alt text and "
+            "language without it)", field="tagged")
     if sheet:
         require(requested in ("PNG", "JPG", "JPEG", "WEBP", "TIFF", "TIF", "AVIF"),
                 "Page contact sheets require a raster image format", field="page")
@@ -133,7 +139,8 @@ def export(
         from .pdf_forms import export_fillable
 
         return export_fillable(project, path, pages=pages or ([page] if page is not None else None), values=values,
-                               dpi=dpi, content=pdf_content or "vector", background=background, report=report)
+                               dpi=dpi, content=pdf_content or "vector", background=background, report=report,
+                               tagged=bool(tagged))
     if variables:
         from .forms import all_fields, has_fields
 
@@ -174,7 +181,7 @@ def export(
                 "comp, proof, simulate, CMYK and pages do not apply", field="format")
         from .psd_export import export_psd
 
-        return export_psd(project, path, page=page, variables=variables, report=report, text=psd_text or "editable")
+        return export_psd(project, path, page=page, variables=variables, report=report, text=psd_text or "pixels")
     if (format or "").upper() == "PPTX" or suffix == ".pptx":
         require(not artwork, "PPTX keeps editable RGB slides; profile, artboard, comp, proof, simulate and CMYK do not "
                 "apply (export a PNG or PDF to preview them)", field="format")
@@ -191,6 +198,11 @@ def export(
         require(not (raster_only and pdf_content == "vector"),
                 f"pdf_content=vector cannot be combined with {', '.join(raster_only)}: those export the page as an image",
                 field="pdf_content")
+    if tagged:
+        # A structure tree needs Vixl's own PDF writer: the scaled, proofed and profile paths save a plain image.
+        require(not raster_only and (pdf_content or scale == 1),
+                f"tagged cannot be combined with {', '.join(raster_only) or 'scale'}: those export the page as a "
+                "plain image. Leave them out, or pass pdf_content", field="tagged")
     if wants_pdf and not raster_only and (pdf_content or scale == 1):
         # Every PDF is written by Vixl's own writer: vector unless raster is asked for (exact physical
         # print pages, TrimBox and BleedBox, selectable text, CMYK). A scaled export is a larger
@@ -212,7 +224,8 @@ def export(
         content = pdf_content or "vector"
         data = export_pdf(project, path, pages=pages or ([page] if page is not None else None), content=content,
                           dpi=dpi, background=background, color_space=color_space, separation=separation,
-                          jpeg_quality=int(quality) if quality_given else None, title=title, report=report)
+                          jpeg_quality=int(quality) if quality_given else None, title=title, report=report,
+                          tagged=bool(tagged))
         if report is not None:
             report["content_reason"] = ("requested with pdf_content" if pdf_content else
                                         "default: vector, with images only for what PDF cannot draw (see raster_fallbacks)")

@@ -87,8 +87,9 @@ def test_ack_counts_every_changed_layer():  # #615 item 31
 
     p = Project(400, 300)
     result = ack(p.apply([_chart(), *_texts(3)], detail="brief"), head=p.head)
-    assert set(result) == {"ok", "head", "changed", "warnings"}
+    assert set(result) == {"ok", "head", "changed", "changed_layers", "warnings"}
     assert result["ok"] is True and result["head"] == p.head and result["changed"] == 20
+    assert len(result["changed_layers"]) == 4  # the chart and the three texts; its 16 children are only counted
     assert isinstance(result["warnings"], list)
 
 

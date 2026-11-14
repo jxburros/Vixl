@@ -10,6 +10,12 @@ isometric, triangular, hexagonal, oblique (skew) and 1–3 point perspective gri
 turn them to follow it; ``snap`` moves near misses onto guides. The ``guides`` and ``alignment``
 checks report what an agent cannot see: things almost, but not exactly, on a guide, almost
 aligned with each other, or almost at the same angle.
+
+A guide may carry a ``role`` from a printer's template: ``trim`` (the cut or board edge), ``bleed``, ``fold``
+(a spine or hinge line), ``safe`` (a closed outline content must stay inside, one per panel) and ``keep-out`` (a
+closed outline content must stay out of, such as a barcode notch). ``safe`` and ``keep-out`` need a closed guide:
+a closed path (``rect: [x, y, width, height]`` writes one) or a circle. ``check_roles`` is the part of the
+``safe_area`` check that reads them.
 """
 
 from copy import deepcopy
@@ -26,6 +32,11 @@ KINDS = ("axis", "line", "ray", "segment", "point", "circle", "path")
 GRID_KINDS = ("columns", "baseline", "thirds", "golden", "armature", "golden-spiral", "polar", "isometric",
               "triangular", "hex", "oblique", "perspective")
 MAX_GUIDES = 1024
+ROLES = ("trim", "safe", "fold", "keep-out", "bleed")
+REGION_ROLES = ("safe", "keep-out")  # roles that name an area, so their guide is a closed outline
+# Overlay colours (render guides=true): safe green, keep-out red, fold orange, trim and bleed magenta.
+ROLE_COLORS = {"safe": (0, 170, 90, 220), "keep-out": (230, 40, 40, 230), "fold": (255, 140, 0, 220),
+               "trim": (200, 0, 200, 220), "bleed": (200, 0, 200, 150)}
 PHI = (1 + 5 ** 0.5) / 2
 
 
@@ -40,7 +51,7 @@ def validate_guide(name, guide):
     require(isinstance(guide, dict), "Invalid guide", "invalid_project")
     kind = kind_of(guide)
     require(kind in KINDS, f"Unknown guide kind {kind!r}", "invalid_project")
-    common = {"grid", "kind", "generated"}
+    common = {"grid", "kind", "generated", "role"}
     fields = {
         "axis": {"axis", "position"},
         "line": {"x", "y", "angle"},
@@ -72,24 +83,55 @@ def validate_guide(name, guide):
             finite(guide["angle"], "guide angle", -36000, 36000)
         if kind == "circle":
             finite(guide["radius"], "guide radius", 0.001, 1e9)
+    if "role" in guide:
+        role = guide["role"]
+        require(role in ROLES, f"Unknown guide role {role!r}; roles: {', '.join(ROLES)}", field="role",
+                allowed=list(ROLES))
+        require(role not in REGION_ROLES or region(guide) is not None,
+                f"A {role} guide is an area: give a closed path (rect: [x, y, width, height] writes one) or a circle",
+                field="role")
+
+
+def region(guide):
+    """The closed outline of a guide as an (N, 2) array of canvas points, or None for an open guide."""
+    kind = kind_of(guide)
+    if kind not in ("circle", "path"):
+        return None
+    points, closed = polyline(guide, {"width": 1, "height": 1}, samples=96)
+    return points if closed and len(points) >= 3 else None
+
+
+def rect_path(x, y, width, height):
+    """Path data of a rectangle outline (how a rectangular guide is stored)."""
+    from .geometry import compact_number
+
+    left, top, right, bottom = (compact_number(v, 3) for v in (x, y, x + width, y + height))
+    return f"M {left} {top} L {right} {top} L {right} {bottom} L {left} {bottom} Z"
 
 
 def make_guide(op):
     """A guide record from a ``guide`` operation."""
+    role = {"role": op["role"]} if op.get("role") else {}
+    if "rect" in op:
+        require(op.get("kind", "path") == "path" and "d" not in op and "axis" not in op,
+                "rect draws a closed path guide; leave out kind, d and axis", field="rect")
+        x, y, w, h = op["rect"]
+        require(w > 0 and h > 0, "rect is [x, y, width, height] with a positive size", field="rect")
+        return {"kind": "path", "d": rect_path(x, y, w, h), **role}
     kind = op.get("kind", "axis" if "axis" in op else None)
     require(kind in KINDS, f"guide needs axis + position, or kind: {', '.join(KINDS)}", field="kind", allowed=list(KINDS))
     if kind == "axis":
         require("axis" in op and "position" in op, "An axis guide needs axis (x or y) and position", field="axis")
-        return {"axis": op["axis"], "position": op["position"]}
+        return {"axis": op["axis"], "position": op["position"], **role}
     if kind in ("line", "ray") and "points" in op and "angle" not in op:
         (x1, y1), (x2, y2) = op["points"]
         require((x1, y1) != (x2, y2), "The two points must differ", field="points")
-        return {"kind": kind, "x": x1, "y": y1, "angle": math.degrees(math.atan2(y2 - y1, x2 - x1))}
+        return {"kind": kind, "x": x1, "y": y1, "angle": math.degrees(math.atan2(y2 - y1, x2 - x1)), **role}
     needs = {"line": ("x", "y", "angle"), "ray": ("x", "y", "angle"), "segment": ("points",), "point": ("x", "y"),
              "circle": ("x", "y", "radius"), "path": ("d",)}[kind]
     missing = [key for key in needs if key not in op]
     require(not missing, f"A {kind} guide needs {', '.join(needs)}", field=missing[0] if missing else None)
-    return {"kind": kind, **{key: deepcopy(op[key]) for key in needs}}
+    return {"kind": kind, **{key: deepcopy(op[key]) for key in needs}, **role}
 
 
 def _clip_line(px, py, dx, dy, box, ray=False):
@@ -774,6 +816,143 @@ def check_guides(candidate, resolved, local_bounds, projection, layers, issue, t
                       f"({angle:.1f}°)", [item], guide=name, rotation=round(rotation, 2), guide_angle=round(angle, 2))
 
 
+def _inside(polygon, points):
+    """Which of ``points`` lie inside ``polygon`` (even-odd)."""
+    a, b = polygon, np.roll(polygon, -1, axis=0)
+    px, py = points[:, 0][:, None], points[:, 1][:, None]
+    spans = (a[:, 1] > py) != (b[:, 1] > py)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        cross = a[:, 0] + (py - a[:, 1]) * (b[:, 0] - a[:, 0]) / (b[:, 1] - a[:, 1])
+    return (spans & (px < cross)).sum(axis=1) % 2 == 1
+
+
+def _crosses(starts, ends, box):
+    """Whether any segment ``starts[i]`` to ``ends[i]`` passes through the inside of ``box`` (x, y, w, h)."""
+    x, y, w, h = box
+    low, high = np.zeros(len(starts)), np.ones(len(starts))
+    alive = np.ones(len(starts), dtype=bool)
+    delta = ends - starts
+    for axis, (near, far) in enumerate(((x, x + w), (y, y + h))):
+        d, origin = delta[:, axis], starts[:, axis]
+        flat = np.abs(d) < 1e-12
+        alive &= ~flat | ((origin > near) & (origin < far))
+        with np.errstate(divide="ignore", invalid="ignore"):
+            t1, t2 = (near - origin) / d, (far - origin) / d
+        low = np.where(flat, low, np.maximum(low, np.minimum(t1, t2)))
+        high = np.where(flat, high, np.minimum(high, np.maximum(t1, t2)))
+    return bool((alive & (high - low > 1e-9)).any())
+
+
+def _corners(box):
+    x, y, w, h = box
+    return np.array([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], dtype=float)
+
+
+def _edges(polygon):
+    return polygon, np.roll(polygon, -1, axis=0)
+
+
+def _interior(box):
+    """``box`` shrunk by a hair, so content that only touches a guide is on the right side of it."""
+    return box[0] + 0.01, box[1] + 0.01, max(box[2] - 0.02, 0.001), max(box[3] - 0.02, 0.001)
+
+
+def box_within(polygon, box):
+    """Whether ``box`` lies inside the closed outline ``polygon`` (touching its edge is inside)."""
+    inner = _interior(box)
+    return bool(_inside(polygon, _corners(inner)).all()) and not _crosses(*_edges(polygon), inner)
+
+
+def box_touches(polygon, box):
+    """Whether ``box`` overlaps the area inside ``polygon`` (sharing only an edge is not overlap)."""
+    inner = _interior(box)
+    if _inside(polygon, _corners(inner)).any() or _crosses(*_edges(polygon), inner):
+        return True
+    return bool(((polygon[:, 0] > inner[0]) & (polygon[:, 0] < inner[0] + inner[2])
+                 & (polygon[:, 1] > inner[1]) & (polygon[:, 1] < inner[1] + inner[3])).any())
+
+
+def _extent(polygon):
+    left, top = polygon.min(axis=0)
+    right, bottom = polygon.max(axis=0)
+    return float(left), float(top), float(right - left), float(bottom - top)
+
+
+def _shared(a, b):
+    """Area two boxes share."""
+    return max(0.0, min(a[0] + a[2], b[0] + b[2]) - max(a[0], b[0])) * max(
+        0.0, min(a[1] + a[3], b[1] + b[3]) - max(a[1], b[1]))
+
+
+def role_guides(state):
+    """{role: {name: guide}} for the guides that carry a role, in name order."""
+    found = {}
+    for name in sorted(state.get("guides", {})):
+        guide = state["guides"][name]
+        if guide.get("role"):
+            found.setdefault(guide["role"], {})[name] = guide
+    return found
+
+
+def check_roles(candidate, items, boxes, is_text, deliberate, issue):
+    """The printer's-template part of the ``safe_area`` check: content ink (``boxes``: canvas boxes that include
+    strokes and effects) outside the ``safe`` guide of its panel, inside a ``keep-out`` guide, and text or a title
+    crossing a ``fold`` guide. A layer belongs to the safe outline it overlaps most; a non-text layer that covers a
+    whole safe or keep-out outline is a backdrop running under it and is left alone. ``deliberate(item)`` marks an
+    intentional crop, reported as information."""
+    roles = role_guides(candidate.state)
+    if not roles:
+        return
+    canvas = candidate.state["canvas"]
+    safe = {name: outline for name, guide in roles.get("safe", {}).items() if (outline := region(guide)) is not None}
+    keep = {name: outline for name, guide in roles.get("keep-out", {}).items()
+            if (outline := region(guide)) is not None}
+    folds = {}
+    for name, guide in roles.get("fold", {}).items():
+        try:
+            points, closed = polyline(guide, canvas)
+        except VixlError:
+            continue
+        if len(points) >= 2:
+            folds[name] = _segments(points, closed)
+
+    def covers(box, outline):
+        left, top, w, h = _extent(outline)
+        return box[0] <= left and box[1] <= top and box[0] + box[2] >= left + w and box[1] + box[3] >= top + h
+
+    for item in items:
+        if item["type"] == "group":
+            continue  # its members are judged one by one
+        box = boxes[item["id"]]
+        text = is_text(item)
+        crop = deliberate(item)
+        severity = "info" if crop else "error" if text else "warning"
+        extra = {"intentional": True} if crop else {}
+        note = " (intentional crop or bleed)" if crop else ""
+        if safe and (text or not any(covers(box, outline) for outline in safe.values())):
+            shared = {name: _shared(box, _extent(outline)) for name, outline in safe.items()}
+            name = max(shared, key=shared.get)
+            if shared[name] <= 0:
+                issue("safe_area", severity, f"{item['name']!r} is outside every safe guide ({', '.join(safe)}){note}",
+                      [item], bounds=list(box), guides=list(safe), role="safe", code="outside-safe-guides", **extra)
+            elif not box_within(safe[name], box):
+                issue("safe_area", severity, f"{item['name']!r} extends outside safe guide {name!r}{note}", [item],
+                      bounds=list(box), guide=name, role="safe", code="outside-safe-guide",
+                      safe_area=[round(v, 2) for v in _extent(safe[name])], **extra)
+        for name, outline in keep.items():
+            if box_touches(outline, box) and (text or not covers(box, outline)):
+                issue("safe_area", severity, f"{item['name']!r} is inside keep-out guide {name!r}{note}", [item],
+                      bounds=list(box), guide=name, role="keep-out", code="keep-out",
+                      zone=[round(v, 2) for v in _extent(outline)], **extra)
+        if text or item.get("role") == "title":
+            for name, (starts, ends) in folds.items():
+                if _crosses(starts, ends, _interior(box)):
+                    issue("safe_area", "info" if crop else "warning",
+                          f"{item['name']!r} crosses fold guide {name!r}: it will bend over the fold{note}", [item],
+                          bounds=list(box), guide=name, role="fold", code="crosses-fold",
+                          **({"action": "review"} if not crop else {}), **extra)
+
+
 def check_alignment(candidate, resolved, local_bounds, projection, layers, issue, tolerance=3.0, angle_tolerance=3.0):
     """Layers almost aligned with each other: edges or centres a few pixels apart, or rotations a
     few degrees apart. Exact alignment and clearly different positions are fine."""
@@ -813,7 +992,7 @@ def draw_overlay(image, project, scale=1.0, offset=(0, 0), names=None, labels=Tr
         guides = {k: v for k, v in guides.items() if k in names or v.get("grid") in names}
     draw = ImageDraw.Draw(image, "RGBA")
     canvas = project.state["canvas"]
-    color = (0, 190, 255, 200)
+    plain = (0, 190, 255, 200)
     accent = (255, 60, 160, 230)
 
     def to_image(q):
@@ -821,6 +1000,7 @@ def draw_overlay(image, project, scale=1.0, offset=(0, 0), names=None, labels=Tr
 
     for name, guide in guides.items():
         kind = kind_of(guide)
+        color = ROLE_COLORS.get(guide.get("role"), plain)
         if kind == "point":
             x, y = to_image((guide["x"], guide["y"]))
             draw.line((x - 6, y, x + 6, y), fill=accent, width=1)

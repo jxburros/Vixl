@@ -355,6 +355,7 @@ def _local_contours(project, item):
             raise VixlError("invalid_operation", f"Pathfinder {item['name']!r} cannot become a glyph outline: {exc}",
                             field="targets") from exc
     from ...richtext import active
+    from ...emojis import EmojiArt
     from ...text import UnsupportedText, plan
 
     require(not active(item), f"Rich text {item['name']!r} cannot become a glyph outline; use a plain text layer",
@@ -367,7 +368,7 @@ def _local_contours(project, item):
     sx, sy = item["width"] / max(1e-6, layout.width), item["height"] / max(1e-6, layout.height)
     contours = []
     for path, (a, b, c, d, e, f) in layout.paths:
-        require(isinstance(path, str), f"Text {item['name']!r} draws a colour emoji, which an outline font cannot "
+        require(not isinstance(path, EmojiArt), f"Text {item['name']!r} draws a colour emoji or colour-font glyph, which an outline font cannot "
                 "hold", field="targets")
         for contour in _from_commands(parse_path(path), 1, 1):
             contours.append([tuple(((a * x + c * y + e) * sx, (b * x + d * y + f) * sy) for x, y in seg)

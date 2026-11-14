@@ -95,6 +95,8 @@ master pages. A document holds up to 500 fields.
 `vixl_export(fillable=true)`) writes Vixl's page artwork — vector, with selectable text —
 with a transparent PDF field over each field layer, so the PDF looks exactly like the preview.
 
+- Add `--tagged` (`tagged=True`) for a [tagged PDF](accessibility.md#tagged-pdf): every widget becomes a `Form`
+  element of the structure tree, named by its label, among the page's headings and paragraphs in reading order.
 - Text kinds are text fields, checkboxes and radio groups are buttons, dropdowns are combo boxes
   and signatures are signature fields; defaults are set and drawn.
 - Every widget has a generated appearance, so viewers show it as designed and never ask to save

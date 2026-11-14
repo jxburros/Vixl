@@ -18,7 +18,7 @@ can substitute fonts, emphasize form fields or handle animation differently.
 | Print or selectable-text pages | PDF | Vector pages where supported; effects can fall back to raster; CMYK PDF stays vector (DeviceCMYK) |
 | Editable presentation | PPTX | Real text, supported shapes, images, notes; unsupported appearances become pictures |
 | Editable Figma handoff | `.figma.json` / FIGMA | Pages, frames, native shapes, text and basic auto layout; embedded images and an explicit loss report; import with the local [Figma plugin](../images/figma.md#export-to-figma) |
-| Layered handoff to Photoshop and similar editors | PSD | One 8-bit RGBA pixel layer per layer with names, opacity, visibility, blend modes and layer groups, plus the flattened composite; plain text layers are also editable type layers |
+| Layered handoff to Photoshop and similar editors | PSD | One 8-bit RGBA pixel layer per layer with names, opacity, visibility, blend modes and layer groups, plus the flattened composite; text is pixels (`psd_text: "editable"` also writes plain text as type layers) |
 | Interactive form | Fillable PDF | AcroForm widgets over artwork; RGB output; verify target PDF viewer |
 | A font drawn in the document | TTF, OTF, WOFF (WOFF2 with `brotli`) | The document's font design as an installable font; see [making a font](../text/custom-fonts.md) |
 | Icons | ICO or icon set | Multiple destination sizes; inspect the smallest icons |
@@ -87,13 +87,19 @@ vixl -p slides.vixl export slides.pdf
 vixl -p slides.vixl export slides.pptx
 vixl -p slides.vixl export slide.png --pages all
 vixl -p registration.vixl export registration.pdf --fillable
+vixl -p slides.vixl export slides-tagged.pdf --tagged
 vixl -p motion.vixl export-timeline --out motion.webp --fps 12
 ```
 
 PowerPoint references font families, so install those fonts on the receiving system.
 Multi-page vector PDF embeds supported TrueType subsets with Unicode mappings.
+`--tagged` (`tagged=True`, MCP and REST `tagged: true`) writes a tagged PDF for screen readers and accessibility
+checkers: a structure tree with headings, paragraphs, described figures and form fields in the page's reading
+order, `/MarkInfo` and the language. It is off by default and leaves an untagged export byte-identical; see
+[tagged PDF](accessibility.md#tagged-pdf).
 Export reports can list `raster_fallbacks` and `fonts`; inspect those before promising
-fully editable content. [Slides](slides.md) documents these details.
+fully editable content. Text in a [colour font](../text/typography.md#colour-fonts) is one such fallback in PowerPoint and,
+except for flat COLR version 0 layers, in PDF. [Slides](slides.md) documents these details.
 
 For fillable forms, test interactive entry and tab order. Filled copies can be flattened
 or remain editable; values are validated and do not mutate the blank master.
@@ -170,20 +176,23 @@ channels) that opens in Photoshop, Photopea, GIMP, Affinity and Krita:
   distortion) cannot be expressed as a Photoshop group and is written as one pixel layer.
 - The file also carries the flattened composite, identical to the PNG render, which viewers
   without layer support (and Pillow) show.
-- A plain text layer is also a type layer: its rendered pixels plus a type-tool block (`TySh`)
-  with the text, the font's PostScript name, size, colour, tracking, leading, alignment and
-  whether it is point text or a text box (a `text-layout` width), placed with the layer's
-  rotation. The result lists these layers under `editable_text`. An editor that reads type
-  layers lets the designer retype the copy. It needs the same font installed, and once the
-  layer is edited it sets the text with its own engine, so the line breaks of a text box and
-  small spacing can differ from Vixl's pixels.
-- Text one single-style type layer cannot carry stays pixels only, listed under
-  `text_as_pixels` as `{layer, id, reason}` and in `warnings`: rich text (styled spans, lists,
-  paragraph settings), effects, layer styles, a stroke or a mask, flipped or skewed text, text
-  on a path or warped, small capitals, hanging punctuation, a gradient or image fill, a
-  translucent colour, a variable font, emoji and characters drawn with a fallback font.
-  `psd_text: "pixels"` (CLI `--psd-text pixels`; `psd_text` in `vixl_export`, Python and REST) writes every text
-  layer as pixels only.
+- Text is pixels, not editable type: the result lists every text layer under `text_as_pixels`
+  as `{layer, id, reason}` and in `warnings`.
+- `psd_text: "editable"` (CLI `--psd-text editable`; `psd_text` in `vixl_export`, Python and
+  REST) also writes each plain text layer as a type layer: its rendered pixels plus a type-tool
+  block (`TySh`) with the text, the font's PostScript name, size, colour, tracking, leading,
+  alignment and whether it is point text or a text box (a `text-layout` width), placed with the
+  layer's rotation. The result lists these layers under `editable_text`. This is opt-in
+  because it is **not yet verified in Photoshop or Photopea** (see below). An editor that reads
+  type layers needs the same font installed, and once the layer is edited it sets the text with
+  its own engine, so the line breaks of a text box and small spacing can differ from Vixl's
+  pixels.
+- With `psd_text: "editable"`, text one single-style type layer cannot carry still stays
+  pixels only, with the reason in `text_as_pixels`: rich text (styled spans, lists, paragraph
+  settings), effects, layer styles (inner shadow, inner glow and bevel included), a stroke or a
+  mask, flipped or skewed text, text on a path or warped, hand-set text, small capitals, hanging
+  punctuation, a gradient or image fill, a translucent colour, a variable font, a colour font,
+  emoji and characters drawn with a fallback font.
 - Not preserved: shapes and paths are pixels, not vector layers;
   adjustment layers are applied in the composite only (`adjustments_in_composite_only`);
   group-turned or filtered groups are listed under `flattened_groups`. Kinetic text and other
@@ -191,9 +200,11 @@ channels) that opens in Photoshop, Photopea, GIMP, Affinity and Krita:
 - One page of a multi-page document (`page`); CMYK, proofing, profiles, artboards and comps do
   not apply. Each side is at most 30 000 px. Exports refuse to overwrite unless `overwrite` is set.
 
-The type layers follow the published Photoshop file format and are read back by Vixl's own PSD
-reader and by psd-tools. They have not yet been confirmed by opening a file in Photoshop or
-Photopea; if an editor rejects a file, export it with `psd_text: "pixels"`.
+A default export holds no type-tool block, so it is the same pixel-layer file as before. The
+type layers of `psd_text: "editable"` follow the published Photoshop file format and are read
+back by Vixl's own PSD reader and by psd-tools, but they have not yet been confirmed by opening
+a file in Photoshop or Photopea: check the file in the editor it is going to before handing it
+off.
 
 ## Handoff checklist
 
@@ -243,7 +254,7 @@ native charts when it has charts) know what to expect. Verification only reads t
 
 Inline fields, alone or on top of a `preset`: `formats`, `max_bytes`, `pages` (a count or `[min, max]`), `trim` (a
 size name or `[width, height]` in points or with units such as `"8.5in"`), `bleed` (`"0.125in"`, `"3mm"`, points;
-`0` for none), `fonts_embedded`, `color` (`rgb`, `cmyk`, `gray`), `ink_limit` (percent), `fillable`, `width`, `height`,
+`0` for none), `fonts_embedded`, `color` (`rgb`, `cmyk`, `gray`), `ink_limit` (percent), `fillable`, `tagged` (a tagged PDF), `width`, `height`,
 `min_width`, `min_height`, `sizes`, `aspect` (`[min, max]` width/height), `dpi` (minimum), `alpha`, `icc`,
 `editable_text`, `native_charts` (`true` or a minimum), `self_contained`, `notes` (HTML speaker notes) and
 `text_as_text` (SVG `<text>` kept).
@@ -348,8 +359,9 @@ vixl -p copy.vixl import poster.svg
   family, or a file you imported). A blank document is a few KB, and a published SVG does not redistribute font
   files. On import each font is found again: the same file already in the document, the bundled face, a font the
   document registers under the same name (or with the same family and style), then the Google Fonts style from the
-  font cache, downloading it when the cache does not have it (`install_fonts=False` in Python keeps the import
-  offline). The result's `fonts` says how each registered font was found. A font none of these supplies (an
+  font cache, and with `install_fonts` a download when the cache does not have it (see [SVG fonts](#svg-fonts):
+  on for `vixl import`, off elsewhere unless asked for). The result's `fonts` says how each registered font was
+  found. A font none of these supplies (an
   imported file you do not have registered) is drawn with the bundled Noto Sans and listed in `warnings`; the
   import does not fail, and importing and registering the font under the same name restores it. Everything except
   the font files round-trips exactly.
@@ -388,9 +400,17 @@ draws each such element as an image layer. External resources are never fetched.
 
 Untrusted SVG is charged while it is read, so a small file cannot run for minutes. An import that would walk more
 than four times the batch limit of elements (40,000 by default, `<use>` copies counted where they expand) or make
-more than one batch of layers fails at once with `resource_limit`, before the work is done. `auto` draws at most 64
-elements as image layers; an SVG with more fails with `resource_limit`: import it with `svg_mode: "appearance"`
-instead, which draws the whole file as one image.
+more than one batch of layers fails at once with `resource_limit`, before the work is done. The other budgets of
+one import, each failing the same way:
+
+| Budget | Limit |
+| --- | --- |
+| Stylesheet rules (selectors, all `<style>` elements together) | 4,096; rules are indexed by ID, class and type, and the comparisons with the elements they could match are capped at 2 million |
+| Embedded images | Each distinct image is decoded and stored once, however many `<use>` references or copies draw it |
+| Elements drawn as images (`auto`) | 64 |
+| Pixels decoded and rendered | `Limits.max_load_pixels` (160 million by default) for the embedded images plus the raster fallbacks together. A fallback renders the whole canvas, so a 1920×1080 canvas affords 64 of them and an 8000×5000 canvas four |
+
+An SVG over a budget imports with `svg_mode: "appearance"` instead, which draws the whole file as one image.
 
 **PDF.** A page's text objects become live text layers with their text, size, colour, position and rotation;
 consecutive lines of one style that share a left edge, centre or right edge become one multi-line layer, and a text
@@ -407,9 +427,23 @@ other PDFs map one point to one pixel, and `dpi` applies to `appearance` imports
 annotations, blend modes and transparency groups are not read as such: rotated pages import as one image, and
 the others as what pdfium reports for each object.
 
+Untrusted PDF is charged while it is read too. One import reads at most 20,000 objects (the contents of a form
+XObject count wherever the form is drawn, and forms nest at most 16 deep), 2 million path and clip segments (100,000
+in one path), 8 MiB of text (1 MiB in one string, checked against the size pdfium reports before a buffer is
+allocated) and 64 runs of objects drawn as images. The pixels of the images it decodes and of those runs (each
+renders the whole page) share `Limits.max_load_pixels`, as for SVG. A page over a budget fails with
+`resource_limit` before the work is done; import it with `svg_mode: "appearance"`.
+
 ### SVG fonts
 
-An SVG that is not Vixl's own names fonts by family. `font_map` (CLI `--font-map SRC=NAME`, REST `font_map=SRC=NAME`) maps those families to registered fonts or roles, first, exactly as for PDF, and fails with `missing_font` for an unregistered target. Vixl's own SVG names its fonts by identity and ignores `font_map`; `install_fonts` (default true) applies to it and never downloads with `VIXL_OFFLINE=1`.
+An SVG that is not Vixl's own names fonts by family. `font_map` (CLI `--font-map SRC=NAME`, REST `font_map=SRC=NAME`) maps those families to registered fonts or roles, first, exactly as for PDF, and fails with `missing_font` for an unregistered target. Vixl's own SVG names its fonts by identity and ignores `font_map`; `install_fonts` applies to it: a Google Fonts style the font cache lacks may be downloaded, never with `VIXL_OFFLINE=1`.
+
+`install_fonts` is on for the command line (`vixl import FILE.svg`; `--no-install-fonts` turns it off) and off for
+every other caller (MCP, REST, Host and Python) unless the call passes `install_fonts: true`: a served import makes
+no network request by default, and a font that is not in the font cache falls back to the bundled face with a
+warning that names it. The Vixl document in an SVG may name at most `Limits.max_load_fonts` fonts (64); with more,
+none is looked up and the SVG's visible elements are imported instead, with a warning. Records that name the same
+Google Fonts style share one lookup.
 
 ### PDF fonts
 

@@ -28,7 +28,13 @@ SUMMARIES = {
     "paint-clear": "Remove the last N strokes (or all) from a paint layer.",
     "brush-define": "Save a custom brush as overrides on a built-in brush.",
     "pixel-art": "Add a pixel-art layer from character rows and a palette.",
-    "pixel-draw": "Draw a pixel, line, rectangle or flood fill on a pixel layer.",
+    "pixel-draw": "Draw a pixel, line, rectangle, filled ellipse or flood fill on a pixel layer; only limits it to "
+                  "cells that hold given symbols.",
+    "pixel-transform": "Mirror a pixel layer's stored rows or shift them by whole cells: mirrored frames (duplicate, "
+                       "then pixel-transform) and walk-cycle bobs.",
+    "sprite-sheet": "Declare the document as a sprite-sheet grid (rows of facings, columns of frames, a fixed cell): "
+                    "pixel-art and move take cell: [row, column], and export-animation format sheet writes the "
+                    "clips as JSON.",
     "pixel-palette": "Replace colours of a pixel layer's palette, or turn its shading ramp and outline on or off.",
     "rich-text": "Create or replace a text layer from Markdown or spans, with paragraphs, lists and mixed styles.",
     "text-style": "Style part of a text layer: a matched phrase, a character range or paragraphs. To change the layer's content or overall color, size or font use text-set.",
@@ -132,7 +138,8 @@ SUMMARIES = {
     "style-set": "Tag the document with a design style (swiss, brutalist, art-deco …) for style guidance and checks.",
     "type-scale": "Define character styles caption to display on a modular scale.",
     "layout-apply": "Build a principled layout (hero-statement, app-icon, logo-horizontal …) from copy slots, palette and seed.",
-    "guide": "Create or delete a guide: an axis, line, ray, segment, point, circle or path.",
+    "guide": "Create or delete a guide: an axis, line, ray, segment, point, circle or path, optionally with a "
+             "print role (safe, keep-out, fold, trim, bleed) that the safe_area check enforces.",
     "grid": "Create a grid system (columns, baseline, thirds, golden, polar, isometric, perspective …) of guides.",
     "place": "Place layers on a guide (at a fraction, spread evenly, at intersections, turned to the tangent), or "
              "within a shape's content box (a bubble's body, a badge) with an anchor and margin.",
@@ -175,6 +182,7 @@ SUMMARIES = {
     "link-embed": "Freeze a linked document into an ordinary raster layer that no longer follows its source.",
     "chart": "Draw a data-bound chart (bars, lines, areas, pie, donut) as vector layers, or restyle one with target.",
     "chart-data": "Edit a chart's data in place (cells, categories, series, CSV reload) and redraw it, keeping layer IDs.",
+    "chart-emphasis": "Make chosen categories of a chart stand out: keep their colours, mute the rest, add a callout; data edits keep it.",
     "table": "Draw a table from rows or a CSV as vector layers (aligned columns, header, rules), or restyle one with target.",
     "die-cut": "Add a sticker cut line: the union of the targets' ink outline, grown by a distance, as a stroked path.",
     "path-split": "Cut a filled path into two named parts along a polygon or line, optionally overlapping the cut.",
@@ -513,10 +521,13 @@ OVERRIDES = {
     "shape": {"shape": "rectangle, rounded-rectangle, ellipse, polygon, star, line, triangle, right-triangle, "
                        "diamond, arrow, chevron, cross, heart, speech-bubble, or path (with path).",
               "path": "path shape: SVG path data (M L H V C S Q T A Z, several M sub-paths allowed) in literal local "
-                      "pixels: a point (px, py) draws at (x + px, y + py). Without width/height the box reaches the "
+                      "pixels: a point (px, py) draws at (x + px, y + py). x and y default to 0, so a path "
+                      "written in canvas coordinates needs neither. Without width/height the box reaches the "
                       "path's farthest point (never the whole canvas); with them, that is the box it is drawn in. "
                       "Negative coordinates draw outside the box. Later resizes scale the path; path-fit scales "
-                      "geometry into a box. Set path_view to a source [width, height] to scale unchanged data on creation or update.",
+                      "geometry into a box. Set path_view to a source [width, height] to scale unchanged data on creation or update. "
+                      "For an outline drawn point by point (a body, a beak, a hill) use pen: it takes canvas points "
+                      "and fits the box itself.",
               "radius": "Corner radius in pixels (rounded-rectangle; default from the document corner style, soft "
                         "when that is sharp).", "sides": "Polygon side count.",
               "inner_radius": "Star inner radius as a fraction of the outer radius.",
@@ -533,10 +544,14 @@ OVERRIDES = {
     "group": {"name": "Group name.", "targets": "Layers to group (must share a parent)."},
     "reparent": {"targets": "Layers (or groups) to move; they may come from different parents."},
     "clip": {"base": "Layer that supplies the clipping shape.", "release": "true removes the clip."},
-    "layer-style": {"name": "drop-shadow, stroke, outer-glow, color-overlay or gradient-overlay.",
+    "layer-style": {"name": "drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay, inner-shadow, "
+                            "inner-glow or bevel.",
                     "settings": "drop-shadow {color, dx, dy, blur, opacity}; outer-glow {color, blur, opacity}; "
                                 "stroke {color, width}; color-overlay {color, opacity}; gradient-overlay {start, end "
-                                "or stops, direction, angle, opacity}; enabled false switches one off.",
+                                "or stops, direction, angle, opacity}; inside the silhouette: inner-shadow {color, "
+                                "dx, dy, blur, opacity}, inner-glow {color, blur, opacity}, bevel {angle (degrees "
+                                "towards the light: 0 right, 90 up; default 135), size, highlight, shadow, opacity}; "
+                                "enabled false switches one off.",
                     "remove": "true removes the style."},
     "distribute": {"targets": "Three or more layers to space evenly.", "axis": "horizontal or vertical.",
                    "gap": "Fixed gap in pixels (default: even spacing between the ends)."},
@@ -557,7 +572,8 @@ OVERRIDES = {
               "downsample": "placed@2x stores enough resolution to draw this frame at twice its placed size.",
               "path": "Image file in the workspace (CLI and Python).", "asset": "Embedded asset ID from import-image."},
     "replace-contents": {"path": "Image file in the workspace (CLI and Python).",
-                         "asset": "Embedded asset ID from import-image.", "variable": "Bind the image to this variable (replace it later by changing the variable).",
+                         "asset": "Embedded asset ID from import-image.", "variable": "Bind the image to this variable (replace it later by changing the variable). A variable "
+                                     "that does not exist yet starts as the layer's current image.",
                          "fit": "fill crops to cover; fit shows all of the image."},
     "repeat": {"count": "Number of copies including the original.",
                "dx": "Horizontal offset between copies, in pixels.", "dy": "Vertical offset between copies, in pixels.",
@@ -580,7 +596,12 @@ OVERRIDES = {
               "kind": "axis, line, ray, segment, point, circle or path.",
               "x": "Point or circle center x.", "y": "Point or circle center y.", "angle": "Line or ray angle in degrees.",
               "radius": "Circle radius.", "d": "SVG path data for a path guide.",
-              "points": "Two [x, y] points for a segment or line."},
+              "points": "Two [x, y] points for a segment or line.",
+              "rect": "[x, y, width, height]: a closed rectangular path guide (a safe area, a keep-out, a trim box).",
+              "role": "What the guide means in a printer's template; the safe_area check reads it. safe: a closed "
+                      "outline content must stay inside (one per panel); keep-out: a closed outline content must "
+                      "stay out of (a barcode notch); fold: a spine or hinge line text should not cross; trim and "
+                      "bleed label the cut edge and the bleed edge."},
     "grid": {"name": "Grid name (its guides are prefixed with it).", "kind": "Grid system to generate.",
              "columns": "Column count.", "rows": "Row count or row heights.", "margin": "Outer margin in pixels.",
              "gutter": "Gap between columns in pixels.", "spacing": "Line spacing in pixels.",
@@ -599,9 +620,10 @@ OVERRIDES = {
                   "rows": "Strings, one per pixel row; each character is a palette key.",
                   "width": "Grid width in pixels (default the longest row).", "height": "Grid height in pixels.",
                   "x": "Layer x on the canvas.", "y": "Layer y on the canvas."},
-    "pixel-draw": {"tool": "pixel, line, rect or fill.", "x": "Start column.", "y": "Start row.",
-                   "x2": "Line end column.", "y2": "Line end row.", "width": "Rectangle width in pixels.",
-                   "height": "Rectangle height in pixels.", "color": "Color or palette key."},
+    "pixel-draw": {"tool": "pixel, line, rect, ellipse (filled, inscribed in the x, y, width, height box) or fill.",
+                   "x": "Start column (rect, ellipse: left edge).", "y": "Start row (rect, ellipse: top edge).",
+                   "x2": "Line end column.", "y2": "Line end row.", "width": "Rectangle or ellipse width in pixels.",
+                   "height": "Rectangle or ellipse height in pixels.", "color": "Color or palette key."},
     "pixel-palette": {"colors": "Palette {character: color}."},
     "frame-save": {"name": "Frame name.", "duration": "Frame time in ms (a multiple of 10)."},
     "frame-apply": {"name": "Saved frame name."}, "frame-delete": {"name": "Saved frame name."},
@@ -670,9 +692,12 @@ OVERRIDES = {
                      "x": "Grid origin x.", "y": "Grid origin y."},
     "adapt-layout": {"targets": "Layers in priority order.", "width": "New width.", "height": "New height.",
                      "margin": "Outer margin.", "gap": "Gap between layers."},
-    "pen": {"nodes": "Anchors [{point: [x, y], in: [x, y], out: [x, y]}] for a Bezier path; in/out are handle "
-                     "positions in the same coordinates as point, not offsets from it.",
-            "points": "Freehand points [[x, y] …] smoothed into a path.", "closed": "Close the path.",
+    "pen": {"nodes": "Anchors [{point: [x, y], in: [x, y], out: [x, y]}] for a Bezier path, in canvas (parent) "
+                     "pixels; in/out are handle positions in the same coordinates as point, not offsets from it. "
+                     "The layer's box is fitted to the drawn path, so x, y, width and height are not needed.",
+            "points": "Freehand points [[x, y] …] in canvas (parent) pixels, smoothed into a path. Use pen when "
+                      "you place an outline point by point; use shape with shape: path when you already have SVG "
+                      "path data.", "closed": "Close the path.",
             "smooth": "Smooth freehand points (default true).", "tension": "Handle length for smoothed points (default 1; 0 gives straight segments).",
             "corners": "Indexes of points kept sharp."},
     "organic-shape": {"kind": "leaf, petal, blob or rose.", "lobes": "Lobe or petal count.",
@@ -793,6 +818,12 @@ EXAMPLES = {
         {"type": "gradient", "name": "sunset", "direction": "angled", "angle": 35,
          "stops": [{"offset": 0, "color": "#f97316"}, {"offset": 0.55, "color": "#db2777"},
                    {"offset": 1, "color": "#4c1d95"}]},
+    ],
+    "pen": [
+        {"type": "pen", "name": "hill", "points": [[0, 420], [180, 300], [420, 360], [640, 280], [640, 480], [0, 480]],
+         "closed": True, "fill": "#84a98c"},
+        {"type": "pen", "name": "beak", "nodes": [{"point": [320, 260]}, {"point": [420, 280], "in": [380, 250]},
+                                                  {"point": [320, 290]}], "closed": True, "fill": "#e76f51"},
     ],
     "shape": [
         {"type": "shape", "shape": "rounded-rectangle", "name": "card", "x": 80, "y": 80, "width": 320,

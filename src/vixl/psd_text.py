@@ -507,6 +507,7 @@ def pixel_reason(project, stored, layer):
 def layer_block(project, stored, layer, bounds, ancestors):
     """``(TySh data, None)`` for a resolved plain text layer, or ``(None, reason)`` when it has to stay
     pixels. ``bounds`` is the resolved layout and ``ancestors`` the ids of the (untransformed) groups it is in."""
+    from . import color_fonts
     from .design import resolve_color
     from .render import color as rgba
     from .text import UnsupportedText, face, line_edges, placed_glyphs, plan, primary_font_data
@@ -523,6 +524,8 @@ def layer_block(project, stored, layer, bounds, ancestors):
         fill = rgba(resolve_color(layer["color"], project.state))
     except (UnsupportedText, VixlError, ValueError, KeyError) as exc:
         return None, f"its font or colour could not be read ({str(exc)[:80]})"
+    if color_fonts.formats(face(data)[0]):
+        return None, "a colour font"
     if not name:
         return None, "the font has no PostScript name"
     if "fvar" in face(data)[0]:

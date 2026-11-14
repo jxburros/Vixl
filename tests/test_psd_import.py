@@ -109,7 +109,7 @@ def test_vixl_psd_round_trips_with_matching_render_and_reported_text(tmp_path):
         {"type": "opacity", "target": "badges", "value": 0.6},
         {"type": "hide", "target": "a"},
     ])
-    data = source.export(tmp_path / "poster.psd")
+    data = source.export(tmp_path / "poster.psd", psd_text="editable")
     p = empty()
     result = import_document(p, data, "psd")
     names = [layer["name"] for layer in p.state["layers"] if not layer.get("parent")]
@@ -270,7 +270,7 @@ def test_truncated_and_corrupted_files_fail_cleanly():
     rng = random.Random(514)
     type_layer = Project(120, 60, "#ffffff")
     type_layer.apply({"type": "text", "name": "t", "text": "Type", "x": 10, "y": 10, "size": 24})
-    for source in (LAYERED, type_layer.export(None, format="PSD")):
+    for source in (LAYERED, type_layer.export(None, format="PSD", psd_text="editable")):
         # Mostly the structural part (header, layer records), where a changed byte reaches the parser.
         span = min(len(source), 4000)
         for _ in range(400):

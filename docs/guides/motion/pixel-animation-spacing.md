@@ -69,11 +69,29 @@ Grids are 1–256 pixels per axis with 1–94 printable non-space ASCII palette 
 - `pixel X Y --color SYMBOL`: set one cell.
 - `line X Y --x2 X --y2 Y --color SYMBOL`: one-pixel-wide integer line, including both endpoints.
 - `rect X Y --width W --height H --color SYMBOL`: filled rectangle, exactly W×H cells.
+- `ellipse X Y --width W --height H --color SYMBOL`: filled ellipse inscribed in the W×H box whose top-left cell is X, Y (heads, wheels, melons). A cell is painted when its centre is inside the ellipse, so the shape is symmetric on both axes at any size.
 - `fill X Y --color SYMBOL`: flood-fill connected cells of the original palette index using four neighbors.
+
+Every tool takes `only` (CLI `--only SYMBOL …`): a list of palette symbols it may overwrite. Cells holding anything else stay as they are, which is how you shade only the cells that are already hair:
+
+```json
+{"type":"pixel-draw","target":"hero","tool":"rect","x":0,"y":0,"width":16,"height":4,"color":"d","only":["h"]}
+```
+
+`pixel-transform` changes the stored rows of a sprite: `flip` (`horizontal`, `vertical`, `both`) mirrors them and `shift` `[dx, dy]` moves the contents by whole cells (flip first, then shift). Cells pushed off the grid are dropped and the cells left behind take the palette's first transparent symbol (or `fill`); `wrap: true` brings them back in on the opposite side instead. It takes `targets` to change several frames at once. A right-facing frame is a copy of the left-facing one, mirrored; a walk-cycle bob is a copy shifted by a row:
+
+```json
+[{"type":"duplicate","target":"walk-left-0","name":"walk-right-0"},
+ {"type":"pixel-transform","target":"walk-right-0","flip":"horizontal"},
+ {"type":"duplicate","target":"walk-left-0","name":"walk-left-1"},
+ {"type":"pixel-transform","target":"walk-left-1","shift":[0,1]}]
+```
+
+CLI: `vixl pixel-transform walk-right-0 --flip horizontal`, `vixl pixel-transform walk-left-1 --shift 0 1 [--wrap | --fill SYMBOL]`. Unlike the layer `flip` operation, which mirrors what is drawn (shading included), `pixel-transform` mirrors the rows, so the shading ramp still falls from the same light.
 
 Drawing coordinates refer to the native grid, even after resizing or positioning the layer. Out-of-bounds edits fail atomically. `pixel-palette NAME --colors '{"g":"#ffdd66"}'` updates all cells with that index. Ordinary layer operations such as duplicate, move, flip, resize, mask, and effects still work. Pixel layer transforms use nearest-neighbor sampling; use integer display sizes and 90° rotations for uniform blocks. Filters/styles can intentionally soften pixels. Final ordinary exports default to smooth sampling for compatibility, so specify `--sampling nearest` when enlarging pixel artwork.
 
-Python: `project.inspect_pixels(target)`. REST: GET `/pixels/{target}`. MCP: `vixl_check(action='pixels')`; edits use `vixl_apply` with `pixel-art`, `pixel-draw`, and `pixel-palette`.
+Python: `project.inspect_pixels(target)`. REST: GET `/pixels/{target}`. MCP: `vixl_check(action='pixels')`; edits use `vixl_apply` with `pixel-art`, `pixel-draw`, `pixel-palette` and `pixel-transform`.
 
 ## Save and export animation frames
 
@@ -172,5 +190,51 @@ vixl frames-edit --animation walk --scene --operations '[{"type":"hide","target"
 ### Why frames are still snapshots
 
 The storage model did not change: a frame holds the complete scene state, not references to shared layers plus per-frame differences. Snapshots keep each frame self-contained (it renders without the working scene or its neighbours, `frame-apply` restores it exactly, and archives from earlier versions load unchanged), keep operations, validation and history deltas simple, and cost little on disk because the archive is compressed and frames mostly repeat each other: a 32×32 document with seven pixel layers of random pixels (a worst case for compression) is 6.3 KB with one frame, 8.5 KB with eight and 39.8 KB with sixty-four (about 0.5 KB per frame), and a `frames-edit` over those sixty-four frames takes about 0.2 s. The cost is that a shared edit must reach every frame, which `frames-edit` now does in one step, and that a shared layer you redraw must be redrawn with the same operations in each frame. Named animations and `frames-edit` address frames by name, so they would keep working if a later version adds shared layers with per-frame overrides.
+
+## Sprite sheets as a grid (directions × frames)
+
+Game engines read character art as a grid: one row per facing (down, left, right, up), one column per frame, a fixed cell size. `sprite-sheet` declares that grid on the document and resizes the canvas to it; `pixel-art` and `move` then take `cell: [row, column]` (row by name or index, column from 0) instead of canvas coordinates, with `x`/`y` as offsets inside the cell:
+
+```json
+[{"type":"sprite-sheet","cell":[32,48],"rows":["down","left","right","up"],"columns":4,
+  "clips":{"walk":{"duration":120},"idle":{"frames":[0]}}},
+ {"type":"pixel-art","name":"left-0","cell":["left",0],"width":32,"height":48,"palette":{".":"transparent","s":"#ffcc99"}},
+ {"type":"duplicate","target":"left-0","name":"right-0"},
+ {"type":"pixel-transform","target":"right-0","flip":"horizontal"},
+ {"type":"move","target":"right-0","cell":["right",0]}]
+```
+
+- A sprite has to fit its cell (an error says by how much it does not). The outline of a `pixel-art` layer is drawn inside the layer's own grid, so with the sprite in its cell an outline never reaches the neighbouring frame; where the silhouette touches the cell edge there is no outline on that side.
+- `clips` name what an engine plays: `{name: {row, frames, duration, durations, loop}}`. `frames` lists column indexes in play order (default every column), `duration` is ms per frame (default the sheet's `duration`, 100), `durations` gives one value per frame, `loop` defaults to true. A clip without `row` stands for one clip per row, named `NAME-ROW` (`walk-down`, `idle-left` …). Without `clips`, each row is one clip named after the row.
+- Sending `sprite-sheet` again updates the fields given; `fit_canvas: false` leaves the canvas alone and `delete: true` removes the declaration (layers stay).
+
+`export-animation` with `format: "sheet"` on such a document writes the canvas as the PNG (whole-number `scale`, nearest sampling) and the clips beside it as JSON:
+
+```bash
+vixl sprite-sheet --cell 32 48 --rows down left right up --columns 4 --clips '{"walk":{"duration":120},"idle":{"frames":[0]}}'
+vixl export-animation --out hero.png --format sheet --scale 2                      # hero.png + hero.json
+vixl export-animation --out hero-ase.png --format sheet --metadata aseprite        # Aseprite frames + frameTags
+```
+
+```json
+{"format":"vixl-sprite-sheet","version":1,"image":"hero.png","width":256,"height":384,"scale":2,
+ "cell":{"width":64,"height":96},"rows":["down","left","right","up"],"columns":4,
+ "clips":[{"name":"walk-down","row":"down","loop":true,"duration":480,
+           "frames":[{"column":0,"x":0,"y":0,"width":64,"height":96,"duration":120}, "…"]}]}
+```
+
+`metadata: "aseprite"` writes the JSON Aseprite exports (`frames` as an array with `frame`, `sourceSize` and `duration`; clips as `meta.frameTags`), which Godot, Phaser, Unity importers and most others read. MCP: `vixl_export(kind="animation", path="hero.png", format="sheet")`; Python: `project.export_animation("hero.png", format="sheet", metadata="aseprite")`. A document without a `sprite-sheet` declaration keeps the sheet of saved frames described above. The canvas has to be exactly the grid at export.
+
+## Enlarging pixel art and other images crisply
+
+An image layer (an imported PNG sprite, a portrait) is resampled smoothly by default. `sampling: "nearest"` on `scale`, `resize`, `add` or an `import-image` step enlarges it pixel by pixel instead, and the choice is stored on the layer: later resizes and rotations, previews and every export keep it (PNG and the other image formats, SVG with `image-rendering: pixelated`, and PDF and PPTX, which embed the enlarged pixels). `add` and `import-image` also take a `scale` factor, so a sprite arrives at 3× in one step:
+
+```json
+[{"type":"import-image","path":"assets/hero.png","name":"hero","scale":3,"sampling":"nearest"},
+ {"type":"scale","target":"hero","value":2,"sampling":"nearest"},
+ {"type":"resize","target":"hero","width":96,"sampling":"smooth"}]
+```
+
+CLI: `vixl import hero.png --scale 3 --sampling nearest`, `vixl add hero.png --scale 3 --sampling nearest`, `vixl scale hero 300% --sampling nearest`. `sampling: "smooth"` returns a layer to the default. Use whole-number factors for uniform blocks. `pixel-art` layers are always nearest; a group that holds only pixel-art layers and nearest images scales and turns crisply too. The export option `--sampling nearest` is separate: it enlarges the whole finished render.
 
 Run `python examples/build_sprite.py --output DIR` for an editable animated potion, GIF/APNG previews and a game-ready sprite sheet.

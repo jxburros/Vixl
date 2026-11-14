@@ -88,6 +88,8 @@ LAYER_FIELDS = {
     "radial": (OBJECT, "group made by radial-repeat: {count, center [x, y], sweep, start_angle, mirror}."),
     "symbol": (STRING, "symbol: name of the symbol master in state.symbols it instances."),
     "linked": (BOOLEAN, "raster: the asset is a link to a file outside the archive (allow_linked)."),
+    "sampling": (STRING, "raster: nearest enlarges the image pixel by pixel (crisp pixel art) in the renderer and "
+                 "every export; absent is smooth."),
     "asset_variable": (STRING, "Variable naming the image asset to draw (variable data merge)."),
     "container": (OBJECT, "Container record of a template slot group."),
     "container_layout": (OBJECT, "Layout a container computed for its contents."),
@@ -148,7 +150,7 @@ LAYER_FIELDS = {
     "generated": (OBJECT, "A layer an operation draws and redraws itself {by}: object-outline for an object's "
                   "outline (object action outline)."),
     "reflection": (OBJECT, "A reflection layer's settings (horizon, sources), kept so it can be re-rendered."),
-    "cut_paper": (OBJECT, "Cut-paper look settings (grain, edge texture)."),
+    "cut_paper": (OBJECT, "Cut-paper look settings (grain, its mottling scale, fibres or pattern, edge texture)."),
     "export_fallback": (STRING, "Reason vector exports draw this layer as an image."),
     # Catalog shape parameters (shape_catalog.py)
     "corner_style": (STRING, "Catalog shape: corner style."),
@@ -212,6 +214,7 @@ LAYER_FIELDS = {
     "tracking": (NUMBER, "text: letter spacing in pixels."),
     "text_transform": (STRING, "text: none, uppercase, lowercase, capitalize or small-caps, applied when drawing."),
     "hanging_punctuation": (BOOLEAN, "text: punctuation at the line edges hangs outside the text box."),
+    "hand_set": (OBJECT, "text: seeded hand-set variation applied when drawing {seed, unit, rise, rotate, scale, tracking}."),
     "tabs": (ARRAY, "text: tab stops [{at, align, leader}]."),
     "stage": (STRING, "text: type stage (display, h1 … caption) it was set with."),
     "rich": (OBJECT, "Rich text: spans, paragraphs and their styles (see docs/guides/text/rich-text.md)."),
@@ -224,7 +227,7 @@ LAYER_FIELDS = {
     "fit": (STRING, "How an image or linked document fills the box (fill, fit, stretch …)."),
     "position": (POINT, "Focus [x, y] fractions used when fit crops."),
     # Layer styles, looks and appearance
-    "styles": (OBJECT, "Layer styles by name (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay), "
+    "styles": (OBJECT, "Layer styles by name (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay, inner-shadow, inner-glow, bevel), "
                "each with its settings and enabled."),
     "looks": (OBJECT, "Applied looks (finishes) by name, listing the styles and effects each added."),
     "appearance": (OBJECT, "field: widget appearance (style, fill, stroke, radius …)."),
@@ -254,6 +257,7 @@ LAYER_FIELDS = {
     # Structured content
     "chart": (OBJECT, "group: the chart record (kind, data, options) its parts are drawn from."),
     "chart_part": (STRING, "Which part of a chart this layer is."),
+    "chart_mark": (OBJECT, "What a chart part stands for in the data: {part, series?, category?} by name."),
     "table": (OBJECT, "group: the table record (rows, columns, styles)."),
     "table_part": (STRING, "Which part of a table this layer is."),
     "key_values": (OBJECT, "group: a key-value list record."),
@@ -284,7 +288,7 @@ LAYER_FIELDS = {
 
 # Fields that appear only on ``inspect`` output or render copies, never in a saved document.
 # Fields render and timeline code put on throwaway copies of a layer while drawing; never saved.
-TRANSIENT = ("_kinetic", "_distort_groups", "_style", "_time")
+TRANSIENT = ("_kinetic", "_distort_groups", "_style", "_time", "_jitter")
 INSPECT_ONLY = ("resolved_bounds", "canvas_bounds", "content_bounds", "coordinate_space", "collapsed",
                 "drawn_bounds", "path_nodes", "source_bounds", "path_local_bounds")
 
@@ -327,7 +331,8 @@ STATE_FIELDS = {
     "brand_preset": (STRING, "Brand preset applied."),
     "style": ((OBJECT, STRING), "Design style tag and its check options."),
     # Layout aids
-    "guides": (OBJECT, "Ruler guides by name: {axis, position, grid or generated}."),
+    "guides": (OBJECT, "Guides by name: {axis, position} or {kind, …}, with grid or generated for a grid's "
+                        "guides and role (trim, safe, fold, keep-out, bleed) for a printer's template."),
     "grids": (OBJECT, "Layout grids by name."),
     "active_grid": (STRING, "Name of the active grid."),
     "layout": (OBJECT, "The layout template applied and its slots."),
@@ -357,6 +362,8 @@ STATE_FIELDS = {
     # Motion and media
     "timeline": (OBJECT, "Keyframe timeline: duration, fps, tracks, markers."),
     "animation": (OBJECT, "Frame animation settings and frames."),
+    "sprite_sheet": (OBJECT, "Sprite-sheet grid (sprite-sheet): {cell: [w, h], rows: [names], columns, duration, "
+                     "clips: {name: {row, frames, duration, durations, loop}}}."),
     "motions": (OBJECT, "Motion recipes applied."),
     "stop_motion": (OBJECT, "Stop-motion settings."),
     "audio_tracks": (ARRAY, "Audio tracks (assets/<sha256>.wav)."),
@@ -526,7 +533,13 @@ def document_schema():
                                       "enabled": {"type": "boolean", "description": "Whether it applies."},
                                       "selection": {"type": ["string", "null"],
                                                     "description": "A selection mask member it is limited to."},
-                                      "amount": {"type": "number", "description": "Strength."}},
+                                      "amount": {"type": "number", "description": "Strength (the opacity of a "
+                                                 "pattern-fill or drawn-texture effect)."},
+                                      "texture": {"type": "object", "description": "Settings of a pattern-fill or "
+                                                  "drawn-texture effect: the pattern or preset and its scale, "
+                                                  "rotation, offset, spacing, colours, seed and blend."},
+                                      "label": {"type": "string", "description": "A name given to the effect "
+                                                "(pattern-fill name), accepted wherever an effect is named."}},
                        "required": ["name"]},
             "mask": {"type": "object", "properties": {
                 "asset": {"type": "string", "pattern": ASSET_PATTERN, "description": "masks/<sha256>.png member."},

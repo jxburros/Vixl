@@ -55,7 +55,7 @@ STILL_OPTIONS = {
     "simulate": ("enum", ("protanopia", "deuteranopia", "tritanopia", "achromatopsia")),
     "dpi": ("number", 36, 2400), "alpha": ("enum", ("auto", "keep", "flatten")), "page": ("page",), "pages": ("str",),
     "pdf_content": ("enum", ("vector", "raster")), "svg_policy": ("enum", ("appearance", "strict")),
-    "svg_document": ("bool",), "artboard": ("str",), "comp": ("str",), "time": ("time",), "title": ("str",),
+    "svg_document": ("bool",), "tagged": ("bool",), "artboard": ("str",), "comp": ("str",), "time": ("time",), "title": ("str",),
 }
 TIMELINE_OPTIONS = {
     "fps": ("number", 1, 60), "scale": ("number", 0.05, 16), "start": ("time",), "end": ("time",),

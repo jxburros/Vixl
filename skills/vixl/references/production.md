@@ -31,7 +31,7 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    Use `suite-capture` for protected layer structures/pixel regions. Do not overwrite
    baselines during an ordinary repair. Rule kinds: `assert`, `property`, `gap`, `spacing`,
    `relation`, `text-fit`, `contrast`, `hierarchy`, `color`, `palette`, `ink`, `balance`, `focal`,
-   `count`, `text` (the drawn copy: `contains`, `forbid`/`pattern` regexes, `min_/max_characters`,
+   `count`, `text` (the drawn copy: `contains`, `forbid`/`pattern` regexes (keep them simple: a service refuses nested repeats such as `(a+)+`), `min_/max_characters`,
    `min_/max_words`, `case`, `brand`, `spelling: true` for unknown words with suggestions), `budget` (`max_layers`, `max_fonts`, `max_bytes`, `min_ppi`, `max_ppi`; `max_render_ms` + `proxy` in a rule of its own, always an advisory review), `alpha`,
    `design`, `container`, `unchanged`, `pixels`. `expected`, `to` and `ratio` may be `{ref: "master.vixl#layer.field"}` or `{ref: "master.vixl#suite:rule-id"}` to read a master document each run (at most 8; a missing one needs review) (fields:
    `vixl_reference('workflows', name='check').definitions.suite`; method: `vixl_reference("testing")`). Run suites with each
@@ -62,6 +62,9 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    `production.json`, and an output that fails it is held for review and not published.
 6. For long production, call `submit` with `start:true`, then `status` with its returned
    ID. The source is snapshotted. `cancel` is cooperative; `resume` preserves remote IDs.
+   A queue has one worker (`start` answers `already_running` while it is alive), takes 64 unfinished jobs and
+   4096 MB (`limit_exceeded` with `limit: max_pending_jobs` or `max_queue_mb`: wait, or cancel jobs) and deletes
+   completed, failed and cancelled job records 7 days after they ended; published outputs stay.
    Never blindly repeat an uncertain provider request.
 7. Reuse components with library-save/search/open/place. Open preserves the editable
    document; place inserts its rendered snapshot. Preview draft/final without regenerating
@@ -103,6 +106,13 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    imposes a template and a CSV on print sheets: a vector-text PDF (selectable text) and/or an editable sheet `.vixl` of live
    `link` layers. Run it with `dry_run` first: the report names missing/unknown columns, overflowing text, tofu glyphs and the
    grid. `{"rerun": "sheet.vixl"}` repeats it after the data changes. See `docs/guides/output/imposition.md`.
+    A printer's own template: `vixl_apply(workflow='guides-import', request={source: 'template.png'})` lists the line
+   colours (and a PSD's layers and ruler guides); with `colors: {'#00a651': 'safe', '#ed1c24': 'keep-out', '#00aeef': 'fold',
+   '#ff00ff': 'trim'}` (PSD also `layers: {NAME: role}`, `ruler_guides: 'fold'`) it writes role guides `safe-1`, `safe-2`,
+   `keep-out-1`, `fold-1` … (closed outlines where lines meet, notches kept; whole pixels; scaled to the canvas). `vixl_check`
+   then reports `safe_area.outside-safe-guide`, `.keep-out` and `.crosses-fold` per guide and layer. `save: NAME` keeps a
+   guide set; `{type: guide-set, name: NAME}` applies it to the next document; `guide-set-save` saves a document's role
+   guides. See `docs/guides/layout/guides.md#a-printers-template-guide-roles`.
 12. Linked documents: a `link` layer shows another `.vixl` live (`fit`, `position`, `crop`, `artboard`, `source_page`,
    `variables`); `vixl_apply(workflow='links', request={})` reports ok/stale/missing with each resolved `path`, `link-refresh`
    records the seen revision, `links-relink {from, to}` follows moved sources, `link-embed` freezes it. Keep sources
