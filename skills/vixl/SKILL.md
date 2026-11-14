@@ -100,7 +100,7 @@ All of them, with the exact rules: [gotchas](references/gotchas.md).
 | --- | --- | --- |
 | `vixl_*` tools | **MCP**: seven tools; fields from `vixl_reference('operations', name=[…])` | [mcp-rest-python](references/mcp-rest-python.md), [workspace](references/workspace.md) |
 | `vixl` on PATH | **CLI** or `vixl apply ops.json` (not found? [finding vixl](references/cli.md#finding-vixl)) | [cli](references/cli.md) |
-| Python | `from vixl import Project` | [mcp-rest-python](references/mcp-rest-python.md) |
+| Python | `from vixl import Project` | [python-scripting](references/python-scripting.md) |
 | `vixl serve` | REST (`POST /operations`, `GET /render`) | [mcp-rest-python](references/mcp-rest-python.md) |
 
 The payload is always the operation list: when unsure of a field, `vixl_reference('operations', name=[…])` or

@@ -20,6 +20,11 @@ JSON blocks (```json)
     a fresh document (the request's width/height, else 1200x800) in a seeded workspace. Applying may fail only on
     context defined elsewhere (`CONTEXT_ERRORS`, a missing input file).
 
+Python blocks (```python)
+    A block marked `<!-- docs-test: run -->` is a complete script. It runs twice with the documented interpreter in
+    one seeded workspace and must exit 0 both times: a generator script that fails on its second run (an export or
+    master that already exists) is a documentation bug. Unmarked Python blocks are fragments and do not run.
+
 What does not run, and why
     - A line that is a synopsis rather than a command (`[--flag]`, `a|b` alternatives, `…`, CAPITAL placeholders).
     - Commands in `SKIP_COMMANDS` (servers, the interactive shell, the network, AI providers), commands with a URL
@@ -33,6 +38,7 @@ Markers: an HTML comment on the last non-blank line before a fence.
                                        workspace (walkthroughs that build one document over several blocks).
     `<!-- docs-test: save FILE -->`    write this block's text to FILE in the workspace of every shell block of the
                                        page ("save this as hello-ops.json").
+    `<!-- docs-test: run -->`          run this Python block as a script, twice (see above).
 """
 
 from __future__ import annotations
@@ -122,7 +128,7 @@ STAND_IN = {
 }
 
 FENCE = re.compile(r"^\s*(`{3,}|~{3,})\s*([\w+-]*)")
-MARKER = re.compile(r"^\s*<!--\s*docs-test:\s*(skip|continue|save)\b:?\s*(.*?)\s*-->\s*$")
+MARKER = re.compile(r"^\s*<!--\s*docs-test:\s*(skip|continue|save|run)\b:?\s*(.*?)\s*-->\s*$")
 
 
 @dataclass
@@ -194,6 +200,7 @@ def shell_commands(block):
 ALL = all_blocks()
 SHELL_BLOCKS = [b for b in ALL if b.lang in SHELL_LANGS and shell_commands(b)]
 JSON_BLOCKS = [b for b in ALL if b.lang == "json"]
+PYTHON_BLOCKS = [b for b in ALL if b.lang in ("python", "py") and b.kind == "run"]
 
 
 def unquoted(command):
@@ -527,13 +534,32 @@ def test_json_block_validates_and_applies(block, offline, monkeypatch):
             pytest.fail(f"{block.id}: applying the block to a fresh document failed\n{exc.code}: {exc}")
 
 
+@pytest.mark.parametrize("block", PYTHON_BLOCKS, ids=lambda b: b.id)
+def test_python_script_runs_and_reruns(block, offline):
+    workspace = offline / "work"
+    workspace.mkdir()
+    seed(workspace, block.path)
+    script = offline / "example.py"  # outside the workspace, as a reader's script sits beside its output folder
+    script.write_text("\n".join(block.body) + "\n", encoding="utf-8")
+    for attempt in ("first run", "rerun"):
+        result = subprocess.run([sys.executable, str(script)], cwd=workspace, capture_output=True, text=True,
+                                timeout=TIMEOUT, stdin=subprocess.DEVNULL, env={**os.environ, "VIXL_AUTO_FONTS": "off"})
+        if result.returncode:
+            pytest.fail(f"{block.id}: the script failed on its {attempt} (exit {result.returncode}):\n"
+                        f"{(result.stdout + result.stderr)[-3000:]}")
+
+
 def test_examples_are_found_and_markers_are_well_formed():
     """Guards the parser: if it stopped finding blocks, the tests above would silently vanish."""
     assert len(SHELL_BLOCKS) > 100 and sum(len(shell_commands(b)) for b in SHELL_BLOCKS) > 500
     assert len(JSON_BLOCKS) > 80
+    assert {b.path for b in PYTHON_BLOCKS} >= {"docs/guides/automation/python-scripting.md",
+                                               "skills/vixl/references/python-scripting.md"}
     for block in ALL:
         if block.kind in ("skip", "save"):
             assert block.marker[1], f"{block.id}: docs-test {block.kind} needs a {block.kind == 'skip' and 'reason' or 'file name'}"
+        if block.kind == "run":
+            assert block.lang in ("python", "py"), f"{block.id}: docs-test run marks a Python script"
         if block.kind == "continue":
             assert block in SHELL_BLOCKS and chain(block)[0] is not block, f"{block.id}: nothing to continue"
     for folder in DOC_DIRS:

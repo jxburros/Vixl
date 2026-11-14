@@ -50,7 +50,8 @@ The complete list; the [skill entry point](../SKILL.md) keeps the most common on
   and `font pair` updates text whose `font` is `heading`/`body` (templates use roles). Literal colors
   and named fonts stay as they are.
 - **Text auto-sizes** to its rendered bounds; an explicit `resize` turns that off, editing text turns it back on.
-  For wrapping use `text-layout` with `width` (the height grows to the wrapped lines) or `width`/`height` (optionally `fit: true`).
+  For wrapping use `text-layout` with `width` (the height grows to the wrapped lines) or `width`/`height` (optionally `fit: true`);
+  `width`/`height` on `text` itself set that box in the same operation (a centred label in a column is one operation).
   `wrap: "balance"` evens a heading's lines (the default for headings in new documents), `wrap: "pretty"` keeps one
   word off a paragraph's last line. Price lists: `tabs: [{at: "100%", align: "right", leader: "."}]` with `\t` in the
   text, or a `table` column `leader: "."`. Two-tone headlines: `layout-apply` `accent_words: ["Winter"]`.

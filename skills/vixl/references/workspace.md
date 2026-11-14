@@ -9,6 +9,12 @@ and a tool's rarer options with `vixl_reference('vixl_export')` (any tool name b
 Read `vixl_document(action='notes')` before revising a document and resolve notes after addressing them.
 Humans can follow progress with `vixl -p DOCUMENT view`.
 
+Paths are relative to the workspace folder. A local server (stdio) names it: `vixl_document` `create`, `open` and
+`list` return `workspace` (absolute); network servers report `"."`. In a Git repository, a new document the
+repository ignores comes back with `git: "ignored…"`: its source would not be committed, so create it in a tracked
+folder or add a `.gitignore` exception. Keep sources and exports in folders (`design/poster.vixl`,
+`design/exports/poster.png`) rather than the repository root; missing folders are created.
+
 ## Brands, workspace typography and rolls
 
 Workspace `brand.json` provides default palette roles (plus `palette.extra` approved colours), pairing/embedded

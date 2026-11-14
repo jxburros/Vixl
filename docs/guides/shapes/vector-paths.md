@@ -170,6 +170,53 @@ absolute or relative, several sub-paths `M…M…` in one layer). The contract:
 
 This layer's box is `0, 0, 352, 210`: the strokes draw at their literal coordinates.
 
+## Build an object from coordinates
+
+An illustration made of parts (a bicycle, a face, a house) is a handful of shapes placed by coordinate. Three
+things keep that to one or two passes instead of a render after every guess:
+
+- **The kind of a shape is a field.** Every shape is `{"type": "shape", "shape": KIND}`; `rectangle`, `ellipse` and
+  the other kinds are not operation types, and `fill`, `stroke` and `stroke_width` are fields of the shape, not
+  operations. (A kind sent as the type is rewritten and reported under `normalized`.) A flat full-canvas colour is
+  `solid`.
+- **Pick the path tool by what you have.** `shape` with `shape: "path"` takes SVG path data; `x` and `y` default
+  to 0, so data written in canvas coordinates needs no `x`, `y`, `width` or `height`. `pen` takes the points
+  themselves (`points` smoothed into a curve, or `nodes` with Bezier handles), in canvas coordinates, and fits the
+  layer's box to them: use it for a body, a beak or a hill placed point by point.
+- **Read positions off the preview.** `vixl_render(rulers=true)` draws a labelled coordinate grid over the preview,
+  and `bounds=true` (or a list of layer names) outlines each layer's box with `name x,y WxH`. Both are drawn on the
+  preview only, never in an export, and keep absolute coordinates when `region` zooms in. On the CLI:
+  `vixl render --out placed.png --show-rulers --show-bounds` (`--show-rulers 50` sets the step,
+  `--show-bounds wheel-back frame` names layers).
+
+```json
+{"width": 1080, "height": 1080, "operations": [
+  {"type": "solid", "name": "sky", "color": "#bde0fe"},
+  {"type": "shape", "shape": "rectangle", "name": "ground", "x": 0, "y": 800, "width": 1080, "height": 280,
+   "fill": "#7cb518", "role": "background"},
+  {"type": "shape", "shape": "ellipse", "name": "wheel-back", "x": 240, "y": 620, "width": 200, "height": 200,
+   "fill": "transparent", "stroke": "#1b1b1b", "stroke_width": 12},
+  {"type": "shape", "shape": "ellipse", "name": "wheel-front", "x": 600, "y": 620, "width": 200, "height": 200,
+   "fill": "transparent", "stroke": "#1b1b1b", "stroke_width": 12},
+  {"type": "shape", "shape": "path", "name": "frame", "path": "M 340 720 L 520 560 L 700 720 Z",
+   "fill": "transparent", "stroke": "#d62828", "stroke_width": 10},
+  {"type": "pen", "name": "body", "points": [[430, 520], [520, 400], [640, 430], [610, 560]], "closed": true,
+   "fill": "#f8f9fa"},
+  {"type": "group", "name": "bicycle", "targets": ["wheel-back", "wheel-front", "frame"]}
+]}
+```
+
+Wheel centres sit at (340, 720) and (700, 720): the frame's path and the wheels use the same numbers, so they meet
+without a second pass. Check the placement with one preview, then move what is off by the difference you read:
+
+```json
+{"type": "move", "target": "body", "x": 20, "y": -10, "relative": true}
+```
+
+`role: "background"` (or `"decoration"`) on the ground tells the checks that it may run to the canvas edge, so the
+safe-area check reports it as informational instead of asking for review after every edit. Group the parts once
+they sit right; `isolate=["bicycle"]` then previews the object alone.
+
 ## Indexed path editing
 
 `shape-to-path` converts parametric and organic shapes to editable Bézier paths while

@@ -238,9 +238,11 @@ A call that succeeds can still carry `warnings` (a list of strings) about the la
 
 Tool results are minified JSON text with no duplicated structured copy, and terse by default: a new document reports its path, canvas, seed and the fonts chosen rather than the whole rolled direction (`verbose: true` on `vixl_document` and on a `vixl_apply` batch returns the full result). Advertised schemas omit pydantic titles and collapse optional fields; operation fields and rarer options come from `vixl_reference`. The provider-backed planner (`vixl_ai_plan`) is served only by `vixl mcp --tools ai --planner`, because the calling agent already plans its own edits.
 
-The default `detail: "brief"` apply response over MCP returns, per stable layer ID, only what the caller cannot already know: new layers as `added`/`name`/`type`/`bounds` (plus a shape's `content_bounds`, and a text layer's `ink_bounds` and `baseline` so text can be aligned without another call), changed layers as the list of changed field names plus their resolved `bounds`, removals, `warnings` and `normalized`; state other than layers is listed by name under `also_changed`. Numbers are rounded to 2 decimals. Brief lists at most 25 added layers and 50 changed and 50 removed layers; the rest are counted under `changes.layers_omitted`, `changed_omitted` and `removed_omitted` (`{count, by_parent, sample, more}`), and per-layer `defaults` records past 25 under `defaults_omitted`, so a 1,000-layer batch returns about 6 KB instead of 440 KB. The other text metrics (`line_bounds`, `baselines`, `ascent`, `descent`, `cap_height`, `x_height`) come from `detail: "compact"` or an inspect. `detail: "compact"` (the REST/CLI default) returns the **new** values of changed fields and the main content of new layers; `detail: "full"` returns before/after snapshots. Python's `Project.apply` accepts all three. `vixl_check(action='measure')` summarizes channels as percentiles unless `histogram: "full"`.
+The default `detail: "brief"` apply response over MCP returns, per stable layer ID, only what the caller cannot already know: new layers as `added`/`name`/`type`/`bounds` (plus a shape's `content_bounds`, and a text layer's `ink_bounds` and `baseline` so text can be aligned without another call), changed layers as the list of changed field names plus their resolved `bounds`, removals, `warnings` and `normalized`; state other than layers is listed by name under `also_changed`. Numbers are rounded to 2 decimals. Brief lists at most 25 added layers and 50 changed and 50 removed layers; the rest are counted under `changes.layers_omitted`, `changed_omitted` and `removed_omitted` (`{count, by_parent, sample, more}`), and per-layer `defaults` records past 25 under `defaults_omitted`, so a 1,000-layer batch returns about 6 KB instead of 440 KB. The other text metrics (`line_bounds`, `baselines`, `ascent`, `descent`, `cap_height`, `x_height`) come from `detail: "compact"` or an inspect. `detail: "compact"` (the REST/CLI default) returns the **new** values of changed fields and the main content of new layers; `detail: "full"` returns before/after snapshots. Python's `Project.apply` accepts all three. `detail: "ack"` (MCP) is the shortest: `{ok, head, changed: N, changed_layers, warnings}`, where `changed_layers` names up to 25 of the layers and, with `check`, `check` holds the verdict and one short entry (`rule`, `action`, `layers`, `message`) per finding that asks for a fix or a review. A check result over MCP leaves out what repeats from call to call: `summary` when `top` already holds every group, and the names of the checks when the default set ran (`checked.checks` reads `default (17; …)`). `vixl_reference('sizes')` without `name` or `category` returns a compact index, `{category: {name: [width, height]}}` (about 5 KB instead of 21 KB); `name` takes several words that must all match the name, description, category or pixels (`'square social'`, `'1080x1080'`) and returns the full entries. `vixl_check(action='measure')` summarizes channels as percentiles unless `histogram: "full"`.
 
 Preview defaults: **1024×1024 maximum and 1 MiB of encoded PNG data** for `vixl_render` (a `vixl_apply` preview defaults to 512 px wide and is capped at 512 KB), preserving transparency and aspect ratio. Previews render a geometrically scaled copy of the document (JPEG sources decode at reduced scale), so a 24-megapixel document previews in a fraction of a second. Every layer edge (and every copy of a `repeat`) lands on a whole preview pixel, so layers or tiles that meet in the full render still meet in the preview and no seam appears between them; documents with canvas-sized effect selections fall back to a full render. `region: [x, y, w, h]` (pixels or percentages) zooms into part of the canvas. File export always uses full resolution unless a scale/profile is requested.
+
+**Placing parts by coordinates.** `vixl_render(rulers=true)` draws a grid over the preview with every line labelled by its document coordinate (the step is chosen for about ten lines; `rulers=50` sets it), and `bounds=true` (or a list of layer names) outlines each layer's box labelled `name x,y WxH`; the result also lists the step and the boxes as numbers. Both keep absolute coordinates under `region`, work in a `vixl_apply` preview (`preview={rulers: true, bounds: true}`), in `POST /preview` and in Python (`vixl.proxy.preview_png(project, rulers=True)`), and are drawn on the preview only: the document and its exports never change. [A worked example](../guides/shapes/vector-paths.md#build-an-object-from-coordinates) builds a multi-part object this way.
 
 ### Long calls, retries and progress
 
@@ -642,6 +644,42 @@ REST workflow route, scoped to its one document, does not serve them.
 
 `vixl_apply(workflow=…)` runs them over MCP. Workflow actions include resource-list/get/save, shape-save, suite-use, palette-check, effect-run, group-list/define/show/apply/recover, branch-list/fork/status/merge and plugin-list/install/remove. REST allows the resource/test/effect actions while retaining fixed-project scope. `vixl_export` and REST export support HTML. Full contracts and examples: [studio.md](../guides/automation/studio.md).
 
+### Agent setup: finding the CLI and waiting for the server
+
+An agent meets Vixl in one of three ways, and each has its own way to run the CLI:
+
+| How Vixl is installed | The MCP server | The same CLI in a shell |
+| --- | --- | --- |
+| `uv tool install vixl-engine` or `pip install vixl-engine` | `vixl mcp --workspace DIR` | `vixl …` (on PATH) |
+| Nothing installed; the client configuration starts `uvx --from vixl-engine==VERSION vixl mcp …` | started by the client | `uvx --from vixl-engine==VERSION vixl …`: `uvx` runs the package from its cache without putting `vixl` on PATH |
+| A source checkout | `python -m vixl mcp --workspace DIR` from the environment it is installed in | `python -m vixl …`; without installing, `PYTHONPATH=$PWD/src python -m vixl …` from the checkout root (`pip install -e .` puts `vixl` on PATH) |
+
+`python -m vixl` and `vixl` are the same program. To have `vixl` on PATH in a container or a hosted agent
+session, install it in the environment's setup step (`uv tool install vixl-engine==VERSION`, or `pip install -e .`
+in a checkout) rather than relying on `uvx`.
+
+The server is ready when the client lists the seven `vixl_*` tools. A client that starts it with `uvx` downloads
+the package the first time, which can take longer than the client waits before the session begins: the tools then
+appear a little later, not at the first prompt. Installing the package in the setup step (or running
+`uvx --from vixl-engine==VERSION vixl --version` there once, which fills the cache) makes the start immediate. While
+the tools are not listed, every operation is available through the CLI (`vixl apply ops.json`, `vixl check`,
+`vixl export`), which reads and writes the same documents.
+
+`vixl guide --brief BRIEF` (MCP: `vixl_reference(BRIEF, options={"detail": "brief"})`) prints the first-step summary
+of a guide: what the piece is, the first step, the operations to reach for and how to get the whole guide.
+
+### Where files go
+
+Every path a tool takes is relative to the workspace folder the server was started with (`--workspace`; the server
+prints it on stderr at start-up). A local server (`vixl mcp` over stdio) also names it in its results:
+`vixl_document` `create`, `open` and `list` return `workspace` with the absolute folder. A server reached over the
+network (`--http`, `vixl serve`, `vixl host`) or built in Python keeps that location private and reports `"."`.
+
+When the workspace is a Git repository, a new document whose path the repository ignores comes back with a `git`
+note (`"ignored: …"`): the source would never be committed, only its exports. Create it in a tracked folder, or add
+an exception to `.gitignore`. A convention that keeps a repository tidy: sources in one folder (`design/poster.vixl`)
+and exports in another (`design/exports/poster.png`); both `create` and exports make missing folders.
+
 ### MCP startup requirements
 
 Vixl needs the MCP Python SDK `>=1.21.1,<2`. Startup reports `missing_dependency` with the installed version when the SDK is incompatible; install it with `pip install 'mcp>=1.21.1,<2'`.
@@ -671,8 +709,11 @@ megapixels, vector_pages, raster_fallback_layers, frames, duration_s, provider_c
 within_limits and limits, and writes nothing. Page/megapixel units are the same as enforcement. Fallback layers
 are a static estimate; encoded bytes are `null` because encoding has not run. Export invokes no AI providers.
 
-Export reports and MCP previews include `last_check`: a revision, fix/review counts, top findings, profile and
-suite state, or `stale` / `not_run`. This reports the last check's scope, not an approval for every possible export
-variant. REST file responses carry it in `X-Vixl-Last-Check`. File `strict=true` runs fresh design checks and refuses
+Export reports and MCP previews include `last_check`: the revision, `passed`, fix/review counts, `complete`
+(the check covered the whole document with at least the default checks) and, when there are any, the open findings,
+the profile and the suite states; or `stale` / `not_run`. This reports the last check's scope, not an approval for
+every possible export variant: an export's `outcome` takes the check's verdict only when the check is complete and
+the export selects no artboard, comp, variables, values, page, time or isolated object
+([outcomes](agent-trust.md)). REST file responses carry it in `X-Vixl-Last-Check`. File `strict=true` runs fresh design checks and refuses
 before writing when they fail. `check_status=false` hides status; `.vixl-checks.json` can set
 `export_check_status: false`. Disabling reporting does not disable strict validation.

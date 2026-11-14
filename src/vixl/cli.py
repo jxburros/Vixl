@@ -58,7 +58,7 @@ Design:    pen, shape, shape-place, container-place, container-swap, container-r
 Guides:    guide NAME x|y POS | guide NAME --kind line|ray|segment|point|circle|path …, guides,
            grid NAME [--kind columns|baseline|thirds|golden|armature|golden-spiral|polar|isometric|triangular|hex|oblique|perspective],
            place LAYER… --guide NAME [--at F | --start F --end F | --spacing PX | --with GUIDE] [--orient tangent],
-           snap LAYER… [--tolerance 8], check --checks guides alignment, render --out F --show-guides
+           snap LAYER… [--tolerance 8], check --checks guides alignment, render --out F --show-guides | --show-rulers [STEP] | --show-bounds [LAYER…]
 Pages:     page add NAME [--master M] [--after P] [--duplicate P] [--notes TEXT], page select|remove P, page move P --index N,
            page set P [--rename N] [--notes TEXT] [--hidden] [--transition fade], master add NAME [--from P], pages,
            render --page 2 | --page all (contact sheet), export deck.pdf|deck.pptx [--pages 1-3,5] [--pdf-content raster],
@@ -354,6 +354,10 @@ def output_options(args, command):
     p.add_argument("--icon-sizes", type=int, nargs="+")
     p.add_argument("--time", help="Render a timeline frame: ms, 1.5s, 50%% or a marker")
     p.add_argument("--show-guides", action="store_true", help="Draw the document's guides over a raster render")
+    p.add_argument("--show-rulers", nargs="?", const=True, type=float, metavar="STEP",
+                   help="Draw a coordinate grid labelled in document pixels over a raster render (STEP: grid step)")
+    p.add_argument("--show-bounds", nargs="*", metavar="LAYER",
+                   help="Outline layers with 'name x,y WxH' labels over a raster render (none named: every top-level layer)")
     p.add_argument("--page", help="Page name or number of a multi-page document; 'all' renders a contact sheet")
     p.add_argument("--pages", help="PDF/PowerPoint pages: numbers, ranges and names, e.g. 1-3,5,intro")
     p.add_argument("--pdf-content", choices=["vector", "raster"], help="PDF pages as vector text and shapes (default, also CMYK) or one image per page")
@@ -837,7 +841,7 @@ def _dispatch(argv):
         server = mcp_server(path, limits, workspace=a.workspace, planner=a.planner, tools=a.tools,
                             require_document=a.require_document,
                             call_limits=from_arguments(a, network="mcp" if a.http else None),
-                            allow_screen_capture=a.allow_screen_capture)
+                            allow_screen_capture=a.allow_screen_capture, local=not a.http)
         if a.http:
             from .interfaces import serve_mcp
             serve_mcp(server, a.host, a.port, os.environ.get(a.token_env), tls=tls)
@@ -979,7 +983,8 @@ def command_help(cmd, args):
         "timeline": "timeline (inspect) | timeline set [--duration 3s] [--fps 30] [--loop N] [--loop-mode seamless|off] [--close] [--clear]",
         "pages": "pages (list pages and masters of a multi-page document)",
         "styles": "styles [list [QUERY] | show NAME] | styles apply NAME [--palette] | styles check [NAME…]",
-        "guide": "guide [BRIEF|GUIDANCE]  (e.g. guide a mascot for a coffee brand; guide operations; guide natural-motion); "
+        "guide": "guide [--brief] [BRIEF|GUIDANCE]  (e.g. guide a mascot for a coffee brand; guide operations; guide "
+                 "natural-motion; --brief prints only the first step, the operations and how to get the rest); "
                  "guide NAME x|y POSITION or guide NAME --kind KIND … adds a guide line",
         "capabilities": "capabilities [TOPIC]  (e.g. capabilities animation: operations with fields, workflows, gotchas, guidance)",
         "looks": "looks  (the finishing looks; apply with look LAYER NAME)",
@@ -1282,8 +1287,9 @@ def project_command(project, cmd, args, *, detail="compact"):
 
             project = (with_values(project, values, complete=False) if values and not (a.fillable or a.fill_mode == "editable")
                        else project)
-        if a.show_fields or a.show_guides:
-            require(destination != "-", "--show-fields and --show-guides write a file")
+        placement = a.show_rulers is not None or a.show_bounds is not None
+        if a.show_fields or a.show_guides or placement:
+            require(destination != "-", "--show-fields, --show-guides, --show-rulers and --show-bounds write a file")
             image = project.render(variables, artboard=a.artboard, comp=a.comp, page=page).convert("RGBA")
             if a.show_guides:
                 from .guides import draw_overlay
@@ -1294,10 +1300,17 @@ def project_command(project, cmd, args, *, detail="compact"):
                 from .render import view_page
 
                 draw_fields(image, view_page(project, page))
+            found = {}
+            if placement:
+                from .feedback import draw_coordinates
+                from .render import view_page
+
+                image, found = draw_coordinates(image, view_page(project, page), 1.0, (0, 0), a.show_rulers,
+                                                None if a.show_bounds is None else (a.show_bounds or True))
             fmt = (a.format or Path(destination).suffix.lstrip(".") or "PNG").upper()
             require(fmt in ("PNG", "JPG", "JPEG", "WEBP"), "Overlays render PNG, JPEG or WebP")
             image.convert("RGB" if fmt in ("JPG", "JPEG") else "RGBA").save(destination, format="JPEG" if fmt == "JPG" else fmt)
-            result = {"output": destination}
+            result = {"output": destination, **found}
             if a.show_guides:
                 result["guides"] = len(project.state.get("guides", {}))
             if a.show_fields:

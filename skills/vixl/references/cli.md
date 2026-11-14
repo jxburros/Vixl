@@ -34,6 +34,12 @@ the user where Vixl is:
 | Windows installer | `%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe` | Git Bash: `"$LOCALAPPDATA/Programs/Vixl/bin/vixl.exe" --version`; PowerShell: `& "$env:LOCALAPPDATA\Programs\Vixl\bin\vixl.exe" --version`; cmd: `"%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe" --version` |
 | Windows installer alias | `%LOCALAPPDATA%\Microsoft\WindowsApps\vixl.exe` | Same launcher; that folder is on PATH by default on Windows 10/11, so terminals opened before installation usually find `vixl` through it |
 | pip / source | the Python environment | `python -m vixl --version` (use `python -m vixl` wherever this page says `vixl`) |
+| Source checkout, not installed | the checkout root | `PYTHONPATH=$PWD/src python -m vixl --version` (`pip install -e .` puts `vixl` on PATH) |
+| MCP server started by `uvx` | uv's cache, not PATH | `uvx --from vixl-engine vixl --version` (`uv tool install vixl-engine` puts `vixl` on PATH) |
+
+The `vixl_*` tools can appear a little after a session starts (a first `uvx` start downloads the package): the CLI
+does the same work on the same documents meanwhile. `vixl guide --brief BRIEF` prints only the first step, the
+operations and how to get the whole guide.
 
 The installer adds `%LOCALAPPDATA%\Programs\Vixl\bin` to the user PATH, but processes that were
 already running (a desktop app and the terminals or agents it spawns) keep their old PATH until
@@ -94,7 +100,7 @@ vixl add photo.jpg --name hero [--x 0 --y 0] [--linked]         # alias: layer a
 vixl solid --name panel --width 400 --height 200 --color '#26344e' [--x --y]
 vixl gradient --name sky --start '#152641' --end '#635e83' --direction vertical|horizontal|radial|angled [--angle 35]
 vixl gradient --name sky --direction angled --angle 35 --stops '[{"offset":0,"color":"#152235"},{"offset":1,"color":"#e8885c"}]'
-vixl text add 'Hello' --name title --size 96 --color white [--font path.ttf] [--align center] [--spacing 8 | --line-height 1.1] [--x center --y 120]
+vixl text add 'Hello' --name title --size 96 --color white [--font path.ttf] [--align center] [--spacing 8 | --line-height 1.1] [--x center --y 120] [--width 180 [--height 60]]
 vixl shape rectangle|rounded-rectangle|ellipse|polygon|star|arc|line --name s --width W --height H [--x --y] \
      [--fill C | --fill-gradient '{"start":C,"end":C}'] [--stroke C] [--stroke-width N] [--radius N] [--sides N] [--inner-radius 0.4] \
      [--line-cap butt|round|square] [--trim-start PCT] [--trim-end PCT]
@@ -168,6 +174,7 @@ vixl swatch brand --delete --detach   # Heading keeps the color; without --detac
 
 ```bash
 vixl align logo top-right --margin 40
+vixl render --out placed.png --show-rulers --show-bounds   # coordinate grid + 'name x,y WxH' boxes (a picture to place by; never an export)
 vixl align title left --relative-to logo
 vixl align title center-y --targets title logo badge      # relative to the selection's union
 vixl distribute horizontal a b c [--gap 24]

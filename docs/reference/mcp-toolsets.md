@@ -58,7 +58,7 @@ shares `vixl_document`, `vixl_render` and `vixl_job`; see [interfaces](interface
 - **Terse results.** Results drop large echoes by default (a new document reports its path, canvas, seed and the
   fonts chosen, not the whole rolled direction); `verbose: true` on `vixl_document` and on a `vixl_apply` batch
   returns the full payload. Previews still return images.
-- **Results and inspection.** `vixl_apply(detail='ack')` returns only `{ok, head, changed: N, warnings}`; the brief
+- **Results and inspection.** `vixl_apply(detail='ack')` returns only `{ok, head, changed: N, changed_layers, warnings}` (with `check`, the verdict and the findings that ask for a fix or a review); `vixl_reference('sizes')` without a filter is a compact `{category: {name: [width, height]}}` index; a check result names the default check set once instead of listing it; the brief
   default summarises the children a chart, table, diagram or container generates at the parent (`generated`,
   `children_added`, `children_sample`) instead of listing each one. `vixl_document(action='inspect')` lists 200 layers
   a page (`offset`, `limit`, `next_offset`), projects with `fields=[…]`, folds generated children and object groups
