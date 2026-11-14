@@ -189,7 +189,8 @@ def lookup(topic=None, *, fields=False, limit=5):
             "layer-intent alt (or decorative: true) on images, frames, charts, links and object groups; "
             "{type: accessibility, lang, title, page_alt, page_lang, reading_order}; vixl_check(checks=[accessibility]) "
             "bundles contrast and color_vision with missing alt, language, small text, colour-only charts and reading "
-            "order. Exports carry alt and language; a tagged PDF structure tree is not written.")
+            "order. Exports carry alt and language; vixl_export(tagged=true) writes a tagged PDF (structure tree: "
+            "headings, paragraphs, figures and form fields in reading order; off by default).")
     if "testing" in chosen:
         from .effect_workflows import SUITES
         from .workflow_schema import RULE_KINDS

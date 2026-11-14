@@ -1034,6 +1034,8 @@ def export_one(
     pdf_content: Annotated[Literal["vector", "raster"] | None, Field(
         description="PDF pages as vector text and shapes (default) or one image per page")] = None,
     fillable: Annotated[bool, Field(description="PDF with fillable form fields")] = False,
+    tagged: Annotated[bool, Field(description="PDF with a structure tree for screen readers: headings, paragraphs "
+                                              "and figures (alt text) in reading order")] = False,
     values: Annotated[dict | None, Field(description="Form field values by key: a filled copy")] = None,
     fill_mode: Literal["flatten", "editable"] = "flatten",
     alpha: Annotated[Literal["auto", "keep", "flatten"], Field(
@@ -1066,7 +1068,7 @@ def export_one(
                    icc_profile=profile_bytes, intent=intent, black_generation=black_generation, ink_limit=ink_limit,
                    proof=proof, simulate=simulate, dpi=dpi, icon_sizes=icon_sizes, time=time, page=page, pages=pages,
                    pdf_content=pdf_content, fillable=fillable, values=values, fill_mode=fill_mode, alpha=alpha,
-                   presenter=presenter, title=title, max_bytes=max_bytes, isolate=isolate, padding=padding)
+                   tagged=tagged, presenter=presenter, title=title, max_bytes=max_bytes, isolate=isolate, padding=padding)
     if check or spec is not None:
         options.update(check=check, spec=spec)
     return export_file(session, path, overwrite, document, **options)

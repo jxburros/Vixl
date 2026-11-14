@@ -1182,6 +1182,7 @@
        "strict",
        "svg_document",
        "svg_policy",
+       "tagged",
        "time",
        "values",
        "variables"

@@ -366,6 +366,8 @@ def output_options(args, command):
     p.add_argument("--no-notes", action="store_true", help="Presentation: leave the speaker notes out of the file")
     p.add_argument("--columns", type=int, help="Contact sheet columns with --page all")
     p.add_argument("--fillable", action="store_true", help="PDF with fillable form fields")
+    p.add_argument("--tagged", action="store_true",
+                   help="PDF with a structure tree (headings, paragraphs and figures in reading order) for screen readers")
     p.add_argument("--fill-mode", choices=["flatten", "editable"], default="flatten",
                    help="With field values in --set: draw them into the artwork, or prefill a fillable PDF")
     p.add_argument("--show-fields", action="store_true", help="Outline form fields with their keys and tab order")
@@ -1355,6 +1357,7 @@ def project_command(project, cmd, args, *, detail="compact"):
             values=values if (a.fillable or a.fill_mode == "editable") else None,
             pages=None if a.pages == "all" else parse_pages(a.pages),
             pdf_content=a.pdf_content,
+            tagged=a.tagged,
             presenter=presenter_options(a),
             title=a.title,
             max_bytes=a.max_bytes,

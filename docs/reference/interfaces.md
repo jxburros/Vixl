@@ -527,7 +527,7 @@ Python: `Project.sized("letter", bleed=True)`, `project.export("flyer.pdf", colo
 
 All editing is ordinary operations. MCP: `vixl_render` gains `page` (`"all"` for a contact
 sheet), `values` and `show_fields`; `vixl_export` gains `page`, `pages`, `pdf_content`,
-`fillable`, `values`, `fill_mode` and `presenter` and writes `.pptx` and `.html` presentations
+`fillable`, `values`, `fill_mode`, `tagged` (a [tagged PDF](../guides/output/accessibility.md#tagged-pdf)) and `presenter` and writes `.pptx` and `.html` presentations
 (see [presenter](../guides/output/presenter.md)); `vixl_check` gains `page`, `deck`
 settings, `sample`, and the `deck`, `form` and `drawing` families; `vixl_document(action='inspect')` lists
 pages and fields. `vixl_apply(workflow=…)` adds `lyric-video-plan/build/export`, `organic-catalog`,
@@ -538,12 +538,12 @@ PDF export is vector by default (also with `color_space="cmyk"`); the export res
 `color_space` and `page_size`, and `dpi` sizes PDF pages and PowerPoint slides alike. A PPTX result's `warnings`
 name the fonts that are not embedded and must be installed where the deck is opened (`fonts_not_embedded`, with each one's fsType permission and license under `font_embedding`).
 
-REST: `POST /export` accepts `page`, `pages`, `pdf_content`, `fillable`, `values`, `fill_mode` and
+REST: `POST /export` accepts `page`, `pages`, `pdf_content`, `fillable`, `values`, `fill_mode`, `tagged` (boolean: a PDF structure tree for screen readers) and
 `presenter` (HTML slide presentation options) and formats `PPTX`, `PSD` (layered, see [exporting](../guides/output/exporting.md#layered-psd-for-designer-handoff)) and `TTF`, `OTF`, `WOFF`, `WOFF2` (the document's [font design](../guides/text/custom-fonts.md)); `POST /preview` accepts `guides`, `page`, `values` and `show_fields`; the fixed
 project's workflow routes include `lyric-video-plan`, `organic-catalog`, `form-fill` and
 `drawing-report`.
 
-Python: `project.export("deck.pptx")`, `project.export("form.pdf", fillable=True)`,
+Python: `project.export("deck.pptx")`, `project.export("form.pdf", fillable=True)`, `project.export("report.pdf", tagged=True)`,
 `project.render(page=2)`, `vixl.forms.fill` / `fill_data`, `vixl.deck.check_deck` /
 `contact_sheet`, `vixl.plugins.drawing.drawing` (`clean`, `report`, `compare`, `ai_color`), `vixl.plugins.lyrics.lyrics`
 (`parse_lrc`, `plan`, `build`, `export`).

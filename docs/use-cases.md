@@ -306,7 +306,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PRD-01 | Banner with a variable-driven headline, rendered for several cities | `variable set`, `render --set` | 6 · 2 |  |
 | QA-11 | Save a check suite and make an edit that only commits if it passes | `vixl_apply(workflow='act')` | 8 · 2 |  |
 | QA-39 | Find and review the objects in an existing design | `vixl_document(action='inspect', object="*")`, `inspect object=NAME`, `isolate` `views: [parts]` | 2–4 · <1 | Lists kinds, parts and missing required parts. |
-| QA-40 | Accessibility pass before handing off a deck, PDF or web graphic | `layer-intent alt`/`decorative`, `accessibility lang`, `check accessibility` | 4–10 · 1–2 | Alt and language reach HTML, SVG, PPTX and PDF; no tagged PDF structure tree. |
+| QA-40 | Accessibility pass before handing off a deck, PDF or web graphic | `layer-intent alt`/`decorative`, `accessibility lang`, `check accessibility` | 4–10 · 1–2 | Alt and language reach HTML, SVG, PPTX and PDF; `export --tagged` writes a tagged PDF (structure tree in reading order), off by default. |
 | QA-24 | Turn a brief into tests (hierarchy, spacing, margins, contrast, balance) and run them with every batch before previewing | `suite-set`, `vixl_apply(suites=true)`, `vixl_reference("testing")` | 3–5 · 1 | Starter suites per kind of work; `vixl_reference(kind)` lists one under `tests`. |
 
 ### Social, web and simple graphics

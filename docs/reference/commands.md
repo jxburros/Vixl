@@ -21,6 +21,7 @@ project with appropriate layers or input files. See each guide for complete crea
 | Field layer | `field add email --kind text --label Email --required` | [Forms](../guides/output/forms.md) |
 | Field inspection | `field list`, `render --show-fields --out fields.png` | [Forms](../guides/output/forms.md) |
 | Fillable PDF | `export form.pdf --fillable` | [Forms](../guides/output/forms.md#the-fillable-pdf) |
+| Tagged PDF (structure tree) | `export report.pdf --tagged` | [Accessibility](../guides/output/accessibility.md#tagged-pdf) |
 | Filled copy | `form fill --set email=ada@example.com --out ada.pdf` | [Forms](../guides/output/forms.md#filling) |
 | Validate CSV fills | `form fill --data rows.csv --dry-run` | [Form tutorial](../tutorials/forms-and-decks.md) |
 | Drawing cleanup | `drawing import sketch.jpg --name sketch`, `drawing straighten sketch` | [Drawing](../guides/images/drawing.md) |

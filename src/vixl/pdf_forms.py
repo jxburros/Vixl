@@ -311,6 +311,9 @@ class FormWriter:
             label = label_text(view, item, resolved)
             flags = (FLAGS["read_only"] if record.get("read_only") else 0) | (FLAGS["required"] if record.get("required") else 0)
             widget = {"Type": Name("Annot"), "Subtype": Name("Widget"), "Rect": rect, "F": 4}
+            tags = getattr(builder, "tags", None)
+            if tags is not None:  # tagged export: the widget is a Form element of the structure tree
+                widget["StructParent"] = tags.widget((x, y, w, h), label or record["key"])
             kind = record["kind"]
             if kind == "radio":
                 group = self.radios.get(record["key"])
@@ -328,6 +331,8 @@ class FormWriter:
                               AP={"N": {option: on, "Off": off}}, MK={"CA": Text(CAPTIONS[mark])},
                               TU=Text(label) if label else None)
                 ref = self.writer.add(widget)
+                if tags is not None:
+                    tags.attach(widget["StructParent"], ref)
                 group["kids"].append(ref)
                 refs.append(ref)
                 continue
@@ -370,6 +375,8 @@ class FormWriter:
                     field["V"] = field["DV"] = Text(display)
                 field["AP"] = {"N": self.text_appearance(item, width, height, display, size, rgba, font)}
             ref = self.writer.add(field)
+            if tags is not None:
+                tags.attach(widget["StructParent"], ref)
             self.fields.append(ref)
             refs.append(ref)
         if refs:
@@ -392,7 +399,7 @@ class FormWriter:
 
 
 def export_fillable(project, path=None, *, pages=None, values=None, dpi=None, content="vector", background="white",
-                    report=None, title=None, lang=None, views=None):
+                    report=None, title=None, lang=None, views=None, tagged=False):
     """A fillable PDF of the document (``values`` prefill it: editable filling)."""
     from .forms import form_settings, has_fields, reject_signature_samples, with_values
     from .pdf_export import export_pdf
@@ -404,7 +411,8 @@ def export_fillable(project, path=None, *, pages=None, values=None, dpi=None, co
     form = FormWriter(source)
     data = export_pdf(source, path, pages=pages, content=content, dpi=dpi, background=background,
                       title=title if title is not None else settings.get("title"), lang=lang or settings.get("lang"),
-                      annotations=form.annotations, acroform=form.acroform, fillable=True, report=report, views=views)
+                      annotations=form.annotations, acroform=form.acroform, fillable=True, report=report, views=views,
+                      tagged=tagged)
     if report is not None and form.embed:
         report["entry_font"] = {"mode": "embed", "embedded": sorted(set(form.embedded)),
                                 **({"helvetica_fallback": form.fallbacks} if form.fallbacks else {})}

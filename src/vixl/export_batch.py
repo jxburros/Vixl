@@ -52,6 +52,7 @@ class Target(BaseModel):
     pages: list[int | str] | str | None = None
     pdf_content: Literal["vector", "raster"] | None = None
     fillable: bool = False
+    tagged: bool = False
     values: dict | None = None
     fill_mode: Literal["flatten", "editable"] = "flatten"
     alpha: Literal["auto", "keep", "flatten"] = "auto"

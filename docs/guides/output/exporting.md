@@ -87,11 +87,16 @@ vixl -p slides.vixl export slides.pdf
 vixl -p slides.vixl export slides.pptx
 vixl -p slides.vixl export slide.png --pages all
 vixl -p registration.vixl export registration.pdf --fillable
+vixl -p slides.vixl export slides-tagged.pdf --tagged
 vixl -p motion.vixl export-timeline --out motion.webp --fps 12
 ```
 
 PowerPoint references font families, so install those fonts on the receiving system.
 Multi-page vector PDF embeds supported TrueType subsets with Unicode mappings.
+`--tagged` (`tagged=True`, MCP and REST `tagged: true`) writes a tagged PDF for screen readers and accessibility
+checkers: a structure tree with headings, paragraphs, described figures and form fields in the page's reading
+order, `/MarkInfo` and the language. It is off by default and leaves an untagged export byte-identical; see
+[tagged PDF](accessibility.md#tagged-pdf).
 Export reports can list `raster_fallbacks` and `fonts`; inspect those before promising
 fully editable content. [Slides](slides.md) documents these details.
 
