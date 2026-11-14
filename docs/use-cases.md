@@ -66,7 +66,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DOC-05 | Change canvas size or switch to another preset (portrait ↔ landscape) | `canvas resize`, `canvas size NAME --landscape` | 1 · <1 | Constrained layers follow their anchors. |
 | DOC-06 | Add a solid or gradient background | `solid`, `gradient` operations | 1 · <1 | Linear, radial and multi-stop gradients. |
 | DOC-45 | Fill a shape (a card, a button, a blob, a logo path) with a gradient | `shape` with `fill_gradient` | 1 · <1 | Spans the shape's box; the stroke keeps its colour. Vector in SVG, PDF and PPTX. |
-| DOC-07 | Import an image, SVG or PDF page as a layer | `import-image`, `import-document` | 1 · <1 | PDF needs `[pdf]`. SVG and PDF import as editable layers (`svg_mode=auto` draws unsupported elements as images; `appearance` imports one image). |
+| DOC-07 | Import an image, SVG or PDF page as a layer | `import-image`, `import-document` | 1 · <1 | PDF needs `[pdf]`. A layered PSD: DOC-50. SVG and PDF import as editable layers (`svg_mode=auto` draws unsupported elements as images; `appearance` imports one image). |
 | DOC-08 | Undo, redo or jump back in history | `vixl_document(action='history')`, `vixl undo N` | 1 · <1 | Delta history with checkpoints. |
 | DOC-09 | Save a named checkpoint before a risky edit | `vixl checkpoint NAME` | 1 · <1 | Restore with `checkout`. |
 | DOC-10 | Set a document variable and render with an override | `variable set`, `render --set NAME=VALUE` | 2 · <1 |  |
@@ -84,6 +84,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DOC-40 | Import a PDF page as editable text, paths and images | `import-document` pdf | 1 · <1 | `[pdf]`. Vixl's own PDFs come back at their pixel size; shadings and clipped content become image layers. Fonts (SVG import takes `font_map` too): `font_map`, registered families, then (Vixl's own PDFs) the same face from the document or the font cache; `fonts` in the result says how each matched, only `default` warns. |
 | DOC-41 | Read, generate or validate a `.vixl` file without Vixl | [file format](reference/file-format.md), `vixl schema document` | 1 · <1 | JSON Schema of `project.json`, checked against every `.vixl` in the repository. |
 | DOC-42 | Import a Figma frame or page as editable layers, live text and stacks `[Figma]` | `import-document` format=figma, `vixl import URL --format figma`, `import_document(format="figma")`, REST `POST /import?format=figma` | 1 · <1 | [Mapping and known losses](guides/images/figma.md); the `report` lists every unmapped feature. Export back with `.figma.json` and the offline Figma plugin (DOC-48). |
+| DOC-50 | Import a layered Photoshop PSD as image layers, groups and masks | `import-document` psd, `vixl import FILE.psd`, REST `POST /import?format=psd` | 1 · <1 | 8-bit RGB, raw or RLE; names, order, visibility, opacity, blend modes and layer masks are kept, type layers come in as images with their text listed, and `not_applied` lists adjustment layers, effects and clipping ([importing a layered PSD](guides/output/exporting.md#importing-a-layered-psd)). |
 | DOC-48 | Export a Vixl design as editable Figma layers | `export --out design.figma.json`, then Import Vixl file in the local Figma plugin | 1 export + 1 import · depends on file | Offline interchange; named fallbacks and font substitutions are reported. Native/live Figma visual review remains pending. |
 | DOC-43 | Open a document saved by an earlier release (format 1, pre-0.21 lookups, house-style versions, inset strokes) with its old look | `vixl convert OLD.vixl -o NEW.vixl`, `vixl convert DIR --out OUTDIR`, `vixl.convert.convert_file` | 1 · <1 | [Conversion kit](reference/converting.md): `--look preserve` writes formerly implicit behaviour into fields, `--look current` reports what changes; the report lists every change and what was not converted. |
 | DOC-37 | Capture the desktop, a rectangle or a Windows window to PNG | `vixl_apply(workflow='screen-capture')` | 1 · <1 | Since 0.24; interactive local desktop only; OS screen permission may be needed. |
@@ -229,7 +230,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DOC-27 | Render a quick preview, or zoom on a region | `vixl_render(region=…)` | 1 · <1 | Draft proxies are fast. |
 | DOC-28 | Export a self-contained HTML page of the design | `export FILE.html` | 1 · <1 |  |
 | DOC-29 | Keep a still export under a byte budget | `export --max-bytes N` | 1 · <1 | Warns and names heavy grain/paper layers. |
-| DOC-44 | Layered PSD for a designer | `vixl_export` `.psd` | 1 · <1 | Since 0.22; pixel layers with names, blend modes and groups; text is pixels. |
+| DOC-44 | Layered PSD for a designer | `vixl_export` `.psd` | 1 · <1 | Since 0.22; pixel layers with names, blend modes and groups; text is pixels (`text_as_pixels`). `psd_text: "editable"` also writes plain text as type layers (`editable_text`), not yet confirmed in Photoshop or Photopea. |
 
 ### Checks and discovery
 
@@ -767,7 +768,7 @@ note the version.
 | ID | Use case | Status | Workaround |
 | --- | --- | --- | --- |
 | BLK-01 | Edit in CMYK, use spot colors, control overprint or trapping | Out of scope (CMYK is export-only) | Design in sRGB, export CMYK with an ICC profile. |
-| BLK-02 | Open Photoshop PSD or GIMP XCF projects, or save editable PSD type/vector layers | Not implemented (layered PSD export of pixel layers since 0.22) | Import flattened PNG/TIFF, or SVG/PDF; export `.psd` for pixel handoff. |
+| BLK-02 | Open GIMP XCF projects or 16-bit, CMYK or PSB Photoshop files, keep Photoshop adjustment layers and effects, or save PSD vector layers and styled (rich) type | Not implemented (8-bit RGB layered PSD import is DOC-50; plain text can export as type layers, unverified, DOC-44) | Convert to an 8-bit RGB PSD in the source editor, or import flattened PNG/TIFF, or SVG/PDF; export `.psd` for handoff. |
 | BLK-03 | Develop camera RAW files or keep camera metadata | Not implemented | Develop elsewhere, import TIFF/JPEG. |
 | BLK-04 | High-bit-depth (16/32-bit) editing | Not implemented (RGBA8) | – |
 | BLK-26 | Print or photo professional pipeline end to end: RAW development, 16-bit retouching, spot plates and trapping, then press files | Partial: layout, print checks, ICC-managed CMYK export and soft proofs work on 8-bit sRGB documents; the rest is BLK-01, BLK-03 and BLK-04 | Develop and retouch elsewhere, bring in TIFF or JPEG, and use Vixl for layout, checks and export. See [Is Vixl a fit?](getting-started.md#is-vixl-a-fit). |

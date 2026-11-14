@@ -1099,6 +1099,8 @@ def export_one(
     fillable: Annotated[bool, Field(description="PDF with fillable form fields")] = False,
     tagged: Annotated[bool, Field(description="PDF with a structure tree for screen readers: headings, paragraphs "
                                               "and figures (alt text) in reading order")] = False,
+    psd_text: Annotated[Literal["editable", "pixels"] | None, Field(
+        description="PSD: text as pixel layers only (default) or plain text also as editable type layers")] = None,
     values: Annotated[dict | None, Field(description="Form field values by key: a filled copy")] = None,
     fill_mode: Literal["flatten", "editable"] = "flatten",
     alpha: Annotated[Literal["auto", "keep", "flatten"], Field(
@@ -1132,6 +1134,8 @@ def export_one(
                    proof=proof, simulate=simulate, dpi=dpi, icon_sizes=icon_sizes, time=time, page=page, pages=pages,
                    pdf_content=pdf_content, fillable=fillable, values=values, fill_mode=fill_mode, alpha=alpha,
                    tagged=tagged, presenter=presenter, title=title, max_bytes=max_bytes, isolate=isolate, padding=padding)
+    if psd_text is not None:
+        options["psd_text"] = psd_text
     if check or spec is not None:
         options.update(check=check, spec=spec)
     return export_file(session, path, overwrite, document, **options)

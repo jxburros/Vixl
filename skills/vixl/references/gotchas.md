@@ -122,8 +122,10 @@ The complete list; the [skill entry point](../SKILL.md) keeps the most common on
   ≤ 10 min, 60 fps, 3 600 frames; 4 096 strokes per paint layer.
 - **Not supported** (don't promise them): a faithful editable import of every SVG, PDF or Figma feature (filters,
   masks, clip paths, shadings and unmapped Figma nodes become image layers or are listed in `report`),
-  CMYK *editing* or spot colors, live tablet input, RAW, PSD/XCF import (PSD *export* is layered pixels: text is not
-  editable type), a GUI editor.
+  CMYK *editing* or spot colors, live tablet input, RAW, XCF import, 16-bit or CMYK PSD import (an 8-bit RGB layered
+  PSD imports as image layers, groups and masks: its type and adjustment layers are not editable), PSD *export* of
+  editable type by default (text is pixels; `psd_text: "editable"` writes plain text as type layers, unverified in
+  Photoshop), a GUI editor.
 - **Figma export:** use `.figma.json` or format `FIGMA`, then the repository's local Figma import plugin. Read
   `report.unmapped` and the plugin's font substitutions; unsupported appearances rasterize per layer, and
   timelines export only a still frame. Review wrapping and alignment in Figma before approving the handoff.

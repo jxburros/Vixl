@@ -40,7 +40,7 @@ Use a `roll` step in `vixl_apply` (CLI `roll --apply --set title=...`) to apply 
 `vixl_reference('roll')` to see one without applying it;
 `layout apply` returns unfilled slots immediately. Check and fill them before export. A roll with `slots` omits the slots you did not fill (`unfilled: "omit"`), so it passes `check`; pass `unfilled: "blank"` to keep `[Label]` placeholders instead. When no layout places every slot you pass, the roll keeps the previewed layout and the apply fails with `unused_slot`: drop the slots its `suggestions` leave out and apply again.
 
-## Importing SVG, PDF and Figma
+## Importing SVG, PDF, PSD and Figma
 
 An `import-document` step (`vixl_apply`) imports SVG and PDF as editable layers. Vixl's own SVG export carries its document, so
 re-importing it restores the same layers, live text, groups and effects (fonts are named, not stored: the import finds a
@@ -53,6 +53,11 @@ clipped content as image layers; its fonts are found again from `font_map`, regi
 the result's `fonts` says how). With the default `svg_mode="editable"` an unsupported SVG feature returns an
 error; `"auto"` draws just those elements as images (at most 64; more fails with `resource_limit`); `"appearance"` imports the whole SVG or PDF page as one image
 (`dpi` sets a PDF page's resolution).
+A layered PSD (`path` ending `.psd`, or `format="psd"`; 8-bit RGB) imports as image layers and groups with their names,
+order, visibility, opacity, blend modes and layer masks; type layers come in as images with their text, font and size
+listed under `text`, and `not_applied` lists what the pixels do not carry (adjustment layers, effects, clipping).
+`svg_mode="appearance"` imports the file's merged image as one layer. 16-bit, CMYK and PSB files fail with
+`unsupported_psd`.
 A Figma file or frame imports as editable layers, live text, stacks and gradients with `format="figma"` and `source` set to the URL or key
 (`node_id` picks one frame, `rasterize_unsupported` draws nodes with no editable equivalent as images; CLI
 `vixl import URL --format figma [--node 1:2] [--rasterize-unsupported]`, Python `import_document(project, b"URL", "figma")`, REST

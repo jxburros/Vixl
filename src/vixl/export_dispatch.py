@@ -57,6 +57,7 @@ def export(
     padding=None,
     svg_document=True,
     tagged=False,
+    psd_text=None,
 ):
     """Render and encode. ``color_space='cmyk'`` separates JPEG/TIFF/PDF output (ICC profile
     bytes in ``icc_profile`` for press-accurate separation, else device-naive GCR with
@@ -71,7 +72,8 @@ def export(
     is ``False`` for the plain single-image HTML, ``True`` for a presentation of any document, or
     a dict of options (theme, notes, slide_images, start, title). ``title`` is the PDF document title
     (default: the page's title layer, then the file name). ``max_bytes`` is a size budget: when the
-    encoded file is larger, ``report['warnings']`` says so (the export still succeeds). ``isolate`` (layer
+    encoded file is larger, ``report['warnings']`` says so (the export still succeeds). ``psd_text='editable'`` also
+    writes a PSD's plain text layers as type layers (default ``'pixels'``: text is pixels only). ``isolate`` (layer
     names, object paths such as ``dog/head`` or ``object:KIND``) exports only those layers, cropped to their ink
     plus ``padding`` pixels on a transparent canvas, in any format. SVG output embeds the document it shows (its layers,
     and the images and fonts they use) so that importing the SVG gives back the same editable layers;
@@ -179,7 +181,7 @@ def export(
                 "comp, proof, simulate, CMYK and pages do not apply", field="format")
         from .psd_export import export_psd
 
-        return export_psd(project, path, page=page, variables=variables, report=report)
+        return export_psd(project, path, page=page, variables=variables, report=report, text=psd_text or "pixels")
     if (format or "").upper() == "PPTX" or suffix == ".pptx":
         require(not artwork, "PPTX keeps editable RGB slides; profile, artboard, comp, proof, simulate and CMYK do not "
                 "apply (export a PNG or PDF to preview them)", field="format")

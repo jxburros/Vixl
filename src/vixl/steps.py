@@ -58,14 +58,14 @@ def import_image(session, project, *, path: str | None = None,
 def import_document(session, project, *, path: str | None = None, data_base64: str | None = None,
                     source: Annotated[str | None, Field(description="figma: a Figma file URL or file key (the token "
                                                                     "comes from FIGMA_TOKEN or VIXL_FIGMA_TOKEN)")] = None,
-                    format: Annotated[Literal["svg", "pdf", "figma"] | None, Field(
-                        description="Default: from the path (.svg, .pdf; a .json path or source is figma)")] = None,
+                    format: Annotated[Literal["svg", "pdf", "psd", "figma"] | None, Field(
+                        description="Default: from the path (.svg, .pdf, .psd; a .json path or source is figma)")] = None,
                     name: str = "import",
                     page: Annotated[int | str, Field(description="PDF page number, or the Figma page number or name")] = 1,
                     dpi: int = 144,
                     svg_mode: Annotated[Literal["editable", "appearance", "auto"], Field(
                         description="editable layers (default), auto (draw unsupported elements as images) or "
-                                    "appearance (one image; SVG source kept)")] = "editable",
+                                    "appearance (one image; SVG source kept; a PSD's merged image)")] = "editable",
                     node_id: Annotated[str | None, Field(description="figma: the frame or node to import (1:2 or 1-2)")] = None,
                     rasterize_unsupported: Annotated[bool, Field(
                         description="figma: import a PNG render of nodes Vixl cannot keep editable; otherwise they "
@@ -76,7 +76,8 @@ def import_document(session, project, *, path: str | None = None, data_base64: s
                     install_fonts: Annotated[bool | None, Field(
                         description="Allow downloading from Google Fonts a font the document and the font cache lack "
                                     "(Vixl's own SVG, PDF; default false: the font cache only)")] = None):
-    """Import an SVG (Vixl's own round-trips losslessly), one PDF page as editable text, paths and images, or a Figma
+    """Import an SVG (Vixl's own round-trips losslessly), one PDF page as editable text, paths and images, a layered
+    PSD (8-bit RGB) as image layers, groups and masks, or a Figma
     file, frame or node as editable layers (from a URL or key with the server's Figma token, or an exported file
     JSON); svg_mode=appearance imports one image instead. External or active SVG is rejected."""
     from .imports import import_document as read
@@ -87,7 +88,8 @@ def import_document(session, project, *, path: str | None = None, data_base64: s
         if source is not None or (path and path.lower().endswith(".json")):
             format = "figma"
         else:
-            require(path and path.lower().endswith((".svg", ".pdf")), "Give format: svg, pdf or figma", field="format")
+            require(path and path.lower().endswith((".svg", ".pdf", ".psd")), "Give format: svg, pdf, psd or figma",
+                    field="format")
             format = path.lower().rsplit(".", 1)[1]
     if format == "figma":
         data = source if source is not None else _upload(session, path, data_base64)

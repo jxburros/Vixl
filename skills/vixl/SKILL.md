@@ -90,7 +90,7 @@ Details: [workflow](references/workflow.md), [testing](references/testing.md).
 - **Motion:** set a `pivot` at each joint, animate `translate-x/y` and `scale`, use `text-animate` for kinetic
   type; pixel art exports with `sampling: "nearest"`; `sprite-sheet` grids.
 - **AI needs a configured provider**, and `network_disabled` means offline on purpose: say so, do not retry.
-- **Limits and unsupported features** (CMYK editing, PSD import, RAW, a GUI): see the full list.
+- **Limits and unsupported features** (CMYK editing, RAW, a GUI): see the full list.
 
 All of them, with the exact rules: [gotchas](references/gotchas.md).
 
@@ -126,7 +126,7 @@ The payload is always the operation list; fields: `vixl_reference('operations', 
 | Emoji catalog, packs and exports | [emojis](references/emojis.md) |
 | Suites, campaigns, pipelines, watch mode and schedules, data sync, webhooks, localization, approvals, link impact, packages, lyric videos, jobs | [production](references/production.md) |
 | Selections, palette tests, containers, groups, branches | [studio](references/studio.md) |
-| Brands, workspace fonts, SVG/PDF import, Figma interchange | [workspace](references/workspace.md) |
+| Brands, workspace fonts, SVG/PDF/PSD import, Figma interchange | [workspace](references/workspace.md) |
 | Provider-backed generation, vision and lyric alignment | [ai](references/ai.md) |
 | Additions by release | [whats-new](references/whats-new.md) |
 

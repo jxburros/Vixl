@@ -18,7 +18,7 @@ can substitute fonts, emphasize form fields or handle animation differently.
 | Print or selectable-text pages | PDF | Vector pages where supported; effects can fall back to raster; CMYK PDF stays vector (DeviceCMYK) |
 | Editable presentation | PPTX | Real text, supported shapes, images, notes; unsupported appearances become pictures |
 | Editable Figma handoff | `.figma.json` / FIGMA | Pages, frames, native shapes, text and basic auto layout; embedded images and an explicit loss report; import with the local [Figma plugin](../images/figma.md#export-to-figma) |
-| Layered handoff to Photoshop and similar editors | PSD | One 8-bit RGBA pixel layer per layer with names, opacity, visibility, blend modes and layer groups, plus the flattened composite; text is pixels, not editable type |
+| Layered handoff to Photoshop and similar editors | PSD | One 8-bit RGBA pixel layer per layer with names, opacity, visibility, blend modes and layer groups, plus the flattened composite; text is pixels (`psd_text: "editable"` also writes plain text as type layers) |
 | Interactive form | Fillable PDF | AcroForm widgets over artwork; RGB output; verify target PDF viewer |
 | A font drawn in the document | TTF, OTF, WOFF (WOFF2 with `brotli`) | The document's font design as an installable font; see [making a font](../text/custom-fonts.md) |
 | Icons | ICO or icon set | Multiple destination sizes; inspect the smallest icons |
@@ -176,13 +176,35 @@ channels) that opens in Photoshop, Photopea, GIMP, Affinity and Krita:
   distortion) cannot be expressed as a Photoshop group and is written as one pixel layer.
 - The file also carries the flattened composite, identical to the PNG render, which viewers
   without layer support (and Pillow) show.
-- Not preserved: text is rasterized, not editable type (the result lists the layers under
-  `text_as_pixels` and in `warnings`); shapes and paths are pixels, not vector layers;
+- Text is pixels, not editable type: the result lists every text layer under `text_as_pixels`
+  as `{layer, id, reason}` and in `warnings`.
+- `psd_text: "editable"` (CLI `--psd-text editable`; `psd_text` in `vixl_export`, Python and
+  REST) also writes each plain text layer as a type layer: its rendered pixels plus a type-tool
+  block (`TySh`) with the text, the font's PostScript name, size, colour, tracking, leading,
+  alignment and whether it is point text or a text box (a `text-layout` width), placed with the
+  layer's rotation. The result lists these layers under `editable_text`. This is opt-in
+  because it is **not yet verified in Photoshop or Photopea** (see below). An editor that reads
+  type layers needs the same font installed, and once the layer is edited it sets the text with
+  its own engine, so the line breaks of a text box and small spacing can differ from Vixl's
+  pixels.
+- With `psd_text: "editable"`, text one single-style type layer cannot carry still stays
+  pixels only, with the reason in `text_as_pixels`: rich text (styled spans, lists, paragraph
+  settings), effects, layer styles (inner shadow, inner glow and bevel included), a stroke or a
+  mask, flipped or skewed text, text on a path or warped, hand-set text, small capitals, hanging
+  punctuation, a gradient or image fill, a translucent colour, a variable font, a colour font,
+  emoji and characters drawn with a fallback font.
+- Not preserved: shapes and paths are pixels, not vector layers;
   adjustment layers are applied in the composite only (`adjustments_in_composite_only`);
   group-turned or filtered groups are listed under `flattened_groups`. Kinetic text and other
   timeline motion export the resting document (or one frame with `time`).
 - One page of a multi-page document (`page`); CMYK, proofing, profiles, artboards and comps do
   not apply. Each side is at most 30 000 px. Exports refuse to overwrite unless `overwrite` is set.
+
+A default export holds no type-tool block, so it is the same pixel-layer file as before. The
+type layers of `psd_text: "editable"` follow the published Photoshop file format and are read
+back by Vixl's own PSD reader and by psd-tools, but they have not yet been confirmed by opening
+a file in Photoshop or Photopea: check the file in the editor it is going to before handing it
+off.
 
 ## Handoff checklist
 
@@ -454,6 +476,43 @@ vixl import report.pdf --font-map "Literata=literata-400" --font-map "Literata B
 Mapping changes the face, not the layout: line breaks and widths follow the mapped font. When the exact appearance
 matters, import with `svg_mode: "appearance"` (one image), or keep the `.vixl` or SVG master, which carry the
 document itself.
+
+## Importing a layered PSD
+
+```bash
+vixl -p poster.vixl import design.psd
+vixl -p poster.vixl import design.psd --svg-mode appearance --name reference
+```
+
+`vixl import FILE.psd` (an `import-document` step with a `.psd` path or `format: "psd"`, REST
+`POST /import?format=psd`, Python `import_document(project, data, "psd")`) reads a layered Photoshop file with
+Vixl's own reader (no extra package) and adds it as one revision:
+
+| In the PSD | In Vixl |
+| --- | --- |
+| Pixel layer | An image layer at its position, with its name, opacity (fill opacity multiplied in) and visibility |
+| Layer group | A group with the same members, in the same order |
+| Blend mode | `normal`, `multiply`, `screen`, `overlay`, `darken`, `lighten`, `difference`, Linear Dodge (`add`) and `subtract`; any other draws as `normal` and is listed |
+| Layer mask | The layer's mask (a disabled mask stays disabled); a mask that hides nothing is dropped |
+| Type layer, smart object, shape layer | An image of the pixels the file stores for it; a type layer's text, font, size and colour are listed under `text` in the result |
+| Adjustment layers, fill layers without pixels, layer effects, clipping to the layer below, vector masks, a group's mask, mask density and feather, pass-through blending of a group's layers | Not applied; each is listed under `not_applied` as `{layer, reason}` |
+
+Into a document without layers the PSD's size and resolution become the canvas; otherwise its layers arrive as
+one group called `name` and the canvas stays. `svg_mode: "appearance"` imports the file's merged image as one
+layer, which is the import to use when `not_applied` says the layers alone do not look like the file; a PSD
+without pixel layers imports that way by itself.
+
+**Supported files.** PSD (version 1), 8 bits per channel, RGB, with raw or RLE (PackBits) channel data: what
+Photoshop, Photopea, GIMP, Affinity and Krita write for an ordinary RGB document. PSB, 16- and 32-bit, CMYK,
+greyscale, indexed and Lab files, and ZIP-compressed channels, fail with `unsupported_psd` and say what to
+convert.
+
+**Limits.** A PSD is untrusted input. The file is at most the asset byte limit (64 MiB), it has at most 4,096
+layers, the canvas and each layer stay inside the dimension and pixel limits, and the canvas, all layers and
+all masks together stay inside the load limit of 160 million pixels. These are checked from the sizes the file
+declares, before any pixel buffer exists. A length that points past the end of the file, a compressed row that
+would decode past its width or an unclosed group fails with `invalid_psd`; a limit fails with `resource_limit`.
+A failed import leaves the document unchanged.
 
 ## Check state and a quote before export
 

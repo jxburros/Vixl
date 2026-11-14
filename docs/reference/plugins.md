@@ -169,6 +169,7 @@ A plugin that declares `requires: ["workspace_qa"]` can call these (see their mo
 | `localization` (Localization) | workflows | Locale variable tables and strings CSVs, a locale x finding check matrix, and localize fan-out with fit, RTL mirroring and font fallbacks. | `locales-set`, `group-locales`, `locale-check`, `localize` |
 | `figma_import` (Figma interchange) | importer | Import Figma files and export editable Figma interchange with embedded images and loss reports. | hooks: export-format, import-format |
 | `pdf_import` (PDF import) | importer | Import a PDF page as editable layers (needs the optional pypdfium2 package). | hooks: import-format |
+| `psd_import` (PSD import) | importer | Import a layered Photoshop (PSD) file as image layers, groups and layer masks. | hooks: import-format |
 | `ai` (AI providers) | provider | Generate, edit, detect and describe images through configured providers; model discovery and routing. | hooks: host-flags, host-route |
 | `spelling` (Spelling) | checks | An optional spelling check of drawn text with suggestions; English is bundled, other languages are content packs. | hooks: check, spell |
 | `lottie` (Lottie animation) | workflows | Export vector animations with native easing and time-remapped linked instances as Lottie JSON, dotLottie and strict Telegram TGS. | hooks: timeline-export-format |
