@@ -633,7 +633,7 @@ CREATE_FIELDS = {"name", "size", "width", "height", "purpose", "brief", "backgro
                  "request_id"}
 OPERATION_FIELDS = {"operations", "dry_run", "detail", "check", "preview", "suites", "repair", "if_revision",
                     "request_id"}
-IMPORT_FORMATS = ("svg", "pdf")
+IMPORT_FORMATS = ("svg", "pdf", "psd")
 
 
 def _summary(session, path, project, revision, doc, max_layers=MAX_LAYERS):

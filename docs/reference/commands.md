@@ -44,7 +44,7 @@ project with appropriate layers or input files. See each guide for complete crea
 | Six-second loop | `template new video-tip -o tip.vixl --set title=… --set subtitle=… --set cta=…` (also `video-launch`, `video-event`) | [Short templates](../guides/motion/animation-authoring.md#joint-pose-keys-and-short-templates) |
 | Readable source folder | `unpack design.vixl design-source`, `pack design-source design.vixl [--overwrite]` | [Reviewing in Git](#reviewing-editable-projects-in-git) |
 | Documents and tool calls from earlier releases | `convert OLD.vixl -o NEW.vixl [--look preserve\|current] [--dry-run] [--report R.json]`, `convert DIR --out OUTDIR`, `convert-batch OLD-CALLS.json` | [Converting](converting.md) |
-| Import SVG, PDF or a Figma file as editable layers | `import artwork.svg [--svg-mode editable\|auto\|appearance]`, `import flyer.pdf --page 1`, `import KEY --format figma [--node 1:2] [--rasterize-unsupported]` | [Interfaces](interfaces.md#import-existing-artwork), [Figma import](../guides/images/figma.md) |
+| Import SVG, PDF, a layered PSD or a Figma file as layers | `import artwork.svg [--svg-mode editable\|auto\|appearance]`, `import flyer.pdf --page 1`, `import design.psd`, `import KEY --format figma [--node 1:2] [--rasterize-unsupported]` | [Interfaces](interfaces.md#import-existing-artwork), [Figma import](../guides/images/figma.md) |
 | Schema of a `.vixl` file | `schema document` (`schema OPERATION…` for operations) | [File format](file-format.md) |
 | Composition check | `check --checks composition` (on by default; `--profile final` gates on it) | [Composition](../guides/layout/guides.md#composition) |
 | Emoji catalog and packs | `emoji list --query wave`, `emoji template face --out smile.vixl`, `emoji export --destination discord --emojis 👋 --out pack.zip` | [Emoji](#emoji-024) |
@@ -132,6 +132,7 @@ vixl add photo.jpg --name hero --credit "Photo: Ana Ruiz" --license "CC0"
 vixl import https://images.example.com/cat.jpg --name cat --license "CC BY 4.0"
 vixl import artwork.svg --svg-mode auto    # SVG as editable layers; a Vixl SVG restores its document
 vixl import flyer.pdf --page 1             # a PDF page as editable text, paths and images
+vixl import design.psd                     # a layered PSD (8-bit RGB) as image layers, groups and masks
 vixl import KEY --format figma --node 1:2  # a Figma file URL or key (one frame, or --rasterize-unsupported for unmappable nodes); needs FIGMA_TOKEN, see figma.md
 vixl select-layer hero
 vixl layer rename hero portrait

@@ -50,6 +50,7 @@ BUILTIN = (
     "localization",
     "figma_import",
     "pdf_import",
+    "psd_import",
     "ai",
     "spelling",
     "lottie",

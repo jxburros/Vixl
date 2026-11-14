@@ -13,8 +13,8 @@ implementation, not a claim of production maturity or complete GIMP parity.
 | --- | --- | --- |
 | Make layered designs from a brief | One JSON operation format on MCP, CLI, Python and REST; atomic batches; sized, laid-out, branded starting points; text stays text and effects stay a stack | RGBA8 sRGB editing; no desktop canvas |
 | Know the result is sound before export | Checks for bounds, overlap, contrast, spacing, fonts, trim, bleed, accessibility and composition; saved suites, waivers, repair, CI output | Checks measure drawn geometry; they do not judge taste |
-| Hand off the right files | PNG, JPEG, WebP, TIFF, AVIF, SVG, PDF (RGB and CMYK), editable PPTX with native charts, layered PSD, HTML, fillable PDF forms, GIF/APNG/WebP/MP4/WebM | CMYK is an export setting; PSD export is layered pixels; MP4/WebM need ffmpeg |
-| Bring work in | Editable SVG, PDF pages and Figma frames; Vixl's own SVG re-imports losslessly | PSD/XCF import is not implemented |
+| Hand off the right files | PNG, JPEG, WebP, TIFF, AVIF, SVG, PDF (RGB and CMYK), editable PPTX with native charts, layered PSD, HTML, fillable PDF forms, GIF/APNG/WebP/MP4/WebM | CMYK is an export setting; PSD export is pixel layers, with plain text also as type layers; MP4/WebM need ffmpeg |
+| Bring work in | Editable SVG, PDF pages and Figma frames; layered 8-bit RGB PSD as image layers, groups and masks; Vixl's own SVG re-imports losslessly | PSD type and adjustment layers are not editable; XCF, 16-bit and CMYK PSD import is not implemented |
 | Make data-driven work | Charts from tables or CSV, CSV merge to print sheets, variants, forms filled from CSV | No network sync service |
 | Add motion | Keyframe timelines, rigs, kinetic type, lyric videos, app-animation packages | No nested compositions or motion-path editor |
 | Use AI where it helps | Vision, generation and inpainting through providers you configure | Needs a real service; Vixl ships no model weights |

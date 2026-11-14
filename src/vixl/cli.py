@@ -366,6 +366,8 @@ def output_options(args, command):
     p.add_argument("--no-notes", action="store_true", help="Presentation: leave the speaker notes out of the file")
     p.add_argument("--columns", type=int, help="Contact sheet columns with --page all")
     p.add_argument("--fillable", action="store_true", help="PDF with fillable form fields")
+    p.add_argument("--psd-text", choices=["editable", "pixels"], help="PSD: plain text as editable type layers "
+                   "(default) or pixel layers only")
     p.add_argument("--fill-mode", choices=["flatten", "editable"], default="flatten",
                    help="With field values in --set: draw them into the artwork, or prefill a fillable PDF")
     p.add_argument("--show-fields", action="store_true", help="Outline form fields with their keys and tab order")
@@ -1041,7 +1043,7 @@ def project_command(project, cmd, args, *, detail="compact"):
     if cmd == "import":
         from .imports import import_document
         p = Parser(prog="vixl import")
-        p.add_argument("path", help="an .svg or .pdf document, an image file, or an https:// image URL")
+        p.add_argument("path", help="an .svg, .pdf or layered .psd document, an image file, or an https:// image URL")
         p.add_argument("--name")
         p.add_argument("--svg-mode", choices=["editable", "appearance", "auto"], default="editable")
         p.add_argument("--page", type=int, default=1)
@@ -1063,7 +1065,7 @@ def project_command(project, cmd, args, *, detail="compact"):
             return import_document(project, source, "figma", a.name or "import", a.page, a.dpi, a.svg_mode,
                                    node_id=a.node, rasterize_unsupported=a.rasterize_unsupported), True
         is_url = re.match(r"(?i)[a-z][a-z0-9+.-]*://", a.path)
-        if is_url or Path(a.path).suffix.lower() not in (".svg", ".pdf"):
+        if is_url or Path(a.path).suffix.lower() not in (".svg", ".pdf", ".psd"):
             from .image_import import import_image_from
 
             return import_image_from(project, url=a.path if is_url else None, path=None if is_url else a.path,
@@ -1080,7 +1082,7 @@ def project_command(project, cmd, args, *, detail="compact"):
                     "Use --font-map SRC=NAME, e.g. --font-map Literata=literata-400", field="font_map")
             options = {"font_map": {key.strip(): value.strip() for key, _, value in mapped}, "install_fonts": a.install_fonts}
         return import_document(project, read_bounded(a.path, project.limits.max_asset_bytes),
-                               Path(a.path).suffix.lstrip("."), a.name or "import", a.page, a.dpi, a.svg_mode,
+                               Path(a.path).suffix.lstrip(".").lower(), a.name or "import", a.page, a.dpi, a.svg_mode,
                                **options), True
     if cmd == "notes":
         from .review import notes
@@ -1355,6 +1357,7 @@ def project_command(project, cmd, args, *, detail="compact"):
             values=values if (a.fillable or a.fill_mode == "editable") else None,
             pages=None if a.pages == "all" else parse_pages(a.pages),
             pdf_content=a.pdf_content,
+            psd_text=a.psd_text,
             presenter=presenter_options(a),
             title=a.title,
             max_bytes=a.max_bytes,

@@ -181,8 +181,9 @@ the [roadmap](ROADMAP.md) is the development plan, and the [project documentatio
 decision records, render parity and brand voice.
 
 Vixl edits in RGBA8 sRGB and exports supported vectors or documented raster fallbacks.
-CMYK is an export setting. RAW development, spot-color editing, PSD/XCF import
-(PSD export is layered pixels) and a desktop GUI are outside this implementation. Review
+CMYK is an export setting. RAW development, spot-color editing, XCF import, 16-bit or CMYK PSD
+import (8-bit RGB layered PSD imports as image layers; PSD export keeps plain text as type layers) and a
+desktop GUI are outside this implementation. Review
 [coverage and limitations](docs/reference/coverage.md), [export behavior](docs/guides/output/exporting.md) and
 [architecture](docs/reference/architecture.md) before choosing it for a workflow.
 The [original product specification](docs/project/product-spec.md) is retained as design context.

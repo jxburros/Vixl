@@ -124,6 +124,8 @@ alignment and palette and installs its font pairing where you left them open. Ke
    `vixl_export` / `vixl export`. Profiles: `draft` fails only on errors, `review` on `fix` findings (as a plain
    check does) and runs every attached suite, `final` also fails on `review` findings and adds the `color_vision` and
    `composition` checks; a workspace `.vixl-checks.json` defines more.
-   A `.psd` path writes a layered Photoshop handoff file (one pixel layer per layer, groups kept, text as pixels).
+   A `.psd` path writes a layered Photoshop handoff file (one pixel layer per layer, groups kept; plain text
+   layers are also editable type layers, listed under `editable_text`, and other text is listed under
+   `text_as_pixels` with the reason).
    A `.ttf`, `.otf` or `.woff` path writes the font drawn in the document (`font-design`, `font-grid`,
    `font-glyph`; see [typography](typography.md#making-a-font)).

@@ -5,9 +5,11 @@ clipping in canvas space and cropped to what it draws. Names, opacity, visibilit
 carry over, groups become PSD layer groups (folder records with section dividers), and the file
 carries the flattened composite that ``render`` produces. A group that Vixl transforms or filters
 as a whole (rotation, flip, skew, resize, effects, styles, clip, mask, repeat, distortion) is
-written as one pixel layer, because PSD groups cannot transform their contents. Text, shapes and
-paths are pixels, not editable type or vectors; adjustment layers are baked into the composite
-only. Channel data is PackBits (RLE) compressed.
+written as one pixel layer, because PSD groups cannot transform their contents. A plain text layer
+(one font, size and colour; point or box text; rotation at most) is also a type layer: its pixels
+plus a type-tool block (``psd_text``) that keeps the copy editable. Other text, shapes and paths are
+pixels only; adjustment layers are baked into the composite only. Channel data is PackBits (RLE)
+compressed.
 
 Format reference: Adobe Photoshop File Format Specification, version 1 (PSD) files.
 """
@@ -106,9 +108,10 @@ def unicode_name(name):
 
 class Record:
     def __init__(self, name, *, pixels=None, box=(0, 0, 0, 0), opacity=1.0, blend="normal", visible=True,
-                 section=None):
+                 section=None, type_data=None):
         self.name, self.pixels, self.box = name, pixels, box
         self.opacity, self.blend, self.visible, self.section = opacity, blend, visible, section
+        self.type_data = type_data  # the data of a TySh block: this pixel layer is an editable type layer
 
 
 def flat_group(layer):
@@ -141,7 +144,7 @@ def _pixels(project, layer, index, bounds, ancestors):
     return np.asarray(surface.crop(box)), box
 
 
-def build(project, report):
+def build(project, report, text="editable"):
     from .render import child_index, color, resolve_layout, resolved_layers
     from .design import resolve_color
     from .objects import export_identity
@@ -152,7 +155,8 @@ def build(project, report):
     children = child_index(layers)
     c = project.state["canvas"]
     records = []  # bottom to top
-    texts, flattened, skipped = [], [], []
+    texts, editable, flattened, skipped = [], [], [], []
+    stored = {layer["id"]: layer for layer in project.state["layers"]}
     background = color(resolve_color(c["background"], project.state))
     if background[3]:
         pixels = np.empty((c["height"], c["width"], 4), np.uint8)
@@ -177,19 +181,34 @@ def build(project, report):
                 continue
             if layer["type"] == "group" and children.get(layer["id"]):
                 flattened.append(name)
-            if layer["type"] == "text":
-                texts.append(name)
             pixels, box = _pixels(project, layer, index, bounds, ancestors)
-            records.append(Record(name, pixels=pixels, box=box, **common))
+            type_data = None
+            if layer["type"] == "text":
+                if text == "editable":
+                    from .psd_text import layer_block
+
+                    type_data, reason = layer_block(project, stored.get(layer["id"]), layer, bounds, ancestors)
+                else:
+                    reason = "exported with psd_text='pixels'"
+                if type_data is not None and not pixels.size:
+                    type_data, reason = None, "nothing drawn"
+                if type_data is None:
+                    texts.append({"layer": name, "id": layer["id"], "reason": reason})
+                else:
+                    editable.append(name)
+            records.append(Record(name, pixels=pixels, box=box, type_data=type_data, **common))
 
     walk(None, [])
     report.update(layers=sum(1 for r in records if r.section is None),
                   groups=sum(1 for r in records if r.section == 1))
     warnings = report.setdefault("warnings", [])
+    if editable:
+        report["editable_text"] = editable
     if texts:
         report["text_as_pixels"] = texts
         warnings.append(f"{len(texts)} text layer(s) are pixel layers in the PSD, not editable type: "
-                        + ", ".join(texts[:8]) + (" ..." if len(texts) > 8 else ""))
+                        + ", ".join(f"{item['layer']} ({item['reason']})" for item in texts[:8])
+                        + (" ..." if len(texts) > 8 else ""))
     if flattened:
         report["flattened_groups"] = flattened
         warnings.append("group(s) transformed or filtered as a whole are single pixel layers: " + ", ".join(flattened[:8]))
@@ -222,6 +241,8 @@ def _record_bytes(record):
     extra = struct.pack(">I", 0) + struct.pack(">I", 0) + pascal(record.name, 4) + unicode_name(record.name)
     if record.section is not None:
         extra += block(b"lsct", struct.pack(">I", record.section) + (b"8BIM" + key if record.section == 1 else b""))
+    if record.type_data is not None:
+        extra += block(b"TySh", record.type_data)
     head += struct.pack(">I", len(extra)) + extra
     return head, b"".join(data for _, data in channels)
 
@@ -256,9 +277,11 @@ def write(records, composite, dpi=72):
     return out.getvalue()
 
 
-def export_psd(project, path=None, *, page=None, variables=None, report=None):
+def export_psd(project, path=None, *, page=None, variables=None, report=None, text="editable"):
     """Layered PSD bytes of the document (one page of a paged document); written to ``path`` when given.
-    ``report`` receives the layer and group counts and warnings about what became pixels."""
+    ``report`` receives the layer and group counts, ``editable_text`` (the names of the type layers),
+    ``text_as_pixels`` (``[{layer, id, reason}]`` for text kept as pixels only) and warnings about what became
+    pixels. ``text='pixels'`` writes no type layers."""
     from .render import render, view_page
 
     report = {} if report is None else report
@@ -270,7 +293,8 @@ def export_psd(project, path=None, *, page=None, variables=None, report=None):
     c = view.state["canvas"]
     require(c["width"] <= MAX_SIDE and c["height"] <= MAX_SIDE, f"PSD canvases are at most {MAX_SIDE} px per side",
             "resource_limit")
-    records = build(view, report)
+    require(text in ("editable", "pixels"), "psd_text is editable or pixels", field="psd_text")
+    records = build(view, report, text)
     composite = render(view)
     data = write(records, composite, dpi=view.state["canvas"].get("dpi") or 72)
     if path:

@@ -387,7 +387,7 @@ takes the same flags (`--call-timeout`, `--max-megapixels`, `--max-pages`, `--ma
 | `GET /w/{ws}/documents/{id}/blob` | The saved `.vixl` bytes, with `X-Vixl-Revision` |
 | `POST /w/{ws}/documents/{id}/operations` | `{operations, dry_run?, detail?, check?, preview?, suites?, repair?, if_revision?, request_id?}` → the change summary with `revision` (`preview_base64` when asked) |
 | `POST /w/{ws}/documents/{id}/assets?name=&credit=&license=` | Raw image bytes → the imported layer and `revision` |
-| `POST /w/{ws}/documents/{id}/import?format=svg\|pdf&name=&page=&dpi=&svg_mode=` | SVG or PDF bytes imported as layers → `revision` |
+| `POST /w/{ws}/documents/{id}/import?format=svg\|pdf\|psd&name=&page=&dpi=&svg_mode=` | SVG, PDF or layered PSD bytes imported as layers → `revision` |
 | `POST /w/{ws}/documents/{id}/compose` | `vixl_apply(create=…)` fields without `path`, `exports`, `operations_path` and `overwrite`, plus `if_revision?`, `request_id?` → the steps, findings, `preview_base64?` and `revision`; the composed piece replaces the document (`dry_run: true` only previews) |
 | `POST /w/{ws}/documents/{id}/preview` | `{page?, region?, max_px?: 1024, max_bytes?: 1048576, variables?, artboard?, comp?, time?, proof?, simulate?, guides?, values?, show_fields?, isolate?, views?, exploded?}` → PNG, with `X-Vixl-Revision`, `X-Vixl-Width` and `X-Vixl-Height` |
 | `POST /w/{ws}/documents/{id}/check` | `vixl_check` fields (`checks`, `profile`, `suites`, `repair` …) → `{outcome, passed, counts, findings: [{rule, check, severity, action, message, layer_id, layer_ids, page}], checked}` and `revision` |
@@ -539,7 +539,7 @@ PDF export is vector by default (also with `color_space="cmyk"`); the export res
 name the fonts that are not embedded and must be installed where the deck is opened (`fonts_not_embedded`, with each one's fsType permission and license under `font_embedding`).
 
 REST: `POST /export` accepts `page`, `pages`, `pdf_content`, `fillable`, `values`, `fill_mode` and
-`presenter` (HTML slide presentation options) and formats `PPTX`, `PSD` (layered, see [exporting](../guides/output/exporting.md#layered-psd-for-designer-handoff)) and `TTF`, `OTF`, `WOFF`, `WOFF2` (the document's [font design](../guides/text/custom-fonts.md)); `POST /preview` accepts `guides`, `page`, `values` and `show_fields`; the fixed
+`presenter` (HTML slide presentation options), `psd_text` (`editable` or `pixels`) and formats `PPTX`, `PSD` (layered, see [exporting](../guides/output/exporting.md#layered-psd-for-designer-handoff)) and `TTF`, `OTF`, `WOFF`, `WOFF2` (the document's [font design](../guides/text/custom-fonts.md)); `POST /preview` accepts `guides`, `page`, `values` and `show_fields`; the fixed
 project's workflow routes include `lyric-video-plan`, `organic-catalog`, `form-fill` and
 `drawing-report`.
 
@@ -596,6 +596,7 @@ vixl -p poster.vixl import logo.svg
 # Optional PDF dependency: pip install 'vixl-engine[pdf]'
 vixl -p poster.vixl import flyer.pdf --page 1 --name flyer
 vixl -p poster.vixl import flyer.pdf --page 1 --svg-mode appearance --dpi 144 --name reference
+vixl -p poster.vixl import design.psd --name design
 vixl -p poster.vixl import photo.jpg --name hero --credit "Photo: Ana Ruiz" --license "CC0"
 vixl -p poster.vixl import https://images.example.com/cat.jpg --name cat --credit "Photo: Ana Ruiz / Unsplash" --license "Unsplash License"
 ```
@@ -606,6 +607,10 @@ as editable layers (text, paths, images), or with `svg_mode=appearance` as one i
 Figma files import with `format=figma` (an `import-document` step with `source` set to the URL or file key, CLI `import URL --format figma`, Python `import_document(project, b"URL", "figma")`,
 REST `POST /import?format=figma` with the URL or file key as the body, `page` (a name or number), `node_id` and `rasterize_unsupported` as query parameters) using `FIGMA_TOKEN` from the environment; see
 [Import from Figma](../guides/images/figma.md).
+A layered PSD (8-bit RGB) imports with `format=psd` (a `.psd` path picks it): image layers, groups, opacity,
+visibility, blend modes and layer masks, or with `svg_mode=appearance` the file's merged image; the result lists type
+layers under `text` and what was not applied under `not_applied`. See
+[importing a layered PSD](../guides/output/exporting.md#importing-a-layered-psd).
 
 Any other file, or an `https://` URL, is imported as an image layer, the same as
 an `import-image` step with `url`, `POST /assets?url=…` and `Project.import_image(url=…)` in Python. A URL

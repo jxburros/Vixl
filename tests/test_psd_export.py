@@ -57,6 +57,8 @@ def parse(data):
                     record["unicode_name"] = body[4:4 + 2 * chars].decode("utf-16-be")
                 elif tag == b"lsct":
                     record["section"] = struct.unpack(">I", body[:4])[0]
+                elif tag == b"TySh":
+                    record["type"] = body
                 pos += 12 + size
             pos = end
             layers.append(record)
@@ -159,8 +161,9 @@ def test_psd_layers_names_blends_groups_and_dimensions(tmp_path):
     assert by_name["card"]["box"][2] > 140  # the drop shadow is part of the layer's pixels
     assert tree(psd["layers"])[1] == {"name": "badges", "children": [{"name": "b"}, {"name": "a"}]}
     assert report["layers"] == 7 and report["groups"] == 1
-    assert report["text_as_pixels"] == ["Title é"] and report["flattened_groups"] == ["turned"]
-    assert "not editable type" in " ".join(report["warnings"])
+    assert report["editable_text"] == ["Title é"] and "text_as_pixels" not in report
+    assert report["flattened_groups"] == ["turned"]
+    assert "type" in by_name["Title é"] and "type" not in by_name["card"]
 
 
 def test_pillow_opens_the_composite_and_reads_the_layers(tmp_path):
@@ -245,3 +248,158 @@ def test_export_file_and_cli_write_psd(tmp_path):
                          capture_output=True, text=True, env=env)
     assert run.returncode == 0, run.stderr
     assert parse((tmp_path / "cli.psd").read_bytes())["width"] == 240
+
+
+# ------------------------------------------------------------------------------------- editable type layers
+
+def type_document():
+    p = Project(400, 300, "#ffffff")
+    p.apply([
+        {"type": "text", "name": "point", "text": "Hello (world)\nSecond \\ line", "x": 20, "y": 30, "size": 32,
+         "color": "#ff0000"},
+        {"type": "text", "name": "boxed", "text": "Box text that wraps around", "x": 20, "y": 150, "size": 20,
+         "align": "center", "tracking": 2},
+        {"type": "text-layout", "target": "boxed", "width": 150, "height": 100},
+        {"type": "text", "name": "turned", "text": "Hi", "x": 300, "y": 40, "size": 40},
+        {"type": "rotate", "target": "turned", "angle": 90},
+        {"type": "text", "name": "inside", "text": "Hi", "x": 300, "y": 250, "size": 18, "align": "right"},
+        {"type": "shape", "shape": "rectangle", "name": "r", "x": 280, "y": 240, "width": 10, "height": 10, "fill": "red"},
+        {"type": "group", "targets": ["inside", "r"], "name": "grp"},
+        {"type": "move", "target": "grp", "x": 200, "y": 220},
+    ])
+    return p
+
+
+def test_plain_text_exports_as_type_layers_that_parse_back(tmp_path):
+    from vixl.psd_text import parse_type_block
+
+    report = {}
+    psd = parse(type_document().export(tmp_path / "type.psd", report=report))
+    assert report["editable_text"] == ["point", "boxed", "turned", "inside"] and "text_as_pixels" not in report
+    assert not report["warnings"]
+    by_name = {r["name"]: r for r in psd["layers"]}
+    point = parse_type_block(by_name["point"]["type"])
+    assert point["text"] == "Hello (world)\nSecond \\ line"  # parentheses and backslashes survive the escaping
+    assert point["font"] == "NotoSans-Regular" and point["size"] == 32 and point["color"] == "#ff0000"
+    assert point["align"] == "left" and "box" not in point and point["leading"] > 20
+    boxed = parse_type_block(by_name["boxed"]["type"])
+    assert boxed["text"] == "Box text that wraps around" and boxed["box"] == (150, 100)
+    assert boxed["align"] == "center" and boxed["tracking"] == 100  # 2 px at size 20, in thousandths of an em
+    assert boxed["transform"] == (1, 0, 0, 1, 20, 150)  # box text starts at the box's corner
+    # A type layer keeps the rendered pixels, so a reader without a text engine still shows the text.
+    assert all(by_name[name]["box"][2] > by_name[name]["box"][0] for name in report["editable_text"])
+    assert "type" not in by_name["r"]
+
+
+def test_type_layer_origin_is_where_the_text_is_drawn(tmp_path):
+    from vixl.psd_text import parse_type_block
+
+    psd = parse(type_document().export(tmp_path / "type.psd"))
+    by_name = {r["name"]: r for r in psd["layers"]}
+
+    def origin(name):
+        block = parse_type_block(by_name[name]["type"])
+        return block["transform"], by_name[name]["box"]
+
+    # Point text: the first baseline's start, at the left of the ink and inside its height.
+    (xx, xy, yx, yy, tx, ty), (left, top, right, bottom) = origin("point")
+    assert (xx, xy, yx, yy) == (1, 0, 0, 1) and abs(tx - left) <= 3 and top + 15 < ty < top + 32
+    # Turned a quarter clockwise the baseline runs down the left edge of the ink, starting at its top.
+    (xx, xy, yx, yy, tx, ty), (left, top, right, bottom) = origin("turned")
+    assert max(abs(xx), abs(xy - 1), abs(yx + 1), abs(yy)) < 1e-9
+    assert abs(tx - left) <= 2 and abs(ty - top) <= 4
+    # Inside a moved group, right-aligned: the baseline's end, on the canvas (not in the group's coordinates).
+    (xx, xy, yx, yy, tx, ty), (left, top, right, bottom) = origin("inside")
+    assert abs(tx - right) <= 3 and abs(ty - bottom) <= 1.5 and left >= 200
+
+
+def test_text_a_type_layer_cannot_carry_stays_pixels_with_a_reason(tmp_path):
+    p = Project(400, 300, "#ffffff")
+    p.apply([
+        {"type": "text", "name": "shadow", "text": "Shadow", "x": 10, "y": 10, "size": 20},
+        {"type": "drop-shadow", "target": "shadow"},
+        {"type": "rich-text", "name": "rich", "x": 10, "y": 100, "width": 200, "height": 40,
+         "spans": [{"text": "Bold ", "bold": True}, {"text": "plain"}]},
+        {"type": "text", "name": "caps", "text": "Small Caps", "x": 10, "y": 180, "size": 20, "text_transform": "small-caps"},
+        {"type": "text", "name": "warp", "text": "Warped", "x": 10, "y": 210, "size": 20},
+        {"type": "text-layout", "target": "warp", "width": 200, "height": 60, "warp": "arc"},
+        {"type": "text", "name": "clear", "text": "Clear", "x": 10, "y": 250, "size": 20, "color": "#ff000080"},
+        {"type": "text", "name": "emoji", "text": "Hi \U0001F600", "x": 200, "y": 250, "size": 20},
+        {"type": "text", "name": "plain", "text": "Plain", "x": 200, "y": 10, "size": 20},
+        {"type": "text", "name": "upper", "text": "shout", "x": 200, "y": 60, "size": 20, "text_transform": "uppercase"},
+    ])
+    report = {}
+    psd = parse(p.export(tmp_path / "mixed.psd", report=report))
+    assert report["editable_text"] == ["plain", "upper"]
+    reasons = {item["layer"]: item["reason"] for item in report["text_as_pixels"]}
+    assert set(reasons) == {"shadow", "rich", "caps", "warp", "clear", "emoji"}
+    assert "styles" in reasons["shadow"] and "rich text" in reasons["rich"] and "small capitals" in reasons["caps"]
+    assert "warp" in reasons["warp"] and "translucent" in reasons["clear"] and "emoji" in reasons["emoji"]
+    ids = {layer["name"]: layer["id"] for layer in p.state["layers"]}
+    assert all(item["id"] == ids[item["layer"]] for item in report["text_as_pixels"])  # each entry locates its layer
+    assert "shadow (styles" in " ".join(report["warnings"])
+    by_name = {r["name"]: r for r in psd["layers"]}
+    assert all("type" not in by_name[name] for name in reasons) and "type" in by_name["plain"]
+    from vixl.psd_text import parse_type_block
+
+    assert parse_type_block(by_name["upper"]["type"])["text"] == "SHOUT"  # the text as it is drawn
+
+
+def test_psd_text_pixels_writes_no_type_layers(tmp_path):
+    p = type_document()
+    report = {}
+    psd = parse(p.export(tmp_path / "pixels.psd", report=report, psd_text="pixels"))
+    assert "editable_text" not in report and len(report["text_as_pixels"]) == 4
+    assert all("type" not in record for record in psd["layers"])
+    with pytest.raises(VixlError, match="psd_text"):
+        p.export(tmp_path / "bad.psd", psd_text="vector")
+    p.save(tmp_path / "doc.vixl")
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)}
+    run = subprocess.run([sys.executable, "-m", "vixl", "-p", str(tmp_path / "doc.vixl"), "export",
+                          str(tmp_path / "cli.psd"), "--psd-text", "pixels"], capture_output=True, text=True, env=env)
+    assert run.returncode == 0, run.stderr
+    assert all("type" not in record for record in parse((tmp_path / "cli.psd").read_bytes())["layers"])
+    from vixl.interfaces import Session
+    from vixl.mcp_tools import export_file
+
+    session = Session(workspace=tmp_path)
+    result = export_file(session, "mcp.psd", document="doc.vixl", psd_text="pixels")
+    assert len(result["text_as_pixels"]) == 4 and "editable_text" not in result
+    assert export_file(session, "mcp2.psd", document="doc.vixl")["editable_text"] == ["point", "boxed", "turned", "inside"]
+
+
+def test_engine_data_and_descriptors_round_trip():
+    from vixl.psd_text import Malformed, Reader, descriptor, engine_data, long_value, object_value, parse_engine_data
+    from vixl.psd_text import parse_type_block, read_descriptor, text_value, type_block, unit_value
+
+    value = {"A": {"Text": "a (b) \\ c é 漢\r", "N": [1, 2.5, -3], "On": True, "Off": False},
+             "List": [{"X": 1}, {"X": 2}], "Empty": [], "F": 0.583}
+    assert parse_engine_data(engine_data(value)) == value
+    data = descriptor(b"TxLr", [(b"Txt ", text_value("Hi")), (b"TextIndex", long_value(7)),
+                                (b"bounds", object_value(b"bounds", [(b"Left", unit_value(1.5))]))])
+    assert read_descriptor(Reader(data)) == {"Txt ": "Hi", "TextIndex": 7, "bounds": {"Left": 1.5}}
+    block = type_block("One\nTwo", font="Example-Bold", size=18, color=(0, 128, 255), align="right")
+    parsed = parse_type_block(block)
+    assert parsed["text"] == "One\nTwo" and parsed["font"] == "Example-Bold" and parsed["color"] == "#0080ff"
+    assert parsed["align"] == "right"
+    # The fixed layout the specification gives: version 1, six doubles, text version 50, descriptor version 16.
+    assert struct.unpack(">H", block[:2])[0] == 1 and struct.unpack(">HI", block[50:56]) == (50, 16)
+    for cut in range(0, len(block) - 200, 37):
+        with pytest.raises(Malformed):
+            parse_type_block(block[:cut])
+    with pytest.raises(Malformed):
+        parse_engine_data(b"<< " * 100)
+
+
+def test_type_layers_are_read_by_psd_tools(tmp_path):
+    psd_tools = pytest.importorskip("psd_tools")
+    import io
+
+    document = psd_tools.PSDImage.open(io.BytesIO(type_document().export(tmp_path / "type.psd")))
+    kinds = {layer.name: layer.kind for layer in document.descendants()}
+    assert kinds["point"] == kinds["boxed"] == kinds["turned"] == kinds["inside"] == "type" and kinds["r"] == "pixel"
+    point = next(layer for layer in document.descendants() if layer.name == "point")
+    assert point.text == "Hello (world)\rSecond \\ line"
+    sheet = point.engine_dict["StyleRun"]["RunArray"][0]["StyleSheet"]["StyleSheetData"]
+    assert str(point.resource_dict["FontSet"][sheet["Font"]]["Name"]).strip("'") == "NotoSans-Regular"
+    assert float(sheet["FontSize"]) == 32
