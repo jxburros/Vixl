@@ -663,6 +663,26 @@ class Builder:
             vertical = min(max(vertical, 1 - limit), limit) if limit > 0.5 else 0.5
         return self.T + free * vertical
 
+    def step_over(self, role, base="body"):
+        """Keep ``role`` a clear step over ``base``: where a use-size minimum raised both to about one size (a
+        shallow banner, a cover read as a thumbnail), the heading role is set at the composition check's
+        hierarchy ratio over the supporting line, so the headline stays the focal point (#807)."""
+        from .composition import THRESHOLDS
+
+        self.sizes[role] = max(self.sizes[role], math.ceil(self.sizes[base] * THRESHOLDS["hierarchy_ratio"]))
+
+    def fit_headline(self, entries, width, most, gaps=None):
+        """The height of the ``entries`` stack once it fits ``most``: a stack too tall brings its headline down
+        toward its step over the body (never under it), so the supporting lines keep their minimum size."""
+        from .composition import THRESHOLDS
+
+        height = self.stack_height(entries, width, gaps=gaps)
+        step = self.sizes["body"] * THRESHOLDS["hierarchy_ratio"]
+        while height > most and self.sizes["headline"] * 0.92 >= step:
+            self.sizes["headline"] = int(self.sizes["headline"] * 0.92)
+            height = self.stack_height(entries, width, gaps=gaps)
+        return height
+
     def lockup_gaps(self, *grouped):
         """A headline lockup's rhythm for ``stack``: the label and the ``grouped`` lines (a subtitle) sit two
         units from the headline, and the call to action four units below (twice the lockup's step, and under
@@ -994,37 +1014,86 @@ def _editorial_grid(b):
         ix, iw = span(0, columns)
         image_h = (b.B - y) * 0.42
         b.image("image", ix, y, iw, image_h)
+        frame, below = b.ops[-1] if b.ops[-1]["type"] == "frame" else b.ops[-2], len(b.ops)
         y += image_h + b.unit
         _, _, _, h = b.text("caption", b.get("caption"), ix, y, iw, name="caption", color="@muted", align="left")
         y += h + b.unit * 3
         _, _, _, h = b.text("lead", b.get("subtitle"), b.L, y, b.cw, name="subtitle", align="left")
         y += h + b.unit * 2
-        b.text("body", b.get("body"), b.L, y, b.cw, name="body", align="left", max_height=b.B - y)
+        _, _, _, h = b.text("body", b.get("body"), b.L, y, b.cw, name="body", align="left", max_height=b.B - y)
+        # Short copy on a page gives its spare height to the picture, so the column ends on the bottom margin
+        # instead of leaving the foot of the page empty (#808).
+        spare = round(b.B - (y + h))
+        if spare > 0:
+            frame["height"] += spare
+            for op in b.ops[below:]:
+                if "y" in op:
+                    op["y"] += spare
+
+
+def _section_margins(b, edge):
+    """``(inner, outer, deep)`` for a copy section stacked with a full-width picture: the margin toward the
+    picture, the margin toward the canvas edge whose safe inset is ``edge``, and whether that inset is deeper
+    than the page margin (a story's interface zone). A deep inset is space the copy cannot use, so the section
+    is set on a panel that owns it and the copy keeps a margin toward the picture in proportion to it (the
+    dead-band check's edge ratio), instead of a hole under a picture that bleeds off the other edge."""
+    from .composition import THRESHOLDS
+
+    outer = max(b.m, round(edge + min(b.W, b.H) * 0.02) if edge else 0)
+    deep = outer > b.m
+    inner = max(b.m, math.ceil(outer / (THRESHOLDS["edge_band_ratio"] * 0.9))) if deep else b.m
+    return inner, outer, deep
 
 
 def _split_screen(b):
+    from .composition import THRESHOLDS
+
     b.background()
     fraction = b.rng.choice([0.5, 0.5, 0.618, 0.382])
     horizontal = b.orientation in ("landscape", "wide", "square")
     first = b.rng.random() < 0.5
+    pad = b.m
+    entries = [("caption", b.label_text(), "label"), ("headline", b.get("title"), "headline"), ("body", b.get("subtitle") or b.get("body"), "body"), ("button", b.get("cta"), "cta")]
+    gaps = b.lockup_gaps("body")
+    title = b.get("title")
+    if b.orientation == "square" and title:
+        # A column beside the picture too narrow for the headline to keep its step over the body (its measure
+        # caps it) stacks the picture and the copy instead (#806).
+        column = b.W - round(b.W * fraction) - 2 * pad
+        horizontal = b.measure_cap("headline", title, b.sizes["headline"], column) >= b.sizes["body"] * THRESHOLDS["hierarchy_ratio"]
+    lead = None
     if horizontal:
         split = round(b.W * fraction)
         image_box = (0, 0, split, b.H) if first else (b.W - split, 0, split, b.H)
         text_box = (split, 0, b.W - split, b.H) if first else (0, 0, b.W - split, b.H)
     else:
-        split = round(b.H * fraction)
+        inner, outer, _ = _section_margins(b, b.safe[3] if first else b.safe[1])
+        # Room over the copy for an accent that sits above it (a dot, a rule).
+        head = b.unit * {"dot": 6, "rule": 3}.get(b.accent, 0)
+        width = b.W - 2 * pad
+        # The picture gives up height (down to 30% of the canvas) when the copy needs more than its section;
+        # then the headline comes down toward its step over the body, so the supporting lines are never
+        # shrunk under their minimum size to fit.
+        height = b.fit_headline(entries, width, b.H - round(b.H * 0.3) - inner - outer - head, gaps)
+        needed = math.ceil(height + inner + outer + head)
+        split = min(round(b.H * fraction), max(b.H - needed, round(b.H * 0.3)))
         image_box = (0, 0, b.W, split) if first else (0, b.H - split, b.W, split)
         text_box = (0, split, b.W, b.H - split) if first else (0, 0, b.W, b.H - split)
+        lead = (inner if first else outer) + head + max(0, text_box[3] - needed) / 2
     b.image("image", *image_box)
-    if b.rng.random() < 0.35:
+    # Stacked, the copy's zone is always a panel: it marks the two zones, and it owns a story's safe inset.
+    if b.rng.random() < 0.35 or not horizontal:
         b.rect("panel", *text_box, "@surface")
-    pad = b.m
     tx, ty, tw, th = text_box[0] + pad, text_box[1] + pad, text_box[2] - 2 * pad, text_box[3] - 2 * pad
-    entries = [("caption", b.label_text(), "label"), ("headline", b.get("title"), "headline"), ("body", b.get("subtitle") or b.get("body"), "body"), ("button", b.get("cta"), "cta")]
-    gaps = b.lockup_gaps("body")
     height = b.stack_height(entries, tw, gaps=gaps)
-    y = ty + max(0, (th - height) / 2)
+    y = ty + max(0, (th - height) / 2) if lead is None else text_box[1] + lead
     b.accent_device(tx, y, tw, height)
+    if not horizontal and b.accent == "block":
+        # Stacked, the copy starts on its section's margins, where a corner block would cover the label: the
+        # block takes the picture's outer right corner instead.
+        block = next(op for op in reversed(b.ops) if op.get("name") == b.name("accent"))
+        block["x"] = round(b.W - block["width"] * 0.7)
+        block["y"] = round(-block["height"] * 0.3 if first else b.H - block["height"] * 0.7)
     b.stack(entries, tx, y, tw, gaps=gaps)
 
 
@@ -1089,19 +1158,65 @@ def _asymmetric_balance(b):
 
 
 def _z_pattern(b):
+    from .composition import THRESHOLDS
+
     b.background()
+    b.step_over("headline")
     third = b.cw / 3
-    b.text("caption", b.label_text() or b.get("caption"), b.L, b.T, third * 1.4, name="label", color="@accent-text", align="left")
+    _, _, _, top = b.text("caption", b.label_text() or b.get("caption"), b.L, b.T, third * 1.4, name="label", color="@accent-text", align="left")
     if b.get("caption") and b.get("label"):
-        b.text("caption", b.get("caption"), b.R - third * 1.4, b.T, third * 1.4, name="caption", color="@muted", align="right")
+        top = max(top, b.text("caption", b.get("caption"), b.R - third * 1.4, b.T, third * 1.4, name="caption", color="@muted", align="right")[3])
+    # The Z keeps its corners (label and note on the top row, the call to action in the bottom corner); the
+    # headline and the body share the height between them, so no band between them reads as dead (#805).
+    top += b.T
+    space, gap = b.B - top, b.unit * 4
+    cta, body, title = b.get("cta"), b.get("subtitle") or b.get("body"), b.get("title")
+    bw, bh = b.button_size(cta)
+    # On a shallow banner the body takes the width beside the button, and its box is sized to its copy.
+    body_w = max(b.cw * 0.5, b.cw - bw - gap) if b.orientation == "wide" else b.cw * 0.5
+
+    def rewind(ops, created, highlighted):
+        del b.ops[ops:], b.created[created:]
+        b.highlighted = highlighted
+
+    def place_body(y):
+        return b.text("body", body, b.L, y, body_w, name="body", align="left", max_height=space * 0.45)[3]
+
+    mark = (len(b.ops), len(b.created), b.highlighted)
+    body_h = place_body(0)
+    rewind(*mark)
+    below = body_h if body else bh
     width = b.cw * 0.84
-    _, hy, _, hh = b.text("headline", b.get("title"), b.L + (b.cw - width) / 2, b.T + b.ch * 0.26, width, name="headline", align="center", max_height=b.ch * 0.42)
-    bottom = b.B
-    if b.get("cta"):
-        size = b.sizes["body"]
-        bh = size * 2.3
-        b.button(b.get("cta"), b.R, bottom - bh, align="right")
-    b.text("body", b.get("subtitle") or b.get("body"), b.L, max(hy + hh + b.unit * 4, bottom - b.ch * 0.22), b.cw * 0.5, name="body", align="left", max_height=b.ch * 0.22)
+    room = max(gap, space - below - (gap * 2 if below else gap))
+
+    def place_headline(scale):
+        return b.text("headline", title, b.L + (b.cw - width) / 2, 0, width, name="headline", align="center",
+                      max_height=room, scale=scale)[3]
+
+    # A gap this tall between the headline and the body is a hole in the type: the headline grows toward it
+    # as far as its measure allows.
+    limit = THRESHOLDS["dead_band_hole"] * 0.8 * b.H
+    headline_h = place_headline(1.0)
+    for grow in (1.25, 1.5, 1.8, 2.2):
+        if (space - below - headline_h) / 2 <= limit:
+            break
+        rewind(*mark)
+        grown = place_headline(grow)
+        if grown <= headline_h:
+            break
+        headline_h = grown
+    free = max(0.0, space - headline_h - below)
+    # The free height is shared above and below the headline; what that leaves over the hole bar lifts the
+    # body off the bottom row (under the top margin's share where no button holds the corner).
+    lift = 0 if free / 2 <= limit or not body else min(free / 3, limit if cta else b.T * 0.7)
+    between = min((free - lift) / 2, limit) if body else (free - lift) / 2
+    headline_y = top + free - lift - between
+    for op in b.ops[mark[0]:]:
+        if "y" in op:
+            op["y"] = round(op["y"] + headline_y)
+    if cta:
+        b.button(cta, b.R, b.B - bh, align="right")
+    place_body(b.B - lift - body_h)
 
 
 def _f_pattern(b):
@@ -1140,33 +1255,63 @@ def _f_pattern(b):
 
 
 def _rule_of_thirds(b):
+    from .composition import THRESHOLDS, dead_band_bar
+
     b.background()
     ix = b.rng.choice([1, 2])
     iy = b.rng.choice([1, 2])
-    d = min(b.W, b.H) * 0.42
+    short = min(b.W, b.H)
+    d = short * 0.42
     left, top, right, bottom = b.safe
+    pictured = bool(b.get("image") or b.rng.random() < 0.6)
+    gap = b.unit * 4
+    entries = [("caption", b.label_text(), "label"), ("headline", b.get("title"), "headline"), ("body", b.get("subtitle"), "subtitle"), ("button", b.get("cta"), "cta")]
+    gaps = b.lockup_gaps("subtitle")
     fx = min(max(b.W * ix / 3, left + d / 2), b.W - right - d / 2)
-    fy = min(max(b.H * iy / 3, top + d / 2), b.H - bottom - d / 2)
-    if b.get("image") or b.rng.random() < 0.6:
+    beside = fx - d / 2 - gap - b.L if ix == 2 else b.R - (fx + d / 2 + gap)
+    stacked = beside < b.cw * 0.45
+    if stacked:
+        # A narrow column beside the focal point (a square or upright canvas) would shrink the headline to its
+        # measure: the copy takes the full width in the opposite field, above or below the focal point, and
+        # the two share the height so the copy never crosses the focal point and no band between them or at
+        # an edge reads as dead (#803).
+        t = THRESHOLDS
+        ratio = t["edge_band_ratio"] * 0.9
+        near, far = (b.T, b.H - b.B) if iy == 2 else (b.H - b.B, b.T)
+        # The field beside the focal point runs from the copy to the far edge; the focal point is large
+        # enough that this field reads as open space (over the dead-band check's largest band), and gives up
+        # size before the headline does when the copy is long.
+        least = min(b.cw, max(short * 0.3, t["dead_band_max_share"] * b.H - gap - far + 2))
+        height = b.stack_height(entries, b.cw, gaps=gaps)
+        d = max(least, min(max(d, least), b.ch - height - gap))
+        height = b.fit_headline(entries, b.cw, b.ch - gap - d, gaps)
+        d = max(d, min(max(short * 0.42, least), b.ch - height - gap))
+        loose = max(gap, dead_band_bar(b.H, b.unit, [b.unit * 2, b.unit * 2, b.unit * 4]) * 0.85)
+        # Along the stacking axis, measured from the copy's edge of the canvas: the copy starts on its margin
+        # and the focal point sits on the thirds line where the gap to the copy allows, and the pair moves
+        # toward the far edge only as far as the far margin needs to stay in proportion to the near one.
+        length = b.H
+        third = length / 3
+        focal = min(max(length - third - d / 2, near + height + gap), near + height + loose)
+        if length - focal - d > ratio * near:
+            near = max(near, (length - height - loose - d) / (1 + ratio))
+            focal = near + height + loose
+        focal = max(near + height + gap, min(focal, length - far - d))
+        y, fy = (near, focal + d / 2) if iy == 2 else (length - near - height, length - focal - d / 2)
+        fx = min(max(b.W * ix / 3, left + d / 2), b.W - right - d / 2)
+    else:
+        fy = min(max(b.H * iy / 3, top + d / 2), b.H - bottom - d / 2)
+    if pictured:
         b.image("image", fx - d / 2, fy - d / 2, d, d)
     else:
         b.ellipse("focal", fx - d / 2, fy - d / 2, d, d, "@accent")
-    gap = b.unit * 4
+    if stacked:
+        b.stack(entries, b.L, y, b.cw, align="left" if ix == 2 else "right", gaps=gaps)
+        return
     if ix == 2:
         text_x, width, align = b.L, fx - d / 2 - gap - b.L, "left"
     else:
         text_x, width, align = fx + d / 2 + gap, b.R - (fx + d / 2 + gap), "right"
-    entries = [("caption", b.label_text(), "label"), ("headline", b.get("title"), "headline"), ("body", b.get("subtitle"), "subtitle"), ("button", b.get("cta"), "cta")]
-    gaps = b.lockup_gaps("subtitle")
-    if width < b.cw * 0.45:
-        # A narrow column beside the focal point (a square canvas) would shrink the headline to its measure:
-        # the copy takes the full width in the opposite field above or below the focal point instead.
-        text_x, width = b.L, b.cw
-        align = "left" if ix == 2 else "right"
-        height = b.stack_height(entries, width, gaps=gaps)
-        y = b.T if iy == 2 else max(fy + d / 2 + gap, b.B - height)
-        b.stack(entries, text_x, y, width, align=align, gaps=gaps)
-        return
     height = b.stack_height(entries, width, gaps=gaps)
     y = b.T if iy == 2 else max(b.T, b.B - height)
     b.stack(entries, text_x, y, width, align=align, gaps=gaps)
@@ -1175,33 +1320,60 @@ def _rule_of_thirds(b):
 def _golden_section(b):
     b.background()
     phi = 0.618
+    pad = b.m
+    entries = [("caption", b.label_text(), "label"), ("title", b.get("title"), "headline"), ("body", b.get("subtitle") or b.get("body"), "body"), ("button", b.get("cta"), "cta")]
+    gaps = b.lockup_gaps()
     # Side by side only where the minor section still holds a readable column: a square splits top and bottom.
-    if b.W >= b.H * 1.15:
+    stacked = b.W < b.H * 1.15
+    scale, deep = 1.0, False
+    if not stacked:
         big = round(b.W * phi)
         image_box = (0, 0, big, b.H) if b.rng.random() < 0.5 else (b.W - big, 0, big, b.H)
         text_box = (big, 0, b.W - big, b.H) if image_box[0] == 0 else (0, 0, b.W - big, b.H)
     else:
-        big = round(b.H * phi)
-        # The copy below the picture stays inside the canvas: the picture gives up height when it must.
-        entries = [("caption", b.label_text(), "label"), ("title", b.get("title"), "headline"),
-                   ("body", b.get("subtitle") or b.get("body"), "body"), ("button", b.get("cta"), "cta")]
-        needed = b.stack_height(entries, b.W - 2 * b.m) + 2 * b.m + max(0, b.safe[3] - b.m)
-        big = max(round(b.H * 0.4), min(big, b.H - needed))
+        # The copy fills the minor section: short copy grows toward the section's height, the picture takes
+        # what is still spare, and gives up height when the copy needs more than the minor section (#804).
+        inner, outer, deep = _section_margins(b, b.safe[3])
+        room = b.H - round(b.H * phi) - inner - outer
+        height = b.stack_height(entries, b.W - 2 * pad, gaps=gaps)
+        # Grown type opens the lockup's step by its leading, so the call to action stands six units apart to
+        # stay clear of it (the subtitle belongs to the headline, not midway between its neighbours).
+        apart = {**gaps, "cta": b.unit * 6}
+        for grow in (1.15, 1.3, 1.45, 1.6):
+            grown = b.stack_height(entries, b.W - 2 * pad, gaps=apart, scale=grow)
+            if grown > room:
+                break
+            scale, height, gaps = grow, grown, apart
+        big = max(round(b.H * 0.4), b.H - round(height + inner + outer))
         image_box = (0, 0, b.W, big)
         text_box = (0, big, b.W, b.H - big)
     b.image("image", *image_box, bleed=True)
+    frame = next(op for op in reversed(b.ops) if op["type"] == "frame")
+    section = len(b.ops)
+    if deep:
+        b.rect("panel", *text_box, "@surface")
     line = max(2, round(b.unit / 2))
     if text_box[2] < b.W:
         edge = text_box[0] if text_box[0] else text_box[2] - line
         b.rect("golden-division", edge, 0, line, b.H, "@accent")
     else:
         b.rect("golden-division", 0, text_box[1], b.W, line, "@accent")
-    pad = b.m
     tx, ty, tw = text_box[0] + pad, text_box[1] + pad, text_box[2] - 2 * pad
-    entries = [("caption", b.label_text(), "label"), ("title", b.get("title"), "headline"), ("body", b.get("subtitle") or b.get("body"), "body"), ("button", b.get("cta"), "cta")]
-    gaps = b.lockup_gaps()
+    if stacked:
+        end = b.stack(entries, tx, text_box[1] + inner, tw, align="left", gaps=gaps, scale=scale)
+        # The stack as placed (a headline capped by its measure) may end short of the estimate: the picture
+        # takes the difference, so the copy ends on the bottom margin.
+        shift = max(round(b.H * 0.4), big + round(b.H - outer - end)) - big
+        if shift:
+            frame["height"] += shift
+            for op in b.ops[section:]:
+                if "y" in op:
+                    op["y"] += shift
+                    if op.get("name") == b.name("panel"):
+                        op["height"] -= shift
+        return
     # The copy sits at the optical centre of its section rather than at its top edge.
-    room = text_box[3] - 2 * pad - max(0, b.safe[3] - pad if text_box[1] else 0)
+    room = text_box[3] - 2 * pad
     ty += max(0, room - b.stack_height(entries, tw, gaps=gaps)) * 0.42
     b.stack(entries, tx, ty, tw, align="left", gaps=gaps)
 
@@ -1421,13 +1593,16 @@ def _banner(b):
         tw, _ = b.measure(cta, b.sizes["body"], None, 0, "left", b.font)
         cta_w = tw + b.sizes["body"] * 2.2
     text_w = b.cw - cta_w - b.unit * 6
+    b.step_over("title")
     title_size = b.sizes["title"]
     _, th = b.measure(b.get("title"), title_size, text_w, b.leading(title_size, LINE_HEIGHT["heading"], b.display_font),
                       "left", b.display_font)
     entries = [("title", b.get("title"), "headline"), ("body", b.get("subtitle"), "subtitle")]
-    height = b.stack_height(entries, text_w, b.unit * 1.5)
+    # Type raised to the use-size minimum keeps its lines apart by its own size, not by the smaller spacing unit.
+    gap = max(b.unit * 1.5, b.sizes["body"] * 0.35)
+    height = b.stack_height(entries, text_w, gap)
     y = b.T + max(0, (b.ch - height) / 2)
-    b.stack(entries, b.L, y, text_w, gap=b.unit * 1.5, align="left")
+    b.stack(entries, b.L, y, text_w, gap=gap, align="left")
     if cta:
         bh = b.sizes["body"] * 2.2
         b.button(cta, b.R, b.H / 2 - bh / 2, align="right")
@@ -1775,6 +1950,7 @@ def _photo_caption(b):
     from .composition import THRESHOLDS
 
     b.image("image", 0, 0, b.W, b.H, bleed=True)
+    b.step_over("headline")
     entries = [("caption", b.label_text(), "label"), ("headline", b.get("title"), "headline"), ("body", b.get("subtitle"), "subtitle")]
     width = b.cw * 0.86
     height = b.stack_height(entries, width)
