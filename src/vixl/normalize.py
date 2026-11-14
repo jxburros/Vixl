@@ -368,6 +368,12 @@ CENTER_TYPES = {
 }
 
 
+# Printer's-template words for the guide roles (guides.ROLES).
+GUIDE_ROLE_ALIASES = {"keepout": "keep-out", "no-go": "keep-out", "barcode": "keep-out", "safe-area": "safe",
+                      "safety": "safe", "live": "safe", "live-area": "safe", "cut": "trim", "trim-line": "trim",
+                      "spine": "fold", "crease": "fold", "hinge": "fold", "bleed-line": "bleed"}
+
+
 def _snake(key):
     return re.sub(r"(?<=[a-z0-9])([A-Z])", r"_\1", key).lower().replace("-", "_")
 
@@ -626,6 +632,12 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
                     value = opacity(value, "settings.opacity", note)
                 fixed[key] = value
             op["settings"] = fixed
+    if kind == "guide" and isinstance(op.get("role"), str):
+        role = op["role"].strip().lower().replace("_", "-").replace(" ", "-")
+        role = GUIDE_ROLE_ALIASES.get(role, role)
+        if role != op["role"]:
+            note(f"role {op['role']!r} → {role!r}")
+            op["role"] = role
     if kind == "resize" and ("width" in op) != ("height" in op) and "keep_aspect" not in op:
         given, other = ("width", "height") if "width" in op else ("height", "width")
         note(

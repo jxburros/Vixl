@@ -61,6 +61,7 @@ Each design-check finding carries:
 | `contrast.unmeasurable` | | none: move the text onto the canvas, then recheck |
 | `safe_area.outside` | layer box vs safe area | `move` back inside the safe area |
 | `safe_area.reserved-zone` | | none |
+| `safe_area.outside-safe-guide`, `safe_area.outside-safe-guides`, `safe_area.keep-out`, `safe_area.crosses-fold` | | none: the finding names the role guide (`guide`) and the layer's ink box (`bounds`); move or resize the layer |
 | `overlap.text-text`, `overlap.text-object` | overlapping pixels | none mechanical; points at a dry-run `repair-layout`, which tries moves |
 | `overlap.decoration-text` (review) | decoration pixels inside the text's glyph area | none: move the decoration, or `layer-intent allow_overlap` |
 | `blanks.unfilled` | | held for review: copy is never guessed |

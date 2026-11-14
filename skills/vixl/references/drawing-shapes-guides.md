@@ -165,6 +165,11 @@ perspective systems. Place layers exactly on them instead of computing coordinat
 shape's content box (`content_bounds`: a speech bubble's body, a badge, a frame opening), inset
 by `margin`; `text` with `within` centres new text there.
 
+A guide may carry a print `role` (`{"type": "guide", "name": "front-safe", "rect": [x, y, w, h], "role": "safe"}`;
+roles `safe`, `keep-out`, `fold`, `trim`, `bleed`): the default `safe_area` check then reports ink outside its
+panel's safe outline, inside a keep-out and text across a fold. Import a printer's template (PNG/PSD) with the
+`guides-import` workflow and reuse it with `guide-set` (see `production.md`).
+
 `vixl_check(checks=["guides", "alignment"])` reports near misses with the fixing move;
 `vixl_render(guides=true)` draws them. Full reference: `docs/guides/layout/guides.md`.
 

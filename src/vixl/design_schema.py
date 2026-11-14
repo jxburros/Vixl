@@ -181,6 +181,8 @@ def schemas(add):
     add("guide", {"name": S, "axis": enum("x", "y"), "position": N,
                   "kind": enum("axis", "line", "ray", "segment", "point", "circle", "path"),
                   "x": N, "y": N, "angle": N, "radius": N, "d": S, "delete": B,
+                  "rect": {"type": "array", "items": N, "minItems": 4, "maxItems": 4},
+                  "role": enum("trim", "safe", "fold", "keep-out", "bleed"),
                   "points": {"type": "array", "items": point, "minItems": 2, "maxItems": 2}}, ["name"])
     from .guides import GRID_KINDS
 

@@ -642,6 +642,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PRN-42 | Résumé or CV (two columns, rich text) | rich text, text flow, `offset-column` | 40–55 · 5–7 |  |
 | PRN-43 | Stationery set: card, letterhead, envelope, compliments slip | linked swatches/styles, artboards | 50–70 · 6–8 |  |
 | PRN-44 | Full book cover wrap (back, spine, front) with bleed | custom size, guides, CMYK PDF | 40–60 · 5–7 | Spine width computed by hand. |
+| PRN-52 | Print-on-demand wrap or package against the printer's own template (PNG/PSD with safe areas, barcode keep-out, folds) | `guides-import` (colour to role), `check` `safe_area`, `guide-set` for the next document | 3–5 · 1 | Horizontal and vertical lines only; diagonal dielines are drawn as `path` guides. PSD: 8-bit RGB. |
 | PRN-45 | Event poster series in three colorways | comps or variables, export per comp | 40–55 · 5–6 |  |
 | PRN-46 | Personalised invitations or place cards from a guest CSV | merge-impose | 30–50 · 3–5 | Like PRD-30. |
 | PRN-47 | Product label or packaging face with print checks | `label`, print checks, CMYK | 40–60 · 5–7 | No dielines or spot colors. |

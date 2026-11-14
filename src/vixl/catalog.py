@@ -31,7 +31,9 @@ CHECK_INFO = {
                ("error", "warning", "info")),
     "overlap": ("Visible pixels of two layers overlapping (two text layers: error); decoration running through text's glyph area is a review warning.", ("error", "warning")),
     "contrast": ("Text contrast against what is actually behind it: 4.5:1, or 3:1 for large text.", ("error",)),
-    "safe_area": ("Content outside the safe area (canvas size preset or safe_area) or inside an avoid zone.",
+    "safe_area": ("Content outside the safe area (canvas size preset or safe_area) or inside an avoid zone; with "
+                  "role guides from a printer's template: ink outside its panel's safe guide, inside a keep-out "
+                  "guide, and text crossing a fold guide.",
                   ("error", "warning", "info")),
     "legibility": ("Body measure, and text too small to read at thumbnail width.", ("warning", "info")),
     "blanks": ("Layout or template placeholders ([Label]) that were never filled.", ("error",)),

@@ -342,7 +342,7 @@
     },
     "guides": {
      "type": "object",
-     "description": "Ruler guides by name: {axis, position, grid or generated}."
+     "description": "Guides by name: {axis, position} or {kind, …}, with grid or generated for a grid's guides and role (trim, safe, fold, keep-out, bleed) for a printer's template."
     },
     "grids": {
      "type": "object",

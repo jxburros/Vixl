@@ -550,7 +550,7 @@ Python: `project.export("deck.pptx")`, `project.export("form.pdf", fillable=True
 
 Linked documents and print merge are ordinary operations and one workflow action each: `link` (create, or change with a `target`),
 `link-refresh` and `link-embed` go through `vixl_apply` / `POST /operations`; `vixl_apply(workflow='links', request={})` (also `POST /workflow/links`) lists
-each link's state; `vixl_apply(workflow='merge-impose', request=request, document=template)` merges a CSV into print sheets (MCP and CLI only:
+each link's state; `vixl_apply(workflow='guides-import', request={source, colors})` reads a printer's template into role guides ([guides](../guides/layout/guides.md#a-printers-template-guide-roles)); `vixl_apply(workflow='merge-impose', request=request, document=template)` merges a CSV into print sheets (MCP and CLI only:
 it writes files). Link sources and merge paths stay inside the workspace. See [linked documents](../guides/output/linked-documents.md) and
 [imposition](../guides/output/imposition.md).
 
