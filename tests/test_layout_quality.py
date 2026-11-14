@@ -17,23 +17,6 @@ FONTS = Path(__file__).resolve().parents[1] / "src" / "vixl" / "data"
 
 # (layout, size): "reason, #issue". Issue numbers refer to jxburros/vixl.
 EXCEPTIONS = {
-    ("rule-of-thirds", "instagram-post"): "dead band under the copy below the focal point; subtitle crosses it, #803",
-    ("rule-of-thirds", "instagram-story"): "small band between the copy blocks, #803",
-    ("rule-of-thirds", "poster-18x24"): "bands between the focal image and the edge and between blocks, #803",
-    ("rule-of-thirds", "photo-5x7"): "bands between the focal image and the edge and between blocks, #803",
-    ("golden-section", "letter"): "bottom band in the minor section, #804",
-    ("golden-section", "instagram-story"): "bottom band in the minor section, #804",
-    ("z-pattern", "instagram-post"): "band between the headline and the body, #805",
-    ("z-pattern", "og-image"): "band between the headline and the body, #805",
-    ("z-pattern", "web-banner"): "body overflows its box; band between the headline and the body, #805",
-    ("z-pattern", "instagram-story"): "band between the headline and the body, #805",
-    ("split-screen", "instagram-story"): "edge bands in the text half; minor text under the thumbnail minimum, #806",
-    ("split-screen", "instagram-post"): "headline under 1.6 times the body at seed 2, #806",
-    ("banner", "x-header"): "headline and subtitle weigh the same, #807",
-    ("banner", "email-banner"): "headline and subtitle weigh the same at seed 2, #807",
-    ("photo-caption", "ebook-cover"): "headline and subtitle weigh the same at seed 2, #807",
-    ("editorial-grid", "letter"): "short example body leaves the lower third empty, #808",
-    ("editorial-grid", "poster-18x24"): "short example body leaves a band at the foot, #808",
     ("emblem", "sticker"): "tagline and initials drift from the badge axis, #809",
     ("price-list", "menu"): "centred title drifts from the subtitle at seed 2, #809",
     ("price-list", "letter"): "centred title drifts from the subtitle at seed 2, #809",
