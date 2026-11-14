@@ -88,8 +88,7 @@ Details: [workflow](references/workflow.md), [testing](references/testing.md).
 - **Many layers or sizes are one call**: `edit-layers` with a `where` selector, `adapt-layout`, workflow
   `adapt-sizes`.
 - **Motion:** set a `pivot` at each joint, animate `translate-x/y` and `scale`, use `text-animate` for kinetic
-  type; pixel art exports with `sampling: "nearest"`. Sprites: `pixel-transform`, `sprite-sheet` grids,
-  crisp `sampling: "nearest"` enlargements.
+  type; pixel art exports with `sampling: "nearest"`; `sprite-sheet` grids.
 - **AI needs a configured provider**, and `network_disabled` means offline on purpose: say so, do not retry.
 - **Limits and unsupported features** (CMYK editing, PSD import, RAW, a GUI): see the full list.
 
@@ -119,7 +118,7 @@ The payload is always the operation list; fields: `vixl_reference('operations', 
 | Fonts, pairings, rolls, making a font | [typography](references/typography.md) |
 | Palettes, templates, guidance, SVG output | [resources](references/resources.md) |
 | Rich text, pages and decks, forms | [documents](references/documents.md) |
-| Charts (emphasis, marks by data), shared datasets, bound text, tables, key-value lists | [charts](references/charts.md) |
+| Charts, shared datasets, bound text, tables, key-value lists | [charts](references/charts.md) |
 | Hand drawings, diagrams, organic shapes, scatter, guides | [drawing-shapes-guides](references/drawing-shapes-guides.md) |
 | Objects with parts (object-plan, outline), accessibility | [objects](references/objects.md) |
 | Brushes, timelines, nested animation instances, video templates | [brushes-timeline](references/brushes-timeline.md) |
