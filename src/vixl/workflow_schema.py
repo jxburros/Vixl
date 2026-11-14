@@ -767,8 +767,8 @@ ACTION_FIELDS = {
 def properties(action, fields):
     """``{field: schema}`` for ``fields`` of ``action``: the action's own entry, else the shared one.
     A field with no entry is left out so a test can find it."""
-    from .emoji_workflows import ACTIONS as EMOJI_ACTIONS, FIELDS as EMOJI_FIELDS
-    own = EMOJI_FIELDS if action in EMOJI_ACTIONS else ACTION_FIELDS.get(action, {})
+    from .emoji_workflows import ACTIONS as EMOJI_ACTIONS, fields as emoji_fields
+    own = emoji_fields(action) if action in EMOJI_ACTIONS else ACTION_FIELDS.get(action, {})
     return {field: deepcopy(own.get(field) or COMMON[field]) for field in sorted(fields)
             if field in own or field in COMMON}
 

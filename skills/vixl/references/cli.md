@@ -404,7 +404,7 @@ A document saved by 0.26 or earlier opens after `vixl convert OLD.vixl -o NEW.vi
 
 For Git review, `unpack design.vixl design-source` writes current state as stable JSON (`project.json`, with asset hashes) plus asset files into a new folder; `pack design-source reviewed.vixl [--overwrite]` validates paths, sizes and hashes and writes a portable archive. History and history-only assets are intentionally omitted; registered fonts are kept. Keep the original for undo and commit external linked sources too.
 
-Emoji: `vixl emoji list|get|template|replace|install|settings|reset|requirements|destinations|export` (`vixl -p F.vixl emoji settings --mode font` prefers the font; bundled art is the default). House style: `vixl roll` rolls from the current house style.
+Emoji: `vixl emoji list|get|template|replace|install|settings|reset|requirements|destinations|export` (`emoji export --destination slack discord whatsapp --out pack.zip` writes one ZIP per destination; also telegram, telegram-emoji, telegram-animated, twitch, imessage; `--animated` for masters with a timeline) (`vixl -p F.vixl emoji settings --mode font` prefers the font; bundled art is the default). House style: `vixl roll` rolls from the current house style.
 
 `screen-capture` is a shared workflow action with output PNG, optional desktop bbox, Windows window HWND/all_screens and overwrite. It needs an interactive desktop and any OS-required permission. `app-animation-package` takes named source states, a default state, themes, transitions and a new output directory; see production guidance.
 
