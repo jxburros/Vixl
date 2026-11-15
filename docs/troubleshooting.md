@@ -83,7 +83,7 @@ is recorded and the renderer does no extra work.
 | `layers` | The 25 slowest layers drawn from scratch: `ms` (its own time; a group's excludes its children), `draws`, and `stages_ms` (`draw`, `effects`, `transform`) |
 | `by_type` | Time and count per layer type |
 | `phases_ms` | `render` (whole renders), `resolve` and `layout` (resolving variables and constraints), `styles` (drop shadows, glows, strokes), `frame_setup` and `frame_raster` (timeline exports) |
-| `caches` | `layer_hits`, `layer_misses`, `layer_writes`, `layer_evictions`, `layer_uncacheable` (rendered layers and composited groups), `styled_hits`/`styled_misses`, `svg_hits`/`svg_misses` (rasterised text and paths; process-wide), `disk_hits`, `disk_misses`, `disk_writes`, `disk_frame_hits`, `disk_frame_misses`, `disk_frame_writes`, `disk_frame_writes_skipped`, `disk_evictions`, `disk_bytes_written` |
+| `caches` | `layer_hits`, `layer_misses`, `layer_writes`, `layer_evictions`, `layer_uncacheable` (rendered layers and composited groups), `styled_hits`/`styled_misses`, `svg_hits`/`svg_misses` (rasterised text and paths; process-wide), `glyph_hits`/`glyph_misses` (glyphs of plain text layers found in the glyph cache), `disk_hits`, `disk_misses`, `disk_writes`, `disk_frame_hits`, `disk_frame_misses`, `disk_frame_writes`, `disk_frame_writes_skipped`, `disk_evictions`, `disk_bytes_written` |
 | `renders` | Each render: `incremental` (only a box was redrawn), `dirty_box` and `dirty_pixels` against `canvas_pixels`, `from_disk`, `tiled` (a large PNG export composited and encoded band by band), or the `reason` it drew everything |
 
 To find the culprit without reading numbers, run the opt-in `cost` check: it draws the document once with empty
@@ -100,6 +100,12 @@ ahead on a pool of threads while the stack is composited in order, so the pixels
 `VIXL_RENDER_THREADS` sets its size (default: one per core, at most 8; `0` or `1` turns it off). Plain vector shapes
 and text are not drawn ahead: their rasteriser holds Python's interpreter lock, so threads would only add overhead.
 With `VIXL_PROFILE=1` every layer is drawn on the calling thread, so the profile stays per layer.
+Labels that differ by a few characters ("Label 1", "Label 2", a counter across frames) share their glyphs: a glyph
+is rasterised once for each place it takes in a label's box and reused by every label that has it there, with
+the pixels of the whole-layer rasterisation (500 such labels render cold in about 120 ms instead of 390 ms).
+Text that does not repeat is drawn as before, one rasteriser call per layer. `VIXL_GLYPH_CACHE=off` turns the
+reuse off.
+
 Canvases over 8 million pixels are composited as tiles on the same threads, and a PNG export of one is encoded
 band by band without holding the canvas ([large canvases](guides/output/exporting.md#large-canvases)).
 

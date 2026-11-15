@@ -99,6 +99,7 @@ next export of the unchanged document, in a new process, reads the frame back in
 | `cache clear` | Delete the cached PNGs and their ledgers; reports `removed` and `bytes` |
 | `VIXL_RENDER_CACHE=DIR` / `=off` | Use another cache directory (default `~/.cache/vixl/render`), or no disk cache |
 | `VIXL_CACHE_MAX_MB=256` | The cache's size cap in megabytes; the least recently used PNGs are removed past it |
+| `VIXL_GLYPH_CACHE=off` | Draw every text layer as one SVG instead of reusing glyphs that other labels rasterised at the same place (same pixels either way; see [troubleshooting](../troubleshooting.md#find-out-why-a-render-is-slow)) |
 | `VIXL_PROFILE=1` | Return a `render_profile` (per-layer times, cache hits and misses, incremental renders) with every result; see [troubleshooting](../troubleshooting.md#find-out-why-a-render-is-slow) |
 
 ## Documents and output

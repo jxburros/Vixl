@@ -260,7 +260,7 @@ def test_adapting_a_poster_to_three_sizes_with_arrangements(tmp_path):  # #519
 
 
 LARGE_CANVAS = r'''
-import hashlib, io, json, random, resource, sys, time
+import hashlib, io, json, random, re, sys, time
 from PIL import Image
 from vixl import Project
 from vixl import render as R
@@ -290,7 +290,8 @@ p.apply(ops, detail="brief")
 started = time.perf_counter()
 data = p.export() if output == "export" else p.render().tobytes()
 elapsed = time.perf_counter() - started
-peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+# The high-water mark of this process's own memory: ru_maxrss would start from the parent's at the fork.
+peak = int(re.search(r"VmHWM:\s+(\d+) kB", open("/proc/self/status").read()).group(1))
 Image.MAX_IMAGE_PIXELS = None
 pixels = Image.open(io.BytesIO(data)).convert("RGBA").tobytes() if output == "export" else data
 print(json.dumps({"seconds": elapsed, "peak_kib": peak, "pixels": hashlib.sha256(pixels).hexdigest()}))
@@ -334,3 +335,32 @@ def test_large_blended_layers_render_in_tiles_without_canvas_sized_working_memor
     assert tiled["pixels"] == single["pixels"]
     assert tiled["peak_kib"] <= 0.6 * single["peak_kib"], (tiled, single)
     assert tiled["seconds"] < max(30, 2 * single["seconds"]), (tiled, single)
+
+
+def test_labels_that_differ_by_a_few_characters_reuse_their_glyphs(monkeypatch):  # #584
+    from vixl import glyph_cache, vector_raster
+    from vixl import render as R
+
+    p = Project(3000, 2000, "white")
+    p.apply([{"type": "text", "name": f"t{i}", "text": f"Label {i}", "size": 14, "x": (i % 20) * 145 + 10,
+              "y": (i // 20) * 70 + 10, "color": "black"} for i in range(500)], detail="brief")
+
+    def cold(switch):
+        monkeypatch.setenv("VIXL_GLYPH_CACHE", switch)
+        best, pixels = None, None
+        for _ in range(3):
+            p._cache = None
+            vector_raster.CACHE.clear()
+            vector_raster.CACHE.bytes = 0
+            glyph_cache.CACHE.reset()
+            elapsed, image = timed(lambda: R.render(p))
+            best, pixels = min(best or elapsed, elapsed), image.tobytes()
+        return best, pixels
+
+    cold("on")  # fonts and shaping, which both paths share
+    whole, expected = cold("off")
+    cached, pixels = cold("on")
+    assert pixels == expected
+    # One rasteriser call per label (about 0.4 ms each) was over half of this render: about 390 ms as whole-layer
+    # SVGs, about 120 ms with 64 calls for the 35 glyphs-at-a-place the labels share.
+    assert cached < 0.7 * whole, (cached, whole)
