@@ -7,7 +7,7 @@ from contextlib import contextmanager, suppress
 import os
 from pathlib import Path
 import stat
-from typing import IO, TYPE_CHECKING
+from typing import IO, TYPE_CHECKING, Any
 import uuid
 
 if TYPE_CHECKING:
@@ -106,7 +106,7 @@ def adler32_combine(first: int, second: int, length: int) -> int:
     return (low % base) | ((high % base) << 16)
 
 
-def png_rows(rows, above, bpp: int, level: int = 6) -> tuple[bytes, int, int]:
+def png_rows(rows: Any, above: Any, bpp: int, level: int = 6) -> tuple[bytes, int, int]:
     """One block of a PNG's image data: ``rows`` (a uint8 array, one row of pixel bytes per line) filtered against
     the row ``above`` it and deflated as a byte-aligned piece of a raw stream. The block takes the PNG filter
     (none, sub or up) that compresses its first rows best: flat artwork is smallest unfiltered, photographs
@@ -115,7 +115,7 @@ def png_rows(rows, above, bpp: int, level: int = 6) -> tuple[bytes, int, int]:
 
     import numpy as np
 
-    def filtered(kind, count):
+    def filtered(kind: int, count: int) -> bytes:
         out = np.empty((count, rows.shape[1] + 1), dtype=np.uint8)
         out[:, 0] = kind
         out[:, 1:] = rows[:count]
@@ -124,7 +124,7 @@ def png_rows(rows, above, bpp: int, level: int = 6) -> tuple[bytes, int, int]:
         elif kind == 2:
             out[0, 1:] -= above
             out[1:, 1:] -= rows[:count - 1]
-        return out.tobytes()
+        return bytes(out.tobytes())
 
     sample = min(len(rows), 6)
     kind = min((0, 1, 2), key=lambda kind: len(zlib.compress(filtered(kind, sample), 1)))
@@ -141,14 +141,15 @@ class PngWriter:
     BLOCK = 32
 
     def __init__(self, stream: IO[bytes], size: tuple[int, int], mode: str = "RGBA",
-                 dpi: tuple[float, float] | None = None, pool=None, level: int = 6) -> None:
+                 dpi: tuple[float, float] | None = None, pool: Any = None, level: int = 6) -> None:
         import struct
 
         if mode not in ("RGB", "RGBA"):
             raise ValueError(f"Unsupported PNG mode: {mode}")
         self.stream, self.size, self.mode, self.pool, self.level = stream, size, mode, pool, level
         self.bpp = len(mode)
-        self.rows, self.adler, self.above = 0, 1, None
+        self.rows, self.adler = 0, 1
+        self.above: Any = None
         stream.write(b"\x89PNG\r\n\x1a\n")
         self.chunk(b"IHDR", struct.pack(">IIBBBBB", size[0], size[1], 8, 2 if mode == "RGB" else 6, 0, 0, 0))
         if dpi:
@@ -161,7 +162,7 @@ class PngWriter:
 
         self.stream.write(struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data)))
 
-    def write(self, image) -> None:
+    def write(self, image: Any) -> None:
         """Append a band: a Pillow image as wide as the PNG, in the writer's mode (an RGB writer also takes RGBA
         and drops the alpha, as ``convert("RGB")`` does, without copying the band)."""
         import numpy as np
@@ -173,7 +174,7 @@ class PngWriter:
         if self.above is None:
             self.above = np.zeros(stride, dtype=np.uint8)
 
-        def block(top):
+        def block(top: int) -> tuple[bytes, int, int]:
             # A few rows at a time: an array of the whole band would be a second copy of it.
             start = max(0, top - 1)
             pixels = np.asarray(image.crop((0, start, image.width, min(image.height, top + self.BLOCK))))
