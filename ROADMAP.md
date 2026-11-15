@@ -4,7 +4,7 @@ This is the single development plan for Vixl. It replaces the development plan, 
 plan and the render-performance decisions that used to live in `docs/project/`; those files are kept, unchanged, in
 `docs/project/archive/` as history and are no longer maintained. Everything needed to pick up an item is in this file.
 
-The roadmap was rebuilt on 2026-10-31 against `main` at 0.33.1 and updated for 0.35.0 (stages 1-4 shipped). Every open GitHub issue was read, with its comments,
+The roadmap was rebuilt on 2026-10-31 against `main` at 0.33.1 and updated for 0.36.0 (stages 1-4, 6, 7 and 12 shipped, with most of stage 9). Every open GitHub issue was read, with its comments,
 and checked against the code, the tests and the changelog; several bugs were reproduced. 112 issues that had already
 shipped were closed with their evidence. The 51 issues still open, the remainders of closed issues, and the deferred
 work that never had an issue are all below.
@@ -213,9 +213,8 @@ Two follow-ups remain, both after the next release:
 - Run `python scripts/published_pins.py --latest` once 0.33.x is on PyPI, so new users get it.
 - Optional, from the old docs item: split the 577-word per-layer edit list in `docs/reference/architecture.md`.
 
-**Close at the end of this stage:** [#762](https://github.com/jxburros/vixl/issues/762),
-[#776](https://github.com/jxburros/vixl/issues/776), [#543](https://github.com/jxburros/vixl/issues/543) (after the
-release check above).
+**Close at the end of this stage:** [#543](https://github.com/jxburros/vixl/issues/543) (after the release check
+above). #762 and #776 are closed.
 
 ## 6. Stage 2: checks that lead with a verdict
 
@@ -236,28 +235,15 @@ roles (3.4, #766), the grow-then-fit overflow repair and `layout-apply update: t
 wrapping `pretty` by default with the eval unchanged (3.6, #652 remainder; hanging punctuation stays opt-in and optical
 sizes are not planned).
 
-What remains is the gate's exception list: 31 of 204 layout × size pairs, each with an issue, to be fixed in the
-layouts named there and removed from `EXCEPTIONS` as they pass:
-
-- [#803](https://github.com/jxburros/vixl/issues/803) `rule-of-thirds` (bands around the focal point, subtitle contrast)
-- [#804](https://github.com/jxburros/vixl/issues/804) `golden-section` (minor-section bands on letter and story)
-- [#805](https://github.com/jxburros/vixl/issues/805) `z-pattern` (headline-to-body band, web-banner overflow)
-- [#806](https://github.com/jxburros/vixl/issues/806) `split-screen` (story bands, square hierarchy, thumbnail minimum)
-- [#807](https://github.com/jxburros/vixl/issues/807) `banner` and `photo-caption` on a cover (no focal point)
-- [#808](https://github.com/jxburros/vixl/issues/808) `editorial-grid` (short example body on a page)
-- [#809](https://github.com/jxburros/vixl/issues/809) `emblem`, `price-list`, `big-number` (centred-line drift)
-- [#810](https://github.com/jxburros/vixl/issues/810) `minimal-mark` (hierarchy step at seed 2)
-- [#811](https://github.com/jxburros/vixl/issues/811) `slide-content` (band before the footer)
-- [#812](https://github.com/jxburros/vixl/issues/812) `asymmetric-balance`, `hero-statement` (top edge band)
-- [#813](https://github.com/jxburros/vixl/issues/813) `photo-caption` on a story (scrim taller than its copy)
-- [#814](https://github.com/jxburros/vixl/issues/814) `business-card` seed 1, `typographic-poster` cover caption
+The gate's exception list is empty since 0.36.0: all 204 layout × size pairs pass at three seeds (#803-#814), and
+`tests/test_layout_quality.py` now requires the list to stay empty. On a story, `golden-section` and `split-screen`
+set their copy on a `@surface` panel that owns the safe inset; the alternative, a dead-band check that knows the safe
+area, would need craft-backtest numbers.
 
 Later (owner decision): font role tokens on layers (`font: "@heading"`), a document-model change; `apply_to` shipped
-first. Rating for the remainder: C2, P3 each.
+first.
 
-**Close at the end of this stage:** [#763](https://github.com/jxburros/vixl/issues/763),
-[#764](https://github.com/jxburros/vixl/issues/764) (the gate exists; the exception issues track the rest),
-[#766](https://github.com/jxburros/vixl/issues/766), [#768](https://github.com/jxburros/vixl/issues/768).
+All issues of this stage (#763, #764, #766, #768, #803-#814) are closed.
 
 ## 8. Stage 4: token cost and the cheapest path
 
@@ -303,6 +289,9 @@ governance rules and practice disagree. Most items need an owner action from sec
 
 ### 5.1 A package name agents can guess (#753)
 
+- **Status (0.36.0):** step 1 and the meta-package source (`distribution/alias_package.py`, an `alias` job that is off
+  until the Actions variable `PYPI_ALIAS_PUBLISH` is `true`) are done. Step 2 waits on the owner claiming `vixl` on PyPI.
+
 - **Problem:** agents in fresh containers try `pip install vixl`, which fails, and fall back to cloning the repository.
 - **Remaining work:**
   1. Docs, no owner action: a plain `python -m pip install vixl-engine` line near the top of the README and
@@ -317,6 +306,11 @@ governance rules and practice disagree. Most items need an owner action from sec
 - **Rating:** C1, P4. **Depends on:** none (the install pins shipped in 0.33.3).
 
 ### 5.2 One-click agent install, directories and macOS (#771)
+
+- **Status (0.36.0):** steps 1 and 2 are done (the README table with checked snippets, the `vixl-engine` console script,
+  `distribution/mcp_registry.py` and an `mcp-registry` job that is off until `MCP_REGISTRY_PUBLISH`,
+  `MCP_PUBLISHER_URL` and `MCP_PUBLISHER_SHA256` are set). Steps 3 and 4 wait on the owner (a Homebrew tap or an Apple
+  Developer ID; the directory submissions).
 
 - **Problem:** getting from "heard of Vixl" to "my agent uses it" takes uv plus a guessable package name, the Windows
   installer or a source checkout. A `.mcpb` desktop extension is published with releases (since 0.32.0), but there is no
@@ -424,6 +418,10 @@ governance rules and practice disagree. Most items need an owner action from sec
 
 ### 5.7 Licence clarity, "is Vixl a fit?" and governance settings (#774, #714 finding F10, remainder of #683)
 
+- **Status (0.36.0):** the explanatory docs are done (who can use Vixl free, `docs/reference/licensing.md`, "Is Vixl a
+  fit?", the licence in the agent bundles). The commercial-licence terms and contact, the notice wording and the
+  governance settings wait on the owner and counsel.
+
 - **Problem:** on the download path, "free" reads as free for everyone and "source available" as open source, and a
   larger company has no route to a licence. The README licence summary ("fewer than 100 people and under US$1M (2019)
   revenue") does not say both thresholds must hold or that the figure is CPI-adjusted, and the LICENSE `Required
@@ -488,6 +486,11 @@ governance rules and practice disagree. Most items need an owner action from sec
 
 ### 5.9 Vixl as a local alternative to template-rendering APIs (#772)
 
+- **Status (0.36.0):** the migration guide is done, with no services named and no prices. Step 3 (an event-ticket and
+  a dedicated OG-card layout) is open: new layouts change what existing seeds roll, so they need the house-style eval.
+  Two defects seen while writing it: layout text boxes sized to the sample's ink clip descenders in other rows, and
+  `adapt-layout` with `recompose` drops a filled image slot.
+
 - **Problem:** people paying per render for hosted template APIs have no path to Vixl's local equivalent, and the docs
   do not say Vixl does this job.
 - **Remaining work:**
@@ -512,230 +515,37 @@ epic, once #543, #546 and #547 are closed), [#756](https://github.com/jxburros/v
 
 ## 10. Stage 6: cut-paper, motion and character animation
 
-All but the last item come from one build, a cut-paper unicorn in a parallax scene, and they share code paths in
-`scene.py`, `textures.py`, `timeline.py` and the motion check. Order: the two reproduced bugs (6.1, 6.2), the small
-check fix (6.3), the speed fix (6.4), then the new features (6.5-6.7). 6.6 should land before 6.7. 6.8 is independent.
+Shipped in 0.36.0: directionless cut-paper grain with texture controls (6.1, #748), `pattern-fill` and `drawn-texture`
+as an effect on the layer they texture (6.2, #747), `wrap` and `symmetry` in the motion check with a `scroll` recipe
+(6.3, #752), jitter as an offset on cached pieces with a perf budget (6.4, #754), `inner-shadow`, `inner-glow` and
+`bevel` (6.5, #751), additive keyframe layers, blend windows and piecewise samples (6.6, #750), the quadruped rig with
+walk, trot, gallop, jump and idle (6.7, #749) and `hand_set` text with span `rise`, `rotate` and `scale` (6.8, #728).
 
-### 6.1 Cut-paper grain renders as scanline streaks (#748)
+Follow-ups, none with an issue:
 
-- **Problem:** at the recommended `grain` of 0.04-0.08, large cut-paper pieces such as sky or hills look like TV
-  scanlines (reproduced: row-mean spread 7.24 against 1.64 for columns). The only fixes are turning grain down to almost
-  nothing or bringing in a texture tile made elsewhere.
-- **Remaining work (core, `scene.py`):**
-  1. In `scene.paper_image`, replace the per-row term with low-frequency mottling (seeded value noise at `grain_scale`,
-     upsampled and tileable) and short fibres at random angles (`fibers: {count, length}`), drawn as short soft strokes,
-     keeping the fine per-pixel grain.
-  2. Add optional `grain_scale`, `fibers` and `pattern` (reusing a `pattern-define` tile) to the `cut-paper` schema, each
-     with a type and description; defaults give paper-like output.
-  3. Seeded and deterministic, and stable across the frames of one hold.
-- **Done when:** on a flat sheet the row-mean and column-mean variances are within 1.5× of each other; the same seed
-  gives the same pixels; cut-paper goldens are regenerated and reviewed (an intended render change, noted in the
-  changelog).
-- **Docs:** the `cut-paper` text in `guidance.py`, the cut-paper sections of the finishing and drawing guides, skills
-  references.
-- **Rating:** C2, P2. **Depends on:** none.
-
-### 6.2 `pattern-fill` texture does not follow its animated base layer (#747)
-
-- **Problem:** a texture added with `pattern-fill` is a sibling layer, so when the base layer is animated the texture
-  stays where the base started and turns into a ghost (reproduced: the stripes stay behind, 68 px apart). The
-  workaround is a group per textured piece, and texturing about 150 pieces doubled the scene to about 314 layers.
-  `drawn-texture` uses the same sibling-overlay pattern (`textures.py`).
-- **Remaining work:**
-  1. Option A (recommended, also stops the layer count doubling): store the pattern on the base layer as a fill
-     attachment or effect (`pattern_overlay: {pattern, transform, opacity, blend}`), drawn in the layer's own frame by
-     `render.layer_effects` before flip, rotate and skew, as all effects are. Option B: keep the sibling but have it
-     inherit the base's transform tracks at render (a `follows: base_id` link resolved in `timeline.project_at`). Owner
-     decision; A changes the document model.
-  2. The same for `drawn-texture`.
-  3. Export parity: SVG pattern fill, PDF tiling or raster fallback, PPTX picture fill.
-  4. Leave existing sibling layers alone; optionally offer a conversion-kit migration.
-- **Done when:** the issue's batch rendered at 1000 ms has the stripes inside the rotated silhouette (a pixel test in
-  the rotated region), the motion check reports nothing, and under option A texturing N pieces adds no layers; a visual
-  golden.
-- **Docs:** the texture pages under `docs/guides/finishing/`, the grouping note in the motion guide, skills references,
-  changelog.
-- **Rating:** C3, P3. **Depends on:** the A/B decision.
-
-### 6.3 Motion check accepts seamless scrolls and symmetric rotations (#752)
-
-- **Problem:** the parallax scene gets 8 false warnings and `needs_review`, and following the check's own advice snaps
-  the strips back. Spin rotations are already recognised (`_full_turns`), but a strip that scrolls exactly one repeat
-  per loop is flagged as a loop seam, and `symmetry` is not accepted on `keyframes` rotation tracks.
-- **Remaining work (core):**
-  1. Add an explicit `wrap` (period in property units) to `keyframes`, `keyframe` and `animate`, stored on the track
-     like `symmetry`; allow `symmetry` on `keyframes` rotation tracks.
-  2. `timeline.seam_matches` compares numeric tracks modulo `wrap`; `close_track` leaves wrapped tracks alone.
-  3. `motion.findings` skips `linear-motion` for a constant-speed track that covers the whole loop with `wrap` or
-     `symmetry`; generalise `_full_turns`.
-  4. Optional: infer `wrap` when a group's children repeat at exactly the moved distance, or add a `motion` `scroll`
-     recipe that writes it.
-  5. The `loop-seam` message suggests `wrap` when the distance is a whole repeat.
-- **Done when:** a strip scrolled 1200 px with `wrap: 1200`, and a 12-ray sun rotated 30° with `symmetry: 12`, give no
-  `loop-seam` or `linear-motion`, while the same tracks without `wrap` still warn.
-- **Docs:** the seamless-loop and parallax sections of the motion guides, the motion check reference, skills references,
-  changelog.
-- **Rating:** C2, P2. **Depends on:** none.
-
-### 6.4 Cut-paper frames re-rasterise every piece on each new hold (#754)
-
-- **Problem:** a 960×540 cut-paper scene with about 314 layers took about 4 s per frame in the report; a synthetic
-  315-layer scene takes 1.2-1.5 s for each frame that starts a new stop-motion hold against 0.08 s inside a hold. The
-  per-hold sub-pixel jitter moves every piece and group by a fraction of a pixel, so every layer misses the raster cache,
-  and layout extents re-parse path polygons on every frame.
-- **Remaining work:**
-  1. Apply stop-motion jitter as a compositing offset: render cut-paper layers and groups at their unjittered position
-     (a cache hit) and paste with a sub-pixel translation (whole-pixel for previews), without changing `layer["x"]` and
-     `["y"]` in `scene.apply_at`; detach only the layers that change. Owner decision: this is a small pixel change.
-  2. Memoise `geometry.path_polygons` (or `vector_strokes.primitives` / `margin`) by path string and stroke parameters,
-     with an LRU like the SVG cache.
-  3. A `draft` render option for previews and `render_at`: jitter off or whole-pixel, grain at reduced resolution,
-     per-layer effects reused from the cache.
-  4. A perf budget: a 300-layer jittered cut-paper scene renders a new-hold frame within about 3× the measured
-     post-fix time.
-- **Done when:** a regression test counts `shape_image` calls and shows a new-hold frame does not re-rasterise
-  unchanged pieces; jittered output matches the previous pixels within the decided tolerance or goldens are reviewed;
-  the `tests/test_perf.py` budget passes.
-- **Docs:** draft previews in the cut-paper guidance, changelog with the measured figure.
-- **Rating:** C3, P3. **Depends on:** the jitter decision. The rasteriser binding in stage 8 would also help.
-
-### 6.5 Layer styles: inner shadow, inner glow and bevel (#751)
-
-- **Problem:** there is no way to give a piece a lit edge facing the light and a soft shadow on the far side that follow
-  its silhouette; the stand-in, `vignette` on every piece, darkens the layer's box evenly and is not directional.
-- **Remaining work (core: layer styles are rendered and exported by core):**
-  1. Add `inner-shadow` {color, dx, dy, blur, opacity}, `inner-glow` {color, blur, opacity} and `bevel` {angle, size,
-     highlight, shadow, opacity} to `design_schema.STYLES` and its schema, computed from the layer's alpha (an inverted,
-     offset and blurred alpha clipped to the silhouette; bevel from the alpha's distance field or gradient against the
-     light angle).
-  2. Render in the layer's own frame, so the light stays put when the layer turns (as `emboss` does).
-  3. Exports: SVG filters (`feOffset`, `feGaussianBlur`, `feComposite in`), PDF raster fallback through the existing
-     appearance path, PPTX `innerShdw` for inner shadow and raster fallback for the rest.
-  4. Optional: `cut-paper` `edge_light: {angle}` applies a subtle bevel.
-- **Done when:** pixels inside the silhouette darken on the side away from the light and stay transparent outside;
-  SVG, PDF and PPTX parity tests; a golden per style.
-- **Docs:** the layer-style reference in `docs/guides/finishing/looks.md`, skills references, changelog.
-- **Rating:** C3, P2. **Depends on:** none.
-
-### 6.6 Combine motion over time and add tracks together (#750)
-
-- **Problem:** a periodic motion that hands over to a one-off pose sequence and back (a gallop, a jump, then the gallop
-  again at the right phase), or two contributions summed on one property, cannot be described. The unicorn build wrote
-  about 73 explicit keys per track for about 25 tracks, editable only as numbers.
-- **Remaining work (core, timeline):**
-  1. Additive layers: `keyframes` `mode: "add"` writes a named additive track (`track.layer: NAME`) on the same
-     property; `timeline.sample_track` sums the base and its additive tracks at render, and exporters bake the sum
-     (Lottie, SVG and video already sample through `project_at`). Owner decision: stored and summed at render, or
-     compiled to keys.
-  2. Blend windows: `sample.blend: {start, duration, poses: [{at, value}], easing}` eases from the wave's value at the
-     window start through the poses and back to the wave at the window end.
-  3. Piecewise samples: `sample` accepts a list of segments joined continuously.
-  4. The seam and motion checks (`seam_findings`, `motion.findings`) read the summed value.
-- **Done when:** a sine gallop plus a jump blend window matches the wave outside the window and the poses at their
-  times, and is continuous at both edges; an additive bob plus a leap sums correctly in a render and in a Lottie export.
-- **Docs:** `docs/guides/motion/animation-authoring.md` (drop "no expression language" where it no longer holds), the
-  motion schema docs, skills references, changelog.
-- **Rating:** C3, P2. **Depends on:** the storage decision.
-
-### 6.7 A quadruped rig with walk, trot, gallop and jump (#749)
-
-- **Problem:** animating a horse, dog, cat or unicorn means building the rig by hand (leg groups, nested lower legs,
-  pivots in canvas coordinates) and computing every angle in Python; Vixl only stores the resulting keys.
-- **Remaining work (extends the `characters` plugin):**
-  1. A `quadruped` body plan for `character` (`species` presets for proportions: horse, dog, cat …) with body, neck,
-     head, tail and four legs, each split into upper leg, lower leg and hoof or paw, with pivots at shoulder, hip, knee
-     and hock.
-  2. `character-cycle` cycles for it: `walk`, `trot`, `gallop` (per-leg phase offsets so the hooves land in sequence,
-     body bob and tilt), `jump` (crouch, push off, tuck, reach, land) and `idle`, written as editable keys; seamless loops
-     honour `loop_mode`.
-  3. A `parts` binding for user-supplied artwork, as the humanoid has.
-  4. New operations go into `targets.py` and the operations table is regenerated.
-- **Done when:** tests build a quadruped, run each cycle, assert the gallop's foot-contact order and that joints stay
-  connected (the `character` check); custom parts bind; a contact-sheet golden.
-- **Docs:** the character guide under `docs/guides/motion/`, character guidance in `guidance.py`, skills references, a
-  `docs/use-cases.md` row, changelog.
-- **Rating:** C4, P2. **Depends on:** 6.6.
-
-### 6.8 Hand-lettered work stays live text (#728)
-
-- **Problem:** to get a hand-lettered look (each word its own size, baseline and tilt), a drawing kit converts every
-  word to outlines, so the documents have no text layers: contrast, size, clipping, font and brand-font checks have
-  nothing to evaluate, and the words cannot be edited. Rich-text spans have no per-span rise or rotation, and the
-  `irregular` treatment refuses text.
-- **Remaining work (core):**
-  1. Per-span `rise` (px baseline shift), `rotate` (degrees) and `scale` on `richtext` spans, laid out in
-     `richtext.layout` so PNG, SVG, PDF and PPTX agree (PPTX: a baseline offset; rotation falls back to per-run
-     positioning or a note).
-  2. A seeded `hand_set` option on text layers (`{seed, rise, rotate, scale, tracking}` ranges, per word or per glyph),
-     resolved at draw time like `lettering.apply`, so the stored text stays plain and editable.
-  3. Optional: record `source_text` (text, font, size, colour) on layers produced by outlining text, and have the text
-     checks read it.
-- **Done when:** a hand-set text layer renders with varied baselines and rotations identically in raster, SVG and PDF;
-  contrast and font checks still report on it; editing its text keeps the variation seeded and stable; a golden covers
-  it.
-- **Docs:** the lettering pages under `docs/guides/text/`, `docs/guides/finishing/irregular.md` (point at `hand_set`),
-  skills text references, changelog.
-- **Rating:** C3, P3. **Depends on:** none.
-
-**Close at the end of this stage:** [#748](https://github.com/jxburros/vixl/issues/748),
-[#747](https://github.com/jxburros/vixl/issues/747), [#752](https://github.com/jxburros/vixl/issues/752),
-[#754](https://github.com/jxburros/vixl/issues/754), [#751](https://github.com/jxburros/vixl/issues/751),
-[#750](https://github.com/jxburros/vixl/issues/750), [#749](https://github.com/jxburros/vixl/issues/749),
-[#728](https://github.com/jxburros/vixl/issues/728).
+- Textured layers export to SVG, PDF and PPTX as a raster fallback; a native SVG `<pattern>`, PDF tiling pattern and
+  PPTX picture fill would keep them vector. The conversion kit does not migrate old sibling texture layers.
+- `draft` previews are not on the Studio host route (a change to the published host contract) or the CLI.
+- `cut-paper` `edge_light` on a piece that ends within a few pixels of the canvas edge under jitter is untested.
+- `python -m evals.craft_backtest` has not been run for the new `joint-detached` finding and the refined
+  `loop-seam-speed` note.
+- A lone PPTX `inner-shadow` is written as PowerPoint's own effect and has not been opened in PowerPoint.
+- The optional `source_text` on outlined text (6.8 step 3) is unbuilt; `hand_set` removes most of the reason to outline.
 
 ## 11. Stage 7: chart editing by data
 
-Changing "the Brazil bar" or "make this one stand out" takes several layer-level operations today. Do the audit (7.1)
-first or alongside 7.2; 7.3 needs 7.2's resolver.
+Shipped in 0.36.0: the audit (7.1, #780; `docs/project/chart-edit-audit.md`), chart marks addressed by series and
+category through the `target-resolver` hook (7.2, #778) and `chart-emphasis` (7.3, #779).
 
-### 7.1 Audit which chart edits still need raw layer operations (#780)
+The audit ranks three further edits that still cost several layer operations; each has a "done when" in the audit
+page and wants an issue when it is picked up:
 
-- **Problem:** nobody knows which common edits after `chart` still drop to layer operations, how often, and at what call
-  cost, so chart work cannot be prioritised.
-- **Remaining work:** list the common chart edits from the `docs/use-cases.md` rows DAT-10, 20, 21, 32, 40, 41 and 50,
-  the chart tasks in `evals/tasks/` (for example `chart-fix-value.json`) and eval traces; for each, record whether it is
-  one semantic operation or needs raw layer edits, its call cost now and if made semantic; rank them and file one issue
-  per worthwhile case (known: 7.2, 7.3; data-bound callouts already work through shared datasets). Add the ranked table
-  to this roadmap as new stage-7 items, and update the use-case rows whose status changes.
-- **Done when:** the table is in this file and the issues are filed.
-- **Rating:** C1, P2. **Depends on:** none.
+- **7.4 Reference and target lines** (`reference_lines` on a chart). C2, P3.
+- **7.5 Bare charts for KPI tiles** (`axes: false`). C1, P2.
+- **7.6 `chart-data` sort, order and rename by name.** C2, P2.
 
-### 7.2 Address chart marks by series and category (#778)
-
-- **Problem:** to change one bar or label, an agent lists the chart's children and matches names, or works out
-  coordinates; chart marks are keyed by index, so the address breaks on regeneration.
-- **Remaining work:**
-  1. In the `charts` plugin, `resolve_mark(project, {chart, series?, category?, part?})` returns layer ids for bar,
-     slice, point, value label, total label and legend entry; unknown series or category values raise an error listing
-     the valid names, like `chart-data`.
-  2. The address survives `chart-data` edits: store `chart_mark: {series, category}` on each part, or key parts by name
-     rather than index, so reorders keep identity.
-  3. Core accepts the object target form in `selectors.py` / `targets.py` through a registry role (for example a
-     `target-resolver` hook in `vixl.plugins.HOOKS`), so core never imports the plugin.
-- **Done when:** one test resolves `{series, category}` to the right layers on bar, stacked bar, line and donut charts
-  before and after a `chart-data` edit that reorders categories, and an unknown category errors with the valid list.
-- **Docs:** `docs/guides/output/charts.md`, skills targets reference, changelog.
-- **Rating:** C2, P3. **Depends on:** none.
-
-### 7.3 Chart emphasis: highlight, mute, annotate (#779)
-
-- **Problem:** "make this one stand out" (colour the key bar, tone down the rest, label it) takes several operations per
-  mark and must be repeated after every data change.
-- **Remaining work (`charts` plugin, writing ordinary layers):**
-  1. A `chart-emphasis` operation: `focus` (categories, optionally a series), `mute` (`fade` through
-     `normalize.opacity` or a palette mix, or `desaturate`) and `annotate` (callout text with `${value}`), stored in the
-     chart recipe so `chart-data` re-applies it; `focus: []` restores the defaults.
-  2. Bar, stacked, line, area, pie and donut; refuse other kinds with a clear message.
-  3. Respect `color_vision` and contrast: muted marks stay distinguishable from the focus, with a finding if not.
-  4. Add it to `targets.py` (per chart, not EACH) and regenerate the table; export parity in SVG, PDF, PPTX (native point
-     colours in `chart_pptx.py`) and raster.
-- **Done when:** emphasising one category on each chart type survives a `chart-data` value change, `focus: []`
-  restores the original pixels, and goldens of non-emphasised charts are unchanged.
-- **Docs:** `docs/guides/output/charts.md`, skills references, the DAT-20 row ("callouts typed by hand"), changelog.
-- **Rating:** C3, P3. **Depends on:** 7.2.
-
-**Close at the end of this stage:** [#780](https://github.com/jxburros/vixl/issues/780),
-[#778](https://github.com/jxburros/vixl/issues/778), [#779](https://github.com/jxburros/vixl/issues/779).
+Not verified: PPTX emphasis in PowerPoint or Keynote (callouts sit at Vixl's layout coordinates over the native chart),
+and craft-backtest numbers for the two emphasis findings in `color_vision`.
 
 ## 12. Stage 8: rendering and export speed
 
@@ -887,80 +697,23 @@ the tolerance is refused), [#588](https://github.com/jxburros/vixl/issues/588).
 
 ## 13. Stage 9: interchange, fonts and accessibility
 
+Shipped in 0.36.0: opt-in tagged PDF (9.1, #719; no PDF/UA identifier, and no veraPDF or PAC run yet), colour font
+files in text (9.2, #721), emoji pack destinations and animated packs (9.3, #722), printer templates as role guides
+with guide sets (9.9, #727), and for 9.4 (#514) a bounded layered PSD import and opt-in editable PSD text.
+
+Left from these:
+
+- **9.4 owner check (#514):** open a `psd_text: "editable"` export in Photoshop or Photopea and confirm the type
+  layers are editable (the EngineData layout, tracking and size units and the closing rectangle of the type-tool block
+  are unverified). When it holds, make `editable` the default and close #514. Shape and vector layers are still
+  "evaluate later".
+- **9.3:** the Twitch emote limits and the animated GIF limits of Discord and Slack were not read from the platforms'
+  pages; confirm them and set `checked`.
+- **9.2:** only the first palette is used, sweep gradients are drawn as wedges, and a translucent text colour does not
+  fade a COLR glyph's foreground layers. ZWNJ is still dropped by the bidi pass (Persian).
+
 Handoff to other tools and offline fonts. Several items need one owner session in third-party apps (Figma, Photoshop
 or Photopea, a browser player); they can be done together.
-
-### 9.1 Tagged PDF structure tree (#719)
-
-- **Problem:** PDF export writes `/Lang`, `/Alt` and `/Artifact` marked content but no structure tree, so screen
-  readers and PDF/UA checkers treat the file as untagged and lose reading order and headings; accessible PDFs are a
-  procurement requirement.
-- **Remaining work:** in `src/vixl/pdf_export.py`, give the existing BDC marked-content operators MCIDs; write a
-  `StructTreeRoot` (Document > Sect per page > Figure, P, H1-H6 with the heading level from text stages) in the
-  document's `reading_order` (from the `accessibility` operation), with a `ParentTree` mapping MCIDs back and
-  `/StructParents` on each page; set `/MarkInfo <</Marked true>>` and keep `/Lang`; decorative layers stay `/Artifact`;
-  ship behind `export(tagged=True)` (CLI `--tagged`, MCP and REST fields with descriptions); update the "not written"
-  sentences in `capabilities.py`, `guidance.py` and `accessibility.py`.
-- **Done when:** pypdf reads the `StructTreeRoot`, MCIDs map one-to-one to marked content, the structure order follows
-  `reading_order`, and `tagged=False` output is byte-identical to today.
-- **Docs:** the accessibility guide, the PDF section of `docs/guides/output/exporting.md`, skills references, the QA-40
-  row, changelog.
-- **Rating:** C3, P3. **Depends on:** none.
-
-### 9.2 Colour font files in text (#721)
-
-- **Problem:** a text layer set in a colour font (Noto Color Emoji, a COLR display face, Apple sbix emoji) is refused
-  with "bitmap/color fonts require appearance-preserving raster export", so brand display fonts and system emoji fonts
-  cannot be used, and `checks.missing_glyphs` flags characters those fonts would cover.
-- **Remaining work (core, the text renderer):** accept colour fonts in `text._face`, using the outline or a fallback
-  face for metrics; OT-SVG and COLRv0 glyphs to SVG paths (fontTools `ColorLayers`) rasterised with resvg, COLRv1 paint
-  graphs by the same route; CBDT/CBLC and sbix embed the strike nearest the requested size and scale it; SVG and PDF
-  write vector glyphs where possible and otherwise report `raster_fallbacks`, PPTX gets a raster; glyphs sit on the
-  baseline and count in `ink_bounds` and the overflow checks.
-- **Done when:** one small licence-clean fixture font per format (COLRv0, COLRv1, CBDT, sbix, OT-SVG) under
-  `tests/fixtures` renders coloured pixels in PNG; SVG and PDF write vector glyphs or list the glyph under
-  `raster_fallbacks`; `missing_glyphs` no longer flags characters a colour font covers.
-- **Docs:** `docs/guides/text/emojis.md`, the typography guide, changelog.
-- **Rating:** C4, P2. **Depends on:** the owner decision on emoji preference.
-
-### 9.3 Emoji pack destinations (#722)
-
-- **Problem:** `export_pack` writes a portable image pack, Discord emoji and Slack emoji only. Sticker and emote sets
-  for WhatsApp, Telegram, Twitch or iMessage, and animated sets, are resized, encoded and byte-checked by hand, and
-  "Slack + Discord + WhatsApp from one document in one call" is unmet.
-- **Remaining work:** add destinations to `DESTINATIONS` in `src/vixl/emojis.py` (WhatsApp stickers: 512 × 512 WebP,
-  byte limits, tray icon; Telegram static stickers and custom emoji; Twitch emotes at 28/56/112; iMessage stickers),
-  keeping every platform limit as data verified against the platform's documentation at implementation time; animated
-  GIF/WebP packs from the timeline through `timeline.export_timeline` with per-destination loop, frame, duration and
-  byte budgets and step-downs (fps, colours); a `telegram-animated` destination that writes TGS per emoji through the
-  `timeline-export-format` hook (the lottie plugin, reached through the registry), refusing raster fallbacks as TGS
-  export does; several destinations per call sharing the rendered masters.
-- **Done when:** each destination's files pass its size, format and byte rules plus the manifest; an animated pack
-  respects its budgets; one document exports Slack, Discord and WhatsApp packs in one call; a TGS pack passes the TGS
-  constraints.
-- **Docs:** the destinations table in `docs/guides/text/emojis.md`, skills references, changelog.
-- **Rating:** C3, P2. **Depends on:** the iMessage scope decision.
-
-### 9.4 Editable PSD handoff and bounded PSD import (#514)
-
-- **Problem:** PSD export keeps pixel layers, groups and blend modes but rasterises text and shapes (each text layer is
-  listed under `text_as_pixels`), so a designer who receives a Vixl PSD cannot edit the copy, and Vixl cannot open a
-  layered PSD at all.
-- **Remaining work:**
-  1. Export (core, `psd_export` is a core exporter): a `TySh` type-tool block for plain `text` layers with one style run
-     (PostScript name, size, colour, tracking, leading, alignment, point or box text), keeping the rendered pixels as the
-     layer image; the EngineData descriptor writer in a new `src/vixl/psd_text.py`. Rich text, effects, transforms
-     beyond rotate and scale, and image-filled text keep pixels with a located `text_as_pixels` reason.
-  2. Import (plugin `psd_import` through the `import-format` hook): a hand-written bounded reader for 8-bit RGB with RLE
-     or raw channels, sized by `Limits`, mapping image layers, groups, visibility, opacity, a known blend subset and layer
-     masks and rejecting the rest; `psd-tools` only as an optional plugin dependency if the reader stalls (owner).
-  3. Shape and vector layers: evaluate later.
-- **Done when:** an exported type layer parses back with its text, font and size and opens editable in Photoshop or
-  Photopea (owner check); a small committed third-party PSD imports with names, order, visibility, opacity and mask;
-  malformed and oversized PSDs are rejected without large allocations; the round-trip render matches within tolerance.
-- **Docs:** the PSD subset in `docs/guides/output/exporting.md`, PSD import in `docs/reference/converting.md`, the
-  DOC-44 and BLK-02 rows, changelog.
-- **Rating:** C5, P2. **Depends on:** none.
 
 ### 9.5 Figma interchange verified in Figma (#662)
 
@@ -1030,29 +783,8 @@ or Photopea, a browser player); they can be done together.
   changelog.
 - **Rating:** C2, P2. **Depends on:** the owner choosing languages and the source licence.
 
-### 9.9 Import a printer's template as guides, and check against it (#727)
-
-- **Problem:** a print-on-demand wrap template (back, spine and front) marks the board edge, per-panel safe areas, a
-  barcode keep-out notch and spine folds as coloured dashed lines in a PNG or PSD. Vixl cannot use them, so the user
-  measured pixel positions by hand and eyeballed overlays outside the document. Guides have no roles.
-- **Remaining work:** core: a guide `role` (`trim`, `safe`, `fold`, `keep-out`, `bleed`) in `guides.validate_guide`,
-  with closed path or rectangle guides defining regions; core: a `guides` check rule (or an extension of `safe_area`)
-  that reports content ink (strokes and effects included, from the existing ink bounds) outside any `safe` region of its
-  panel or inside a `keep-out`, and important layers crossing a fold; plugin (`src/vixl/plugins/print_templates/`, or
-  the `imposition` plugin): `guides-import` from an image, where the user maps colour to role and dashed lines and
-  closed outlines are detected by colour with numpy and snapped to whole pixels, optionally from named PSD guide layers,
-  saved as a reusable `guide-sets` resource.
-- **Done when:** a fixture PNG with coloured dashed rectangles and a notch imports into role-tagged guides; the check
-  flags a text layer crossing the keep-out notch and one outside the front-panel safe area; applying the saved preset to
-  a new document reproduces the guides.
-- **Docs:** `docs/guides/layout/guides.md`, `docs/guides/finishing/color-and-print.md`, the check reference, a new PRN
-  row in `docs/use-cases.md`, skills references, changelog.
-- **Rating:** C3, P3. **Depends on:** none.
-
-**Close at the end of this stage:** [#719](https://github.com/jxburros/vixl/issues/719),
-[#721](https://github.com/jxburros/vixl/issues/721), [#722](https://github.com/jxburros/vixl/issues/722),
-[#514](https://github.com/jxburros/vixl/issues/514), [#662](https://github.com/jxburros/vixl/issues/662),
-[#727](https://github.com/jxburros/vixl/issues/727).
+**Close at the end of this stage:** [#514](https://github.com/jxburros/vixl/issues/514) (after the owner check),
+[#662](https://github.com/jxburros/vixl/issues/662). #719, #721, #722 and #727 are closed.
 
 ## 14. Stage 10: craft measurement
 
@@ -1208,140 +940,35 @@ Pick these up when the code is open for something else; each is C1.
 
 ## 16. Stage 12: security hardening from the 2026-11-09 scan
 
-A full repository scan of `f66ed26` on 2026-11-09 reported eleven medium and two low findings, all filed as issues
-labelled `security`. None is remote code execution or a credential leak. Most let an authorized or semi-trusted caller
-use more CPU, memory, disk, processes or network than the limits that shipped in 0.28-0.29 intend; one lets a
-document-scoped REST caller reach the user-global resource library; one discloses absolute server paths. They matter
-most for `vixl mcp --http`, `vixl serve`, `vixl host` and any future hosted service (#770), and much less for local
-stdio use. This stage can run alongside any other. Do 12.1 first: several of the other items assume every heavy path
-goes through the limiter.
+Shipped in 0.36.0, all thirteen findings: every heavy service path through the call limiter, a bounded MCP queue and
+job store and an MCP HTTP body limit (12.1; #821, #823, #826, #828), cumulative budgets for editable SVG and PDF
+import with service font installation off by default (12.2; #818, #819, #822), network reads that stop at their caps
+and deadlines (12.3; #827, #830), bounded caller regular expressions with the optional `re2` extra (12.4; #825),
+queue quotas and one worker per queue (12.5; #824) and workspace isolation for REST resources and link paths (12.6;
+#820, #829).
 
-Every item follows section 2: core, a regression test that fails without the fix, a `CHANGELOG.md` entry with the
-issue number, and an update to `docs/reference/interfaces.md` (where the call limits and body limits are documented)
-and `SECURITY.md` when a limit is added or changed.
+Follow-ups, none with an issue:
 
-### 12.1 Every heavy service path goes through the call limiter (#821, #823, #826, #828)
-
-- **Problem:** the bounded executor, workspace gate and hard timeout from 0.29 are bypassed in four places. The
-  fixed-project REST `/import` and `/assets` routes have no `@limited`, and the Host asset endpoint calls `Host.call`
-  with `heavy=False` (#821). `vixl_render` is outside `JOB_TOOLS`, so it never takes the workspace gate and
-  `max_concurrent` does not apply to renders (#828). The MCP executor's work queue is unbounded, and `JobStore` can grow
-  past `MAX_JOBS` when no job has finished (#823). The MCP Streamable HTTP app has no `BodyLimit` middleware (#826).
-- **Remaining work:** (1) `@limited` on the REST import and asset routes, and `heavy=True` for Host assets
-  (`interfaces.py`, `host.py`). (2) Separate "takes the workspace gate" from "may detach into a job" in
-  `mcp_runtime.py`, and gate `vixl_render`. (3) Count queued and running calls; over the limit, refuse with a retryable
-  busy error, and make `JobStore` refuse rather than exceed `MAX_JOBS`. (4) Add `BodyLimit` to the MCP HTTP app,
-  configurable like REST's.
-- **Done when:** with `max_concurrent=1`, two concurrent imports or renders never overlap; a slow mocked decoder hits
-  the hard timeout through REST and Host; submitting past the queue limit returns the busy error and the store stays
-  at or under `MAX_JOBS`; an oversized MCP POST gets 413 before it reaches the SDK.
-- **Rating:** C2, P4 for served deployments.
-
-### 12.2 Cumulative budgets for editable SVG and PDF import (#818, #819, #822)
-
-- **Problem:** SVG import matches an unbounded number of CSS rules against every element, decodes an embedded raster
-  again for every `use`, and allows 64 full-canvas raster fallbacks with no total pixel budget (#818). Up to 10,000
-  embedded font records are resolved through Google Fonts before the 64-font archive limit applies, and service imports
-  install fonts by default (#819). The PDF parser allocates whatever sizes PDFium reports, materializes paths before
-  the path cap, recurses into nested forms with no depth or object budget, and can repeat full-page fallback renders
-  (#822).
-- **Remaining work:** `svg_import.py`: cap or index stylesheet rules, decode each embedded raster once, and replace the
-  fallback count with a cumulative pixel budget; apply the font limit and dedupe families at parse time, before any
-  network call (`typefaces.py`), and decide whether service imports install fonts by default (`imports.py`).
-  `plugins/pdf_import/pdf_import.py`: bound reported sizes before allocating, check the path cap while iterating, add a
-  form depth limit and one object budget per import, and bound total fallback pixels.
-- **Done when:** crafted SVG fixtures (many rules, one raster `use`d many times, many full-canvas fallbacks, more font
-  records than the limit) and mocked PDFium objects (huge reported length, deep form nesting, many fallbacks) each fail
-  cleanly within budget; the font case makes no network call (mocked fetcher, call count asserted).
-- **Rating:** C3, P3.
-
-### 12.3 Network reads stop at their caps and deadlines (#827, #830)
-
-- **Problem:** the shared fetch, provider and font readers append a decoded HTTPX chunk before checking the limit, and
-  `FigmaClient` reads its whole body with an eager `client.get` before checking its 256 MiB cap (#827). The fetcher's
-  120-second deadline is only checked on the final body, each redirect gets a fresh 30-second timeout, and webhook
-  response draining has no absolute deadline (#830).
-- **Remaining work:** `fetch.py`: check `len(buffer) + len(chunk)` before appending, use a bounded decoded chunk size,
-  reject an oversized `Content-Length` early, set one deadline per fetch and give each redirect hop only the time left.
-  `plugins/figma_import/figma_import.py` and `plugins/ai/ai.py`: use the shared streaming reader. `jobs.py`: an absolute
-  deadline (or a small byte cap) on webhook draining.
-- **Done when:** with mocked transports, a gzip bomb and an oversized Figma response fail with the buffer never past
-  the cap plus one chunk; a redirect chain past the total deadline fails; a trickling webhook receiver is cut off at
-  the deadline.
-- **Rating:** C2, P3.
-
-### 12.4 Caller regular expressions cannot outlive the hard timeout (#825)
-
-- **Problem:** selectors, text suites and the optional replacement workflow compile caller patterns with Python's
-  backtracking `re` after only syntax and length checks; a catastrophic pattern keeps its thread, CPU and workspace
-  slot after the cooperative hard timeout fires.
-- **Remaining work (`selectors.py`, `call_limits.py`):** use a linear-time engine for service-supplied patterns
-  (`google-re2` as an optional dependency), or reject nested quantifiers and backreferences in those patterns and cap the
-  subject length, or run them in a killable subprocess. The choice is the owner's (see the decision below).
-- **Done when:** a known catastrophic pattern returns an error within a short time budget, and ordinary selectors and
-  suites behave as before.
-- **Rating:** C2, P3. **Owner decision:** an optional `google-re2` dependency, or a restricted pattern syntax for
-  service callers.
-
-### 12.5 Quotas for durable workflow queues (#824)
-
-- **Problem:** MCP exposes `submit`, `work` and `start`; every `Queue.start` launches another detached Python process
-  with up to four threads, and every submission writes persistent files with no count, disk, process or retention
-  limit.
-- **Remaining work (`workflows.py`, `jobs.py`):** one worker per queue (a lock or pid file; `start` does nothing while
-  a worker is alive); a cap on pending jobs and queue disk use; finished jobs pruned after a retention period.
-- **Done when:** a second `start` spawns no second process; submissions past the cap are refused; finished jobs older
-  than the retention period are pruned.
-- **Rating:** C2, P2.
-
-### 12.6 Workspace isolation for resources and links (#820, #829)
-
-- **Problem:** the fixed-document REST resource routes call catalog/get/register without the session workspace, so
-  they fall back to `VIXL_RESOURCES` or `~/.config/vixl/resources.json` and can read and write the user-global library
-  (#820). `links.status` returns absolute resolved paths, and missing-link errors carry absolute searched paths that
-  skip the `OSError` redaction (#829).
-- **Remaining work:** pass the session workspace on every service resource call and remove the global fallback on
-  that path (`interfaces.py`, `resources.py`, `studio.py`); report link paths and missing-link searches relative to the
-  workspace root (`links.py`).
-- **Done when:** registering a resource through the one-document REST app leaves a temporary global library untouched;
-  link status and the missing-link error, called through REST, contain no absolute path.
-- **Rating:** C1, P3.
-
-**Close at the end of this stage:** [#818](https://github.com/jxburros/vixl/issues/818),
-[#819](https://github.com/jxburros/vixl/issues/819), [#820](https://github.com/jxburros/vixl/issues/820),
-[#821](https://github.com/jxburros/vixl/issues/821), [#822](https://github.com/jxburros/vixl/issues/822),
-[#823](https://github.com/jxburros/vixl/issues/823), [#824](https://github.com/jxburros/vixl/issues/824),
-[#825](https://github.com/jxburros/vixl/issues/825), [#826](https://github.com/jxburros/vixl/issues/826),
-[#827](https://github.com/jxburros/vixl/issues/827), [#828](https://github.com/jxburros/vixl/issues/828),
-[#829](https://github.com/jxburros/vixl/issues/829), [#830](https://github.com/jxburros/vixl/issues/830).
+- CI has no job that installs the `re2` extra, so the RE2 tests skip there; the container image installs
+  `vixl-engine[server,pdf]` without it.
+- The Host import route has no `install_fonts` parameter, and the Figma import plugin still installs fonts by default.
+- A workspace catalog still inherits the user resource library read-only; a served deployment that should inherit
+  nothing points `VIXL_RESOURCES` at an empty file.
+- The worker lock is untested on Windows.
 
 ## 17. Later and exploratory
 
 Not scheduled. Each needs either an earlier item or an owner decision before it is worth starting. Close each issue
 when its item ships, or as not planned if the owner decides against it:
-[#383](https://github.com/jxburros/vixl/issues/383), [#522](https://github.com/jxburros/vixl/issues/522),
+[#522](https://github.com/jxburros/vixl/issues/522),
 [#770](https://github.com/jxburros/vixl/issues/770), [#775](https://github.com/jxburros/vixl/issues/775).
 
 ### Detect and classify objects in existing documents (#383)
 
-- **Problem:** documents often hold undeclared object-like art (a flat pile of shapes forming a cat, an organic `rose`
-  group, a character, an imported drawing), and the object tools (inspect, isolate, the `object` check, outline policy)
-  work only on declared objects. The eval brief `evals/tasks/object-detect-cat.json` exists ahead of the feature.
-- **Remaining work (plugin `src/vixl/plugins/object_detect/`, registered in `BUILTIN`; it writes ordinary `group` and
-  `object` operations):** proposal passes, from certain to uncertain: recipe groups (organic preset to kind through
-  `objects.organic_presets`, character to person, `drawing` groups), skipping `parts.COLLECTIONS` (chart, diagram,
-  container), text and frames; named groups scored against kind part names and aliases (`objects.find`) with a
-  confidence; ungrouped siblings clustered by touching ink (the `parts.py` union-find), name prefix and z-adjacency into
-  proposed `group` + `object` + part names; the provider `detect` step only when a provider is configured. Output
-  `[{layers, proposed_kind, confidence, reasons, parts, batch}]`, dry run by default, `apply: true` with
-  `min_confidence` applying the batches as one undo step; the workflow through `PLUGIN["workflows"]` and CLI
-  `vixl object detect [--apply]`; applied proposals validated by the `object` check.
-- **Done when:** a fixture with an organic rose, a character, a six-layer ungrouped cat and two unrelated shapes gives
-  exactly three proposals with the right kinds; applying them keeps the render pixel-identical; charts, frames and text
-  get none; the provider step is mocked; the `object-detect-cat` brief passes.
-- **Docs:** "Detect objects" in `docs/guides/shapes/objects.md`, the QA-39 row, the plugin list, SKILL.md objects
-  section, changelog.
-- **Rating:** C4, P2.
+Shipped in 0.36.0 as the `object_detect` plugin (`object-detect`, `vixl object detect`): deterministic proposals from
+recipes, names and touching part-named layers, applied only on request. Left: unnamed piles get no proposal (names are
+the primary signal), the provider step for raster images is opt-in and was tested only with a mocked provider, and the
+issue's acceptance on the VixlExamples gallery documents was not run.
 
 ### Screenshot to editable reconstruction (#522)
 
@@ -1393,12 +1020,12 @@ when its item ships, or as not planned if the owner decides against it:
 
 ## 18. Issue index
 
-Every issue open after the 2026-10-31 triage, plus the security findings filed on 2026-11-10, with where each is
-finished.
+Every issue still open after 0.36.0 that the roadmap plans, with where each is finished. #797 (agent setup) is also
+open: the docs and `vixl guide --brief` shipped in 0.36.0, and what is left is the repository's `.mcp.json` starting
+the server with `uvx`, which never puts `vixl` on PATH (an install-pin and environment decision for the owner).
 
 | Issue | Item | Stage |
 | --- | --- | --- |
-| #383 | Detect objects in existing documents | Later |
 | #514 | Editable PSD handoff and PSD import | 9.4 |
 | #522 | Screenshot to editable reconstruction | Later |
 | #535 | Hosting epic (closes after #543, #546, #547) | 5 |
@@ -1413,53 +1040,14 @@ finished.
 | #662 | Figma interchange verified in Figma | 9.5 |
 | #678 | Review process and release cadence | 5.8 |
 | #692 | Trailer policy and history purge | 5.8 |
-| #719 | Tagged PDF structure tree | 9.1 |
-| #720 | Mid-word breaks, off-canvas contrast, halftone paper | 2.6 |
-| #721 | Colour font files | 9.2 |
-| #722 | Emoji pack destinations | 9.3 |
-| #724 | Render and export report the check state | 2.2 |
-| #725 | Check results lead with a verdict | 2.1 |
-| #726 | Run a named suite in one command | 2.3 |
-| #727 | Printer's template as guides | 9.9 |
-| #728 | Hand-lettered work stays live text | 6.8 |
-| #747 | Pattern texture follows its animated base | 6.2 |
-| #748 | Cut-paper grain streaks | 6.1 |
-| #749 | Quadruped rig and cycles | 6.7 |
-| #750 | Additive and blended motion | 6.6 |
-| #751 | Inner shadow, inner glow, bevel | 6.5 |
-| #752 | Seamless scrolls and symmetric rotations | 6.3 |
 | #753 | A package name agents can guess | 5.1 |
-| #754 | Cut-paper frames re-rasterise every hold | 6.4 |
 | #756 | Signed Windows updates | 5.6 |
-| #763 | Event-poster dead band and stray motif | 3.2 |
-| #764 | Every layout passes its checks | 3.3 |
-| #765 | Dry-run repair outcome | 2.4 |
-| #766 | `font-pair` restyles existing text | 3.4 |
-| #767 | Errors name the valid choices | 2.5 |
-| #768 | Edited copy reflows | 3.5 |
-| #769 | Export quote before rendering | 2.7 |
 | #770 | Public hosted MCP service (tracker) | Later |
 | #771 | One-click install, directories, macOS | 5.2 |
 | #772 | Local alternative to template APIs | 5.9 |
 | #773 | Public comparison against design tools | 10.2 |
 | #774 | Licence clarity | 5.7 |
 | #775 | Previewer for people watching an agent | Later |
-| #778 | Address chart marks by data | 7.2 |
-| #779 | Chart emphasis | 7.3 |
-| #780 | Audit chart edits | 7.1 |
-| #818 | SVG import CSS, raster reuse and fallback budget | 12.2 |
-| #819 | SVG font metadata resolved before the font limit | 12.2 |
-| #820 | REST resource routes reach the global library | 12.6 |
-| #821 | REST and Host imports bypass the call limiter | 12.1 |
-| #822 | PDF import allocation and recursion budgets | 12.2 |
-| #823 | MCP executor queue and job store bound | 12.1 |
-| #824 | Durable workflow queue quotas | 12.5 |
-| #825 | Caller regexes outlive the hard timeout | 12.4 |
-| #826 | MCP HTTP body limit | 12.1 |
-| #827 | Network reads overshoot their caps | 12.3 |
-| #828 | MCP renders bypass the workspace gate | 12.1 |
-| #829 | Link status discloses absolute paths | 12.6 |
-| #830 | Fetch redirect and webhook deadlines | 12.3 |
 
 Items without an open issue (remainders of closed issues and deferred work): 3.1, 3.6, 4.3-4.9 (under
 #615), 5.5, 8.1, 8.4, 8.5, 8.6, 8.7, 9.6, 9.7, 9.8, 11.1-11.4.
