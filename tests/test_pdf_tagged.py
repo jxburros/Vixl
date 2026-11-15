@@ -153,7 +153,7 @@ def test_pages_get_sections_and_raster_pages_one_described_figure():
 
 
 def test_fillable_widgets_are_form_elements():
-    from tests.test_forms import form
+    from test_forms import form
 
     p = form()
     reader, pages = tree(p.export(format="PDF", fillable=True, tagged=True))
