@@ -4,7 +4,7 @@ This is the single development plan for Vixl. It replaces the development plan, 
 plan and the render-performance decisions that used to live in `docs/project/`; those files are kept, unchanged, in
 `docs/project/archive/` as history and are no longer maintained. Everything needed to pick up an item is in this file.
 
-The roadmap was rebuilt on 2026-10-31 against `main` at 0.33.1 and updated for 0.36.0 (stages 1-4, 6, 7 and 12 shipped, with most of stage 9). Every open GitHub issue was read, with its comments,
+The roadmap was rebuilt on 2026-10-31 against `main` at 0.33.1 and updated for 0.36.0 (stages 1-4, 6, 7 and 12 shipped, with most of stage 9 and items 8.2 and 8.3). Every open GitHub issue was read, with its comments,
 and checked against the code, the tests and the changelog; several bugs were reproduced. 112 issues that had already
 shipped were closed with their evidence. The 51 issues still open, the remainders of closed issues, and the deferred
 work that never had an issue are all below.
@@ -597,46 +597,16 @@ every golden and adds about 30 MB, while the measured bottleneck is the binding,
 - **Docs:** `docs/reference/releases.md` (the extra), changelog.
 - **Rating:** C3, P3. **Depends on:** an upstream answer.
 
-### 8.2 Glyph-run cache (#584)
+### 8.2 Glyph-run cache (#584) and 8.3 tiled compositing (#588): shipped in 0.36.0
 
-- **Problem:** labels that differ by one character ("Label 1", "Label 2", a counter across frames) rasterise every glyph
-  again. A glyph atlas would make 1,500 labels cost about one call and save roughly half of a cold label-heavy render,
-  but glyphs sit at fractional pen positions, so reuse needs their subpixel phase quantised: at 1/4 px an edge moves up
-  to 1/8 px, tens of levels on an edge pixel, not the 2 levels first targeted. Compositing per-glyph coverage with `max`
-  also differs from resvg where glyphs overlap.
-- **Remaining work:**
-  1. Do 8.1 first; it speeds the same work with no pixel change.
-  2. Only if the owner accepts the tolerance: `src/vixl/glyph_cache.py`, an LRU keyed by (font digest, glyph id, size,
-     quantised subpixel phase, linear matrix) with a 32 MB budget and a lock; batch a layer's missing glyphs into one
-     atlas SVG; use it in `text.render_text` only for single-paint, unstroked, non-kinetic, non-path text with a
-     translate or scale matrix; fall back where shaped clusters overlap; a `VIXL_GLYPH_CACHE=off` switch and
-     `glyph_hits`/`glyph_misses` profile counters.
-- **Done when:** 500 labels "Label 0" to "Label 499" cost at most (distinct glyphs + 1) rasteriser calls; a key change
-  (font, size, offset) gives new pixels; the maximum difference against the SVG path stays within the accepted tolerance
-  on a Latin, Cyrillic and Arabic corpus; goldens pass or are reviewed.
-- **Docs:** the fast path and switch in `docs/project/render-parity.md`, changelog.
-- **Rating:** C3, P2. **Depends on:** 8.1; the tolerance decision.
-
-### 8.3 Tiled compositing for large canvases (#588)
-
-- **Problem:** the compositor holds one canvas-sized RGBA image and each snapshot copy multiplies it, so large print
-  canvases cost hundreds of MB per copy, and canvases over 40 MP (7,000 × 10,000 at 300 dpi) are refused. Tiling alone
-  does not help: a layer larger than a quarter of the layer cache (96 MiB, a 24-megapixel layer) is not cached, so every
-  tile it crosses would draw it again (a full-canvas gradient on 36 tiles is drawn 36 times). Incremental renders
-  already cover the common case of an edit.
-- **Remaining work:**
-  1. Region drawing in `render.draw_ink`: solid fills, gradients, shape rectangles and rasters drawn cropped to a box
-     before effects; bypass the layer-ink cache for layers over `cache.budget // 4`.
-  2. `render.render_tiled(project, tile=1024, workers)`, used when `region_renders_alone` holds and pixels exceed 8 M,
-     calling `render_region` per tile on the render pool.
-  3. A streamed writer: a row-band PNG (zlib plus a hand-written IDAT in `fileio`) or a tiled TIFF; the PDF raster
-     fallback as per-tile XObjects.
-  4. After measuring, decide on a separate `max_tiled_pixels` limit (owner).
-- **Done when:** tiled output equals the full render on random documents (tile sizes 256 and 1000, layers straddling
-  tiles, text overhang), and a Linux perf test shows a 6000 × 6000, 2,000-shape document at least 30% lower in peak RSS
-  than the single-canvas path within a time budget.
-- **Docs:** large canvases in `docs/guides/output/exporting.md`, changelog with the RSS figure.
-- **Rating:** C4, P3. **Depends on:** none (8.1 helps the vector half).
+- **8.2** shipped in a byte-identical form that needed neither the binding (8.1) nor a pixel tolerance: a glyph is
+  cached under its outline and exact matrix, and a layer is assembled from cached glyphs only where no pixel takes
+  partial coverage from two of them. Exactness rests on the rasteriser giving a glyph the same coverage alone as in
+  the whole layer; a corpus test fails if a resvg upgrade breaks that, and `VIXL_GLYPH_CACHE=off` turns the cache off.
+- **8.3** shipped for compositing and for PNG export (encoded band by band). Left: streamed or tiled TIFF, per-tile
+  XObjects for the PDF raster fallback, and the owner decision on a separate `max_tiled_pixels` (measured: a streamed
+  70 MP PNG export peaks at 629 MiB, lower than a 36 MP single-canvas export). In-memory `render()` of a vector-heavy
+  canvas saves nothing by tiling, because the caller receives the canvas anyway.
 
 ### 8.4 Incremental renders for documents that read the whole canvas (remainder of #595)
 
@@ -692,8 +662,7 @@ every golden and adds about 30 MB, while the measured bottleneck is the binding,
 - **Rating:** C3, P2. **Depends on:** 8.6 or a long-film profile showing encoding is a real share; the owner decision on
   machine-dependent output.
 
-**Close at the end of this stage:** [#584](https://github.com/jxburros/vixl/issues/584) (or close it as not planned if
-the tolerance is refused), [#588](https://github.com/jxburros/vixl/issues/588).
+#584 and #588 are closed.
 
 ## 13. Stage 9: interchange, fonts and accessibility
 
@@ -1032,8 +1001,6 @@ the server with `uvx`, which never puts `vixl` on PATH (an install-pin and envir
 | #543 | Host API schema missing from releases (fixed in 0.33.3; close when a release lists it) | 1 |
 | #546 | Container image built by releases | 5.3 |
 | #547 | Windows host task exercised on Windows | 5.4 |
-| #584 | Glyph-run cache | 8.2 |
-| #588 | Tiled compositing | 8.3 |
 | #615 | The Token Project (umbrella) | 4 |
 | #628 | Fewer tool calls: the cheapest path first | 4.1, 4.2 |
 | #648 | Craft gap: blind re-judge | 10.1 |

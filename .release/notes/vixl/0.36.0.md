@@ -4,7 +4,7 @@
 
 Security hardening from the 2026-11-09 scan (roadmap stage 12), every built-in layout passing its own checks,
 cut-paper, motion and four-legged characters (stage 6), chart editing by data (stage 7), interchange, colour fonts and
-tagged PDF (stage 9), and the agent-experience reports of late October.
+tagged PDF (stage 9), tiled compositing and a glyph cache (stage 8), and the agent-experience reports of late October.
 
 ### Security
 
@@ -264,6 +264,23 @@ tagged PDF (stage 9), and the agent-experience reports of late October.
   seamless, and `motion` gains a `scroll` recipe (#752).
 - **Fewer seam notes.** `loop-seam-speed` is no longer reported for a sampled motion whose seam is no sharper than
   its own keys.
+- **Large canvases render in tiles, and a large PNG exports in bounded memory** (#588). A canvas over 8 million
+  pixels whose regions render alone is composited as 1024-pixel tiles on the render threads; the pixels are those of
+  the single-canvas render at any tile size and thread count. A PNG export of one is also encoded band by band, so
+  the canvas is never held whole: a 6000 × 6000 poster of 2,000 shapes peaks at 365 MiB instead of 721 MiB, and
+  layers blended over most of a canvas no longer need canvas-sized working memory (two blended gradients on 3600 ×
+  3000: 628 MiB instead of 1,259 MiB, 1.1 s instead of 3.2 s). Layers too large for the layer cache are drawn per
+  tile (fills, unstroked rectangles, gradients) or once per render. A streamed PNG has the same pixels, channels and
+  resolution as before but not the same bytes. The 40 MP pixel limit is unchanged. Multiply and screen now give a
+  pixel the same value whatever else is in the composited box (at most one level, on partly transparent layers over
+  an opaque backdrop), which also makes region and incremental renders exact for them. TIFF and the PDF raster
+  fallback are composited in tiles but still encoded from the whole canvas.
+- **Labels that differ by a few characters reuse their glyphs** (#584). A glyph is rasterised once for each place it
+  takes in a label's box and reused by every plain text layer that has it there ("Label 1", "Label 2", a counter
+  across frames), with exactly the pixels of the whole-layer rasterisation: 500 such labels render cold in about 120
+  ms instead of 390 ms (64 rasteriser calls instead of 500), 1,500 in 0.45 s instead of 1.86 s. Text that does not
+  repeat is drawn as before. `VIXL_GLYPH_CACHE=off` turns it off; `glyph_hits` and `glyph_misses` are in the render
+  profile.
 
 ### Fixed
 
