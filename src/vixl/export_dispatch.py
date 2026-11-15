@@ -262,29 +262,6 @@ def export(
     require(svg_policy == "appearance", "Strict SVG policy requires SVG output")
     if format:
         format = {"JPG": "JPEG", "TIF": "TIFF"}.get(format.upper(), format.upper())
-    image = None
-    if sheet:
-        from .deck import contact_sheet
-
-        image = contact_sheet(project, pages=pages, width=width, columns=columns, labels=labels, variables=variables)
-    if image is None and scale > 1 and sampling != "nearest" and not (artboard or comp or settings.get("size")):
-        # Enlarge by re-rendering a scaled copy, so text, shapes and vectors stay crisp.
-        from .proxy import scaled_project
-
-        project.limits.size(round(project.state["canvas"]["width"] * scale), round(project.state["canvas"]["height"] * scale))
-        proxy = scaled_project(project, scale)
-        if proxy is not None:
-            image = render(proxy, variables)
-            scale = 1
-    if image is None:
-        image = render(project, variables, artboard, comp)
-    size = settings.pop("size", None)
-    if size:
-        image = ImageOps.contain(image, size, resample)
-    target_size = (max(1, round(image.width * scale)), max(1, round(image.height * scale)))
-    project.limits.size(*target_size)
-    if target_size != image.size:
-        image = image.resize(target_size, resample)
     profile_format = settings.pop("format", None)
     fmt = (
         format
@@ -310,6 +287,57 @@ def export(
             "jpg, webp, tiff, avif, pdf, ico, svg, pptx, psd or html (fonts: ttf, otf, woff, woff2; audio: vixl_export "
             "(.wav), or a .wav path on the CLI; animation: export-timeline)",
             field="format")
+    canvas_dpi = project.state["canvas"].get("dpi")
+    if dpi is not None:
+        finite(dpi, "dpi", 36, 2400)
+    # requested_scale: a crisp enlargement re-renders at full size and resets ``scale`` to 1.
+    effective_dpi = dpi or (canvas_dpi * requested_scale if canvas_dpi else None)
+    if not effective_dpi and fmt == "TIFF":
+        # TIFF is a print format and readers assume 1 dpi without resolution tags; use the 72 dpi a PDF export assumes.
+        effective_dpi = 72 * requested_scale
+    if effective_dpi and "dpi" not in settings:
+        settings["dpi"] = (round(effective_dpi, 3), round(effective_dpi, 3))
+
+    def finish(data):
+        if report is not None and fmt in ("PNG", "JPEG", "WEBP", "TIFF", "AVIF"):
+            from .animation import still_size_warnings
+
+            if warnings := still_size_warnings(project, fmt, len(data), max_bytes):
+                report.setdefault("warnings", []).extend(warnings)
+        if path:
+            Path(path).write_bytes(data)
+        return data
+
+    image, subject = None, project
+    if sheet:
+        from .deck import contact_sheet
+
+        image = contact_sheet(project, pages=pages, width=width, columns=columns, labels=labels, variables=variables)
+    if image is None and scale > 1 and sampling != "nearest" and not (artboard or comp or settings.get("size")):
+        # Enlarge by re-rendering a scaled copy, so text, shapes and vectors stay crisp.
+        from .proxy import scaled_project
+
+        project.limits.size(round(project.state["canvas"]["width"] * scale), round(project.state["canvas"]["height"] * scale))
+        proxy = scaled_project(project, scale)
+        if proxy is not None:
+            subject, scale = proxy, 1
+    if (image is None and fmt == "PNG" and scale == 1 and not settings.get("size") and not (simulate or proof)
+            and color_space == "rgb" and icc_profile is None and ink_limit is None):
+        # A large canvas whose regions render alone is composited and encoded band by band (tiles.py).
+        from .tiles import png
+
+        data = png(subject, variables, artboard, comp, alpha=alpha, background=background, dpi=settings.get("dpi"))
+        if data is not None:
+            return finish(data)
+    if image is None:
+        image = render(subject, variables, artboard, comp)
+    size = settings.pop("size", None)
+    if size:
+        image = ImageOps.contain(image, size, resample)
+    target_size = (max(1, round(image.width * scale)), max(1, round(image.height * scale)))
+    project.limits.size(*target_size)
+    if target_size != image.size:
+        image = image.resize(target_size, resample)
     from . import colors
 
     cms = None
@@ -327,16 +355,6 @@ def export(
         image = colors.simulate_vision(image, simulate)
     if proof:
         image = colors.proof_image(image, **separation)
-    canvas_dpi = project.state["canvas"].get("dpi")
-    if dpi is not None:
-        finite(dpi, "dpi", 36, 2400)
-    # requested_scale: a crisp enlargement re-renders at full size and resets ``scale`` to 1.
-    effective_dpi = dpi or (canvas_dpi * requested_scale if canvas_dpi else None)
-    if not effective_dpi and fmt == "TIFF":
-        # TIFF is a print format and readers assume 1 dpi without resolution tags; use the 72 dpi a PDF export assumes.
-        effective_dpi = 72 * requested_scale
-    if effective_dpi and "dpi" not in settings:
-        settings["dpi"] = (round(effective_dpi, 3), round(effective_dpi, 3))
     if color_space == "cmyk":
         require(fmt in ("JPEG", "TIFF", "PDF"), "CMYK export supports JPEG, TIFF and PDF" + (
             "; for an RGB soft proof of print colours drop --cmyk (color_space) and keep --proof" if proof else ""),
@@ -377,14 +395,7 @@ def export(
         report.update(content="raster", color_space=color_space, content_reason=(
             f"{', '.join(raster_only)} export the page as an image" if raster_only else
             f"scale {requested_scale:g} exports a larger image; pass pdf_content for a vector or raster PDF at its natural size"))
-    if report is not None and fmt in ("PNG", "JPEG", "WEBP", "TIFF", "AVIF"):
-        from .animation import still_size_warnings
-
-        if warnings := still_size_warnings(project, fmt, len(data), max_bytes):
-            report.setdefault("warnings", []).extend(warnings)
-    if path:
-        Path(path).write_bytes(data)
-    return data
+    return finish(data)
 
 
 def export_checked(project, path, spec, **options):

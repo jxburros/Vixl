@@ -95,6 +95,22 @@ Golden images regenerated for the intended changes: `blend_modes`, `chart_line`,
 for the flush inside stroke, `shapes_and_strokes`, `path_stroke_only` and `groups` (PNG, PDF, SVG and
 PowerPoint snapshots) and `irregular_torn` (a stroked rectangle turned into a path keeps the stroke inside).
 
+## Fast paths that keep the pixels
+
+- **Glyph cache (#584).** A plain text layer (one paint, no stroke, no emoji artwork, not kinetic, warped or on
+  a path, at a whole-pixel place) is put together from glyphs other labels already rasterised, when that gives
+  exactly the whole-layer SVG's coverage. A glyph is cached under its outline and its exact matrix, with no
+  subpixel rounding (rounding the phase to 1/4 px would move an edge by up to 1/8 px, tens of levels on an edge
+  pixel), and is rasterised alone with that matrix in a canvas that starts at the layer's origin: moving it to
+  an atlas would change the rasteriser's single-precision arithmetic. Where two glyphs both cover a pixel
+  partly the rasteriser blends them, so the layer is drawn as one SVG instead. A glyph is drawn alone only the
+  second time it comes up, so text that never repeats costs one rasteriser call per layer as before.
+  `tests/test_glyph_cache.py` compares both paths on Latin, Cyrillic and Arabic text at six sizes;
+  `VIXL_GLYPH_CACHE=off` turns the cache off.
+- **Tiles (#588).** A tile of a large canvas is the same crop of the whole canvas. Multiply and screen used an
+  integer shortcut for all-opaque boxes that rounded differently from the general equation, so a pixel's value
+  depended on what else was in the composited box; opaque pixels now take the integer result in both.
+
 ## What remains
 
 - **Rasterizer precision (5).** Exact coverage on horizontal edges needs an analytic rasterizer (Skia's

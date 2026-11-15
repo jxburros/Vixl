@@ -44,7 +44,9 @@ Production extensions: `assurance.py` owns saved, read-only design contracts;
 `automation.py` compiles bounded actions and role-based motion to canonical operations;
 `production.py` handles typed recipe snapshots, variant plans, manifests and component
 libraries. `render_cache.py` supplies an optional persistent, bounded PNG cache keyed
-by render inputs, font bytes and runtime versions. `film.py` assembles bounded shot
+by render inputs, font bytes and runtime versions. Canvases over 8 million pixels are composited as
+tiles (`render.render_tiles`), and `tiles.py` streams a PNG export of one band by band through
+`fileio.PngWriter`. `film.py` assembles bounded shot
 sequences; `jobs.py` persists workspace jobs and frozen inputs, with per-job worker
 locks and cooperative cancellation. `workflows.py` is the shared CLI/MCP dispatcher;
 REST exposes its fixed-project subset. See [production](../guides/automation/production.md).

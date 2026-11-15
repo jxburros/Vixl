@@ -1354,8 +1354,23 @@ def render_text(project, layer, size=None, matrix=None):
     stroked = layer.get("stroke_width", 0) > 0 and color_of(project, layer, "stroke_color", "black")[3] > 0
     if not stroked and not any(isinstance(path, EmojiArt) for path, _ in layout.paths):
         # One paint: rasterise the glyphs once as a stencil and paint it, so a recoloured label reuses them.
-        append_paths(parent, layout, {**layer, "color": "black"}, project)
-        return painted(ET.tostring(root, encoding="unicode"), color_of(project, layer, "color", "white"))
+        markup = []
+
+        def svg():
+            if not markup:
+                append_paths(parent, layout, {**layer, "color": "black"}, project)
+                markup.append(ET.tostring(root, encoding="unicode"))
+            return markup[0]
+
+        if matrix is None and size is None and layout.shaped:
+            # Glyphs other labels already drew at the same place in their box are not rasterised again.
+            from .glyph_cache import stencil as glyph_stencil
+            from .vector_raster import cached_stencil, paint
+
+            mask = glyph_stencil(layout.paths, width, height, lambda: cached_stencil(svg()))
+            if mask is not None:
+                return paint(mask, color_of(project, layer, "color", "white"))
+        return painted(svg(), color_of(project, layer, "color", "white"))
     append_paths(parent, layout, layer, project)
     return rasterize(ET.tostring(root, encoding="unicode"))
 
