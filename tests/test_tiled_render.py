@@ -310,6 +310,8 @@ def test_exports_the_stream_does_not_cover_keep_the_single_canvas_path(monkeypat
     p.apply({"type": "adjustment", "name": "soften", "effects": [{"name": "blur", "amount": 3}]}, detail="brief")
     assert not R.region_renders_alone(p)
     assert Image.open(io.BytesIO(p.export())).size == (1200, 900)
+    monkeypatch.setattr(R, "render_tiles", lambda *a, **k: pytest.fail("tiled"))
+    assert R.render_tiled(p, "white", tile=256).tobytes() == single(p, "white").tobytes()
 
 
 @pytest.mark.parametrize("mode", ["RGB", "RGBA"])

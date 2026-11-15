@@ -59,7 +59,7 @@ def png(project, variables=None, artboard=None, comp=None, *, alpha="auto", back
                     band = base
                 elif "RGB" in writers and band.getchannel("A").getextrema()[0] != 255:
                     if "RGBA" not in writers:
-                        # Transparent pixels on an opaque canvas colour (a blend can do it): start again with alpha.
+                        # Transparent pixels although the canvas colour is opaque: start again and keep the alpha.
                         stream.close()
                         return png(project, variables, artboard, comp, alpha="keep", dpi=dpi, tile=tile,
                                    workers=workers)

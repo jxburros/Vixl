@@ -1039,7 +1039,7 @@ def layer_ink(project, layer, bounds):
     cache = layer_cache(project)
     profile = PROFILE.get()
     if cache.held and key in cache.held:
-        return cache.held[key]  # Not a copy: callers crop it (see ``vixl_held`` in ``_render_layers``).
+        return cache.held[key]  # Not a copy: callers crop it (see ``shared_ink`` in ``_render_layers``).
     if cacheable:
         cached = cache.image(key)
         if profile is not None:
@@ -2038,7 +2038,7 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
         right, bottom = min(size[0], whole[2]), min(size[1], whole[3])
         if left >= right or top >= bottom:
             return image
-        if source.size != (right - left, bottom - top) or source.info.get("vixl_held"):
+        if source.size != (right - left, bottom - top) or source.info.get("shared_ink"):
             source = source.crop((left - whole[0], top - whole[1], right - whole[0], bottom - whole[1]))
         if layer["opacity"] != 1:
             source = with_opacity(source, layer["opacity"])
@@ -2496,7 +2496,7 @@ def render_tiles(project, layers, bounds, background, *, tile=TILE, workers=None
     try:
         for key, layer, b in held:
             image = layer_ink(project, {**layer, "opacity": 1}, b)
-            image.info["vixl_held"] = True  # Shared by every tile: the compositor crops it and never changes it.
+            image.info["shared_ink"] = True  # Shared by every tile: the compositor crops it and never changes it.
             cache.held[key] = image
         cache.regions.update(regions)
         todo = iter(tile_boxes(width, height, tile, strips))
@@ -2568,14 +2568,16 @@ def render_bands(project, background, *, tile=TILE, workers=None, lit=True):
 
 def render_tiled(project, background="transparent", tile=None, workers=None):
     """``render_layers`` of the canvas, composited as tiles of ``tile`` pixels (1024) on ``workers`` threads of
-    the render pool: each tile is a region render, so the pixels are those of the single-canvas path. For a
-    document whose regions render alone; one that ``tile_plan`` refuses is drawn on one canvas."""
+    the render pool: each tile is a region render, so the pixels are those of the single-canvas path. A document
+    that reads the whole canvas (``region_renders_alone``) or that ``tile_plan`` refuses is drawn on one canvas."""
     with resolving(project):
         layers, bounds = resolved(project)
         shared = getattr(project, "_resolution", None)
         project._resolution = (project.state, layers, bounds)
         try:
-            image = tiled_canvas(project, layers, bounds, background, tile=tile or TILE, workers=workers)
+            image = None
+            if region_renders_alone(project):
+                image = tiled_canvas(project, layers, bounds, background, tile=tile or TILE, workers=workers)
             if image is None:
                 image = _render_layers(project, layers, bounds, None, None, background, None)
             return image
