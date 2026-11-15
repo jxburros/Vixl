@@ -15,7 +15,7 @@ import resvg_py
 
 from vixl import Project, VixlError
 from vixl import emojis
-from vixl.emoji_workflows import dispatch
+from vixl.emoji_workflows import dispatch, fields as emoji_fields
 from vixl.interfaces import Session
 from vixl.model import Limits
 from vixl.text import clusters, font_data, glyph_coverage, lines, shape
@@ -352,3 +352,362 @@ def test_workflows_respect_workspace_and_support_catalog_without_a_document(tmp_
     dispatch(
         session, "emoji-export", {"output": "discord.zip", "destination": "discord", "emojis": [":wave:"]}
     )
+
+
+def animated_master(tmp_path, size=72, duration=1000, fps=20, effect=False):
+    m = Project(size, size, background="transparent")
+    m.apply(
+        [
+            {
+                "type": "shape",
+                "shape": "ellipse",
+                "name": "dot",
+                "width": size * 0.5,
+                "height": size * 0.5,
+                "x": size * 0.1,
+                "y": size * 0.25,
+                "fill": "#DC7366",
+            },
+            {"type": "timeline-set", "duration": duration, "fps": fps, "loop": 1},
+            {"type": "keyframe", "target": "dot", "property": "x", "time": 0, "value": size * 0.1},
+            {"type": "keyframe", "target": "dot", "property": "x", "time": duration / 2, "value": size * 0.4},
+            {"type": "keyframe", "target": "dot", "property": "x", "time": duration, "value": size * 0.1},
+        ]
+    )
+    if effect:
+        m.apply({"type": "blur", "target": "dot", "value": 2})
+    path = tmp_path / "master.vixl"
+    m.save(path, overwrite=True)
+    return {"type": "emoji-set", "format": "vixl", "data": base64.b64encode(path.read_bytes()).decode()}
+
+
+def animated_document(tmp_path, names=("wave", "bounce", "spin"), **options):
+    p = text_document("animated")
+    master = animated_master(tmp_path, **options)
+    p.apply([{**master, "emoji": f":{name}:"} for name in names])
+    return p, [f":{name}:" for name in names]
+
+
+def pack(path):
+    with zipfile.ZipFile(path) as z:
+        return {name: z.read(name) for name in z.namelist()}, json.loads(z.read("manifest.json"))
+
+
+def test_every_platform_profile_states_its_source_and_the_day_it_was_checked():
+    assert {"whatsapp", "telegram", "telegram-emoji", "telegram-animated", "twitch", "imessage"} <= set(
+        emojis.DESTINATIONS
+    )
+    for name, profile in emojis.DESTINATIONS.items():
+        assert re.fullmatch(profile["name_pattern"], "ok") and profile["instructions"]
+        if name != "images":
+            assert profile["url"].startswith("https://") and re.fullmatch(
+                r"\d{4}-\d\d-\d\d", profile["checked"]
+            )
+            assert profile["max_bytes"] and "KiB" not in profile["instructions"]
+
+
+@pytest.mark.parametrize(
+    "destination, folders, format",
+    [
+        ("whatsapp", {"stickers": 512}, "WEBP"),
+        ("telegram", {"stickers": 512}, "PNG"),
+        ("telegram-emoji", {"emoji": 100}, "PNG"),
+        ("twitch", {"28": 28, "56": 56, "112": 112}, "PNG"),
+        ("imessage", {"stickers": 408}, "PNG"),
+    ],
+)
+def test_sticker_and_emote_destinations_write_files_that_pass_their_own_rules(
+    tmp_path, destination, folders, format
+):
+    p = text_document("😀 :my_emoji:")
+    p.apply({**replacement("green"), "emoji": ":my_emoji:"})
+    selection = ["😀", "👋🏽", ":my_emoji:"]
+    result = emojis.export_pack(tmp_path / "pack.zip", selection, destination, project=p)
+    profile = emojis.DESTINATIONS[destination]
+    files, manifest = pack(tmp_path / "pack.zip")
+    assert manifest["destination"] == destination and manifest["animated"] is False
+    assert result["instructions"].startswith(profile["instructions"])
+    for entry in manifest["entries"]:
+        assert re.fullmatch(profile["name_pattern"], entry["name"])
+        for folder, size in folders.items():
+            raw = files[f"{folder}/{entry['name']}.{format.lower()}"]
+            image = Image.open(io.BytesIO(raw))
+            assert image.format == format and image.size == (size, size) and len(raw) < profile["max_bytes"]
+            assert image.convert("RGBA").getpixel((0, 0))[3] == 0
+        assert entry["image"] in files and entry["svg"] in files
+    report = emojis.requirements(destination, selection, p)
+    assert report["passed"] and report["checked"] == profile["checked"]
+    assert [e["name"] for e in report["entries"]] == [e["name"] for e in manifest["entries"]]
+    # A pack whose images are WebP still installs, from its editable sources or SVG appearances.
+    q = text_document("😀 :my_emoji:")
+    emojis.install_pack(q, (tmp_path / "pack.zip").read_bytes())
+    assert q.render().tobytes() == p.render().tobytes()
+
+
+def test_whatsapp_pack_has_tray_icon_contents_and_pack_size_rules(tmp_path):
+    p = text_document(":my_emoji:")
+    p.apply({**replacement("green"), "emoji": ":my_emoji:"})
+    result = emojis.export_pack(tmp_path / "wa.zip", ["😀", "👋🏽", ":my_emoji:"], "whatsapp", project=p)
+    files, manifest = pack(tmp_path / "wa.zip")
+    tray = Image.open(io.BytesIO(files["tray.png"]))
+    assert tray.format == "PNG" and tray.size == (96, 96) and len(files["tray.png"]) < 50_000
+    contents = json.loads(files["contents.json"])["sticker_packs"][0]
+    assert contents["tray_image_file"] == "tray.png" and contents["animated_sticker_pack"] is False
+    assert [s["emojis"] for s in contents["stickers"]] == [["😀"], ["👋🏽"], []]
+    assert all(f"stickers/{s['image_file']}" in files for s in contents["stickers"])
+    # A custom sticker has no Unicode emoji to tag it with; the pack says so instead of inventing one.
+    assert result["untagged"] == ["my_emoji"] and "my_emoji" in files["README.txt"].decode()
+    with pytest.raises(VixlError, match="3–30"):
+        emojis.export_pack(tmp_path / "small.zip", ["😀", "👋🏽"], "whatsapp")
+    assert not (tmp_path / "small.zip").exists()
+    report = emojis.requirements("whatsapp", ["😀", "👋🏽"])
+    assert not report["passed"] and "3–30" in report["findings"][0]
+
+
+def test_twitch_names_are_alphanumeric_and_imessage_takes_only_its_sticker_sizes(tmp_path):
+    names = emojis.names_for(["1F600", "1F44B-1F3FD", "1F9D1-200D-1F680"], style="alphanumeric")
+    assert len(set(names.values())) == 3 and all(re.fullmatch("[a-z0-9]{2,25}", n) for n in names.values())
+    result = emojis.export_pack(tmp_path / "large.zip", ["😀"], "imessage", size=618)
+    files, manifest = pack(tmp_path / "large.zip")
+    assert result["size"] == manifest["size"] == 618
+    assert Image.open(io.BytesIO(files[manifest["entries"][0]["image"]])).size == (618, 618)
+    assert "Sticker Pack App" in files["README.txt"].decode()
+    assert not any(name.endswith((".xcodeproj", ".pbxproj", ".xcstickers")) for name in files)
+    for destination, size in (("imessage", 500), ("whatsapp", 256), ("twitch", 64)):
+        with pytest.raises(VixlError, match="required export size"):
+            emojis.export_pack(tmp_path / "bad.zip", ["😀"], destination, size=size)
+
+
+def test_one_call_exports_slack_discord_and_whatsapp_packs_from_one_document(tmp_path, monkeypatch):
+    p = text_document("😀 :my_emoji:")
+    p.apply({**replacement("green"), "emoji": ":my_emoji:"})
+    renders = []
+    render = emojis.png
+    monkeypatch.setattr(emojis, "png", lambda svg, size: renders.append(size) or render(svg, size))
+    selection = ["😀", "👋🏽", ":my_emoji:"]
+    result = emojis.export_pack(tmp_path / "set.zip", selection, ["slack", "discord", "whatsapp"], project=p)
+    assert result["destinations"] == ["slack", "discord", "whatsapp"] and result["count"] == 3
+    assert [Path(o["output"]).name for o in result["outputs"]] == [
+        "set-slack.zip",
+        "set-discord.zip",
+        "set-whatsapp.zip",
+    ]
+    assert not (tmp_path / "set.zip").exists()
+    # Slack and Discord share the 128 px masters: each emoji is drawn once per size (plus the tray icon).
+    assert sorted(renders) == [96] + [128] * 3 + [512] * 3
+    for item in result["outputs"]:
+        files, manifest = pack(item["output"])
+        profile = emojis.DESTINATIONS[item["destination"]]
+        assert manifest["destination"] == item["destination"] and len(manifest["entries"]) == 3
+        for entry in manifest["entries"]:
+            image = Image.open(io.BytesIO(files[entry["image"]]))
+            assert image.size == (profile["size"],) * 2 and len(files[entry["image"]]) < profile["max_bytes"]
+    single = tmp_path / "single.zip"
+    emojis.export_pack(single, selection, "slack", project=p)
+    assert pack(single)[0].keys() == pack(tmp_path / "set-slack.zip")[0].keys()
+    assert pack(single)[0]["png/my_emoji.png"] == pack(tmp_path / "set-slack.zip")[0]["png/my_emoji.png"]
+    combined = emojis.requirements(["slack", "discord", "whatsapp"], selection, p)
+    assert (
+        combined["passed"] and [r["destination"] for r in combined["destinations"]] == result["destinations"]
+    )
+    # One destination failing its rules leaves no file behind for the others.
+    with pytest.raises(VixlError, match="3–30"):
+        emojis.export_pack(tmp_path / "two.zip", ["😀", "👋🏽"], ["slack", "whatsapp"])
+    assert not list(tmp_path.glob("two*.zip"))
+    with pytest.raises(VixlError, match="already exists"):
+        emojis.export_pack(tmp_path / "set.zip", selection, ["discord"], project=p)
+    with pytest.raises(VixlError, match="Unknown emoji destination"):
+        emojis.export_pack(tmp_path / "x.zip", ["😀"], ["slack", "slack"])
+
+
+@pytest.mark.parametrize(
+    "destination, folder, format, size",
+    [
+        ("discord", "gif", "GIF", 128),
+        ("slack", "gif", "GIF", 128),
+        ("whatsapp", "stickers", "WEBP", 512),
+        ("imessage", "stickers", "PNG", 408),
+    ],
+)
+def test_animated_pack_respects_the_destination_frame_duration_and_byte_budgets(
+    tmp_path, destination, folder, format, size
+):
+    # Four seconds at 20 fps is 80 frames: more than Slack's 50-frame budget.
+    p, keys = animated_document(tmp_path, duration=4000)
+    result = emojis.export_pack(tmp_path / "pack.zip", keys, destination, project=p, animated=True)
+    spec = emojis.DESTINATIONS[destination]["animated"]
+    files, manifest = pack(tmp_path / "pack.zip")
+    assert manifest["animated"] is True and result["animated"] == 3 and result["format"] == spec["format"]
+    for entry in manifest["entries"]:
+        motion = entry["animation"]
+        raw = files[motion["file"]]
+        assert motion["file"] == f"{folder}/{entry['name']}.{format.lower()}" and len(raw) < spec["max_bytes"]
+        image = Image.open(io.BytesIO(raw))
+        assert image.format == format and image.size == (size, size) and image.n_frames > 1
+        assert image.n_frames <= spec.get("max_frames", 80) and motion["frames"] == image.n_frames
+        durations = []
+        for index in range(image.n_frames):
+            image.seek(index)
+            image.load()
+            durations.append(image.info["duration"])
+        assert min(durations) >= spec.get("min_frame_ms", 1)
+        assert abs(sum(durations) - 4000) <= 50 and sum(durations) <= spec.get("max_duration", 4050)
+        # The master plays once; emoji destinations loop forever, WhatsApp keeps the master's count.
+        assert motion["loop"] == spec.get("loop", 1)
+        if format == "GIF":
+            assert image.info["loop"] == 0 and Image.open(io.BytesIO(files[entry["image"]])).size == (
+                128,
+                128,
+            )
+    if destination == "slack":
+        assert manifest["entries"][0]["animation"]["fps"] == 12
+    if destination == "whatsapp":
+        assert json.loads(files["contents.json"])["sticker_packs"][0]["animated_sticker_pack"] is True
+    assert emojis.requirements(destination, keys, p, animated=True)["passed"]
+
+
+def test_animated_pack_steps_colours_then_frame_rate_down_to_fit_and_refuses_what_cannot_fit(
+    tmp_path, monkeypatch
+):
+    p, keys = animated_document(tmp_path, names=("wave",))
+    emojis.export_pack(tmp_path / "full.zip", keys, "discord", project=p, animated=True)
+    full = pack(tmp_path / "full.zip")[1]["entries"][0]["animation"]
+    assert full["tries"] == 1 and full["colors"] == 256 and full["fps"] == 20
+    monkeypatch.setitem(emojis.DESTINATIONS["discord"]["animated"], "max_bytes", full["bytes"] - 200)
+    emojis.export_pack(tmp_path / "fit.zip", keys, "discord", project=p, animated=True)
+    files, manifest = pack(tmp_path / "fit.zip")
+    fitted = manifest["entries"][0]["animation"]
+    assert fitted["tries"] > 1 and fitted["bytes"] < full["bytes"] - 200 == len(files[fitted["file"]]) + (
+        full["bytes"] - 200 - fitted["bytes"]
+    )
+    assert fitted["colors"] < 256 and Image.open(io.BytesIO(files[fitted["file"]])).size == (128, 128)
+    monkeypatch.setitem(emojis.DESTINATIONS["discord"]["animated"], "max_bytes", 200)
+    with pytest.raises(VixlError, match="animated byte limit") as error:
+        emojis.export_pack(tmp_path / "never.zip", keys, "discord", project=p, animated=True)
+    assert error.value.code == "resource_limit" and not (tmp_path / "never.zip").exists()
+    assert not emojis.requirements("discord", keys, p, animated=True)["passed"]
+
+
+def test_animated_pack_rules_mixed_sets_long_timelines_and_format_choice(tmp_path):
+    p, keys = animated_document(tmp_path, duration=12_000, fps=5)
+    with pytest.raises(VixlError, match="at most 10000 ms"):
+        emojis.export_pack(tmp_path / "long.zip", keys, "whatsapp", project=p, animated=True)
+    p, keys = animated_document(tmp_path)
+    with pytest.raises(VixlError, match="cannot mix still and animated"):
+        emojis.export_pack(tmp_path / "mixed.zip", [*keys, "😀"], "whatsapp", project=p, animated=True)
+    # Emoji uploads may mix: a still emoji stays a PNG and is named in the result.
+    result = emojis.export_pack(tmp_path / "mixed.zip", [*keys, "😀"], "discord", project=p, animated=True)
+    assert result["animated"] == 3 and len(result["still"]) == 1
+    files, manifest = pack(tmp_path / "mixed.zip")
+    assert "animation" not in manifest["entries"][3] and len([n for n in files if n.startswith("gif/")]) == 3
+    emojis.export_pack(tmp_path / "webp.zip", keys, "images", project=p, animated="webp", size=64)
+    files, manifest = pack(tmp_path / "webp.zip")
+    image = Image.open(io.BytesIO(files["webp/wave.webp"]))
+    assert image.format == "WEBP" and image.size == (64, 64) and image.n_frames > 1
+    assert manifest["entries"][0]["animation"]["loop"] == 1
+    with pytest.raises(VixlError, match="animated packs are gif"):
+        emojis.export_pack(tmp_path / "bad.zip", keys, "discord", project=p, animated="webp")
+    with pytest.raises(VixlError, match="no animated profile"):
+        emojis.export_pack(tmp_path / "bad.zip", keys, "telegram", project=p, animated=True)
+    # Without the flag an animated master exports as the still it always was.
+    emojis.export_pack(tmp_path / "still.zip", keys, "discord", project=p)
+    assert not any(n.startswith("gif/") for n in pack(tmp_path / "still.zip")[0])
+
+
+def test_telegram_animated_pack_writes_tgs_that_passes_the_tgs_constraints(tmp_path):
+    import gzip
+
+    p, keys = animated_document(tmp_path)
+    result = emojis.export_pack(tmp_path / "tgs.zip", keys, "telegram-animated", project=p)
+    assert result["format"] == "tgs" and result["animated"] == 3
+    files, manifest = pack(tmp_path / "tgs.zip")
+    for entry in manifest["entries"]:
+        raw = files[f"stickers/{entry['name']}.tgs"]
+        data = json.loads(gzip.decompress(raw))
+        assert len(raw) < 64 * 1024 and data["tgs"] == 1 and (data["w"], data["h"]) == (512, 512)
+        assert data["fr"] == 60 and (data["op"] - data["ip"]) / data["fr"] <= 3
+        assert not data["meta"]["fallbacks"] and not any("p" in asset for asset in data["assets"])
+        assert entry["image"].endswith(".tgs") and entry["source"].endswith(".vixl")
+    assert (
+        "stickers/wave.tgs" not in files["index.html"].decode()
+        and emojis.requirements("telegram-animated", keys, p)["passed"]
+    )
+    q = text_document("animated")
+    emojis.install_pack(q, (tmp_path / "tgs.zip").read_bytes())
+    assert set(q.state["emojis"]["overrides"]) == set(keys)
+    # Raster fallbacks are refused, as TGS export refuses them; so are stills and long animations.
+    blurred, keys = animated_document(tmp_path, effect=True)
+    with pytest.raises(VixlError, match="layer effects"):
+        emojis.export_pack(tmp_path / "raster.zip", keys, "telegram-animated", project=blurred)
+    with pytest.raises(VixlError, match="no animated VIXL master"):
+        emojis.export_pack(tmp_path / "still.zip", ["😀"], "telegram-animated", project=p)
+    assert not emojis.requirements("telegram-animated", ["😀"], p)["passed"]
+    slow, keys = animated_document(tmp_path, duration=4000)
+    with pytest.raises(VixlError, match="at most 3000 ms"):
+        emojis.export_pack(tmp_path / "slow.zip", keys, "telegram-animated", project=slow)
+    assert not list(tmp_path.glob("r*.zip")) and not list(tmp_path.glob("s*.zip"))
+
+
+def test_workflow_and_cli_export_several_destinations_and_animated_packs(tmp_path, capsys):
+    from vixl.cli import main
+    from vixl.workflow_schema import properties
+
+    p, keys = animated_document(tmp_path)
+    p.save(tmp_path / "doc.vixl")
+    session = Session(tmp_path / "doc.vixl", workspace=tmp_path)
+    result = dispatch(
+        session,
+        "emoji-export",
+        {"output": "out/pack.zip", "destination": ["slack", "discord", "whatsapp"], "emojis": keys},
+    )
+    assert [o["output"] for o in result["outputs"]] == [
+        "out/pack-slack.zip",
+        "out/pack-discord.zip",
+        "out/pack-whatsapp.zip",
+    ]
+    result = dispatch(
+        session,
+        "emoji-export",
+        {"output": "moving.zip", "destination": "twitch", "emojis": keys, "animated": True},
+    )
+    assert result["animated"] == 3 and result["sizes"] == [28, 56, 112]
+    files, manifest = pack(tmp_path / "moving.zip")
+    assert manifest["entries"][0]["files"] == ["112/wave.gif", "56/wave.gif", "28/wave.gif"]
+    assert [Image.open(io.BytesIO(files[n])).size[0] for n in manifest["entries"][0]["files"]] == [
+        112,
+        56,
+        28,
+    ]
+    report = dispatch(session, "emoji-requirements", {"destination": ["twitch", "imessage"], "emojis": keys})
+    assert report["passed"] and len(report["destinations"]) == 2
+    with pytest.raises(VixlError):
+        dispatch(session, "emoji-export", {"output": "x.zip", "destination": ["slack", "nowhere"]})
+    listed = dispatch(session, "emoji-destinations", {})
+    assert (
+        listed["destinations"]["whatsapp"]["animated"]["max_bytes"] == 500_000
+        and listed["checked"] >= "2026-11-14"
+    )
+    schema = properties("emoji-export", emoji_fields("emoji-export"))
+    assert "telegram-animated" in schema["destination"]["anyOf"][1]["items"]["enum"] and "animated" in schema
+    assert properties("emoji-template", ["destination"])["destination"]["type"] == "string"
+    code = main(
+        [
+            "-p",
+            str(tmp_path / "doc.vixl"),
+            "emoji",
+            "--workspace",
+            str(tmp_path),
+            "export",
+            "--destination",
+            "discord",
+            "imessage",
+            "--emojis",
+            *keys,
+            "--animated",
+            "--out",
+            "cli.zip",
+        ]
+    )
+    printed = json.loads(capsys.readouterr().out)
+    assert code == 0 and [o["output"] for o in printed["outputs"]] == ["cli-discord.zip", "cli-imessage.zip"]
+    assert Image.open(io.BytesIO(pack(tmp_path / "cli-imessage.zip")[0]["stickers/wave.png"])).n_frames > 1

@@ -205,6 +205,34 @@ A font you draw in Vixl (glyphs made of shapes and paths) is embedded the same w
 under a name for text layers, and `export NAME.otf` (or `.ttf`, `.woff`) writes it for other apps. See
 [making a font](custom-fonts.md).
 
+### Colour fonts
+
+A colour font file works like any other font: import it (`import-font`, `text --font FILE`) or name an installed
+one, and text set in it draws its colour glyphs. All five formats are read: layered flat colours (COLR version 0),
+gradient paint graphs (COLR version 1), OpenType-SVG glyphs, and the bitmap strikes of CBDT/CBLC (Noto Color
+Emoji) and sbix (Apple Color Emoji). Glyphs sit on the baseline at the font size, wrap and fit like outline text,
+count in `ink_bounds` and the overflow checks, and work in rich text, text flows, text on a path,
+`text-animate` and hand-set text (`hand_set`, span `rise` and `rotate`: each glyph is lifted, turned and resized
+like an outline one, in PNG, SVG and PDF). A glyph without colour data keeps its outline in the text colour, and a palette's foreground
+entry is drawn in the text colour.
+
+| Export | COLR v0 | COLR v1, OpenType-SVG | CBDT, sbix |
+| --- | --- | --- | --- |
+| PNG and other raster formats | drawn | drawn | drawn from the smallest strike at least as large as the text, scaled |
+| SVG, HTML | vector paths | vector paths and gradients | the strike as an embedded image, listed under `raster_fallbacks` (`svg_policy: strict` refuses it) |
+| PDF | vector paths | an image of the text layer, listed under `raster_fallbacks` | an image of the text layer, listed under `raster_fallbacks` |
+| PowerPoint | a picture of the text layer, listed under `raster_fallbacks` | the same | the same |
+
+Limits: the first palette is used; a sweep gradient is drawn as 120 flat wedges; of the composite modes, `src-out`,
+`dest-out`, `xor` and `plus` are drawn as plain source-over; scripts, styles, links and animation inside SVG glyphs
+are removed; a colour glyph takes no outline stroke, bold or slant and cannot be bent by a text warp (use unwarped
+text); a translucent text colour does not fade the foreground-colour layers of a COLR glyph, which are drawn
+opaque in the text colour (use the layer's `opacity` to fade the text); the font maker cannot turn one into an outline. A bitmap font with neither outlines nor colour glyphs is
+still drawn by the fallback renderer.
+
+For emoji the [VIXL Line library](emojis.md) stays the default even when the layer's font has a colour glyph for
+the character: set `emoji-mode` to `font` to draw emoji from the font (Noto Color Emoji, for example) instead.
+
 ### Workspace default fonts
 
 A workspace can give every new document the same typography. A `{type: font-pair, pairing: …, scope: workspace}` step in `vixl_apply` (CLI `vixl font pair NAME --scope workspace`, REST `POST /typefaces/pair` with `"scope": "workspace"`) writes `pairing` into the workspace `brand.json`; `a font-install step` (CLI `vixl font install FAMILY --role heading --scope workspace`) embeds that one style in `brand.json` under `fonts.<role>`, overriding the pairing for that role; without a role it becomes the heading font and the result says so under `normalized`. On the CLI, `--workspace DIR` writes the `brand.json` in DIR instead of the current directory (and implies `--scope workspace`). A workspace pairing replaces embedded `fonts.heading`/`fonts.body` entries (other roles stay), and the result lists them under `workspace.replaced`. Both fetch the fonts immediately, so an unknown family fails at once, and neither changes existing documents.
@@ -339,6 +367,53 @@ that could hang draws exactly as before. PNG, SVG and PDF draw the marks where t
 `hangingPunct` on the paragraph and hangs the first line of a left-aligned paragraph with a negative first-line indent
 (PowerPoint does not hang wrapped lines or line ends). `hanging`, `hang_quotes` and `optical_margin` are accepted and
 reported under `normalized`; `false` removes it. It is opt-in: no default sets it.
+
+## Hand-set lettering
+
+A hand-lettered look gives every word its own size, baseline and tilt. Do not convert the words to outlines for it:
+outlined words are shapes, so the contrast, size, clipping and font checks have nothing to read and the words cannot
+be edited. `hand_set` on `text`, `text-set` or `rich-text` draws the variation when the layer is drawn, and the layer
+stays text.
+
+```json
+[{"type": "text", "name": "sign", "text": "Fresh bread daily", "size": 64, "x": 80, "y": 60,
+  "hand_set": {"seed": 4, "rise": 6, "rotate": 5, "scale": 0.12}},
+ {"type": "text", "name": "note", "text": "baked this morning", "size": 40, "x": 80, "y": 170,
+  "hand_set": {"seed": 2, "unit": "glyph", "rotate": 8, "tracking": 2}}]
+```
+
+| field | meaning | when left out |
+| --- | --- | --- |
+| `seed` | which set of variations to draw; the same seed always gives the same lettering | 0 |
+| `unit` | `word` varies whole words, `glyph` every letter | `word` |
+| `rise` | largest baseline lift or drop, in pixels | 4% of the size |
+| `rotate` | largest turn either way, in degrees (up to 45) | 3 |
+| `scale` | largest size change, as a fraction (0.12 = up to 12% larger or smaller) | 0.06 |
+| `tracking` | largest change in letter spacing, in pixels | 0 |
+
+`"hand_set": true` uses the amounts in the last column; `false` (or `null`) removes it. On the CLI:
+`vixl text-set sign --hand-set '{"seed": 4}'`.
+
+- **The text is unchanged.** The layer keeps its `text`, font, size and colour, `text-set` edits it, `${variables}`
+  and text keyframes fill it, and every check that reads text layers (contrast, text size, bounds, fonts, brand fonts,
+  spelling) reads it as before.
+- **Seeded and stable.** Each word (or letter) draws its numbers from the seed and its position in the text, so
+  changing the letters of one word leaves every other word as it was. Adding or removing a word renumbers the ones
+  after it. Try a few seeds and keep the one that reads best.
+- **The box does not move.** Line breaks follow the varied word widths, but line heights and the layer's box are
+  those of the unvaried text, so editing a word does not shift the layer. Lifted or turned letters may reach a few
+  pixels past the box; they are drawn, not cut off.
+- **Words turn about the middle of their baseline**, letters about the middle of their own advance. By letter, `scale`
+  resizes a letter where it stands.
+- **For a single word**, style it instead: rich-text spans take `rise`, `rotate` and `scale`
+  ([rich text](rich-text.md#character-styles)); the two add up.
+- **Exports.** PNG, SVG and PDF draw the same glyphs in the same places; in PDF the words are still real, selectable
+  text (a turned word is a text run with the turn in its text matrix). PowerPoint has no per-word lift or turn, so
+  PPTX draws the layer as a picture of the render, described by its text and listed under `raster_fallbacks`.
+- **Not with tab stops, a warp or a path.** Text set by `tabs`, `text-layout` `warp` or `path` is drawn as before;
+  `hand_set` stays on the layer and applies again when those are removed.
+- `handset` and `hand_lettered` are accepted and reported under `normalized`. `irregular` still refuses text layers
+  and points here.
 
 ## Tab stops and leaders
 

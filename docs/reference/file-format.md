@@ -39,7 +39,7 @@ are stored uncompressed (they are already compressed); `project.json` and fonts 
 ```json
 {
   "format_version": 2,
-  "vixl_version": "0.35.1",
+  "vixl_version": "0.36.0",
   "state": {
     "canvas": {"width": 400, "height": 300, "background": "#ffffff", "color_mode": "rgba8"},
     "layers": [
@@ -128,7 +128,7 @@ The rest depend on the type. The main ones:
 | `adjustment` | Only `effects`; they apply to what is beneath. |
 
 Optional fields on any layer include `clip` (the ID of the layer whose alpha clips it), `styles` (drop-shadow, stroke,
-outer-glow, color-overlay, gradient-overlay), `repeat`, `alt` and `decorative` (accessibility), `role`, `tags`,
+outer-glow, color-overlay, gradient-overlay, inner-shadow, inner-glow, bevel), `repeat`, `alt` and `decorative` (accessibility), `role`, `tags`,
 intent flags read by the checks (`allow_overlap`, `allow_crop` …) and by `adapt-layout` (`priority`, and `focal` on
 images and frames), and a stack member's `stack_grow` and `stack_span`. The schema's `$defs/layer` lists every field
 (it rejects fields it does not know).

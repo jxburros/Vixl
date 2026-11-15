@@ -78,7 +78,7 @@ OpenAI seeds are rejected because the image API does not expose deterministic se
 
 ## HTTP gateway contract
 
-Each capability is `POST BASE_URL/<capability>` with JSON and optional `Authorization: Bearer ...`. No redirects are followed. Responses are bounded to 64 MiB; HTTP failures produce structured errors. Image fields are base64-encoded PNG data, without URLs. Vixl will not fetch arbitrary URLs returned by a gateway (only the FLUX adapter downloads its signed results, from approved hosts).
+Each capability is `POST BASE_URL/<capability>` with JSON and optional `Authorization: Bearer ...`. No redirects are followed. Responses are bounded to 64 MiB, counted as they are decoded (send `gzip`, `deflate` or no `Content-Encoding`; requests ask for those); HTTP failures produce structured errors. Image fields are base64-encoded PNG data, without URLs. Vixl will not fetch arbitrary URLs returned by a gateway (only the FLUX adapter downloads its signed results, from approved hosts).
 
 Generation request:
 

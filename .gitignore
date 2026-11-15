@@ -22,6 +22,8 @@ build/
 .env
 
 examples/output/
+# Trial documents and exports made while working on Vixl (see CONTRIBUTING.md); kept work goes to VixlExamples
+/scratch/
 # agent-eval output (python -m evals.run); keep published results in VixlExamples
 /eval-results/
 /reference-results/

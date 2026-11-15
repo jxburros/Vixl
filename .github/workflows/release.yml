@@ -48,6 +48,11 @@ jobs:
         python -c "import os; from vixl import __version__; assert os.environ['RELEASE_TAG'] == 'v' + __version__"
     - run: python -m build
     - run: python distribution/package_extensions.py
+    - name: Build the vixl meta-package (published only once the name is claimed on PyPI)
+      continue-on-error: true
+      run: |
+        python distribution/alias_package.py --out build/alias
+        python -m build --outdir dist-alias build/alias
     - name: Export the design catalog bundle for host applications
       run: |
         python -m vixl catalog export --out dist/vixl-catalog.json
@@ -65,6 +70,12 @@ jobs:
           dist/*-claude-code.zip
           dist/vixl-catalog*.json
           dist/vixl-host-api.schema.json
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      continue-on-error: true
+      with:
+        name: alias-package
+        path: dist-alias/*
+        if-no-files-found: ignore
     needs:
     - plan
     if: needs.plan.outputs.selected == 'true' && fromJSON(needs.plan.outputs.apps)['vixl'].selected
@@ -173,6 +184,40 @@ jobs:
     with:
       dry-run: ${{ inputs.dry_run }}
       artifact: python-distributions
+      alias-artifact: alias-package
+  mcp-registry:
+    # Lists the release in the official MCP registry (#771). Off until the owner sets the repository variables
+    # MCP_REGISTRY_PUBLISH, MCP_PUBLISHER_URL and MCP_PUBLISHER_SHA256 (docs/reference/releases.md, "MCP registry").
+    # Nothing depends on this job, and a failure here never fails the release.
+    needs:
+    - plan
+    - pypi
+    if: ${{ !inputs.dry_run && vars.MCP_REGISTRY_PUBLISH == 'true' && needs.plan.outputs.selected == 'true' && fromJSON(needs.plan.outputs.apps)['vixl'].selected }}
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PUBLISHER_URL: ${{ vars.MCP_PUBLISHER_URL }}
+      PUBLISHER_SHA256: ${{ vars.MCP_PUBLISHER_SHA256 }}
+    steps:
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        ref: ${{ needs.plan.outputs.sha }}
+        persist-credentials: false
+    - run: python3 distribution/mcp_registry.py --out server.json
+    - name: Fetch the pinned registry publisher and verify its checksum
+      run: |
+        case "$PUBLISHER_URL" in
+          https://github.com/modelcontextprotocol/registry/releases/download/v*) ;;
+          *) echo "MCP_PUBLISHER_URL must be a versioned release asset of modelcontextprotocol/registry"; exit 1 ;;
+        esac
+        curl -fsSL -o publisher.tar.gz "$PUBLISHER_URL"
+        echo "$PUBLISHER_SHA256  publisher.tar.gz" | sha256sum --check
+        tar -xzf publisher.tar.gz mcp-publisher
+    - run: ./mcp-publisher login github-oidc
+    - run: ./mcp-publisher publish
   publish-vixl:
     needs:
     - plan

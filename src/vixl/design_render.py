@@ -11,18 +11,21 @@ from .errors import require
 from .design import resolve_color
 
 
-def gradient_image(project, layer, size):
+def gradient_image(project, layer, size, box=None):
+    """The gradient layer at ``size``. ``box`` (left, top, right, bottom) gives only that part of it, with the
+    pixels a crop of the whole has, so a tile of a large canvas never draws the whole gradient."""
     from .render import color
 
     from .design import gradient_stops
 
     w, h = size
+    left, upper, right, lower = box or (0, 0, w, h)
     stops = gradient_stops(layer, project.state)
     offsets = [s["offset"] for s in stops]
     colors = np.array([color(resolve_color(s["color"], project.state)) for s in stops], dtype=float)
     direction = layer.get("direction", "vertical")
-    x = np.linspace(0, 1, w)[None, :]
-    y = np.linspace(0, 1, h)[:, None]
+    x = np.linspace(0, 1, w)[None, left:right]
+    y = np.linspace(0, 1, h)[upper:lower, None]
     # Interpolate premultiplied alpha to avoid halos around transparent stops.
     colors[:, :3] *= colors[:, 3:] / 255
 
@@ -32,13 +35,15 @@ def gradient_image(project, layer, size):
         return np.clip(arr, 0, 255)
 
     if direction in ("horizontal", "vertical"):
-        return Image.fromarray(linear_ramp(values(x[0] if direction == "horizontal" else y[:, 0]), w, h, direction))
+        return Image.fromarray(linear_ramp(values(x[0] if direction == "horizontal" else y[:, 0]), right - left,
+                                           lower - upper, direction, left, upper))
     # Float work in bands of rows, so a large canvas never holds several float64 copies of itself.
-    result = np.empty((h, w, 4), dtype=np.uint8)
+    h = lower - upper
+    result = np.empty((h, right - left, 4), dtype=np.uint8)
     band = max(1, (1 << 18) // max(1, w))
     # Opaque stops leave alpha alone and a channel the stops share is a whole number: only the others vary.
     opaque = bool(np.all(colors[:, 3] == 255))
-    wide = np.tile(dither_tile(), (1, w // DITHER + 1))[:, :w]
+    wide = np.tile(dither_tile(), (1, w // DITHER + 1))[:, left:right]
     constant = [bool(np.all(colors[:, i] == colors[0, i]) and colors[0, i] == int(colors[0, i])) for i in range(4)]
     for top in range(0, h, band):
         rows = y[top:top + band]
@@ -49,7 +54,7 @@ def gradient_image(project, layer, size):
             a = math.radians(layer.get("angle", 0))
             dx, dy = math.cos(a), math.sin(a)
             ramp = ((x - 0.5) * dx + (rows - 0.5) * dy) / (abs(dx) + abs(dy)) + 0.5
-        thresholds = wide[np.arange(top, top + len(rows)) % DITHER]
+        thresholds = wide[np.arange(upper + top, upper + top + len(rows)) % DITHER]
         if opaque:
             for i in range(4):
                 if constant[i]:
@@ -64,10 +69,13 @@ def gradient_image(project, layer, size):
     return Image.fromarray(result)
 
 
-def linear_ramp(line, w, h, direction):
+def linear_ramp(line, w, h, direction, left=0, top=0):
     """A horizontal or vertical gradient from its ``line`` of colours (one per column or row). The dither
-    repeats every DITHER pixels across the ramp, so one strip of that width is computed and copied."""
+    repeats every DITHER pixels across the ramp, so one strip of that width is computed and copied.
+    ``left`` and ``top`` are where the block sits in the whole gradient (the dither's phase)."""
     tile = dither_tile()
+    if left or top:
+        tile = tile[(np.arange(DITHER) + top) % DITHER][:, (np.arange(DITHER) + left) % DITHER]
     result = np.empty((h, w, 4), dtype=np.uint8)
     if direction == "vertical":
         strip = np.floor(line[:, None, :] + tile[np.arange(h) % DITHER][:, :, None]).astype(np.uint8, order="C")
@@ -588,7 +596,123 @@ def apply_lookup(project, image, settings):
     return result
 
 
-def styled_image(project, image, styles):
+def texture_image(project, image, kind, settings, origin=(0, 0)):
+    """The texture ``kind`` (pattern-fill or drawn-texture) over ``image``, transparent outside its silhouette.
+    ``origin`` is where the layer's box starts in ``image``: a pattern is laid out from the box, so room added
+    around it does not move it."""
+    from PIL import ImageChops
+
+    from .textures import TEXTURE_KEYS, drawn_image, pattern_image
+
+    if kind == "drawn-texture":
+        return drawn_image(image, settings["preset"], **{k: settings[k] for k in TEXTURE_KEYS[kind][1:-1] if k in settings})
+    if any(origin):
+        offset = settings.get("offset", [0, 0])
+        settings = {**settings, "offset": [offset[0] + origin[0], offset[1] + origin[1]]}
+    texture = pattern_image(project, image.size, settings)
+    texture.putalpha(ImageChops.multiply(texture.getchannel("A"), image.getchannel("A")))
+    return texture
+
+
+def apply_texture(project, image, effect):
+    """``image`` with a pattern-fill or drawn-texture effect drawn over it, in the layer's own frame."""
+    from .render import composite, with_opacity
+
+    settings = effect["texture"]
+    opacity = min(1, max(0, effect.get("amount", 1)))
+    if not opacity:
+        return image
+    texture = texture_image(project, image, effect["name"], settings, effect.get("_origin", (0, 0)))
+    result = composite(image, with_opacity(texture, opacity), settings.get("blend", "normal"))
+    result.info.update(image.info)
+    return result
+
+
+def texture_inputs(project, layer):
+    """What the textures a layer carries read from the document besides their own settings: the tiles of
+    saved patterns (a texture effect's, or a cut-paper piece's) and the colours their names resolve to."""
+    paper = (layer.get("cut_paper") or {}).get("pattern")
+    effects = [e for e in layer.get("effects") or [] if e.get("name") in ("pattern-fill", "drawn-texture")]
+    if not paper and not effects:
+        return []
+    from .design import resolve_color
+
+    patterns = project.state.get("patterns") or {}
+    inputs = [(patterns.get(paper) or {}).get("asset")] if paper else []
+    for effect in effects:
+        settings = effect.get("texture") or {}
+        colors = settings.get("colors") or ([settings["color"]] if "color" in settings else [])
+        inputs.append([(patterns.get(settings.get("pattern")) or {}).get("asset"),
+                       [resolve_color(c, project.state) for c in colors]])
+    return inputs
+
+
+def inner_passes(styles, state):
+    """The inner layer styles (inner-glow, inner-shadow, bevel) as passes drawn in order inside the silhouette:
+    (rgba, opacity, blur, dx, dy). Each pass is the layer's inverted alpha, blurred, moved by whole pixels
+    (dx, dy) and painted in one colour, so every renderer builds it from the same three steps. A bevel is two
+    passes: a highlight on the side facing the light and a shadow on the far side."""
+    from .render import color
+
+    def rgba(settings, key, default):
+        return color(resolve_color(settings.get(key, default), state))
+
+    passes = []
+    glow = styles.get("inner-glow")
+    if glow and glow.get("enabled", True):
+        passes.append((rgba(glow, "color", "white"), glow.get("opacity", 0.6), glow.get("blur", 6), 0, 0))
+    shadow = styles.get("inner-shadow")
+    if shadow and shadow.get("enabled", True):
+        passes.append((rgba(shadow, "color", "black"), shadow.get("opacity", 0.5), shadow.get("blur", 4),
+                       round(shadow.get("dx", 2)), round(shadow.get("dy", 2))))
+    bevel = styles.get("bevel")
+    if bevel and bevel.get("enabled", True):
+        size = bevel.get("size", 4)
+        angle = math.radians(bevel.get("angle", 135))
+        # Towards the light on the canvas, where y grows downward.
+        lx, ly = math.cos(angle) * size, -math.sin(angle) * size
+        opacity = bevel.get("opacity", 0.5)
+        passes.append((rgba(bevel, "highlight", "white"), opacity, size / 2, round(-lx), round(-ly)))
+        passes.append((rgba(bevel, "shadow", "black"), opacity, size / 2, round(lx), round(ly)))
+    return [item for item in passes if item[1] * item[0][3] > 0 and (item[2] > 0 or item[3] or item[4])]
+
+
+def inner_reach(passes):
+    """Pixels around a pixel that the inner passes read."""
+    return max((math.ceil(3 * blur) + max(abs(dx), abs(dy)) + 1 for _, _, blur, dx, dy in passes), default=0)
+
+
+def inner_styled(image, alpha, passes, cut=(False, False, False, False)):
+    """``image`` with the inner passes painted inside ``alpha``. Outside the image the layer is taken to be
+    transparent, except on the sides in ``cut`` (left, top, right, bottom), where the canvas edge cut the layer
+    off and it is taken to continue."""
+    reach = inner_reach(passes)
+    source = np.asarray(alpha)
+    padded = np.pad(source, reach, mode="edge")
+    left, top, right, bottom = cut
+    if not left:
+        padded[:, :reach] = 0
+    if not right:
+        padded[:, padded.shape[1] - reach:] = 0
+    if not top:
+        padded[:reach] = 0
+    if not bottom:
+        padded[padded.shape[0] - reach:] = 0
+    outside = Image.fromarray(255 - padded)
+    rgb = image.convert("RGB")
+    for rgba, opacity, blur, dx, dy in passes:
+        spread = outside.filter(ImageFilter.GaussianBlur(blur)) if blur > 0 else outside
+        mask = spread.crop((reach - dx, reach - dy, reach - dx + image.width, reach - dy + image.height))
+        amount = opacity * rgba[3] / 255
+        if amount < 1:
+            mask = mask.point([round(v * amount) for v in range(256)])
+        rgb = Image.composite(Image.new("RGB", image.size, rgba[:3]), rgb, mask)
+    result = rgb.convert("RGBA")
+    result.putalpha(alpha)
+    return result
+
+
+def styled_image(project, image, styles, cut=(False, False, False, False)):
     from .render import color, opacity_table, with_opacity
 
     alpha = image.getchannel("A")
@@ -635,6 +759,9 @@ def styled_image(project, image, styles):
         overlay = rgb.convert("RGBA")
         overlay.putalpha(alpha)
         image = overlay
+    passes = inner_passes(styles, project.state)
+    if passes:
+        image = inner_styled(image, alpha, passes, cut)
     result.alpha_composite(image)
     return result
 

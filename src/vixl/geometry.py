@@ -1,5 +1,6 @@
 """Shared vector paths for procedural shortcuts and bounded editable Bézier geometry."""
 
+import functools
 import math
 import re
 
@@ -151,8 +152,25 @@ def default_fill(layer):
     return "transparent" if stroked and is_open_shape(layer) else "white"
 
 
+# Paths up to this many characters keep their parsed commands and flattened polygons (PATH_CACHE entries
+# each): layout extents and stroke margins read the same path strings on every frame of an animation.
+PATH_CACHE_CHARS = 16384
+PATH_CACHE = 2048
+
+
 def parse_path(path):
     """Normalize the complete SVG path language, including arcs and smooth commands."""
+    if isinstance(path, str) and len(path) <= PATH_CACHE_CHARS:
+        return [(letter, list(values)) for letter, values in _parsed_path(path)]
+    return _parse_path(path)
+
+
+@functools.lru_cache(maxsize=PATH_CACHE)
+def _parsed_path(path):
+    return tuple((letter, tuple(values)) for letter, values in _parse_path(path))
+
+
+def _parse_path(path):
     from fontTools.pens.recordingPen import RecordingPen
     from fontTools.svgLib.path import parse_path as parse_svg
     from .errors import VixlError
@@ -201,6 +219,18 @@ def bezier_points(controls, ts):
 
 
 def path_polygons(path):
+    """The path's contours as lists of (x, y) points, curves flattened to 48 segments each."""
+    if isinstance(path, str) and len(path) <= PATH_CACHE_CHARS:
+        return [list(points) for points in _flattened_path(path)]
+    return _path_polygons(path)
+
+
+@functools.lru_cache(maxsize=PATH_CACHE)
+def _flattened_path(path):
+    return tuple(tuple(points) for points in _path_polygons(path))
+
+
+def _path_polygons(path):
     polygons, points, current = [], [], (0, 0)
     for command, values in parse_path(path):
         if command == "M":

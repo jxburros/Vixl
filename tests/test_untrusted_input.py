@@ -387,6 +387,9 @@ def test_mcp_workflow_start_hides_the_absolute_workspace(tmp_path, monkeypatch):
     class Child:
         pid = 4242
 
+        def poll(self):  # start waits for the worker to take the queue or leave (#824); this one has left
+            return 0
+
     Project(40, 40).save(tmp_path / "source.vixl")
     server = build_server(Session(workspace=tmp_path))
     monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: Child())

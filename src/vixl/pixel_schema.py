@@ -2,7 +2,7 @@
 
 import json
 
-from .pixel import MIRRORS, PIXEL_TYPES
+from .pixel import FLIPS, MIRRORS, PIXEL_TYPES, TOOLS
 from .animation import ANIMATION_TYPES
 
 
@@ -12,6 +12,12 @@ def schemas(add):
     grid = {"type": "integer", "minimum": 1, "maximum": 256}
     coordinate = {"type": "integer", "minimum": 0, "maximum": 255}
     palette = {"type": "object", "additionalProperties": S, "minProperties": 1, "maxProperties": 94}
+    cell = {
+        "type": "array", "minItems": 2, "maxItems": 2,
+        "description": "Sprite-sheet cell [row, column] to place the sprite in instead of computing x and y (row by "
+        "name or index, column from 0; declare the grid with sprite-sheet). x and y are then offsets inside the "
+        "cell; the sprite has to fit the cell, so its outline never reaches the next frame.",
+    }
     shading = {
         "anyOf": [B, {"type": "object", "properties": {
             "light": enum("auto", "top-left", "top", "top-right"),
@@ -53,12 +59,13 @@ def schemas(add):
             },
             "shading": shading,
             "outline": outline,
+            "cell": cell,
         },
     )
     add(
         "pixel-draw",
         {
-            "tool": enum("pixel", "line", "rect", "fill"),
+            "tool": enum(*TOOLS),
             "x": coordinate,
             "y": coordinate,
             "x2": coordinate,
@@ -66,6 +73,12 @@ def schemas(add):
             "width": grid,
             "height": grid,
             "color": S,
+            "only": {
+                "type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 1}, "minItems": 1,
+                "maxItems": 94, "uniqueItems": True,
+                "description": "Masked painting: palette symbols the tool may overwrite; every other cell is left "
+                "as it is (shade only the cells that are already hair: only: [\"h\"]).",
+            },
             "rows": {
                 "type": "object", "additionalProperties": {"type": "string", "minLength": 1, "maxLength": 256},
                 "maxProperties": 256,
@@ -82,6 +95,44 @@ def schemas(add):
     )
     add("pixel-palette", {"colors": palette, "shading": shading, "outline": outline},
         anyOf=[{"required": ["colors"]}, {"required": ["shading"]}, {"required": ["outline"]}])
+    add(
+        "pixel-transform",
+        {
+            "flip": {**enum(*FLIPS), "description": "Mirror the stored rows: horizontal (a right-facing frame from "
+                     "the left-facing one), vertical or both. Unlike the layer flip, shading still falls from the "
+                     "same light."},
+            "shift": {"type": "array", "items": {"type": "integer", "minimum": -256, "maximum": 256}, "minItems": 2,
+                      "maxItems": 2, "description": "Move the grid contents by [dx, dy] cells (a walk-cycle bob is "
+                      "[0, 1]); applied after flip. Cells pushed off the grid are dropped."},
+            "wrap": {**B, "description": "Shifted cells come back in on the opposite side (a scrolling tile) "
+                     "instead of being dropped. Default false."},
+            "fill": {"type": "string", "minLength": 1, "maxLength": 1, "description": "Palette symbol for the cells "
+                     "a shift leaves empty. Default: the palette's first transparent symbol."},
+        },
+        anyOf=[{"required": ["flip"]}, {"required": ["shift"]}],
+    )
+    add(
+        "sprite-sheet",
+        {
+            "cell": {"type": "array", "items": {"type": "integer", "minimum": 1, "maximum": 1024}, "minItems": 2,
+                     "maxItems": 2, "description": "Size of one frame, [width, height] in pixels."},
+            "rows": {"type": "array", "items": S, "minItems": 1, "maxItems": 64, "uniqueItems": True,
+                     "description": "Row names from the top, one per facing or state: [\"down\", \"left\", "
+                     "\"right\", \"up\"]."},
+            "columns": {"type": "integer", "minimum": 1, "maximum": 256, "description": "Frames per row."},
+            "duration": {"type": "integer", "minimum": 10, "maximum": 60000,
+                         "description": "Frame time in ms for clips that give none (default 100)."},
+            "clips": {
+                "type": "object", "maxProperties": 256,
+                "description": "Named clips for the exported metadata: {name: {row, frames, duration, durations, "
+                "loop}}. frames lists column indexes in play order (default every column); a clip without row "
+                "stands for one per row, named NAME-ROW ({\"walk\": {}, \"idle\": {\"frames\": [0]}} gives "
+                "walk-down, idle-left ...). Without clips each row is one clip named after the row.",
+            },
+            "fit_canvas": {**B, "description": "Resize the canvas to the grid, columns x rows cells (default true)."},
+            "delete": {**B, "description": "Remove the sheet declaration (layers stay where they are)."},
+        },
+    )
     add(
         "frame-save",
         {"name": S, "duration": {"type": "integer", "minimum": 10, "maximum": 60000, "multipleOf": 10}},
@@ -143,6 +194,11 @@ def _flag_or_color(value):
     return {"true": True, "false": False}.get(value.lower(), value)
 
 
+def _cell(value):
+    row, _, column = value.rpartition(",")
+    return [int(row) if row.isdigit() else row, int(column)]
+
+
 def compile_pixel(cmd, args):
     from .commands import Parser
 
@@ -161,14 +217,30 @@ def compile_pixel(cmd, args):
         p.add_argument("--mirror", choices=list(MIRRORS), help="rows give the left (x) or top (y) half")
         p.add_argument("--shading", type=json.loads, help="true, false or JSON {light, colors, highlight}")
         p.add_argument("--outline", type=_flag_or_color, help="true, false or a colour")
+        p.add_argument("--cell", type=_cell, metavar="ROW,COLUMN", help="sprite-sheet cell, e.g. left,2")
     elif cmd == "pixel-draw":
         p.add_argument("target")
-        p.add_argument("tool", choices=["pixel", "line", "rect", "fill"])
+        p.add_argument("tool", choices=list(TOOLS))
         p.add_argument("x", type=int)
         p.add_argument("y", type=int)
         p.add_argument("--color", required=True)
         for key in ("x2", "y2", "width", "height"):
             p.add_argument("--" + key, type=int)
+        p.add_argument("--only", nargs="+", metavar="SYMBOL", help="overwrite only cells holding these symbols")
+    elif cmd == "pixel-transform":
+        p.add_argument("target")
+        p.add_argument("--flip", choices=list(FLIPS))
+        p.add_argument("--shift", nargs=2, type=int, metavar=("DX", "DY"))
+        p.add_argument("--wrap", action="store_true", default=None)
+        p.add_argument("--fill", help="palette symbol for the cells a shift leaves empty")
+    elif cmd == "sprite-sheet":
+        p.add_argument("--cell", nargs=2, type=int, metavar=("WIDTH", "HEIGHT"))
+        p.add_argument("--rows", nargs="+", metavar="NAME")
+        p.add_argument("--columns", type=int)
+        p.add_argument("--duration", type=int)
+        p.add_argument("--clips", type=json.loads, help="JSON {name: {row, frames, duration, durations, loop}}")
+        p.add_argument("--no-fit-canvas", dest="fit_canvas", action="store_false", default=None)
+        p.add_argument("--delete", action="store_true", default=None)
     elif cmd == "pixel-palette":
         p.add_argument("target")
         p.add_argument("--colors", type=json.loads)

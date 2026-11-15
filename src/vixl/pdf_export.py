@@ -119,6 +119,7 @@ class PageBuilder:
         self.xobjects, self.states, self.shadings = {}, {}, {}
         self.fallbacks = []
         self.jpeg_quality = None  # set: raster images are written as JPEG at this quality
+        self.tags = None  # pdf_structure.PageTags of a tagged export
 
     def alpha(self, fill=1.0, stroke=1.0):
         fill, stroke = round(fill, 4), round(stroke, 4)
@@ -190,7 +191,8 @@ class PageBuilder:
     @staticmethod
     def marked_content(layer):
         """The operator opening a layer's marked content: ``/Figure <</Alt …>> BDC`` for a layer with alt text,
-        ``/Artifact BMC`` for a decorative one, else None. (Untagged: no structure tree refers to them.)"""
+        ``/Artifact BMC`` for a decorative one, else None. (Untagged: no structure tree refers to them; a tagged
+        export marks content through ``pdf_structure.PageTags`` instead.)"""
         from .accessibility import decorative
 
         if layer.get("alt"):
@@ -204,6 +206,20 @@ class PageBuilder:
         index = {item["id"]: item for item in layers}
         for layer in layers:
             if layer.get("parent") != parent or not layer["visible"] or layer["opacity"] <= 0:
+                continue
+            tags = self.tags
+            if tags is not None:
+                # Tagged: one marked sequence per meaningful layer; nothing inside it is marked again.
+                opened = None if tags.inside else tags.open(self, layer, bounds[layer["id"]], matrix, index, layers)
+                if opened:
+                    self.ops.append(opened)
+                    tags.inside = True
+                try:
+                    self.draw_layer(layer, layers, bounds, parent, matrix, index)
+                finally:
+                    if opened:
+                        tags.inside = False
+                        self.ops.append("EMC")
                 continue
             opened = self.marked_content(layer)
             if opened:
@@ -451,7 +467,7 @@ class PageBuilder:
                 if kind == "highlight":
                     self.fill_ops([f"{_fmt(x)} {_fmt(y)} {_fmt(w)} {_fmt(h)} re"], rgba, opacity)
             glyphs = [(g.data, g.name, g.x, g.y, g.size, g.text, g.color, g.bold, g.italic) for g in result.glyphs]
-            self.glyph_runs(glyphs, opacity, stroke_width, stroke_color)
+            self.glyph_runs(glyphs, opacity, stroke_width, stroke_color, [g.turn for g in result.glyphs])
             for x, y, w, h, rgba, kind in result.rects:
                 if kind != "highlight":
                     self.fill_ops([f"{_fmt(x)} {_fmt(y)} {_fmt(w)} {_fmt(h)} re"], rgba, opacity)
@@ -466,7 +482,10 @@ class PageBuilder:
         self.ops.append(matrix_ops(affine(layer["width"] / max(1, layout.width), 0, 0, layer["height"] / max(1, layout.height))))
         glyphs = plan_glyphs(self.view, layer, layout)
         if glyphs is None:
+            from .color_fonts import ColorGlyph
             from .emojis import EmojiArt
+            if any(isinstance(path, ColorGlyph) for path, _ in layout.paths):
+                raise Unsupported("colour font glyphs on a path use appearance-preserving raster export")
             if any(isinstance(path, EmojiArt) for path, _ in layout.paths):
                 raise Unsupported("VIXL emoji artwork uses appearance-preserving raster export")
             # Warped or path text: its outlines, as filled paths.
@@ -484,13 +503,25 @@ class PageBuilder:
         self.glyph_runs([(d, n, x, y, s, t, fill, False, False) for d, n, x, y, s, t in glyphs], opacity, stroke_width,
                         stroke_color)
 
-    def glyph_runs(self, glyphs, opacity, stroke_width, stroke_color):
+    def glyph_runs(self, glyphs, opacity, stroke_width, stroke_color, turns=None):
+        """``turns`` gives each glyph its ``(degrees, pivot x, pivot y)`` or None (hand-set and rotated rich-text
+        words): a turned run is the same text object with the turn in its text matrix, so it stays real text."""
         from .emojis import is_glyph
         if any(is_glyph(g[0]) for g in glyphs):
             raise Unsupported("VIXL emoji artwork uses appearance-preserving raster export")
+        from .color_fonts import ColorGlyph
         from .text import face, glyph_outline
         from .geometry import parse_path
 
+        # Colour-font glyphs: flat COLRv0 layers are vector paths; gradients, SVG glyphs and bitmap strikes are not
+        # written as PDF content, so the layer becomes an image of what the renderer draws.
+        colored = {}
+        for index, glyph in enumerate(glyphs):
+            art = glyph_outline(glyph[0], glyph[1], glyph[4])[0]
+            if isinstance(art, ColorGlyph):
+                if art.layers is None:
+                    raise Unsupported(f"{art.kind} colour font glyphs use appearance-preserving raster export")
+                colored[index] = art
         passes = [("stroke", stroke_color)] if stroke_width else []
         passes.append(("fill", None))
         for mode, override in passes:
@@ -502,7 +533,7 @@ class PageBuilder:
                 # adjustments so viewers place every glyph exactly and read the run as a line.
                 if not run:
                     return
-                size, skew, x0, y0, width_op, items = run
+                size, skew, x0, y0, width_op, items, turn = run
                 if width_op:
                     block.append(width_op)
                 # Letter spacing (tracking) is the run's character spacing, Tc, so a text extractor does not read
@@ -523,11 +554,22 @@ class PageBuilder:
                             hexes = []
                 if hexes:
                     parts.append(f"<{''.join(hexes)}>")
-                block.extend([f"{_fmt(size)} 0 {_fmt(skew)} {_fmt(-size)} {_fmt(x0)} {_fmt(y0)} Tm",
-                              f"[{' '.join(parts)}] TJ"])
+                matrix = _turned((size, 0, skew, -size, x0, y0), turn)
+                block.extend([" ".join(_fmt(v) for v in matrix) + " Tm", f"[{' '.join(parts)}] TJ"])
 
-            for data, name, x, y, size, text, rgba, bold, italic in glyphs:
+            for index, (data, name, x, y, size, text, rgba, bold, italic) in enumerate(glyphs):
+                turn = turns[index] if turns else None
                 paint = override or rgba
+                if index in colored:
+                    # Each layer in its palette colour (the text colour for the foreground entry). Like the other
+                    # renderers, a colour glyph takes no outline stroke and no synthetic bold or slant.
+                    if mode == "fill":
+                        f = size / face(data)[0]["head"].unitsPerEm
+                        self.ops += ["q", matrix_ops(affine(*_turned((f, 0, 0, -f, x, y), turn)))]
+                        for path, layer_color in colored[index].layers:
+                            self.fill_ops(path_ops(parse_path(path)), layer_color or rgba, opacity)
+                        self.ops.append("Q")
+                    continue
                 if not self.fonts.embeddable_cached(data):
                     path, _ = glyph_outline(data, name)
                     if not path:
@@ -536,7 +578,7 @@ class PageBuilder:
                     f = size / upem
                     skew = f * 0.2126 if italic else 0
                     geometry = path_ops(parse_path(path))
-                    self.ops += ["q", matrix_ops(affine(f, 0, skew, -f, x, y))]
+                    self.ops += ["q", matrix_ops(affine(*_turned((f, 0, skew, -f, x, y), turn)))]
                     if mode == "stroke":
                         self.stroke_ops(geometry, paint, 2 * stroke_width / f, opacity, 1, 1)
                     else:
@@ -566,11 +608,12 @@ class PageBuilder:
                 width = (2 * stroke_width / size) if mode == "stroke" else 0.045 if bold else None
                 width_op = f"{_fmt(width)} w" if width else None
                 advance = self.fonts.advance(data, name)
-                if run and run[0] == size and run[1] == skew and abs(run[3] - y) < 1e-3 and run[4] == width_op:
+                if run and run[0] == size and run[1] == skew and abs(run[3] - y) < 1e-3 and run[4] == width_op \
+                        and run[6] == turn:
                     run[5].append((gid, x, advance))
                 else:
                     flush()
-                    run = [size, skew, x, y, width_op, [(gid, x, advance)]]
+                    run = [size, skew, x, y, width_op, [(gid, x, advance)], turn]
             flush()
             if block:
                 self.ops += block + ["ET", "Q"]
@@ -587,6 +630,17 @@ class PageBuilder:
         if self.shadings:
             result["Shading"] = dict(self.shadings)
         return result
+
+
+def _turned(matrix, turn):
+    """``matrix`` (a, b, c, d, e, f) after a turn of ``(degrees, pivot x, pivot y)``, or itself without one."""
+    if not turn:
+        return matrix
+    from .kinetic import multiply
+
+    degrees, px, py = turn
+    c, s = math.cos(math.radians(degrees)), math.sin(math.radians(degrees))
+    return multiply((c, s, -s, c, px - px * c + py * s, py - px * s - py * c), matrix)
 
 
 class Unsupported(Exception):
@@ -655,13 +709,17 @@ def page_geometry(canvas, dpi):
 
 def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, background="white", color_space="rgb",
                jpeg_quality=None, title=None, lang=None, annotations=None, acroform=None, fillable=False, separation=None,
-               report=None, views=None):
+               report=None, views=None, tagged=False):
     """Write a PDF with one page per document page. Returns the bytes (and writes ``path``).
 
     ``views`` [(label, page view)] replaces the document's pages (combined form fills).
     ``annotations(view, page_index, builder) -> [annotation refs]`` and ``acroform(writer) ->
     dict`` let form export add fields; with ``fillable`` the page artwork leaves field values to
-    the widgets. ``report`` (a dict) receives raster fallbacks per page."""
+    the widgets. ``report`` (a dict) receives raster fallbacks per page.
+
+    ``tagged`` writes a structure tree (``pdf_structure``): MCIDs on the marked content, ``StructTreeRoot`` with
+    Document > Sect per page > H1–H3, P, Figure and Form in reading order, a ``ParentTree`` and ``/MarkInfo``.
+    Without it the file is exactly what it was before tagging existed."""
     require(content in ("vector", "raster"), "pdf content must be vector or raster", field="content")
     require(color_space in ("rgb", "cmyk"), "Color space must be rgb or cmyk")
     canvas = project.state["canvas"]
@@ -676,6 +734,11 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
     writer = Writer(stream)
     fonts = Fonts()
     images = {}
+    structure = None
+    if tagged:
+        from .pdf_structure import ARTIFACT, Structure
+
+        structure = Structure(writer)
     pages_ref = writer.reserve()
     kids = []
     fallbacks = {}
@@ -697,6 +760,8 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
         builder = PageBuilder(project, view, writer, fonts, images, paint)
         builder.k, builder.ky, builder.fillable = kx, ky, fillable
         builder.jpeg_quality = jpeg_quality
+        page_ref = writer.reserve() if structure else None
+        tags = builder.tags = structure.page(view, page_ref) if structure else None
         builder.ops.append(f"{_fmt(kx)} 0 0 {_fmt(-ky)} 0 {_fmt(height)} cm")
         if content == "raster":
             image = render(view)
@@ -717,13 +782,24 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
             else:
                 ref = image_xobject(writer, flat)
             builder.xobjects["Im1"] = ref
+            if tags:
+                from .render import resolve_layout, resolved_layers
+
+                layers = resolved_layers(view)
+                builder.ops.append(tags.page_figure(layers, resolve_layout(view, layers=layers)))
             builder.ops += ["q", f"{_fmt(c['width'])} 0 0 {_fmt(-c['height'])} 0 {_fmt(c['height'])} cm", "/Im1 Do", "Q"]
+            if tags:
+                builder.ops.append("EMC")
         else:
             rgba = color(resolve_color(c["background"], view.state))
             back = color(background)
+            if tags:
+                builder.ops.append(ARTIFACT)
             if rgba[3] < 255:
                 builder.fill_ops([f"0 0 {_fmt(c['width'])} {_fmt(c['height'])} re"], back, 1)
             builder.fill_ops([f"0 0 {_fmt(c['width'])} {_fmt(c['height'])} re"], rgba, 1)
+            if tags:
+                builder.ops.append("EMC")
             from .render import resolve_layout, resolved_layers
 
             layers = resolved_layers(view)
@@ -733,7 +809,11 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
                 # Backdrop-dependent layers: the whole page as one image.
                 builder.fallback({"type": "page", "name": "page"}, "blend modes or adjustment layers depend on the backdrop")
                 image = render(view)
+                if tags:
+                    builder.ops.append(tags.page_figure(layers, bounds))
                 builder.place_image(image, np.eye(3), (0, 0, image.width, image.height))
+                if tags:
+                    builder.ops.append("EMC")
             else:
                 builder.draw(layers, bounds)
         annots = annotations(view, number, builder) if annotations else []
@@ -748,7 +828,10 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
         extra = getattr(builder, "page_extra", None)
         if extra:
             page.update(extra)
-        kids.append(writer.add(page))
+        if tags:
+            page["StructParents"] = tags.finish()
+            page.setdefault("Tabs", Name("S"))
+        kids.append(writer.add(page, page_ref))
         if builder.fallbacks:
             fallbacks[label] = builder.fallbacks
     fonts.write(writer)
@@ -781,12 +864,17 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
         catalog["Lang"] = Text(lang)
     if acroform is not None:
         catalog["AcroForm"] = acroform(writer)
+    if structure:
+        catalog["StructTreeRoot"] = structure.finish()
+        catalog["MarkInfo"] = {"Marked": True}
     root = writer.add(catalog)
     writer.finish(root, info)
     data = stream.getvalue()
     if report is not None:
         report.update(pages=len(kids), content=content, color_space=color_space, raster_fallbacks=fallbacks,
                       fonts=len(fonts.fonts), page_size=page_size)
+        if structure:
+            report["tagged"] = True
     if path:
         Path(path).write_bytes(data)
     return data

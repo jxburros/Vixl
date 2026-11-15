@@ -1,4 +1,10 @@
-"""Durable workspace jobs. Local work is resumable; uncertain inference is never blindly retried."""
+"""Durable workspace jobs. Local work is resumable; uncertain inference is never blindly retried.
+
+A queue (``.vixl-jobs`` in a workspace) is bounded: at most ``MAX_PENDING_JOBS`` unfinished jobs
+(``VIXL_QUEUE_MAX_JOBS``), ``MAX_QUEUE_MB`` of records, snapshots and staged results (``VIXL_QUEUE_MAX_MB``), one
+worker process, and completed, failed and cancelled jobs deleted ``RETENTION_DAYS`` after they ended
+(``VIXL_QUEUE_RETENTION_DAYS``; outputs already published to the workspace are kept). ``0`` turns one quota off.
+"""
 
 import base64
 from concurrent.futures import ThreadPoolExecutor
@@ -7,6 +13,7 @@ from dataclasses import asdict
 import hashlib
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import time
@@ -22,6 +29,34 @@ from .production import read_json, write_json, write_bytes, file_digest, publish
 
 BUILTIN_KINDS = ("production", "film", "generate", "video", "lyric-video", "form-fill")
 TERMINAL = ("completed", "failed", "cancelled", "needs_review")
+# A needs_review job holds what a person needs to settle uncertain paid inference, so it is never pruned.
+PRUNED = ("completed", "failed", "cancelled")
+MAX_PENDING_JOBS = 64
+MAX_QUEUE_MB = 4096
+RETENTION_DAYS = 7
+QUOTA_ENV = {"max_pending_jobs": "VIXL_QUEUE_MAX_JOBS", "max_queue_mb": "VIXL_QUEUE_MAX_MB",
+             "retention_days": "VIXL_QUEUE_RETENTION_DAYS"}
+WORKER_START_SECONDS = 20
+
+
+def quota(name):
+    """One queue quota: its environment variable when set (``0`` is off, returned as None), else the default."""
+    default = {"max_pending_jobs": MAX_PENDING_JOBS, "max_queue_mb": MAX_QUEUE_MB, "retention_days": RETENTION_DAYS}[name]
+    raw = os.environ.get(QUOTA_ENV[name])
+    if raw is None or not raw.strip():
+        return default or None
+    try:
+        value = int(raw) if name == "max_pending_jobs" else float(raw)
+        require(value >= 0 and value == value and value != float("inf"), "negative")
+    except (ValueError, VixlError) as exc:
+        raise VixlError("invalid_input", f"{QUOTA_ENV[name]} must be a number, 0 or more (0 turns the quota off); "
+                        f"got {raw!r}") from exc
+    return value or None
+
+
+def quotas():
+    """The quotas a queue runs with, as ``submit`` and ``start`` results and errors report them."""
+    return {name: quota(name) for name in QUOTA_ENV}
 
 
 class Queue:
@@ -65,7 +100,118 @@ class Queue:
                 job["deliveries"] = deliveries
                 write_json(self.path(job["id"]), job)
 
+    def lock(self, name, timeout):
+        self.directory.mkdir(parents=True, exist_ok=True)
+        return FileLock(str(self.directory / name), timeout=timeout)
+
+    def records(self):
+        """``(id, status, updated)`` of every readable job record."""
+        found = []
+        for path in sorted(self.directory.glob("*.json")):
+            try:
+                job = read_json(path)
+                found.append((path.stem, job["status"], float(job.get("updated") or job["created"])))
+            except (VixlError, KeyError, TypeError, ValueError):
+                continue
+        return found
+
+    def disk_bytes(self):
+        """Bytes under the queue folder (records, input snapshots, checkpoints and staged results)."""
+        total, stack = 0, [self.directory]
+        while stack:
+            try:
+                with os.scandir(stack.pop()) as entries:
+                    for entry in entries:
+                        if entry.is_dir(follow_symlinks=False):
+                            stack.append(entry.path)
+                        else:
+                            total += entry.stat(follow_symlinks=False).st_size
+            except OSError:
+                continue
+        return total
+
+    def remove(self, ident):
+        """Delete one job: its record, folder, cancel marker and lock file."""
+        record = self.path(ident)
+        shutil.rmtree(self.directory / ident, ignore_errors=True)
+        for path in (self.directory / (ident + ".cancel"), record, Path(str(record) + ".worker")):
+            try:
+                path.unlink()
+            except OSError:
+                pass
+
+    def prune(self, now=None):
+        """Delete completed, failed and cancelled jobs that ended more than the retention period ago; the
+        ids removed. Outputs published to the workspace are not touched."""
+        days = quota("retention_days")
+        if days is None or not self.directory.is_dir():
+            return []
+        cutoff = (time.time() if now is None else now) - days * 86400
+        removed = []
+        for ident, status, updated in self.records():
+            if status not in PRUNED or updated > cutoff:
+                continue
+            try:
+                with FileLock(str(self.path(ident)) + ".worker", timeout=0):
+                    self.remove(ident)
+            except Timeout:
+                continue
+            removed.append(ident)
+        return removed
+
+    def usage(self):
+        """Pending job count and megabytes used, next to the quotas."""
+        pending = sum(1 for _, status, _ in self.records() if status not in TERMINAL)
+        return {"pending": pending, "disk_mb": round(self.disk_bytes() / 1048576, 1), **quotas()}
+
     def submit(self, payload):
+        """Queue a job, inside the queue's quotas: old finished jobs are pruned first, then a queue at its
+        pending-job or disk cap refuses with ``queue_full`` before anything is written. A job whose input
+        snapshot takes the queue over the disk cap is removed again."""
+        try:
+            with self.lock(".queue.lock", 30):
+                self.prune()
+                self._admit()
+                before = {path.stem for path in self.directory.glob("*.json")}
+                try:
+                    job = self._submit(payload)
+                finally:
+                    # A refused or failed submission leaves no half-written snapshot folder behind.
+                    for folder in self.directory.iterdir():
+                        if (folder.is_dir() and folder.name not in before
+                                and not (self.directory / (folder.name + ".json")).exists()):
+                            shutil.rmtree(folder, ignore_errors=True)
+                limit = quota("max_queue_mb")
+                used = self.disk_bytes() / 1048576
+                if limit is not None and used > limit:
+                    self.remove(job["id"])
+                    raise self._full("max_queue_mb", round(used, 1), limit, "This job's input snapshot takes the "
+                                     f"job queue over its disk quota of {limit:g} MB")
+                return job
+        except Timeout as exc:
+            raise self._full("queue_lock", 1, 1, "The job queue is busy with another submission") from exc
+
+    @staticmethod
+    def _full(limit, value, maximum, message):
+        hint = ("Retry in a few seconds." if limit == "queue_lock" else
+                "Wait for jobs to finish (status), cancel the ones no longer needed, or delete finished job folders "
+                f"from .vixl-jobs; an operator can raise the quota with {QUOTA_ENV[limit]}.")
+        return VixlError("limit_exceeded", f"{message}. {hint}", limit=limit, value=value, maximum=maximum, hint=hint)
+
+    def _admit(self):
+        maximum = quota("max_pending_jobs")
+        if maximum is not None:
+            pending = sum(1 for _, status, _ in self.records() if status not in TERMINAL)
+            if pending >= maximum:
+                raise self._full("max_pending_jobs", pending + 1, maximum, f"The job queue already holds {pending} "
+                                 f"unfinished jobs, the most it takes")
+        limit = quota("max_queue_mb")
+        used = self.disk_bytes() / 1048576
+        if limit is not None and used >= limit:
+            raise self._full("max_queue_mb", round(used, 1), limit, f"The job queue uses its whole disk quota of "
+                             f"{limit:g} MB")
+
+    def _submit(self, payload):
         from .project import Project
         from .production import plan
         from .plugins.film.film import plan as film_plan
@@ -540,12 +686,41 @@ class Queue:
 
     def work(self, workers=1):
         require(type(workers) is int and 1 <= workers <= 4, "Workers must be 1–4")
+        self.prune()
         ids = [p.stem for p in sorted(self.directory.glob("*.json"))]
         with ThreadPoolExecutor(max_workers=workers) as executor:
             return list(executor.map(self.work_one, ids))
 
+    def worker_alive(self):
+        """The pid of the worker process that holds this queue's worker lock (0 when its pid file is
+        unreadable), or None when no worker is running."""
+        try:
+            with self.lock(".worker.lock", 0):
+                return None
+        except Timeout:
+            pass
+        try:
+            return int((self.directory / ".worker.pid").read_text(encoding="ascii"))
+        except (OSError, ValueError):
+            return 0
+
     def start(self, workers=1):
+        """Launch the queue's background worker, unless one is running: a queue has one worker process
+        (with 1–4 threads). The call returns once the new worker holds the queue, or has already finished."""
         require(type(workers) is int and 1 <= workers <= 4, "Workers must be 1–4")
+        try:
+            with self.lock(".start.lock", WORKER_START_SECONDS + 10):
+                return self._start(workers)
+        except Timeout as exc:
+            raise self._full("queue_lock", 1, 1, "Another call is starting this queue's worker") from exc
+
+    def _start(self, workers):
+        # "." as vixl_document list reports it: MCP and REST results never reveal where the workspace is.
+        running = self.worker_alive()
+        if running is not None:
+            return {**({"worker_pid": running} if running else {}), "workspace": ".", "already_running": True,
+                    "note": "This queue's worker is already running and picks up queued jobs; a queue has one "
+                            "worker process."}
         command = (
             [
                 sys.executable,
@@ -568,17 +743,33 @@ class Queue:
             creationflags=flags,
             start_new_session=os.name != "nt",
         )
-        # "." as vixl_document list reports it: MCP and REST results never reveal where the workspace is.
+        # Hold the start lock until the worker has the queue (or has drained it and left), so a second start
+        # sees it instead of launching another process.
+        deadline = time.monotonic() + WORKER_START_SECONDS
+        while process.poll() is None and self.worker_alive() is None and time.monotonic() < deadline:
+            time.sleep(0.05)
         return {"worker_pid": process.pid, "workspace": "."}
 
 
 def worker(workspace, workers=1):
+    """Work the queue until it is idle. One worker runs per queue: a second one finds the worker lock held
+    and returns (False)."""
     queue = Queue(workspace)
-    while True:
-        jobs = queue.work(workers)
-        if not any(j["status"] in ("queued", "running", "waiting") for j in jobs):
-            break
-        time.sleep(2)
+    try:
+        with queue.lock(".worker.lock", 2):
+            pid_file = queue.directory / ".worker.pid"
+            pid_file.write_text(str(os.getpid()), encoding="ascii")
+            try:
+                while True:
+                    jobs = queue.work(workers)
+                    if not any(j["status"] in ("queued", "running", "waiting") for j in jobs):
+                        break
+                    time.sleep(2)
+            finally:
+                pid_file.unlink(missing_ok=True)
+    except Timeout:
+        return False
+    return True
 
 
 def job_kind(kind):

@@ -9,7 +9,10 @@ document before changing anything.
 
 | Symptom | Cause to check | Next step |
 | --- | --- | --- |
-| `vixl` is not found | Terminal/client PATH or inactive virtual environment | Activate the environment or reopen the terminal; Windows users see [PATH repair](reference/releases.md#using-the-current-terminal) |
+| `vixl` is not found | Terminal/client PATH or inactive virtual environment; a client that starts the server with `uvx` never puts `vixl` on PATH | Activate the environment or reopen the terminal; Windows users see [PATH repair](reference/releases.md#using-the-current-terminal). `python -m vixl …` is the same CLI; in a source checkout `PYTHONPATH=$PWD/src python -m vixl …`; with uv, `uvx --from vixl-engine vixl …` ([agent setup](reference/interfaces.md#agent-setup-finding-the-cli-and-waiting-for-the-server)) |
+| The `vixl_*` tools are missing at the start of an agent session | The MCP server is still starting (a first `uvx` run downloads the package) | Wait for the client to list the tools, or use the CLI meanwhile; install the package in the environment's setup step to start at once ([agent setup](reference/interfaces.md#agent-setup-finding-the-cli-and-waiting-for-the-server)) |
+| Every check asks for review of a background or decoration (`safe_area.outside`) | The layer is checked as content | Create it with `role: "decoration"` (or `"background"`), or mark it: `{"type": "layer-intent", "target": NAME, "role": "decoration"}`; the finding becomes informational and is listed under `outcome.accepted` |
+| A `.vixl` made in a repository is not in `git status` | The repository ignores it (a local `vixl mcp` says so: `git: "ignored…"` on `create`) | Create it in a tracked folder or add an exception to `.gitignore` ([where files go](reference/interfaces.md#where-files-go)) |
 | Old version after updating | Another executable on PATH or a running old session | Check executable location, run its `--version`, restart the client/session |
 | Server/view or PDF import is unavailable | Missing optional dependency | Install `.[server]` or `.[pdf]` in the same environment as Vixl |
 | Command edits the wrong file | Directory-default project selection | Pass `-p file.vixl` explicitly (the terminal summary starts with the file it edited); MCP tools accept `document=` |
@@ -83,8 +86,8 @@ is recorded and the renderer does no extra work.
 | `layers` | The 25 slowest layers drawn from scratch: `ms` (its own time; a group's excludes its children), `draws`, and `stages_ms` (`draw`, `effects`, `transform`) |
 | `by_type` | Time and count per layer type |
 | `phases_ms` | `render` (whole renders), `resolve` and `layout` (resolving variables and constraints), `styles` (drop shadows, glows, strokes), `frame_setup` and `frame_raster` (timeline exports) |
-| `caches` | `layer_hits`, `layer_misses`, `layer_writes`, `layer_evictions`, `layer_uncacheable` (rendered layers and composited groups), `styled_hits`/`styled_misses`, `svg_hits`/`svg_misses` (rasterised text and paths; process-wide), `disk_hits`, `disk_misses`, `disk_writes`, `disk_frame_hits`, `disk_frame_misses`, `disk_frame_writes`, `disk_frame_writes_skipped`, `disk_evictions`, `disk_bytes_written` |
-| `renders` | Each render: `incremental` (only a box was redrawn), `dirty_box` and `dirty_pixels` against `canvas_pixels`, `from_disk`, or the `reason` it drew everything |
+| `caches` | `layer_hits`, `layer_misses`, `layer_writes`, `layer_evictions`, `layer_uncacheable` (rendered layers and composited groups), `styled_hits`/`styled_misses`, `svg_hits`/`svg_misses` (rasterised text and paths; process-wide), `glyph_hits`/`glyph_misses` (glyphs of plain text layers found in the glyph cache), `disk_hits`, `disk_misses`, `disk_writes`, `disk_frame_hits`, `disk_frame_misses`, `disk_frame_writes`, `disk_frame_writes_skipped`, `disk_evictions`, `disk_bytes_written` |
+| `renders` | Each render: `incremental` (only a box was redrawn), `dirty_box` and `dirty_pixels` against `canvas_pixels`, `from_disk`, `tiled` (a large PNG export composited and encoded band by band), or the `reason` it drew everything |
 
 To find the culprit without reading numbers, run the opt-in `cost` check: it draws the document once with empty
 caches and flags, as a `review` finding, every layer that takes over 10× the median layer and at least 50 ms,
@@ -100,6 +103,14 @@ ahead on a pool of threads while the stack is composited in order, so the pixels
 `VIXL_RENDER_THREADS` sets its size (default: one per core, at most 8; `0` or `1` turns it off). Plain vector shapes
 and text are not drawn ahead: their rasteriser holds Python's interpreter lock, so threads would only add overhead.
 With `VIXL_PROFILE=1` every layer is drawn on the calling thread, so the profile stays per layer.
+Labels that differ by a few characters ("Label 1", "Label 2", a counter across frames) share their glyphs: a glyph
+is rasterised once for each place it takes in a label's box and reused by every label that has it there, with
+the pixels of the whole-layer rasterisation (500 such labels render cold in about 120 ms instead of 390 ms).
+Text that does not repeat is drawn as before, one rasteriser call per layer. `VIXL_GLYPH_CACHE=off` turns the
+reuse off.
+
+Canvases over 8 million pixels are composited as tiles on the same threads, and a PNG export of one is encoded
+band by band without holding the canvas ([large canvases](guides/output/exporting.md#large-canvases)).
 
 The disk cache (`vixl cache info`, `vixl cache clear`, `VIXL_RENDER_CACHE=off`, `VIXL_CACHE_MAX_MB`) is described
 under [production](guides/automation/production.md#persistent-rendering-cache-and-library). Long timeline exports report per-frame

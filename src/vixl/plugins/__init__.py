@@ -24,6 +24,7 @@ here, so ``vixl.plugins.enable_plugins`` and friends keep working.
 
 from functools import lru_cache
 from importlib import import_module
+from typing import Any
 
 from .external import discover, enable_plugins, filter_plugin, load, package, run  # noqa: F401
 
@@ -39,6 +40,7 @@ BUILTIN = (
     "film",
     "lyrics",
     "imposition",
+    "print_templates",
     "brand_kit",
     "deck_markdown",
     "teamwork",
@@ -50,9 +52,11 @@ BUILTIN = (
     "localization",
     "figma_import",
     "pdf_import",
+    "psd_import",
     "ai",
     "spelling",
     "lottie",
+    "object_detect",
 )
 
 ROLES = ("operations", "commands", "workflows")
@@ -68,6 +72,8 @@ HOOKS = {
     "after-apply": "fn(project): refresh derived plugin state once a batch has applied",
     "variables": "fn(project) -> {name: value}: derived variables merged under the data. prefix once per resolve pass",
     "apply-report": "fn(project, operations, result): add plugin keys to the apply result",
+    "target-resolver": "fn(project, address) -> [layer ids], or None when the address object given as an "
+                       "operation's target is not the plugin's (a chart mark is {chart, series?, category?, part?})",
     "export-format": "fn(project, path, format, report, **options) -> data, or None when the format is not the plugin's",
     "timeline-export-format": "fn(project, path, format, **options) -> report or None: export a timeline interchange format",
     "import-format": "fn(project, data, format, **options) -> result, or None when the format is not the plugin's",
@@ -194,7 +200,7 @@ def optional_checks():
     return tuple(name for m in manifests() for name in m.get("checks", ()))
 
 
-def first(point, *args, **kwargs):
+def first(point: str, *args: Any, **kwargs: Any) -> Any:
     """The first non-None result of a hook point, or None."""
     for fn in hooks(point):
         result = fn(*args, **kwargs)

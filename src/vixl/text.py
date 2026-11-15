@@ -17,6 +17,7 @@ from fontTools.ttLib import TTFont
 from fontTools.unicodedata import script
 import uharfbuzz as hb
 
+from . import color_fonts
 from .constants import BUNDLED_FALLBACKS as BUNDLED_FALLBACKS, BUNDLED_FONTS, PROOFING_FONT
 from .errors import require
 from .model import finite
@@ -68,10 +69,10 @@ def face(data):
 def _face(data):
     data = data[0] if isinstance(data, tuple) else data
     outline = TTFont(io.BytesIO(data))
-    if not any(table in outline for table in ("glyf", "CFF ", "CFF2")) or any(
-        table in outline for table in ("COLR", "CBDT", "sbix", "SVG ")
-    ):
-        raise UnsupportedText("bitmap/color fonts require appearance-preserving raster export")
+    # Colour fonts (COLR, OpenType-SVG, CBDT, sbix) are drawn from their colour glyphs (color_fonts), so a font
+    # needs outlines or one of those; a plain bitmap font (EBDT) has neither.
+    if not color_fonts.has_outlines(outline) and not color_fonts.formats(outline):
+        raise UnsupportedText("bitmap fonts without outlines or colour glyphs require appearance-preserving raster export")
     native = hb.Face(data)
     font = hb.Font(native)
     font.scale = (native.upem, native.upem)
@@ -401,6 +402,14 @@ def bidi_runs(text):
         raise UnsupportedText("Unicode isolate controls require raster text layout") from exc
     logical = list(storage["chars"])
     tags = script_tags([char["ch"] for char in logical])
+    if "\u200d" in text:
+        # Rule X9 dropped the zero-width joiners, and an emoji sequence drawn by a font (emoji mode font) is one
+        # glyph only with them: each goes back after the character it followed.
+        for char in logical:
+            index = char["index"] + 1
+            while index < len(text) and text[index] == "\u200d":
+                char["ch"] += "\u200d"
+                index += 1
     result = []
     for char, tag in zip(logical, tags):
         key = (char["level"], tag)
@@ -576,13 +585,33 @@ def shape(data, text, size, small_caps=False):
     return glyphs, cursor
 
 
+def glyph_outline(data, name, size=None):
+    """``(outline, bounds)`` of one glyph in font units, y up: an SVG path, or artwork (``EmojiArt``) for an emoji
+    of the library and for a colour-font glyph (``color_fonts.ColorGlyph``). ``size``, the pixel size it is drawn
+    at, picks the strike of a bitmap colour font (the smallest one at least that large; the largest without it)."""
+    return _glyph_outline(data, name, color_fonts.strike_for(_strikes(data), size))
+
+
+@lru_cache(maxsize=64)
+def _strikes(data):
+    from .emojis import is_glyph
+
+    return () if is_glyph(data) else color_fonts.strikes(face(data)[0])
+
+
 @lru_cache(maxsize=2048)
-def glyph_outline(data, name):
+def _glyph_outline(data, name, strike):
     from .emojis import is_glyph, GLYPH, EmojiArt
 
     if is_glyph(data):
         return EmojiArt(data[len(GLYPH) :].decode()), (0, -14, 72, 58)
-    glyphs = face(data)[0].getGlyphSet()
+    outline = face(data)[0]
+    art = color_fonts.glyph(outline, name, strike)
+    if art is not None:
+        return art, art.bounds
+    if not color_fonts.has_outlines(outline):
+        return "", None
+    glyphs = outline.getGlyphSet()
     pen = SVGPathPen(glyphs)
     glyphs[name].draw(pen)
     bounds = BoundsPen(glyphs)
@@ -983,7 +1012,7 @@ def _measured(data, text, size, spacing, align, width, wrap, tabs):
         offset = (widest - advance) / 2 if align == "center" else widest - advance if align == "right" else 0
         for glyph in glyphs:
             factor = size / face(glyph.data)[0]["head"].unitsPerEm
-            path, box = glyph_outline(glyph.data, glyph.name)
+            path, box = glyph_outline(glyph.data, glyph.name, size)
             if path:
                 x, y = glyph.x + offset, glyph.y + ascent + i * line_height
                 paths.append((path, (factor, 0, 0, -factor, x, y)))
@@ -1127,6 +1156,9 @@ def plan(project, layer):
         positioned = path_layout(data, layer["text"], size, settings["path"])
     if settings.get("warp", "none") != "none":
         from .emojis import EmojiArt
+        require(not any(isinstance(path, color_fonts.ColorGlyph) for path, _ in positioned),
+                "Colour font glyphs cannot be bent with text warp; use unwarped text or an outline font",
+                "unsupported_text")
         require(not any(isinstance(path, EmojiArt) for path, _ in positioned),
                 "Emoji artwork cannot be bent with text warp; use unwarped text or font mode", "unsupported_text")
         positioned = warped(positioned, target_w, target_h, settings)
@@ -1175,7 +1207,7 @@ def path_layout(data, text, size, points):
                 t = (center - offset) / length
                 dx, dy = (b[0] - a[0]) / length, (b[1] - a[1]) / length
                 factor = size / face(glyph.data)[0]["head"].unitsPerEm
-                path, _ = glyph_outline(glyph.data, glyph.name)
+                path, _ = glyph_outline(glyph.data, glyph.name, size)
                 if not path:
                     break
                 x, y = a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])
@@ -1277,7 +1309,7 @@ def append_paths(parent, layout, layer, project, motion=None):
         from .emojis import EmojiArt, append_art
 
         if isinstance(path, EmojiArt):
-            append_art(parent, path, matrix, float(extra.get("opacity", 1)))
+            append_art(parent, path, matrix, float(extra.get("opacity", 1)), paint)
             continue
         attrs = {
             "d": path,
@@ -1322,8 +1354,23 @@ def render_text(project, layer, size=None, matrix=None):
     stroked = layer.get("stroke_width", 0) > 0 and color_of(project, layer, "stroke_color", "black")[3] > 0
     if not stroked and not any(isinstance(path, EmojiArt) for path, _ in layout.paths):
         # One paint: rasterise the glyphs once as a stencil and paint it, so a recoloured label reuses them.
-        append_paths(parent, layout, {**layer, "color": "black"}, project)
-        return painted(ET.tostring(root, encoding="unicode"), color_of(project, layer, "color", "white"))
+        markup = []
+
+        def svg():
+            if not markup:
+                append_paths(parent, layout, {**layer, "color": "black"}, project)
+                markup.append(ET.tostring(root, encoding="unicode"))
+            return markup[0]
+
+        if matrix is None and size is None and layout.shaped:
+            # Glyphs other labels already drew at the same place in their box are not rasterised again.
+            from .glyph_cache import stencil as glyph_stencil
+            from .vector_raster import cached_stencil, paint
+
+            mask = glyph_stencil(layout.paths, width, height, lambda: cached_stencil(svg()))
+            if mask is not None:
+                return paint(mask, color_of(project, layer, "color", "white"))
+        return painted(svg(), color_of(project, layer, "color", "white"))
     append_paths(parent, layout, layer, project)
     return rasterize(ET.tostring(root, encoding="unicode"))
 
@@ -1344,6 +1391,28 @@ def font_digest(data):
 
 # Fonts installed on this machine (system_fonts), for the renderer, which reaches font lookup through this module.
 FONT_FILE_EXTENSIONS = (".ttf", ".otf", ".ttc", ".otc")
+
+
+def strike_font(data, size):
+    """A Pillow handle for a colour font of fixed-size bitmaps, opened at the strike drawn for ``size``, or None
+    when ``data`` is not such a font. FreeType opens these only at one of their strikes; the glyphs themselves are
+    drawn from the strike images (``color_fonts``), so the handle only says the font is there."""
+    import io
+
+    from PIL import ImageFont
+
+    from .color_fonts import strike_for, strikes
+    from .fonts import bitmap_color_font
+
+    if not bitmap_color_font(data):
+        return None
+    ppem = strike_for(strikes(face(data)[0]), size)
+    if not ppem:
+        return None
+    try:
+        return ImageFont.truetype(io.BytesIO(data), ppem)
+    except OSError:
+        return None
 
 
 def installed_font_data(name):

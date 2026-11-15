@@ -399,10 +399,14 @@ def vector_layers(project, op):
             members = [x for x in project.state["layers"] if x["id"] in inside and x["type"] == "shape"
                        and not x.get("part_of")]
             require(members, f"{layer['name']!r} holds no vector layers (shapes, paths or strokes); text and raster "
-                    "layers cannot be made irregular", field="target")
+                    "layers cannot be made irregular (for hand-made lettering set hand_set on the text layer)",
+                    field="target")
         else:
             require(layer["type"] == "shape", f"{layer['name']!r} is a {layer['type']} layer; irregular works on "
-                    "vector layers (shapes, paths, strokes) and groups of them", field="target")
+                    "vector layers (shapes, paths, strokes) and groups of them"
+                    + ("; for hand-made lettering that stays live text use text-set with hand_set, for example "
+                       "{type: 'text-set', target: …, hand_set: {seed: 1}}" if layer["type"] == "text" else ""),
+                    field="target")
             members = [layer]
         for member in members:
             if member["id"] not in seen:

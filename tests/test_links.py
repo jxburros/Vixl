@@ -168,7 +168,8 @@ def test_missing_source_is_named_in_every_surface(tmp_path):
     (tmp_path / "tile.vixl").unlink()
     with pytest.raises(VixlError) as error:
         host.render()
-    assert error.value.code == "link_missing" and "tile.vixl" in str(error.value) and str(tmp_path) in str(error.value)
+    assert error.value.code == "link_missing" and "looked for tile.vixl" in str(error.value)
+    assert str(tmp_path) not in str(error.value)  # relative to the workspace or the document, never absolute
     (item,) = links.status(host)
     assert item["state"] == "missing" and "tile.vixl" in item["message"]
     result = check_design(host)

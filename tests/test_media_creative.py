@@ -79,8 +79,16 @@ def test_pattern_periodicity_transform_and_custom_roundtrip(tmp_path):
     project.apply({"type":"pattern-define","name":"green","target":"tile","seamless":True})
     project.apply({"type":"shape","name":"shape","shape":"ellipse","width":32,"height":32,"fill":"red"})
     project.apply({"type":"pattern-fill","target":"shape","pattern":"green","name":"fill","scale":2,"rotation":30})
+    # The texture is an effect on the shape (no second layer), labelled with the name it was given.
+    assert [layer["name"] for layer in project.state["layers"]]==["tile","shape"]
+    effect=project.layer("shape")["effects"][-1]
+    assert (effect["name"],effect["label"],effect["texture"]["pattern"])==("pattern-fill","fill","green")
     assert project.layer("shape")["type"]=="shape"
-    assert project.image(project.layer("fill")["asset"]).getpixel((16,16))[:3]==(0,128,0)
+    assert project.render().getpixel((16,16))[:3]==(0,128,0)
+    # layer: true keeps the separate raster overlay.
+    project.apply({"type":"pattern-fill","target":"shape","pattern":"green","name":"overlay","layer":True})
+    assert project.image(project.layer("overlay")["asset"]).getpixel((16,16))[:3]==(0,128,0)
+    assert project.layer("overlay")["provenance"]["type"]=="pattern-fill"
     project.save(tmp_path/"tile.vixl")
     restored=Project.load(tmp_path/"tile.vixl")
     assert textures.catalog(restored)["custom"]==["green"]
@@ -121,8 +129,15 @@ def test_drawn_texture_seed_alpha_and_pressure(tmp_path):
         assert 0 < np.asarray(a.getchannel("A")).std()
     project=Project(80,80)
     project.apply({"type":"shape","shape":"ellipse","name":"base","width":80,"height":80,"fill":"white"})
+    plain=project.render()
     project.apply({"type":"drawn-texture","target":"base","preset":"charcoal","name":"handmade"})
-    assert project.layer("base")["type"]=="shape"
+    assert project.layer("base")["type"]=="shape" and len(project.state["layers"])==1
+    effect=project.layer("base")["effects"][-1]
+    assert (effect["name"],effect["label"],effect["texture"])==("drawn-texture","handmade",{"preset":"charcoal"})
+    assert project.render().tobytes()!=plain.tobytes()
+    project.undo()
+    assert project.layer("base")["effects"]==[] and project.render().tobytes()==plain.tobytes()
+    project.apply({"type":"drawn-texture","target":"base","preset":"charcoal","name":"handmade","layer":True})
     assert project.layer("handmade")["provenance"]["type"]=="drawn-texture"
     project.undo()
     assert len(project.state["layers"])==1

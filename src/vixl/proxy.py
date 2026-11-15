@@ -7,6 +7,7 @@ inputs are fixed-size canvas rasters (effect selections) fall back to a full ren
 """
 
 from copy import copy, deepcopy
+import math
 
 from .constants import ARTISTIC_DEFAULTS
 from .design_render import repeat_items
@@ -40,6 +41,10 @@ def _scale_layer(layer, s):
         layer["size"] = max(1.0, layer["size"] * s)
     if isinstance(layer.get("tracking"), (int, float)):
         layer["tracking"] = layer["tracking"] * s
+    if isinstance(layer.get("hand_set"), dict):
+        # Pixel amounts; the ones left out follow the (scaled) size.
+        layer["hand_set"] = {key: value * s if key in ("rise", "tracking") else value
+                             for key, value in layer["hand_set"].items()}
     if layer.get("type") == "field":
         from .forms import scale_field
 
@@ -65,7 +70,7 @@ def _scale_layer(layer, s):
     rich = layer.get("rich")
     if rich:
         for span in rich["spans"]:
-            for key in ("size", "tracking"):
+            for key in ("size", "tracking", "rise"):
                 if key in span:
                     span[key] = span[key] * s
         for key in ("paragraph_spacing", "list_indent"):
@@ -91,7 +96,7 @@ def _scale_layer(layer, s):
             if key in repeat.get("end", {}):
                 repeat["end"][key] = _size(repeat["end"][key], s)
     for name, settings in layer.get("styles", {}).items():
-        for key in ("dx", "dy", "blur", "width"):
+        for key in ("dx", "dy", "blur", "width", "size"):
             if key in settings:
                 settings[key] = settings[key] * s
     for effect in layer.get("effects", []):
@@ -103,6 +108,22 @@ def _scale_layer(layer, s):
         elif name in ("ripple", "wave", "glass"):
             effect["amount"] = effect.get("amount", ARTISTIC_DEFAULTS[name]) * s
             effect["radius"] = effect.get("radius", 12 if name == "glass" else 32) * s
+        elif name in ("pattern-fill", "drawn-texture"):
+            texture = effect["texture"]
+            low, high = (0.05, 100) if name == "pattern-fill" else (0.1, 20)
+            texture["scale"] = min(high, max(low, texture.get("scale", 1) * s))
+            if "offset" in texture:
+                texture["offset"] = [v * s for v in texture["offset"]]
+    if "_jitter" in layer:
+        dx, dy, reach = layer["_jitter"]
+        layer["_jitter"] = [dx * s, dy * s, math.ceil(reach * s)]
+    paper = layer.get("cut_paper")
+    if paper:
+        from .scene import FIBERS, GRAIN_SCALE
+
+        paper["grain_scale"] = min(512, max(2, paper.get("grain_scale", GRAIN_SCALE) * s))
+        fibers = {**FIBERS, **paper.get("fibers", {})}
+        paper["fibers"] = {"count": min(100, fibers["count"] / (s * s)), "length": min(200, max(1, fibers["length"] * s))}
     from .render import parse_constraint
 
     constraints = layer.get("constraints", {})
@@ -298,10 +319,14 @@ def clamp_region(region, canvas):
 def render_preview(
     project, max_width, max_height, *, variables=None, artboard=None, comp=None, region=None, time=None, proof=False, simulate=None,
     guides=None, page=None, values=None, show_fields=False, isolate=None, views=None, exploded=False,
+    rulers=None, bounds=None, info=None, draft=False,
 ):
     """Render at roughly the preview size. ``region`` [x, y, w, h] (document pixels) zooms in;
     zoomed regions may be enlarged up to 8x so small details stay legible. ``time`` previews a
-    timeline frame; ``proof`` soft-proofs CMYK; ``simulate`` previews color-vision deficiency."""
+    timeline frame; ``proof`` soft-proofs CMYK; ``simulate`` previews color-vision deficiency.
+    ``rulers`` and ``bounds`` draw the placement aid (feedback.draw_coordinates) and fill the ``info`` dict.
+    ``draft`` places layers on whole pixels instead of resampling them to fractional places (as reduced
+    previews always do): quicker, and stop-motion jitter under half a pixel is left out."""
     from PIL import Image
 
     from .design_render import artboard_project
@@ -309,6 +334,10 @@ def render_preview(
 
     from .render import view_page
 
+    if rulers or bounds:
+        require(page != "all" and views is None and not exploded,
+                "rulers and bounds read one page at its own coordinates; drop page 'all', views and exploded",
+                field="rulers" if rulers else "bounds")
     if page == "all":
         from .deck import contact_sheet
 
@@ -370,6 +399,9 @@ def render_preview(
             else:
                 image = proxy.render().crop(box)
     if image is None:
+        if draft and not getattr(candidate, "snap_placement", False):
+            candidate = copy(candidate)
+            candidate.snap_placement = True
         # Only the region is drawn (layers outside it are skipped) when nothing reads the whole canvas.
         image = candidate.render(region=(x, y, w, h))
     target = (max(1, min(max_width, round(w * fit))), max(1, min(max_height, round(h * fit))))
@@ -395,6 +427,12 @@ def render_preview(
 
         image = image.convert("RGBA")
         draw_fields(image, candidate, image.width / w, (x, y))
+    if rulers or bounds:
+        from .feedback import draw_coordinates
+
+        image, found = draw_coordinates(image, candidate, image.width / w, (x, y), rulers, bounds)
+        if info is not None:
+            info.update(found)
     return image
 
 

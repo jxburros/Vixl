@@ -21,6 +21,8 @@ project with appropriate layers or input files. See each guide for complete crea
 | Field layer | `field add email --kind text --label Email --required` | [Forms](../guides/output/forms.md) |
 | Field inspection | `field list`, `render --show-fields --out fields.png` | [Forms](../guides/output/forms.md) |
 | Fillable PDF | `export form.pdf --fillable` | [Forms](../guides/output/forms.md#the-fillable-pdf) |
+| Tagged PDF (structure tree) | `export report.pdf --tagged` | [Accessibility](../guides/output/accessibility.md#tagged-pdf) |
+| A printer's template as guides | `guides-import template.png --color '#00a651=safe' --save NAME`, `guide-set NAME`, `guide NAME --rect X Y W H --role safe` | [A printer's template](../guides/layout/guides.md#a-printers-template-guide-roles) |
 | Filled copy | `form fill --set email=ada@example.com --out ada.pdf` | [Forms](../guides/output/forms.md#filling) |
 | Validate CSV fills | `form fill --data rows.csv --dry-run` | [Form tutorial](../tutorials/forms-and-decks.md) |
 | Drawing cleanup | `drawing import sketch.jpg --name sketch`, `drawing straighten sketch` | [Drawing](../guides/images/drawing.md) |
@@ -44,7 +46,7 @@ project with appropriate layers or input files. See each guide for complete crea
 | Six-second loop | `template new video-tip -o tip.vixl --set title=… --set subtitle=… --set cta=…` (also `video-launch`, `video-event`) | [Short templates](../guides/motion/animation-authoring.md#joint-pose-keys-and-short-templates) |
 | Readable source folder | `unpack design.vixl design-source`, `pack design-source design.vixl [--overwrite]` | [Reviewing in Git](#reviewing-editable-projects-in-git) |
 | Documents and tool calls from earlier releases | `convert OLD.vixl -o NEW.vixl [--look preserve\|current] [--dry-run] [--report R.json]`, `convert DIR --out OUTDIR`, `convert-batch OLD-CALLS.json` | [Converting](converting.md) |
-| Import SVG, PDF or a Figma file as editable layers | `import artwork.svg [--svg-mode editable\|auto\|appearance]`, `import flyer.pdf --page 1`, `import KEY --format figma [--node 1:2] [--rasterize-unsupported]` | [Interfaces](interfaces.md#import-existing-artwork), [Figma import](../guides/images/figma.md) |
+| Import SVG, PDF, a layered PSD or a Figma file as layers | `import artwork.svg [--svg-mode editable\|auto\|appearance]`, `import flyer.pdf --page 1`, `import design.psd`, `import KEY --format figma [--node 1:2] [--rasterize-unsupported]` | [Interfaces](interfaces.md#import-existing-artwork), [Figma import](../guides/images/figma.md) |
 | Schema of a `.vixl` file | `schema document` (`schema OPERATION…` for operations) | [File format](file-format.md) |
 | Composition check | `check --checks composition` (on by default; `--profile final` gates on it) | [Composition](../guides/layout/guides.md#composition) |
 | Emoji catalog and packs | `emoji list --query wave`, `emoji template face --out smile.vixl`, `emoji export --destination discord --emojis 👋 --out pack.zip` | [Emoji](#emoji-024) |
@@ -99,6 +101,7 @@ next export of the unchanged document, in a new process, reads the frame back in
 | `cache clear` | Delete the cached PNGs and their ledgers; reports `removed` and `bytes` |
 | `VIXL_RENDER_CACHE=DIR` / `=off` | Use another cache directory (default `~/.cache/vixl/render`), or no disk cache |
 | `VIXL_CACHE_MAX_MB=256` | The cache's size cap in megabytes; the least recently used PNGs are removed past it |
+| `VIXL_GLYPH_CACHE=off` | Draw every text layer as one SVG instead of reusing glyphs that other labels rasterised at the same place (same pixels either way; see [troubleshooting](../troubleshooting.md#find-out-why-a-render-is-slow)) |
 | `VIXL_PROFILE=1` | Return a `render_profile` (per-layer times, cache hits and misses, incremental renders) with every result; see [troubleshooting](../troubleshooting.md#find-out-why-a-render-is-slow) |
 
 ## Documents and output
@@ -130,8 +133,10 @@ vixl layer add image.png --name hero
 vixl add logo.png --name logo --linked
 vixl add photo.jpg --name hero --credit "Photo: Ana Ruiz" --license "CC0"
 vixl import https://images.example.com/cat.jpg --name cat --license "CC BY 4.0"
+vixl import sprite.png --name hero --scale 3 --sampling nearest   # pixel art at 3x, crisp in every export
 vixl import artwork.svg --svg-mode auto    # SVG as editable layers; a Vixl SVG restores its document
 vixl import flyer.pdf --page 1             # a PDF page as editable text, paths and images
+vixl import design.psd                     # a layered PSD (8-bit RGB) as image layers, groups and masks
 vixl import KEY --format figma --node 1:2  # a Figma file URL or key (one frame, or --rasterize-unsupported for unmappable nodes); needs FIGMA_TOKEN, see figma.md
 vixl select-layer hero
 vixl layer rename hero portrait
@@ -149,6 +154,7 @@ vixl move portrait --x 100 --y 200
 vixl move x +20
 vixl scale portrait 80%
 vixl scale portrait --x -1              # negative factors mirror: --x/--y per axis, -1 both
+vixl scale hero 300% --sampling nearest  # image layers: enlarge pixel by pixel (stored on the layer); smooth resets
 vixl resize portrait 800x600
 vixl resize portrait --width 800
 vixl resize portrait --width 800 --keep-aspect       # explicit; --no-keep-aspect stretches one side of an image
@@ -187,7 +193,7 @@ can change the look. A layer clipped to a merged layer is clipped to the merged 
 top-level layer of the page into one canvas-size raster layer named `flattened` (master-page layers are not part of
 it, and pixels outside the canvas are dropped); hidden layers are discarded unless `--keep-hidden` keeps them in
 place. The originals are kept in the new layer's `provenance` (`merged` / `flattened`), and each operation is one
-history entry, so `undo` restores them. Custom `--font /path/to/font.ttf` imports and embeds a font. Other font names use Pillow's system-font lookup. Font substitution is never silent. HarfBuzz shaping and shared PNG/SVG outlines support ligatures, combining marks and scripts covered by the selected font, with multiline text, wrapping/fitting and path/warp layouts. Bitmap/color fonts and unsupported Unicode isolate controls retain appearance fallbacks. See [local artistic filters and SVG policies](../guides/images/artistic-filters.md).
+history entry, so `undo` restores them. Custom `--font /path/to/font.ttf` imports and embeds a font. Other font names use Pillow's system-font lookup. Font substitution is never silent. HarfBuzz shaping and shared PNG/SVG outlines support ligatures, combining marks and scripts covered by the selected font, with multiline text, wrapping/fitting and path/warp layouts. Colour fonts draw their colour glyphs ([colour fonts](../guides/text/typography.md#colour-fonts)); bitmap fonts without outlines or colour glyphs and unsupported Unicode isolate controls retain appearance fallbacks. See [local artistic filters and SVG policies](../guides/images/artistic-filters.md).
 
 ## Selections, masks, effects
 
@@ -335,7 +341,7 @@ Checks judge what a layer draws, not its box: shapes use their path geometry inc
 
 Layers marked `role: background`, and non-text layers whose drawn geometry covers the canvas, are background and skipped; `checked` reports `layers_checked` and `layers_total`. Shapes and gradients that run past two or more canvas edges (a hill, a glow) are intentional bleed and report as informational.
 
-Safe area defaults to the canvas's own `safe` (a pixel inset, or a `{left, top, right, bottom}` object, measured from the trim edge); pass `safe_area` to override. The thumbnail legibility test (320 px wide; `thumbnail_width: null` or `--thumbnail-width off` disables it) is a warning only for social, icon and app-store sizes and informational elsewhere; a chart's small labels are one finding per chart (with `chart`), and on other pieces more than three small text layers are one note listing them all.
+Safe area defaults to the canvas's own `safe` (a pixel inset, or a `{left, top, right, bottom}` object, measured from the trim edge); pass `safe_area` to override. Guides that carry a print role (from `guides-import`, a `guide-set` or `guide … role`) are part of the same check: `safe_area.outside-safe-guide` and `safe_area.outside-safe-guides` (ink, strokes and effects included, outside the `safe` outline of its panel, or in none), `safe_area.keep-out` (ink inside a `keep-out` outline) and `safe_area.crosses-fold` (review: text or a title across a `fold` guide), each naming the guide in `guide`; a document with `safe` guides is judged by them instead of the canvas inset. See [a printer's template](../guides/layout/guides.md#a-printers-template-guide-roles). The thumbnail legibility test (320 px wide; `thumbnail_width: null` or `--thumbnail-width off` disables it) is a warning only for social, icon and app-store sizes and informational elsewhere; a chart's small labels are one finding per chart (with `chart`), and on other pieces more than three small text layers are one note listing them all.
 
 Display text (24 px or larger) in a `text-layout` box whose wrapped paragraph ends in a line under 20% of its longest line, or in one word under half of it when the paragraph has more words than lines, is a `legibility` review finding with `code: runt` (`line` is the last line, `share` its width as a fraction of the longest): set `text-layout` `wrap` to `pretty` (`balance` for a heading), widen the box, add an explicit line break or run `fit-text`. Lines you break yourself are not judged.
 
@@ -372,7 +378,10 @@ Y W H] [--name N] [--with KIND] [--seed N] [--illustration house|plain] [--apply
 named placeholder parts (the `object-plan` workflow; without a document it prints the batch; in a document with a house
 style it ends with the flat vector illustration finish unless `--illustration plain`), and `vixl object outline GROUP
 [--outline silhouette|parts|none|inherit] [--interior hide|thin|show] [--outline-color C] [--outline-width W]
-[--outline-lines JSON]` and `vixl object outline-remove GROUP` apply and remove its outline policy.
+[--outline-lines JSON]` and `vixl object outline-remove GROUP` apply and remove its outline policy. `vixl object detect
+[NAME …] [--apply] [--min-confidence N] [--tolerance PX] [--provider [NAME]]` proposes groupings and kinds for
+[undeclared objects](../guides/shapes/objects.md#detect-objects-in-an-existing-document) (the `object-detect`
+workflow); it changes nothing without `--apply`.
 
 Saved SVG exports report `svg.vector_only` and `svg.raster_fallbacks` in the CLI result so embedded bitmaps are visible without opening the SVG metadata. Use `export logo.svg --svg-policy strict` to reject all embedded raster content. Exporting to `-` still writes only SVG bytes. Supported grouped shapes and outlined text remain vectors; unsupported appearances may rasterize in the default appearance policy. Every SVG export also carries its document in `<metadata id="vixl-document">` (fonts named, not stored), so `vixl import FILE.svg` restores the editable layers ([exporting](../guides/output/exporting.md#svg-round-trip)).
 
@@ -381,6 +390,7 @@ Saved SVG exports report `svg.vector_only` and `svg.raster_fallbacks` in the CLI
 ```bash
 vixl guide                               # start-here recipe and every kind of work
 vixl guide a mascot for a coffee brand   # approach, operations, layouts, looks, styles, example
+vixl guide --brief a mascot for a coffee brand   # only the first step, the operations and how to get the rest
 vixl guide operations                    # every operation by purpose, with summaries
 vixl looks                               # the finishing looks
 vixl house [show PURPOSE]                # the house style: craft, tiers, levels; or one purpose's profile
@@ -505,9 +515,10 @@ The source format stores only the current state, so undo history, branches and s
 ```bash
 vixl emoji list [--query TEXT] [--group G] [--offset N] [--limit N]
 vixl emoji get EMOJI [--out FILE] [--format vixl|svg|png] [--overwrite]   # inspect, or extract the editable source
-vixl emoji template [blank|face|symbol|sheet] --out FILE [--destination images|discord|slack] [--overwrite]
-vixl emoji destinations | emoji requirements [--destination D] [--emojis E…]
-vixl emoji export [--destination images|discord|slack] [--emojis E…] --out FILE [--size N] [--no-sources] [--overwrite]
+vixl emoji template [blank|face|symbol|sheet] --out FILE [--destination D] [--overwrite]
+vixl emoji destinations | emoji requirements [--destination D…] [--emojis E…] [--animated] [--size N]
+vixl emoji export [--destination D…] [--emojis E…] --out FILE [--animated [gif|webp|apng]] [--size N] [--no-sources] [--overwrite]
+# D: images|discord|slack|whatsapp|telegram|telegram-emoji|telegram-animated|twitch|imessage; several D write OUT-D.zip each
 vixl -p doc.vixl emoji settings [--mode vixl|font]          # bundled art (default) or the font first
 vixl -p doc.vixl emoji replace EMOJI|:custom_name: SOURCE [--name N] [--license L]
 vixl -p doc.vixl emoji install PACK | emoji reset [--emoji EMOJI]

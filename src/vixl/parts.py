@@ -60,7 +60,8 @@ def touches(a, b, tolerance):
     return bool((grown & b).any())
 
 
-def _components(masks, tolerance):
+def components(masks, tolerance):
+    """Index lists of the masks whose ink touches or overlaps within ``tolerance`` pixels (union-find)."""
     from .plugins.drawing.drawing import dilate
 
     count = len(masks)
@@ -127,7 +128,7 @@ def floating_parts(frame, tolerance=2, targets=None, skip=()):
         top, bottom = max(0, int(np.argmax(rows)) - pad), min(len(rows), len(rows) - int(np.argmax(rows[::-1])) + pad)
         left, right = max(0, int(np.argmax(cols)) - pad), min(len(cols), len(cols) - int(np.argmax(cols[::-1])) + pad)
         masks = [mask[top:bottom, left:right] for mask in masks]
-        pieces = _components(masks, tolerance)
+        pieces = components(masks, tolerance)
         if len(pieces) < 2:
             continue
         main = max(pieces, key=lambda piece: sum(int(masks[i].sum()) for i in piece))

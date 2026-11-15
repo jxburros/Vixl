@@ -11,9 +11,9 @@ from vixl.assets import add_image
 
 FIXTURES = {}
 SVG_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "gradients", "text_plain", "groups", "dashes_fitted",
-                "text_small_caps", "text_hanging_quote", "object_outline_policies")
+                "text_small_caps", "text_hanging_quote", "object_outline_policies", "style_bevel", "text_hand_set")
 PDF_FIXTURES = ("shapes_and_strokes", "path_stroke_only", "text_plain", "dashes_fitted", "text_small_caps",
-                "text_hanging_quote", "object_outline_policies")
+                "text_hanging_quote", "object_outline_policies", "text_hand_set")
 PPTX_FIXTURES = ("shapes_and_strokes", "text_plain", "groups", "dashes_fitted", "text_small_caps", "text_hanging_quote",
                  "object_outline_policies")
 
@@ -118,6 +118,19 @@ def text_stroked():
 
 
 @fixture
+def text_hand_set():
+    # Live text with hand-made variation: by word, by letter, and one span lifted, turned and enlarged.
+    return doc(width=240, ops=[
+        {"type": "text", "text": "Fresh bread", "name": "words", "size": 34, "x": 14, "y": 10, "color": "#264653",
+         "hand_set": {"seed": 4, "rise": 4, "rotate": 6, "scale": 0.12}},
+        {"type": "text", "text": "baked daily", "name": "letters", "size": 28, "x": 14, "y": 62, "color": "#bc4749",
+         "hand_set": {"seed": 2, "unit": "glyph", "rise": 3, "rotate": 8, "scale": 0.08, "tracking": 2}},
+        {"type": "rich-text", "name": "span", "markdown": "open [late]{rise=6 rotate=-7 scale=1.4 color=#2a9d8f} today",
+         "size": 22, "x": 14, "y": 112, "color": "#333333"},
+    ])
+
+
+@fixture
 def rich_text():
     return doc(width=220, height=200, ops=[
         {"type": "rich-text", "name": "body", "markdown": "# Heading\nSome **bold** and *italic* text,\n- first item\n- second item\n\n[Colour]{color=#bc4749 size=22} run",
@@ -163,6 +176,34 @@ def effect_blur_shadow_glow():
         {"type": "shape", "shape": "ellipse", "name": "ringed", "x": 125, "y": 90, "width": 55, "height": 50, "fill": "#8ecae6"},
         {"type": "layer-style", "target": "ringed", "name": "stroke", "settings": {"color": "#023047", "width": 4}},
     ])
+
+
+def _inner_style(name, settings):
+    """One inner layer style on a rounded card, a turned star (the light keeps its direction) and a ring."""
+    shapes = [
+        rect("card", 12, 14, 64, 56, "#e76f51", radius=10),
+        {"type": "shape", "shape": "star", "name": "star", "x": 112, "y": 10, "width": 70, "height": 70,
+         "fill": "#2a9d8f", "rotation": 20},
+        {"type": "shape", "shape": "arc", "name": "ring", "x": 60, "y": 82, "width": 70, "height": 70, "fill": "#e9c46a",
+         "inner_radius": 0.5, "start_angle": 0, "end_angle": 360},
+    ]
+    return doc(ops=[*shapes, *({"type": "layer-style", "target": shape["name"], "name": name, "settings": settings}
+                               for shape in shapes)])
+
+
+@fixture
+def style_inner_shadow():
+    return _inner_style("inner-shadow", {"color": "#1d1a16", "dx": 4, "dy": 5, "blur": 4, "opacity": 0.6})
+
+
+@fixture
+def style_inner_glow():
+    return _inner_style("inner-glow", {"color": "#fff6d5", "blur": 6, "opacity": 0.85})
+
+
+@fixture
+def style_bevel():
+    return _inner_style("bevel", {"angle": 135, "size": 5, "opacity": 0.6})
 
 
 @fixture
@@ -524,3 +565,52 @@ def merch_tee_hoodie_sticker():
         p.apply({"type": "add", "asset": add_image(p, view), "name": f"view-{i}", "x": 2 + i * 85,
                  "y": (96 - view.height) // 2})
     return p
+
+
+@fixture
+def cut_paper_grain():
+    # Paper grain without a direction: mottling, short fibres and fine tooth on a large flat sheet; a coarser,
+    # more fibrous piece; and one whose texture is a pattern.
+    return doc(240, 200, "#fbf6ec", ops=[
+        rect("sky", 10, 10, 220, 180, "#93cbe6", stroke_width=0),
+        {"type": "shape", "shape": "ellipse", "name": "hill", "x": 20, "y": 110, "width": 150, "height": 110,
+         "fill": "#7fb069", "stroke_width": 0},
+        {"type": "shape", "shape": "ellipse", "name": "sun", "x": 150, "y": 26, "width": 62, "height": 62,
+         "fill": "#f4c95d", "stroke_width": 0},
+        {"type": "cut-paper", "target": "sky", "grain": 0.065, "roughness": 0.4, "thickness": 2, "seed": 3, "jitter": 0},
+        {"type": "cut-paper", "target": "hill", "grain": 0.07, "roughness": 0.5, "thickness": 3, "seed": 8,
+         "grain_scale": 60, "fibers": {"count": 30, "length": 22}, "jitter": 0},
+        {"type": "cut-paper", "target": "sun", "grain": 0.05, "roughness": 0.3, "thickness": 2, "seed": 5,
+         "pattern": "linen", "jitter": 0},
+    ])
+
+
+def cut_paper_scene():
+    """A stop-motion scene for a frame golden (not a document fixture: a frame is a render-only copy): pieces
+    with jitter, and a striped piece and a hatched one turned and moved by their own tracks."""
+    return doc(240, 180, "#fbf6ec", ops=[
+        rect("ground", -6, 120, 252, 70, "#c9a66b", stroke_width=0),
+        {"type": "shape", "shape": "rounded-rectangle", "name": "lock", "x": 58, "y": 26, "width": 30, "height": 96,
+         "fill": "#f2789f", "radius": 10, "stroke_width": 0},
+        {"type": "pivot", "target": "lock", "value": "top"},
+        {"type": "shape", "shape": "ellipse", "name": "ball", "x": 20, "y": 96, "width": 56, "height": 56,
+         "fill": "#f1e3c8", "stroke_width": 0},
+        {"type": "shape", "shape": "triangle", "name": "tent", "x": 150, "y": 70, "width": 70, "height": 64,
+         "fill": "#3d7ea6", "stroke_width": 0},
+        {"type": "shape", "shape": "rectangle", "name": "door", "x": 178, "y": 104, "width": 14, "height": 30,
+         "fill": "#22313f", "stroke_width": 0},
+        {"type": "group", "name": "camp", "targets": ["tent", "door"]},
+        {"type": "pattern-fill", "target": "lock", "pattern": "stripes", "colors": ["#000000", "#ffffff"],
+         "opacity": 0.6, "spacing": 12},
+        {"type": "drawn-texture", "target": "ball", "preset": "hatch", "color": "#5b3a1e", "strength": 0.9, "seed": 2},
+        {"type": "pattern-fill", "target": "ground", "pattern": "paper", "opacity": 0.5},
+        {"type": "cut-paper", "targets": ["ground", "lock", "ball", "camp"], "grain": 0.06, "roughness": 0.4,
+         "thickness": 2, "seed": 3, "jitter": 0.4},
+        {"type": "timeline-set", "duration": 1000, "fps": 12},
+        {"type": "keyframes", "target": "lock", "property": "rotation",
+         "keys": [{"time": 0, "value": 0}, {"time": 1000, "value": -60}]},
+        {"type": "keyframes", "target": "ball", "property": "x",
+         "keys": [{"time": 0, "value": 20}, {"time": 1000, "value": 92.3}]},
+        {"type": "keyframes", "target": "ball", "property": "rotation",
+         "keys": [{"time": 0, "value": 0}, {"time": 1000, "value": 120}]},
+    ])

@@ -101,12 +101,22 @@ def stencil(svg):
     return mask
 
 
+def cached_stencil(svg):
+    """``stencil(svg)`` if it is already rasterised, else None (nothing is drawn or counted)."""
+    with CACHE.lock:
+        return CACHE.get(b"stencil" + hashlib.blake2b(svg.encode(), digest_size=20).digest())
+
+
 def painted(svg, rgba):
     """``svg`` drawn in opaque black, painted in ``rgba``: coverage times the paint's alpha, and fully
     transparent pixels left black like a direct rasterisation."""
+    return paint(stencil(svg), rgba)
+
+
+def paint(mask, rgba):
+    """A coverage ``mask`` (left unchanged) painted in ``rgba``, as ``painted`` does."""
     from .render import opacity_table
 
-    mask = stencil(svg)
     alpha = mask.point(opacity_table(rgba[3] / 255)) if rgba[3] != 255 else mask
     image = Image.new("RGBA", mask.size, (*rgba[:3], 255))
     image.putalpha(alpha)

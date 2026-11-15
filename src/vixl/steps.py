@@ -35,7 +35,12 @@ def import_image(session, project, *, path: str | None = None,
                                                               "redirects; private hosts refused)")] = None,
                  name: str = "image",
                  credit: Annotated[str | None, Field(description="Attribution, e.g. 'Photo: Ana Ruiz / Unsplash'")] = None,
-                 license: Annotated[str | None, Field(description="License or usage terms, e.g. 'CC BY 4.0'")] = None):
+                 license: Annotated[str | None, Field(description="License or usage terms, e.g. 'CC BY 4.0'")] = None,
+                 scale: Annotated[float | None, Field(gt=0, le=100, description="Place the layer at this multiple of "
+                                                      "the image's size (3 for a sprite at 3x)")] = None,
+                 sampling: Annotated[Literal["smooth", "nearest"] | None, Field(
+                     description="nearest keeps every source pixel a crisp block (pixel art); stored on the layer "
+                                 "for later edits and every export")] = None):
     """Embed an image as a new layer from a workspace file, base64 bytes or a URL (PNG/JPEG/WebP keep their bytes);
     use web images only with the rights to do so and record credit and license."""
     from .image_import import attribution, fetch_image, import_image as embed
@@ -47,20 +52,20 @@ def import_image(session, project, *, path: str | None = None,
         data, source = fetch_image(url, session.limits)
     else:
         data, source = _upload(session, path, data_base64), ({"path": path} if path else None)
-    return embed(project, data, name, source=source, credit=credit, license=license)
+    return embed(project, data, name, source=source, credit=credit, license=license, scale=scale, sampling=sampling)
 
 
 def import_document(session, project, *, path: str | None = None, data_base64: str | None = None,
                     source: Annotated[str | None, Field(description="figma: a Figma file URL or file key (the token "
                                                                     "comes from FIGMA_TOKEN or VIXL_FIGMA_TOKEN)")] = None,
-                    format: Annotated[Literal["svg", "pdf", "figma"] | None, Field(
-                        description="Default: from the path (.svg, .pdf; a .json path or source is figma)")] = None,
+                    format: Annotated[Literal["svg", "pdf", "psd", "figma"] | None, Field(
+                        description="Default: from the path (.svg, .pdf, .psd; a .json path or source is figma)")] = None,
                     name: str = "import",
                     page: Annotated[int | str, Field(description="PDF page number, or the Figma page number or name")] = 1,
                     dpi: int = 144,
                     svg_mode: Annotated[Literal["editable", "appearance", "auto"], Field(
                         description="editable layers (default), auto (draw unsupported elements as images) or "
-                                    "appearance (one image; SVG source kept)")] = "editable",
+                                    "appearance (one image; SVG source kept; a PSD's merged image)")] = "editable",
                     node_id: Annotated[str | None, Field(description="figma: the frame or node to import (1:2 or 1-2)")] = None,
                     rasterize_unsupported: Annotated[bool, Field(
                         description="figma: import a PNG render of nodes Vixl cannot keep editable; otherwise they "
@@ -70,8 +75,9 @@ def import_document(session, project, *, path: str | None = None, data_base64: s
                                     "'Literata Bold': literata-700}")] = None,
                     install_fonts: Annotated[bool | None, Field(
                         description="Allow downloading from Google Fonts a font the document and the font cache lack "
-                                    "(default: true for Vixl's own SVG, false for PDF)")] = None):
-    """Import an SVG (Vixl's own round-trips losslessly), one PDF page as editable text, paths and images, or a Figma
+                                    "(Vixl's own SVG, PDF; default false: the font cache only)")] = None):
+    """Import an SVG (Vixl's own round-trips losslessly), one PDF page as editable text, paths and images, a layered
+    PSD (8-bit RGB) as image layers, groups and masks, or a Figma
     file, frame or node as editable layers (from a URL or key with the server's Figma token, or an exported file
     JSON); svg_mode=appearance imports one image instead. External or active SVG is rejected."""
     from .imports import import_document as read
@@ -82,7 +88,8 @@ def import_document(session, project, *, path: str | None = None, data_base64: s
         if source is not None or (path and path.lower().endswith(".json")):
             format = "figma"
         else:
-            require(path and path.lower().endswith((".svg", ".pdf")), "Give format: svg, pdf or figma", field="format")
+            require(path and path.lower().endswith((".svg", ".pdf", ".psd")), "Give format: svg, pdf, psd or figma",
+                    field="format")
             format = path.lower().rsplit(".", 1)[1]
     if format == "figma":
         data = source if source is not None else _upload(session, path, data_base64)

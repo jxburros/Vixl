@@ -257,3 +257,140 @@ def test_adapting_a_poster_to_three_sizes_with_arrangements(tmp_path):  # #519
     elapsed, reports = timed(adapt)
     assert all(len(report["candidates"]) == 4 for report in reports)
     assert elapsed < 8
+
+
+def test_a_new_hold_of_a_300_layer_cut_paper_scene():  # #754
+    from vixl.timeline import render_at
+
+    p = Project(960, 540, "#dfeaf2")
+    names = [f"piece{i}" for i in range(299)]
+    p.apply([{"type": "shape", "name": "sky", "shape": "rectangle", "width": 980, "height": 560, "x": -10, "y": -10,
+              "fill": "#93cbe6", "stroke_width": 0}] +
+            [{"type": "shape", "name": name, "shape": ("ellipse", "triangle", "rounded-rectangle", "rectangle")[i % 4],
+              "width": 34 + i * 7 % 90, "height": 30 + i * 11 % 80, "x": i * 37 % 900, "y": i * 53 % 470,
+              "fill": ("#e76f51", "#2a9d8f", "#e9c46a", "#8d6cab", "#f4a261")[i % 5]}
+             for i, name in enumerate(names)], detail="brief")
+    p.apply([{"type": "pattern-fill", "targets": names, "pattern": "paper", "opacity": 0.5},
+             {"type": "cut-paper", "targets": ["sky", *names], "grain": 0.06, "roughness": 0.4, "thickness": 2,
+              "seed": 3, "jitter": 0.35},
+             {"type": "timeline-set", "duration": 2000, "fps": 12}] +
+            [{"type": "keyframes", "target": name, "property": "x",
+              "keys": [{"time": 0, "value": 10}, {"time": 2000, "value": 500}]} for name in names[:20]],
+            detail="brief")
+    assert len(p.state["layers"]) == 300  # texturing a piece adds no layer
+    render_at(p, 0)
+    render_at(p, 90)
+    # Each new stop-motion hold drew every piece again (its jitter moved it by a fraction of a pixel, missing
+    # the raster cache): about 1.5 s a frame here. Now the drawn pieces are reused and only composited at
+    # their new offsets: about 0.25 s. The budget is three times that.
+    elapsed = min(timed(lambda t=t: render_at(p, t))[0] for t in (170, 250, 340))
+    assert elapsed < 0.8
+    # Inside a hold nothing changes at all.
+    assert timed(lambda: render_at(p, 350))[0] < 0.5
+
+
+LARGE_CANVAS = r'''
+import hashlib, io, json, random, re, sys, time
+from PIL import Image
+from vixl import Project
+from vixl import render as R
+
+kind, tiled, output = sys.argv[1], sys.argv[2] == "tiled", sys.argv[3]
+if not tiled:
+    R.TILED_PIXELS = 10 ** 12  # the single-canvas path
+rng = random.Random(7)
+if kind == "shapes":
+    W = H = 6000
+    p = Project(W, H, "white")
+    ops = [{"type": "gradient", "name": "bg", "x": 0, "y": 0, "width": W, "height": H, "direction": "radial",
+            "start": "#f4efe6", "end": "#c9d6e8"}]
+    for i in range(2000):
+        w, h = rng.randrange(60, 260), rng.randrange(60, 260)
+        ops.append({"type": "shape", "shape": ("ellipse", "rectangle", "rounded-rectangle")[i % 3], "name": f"s{i}",
+                    "x": rng.randrange(0, W - w), "y": rng.randrange(0, H - h), "width": w, "height": h,
+                    "fill": "#%06x" % rng.randrange(0xFFFFFF), "opacity": 0.8})
+else:
+    W, H = 3600, 3000
+    p = Project(W, H, "white")
+    ops = [{"type": "gradient", "name": f"g{i}", "x": 0, "y": 0, "width": W, "height": H, "opacity": 0.6,
+            "direction": ("radial", "vertical")[i], "start": ("#fde68a", "#1e3a8a")[i], "end": ("#be123c", "#ecfeff")[i]}
+           for i in range(2)]
+    ops += [{"type": "blend", "target": "g0", "value": "overlay"}, {"type": "blend", "target": "g1", "value": "multiply"}]
+p.apply(ops, detail="brief")
+started = time.perf_counter()
+data = p.export() if output == "export" else p.render().tobytes()
+elapsed = time.perf_counter() - started
+# The high-water mark of this process's own memory: ru_maxrss would start from the parent's at the fork.
+peak = int(re.search(r"VmHWM:\s+(\d+) kB", open("/proc/self/status").read()).group(1))
+Image.MAX_IMAGE_PIXELS = None
+pixels = Image.open(io.BytesIO(data)).convert("RGBA").tobytes() if output == "export" else data
+print(json.dumps({"seconds": elapsed, "peak_kib": peak, "pixels": hashlib.sha256(pixels).hexdigest()}))
+'''
+
+
+def large_canvas(kind, path, output):
+    """Seconds, peak resident memory (KiB) and a digest of the pixels of one large render or export, measured in
+    its own process (Pillow's image memory is outside ``tracemalloc``; the peak RSS of a fresh process is not)."""
+    import json
+    import subprocess
+    import sys
+
+    result = subprocess.run([sys.executable, "-c", LARGE_CANVAS, kind, path, output], capture_output=True, text=True,
+                            timeout=600)
+    assert result.returncode == 0, result.stderr[-2000:]
+    return json.loads(result.stdout.strip().splitlines()[-1])
+
+
+linux_only = pytest.mark.skipif(not __import__("sys").platform.startswith("linux"),
+                                reason="peak RSS is read as Linux reports it")
+
+
+@linux_only
+def test_a_print_canvas_of_2000_shapes_exports_in_bounded_memory():  # #588
+    # 6000 x 6000 with 2,000 shapes at 80% opacity. One canvas: the canvas, its snapshot for the next edit and the
+    # RGB copy for the encoder, 396 MB on top of the layer cache. Streamed: a few 4 MB strips in flight.
+    single = large_canvas("shapes", "single", "export")
+    tiled = large_canvas("shapes", "tiled", "export")
+    assert tiled["pixels"] == single["pixels"]
+    assert tiled["peak_kib"] <= 0.7 * single["peak_kib"], (tiled, single)
+    assert tiled["seconds"] < 90, tiled
+
+
+@linux_only
+def test_large_blended_layers_render_in_tiles_without_canvas_sized_working_memory():  # #588
+    # Two full-canvas gradients blended over a 3600 x 3000 canvas. The blend equation works in float: on one canvas
+    # that is several float copies of the whole canvas per layer; a tile holds them for 1024 x 1024 pixels.
+    single = large_canvas("blends", "single", "render")
+    tiled = large_canvas("blends", "tiled", "render")
+    assert tiled["pixels"] == single["pixels"]
+    assert tiled["peak_kib"] <= 0.6 * single["peak_kib"], (tiled, single)
+    assert tiled["seconds"] < max(30, 2 * single["seconds"]), (tiled, single)
+
+
+def test_labels_that_differ_by_a_few_characters_reuse_their_glyphs(monkeypatch):  # #584
+    from vixl import glyph_cache, vector_raster
+    from vixl import render as R
+
+    p = Project(3000, 2000, "white")
+    p.apply([{"type": "text", "name": f"t{i}", "text": f"Label {i}", "size": 14, "x": (i % 20) * 145 + 10,
+              "y": (i // 20) * 70 + 10, "color": "black"} for i in range(500)], detail="brief")
+
+    def cold(switch):
+        monkeypatch.setenv("VIXL_GLYPH_CACHE", switch)
+        best, pixels = None, None
+        for _ in range(3):
+            p._cache = None
+            vector_raster.CACHE.clear()
+            vector_raster.CACHE.bytes = 0
+            glyph_cache.CACHE.reset()
+            elapsed, image = timed(lambda: R.render(p))
+            best, pixels = min(best or elapsed, elapsed), image.tobytes()
+        return best, pixels
+
+    cold("on")  # fonts and shaping, which both paths share
+    whole, expected = cold("off")
+    cached, pixels = cold("on")
+    assert pixels == expected
+    # One rasteriser call per label (about 0.4 ms each) was over half of this render: about 390 ms as whole-layer
+    # SVGs, about 120 ms with 64 calls for the 35 glyphs-at-a-place the labels share.
+    assert cached < 0.7 * whole, (cached, whole)

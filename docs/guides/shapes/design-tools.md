@@ -218,13 +218,15 @@ vixl layer-style title drop-shadow --settings '{"color":"#000000","dx":4,"dy":6,
 vixl layer-style title stroke --settings '{"color":"#ffffff","width":2}'
 vixl layer-style logo outer-glow --settings '{"color":"#80cfff","blur":12}'
 vixl layer-style logo color-overlay --settings '{"color":"@brand"}'
+vixl layer-style logo inner-shadow --settings '{"dx":3,"dy":4,"blur":4,"opacity":0.5}'
+vixl layer-style logo bevel --settings '{"angle":135,"size":4}'
 vixl layer-style title drop-shadow --remove
 ```
 
 Looks (`look`) are named recipes over these styles and the effect stack; a layer remembers which looks it carries so that
 `remove` takes one off without touching hand-made styles.
 
-Styles are editable settings, one per kind, applied after effects and masks. `enabled` and `opacity` are shared settings. Shadow, glow, and outer stroke sit behind the content; color and gradient overlays recolor it while preserving alpha. Overlays use the visible silhouette's bounding box. Group/layer opacity is applied to the styled result, then it is composited with the selected blend mode. Shadows and glows extend past the layer's geometric bounds and past a parent group's box. Inspection/alignment report geometry bounds; `inspect` adds `drawn_bounds` when styles, blur or group members reach further. Rasterizing a styled or externally clipped layer requires removing those attachments first.
+Styles are editable settings, one per kind, applied after effects and masks. `enabled` and `opacity` are shared settings. Shadow, glow, and outer stroke sit behind the content; color and gradient overlays recolor it while preserving alpha; `inner-shadow`, `inner-glow` and `bevel` draw on top of it, inside the silhouette only ([details and exports](../finishing/looks.md#layer-styles-inside-the-silhouette)). Overlays use the visible silhouette's bounding box. Group/layer opacity is applied to the styled result, then it is composited with the selected blend mode. Shadows and glows extend past the layer's geometric bounds and past a parent group's box. Inspection/alignment report geometry bounds; `inspect` adds `drawn_bounds` when styles, blur or group members reach further. Rasterizing a styled or externally clipped layer requires removing those attachments first.
 
 ## Alignment and distribution
 
@@ -277,7 +279,7 @@ vixl replace-contents photo --fit fit --asset assets/EMBEDDED_HASH.png
 
 Frames center and fill/crop or fit/letterbox their boxes; `--frame-shape ellipse|star|hexagon|heart` or `--outline` (a closed SVG path in frame-local pixels) gives an irregular frame. Replacement keeps the layer ID, box, position, transforms, styles, effects and mask. Explicit replacement clears an old source crop, linked-file path, and image-variable binding. Frame imports embed the image in the project. Remote clients use already-imported `asset` IDs instead of paths.
 
-Image variables reference embedded assets during ordinary rendering:
+Image variables reference embedded assets during ordinary rendering. Binding a layer to a variable that does not exist yet (`replace-contents photo --variable photo_asset`) creates the variable with the layer's current image, so a template renders on its own and a row or `--set` replaces the picture:
 
 ```bash
 vixl variable set photo_asset assets/EMBEDDED_HASH.png
@@ -286,7 +288,7 @@ vixl render --set photo_asset=assets/OTHER_HASH.png --out variant.png
 vixl render --data rows.csv --out campaign
 ```
 
-CSV requires unique headers and at least one complete row. Each row becomes render variables and produces `0001.png`, `0002.png`, etc., without mutating the project. Quoted commas, quoted newlines, and UTF-8 BOMs are supported. `--set` overrides row values. Bound image columns may contain an embedded asset ID or a file path relative to the CSV; only this explicit local CSV workflow imports paths. CSVs are limited to 8 MiB and 10,000 rows. All rows are rendered to temporary files before output publication; bad rows leave no partial campaign. Existing outputs are never overwritten. Data rendering also accepts `--artboard` and `--comp`.
+CSV requires unique headers and at least one complete row. Each row becomes render variables and produces `0001.png`, `0002.png`, etc., without mutating the project. Quoted commas, quoted newlines, and UTF-8 BOMs are supported. `--set` overrides row values. Bound image columns may contain an embedded asset ID or a file path relative to the CSV; only this explicit local CSV workflow imports paths. CSVs are limited to 8 MiB and 10,000 rows. All rows are rendered to temporary files before output publication; bad rows leave no partial campaign. Existing outputs are never overwritten. Each row is checked, and its findings are returned beside its output; with `--strict`, a row that fails a check stops the batch with `design_check_failed` (naming the rows) before any file is written. Data rendering also accepts `--artboard` and `--comp`. [Moving from a template-rendering API](../automation/template-api-migration.md) walks through a template, a CSV and three sizes.
 
 Python exposes `project.render(artboard=..., comp=..., variables=...)`, `project.render_data(csv_path, directory, ...)`, and `project.export_screens(directory, scales=(1, 2), ...)`. REST POST `/render` and MCP previews accept `artboard` and `comp`; local-directory batch exports remain CLI/Python operations.
 

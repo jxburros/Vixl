@@ -37,6 +37,12 @@ FINISH_FIELDS = {
     "rotation": {"type": "number", "description": "Rotation in degrees, clockwise, around the layer's pivot "
                  "(its center unless pivot moved it), as the rotate operation sets it."},
 }
+# Creation fields of artwork layers that stand for layer-intent role (text has its own role: its type stage).
+LAYER_ROLE = ("add", "solid", "gradient", "shape", "pen")
+ROLE_FIELD = {"enum": ["content", "decoration", "background"],
+              "description": "What the layer is for, as layer-intent role sets it. decoration and background mark "
+              "artwork that may run into the margins or off the canvas on purpose: the safe-area and bounds checks "
+              "report it as informational instead of asking for review. content (the default) is checked."}
 FONT = {
     "type": "string",
     "description": "Registered font name, role (heading, body or a brand role) or text stage (display, h1, h2, h3, "
@@ -50,6 +56,14 @@ def enum(*values):
     return {"enum": list(values)}
 
 
+# Guessed operation types that are fields of another operation (#798).
+_PAINT_FIELD = ("it is a field, not an operation. A new shape: {type: shape, shape: rectangle|ellipse|path…, fill, "
+                "stroke, stroke_width}; an existing one: {type: shape, target: LAYER, fill: COLOR}; a flat "
+                "background: {type: solid, color: COLOR}")
+FIELD_NOT_TYPE = {"fill": _PAINT_FIELD, "fill-color": _PAINT_FIELD, "stroke-width": _PAINT_FIELD,
+                  "stroke-color": _PAINT_FIELD, "color": _PAINT_FIELD, "colour": _PAINT_FIELD}
+
+
 def field(base, description):
     """A copy of a shared schema constant carrying its own description (shared constants are never mutated)."""
     return {**base, "description": description}
@@ -59,6 +73,26 @@ HANGING_FIELD = field(B, "Hang punctuation outside the text edge so the letters 
                          "brackets and bullets at the start of left-aligned lines, closing quotes, stops and commas at "
                          "the end of right-aligned ones (both in centred lines). The hung marks reach past the layer's "
                          "box, and the bounds checks count them. false removes it.")
+
+
+HAND_SET_FIELD = {
+    "type": ["object", "boolean", "null"],
+    "description": "Hand-set lettering that stays live text: every word (or letter) gets its own seeded baseline "
+                   "lift, turn, size and spacing when the layer is drawn, so the text stays editable and the text "
+                   "checks still read it. {seed, unit: word|glyph, rise (px, up to), rotate (degrees, up to), scale "
+                   "(fraction, 0.06 = 6% larger or smaller), tracking (px, up to)}; amounts left out follow the size "
+                   "(4% rise, 3 degrees, 6% scale, no tracking). true uses those with seed 0; false or null removes it. "
+                   "A unit keeps its numbers when other words change.",
+    "properties": {
+        "seed": {"type": "integer", "description": "Which set of variations to draw; the same seed gives the same lettering."},
+        "unit": {"enum": ["word", "glyph"], "description": "Vary whole words (default) or every letter."},
+        "rise": {"type": "number", "minimum": 0, "maximum": 500, "description": "Largest baseline lift or drop in pixels."},
+        "rotate": {"type": "number", "minimum": 0, "maximum": 45, "description": "Largest turn in degrees, either way."},
+        "scale": {"type": "number", "minimum": 0, "maximum": 0.5, "description": "Largest size change as a fraction of the size."},
+        "tracking": {"type": "number", "minimum": 0, "maximum": 200, "description": "Largest change in letter spacing in pixels."},
+    },
+    "additionalProperties": False,
+}
 
 
 def gradient_fields():
@@ -127,6 +161,13 @@ def _operation_schema():
             "height": SIZE,
             "max_pixels": {"type": "integer", "minimum": 1},
             "downsample": enum("placed@2x"),
+            "scale": {"type": "number", "exclusiveMinimum": 0, "maximum": 100,
+                      "description": "Size factor for the placed box, applied to width and height (or the image's own "
+                      "size): 3 places a 32x48 sprite at 96x144. With sampling: nearest the pixels stay crisp."},
+            "sampling": {"enum": ["smooth", "nearest"],
+                         "description": "How the image is enlarged: nearest keeps every source pixel a crisp block "
+                         "(pixel art); smooth (default) resamples. Stored on the layer for later edits and every "
+                         "export."},
         },
         anyOf=[{"required": ["path"]}, {"required": ["asset"]}],
     )
@@ -186,6 +227,7 @@ def _operation_schema():
                            "as small capitals, the font's own (OpenType smcp) or synthesized at 0.7 of the size); "
                            "applies to text changed by keyframes and ${variable} values too. none removes it."},
         "hanging_punctuation": HANGING_FIELD,
+        "hand_set": HAND_SET_FIELD,
         "accent_words": {"type": "array", "items": S, "maxItems": 32,
                          "description": "Words to set in the accent text color (@accent-text): whole words, matched "
                          "without regard to case. The layer becomes rich text with those spans; words not found are "
@@ -223,6 +265,11 @@ def _operation_schema():
                             "speech bubble's body, a badge, a frame's opening; see content_bounds in inspect). "
                             "Use place with within for other anchors or a margin."),
             "baseline_y": baseline_y,
+            "width": field(SIZE, "Width of a text box (pixels or a percentage of the canvas): the text wraps inside "
+                           "it and align centres or right-aligns it there, as text-layout {width} on this layer. "
+                           "Without it the box is as wide as the longest line."),
+            "height": field(SIZE, "Height of the text box, as text-layout {height}. With a width and no height "
+                            "the box is as tall as the wrapped lines."),
         },
         anyOf=[{"required": ["text"]}, {"required": ["target"]}],
     )
@@ -453,6 +500,8 @@ def _operation_schema():
     for variant in variants:
         if variant["properties"]["type"]["const"] in LAYER_FINISH:
             variant["properties"].update(deepcopy(FINISH_FIELDS))
+        if variant["properties"]["type"]["const"] in LAYER_ROLE:
+            variant["properties"]["role"] = deepcopy(ROLE_FIELD)
         if variant["properties"]["type"]["const"] in EDITS:
             variant["properties"]["space"] = {
                 "enum": ["parent", "canvas"],
@@ -533,6 +582,9 @@ def validate_operation(operation, notes=None, index=None):
         require(isinstance(page, (str, int)) and not isinstance(page, bool), "page must be a page name or number",
                 field="page")
     properties = _properties()
+    from .targets import lift_addresses
+
+    restore_addresses = lift_addresses(result)  # {chart, series, category} targets are resolved when the operation runs
     result = normalize_operation(
         result, lambda k: properties.get(k, frozenset()), properties, EFFECTS, [] if notes is None else notes, index,
         required=lambda k: _required().get(k, frozenset()),
@@ -544,6 +596,10 @@ def validate_operation(operation, notes=None, index=None):
         import difflib
 
         close = difflib.get_close_matches(result["type"], list(properties), 3, 0.5)
+        field_hint = FIELD_NOT_TYPE.get(str(result["type"]).lower().replace("_", "-"))
+        if field_hint:
+            raise VixlError("unknown_operation", f"Unknown operation type {result['type']!r}: {field_hint}",
+                            field="type", suggestions=["shape", "solid"])
         raise VixlError(
             "unknown_operation",
             f"Unknown operation type {result['type']!r}"
@@ -561,6 +617,7 @@ def validate_operation(operation, notes=None, index=None):
         json.dumps(result, allow_nan=False)
     except (ValueError, TypeError, RecursionError) as exc:
         raise VixlError("invalid_operation", "Operations must contain finite JSON values") from exc
+    restore_addresses(result)
     if page is not None:
         result["page"] = page
     return result

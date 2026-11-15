@@ -91,20 +91,17 @@ class StudioProvider:
         return {"capability": capability, "constraints": constraints, "inputs": inputs}
 
     def invoke(self, capability, request):
-        from ...fetch import network_allowed
+        from ...fetch import ACCEPT_ENCODING, network_allowed, read_bounded
         from .ai import MAX_RESPONSE
 
         url = self.endpoint(capability)
         network_allowed("The studio AI gateway", url)
         payload = json.dumps(self.body(capability, request)).encode()
+        headers = {**self.headers(), "Accept-Encoding": ACCEPT_ENCODING}
         try:
             with httpx.Client(timeout=self.timeout, follow_redirects=False, transport=self.transport) as client:
-                with client.stream("POST", url, headers=self.headers(), content=payload) as response:
-                    data = bytearray()
-                    for chunk in response.iter_bytes():
-                        data.extend(chunk)
-                        require(len(data) <= MAX_RESPONSE, "The studio gateway's answer exceeds the limit",
-                                "resource_limit")
+                with client.stream("POST", url, headers=headers, content=payload) as response:
+                    data = read_bounded(response, MAX_RESPONSE, "The studio gateway's answer exceeds the limit")
                     status = response.status_code
         except httpx.HTTPError as exc:
             raise VixlError("provider_error", f"The studio gateway request failed ({type(exc).__name__})",

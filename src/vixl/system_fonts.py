@@ -44,7 +44,7 @@ MAX_FACES = 64  # faces per collection and named instances per variable font
 MAX_DEPTH = 8
 MAX_INDEX_BYTES = 32 * 1024 * 1024
 PROBE_TTL = 30.0
-INDEX_VERSION = 1
+INDEX_VERSION = 2  # 2: colour bitmap faces (CBDT, sbix) are listed
 OFF = ("off", "0", "false", "no", "none")
 DATA = Path(__file__).parent / "data"
 
@@ -210,8 +210,10 @@ def _describe(font, index):
     """The faces one parsed font file (or collection member) offers: one, or its named instances."""
     from .fonts import license_from_names, permission
 
-    if not any(table in font for table in ("glyf", "CFF ", "CFF2")):
-        return []  # bitmap-only faces cannot be outlined or embedded
+    from .color_fonts import BITMAPS, formats
+
+    if not any(table in font for table in ("glyf", "CFF ", "CFF2")) and not any(t in BITMAPS for t in formats(font)):
+        return []  # Bitmap-only faces cannot be drawn, except colour ones (CBDT, sbix), which text draws as images.
     names = font["name"]
     family = names.getDebugName(16) or names.getDebugName(1)
     if not family:

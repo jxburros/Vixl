@@ -146,7 +146,37 @@ the organic `fur-blob` preset; the `hand-made` look applies a removable irregula
 `repeat`/`radial-repeat` take `rotation_step`, `scale_step`, `opacity_step`, seeded jitter and
 `merge`. Reference: `docs/guides/shapes/design-tools.md#scatter-and-seamless-pattern-tiles`.
 
-Built-in textures: `pattern-fill` (clipped to a layer) and `pattern-stroke` take 72 built-in patterns, geometric (herringbone, honeycomb, houndstooth, graph-paper …), textile (linen, denim, plaid, knit …), material (marble, terrazzo, leather, concrete …) and natural (cobblestone, topographic, leopard, clouds …); `vixl_apply(workflow='pattern-list', request={})` lists them with descriptions. `colors` is `[ink, ground]`. Material and natural fills default to a 64 px cell, the newer textiles to 24 px, the rest to 16 px. `drawn-texture` presets: pencil, charcoal, crayon, ink-wash, stipple, hatch, cross-hatch, scribble, spatter, dry-brush, pastel, smudge, marker. Reference: `docs/guides/images/media-craft.md`.
+Built-in textures: `pattern-fill` (inside a layer's silhouette) and `pattern-stroke` take 72 built-in patterns, geometric (herringbone, honeycomb, houndstooth, graph-paper …), textile (linen, denim, plaid, knit …), material (marble, terrazzo, leather, concrete …) and natural (cobblestone, topographic, leopard, clouds …); `vixl_apply(workflow='pattern-list', request={})` lists them with descriptions. `colors` is `[ink, ground]`. Material and natural fills default to a 64 px cell, the newer textiles to 24 px, the rest to 16 px. `drawn-texture` presets: pencil, charcoal, crayon, ink-wash, stipple, hatch, cross-hatch, scribble, spatter, dry-brush, pastel, smudge, marker. `pattern-fill` and `drawn-texture` add an effect to the layer, not a layer: the texture moves, turns and scales with it (its own keyframes included), `name` labels the effect for `effect-set`/`effect-move`/`effect-remove`, `opacity` is its amount (animate `effect:<id>`), `blend` mixes it, and `layer: true` adds a separate raster layer instead (it does not follow the target's own animation). Reference: `docs/guides/images/media-craft.md`.
+
+Cut paper: `cut-paper {target|targets, grain 0.04-0.08, roughness, thickness, seed, fps, jitter}` gives pieces paper grain without a direction (mottling, short fibres, fine tooth), rough edges and a thickness shadow. `grain_scale` (px, default 28) sizes the mottling, `fibers: {count, length}` sets fibres per 100 x 100 px and their length (count 0 for none), `pattern: NAME` uses a built-in or `pattern-define` tile as the texture. Jitter is a compositing offset, so each new hold reuses the drawn pieces; a `vixl_render` preview with `draft: true` (or `render_at(project, time, draft=True)`) snaps layers to whole pixels for a quicker look at a pose. Reference: `docs/guides/motion/animation-authoring.md`.
+
+## Parts placed by coordinates
+
+Every shape is `{type: shape, shape: KIND}`: the kind is a field, never the operation type, and `fill`, `stroke`
+and `stroke_width` are fields of it (a full-canvas colour is `solid`). `shape: "path"` takes SVG path data in local
+pixels with `x`/`y` defaulting to 0, so canvas coordinates need no `x`, `y`, `width` or `height`; `pen` takes canvas
+points (`points` smoothed, or Bezier `nodes`) and fits the box: use it for outlines placed point by point.
+`vixl_render(rulers=true, bounds=true)` draws a labelled coordinate grid and each layer's `name x,y WxH` box on the
+preview (never in exports; absolute under `region`; also `preview={rulers: true}` on `vixl_apply`), so one look
+gives the numbers for the next `move`. Mark backgrounds and decoration with `role: "decoration"`/`"background"` on
+the creating operation so the safe-area check stops asking for review.
+
+```json
+{"width": 1080, "height": 1080, "operations": [
+  {"type": "solid", "name": "sky", "color": "#bde0fe"},
+  {"type": "shape", "shape": "rectangle", "name": "ground", "x": 0, "y": 800, "width": 1080, "height": 280,
+   "fill": "#7cb518", "role": "background"},
+  {"type": "shape", "shape": "ellipse", "name": "wheel-back", "x": 240, "y": 620, "width": 200, "height": 200,
+   "fill": "transparent", "stroke": "#1b1b1b", "stroke_width": 12},
+  {"type": "shape", "shape": "ellipse", "name": "wheel-front", "x": 600, "y": 620, "width": 200, "height": 200,
+   "fill": "transparent", "stroke": "#1b1b1b", "stroke_width": 12},
+  {"type": "shape", "shape": "path", "name": "frame", "path": "M 340 720 L 520 560 L 700 720 Z",
+   "fill": "transparent", "stroke": "#d62828", "stroke_width": 10},
+  {"type": "pen", "name": "body", "points": [[430, 520], [520, 400], [640, 430], [610, 560]], "closed": true,
+   "fill": "#f8f9fa"},
+  {"type": "group", "name": "bicycle", "targets": ["wheel-back", "wheel-front", "frame"]}
+]}
+```
 
 ## Guides, grids and placement
 
@@ -164,6 +194,11 @@ perspective systems. Place layers exactly on them instead of computing coordinat
 `place` with `within` (instead of `guide`) puts each target's `anchor` on the same point of a
 shape's content box (`content_bounds`: a speech bubble's body, a badge, a frame opening), inset
 by `margin`; `text` with `within` centres new text there.
+
+A guide may carry a print `role` (`{"type": "guide", "name": "front-safe", "rect": [x, y, w, h], "role": "safe"}`;
+roles `safe`, `keep-out`, `fold`, `trim`, `bleed`): the default `safe_area` check then reports ink outside its
+panel's safe outline, inside a keep-out and text across a fold. Import a printer's template (PNG/PSD) with the
+`guides-import` workflow and reuse it with `guide-set` (see `production.md`).
 
 `vixl_check(checks=["guides", "alignment"])` reports near misses with the fixing move;
 `vixl_render(guides=true)` draws them. Full reference: `docs/guides/layout/guides.md`.

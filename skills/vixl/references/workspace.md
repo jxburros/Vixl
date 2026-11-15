@@ -9,6 +9,12 @@ and a tool's rarer options with `vixl_reference('vixl_export')` (any tool name b
 Read `vixl_document(action='notes')` before revising a document and resolve notes after addressing them.
 Humans can follow progress with `vixl -p DOCUMENT view`.
 
+Paths are relative to the workspace folder. A local server (stdio) names it: `vixl_document` `create`, `open` and
+`list` return `workspace` (absolute); network servers report `"."`. In a Git repository, a new document the
+repository ignores comes back with `git: "ignored…"`: its source would not be committed, so create it in a tracked
+folder or add a `.gitignore` exception. Keep sources and exports in folders (`design/poster.vixl`,
+`design/exports/poster.png`) rather than the repository root; missing folders are created.
+
 ## Brands, workspace typography and rolls
 
 Workspace `brand.json` provides default palette roles (plus `palette.extra` approved colours), pairing/embedded
@@ -34,17 +40,24 @@ Use a `roll` step in `vixl_apply` (CLI `roll --apply --set title=...`) to apply 
 `vixl_reference('roll')` to see one without applying it;
 `layout apply` returns unfilled slots immediately. Check and fill them before export. A roll with `slots` omits the slots you did not fill (`unfilled: "omit"`), so it passes `check`; pass `unfilled: "blank"` to keep `[Label]` placeholders instead. When no layout places every slot you pass, the roll keeps the previewed layout and the apply fails with `unused_slot`: drop the slots its `suggestions` leave out and apply again.
 
-## Importing SVG, PDF and Figma
+## Importing SVG, PDF, PSD and Figma
 
 An `import-document` step (`vixl_apply`) imports SVG and PDF as editable layers. Vixl's own SVG export carries its document, so
 re-importing it restores the same layers, live text, groups and effects (fonts are named, not stored: the import finds a
-bundled, cached, same-named registered or Google Fonts face again; any other font falls back to the bundled face with a
-warning). Other SVG becomes shapes, live text
+bundled, cached or same-named registered face again, and with `install_fonts: true` downloads a Google Fonts face the
+cache lacks; any other font falls back to the bundled face with a warning). An SVG or PDF over an import budget
+(stylesheet rules, nested forms, raster fallbacks, total pixels) fails with `resource_limit`: import it with
+`svg_mode: "appearance"`. Other SVG becomes shapes, live text
 (`<text>`), groups (`<g>`), gradients and images; a PDF page becomes live text, paths and images (shadings and
 clipped content as image layers; its fonts are found again from `font_map`, registered fonts or the font cache, and
 the result's `fonts` says how). With the default `svg_mode="editable"` an unsupported SVG feature returns an
 error; `"auto"` draws just those elements as images (at most 64; more fails with `resource_limit`); `"appearance"` imports the whole SVG or PDF page as one image
 (`dpi` sets a PDF page's resolution).
+A layered PSD (`path` ending `.psd`, or `format="psd"`; 8-bit RGB) imports as image layers and groups with their names,
+order, visibility, opacity, blend modes and layer masks; type layers come in as images with their text, font and size
+listed under `text`, and `not_applied` lists what the pixels do not carry (adjustment layers, effects, clipping).
+`svg_mode="appearance"` imports the file's merged image as one layer. 16-bit, CMYK and PSB files fail with
+`unsupported_psd`.
 A Figma file or frame imports as editable layers, live text, stacks and gradients with `format="figma"` and `source` set to the URL or key
 (`node_id` picks one frame, `rasterize_unsupported` draws nodes with no editable equivalent as images; CLI
 `vixl import URL --format figma [--node 1:2] [--rasterize-unsupported]`, Python `import_document(project, b"URL", "figma")`, REST

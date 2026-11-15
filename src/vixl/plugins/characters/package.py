@@ -23,7 +23,7 @@ import zipfile
 
 from ...errors import VixlError, require
 from ...model import finite, is_number
-from .characters import (CYCLE_BONES, VIEWS, check_joints, check_motion, cycle, pose, pose_key, recolor)
+from .characters import (CYCLES, VIEWS, check_joints, check_motion, cycle, cycle_bones, is_quadruped, pose, pose_key, recolor)
 
 FORMAT, VERSION = "vixl-character", 1
 SUFFIX = ".vixlchar"
@@ -39,7 +39,7 @@ RELEASE = re.compile(r"\d{1,6}(?:\.\d{1,6}){0,2}(?:[-+][0-9A-Za-z.-]{1,32})?")
 DIGEST = re.compile(r"[0-9a-f]{64}")
 MANIFEST_KEYS = ("format", "version", "name", "kind", "character_version", "description", "tags", "size", "parts",
                  "rig", "expressions", "poses", "motions", "checks", "fonts", "assets", "files", "created_with")
-CYCLE_FIELDS = ("cycle", "start", "duration", "period", "amount", "samples", "view")
+CYCLE_FIELDS = ("cycle", "start", "duration", "period", "amount", "samples", "view", "extend")
 KEY_FIELDS = ("time", "angles", "easing")
 SKIP_DIRS = ("node_modules", "__pycache__")
 
@@ -76,6 +76,13 @@ MOTIONS = {
     "walk": {"cycle": "walk", "duration": 2000, "period": 1000},
     "idle": {"cycle": "idle", "duration": 2000, "period": 2000},
     "react": {"cycle": "react", "duration": 800},
+}
+QUADRUPED_MOTIONS = {
+    "walk": {"cycle": "walk", "duration": 2000, "period": 1000},
+    "trot": {"cycle": "trot", "duration": 1280, "period": 640},
+    "gallop": {"cycle": "gallop", "duration": 960, "period": 480},
+    "jump": {"cycle": "jump", "duration": 1000},
+    "idle": {"cycle": "idle", "duration": 2400, "period": 2400},
 }
 
 
@@ -124,14 +131,13 @@ def check_pose(group, angles, field):
 def check_motion_spec(group, spec, field):
     """A motion is a cycle ``{cycle, start?, duration?, period?, amount?, samples?, view?}`` the rig can drive, or
     pose keys ``{keys: [{time, angles, easing?}]}`` on joints it has."""
-    require(isinstance(spec, dict) and ("cycle" in spec) != ("keys" in spec), f"{field} is {{cycle: walk|run|idle|"
-            "ride|react|wave, duration?, period?, amount?, samples?, view?}} or {keys: [{time, angles, easing?}]}",
-            field=field)
+    require(isinstance(spec, dict) and ("cycle" in spec) != ("keys" in spec), f"{field} is {{cycle: {'|'.join(CYCLES)}, "
+            "duration?, period?, amount?, samples?, view?}} or {keys: [{time, angles, easing?}]}", field=field)
     if "cycle" in spec:
         unknown = sorted(set(spec) - set(CYCLE_FIELDS))
         require(not unknown, f"{field}: unknown cycle field(s) {unknown}", field=field, allowed=list(CYCLE_FIELDS))
-        require(spec["cycle"] in CYCLE_BONES, f"{field}.cycle is one of {', '.join(CYCLE_BONES)}",
-                field=f"{field}.cycle", allowed=list(CYCLE_BONES))
+        require(spec["cycle"] in cycle_bones(group), f"{field}.cycle is one of {', '.join(cycle_bones(group))}",
+                field=f"{field}.cycle", allowed=list(cycle_bones(group)))
         for key in ("start", "duration"):
             require(key not in spec or isinstance(spec[key], str) or is_number(spec[key]),
                     f"{field}.{key} is a time (milliseconds, '1.5s' or a marker)", field=f"{field}.{key}")
@@ -161,8 +167,9 @@ def defaults(group):
     expressions = {name: dict(value) for name, value in EXPRESSIONS.items() if all(part in parts for part in value)}
     poses = {"rest": {bone: 0 for bone in bones}}
     poses.update({name: dict(value) for name, value in POSES.items() if all(bone in bones for bone in value)})
-    motions = {name: dict(value) for name, value in MOTIONS.items()
-               if all(bone in bones for bone in CYCLE_BONES[value["cycle"]])}
+    table = cycle_bones(group)
+    motions = {name: dict(value) for name, value in (QUADRUPED_MOTIONS if is_quadruped(group) else MOTIONS).items()
+               if all(bone in bones for bone in table[value["cycle"]])}
     return expressions, poses, motions
 
 

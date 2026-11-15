@@ -34,6 +34,14 @@ the user where Vixl is:
 | Windows installer | `%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe` | Git Bash: `"$LOCALAPPDATA/Programs/Vixl/bin/vixl.exe" --version`; PowerShell: `& "$env:LOCALAPPDATA\Programs\Vixl\bin\vixl.exe" --version`; cmd: `"%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe" --version` |
 | Windows installer alias | `%LOCALAPPDATA%\Microsoft\WindowsApps\vixl.exe` | Same launcher; that folder is on PATH by default on Windows 10/11, so terminals opened before installation usually find `vixl` through it |
 | pip / source | the Python environment | `python -m vixl --version` (use `python -m vixl` wherever this page says `vixl`) |
+| Source checkout, not installed | the checkout root | `PYTHONPATH=$PWD/src python -m vixl --version` (`pip install -e .` puts `vixl` on PATH) |
+| MCP server started by `uvx` | uv's cache, not PATH | `uvx --from vixl-engine vixl --version` (`uv tool install vixl-engine` puts `vixl` on PATH) |
+| uv tool / pipx (macOS, Linux) | `~/.local/bin/vixl` | `~/.local/bin/vixl --version`; add `~/.local/bin` to PATH (`uv tool update-shell` or `pipx ensurepath`) |
+| Not installed | – | `python -m pip install vixl-engine`: the package is `vixl-engine`, the import and the command are `vixl` (`pip install vixl` finds nothing). Without a writable environment: `uvx --from vixl-engine vixl --version` |
+
+The `vixl_*` tools can appear a little after a session starts (a first `uvx` start downloads the package): the CLI
+does the same work on the same documents meanwhile. `vixl guide --brief BRIEF` prints only the first step, the
+operations and how to get the whole guide.
 
 The installer adds `%LOCALAPPDATA%\Programs\Vixl\bin` to the user PATH, but processes that were
 already running (a desktop app and the terminals or agents it spawns) keep their old PATH until
@@ -55,8 +63,9 @@ set "PATH=%LOCALAPPDATA%\Programs\Vixl\bin;%PATH%"
 
 ### Install check and slow renders
 
-Check availability first: `vixl --version` (CLI) or call `vixl_document(action='list')` (MCP). Install from
-source with `pip install -e ".[server]"` (Python ≥ 3.11; add the `pdf` extra for PDF import); Windows users use the installer.
+Check availability first: `vixl --version` (CLI) or call `vixl_document(action='list')` (MCP). Install with
+`python -m pip install vixl-engine` (Python ≥ 3.11; `'vixl-engine[server,pdf]'` adds REST, live review and PDF import), or
+from a source checkout with `pip install -e ".[server]"`; Windows users use the installer.
 Set `VIXL_NO_UPDATE=1` in automation so the Windows auto-updater never runs mid-task.
 A slow render? `check --checks cost` names the costly layer; `VIXL_PROFILE=1` adds a `render_profile`
 (per-layer times, cache hits) to every result. `vixl cache info|clear` manages the disk render cache
@@ -94,7 +103,7 @@ vixl add photo.jpg --name hero [--x 0 --y 0] [--linked]         # alias: layer a
 vixl solid --name panel --width 400 --height 200 --color '#26344e' [--x --y]
 vixl gradient --name sky --start '#152641' --end '#635e83' --direction vertical|horizontal|radial|angled [--angle 35]
 vixl gradient --name sky --direction angled --angle 35 --stops '[{"offset":0,"color":"#152235"},{"offset":1,"color":"#e8885c"}]'
-vixl text add 'Hello' --name title --size 96 --color white [--font path.ttf] [--align center] [--spacing 8 | --line-height 1.1] [--x center --y 120]
+vixl text add 'Hello' --name title --size 96 --color white [--font path.ttf] [--align center] [--spacing 8 | --line-height 1.1] [--x center --y 120] [--width 180 [--height 60]]
 vixl shape rectangle|rounded-rectangle|ellipse|polygon|star|arc|line --name s --width W --height H [--x --y] \
      [--fill C | --fill-gradient '{"start":C,"end":C}'] [--stroke C] [--stroke-width N] [--radius N] [--sides N] [--inner-radius 0.4] \
      [--line-cap butt|round|square] [--trim-start PCT] [--trim-end PCT]
@@ -114,6 +123,7 @@ Importing existing artwork (all add layers to the open document):
 ```bash
 vixl import artwork.svg --svg-mode auto      # SVG as editable layers; a Vixl SVG restores its document. editable (default) errors on a feature it cannot edit, auto draws just that element as an image, appearance imports one image
 vixl import flyer.pdf --page 1               # a PDF page as editable text, paths and images (needs the pdf extra); --dpi applies only to --svg-mode appearance
+vixl import design.psd                       # a layered PSD (8-bit RGB) as image layers, groups and masks; --svg-mode appearance imports its merged image
 vixl import KEY --format figma --node 1:2 --rasterize-unsupported   # a Figma file URL or key, one frame, unmappable nodes as a PNG render; needs FIGMA_TOKEN or VIXL_FIGMA_TOKEN (docs/guides/images/figma.md)
 ```
 
@@ -168,6 +178,7 @@ vixl swatch brand --delete --detach   # Heading keeps the color; without --detac
 
 ```bash
 vixl align logo top-right --margin 40
+vixl render --out placed.png --show-rulers --show-bounds   # coordinate grid + 'name x,y WxH' boxes (a picture to place by; never an export)
 vixl align title left --relative-to logo
 vixl align title center-y --targets title logo badge      # relative to the selection's union
 vixl distribute horizontal a b c [--gap 24]
@@ -208,7 +219,7 @@ vixl effect move LAYER EFFECT --to top|bottom|N       # or --before EFFECT / --a
 vixl effect set LAYER EFFECT --amount 20
 vixl preset save gritty portrait ; vixl preset show gritty ; vixl preset apply gritty other --set noise=0.03
 vixl lookup photo look --amount 0.8                  # LUT (from a `lut` operation) added to the effect stack
-vixl layer-style title drop-shadow|stroke|outer-glow|color-overlay|gradient-overlay --settings '{...}'
+vixl layer-style title drop-shadow|stroke|outer-glow|color-overlay|gradient-overlay|inner-shadow|inner-glow|bevel --settings '{...}'
 vixl layer-style title drop-shadow --remove
 ```
 
@@ -222,7 +233,7 @@ vixl repeat-blend stripe --count 16 --dy 37 --end '{"height":21,"fill":"#4853a4"
 vixl pathfinder badge outer inner --mode union|subtract|intersect
 vixl symbol logo Brandmark
 vixl comp-save with-logo ; vixl comp-apply with-logo
-vixl replace-contents photo --path new.jpg [--fit fit] | --asset assets/HASH.png | --variable photo_asset
+vixl replace-contents photo --path new.jpg [--fit fit] | --asset assets/HASH.png | --variable photo_asset   # a new variable starts as the layer's current image
 vixl variable set title 'Night Shift' ; vixl variable delete title
 ```
 
@@ -264,7 +275,7 @@ vixl export out.png|.jpg|.webp|.tiff|.avif [--quality 90] [--title T] [--max-byt
 #   --quality: JPEG/WEBP/AVIF (default 90) and PDF images (omitted: lossless PDF images). --title: PDF title (default: the
 #   title layer or role=title text, then the file name). --max-bytes: warns when a raster file is larger; a PNG over 1 MB warns and names texture looks.
 vixl render [F.vixl] --out preview.png [--set title=Hello]      # same options; never persists overrides
-vixl render --data rows.csv --out campaign_dir [--no-check]     # one PNG per CSV row: 0001.png …; rows with design problems carry a "check" report
+vixl render --data rows.csv --out campaign_dir [--no-check] [--strict]  # one PNG per CSV row: 0001.png …; rows with design problems carry a "check" report; --strict writes nothing when a row fails
 vixl export loop.gif|.apng|.mp4|.webm [--overwrite]           # the timeline (else the saved frames), as export-timeline
 vixl export-screens --out screens --scales 1 2 [--artboards square story]   # NAME@2x.png
 vixl export-animation --out sprite.gif --format gif|apng|webp|mp4|webm|sheet [--scale 8] [--columns 3] [--colors 64] \
@@ -322,6 +333,8 @@ vixl pixel-draw sprite pixel 5 5 --color g
 vixl pixel-draw sprite line 6 5 --x2 9 --y2 5 --color w
 vixl pixel-draw sprite rect 4 4 --width 8 --height 8 --color s
 vixl pixel-draw sprite fill 0 0 --color .
+vixl pixel-draw sprite ellipse 4 4 --width 8 --height 6 --color g --only s   # filled ellipse; --only: overwrite just these symbols
+vixl pixel-transform sprite --flip horizontal               # mirror the stored rows; --shift DX DY [--wrap | --fill SYMBOL]
 vixl pixel-palette sprite --colors '{"g":"#ffdd66"}'
 vixl pixel-palette sprite --shading false --outline false   # flat sprite (new documents shade and outline)
 vixl frame-save idle [--duration 150] ; vixl frame-apply idle ; vixl frame-delete idle
@@ -404,7 +417,7 @@ A document saved by 0.26 or earlier opens after `vixl convert OLD.vixl -o NEW.vi
 
 For Git review, `unpack design.vixl design-source` writes current state as stable JSON (`project.json`, with asset hashes) plus asset files into a new folder; `pack design-source reviewed.vixl [--overwrite]` validates paths, sizes and hashes and writes a portable archive. History and history-only assets are intentionally omitted; registered fonts are kept. Keep the original for undo and commit external linked sources too.
 
-Emoji: `vixl emoji list|get|template|replace|install|settings|reset|requirements|destinations|export` (`vixl -p F.vixl emoji settings --mode font` prefers the font; bundled art is the default). House style: `vixl roll` rolls from the current house style.
+Emoji: `vixl emoji list|get|template|replace|install|settings|reset|requirements|destinations|export` (`emoji export --destination slack discord whatsapp --out pack.zip` writes one ZIP per destination; also telegram, telegram-emoji, telegram-animated, twitch, imessage; `--animated` for masters with a timeline) (`vixl -p F.vixl emoji settings --mode font` prefers the font; bundled art is the default). House style: `vixl roll` rolls from the current house style.
 
 `screen-capture` is a shared workflow action with output PNG, optional desktop bbox, Windows window HWND/all_screens and overwrite. It needs an interactive desktop and any OS-required permission. `app-animation-package` takes named source states, a default state, themes, transitions and a new output directory; see production guidance.
 

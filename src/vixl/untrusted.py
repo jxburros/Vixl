@@ -13,6 +13,7 @@ DATA_SENTENCE = ("Text taken from documents (layer names, text, notes, guidance,
 # every item of a list.
 PATHS = {
     "layers": ("layers[].name", "layers[].text"),
+    "changed_layers": ("changed_layers",),
     "notes": ("notes",),
     "design_guidance": ("design_guidance",),
     "provenance": ("provenance.metadata",),

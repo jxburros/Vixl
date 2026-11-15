@@ -61,14 +61,14 @@ Each layout recommends named sizes (`sizes` in `vixl layout show NAME` and `vixl
 | Layout | Principles | Best for | Sizes |
 | --- | --- | --- | --- |
 | `hero-statement` | single focal point, scale contrast, negative space | social, posters, web, slides | `instagram-post`, `instagram-story`, `poster-18x24`, `og-image`, `slide` |
-| `editorial-grid` | modular column grid, typographic hierarchy, rules | print, posters, web | `letter`, `poster-18x24`, `og-image`, `slide` |
-| `split-screen` | figure–ground zones, proportional division | web, social, slides, ads | `og-image`, `instagram-post`, `instagram-story`, `slide` |
+| `editorial-grid` | modular column grid, typographic hierarchy, rules; on an upright page short copy gives its spare height to the picture, so the column ends on the bottom margin | print, posters, web | `letter`, `poster-18x24`, `og-image`, `slide` |
+| `split-screen` | figure–ground zones, proportional division; side by side on a wide canvas, stacked on an upright one and on a square whose column would cap the headline under its step over the body. Stacked, the copy sits on a `@surface` panel (which also owns a story's safe inset), and the picture gives up height (down to 30%) before the headline comes down, so the supporting lines keep their minimum size | web, social, slides, ads | `og-image`, `instagram-post`, `instagram-story`, `slide` |
 | `centered-axis` | symmetrical balance, optical centering | invitations, announcements | `invitation`, `instagram-post`, `instagram-story`, `certificate` |
 | `asymmetric-balance` | asymmetric visual weight, tension | posters, social | `poster-18x24`, `instagram-post`, `instagram-story`, `og-image` |
-| `z-pattern` | Z reading path ending at the call to action | ads, web, banners | `instagram-post`, `og-image`, `web-banner`, `instagram-story` |
+| `z-pattern` | Z reading path ending at the call to action; the label and note keep the top row and the button the bottom corner, the headline grows toward the free height and shares it with the body (which lifts off the bottom row on a tall canvas), and on a shallow banner the body takes the width beside the button | ads, web, banners | `instagram-post`, `og-image`, `web-banner`, `instagram-story` |
 | `f-pattern` | scannable left edge, parallel subheads | print, slides, infographics | `letter`, `slide`, `pinterest-long`, `og-image` |
-| `rule-of-thirds` | focal point on a thirds intersection | social, posters, photo | `instagram-post`, `instagram-story`, `poster-18x24`, `photo-5x7` |
-| `golden-section` | golden-ratio division | print, web, social | `letter`, `og-image`, `instagram-post`, `instagram-story` |
+| `rule-of-thirds` | focal point on a thirds intersection; on a square or upright canvas the copy takes the full width above or below the focal point and the two share the height: the copy never crosses the focal point, which sits on the thirds line where the gap to the copy allows | social, posters, photo | `instagram-post`, `instagram-story`, `poster-18x24`, `photo-5x7` |
+| `golden-section` | golden-ratio division; stacked on a square or upright canvas, where short copy grows (up to 1.6 times) to fill the minor section, the picture takes what is still spare or gives up height for long copy, and on a story the section is a `@surface` panel over the safe inset | print, web, social | `letter`, `og-image`, `instagram-post`, `instagram-story` |
 | `big-number` | data as focal point | infographics, slides | `pinterest-long`, `instagram-post`, `instagram-story`, `slide` |
 | `quote-card` | typographic focal point, hanging punctuation | social, slides | `instagram-post`, `instagram-story`, `slide`, `letter` |
 | `framed` | enclosure, symmetry, formality | certificates, invitations, menus | `certificate`, `invitation`, `menu`, `letter` |
@@ -76,7 +76,7 @@ Each layout recommends named sizes (`sizes` in `vixl layout show NAME` and `vixl
 | `typographic-poster` | type as image, extreme scale contrast | posters, covers | `poster-18x24`, `instagram-post`, `instagram-story`, `ebook-cover` |
 | `product-card` | proximity grouping, price emphasis | ecommerce, ads | `instagram-post`, `instagram-story` |
 | `event-poster` | information hierarchy, chunked details; the type grows until the headline, date block and details fill the page, the two breaks of the stack take what the dead-band check allows and the rest centres the group, so a short event never leaves an empty middle; the call to action and caption share a footer row when the caption fits beside the button, otherwise the caption takes its own row under it | posters, flyers | `poster-18x24`, `instagram-post`, `instagram-story`, `letter` |
-| `banner` | horizontal flow, CTA in terminal area | ads, headers, email | `instagram-post`, `og-image`, `email-banner`, `x-header` |
+| `banner` | horizontal flow, CTA in terminal area; the headline keeps a step of 1.6 times over the subtitle where the use-size minimum would set both at one size | ads, headers, email | `instagram-post`, `og-image`, `email-banner`, `x-header` |
 | `letterhead` | identity consistency, quiet hierarchy | stationery | `letterhead`, `letterhead-a4` |
 | `business-card` | proximity, one alignment edge | stationery | `business-card` |
 | `slide-title`, `slide-content` | one idea per slide, parallel bullets | slides | `slide` |
@@ -85,7 +85,7 @@ Each layout recommends named sizes (`sizes` in `vixl layout show NAME` and `vixl
 | `thumbnail-bold` | legibility at thumbnail size | YouTube, covers | `youtube-thumbnail`, `instagram-post`, `instagram-story`, `ebook-cover` |
 | `story-vertical` | UI safe zones, thumb-reach CTA | stories, reels, TikTok | `instagram-story`, `tiktok` |
 | `price-list` | tabular alignment, row rhythm | menus, price lists | `menu`, `letter` |
-| `photo-caption` | scrim for contrast | social, covers | `instagram-post`, `instagram-story`, `og-image`, `ebook-cover` |
+| `photo-caption` | scrim for contrast; the headline keeps a step of 1.6 times over the subtitle on a cover | social, covers | `instagram-post`, `instagram-story`, `og-image`, `ebook-cover` |
 | `minimal-mark` | negative space, restraint | posters, covers | `poster-18x24`, `instagram-post`, `instagram-story`, `ebook-cover` |
 | `bento-grid` | modular tiles of varied span | web, slides, infographics | `og-image`, `instagram-post`, `instagram-story`, `slide`, `pinterest-long` |
 | `meme-top-bottom`, `meme-caption-above`, `meme-reaction` | text over or beside one picture, caption contrast | memes, social, GIFs | `instagram-post`, `instagram-story` |

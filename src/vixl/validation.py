@@ -103,6 +103,9 @@ def check_state(project, state):
         require(isinstance(layer["constraints"], dict), "Invalid constraints")
         if layer["type"] in ("raster", "frame"):
             require(layer["asset"] in project.assets, "Missing layer asset", "missing_asset")
+        if "sampling" in layer:
+            require(layer["type"] == "raster" and layer["sampling"] == "nearest",
+                    "sampling is 'nearest' on an image layer (absent for smooth)", "invalid_project")
         for key in ("color", "fill", "start", "end", "stroke_color"):
             if key in layer:
                 color(resolve_color(layer[key], state))

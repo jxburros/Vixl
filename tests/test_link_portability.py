@@ -51,7 +51,7 @@ def test_workspace_relative_sources_of_older_documents_still_resolve(tmp_path):
     assert loaded.render().getpixel((10, 10))[:3] == (0, 255, 0)
     [item] = links.status(loaded)
     assert item["state"] == "ok" and item["resolved_from"] == "workspace"
-    assert item["path"] == str((tmp_path / "assets" / "tile.vixl").resolve())
+    assert item["path"] == "assets/tile.vixl"  # workspace-relative: never where the workspace sits on disk
 
 
 def test_check_reports_sources_outside_the_document_folder(tmp_path):

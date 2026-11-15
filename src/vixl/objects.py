@@ -521,7 +521,7 @@ def record(layer):
     """The object a group declares: its explicit record, or ``{kind: person, implicit: true}`` for a character."""
     if layer.get("object"):
         return layer["object"]
-    if layer.get("type") == "group" and layer.get("character"):
+    if layer.get("type") == "group" and layer.get("character") and layer["character"].get("plan") != "quadruped":
         return {"version": RECORD_VERSION, "kind": "person", "implicit": True}
     return None
 
@@ -1440,7 +1440,8 @@ def export_object_document(project, refs, *, padding=None, limits=None):
 # What vixl_export passes when an option is left alone; a .vixl object export takes no other options.
 EXPORT_DEFAULTS = {"scale": 1, "background": "white", "sampling": "smooth", "svg_policy": "appearance",
                    "color_space": "rgb", "intent": "relative", "black_generation": 1.0, "fill_mode": "flatten",
-                   "alpha": "auto", "proof": False, "fillable": False, "overwrite": False}
+                   "alpha": "auto", "proof": False, "fillable": False, "tagged": False,
+                   "overwrite": False}
 
 
 def portable_bytes(project, options, report=None):

@@ -96,7 +96,7 @@ A font glyph is one shape with no colour, so:
   an inner contour, or a pathfinder `subtract`) stay holes. A light shape on a dark one does **not** cut a hole:
   use `pathfinder` with `subtract`.
 - Colour, opacity, gradients, effects and layer styles are ignored. Layers with masks, clipping or repeats are
-  refused (combine them with `pathfinder` first), as are images, rich text and colour emoji.
+  refused (combine them with `pathfinder` first), as are images, rich text, colour emoji and colour-font glyphs.
 
 Hand lettering on paper becomes glyphs through the [drawing](../images/drawing.md) tools: `drawing import` cleans a photo or
 scan of the letters, and `drawing vectorize` with `mode: "outline"` and `curves: true` (add `split: "components"`

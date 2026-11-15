@@ -109,6 +109,7 @@ then fetches it once and the render path finds it in the pack directory.
 | `after-apply` | `fn(project)` | After a batch applies, before checks |
 | `variables` | `fn(project) -> {name: value}` | Derived fields merged under `data.` once per resolve pass; the charts plugin exposes dataset totals, maxima and cells |
 | `apply-report` | `fn(project, operations, result)` | When the apply result is assembled |
+| `target-resolver` | `fn(project, address) -> [layer ids] or None` | When an operation runs whose `target` (or an entry of `targets`) is an address object rather than a layer ID or name; return None for addresses that are not yours (the charts plugin resolves `{chart, series, category, part}`) |
 | `export-format` | `fn(project, path, format, report, **options) -> data or None` | On export; return None for formats that are not yours |
 | `timeline-export-format` | `fn(project, path, format, **options) -> report or None` | Before built-in timeline encoders; return None for formats that are not yours (Lottie handles JSON, dotLottie and TGS) |
 | `import-format` | `fn(project, data, format, **options) -> result or None` | On import; return None for formats that are not yours |
@@ -145,17 +146,18 @@ A plugin that declares `requires: ["workspace_qa"]` can call these (see their mo
 <!-- generated from vixl.plugins.markdown_table(); tests/test_plugins.py compares it -->
 | Plugin | Kind | What it adds | Operations and workflow actions |
 | --- | --- | --- | --- |
-| `charts` (Charts and tables) | operations | Data charts, tables and key-value lists as editable layers, with native PPTX charts and tables. | `chart`, `chart-data`, `dataset`, `key-value-list`, `table`, `table-data` |
+| `charts` (Charts and tables) | operations | Data charts, tables and key-value lists as editable layers, with native PPTX charts and tables. | `chart`, `chart-data`, `chart-emphasis`, `dataset`, `key-value-list`, `table`, `table-data` |
 | `drawing` (Hand drawing) | operations | Import, clean, vectorize, straighten, fill and restyle hand drawings and photographed sketches. | `drawing`, `drawing-compare`, `drawing-report` |
 | `diagrams` (Diagrams) | operations | Node-and-connector diagrams with automatic layout and routing, kept live as nodes move. | `diagram`, `diagram-from-text`, `diagram-set` |
 | `comics` (Comics) | operations | Comic pages: ordered panels, gutters, artwork slots, captions and dialogue. | `comic-layout` |
 | `atmosphere` (Atmosphere) | operations | Reflection, haze, star-field, string-lights and bokeh, each one operation. | `bokeh`, `haze`, `reflection`, `star-field`, `string-lights` |
 | `organic` (Organic shapes) | operations | Composable organic shapes: generators, growth rules and presets for living things. | `organic`, `organic-catalog` |
-| `characters` (Characters) | operations | Standard-part characters with planar rigs, poses and retargetable walk, idle and other cycles, shared as .vixlchar packages with named expressions, poses and motions. | `character`, `character-cycle`, `character-ik`, `character-lipsync`, `character-load`, `character-pose`, `character-rig`, `character-save`, `character-discover`, `character-inspect`, `character-package`, `character-place` |
+| `characters` (Characters) | operations | Standard-part characters (humanoid and four-legged) with planar rigs, poses and retargetable walk, gallop, idle and other cycles, shared as .vixlchar packages with named expressions, poses and motions. | `character`, `character-cycle`, `character-ik`, `character-lipsync`, `character-load`, `character-pose`, `character-rig`, `character-save`, `character-discover`, `character-inspect`, `character-package`, `character-place` |
 | `fontmaker` (Font maker) | operations | Design a font in a document (metrics, glyph grid, kerning) and export TTF, OTF, WOFF and WOFF2. | `font-build`, `font-design`, `font-glyph`, `font-grid` |
 | `film` (Film) | workflows | Assemble scenes and shots into MP4, WebM, GIF or WebP films; sample video and analyze audio. | `audio-analyze`, `film-export`, `film-plan`, `film-preview`, `video-sample` |
 | `lyrics` (Lyric videos) | workflows | Synced lyric videos from audio, an LRC file and a styled template document. | `lyric-video-build`, `lyric-video-export`, `lyric-video-plan`, `lyric-video-review`, `lyrics-align`, `lyrics-preview`, `lyrics-timing-edit`, `lyrics-timing-export` |
 | `imposition` (Print imposition) | workflows | Merge CSV rows into a template and impose the copies n-up on press sheets with marks and bleed. | `merge-impose` |
+| `print_templates` (Print templates) | workflows | Import a printer's template (PNG or PSD) as role guides (safe areas, keep-outs, folds, trim) and save them as reusable guide sets. | `guide-set`, `guide-set-save`, `guides-import` |
 | `brand_kit` (Brand kit) | workflows | Logo packages, brand guideline boards, device, print and merch mockups and print-ready art from a brand.json and a logo. | `brand-board`, `brand-export`, `brand-import`, `logo-package`, `mockup`, `mockup-list`, `mockup-save`, `print-art` |
 | `deck_markdown` (Markdown to deck) | workflows | Turn a Markdown outline into a checked slide deck with charts, tables and speaker notes. | `deck-from-markdown` |
 | `teamwork` (Teamwork) | workflows | Workspace branches and merges, document groups with shared parameters and rollback, suite inference. | `branch-fork`, `branch-list`, `branch-merge`, `branch-status`, `group-apply`, `group-define`, `group-list`, `group-recover`, `group-show`, `suite-infer` |
@@ -167,9 +169,11 @@ A plugin that declares `requires: ["workspace_qa"]` can call these (see their mo
 | `localization` (Localization) | workflows | Locale variable tables and strings CSVs, a locale x finding check matrix, and localize fan-out with fit, RTL mirroring and font fallbacks. | `locales-set`, `group-locales`, `locale-check`, `localize` |
 | `figma_import` (Figma interchange) | importer | Import Figma files and export editable Figma interchange with embedded images and loss reports. | hooks: export-format, import-format |
 | `pdf_import` (PDF import) | importer | Import a PDF page as editable layers (needs the optional pypdfium2 package). | hooks: import-format |
+| `psd_import` (PSD import) | importer | Import a layered Photoshop (PSD) file as image layers, groups and layer masks. | hooks: import-format |
 | `ai` (AI providers) | provider | Generate, edit, detect and describe images through configured providers; model discovery and routing. | hooks: host-flags, host-route |
 | `spelling` (Spelling) | checks | An optional spelling check of drawn text with suggestions; English is bundled, other languages are content packs. | hooks: check, spell |
 | `lottie` (Lottie animation) | workflows | Export vector animations with native easing and time-remapped linked instances as Lottie JSON, dotLottie and strict Telegram TGS. | hooks: timeline-export-format |
+| `object_detect` (Object detection) | workflows | object-detect: propose groupings and kinds for undeclared objects from recipes, names and touching ink; a dry run unless apply is set, and offline unless a provider is named. | `object-detect` |
 
 ## Not separable yet
 

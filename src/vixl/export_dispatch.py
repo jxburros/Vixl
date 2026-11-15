@@ -56,6 +56,8 @@ def export(
     isolate=None,
     padding=None,
     svg_document=True,
+    tagged=False,
+    psd_text=None,
 ):
     """Render and encode. ``color_space='cmyk'`` separates JPEG/TIFF/PDF output (ICC profile
     bytes in ``icc_profile`` for press-accurate separation, else device-naive GCR with
@@ -70,11 +72,13 @@ def export(
     is ``False`` for the plain single-image HTML, ``True`` for a presentation of any document, or
     a dict of options (theme, notes, slide_images, start, title). ``title`` is the PDF document title
     (default: the page's title layer, then the file name). ``max_bytes`` is a size budget: when the
-    encoded file is larger, ``report['warnings']`` says so (the export still succeeds). ``isolate`` (layer
+    encoded file is larger, ``report['warnings']`` says so (the export still succeeds). ``psd_text='editable'`` also
+    writes a PSD's plain text layers as type layers (default ``'pixels'``: text is pixels only). ``isolate`` (layer
     names, object paths such as ``dog/head`` or ``object:KIND``) exports only those layers, cropped to their ink
     plus ``padding`` pixels on a transparent canvas, in any format. SVG output embeds the document it shows (its layers,
     and the images and fonts they use) so that importing the SVG gives back the same editable layers;
-    ``svg_document=False`` leaves it out."""
+    ``svg_document=False`` leaves it out. ``tagged=True`` writes a tagged PDF: a structure tree in reading order
+    (``pdf_structure``); the default leaves the PDF untagged, byte for byte as before."""
     require(isinstance(overwrite, bool), "overwrite must be true or false", field="overwrite")
     require(path is None or overwrite or not Path(path).exists(),
             "Export output already exists; pass overwrite=True to replace it", "output_exists", field="path")
@@ -116,6 +120,10 @@ def export(
     sheet = page == "all" and requested != "FIGMA" or (all_pages or bool(pages)) and requested not in (
         "PDF", "PPTX", "HTML", "HTM", "FIGMA")
     require(page is None or not pages, "Pass page or pages, not both")
+    require(isinstance(tagged, bool), "tagged must be true or false", field="tagged")
+    require(not tagged or requested == "PDF" or ((fillable or fill_mode == "editable") and not format and not suffix),
+            "tagged writes a PDF structure tree; export a .pdf (HTML, SVG and PowerPoint carry alt text and "
+            "language without it)", field="tagged")
     if sheet:
         require(requested in ("PNG", "JPG", "JPEG", "WEBP", "TIFF", "TIF", "AVIF"),
                 "Page contact sheets require a raster image format", field="page")
@@ -131,7 +139,8 @@ def export(
         from .pdf_forms import export_fillable
 
         return export_fillable(project, path, pages=pages or ([page] if page is not None else None), values=values,
-                               dpi=dpi, content=pdf_content or "vector", background=background, report=report)
+                               dpi=dpi, content=pdf_content or "vector", background=background, report=report,
+                               tagged=bool(tagged))
     if variables:
         from .forms import all_fields, has_fields
 
@@ -172,7 +181,7 @@ def export(
                 "comp, proof, simulate, CMYK and pages do not apply", field="format")
         from .psd_export import export_psd
 
-        return export_psd(project, path, page=page, variables=variables, report=report)
+        return export_psd(project, path, page=page, variables=variables, report=report, text=psd_text or "pixels")
     if (format or "").upper() == "PPTX" or suffix == ".pptx":
         require(not artwork, "PPTX keeps editable RGB slides; profile, artboard, comp, proof, simulate and CMYK do not "
                 "apply (export a PNG or PDF to preview them)", field="format")
@@ -189,6 +198,11 @@ def export(
         require(not (raster_only and pdf_content == "vector"),
                 f"pdf_content=vector cannot be combined with {', '.join(raster_only)}: those export the page as an image",
                 field="pdf_content")
+    if tagged:
+        # A structure tree needs Vixl's own PDF writer: the scaled, proofed and profile paths save a plain image.
+        require(not raster_only and (pdf_content or scale == 1),
+                f"tagged cannot be combined with {', '.join(raster_only) or 'scale'}: those export the page as a "
+                "plain image. Leave them out, or pass pdf_content", field="tagged")
     if wants_pdf and not raster_only and (pdf_content or scale == 1):
         # Every PDF is written by Vixl's own writer: vector unless raster is asked for (exact physical
         # print pages, TrimBox and BleedBox, selectable text, CMYK). A scaled export is a larger
@@ -210,7 +224,8 @@ def export(
         content = pdf_content or "vector"
         data = export_pdf(project, path, pages=pages or ([page] if page is not None else None), content=content,
                           dpi=dpi, background=background, color_space=color_space, separation=separation,
-                          jpeg_quality=int(quality) if quality_given else None, title=title, report=report)
+                          jpeg_quality=int(quality) if quality_given else None, title=title, report=report,
+                          tagged=bool(tagged))
         if report is not None:
             report["content_reason"] = ("requested with pdf_content" if pdf_content else
                                         "default: vector, with images only for what PDF cannot draw (see raster_fallbacks)")
@@ -247,29 +262,6 @@ def export(
     require(svg_policy == "appearance", "Strict SVG policy requires SVG output")
     if format:
         format = {"JPG": "JPEG", "TIF": "TIFF"}.get(format.upper(), format.upper())
-    image = None
-    if sheet:
-        from .deck import contact_sheet
-
-        image = contact_sheet(project, pages=pages, width=width, columns=columns, labels=labels, variables=variables)
-    if image is None and scale > 1 and sampling != "nearest" and not (artboard or comp or settings.get("size")):
-        # Enlarge by re-rendering a scaled copy, so text, shapes and vectors stay crisp.
-        from .proxy import scaled_project
-
-        project.limits.size(round(project.state["canvas"]["width"] * scale), round(project.state["canvas"]["height"] * scale))
-        proxy = scaled_project(project, scale)
-        if proxy is not None:
-            image = render(proxy, variables)
-            scale = 1
-    if image is None:
-        image = render(project, variables, artboard, comp)
-    size = settings.pop("size", None)
-    if size:
-        image = ImageOps.contain(image, size, resample)
-    target_size = (max(1, round(image.width * scale)), max(1, round(image.height * scale)))
-    project.limits.size(*target_size)
-    if target_size != image.size:
-        image = image.resize(target_size, resample)
     profile_format = settings.pop("format", None)
     fmt = (
         format
@@ -295,6 +287,57 @@ def export(
             "jpg, webp, tiff, avif, pdf, ico, svg, pptx, psd or html (fonts: ttf, otf, woff, woff2; audio: vixl_export "
             "(.wav), or a .wav path on the CLI; animation: export-timeline)",
             field="format")
+    canvas_dpi = project.state["canvas"].get("dpi")
+    if dpi is not None:
+        finite(dpi, "dpi", 36, 2400)
+    # requested_scale: a crisp enlargement re-renders at full size and resets ``scale`` to 1.
+    effective_dpi = dpi or (canvas_dpi * requested_scale if canvas_dpi else None)
+    if not effective_dpi and fmt == "TIFF":
+        # TIFF is a print format and readers assume 1 dpi without resolution tags; use the 72 dpi a PDF export assumes.
+        effective_dpi = 72 * requested_scale
+    if effective_dpi and "dpi" not in settings:
+        settings["dpi"] = (round(effective_dpi, 3), round(effective_dpi, 3))
+
+    def finish(data):
+        if report is not None and fmt in ("PNG", "JPEG", "WEBP", "TIFF", "AVIF"):
+            from .animation import still_size_warnings
+
+            if warnings := still_size_warnings(project, fmt, len(data), max_bytes):
+                report.setdefault("warnings", []).extend(warnings)
+        if path:
+            Path(path).write_bytes(data)
+        return data
+
+    image, subject = None, project
+    if sheet:
+        from .deck import contact_sheet
+
+        image = contact_sheet(project, pages=pages, width=width, columns=columns, labels=labels, variables=variables)
+    if image is None and scale > 1 and sampling != "nearest" and not (artboard or comp or settings.get("size")):
+        # Enlarge by re-rendering a scaled copy, so text, shapes and vectors stay crisp.
+        from .proxy import scaled_project
+
+        project.limits.size(round(project.state["canvas"]["width"] * scale), round(project.state["canvas"]["height"] * scale))
+        proxy = scaled_project(project, scale)
+        if proxy is not None:
+            subject, scale = proxy, 1
+    if (image is None and fmt == "PNG" and scale == 1 and not settings.get("size") and not (simulate or proof)
+            and color_space == "rgb" and icc_profile is None and ink_limit is None):
+        # A large canvas whose regions render alone is composited and encoded band by band (tiles.py).
+        from .tiles import png
+
+        data = png(subject, variables, artboard, comp, alpha=alpha, background=background, dpi=settings.get("dpi"))
+        if data is not None:
+            return finish(data)
+    if image is None:
+        image = render(subject, variables, artboard, comp)
+    size = settings.pop("size", None)
+    if size:
+        image = ImageOps.contain(image, size, resample)
+    target_size = (max(1, round(image.width * scale)), max(1, round(image.height * scale)))
+    project.limits.size(*target_size)
+    if target_size != image.size:
+        image = image.resize(target_size, resample)
     from . import colors
 
     cms = None
@@ -312,16 +355,6 @@ def export(
         image = colors.simulate_vision(image, simulate)
     if proof:
         image = colors.proof_image(image, **separation)
-    canvas_dpi = project.state["canvas"].get("dpi")
-    if dpi is not None:
-        finite(dpi, "dpi", 36, 2400)
-    # requested_scale: a crisp enlargement re-renders at full size and resets ``scale`` to 1.
-    effective_dpi = dpi or (canvas_dpi * requested_scale if canvas_dpi else None)
-    if not effective_dpi and fmt == "TIFF":
-        # TIFF is a print format and readers assume 1 dpi without resolution tags; use the 72 dpi a PDF export assumes.
-        effective_dpi = 72 * requested_scale
-    if effective_dpi and "dpi" not in settings:
-        settings["dpi"] = (round(effective_dpi, 3), round(effective_dpi, 3))
     if color_space == "cmyk":
         require(fmt in ("JPEG", "TIFF", "PDF"), "CMYK export supports JPEG, TIFF and PDF" + (
             "; for an RGB soft proof of print colours drop --cmyk (color_space) and keep --proof" if proof else ""),
@@ -362,14 +395,7 @@ def export(
         report.update(content="raster", color_space=color_space, content_reason=(
             f"{', '.join(raster_only)} export the page as an image" if raster_only else
             f"scale {requested_scale:g} exports a larger image; pass pdf_content for a vector or raster PDF at its natural size"))
-    if report is not None and fmt in ("PNG", "JPEG", "WEBP", "TIFF", "AVIF"):
-        from .animation import still_size_warnings
-
-        if warnings := still_size_warnings(project, fmt, len(data), max_bytes):
-            report.setdefault("warnings", []).extend(warnings)
-    if path:
-        Path(path).write_bytes(data)
-    return data
+    return finish(data)
 
 
 def export_checked(project, path, spec, **options):

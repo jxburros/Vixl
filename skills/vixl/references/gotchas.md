@@ -36,6 +36,9 @@ The complete list; the [skill entry point](../SKILL.md) keeps the most common on
   (small and light; never grey dirt), a glow a lighter tint of the layer's colour that only adds light, capped at
   opacity 0.6. Give `color` for an exact colour. A `layer-style` is drawn exactly as given (unset: black shadow,
   white glow), so prefer the looks for a clean default.
+- **Hand-lettered words stay text.** Do not convert words to outlines to vary their size, baseline and tilt: the
+  document then has no text layers, so the text checks pass with nothing to read and nobody can edit the words. Use
+  `hand_set` on the text layer (or span `rise`/`rotate`/`scale`); `irregular` refuses text.
 - **Absolute `move` and `align`/`distribute` clear constraints** on that layer. Use `constrain`
   when layout should survive canvas resizes, artboards or text changes; use `align` for a one-off.
 - **One constraint per axis** (e.g. `left` *or* `center-x` *or* `right`). Anchors: `canvas`, a layer
@@ -50,7 +53,8 @@ The complete list; the [skill entry point](../SKILL.md) keeps the most common on
   and `font pair` updates text whose `font` is `heading`/`body` (templates use roles). Literal colors
   and named fonts stay as they are.
 - **Text auto-sizes** to its rendered bounds; an explicit `resize` turns that off, editing text turns it back on.
-  For wrapping use `text-layout` with `width` (the height grows to the wrapped lines) or `width`/`height` (optionally `fit: true`).
+  For wrapping use `text-layout` with `width` (the height grows to the wrapped lines) or `width`/`height` (optionally `fit: true`);
+  `width`/`height` on `text` itself set that box in the same operation (a centred label in a column is one operation).
   `wrap: "balance"` evens a heading's lines (the default for headings in new documents), `wrap: "pretty"` keeps one
   word off a paragraph's last line. Price lists: `tabs: [{at: "100%", align: "right", leader: "."}]` with `\t` in the
   text, or a `table` column `leader: "."`. Two-tone headlines: `layout-apply` `accent_words: ["Winter"]`.
@@ -118,8 +122,10 @@ The complete list; the [skill entry point](../SKILL.md) keeps the most common on
   ≤ 10 min, 60 fps, 3 600 frames; 4 096 strokes per paint layer.
 - **Not supported** (don't promise them): a faithful editable import of every SVG, PDF or Figma feature (filters,
   masks, clip paths, shadings and unmapped Figma nodes become image layers or are listed in `report`),
-  CMYK *editing* or spot colors, live tablet input, RAW, PSD/XCF import (PSD *export* is layered pixels: text is not
-  editable type), a GUI editor.
+  CMYK *editing* or spot colors, live tablet input, RAW, XCF import, 16-bit or CMYK PSD import (an 8-bit RGB layered
+  PSD imports as image layers, groups and masks: its type and adjustment layers are not editable), PSD *export* of
+  editable type by default (text is pixels; `psd_text: "editable"` writes plain text as type layers, unverified in
+  Photoshop), a GUI editor.
 - **Figma export:** use `.figma.json` or format `FIGMA`, then the repository's local Figma import plugin. Read
   `report.unmapped` and the plugin's font substitutions; unsupported appearances rasterize per layer, and
   timelines export only a still frame. Review wrapping and alignment in Figma before approving the handoff.

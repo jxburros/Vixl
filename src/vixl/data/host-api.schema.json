@@ -95,7 +95,7 @@
    }
   },
   "POST /w/{ws}/documents/{id}/import": {
-   "body": "image/svg+xml or application/pdf",
+   "body": "image/svg+xml, application/pdf or image/vnd.adobe.photoshop",
    "query": [
     "format",
     "name",
@@ -1175,6 +1175,7 @@
        "presenter",
        "profile",
        "proof",
+       "psd_text",
        "quality",
        "sampling",
        "scale",
@@ -1182,6 +1183,7 @@
        "strict",
        "svg_document",
        "svg_policy",
+       "tagged",
        "time",
        "values",
        "variables"
