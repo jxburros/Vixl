@@ -228,7 +228,11 @@ def test_real_mcp_empty_workspace_to_export(tmp_path):
 
                 await call("vixl_document", action="list")
                 created = await call("vixl_document", action="create", path="a.vixl", width=20, height=10)
-                assert len(created.content[0].text) < 400  # a new blank document's result is terse
+                # A new blank document's result is terse. A local server also names its workspace folder (#801),
+                # whose length is the caller's (a macOS temporary folder is long), so it is not counted.
+                answer = json.loads(created.content[0].text)
+                assert answer.pop("workspace", "") != "."
+                assert len(json.dumps(answer, separators=(",", ":"))) < 400
                 await call("vixl_apply", operations=[{"type": "import-image", "path": "photo.png", "name": "photo"}])
                 result = await call("vixl_apply", operations=[{"type": "move", "x": 1}])
                 assert len(result.model_dump_json()) < 1500
