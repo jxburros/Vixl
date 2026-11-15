@@ -391,7 +391,7 @@ def test_rest_export_writes_type_layers_only_on_request(tmp_path):
 def test_colour_fonts_hand_set_text_and_inner_styles_stay_pixels(tmp_path):
     import hashlib
 
-    from tests import color_font_helper as fonts
+    import color_font_helper as fonts
 
     p = Project(500, 400, "#ffffff")
     data = fonts.colr_v0()

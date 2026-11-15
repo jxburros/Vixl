@@ -9,7 +9,7 @@ import re
 import pytest
 from PIL import Image
 
-from tests import color_font_helper as fonts
+import color_font_helper as fonts
 from vixl import color_fonts, emojis, text
 from vixl.checks import missing_glyphs
 from vixl.errors import VixlError
