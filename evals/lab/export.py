@@ -19,6 +19,7 @@ with base64 images) stay in the results folder.
 
 import html
 import json
+import os
 from pathlib import Path
 import platform
 import sys
@@ -401,7 +402,11 @@ def build(lab, run_ids=None, out=None):
         raise ValueError("wait for running rounds to finish before exporting")
     stamp = time.strftime("%Y%m%d-%H%M")
     top = f"vixl-lab-export-{stamp}"
-    out = Path(out) if out else Path(tempfile.mkstemp(prefix=f"{top}-", suffix=".zip")[1])
+    if out is None:
+        handle, name = tempfile.mkstemp(prefix=f"{top}-", suffix=".zip")
+        os.close(handle)  # an open handle would stop Windows from deleting the file once it has been sent
+        out = name
+    out = Path(out)
     env = environment()
     stats = lab.store.stats([run["id"] for run in runs])
     events = {s["id"]: lab.session_events(s["id"]) for run in runs for s in run["sessions"]}

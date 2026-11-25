@@ -667,3 +667,21 @@ def test_export_through_the_api(client):
     assert reply.content[:2] == b"PK"
     assert client.post("/api/export", json={"runs": ["missing"]}).status_code == 400
     assert client.post("/api/export", json={}, headers={"X-Lab-Token": "no"}).status_code == 403
+
+
+@pytest.mark.skipif(not Path("/proc/self/fd").is_dir(), reason="needs /proc to list open files")
+def test_export_leaves_no_handle_open_on_its_temporary_file(lab):
+    # Windows cannot delete a file that is still open, so the server's clean-up after sending would fail there.
+    import os
+
+    from evals.lab.export import build
+
+    run_id = lab.start(spec(arms=["bare"]), SECRET)
+    finished(lab, run_id)
+    path = build(lab, [run_id])
+    try:
+        held = [fd for fd in os.listdir("/proc/self/fd")
+                if os.path.realpath(f"/proc/self/fd/{fd}") == os.path.realpath(path)]
+        assert held == []
+    finally:
+        path.unlink()
