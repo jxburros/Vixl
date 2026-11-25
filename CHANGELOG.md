@@ -75,6 +75,14 @@ tagged PDF (stage 9), tiled compositing and a glyph cache (stage 8), and the age
 
 ### Added
 
+- **A lab for comparing a model with and without Vixl** (`python -m evals.lab`): a local web page that sends one brief
+  to the same model in separate sessions (no tools, code tools with sandboxed Python, or Vixl's MCP tools) and shows
+  the results side by side, with blind voting, a rubric judge and a scoreboard. Providers: Anthropic, OpenAI, Meta
+  (Muse), Moonshot (Kimi), local Ollama or LM Studio and any OpenAI-compatible URL. Follow-up changes go to every
+  session as further rounds, each continuing its own conversation and workspace, with a snapshot per round. An
+  export packs any set of runs into one ZIP: an offline report, a guide, every generation's files and preview, and a
+  step-by-step account of how each was made (prompts, tools, every tool call with its arguments). Keys stay in
+  memory. See "Lab" in `evals/README.md`.
 - **Sprites drawn inside Vixl.** `pixel-draw` gains `tool: "ellipse"` (a filled ellipse inscribed in its `x, y,
   width, height` box, symmetric at any size) and `only` (palette symbols a tool may overwrite, to shade just the
   cells that are already hair). The new `pixel-transform` mirrors a sprite's stored rows (`flip:

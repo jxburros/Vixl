@@ -87,6 +87,68 @@ same thing (HTML and SVG, Python libraries, free desktop tools, image generation
 use the hand-run [tool comparison kit](https://github.com/jxburros/VixlExamples/blob/main/evals/tool-comparison/README.md): 16 briefs, judging notes with
 answer keys, fixtures and an output inspector.
 
+## Lab: the same model with and without Vixl
+
+`evals/lab` is a local web app for comparing one model with itself. You type a brief once and it runs as separate
+sessions of the same model, one per arm, each with its own empty workspace and conversation:
+
+| Arm | Tools |
+| --- | --- |
+| Bare | None. Fenced code blocks in the reply (SVG, HTML, Markdown …) are saved as files. |
+| Code tools | `list_files`, `read_file`, `write_file`, `view_image`, `run_python` (with whatever drawing and document libraries are installed) and, with Playwright, `render_page`. This is the fair control: what an agent without Vixl would use. |
+| Vixl | Vixl's MCP tools (the real server, in-process) plus the same four file tools, and optionally the agent skill. |
+
+Every arm gets the same opening system prompt. Only the paragraph describing its tools differs.
+
+```text
+pip install -e ".[dev]" playwright && playwright install chromium   # Playwright renders HTML and SVG
+python -m evals.lab                                                  # opens http://localhost:8765/
+python -m evals.lab --port 9000 --results ~/vixl-lab --no-browser
+python -m evals.lab --chromium /path/to/chrome                       # use an installed Chromium
+```
+
+In the page, pick a provider, paste a key, pick a model (or press **Load models**), choose the arms and the number
+of repeats, and start. The supported providers are Anthropic, OpenAI, Meta (Muse), Moonshot (Kimi), local Ollama or
+LM Studio, and any other OpenAI-compatible URL.
+
+Each session streams its log while it works. When it finishes, the page shows a preview of the main deliverable,
+every file it left, its time, turns, tool calls and errors, tokens, and cost (if you enter prices). Then you can:
+
+- **Vote blind:** outputs are shuffled and labelled A, B, C until you vote or reveal them.
+- **Judge:** score every preview with the craft rubric of `evals/judge.py`, using any provider and model. A
+  different model from the one under test is the fairer judge.
+- **Compare on the scoreboard:** results per model and arm. It shows how often the arm delivered, its blind-vote
+  wins, its judge mean, and its median time, tokens and cost.
+
+**Follow-ups.** When a round has finished, type a change under the grid (for example "make the title larger").
+It goes to every session of the run as round 2, 3 and so on. Each session continues its own conversation in its
+own workspace, so the arms are compared change by change, not only on the first try. The page has one tab per
+round. Votes and judge scores belong to a round. After every round the workspace is copied to
+`rounds/<n>/files/`, so earlier versions stay available. Conversations are saved, so follow-ups still work after
+the lab restarts (paste the key again if it came from the form).
+
+**Export.** **Export** on a run, or **Export selected** / **Export all runs** on the Runs tab, downloads one ZIP
+that stands on its own:
+
+| Path in the ZIP | What it holds |
+| --- | --- |
+| `index.html` | An offline report: every run, round and generation side by side, with metrics, votes, judge scores and each generation's steps. |
+| `GUIDE.md` | How the runs were made (arms, fairness, environment, Vixl version), how to read them, and results by model and arm. |
+| `data.json` | Everything as data: specs, rounds, metrics, votes, scores. |
+| `runs/<run>/README.md` | The run's brief, follow-ups, settings and a results table per round. |
+| `runs/<run>/<session>/round-<n>/` | `preview.png`, `files/` (the workspace after that round) and `how-it-was-made.md`: what was asked, the tools, the result, then every model message and tool call with its full arguments and what the tool answered. |
+| `runs/<run>/<session>/` | `system-prompt.txt`, `tools.json`, `events.jsonl` and, for the code arm, `python/` with every script it ran. |
+
+Keys stay in the server process's memory and are never written to disk. Fields left blank fall back to
+`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `META_API_KEY` (or `MODEL_API_KEY`) and `MOONSHOT_API_KEY`. The server only
+listens on localhost, and its API needs a token that only the page holds. Runs, votes and scores go to
+`lab-results/` (`lab.db` plus one folder per session, with the workspace, round snapshots, the saved conversation and
+`events.jsonl`).
+
+The code arm's Python is a guard rail, not a sandbox. It runs as you, with the workspace as its working folder, a
+time limit, no API keys in its environment and Vixl blocked from import. On Linux where `unshare -rn` works, it also
+has no network. It can still read other files on your machine, so only run briefs you would run yourself.
+
 ## Craft re-run
 
 Stage 10 of the [roadmap](../ROADMAP.md) measures craft by re-running the Vixl lane of the tool comparison and

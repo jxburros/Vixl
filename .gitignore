@@ -36,3 +36,5 @@ tests/visual/_failures/
 # Preserve editable artwork references.
 !art/heyoka-mirrors-paradox/items/*.vixl
 .vixl-cache.seen
+# comparison lab output (python -m evals.lab)
+/lab-results/

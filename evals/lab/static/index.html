@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="lab-token" content="__LAB_TOKEN__">
+<title>Vixl Lab</title>
+<link rel="stylesheet" href="/static/lab.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="mark" aria-hidden="true"></span>Vixl Lab</div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-view="new" class="tab active">New run</button>
+    <button role="tab" data-view="runs" class="tab">Runs</button>
+    <button role="tab" data-view="stats" class="tab">Scoreboard</button>
+  </nav>
+</header>
+
+<main>
+  <section id="view-new" class="view">
+    <form id="run-form" class="panel" autocomplete="off">
+      <div class="grid two">
+        <label>Provider
+          <select name="provider" id="provider"></select>
+        </label>
+        <label>Base URL
+          <input name="base_url" id="base_url" placeholder="https://…/v1">
+        </label>
+      </div>
+      <div class="grid two">
+        <label>API key <span class="hint" id="key-hint"></span>
+          <input name="api_key" id="api_key" type="password" placeholder="Kept in memory only, never saved">
+        </label>
+        <label>Model
+          <div class="row">
+            <input name="model" id="model" list="model-list" placeholder="model id" required>
+            <button type="button" id="load-models" class="ghost">Load models</button>
+          </div>
+          <datalist id="model-list"></datalist>
+        </label>
+      </div>
+
+      <fieldset class="arms">
+        <legend>Arms: each runs as its own session of the same model</legend>
+        <div id="arm-list" class="arm-list"></div>
+      </fieldset>
+
+      <label>Brief
+        <textarea name="prompt" id="prompt" rows="5" required
+          placeholder="Make a 1080×1350 Instagram poster for a jazz night at The Blue Room, Friday 8 pm, $15 at the door."></textarea>
+      </label>
+
+      <div class="grid four">
+        <label>Repeats <input name="repeats" type="number" min="1" max="10" value="1"></label>
+        <label>Max turns <input name="max_turns" type="number" min="1" max="200" value="30"></label>
+        <label>Minutes per session <input name="session_minutes" type="number" min="1" max="240" value="20"></label>
+        <label>Sessions at once <input name="parallel" type="number" min="1" max="8" value="3"></label>
+      </div>
+
+      <details class="advanced">
+        <summary>Model settings and cost</summary>
+        <div class="grid four">
+          <label>Max output tokens <input name="max_tokens" type="number" min="256" max="128000" value="16000"></label>
+          <label>Effort
+            <select name="effort">
+              <option value="">Default</option><option>minimal</option><option>low</option><option>medium</option>
+              <option>high</option><option>xhigh</option><option>max</option>
+            </select>
+          </label>
+          <label>$ / M input tokens <input name="price_in" type="number" step="any" min="0" placeholder="optional"></label>
+          <label>$ / M output tokens <input name="price_out" type="number" step="any" min="0" placeholder="optional"></label>
+        </div>
+        <div class="grid two">
+          <label class="check"><input type="checkbox" name="vision" checked> Send images to the model (turn off for text-only models)</label>
+          <label class="check"><input type="checkbox" name="skill" checked> Give the Vixl arm the Vixl agent skill (as Claude Code would)</label>
+        </div>
+        <label>Extra request fields (JSON, merged into every request)
+          <textarea name="extra" rows="2" placeholder='{"temperature": 0.7}'></textarea>
+        </label>
+        <p class="hint">Effort is sent as <code>output_config.effort</code> to Anthropic and as <code>reasoning_effort</code> elsewhere; leave it on Default for models that do not take it.</p>
+      </details>
+
+      <div class="actions">
+        <button type="submit" class="primary" id="start">Start run</button>
+        <span id="form-message" class="message" role="status"></span>
+      </div>
+      <p class="hint" id="capabilities"></p>
+    </form>
+  </section>
+
+  <section id="view-run" class="view" hidden>
+    <div class="panel run-head">
+      <div class="run-title">
+        <p class="eyebrow" id="run-meta"></p>
+        <p id="run-prompt" class="prompt"></p>
+      </div>
+      <div class="run-tools">
+        <label class="check"><input type="checkbox" id="blind" checked> Blind</label>
+        <button class="ghost" id="cancel-run">Cancel</button>
+        <button class="ghost" id="open-judge">Judge…</button>
+        <button class="ghost" id="export-run">Export</button>
+        <button class="ghost danger" id="delete-run">Delete</button>
+      </div>
+      <form id="judge-form" class="judge-form" hidden>
+        <label>Judge provider <select name="provider" id="judge-provider"></select></label>
+        <label>Judge model <input name="model" id="judge-model" list="model-list" required></label>
+        <label>Key <input name="api_key" type="password" placeholder="blank: use the one already given"></label>
+        <button class="primary" type="submit">Score every preview</button>
+        <span class="hint">Scores the round shown below. A different model from the one under test is the fairer judge.</span>
+      </form>
+      <span id="run-message" class="message" role="status"></span>
+    </div>
+    <nav id="round-tabs" class="tabs round-tabs" role="tablist" aria-label="Rounds"></nav>
+    <p id="round-prompt" class="round-prompt"></p>
+    <div id="repeats"></div>
+    <form id="followup-form" class="panel followup" hidden>
+      <label>Follow-up change
+        <textarea name="prompt" rows="3" placeholder="Make the title larger and put the date under it."></textarea>
+      </label>
+      <div class="actions">
+        <button type="submit" class="primary">Send to every session</button>
+        <span id="followup-hint" class="hint"></span>
+        <span id="followup-message" class="message" role="status"></span>
+      </div>
+    </form>
+  </section>
+
+  <section id="view-runs" class="view" hidden>
+    <div class="panel">
+      <div class="actions toolbar">
+        <button class="ghost" id="export-selected" disabled>Export selected</button>
+        <button class="ghost" id="export-all">Export all runs</button>
+        <span id="runs-message" class="message" role="status"></span>
+      </div>
+      <p class="hint">An export is one ZIP: an offline report, a guide, every generation's files and preview, and a
+        step-by-step account of how each one was made (prompts, tools, every tool call with its arguments).</p>
+      <table class="table" id="runs-table"></table>
+    </div>
+  </section>
+
+  <section id="view-stats" class="view" hidden>
+    <div class="panel">
+      <p class="hint">Delivered: the session left a file that could be previewed. Wins count blind votes for each
+        model and arm, out of the votes it took part in. Judge: the mean rubric score (1-5).</p>
+      <table class="table" id="stats-table"></table>
+    </div>
+  </section>
+</main>
+
+<dialog id="viewer"><img alt=""><form method="dialog"><button class="ghost">Close</button></form></dialog>
+<script src="/static/lab.js"></script>
+</body>
+</html>
